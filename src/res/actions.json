@@ -1,0 +1,83 @@
+{
+  "actions": [
+    {
+      "name": "/actions/default/in/Click",
+      "type": "boolean",
+      "requirement": "mandatory"
+    },
+    {
+      "name": "/actions/default/in/Grab",
+      "type": "boolean",
+      "requirement": "mandatory"
+    },
+    {
+      "name": "/actions/default/in/Scroll",
+      "type": "vector2",
+      "requirement": "mandatory"
+    },
+    {
+      "name": "/actions/default/in/ShowHide",
+      "type": "boolean",
+      "requirement": "mandatory"
+    },
+    {
+      "name": "/actions/default/in/AltClick",
+      "type": "boolean",
+      "requirement": "optional"
+    },
+    {
+      "name": "/actions/default/in/ClickModifierRight",
+      "type": "boolean",
+      "requirement": "optional"
+    },
+    {
+      "name": "/actions/default/in/ClickModifierMiddle",
+      "type": "boolean",
+      "requirement": "optional"
+    },
+    {
+      "name": "/actions/default/in/SpaceDrag",
+      "type": "boolean",
+      "requirement": "optional"
+    },
+    {
+      "name": "/actions/default/in/LeftHand",
+      "type": "pose",
+      "requirement": "optional"
+    },
+    {
+      "name": "/actions/default/in/RightHand",
+      "type": "pose",
+      "requirement": "optional"
+    },
+    {
+      "name": "/actions/default/out/HapticsLeft",
+      "type": "vibration"
+    },
+    {
+      "name": "/actions/default/out/HapticsRight",
+      "type": "vibration"
+    }
+  ],
+  "action_sets": [
+    {
+      "name": "/actions/default",
+      "usage": "leftright"
+    }
+  ],
+  "default_bindings": [
+    {
+      "controller_type": "knuckles",
+      "binding_url": "actions_binding_knuckles.json"
+    },
+    {
+      "controller_type": "oculus_touch",
+      "binding_url": "actions_binding_oculus.json"
+    },
+    {
+      "controller_type": "vive_controller",
+      "binding_url": "actions_binding_vive.json"
+    }
+  ],
+  "localization": []
+}
