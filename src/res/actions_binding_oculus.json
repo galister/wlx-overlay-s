@@ -1,6 +1,6 @@
 {
    "action_manifest_version" : 0,
-   "app_key" : "galister.wlxoverlay",
+   "app_key" : "galister.wlxoverlay-s",
    "bindings" : {
       "/actions/default" : {
          "haptics" : [

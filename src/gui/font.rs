@@ -4,7 +4,7 @@ use fontconfig::{FontConfig, OwnedPattern};
 use freetype::{bitmap::PixelMode, face::LoadFlag, Face, Library};
 use idmap::IdMap;
 use log::debug;
-use vulkano::{format::Format, command_buffer::CommandBufferUsage, image::ImmutableImage};
+use vulkano::{command_buffer::CommandBufferUsage, format::Format, image::ImmutableImage};
 
 use crate::graphics::WlxGraphics;
 
@@ -23,9 +23,6 @@ struct FontCollection {
 
 struct Font {
     face: Face,
-    path: String,
-    index: isize,
-    size: isize,
     glyphs: IdMap<usize, Rc<Glyph>>,
 }
 
@@ -50,7 +47,12 @@ impl FontCache {
         }
     }
 
-    pub fn get_text_size(&mut self, text: &str, size: isize, graphics: Arc<WlxGraphics>) -> (f32, f32) {
+    pub fn get_text_size(
+        &mut self,
+        text: &str,
+        size: isize,
+        graphics: Arc<WlxGraphics>,
+    ) -> (f32, f32) {
         let sizef = size as f32;
 
         let height = sizef + ((text.lines().count() as f32) - 1f32) * (sizef * 1.5);
@@ -59,7 +61,10 @@ impl FontCache {
         for line in text.lines() {
             let w: f32 = line
                 .chars()
-                .map(|c| self.get_glyph_for_cp(c as usize, size, graphics.clone()).advance)
+                .map(|c| {
+                    self.get_glyph_for_cp(c as usize, size, graphics.clone())
+                        .advance
+                })
                 .sum();
 
             if w > max_w {
@@ -69,7 +74,12 @@ impl FontCache {
         (max_w, height)
     }
 
-    pub fn get_glyphs(&mut self, text: &str, size: isize, graphics: Arc<WlxGraphics>) -> Vec<Rc<Glyph>> {
+    pub fn get_glyphs(
+        &mut self,
+        text: &str,
+        size: isize,
+        graphics: Arc<WlxGraphics>,
+    ) -> Vec<Rc<Glyph>> {
         let mut glyphs = Vec::new();
         for line in text.lines() {
             for c in line.chars() {
@@ -143,13 +153,7 @@ impl FontCache {
             let mut glyphs = IdMap::new();
             glyphs.insert(0, zero_glyph);
 
-            let font = Font {
-                face,
-                path: path.to_string(),
-                size,
-                index: font_idx as _,
-                glyphs,
-            };
+            let font = Font { face, glyphs };
             coll.fonts.push(font);
 
             idx
@@ -159,7 +163,12 @@ impl FontCache {
         }
     }
 
-    fn get_glyph_for_cp(&mut self, cp: usize, size: isize, graphics: Arc<WlxGraphics>) -> Rc<Glyph> {
+    fn get_glyph_for_cp(
+        &mut self,
+        cp: usize,
+        size: isize,
+        graphics: Arc<WlxGraphics>,
+    ) -> Rc<Glyph> {
         let key = self.get_font_for_cp(cp, size);
 
         let font = &mut self.collections[size].fonts[key];

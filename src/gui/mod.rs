@@ -4,16 +4,16 @@ use glam::{Vec2, Vec3};
 use vulkano::{
     command_buffer::{CommandBufferUsage, PrimaryAutoCommandBuffer},
     format::Format,
-    image::{view::ImageView, AttachmentImage},
+    image::{view::ImageView, AttachmentImage, ImageLayout, ImageViewAbstract},
     sampler::Filter,
 };
 
 use crate::{
-    graphics::{WlxCommandBuffer, WlxGraphics, WlxPass, WlxPipeline},
-    overlays::{
-        interactions::{InteractionHandler, PointerHit},
-        OverlayBackend, OverlayRenderer,
+    backend::{
+        input::{InteractionHandler, PointerHit},
+        overlay::{OverlayBackend, OverlayRenderer},
     },
+    graphics::{WlxCommandBuffer, WlxGraphics, WlxPass, WlxPipeline},
     shaders::{frag_color, frag_glyph, frag_sprite, vert_common},
     state::AppState,
 };
@@ -203,11 +203,8 @@ pub struct Canvas<D, S> {
     interact_stride: usize,
     interact_rows: usize,
 
-    tex_fg: Arc<AttachmentImage>,
     view_fg: Arc<ImageView<AttachmentImage>>,
-    tex_bg: Arc<AttachmentImage>,
     view_bg: Arc<ImageView<AttachmentImage>>,
-    tex_final: Arc<AttachmentImage>,
     view_final: Arc<ImageView<AttachmentImage>>,
 
     pass_fg: WlxPass,
@@ -284,11 +281,8 @@ impl<D, S> Canvas<D, S> {
             interact_map: vec![None; stride * rows],
             interact_stride: stride,
             interact_rows: rows,
-            tex_fg,
             view_fg,
-            tex_bg,
             view_bg,
-            tex_final,
             view_final,
             pass_fg,
             pass_bg,
@@ -323,7 +317,7 @@ impl<D, S> Canvas<D, S> {
             .canvas
             .graphics
             .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
-            .begin(self.view_bg.clone());
+            .begin(self.view_bg.clone(), None);
         for c in self.controls.iter_mut() {
             if let Some(fun) = c.on_render_bg {
                 fun(c, &self.canvas, app, &mut cmd_buffer);
@@ -337,7 +331,7 @@ impl<D, S> Canvas<D, S> {
             .canvas
             .graphics
             .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
-            .begin(self.view_fg.clone());
+            .begin(self.view_fg.clone(), None);
         for c in self.controls.iter_mut() {
             if let Some(fun) = c.on_render_fg {
                 fun(c, &self.canvas, app, &mut cmd_buffer);
@@ -352,32 +346,32 @@ impl<D, S> Canvas<D, S> {
 }
 
 impl<D, S> InteractionHandler for Canvas<D, S> {
-    fn on_left(&mut self, _app: &mut AppState, hand: usize) {
-        self.hover_controls[hand] = None;
+    fn on_left(&mut self, _app: &mut AppState, pointer: usize) {
+        self.hover_controls[pointer] = None;
     }
     fn on_hover(&mut self, _app: &mut AppState, hit: &PointerHit) {
         if let Some(i) = self.interactive_get_idx(hit.uv) {
-            self.hover_controls[hit.hand] = Some(i);
+            self.hover_controls[hit.pointer] = Some(i);
         } else {
-            self.hover_controls[hit.hand] = None;
+            self.hover_controls[hit.pointer] = None;
         }
     }
     fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool) {
         let idx = if pressed {
             self.interactive_get_idx(hit.uv)
         } else {
-            self.pressed_controls[hit.hand]
+            self.pressed_controls[hit.pointer]
         };
 
         if let Some(idx) = idx {
             let c = &mut self.controls[idx];
             if pressed {
                 if let Some(ref mut f) = c.on_press {
-                    self.pressed_controls[hit.hand] = Some(idx);
+                    self.pressed_controls[hit.pointer] = Some(idx);
                     f(c, &mut self.canvas.data, app);
                 }
             } else if let Some(ref mut f) = c.on_release {
-                self.pressed_controls[hit.hand] = None;
+                self.pressed_controls[hit.pointer] = None;
                 f(c, &mut self.canvas.data, app);
             }
         }
@@ -410,7 +404,10 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
             .canvas
             .graphics
             .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
-            .begin(self.view_final.clone());
+            .begin(
+                self.view_final.clone(),
+                Some(ImageLayout::TransferSrcOptimal),
+            );
 
         if dirty {
             self.render_fg(app);
@@ -437,8 +434,8 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
 
         let _ = cmd_buffer.end_render_and_execute();
     }
-    fn view(&mut self) -> Arc<dyn vulkano::image::ImageViewAbstract> {
-        self.view_final.clone()
+    fn view(&mut self) -> Option<Arc<dyn ImageViewAbstract>> {
+        Some(self.view_final.clone())
     }
 }
 

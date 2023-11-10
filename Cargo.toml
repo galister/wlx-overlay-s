@@ -6,12 +6,14 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+ash = "^0.37.2"
 ash-window = "0.12.0"
 chrono = "0.4.29"
 cstr = "0.2.11"
 env_logger = "0.10.0"
 fontconfig-rs = { version = "0.1.1", features = ["dlopen"] }
 freetype-rs = "0.32.0"
+futures = "0.3.29"
 glam = { version = "0.24.1", features = ["approx"] }
 idmap = "0.2.21"
 idmap-derive = "0.1.2"
@@ -34,5 +36,5 @@ vulkano-shaders = "0.33.0"
 vulkano-util = "0.33.0"
 vulkano-win = "0.33.0"
 winit = "0.28.6"
-wlx-capture = { version = "0.1.0", path = "../wlx-capture" }
+wlx-capture = { git = "https://github.com/galister/wlx-capture.git" }
 

@@ -1,19 +1,20 @@
 use std::{sync::Arc, time::Instant};
 
 use chrono::Local;
-use glam::{Quat, Vec3};
 
 use crate::{
+    backend::{
+        common::{OverlaySelector, TaskType},
+        overlay::{OverlayData, OverlayState, RelativeTo},
+    },
     gui::{color_parse, CanvasBuilder},
     state::AppState,
 };
 
-use super::{OverlayData, RelativeTo};
-
-pub const WATCH_DEFAULT_POS: Vec3 = Vec3::new(0., 0., 0.15);
-pub const WATCH_DEFAULT_ROT: Quat = Quat::from_xyzw(0.7071066, 0., 0.7071066, 0.0007963);
-
-pub fn create_watch(state: &AppState, screens: Vec<(usize, Arc<str>)>) -> OverlayData {
+pub fn create_watch<O>(state: &AppState, screens: &[OverlayData<O>]) -> OverlayData<O>
+where
+    O: Default,
+{
     let mut canvas = CanvasBuilder::new(400, 200, state.graphics.clone(), state.format, ());
     let empty_str: Arc<str> = Arc::from("");
 
@@ -93,22 +94,19 @@ pub fn create_watch(state: &AppState, screens: Vec<(usize, Arc<str>)>) -> Overla
                 .as_millis()
                 < 2000
             {
-                app.tasks.push_back(Box::new(|_app, o| {
-                    for overlay in o {
-                        if &*overlay.name == "Kbd" {
-                            overlay.want_visible = !overlay.want_visible;
-                            return;
-                        }
-                    }
-                }));
+                app.tasks.enqueue(TaskType::Overlay(
+                    OverlaySelector::Name("Kbd".into()),
+                    Box::new(|_app, o| {
+                        o.want_visible = !o.want_visible;
+                    }),
+                ));
             } else {
-                app.tasks.push_back(Box::new(|app, o| {
-                    for overlay in o {
-                        if &*overlay.name == "Kbd" {
-                            overlay.reset(app);
-                        }
-                    }
-                }));
+                app.tasks.enqueue(TaskType::Overlay(
+                    OverlaySelector::Name("Kbd".into()),
+                    Box::new(|app, o| {
+                        o.reset(app);
+                    }),
+                ));
             }
         }
     });
@@ -116,11 +114,17 @@ pub fn create_watch(state: &AppState, screens: Vec<(usize, Arc<str>)>) -> Overla
 
     canvas.bg_color = color_parse("#405060");
 
-    for (scr_idx, scr_name) in screens.into_iter() {
-        let button = canvas.button(button_x + 2., 162., button_width - 4., 36., scr_name);
+    for screen in screens.into_iter() {
+        let button = canvas.button(
+            button_x + 2.,
+            162.,
+            button_width - 4.,
+            36.,
+            screen.state.name.clone(),
+        );
         button.state = Some(WatchButtonState {
             pressed_at: Instant::now(),
-            scr_idx,
+            scr_idx: screen.state.id,
         });
 
         button.on_press = Some(|control, _data, _app| {
@@ -136,13 +140,19 @@ pub fn create_watch(state: &AppState, screens: Vec<(usize, Arc<str>)>) -> Overla
                     .as_millis()
                     < 2000
                 {
-                    app.tasks.push_back(Box::new(move |_app, o| {
-                        o[scr_idx].want_visible = !o[scr_idx].want_visible;
-                    }));
+                    app.tasks.enqueue(TaskType::Overlay(
+                        OverlaySelector::Id(scr_idx),
+                        Box::new(|_app, o| {
+                            o.want_visible = !o.want_visible;
+                        }),
+                    ));
                 } else {
-                    app.tasks.push_back(Box::new(move |app, o| {
-                        o[scr_idx].reset(app);
-                    }));
+                    app.tasks.enqueue(TaskType::Overlay(
+                        OverlaySelector::Id(scr_idx),
+                        Box::new(|app, o| {
+                            o.reset(app);
+                        }),
+                    ));
                 }
             }
         });
@@ -152,14 +162,17 @@ pub fn create_watch(state: &AppState, screens: Vec<(usize, Arc<str>)>) -> Overla
     let relative_to = RelativeTo::Hand(state.session.watch_hand);
 
     OverlayData {
-        name: "Watch".into(),
-        size: (400, 200),
-        width: 0.065,
+        state: OverlayState {
+            name: "Watch".into(),
+            size: (400, 200),
+            width: 0.065,
+            want_visible: true,
+            spawn_point: state.session.watch_pos.into(),
+            spawn_rotation: state.session.watch_rot,
+            relative_to,
+            ..Default::default()
+        },
         backend: Box::new(canvas.build()),
-        want_visible: true,
-        relative_to,
-        spawn_point: state.session.watch_pos,
-        spawn_rotation: state.session.watch_rot,
         ..Default::default()
     }
 }

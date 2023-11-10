@@ -1,4 +1,4 @@
-use std::array;
+use std::{array, io::Write, path::Path};
 
 use glam::Affine3A;
 use ovr_overlay::{
@@ -11,7 +11,7 @@ use ovr_overlay::{
     TrackedDeviceIndex,
 };
 
-use crate::backend::common::{
+use crate::backend::input::{
     InputState, InteractionState, Pointer, PointerState, TrackedDevice, TrackedDeviceRole,
 };
 
@@ -96,7 +96,8 @@ impl InputState<OpenVrInputState, OpenVrHandState> {
             .collect::<Result<_, &'static str>>()?;
 
         let hands: [Pointer<OpenVrHandState>; 2] = array::from_fn(|i| Pointer::<OpenVrHandState> {
-            hand: i,
+            idx: i,
+            hand: i as u8,
             now: PointerState::default(),
             before: PointerState::default(),
             pose: Affine3A::IDENTITY,
@@ -285,4 +286,31 @@ fn copy_from_hmd(in_mat: &HmdMatrix34_t, out_mat: &mut Affine3A) {
     out_mat.w_axis[0] = in_mat.m[0][3];
     out_mat.w_axis[1] = in_mat.m[1][3];
     out_mat.w_axis[2] = in_mat.m[2][3];
+}
+
+pub fn action_manifest_path() -> &'static Path {
+    let action_path = "/tmp/wlxoverlay-s/actions.json";
+    std::fs::create_dir_all("/tmp/wlxoverlay-s").unwrap();
+
+    std::fs::File::create(action_path)
+        .unwrap()
+        .write_all(include_bytes!("../../res/actions.json"))
+        .unwrap();
+
+    std::fs::File::create("/tmp/wlxoverlay-s/actions_binding_knuckles.json")
+        .unwrap()
+        .write_all(include_bytes!("../../res/actions_binding_knuckles.json"))
+        .unwrap();
+
+    std::fs::File::create("/tmp/wlxoverlay-s/actions_binding_vive.json")
+        .unwrap()
+        .write_all(include_bytes!("../../res/actions_binding_vive.json"))
+        .unwrap();
+
+    std::fs::File::create("/tmp/wlxoverlay-s/actions_binding_oculus.json")
+        .unwrap()
+        .write_all(include_bytes!("../../res/actions_binding_oculus.json"))
+        .unwrap();
+
+    Path::new(action_path)
 }

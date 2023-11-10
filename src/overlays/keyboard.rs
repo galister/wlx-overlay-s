@@ -10,23 +10,25 @@ use std::{
 };
 
 use crate::{
+    backend::overlay::{OverlayData, OverlayState},
     gui::{color_parse, CanvasBuilder, Control},
     input::{KeyModifier, VirtualKey, KEYS_TO_MODS},
     state::AppState,
 };
-use glam::{vec2, vec3};
+use glam::{vec2, vec3a};
 use log::error;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use rodio::{Decoder, OutputStream, Source};
 use serde::{Deserialize, Serialize};
 
-use super::OverlayData;
-
 const PIXELS_PER_UNIT: f32 = 80.;
 const BUTTON_PADDING: f32 = 4.;
 
-pub fn create_keyboard(app: &AppState) -> OverlayData {
+pub fn create_keyboard<O>(app: &AppState) -> OverlayData<O>
+where
+    O: Default,
+{
     let size = vec2(
         LAYOUT.row_size * PIXELS_PER_UNIT,
         (LAYOUT.main_layout.len() as f32) * PIXELS_PER_UNIT,
@@ -106,12 +108,15 @@ pub fn create_keyboard(app: &AppState) -> OverlayData {
     let canvas = canvas.build();
 
     OverlayData {
-        name: Arc::from("Kbd"),
-        show_hide: true,
-        width: LAYOUT.row_size * 0.05,
-        size: (size.x as _, size.y as _),
-        grabbable: true,
-        spawn_point: vec3(0., -0.5, -1.),
+        state: OverlayState {
+            name: Arc::from("Kbd"),
+            show_hide: true,
+            width: LAYOUT.row_size * 0.05,
+            size: (size.x as _, size.y as _),
+            grabbable: true,
+            spawn_point: vec3a(0., -0.5, -1.),
+            ..Default::default()
+        },
         backend: Box::new(canvas),
         ..Default::default()
     }

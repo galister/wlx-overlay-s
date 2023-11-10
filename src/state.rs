@@ -1,25 +1,48 @@
-use std::{collections::VecDeque, env::VarError, path::Path, sync::Arc};
+use std::{env::VarError, path::Path, sync::Arc};
 
 use glam::{Quat, Vec3};
 use log::warn;
+use vulkano::{
+    device::{physical::PhysicalDevice, DeviceExtensions},
+    format::Format,
+    instance::InstanceExtensions,
+};
 
 use crate::{
-    graphics::WlxGraphics, gui::font::FontCache, input::InputProvider, overlays::OverlayData,
+    backend::common::TaskContainer, graphics::WlxGraphics, gui::font::FontCache,
+    input::InputProvider,
 };
 
 pub const WATCH_DEFAULT_POS: Vec3 = Vec3::new(0., 0., 0.15);
 pub const WATCH_DEFAULT_ROT: Quat = Quat::from_xyzw(0.7071066, 0., 0.7071066, 0.0007963);
 
-pub type Task = Box<dyn FnOnce(&mut AppState, &mut [OverlayData]) + Send>;
-
 pub struct AppState {
     pub fc: FontCache,
     //pub input: InputState,
     pub session: AppSession,
-    pub tasks: VecDeque<Task>,
+    pub tasks: TaskContainer,
     pub graphics: Arc<WlxGraphics>,
     pub format: vulkano::format::Format,
     pub input: Box<dyn InputProvider>,
+}
+
+impl AppState {
+    pub fn new(
+        vk_instance_extensions: InstanceExtensions,
+        vk_device_extensions_fn: impl FnMut(&PhysicalDevice) -> DeviceExtensions,
+    ) -> Self {
+        let (graphics, _event_loop) =
+            WlxGraphics::new(vk_instance_extensions, vk_device_extensions_fn);
+
+        AppState {
+            fc: FontCache::new(),
+            session: AppSession::load(),
+            tasks: TaskContainer::new(),
+            graphics: graphics.clone(),
+            format: Format::R8G8B8A8_UNORM,
+            input: crate::input::initialize_input(),
+        }
+    }
 }
 
 pub struct AppSession {
@@ -50,7 +73,7 @@ pub struct AppSession {
 }
 
 impl AppSession {
-    pub fn load() -> AppSession {
+    pub fn load() -> Self {
         let config_path = std::env::var("XDG_CONFIG_HOME")
             .or_else(|_| std::env::var("HOME").map(|home| format!("{}/.config", home)))
             .or_else(|_| {
