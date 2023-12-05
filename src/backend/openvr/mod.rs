@@ -30,9 +30,9 @@ pub mod overlay;
 pub fn openvr_run() {
     let app_type = EVRApplicationType::VRApplication_Overlay;
     let Ok(context) = ovr_overlay::Context::init(app_type) else {
-            error!("Failed to initialize OpenVR");
-            return;
-        };
+        error!("Failed to initialize OpenVR");
+        return;
+    };
 
     let mut overlay_mngr = context.overlay_mngr();
     //let mut settings_mngr = context.settings_mngr();
@@ -65,10 +65,15 @@ pub fn openvr_run() {
         return;
     };
 
-    let Ok(refresh_rate) = system_mngr.get_tracked_device_property::<f32>(TrackedDeviceIndex::HMD, ETrackedDeviceProperty::Prop_DisplayFrequency_Float) else {
+    let Ok(refresh_rate) = system_mngr.get_tracked_device_property::<f32>(
+        TrackedDeviceIndex::HMD,
+        ETrackedDeviceProperty::Prop_DisplayFrequency_Float,
+    ) else {
         error!("Failed to get display refresh rate");
         return;
     };
+
+    info!("HMD running @ {} Hz", refresh_rate);
 
     let frame_time = (1000.0 / refresh_rate).floor() * 0.001;
     let mut next_device_update = Instant::now();
@@ -141,7 +146,7 @@ pub fn openvr_run() {
             let mut seconds_since_vsync = 0f32;
             std::thread::sleep(Duration::from_secs_f32(
                 if system_mngr.get_time_since_last_vsync(&mut seconds_since_vsync, &mut 0u64) {
-                    frame_time - seconds_since_vsync
+                    (frame_time - seconds_since_vsync).max(0.0)
                 } else {
                     0.011
                 },

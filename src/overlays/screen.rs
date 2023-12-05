@@ -8,7 +8,7 @@ use std::{
 use vulkano::{
     command_buffer::CommandBufferUsage,
     format::Format,
-    image::{view::ImageView, ImageAccess, ImageViewAbstract, ImmutableImage},
+    image::{view::ImageView, ImageAccess, ImageLayout, ImageViewAbstract, ImmutableImage},
     Handle, VulkanObject,
 };
 use wlx_capture::{
@@ -144,13 +144,8 @@ impl ScreenRenderer {
 }
 
 impl OverlayRenderer for ScreenRenderer {
-    fn init(&mut self, app: &mut AppState) {
+    fn init(&mut self, _app: &mut AppState) {
         self.receiver = Some(self.capture.init());
-        let mut cmd = app
-            .graphics
-            .create_command_buffer(CommandBufferUsage::OneTimeSubmit);
-        let default_image = cmd.texture2d(1, 1, Format::R8G8B8A8_UNORM, vec![255, 0, 255, 255]);
-        let _ = cmd.end_and_execute();
     }
     fn render(&mut self, app: &mut AppState) {
         let Some(receiver) = self.receiver.as_mut() else {
@@ -169,6 +164,14 @@ impl OverlayRenderer for ScreenRenderer {
                                 return;
                             }
                         }
+                        app.graphics
+                            .transition_layout(
+                                new.inner().image.clone(),
+                                ImageLayout::Undefined,
+                                ImageLayout::TransferSrcOptimal,
+                            )
+                            .wait(None)
+                            .unwrap();
                         self.view = Some(ImageView::new_default(new).unwrap());
                     }
                 }

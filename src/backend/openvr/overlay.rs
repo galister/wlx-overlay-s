@@ -1,19 +1,10 @@
 use glam::Vec4;
 use ovr_overlay::{
     overlay::{OverlayHandle, OverlayManager},
-    sys::VRVulkanTextureData_t,
+    pose::Matrix3x4,
+    sys::{ETrackingUniverseOrigin, VRVulkanTextureData_t},
 };
-use vulkano::{
-    command_buffer::{
-        synced::{
-            SyncCommandBuffer, SyncCommandBufferBuilder, SyncCommandBufferBuilderExecuteCommands,
-        },
-        AutoCommandBufferBuilder, CommandBufferExecFuture,
-    },
-    image::{ImageAccess, ImageLayout},
-    sync::{future::NowFuture, ImageMemoryBarrier},
-    Handle, VulkanObject,
-};
+use vulkano::{image::ImageAccess, Handle, VulkanObject};
 
 use crate::{backend::overlay::OverlayData, graphics::WlxGraphics, state::AppState};
 
@@ -43,6 +34,7 @@ impl OverlayData<OpenVrOverlayData> {
         log::debug!("{}: initialize", self.state.name);
 
         self.data.handle = Some(handle);
+        self.data.color = Vec4::ONE;
 
         self.init(app);
 
@@ -63,6 +55,7 @@ impl OverlayData<OpenVrOverlayData> {
 
     pub fn after_render(&mut self, overlay: &mut OverlayManager, graphics: &WlxGraphics) {
         if self.data.visible {
+            self.upload_transform(overlay);
             self.upload_texture(overlay, graphics);
         }
     }
@@ -104,7 +97,7 @@ impl OverlayData<OpenVrOverlayData> {
                 r: self.data.color.x,
                 g: self.data.color.y,
                 b: self.data.color.z,
-                a: 1.0,
+                a: self.data.color.w,
             },
         ) {
             panic!("Failed to set overlay tint: {}", e);
@@ -138,6 +131,42 @@ impl OverlayData<OpenVrOverlayData> {
         };
         if let Err(e) = overlay.set_sort_order(handle, self.data.sort_order) {
             panic!("Failed to set overlay z order: {}", e);
+        }
+    }
+
+    fn upload_transform(&self, overlay: &mut OverlayManager) {
+        let Some(handle) = self.data.handle else {
+            log::debug!("{}: No overlay handle", self.state.name);
+            return;
+        };
+
+        let transform = Matrix3x4([
+            [
+                self.state.transform.matrix3.x_axis.x,
+                self.state.transform.matrix3.y_axis.x,
+                self.state.transform.matrix3.z_axis.x,
+                self.state.transform.translation.x,
+            ],
+            [
+                self.state.transform.matrix3.x_axis.y,
+                self.state.transform.matrix3.y_axis.y,
+                self.state.transform.matrix3.z_axis.y,
+                self.state.transform.translation.y,
+            ],
+            [
+                self.state.transform.matrix3.x_axis.z,
+                self.state.transform.matrix3.y_axis.z,
+                self.state.transform.matrix3.z_axis.z,
+                self.state.transform.translation.z,
+            ],
+        ]);
+
+        if let Err(e) = overlay.set_transform_absolute(
+            handle,
+            ETrackingUniverseOrigin::TrackingUniverseStanding,
+            &transform,
+        ) {
+            panic!("Failed to set overlay transform: {}", e);
         }
     }
 
@@ -181,27 +210,10 @@ impl OverlayData<OpenVrOverlayData> {
             m_nQueueFamilyIndex: graphics.queue.queue_family_index(),
         };
 
-        graphics
-            .transition_layout(
-                image.clone(),
-                ImageLayout::ColorAttachmentOptimal,
-                ImageLayout::TransferSrcOptimal,
-            )
-            .wait(None)
-            .unwrap();
-
+        log::info!("Usages: {:?}", image.usage());
         log::info!("nImage: {}, nFormat: {:?}, nWidth: {}, nHeight: {}, nSampleCount: {}, nQueueFamilyIndex: {}", texture.m_nImage, format, texture.m_nWidth, texture.m_nHeight, texture.m_nSampleCount, texture.m_nQueueFamilyIndex);
         if let Err(e) = overlay.set_image_vulkan(handle, &mut texture) {
             panic!("Failed to set overlay texture: {}", e);
         }
-
-        graphics
-            .transition_layout(
-                image,
-                ImageLayout::TransferSrcOptimal,
-                ImageLayout::ColorAttachmentOptimal,
-            )
-            .wait(None)
-            .unwrap();
     }
 }

@@ -134,23 +134,27 @@ impl WlxGraphics {
             .build_vk_surface(&event_loop, instance.clone())
             .unwrap();
 
-        let (physical_device, queue_family_index) = instance
+        let (physical_device, my_extensions, queue_family_index) = instance
             .enumerate_physical_devices()
             .unwrap()
             .filter(|p| {
                 p.api_version() >= Version::V1_3 || p.supported_extensions().khr_dynamic_rendering
             })
-            .filter(|p| {
-                let runtime_extensions = vk_device_extensions_fn(p);
+            .filter_map(|p| {
+                let runtime_extensions = vk_device_extensions_fn(&p);
                 debug!(
                     "Device exts for {}: {:?}",
                     p.properties().device_name,
                     &runtime_extensions
                 );
                 let my_extensions = runtime_extensions.union(&device_extensions);
-                p.supported_extensions().contains(&my_extensions)
+                if p.supported_extensions().contains(&my_extensions) {
+                    Some((p, my_extensions))
+                } else {
+                    None
+                }
             })
-            .filter_map(|p| {
+            .filter_map(|(p, my_extensions)| {
                 p.queue_family_properties()
                     .iter()
                     .enumerate()
@@ -158,9 +162,9 @@ impl WlxGraphics {
                         q.queue_flags.intersects(QueueFlags::GRAPHICS)
                             && p.surface_support(i as u32, &surface).unwrap_or(false)
                     })
-                    .map(|i| (p, i as u32))
+                    .map(|i| (p, my_extensions, i as u32))
             })
-            .min_by_key(|(p, _)| match p.properties().device_type {
+            .min_by_key(|(p, _, _)| match p.properties().device_type {
                 PhysicalDeviceType::DiscreteGpu => 0,
                 PhysicalDeviceType::IntegratedGpu => 1,
                 PhysicalDeviceType::VirtualGpu => 2,
@@ -182,7 +186,7 @@ impl WlxGraphics {
         let (device, mut queues) = Device::new(
             physical_device,
             DeviceCreateInfo {
-                enabled_extensions: device_extensions,
+                enabled_extensions: my_extensions,
                 enabled_features: Features {
                     dynamic_rendering: true,
                     ..Features::empty()

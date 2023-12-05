@@ -4,7 +4,7 @@ use glam::{Vec2, Vec3};
 use vulkano::{
     command_buffer::{CommandBufferUsage, PrimaryAutoCommandBuffer},
     format::Format,
-    image::{view::ImageView, AttachmentImage, ImageLayout, ImageViewAbstract},
+    image::{view::ImageView, AttachmentImage, ImageAccess, ImageLayout, ImageViewAbstract},
     sampler::Filter,
 };
 
@@ -209,6 +209,8 @@ pub struct Canvas<D, S> {
 
     pass_fg: WlxPass,
     pass_bg: WlxPass,
+
+    first_render: bool,
 }
 
 impl<D, S> Canvas<D, S> {
@@ -286,6 +288,7 @@ impl<D, S> Canvas<D, S> {
             view_final,
             pass_fg,
             pass_bg,
+            first_render: true,
         }
     }
 
@@ -400,6 +403,22 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
             }
         }
 
+        let image = self.view_final.image().inner().image.clone();
+
+        if self.first_render {
+            self.first_render = false;
+        } else {
+            self.canvas
+                .graphics
+                .transition_layout(
+                    image.clone(),
+                    ImageLayout::TransferSrcOptimal,
+                    ImageLayout::ColorAttachmentOptimal,
+                )
+                .wait(None)
+                .unwrap();
+        }
+
         let mut cmd_buffer = self
             .canvas
             .graphics
@@ -431,8 +450,18 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
 
         // mostly static text
         cmd_buffer.run_ref(&self.pass_fg);
-
-        let _ = cmd_buffer.end_render_and_execute();
+        {
+            let _ = cmd_buffer.end_render_and_execute();
+        }
+        self.canvas
+            .graphics
+            .transition_layout(
+                image,
+                ImageLayout::ColorAttachmentOptimal,
+                ImageLayout::TransferSrcOptimal,
+            )
+            .wait(None)
+            .unwrap();
     }
     fn view(&mut self) -> Option<Arc<dyn ImageViewAbstract>> {
         Some(self.view_final.clone())
