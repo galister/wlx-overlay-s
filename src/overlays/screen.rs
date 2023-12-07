@@ -1,4 +1,3 @@
-use log::{info, warn};
 use std::{
     f32::consts::PI,
     path::Path,
@@ -6,9 +5,14 @@ use std::{
     time::{Duration, Instant},
 };
 use vulkano::{
+    buffer::Subbuffer,
     command_buffer::CommandBufferUsage,
     format::Format,
-    image::{view::ImageView, ImageAccess, ImageLayout, ImageViewAbstract, ImmutableImage},
+    image::{
+        view::ImageView, AttachmentImage, ImageAccess, ImageLayout, ImageViewAbstract, StorageImage,
+    },
+    sampler::Filter,
+    sync::GpuFuture,
     Handle, VulkanObject,
 };
 use wlx_capture::{
@@ -26,7 +30,9 @@ use crate::{
         input::{InteractionHandler, PointerHit, PointerMode},
         overlay::{OverlayData, OverlayRenderer, OverlayState, SplitOverlayBackend},
     },
+    graphics::{Vert2Uv, WlxGraphics, WlxPipeline},
     input::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
+    shaders::{frag_sprite, vert_common},
     state::{AppSession, AppState},
 };
 
@@ -66,6 +72,7 @@ impl ScreenInteractionHandler {
 
 impl InteractionHandler for ScreenInteractionHandler {
     fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) {
+        log::info!("Hover: {:?}", hit.uv);
         if self.next_move < Instant::now() {
             let pos = self.mouse_transform.transform_point2(hit.uv);
             app.input.mouse_move(pos);
@@ -82,7 +89,8 @@ impl InteractionHandler for ScreenInteractionHandler {
         };
 
         if pressed {
-            self.next_move = Instant::now() + Duration::from_millis(300);
+            self.next_move =
+                Instant::now() + Duration::from_millis(app.session.click_freeze_time_ms);
         }
 
         app.input.send_button(btn, pressed);
@@ -97,11 +105,106 @@ impl InteractionHandler for ScreenInteractionHandler {
     fn on_left(&mut self, _app: &mut AppState, _hand: usize) {}
 }
 
+struct ScreenPipeline {
+    graphics: Arc<WlxGraphics>,
+    pipeline: Arc<WlxPipeline>,
+    vertex_buffer: Subbuffer<[Vert2Uv]>,
+    target_layout: ImageLayout,
+    pub view: Arc<ImageView<AttachmentImage>>,
+}
+
+impl ScreenPipeline {
+    fn new(graphics: Arc<WlxGraphics>, image: &StorageImage) -> Self {
+        let pipeline = graphics.create_pipeline(
+            vert_common::load(graphics.device.clone()).unwrap(),
+            frag_sprite::load(graphics.device.clone()).unwrap(),
+            Format::R8G8B8A8_UNORM,
+        );
+
+        let dim = image.dimensions().width_height();
+
+        let vertex_buffer =
+            graphics.upload_verts(dim[0] as _, dim[1] as _, 0.0, 0.0, dim[0] as _, dim[1] as _);
+
+        let render_texture = graphics.render_texture(dim[0], dim[1], Format::R8G8B8A8_UNORM);
+
+        let view = ImageView::new_default(render_texture).unwrap();
+
+        Self {
+            graphics,
+            pipeline,
+            vertex_buffer,
+            view,
+            target_layout: ImageLayout::Undefined,
+        }
+    }
+
+    fn render(&mut self, image: Arc<StorageImage>) {
+        if image.inner().image.handle().as_raw()
+            == self.view.image().inner().image.handle().as_raw()
+        {
+            return;
+        }
+
+        let mut command_buffer = self
+            .graphics
+            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
+            .begin(self.view.clone());
+
+        let set0 = self.pipeline.uniform_sampler(
+            0,
+            ImageView::new_default(image).unwrap(),
+            Filter::Linear,
+        );
+
+        let dim = self.view.dimensions().width_height();
+        let dim = [dim[0] as f32, dim[1] as f32];
+
+        let pass = self.pipeline.create_pass(
+            dim,
+            self.vertex_buffer.clone(),
+            self.graphics.quad_indices.clone(),
+            vec![set0],
+        );
+        command_buffer.run_ref(&pass);
+
+        let image = self.view.image().inner().image.clone();
+
+        if self.target_layout == ImageLayout::TransferSrcOptimal {
+            self.graphics
+                .transition_layout(
+                    image.clone(),
+                    ImageLayout::TransferSrcOptimal,
+                    ImageLayout::ColorAttachmentOptimal,
+                )
+                .wait(None)
+                .unwrap();
+        }
+
+        {
+            let mut exec = command_buffer.end_render().build_and_execute();
+            exec.flush().unwrap();
+            exec.cleanup_finished();
+        }
+
+        self.graphics
+            .transition_layout(
+                image,
+                ImageLayout::ColorAttachmentOptimal,
+                ImageLayout::TransferSrcOptimal,
+            )
+            .wait(None)
+            .unwrap();
+
+        self.target_layout = ImageLayout::TransferSrcOptimal;
+    }
+}
+
 pub struct ScreenRenderer {
     capture: Box<dyn WlxCapture>,
-    resolution: (i32, i32),
     receiver: Option<Receiver<WlxFrame>>,
-    view: Option<Arc<dyn ImageViewAbstract>>,
+    pipeline: Option<ScreenPipeline>,
+    last_frame: Option<Arc<dyn ImageViewAbstract>>,
 }
 
 impl ScreenRenderer {
@@ -114,9 +217,9 @@ impl ScreenRenderer {
         };
         Some(ScreenRenderer {
             capture: Box::new(capture),
-            resolution: output.size,
             receiver: None,
-            view: None,
+            pipeline: None,
+            last_frame: None,
         })
     }
 
@@ -132,14 +235,10 @@ impl ScreenRenderer {
 
         Some(ScreenRenderer {
             capture: Box::new(capture),
-            resolution: output.size,
             receiver: None,
-            view: None,
+            pipeline: None,
+            last_frame: None,
         })
-    }
-
-    pub fn new_xshm() -> ScreenRenderer {
-        todo!()
     }
 }
 
@@ -157,28 +256,18 @@ impl OverlayRenderer for ScreenRenderer {
             match frame {
                 WlxFrame::Dmabuf(frame) => {
                     if let Ok(new) = app.graphics.dmabuf_texture(frame) {
-                        if let Some(current) = self.view.as_ref() {
-                            if current.image().inner().image.handle().as_raw()
-                                == new.inner().image.handle().as_raw()
-                            {
-                                return;
-                            }
-                        }
-                        app.graphics
-                            .transition_layout(
-                                new.inner().image.clone(),
-                                ImageLayout::Undefined,
-                                ImageLayout::TransferSrcOptimal,
-                            )
-                            .wait(None)
-                            .unwrap();
-                        self.view = Some(ImageView::new_default(new).unwrap());
+                        let pipeline = self
+                            .pipeline
+                            .get_or_insert_with(|| ScreenPipeline::new(app.graphics.clone(), &new));
+
+                        pipeline.render(new);
+                        self.last_frame = Some(pipeline.view.clone());
                     }
                 }
-                WlxFrame::MemFd(frame) => {
+                WlxFrame::MemFd(_frame) => {
                     todo!()
                 }
-                WlxFrame::MemPtr(frame) => {
+                WlxFrame::MemPtr(_frame) => {
                     todo!()
                 }
                 _ => {}
@@ -193,7 +282,7 @@ impl OverlayRenderer for ScreenRenderer {
         self.capture.resume();
     }
     fn view(&mut self) -> Option<Arc<dyn ImageViewAbstract>> {
-        self.view.as_ref().and_then(|v| Some(v.clone()))
+        self.last_frame.take()
     }
 }
 
@@ -202,21 +291,25 @@ where
     O: Default,
 {
     let output = &wl.outputs[idx];
-    info!(
+    log::info!(
         "{}: Res {}x{} Size {:?} Pos {:?}",
-        output.name, output.size.0, output.size.1, output.logical_size, output.logical_pos,
+        output.name,
+        output.size.0,
+        output.size.1,
+        output.logical_size,
+        output.logical_pos,
     );
 
     let size = (output.size.0, output.size.1);
     let mut capture: Option<ScreenRenderer> = None;
 
     if session.capture_method == "auto" && wl.maybe_wlr_dmabuf_mgr.is_some() {
-        info!("{}: Using Wlr DMA-Buf", &output.name);
+        log::info!("{}: Using Wlr DMA-Buf", &output.name);
         capture = ScreenRenderer::new_wlr(output);
     }
 
     if capture.is_none() {
-        info!("{}: Using Pipewire capture", &output.name);
+        log::info!("{}: Using Pipewire capture", &output.name);
         let file_name = format!("{}.token", &output.name);
         let full_path = Path::new(&session.config_path).join(file_name);
         let token = std::fs::read_to_string(full_path).ok();
@@ -246,6 +339,20 @@ where
             _ => 0.,
         };
 
+        let interaction_transform = if output.size.0 >= output.size.1 {
+            Affine2::from_translation(Vec2 { x: 0.5, y: 0.5 })
+                * Affine2::from_scale(Vec2 {
+                    x: 1.,
+                    y: output.size.0 as f32 / output.size.1 as f32,
+                })
+        } else {
+            Affine2::from_translation(Vec2 { x: 0.5, y: 0.5 })
+                * Affine2::from_scale(Vec2 {
+                    x: output.size.1 as f32 / output.size.0 as f32,
+                    y: 1.,
+                })
+        };
+
         Some(OverlayData {
             state: OverlayState {
                 name: output.name.clone(),
@@ -254,13 +361,14 @@ where
                 show_hide: true,
                 grabbable: true,
                 spawn_rotation: Quat::from_axis_angle(axis, angle),
+                interaction_transform,
                 ..Default::default()
             },
             backend,
             ..Default::default()
         })
     } else {
-        warn!("{}: Will not be used", &output.name);
+        log::warn!("{}: Will not be used", &output.name);
         None
     }
 }

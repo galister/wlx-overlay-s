@@ -6,7 +6,11 @@ use ovr_overlay::{
 };
 use vulkano::{image::ImageAccess, Handle, VulkanObject};
 
-use crate::{backend::overlay::OverlayData, graphics::WlxGraphics, state::AppState};
+use crate::{
+    backend::overlay::{OverlayData, RelativeTo},
+    graphics::WlxGraphics,
+    state::AppState,
+};
 
 #[derive(Default)]
 pub(super) struct OpenVrOverlayData {
@@ -16,10 +20,11 @@ pub(super) struct OpenVrOverlayData {
     pub(super) color: Vec4,
     pub(super) curvature: f32,
     pub(super) sort_order: u32,
+    pub(super) relative_to: RelativeTo,
 }
 
 impl OverlayData<OpenVrOverlayData> {
-    pub fn initialize(
+    pub(super) fn initialize(
         &mut self,
         overlay: &mut OverlayManager,
         app: &mut AppState,
@@ -33,6 +38,11 @@ impl OverlayData<OpenVrOverlayData> {
         };
         log::debug!("{}: initialize", self.state.name);
 
+        //watch
+        if self.state.id == 0 {
+            self.data.sort_order = 68;
+        }
+
         self.data.handle = Some(handle);
         self.data.color = Vec4::ONE;
 
@@ -41,11 +51,12 @@ impl OverlayData<OpenVrOverlayData> {
         self.upload_width(overlay);
         self.upload_color(overlay);
         self.upload_curvature(overlay);
+        self.upload_sort_order(overlay);
 
         handle
     }
 
-    pub fn after_input(&mut self, overlay: &mut OverlayManager, app: &mut AppState) {
+    pub(super) fn after_input(&mut self, overlay: &mut OverlayManager, app: &mut AppState) {
         if self.state.want_visible && !self.data.visible {
             self.show(overlay, app);
         } else if !self.state.want_visible && self.data.visible {
@@ -53,9 +64,12 @@ impl OverlayData<OpenVrOverlayData> {
         }
     }
 
-    pub fn after_render(&mut self, overlay: &mut OverlayManager, graphics: &WlxGraphics) {
+    pub(super) fn after_render(&mut self, overlay: &mut OverlayManager, graphics: &WlxGraphics) {
         if self.data.visible {
-            self.upload_transform(overlay);
+            if self.state.dirty {
+                self.upload_transform(overlay);
+                self.state.dirty = false;
+            }
             self.upload_texture(overlay, graphics);
         }
     }
@@ -83,7 +97,7 @@ impl OverlayData<OpenVrOverlayData> {
         self.data.visible = false;
     }
 
-    fn upload_color(&self, overlay: &mut OverlayManager) {
+    pub(super) fn upload_color(&self, overlay: &mut OverlayManager) {
         let Some(handle) = self.data.handle else {
             log::debug!("{}: No overlay handle", self.state.name);
             return;
@@ -104,7 +118,7 @@ impl OverlayData<OpenVrOverlayData> {
         }
     }
 
-    fn upload_width(&self, overlay: &mut OverlayManager) {
+    pub(super) fn upload_width(&self, overlay: &mut OverlayManager) {
         let Some(handle) = self.data.handle else {
             log::debug!("{}: No overlay handle", self.state.name);
             return;
@@ -134,7 +148,7 @@ impl OverlayData<OpenVrOverlayData> {
         }
     }
 
-    fn upload_transform(&self, overlay: &mut OverlayManager) {
+    pub(super) fn upload_transform(&self, overlay: &mut OverlayManager) {
         let Some(handle) = self.data.handle else {
             log::debug!("{}: No overlay handle", self.state.name);
             return;
@@ -170,7 +184,7 @@ impl OverlayData<OpenVrOverlayData> {
         }
     }
 
-    fn upload_texture(&mut self, overlay: &mut OverlayManager, graphics: &WlxGraphics) {
+    pub(super) fn upload_texture(&mut self, overlay: &mut OverlayManager, graphics: &WlxGraphics) {
         let Some(handle) = self.data.handle else {
             log::debug!("{}: No overlay handle", self.state.name);
             return;
@@ -210,8 +224,13 @@ impl OverlayData<OpenVrOverlayData> {
             m_nQueueFamilyIndex: graphics.queue.queue_family_index(),
         };
 
-        log::info!("Usages: {:?}", image.usage());
-        log::info!("nImage: {}, nFormat: {:?}, nWidth: {}, nHeight: {}, nSampleCount: {}, nQueueFamilyIndex: {}", texture.m_nImage, format, texture.m_nWidth, texture.m_nHeight, texture.m_nSampleCount, texture.m_nQueueFamilyIndex);
+        log::debug!(
+            "UploadTex: {:?}, {}x{}, {:?}",
+            format,
+            texture.m_nWidth,
+            texture.m_nHeight,
+            image.usage()
+        );
         if let Err(e) = overlay.set_image_vulkan(handle, &mut texture) {
             panic!("Failed to set overlay texture: {}", e);
         }

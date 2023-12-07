@@ -6,7 +6,6 @@ use input_linux::{
     UInputHandle,
 };
 use libc::{input_event, timeval};
-use log::{error, info};
 use once_cell::sync::Lazy;
 use std::fs::File;
 use std::mem::transmute;
@@ -14,11 +13,11 @@ use strum::{EnumIter, EnumString, IntoEnumIterator};
 
 pub fn initialize_input() -> Box<dyn InputProvider> {
     if let Some(uinput) = UInputProvider::try_new() {
-        info!("Initialized uinput.");
+        log::info!("Initialized uinput.");
         return Box::new(uinput);
     }
-    error!("Could not create uinput provider. Keyboard/Mouse input will not work!");
-    error!("Check if you're in `input` group: `id -nG`");
+    log::error!("Could not create uinput provider. Keyboard/Mouse input will not work!");
+    log::error!("Check if you're in `input` group: `id -nG`");
     Box::new(DummyProvider {})
 }
 
@@ -64,7 +63,7 @@ impl UInputProvider {
                 version: 5,
             };
 
-            let name = b"WlxOverlay Keyboard-Mouse Hybrid Thing\0";
+            let name = b"WlxOverlay-S Keyboard-Mouse Hybrid Thing\0";
 
             let abs_info = vec![
                 AbsoluteInfoSetup {
@@ -145,6 +144,8 @@ impl InputProvider for UInputProvider {
         }
         self.mouse_moved = true;
 
+        log::info!("Mouse move: {:?}", pos);
+
         let pos = pos * (MOUSE_EXTENT / self.desktop_extent);
 
         let time = get_time();
@@ -154,7 +155,7 @@ impl InputProvider for UInputProvider {
             new_event(time, EV_SYN, 0, 0),
         ];
         if let Err(res) = self.handle.write(&events) {
-            error!("{}", res.to_string());
+            log::error!("{}", res.to_string());
         }
     }
     fn send_button(&self, button: u16, down: bool) {
@@ -164,7 +165,7 @@ impl InputProvider for UInputProvider {
             new_event(time, EV_SYN, 0, 0),
         ];
         if let Err(res) = self.handle.write(&events) {
-            error!("{}", res.to_string());
+            log::error!("send_button: {}", res.to_string());
         }
     }
     fn wheel(&self, delta: i32) {
@@ -174,7 +175,7 @@ impl InputProvider for UInputProvider {
             new_event(time, EV_SYN, 0, 0),
         ];
         if let Err(res) = self.handle.write(&events) {
-            error!("{}", res.to_string());
+            log::error!("wheel: {}", res.to_string());
         }
     }
     fn set_modifiers(&mut self, modifiers: u8) {
@@ -195,11 +196,11 @@ impl InputProvider for UInputProvider {
             new_event(time, EV_SYN, 0, 0),
         ];
         if let Err(res) = self.handle.write(&events) {
-            error!("{}", res.to_string());
+            log::error!("send_key: {}", res.to_string());
         }
     }
     fn set_desktop_extent(&mut self, extent: Vec2) {
-        info!("Desktop extent: {:?}", extent);
+        log::info!("Desktop extent: {:?}", extent);
         self.desktop_extent = extent;
     }
     fn on_new_frame(&mut self) {

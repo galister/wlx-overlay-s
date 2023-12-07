@@ -3,7 +3,7 @@ use std::sync::{
     Arc,
 };
 
-use glam::{Affine3A, Quat, Vec3A};
+use glam::{Affine2, Affine3A, Quat, Vec3A};
 use vulkano::image::ImageViewAbstract;
 
 use crate::state::AppState;
@@ -22,12 +22,13 @@ pub struct OverlayState {
     pub want_visible: bool,
     pub show_hide: bool,
     pub grabbable: bool,
+    pub dirty: bool,
     pub transform: Affine3A,
     pub spawn_point: Vec3A,
     pub spawn_rotation: Quat,
     pub relative_to: RelativeTo,
     pub primary_pointer: Option<usize>,
-    pub interaction_transform: Affine3A,
+    pub interaction_transform: Affine2,
 }
 
 impl Default for OverlayState {
@@ -40,12 +41,13 @@ impl Default for OverlayState {
             want_visible: false,
             show_hide: false,
             grabbable: false,
+            dirty: false,
             relative_to: RelativeTo::None,
             spawn_point: Vec3A::NEG_Z,
             spawn_rotation: Quat::IDENTITY,
             transform: Affine3A::IDENTITY,
             primary_pointer: None,
-            interaction_transform: Affine3A::IDENTITY,
+            interaction_transform: Affine2::IDENTITY,
         }
     }
 }
@@ -111,12 +113,14 @@ impl OverlayRenderer for FallbackRenderer {
     fn resume(&mut self, _app: &mut AppState) {}
     fn render(&mut self, _app: &mut AppState) {}
     fn view(&mut self) -> Option<Arc<dyn ImageViewAbstract>> {
-        unimplemented!()
+        None
     }
 }
 // Boilerplate and dummies
 
+#[derive(Clone, Copy, Debug, Default)]
 pub enum RelativeTo {
+    #[default]
     None,
     Head,
     Hand(usize),

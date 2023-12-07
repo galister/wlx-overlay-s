@@ -3,7 +3,6 @@ use std::{rc::Rc, str::FromStr, sync::Arc};
 use fontconfig::{FontConfig, OwnedPattern};
 use freetype::{bitmap::PixelMode, face::LoadFlag, Face, Library};
 use idmap::IdMap;
-use log::debug;
 use vulkano::{command_buffer::CommandBufferUsage, format::Format, image::ImmutableImage};
 
 use crate::graphics::WlxGraphics;
@@ -116,7 +115,7 @@ impl FontCache {
         let pattern = pattern.font_match(&mut self.fc);
 
         if let Some(path) = pattern.filename() {
-            debug!(
+            log::debug!(
                 "Loading font: {} {}pt",
                 pattern.name().unwrap_or(path),
                 size
@@ -203,7 +202,7 @@ impl FontCache {
 
         let mut cmd_buffer = graphics.create_command_buffer(CommandBufferUsage::OneTimeSubmit);
         let texture = cmd_buffer.texture2d(bmp.width() as _, bmp.rows() as _, format, buf);
-        let _ = cmd_buffer.end_and_execute();
+        cmd_buffer.build_and_execute_now();
 
         let g = Glyph {
             tex: Some(texture),

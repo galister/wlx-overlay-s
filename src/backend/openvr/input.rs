@@ -59,6 +59,7 @@ pub(super) struct OpenVrInputState {
 }
 
 pub(super) struct OpenVrHandState {
+    pub(super) line_id: usize,
     has_pose: bool,
     input_hnd: InputValueHandle,
     pose_hnd: ActionHandle,
@@ -103,6 +104,7 @@ impl InputState<OpenVrInputState, OpenVrHandState> {
             pose: Affine3A::IDENTITY,
             interaction: InteractionState::default(),
             data: OpenVrHandState {
+                line_id: 0,
                 has_pose: false,
                 input_hnd: input_hnd[i],
                 pose_hnd: pose_hnd[i],

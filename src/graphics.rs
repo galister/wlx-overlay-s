@@ -1,7 +1,6 @@
 use std::{error::Error, io::Cursor, slice::Iter, sync::Arc};
 
 use ash::vk::SubmitInfo;
-use log::{debug, error, info};
 use smallvec::smallvec;
 use vulkano::{
     buffer::{
@@ -28,9 +27,9 @@ use vulkano::{
     },
     format::Format,
     image::{
-        sys::Image, AttachmentImage, ImageAccess, ImageCreateFlags, ImageDimensions, ImageError,
-        ImageLayout, ImageUsage, ImageViewAbstract, ImmutableImage, MipmapsCount, StorageImage,
-        SubresourceData, SwapchainImage,
+        sys::Image, AttachmentImage, ImageCreateFlags, ImageDimensions, ImageError, ImageLayout,
+        ImageUsage, ImageViewAbstract, ImmutableImage, MipmapsCount, StorageImage, SubresourceData,
+        SwapchainImage,
     },
     instance::{Instance, InstanceCreateInfo, InstanceExtensions},
     memory::allocator::{AllocationCreateInfo, MemoryUsage, StandardMemoryAllocator},
@@ -49,8 +48,8 @@ use vulkano::{
     shader::ShaderModule,
     swapchain::{CompositeAlpha, Surface, Swapchain, SwapchainCreateInfo},
     sync::{
-        fence::Fence, future::NowFuture, AccessFlags, DependencyInfo, ImageMemoryBarrier,
-        PipelineStages,
+        fence::Fence, future::NowFuture, AccessFlags, DependencyInfo, GpuFuture,
+        ImageMemoryBarrier, PipelineStages,
     },
     Version, VulkanLibrary, VulkanObject,
 };
@@ -103,8 +102,8 @@ impl WlxGraphics {
         let library_extensions = vulkano_win::required_extensions(&library);
         let required_extensions = library_extensions.union(&vk_instance_extensions);
 
-        debug!("Instance exts for app: {:?}", &required_extensions);
-        debug!("Instance exts for runtime: {:?}", &vk_instance_extensions);
+        log::debug!("Instance exts for app: {:?}", &required_extensions);
+        log::debug!("Instance exts for runtime: {:?}", &vk_instance_extensions);
 
         let instance = Instance::new(
             library,
@@ -126,7 +125,7 @@ impl WlxGraphics {
             ..DeviceExtensions::empty()
         };
 
-        debug!("Device exts for app: {:?}", &device_extensions);
+        log::debug!("Device exts for app: {:?}", &device_extensions);
 
         // TODO headless
         let event_loop = EventLoop::new();
@@ -142,7 +141,7 @@ impl WlxGraphics {
             })
             .filter_map(|p| {
                 let runtime_extensions = vk_device_extensions_fn(&p);
-                debug!(
+                log::debug!(
                     "Device exts for {}: {:?}",
                     p.properties().device_name,
                     &runtime_extensions
@@ -174,7 +173,7 @@ impl WlxGraphics {
             })
             .expect("no suitable physical device found");
 
-        info!(
+        log::info!(
             "Using vkPhysicalDevice: {}",
             physical_device.properties().device_name,
         );
@@ -271,6 +270,7 @@ impl WlxGraphics {
         (Arc::new(me), event_loop)
     }
 
+    #[allow(dead_code)]
     pub fn create_swapchain(
         &self,
         format: Option<Format>,
@@ -541,32 +541,7 @@ pub struct WlxCommandBuffer<T> {
 }
 
 impl<T> WlxCommandBuffer<T> {
-    pub fn inner(&self) -> &AutoCommandBufferBuilder<T, Arc<StandardCommandBufferAllocator>> {
-        &self.command_buffer
-    }
-
-    pub fn inner_mut(
-        &mut self,
-    ) -> &mut AutoCommandBufferBuilder<T, Arc<StandardCommandBufferAllocator>> {
-        &mut self.command_buffer
-    }
-
-    pub fn to_inner(self) -> AutoCommandBufferBuilder<T, Arc<StandardCommandBufferAllocator>> {
-        self.command_buffer
-    }
-
-    pub fn begin(
-        mut self,
-        render_target: Arc<dyn ImageViewAbstract>,
-        want_layout: Option<ImageLayout>,
-    ) -> Self {
-        if let Some(want_layout) = want_layout {
-            let mut barrier =
-                ImageMemoryBarrier::image(render_target.image().inner().image.clone());
-            barrier.old_layout = ImageLayout::ColorAttachmentOptimal;
-            barrier.new_layout = want_layout;
-        }
-
+    pub fn begin(mut self, render_target: Arc<dyn ImageViewAbstract>) -> Self {
         self.command_buffer
             .begin_rendering(RenderingInfo {
                 contents: SubpassContents::SecondaryCommandBuffers,
@@ -590,13 +565,6 @@ impl<T> WlxCommandBuffer<T> {
         self
     }
 
-    pub fn run(mut self, pass: &WlxPass) -> Self {
-        let _ = self
-            .command_buffer
-            .execute_commands(pass.command_buffer.clone());
-        self
-    }
-
     pub fn texture2d(
         &mut self,
         width: u32,
@@ -614,13 +582,14 @@ impl<T> WlxCommandBuffer<T> {
             &self.graphics.memory_allocator,
             data,
             dimensions,
-            MipmapsCount::One,
+            MipmapsCount::Log2, // required for TRANSFER_SRC
             format,
             &mut self.command_buffer,
         )
         .unwrap()
     }
 
+    #[allow(dead_code)]
     pub fn texture2d_png(&mut self, bytes: Vec<u8>) -> Arc<ImmutableImage> {
         let cursor = Cursor::new(bytes);
         let decoder = png::Decoder::new(cursor);
@@ -636,32 +605,24 @@ impl<T> WlxCommandBuffer<T> {
 }
 
 impl WlxCommandBuffer<PrimaryAutoCommandBuffer> {
-    pub fn end_render_and_continue(&mut self) {
+    pub fn end_render(mut self) -> Self {
         self.command_buffer.end_rendering().unwrap();
+        self
     }
 
-    pub fn end_render(self) -> PrimaryAutoCommandBuffer {
-        let mut buf = self.command_buffer;
-        buf.end_rendering().unwrap();
-
-        buf.build().unwrap()
-    }
-
-    pub fn end(self) -> PrimaryAutoCommandBuffer {
+    pub fn build(self) -> PrimaryAutoCommandBuffer {
         self.command_buffer.build().unwrap()
     }
 
-    pub fn end_render_and_execute(self) -> CommandBufferExecFuture<NowFuture> {
-        let mut buf = self.command_buffer;
-        buf.end_rendering().unwrap();
-        let buf = buf.build().unwrap();
-        buf.execute(self.graphics.queue.clone()).unwrap()
+    pub fn build_and_execute(self) -> CommandBufferExecFuture<NowFuture> {
+        let queue = self.graphics.queue.clone();
+        self.build().execute(queue).unwrap()
     }
 
-    pub fn end_and_execute(self) -> CommandBufferExecFuture<NowFuture> {
-        let buf = self.command_buffer;
-        let buf = buf.build().unwrap();
-        buf.execute(self.graphics.queue.clone()).unwrap()
+    pub fn build_and_execute_now(self) {
+        let mut exec = self.build_and_execute();
+        exec.flush().unwrap();
+        exec.cleanup_finished();
     }
 }
 
@@ -703,10 +664,6 @@ impl WlxPipeline {
 
     pub fn inner(&self) -> Arc<GraphicsPipeline> {
         self.pipeline.clone()
-    }
-
-    pub fn graphics(&self) -> Arc<WlxGraphics> {
-        self.graphics.clone()
     }
 
     pub fn uniform_sampler(
@@ -780,6 +737,7 @@ impl WlxPipeline {
     }
 }
 
+#[allow(dead_code)]
 pub struct WlxPass {
     pipeline: Arc<WlxPipeline>,
     vertex_buffer: Subbuffer<[Vert2Uv]>,
@@ -833,7 +791,7 @@ impl WlxPass {
             .draw_indexed(index_buffer.len() as u32, 1, 0, 0, 0)
             .or_else(|err| {
                 if let Some(source) = err.source() {
-                    error!("Failed to draw: {}", source);
+                    log::error!("Failed to draw: {}", source);
                 }
                 Err(err)
             })

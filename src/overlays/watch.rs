@@ -76,7 +76,7 @@ where
     let button_width = 360. / num_buttons as f32;
     let mut button_x = 40.;
 
-    let keyboard = canvas.button(button_x + 2., 162., button_width - 4., 36., "Kbd".into());
+    let keyboard = canvas.button(button_x + 2., 162., button_width - 4., 36., "kbd".into());
     keyboard.state = Some(WatchButtonState {
         pressed_at: Instant::now(),
         scr_idx: 0,
@@ -95,14 +95,14 @@ where
                 < 2000
             {
                 app.tasks.enqueue(TaskType::Overlay(
-                    OverlaySelector::Name("Kbd".into()),
+                    OverlaySelector::Name("kbd".into()),
                     Box::new(|_app, o| {
                         o.want_visible = !o.want_visible;
                     }),
                 ));
             } else {
                 app.tasks.enqueue(TaskType::Overlay(
-                    OverlaySelector::Name("Kbd".into()),
+                    OverlaySelector::Name("kbd".into()),
                     Box::new(|app, o| {
                         o.reset(app);
                     }),

@@ -16,7 +16,6 @@ use crate::{
     state::AppState,
 };
 use glam::{vec2, vec3a};
-use log::error;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use rodio::{Decoder, OutputStream, Source};
@@ -88,7 +87,7 @@ where
                         args: exec_args.iter().skip(1).cloned().collect(),
                     });
                 } else {
-                    error!("Unknown key: {}", key);
+                    log::error!("Unknown key: {}", key);
                 }
 
                 if let Some(state) = maybe_state {
@@ -109,7 +108,7 @@ where
 
     OverlayData {
         state: OverlayState {
-            name: Arc::from("Kbd"),
+            name: Arc::from("kbd"),
             show_hide: true,
             width: LAYOUT.row_size * 0.05,
             size: (size.x as _, size.y as _),
@@ -217,7 +216,7 @@ impl KeyboardData {
             let _ = handle.play_raw(source.convert_samples());
             self.audio_stream = Some(stream);
         } else {
-            error!("Failed to play key click");
+            log::error!("Failed to play key click");
         }
     }
 }
@@ -339,7 +338,7 @@ fn key_events_for_macro(macro_verbs: &Vec<String>) -> Vec<(VirtualKey, bool)> {
                     } else if state.as_str() == "DOWN" {
                         key_events.push((virtual_key, true));
                     } else {
-                        error!(
+                        log::error!(
                             "Unknown key state in macro: {}, looking for UP or DOWN.",
                             state.as_str()
                         );
@@ -350,7 +349,7 @@ fn key_events_for_macro(macro_verbs: &Vec<String>) -> Vec<(VirtualKey, bool)> {
                     key_events.push((virtual_key, false));
                 }
             } else {
-                error!("Unknown virtual key: {}", &caps[1]);
+                log::error!("Unknown virtual key: {}", &caps[1]);
                 return vec![];
             }
         }

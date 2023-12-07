@@ -1,7 +1,6 @@
 use std::{collections::VecDeque, time::Instant};
 
 use glam::{Affine3A, Vec2, Vec3A};
-use log::warn;
 use ovr_overlay::TrackedDeviceIndex;
 use tinyvec::array_vec;
 
@@ -42,6 +41,39 @@ impl<TState, THand> InputState<TState, THand> {
 
     pub fn post_update(&mut self) {
         for hand in &mut self.pointers {
+            #[cfg(debug_assertions)]
+            {
+                if hand.now.click != hand.before.click {
+                    log::debug!("Hand {}: click {}", hand.idx, hand.now.click);
+                }
+                if hand.now.grab != hand.before.grab {
+                    log::debug!("Hand {}: grab {}", hand.idx, hand.now.grab);
+                }
+                if hand.now.alt_click != hand.before.alt_click {
+                    log::debug!("Hand {}: alt_click {}", hand.idx, hand.now.alt_click);
+                }
+                if hand.now.show_hide != hand.before.show_hide {
+                    log::debug!("Hand {}: show_hide {}", hand.idx, hand.now.show_hide);
+                }
+                if hand.now.space_drag != hand.before.space_drag {
+                    log::debug!("Hand {}: space_drag {}", hand.idx, hand.now.space_drag);
+                }
+                if hand.now.click_modifier_right != hand.before.click_modifier_right {
+                    log::debug!(
+                        "Hand {}: click_modifier_right {}",
+                        hand.idx,
+                        hand.now.click_modifier_right
+                    );
+                }
+                if hand.now.click_modifier_middle != hand.before.click_modifier_middle {
+                    log::debug!(
+                        "Hand {}: click_modifier_middle {}",
+                        hand.idx,
+                        hand.now.click_modifier_middle
+                    );
+                }
+            }
+
             if hand.now.click_modifier_right {
                 hand.interaction.mode = PointerMode::Right;
                 continue;
@@ -176,7 +208,7 @@ pub enum PointerMode {
 }
 
 impl<THand> Pointer<THand> {
-    pub fn interact<O>(&mut self, overlays: &mut OverlayContainer<O>, app: &mut AppState)
+    pub fn interact<O>(&mut self, overlays: &mut OverlayContainer<O>, app: &mut AppState) -> f32
     where
         O: Default,
     {
@@ -184,10 +216,10 @@ impl<THand> Pointer<THand> {
             if let Some(grabbed) = overlays.mut_by_id(grab_data.grabbed_id) {
                 self.handle_grabbed(grabbed, grab_data.offset);
             } else {
-                warn!("Grabbed overlay {} does not exist", grab_data.grabbed_id);
+                log::warn!("Grabbed overlay {} does not exist", grab_data.grabbed_id);
                 self.interaction.grabbed = None;
             }
-            return;
+            return grab_data.offset.length(); // grab interaction
         }
 
         let Some(mut hit) = self.get_nearest_hit(overlays) else {
@@ -208,7 +240,7 @@ impl<THand> Pointer<THand> {
                     clicked.backend.on_pointer(app, &hit, false);
                 }
             }
-            return;
+            return 0.0; // no hit
         };
 
         if let Some(hovered_id) = self.interaction.hovered_id {
@@ -222,14 +254,14 @@ impl<THand> Pointer<THand> {
             }
         }
         let Some(hovered) = overlays.mut_by_id(hit.overlay) else {
-            warn!("Hit overlay {} does not exist", hit.overlay);
-            return;
+            log::warn!("Hit overlay {} does not exist", hit.overlay);
+            return 0.0; // no hit
         };
 
         self.interaction.hovered_id = Some(hit.overlay);
 
         if let Some(primary_pointer) = hovered.primary_pointer {
-            if hit.pointer < primary_pointer {
+            if hit.pointer <= primary_pointer {
                 hovered.primary_pointer = Some(hit.pointer);
                 hit.primary = true;
             }
@@ -237,6 +269,14 @@ impl<THand> Pointer<THand> {
             hovered.primary_pointer = Some(hit.pointer);
             hit.primary = true;
         }
+
+        log::debug!("Hit: {} {:?}", hovered.state.name, hit);
+
+        if self.now.grab && !self.before.grab {
+            self.start_grab(hovered);
+            return hit.dist;
+        }
+
         hovered.backend.on_hover(app, &hit);
 
         if self.now.scroll.abs() > 0.1 {
@@ -255,6 +295,7 @@ impl<THand> Pointer<THand> {
                 hovered.backend.on_pointer(app, &hit, false);
             }
         }
+        hit.dist
     }
 
     fn get_nearest_hit<O>(&mut self, overlays: &mut OverlayContainer<O>) -> Option<PointerHit>
@@ -276,14 +317,16 @@ impl<THand> Pointer<THand> {
         hits.sort_by(|a, b| a.dist.partial_cmp(&b.dist).unwrap());
 
         for hit in hits.iter() {
-            let uv = overlays
-                .get_by_id(hit.overlay)
-                .unwrap() // this is safe
+            let overlay = overlays.get_by_id(hit.overlay).unwrap(); // this is safe
+
+            let uv = overlay
                 .state
                 .transform
                 .inverse()
                 .transform_point3a(hit.hit_pos)
                 .truncate();
+
+            let uv = overlay.state.interaction_transform.transform_point2(uv);
 
             if uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 {
                 continue;
@@ -315,7 +358,9 @@ impl<THand> Pointer<THand> {
             offset,
             grabbed_id: overlay.state.id,
         });
+        log::info!("Hand {}: grabbed {}", self.idx, overlay.state.name);
     }
+
     fn handle_grabbed<O>(&mut self, overlay: &mut OverlayData<O>, offset: Vec3A)
     where
         O: Default,
@@ -324,7 +369,7 @@ impl<THand> Pointer<THand> {
             overlay.state.transform.translation = self.pose.transform_point3a(offset);
 
             if self.now.click && !self.before.click {
-                warn!("todo: click-while-grabbed");
+                log::warn!("todo: click-while-grabbed");
             }
 
             match self.interaction.mode {
@@ -339,11 +384,14 @@ impl<THand> Pointer<THand> {
                         .mul_scalar(1.0 + 0.01 * self.now.scroll);
                 }
             }
+            overlay.state.dirty = true;
         } else {
             overlay.state.spawn_point = overlay.state.transform.translation;
             self.interaction.grabbed = None;
+            log::info!("Hand {}: dropped {}", self.idx, overlay.state.name);
         }
     }
+
     fn ray_test(&self, overlay: usize, plane: &Affine3A) -> Option<RayHit> {
         let plane_normal = plane.transform_vector3a(Vec3A::NEG_Z);
         let ray_dir = self.pose.transform_vector3a(Vec3A::NEG_Z);

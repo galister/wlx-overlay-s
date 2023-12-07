@@ -1,7 +1,6 @@
 use std::{env::VarError, path::Path, sync::Arc};
 
 use glam::{Quat, Vec3};
-use log::warn;
 use vulkano::{
     device::{physical::PhysicalDevice, DeviceExtensions},
     format::Format,
@@ -55,6 +54,7 @@ pub struct AppSession {
     pub screen_flip_h: bool,
     pub screen_flip_v: bool,
     pub screen_invert_color: bool,
+    pub screen_max_res: [u32; 2],
 
     pub watch_hand: usize,
     pub watch_pos: Vec3,
@@ -77,7 +77,7 @@ impl AppSession {
         let config_path = std::env::var("XDG_CONFIG_HOME")
             .or_else(|_| std::env::var("HOME").map(|home| format!("{}/.config", home)))
             .or_else(|_| {
-                warn!("Err: $XDG_CONFIG_HOME and $HOME are not set, using /tmp/wlxoverlay");
+                log::warn!("Err: $XDG_CONFIG_HOME and $HOME are not set, using /tmp/wlxoverlay");
                 Ok::<String, VarError>("/tmp".to_string())
             })
             .map(|config| Path::new(&config).join("wlxoverlay"))
@@ -95,6 +95,7 @@ impl AppSession {
             screen_flip_h: false,
             screen_flip_v: false,
             screen_invert_color: false,
+            screen_max_res: [2560, 1440],
             capture_method: "auto".to_string(),
             primary_hand: 1,
             watch_hand: 1,

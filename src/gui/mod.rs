@@ -93,6 +93,7 @@ impl<D, S> CanvasBuilder<D, S> {
     }
 
     // Creates a label with fg_color, font_size inherited from the canvas
+    #[allow(dead_code)]
     pub fn label_centered(
         &mut self,
         x: f32,
@@ -320,13 +321,13 @@ impl<D, S> Canvas<D, S> {
             .canvas
             .graphics
             .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
-            .begin(self.view_bg.clone(), None);
+            .begin(self.view_bg.clone());
         for c in self.controls.iter_mut() {
             if let Some(fun) = c.on_render_bg {
                 fun(c, &self.canvas, app, &mut cmd_buffer);
             }
         }
-        let _ = cmd_buffer.end_render_and_execute();
+        cmd_buffer.end_render().build_and_execute_now()
     }
 
     fn render_fg(&mut self, app: &mut AppState) {
@@ -334,17 +335,13 @@ impl<D, S> Canvas<D, S> {
             .canvas
             .graphics
             .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
-            .begin(self.view_fg.clone(), None);
+            .begin(self.view_fg.clone());
         for c in self.controls.iter_mut() {
             if let Some(fun) = c.on_render_fg {
                 fun(c, &self.canvas, app, &mut cmd_buffer);
             }
         }
-        let _ = cmd_buffer.end_render_and_execute();
-    }
-
-    pub fn render_view(&self) -> Arc<ImageView<AttachmentImage>> {
-        self.view_final.clone()
+        cmd_buffer.end_render().build_and_execute_now()
     }
 }
 
@@ -385,7 +382,6 @@ impl<D, S> InteractionHandler for Canvas<D, S> {
 impl<D, S> OverlayRenderer for Canvas<D, S> {
     fn init(&mut self, app: &mut AppState) {
         self.render_bg(app);
-
         self.render_fg(app);
     }
     fn pause(&mut self, _app: &mut AppState) {}
@@ -423,10 +419,7 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
             .canvas
             .graphics
             .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
-            .begin(
-                self.view_final.clone(),
-                Some(ImageLayout::TransferSrcOptimal),
-            );
+            .begin(self.view_final.clone());
 
         if dirty {
             self.render_fg(app);
@@ -451,7 +444,7 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
         // mostly static text
         cmd_buffer.run_ref(&self.pass_fg);
         {
-            let _ = cmd_buffer.end_render_and_execute();
+            let _ = cmd_buffer.end_render().build_and_execute();
         }
         self.canvas
             .graphics
@@ -478,7 +471,6 @@ pub struct Control<D, S> {
     text: Arc<str>,
     size: isize,
     dirty: bool,
-    pass_hl: Option<(WlxPass, WlxPass)>,
 
     pub on_update: Option<fn(&mut Self, &mut D, &mut AppState)>,
     pub on_press: Option<fn(&mut Self, &mut D, &mut AppState)>,
@@ -524,7 +516,6 @@ impl<D, S> Control<D, S> {
             test_highlight: None,
             on_press: None,
             on_release: None,
-            pass_hl: None,
         }
     }
 
@@ -535,11 +526,6 @@ impl<D, S> Control<D, S> {
         }
         self.text = text.into();
         self.dirty = true;
-    }
-
-    #[inline(always)]
-    pub fn get_text(&self) -> &str {
-        &self.text
     }
 
     fn render_rect(
