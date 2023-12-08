@@ -59,7 +59,7 @@ impl UInputProvider {
             let id = InputId {
                 bustype: 0x03,
                 vendor: 0x4711,
-                product: 0x0819,
+                product: 0x0829,
                 version: 5,
             };
 
@@ -144,7 +144,8 @@ impl InputProvider for UInputProvider {
         }
         self.mouse_moved = true;
 
-        log::info!("Mouse move: {:?}", pos);
+        #[cfg(debug_assertions)]
+        log::trace!("Mouse move: {:?}", pos);
 
         let pos = pos * (MOUSE_EXTENT / self.desktop_extent);
 

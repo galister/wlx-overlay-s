@@ -72,7 +72,8 @@ impl ScreenInteractionHandler {
 
 impl InteractionHandler for ScreenInteractionHandler {
     fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) {
-        log::info!("Hover: {:?}", hit.uv);
+        #[cfg(debug_assertions)]
+        log::trace!("Hover: {:?}", hit.uv);
         if self.next_move < Instant::now() {
             let pos = self.mouse_transform.transform_point2(hit.uv);
             app.input.mouse_move(pos);
@@ -212,9 +213,7 @@ impl ScreenRenderer {
         let Some(client) = WlxClient::new() else {
             return None;
         };
-        let Some(capture) = WlrDmabufCapture::new(client, output.id) else {
-            return None;
-        };
+        let capture = WlrDmabufCapture::new(client, output.id);
         Some(ScreenRenderer {
             capture: Box::new(capture),
             receiver: None,
@@ -286,11 +285,11 @@ impl OverlayRenderer for ScreenRenderer {
     }
 }
 
-fn try_create_screen<O>(wl: &WlxClient, idx: usize, session: &AppSession) -> Option<OverlayData<O>>
+fn try_create_screen<O>(wl: &WlxClient, id: u32, session: &AppSession) -> Option<OverlayData<O>>
 where
     O: Default,
 {
-    let output = &wl.outputs[idx];
+    let output = &wl.outputs.get(id).unwrap();
     log::info!(
         "{}: Res {}x{} Size {:?} Pos {:?}",
         output.name,
@@ -343,13 +342,13 @@ where
             Affine2::from_translation(Vec2 { x: 0.5, y: 0.5 })
                 * Affine2::from_scale(Vec2 {
                     x: 1.,
-                    y: output.size.0 as f32 / output.size.1 as f32,
+                    y: -output.size.0 as f32 / output.size.1 as f32,
                 })
         } else {
             Affine2::from_translation(Vec2 { x: 0.5, y: 0.5 })
                 * Affine2::from_scale(Vec2 {
                     x: output.size.1 as f32 / output.size.0 as f32,
-                    y: 1.,
+                    y: -1.,
                 })
         };
 
@@ -357,7 +356,7 @@ where
             state: OverlayState {
                 name: output.name.clone(),
                 size,
-                want_visible: idx == 0,
+                want_visible: session.show_screens.iter().any(|s| s == &*output.name),
                 show_hide: true,
                 grabbable: true,
                 spawn_rotation: Quat::from_axis_angle(axis, angle),
@@ -373,22 +372,23 @@ where
     }
 }
 
-pub fn get_screens_wayland<O>(session: &AppSession) -> Vec<OverlayData<O>>
+pub fn get_screens_wayland<O>(session: &AppSession) -> (Vec<OverlayData<O>>, Vec2)
 where
     O: Default,
 {
     let mut overlays = vec![];
     let wl = WlxClient::new().unwrap();
 
-    for idx in 0..wl.outputs.len() {
-        if let Some(overlay) = try_create_screen(&wl, idx, &session) {
+    for id in wl.outputs.keys() {
+        if let Some(overlay) = try_create_screen(&wl, *id, &session) {
             overlays.push(overlay);
         }
     }
-    overlays
+    let extent = wl.get_desktop_extent();
+    (overlays, Vec2::new(extent.0 as f32, extent.1 as f32))
 }
 
-pub fn get_screens_x11<O>() -> Vec<OverlayData<O>>
+pub fn get_screens_x11<O>() -> (Vec<OverlayData<O>>, Vec2)
 where
     O: Default,
 {

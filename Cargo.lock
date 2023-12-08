@@ -4027,6 +4027,7 @@ version = "0.1.0"
 dependencies = [
  "ashpd",
  "drm-fourcc",
+ "idmap",
  "libc",
  "libspa-sys",
  "log",

@@ -214,12 +214,12 @@ impl<THand> Pointer<THand> {
     {
         if let Some(grab_data) = self.interaction.grabbed {
             if let Some(grabbed) = overlays.mut_by_id(grab_data.grabbed_id) {
-                self.handle_grabbed(grabbed, grab_data.offset);
+                self.handle_grabbed(grabbed);
             } else {
                 log::warn!("Grabbed overlay {} does not exist", grab_data.grabbed_id);
                 self.interaction.grabbed = None;
             }
-            return grab_data.offset.length(); // grab interaction
+            return 0.1;
         }
 
         let Some(mut hit) = self.get_nearest_hit(overlays) else {
@@ -270,7 +270,8 @@ impl<THand> Pointer<THand> {
             hit.primary = true;
         }
 
-        log::debug!("Hit: {} {:?}", hovered.state.name, hit);
+        #[cfg(debug_assertions)]
+        log::trace!("Hit: {} {:?}", hovered.state.name, hit);
 
         if self.now.grab && !self.before.grab {
             self.start_grab(hovered);
@@ -358,25 +359,25 @@ impl<THand> Pointer<THand> {
             offset,
             grabbed_id: overlay.state.id,
         });
-        log::info!("Hand {}: grabbed {}", self.idx, overlay.state.name);
+        log::debug!("Hand {}: grabbed {}", self.idx, overlay.state.name);
     }
 
-    fn handle_grabbed<O>(&mut self, overlay: &mut OverlayData<O>, offset: Vec3A)
+    fn handle_grabbed<O>(&mut self, overlay: &mut OverlayData<O>)
     where
         O: Default,
     {
         if self.now.grab {
-            overlay.state.transform.translation = self.pose.transform_point3a(offset);
-
             if self.now.click && !self.before.click {
                 log::warn!("todo: click-while-grabbed");
             }
 
+            let grab_data = self.interaction.grabbed.as_mut().unwrap();
             match self.interaction.mode {
                 PointerMode::Left => {
-                    overlay.state.transform.translation.y += self.now.scroll * 0.01;
+                    grab_data.offset.z -= self.now.scroll * 0.05;
                 }
                 _ => {
+                    log::warn!("scale: {}", self.now.scroll);
                     overlay.state.transform.matrix3 = overlay
                         .state
                         .transform
@@ -384,6 +385,7 @@ impl<THand> Pointer<THand> {
                         .mul_scalar(1.0 + 0.01 * self.now.scroll);
                 }
             }
+            overlay.state.transform.translation = self.pose.transform_point3a(grab_data.offset);
             overlay.state.dirty = true;
         } else {
             overlay.state.spawn_point = overlay.state.transform.translation;

@@ -55,6 +55,8 @@ pub fn openvr_run() {
     let mut state = AppState::new(instance_extensions, device_extensions_fn);
     let mut overlays = OverlayContainer::<OpenVrOverlayData>::new(&mut state);
 
+    state.input.set_desktop_extent(overlays.extent);
+
     if let Err(e) = input_mngr.set_action_manifest(action_manifest_path()) {
         log::error!("Failed to set action manifest: {}", e.description());
         return;

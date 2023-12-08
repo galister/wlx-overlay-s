@@ -4,6 +4,7 @@ use std::{
     time::Instant,
 };
 
+use glam::Vec2;
 use idmap::IdMap;
 
 use crate::{
@@ -22,6 +23,7 @@ where
     T: Default,
 {
     overlays: IdMap<usize, OverlayData<T>>,
+    pub extent: Vec2,
 }
 
 impl<T> OverlayContainer<T>
@@ -31,7 +33,7 @@ where
     pub fn new(app: &mut AppState) -> Self {
         let mut overlays = IdMap::new();
 
-        let screens = if std::env::var("WAYLAND_DISPLAY").is_ok() {
+        let (screens, extent) = if std::env::var("WAYLAND_DISPLAY").is_ok() {
             get_screens_wayland(&app.session)
         } else {
             get_screens_x11()
@@ -52,7 +54,7 @@ where
             overlays.insert(screen.state.id, screen);
         }
 
-        Self { overlays }
+        Self { overlays, extent }
     }
 
     pub fn mut_by_selector(&mut self, selector: &OverlaySelector) -> Option<&mut OverlayData<T>> {

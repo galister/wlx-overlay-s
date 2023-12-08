@@ -200,7 +200,7 @@ impl InputState<OpenVrInputState, OpenVrHandState> {
 
             hand.now.scroll = input
                 .get_analog_action_data(self.data.scroll_hnd, hand.data.input_hnd)
-                .map(|x| x.0.x)
+                .map(|x| x.0.y)
                 .unwrap_or(0.0);
         }
 
