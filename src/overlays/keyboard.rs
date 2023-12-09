@@ -12,7 +12,7 @@ use std::{
 use crate::{
     backend::overlay::{OverlayData, OverlayState},
     gui::{color_parse, CanvasBuilder, Control},
-    input::{KeyModifier, VirtualKey, KEYS_TO_MODS},
+    hid::{KeyModifier, VirtualKey, KEYS_TO_MODS},
     state::AppState,
 };
 use glam::{vec2, vec3a};
@@ -129,7 +129,7 @@ fn key_press(
     match control.state.as_mut() {
         Some(KeyButtonData::Key { vk, pressed }) => {
             data.key_click();
-            app.input.send_key(*vk as _, true);
+            app.hid_provider.send_key(*vk as _, true);
             *pressed = true;
         }
         Some(KeyButtonData::Modifier {
@@ -140,13 +140,13 @@ fn key_press(
             *sticky = data.modifiers & *modifier == 0;
             data.modifiers |= *modifier;
             data.key_click();
-            app.input.set_modifiers(data.modifiers);
+            app.hid_provider.set_modifiers(data.modifiers);
             *pressed = true;
         }
         Some(KeyButtonData::Macro { verbs }) => {
             data.key_click();
             for (vk, press) in verbs {
-                app.input.send_key(*vk as _, *press);
+                app.hid_provider.send_key(*vk as _, *press);
             }
         }
         Some(KeyButtonData::Exec { program, args }) => {
@@ -170,7 +170,7 @@ fn key_release(
 ) {
     match control.state.as_mut() {
         Some(KeyButtonData::Key { vk, pressed }) => {
-            app.input.send_key(*vk as _, false);
+            app.hid_provider.send_key(*vk as _, false);
             *pressed = false;
         }
         Some(KeyButtonData::Modifier {
@@ -180,7 +180,7 @@ fn key_release(
         }) => {
             if !*sticky {
                 data.modifiers &= !*modifier;
-                app.input.set_modifiers(data.modifiers);
+                app.hid_provider.set_modifiers(data.modifiers);
                 *pressed = false;
             }
         }

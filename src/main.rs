@@ -2,7 +2,7 @@
 mod backend;
 mod graphics;
 mod gui;
-mod input;
+mod hid;
 mod overlays;
 mod shaders;
 mod state;

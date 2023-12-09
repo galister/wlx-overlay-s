@@ -1,9 +1,12 @@
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc,
+use std::{
+    f32::consts::PI,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
 };
 
-use glam::{Affine2, Affine3A, Quat, Vec3A};
+use glam::{Affine2, Affine3A, Mat3A, Quat, Vec3, Vec3A};
 use vulkano::image::ImageViewAbstract;
 
 use crate::state::AppState;
@@ -79,6 +82,45 @@ where
 impl OverlayState {
     pub fn reset(&mut self, _app: &mut AppState) {
         todo!()
+    }
+    pub fn realign(&mut self, hmd: &Affine3A) {
+        let to_hmd = hmd.translation - self.transform.translation;
+        let up_dir: Vec3A;
+
+        if hmd.x_axis.dot(Vec3A::Y).abs() > 0.2 {
+            // Snap upright
+            up_dir = hmd.y_axis;
+        } else {
+            let dot = to_hmd.normalize().dot(hmd.z_axis);
+            let z_dist = to_hmd.length();
+            let y_dist = (self.transform.translation.y - hmd.translation.y).abs();
+            let x_angle = (y_dist / z_dist).asin();
+
+            if dot < -f32::EPSILON {
+                // facing down
+                let up_point = hmd.translation + z_dist / x_angle.cos() * Vec3A::Y;
+                up_dir = (up_point - self.transform.translation).normalize();
+            } else if dot > f32::EPSILON {
+                // facing up
+                let dn_point = hmd.translation + z_dist / x_angle.cos() * Vec3A::NEG_Y;
+                up_dir = (self.transform.translation - dn_point).normalize();
+            } else {
+                // perfectly upright
+                up_dir = Vec3A::Y;
+            }
+        }
+
+        let scale = self.transform.x_axis.length();
+
+        let col_z = (self.transform.translation - hmd.translation).normalize();
+        let col_y = up_dir;
+        let col_x = col_y.cross(col_z);
+        let col_y = col_z.cross(col_x).normalize();
+        let col_x = col_x.normalize();
+
+        let rot = Mat3A::from_quat(self.spawn_rotation)
+            * Mat3A::from_quat(Quat::from_axis_angle(Vec3::Y, PI));
+        self.transform.matrix3 = Mat3A::from_cols(col_x, col_y, col_z).mul_scalar(scale) * rot;
     }
 }
 

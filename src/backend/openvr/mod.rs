@@ -14,14 +14,17 @@ use vulkano::{
     Handle, VulkanObject,
 };
 
-use crate::{backend::openvr::lines::LinePool, state::AppState};
+use crate::{
+    backend::{
+        input::interact,
+        openvr::{input::OpenVrInputSource, lines::LinePool},
+    },
+    state::AppState,
+};
 
 use self::{input::action_manifest_path, overlay::OpenVrOverlayData};
 
-use super::{
-    common::{OverlayContainer, TaskType},
-    input::InputState,
-};
+use super::common::{OverlayContainer, TaskType};
 
 pub mod input;
 pub mod lines;
@@ -55,14 +58,14 @@ pub fn openvr_run() {
     let mut state = AppState::new(instance_extensions, device_extensions_fn);
     let mut overlays = OverlayContainer::<OpenVrOverlayData>::new(&mut state);
 
-    state.input.set_desktop_extent(overlays.extent);
+    state.hid_provider.set_desktop_extent(overlays.extent);
 
     if let Err(e) = input_mngr.set_action_manifest(action_manifest_path()) {
         log::error!("Failed to set action manifest: {}", e.description());
         return;
     };
 
-    let Ok(mut input) = InputState::new(&mut input_mngr) else {
+    let Ok(mut input_source) = OpenVrInputSource::new(&mut input_mngr) else {
         log::error!("Failed to initialize input");
         return;
     };
@@ -82,8 +85,10 @@ pub fn openvr_run() {
     let mut due_tasks = VecDeque::with_capacity(4);
 
     let mut lines = LinePool::new(state.graphics.clone());
-    input.pointers[0].data.line_id = lines.allocate(&mut overlay_mngr, &mut state);
-    input.pointers[1].data.line_id = lines.allocate(&mut overlay_mngr, &mut state);
+    let pointer_lines = [
+        lines.allocate(&mut overlay_mngr, &mut state),
+        lines.allocate(&mut overlay_mngr, &mut state),
+    ];
 
     loop {
         while let Some(event) = system_mngr.poll_next_event() {
@@ -102,7 +107,7 @@ pub fn openvr_run() {
         }
 
         if next_device_update <= Instant::now() {
-            input.update_devices(&mut system_mngr);
+            input_source.update_devices(&mut system_mngr, &mut state);
             next_device_update = Instant::now() + Duration::from_secs(30);
         }
 
@@ -118,19 +123,19 @@ pub fn openvr_run() {
             }
         }
 
-        input.pre_update();
-        input.update(&mut input_mngr, &mut system_mngr);
-        input.post_update();
+        state.input_state.pre_update();
+        input_source.update(&mut input_mngr, &mut system_mngr, &mut state);
+        state.input_state.post_update();
 
-        input.pointers.iter_mut().for_each(|p| {
-            let dist = p.interact(&mut overlays, &mut state);
-            if dist > 0.001 {
-                lines.draw_from(p.data.line_id, p.pose, dist, Vec4::ONE);
-            } else {
-                lines.draw_from(p.data.line_id, p.pose, 20.0, Vec4::ONE);
-                //  lines.hide(p.data.line_id);
-            }
-        });
+        let pointer_lengths = interact(&mut overlays, &mut state);
+        for (idx, len) in pointer_lengths.iter().enumerate() {
+            lines.draw_from(
+                pointer_lines[idx],
+                state.input_state.pointers[idx].pose,
+                *len,
+                Vec4::ONE,
+            );
+        }
 
         lines.update(&mut overlay_mngr, &mut state);
 
@@ -157,7 +162,7 @@ pub fn openvr_run() {
 
         // playspace moved end frame
 
-        state.input.on_new_frame();
+        state.hid_provider.on_new_frame();
 
         let mut seconds_since_vsync = 0f32;
         std::thread::sleep(Duration::from_secs_f32(

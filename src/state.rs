@@ -8,8 +8,10 @@ use vulkano::{
 };
 
 use crate::{
-    backend::common::TaskContainer, graphics::WlxGraphics, gui::font::FontCache,
-    input::InputProvider,
+    backend::{common::TaskContainer, input::InputState},
+    graphics::WlxGraphics,
+    gui::font::FontCache,
+    hid::HidProvider,
 };
 
 pub const WATCH_DEFAULT_POS: Vec3 = Vec3::new(0., 0., 0.15);
@@ -17,12 +19,12 @@ pub const WATCH_DEFAULT_ROT: Quat = Quat::from_xyzw(0.7071066, 0., 0.7071066, 0.
 
 pub struct AppState {
     pub fc: FontCache,
-    //pub input: InputState,
     pub session: AppSession,
     pub tasks: TaskContainer,
     pub graphics: Arc<WlxGraphics>,
     pub format: vulkano::format::Format,
-    pub input: Box<dyn InputProvider>,
+    pub input_state: InputState,
+    pub hid_provider: Box<dyn HidProvider>,
 }
 
 impl AppState {
@@ -39,7 +41,8 @@ impl AppState {
             tasks: TaskContainer::new(),
             graphics: graphics.clone(),
             format: Format::R8G8B8A8_UNORM,
-            input: crate::input::initialize_input(),
+            input_state: InputState::new(),
+            hid_provider: crate::hid::initialize(),
         }
     }
 }

@@ -1,11 +1,6 @@
 [profile.release-with-debug]
 inherits = "release"
-debuginfo-level = 1
-jemalloc = false
 debug = true
-
-[rust]
-debuginfo-level = 1
 
 [package]
 name = "wlx-overlay-s"

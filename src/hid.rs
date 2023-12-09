@@ -11,7 +11,7 @@ use std::fs::File;
 use std::mem::transmute;
 use strum::{EnumIter, EnumString, IntoEnumIterator};
 
-pub fn initialize_input() -> Box<dyn InputProvider> {
+pub fn initialize() -> Box<dyn HidProvider> {
     if let Some(uinput) = UInputProvider::try_new() {
         log::info!("Initialized uinput.");
         return Box::new(uinput);
@@ -21,7 +21,7 @@ pub fn initialize_input() -> Box<dyn InputProvider> {
     Box::new(DummyProvider {})
 }
 
-pub trait InputProvider {
+pub trait HidProvider {
     fn mouse_move(&mut self, pos: Vec2);
     fn send_button(&self, button: u16, down: bool);
     fn wheel(&self, delta: i32);
@@ -137,7 +137,7 @@ impl UInputProvider {
     }
 }
 
-impl InputProvider for UInputProvider {
+impl HidProvider for UInputProvider {
     fn mouse_move(&mut self, pos: Vec2) {
         if self.mouse_moved {
             return;
@@ -209,7 +209,7 @@ impl InputProvider for UInputProvider {
     }
 }
 
-impl InputProvider for DummyProvider {
+impl HidProvider for DummyProvider {
     fn mouse_move(&mut self, _pos: Vec2) {}
     fn send_button(&self, _button: u16, _down: bool) {}
     fn wheel(&self, _delta: i32) {}

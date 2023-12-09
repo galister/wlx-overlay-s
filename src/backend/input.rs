@@ -26,14 +26,21 @@ pub enum TrackedDeviceRole {
     Tracker,
 }
 
-pub struct InputState<TState, THand> {
+pub struct InputState {
     pub hmd: Affine3A,
-    pub pointers: [Pointer<THand>; 2],
+    pub pointers: [Pointer; 2],
     pub devices: Vec<TrackedDevice>,
-    pub(super) data: TState,
 }
 
-impl<TState, THand> InputState<TState, THand> {
+impl InputState {
+    pub fn new() -> Self {
+        Self {
+            hmd: Affine3A::IDENTITY,
+            pointers: [Pointer::new(0), Pointer::new(1)],
+            devices: Vec::new(),
+        }
+    }
+
     pub fn pre_update(&mut self) {
         self.pointers[0].before = self.pointers[0].now;
         self.pointers[1].before = self.pointers[1].now;
@@ -86,7 +93,7 @@ impl<TState, THand> InputState<TState, THand> {
 
             let hmd_up = self.hmd.transform_vector3a(Vec3A::Y);
             let dot =
-                hmd_up.dot(hand.pose.transform_vector3a(Vec3A::X)) * (1.0 - 2.0 * hand.hand as f32);
+                hmd_up.dot(hand.pose.transform_vector3a(Vec3A::X)) * (1.0 - 2.0 * hand.idx as f32);
 
             hand.interaction.mode = if dot < -0.85 {
                 PointerMode::Right
@@ -137,17 +144,28 @@ impl Default for InteractionState {
     }
 }
 
-pub struct Pointer<THand> {
+pub struct Pointer {
     pub idx: usize,
-    pub hand: u8,
     pub pose: Affine3A,
     pub now: PointerState,
     pub before: PointerState,
     pub(super) interaction: InteractionState,
-    pub(super) data: THand,
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+impl Pointer {
+    pub fn new(idx: usize) -> Self {
+        debug_assert!(idx == 0 || idx == 1);
+        Self {
+            idx,
+            pose: Affine3A::IDENTITY,
+            now: Default::default(),
+            before: Default::default(),
+            interaction: Default::default(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Default)]
 pub struct PointerState {
     pub scroll: f32,
     pub click: bool,
@@ -207,98 +225,115 @@ pub enum PointerMode {
     Middle,
 }
 
-impl<THand> Pointer<THand> {
-    pub fn interact<O>(&mut self, overlays: &mut OverlayContainer<O>, app: &mut AppState) -> f32
-    where
-        O: Default,
-    {
-        if let Some(grab_data) = self.interaction.grabbed {
-            if let Some(grabbed) = overlays.mut_by_id(grab_data.grabbed_id) {
-                self.handle_grabbed(grabbed);
-            } else {
-                log::warn!("Grabbed overlay {} does not exist", grab_data.grabbed_id);
-                self.interaction.grabbed = None;
-            }
-            return 0.1;
-        }
+pub fn interact<O>(overlays: &mut OverlayContainer<O>, app: &mut AppState) -> [f32; 2]
+where
+    O: Default,
+{
+    [
+        interact_hand(0, overlays, app),
+        interact_hand(1, overlays, app),
+    ]
+}
 
-        let Some(mut hit) = self.get_nearest_hit(overlays) else {
-            if let Some(hovered_id) = self.interaction.hovered_id.take() {
-                if let Some(hovered) = overlays.mut_by_id(hovered_id) {
-                    hovered.backend.on_left(app, self.idx);
-                }
-                self.interaction.hovered_id = None;
-            }
-            if let Some(clicked_id) = self.interaction.clicked_id.take() {
-                if let Some(clicked) = overlays.mut_by_id(clicked_id) {
-                    let hit = PointerHit {
-                        pointer: self.idx,
-                        overlay: clicked_id,
-                        mode: self.interaction.mode,
-                        ..Default::default()
-                    };
-                    clicked.backend.on_pointer(app, &hit, false);
-                }
-            }
-            return 0.0; // no hit
-        };
-
-        if let Some(hovered_id) = self.interaction.hovered_id {
-            if hovered_id != hit.overlay {
-                if let Some(old_hovered) = overlays.mut_by_id(hovered_id) {
-                    if Some(self.idx) == old_hovered.primary_pointer {
-                        old_hovered.primary_pointer = None;
-                    }
-                    old_hovered.backend.on_left(app, self.idx);
-                }
-            }
-        }
-        let Some(hovered) = overlays.mut_by_id(hit.overlay) else {
-            log::warn!("Hit overlay {} does not exist", hit.overlay);
-            return 0.0; // no hit
-        };
-
-        self.interaction.hovered_id = Some(hit.overlay);
-
-        if let Some(primary_pointer) = hovered.primary_pointer {
-            if hit.pointer <= primary_pointer {
-                hovered.primary_pointer = Some(hit.pointer);
-                hit.primary = true;
-            }
+fn interact_hand<O>(idx: usize, overlays: &mut OverlayContainer<O>, app: &mut AppState) -> f32
+where
+    O: Default,
+{
+    let hmd = &app.input_state.hmd;
+    let mut pointer = &mut app.input_state.pointers[idx];
+    if let Some(grab_data) = pointer.interaction.grabbed {
+        if let Some(grabbed) = overlays.mut_by_id(grab_data.grabbed_id) {
+            pointer.handle_grabbed(grabbed, hmd);
         } else {
+            log::warn!("Grabbed overlay {} does not exist", grab_data.grabbed_id);
+            pointer.interaction.grabbed = None;
+        }
+        return 0.1;
+    }
+
+    let Some(mut hit) = pointer.get_nearest_hit(overlays) else {
+        if let Some(hovered_id) = pointer.interaction.hovered_id.take() {
+            if let Some(hovered) = overlays.mut_by_id(hovered_id) {
+                hovered.backend.on_left(app, idx);
+            }
+            pointer = &mut app.input_state.pointers[idx];
+            pointer.interaction.hovered_id = None;
+        }
+        if let Some(clicked_id) = pointer.interaction.clicked_id.take() {
+            if let Some(clicked) = overlays.mut_by_id(clicked_id) {
+                let hit = PointerHit {
+                    pointer: pointer.idx,
+                    overlay: clicked_id,
+                    mode: pointer.interaction.mode,
+                    ..Default::default()
+                };
+                clicked.backend.on_pointer(app, &hit, false);
+            }
+        }
+        return 0.0; // no hit
+    };
+
+    if let Some(hovered_id) = pointer.interaction.hovered_id {
+        if hovered_id != hit.overlay {
+            if let Some(old_hovered) = overlays.mut_by_id(hovered_id) {
+                if Some(pointer.idx) == old_hovered.primary_pointer {
+                    old_hovered.primary_pointer = None;
+                }
+                old_hovered.backend.on_left(app, idx);
+                pointer = &mut app.input_state.pointers[idx];
+            }
+        }
+    }
+    let Some(hovered) = overlays.mut_by_id(hit.overlay) else {
+        log::warn!("Hit overlay {} does not exist", hit.overlay);
+        return 0.0; // no hit
+    };
+
+    pointer.interaction.hovered_id = Some(hit.overlay);
+
+    if let Some(primary_pointer) = hovered.primary_pointer {
+        if hit.pointer <= primary_pointer {
             hovered.primary_pointer = Some(hit.pointer);
             hit.primary = true;
         }
-
-        #[cfg(debug_assertions)]
-        log::trace!("Hit: {} {:?}", hovered.state.name, hit);
-
-        if self.now.grab && !self.before.grab {
-            self.start_grab(hovered);
-            return hit.dist;
-        }
-
-        hovered.backend.on_hover(app, &hit);
-
-        if self.now.scroll.abs() > 0.1 {
-            hovered.backend.on_scroll(app, &hit, self.now.scroll);
-        }
-
-        if self.now.click && !self.before.click {
-            self.interaction.clicked_id = Some(hit.overlay);
-            hovered.backend.on_pointer(app, &hit, true);
-        } else if !self.now.click && self.before.click {
-            if let Some(clicked_id) = self.interaction.clicked_id.take() {
-                if let Some(clicked) = overlays.mut_by_id(clicked_id) {
-                    clicked.backend.on_pointer(app, &hit, false);
-                }
-            } else {
-                hovered.backend.on_pointer(app, &hit, false);
-            }
-        }
-        hit.dist
+    } else {
+        hovered.primary_pointer = Some(hit.pointer);
+        hit.primary = true;
     }
 
+    #[cfg(debug_assertions)]
+    log::trace!("Hit: {} {:?}", hovered.state.name, hit);
+
+    if pointer.now.grab && !pointer.before.grab {
+        pointer.start_grab(hovered);
+        return hit.dist;
+    }
+
+    hovered.backend.on_hover(app, &hit);
+    pointer = &mut app.input_state.pointers[idx];
+
+    if pointer.now.scroll.abs() > 0.1 {
+        let scroll = pointer.now.scroll;
+        hovered.backend.on_scroll(app, &hit, scroll);
+        pointer = &mut app.input_state.pointers[idx];
+    }
+
+    if pointer.now.click && !pointer.before.click {
+        pointer.interaction.clicked_id = Some(hit.overlay);
+        hovered.backend.on_pointer(app, &hit, true);
+    } else if !pointer.now.click && pointer.before.click {
+        if let Some(clicked_id) = pointer.interaction.clicked_id.take() {
+            if let Some(clicked) = overlays.mut_by_id(clicked_id) {
+                clicked.backend.on_pointer(app, &hit, false);
+            }
+        } else {
+            hovered.backend.on_pointer(app, &hit, false);
+        }
+    }
+    hit.dist
+}
+
+impl Pointer {
     fn get_nearest_hit<O>(&mut self, overlays: &mut OverlayContainer<O>) -> Option<PointerHit>
     where
         O: Default,
@@ -362,7 +397,7 @@ impl<THand> Pointer<THand> {
         log::debug!("Hand {}: grabbed {}", self.idx, overlay.state.name);
     }
 
-    fn handle_grabbed<O>(&mut self, overlay: &mut OverlayData<O>)
+    fn handle_grabbed<O>(&mut self, overlay: &mut OverlayData<O>, hmd: &Affine3A)
     where
         O: Default,
     {
@@ -386,6 +421,7 @@ impl<THand> Pointer<THand> {
                 }
             }
             overlay.state.transform.translation = self.pose.transform_point3a(grab_data.offset);
+            overlay.state.realign(hmd);
             overlay.state.dirty = true;
         } else {
             overlay.state.spawn_point = overlay.state.transform.translation;

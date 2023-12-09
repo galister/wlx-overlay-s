@@ -11,8 +11,9 @@ use ovr_overlay::{
     TrackedDeviceIndex,
 };
 
-use crate::backend::input::{
-    InputState, InteractionState, Pointer, PointerState, TrackedDevice, TrackedDeviceRole,
+use crate::{
+    backend::input::{TrackedDevice, TrackedDeviceRole},
+    state::AppState,
 };
 
 macro_rules! result_str {
@@ -46,7 +47,8 @@ const PATH_CLICK_MODIFIER_MIDDLE: &str = "/actions/default/in/ClickModifierMiddl
 
 const INPUT_ANY: InputValueHandle = InputValueHandle(ovr_overlay::sys::k_ulInvalidInputValueHandle);
 
-pub(super) struct OpenVrInputState {
+pub(super) struct OpenVrInputSource {
+    hands: [OpenVrHandSource; 2],
     set_hnd: ActionSetHandle,
     click_hnd: ActionHandle,
     grab_hnd: ActionHandle,
@@ -58,15 +60,14 @@ pub(super) struct OpenVrInputState {
     click_modifier_middle_hnd: ActionHandle,
 }
 
-pub(super) struct OpenVrHandState {
-    pub(super) line_id: usize,
+pub(super) struct OpenVrHandSource {
     has_pose: bool,
     input_hnd: InputValueHandle,
     pose_hnd: ActionHandle,
     haptics_hnd: ActionHandle,
 }
 
-impl InputState<OpenVrInputState, OpenVrHandState> {
+impl OpenVrInputSource {
     pub fn new(input: &mut InputManager) -> Result<Self, &'static str> {
         let set_hnd = result_str!(input.get_action_set_handle(SET_DEFAULT))?;
 
@@ -96,44 +97,36 @@ impl InputState<OpenVrInputState, OpenVrHandState> {
             .map(|path| Ok(result_str!(input.get_action_handle(path))?))
             .collect::<Result<_, &'static str>>()?;
 
-        let hands: [Pointer<OpenVrHandState>; 2] = array::from_fn(|i| Pointer::<OpenVrHandState> {
-            idx: i,
-            hand: i as u8,
-            now: PointerState::default(),
-            before: PointerState::default(),
-            pose: Affine3A::IDENTITY,
-            interaction: InteractionState::default(),
-            data: OpenVrHandState {
-                line_id: 0,
-                has_pose: false,
-                input_hnd: input_hnd[i],
-                pose_hnd: pose_hnd[i],
-                haptics_hnd: haptics_hnd[i],
-            },
+        let hands: [OpenVrHandSource; 2] = array::from_fn(|i| OpenVrHandSource {
+            has_pose: false,
+            input_hnd: input_hnd[i],
+            pose_hnd: pose_hnd[i],
+            haptics_hnd: haptics_hnd[i],
         });
 
-        Ok(InputState {
-            hmd: Affine3A::IDENTITY,
-            pointers: hands,
-            devices: vec![],
-            data: OpenVrInputState {
-                set_hnd,
-                click_hnd,
-                grab_hnd,
-                scroll_hnd,
-                alt_click_hnd,
-                show_hide_hnd,
-                space_drag_hnd,
-                click_modifier_right_hnd,
-                click_modifier_middle_hnd,
-            },
+        Ok(OpenVrInputSource {
+            set_hnd,
+            click_hnd,
+            grab_hnd,
+            scroll_hnd,
+            alt_click_hnd,
+            show_hide_hnd,
+            space_drag_hnd,
+            click_modifier_right_hnd,
+            click_modifier_middle_hnd,
+            hands,
         })
     }
 
-    pub fn update(&mut self, input: &mut InputManager, system: &mut SystemManager) {
+    pub fn update(
+        &mut self,
+        input: &mut InputManager,
+        system: &mut SystemManager,
+        app: &mut AppState,
+    ) {
         let aas = ActiveActionSet {
             0: ovr_overlay::sys::VRActiveActionSet_t {
-                ulActionSet: self.data.set_hnd.0,
+                ulActionSet: self.set_hnd.0,
                 ulRestrictedToDevice: 0,
                 ulSecondaryActionSet: 0,
                 unPadding: 0,
@@ -146,70 +139,74 @@ impl InputState<OpenVrInputState, OpenVrHandState> {
         let universe = ETrackingUniverseOrigin::TrackingUniverseStanding;
 
         for i in 0..2 {
-            let hand = &mut self.pointers[i];
+            let hand = &mut self.hands[i];
+            let app_hand = &mut app.input_state.pointers[i];
 
-            hand.data.has_pose = false;
+            hand.has_pose = false;
 
             let _ = input
                 .get_pose_action_data_relative_to_now(
-                    hand.data.pose_hnd,
+                    hand.pose_hnd,
                     universe.clone(),
                     0.005,
                     INPUT_ANY,
                 )
                 .and_then(|pose| {
-                    copy_from_hmd(&pose.0.pose.mDeviceToAbsoluteTracking, &mut hand.pose);
-                    hand.data.has_pose = true;
+                    copy_from_hmd(&pose.0.pose.mDeviceToAbsoluteTracking, &mut app_hand.pose);
+                    hand.has_pose = true;
                     Ok(())
                 });
 
-            hand.now.click = input
-                .get_digital_action_data(self.data.click_hnd, hand.data.input_hnd)
+            app_hand.now.click = input
+                .get_digital_action_data(self.click_hnd, hand.input_hnd)
                 .map(|x| x.0.bState)
                 .unwrap_or(false);
 
-            hand.now.grab = input
-                .get_digital_action_data(self.data.grab_hnd, hand.data.input_hnd)
+            app_hand.now.grab = input
+                .get_digital_action_data(self.grab_hnd, hand.input_hnd)
                 .map(|x| x.0.bState)
                 .unwrap_or(false);
 
-            hand.now.alt_click = input
-                .get_digital_action_data(self.data.alt_click_hnd, hand.data.input_hnd)
+            app_hand.now.alt_click = input
+                .get_digital_action_data(self.alt_click_hnd, hand.input_hnd)
                 .map(|x| x.0.bState)
                 .unwrap_or(false);
 
-            hand.now.show_hide = input
-                .get_digital_action_data(self.data.show_hide_hnd, hand.data.input_hnd)
+            app_hand.now.show_hide = input
+                .get_digital_action_data(self.show_hide_hnd, hand.input_hnd)
                 .map(|x| x.0.bState)
                 .unwrap_or(false);
 
-            hand.now.space_drag = input
-                .get_digital_action_data(self.data.space_drag_hnd, hand.data.input_hnd)
+            app_hand.now.space_drag = input
+                .get_digital_action_data(self.space_drag_hnd, hand.input_hnd)
                 .map(|x| x.0.bState)
                 .unwrap_or(false);
 
-            hand.now.click_modifier_right = input
-                .get_digital_action_data(self.data.click_modifier_right_hnd, hand.data.input_hnd)
+            app_hand.now.click_modifier_right = input
+                .get_digital_action_data(self.click_modifier_right_hnd, hand.input_hnd)
                 .map(|x| x.0.bState)
                 .unwrap_or(false);
 
-            hand.now.click_modifier_middle = input
-                .get_digital_action_data(self.data.click_modifier_middle_hnd, hand.data.input_hnd)
+            app_hand.now.click_modifier_middle = input
+                .get_digital_action_data(self.click_modifier_middle_hnd, hand.input_hnd)
                 .map(|x| x.0.bState)
                 .unwrap_or(false);
 
-            hand.now.scroll = input
-                .get_analog_action_data(self.data.scroll_hnd, hand.data.input_hnd)
+            app_hand.now.scroll = input
+                .get_analog_action_data(self.scroll_hnd, hand.input_hnd)
                 .map(|x| x.0.y)
                 .unwrap_or(0.0);
         }
 
         let devices = system.get_device_to_absolute_tracking_pose(universe, 0.005);
-        copy_from_hmd(&devices[0].mDeviceToAbsoluteTracking, &mut self.hmd);
+        copy_from_hmd(
+            &devices[0].mDeviceToAbsoluteTracking,
+            &mut app.input_state.hmd,
+        );
     }
 
-    pub fn update_devices(&mut self, system: &mut SystemManager) {
-        self.devices.clear();
+    pub fn update_devices(&mut self, system: &mut SystemManager, app: &mut AppState) {
+        app.input_state.devices.clear();
         for i in 0..k_unMaxTrackedDeviceCount {
             let index = TrackedDeviceIndex(i);
             let maybe_role = match system.get_tracked_device_class(index) {
@@ -234,11 +231,11 @@ impl InputState<OpenVrInputState, OpenVrHandState> {
 
             if let Some(role) = maybe_role {
                 if let Some(device) = get_tracked_device(system, index, role) {
-                    self.devices.push(device);
+                    app.input_state.devices.push(device);
                 }
             }
         }
-        self.devices.sort_by(|a, b| {
+        app.input_state.devices.sort_by(|a, b| {
             (a.role as u8)
                 .cmp(&(b.role as u8))
                 .then(a.index.0.cmp(&b.index.0))

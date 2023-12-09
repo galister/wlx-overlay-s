@@ -31,7 +31,7 @@ use crate::{
         overlay::{OverlayData, OverlayRenderer, OverlayState, SplitOverlayBackend},
     },
     graphics::{Vert2Uv, WlxGraphics, WlxPipeline},
-    input::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
+    hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     shaders::{frag_sprite, vert_common},
     state::{AppSession, AppState},
 };
@@ -76,12 +76,12 @@ impl InteractionHandler for ScreenInteractionHandler {
         log::trace!("Hover: {:?}", hit.uv);
         if self.next_move < Instant::now() {
             let pos = self.mouse_transform.transform_point2(hit.uv);
-            app.input.mouse_move(pos);
+            app.hid_provider.mouse_move(pos);
         }
     }
     fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool) {
         let pos = self.mouse_transform.transform_point2(hit.uv);
-        app.input.mouse_move(pos);
+        app.hid_provider.mouse_move(pos);
 
         let btn = match hit.mode {
             PointerMode::Right => MOUSE_RIGHT,
@@ -94,14 +94,14 @@ impl InteractionHandler for ScreenInteractionHandler {
                 Instant::now() + Duration::from_millis(app.session.click_freeze_time_ms);
         }
 
-        app.input.send_button(btn, pressed);
+        app.hid_provider.send_button(btn, pressed);
     }
     fn on_scroll(&mut self, app: &mut AppState, _hit: &PointerHit, delta: f32) {
         let millis = (1. - delta.abs()) * delta;
         if let Some(next_scroll) = Instant::now().checked_add(Duration::from_millis(millis as _)) {
             self.next_scroll = next_scroll;
         }
-        app.input.wheel(if delta < 0. { -1 } else { 1 })
+        app.hid_provider.wheel(if delta < 0. { -1 } else { 1 })
     }
     fn on_left(&mut self, _app: &mut AppState, _hand: usize) {}
 }
