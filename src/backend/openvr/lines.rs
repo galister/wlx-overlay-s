@@ -8,7 +8,7 @@ use ovr_overlay::overlay::OverlayManager;
 use vulkano::command_buffer::CommandBufferUsage;
 use vulkano::format::Format;
 use vulkano::image::view::ImageView;
-use vulkano::image::{ImageAccess, ImageLayout, ImageViewAbstract, ImmutableImage};
+use vulkano::image::ImageLayout;
 
 use crate::backend::overlay::{OverlayData, OverlayRenderer, OverlayState, SplitOverlayBackend};
 use crate::graphics::WlxGraphics;
@@ -20,7 +20,7 @@ static AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(1);
 
 pub(super) struct LinePool {
     lines: IdMap<usize, OverlayData<OpenVrOverlayData>>,
-    view: Arc<ImageView<ImmutableImage>>,
+    view: Arc<ImageView>,
 }
 
 impl LinePool {
@@ -34,7 +34,7 @@ impl LinePool {
 
         graphics
             .transition_layout(
-                texture.inner().image.clone(),
+                texture.clone(),
                 ImageLayout::ShaderReadOnlyOptimal,
                 ImageLayout::TransferSrcOptimal,
             )
@@ -116,7 +116,7 @@ impl LinePool {
 }
 
 struct StaticRenderer {
-    view: Arc<ImageView<ImmutableImage>>,
+    view: Arc<ImageView>,
 }
 
 impl OverlayRenderer for StaticRenderer {
@@ -124,7 +124,7 @@ impl OverlayRenderer for StaticRenderer {
     fn pause(&mut self, _app: &mut AppState) {}
     fn resume(&mut self, _app: &mut AppState) {}
     fn render(&mut self, _app: &mut AppState) {}
-    fn view(&mut self) -> Option<Arc<dyn ImageViewAbstract>> {
+    fn view(&mut self) -> Option<Arc<ImageView>> {
         Some(self.view.clone())
     }
 }

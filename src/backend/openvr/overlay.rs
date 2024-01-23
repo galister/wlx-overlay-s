@@ -4,7 +4,7 @@ use ovr_overlay::{
     pose::Matrix3x4,
     sys::{ETrackingUniverseOrigin, VRVulkanTextureData_t},
 };
-use vulkano::{image::ImageAccess, Handle, VulkanObject};
+use vulkano::{Handle, VulkanObject};
 
 use crate::{
     backend::overlay::{OverlayData, RelativeTo},
@@ -195,7 +195,7 @@ impl OverlayData<OpenVrOverlayData> {
             return;
         };
 
-        let image = view.image().inner().image.clone();
+        let image = view.image().clone();
 
         let raw_image = image.handle().as_raw();
 
@@ -205,17 +205,14 @@ impl OverlayData<OpenVrOverlayData> {
             }
         }
 
-        let Some(format) = image.format() else {
-            panic!("{}: Image format is None", self.state.name);
-        };
-
-        let dimensions = image.dimensions();
+        let dimensions = image.extent();
+        let format = image.format();
 
         let mut texture = VRVulkanTextureData_t {
             m_nImage: raw_image,
             m_nFormat: format as _,
-            m_nWidth: dimensions.width(),
-            m_nHeight: dimensions.height(),
+            m_nWidth: dimensions[0],
+            m_nHeight: dimensions[1],
             m_nSampleCount: image.samples() as u32,
             m_pDevice: graphics.device.handle().as_raw() as *mut _,
             m_pPhysicalDevice: graphics.device.physical_device().handle().as_raw() as *mut _,
@@ -224,8 +221,9 @@ impl OverlayData<OpenVrOverlayData> {
             m_nQueueFamilyIndex: graphics.queue.queue_family_index(),
         };
 
-        log::debug!(
-            "UploadTex: {:?}, {}x{}, {:?}",
+        log::info!(
+            "{}: UploadTex {:?}, {}x{}, {:?}",
+            self.state.name,
             format,
             texture.m_nWidth,
             texture.m_nHeight,
@@ -234,5 +232,6 @@ impl OverlayData<OpenVrOverlayData> {
         if let Err(e) = overlay.set_image_vulkan(handle, &mut texture) {
             panic!("Failed to set overlay texture: {}", e);
         }
+        log::info!("{}: Uploaded texture", self.state.name);
     }
 }

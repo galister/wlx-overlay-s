@@ -39,11 +39,11 @@ where
             get_screens_x11()
         };
 
-        let watch = create_watch::<T>(&app, &screens);
-        overlays.insert(watch.state.id, watch);
+        //let watch = create_watch::<T>(&app, &screens);
+        //overlays.insert(watch.state.id, watch);
 
-        let keyboard = create_keyboard(&app);
-        overlays.insert(keyboard.state.id, keyboard);
+        //let keyboard = create_keyboard(&app);
+        //overlays.insert(keyboard.state.id, keyboard);
 
         let mut first = true;
         for mut screen in screens {

@@ -3,7 +3,7 @@ use std::{rc::Rc, str::FromStr, sync::Arc};
 use fontconfig::{FontConfig, OwnedPattern};
 use freetype::{bitmap::PixelMode, face::LoadFlag, Face, Library};
 use idmap::IdMap;
-use vulkano::{command_buffer::CommandBufferUsage, format::Format, image::ImmutableImage};
+use vulkano::{command_buffer::CommandBufferUsage, format::Format, image::Image};
 
 use crate::graphics::WlxGraphics;
 
@@ -26,7 +26,7 @@ struct Font {
 }
 
 pub struct Glyph {
-    pub tex: Option<Arc<ImmutableImage>>,
+    pub tex: Option<Arc<Image>>,
     pub top: f32,
     pub left: f32,
     pub width: f32,

@@ -35,10 +35,10 @@ serde_yaml = "0.9.25"
 smallvec = "1.11.0"
 strum = { version = "0.25.0", features = ["derive"] }
 tinyvec = "1.6.0"
-vulkano = { version = "0.33.0", features = ["serde"] }
-vulkano-shaders = "0.33.0"
-vulkano-util = "0.33.0"
-vulkano-win = "0.33.0"
+vulkano = { version = "0.34.1", features = ["serde"] }
+vulkano-shaders = "0.34.0"
+vulkano-util = "0.34.1"
+vulkano-win = "0.34.0"
 winit = "0.28.6"
 wlx-capture = { path = "../wlx-capture" }
 

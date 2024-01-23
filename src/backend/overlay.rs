@@ -7,7 +7,7 @@ use std::{
 };
 
 use glam::{Affine2, Affine3A, Mat3A, Quat, Vec3, Vec3A};
-use vulkano::image::ImageViewAbstract;
+use vulkano::image::view::ImageView;
 
 use crate::state::AppState;
 
@@ -134,7 +134,7 @@ where
     pub fn render(&mut self, app: &mut AppState) {
         self.backend.render(app);
     }
-    pub fn view(&mut self) -> Option<Arc<dyn ImageViewAbstract>> {
+    pub fn view(&mut self) -> Option<Arc<ImageView>> {
         self.backend.view()
     }
 }
@@ -144,7 +144,7 @@ pub trait OverlayRenderer {
     fn pause(&mut self, app: &mut AppState);
     fn resume(&mut self, app: &mut AppState);
     fn render(&mut self, app: &mut AppState);
-    fn view(&mut self) -> Option<Arc<dyn ImageViewAbstract>>;
+    fn view(&mut self) -> Option<Arc<ImageView>>;
 }
 
 pub struct FallbackRenderer;
@@ -154,7 +154,7 @@ impl OverlayRenderer for FallbackRenderer {
     fn pause(&mut self, _app: &mut AppState) {}
     fn resume(&mut self, _app: &mut AppState) {}
     fn render(&mut self, _app: &mut AppState) {}
-    fn view(&mut self) -> Option<Arc<dyn ImageViewAbstract>> {
+    fn view(&mut self) -> Option<Arc<ImageView>> {
         None
     }
 }
@@ -196,7 +196,7 @@ impl OverlayRenderer for SplitOverlayBackend {
     fn render(&mut self, app: &mut AppState) {
         self.renderer.render(app);
     }
-    fn view(&mut self) -> Option<Arc<dyn ImageViewAbstract>> {
+    fn view(&mut self) -> Option<Arc<ImageView>> {
         self.renderer.view()
     }
 }

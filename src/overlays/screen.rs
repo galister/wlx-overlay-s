@@ -8,10 +8,7 @@ use vulkano::{
     buffer::Subbuffer,
     command_buffer::CommandBufferUsage,
     format::Format,
-    image::{
-        view::ImageView, AttachmentImage, ImageAccess, ImageLayout, ImageViewAbstract, StorageImage,
-    },
-    sampler::Filter,
+    image::{sampler::Filter, view::ImageView, Image, ImageLayout},
     sync::GpuFuture,
     Handle, VulkanObject,
 };
@@ -32,7 +29,7 @@ use crate::{
     },
     graphics::{Vert2Uv, WlxGraphics, WlxPipeline},
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
-    shaders::{frag_sprite, vert_common},
+    shaders::{frag_screen, vert_common},
     state::{AppSession, AppState},
 };
 
@@ -110,19 +107,11 @@ struct ScreenPipeline {
     graphics: Arc<WlxGraphics>,
     pipeline: Arc<WlxPipeline>,
     vertex_buffer: Subbuffer<[Vert2Uv]>,
-    target_layout: ImageLayout,
-    pub view: Arc<ImageView<AttachmentImage>>,
 }
 
 impl ScreenPipeline {
-    fn new(graphics: Arc<WlxGraphics>, image: &StorageImage) -> Self {
-        let pipeline = graphics.create_pipeline(
-            vert_common::load(graphics.device.clone()).unwrap(),
-            frag_sprite::load(graphics.device.clone()).unwrap(),
-            Format::R8G8B8A8_UNORM,
-        );
-
-        let dim = image.dimensions().width_height();
+    fn new(graphics: Arc<WlxGraphics>, image: &Image) -> Self {
+        let dim = image.extent();
 
         let vertex_buffer =
             graphics.upload_verts(dim[0] as _, dim[1] as _, 0.0, 0.0, dim[0] as _, dim[1] as _);
@@ -131,26 +120,31 @@ impl ScreenPipeline {
 
         let view = ImageView::new_default(render_texture).unwrap();
 
+        let pipeline = graphics.create_pipeline_with_layouts(
+            view,
+            vert_common::load(graphics.device.clone()).unwrap(),
+            frag_screen::load(graphics.device.clone()).unwrap(),
+            Format::R8G8B8A8_UNORM,
+            ImageLayout::ColorAttachmentOptimal,
+            ImageLayout::ColorAttachmentOptimal,
+        );
+
         Self {
             graphics,
             pipeline,
             vertex_buffer,
-            view,
-            target_layout: ImageLayout::Undefined,
         }
     }
 
-    fn render(&mut self, image: Arc<StorageImage>) {
-        if image.inner().image.handle().as_raw()
-            == self.view.image().inner().image.handle().as_raw()
-        {
+    fn render(&mut self, image: Arc<Image>) {
+        if image.handle().as_raw() == self.pipeline.view.image().handle().as_raw() {
             return;
         }
 
         let mut command_buffer = self
             .graphics
             .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
-            .begin(self.view.clone());
+            .begin_render_pass(&self.pipeline);
 
         let set0 = self.pipeline.uniform_sampler(
             0,
@@ -158,7 +152,7 @@ impl ScreenPipeline {
             Filter::Linear,
         );
 
-        let dim = self.view.dimensions().width_height();
+        let dim = self.pipeline.view.image().extent();
         let dim = [dim[0] as f32, dim[1] as f32];
 
         let pass = self.pipeline.create_pass(
@@ -169,35 +163,15 @@ impl ScreenPipeline {
         );
         command_buffer.run_ref(&pass);
 
-        let image = self.view.image().inner().image.clone();
-
-        if self.target_layout == ImageLayout::TransferSrcOptimal {
-            self.graphics
-                .transition_layout(
-                    image.clone(),
-                    ImageLayout::TransferSrcOptimal,
-                    ImageLayout::ColorAttachmentOptimal,
-                )
-                .wait(None)
-                .unwrap();
-        }
-
         {
-            let mut exec = command_buffer.end_render().build_and_execute();
+            let mut exec = command_buffer.end_render_pass().build_and_execute();
             exec.flush().unwrap();
             exec.cleanup_finished();
         }
+    }
 
-        self.graphics
-            .transition_layout(
-                image,
-                ImageLayout::ColorAttachmentOptimal,
-                ImageLayout::TransferSrcOptimal,
-            )
-            .wait(None)
-            .unwrap();
-
-        self.target_layout = ImageLayout::TransferSrcOptimal;
+    pub(super) fn view(&self) -> Arc<ImageView> {
+        self.pipeline.view.clone()
     }
 }
 
@@ -205,7 +179,7 @@ pub struct ScreenRenderer {
     capture: Box<dyn WlxCapture>,
     receiver: Option<Receiver<WlxFrame>>,
     pipeline: Option<ScreenPipeline>,
-    last_frame: Option<Arc<dyn ImageViewAbstract>>,
+    last_image: Option<Arc<ImageView>>,
 }
 
 impl ScreenRenderer {
@@ -218,7 +192,7 @@ impl ScreenRenderer {
             capture: Box::new(capture),
             receiver: None,
             pipeline: None,
-            last_frame: None,
+            last_image: None,
         })
     }
 
@@ -236,7 +210,7 @@ impl ScreenRenderer {
             capture: Box::new(capture),
             receiver: None,
             pipeline: None,
-            last_frame: None,
+            last_image: None,
         })
     }
 }
@@ -254,13 +228,13 @@ impl OverlayRenderer for ScreenRenderer {
         for frame in receiver.try_iter() {
             match frame {
                 WlxFrame::Dmabuf(frame) => {
-                    if let Ok(new) = app.graphics.dmabuf_texture(frame) {
+                    if let Some(new) = app.graphics.dmabuf_texture(frame) {
                         let pipeline = self
                             .pipeline
                             .get_or_insert_with(|| ScreenPipeline::new(app.graphics.clone(), &new));
-
+                        log::info!("New frame");
                         pipeline.render(new);
-                        self.last_frame = Some(pipeline.view.clone());
+                        self.last_image = Some(pipeline.view());
                     }
                 }
                 WlxFrame::MemFd(_frame) => {
@@ -280,8 +254,8 @@ impl OverlayRenderer for ScreenRenderer {
     fn resume(&mut self, _app: &mut AppState) {
         self.capture.resume();
     }
-    fn view(&mut self) -> Option<Arc<dyn ImageViewAbstract>> {
-        self.last_frame.take()
+    fn view(&mut self) -> Option<Arc<ImageView>> {
+        self.last_image.take()
     }
 }
 
