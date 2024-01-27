@@ -1,8 +1,11 @@
+use core::slice;
 use std::{
     f32::consts::PI,
     path::Path,
+    ptr,
     sync::{mpsc::Receiver, Arc},
     time::{Duration, Instant},
+    usize,
 };
 use vulkano::{
     buffer::Subbuffer,
@@ -27,7 +30,7 @@ use crate::{
         input::{InteractionHandler, PointerHit, PointerMode},
         overlay::{OverlayData, OverlayRenderer, OverlayState, SplitOverlayBackend},
     },
-    graphics::{Vert2Uv, WlxGraphics, WlxPipeline},
+    graphics::{fourcc_to_vk, Vert2Uv, WlxGraphics, WlxPipeline},
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     shaders::{frag_screen, vert_common},
     state::{AppSession, AppState},
@@ -116,17 +119,21 @@ impl ScreenPipeline {
         let vertex_buffer =
             graphics.upload_verts(dim[0] as _, dim[1] as _, 0.0, 0.0, dim[0] as _, dim[1] as _);
 
-        let render_texture = graphics.render_texture(dim[0], dim[1], Format::R8G8B8A8_UNORM);
+        // TODO make this a setting
+        let render_w = dim[0].min(1920);
+        let render_h = (dim[1] as f32 / dim[0] as f32 * render_w as f32) as u32;
+
+        let render_texture = graphics.render_texture(render_w, render_h, Format::R8G8B8A8_UNORM);
 
         let view = ImageView::new_default(render_texture).unwrap();
 
-        let pipeline = graphics.create_pipeline_with_layouts(
+        let pipeline = graphics.create_pipeline(
             view,
             vert_common::load(graphics.device.clone()).unwrap(),
             frag_screen::load(graphics.device.clone()).unwrap(),
             Format::R8G8B8A8_UNORM,
-            ImageLayout::ColorAttachmentOptimal,
-            ImageLayout::ColorAttachmentOptimal,
+            //            ImageLayout::TransferSrcOptimal,
+            //            ImageLayout::TransferSrcOptimal,
         );
 
         Self {
@@ -140,6 +147,15 @@ impl ScreenPipeline {
         if image.handle().as_raw() == self.pipeline.view.image().handle().as_raw() {
             return;
         }
+
+        self.graphics
+            .transition_layout(
+                self.pipeline.view.image().clone(),
+                ImageLayout::TransferSrcOptimal,
+                ImageLayout::General,
+            )
+            .wait(None)
+            .unwrap();
 
         let mut command_buffer = self
             .graphics
@@ -168,6 +184,15 @@ impl ScreenPipeline {
             exec.flush().unwrap();
             exec.cleanup_finished();
         }
+
+        self.graphics
+            .transition_layout(
+                self.pipeline.view.image().clone(),
+                ImageLayout::General,
+                ImageLayout::TransferSrcOptimal,
+            )
+            .wait(None)
+            .unwrap();
     }
 
     pub(super) fn view(&self) -> Arc<ImageView> {
@@ -228,6 +253,10 @@ impl OverlayRenderer for ScreenRenderer {
         for frame in receiver.try_iter() {
             match frame {
                 WlxFrame::Dmabuf(frame) => {
+                    if !frame.is_valid() {
+                        log::error!("Invalid frame");
+                        continue;
+                    }
                     if let Some(new) = app.graphics.dmabuf_texture(frame) {
                         let pipeline = self
                             .pipeline
@@ -237,11 +266,55 @@ impl OverlayRenderer for ScreenRenderer {
                         self.last_image = Some(pipeline.view());
                     }
                 }
-                WlxFrame::MemFd(_frame) => {
-                    todo!()
+                WlxFrame::MemFd(frame) => {
+                    let mut upload = app
+                        .graphics
+                        .create_command_buffer(CommandBufferUsage::OneTimeSubmit);
+
+                    let Some(fd) = frame.plane.fd else {
+                        log::error!("No fd");
+                        continue;
+                    };
+                    let format = fourcc_to_vk(frame.format.fourcc);
+
+                    let len = frame.plane.stride as usize * frame.format.height as usize;
+                    let offset = frame.plane.offset as i64;
+
+                    let map = unsafe {
+                        libc::mmap(
+                            ptr::null_mut(),
+                            len,
+                            libc::PROT_READ,
+                            libc::MAP_SHARED,
+                            fd,
+                            offset,
+                        )
+                    } as *const u8;
+
+                    let data = unsafe { slice::from_raw_parts(map, len) };
+
+                    let image =
+                        upload.texture2d(frame.format.width, frame.format.height, format, &data);
+                    upload.build_and_execute_now();
+
+                    unsafe { libc::munmap(map as *mut _, len) };
+
+                    self.last_image = Some(ImageView::new_default(image).unwrap());
                 }
-                WlxFrame::MemPtr(_frame) => {
-                    todo!()
+                WlxFrame::MemPtr(frame) => {
+                    let mut upload = app
+                        .graphics
+                        .create_command_buffer(CommandBufferUsage::OneTimeSubmit);
+                    let format = fourcc_to_vk(frame.format.fourcc);
+
+                    let len = frame.format.width as usize * frame.format.height as usize;
+                    let data = unsafe { slice::from_raw_parts(frame.ptr as *const u8, len) };
+
+                    let image =
+                        upload.texture2d(frame.format.width, frame.format.height, format, &data);
+                    upload.build_and_execute_now();
+
+                    self.last_image = Some(ImageView::new_default(image).unwrap());
                 }
                 _ => {}
             };
@@ -278,7 +351,7 @@ where
 
     if session.capture_method == "auto" && wl.maybe_wlr_dmabuf_mgr.is_some() {
         log::info!("{}: Using Wlr DMA-Buf", &output.name);
-        capture = ScreenRenderer::new_wlr(output);
+        //capture = ScreenRenderer::new_wlr(output);
     }
 
     if capture.is_none() {

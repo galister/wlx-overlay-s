@@ -1,6 +1,10 @@
 use glam::Vec4;
 use std::{
     collections::VecDeque,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
     time::{Duration, Instant},
 };
 
@@ -19,23 +23,26 @@ use crate::{
         input::interact,
         openvr::{input::OpenVrInputSource, lines::LinePool},
     },
+    graphics::WlxGraphics,
     state::AppState,
 };
 
 use self::{input::action_manifest_path, overlay::OpenVrOverlayData};
 
-use super::common::{OverlayContainer, TaskType};
+use super::common::{BackendError, OverlayContainer, TaskType};
 
 pub mod input;
 pub mod lines;
 pub mod overlay;
 
-pub fn openvr_run() {
+pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     let app_type = EVRApplicationType::VRApplication_Overlay;
     let Ok(context) = ovr_overlay::Context::init(app_type) else {
-        log::error!("Failed to initialize OpenVR");
-        return;
+        log::warn!("Will not use OpenVR: Context init failed");
+        return Err(BackendError::NotSupported);
     };
+
+    log::info!("Using OpenVR runtime");
 
     let mut overlay_mngr = context.overlay_mngr();
     //let mut settings_mngr = context.settings_mngr();
@@ -55,19 +62,23 @@ pub fn openvr_run() {
         InstanceExtensions::from_iter(names.iter().map(|s| s.as_str()))
     };
 
-    let mut state = AppState::new(instance_extensions, device_extensions_fn);
+    let mut state = {
+        let graphics = WlxGraphics::new(instance_extensions, device_extensions_fn);
+        AppState::from_graphics(graphics)
+    };
+
     let mut overlays = OverlayContainer::<OpenVrOverlayData>::new(&mut state);
 
     state.hid_provider.set_desktop_extent(overlays.extent);
 
     if let Err(e) = input_mngr.set_action_manifest(action_manifest_path()) {
         log::error!("Failed to set action manifest: {}", e.description());
-        return;
+        return Err(BackendError::Fatal);
     };
 
     let Ok(mut input_source) = OpenVrInputSource::new(&mut input_mngr) else {
         log::error!("Failed to initialize input");
-        return;
+        return Err(BackendError::Fatal);
     };
 
     let Ok(refresh_rate) = system_mngr.get_tracked_device_property::<f32>(
@@ -75,7 +86,7 @@ pub fn openvr_run() {
         ETrackedDeviceProperty::Prop_DisplayFrequency_Float,
     ) else {
         log::error!("Failed to get display refresh rate");
-        return;
+        return Err(BackendError::Fatal);
     };
 
     log::info!("HMD running @ {} Hz", refresh_rate);
@@ -90,12 +101,17 @@ pub fn openvr_run() {
         lines.allocate(&mut overlay_mngr, &mut state),
     ];
 
-    loop {
+    'main_loop: loop {
+        if !running.load(Ordering::Relaxed) {
+            log::warn!("Received shutdown signal.");
+            break 'main_loop;
+        }
+
         while let Some(event) = system_mngr.poll_next_event() {
             match event.event_type {
                 EVREventType::VREvent_Quit => {
-                    log::info!("Received quit event, shutting down.");
-                    return;
+                    log::warn!("Received quit event, shutting down.");
+                    break 'main_loop;
                 }
                 EVREventType::VREvent_TrackedDeviceActivated
                 | EVREventType::VREvent_TrackedDeviceDeactivated
@@ -173,4 +189,9 @@ pub fn openvr_run() {
             },
         ));
     }
+
+    log::warn!("OpenVR shutdown");
+    // context.shutdown() called by Drop
+
+    Ok(())
 }

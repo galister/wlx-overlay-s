@@ -29,7 +29,7 @@ impl LinePool {
 
         let buf = vec![255; 16];
 
-        let texture = command_buffer.texture2d(2, 2, Format::R8G8B8A8_UNORM, buf);
+        let texture = command_buffer.texture2d(2, 2, Format::R8G8B8A8_UNORM, &buf);
         command_buffer.build_and_execute_now();
 
         graphics

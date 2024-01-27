@@ -1,11 +1,7 @@
 use std::{env::VarError, path::Path, sync::Arc};
 
 use glam::{Quat, Vec3};
-use vulkano::{
-    device::{physical::PhysicalDevice, DeviceExtensions},
-    format::Format,
-    instance::InstanceExtensions,
-};
+use vulkano::format::Format;
 
 use crate::{
     backend::{common::TaskContainer, input::InputState},
@@ -28,18 +24,12 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(
-        vk_instance_extensions: InstanceExtensions,
-        vk_device_extensions_fn: impl FnMut(&PhysicalDevice) -> DeviceExtensions,
-    ) -> Self {
-        let (graphics, _event_loop) =
-            WlxGraphics::new(vk_instance_extensions, vk_device_extensions_fn);
-
+    pub fn from_graphics(graphics: Arc<WlxGraphics>) -> Self {
         AppState {
             fc: FontCache::new(),
             session: AppSession::load(),
             tasks: TaskContainer::new(),
-            graphics: graphics.clone(),
+            graphics,
             format: Format::R8G8B8A8_UNORM,
             input_state: InputState::new(),
             hid_provider: crate::hid::initialize(),

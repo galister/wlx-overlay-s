@@ -18,6 +18,13 @@ use crate::{
 
 use super::overlay::{OverlayData, OverlayState};
 
+pub enum BackendError {
+    NotSupported,
+    Shutdown,
+    Restart,
+    Fatal,
+}
+
 pub struct OverlayContainer<T>
 where
     T: Default,
@@ -39,11 +46,13 @@ where
             get_screens_x11()
         };
 
-        //let watch = create_watch::<T>(&app, &screens);
-        //overlays.insert(watch.state.id, watch);
+        let mut watch = create_watch::<T>(&app, &screens);
+        watch.state.want_visible = false;
+        overlays.insert(watch.state.id, watch);
 
-        //let keyboard = create_keyboard(&app);
-        //overlays.insert(keyboard.state.id, keyboard);
+        let mut keyboard = create_keyboard(&app);
+        keyboard.state.want_visible = false;
+        overlays.insert(keyboard.state.id, keyboard);
 
         let mut first = true;
         for mut screen in screens {

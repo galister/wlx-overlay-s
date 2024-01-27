@@ -6,7 +6,7 @@ use std::{
     sync::Arc,
 };
 
-use ash::vk::SubmitInfo;
+use ash::vk::{self, SubmitInfo};
 use smallvec::{smallvec, SmallVec};
 use vulkano::{
     buffer::{
@@ -15,15 +15,14 @@ use vulkano::{
     },
     command_buffer::{
         allocator::{StandardCommandBufferAllocator, StandardCommandBufferAllocatorCreateInfo},
-        sys::{CommandBufferBeginInfo, UnsafeCommandBufferBuilder},
-        AutoCommandBufferBuilder, CommandBufferExecFuture, CommandBufferInheritanceInfo,
+        sys::{CommandBufferBeginInfo, RawRecordingCommandBuffer},
+        CommandBuffer, CommandBufferExecFuture, CommandBufferInheritanceInfo,
         CommandBufferInheritanceRenderPassInfo, CommandBufferInheritanceRenderPassType,
-        CommandBufferLevel, CommandBufferUsage, CopyBufferToImageInfo, PrimaryAutoCommandBuffer,
-        PrimaryCommandBufferAbstract, RenderPassBeginInfo, SecondaryAutoCommandBuffer,
-        SubpassBeginInfo, SubpassContents, SubpassEndInfo,
+        CommandBufferLevel, CommandBufferUsage, CopyBufferToImageInfo, RecordingCommandBuffer,
+        RenderPassBeginInfo, SubpassBeginInfo, SubpassContents, SubpassEndInfo,
     },
     descriptor_set::{
-        allocator::StandardDescriptorSetAllocator, PersistentDescriptorSet, WriteDescriptorSet,
+        allocator::StandardDescriptorSetAllocator, DescriptorSet, WriteDescriptorSet,
     },
     device::{
         physical::{PhysicalDevice, PhysicalDeviceType},
@@ -34,8 +33,8 @@ use vulkano::{
         sampler::{Filter, Sampler, SamplerAddressMode, SamplerCreateInfo},
         sys::RawImage,
         view::ImageView,
-        Image, ImageCreateInfo, ImageLayout, ImageTiling, ImageType, ImageUsage, SampleCount,
-        SubresourceLayout,
+        Image, ImageCreateFlags, ImageCreateInfo, ImageLayout, ImageTiling, ImageType, ImageUsage,
+        SampleCount, SubresourceLayout,
     },
     instance::{Instance, InstanceCreateFlags, InstanceCreateInfo, InstanceExtensions},
     memory::{
@@ -65,19 +64,15 @@ use vulkano::{
         SubpassDescription,
     },
     shader::ShaderModule,
-    swapchain::{CompositeAlpha, Surface, Swapchain, SwapchainCreateInfo},
     sync::{
         fence::Fence, future::NowFuture, AccessFlags, DependencyInfo, GpuFuture,
         ImageMemoryBarrier, PipelineStages,
     },
     DeviceSize, VulkanLibrary, VulkanObject,
 };
-use winit::{
-    event_loop::EventLoop,
-    window::{Window, WindowBuilder},
-};
 use wlx_capture::frame::{
-    DmabufFrame, DRM_FORMAT_ABGR8888, DRM_FORMAT_ARGB8888, DRM_FORMAT_XBGR8888, DRM_FORMAT_XRGB8888,
+    DmabufFrame, FourCC, DRM_FORMAT_ABGR8888, DRM_FORMAT_ARGB8888, DRM_FORMAT_XBGR8888,
+    DRM_FORMAT_XRGB8888,
 };
 
 #[repr(C)]
@@ -96,7 +91,7 @@ pub struct WlxGraphics {
     pub device: Arc<Device>,
     pub queue: Arc<Queue>,
 
-    pub surface: Arc<Surface>,
+    pub native_format: Format,
 
     pub memory_allocator: Arc<StandardMemoryAllocator>,
     pub command_buffer_allocator: Arc<StandardCommandBufferAllocator>,
@@ -107,38 +102,155 @@ pub struct WlxGraphics {
 }
 
 impl WlxGraphics {
+    #[cfg(feature = "openxr")]
+    pub fn new_xr(xr_instance: openxr::Instance, system: openxr::SystemId) -> Arc<Self> {
+        use vulkano::Handle;
+
+        let vk_target_version = vk::make_api_version(0, 1, 1, 0); // Vulkan 1.1 guarantees multiview support
+        let target_version = vulkano::Version::V1_1;
+        let library = VulkanLibrary::new().unwrap();
+        let vk_entry = unsafe { ash::Entry::load().unwrap() };
+
+        let vk_app_info = vk::ApplicationInfo::builder()
+            .application_version(0)
+            .engine_version(0)
+            .api_version(vk_target_version);
+
+        let instance = unsafe {
+            let vk_instance = xr_instance
+                .create_vulkan_instance(
+                    system,
+                    std::mem::transmute(vk_entry.static_fn().get_instance_proc_addr),
+                    &vk::InstanceCreateInfo::builder().application_info(&vk_app_info) as *const _
+                        as *const _,
+                )
+                .expect("XR error creating Vulkan instance")
+                .map_err(vk::Result::from_raw)
+                .expect("Vulkan error creating Vulkan instance");
+
+            Instance::from_handle(
+                library,
+                ash::vk::Instance::from_raw(vk_instance as _),
+                InstanceCreateInfo::default(), // FIXME
+            )
+        };
+
+        let physical_device = unsafe {
+            PhysicalDevice::from_handle(
+                instance.clone(),
+                vk::PhysicalDevice::from_raw(
+                    xr_instance
+                        .vulkan_graphics_device(system, instance.handle().as_raw() as _)
+                        .unwrap() as _,
+                ),
+            )
+        }
+        .unwrap();
+
+        let vk_device_properties = physical_device.properties();
+        if vk_device_properties.api_version < target_version {
+            panic!(
+                "Vulkan physical device doesn't support Vulkan {}",
+                target_version
+            );
+        }
+
+        log::info!(
+            "Using vkPhysicalDevice: {}",
+            physical_device.properties().device_name,
+        );
+
+        let queue_family_index = physical_device
+            .queue_family_properties()
+            .iter()
+            .enumerate()
+            .position(|(_, q)| q.queue_flags.intersects(QueueFlags::GRAPHICS))
+            .expect("Vulkan device has no graphics queue") as u32;
+
+        let (device, mut queues) = unsafe {
+            let vk_device = xr_instance
+                .create_vulkan_device(
+                    system,
+                    std::mem::transmute(vk_entry.static_fn().get_instance_proc_addr),
+                    physical_device.handle().as_raw() as _,
+                    &vk::DeviceCreateInfo::builder()
+                        .queue_create_infos(&[vk::DeviceQueueCreateInfo::builder()
+                            .queue_family_index(queue_family_index)
+                            .queue_priorities(&[1.0])
+                            .build()])
+                        .push_next(&mut vk::PhysicalDeviceMultiviewFeatures {
+                            multiview: vk::TRUE,
+                            ..Default::default()
+                        }) as *const _ as *const _,
+                )
+                .expect("XR error creating Vulkan device")
+                .map_err(vk::Result::from_raw)
+                .expect("Vulkan error creating Vulkan device");
+
+            vulkano::device::Device::from_handle(
+                physical_device,
+                vk::Device::from_raw(vk_device as _),
+                DeviceCreateInfo::default(), // FIXME
+            )
+        };
+
+        let queue = queues.next().unwrap();
+
+        let memory_allocator = Arc::new(StandardMemoryAllocator::new_default(device.clone()));
+        let command_buffer_allocator = Arc::new(StandardCommandBufferAllocator::new(
+            device.clone(),
+            StandardCommandBufferAllocatorCreateInfo {
+                secondary_buffer_count: 32,
+                ..Default::default()
+            },
+        ));
+        let descriptor_set_allocator = Arc::new(StandardDescriptorSetAllocator::new(
+            device.clone(),
+            Default::default(),
+        ));
+
+        let (quad_verts, quad_indices) = Self::default_quad(memory_allocator.clone());
+
+        let me = Self {
+            instance,
+            device,
+            queue,
+            native_format: Format::R8G8B8A8_UNORM,
+            memory_allocator,
+            command_buffer_allocator,
+            descriptor_set_allocator,
+            quad_indices,
+            quad_verts,
+        };
+
+        Arc::new(me)
+    }
+
     pub fn new(
         vk_instance_extensions: InstanceExtensions,
         mut vk_device_extensions_fn: impl FnMut(&PhysicalDevice) -> DeviceExtensions,
-    ) -> (Arc<Self>, EventLoop<()>) {
+    ) -> Arc<Self> {
         #[cfg(debug_assertions)]
         let layers = vec!["VK_LAYER_KHRONOS_validation".to_owned()];
         #[cfg(not(debug_assertions))]
         let layers = vec![];
 
-        // TODO headless
-        let event_loop = EventLoop::new();
-        let library_extensions = Surface::required_extensions(&event_loop);
-
         let library = VulkanLibrary::new().unwrap();
-        let required_extensions = library_extensions.union(&vk_instance_extensions);
 
-        log::debug!("Instance exts for app: {:?}", &required_extensions);
         log::debug!("Instance exts for runtime: {:?}", &vk_instance_extensions);
 
         let instance = Instance::new(
             library,
             InstanceCreateInfo {
                 flags: InstanceCreateFlags::ENUMERATE_PORTABILITY,
-                enabled_extensions: required_extensions,
+                enabled_extensions: vk_instance_extensions,
                 enabled_layers: layers,
                 ..Default::default()
             },
         )
         .unwrap();
 
-        let mut device_extensions = DeviceExtensions {
-            khr_swapchain: true,
+        let device_extensions = DeviceExtensions {
             khr_external_memory: true,
             khr_external_memory_fd: true,
             ext_external_memory_dma_buf: true,
@@ -147,10 +259,6 @@ impl WlxGraphics {
         };
 
         log::debug!("Device exts for app: {:?}", &device_extensions);
-
-        // TODO headless
-        let window = Arc::new(WindowBuilder::new().build(&event_loop).unwrap());
-        let surface = Surface::from_window(instance.clone(), window.clone()).unwrap();
 
         let (physical_device, my_extensions, queue_family_index) = instance
             .enumerate_physical_devices()
@@ -176,10 +284,7 @@ impl WlxGraphics {
                 p.queue_family_properties()
                     .iter()
                     .enumerate()
-                    .position(|(i, q)| {
-                        q.queue_flags.intersects(QueueFlags::GRAPHICS)
-                            && p.surface_support(i as u32, &surface).unwrap_or(false)
-                    })
+                    .position(|(_, q)| q.queue_flags.intersects(QueueFlags::GRAPHICS))
                     .map(|i| (p, my_extensions, i as u32))
             })
             .min_by_key(|(p, _, _)| match p.properties().device_type {
@@ -233,6 +338,26 @@ impl WlxGraphics {
             Default::default(),
         ));
 
+        let (quad_verts, quad_indices) = Self::default_quad(memory_allocator.clone());
+
+        let me = Self {
+            instance,
+            device,
+            queue,
+            memory_allocator,
+            native_format: Format::R8G8B8A8_UNORM,
+            command_buffer_allocator,
+            descriptor_set_allocator,
+            quad_indices,
+            quad_verts,
+        };
+
+        Arc::new(me)
+    }
+
+    fn default_quad(
+        memory_allocator: Arc<StandardMemoryAllocator>,
+    ) -> (Subbuffer<[Vert2Uv]>, Subbuffer<[u16]>) {
         let vertices = [
             Vert2Uv {
                 in_pos: [0., 0.],
@@ -267,7 +392,7 @@ impl WlxGraphics {
         .unwrap();
 
         let quad_indices = Buffer::from_iter(
-            memory_allocator.clone(),
+            memory_allocator,
             BufferCreateInfo {
                 usage: BufferUsage::INDEX_BUFFER,
                 ..Default::default()
@@ -281,72 +406,7 @@ impl WlxGraphics {
         )
         .unwrap();
 
-        let me = Self {
-            instance,
-            device,
-            queue,
-            surface,
-            memory_allocator,
-            command_buffer_allocator,
-            descriptor_set_allocator,
-            quad_indices,
-            quad_verts,
-        };
-
-        (Arc::new(me), event_loop)
-    }
-
-    #[allow(dead_code)]
-    pub fn create_swapchain(&self, format: Option<Format>) -> (Arc<Swapchain>, Vec<Arc<Image>>) {
-        let (min_image_count, composite_alpha, image_format) = if let Some(format) = format {
-            (1, CompositeAlpha::Opaque, format)
-        } else {
-            let surface_capabilities = self
-                .device
-                .physical_device()
-                .surface_capabilities(&self.surface, Default::default())
-                .unwrap();
-
-            let composite_alpha = surface_capabilities
-                .supported_composite_alpha
-                .into_iter()
-                .next()
-                .unwrap();
-
-            let image_format = Some(
-                self.device
-                    .physical_device()
-                    .surface_formats(&self.surface, Default::default())
-                    .unwrap()[0]
-                    .0,
-            );
-            (
-                surface_capabilities.min_image_count,
-                composite_alpha,
-                image_format.unwrap(),
-            )
-        };
-        let window = self
-            .surface
-            .object()
-            .unwrap()
-            .downcast_ref::<Window>()
-            .unwrap();
-        let swapchain = Swapchain::new(
-            self.device.clone(),
-            self.surface.clone(),
-            SwapchainCreateInfo {
-                min_image_count,
-                image_format,
-                image_extent: window.inner_size().into(),
-                image_usage: ImageUsage::COLOR_ATTACHMENT,
-                composite_alpha,
-                ..Default::default()
-            },
-        )
-        .unwrap();
-
-        swapchain
+        (quad_verts, quad_indices)
     }
 
     pub fn upload_verts(
@@ -411,13 +471,7 @@ impl WlxGraphics {
     pub fn dmabuf_texture(&self, frame: DmabufFrame) -> Option<Arc<Image>> {
         let extent = [frame.format.width, frame.format.height, 1];
 
-        let format = match frame.format.fourcc {
-            DRM_FORMAT_ABGR8888 => Format::R8G8B8A8_UNORM,
-            DRM_FORMAT_XBGR8888 => Format::R8G8B8A8_UNORM,
-            DRM_FORMAT_ARGB8888 => Format::B8G8R8A8_UNORM,
-            DRM_FORMAT_XRGB8888 => Format::B8G8R8A8_UNORM,
-            _ => panic!("Unsupported dmabuf format {:x}", frame.format.fourcc),
-        };
+        let format = fourcc_to_vk(frame.format.fourcc);
 
         let layouts: Vec<SubresourceLayout> = (0..frame.num_planes)
             .into_iter()
@@ -435,6 +489,12 @@ impl WlxGraphics {
 
         let external_memory_handle_types = ExternalMemoryHandleTypes::DMA_BUF;
 
+        let flags = if frame.num_planes > 9 {
+            ImageCreateFlags::DISJOINT
+        } else {
+            ImageCreateFlags::empty()
+        };
+
         let image = RawImage::new(
             self.device.clone(),
             ImageCreateInfo {
@@ -444,6 +504,7 @@ impl WlxGraphics {
                 usage: ImageUsage::SAMPLED | ImageUsage::TRANSFER_SRC,
                 external_memory_handle_types,
                 tiling: ImageTiling::DrmFormatModifier,
+                flags,
                 drm_format_modifiers: vec![frame.format.modifier],
                 drm_format_modifier_plane_layouts: layouts,
                 ..Default::default()
@@ -464,11 +525,9 @@ impl WlxGraphics {
         debug_assert!(self.device.enabled_extensions().khr_external_memory);
         debug_assert!(self.device.enabled_extensions().ext_external_memory_dma_buf);
 
-        let memory = unsafe {
-            if frame.num_planes != 1 {
-                log::error!("Unsupported number of DMA-buf planes: {}", frame.num_planes);
-                return None;
-            }
+        let mut allocations: SmallVec<[ResourceMemory; 4]> = smallvec![];
+
+        unsafe {
             let Some(fd) = frame.planes[0].fd else {
                 log::error!("DMA-buf plane has no FD");
                 return None;
@@ -478,7 +537,7 @@ impl WlxGraphics {
             let new_file = file.try_clone().unwrap();
             file.into_raw_fd();
 
-            DeviceMemory::import(
+            let memory = DeviceMemory::import(
                 self.device.clone(),
                 MemoryAllocateInfo {
                     allocation_size: requirements.layout.size(),
@@ -491,16 +550,17 @@ impl WlxGraphics {
                     handle_type: ExternalMemoryHandleType::DmaBuf,
                 },
             )
-            .unwrap()
-        };
+            .unwrap();
 
-        let allocations: SmallVec<[ResourceMemory; 1]> =
-            smallvec![ResourceMemory::new_dedicated(memory)];
+            allocations.push(ResourceMemory::new_dedicated(memory));
+        }
 
-        if let Some(image) = image.bind_memory(allocations).ok() {
-            Some(Arc::new(image))
-        } else {
-            None
+        match unsafe { image.bind_memory(allocations) } {
+            Ok(image) => Some(Arc::new(image)),
+            Err(e) => {
+                log::warn!("Failed to bind memory to image: {}", e.0.to_string());
+                return None;
+            }
         }
     }
 
@@ -558,10 +618,15 @@ impl WlxGraphics {
     }
 
     pub fn create_command_buffer(self: &Arc<Self>, usage: CommandBufferUsage) -> WlxCommandBuffer {
-        let command_buffer = AutoCommandBufferBuilder::primary(
-            &self.command_buffer_allocator,
+        let command_buffer = RecordingCommandBuffer::new(
+            self.command_buffer_allocator.clone(),
             self.queue.queue_family_index(),
-            usage,
+            CommandBufferLevel::Primary,
+            CommandBufferBeginInfo {
+                usage,
+                inheritance_info: None,
+                ..Default::default()
+            },
         )
         .unwrap();
         WlxCommandBuffer {
@@ -588,8 +653,8 @@ impl WlxGraphics {
         };
 
         let command_buffer = unsafe {
-            let mut builder = UnsafeCommandBufferBuilder::new(
-                &self.command_buffer_allocator,
+            let mut builder = RawRecordingCommandBuffer::new(
+                self.command_buffer_allocator.clone(),
                 self.queue.queue_family_index(),
                 CommandBufferLevel::Primary,
                 CommandBufferBeginInfo {
@@ -606,7 +671,7 @@ impl WlxGraphics {
                     ..Default::default()
                 })
                 .unwrap();
-            builder.build().unwrap()
+            builder.end().unwrap()
         };
 
         let fence = vulkano::sync::fence::Fence::new(
@@ -636,10 +701,7 @@ impl WlxGraphics {
 
 pub struct WlxCommandBuffer {
     graphics: Arc<WlxGraphics>,
-    command_buffer: AutoCommandBufferBuilder<
-        PrimaryAutoCommandBuffer<Arc<StandardCommandBufferAllocator>>,
-        Arc<StandardCommandBufferAllocator>,
-    >,
+    command_buffer: RecordingCommandBuffer,
 }
 
 impl WlxCommandBuffer {
@@ -672,7 +734,7 @@ impl WlxCommandBuffer {
         width: u32,
         height: u32,
         format: Format,
-        data: Vec<u8>,
+        data: &[u8],
     ) -> Arc<Image> {
         let image = Image::new(
             self.graphics.memory_allocator.clone(),
@@ -702,7 +764,7 @@ impl WlxCommandBuffer {
         )
         .unwrap();
 
-        buffer.write().unwrap().copy_from_slice(data.as_slice());
+        buffer.write().unwrap().copy_from_slice(data);
 
         self.command_buffer
             .copy_buffer_to_image(CopyBufferToImageInfo::buffer_image(buffer, image.clone()))
@@ -722,7 +784,7 @@ impl WlxCommandBuffer {
         let mut image_data = Vec::new();
         image_data.resize((info.width * info.height * 4) as usize, 0);
         reader.next_frame(&mut image_data).unwrap();
-        self.texture2d(width, height, Format::R8G8B8A8_UNORM, image_data)
+        self.texture2d(width, height, Format::R8G8B8A8_UNORM, &image_data)
     }
 }
 
@@ -734,8 +796,8 @@ impl WlxCommandBuffer {
         self
     }
 
-    pub fn build(self) -> Arc<PrimaryAutoCommandBuffer<Arc<StandardCommandBufferAllocator>>> {
-        self.command_buffer.build().unwrap()
+    pub fn build(self) -> Arc<CommandBuffer> {
+        self.command_buffer.end().unwrap()
     }
 
     pub fn build_and_execute(self) -> CommandBufferExecFuture<NowFuture> {
@@ -894,6 +956,12 @@ impl WlxPipeline {
         }
     }
 
+    pub fn swap_framebuffer(&mut self, new_framebuffer: Arc<Framebuffer>) -> Arc<Framebuffer> {
+        let old = self.framebuffer.clone();
+        self.framebuffer = new_framebuffer;
+        old
+    }
+
     pub fn inner(&self) -> Arc<GraphicsPipeline> {
         self.pipeline.clone()
     }
@@ -903,7 +971,7 @@ impl WlxPipeline {
         set: usize,
         texture: Arc<ImageView>,
         filter: Filter,
-    ) -> Arc<PersistentDescriptorSet> {
+    ) -> Arc<DescriptorSet> {
         let sampler = Sampler::new(
             self.graphics.device.clone(),
             SamplerCreateInfo {
@@ -917,8 +985,8 @@ impl WlxPipeline {
 
         let layout = self.pipeline.layout().set_layouts().get(set).unwrap();
 
-        PersistentDescriptorSet::new(
-            &self.graphics.descriptor_set_allocator,
+        DescriptorSet::new(
+            self.graphics.descriptor_set_allocator.clone(),
             layout.clone(),
             [WriteDescriptorSet::image_view_sampler(0, texture, sampler)],
             [],
@@ -926,7 +994,7 @@ impl WlxPipeline {
         .unwrap()
     }
 
-    pub fn uniform_buffer<T>(&self, set: usize, data: Vec<T>) -> Arc<PersistentDescriptorSet>
+    pub fn uniform_buffer<T>(&self, set: usize, data: Vec<T>) -> Arc<DescriptorSet>
     where
         T: BufferContents + Copy,
     {
@@ -947,8 +1015,8 @@ impl WlxPipeline {
         };
 
         let layout = self.pipeline.layout().set_layouts().get(set).unwrap();
-        PersistentDescriptorSet::new(
-            &self.graphics.descriptor_set_allocator,
+        DescriptorSet::new(
+            self.graphics.descriptor_set_allocator.clone(),
             layout.clone(),
             [WriteDescriptorSet::buffer(0, uniform_buffer_subbuffer)],
             [],
@@ -961,7 +1029,7 @@ impl WlxPipeline {
         dimensions: [f32; 2],
         vertex_buffer: Subbuffer<[Vert2Uv]>,
         index_buffer: Subbuffer<[u16]>,
-        descriptor_sets: Vec<Arc<PersistentDescriptorSet>>,
+        descriptor_sets: Vec<Arc<DescriptorSet>>,
     ) -> WlxPass {
         WlxPass::new(
             self.clone(),
@@ -978,8 +1046,8 @@ pub struct WlxPass {
     pipeline: Arc<WlxPipeline>,
     vertex_buffer: Subbuffer<[Vert2Uv]>,
     index_buffer: Subbuffer<[u16]>,
-    descriptor_sets: Vec<Arc<PersistentDescriptorSet>>,
-    pub command_buffer: Arc<SecondaryAutoCommandBuffer<Arc<StandardCommandBufferAllocator>>>,
+    descriptor_sets: Vec<Arc<DescriptorSet>>,
+    pub command_buffer: Arc<CommandBuffer>,
 }
 
 impl WlxPass {
@@ -988,7 +1056,7 @@ impl WlxPass {
         dimensions: [f32; 2],
         vertex_buffer: Subbuffer<[Vert2Uv]>,
         index_buffer: Subbuffer<[u16]>,
-        descriptor_sets: Vec<Arc<PersistentDescriptorSet>>,
+        descriptor_sets: Vec<Arc<DescriptorSet>>,
     ) -> Self {
         let viewport = Viewport {
             offset: [0.0, 0.0],
@@ -997,53 +1065,69 @@ impl WlxPass {
         };
 
         let pipeline_inner = pipeline.inner().clone();
-        let mut command_buffer = AutoCommandBufferBuilder::secondary(
-            &pipeline.graphics.command_buffer_allocator,
+        let mut command_buffer = RecordingCommandBuffer::new(
+            pipeline.graphics.command_buffer_allocator.clone(),
             pipeline.graphics.queue.queue_family_index(),
-            CommandBufferUsage::MultipleSubmit,
-            CommandBufferInheritanceInfo {
-                render_pass: Some(CommandBufferInheritanceRenderPassType::BeginRenderPass(
-                    CommandBufferInheritanceRenderPassInfo {
-                        subpass: Subpass::from(pipeline.render_pass.clone(), 0).unwrap(),
-                        framebuffer: None,
-                    },
-                )),
+            CommandBufferLevel::Secondary,
+            CommandBufferBeginInfo {
+                usage: CommandBufferUsage::MultipleSubmit,
+                inheritance_info: Some(CommandBufferInheritanceInfo {
+                    render_pass: Some(CommandBufferInheritanceRenderPassType::BeginRenderPass(
+                        CommandBufferInheritanceRenderPassInfo {
+                            subpass: Subpass::from(pipeline.render_pass.clone(), 0).unwrap(),
+                            framebuffer: None,
+                        },
+                    )),
+                    ..Default::default()
+                }),
                 ..Default::default()
             },
         )
         .unwrap();
 
-        command_buffer
-            .set_viewport(0, smallvec![viewport])
-            .unwrap()
-            .bind_pipeline_graphics(pipeline_inner)
-            .unwrap()
-            .bind_descriptor_sets(
-                PipelineBindPoint::Graphics,
-                pipeline.inner().layout().clone(),
-                0,
-                descriptor_sets.clone(),
-            )
-            .unwrap()
-            .bind_vertex_buffers(0, vertex_buffer.clone())
-            .unwrap()
-            .bind_index_buffer(index_buffer.clone())
-            .unwrap()
-            .draw_indexed(index_buffer.len() as u32, 1, 0, 0, 0)
-            .or_else(|err| {
-                if let Some(source) = err.source() {
-                    log::error!("Failed to draw: {}", source);
-                }
-                Err(err)
-            })
-            .unwrap();
+        unsafe {
+            command_buffer
+                .set_viewport(0, smallvec![viewport])
+                .unwrap()
+                .bind_pipeline_graphics(pipeline_inner)
+                .unwrap()
+                .bind_descriptor_sets(
+                    PipelineBindPoint::Graphics,
+                    pipeline.inner().layout().clone(),
+                    0,
+                    descriptor_sets.clone(),
+                )
+                .unwrap()
+                .bind_vertex_buffers(0, vertex_buffer.clone())
+                .unwrap()
+                .bind_index_buffer(index_buffer.clone())
+                .unwrap()
+                .draw_indexed(index_buffer.len() as u32, 1, 0, 0, 0)
+                .or_else(|err| {
+                    if let Some(source) = err.source() {
+                        log::error!("Failed to draw: {}", source);
+                    }
+                    Err(err)
+                })
+                .unwrap()
+        };
 
         Self {
             pipeline,
             vertex_buffer,
             index_buffer,
             descriptor_sets,
-            command_buffer: command_buffer.build().unwrap(),
+            command_buffer: command_buffer.end().unwrap(),
         }
+    }
+}
+
+pub fn fourcc_to_vk(fourcc: FourCC) -> Format {
+    match fourcc.value {
+        DRM_FORMAT_ABGR8888 => Format::R8G8B8A8_UNORM,
+        DRM_FORMAT_XBGR8888 => Format::R8G8B8A8_UNORM,
+        DRM_FORMAT_ARGB8888 => Format::B8G8R8A8_UNORM,
+        DRM_FORMAT_XRGB8888 => Format::B8G8R8A8_UNORM,
+        _ => panic!("Unsupported memfd format {}", fourcc),
     }
 }
