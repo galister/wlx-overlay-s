@@ -15,7 +15,7 @@ use crate::{
     hid::{KeyModifier, VirtualKey, KEYS_TO_MODS},
     state::AppState,
 };
-use glam::{vec2, vec3a};
+use glam::{vec2, vec3a, Affine2};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use rodio::{Decoder, OutputStream, Source};
@@ -106,14 +106,23 @@ where
 
     let canvas = canvas.build();
 
+    let width = LAYOUT.row_size * 0.05;
+    let width_inv = 1.0 / width;
+    let aspect_ratio = size.x / size.y;
+    let t_w = width_inv;
+    let t_h = -(width_inv) * aspect_ratio;
+    let interaction_transform =
+        Affine2::from_scale_angle_translation(vec2(t_w, t_h), 0.0, vec2(0.5, 0.5));
+
     OverlayData {
         state: OverlayState {
             name: Arc::from("kbd"),
             show_hide: true,
-            width: LAYOUT.row_size * 0.05,
+            width,
             size: (size.x as _, size.y as _),
             grabbable: true,
             spawn_point: vec3a(0., -0.5, -1.),
+            interaction_transform,
             ..Default::default()
         },
         backend: Box::new(canvas),
