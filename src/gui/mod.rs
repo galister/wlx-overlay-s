@@ -320,7 +320,7 @@ impl<D, S> Canvas<D, S> {
             .canvas
             .graphics
             .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
-            .begin_render_pass(&self.canvas.pipeline_final);
+            .begin_render_pass(&self.canvas.pipeline_bg_color);
         for c in self.controls.iter_mut() {
             if let Some(fun) = c.on_render_bg {
                 fun(c, &self.canvas, app, &mut cmd_buffer);
@@ -334,7 +334,7 @@ impl<D, S> Canvas<D, S> {
             .canvas
             .graphics
             .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
-            .begin_render_pass(&self.canvas.pipeline_final);
+            .begin_render_pass(&self.canvas.pipeline_fg_glyph);
         for c in self.controls.iter_mut() {
             if let Some(fun) = c.on_render_fg {
                 fun(c, &self.canvas, app, &mut cmd_buffer);
@@ -399,7 +399,7 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
         }
 
         if !dirty {
-            return;
+            //return; //FIXME
         }
 
         /*
@@ -425,8 +425,6 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
             .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
             .begin_render_pass(&self.canvas.pipeline_final);
 
-        self.render_fg(app);
-
         // static background
         cmd_buffer.run_ref(&self.pass_bg);
 
@@ -445,9 +443,8 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
 
         // mostly static text
         cmd_buffer.run_ref(&self.pass_fg);
-        {
-            let _ = cmd_buffer.end_render_pass().build_and_execute();
-        }
+
+        cmd_buffer.end_render_pass().build_and_execute_now();
 
         /*
         self.canvas
@@ -566,15 +563,10 @@ impl<D, S> Control<D, S> {
             self.rect.w,
             self.rect.h,
         );
-        let set0 = canvas.pipeline_bg_color.uniform_buffer(
-            0,
-            vec![
-                self.bg_color.x,
-                self.bg_color.y,
-                self.bg_color.z,
-                if strong { 0.5 } else { 0.3 },
-            ],
-        );
+        let set0 = canvas
+            .pipeline_bg_color
+            .uniform_buffer(0, vec![1.0, 1.0, 1.0, if strong { 0.5 } else { 0.3 }]); //FIXME why is
+                                                                                     //this green
         let pass = canvas.pipeline_bg_color.create_pass(
             [canvas.width as _, canvas.height as _],
             vertex_buffer.clone(),
