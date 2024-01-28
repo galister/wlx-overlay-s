@@ -3,6 +3,8 @@ use openxr as xr;
 
 use crate::{backend::input::Pointer, state::AppState};
 
+use super::XrState;
+
 type XrSession = xr::Session<xr::Vulkan>;
 
 pub(super) struct OpenXrInputSource {
@@ -29,8 +31,9 @@ pub(super) struct OpenXrHandSource {
 }
 
 impl OpenXrInputSource {
-    pub fn new(session: XrSession) -> Self {
-        let mut action_set = session
+    pub fn new(xr: &XrState) -> Self {
+        let mut action_set = xr
+            .session
             .instance()
             .create_action_set("wlx-overlay-s", "WlxOverlay-S Actions", 0)
             .expect("Failed to create action set");
@@ -38,41 +41,44 @@ impl OpenXrInputSource {
         let left_source = OpenXrHandSource::new(&mut action_set, "left");
         let right_source = OpenXrHandSource::new(&mut action_set, "right");
 
-        session.attach_action_sets(&[&action_set]).unwrap();
+        xr.session.attach_action_sets(&[&action_set]).unwrap();
 
-        let stage = session
+        let stage = xr
+            .session
             .create_reference_space(xr::ReferenceSpaceType::STAGE, xr::Posef::IDENTITY)
             .unwrap();
 
         Self {
             action_set,
             hands: [
-                OpenXrHand::new(session.clone(), left_source),
-                OpenXrHand::new(session, right_source),
+                OpenXrHand::new(&xr, left_source),
+                OpenXrHand::new(&xr, right_source),
             ],
             stage,
         }
     }
 
-    pub fn update(&self, session: &XrSession, time: xr::Time, state: &mut AppState) {
-        session.sync_actions(&[(&self.action_set).into()]).unwrap();
+    pub fn update(&self, xr: &XrState, state: &mut AppState) {
+        xr.session
+            .sync_actions(&[(&self.action_set).into()])
+            .unwrap();
 
         for i in 0..2 {
             self.hands[i].update(
                 &mut state.input_state.pointers[i],
                 &self.stage,
-                session,
-                time,
+                &xr.session,
+                xr.predicted_display_time,
             );
         }
     }
 }
 
 impl OpenXrHand {
-    pub(super) fn new(session: XrSession, source: OpenXrHandSource) -> Self {
+    pub(super) fn new(xr: &XrState, source: OpenXrHandSource) -> Self {
         let space = source
             .action_pose
-            .create_space(session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+            .create_space(xr.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
             .unwrap();
 
         Self { source, space }

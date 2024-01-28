@@ -39,7 +39,6 @@ where
 {
     pub fn new(app: &mut AppState) -> Self {
         let mut overlays = IdMap::new();
-
         let (screens, extent) = if std::env::var("WAYLAND_DISPLAY").is_ok() {
             get_screens_wayland(&app.session)
         } else {
@@ -51,7 +50,7 @@ where
         overlays.insert(watch.state.id, watch);
 
         let mut keyboard = create_keyboard(&app);
-        keyboard.state.want_visible = false;
+        keyboard.state.want_visible = true;
         overlays.insert(keyboard.state.id, keyboard);
 
         let mut first = true;
@@ -62,7 +61,6 @@ where
             }
             overlays.insert(screen.state.id, screen);
         }
-
         Self { overlays, extent }
     }
 

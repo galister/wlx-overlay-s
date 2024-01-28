@@ -7,14 +7,10 @@ use std::{
 };
 
 use anyhow::{bail, ensure};
-use ash::vk::{self};
 use glam::{Affine3A, Quat, Vec3};
 use openxr as xr;
-use vulkano::{
-    image::{view::ImageView, ImageCreateInfo, ImageUsage},
-    render_pass::{Framebuffer, FramebufferCreateInfo},
-    Handle, VulkanObject,
-};
+use vulkano::{Handle, VulkanObject};
+use xr::{CompositionLayerFlags, EyeVisibility};
 
 use crate::{
     backend::{common::OverlayContainer, input::interact, openxr::overlay::OpenXrOverlayData},
@@ -31,6 +27,13 @@ mod overlay;
 const VIEW_TYPE: xr::ViewConfigurationType = xr::ViewConfigurationType::PRIMARY_STEREO;
 const VIEW_COUNT: u32 = 2;
 
+struct XrState {
+    instance: xr::Instance,
+    system: xr::SystemId,
+    session: xr::Session<xr::Vulkan>,
+    predicted_display_time: xr::Time,
+}
+
 pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     let (xr_instance, system) = match init_xr() {
         Ok((xr_instance, system)) => (xr_instance, system),
@@ -45,40 +48,51 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         .unwrap()[0];
     log::info!("Using environment blend mode: {:?}", environment_blend_mode);
 
-    let mut state = {
+    let mut app_state = {
         let graphics = WlxGraphics::new_xr(xr_instance.clone(), system);
         AppState::from_graphics(graphics)
     };
 
-    let mut overlays = OverlayContainer::<OpenXrOverlayData>::new(&mut state);
+    let mut overlays = OverlayContainer::<OpenXrOverlayData>::new(&mut app_state);
 
-    state.hid_provider.set_desktop_extent(overlays.extent);
+    app_state.hid_provider.set_desktop_extent(overlays.extent);
 
     let (session, mut frame_wait, mut frame_stream) = unsafe {
         xr_instance
             .create_session::<xr::Vulkan>(
                 system,
                 &xr::vulkan::SessionCreateInfo {
-                    instance: state.graphics.instance.handle().as_raw() as _,
-                    physical_device: state.graphics.device.physical_device().handle().as_raw() as _,
-                    device: state.graphics.device.handle().as_raw() as _,
-                    queue_family_index: state.graphics.queue.queue_family_index(),
+                    instance: app_state.graphics.instance.handle().as_raw() as _,
+                    physical_device: app_state
+                        .graphics
+                        .device
+                        .physical_device()
+                        .handle()
+                        .as_raw() as _,
+                    device: app_state.graphics.device.handle().as_raw() as _,
+                    queue_family_index: app_state.graphics.queue.queue_family_index(),
                     queue_index: 0,
                 },
             )
             .unwrap()
     };
 
-    let input_source = input::OpenXrInputSource::new(session.clone());
+    let mut xr_state = XrState {
+        instance: xr_instance,
+        system,
+        session,
+        predicted_display_time: xr::Time::from_nanos(0),
+    };
 
-    let mut swapchain = None;
+    let input_source = input::OpenXrInputSource::new(&xr_state);
+
     let mut session_running = false;
     let mut event_storage = xr::EventDataBuffer::new();
 
     'main_loop: loop {
         if !running.load(Ordering::Relaxed) {
             log::warn!("Received shutdown signal.");
-            match session.request_exit() {
+            match xr_state.session.request_exit() {
                 Ok(_) => log::info!("OpenXR session exit requested."),
                 Err(xr::sys::Result::ERROR_SESSION_NOT_RUNNING) => break 'main_loop,
                 Err(e) => {
@@ -88,7 +102,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             }
         }
 
-        while let Some(event) = xr_instance.poll_event(&mut event_storage).unwrap() {
+        while let Some(event) = xr_state.instance.poll_event(&mut event_storage).unwrap() {
             use xr::Event::*;
             match event {
                 SessionStateChanged(e) => {
@@ -97,11 +111,11 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                     println!("entered state {:?}", e.state());
                     match e.state() {
                         xr::SessionState::READY => {
-                            session.begin(VIEW_TYPE).unwrap();
+                            xr_state.session.begin(VIEW_TYPE).unwrap();
                             session_running = true;
                         }
                         xr::SessionState::STOPPING => {
-                            session.end().unwrap();
+                            xr_state.session.end().unwrap();
                             session_running = false;
                         }
                         xr::SessionState::EXITING | xr::SessionState::LOSS_PENDING => {
@@ -128,6 +142,8 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         let xr_frame_state = frame_wait.wait().unwrap();
         frame_stream.begin().unwrap();
 
+        xr_state.predicted_display_time = xr_frame_state.predicted_display_time;
+
         if !xr_frame_state.should_render {
             frame_stream
                 .end(
@@ -139,11 +155,12 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             continue 'main_loop;
         }
 
-        state.input_state.pre_update();
-        input_source.update(&session, xr_frame_state.predicted_display_time, &mut state);
-        state.input_state.post_update();
+        app_state.input_state.pre_update();
+        input_source.update(&xr_state, &mut app_state);
+        app_state.input_state.post_update();
 
-        let (_, views) = session
+        let (_, views) = xr_state
+            .session
             .locate_views(
                 VIEW_TYPE,
                 xr_frame_state.predicted_display_time,
@@ -151,97 +168,55 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             )
             .unwrap();
 
-        state.input_state.hmd = hmd_pose_from_views(&views);
+        app_state.input_state.hmd = hmd_pose_from_views(&views);
 
-        let _pointer_lengths = interact(&mut overlays, &mut state);
+        let _pointer_lengths = interact(&mut overlays, &mut app_state);
 
         //TODO lines
 
-        overlays
-            .iter_mut()
-            .filter(|o| o.state.want_visible)
-            .for_each(|o| o.render(&mut state));
+        let mut layers = vec![];
 
-        state.hid_provider.on_new_frame();
-
-        let swapchain = swapchain.get_or_insert_with(|| {
-            let views = xr_instance
-                .enumerate_view_configuration_views(system, VIEW_TYPE)
-                .unwrap();
-            debug_assert_eq!(views.len(), VIEW_COUNT as usize);
-            debug_assert_eq!(views[0], views[1]);
-
-            let resolution = vk::Extent2D {
-                width: views[0].recommended_image_rect_width,
-                height: views[0].recommended_image_rect_height,
-            };
-            log::info!(
-                "Swapchain resolution: {}x{}",
-                resolution.width,
-                resolution.height
-            );
-            let swapchain = session
-                .create_swapchain(&xr::SwapchainCreateInfo {
-                    create_flags: xr::SwapchainCreateFlags::EMPTY,
-                    usage_flags: xr::SwapchainUsageFlags::COLOR_ATTACHMENT
-                        | xr::SwapchainUsageFlags::SAMPLED,
-                    format: state.graphics.native_format as _,
-                    sample_count: 1,
-                    width: resolution.width,
-                    height: resolution.height,
-                    face_count: 1,
-                    array_size: VIEW_COUNT,
-                    mip_count: 1,
-                })
-                .unwrap();
-
-            // thanks @yshui
-            let swapchain_images = swapchain
-                .enumerate_images()
-                .unwrap()
-                .into_iter()
-                .map(|handle| {
-                    let vk_image = vk::Image::from_raw(handle);
-                    let raw_image = unsafe {
-                        vulkano::image::sys::RawImage::from_handle(
-                            state.graphics.device.clone(),
-                            vk_image,
-                            ImageCreateInfo {
-                                format: state.graphics.native_format,
-                                extent: [resolution.width * 2, resolution.height, 1],
-                                usage: ImageUsage::COLOR_ATTACHMENT | ImageUsage::TRANSFER_DST,
-                                ..Default::default()
-                            },
-                        )
-                        .unwrap()
-                    };
-                    // SAFETY: OpenXR guarantees that the image is a swapchain image, thus has memory backing it.
-                    let image = Arc::new(unsafe { raw_image.assume_bound() });
-                    let view = ImageView::new_default(image).unwrap();
-                    let fb = Framebuffer::new(
-                        todo!(),
-                        FramebufferCreateInfo {
-                            attachments: vec![view.clone()],
-                            ..Default::default()
-                        },
-                    )
-                    .unwrap();
-
-                    XrFramebuffer {
-                        framebuffer: fb,
-                        color: view,
-                    }
-                })
-                .collect();
-
-            XrSwapchain {
-                handle: swapchain,
-                buffers: swapchain_images,
-                resolution: [resolution.width, resolution.height, 1],
+        for o in overlays.iter_mut() {
+            if !o.state.want_visible {
+                continue;
             }
-        });
 
-        let image_index = swapchain.handle.acquire_image().unwrap();
+            if !o.data.init {
+                o.init(&mut app_state);
+                o.data.init = true;
+            }
+            o.render(&mut app_state);
+            let transform = o.state.transform;
+
+            let Some((sub_image, extent)) = o.present_xr(&xr_state, &mut app_state) else {
+                continue;
+            };
+
+            let quad = xr::CompositionLayerQuad::new()
+                .pose(transform_to_posef(&transform))
+                .sub_image(sub_image)
+                .eye_visibility(EyeVisibility::BOTH)
+                .layer_flags(CompositionLayerFlags::CORRECT_CHROMATIC_ABERRATION)
+                .space(&input_source.stage)
+                .size(extent);
+
+            layers.push(quad);
+        }
+
+        let frame_ref = layers
+            .iter()
+            .map(|f| f as &xr::CompositionLayerBase<xr::Vulkan>)
+            .collect::<Vec<_>>();
+
+        frame_stream
+            .end(
+                xr_state.predicted_display_time,
+                environment_blend_mode,
+                &frame_ref,
+            )
+            .unwrap();
+
+        app_state.hid_provider.on_new_frame();
     }
 
     Ok(())
@@ -268,13 +243,13 @@ fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
     enabled_extensions.khr_vulkan_enable2 = true;
     enabled_extensions.extx_overlay = true;
 
-    #[cfg(not(debug_assertions))]
+    //#[cfg(not(debug_assertions))]
     let layers = [];
-    #[cfg(debug_assertions)]
-    let layers = [
-        "XR_APILAYER_LUNARG_api_dump",
-        "XR_APILAYER_LUNARG_standard_validation",
-    ];
+    //#[cfg(debug_assertions)]
+    //let layers = [
+    //    "XR_APILAYER_LUNARG_api_dump",
+    //    "XR_APILAYER_LUNARG_standard_validation",
+    //];
 
     let Ok(xr_instance) = entry.create_instance(
         &xr::ApplicationInfo {
@@ -321,17 +296,6 @@ fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
     Ok((xr_instance, system))
 }
 
-struct XrSwapchain {
-    handle: xr::Swapchain<xr::Vulkan>,
-    buffers: Vec<XrFramebuffer>,
-    resolution: [u32; 3],
-}
-
-struct XrFramebuffer {
-    framebuffer: Arc<Framebuffer>,
-    color: Arc<ImageView>,
-}
-
 fn hmd_pose_from_views(views: &Vec<xr::View>) -> Affine3A {
     let pos = {
         let pos0: Vec3 = unsafe { std::mem::transmute(views[0].pose.position) };
@@ -360,4 +324,23 @@ fn quat_lerp(a: Quat, mut b: Quat, t: f32) -> Quat {
         a.w - t * (a.w - b.w),
     )
     .normalize()
+}
+
+fn transform_to_posef(transform: &Affine3A) -> xr::Posef {
+    let translation = transform.translation;
+    let rotation = Quat::from_mat3a(&transform.matrix3);
+
+    xr::Posef {
+        orientation: xr::Quaternionf {
+            x: rotation.x,
+            y: rotation.y,
+            z: rotation.z,
+            w: rotation.w,
+        },
+        position: xr::Vector3f {
+            x: translation.x,
+            y: translation.y,
+            z: translation.z,
+        },
+    }
 }

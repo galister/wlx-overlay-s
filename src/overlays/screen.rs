@@ -23,7 +23,7 @@ use wlx_capture::{
     WlxCapture,
 };
 
-use glam::{vec2, Affine2, Quat, Vec2, Vec3};
+use glam::{vec2, vec3a, Affine2, Quat, Vec2, Vec3};
 
 use crate::{
     backend::{
@@ -241,14 +241,9 @@ impl ScreenRenderer {
 }
 
 impl OverlayRenderer for ScreenRenderer {
-    fn init(&mut self, _app: &mut AppState) {
-        self.receiver = Some(self.capture.init());
-    }
+    fn init(&mut self, _app: &mut AppState) {}
     fn render(&mut self, app: &mut AppState) {
-        let Some(receiver) = self.receiver.as_mut() else {
-            log::error!("No receiver");
-            return;
-        };
+        let receiver = self.receiver.get_or_insert_with(|| self.capture.init());
 
         for frame in receiver.try_iter() {
             match frame {
@@ -407,6 +402,8 @@ where
                 show_hide: true,
                 grabbable: true,
                 spawn_rotation: Quat::from_axis_angle(axis, angle),
+                spawn_point: vec3a(0., 0.5, -1.),
+                width: 1.5,
                 interaction_transform,
                 ..Default::default()
             },

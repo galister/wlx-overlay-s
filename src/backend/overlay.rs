@@ -129,6 +129,11 @@ where
     T: Default,
 {
     pub fn init(&mut self, app: &mut AppState) {
+        self.state.transform.translation = app
+            .input_state
+            .hmd
+            .transform_point3a(self.state.spawn_point);
+        self.state.realign(&app.input_state.hmd);
         self.backend.init(app);
     }
     pub fn render(&mut self, app: &mut AppState) {

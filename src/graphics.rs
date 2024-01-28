@@ -104,10 +104,12 @@ pub struct WlxGraphics {
 impl WlxGraphics {
     #[cfg(feature = "openxr")]
     pub fn new_xr(xr_instance: openxr::Instance, system: openxr::SystemId) -> Arc<Self> {
+        use std::ffi::{self, c_char, CString};
+
         use vulkano::Handle;
 
-        let vk_target_version = vk::make_api_version(0, 1, 1, 0); // Vulkan 1.1 guarantees multiview support
-        let target_version = vulkano::Version::V1_1;
+        let vk_target_version = vk::make_api_version(0, 1, 3, 0); // Vulkan 1.1 guarantees multiview support
+        let target_version = vulkano::Version::V1_3;
         let library = VulkanLibrary::new().unwrap();
         let vk_entry = unsafe { ash::Entry::load().unwrap() };
 
@@ -131,7 +133,9 @@ impl WlxGraphics {
             Instance::from_handle(
                 library,
                 ash::vk::Instance::from_raw(vk_instance as _),
-                InstanceCreateInfo::default(), // FIXME
+                InstanceCreateInfo {
+                    ..Default::default()
+                },
             )
         };
 
@@ -167,6 +171,27 @@ impl WlxGraphics {
             .position(|(_, q)| q.queue_flags.intersects(QueueFlags::GRAPHICS))
             .expect("Vulkan device has no graphics queue") as u32;
 
+        let device_extensions = DeviceExtensions {
+            khr_external_memory: true,
+            khr_external_memory_fd: true,
+            ext_external_memory_dma_buf: true,
+            ext_image_drm_format_modifier: true,
+            amd_memory_overallocation_behavior: true,
+            ..DeviceExtensions::empty()
+        };
+
+        let device_extensions_raw = device_extensions
+            .clone()
+            .into_iter()
+            .filter_map(|(name, enabled)| {
+                if enabled {
+                    Some(ffi::CString::new(name).unwrap().into_raw() as *const c_char)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
         let (device, mut queues) = unsafe {
             let vk_device = xr_instance
                 .create_vulkan_device(
@@ -178,10 +203,8 @@ impl WlxGraphics {
                             .queue_family_index(queue_family_index)
                             .queue_priorities(&[1.0])
                             .build()])
-                        .push_next(&mut vk::PhysicalDeviceMultiviewFeatures {
-                            multiview: vk::TRUE,
-                            ..Default::default()
-                        }) as *const _ as *const _,
+                        .enabled_extension_names(&device_extensions_raw)
+                        as *const _ as *const _,
                 )
                 .expect("XR error creating Vulkan device")
                 .map_err(vk::Result::from_raw)
@@ -190,9 +213,23 @@ impl WlxGraphics {
             vulkano::device::Device::from_handle(
                 physical_device,
                 vk::Device::from_raw(vk_device as _),
-                DeviceCreateInfo::default(), // FIXME
+                DeviceCreateInfo {
+                    queue_create_infos: vec![QueueCreateInfo {
+                        queue_family_index,
+                        ..Default::default()
+                    }],
+                    enabled_extensions: device_extensions,
+                    ..Default::default()
+                },
             )
         };
+
+        // Drop the CStrings
+        device_extensions_raw
+            .into_iter()
+            .for_each(|c_string| unsafe {
+                let _ = CString::from_raw(c_string as _);
+            });
 
         let queue = queues.next().unwrap();
 
@@ -255,6 +292,7 @@ impl WlxGraphics {
             khr_external_memory_fd: true,
             ext_external_memory_dma_buf: true,
             ext_image_drm_format_modifier: true,
+            amd_memory_overallocation_behavior: true,
             ..DeviceExtensions::empty()
         };
 
@@ -565,6 +603,12 @@ impl WlxGraphics {
     }
 
     pub fn render_texture(&self, width: u32, height: u32, format: Format) -> Arc<Image> {
+        log::debug!(
+            "Render texture: {}x{} {}MB",
+            width,
+            height,
+            (width * height * 4) / (1024 * 1024)
+        );
         Image::new(
             self.memory_allocator.clone(),
             ImageCreateInfo {
@@ -736,6 +780,12 @@ impl WlxCommandBuffer {
         format: Format,
         data: &[u8],
     ) -> Arc<Image> {
+        log::debug!(
+            "Texture2D: {}x{} {}MB",
+            width,
+            height,
+            data.len() / (1024 * 1024)
+        );
         let image = Image::new(
             self.graphics.memory_allocator.clone(),
             ImageCreateInfo {
@@ -958,6 +1008,7 @@ impl WlxPipeline {
 
     pub fn swap_framebuffer(&mut self, new_framebuffer: Arc<Framebuffer>) -> Arc<Framebuffer> {
         let old = self.framebuffer.clone();
+        self.view = new_framebuffer.attachments()[0].clone();
         self.framebuffer = new_framebuffer;
         old
     }
