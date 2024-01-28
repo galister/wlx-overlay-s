@@ -1,4 +1,3 @@
-use glam::Vec4;
 use std::{
     collections::VecDeque,
     sync::{
@@ -143,13 +142,17 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         input_source.update(&mut input_mngr, &mut system_mngr, &mut state);
         state.input_state.post_update();
 
+        overlays
+            .iter_mut()
+            .for_each(|o| o.state.auto_movement(&mut state));
+
         let pointer_lengths = interact(&mut overlays, &mut state);
         for (idx, len) in pointer_lengths.iter().enumerate() {
             lines.draw_from(
                 pointer_lines[idx],
                 state.input_state.pointers[idx].pose,
                 *len,
-                Vec4::ONE,
+                state.input_state.pointers[idx].interaction.mode as usize + 1,
             );
         }
 

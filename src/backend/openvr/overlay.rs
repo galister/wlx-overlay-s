@@ -12,6 +12,8 @@ use crate::{
     state::AppState,
 };
 
+const WIDTH: f32 = 1.0;
+
 #[derive(Default)]
 pub(super) struct OpenVrOverlayData {
     handle: Option<OverlayHandle>,
@@ -118,12 +120,12 @@ impl OverlayData<OpenVrOverlayData> {
         }
     }
 
-    pub(super) fn upload_width(&self, overlay: &mut OverlayManager) {
+    fn upload_width(&self, overlay: &mut OverlayManager) {
         let Some(handle) = self.data.handle else {
             log::debug!("{}: No overlay handle", self.state.name);
             return;
         };
-        if let Err(e) = overlay.set_width(handle, self.state.width) {
+        if let Err(e) = overlay.set_width(handle, WIDTH) {
             panic!("Failed to set overlay width: {}", e);
         }
     }

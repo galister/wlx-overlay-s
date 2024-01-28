@@ -20,13 +20,13 @@ pub trait OverlayBackend: OverlayRenderer + InteractionHandler {}
 pub struct OverlayState {
     pub id: usize,
     pub name: Arc<str>,
-    pub width: f32,
     pub size: (i32, i32),
     pub want_visible: bool,
     pub show_hide: bool,
     pub grabbable: bool,
     pub dirty: bool,
     pub transform: Affine3A,
+    pub spawn_scale: f32, // aka width
     pub spawn_point: Vec3A,
     pub spawn_rotation: Quat,
     pub relative_to: RelativeTo,
@@ -39,13 +39,13 @@ impl Default for OverlayState {
         OverlayState {
             id: AUTO_INCREMENT.fetch_add(1, Ordering::Relaxed),
             name: Arc::from(""),
-            width: 1.,
             size: (0, 0),
             want_visible: false,
             show_hide: false,
             grabbable: false,
             dirty: false,
             relative_to: RelativeTo::None,
+            spawn_scale: 1.0,
             spawn_point: Vec3A::NEG_Z,
             spawn_rotation: Quat::IDENTITY,
             transform: Affine3A::IDENTITY,
@@ -80,8 +80,34 @@ where
 }
 
 impl OverlayState {
-    pub fn reset(&mut self, _app: &mut AppState) {
-        todo!()
+    pub fn parent_transform(&self, app: &AppState) -> Option<Affine3A> {
+        match self.relative_to {
+            RelativeTo::None => None,
+            RelativeTo::Head => Some(app.input_state.hmd),
+            RelativeTo::Hand(idx) => Some(app.input_state.pointers[idx].pose),
+        }
+    }
+    pub fn auto_movement(&mut self, app: &mut AppState) {
+        if let Some(parent) = self.parent_transform(app) {
+            self.transform = parent
+                * Affine3A::from_scale_rotation_translation(
+                    Vec3::ONE * self.spawn_scale,
+                    self.spawn_rotation,
+                    self.spawn_point.into(),
+                );
+        }
+    }
+    pub fn reset(&mut self, app: &mut AppState) {
+        if let RelativeTo::None = self.relative_to {
+            let translation = app.input_state.hmd.transform_point3a(self.spawn_point);
+            self.transform = Affine3A::from_scale_rotation_translation(
+                Vec3::ONE * self.spawn_scale,
+                Quat::IDENTITY,
+                translation.into(),
+            );
+
+            self.realign(&app.input_state.hmd);
+        }
     }
     pub fn realign(&mut self, hmd: &Affine3A) {
         let to_hmd = hmd.translation - self.transform.translation;
@@ -129,11 +155,7 @@ where
     T: Default,
 {
     pub fn init(&mut self, app: &mut AppState) {
-        self.state.transform.translation = app
-            .input_state
-            .hmd
-            .transform_point3a(self.state.spawn_point);
-        self.state.realign(&app.input_state.hmd);
+        self.state.reset(app);
         self.backend.init(app);
     }
     pub fn render(&mut self, app: &mut AppState) {

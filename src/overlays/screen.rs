@@ -128,7 +128,7 @@ impl ScreenPipeline {
             graphics.create_pipeline(
                 view,
                 shaders.get("vert_common").unwrap().clone(),
-                shaders.get("frag_screen").unwrap().clone(),
+                shaders.get("frag_sprite").unwrap().clone(),
                 Format::R8G8B8A8_UNORM,
                 //            ImageLayout::TransferSrcOptimal,
                 //            ImageLayout::TransferSrcOptimal,
@@ -416,9 +416,9 @@ where
                 want_visible: session.show_screens.iter().any(|s| s == &*output.name),
                 show_hide: true,
                 grabbable: true,
-                spawn_rotation: Quat::from_axis_angle(axis, angle),
+                spawn_scale: 1.5,
                 spawn_point: vec3a(0., 0.5, -1.),
-                width: 1.,
+                spawn_rotation: Quat::from_axis_angle(axis, angle),
                 interaction_transform,
                 ..Default::default()
             },

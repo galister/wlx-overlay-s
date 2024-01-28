@@ -118,9 +118,9 @@ where
         state: OverlayState {
             name: Arc::from("kbd"),
             show_hide: true,
-            width,
             size: (size.x as _, size.y as _),
             grabbable: true,
+            spawn_scale: width,
             spawn_point: vec3a(0., -0.5, -1.),
             interaction_transform,
             ..Default::default()

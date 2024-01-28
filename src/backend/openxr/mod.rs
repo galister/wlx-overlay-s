@@ -186,13 +186,17 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
         app_state.input_state.hmd = hmd_pose_from_views(&views);
 
+        overlays
+            .iter_mut()
+            .for_each(|o| o.state.auto_movement(&mut app_state));
+
         let pointer_lengths = interact(&mut overlays, &mut app_state);
         for (idx, len) in pointer_lengths.iter().enumerate() {
             lines.draw_from(
                 pointer_lines[idx],
                 app_state.input_state.pointers[idx].pose,
                 *len,
-                0,
+                app_state.input_state.pointers[idx].interaction.mode as usize + 1,
             );
         }
 
@@ -210,6 +214,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 o.init(&mut app_state);
                 o.data.init = true;
             }
+
             o.render(&mut app_state);
 
             if let Some(quad) = o.present_xr(&xr_state, &mut command_buffer) {

@@ -21,6 +21,7 @@ static AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(1);
 pub(super) struct LinePool {
     lines: IdMap<usize, OverlayData<OpenVrOverlayData>>,
     view: Arc<ImageView>,
+    colors: [Vec4; 4],
 }
 
 impl LinePool {
@@ -46,6 +47,12 @@ impl LinePool {
         LinePool {
             lines: IdMap::new(),
             view,
+            colors: [
+                Vec4::new(1., 1., 1., 1.),
+                Vec4::new(0., 0.375, 0.5, 1.),
+                Vec4::new(0.69, 0.188, 0., 1.),
+                Vec4::new(0.375, 0., 0.5, 1.),
+            ],
         }
     }
 
@@ -56,7 +63,7 @@ impl LinePool {
             state: OverlayState {
                 name: Arc::from(format!("wlx-line{}", id)),
                 show_hide: true,
-                width: 0.002,
+                spawn_scale: 0.002,
                 size: (0, 0),
                 ..Default::default()
             },
@@ -77,13 +84,15 @@ impl LinePool {
         id
     }
 
-    pub fn draw_from(&mut self, id: usize, mut from: Affine3A, len: f32, color: Vec4) {
+    pub fn draw_from(&mut self, id: usize, mut from: Affine3A, len: f32, color: usize) {
         let rotation = Affine3A::from_axis_angle(Vec3::X, -PI * 0.5);
 
         from.translation = from.translation + from.transform_vector3a(Vec3A::NEG_Z) * (len * 0.5);
         let transform = from * rotation * Affine3A::from_scale(Vec3::new(1., len / 0.002, 1.));
 
-        self.draw_transform(id, transform, color);
+        debug_assert!(color < self.colors.len());
+
+        self.draw_transform(id, transform, self.colors[color]);
     }
 
     fn draw_transform(&mut self, id: usize, transform: Affine3A, color: Vec4) {

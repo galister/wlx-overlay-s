@@ -424,7 +424,7 @@ impl Pointer {
             overlay.state.realign(hmd);
             overlay.state.dirty = true;
         } else {
-            overlay.state.spawn_point = overlay.state.transform.translation;
+            overlay.state.spawn_point = overlay.state.transform.translation.into();
             self.interaction.grabbed = None;
             log::info!("Hand {}: dropped {}", self.idx, overlay.state.name);
         }

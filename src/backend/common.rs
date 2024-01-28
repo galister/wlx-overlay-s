@@ -46,7 +46,7 @@ where
         };
 
         let mut watch = create_watch::<T>(&app, &screens);
-        watch.state.want_visible = false;
+        watch.state.want_visible = true;
         overlays.insert(watch.state.id, watch);
 
         let mut keyboard = create_keyboard(&app);

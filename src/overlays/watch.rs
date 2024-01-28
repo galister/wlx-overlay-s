@@ -165,8 +165,8 @@ where
         state: OverlayState {
             name: "Watch".into(),
             size: (400, 200),
-            width: 0.065,
             want_visible: true,
+            spawn_scale: 0.065,
             spawn_point: state.session.watch_pos.into(),
             spawn_rotation: state.session.watch_rot,
             relative_to,

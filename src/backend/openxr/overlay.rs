@@ -6,6 +6,7 @@ use super::{swapchain::SwapchainRenderData, transform_to_posef, XrState};
 use crate::{
     backend::{openxr::swapchain::create_swapchain_render_data, overlay::OverlayData},
     graphics::WlxCommandBuffer,
+    state::AppState,
 };
 use vulkano::image::view::ImageView;
 
@@ -51,6 +52,11 @@ impl OverlayData<OpenXrOverlayData> {
         let sub_image = data.acquire_present_release(command_buffer, my_view);
         let posef = transform_to_posef(&self.state.transform);
 
+        let scale_x = self.state.transform.matrix3.col(0).length();
+        log::info!("{}: scale_x = {}", self.state.name, scale_x);
+        let aspect_ratio = self.backend.extent()[1] as f32 / self.backend.extent()[0] as f32;
+        let scale_y = scale_x * aspect_ratio;
+
         let quad = xr::CompositionLayerQuad::new()
             .pose(posef)
             .sub_image(sub_image)
@@ -58,9 +64,8 @@ impl OverlayData<OpenXrOverlayData> {
             .layer_flags(CompositionLayerFlags::CORRECT_CHROMATIC_ABERRATION)
             .space(&xr.stage)
             .size(xr::Extent2Df {
-                width: self.state.width,
-                height: (self.backend.extent()[1] as f32 / self.backend.extent()[0] as f32)
-                    * self.state.width,
+                width: scale_x,
+                height: scale_y,
             });
         Some(quad)
     }
