@@ -48,7 +48,6 @@ impl OverlayData<OpenVrOverlayData> {
         self.data.color = Vec4::ONE;
 
         self.init(app);
-        self.upload_transform(overlay);
 
         if self.data.width < f32::EPSILON {
             self.data.width = 1.0;

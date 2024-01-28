@@ -43,7 +43,7 @@ impl Default for OverlayState {
             want_visible: false,
             show_hide: false,
             grabbable: false,
-            dirty: false,
+            dirty: true,
             relative_to: RelativeTo::None,
             spawn_scale: 1.0,
             spawn_point: Vec3A::NEG_Z,
@@ -95,6 +95,7 @@ impl OverlayState {
                     self.spawn_rotation,
                     self.spawn_point.into(),
                 );
+            self.dirty = true;
         }
     }
     pub fn reset(&mut self, app: &mut AppState) {

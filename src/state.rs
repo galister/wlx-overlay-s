@@ -11,7 +11,7 @@ use crate::{
     shaders::{frag_color, frag_glyph, frag_screen, frag_sprite, frag_srgb, vert_common},
 };
 
-pub const WATCH_DEFAULT_POS: Vec3 = Vec3::new(0., 0., 0.15);
+pub const WATCH_DEFAULT_POS: Vec3 = Vec3::new(0.025, 0., 0.15);
 pub const WATCH_DEFAULT_ROT: Quat = Quat::from_xyzw(0.7071066, 0., 0.7071066, 0.0007963);
 
 pub struct AppState {
@@ -127,7 +127,7 @@ impl AppSession {
             screen_max_res: [2560, 1440],
             capture_method: "auto".to_string(),
             primary_hand: 1,
-            watch_hand: 1,
+            watch_hand: 0,
             watch_pos: WATCH_DEFAULT_POS,
             watch_rot: WATCH_DEFAULT_ROT,
             color_norm: Vec3 {

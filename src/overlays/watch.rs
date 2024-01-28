@@ -1,6 +1,7 @@
 use std::{sync::Arc, time::Instant};
 
 use chrono::Local;
+use glam::{vec2, Affine2};
 
 use crate::{
     backend::{
@@ -158,6 +159,8 @@ where
         });
         button_x += button_width;
     }
+    let interaction_transform =
+        Affine2::from_translation(vec2(0.5, 0.5)) * Affine2::from_scale(vec2(1., -2.0));
 
     let relative_to = RelativeTo::Hand(state.session.watch_hand);
 
@@ -169,6 +172,7 @@ where
             spawn_scale: 0.065,
             spawn_point: state.session.watch_pos.into(),
             spawn_rotation: state.session.watch_rot,
+            interaction_transform,
             relative_to,
             ..Default::default()
         },

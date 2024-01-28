@@ -304,7 +304,7 @@ where
     #[cfg(debug_assertions)]
     log::trace!("Hit: {} {:?}", hovered.state.name, hit);
 
-    if pointer.now.grab && !pointer.before.grab {
+    if pointer.now.grab && !pointer.before.grab && hovered.state.grabbable {
         pointer.start_grab(hovered);
         return hit.dist;
     }
@@ -346,6 +346,9 @@ impl Pointer {
             }
 
             if let Some(hit) = self.ray_test(overlay.state.id, &overlay.state.transform) {
+                if hit.dist.is_infinite() || hit.dist.is_nan() {
+                    continue;
+                }
                 hits.try_push(hit);
             }
         }
