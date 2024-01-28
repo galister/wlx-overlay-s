@@ -399,7 +399,7 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
         }
 
         if !dirty {
-            //return; //FIXME
+            return;
         }
 
         /*
@@ -496,7 +496,7 @@ impl<D, S> Control<D, S> {
             fg_color: Vec3::ONE,
             bg_color: Vec3::ZERO,
             text: Arc::from(""),
-            dirty: false,
+            dirty: true,
             size: 24,
             state: None,
             on_update: None,
