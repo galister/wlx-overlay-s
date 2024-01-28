@@ -109,7 +109,7 @@ impl OverlayData<OpenXrOverlayData> {
                 .collect();
 
             log::info!(
-                "{}: Created swapchain {}x{} depth: {}, {} MB",
+                "{}: Created swapchain {}x{}, {} images, {} MB",
                 self.state.name,
                 extent[0],
                 extent[1],
