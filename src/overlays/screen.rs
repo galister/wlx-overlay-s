@@ -1,11 +1,14 @@
 use core::slice;
+use serde::{Deserialize, Serialize};
 use std::{
+    collections::BTreeMap,
+    error::Error,
     f32::consts::PI,
-    path::Path,
+    ops::Deref,
+    path::PathBuf,
     ptr,
     sync::{mpsc::Receiver, Arc},
     time::{Duration, Instant},
-    usize,
 };
 use vulkano::{
     buffer::Subbuffer,
@@ -30,6 +33,8 @@ use crate::{
         input::{InteractionHandler, PointerHit, PointerMode},
         overlay::{OverlayData, OverlayRenderer, OverlayState, SplitOverlayBackend},
     },
+    config::def_pw_tokens,
+    config_io,
     graphics::{fourcc_to_vk, Vert2Uv, WlxGraphics, WlxPipeline},
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState},
@@ -341,7 +346,12 @@ impl OverlayRenderer for ScreenRenderer {
     }
 }
 
-fn try_create_screen<O>(wl: &WlxClient, id: u32, session: &AppSession) -> Option<OverlayData<O>>
+fn try_create_screen<O>(
+    wl: &WlxClient,
+    id: u32,
+    pw_token_store: &mut BTreeMap<String, String>,
+    session: &AppSession,
+) -> Option<OverlayData<O>>
 where
     O: Default,
 {
@@ -365,9 +375,18 @@ where
 
     if capture.is_none() {
         log::info!("{}: Using Pipewire capture", &output.name);
-        let file_name = format!("{}.token", &output.name);
-        let full_path = Path::new(&session.config_path).join(file_name);
-        let token = std::fs::read_to_string(full_path).ok();
+
+        let display_name = output.name.deref();
+
+        // Find existing token by display
+        let token = pw_token_store.get(display_name).map(|s| s.as_str());
+
+        if let Some(t) = token {
+            println!(
+                "Found existing Pipewire token for display {}: {}",
+                display_name, t
+            );
+        }
 
         capture = ScreenRenderer::new_pw(
             output,
@@ -430,6 +449,44 @@ where
     }
 }
 
+#[derive(Deserialize, Serialize, Default)]
+pub struct TokenConf {
+    #[serde(default = "def_pw_tokens")]
+    pub pw_tokens: Vec<(String, String)>,
+}
+
+fn get_pw_token_path() -> PathBuf {
+    let mut path = config_io::get_conf_d_path();
+    path.push("pw_tokens.yaml");
+    path
+}
+
+pub fn save_pw_token_config(tokens: &BTreeMap<String, String>) -> Result<(), Box<dyn Error>> {
+    let mut conf = TokenConf::default();
+
+    for (name, token) in tokens {
+        conf.pw_tokens.push((name.clone(), token.clone()));
+    }
+
+    let yaml = serde_yaml::to_string(&conf)?;
+    std::fs::write(get_pw_token_path(), yaml)?;
+
+    Ok(())
+}
+
+pub fn load_pw_token_config() -> Result<BTreeMap<String, String>, Box<dyn Error>> {
+    let mut map: BTreeMap<String, String> = BTreeMap::new();
+
+    let yaml = std::fs::read_to_string(get_pw_token_path())?;
+    let conf: TokenConf = serde_yaml::from_str(yaml.as_str())?;
+
+    for (name, token) in conf.pw_tokens {
+        map.insert(name, token);
+    }
+
+    Ok(map)
+}
+
 pub fn get_screens_wayland<O>(session: &AppSession) -> (Vec<OverlayData<O>>, Vec2)
 where
     O: Default,
@@ -437,11 +494,28 @@ where
     let mut overlays = vec![];
     let wl = WlxClient::new().unwrap();
 
+    // Load existing Pipewire tokens from file
+    let mut pw_tokens: BTreeMap<String, String> = if let Ok(conf) = load_pw_token_config() {
+        conf
+    } else {
+        BTreeMap::new()
+    };
+
+    let pw_tokens_copy = pw_tokens.clone();
+
     for id in wl.outputs.keys() {
-        if let Some(overlay) = try_create_screen(&wl, *id, &session) {
+        if let Some(overlay) = try_create_screen(&wl, *id, &mut pw_tokens, session) {
             overlays.push(overlay);
         }
     }
+
+    if pw_tokens_copy != pw_tokens {
+        // Token list changed, re-create token config file
+        if let Err(err) = save_pw_token_config(&pw_tokens) {
+            log::error!("Failed to save Pipewire token config: {}", err);
+        }
+    }
+
     let extent = wl.get_desktop_extent();
     (overlays, Vec2::new(extent.0 as f32, extent.1 as f32))
 }

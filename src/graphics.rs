@@ -26,8 +26,8 @@ use vulkano::{
         allocator::StandardDescriptorSetAllocator, DescriptorSet, WriteDescriptorSet,
     },
     device::{
-        physical::{PhysicalDevice, PhysicalDeviceType},
-        Device, DeviceCreateInfo, DeviceExtensions, Features, Queue, QueueCreateInfo, QueueFlags,
+        physical::PhysicalDevice, Device, DeviceCreateInfo, DeviceExtensions, Queue,
+        QueueCreateInfo, QueueFlags,
     },
     format::Format,
     image::{
@@ -37,7 +37,7 @@ use vulkano::{
         Image, ImageCreateInfo, ImageLayout, ImageTiling, ImageType, ImageUsage, SampleCount,
         SubresourceLayout,
     },
-    instance::{Instance, InstanceCreateFlags, InstanceCreateInfo, InstanceExtensions},
+    instance::{Instance, InstanceCreateInfo},
     memory::{
         allocator::{
             AllocationCreateInfo, GenericMemoryAllocatorCreateInfo, MemoryAllocator,
@@ -108,7 +108,7 @@ pub struct WlxGraphics {
 
 impl WlxGraphics {
     #[cfg(feature = "openxr")]
-    pub fn new_xr(xr_instance: openxr::Instance, system: openxr::SystemId) -> Arc<Self> {
+    pub fn new_openxr(xr_instance: openxr::Instance, system: openxr::SystemId) -> Arc<Self> {
         use std::ffi::{self, c_char, CString};
 
         use vulkano::Handle;
@@ -269,7 +269,8 @@ impl WlxGraphics {
         Arc::new(me)
     }
 
-    pub fn new(
+    #[cfg(feature = "openvr")]
+    pub fn new_openvr(
         vk_instance_extensions: InstanceExtensions,
         mut vk_device_extensions_fn: impl FnMut(&PhysicalDevice) -> DeviceExtensions,
     ) -> Arc<Self> {
@@ -903,7 +904,7 @@ impl WlxPipeline {
     ) -> Self {
         let render_pass_description = RenderPassCreateInfo {
             attachments: vec![AttachmentDescription {
-                format: format,
+                format,
                 samples: SampleCount::Sample1,
                 load_op: AttachmentLoadOp::Clear,
                 store_op: AttachmentStoreOp::Store,
