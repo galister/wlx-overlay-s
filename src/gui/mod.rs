@@ -399,8 +399,9 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
             }
         }
 
-        if !dirty {
-            return;
+        if dirty {
+            self.render_bg(app);
+            self.render_fg(app);
         }
 
         /*
