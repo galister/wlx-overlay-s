@@ -1,10 +1,7 @@
 use std::{env::VarError, path::Path, sync::Arc};
 
 use glam::{Quat, Vec3};
-use vulkano::{
-    command_buffer::CommandBufferUsage, format::Format, image::view::ImageView,
-    shader::ShaderModule,
-};
+use vulkano::{command_buffer::CommandBufferUsage, format::Format, image::view::ImageView};
 
 use crate::{
     backend::{common::TaskContainer, input::InputState},

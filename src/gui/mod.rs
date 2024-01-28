@@ -462,6 +462,9 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
     fn view(&mut self) -> Option<Arc<ImageView>> {
         Some(self.view_final.clone())
     }
+    fn extent(&self) -> [u32; 3] {
+        self.view_final.image().extent().clone()
+    }
 }
 
 impl<D, S> OverlayBackend for Canvas<D, S> {}

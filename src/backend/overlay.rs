@@ -150,6 +150,7 @@ pub trait OverlayRenderer {
     fn resume(&mut self, app: &mut AppState);
     fn render(&mut self, app: &mut AppState);
     fn view(&mut self) -> Option<Arc<ImageView>>;
+    fn extent(&self) -> [u32; 3];
 }
 
 pub struct FallbackRenderer;
@@ -161,6 +162,9 @@ impl OverlayRenderer for FallbackRenderer {
     fn render(&mut self, _app: &mut AppState) {}
     fn view(&mut self) -> Option<Arc<ImageView>> {
         None
+    }
+    fn extent(&self) -> [u32; 3] {
+        [0, 0, 0]
     }
 }
 // Boilerplate and dummies
@@ -203,6 +207,9 @@ impl OverlayRenderer for SplitOverlayBackend {
     }
     fn view(&mut self) -> Option<Arc<ImageView>> {
         self.renderer.view()
+    }
+    fn extent(&self) -> [u32; 3] {
+        self.renderer.extent()
     }
 }
 impl InteractionHandler for SplitOverlayBackend {

@@ -1,11 +1,7 @@
 use std::sync::Arc;
 
 use super::XrState;
-use crate::{
-    backend::overlay::OverlayData,
-    graphics::{WlxPass, WlxPipeline},
-    state::AppState,
-};
+use crate::{backend::overlay::OverlayData, graphics::WlxPipeline, state::AppState};
 use ash::vk::{self};
 use openxr as xr;
 use vulkano::{
@@ -17,25 +13,30 @@ use vulkano::{
 
 #[derive(Default)]
 pub struct OpenXrOverlayData {
+    last_view: Option<Arc<ImageView>>,
     inner: Option<XrOverlayData>,
     pub(super) init: bool,
 }
 
 impl OverlayData<OpenXrOverlayData> {
-    pub(super) fn initialize(&mut self, xr: &XrState, state: &mut AppState) {
-        let Some(my_view) = self.view() else {
-            log::error!("Failed to get view for overlay");
-            return;
+    pub(super) fn present_xr(
+        &mut self,
+        xr: &XrState,
+        state: &mut AppState,
+    ) -> Option<(xr::SwapchainSubImage<xr::Vulkan>, xr::Extent2Df)> {
+        if let Some(new_view) = self.view() {
+            self.data.last_view = Some(new_view);
+        }
+
+        let my_view = if let Some(view) = self.data.last_view.as_ref() {
+            view.clone()
+        } else {
+            log::warn!("{}: Will not show - image not ready", self.state.name);
+            return None;
         };
 
-        self.data.inner = {
-            let extent = my_view.image().extent();
-            log::info!(
-                "{}: Create swapchain {}x{}",
-                self.state.name,
-                extent[0],
-                extent[1]
-            );
+        let data = self.data.inner.get_or_insert_with(|| {
+            let extent = self.backend.extent();
 
             let swapchain = xr
                 .session
@@ -53,7 +54,7 @@ impl OverlayData<OpenXrOverlayData> {
                 })
                 .unwrap();
 
-            let framebuffers = swapchain
+            let framebuffers: Vec<XrFramebuffer> = swapchain
                 .enumerate_images()
                 .unwrap()
                 .into_iter()
@@ -87,13 +88,6 @@ impl OverlayData<OpenXrOverlayData> {
                         shaders.get("frag_srgb").unwrap().clone(),
                         state.graphics.native_format,
                     );
-                    let set = pipeline.uniform_sampler(0, my_view.clone(), Filter::Linear);
-                    let pass = pipeline.create_pass(
-                        [view.image().extent()[0] as _, view.image().extent()[1] as _],
-                        state.graphics.quad_verts.clone(),
-                        state.graphics.quad_indices.clone(),
-                        vec![set],
-                    );
 
                     let inner = Framebuffer::new(
                         pipeline.render_pass.clone(),
@@ -110,30 +104,25 @@ impl OverlayData<OpenXrOverlayData> {
                         inner,
                         view,
                         pipeline,
-                        pass,
                     }
                 })
                 .collect();
 
-            Some(XrOverlayData {
+            log::info!(
+                "{}: Created swapchain {}x{} depth: {}, {} MB",
+                self.state.name,
+                extent[0],
+                extent[1],
+                framebuffers.len(),
+                extent[0] * extent[1] * 4 * framebuffers.len() as u32 / 1024 / 1024
+            );
+
+            XrOverlayData {
                 swapchain,
                 framebuffers,
                 extent,
-            })
-        };
-    }
-
-    pub(super) fn present_xr(
-        &mut self,
-        xr: &XrState,
-        state: &mut AppState,
-    ) -> Option<(xr::SwapchainSubImage<xr::Vulkan>, xr::Extent2Df)> {
-        if self.data.inner.is_none() {
-            self.initialize(xr, state);
-            return None;
-        }
-
-        let data = self.data.inner.as_mut().unwrap();
+            }
+        });
 
         let idx = data.swapchain.acquire_image().unwrap();
 
@@ -144,7 +133,21 @@ impl OverlayData<OpenXrOverlayData> {
             .graphics
             .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
             .begin_render_pass(&frame.pipeline);
-        command_buffer.run_ref(&frame.pass);
+
+        let set = frame
+            .pipeline
+            .uniform_sampler(0, my_view.clone(), Filter::Linear);
+        let pass = frame.pipeline.create_pass(
+            [
+                my_view.image().extent()[0] as _,
+                my_view.image().extent()[1] as _,
+            ],
+            state.graphics.quad_verts.clone(),
+            state.graphics.quad_indices.clone(),
+            vec![set],
+        );
+
+        command_buffer.run_ref(&pass);
         command_buffer.end_render_pass().build_and_execute_now();
 
         data.swapchain.release_image().unwrap();
@@ -180,5 +183,4 @@ struct XrFramebuffer {
     inner: Arc<Framebuffer>,
     view: Arc<ImageView>,
     pipeline: Arc<WlxPipeline>,
-    pass: WlxPass,
 }

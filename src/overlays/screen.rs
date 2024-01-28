@@ -112,17 +112,13 @@ struct ScreenPipeline {
 }
 
 impl ScreenPipeline {
-    fn new(graphics: Arc<WlxGraphics>, image: &Image) -> Self {
+    fn new(graphics: Arc<WlxGraphics>, image: &Image, extent: &[u32; 3]) -> Self {
         let dim = image.extent();
 
         let vertex_buffer =
             graphics.upload_verts(dim[0] as _, dim[1] as _, 0.0, 0.0, dim[0] as _, dim[1] as _);
 
-        // TODO make this a setting
-        let render_w = dim[0].min(1920);
-        let render_h = (dim[1] as f32 / dim[0] as f32 * render_w as f32) as u32;
-
-        let render_texture = graphics.render_texture(render_w, render_h, Format::R8G8B8A8_UNORM);
+        let render_texture = graphics.render_texture(extent[0], extent[1], Format::R8G8B8A8_UNORM);
 
         let view = ImageView::new_default(render_texture).unwrap();
 
@@ -204,10 +200,12 @@ impl ScreenPipeline {
 }
 
 pub struct ScreenRenderer {
+    name: Arc<str>,
     capture: Box<dyn WlxCapture>,
     receiver: Option<Receiver<WlxFrame>>,
     pipeline: Option<ScreenPipeline>,
     last_image: Option<Arc<ImageView>>,
+    extent: [u32; 3],
 }
 
 impl ScreenRenderer {
@@ -216,11 +214,14 @@ impl ScreenRenderer {
             return None;
         };
         let capture = WlrDmabufCapture::new(client, output.id);
+
         Some(ScreenRenderer {
+            name: output.name.clone(),
             capture: Box::new(capture),
             receiver: None,
             pipeline: None,
             last_image: None,
+            extent: extent_from_res(output.size),
         })
     }
 
@@ -235,16 +236,21 @@ impl ScreenRenderer {
         let capture = PipewireCapture::new(name, node_id, 60);
 
         Some(ScreenRenderer {
+            name: output.name.clone(),
             capture: Box::new(capture),
             receiver: None,
             pipeline: None,
             last_image: None,
+            extent: extent_from_res(output.size),
         })
     }
 }
 
 impl OverlayRenderer for ScreenRenderer {
-    fn init(&mut self, _app: &mut AppState) {}
+    fn init(&mut self, app: &mut AppState) {
+        let images = app.graphics.shared_images.read().unwrap();
+        self.last_image = Some(images.get("fallback").unwrap().clone());
+    }
     fn render(&mut self, app: &mut AppState) {
         let receiver = self.receiver.get_or_insert_with(|| self.capture.init());
 
@@ -256,10 +262,10 @@ impl OverlayRenderer for ScreenRenderer {
                         continue;
                     }
                     if let Some(new) = app.graphics.dmabuf_texture(frame) {
-                        let pipeline = self
-                            .pipeline
-                            .get_or_insert_with(|| ScreenPipeline::new(app.graphics.clone(), &new));
-                        log::info!("New frame");
+                        let pipeline = self.pipeline.get_or_insert_with(|| {
+                            ScreenPipeline::new(app.graphics.clone(), &new, &self.extent)
+                        });
+                        log::debug!("{}: New DMA-buf frame", self.name);
                         pipeline.render(new);
                         self.last_image = Some(pipeline.view());
                     }
@@ -273,6 +279,7 @@ impl OverlayRenderer for ScreenRenderer {
                         log::error!("No fd");
                         continue;
                     };
+                    log::debug!("{}: New MemFd frame", self.name);
                     let format = fourcc_to_vk(frame.format.fourcc);
 
                     let len = frame.plane.stride as usize * frame.format.height as usize;
@@ -300,6 +307,7 @@ impl OverlayRenderer for ScreenRenderer {
                     self.last_image = Some(ImageView::new_default(image).unwrap());
                 }
                 WlxFrame::MemPtr(frame) => {
+                    log::debug!("{}: New MemPtr frame", self.name);
                     let mut upload = app
                         .graphics
                         .create_command_buffer(CommandBufferUsage::OneTimeSubmit);
@@ -327,6 +335,9 @@ impl OverlayRenderer for ScreenRenderer {
     }
     fn view(&mut self) -> Option<Arc<ImageView>> {
         self.last_image.take()
+    }
+    fn extent(&self) -> [u32; 3] {
+        self.extent.clone()
     }
 }
 
@@ -440,4 +451,13 @@ where
     O: Default,
 {
     todo!()
+}
+
+fn extent_from_res(res: (i32, i32)) -> [u32; 3] {
+    // screens above a certain resolution will have severe aliasing
+
+    // TODO make dynamic. maybe don't go above HMD resolution?
+    let w = res.0.min(1920) as u32;
+    let h = (res.1 as f32 / res.0 as f32 * w as f32) as u32;
+    [w, h, 1]
 }
