@@ -20,10 +20,10 @@ pub(super) struct OpenXrHand {
 
 pub(super) struct OpenXrHandSource {
     action_pose: xr::Action<xr::Posef>,
-    action_click: xr::Action<bool>,
-    action_grab: xr::Action<bool>,
-    action_scroll: xr::Action<xr::Vector2f>,
-    action_alt_click: xr::Action<bool>,
+    action_click: xr::Action<f32>,
+    action_grab: xr::Action<f32>,
+    action_scroll: xr::Action<f32>,
+    action_alt_click: xr::Action<f32>,
     action_show_hide: xr::Action<bool>,
     action_click_modifier_right: xr::Action<bool>,
     action_click_modifier_middle: xr::Action<bool>,
@@ -40,6 +40,8 @@ impl OpenXrInputSource {
 
         let left_source = OpenXrHandSource::new(&mut action_set, "left");
         let right_source = OpenXrHandSource::new(&mut action_set, "right");
+
+        suggest_bindings(&xr.instance, &[&left_source, &right_source]);
 
         xr.session.attach_action_sets(&[&action_set]).unwrap();
 
@@ -106,29 +108,31 @@ impl OpenXrHand {
             .action_click
             .state(session, xr::Path::NULL)
             .unwrap()
-            .current_state;
+            .current_state
+            > 0.7;
 
         pointer.now.grab = self
             .source
             .action_grab
             .state(session, xr::Path::NULL)
             .unwrap()
-            .current_state;
+            .current_state
+            > 0.7;
 
         pointer.now.scroll = self
             .source
             .action_scroll
             .state(session, xr::Path::NULL)
             .unwrap()
-            .current_state
-            .y;
+            .current_state;
 
         pointer.now.alt_click = self
             .source
             .action_alt_click
             .state(session, xr::Path::NULL)
             .unwrap()
-            .current_state;
+            .current_state
+            > 0.7;
 
         pointer.now.show_hide = self
             .source
@@ -165,28 +169,28 @@ impl OpenXrHandSource {
             .unwrap();
 
         let action_click = action_set
-            .create_action::<bool>(
+            .create_action::<f32>(
                 &format!("{}_click", side),
                 &format!("{} hand click", side),
                 &[],
             )
             .unwrap();
         let action_grab = action_set
-            .create_action::<bool>(
+            .create_action::<f32>(
                 &format!("{}_grab", side),
                 &format!("{} hand grab", side),
                 &[],
             )
             .unwrap();
         let action_scroll = action_set
-            .create_action::<xr::Vector2f>(
+            .create_action::<f32>(
                 &format!("{}_scroll", side),
                 &format!("{} hand scroll", side),
                 &[],
             )
             .unwrap();
         let action_alt_click = action_set
-            .create_action::<bool>(
+            .create_action::<f32>(
                 &format!("{}_alt_click", side),
                 &format!("{} hand alt click", side),
                 &[],
@@ -221,8 +225,6 @@ impl OpenXrHandSource {
             )
             .unwrap();
 
-        // TODO suggest bindings
-
         Self {
             action_pose,
             action_click,
@@ -235,4 +237,352 @@ impl OpenXrHandSource {
             action_haptics,
         }
     }
+}
+
+fn suggest_bindings(instance: &xr::Instance, hands: &[&OpenXrHandSource; 2]) {
+    let path = instance
+        .string_to_path("/interaction_profiles/khr/simple_controller")
+        .unwrap();
+
+    // not fully functional, but helpful for debugging
+    instance
+        .suggest_interaction_profile_bindings(
+            path,
+            &[
+                xr::Binding::new(
+                    &hands[0].action_pose,
+                    instance
+                        .string_to_path("/user/hand/left/input/aim/pose")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_pose,
+                    instance
+                        .string_to_path("/user/hand/right/input/aim/pose")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_click,
+                    instance
+                        .string_to_path("/user/hand/left/input/select/click")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_click,
+                    instance
+                        .string_to_path("/user/hand/right/input/select/click")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_show_hide,
+                    instance
+                        .string_to_path("/user/hand/left/input/menu/click")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_haptics,
+                    instance
+                        .string_to_path("/user/hand/left/output/haptic")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_haptics,
+                    instance
+                        .string_to_path("/user/hand/right/output/haptic")
+                        .unwrap(),
+                ),
+            ],
+        )
+        .unwrap();
+
+    let path = instance
+        .string_to_path("/interaction_profiles/oculus/touch_controller")
+        .unwrap();
+    instance
+        .suggest_interaction_profile_bindings(
+            path,
+            &[
+                xr::Binding::new(
+                    &hands[0].action_pose,
+                    instance
+                        .string_to_path("/user/hand/left/input/aim/pose")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_pose,
+                    instance
+                        .string_to_path("/user/hand/right/input/aim/pose")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_click,
+                    instance
+                        .string_to_path("/user/hand/left/input/trigger/value")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_click,
+                    instance
+                        .string_to_path("/user/hand/right/input/trigger/value")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_grab,
+                    instance
+                        .string_to_path("/user/hand/left/input/squeeze/value")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_grab,
+                    instance
+                        .string_to_path("/user/hand/right/input/squeeze/value")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_scroll,
+                    instance
+                        .string_to_path("/user/hand/left/input/thumbstick/y")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_scroll,
+                    instance
+                        .string_to_path("/user/hand/right/input/thumbstick/y")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_show_hide,
+                    instance
+                        .string_to_path("/user/hand/left/input/y/click")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_click_modifier_right,
+                    instance
+                        .string_to_path("/user/hand/left/input/y/touch")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_click_modifier_right,
+                    instance
+                        .string_to_path("/user/hand/right/input/b/touch")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_click_modifier_middle,
+                    instance
+                        .string_to_path("/user/hand/left/input/x/touch")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_click_modifier_middle,
+                    instance
+                        .string_to_path("/user/hand/right/input/a/touch")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_haptics,
+                    instance
+                        .string_to_path("/user/hand/left/output/haptic")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_haptics,
+                    instance
+                        .string_to_path("/user/hand/right/output/haptic")
+                        .unwrap(),
+                ),
+            ],
+        )
+        .unwrap();
+
+    let path = instance
+        .string_to_path("/interaction_profiles/valve/index_controller")
+        .unwrap();
+    instance
+        .suggest_interaction_profile_bindings(
+            path,
+            &[
+                xr::Binding::new(
+                    &hands[0].action_pose,
+                    instance
+                        .string_to_path("/user/hand/left/input/aim/pose")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_pose,
+                    instance
+                        .string_to_path("/user/hand/right/input/aim/pose")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_click,
+                    instance
+                        .string_to_path("/user/hand/left/input/trigger/value")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_click,
+                    instance
+                        .string_to_path("/user/hand/right/input/trigger/value")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_grab,
+                    instance
+                        .string_to_path("/user/hand/left/input/squeeze/value")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_grab,
+                    instance
+                        .string_to_path("/user/hand/right/input/squeeze/value")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_scroll,
+                    instance
+                        .string_to_path("/user/hand/left/input/thumbstick/y")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_scroll,
+                    instance
+                        .string_to_path("/user/hand/right/input/thumbstick/y")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_alt_click,
+                    instance
+                        .string_to_path("/user/hand/left/input/trackpad/force")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_alt_click,
+                    instance
+                        .string_to_path("/user/hand/right/input/trackpad/force")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_show_hide,
+                    instance
+                        .string_to_path("/user/hand/left/input/b/click")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_click_modifier_right,
+                    instance
+                        .string_to_path("/user/hand/left/input/b/touch")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_click_modifier_right,
+                    instance
+                        .string_to_path("/user/hand/right/input/b/touch")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_click_modifier_middle,
+                    instance
+                        .string_to_path("/user/hand/left/input/a/touch")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_click_modifier_middle,
+                    instance
+                        .string_to_path("/user/hand/right/input/a/touch")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_haptics,
+                    instance
+                        .string_to_path("/user/hand/left/output/haptic")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_haptics,
+                    instance
+                        .string_to_path("/user/hand/right/output/haptic")
+                        .unwrap(),
+                ),
+            ],
+        )
+        .unwrap();
+
+    let path = instance
+        .string_to_path("/interaction_profiles/htc/vive_controller")
+        .unwrap();
+    instance
+        .suggest_interaction_profile_bindings(
+            path,
+            &[
+                xr::Binding::new(
+                    &hands[0].action_pose,
+                    instance
+                        .string_to_path("/user/hand/left/input/aim/pose")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_pose,
+                    instance
+                        .string_to_path("/user/hand/right/input/aim/pose")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_click,
+                    instance
+                        .string_to_path("/user/hand/left/input/trigger/value")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_click,
+                    instance
+                        .string_to_path("/user/hand/right/input/trigger/value")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_grab,
+                    instance
+                        .string_to_path("/user/hand/left/input/squeeze/click")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_grab,
+                    instance
+                        .string_to_path("/user/hand/right/input/squeeze/click")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_scroll,
+                    instance
+                        .string_to_path("/user/hand/left/input/trackpad/y")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_scroll,
+                    instance
+                        .string_to_path("/user/hand/right/input/trackpad/y")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_show_hide,
+                    instance
+                        .string_to_path("/user/hand/left/input/menu/click")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[0].action_haptics,
+                    instance
+                        .string_to_path("/user/hand/left/output/haptic")
+                        .unwrap(),
+                ),
+                xr::Binding::new(
+                    &hands[1].action_haptics,
+                    instance
+                        .string_to_path("/user/hand/right/output/haptic")
+                        .unwrap(),
+                ),
+            ],
+        )
+        .unwrap();
 }
