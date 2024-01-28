@@ -4,7 +4,6 @@ use super::XrState;
 use crate::{
     backend::overlay::OverlayData,
     graphics::{WlxPass, WlxPipeline},
-    shaders::{frag_srgb, vert_common},
     state::AppState,
 };
 use ash::vk::{self};
@@ -31,6 +30,12 @@ impl OverlayData<OpenXrOverlayData> {
 
         self.data.inner = {
             let extent = my_view.image().extent();
+            log::info!(
+                "{}: Create swapchain {}x{}",
+                self.state.name,
+                extent[0],
+                extent[1]
+            );
 
             let swapchain = xr
                 .session
@@ -73,10 +78,13 @@ impl OverlayData<OpenXrOverlayData> {
                     let view = ImageView::new_default(image).unwrap();
 
                     // HACK: maybe not create one pipeline per image?
+
+                    let shaders = state.graphics.shared_shaders.read().unwrap();
+
                     let pipeline = state.graphics.create_pipeline(
                         view.clone(),
-                        vert_common::load(state.graphics.device.clone()).unwrap(),
-                        frag_srgb::load(state.graphics.device.clone()).unwrap(),
+                        shaders.get("vert_common").unwrap().clone(),
+                        shaders.get("frag_srgb").unwrap().clone(),
                         state.graphics.native_format,
                     );
                     let set = pipeline.uniform_sampler(0, my_view.clone(), Filter::Linear);

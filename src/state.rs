@@ -1,13 +1,17 @@
 use std::{env::VarError, path::Path, sync::Arc};
 
 use glam::{Quat, Vec3};
-use vulkano::format::Format;
+use vulkano::{
+    command_buffer::CommandBufferUsage, format::Format, image::view::ImageView,
+    shader::ShaderModule,
+};
 
 use crate::{
     backend::{common::TaskContainer, input::InputState},
     graphics::WlxGraphics,
     gui::font::FontCache,
     hid::HidProvider,
+    shaders::{frag_color, frag_glyph, frag_screen, frag_sprite, frag_srgb, vert_common},
 };
 
 pub const WATCH_DEFAULT_POS: Vec3 = Vec3::new(0., 0., 0.15);
@@ -25,6 +29,41 @@ pub struct AppState {
 
 impl AppState {
     pub fn from_graphics(graphics: Arc<WlxGraphics>) -> Self {
+        // insert shared resources
+        {
+            let mut uploads = graphics.create_command_buffer(CommandBufferUsage::OneTimeSubmit);
+            let texture = uploads.texture2d(1, 1, Format::R8G8B8A8_UNORM, &[255, 0, 255, 255]);
+            uploads.build_and_execute_now();
+
+            let Ok(mut images) = graphics.shared_images.write() else {
+                panic!("Shared Images RwLock poisoned");
+            };
+
+            images.insert("fallback", ImageView::new_default(texture).unwrap());
+
+            let Ok(mut shaders) = graphics.shared_shaders.write() else {
+                panic!("Shared Shaders RwLock poisoned");
+            };
+
+            let shader = vert_common::load(graphics.device.clone()).unwrap();
+            shaders.insert("vert_common", shader);
+
+            let shader = frag_color::load(graphics.device.clone()).unwrap();
+            shaders.insert("frag_color", shader);
+
+            let shader = frag_glyph::load(graphics.device.clone()).unwrap();
+            shaders.insert("frag_glyph", shader);
+
+            let shader = frag_screen::load(graphics.device.clone()).unwrap();
+            shaders.insert("frag_screen", shader);
+
+            let shader = frag_sprite::load(graphics.device.clone()).unwrap();
+            shaders.insert("frag_sprite", shader);
+
+            let shader = frag_srgb::load(graphics.device.clone()).unwrap();
+            shaders.insert("frag_srgb", shader);
+        }
+
         AppState {
             fc: FontCache::new(),
             session: AppSession::load(),

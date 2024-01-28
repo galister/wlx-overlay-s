@@ -32,7 +32,6 @@ use crate::{
     },
     graphics::{fourcc_to_vk, Vert2Uv, WlxGraphics, WlxPipeline},
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
-    shaders::{frag_screen, vert_common},
     state::{AppSession, AppState},
 };
 
@@ -127,14 +126,18 @@ impl ScreenPipeline {
 
         let view = ImageView::new_default(render_texture).unwrap();
 
-        let pipeline = graphics.create_pipeline(
-            view,
-            vert_common::load(graphics.device.clone()).unwrap(),
-            frag_screen::load(graphics.device.clone()).unwrap(),
-            Format::R8G8B8A8_UNORM,
-            //            ImageLayout::TransferSrcOptimal,
-            //            ImageLayout::TransferSrcOptimal,
-        );
+        let pipeline = {
+            let shaders = graphics.shared_shaders.read().unwrap();
+
+            graphics.create_pipeline(
+                view,
+                shaders.get("vert_common").unwrap().clone(),
+                shaders.get("frag_screen").unwrap().clone(),
+                Format::R8G8B8A8_UNORM,
+                //            ImageLayout::TransferSrcOptimal,
+                //            ImageLayout::TransferSrcOptimal,
+            )
+        };
 
         Self {
             graphics,

@@ -13,7 +13,6 @@ use crate::{
         overlay::{OverlayBackend, OverlayRenderer},
     },
     graphics::{WlxCommandBuffer, WlxGraphics, WlxPass, WlxPipeline},
-    shaders::{frag_color, frag_glyph, frag_sprite, vert_common},
     state::AppState,
 };
 
@@ -226,17 +225,19 @@ impl<D, S> Canvas<D, S> {
         let view_bg = ImageView::new_default(tex_bg.clone()).unwrap();
         let view_final = ImageView::new_default(tex_final.clone()).unwrap();
 
+        let shaders = graphics.shared_shaders.read().unwrap();
+
         let pipeline_bg_color = graphics.create_pipeline(
             view_bg.clone(),
-            vert_common::load(graphics.device.clone()).unwrap(),
-            frag_color::load(graphics.device.clone()).unwrap(),
+            shaders.get("vert_common").unwrap().clone(),
+            shaders.get("frag_color").unwrap().clone(),
             format,
         );
 
         let pipeline_fg_glyph = graphics.create_pipeline(
             view_fg.clone(),
-            vert_common::load(graphics.device.clone()).unwrap(),
-            frag_glyph::load(graphics.device.clone()).unwrap(),
+            shaders.get("vert_common").unwrap().clone(),
+            shaders.get("frag_glyph").unwrap().clone(),
             format,
         );
 
@@ -245,8 +246,8 @@ impl<D, S> Canvas<D, S> {
 
         let pipeline_final = graphics.create_pipeline_with_layouts(
             view_final.clone(),
-            vert_common::load(graphics.device.clone()).unwrap(),
-            frag_sprite::load(graphics.device.clone()).unwrap(),
+            shaders.get("vert_common").unwrap().clone(),
+            shaders.get("frag_sprite").unwrap().clone(),
             format,
             ImageLayout::TransferSrcOptimal,
             ImageLayout::TransferSrcOptimal,
@@ -275,7 +276,7 @@ impl<D, S> Canvas<D, S> {
                 data,
                 width,
                 height,
-                graphics,
+                graphics: graphics.clone(),
                 pipeline_bg_color,
                 pipeline_fg_glyph,
                 pipeline_final,

@@ -1,9 +1,10 @@
 use std::{
+    collections::HashMap,
     error::Error,
     io::Cursor,
     os::fd::{FromRawFd, IntoRawFd},
     slice::Iter,
-    sync::Arc,
+    sync::{Arc, RwLock},
 };
 
 use ash::vk::{self, SubmitInfo};
@@ -100,6 +101,9 @@ pub struct WlxGraphics {
 
     pub quad_verts: Subbuffer<[Vert2Uv]>,
     pub quad_indices: Subbuffer<[u16]>,
+
+    pub shared_shaders: RwLock<HashMap<&'static str, Arc<ShaderModule>>>,
+    pub shared_images: RwLock<HashMap<&'static str, Arc<ImageView>>>,
 }
 
 impl WlxGraphics {
@@ -258,6 +262,8 @@ impl WlxGraphics {
             descriptor_set_allocator,
             quad_indices,
             quad_verts,
+            shared_images: RwLock::new(HashMap::new()),
+            shared_shaders: RwLock::new(HashMap::new()),
         };
 
         Arc::new(me)
@@ -380,6 +386,8 @@ impl WlxGraphics {
             descriptor_set_allocator,
             quad_indices,
             quad_verts,
+            shared_images: RwLock::new(HashMap::new()),
+            shared_shaders: RwLock::new(HashMap::new()),
         };
 
         Arc::new(me)
