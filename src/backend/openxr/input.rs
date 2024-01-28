@@ -10,7 +10,6 @@ type XrSession = xr::Session<xr::Vulkan>;
 pub(super) struct OpenXrInputSource {
     action_set: xr::ActionSet,
     hands: [OpenXrHand; 2],
-    pub(super) stage: xr::Space,
 }
 
 pub(super) struct OpenXrHand {
@@ -45,18 +44,12 @@ impl OpenXrInputSource {
 
         xr.session.attach_action_sets(&[&action_set]).unwrap();
 
-        let stage = xr
-            .session
-            .create_reference_space(xr::ReferenceSpaceType::STAGE, xr::Posef::IDENTITY)
-            .unwrap();
-
         Self {
             action_set,
             hands: [
                 OpenXrHand::new(&xr, left_source),
                 OpenXrHand::new(&xr, right_source),
             ],
-            stage,
         }
     }
 
@@ -68,7 +61,7 @@ impl OpenXrInputSource {
         for i in 0..2 {
             self.hands[i].update(
                 &mut state.input_state.pointers[i],
-                &self.stage,
+                &xr.stage,
                 &xr.session,
                 xr.predicted_display_time,
             );

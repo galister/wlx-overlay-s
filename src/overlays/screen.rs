@@ -158,8 +158,8 @@ impl ScreenPipeline {
 
         let mut command_buffer = self
             .graphics
-            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
-            .begin_render_pass(&self.pipeline);
+            .create_command_buffer(CommandBufferUsage::OneTimeSubmit);
+        command_buffer.begin_render_pass(&self.pipeline);
 
         let set0 = self.pipeline.uniform_sampler(
             0,
@@ -177,9 +177,10 @@ impl ScreenPipeline {
             vec![set0],
         );
         command_buffer.run_ref(&pass);
+        command_buffer.end_render_pass();
 
         {
-            let mut exec = command_buffer.end_render_pass().build_and_execute();
+            let mut exec = command_buffer.build_and_execute();
             exec.flush().unwrap();
             exec.cleanup_finished();
         }
@@ -417,7 +418,7 @@ where
                 grabbable: true,
                 spawn_rotation: Quat::from_axis_angle(axis, angle),
                 spawn_point: vec3a(0., 0.5, -1.),
-                width: 1.5,
+                width: 1.,
                 interaction_transform,
                 ..Default::default()
             },

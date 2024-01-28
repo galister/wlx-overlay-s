@@ -737,12 +737,12 @@ impl WlxGraphics {
 }
 
 pub struct WlxCommandBuffer {
-    graphics: Arc<WlxGraphics>,
-    command_buffer: RecordingCommandBuffer,
+    pub graphics: Arc<WlxGraphics>,
+    pub command_buffer: RecordingCommandBuffer,
 }
 
 impl WlxCommandBuffer {
-    pub fn begin_render_pass(mut self, pipeline: &WlxPipeline) -> Self {
+    pub fn begin_render_pass(&mut self, pipeline: &WlxPipeline) {
         self.command_buffer
             .begin_render_pass(
                 RenderPassBeginInfo {
@@ -755,7 +755,6 @@ impl WlxCommandBuffer {
                 },
             )
             .unwrap();
-        self
     }
 
     pub fn run_ref(&mut self, pass: &WlxPass) -> &mut Self {
@@ -832,11 +831,10 @@ impl WlxCommandBuffer {
 }
 
 impl WlxCommandBuffer {
-    pub fn end_render_pass(mut self) -> Self {
+    pub fn end_render_pass(&mut self) {
         self.command_buffer
             .end_render_pass(SubpassEndInfo::default())
             .unwrap();
-        self
     }
 
     pub fn build(self) -> Arc<CommandBuffer> {

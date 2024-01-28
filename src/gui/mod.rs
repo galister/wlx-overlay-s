@@ -320,28 +320,30 @@ impl<D, S> Canvas<D, S> {
         let mut cmd_buffer = self
             .canvas
             .graphics
-            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
-            .begin_render_pass(&self.canvas.pipeline_bg_color);
+            .create_command_buffer(CommandBufferUsage::OneTimeSubmit);
+        cmd_buffer.begin_render_pass(&self.canvas.pipeline_bg_color);
         for c in self.controls.iter_mut() {
             if let Some(fun) = c.on_render_bg {
                 fun(c, &self.canvas, app, &mut cmd_buffer);
             }
         }
-        cmd_buffer.end_render_pass().build_and_execute_now()
+        cmd_buffer.end_render_pass();
+        cmd_buffer.build_and_execute_now();
     }
 
     fn render_fg(&mut self, app: &mut AppState) {
         let mut cmd_buffer = self
             .canvas
             .graphics
-            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
-            .begin_render_pass(&self.canvas.pipeline_fg_glyph);
+            .create_command_buffer(CommandBufferUsage::OneTimeSubmit);
+        cmd_buffer.begin_render_pass(&self.canvas.pipeline_fg_glyph);
         for c in self.controls.iter_mut() {
             if let Some(fun) = c.on_render_fg {
                 fun(c, &self.canvas, app, &mut cmd_buffer);
             }
         }
-        cmd_buffer.end_render_pass().build_and_execute_now()
+        cmd_buffer.end_render_pass();
+        cmd_buffer.build_and_execute_now();
     }
 }
 
@@ -424,8 +426,8 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
         let mut cmd_buffer = self
             .canvas
             .graphics
-            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
-            .begin_render_pass(&self.canvas.pipeline_final);
+            .create_command_buffer(CommandBufferUsage::OneTimeSubmit);
+        cmd_buffer.begin_render_pass(&self.canvas.pipeline_final);
 
         // static background
         cmd_buffer.run_ref(&self.pass_bg);
@@ -446,7 +448,8 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
         // mostly static text
         cmd_buffer.run_ref(&self.pass_fg);
 
-        cmd_buffer.end_render_pass().build_and_execute_now();
+        cmd_buffer.end_render_pass();
+        cmd_buffer.build_and_execute_now();
 
         /*
         self.canvas

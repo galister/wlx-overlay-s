@@ -9,11 +9,14 @@ use std::{
 use anyhow::{bail, ensure};
 use glam::{Affine3A, Quat, Vec3};
 use openxr as xr;
-use vulkano::{Handle, VulkanObject};
-use xr::{CompositionLayerFlags, EyeVisibility};
+use vulkano::{command_buffer::CommandBufferUsage, Handle, VulkanObject};
 
 use crate::{
-    backend::{common::OverlayContainer, input::interact, openxr::overlay::OpenXrOverlayData},
+    backend::{
+        common::OverlayContainer,
+        input::interact,
+        openxr::{lines::LinePool, overlay::OpenXrOverlayData},
+    },
     graphics::WlxGraphics,
     state::AppState,
 };
@@ -23,6 +26,7 @@ use super::common::BackendError;
 mod input;
 mod lines;
 mod overlay;
+mod swapchain;
 
 const VIEW_TYPE: xr::ViewConfigurationType = xr::ViewConfigurationType::PRIMARY_STEREO;
 const VIEW_COUNT: u32 = 2;
@@ -32,6 +36,7 @@ struct XrState {
     system: xr::SystemId,
     session: xr::Session<xr::Vulkan>,
     predicted_display_time: xr::Time,
+    stage: Arc<xr::Space>,
 }
 
 pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
@@ -54,6 +59,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     };
 
     let mut overlays = OverlayContainer::<OpenXrOverlayData>::new(&mut app_state);
+    let mut lines = LinePool::new(app_state.graphics.clone());
 
     app_state.hid_provider.set_desktop_extent(overlays.extent);
 
@@ -77,12 +83,22 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             .unwrap()
     };
 
+    let stage = session
+        .create_reference_space(xr::ReferenceSpaceType::STAGE, xr::Posef::IDENTITY)
+        .unwrap();
+
     let mut xr_state = XrState {
         instance: xr_instance,
         system,
         session,
         predicted_display_time: xr::Time::from_nanos(0),
+        stage: Arc::new(stage),
     };
+
+    let pointer_lines = [
+        lines.allocate(&xr_state, app_state.graphics.clone()),
+        lines.allocate(&xr_state, app_state.graphics.clone()),
+    ];
 
     let input_source = input::OpenXrInputSource::new(&xr_state);
 
@@ -164,17 +180,26 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             .locate_views(
                 VIEW_TYPE,
                 xr_frame_state.predicted_display_time,
-                &input_source.stage,
+                &xr_state.stage,
             )
             .unwrap();
 
         app_state.input_state.hmd = hmd_pose_from_views(&views);
 
-        let _pointer_lengths = interact(&mut overlays, &mut app_state);
-
-        //TODO lines
+        let pointer_lengths = interact(&mut overlays, &mut app_state);
+        for (idx, len) in pointer_lengths.iter().enumerate() {
+            lines.draw_from(
+                pointer_lines[idx],
+                app_state.input_state.pointers[idx].pose,
+                *len,
+                0,
+            );
+        }
 
         let mut layers = vec![];
+        let mut command_buffer = app_state
+            .graphics
+            .create_command_buffer(CommandBufferUsage::OneTimeSubmit);
 
         for o in overlays.iter_mut() {
             if !o.state.want_visible {
@@ -186,22 +211,17 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 o.data.init = true;
             }
             o.render(&mut app_state);
-            let transform = o.state.transform;
 
-            let Some((sub_image, extent)) = o.present_xr(&xr_state, &mut app_state) else {
-                continue;
+            if let Some(quad) = o.present_xr(&xr_state, &mut command_buffer) {
+                layers.push(quad);
             };
+        }
 
-            let quad = xr::CompositionLayerQuad::new()
-                .pose(transform_to_posef(&transform))
-                .sub_image(sub_image)
-                .eye_visibility(EyeVisibility::BOTH)
-                .layer_flags(CompositionLayerFlags::CORRECT_CHROMATIC_ABERRATION)
-                .space(&input_source.stage)
-                .size(extent);
-
+        for quad in lines.present_xr(&xr_state, &mut command_buffer) {
             layers.push(quad);
         }
+
+        command_buffer.build_and_execute_now();
 
         let frame_ref = layers
             .iter()
@@ -328,7 +348,7 @@ fn quat_lerp(a: Quat, mut b: Quat, t: f32) -> Quat {
 
 fn transform_to_posef(transform: &Affine3A) -> xr::Posef {
     let translation = transform.translation;
-    let rotation = Quat::from_mat3a(&transform.matrix3);
+    let rotation = Quat::from_affine3(transform).normalize();
 
     xr::Posef {
         orientation: xr::Quaternionf {
