@@ -33,16 +33,17 @@ use vulkano::{
         sampler::{Filter, Sampler, SamplerAddressMode, SamplerCreateInfo},
         sys::RawImage,
         view::ImageView,
-        Image, ImageCreateFlags, ImageCreateInfo, ImageLayout, ImageTiling, ImageType, ImageUsage,
-        SampleCount, SubresourceLayout,
+        Image, ImageCreateInfo, ImageLayout, ImageTiling, ImageType, ImageUsage, SampleCount,
+        SubresourceLayout,
     },
     instance::{Instance, InstanceCreateFlags, InstanceCreateInfo, InstanceExtensions},
     memory::{
         allocator::{
-            AllocationCreateInfo, MemoryAllocator, MemoryTypeFilter, StandardMemoryAllocator,
+            AllocationCreateInfo, GenericMemoryAllocatorCreateInfo, MemoryAllocator,
+            MemoryTypeFilter, StandardMemoryAllocator,
         },
         DedicatedAllocation, DeviceMemory, ExternalMemoryHandleType, ExternalMemoryHandleTypes,
-        MemoryAllocateInfo, MemoryImportInfo, ResourceMemory,
+        MemoryAllocateInfo, MemoryImportInfo, MemoryPropertyFlags, ResourceMemory,
     },
     pipeline::{
         graphics::{
@@ -176,7 +177,6 @@ impl WlxGraphics {
             khr_external_memory_fd: true,
             ext_external_memory_dma_buf: true,
             ext_image_drm_format_modifier: true,
-            amd_memory_overallocation_behavior: true,
             ..DeviceExtensions::empty()
         };
 
@@ -233,7 +233,7 @@ impl WlxGraphics {
 
         let queue = queues.next().unwrap();
 
-        let memory_allocator = Arc::new(StandardMemoryAllocator::new_default(device.clone()));
+        let memory_allocator = memory_allocator(device.clone());
         let command_buffer_allocator = Arc::new(StandardCommandBufferAllocator::new(
             device.clone(),
             StandardCommandBufferAllocatorCreateInfo {
@@ -292,7 +292,6 @@ impl WlxGraphics {
             khr_external_memory_fd: true,
             ext_external_memory_dma_buf: true,
             ext_image_drm_format_modifier: true,
-            amd_memory_overallocation_behavior: true,
             ..DeviceExtensions::empty()
         };
 
@@ -301,9 +300,6 @@ impl WlxGraphics {
         let (physical_device, my_extensions, queue_family_index) = instance
             .enumerate_physical_devices()
             .unwrap()
-            //.filter(|p| {
-            //    p.api_version() >= Version::V1_3 || p.supported_extensions().khr_dynamic_rendering
-            //})
             .filter_map(|p| {
                 let runtime_extensions = vk_device_extensions_fn(&p);
                 log::debug!(
@@ -340,10 +336,6 @@ impl WlxGraphics {
             physical_device.properties().device_name,
         );
 
-        //if physical_device.api_version() < Version::V1_3 {
-        //    device_extensions.khr_dynamic_rendering = true;
-        //}
-
         let (device, mut queues) = Device::new(
             physical_device,
             DeviceCreateInfo {
@@ -363,7 +355,7 @@ impl WlxGraphics {
 
         let queue = queues.next().unwrap();
 
-        let memory_allocator = Arc::new(StandardMemoryAllocator::new_default(device.clone()));
+        let memory_allocator = memory_allocator(device.clone());
         let command_buffer_allocator = Arc::new(StandardCommandBufferAllocator::new(
             device.clone(),
             StandardCommandBufferAllocatorCreateInfo {
@@ -527,12 +519,6 @@ impl WlxGraphics {
 
         let external_memory_handle_types = ExternalMemoryHandleTypes::DMA_BUF;
 
-        let flags = if frame.num_planes > 9 {
-            ImageCreateFlags::DISJOINT
-        } else {
-            ImageCreateFlags::empty()
-        };
-
         let image = RawImage::new(
             self.device.clone(),
             ImageCreateInfo {
@@ -542,7 +528,6 @@ impl WlxGraphics {
                 usage: ImageUsage::SAMPLED | ImageUsage::TRANSFER_SRC,
                 external_memory_handle_types,
                 tiling: ImageTiling::DrmFormatModifier,
-                flags,
                 drm_format_modifiers: vec![frame.format.modifier],
                 drm_format_modifier_plane_layouts: layouts,
                 ..Default::default()
@@ -1006,13 +991,6 @@ impl WlxPipeline {
         }
     }
 
-    pub fn swap_framebuffer(&mut self, new_framebuffer: Arc<Framebuffer>) -> Arc<Framebuffer> {
-        let old = self.framebuffer.clone();
-        self.view = new_framebuffer.attachments()[0].clone();
-        self.framebuffer = new_framebuffer;
-        old
-    }
-
     pub fn inner(&self) -> Arc<GraphicsPipeline> {
         self.pipeline.clone()
     }
@@ -1181,4 +1159,43 @@ pub fn fourcc_to_vk(fourcc: FourCC) -> Format {
         DRM_FORMAT_XRGB8888 => Format::B8G8R8A8_UNORM,
         _ => panic!("Unsupported memfd format {}", fourcc),
     }
+}
+
+fn memory_allocator(device: Arc<Device>) -> Arc<StandardMemoryAllocator> {
+    let props = device.physical_device().memory_properties();
+
+    let mut block_sizes = vec![0; props.memory_types.len()];
+    let mut memory_type_bits = u32::MAX;
+
+    for (index, memory_type) in props.memory_types.iter().enumerate() {
+        const LARGE_HEAP_THRESHOLD: DeviceSize = 1024 * 1024 * 1024;
+
+        let heap_size = props.memory_heaps[memory_type.heap_index as usize].size;
+
+        block_sizes[index] = if heap_size >= LARGE_HEAP_THRESHOLD {
+            48 * 1024 * 1024
+        } else {
+            24 * 1024 * 1024
+        };
+
+        if memory_type.property_flags.intersects(
+            MemoryPropertyFlags::LAZILY_ALLOCATED
+                | MemoryPropertyFlags::PROTECTED
+                | MemoryPropertyFlags::DEVICE_COHERENT
+                | MemoryPropertyFlags::RDMA_CAPABLE,
+        ) {
+            // VUID-VkMemoryAllocateInfo-memoryTypeIndex-01872
+            // VUID-vkAllocateMemory-deviceCoherentMemory-02790
+            // Lazily allocated memory would just cause problems for suballocation in general.
+            memory_type_bits &= !(1 << index);
+        }
+    }
+
+    let create_info = GenericMemoryAllocatorCreateInfo {
+        block_sizes: &block_sizes,
+        memory_type_bits,
+        ..Default::default()
+    };
+
+    Arc::new(StandardMemoryAllocator::new(device, create_info))
 }
