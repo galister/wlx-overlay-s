@@ -1,10 +1,12 @@
-use std::{env::VarError, path::Path, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 
 use glam::{Quat, Vec3};
 use vulkano::{command_buffer::CommandBufferUsage, format::Format, image::view::ImageView};
 
 use crate::{
     backend::{common::TaskContainer, input::InputState},
+    config::GeneralConfig,
+    config_io,
     graphics::WlxGraphics,
     gui::font::FontCache,
     hid::HidProvider,
@@ -74,7 +76,8 @@ impl AppState {
 }
 
 pub struct AppSession {
-    pub config_path: String,
+    pub config_root_path: PathBuf,
+    pub config: GeneralConfig,
 
     pub show_screens: Vec<String>,
     pub show_keyboard: bool,
@@ -103,21 +106,13 @@ pub struct AppSession {
 
 impl AppSession {
     pub fn load() -> Self {
-        let config_path = std::env::var("XDG_CONFIG_HOME")
-            .or_else(|_| std::env::var("HOME").map(|home| format!("{}/.config", home)))
-            .or_else(|_| {
-                log::warn!("Err: $XDG_CONFIG_HOME and $HOME are not set, using /tmp/wlxoverlay");
-                Ok::<String, VarError>("/tmp".to_string())
-            })
-            .map(|config| Path::new(&config).join("wlxoverlay"))
-            .ok()
-            .and_then(|path| path.to_str().map(|path| path.to_string()))
-            .unwrap();
-
-        let _ = std::fs::create_dir(&config_path);
+        let config_root_path = config_io::ensure_config_root();
+        println!("Config root path: {}", config_root_path.to_string_lossy());
+        let config = GeneralConfig::load_from_disk();
 
         AppSession {
-            config_path,
+            config_root_path,
+            config,
             show_screens: vec!["DP-3".to_string()],
             keyboard_volume: 0.5,
             show_keyboard: false,
