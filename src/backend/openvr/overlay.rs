@@ -12,16 +12,15 @@ use crate::{
     state::AppState,
 };
 
-const WIDTH: f32 = 1.0;
-
 #[derive(Default)]
 pub(super) struct OpenVrOverlayData {
-    handle: Option<OverlayHandle>,
-    last_image: Option<u64>,
+    pub(super) handle: Option<OverlayHandle>,
+    pub(super) last_image: Option<u64>,
     pub(super) visible: bool,
     pub(super) color: Vec4,
     pub(super) curvature: f32,
     pub(super) sort_order: u32,
+    pub(crate) width: f32,
     pub(super) relative_to: RelativeTo,
 }
 
@@ -49,6 +48,11 @@ impl OverlayData<OpenVrOverlayData> {
         self.data.color = Vec4::ONE;
 
         self.init(app);
+        self.upload_transform(overlay);
+
+        if self.data.width < f32::EPSILON {
+            self.data.width = 1.0;
+        }
 
         self.upload_width(overlay);
         self.upload_color(overlay);
@@ -125,7 +129,7 @@ impl OverlayData<OpenVrOverlayData> {
             log::debug!("{}: No overlay handle", self.state.name);
             return;
         };
-        if let Err(e) = overlay.set_width(handle, WIDTH) {
+        if let Err(e) = overlay.set_width(handle, self.data.width) {
             panic!("Failed to set overlay width: {}", e);
         }
     }

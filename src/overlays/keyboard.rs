@@ -106,13 +106,10 @@ where
 
     let canvas = canvas.build();
 
+    let interaction_transform = Affine2::from_translation(vec2(0.5, 0.5))
+        * Affine2::from_scale(vec2(1., -size.x as f32 / size.y as f32));
+
     let width = LAYOUT.row_size * 0.05;
-    let width_inv = 1.0 / width;
-    let aspect_ratio = size.x / size.y;
-    let t_w = width_inv;
-    let t_h = -(width_inv) * aspect_ratio;
-    let interaction_transform =
-        Affine2::from_scale_angle_translation(vec2(t_w, t_h), 0.0, vec2(0.5, 0.5));
 
     OverlayData {
         state: OverlayState {

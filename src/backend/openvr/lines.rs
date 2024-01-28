@@ -63,7 +63,6 @@ impl LinePool {
             state: OverlayState {
                 name: Arc::from(format!("wlx-line{}", id)),
                 show_hide: true,
-                spawn_scale: 0.002,
                 size: (0, 0),
                 ..Default::default()
             },
@@ -73,6 +72,10 @@ impl LinePool {
                 }),
                 ..Default::default()
             }),
+            data: OpenVrOverlayData {
+                width: 0.002,
+                ..Default::default()
+            },
             ..Default::default()
         };
         data.data.sort_order = 69;

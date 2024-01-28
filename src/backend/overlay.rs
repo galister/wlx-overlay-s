@@ -98,16 +98,14 @@ impl OverlayState {
         }
     }
     pub fn reset(&mut self, app: &mut AppState) {
-        if let RelativeTo::None = self.relative_to {
-            let translation = app.input_state.hmd.transform_point3a(self.spawn_point);
-            self.transform = Affine3A::from_scale_rotation_translation(
-                Vec3::ONE * self.spawn_scale,
-                Quat::IDENTITY,
-                translation.into(),
-            );
+        let translation = app.input_state.hmd.transform_point3a(self.spawn_point);
+        self.transform = Affine3A::from_scale_rotation_translation(
+            Vec3::ONE * self.spawn_scale,
+            Quat::IDENTITY,
+            translation.into(),
+        );
 
-            self.realign(&app.input_state.hmd);
-        }
+        self.realign(&app.input_state.hmd);
     }
     pub fn realign(&mut self, hmd: &Affine3A) {
         let to_hmd = hmd.translation - self.transform.translation;
