@@ -1,5 +1,7 @@
 #[allow(dead_code)]
 mod backend;
+mod config;
+mod config_io;
 mod graphics;
 mod gui;
 mod hid;
@@ -33,11 +35,12 @@ fn main() {
     #[cfg(all(feature = "openxr", feature = "openvr"))]
     auto_run(running);
 
+    // TODO: Handle error messages if using cherry-picked features
     #[cfg(all(feature = "openvr", not(feature = "openxr")))]
-    crate::backend::openvr::openvr_run(running);
+    let _ = crate::backend::openvr::openvr_run(running);
 
     #[cfg(all(feature = "openxr", not(feature = "openvr")))]
-    crate::backend::openxr::openxr_run(running);
+    let _ = crate::backend::openxr::openxr_run(running);
 
     #[cfg(not(any(feature = "openxr", feature = "openvr")))]
     compile_error!("You must enable at least one backend feature (openxr or openvr)");

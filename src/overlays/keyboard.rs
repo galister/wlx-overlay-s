@@ -1,9 +1,6 @@
 use std::{
     collections::HashMap,
-    env::var,
-    fs,
     io::Cursor,
-    path::PathBuf,
     process::{Child, Command},
     str::FromStr,
     sync::Arc,
@@ -11,6 +8,7 @@ use std::{
 
 use crate::{
     backend::overlay::{OverlayData, OverlayState},
+    config,
     gui::{color_parse, CanvasBuilder, Control},
     hid::{KeyModifier, VirtualKey, KEYS_TO_MODS},
     state::AppState,
@@ -246,18 +244,13 @@ enum KeyButtonData {
     },
 }
 
-static KEYBOARD_YAML: Lazy<PathBuf> = Lazy::new(|| {
-    let home = &var("HOME").unwrap();
-    [home, ".config/wlxoverlay/keyboard.yaml"].iter().collect() //TODO other paths
-});
-
 static LAYOUT: Lazy<Layout> = Lazy::new(Layout::load_from_disk);
 
 static MACRO_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^([A-Za-z0-1_-]+)(?: +(UP|DOWN))?$").unwrap());
 
 #[derive(Debug, Deserialize, Serialize)]
-struct Layout {
+pub struct Layout {
     name: String,
     row_size: f32,
     key_sizes: Vec<Vec<f32>>,
@@ -269,16 +262,8 @@ struct Layout {
 
 impl Layout {
     fn load_from_disk() -> Layout {
-        let mut yaml = fs::read_to_string(KEYBOARD_YAML.as_path()).ok();
-
-        if yaml.is_none() {
-            yaml = Some(include_str!("../res/keyboard.yaml").to_string());
-        }
-
-        let mut layout: Layout =
-            serde_yaml::from_str(&yaml.unwrap()).expect("Failed to parse keyboard.yaml");
+        let mut layout = config::load_keyboard();
         layout.post_load();
-
         layout
     }
 

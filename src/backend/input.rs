@@ -1,14 +1,17 @@
 use std::{collections::VecDeque, time::Instant};
 
 use glam::{Affine3A, Vec2, Vec3A};
-use ovr_overlay::TrackedDeviceIndex;
 use tinyvec::array_vec;
+
+#[cfg(feature = "openvr")]
+use ovr_overlay::TrackedDeviceIndex;
 
 use crate::state::AppState;
 
 use super::{common::OverlayContainer, overlay::OverlayData};
 
 pub struct TrackedDevice {
+    #[cfg(feature = "openvr")]
     pub index: TrackedDeviceIndex,
     pub valid: bool,
     pub soc: Option<f32>,

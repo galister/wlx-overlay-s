@@ -54,7 +54,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     log::info!("Using environment blend mode: {:?}", environment_blend_mode);
 
     let mut app_state = {
-        let graphics = WlxGraphics::new_xr(xr_instance.clone(), system);
+        let graphics = WlxGraphics::new_openxr(xr_instance.clone(), system);
         AppState::from_graphics(graphics)
     };
 
