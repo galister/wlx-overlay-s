@@ -225,7 +225,6 @@ impl OverlayData<OpenVrOverlayData> {
             m_pQueue: graphics.queue.handle().as_raw() as *mut _,
             m_nQueueFamilyIndex: graphics.queue.queue_family_index(),
         };
-
         log::info!(
             "{}: UploadTex {:?}, {}x{}, {:?}",
             self.state.name,

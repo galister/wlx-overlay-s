@@ -43,6 +43,7 @@ vulkano = { git = "https://github.com/vulkano-rs/vulkano", rev = "94f50f1" }
 vulkano-shaders = { git = "https://github.com/vulkano-rs/vulkano", rev = "94f50f1" }
 winit = "0.29.10"
 wlx-capture = { git = "https://github.com/galister/wlx-capture" }
+xdg = "2.5.2"
 
 [features]
 openvr = ["dep:ovr_overlay"]

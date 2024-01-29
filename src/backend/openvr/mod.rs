@@ -62,7 +62,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     };
 
     let mut state = {
-        let graphics = WlxGraphics::new(instance_extensions, device_extensions_fn);
+        let graphics = WlxGraphics::new_openvr(instance_extensions, device_extensions_fn);
         AppState::from_graphics(graphics)
     };
 

@@ -169,7 +169,7 @@ where
             name: "Watch".into(),
             size: (400, 200),
             want_visible: true,
-            spawn_scale: 0.065,
+            spawn_scale: 0.065 * state.session.config.watch_scale,
             spawn_point: state.session.watch_pos.into(),
             spawn_rotation: state.session.watch_rot,
             interaction_transform,

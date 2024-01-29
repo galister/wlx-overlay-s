@@ -1,0 +1,13 @@
+# For how much time mouse motion events should be stopped after clicking?
+# Prevents accidental dragging various GUI elements or links, making it easier to click
+# Default: 300
+click_freeze_time_ms: 300
+
+# Default: true
+keyboard_sound_enabled: true
+
+# Alter default scale of various overlays
+# Default: 1.0
+keyboard_scale: 1.0
+desktop_view_scale: 1.0
+watch_scale: 1.0
