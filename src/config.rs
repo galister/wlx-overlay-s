@@ -10,14 +10,6 @@ pub fn def_pw_tokens() -> Vec<(String, String)> {
     Vec::new()
 }
 
-fn def_grab_threshold() -> f32 {
-    0.6
-}
-
-fn def_trigger_threshold() -> f32 {
-    0.65
-}
-
 fn def_click_freeze_time_ms() -> u32 {
     300
 }
@@ -32,12 +24,6 @@ fn def_one() -> f32 {
 
 #[derive(Deserialize, Serialize)]
 pub struct GeneralConfig {
-    #[serde(default = "def_grab_threshold")]
-    pub grab_threshold: f32,
-
-    #[serde(default = "def_trigger_threshold")]
-    pub trigger_threshold: f32,
-
     #[serde(default = "def_click_freeze_time_ms")]
     pub click_freeze_time_ms: u32,
 
@@ -74,8 +60,6 @@ impl GeneralConfig {
     }
 
     fn post_load(&self) {
-        GeneralConfig::sanitize_range("grab_threshold", self.grab_threshold, 0.0, 1.0);
-        GeneralConfig::sanitize_range("trigger_threshold", self.trigger_threshold, 0.0, 1.0);
         GeneralConfig::sanitize_range("keyboard_scale", self.keyboard_scale, 0.0, 5.0);
         GeneralConfig::sanitize_range("desktop_view_scale", self.desktop_view_scale, 0.0, 5.0);
         GeneralConfig::sanitize_range("watch_scale", self.watch_scale, 0.0, 5.0);

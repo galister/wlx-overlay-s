@@ -9,6 +9,7 @@ use std::{
 
 use ash::vk::{self, SubmitInfo};
 use smallvec::{smallvec, SmallVec};
+use vulkano::instance::InstanceCreateFlags;
 use vulkano::{
     buffer::{
         allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo},
@@ -25,6 +26,8 @@ use vulkano::{
     descriptor_set::{
         allocator::StandardDescriptorSetAllocator, DescriptorSet, WriteDescriptorSet,
     },
+    device::physical::PhysicalDeviceType,
+    device::Features,
     device::{
         physical::PhysicalDevice, Device, DeviceCreateInfo, DeviceExtensions, Queue,
         QueueCreateInfo, QueueFlags,
@@ -37,6 +40,7 @@ use vulkano::{
         Image, ImageCreateInfo, ImageLayout, ImageTiling, ImageType, ImageUsage, SampleCount,
         SubresourceLayout,
     },
+    instance::InstanceExtensions,
     instance::{Instance, InstanceCreateInfo},
     memory::{
         allocator::{
@@ -72,6 +76,7 @@ use vulkano::{
     },
     DeviceSize, VulkanLibrary, VulkanObject,
 };
+
 use wlx_capture::frame::{
     DmabufFrame, FourCC, DRM_FORMAT_ABGR8888, DRM_FORMAT_ARGB8888, DRM_FORMAT_XBGR8888,
     DRM_FORMAT_XRGB8888,

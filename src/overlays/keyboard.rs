@@ -11,12 +11,12 @@ use crate::{
     config,
     gui::{color_parse, CanvasBuilder, Control},
     hid::{KeyModifier, VirtualKey, KEYS_TO_MODS},
-    state::AppState,
+    state::{AppSession, AppState},
 };
 use glam::{vec2, vec3a, Affine2};
 use once_cell::sync::Lazy;
 use regex::Regex;
-use rodio::{Decoder, OutputStream, Source};
+use rodio::{Decoder, OutputStream, OutputStreamHandle, Source};
 use serde::{Deserialize, Serialize};
 
 const PIXELS_PER_UNIT: f32 = 80.;
@@ -35,6 +35,8 @@ where
         modifiers: 0,
         processes: vec![],
         audio_stream: None,
+        first_try: true,
+        audio_handle: None,
     };
 
     let mut canvas = CanvasBuilder::new(
@@ -107,7 +109,7 @@ where
     let interaction_transform = Affine2::from_translation(vec2(0.5, 0.5))
         * Affine2::from_scale(vec2(1., -size.x as f32 / size.y as f32));
 
-    let width = LAYOUT.row_size * 0.05;
+    let width = LAYOUT.row_size * 0.05 * app.session.config.keyboard_scale;
 
     OverlayData {
         state: OverlayState {
@@ -132,7 +134,7 @@ fn key_press(
 ) {
     match control.state.as_mut() {
         Some(KeyButtonData::Key { vk, pressed }) => {
-            data.key_click();
+            data.key_click(&app.session);
             app.hid_provider.send_key(*vk as _, true);
             *pressed = true;
         }
@@ -143,12 +145,12 @@ fn key_press(
         }) => {
             *sticky = data.modifiers & *modifier == 0;
             data.modifiers |= *modifier;
-            data.key_click();
+            data.key_click(&app.session);
             app.hid_provider.set_modifiers(data.modifiers);
             *pressed = true;
         }
         Some(KeyButtonData::Macro { verbs }) => {
-            data.key_click();
+            data.key_click(&app.session);
             for (vk, press) in verbs {
                 app.hid_provider.send_key(*vk as _, *press);
             }
@@ -158,7 +160,7 @@ fn key_press(
             data.processes
                 .retain_mut(|child| !matches!(child.try_wait(), Ok(Some(_))));
 
-            data.key_click();
+            data.key_click(&app.session);
             if let Ok(child) = Command::new(program).args(args).spawn() {
                 data.processes.push(child);
             }
@@ -208,19 +210,31 @@ struct KeyboardData {
     modifiers: KeyModifier,
     processes: Vec<Child>,
     audio_stream: Option<OutputStream>,
+    audio_handle: Option<OutputStreamHandle>,
+    first_try: bool,
 }
 
 impl KeyboardData {
-    fn key_click(&mut self) {
-        let wav = include_bytes!("../res/421581.wav");
-        let cursor = Cursor::new(wav);
-        let source = Decoder::new_wav(cursor).unwrap();
-        self.audio_stream = None;
-        if let Ok((stream, handle)) = OutputStream::try_default() {
+    fn key_click(&mut self, session: &AppSession) {
+        if !session.config.keyboard_sound_enabled {
+            return;
+        }
+
+        if self.audio_stream.is_none() && self.first_try {
+            self.first_try = false;
+            if let Ok((stream, handle)) = OutputStream::try_default() {
+                self.audio_stream = Some(stream);
+                self.audio_handle = Some(handle);
+            } else {
+                log::error!("Failed to open audio stream");
+            }
+        }
+
+        if let Some(handle) = &self.audio_handle {
+            let wav = include_bytes!("../res/421581.wav");
+            let cursor = Cursor::new(wav);
+            let source = Decoder::new_wav(cursor).unwrap();
             let _ = handle.play_raw(source.convert_samples());
-            self.audio_stream = Some(stream);
-        } else {
-            log::error!("Failed to play key click");
         }
     }
 }

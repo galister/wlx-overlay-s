@@ -1,7 +1,7 @@
 use core::slice;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::BTreeMap,
+    collections::HashMap,
     error::Error,
     f32::consts::PI,
     ops::Deref,
@@ -84,9 +84,6 @@ impl InteractionHandler for ScreenInteractionHandler {
         }
     }
     fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool) {
-        let pos = self.mouse_transform.transform_point2(hit.uv);
-        app.hid_provider.mouse_move(pos);
-
         let btn = match hit.mode {
             PointerMode::Right => MOUSE_RIGHT,
             PointerMode::Middle => MOUSE_MIDDLE,
@@ -94,11 +91,14 @@ impl InteractionHandler for ScreenInteractionHandler {
         };
 
         if pressed {
-            self.next_move =
-                Instant::now() + Duration::from_millis(app.session.click_freeze_time_ms);
+            self.next_move = Instant::now()
+                + Duration::from_millis(app.session.config.click_freeze_time_ms as u64);
         }
 
         app.hid_provider.send_button(btn, pressed);
+
+        let pos = self.mouse_transform.transform_point2(hit.uv);
+        app.hid_provider.mouse_move(pos);
     }
     fn on_scroll(&mut self, app: &mut AppState, _hit: &PointerHit, delta: f32) {
         let millis = (1. - delta.abs()) * delta;
@@ -350,7 +350,7 @@ impl OverlayRenderer for ScreenRenderer {
 fn try_create_screen<O>(
     wl: &WlxClient,
     id: u32,
-    pw_token_store: &mut BTreeMap<String, String>,
+    pw_token_store: &mut HashMap<String, String>,
     session: &AppSession,
 ) -> Option<OverlayData<O>>
 where
@@ -435,7 +435,7 @@ where
                 want_visible: session.show_screens.iter().any(|s| s == &*output.name),
                 show_hide: true,
                 grabbable: true,
-                spawn_scale: 1.5,
+                spawn_scale: 1.5 * session.config.desktop_view_scale,
                 spawn_point: vec3a(0., 0.5, -1.),
                 spawn_rotation: Quat::from_axis_angle(axis, angle),
                 interaction_transform,
@@ -462,7 +462,7 @@ fn get_pw_token_path() -> PathBuf {
     path
 }
 
-pub fn save_pw_token_config(tokens: &BTreeMap<String, String>) -> Result<(), Box<dyn Error>> {
+pub fn save_pw_token_config(tokens: &HashMap<String, String>) -> Result<(), Box<dyn Error>> {
     let mut conf = TokenConf::default();
 
     for (name, token) in tokens {
@@ -475,8 +475,8 @@ pub fn save_pw_token_config(tokens: &BTreeMap<String, String>) -> Result<(), Box
     Ok(())
 }
 
-pub fn load_pw_token_config() -> Result<BTreeMap<String, String>, Box<dyn Error>> {
-    let mut map: BTreeMap<String, String> = BTreeMap::new();
+pub fn load_pw_token_config() -> Result<HashMap<String, String>, Box<dyn Error>> {
+    let mut map: HashMap<String, String> = HashMap::new();
 
     let yaml = std::fs::read_to_string(get_pw_token_path())?;
     let conf: TokenConf = serde_yaml::from_str(yaml.as_str())?;
@@ -496,10 +496,10 @@ where
     let wl = WlxClient::new().unwrap();
 
     // Load existing Pipewire tokens from file
-    let mut pw_tokens: BTreeMap<String, String> = if let Ok(conf) = load_pw_token_config() {
+    let mut pw_tokens: HashMap<String, String> = if let Ok(conf) = load_pw_token_config() {
         conf
     } else {
-        BTreeMap::new()
+        HashMap::new()
     };
 
     let pw_tokens_copy = pw_tokens.clone();

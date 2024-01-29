@@ -80,13 +80,6 @@ pub struct AppSession {
     pub config: GeneralConfig,
 
     pub show_screens: Vec<String>,
-    pub show_keyboard: bool,
-    pub keyboard_volume: f32,
-
-    pub screen_flip_h: bool,
-    pub screen_flip_v: bool,
-    pub screen_invert_color: bool,
-    pub screen_max_res: [u32; 2],
 
     pub watch_hand: usize,
     pub watch_pos: Vec3,
@@ -100,8 +93,6 @@ pub struct AppSession {
     pub color_shift: Vec3,
     pub color_alt: Vec3,
     pub color_grab: Vec3,
-
-    pub click_freeze_time_ms: u64,
 }
 
 impl AppSession {
@@ -114,12 +105,6 @@ impl AppSession {
             config_root_path,
             config,
             show_screens: vec!["DP-3".to_string()],
-            keyboard_volume: 0.5,
-            show_keyboard: false,
-            screen_flip_h: false,
-            screen_flip_v: false,
-            screen_invert_color: false,
-            screen_max_res: [2560, 1440],
             capture_method: "auto".to_string(),
             primary_hand: 1,
             watch_hand: 0,
@@ -145,7 +130,6 @@ impl AppSession {
                 y: 0.,
                 z: 0.,
             },
-            click_freeze_time_ms: 300,
         }
     }
 }

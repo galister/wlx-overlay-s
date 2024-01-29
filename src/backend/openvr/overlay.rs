@@ -232,8 +232,10 @@ impl OverlayData<OpenVrOverlayData> {
             texture.m_nWidth,
             texture.m_nHeight,
             image.usage()
+        );
         if let Err(e) = overlay.set_image_vulkan(handle, &mut texture) {
             panic!("Failed to set overlay texture: {}", e);
         }
+        log::info!("{}: Uploaded texture", self.state.name);
     }
 }

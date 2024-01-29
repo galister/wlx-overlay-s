@@ -1,15 +1,3 @@
-# Grab threshold for changing position of overlays
-# Allowed values: 0.0 - 1.0
-# Default - 0.6
-#
-# 1.0 - The hand must grab tighter to start dragging, recommended on Index controller
-grab_threshold: 0.6
-
-# Threshold for registering trigger (click) event
-# Allowed values: 0.0 - 1.0
-# Default - 0.65
-trigger_threshold: 0.65
-
 # For how much time mouse motion events should be stopped after clicking?
 # Prevents accidental dragging various GUI elements or links, making it easier to click
 # Default: 300
