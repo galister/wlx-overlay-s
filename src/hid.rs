@@ -108,7 +108,7 @@ impl UInputProvider {
             }
 
             for key in VirtualKey::iter() {
-                let key: Key = unsafe { transmute(key as u16) };
+                let key: Key = unsafe { transmute((key as u16) - 8) };
                 if handle.set_keybit(key).is_err() {
                     return None;
                 }
@@ -249,6 +249,7 @@ pub const SUPER: KeyModifier = 0x40;
 pub const META: KeyModifier = 0x80;
 
 #[allow(non_camel_case_types)]
+#[repr(u16)]
 #[derive(Debug, PartialEq, Clone, Copy, IntegerId, EnumString, EnumIter)]
 pub enum VirtualKey {
     Escape = 9,

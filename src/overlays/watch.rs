@@ -115,7 +115,7 @@ where
 
     canvas.bg_color = color_parse("#405060");
 
-    for screen in screens.into_iter() {
+    for screen in screens.iter() {
         let button = canvas.button(
             button_x + 2.,
             162.,
@@ -169,7 +169,7 @@ where
             name: "Watch".into(),
             size: (400, 200),
             want_visible: true,
-            spawn_scale: 0.065 * state.session.config.watch_scale,
+            spawn_scale: 0.11 * state.session.config.watch_scale,
             spawn_point: state.session.watch_pos.into(),
             spawn_rotation: state.session.watch_rot,
             interaction_transform,
