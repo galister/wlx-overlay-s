@@ -353,7 +353,10 @@ fn quat_lerp(a: Quat, mut b: Quat, t: f32) -> Quat {
 
 fn transform_to_posef(transform: &Affine3A) -> xr::Posef {
     let translation = transform.translation;
-    let rotation = Quat::from_affine3(transform).normalize();
+    let norm_mat3 = transform
+        .matrix3
+        .mul_scalar(1.0 / transform.matrix3.x_axis.length());
+    let rotation = Quat::from_mat3a(&norm_mat3).normalize();
 
     xr::Posef {
         orientation: xr::Quaternionf {

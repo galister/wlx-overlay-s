@@ -72,7 +72,7 @@ where
     fn default() -> Self {
         OverlayData {
             state: Default::default(),
-            backend: Box::new(SplitOverlayBackend::default()),
+            backend: Box::<SplitOverlayBackend>::default(),
             primary_pointer: None,
             data: Default::default(),
         }
@@ -87,17 +87,22 @@ impl OverlayState {
             RelativeTo::Hand(idx) => Some(app.input_state.pointers[idx].pose),
         }
     }
+
     pub fn auto_movement(&mut self, app: &mut AppState) {
         if let Some(parent) = self.parent_transform(app) {
             self.transform = parent
-                * Affine3A::from_scale_rotation_translation(
-                    Vec3::ONE * self.spawn_scale,
-                    self.spawn_rotation,
-                    self.spawn_point.into(),
-                );
+                * Affine3A::from_translation(self.spawn_point.into())
+                * Affine3A::from_quat(
+                    self.spawn_rotation
+                        * Quat::from_rotation_x(f32::to_radians(-180.0))
+                        * Quat::from_rotation_z(f32::to_radians(180.0)),
+                )
+                * Affine3A::from_scale(Vec3::ONE * self.spawn_scale);
+
             self.dirty = true;
         }
     }
+
     pub fn reset(&mut self, app: &mut AppState) {
         let translation = app.input_state.hmd.transform_point3a(self.spawn_point);
         self.transform = Affine3A::from_scale_rotation_translation(
@@ -108,6 +113,7 @@ impl OverlayState {
 
         self.realign(&app.input_state.hmd);
     }
+
     pub fn realign(&mut self, hmd: &Affine3A) {
         let to_hmd = hmd.translation - self.transform.translation;
         let up_dir: Vec3A;

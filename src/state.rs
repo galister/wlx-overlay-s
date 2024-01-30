@@ -13,7 +13,7 @@ use crate::{
     shaders::{frag_color, frag_glyph, frag_screen, frag_sprite, frag_srgb, vert_common},
 };
 
-pub const WATCH_DEFAULT_POS: Vec3 = Vec3::new(0.025, 0., 0.15);
+pub const WATCH_DEFAULT_POS: Vec3 = Vec3::new(-0.03, -0.01, 0.1);
 pub const WATCH_DEFAULT_ROT: Quat = Quat::from_xyzw(0.7071066, 0., 0.7071066, 0.0007963);
 
 pub struct AppState {
