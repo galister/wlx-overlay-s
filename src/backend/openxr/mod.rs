@@ -217,20 +217,25 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
             o.render(&mut app_state);
 
+            let dist_sq = (app_state.input_state.hmd.translation - o.state.transform.translation)
+                .length_squared();
+
             if let Some(quad) = o.present_xr(&xr_state, &mut command_buffer) {
-                layers.push(quad);
+                layers.push((dist_sq, quad));
             };
         }
 
         for quad in lines.present_xr(&xr_state, &mut command_buffer) {
-            layers.push(quad);
+            layers.push((0.0, quad));
         }
 
         command_buffer.build_and_execute_now();
 
+        layers.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+
         let frame_ref = layers
             .iter()
-            .map(|f| f as &xr::CompositionLayerBase<xr::Vulkan>)
+            .map(|f| &f.1 as &xr::CompositionLayerBase<xr::Vulkan>)
             .collect::<Vec<_>>();
 
         frame_stream

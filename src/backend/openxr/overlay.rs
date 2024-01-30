@@ -6,7 +6,6 @@ use super::{swapchain::SwapchainRenderData, transform_to_posef, XrState};
 use crate::{
     backend::{openxr::swapchain::create_swapchain_render_data, overlay::OverlayData},
     graphics::WlxCommandBuffer,
-    state::AppState,
 };
 use vulkano::image::view::ImageView;
 
