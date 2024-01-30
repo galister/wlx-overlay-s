@@ -52,7 +52,6 @@ impl OverlayData<OpenXrOverlayData> {
         let posef = transform_to_posef(&self.state.transform);
 
         let scale_x = self.state.transform.matrix3.col(0).length();
-        log::info!("{}: scale_x = {}", self.state.name, scale_x);
         let aspect_ratio = self.backend.extent()[1] as f32 / self.backend.extent()[0] as f32;
         let scale_y = scale_x * aspect_ratio;
 
