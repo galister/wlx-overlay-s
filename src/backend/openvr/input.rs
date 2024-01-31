@@ -1,11 +1,10 @@
 use std::{array, io::Write, path::Path};
 
-use glam::Affine3A;
 use ovr_overlay::{
     input::{ActionHandle, ActionSetHandle, ActiveActionSet, InputManager, InputValueHandle},
     sys::{
         k_unMaxTrackedDeviceCount, ETrackedControllerRole, ETrackedDeviceClass,
-        ETrackedDeviceProperty, ETrackingUniverseOrigin, HmdMatrix34_t,
+        ETrackedDeviceProperty, ETrackingUniverseOrigin,
     },
     system::SystemManager,
     TrackedDeviceIndex,
@@ -15,6 +14,8 @@ use crate::{
     backend::input::{TrackedDevice, TrackedDeviceRole},
     state::AppState,
 };
+
+use super::helpers::Affine3AConvert;
 
 macro_rules! result_str {
     ( $e:expr ) => {
@@ -152,7 +153,7 @@ impl OpenVrInputSource {
                     INPUT_ANY,
                 )
                 .and_then(|pose| {
-                    copy_from_hmd(&pose.0.pose.mDeviceToAbsoluteTracking, &mut app_hand.pose);
+                    app_hand.pose = pose.0.pose.mDeviceToAbsoluteTracking.to_affine();
                     hand.has_pose = true;
                     Ok(())
                 });
@@ -199,10 +200,7 @@ impl OpenVrInputSource {
         }
 
         let devices = system.get_device_to_absolute_tracking_pose(universe, 0.005);
-        copy_from_hmd(
-            &devices[0].mDeviceToAbsoluteTracking,
-            &mut app.input_state.hmd,
-        );
+        app.input_state.hmd = devices[0].mDeviceToAbsoluteTracking.to_affine();
     }
 
     pub fn update_devices(&mut self, system: &mut SystemManager, app: &mut AppState) {
@@ -270,21 +268,6 @@ fn get_tracked_device(
         charging,
         role,
     })
-}
-
-fn copy_from_hmd(in_mat: &HmdMatrix34_t, out_mat: &mut Affine3A) {
-    out_mat.x_axis[0] = in_mat.m[0][0];
-    out_mat.x_axis[1] = in_mat.m[1][0];
-    out_mat.x_axis[2] = in_mat.m[2][0];
-    out_mat.y_axis[0] = in_mat.m[0][1];
-    out_mat.y_axis[1] = in_mat.m[1][1];
-    out_mat.y_axis[2] = in_mat.m[2][1];
-    out_mat.z_axis[0] = in_mat.m[0][2];
-    out_mat.z_axis[1] = in_mat.m[1][2];
-    out_mat.z_axis[2] = in_mat.m[2][2];
-    out_mat.w_axis[0] = in_mat.m[0][3];
-    out_mat.w_axis[1] = in_mat.m[1][3];
-    out_mat.w_axis[2] = in_mat.m[2][3];
 }
 
 pub fn action_manifest_path() -> &'static Path {

@@ -30,9 +30,11 @@ use self::{input::action_manifest_path, overlay::OpenVrOverlayData};
 
 use super::common::{BackendError, OverlayContainer, TaskType};
 
+pub mod helpers;
 pub mod input;
 pub mod lines;
 pub mod overlay;
+pub mod playspace;
 
 pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     let app_type = EVRApplicationType::VRApplication_Overlay;
@@ -47,6 +49,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     //let mut settings_mngr = context.settings_mngr();
     let mut input_mngr = context.input_mngr();
     let mut system_mngr = context.system_mngr();
+    let mut chaperone_mgr = context.chaperone_setup_mngr();
     let mut compositor_mngr = context.compositor_mngr();
 
     let device_extensions_fn = |device: &PhysicalDevice| {
@@ -67,6 +70,8 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     };
 
     let mut overlays = OverlayContainer::<OpenVrOverlayData>::new(&mut state);
+
+    let mut space_mover = playspace::PlayspaceMover::new();
 
     state.hid_provider.set_desktop_extent(overlays.extent);
 
@@ -145,6 +150,8 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         overlays
             .iter_mut()
             .for_each(|o| o.state.auto_movement(&mut state));
+
+        space_mover.update(&mut chaperone_mgr, &mut overlays, &state);
 
         let pointer_lengths = interact(&mut overlays, &mut state);
         for (idx, len) in pointer_lengths.iter().enumerate() {

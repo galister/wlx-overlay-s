@@ -12,6 +12,8 @@ use crate::{
     state::AppState,
 };
 
+use super::helpers::Affine3AConvert;
+
 #[derive(Default)]
 pub(super) struct OpenVrOverlayData {
     pub(super) handle: Option<OverlayHandle>,
@@ -159,26 +161,7 @@ impl OverlayData<OpenVrOverlayData> {
             return;
         };
 
-        let transform = Matrix3x4([
-            [
-                self.state.transform.matrix3.x_axis.x,
-                self.state.transform.matrix3.y_axis.x,
-                self.state.transform.matrix3.z_axis.x,
-                self.state.transform.translation.x,
-            ],
-            [
-                self.state.transform.matrix3.x_axis.y,
-                self.state.transform.matrix3.y_axis.y,
-                self.state.transform.matrix3.z_axis.y,
-                self.state.transform.translation.y,
-            ],
-            [
-                self.state.transform.matrix3.x_axis.z,
-                self.state.transform.matrix3.y_axis.z,
-                self.state.transform.matrix3.z_axis.z,
-                self.state.transform.translation.z,
-            ],
-        ]);
+        let transform = Matrix3x4::from_affine(self.state.transform);
 
         if let Err(e) = overlay.set_transform_absolute(
             handle,
