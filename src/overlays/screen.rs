@@ -11,18 +11,15 @@ use std::{
     time::{Duration, Instant},
 };
 use vulkano::{
-    buffer::Subbuffer,
     command_buffer::CommandBufferUsage,
     format::Format,
     image::{sampler::Filter, view::ImageView, Image, ImageLayout},
-    sync::GpuFuture,
-    Handle, VulkanObject,
 };
 use wlx_capture::{
     frame::WlxFrame,
     pipewire::{pipewire_select_screen, PipewireCapture},
-    wayland::{Transform, WlxClient, WlxOutput},
-    wlr::WlrDmabufCapture,
+    wayland::{wayland_client::protocol::wl_output::Transform, WlxClient, WlxOutput},
+    wlr_dmabuf::WlrDmabufCapture,
     WlxCapture,
 };
 
@@ -35,7 +32,7 @@ use crate::{
     },
     config::def_pw_tokens,
     config_io,
-    graphics::{fourcc_to_vk, Vert2Uv, WlxGraphics, WlxPipeline},
+    graphics::{fourcc_to_vk, WlxGraphics, WlxPipeline},
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState},
 };
@@ -113,16 +110,10 @@ impl InteractionHandler for ScreenInteractionHandler {
 struct ScreenPipeline {
     graphics: Arc<WlxGraphics>,
     pipeline: Arc<WlxPipeline>,
-    vertex_buffer: Subbuffer<[Vert2Uv]>,
 }
 
 impl ScreenPipeline {
-    fn new(graphics: Arc<WlxGraphics>, image: &Image, extent: &[u32; 3]) -> Self {
-        let dim = image.extent();
-
-        let vertex_buffer =
-            graphics.upload_verts(dim[0] as _, dim[1] as _, 0.0, 0.0, dim[0] as _, dim[1] as _);
-
+    fn new(graphics: Arc<WlxGraphics>, extent: &[u32; 3]) -> Self {
         let render_texture = graphics.render_texture(extent[0], extent[1], Format::R8G8B8A8_UNORM);
 
         let view = ImageView::new_default(render_texture).unwrap();
@@ -130,36 +121,30 @@ impl ScreenPipeline {
         let pipeline = {
             let shaders = graphics.shared_shaders.read().unwrap();
 
-            graphics.create_pipeline(
+            graphics.create_pipeline_with_layouts(
                 view,
                 shaders.get("vert_common").unwrap().clone(),
                 shaders.get("frag_sprite").unwrap().clone(),
                 Format::R8G8B8A8_UNORM,
-                //            ImageLayout::TransferSrcOptimal,
-                //            ImageLayout::TransferSrcOptimal,
+                ImageLayout::TransferSrcOptimal,
+                ImageLayout::TransferSrcOptimal,
             )
         };
 
-        Self {
-            graphics,
-            pipeline,
-            vertex_buffer,
-        }
+        Self { graphics, pipeline }
     }
 
     fn render(&mut self, image: Arc<Image>) {
-        if image.handle().as_raw() == self.pipeline.view.image().handle().as_raw() {
-            return;
-        }
-
+        /*
         self.graphics
             .transition_layout(
                 self.pipeline.view.image().clone(),
                 ImageLayout::TransferSrcOptimal,
-                ImageLayout::General,
+                ImageLayout::ColorAttachmentOptimal,
             )
             .wait(None)
             .unwrap();
+            */
 
         let mut command_buffer = self
             .graphics
@@ -173,31 +158,27 @@ impl ScreenPipeline {
         );
 
         let dim = self.pipeline.view.image().extent();
-        let dim = [dim[0] as f32, dim[1] as f32];
 
         let pass = self.pipeline.create_pass(
-            dim,
-            self.vertex_buffer.clone(),
+            [dim[0] as _, dim[1] as _],
+            self.graphics.quad_verts.clone(),
             self.graphics.quad_indices.clone(),
             vec![set0],
         );
+
         command_buffer.run_ref(&pass);
         command_buffer.end_render_pass();
-
-        {
-            let mut exec = command_buffer.build_and_execute();
-            exec.flush().unwrap();
-            exec.cleanup_finished();
-        }
-
+        command_buffer.build_and_execute_now();
+        /*
         self.graphics
             .transition_layout(
                 self.pipeline.view.image().clone(),
-                ImageLayout::General,
+                ImageLayout::ColorAttachmentOptimal,
                 ImageLayout::TransferSrcOptimal,
             )
             .wait(None)
             .unwrap();
+            */
     }
 
     pub(super) fn view(&self) -> Arc<ImageView> {
@@ -256,6 +237,7 @@ impl OverlayRenderer for ScreenRenderer {
     fn init(&mut self, app: &mut AppState) {
         let images = app.graphics.shared_images.read().unwrap();
         self.last_image = Some(images.get("fallback").unwrap().clone());
+        self.pipeline = Some(ScreenPipeline::new(app.graphics.clone(), &self.extent));
     }
     fn render(&mut self, app: &mut AppState) {
         let receiver = self.receiver.get_or_insert_with(|| self.capture.init());
@@ -267,11 +249,11 @@ impl OverlayRenderer for ScreenRenderer {
                         log::error!("Invalid frame");
                         continue;
                     }
-                    if let Some(new) = app.graphics.dmabuf_texture(frame) {
-                        let pipeline = self.pipeline.get_or_insert_with(|| {
-                            ScreenPipeline::new(app.graphics.clone(), &new, &self.extent)
-                        });
+                    if let (Some(new), Some(pipeline)) =
+                        (app.graphics.dmabuf_texture(frame), self.pipeline.as_mut())
+                    {
                         log::debug!("{}: New DMA-buf frame", self.name);
+
                         pipeline.render(new);
                         self.last_image = Some(pipeline.view());
                     }
@@ -371,7 +353,7 @@ where
 
     if session.capture_method == "auto" && wl.maybe_wlr_dmabuf_mgr.is_some() {
         log::info!("{}: Using Wlr DMA-Buf", &output.name);
-        //capture = ScreenRenderer::new_wlr(output);
+        capture = ScreenRenderer::new_wlr(output);
     }
 
     if capture.is_none() {

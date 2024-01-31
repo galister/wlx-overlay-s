@@ -8,7 +8,7 @@ use std::{
 };
 
 use ash::vk::{self, SubmitInfo};
-use smallvec::{smallvec, SmallVec};
+use smallvec::smallvec;
 use vulkano::instance::InstanceCreateFlags;
 use vulkano::{
     buffer::{
@@ -531,30 +531,32 @@ impl WlxGraphics {
             })
             .collect();
 
-        let external_memory_handle_types = ExternalMemoryHandleTypes::DMA_BUF;
-
-        let image = RawImage::new(
-            self.device.clone(),
-            ImageCreateInfo {
-                image_type: ImageType::Dim2d,
-                format,
-                extent,
-                usage: ImageUsage::SAMPLED | ImageUsage::TRANSFER_SRC,
-                external_memory_handle_types,
-                tiling: ImageTiling::DrmFormatModifier,
-                drm_format_modifiers: vec![frame.format.modifier],
-                drm_format_modifier_plane_layouts: layouts,
-                ..Default::default()
-            },
-        )
-        .unwrap();
+        let image = unsafe {
+            RawImage::new_unchecked(
+                self.device.clone(),
+                ImageCreateInfo {
+                    format,
+                    extent,
+                    usage: ImageUsage::SAMPLED,
+                    external_memory_handle_types: ExternalMemoryHandleTypes::DMA_BUF,
+                    tiling: ImageTiling::DrmFormatModifier,
+                    drm_format_modifiers: vec![frame.format.modifier],
+                    drm_format_modifier_plane_layouts: layouts,
+                    ..Default::default()
+                },
+            )
+            .unwrap()
+        };
 
         let requirements = image.memory_requirements()[0];
         let memory_type_index = self
             .memory_allocator
             .find_memory_type_index(
                 requirements.memory_type_bits,
-                MemoryTypeFilter::PREFER_DEVICE,
+                MemoryTypeFilter {
+                    required_flags: MemoryPropertyFlags::DEVICE_LOCAL,
+                    ..Default::default()
+                },
             )
             .unwrap();
 
@@ -562,8 +564,7 @@ impl WlxGraphics {
         debug_assert!(self.device.enabled_extensions().khr_external_memory);
         debug_assert!(self.device.enabled_extensions().ext_external_memory_dma_buf);
 
-        let mut allocations: SmallVec<[ResourceMemory; 4]> = smallvec![];
-
+        // only do the 1st
         unsafe {
             let Some(fd) = frame.planes[0].fd else {
                 log::error!("DMA-buf plane has no FD");
@@ -574,7 +575,7 @@ impl WlxGraphics {
             let new_file = file.try_clone().unwrap();
             file.into_raw_fd();
 
-            let memory = DeviceMemory::import(
+            let memory = DeviceMemory::allocate_unchecked(
                 self.device.clone(),
                 MemoryAllocateInfo {
                     allocation_size: requirements.layout.size(),
@@ -582,21 +583,20 @@ impl WlxGraphics {
                     dedicated_allocation: Some(DedicatedAllocation::Image(&image)),
                     ..Default::default()
                 },
-                MemoryImportInfo::Fd {
+                Some(MemoryImportInfo::Fd {
                     file: new_file,
                     handle_type: ExternalMemoryHandleType::DmaBuf,
-                },
+                }),
             )
             .unwrap();
 
-            allocations.push(ResourceMemory::new_dedicated(memory));
-        }
-
-        match unsafe { image.bind_memory(allocations) } {
-            Ok(image) => Some(Arc::new(image)),
-            Err(e) => {
-                log::warn!("Failed to bind memory to image: {}", e.0.to_string());
-                return None;
+            let mem_alloc = ResourceMemory::new_dedicated(memory);
+            match image.bind_memory_unchecked([mem_alloc]) {
+                Ok(image) => Some(Arc::new(image)),
+                Err(e) => {
+                    log::error!("Failed to bind memory to image: {}", e.0);
+                    return None;
+                }
             }
         }
     }
