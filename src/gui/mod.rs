@@ -12,7 +12,7 @@ use crate::{
         input::{InteractionHandler, PointerHit},
         overlay::{OverlayBackend, OverlayRenderer},
     },
-    graphics::{WlxCommandBuffer, WlxGraphics, WlxPass, WlxPipeline},
+    graphics::{WlxCommandBuffer, WlxGraphics, WlxPass, WlxPipeline, WlxPipelineLegacy},
     state::AppState,
 };
 
@@ -187,9 +187,9 @@ pub struct CanvasData<D> {
 
     graphics: Arc<WlxGraphics>,
 
-    pipeline_bg_color: Arc<WlxPipeline>,
-    pipeline_fg_glyph: Arc<WlxPipeline>,
-    pipeline_final: Arc<WlxPipeline>,
+    pipeline_bg_color: Arc<WlxPipeline<WlxPipelineLegacy>>,
+    pipeline_fg_glyph: Arc<WlxPipeline<WlxPipelineLegacy>>,
+    pipeline_final: Arc<WlxPipeline<WlxPipelineLegacy>>,
 }
 
 pub struct Canvas<D, S> {
@@ -205,8 +205,8 @@ pub struct Canvas<D, S> {
 
     view_final: Arc<ImageView>,
 
-    pass_fg: WlxPass,
-    pass_bg: WlxPass,
+    pass_fg: WlxPass<WlxPipelineLegacy>,
+    pass_bg: WlxPass<WlxPipelineLegacy>,
 }
 
 impl<D, S> Canvas<D, S> {

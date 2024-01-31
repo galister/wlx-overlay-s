@@ -9,7 +9,7 @@ use vulkano::{
     Handle,
 };
 
-use crate::graphics::{WlxCommandBuffer, WlxGraphics, WlxPipeline};
+use crate::graphics::{WlxCommandBuffer, WlxGraphics, WlxPipeline, WlxPipelineLegacy};
 
 use super::XrState;
 
@@ -70,7 +70,7 @@ pub(super) fn create_swapchain_render_data(
             );
 
             let buffer = Framebuffer::new(
-                pipeline.render_pass.clone(),
+                pipeline.data.render_pass.clone(),
                 FramebufferCreateInfo {
                     attachments: vec![view.clone()],
                     extent: [view.image().extent()[0] as _, view.image().extent()[1] as _],
@@ -104,7 +104,7 @@ pub(super) struct SwapchainRenderData {
 pub(super) struct SwapchainImagePipeline {
     pub(super) view: Arc<ImageView>,
     pub(super) buffer: Arc<Framebuffer>,
-    pub(super) pipeline: Arc<WlxPipeline>,
+    pub(super) pipeline: Arc<WlxPipeline<WlxPipelineLegacy>>,
 }
 
 impl SwapchainRenderData {
@@ -120,7 +120,7 @@ impl SwapchainRenderData {
         let pipeline = image.pipeline.clone();
         command_buffer.begin_render_pass(&pipeline);
 
-        let target_extent = image.pipeline.view.image().extent();
+        let target_extent = image.pipeline.data.view.image().extent();
         let set = image
             .pipeline
             .uniform_sampler(0, view.clone(), Filter::Linear);

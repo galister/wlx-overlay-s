@@ -32,7 +32,7 @@ use crate::{
     },
     config::def_pw_tokens,
     config_io,
-    graphics::{fourcc_to_vk, WlxGraphics, WlxPipeline},
+    graphics::{fourcc_to_vk, WlxGraphics, WlxPipeline, WlxPipelineLegacy},
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState},
 };
@@ -109,7 +109,7 @@ impl InteractionHandler for ScreenInteractionHandler {
 
 struct ScreenPipeline {
     graphics: Arc<WlxGraphics>,
-    pipeline: Arc<WlxPipeline>,
+    pipeline: Arc<WlxPipeline<WlxPipelineLegacy>>,
 }
 
 impl ScreenPipeline {
@@ -157,7 +157,7 @@ impl ScreenPipeline {
             Filter::Linear,
         );
 
-        let dim = self.pipeline.view.image().extent();
+        let dim = self.pipeline.data.view.image().extent();
 
         let pass = self.pipeline.create_pass(
             [dim[0] as _, dim[1] as _],
@@ -182,7 +182,7 @@ impl ScreenPipeline {
     }
 
     pub(super) fn view(&self) -> Arc<ImageView> {
-        self.pipeline.view.clone()
+        self.pipeline.data.view.clone()
     }
 }
 

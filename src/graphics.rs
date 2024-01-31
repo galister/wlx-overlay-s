@@ -9,7 +9,6 @@ use std::{
 
 use ash::vk::{self, SubmitInfo};
 use smallvec::smallvec;
-use vulkano::instance::InstanceCreateFlags;
 use vulkano::{
     buffer::{
         allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo},
@@ -21,7 +20,8 @@ use vulkano::{
         CommandBuffer, CommandBufferExecFuture, CommandBufferInheritanceInfo,
         CommandBufferInheritanceRenderPassInfo, CommandBufferInheritanceRenderPassType,
         CommandBufferLevel, CommandBufferUsage, CopyBufferToImageInfo, RecordingCommandBuffer,
-        RenderPassBeginInfo, SubpassBeginInfo, SubpassContents, SubpassEndInfo,
+        RenderPassBeginInfo, RenderingAttachmentInfo, RenderingInfo, SubpassBeginInfo,
+        SubpassContents, SubpassEndInfo,
     },
     descriptor_set::{
         allocator::StandardDescriptorSetAllocator, DescriptorSet, WriteDescriptorSet,
@@ -56,13 +56,13 @@ use vulkano::{
             input_assembly::InputAssemblyState,
             multisample::MultisampleState,
             rasterization::RasterizationState,
+            subpass::PipelineRenderingCreateInfo,
             vertex_input::{Vertex, VertexDefinition},
             viewport::{Viewport, ViewportState},
             GraphicsPipelineCreateInfo,
         },
         layout::PipelineDescriptorSetLayoutCreateInfo,
         DynamicState, GraphicsPipeline, Pipeline, PipelineBindPoint, PipelineLayout,
-        PipelineShaderStageCreateInfo,
     },
     render_pass::{
         AttachmentDescription, AttachmentLoadOp, AttachmentReference, AttachmentStoreOp,
@@ -75,6 +75,9 @@ use vulkano::{
         ImageMemoryBarrier, PipelineStages,
     },
     DeviceSize, VulkanLibrary, VulkanObject,
+};
+use vulkano::{
+    command_buffer::CommandBufferInheritanceRenderingInfo, instance::InstanceCreateFlags,
 };
 
 use wlx_capture::frame::{
@@ -630,8 +633,8 @@ impl WlxGraphics {
         vert: Arc<ShaderModule>,
         frag: Arc<ShaderModule>,
         format: Format,
-    ) -> Arc<WlxPipeline> {
-        Arc::new(WlxPipeline::new(
+    ) -> Arc<WlxPipeline<WlxPipelineLegacy>> {
+        Arc::new(WlxPipeline::<WlxPipelineLegacy>::new(
             render_target,
             self.clone(),
             vert,
@@ -648,8 +651,8 @@ impl WlxGraphics {
         format: Format,
         initial_layout: ImageLayout,
         final_layout: ImageLayout,
-    ) -> Arc<WlxPipeline> {
-        Arc::new(WlxPipeline::new_with_layout(
+    ) -> Arc<WlxPipeline<WlxPipelineLegacy>> {
+        Arc::new(WlxPipeline::<WlxPipelineLegacy>::new_with_layout(
             render_target,
             self.clone(),
             vert,
@@ -657,6 +660,21 @@ impl WlxGraphics {
             format,
             initial_layout,
             final_layout,
+        ))
+    }
+
+    #[allow(dead_code)]
+    pub fn create_pipeline_dynamic(
+        self: &Arc<Self>,
+        vert: Arc<ShaderModule>,
+        frag: Arc<ShaderModule>,
+        format: Format,
+    ) -> Arc<WlxPipeline<WlxPipelineDynamic>> {
+        Arc::new(WlxPipeline::<WlxPipelineDynamic>::new(
+            self.clone(),
+            vert,
+            frag,
+            format,
         ))
     }
 
@@ -748,12 +766,12 @@ pub struct WlxCommandBuffer {
 }
 
 impl WlxCommandBuffer {
-    pub fn begin_render_pass(&mut self, pipeline: &WlxPipeline) {
+    pub fn begin_render_pass(&mut self, pipeline: &WlxPipeline<WlxPipelineLegacy>) {
         self.command_buffer
             .begin_render_pass(
                 RenderPassBeginInfo {
                     clear_values: vec![Some([0.0, 0.0, 0.0, 1.0].into())],
-                    ..RenderPassBeginInfo::framebuffer(pipeline.framebuffer.clone())
+                    ..RenderPassBeginInfo::framebuffer(pipeline.data.framebuffer.clone())
                 },
                 SubpassBeginInfo {
                     contents: SubpassContents::SecondaryCommandBuffers,
@@ -763,7 +781,23 @@ impl WlxCommandBuffer {
             .unwrap();
     }
 
-    pub fn run_ref(&mut self, pass: &WlxPass) -> &mut Self {
+    #[allow(dead_code)]
+    pub fn begin_rendering(&mut self, render_target: Arc<ImageView>) {
+        self.command_buffer
+            .begin_rendering(RenderingInfo {
+                contents: SubpassContents::SecondaryCommandBuffers,
+                color_attachments: vec![Some(RenderingAttachmentInfo {
+                    load_op: AttachmentLoadOp::Clear,
+                    store_op: AttachmentStoreOp::Store,
+                    clear_value: Some([0.0, 0.0, 0.0, 1.0].into()),
+                    ..RenderingAttachmentInfo::image_view(render_target.clone())
+                })],
+                ..Default::default()
+            })
+            .unwrap();
+    }
+
+    pub fn run_ref<D>(&mut self, pass: &WlxPass<D>) -> &mut Self {
         let _ = self
             .command_buffer
             .execute_commands(pass.command_buffer.clone())
@@ -843,6 +877,11 @@ impl WlxCommandBuffer {
             .unwrap();
     }
 
+    #[allow(dead_code)]
+    pub fn end_rendering(&mut self) {
+        self.command_buffer.end_rendering().unwrap();
+    }
+
     pub fn build(self) -> Arc<CommandBuffer> {
         self.command_buffer.end().unwrap()
     }
@@ -859,16 +898,105 @@ impl WlxCommandBuffer {
     }
 }
 
-pub struct WlxPipeline {
-    pub graphics: Arc<WlxGraphics>,
-    pub pipeline: Arc<GraphicsPipeline>,
+#[allow(dead_code)]
+pub struct WlxPipelineDynamic {}
+
+pub struct WlxPipelineLegacy {
     pub render_pass: Arc<RenderPass>,
     pub framebuffer: Arc<Framebuffer>,
     pub view: Arc<ImageView>,
-    pub format: Format,
 }
 
-impl WlxPipeline {
+pub struct WlxPipeline<D> {
+    pub graphics: Arc<WlxGraphics>,
+    pub pipeline: Arc<GraphicsPipeline>,
+    pub format: Format,
+    pub data: D,
+}
+
+impl WlxPipeline<WlxPipelineDynamic> {
+    #[allow(dead_code)]
+    fn new(
+        graphics: Arc<WlxGraphics>,
+        vert: Arc<ShaderModule>,
+        frag: Arc<ShaderModule>,
+        format: Format,
+    ) -> Self {
+        let vep = vert.entry_point("main").unwrap();
+        let fep = frag.entry_point("main").unwrap();
+
+        let vertex_input_state = Vert2Uv::per_vertex()
+            .definition(&vep.info().input_interface)
+            .unwrap();
+
+        let stages = smallvec![
+            vulkano::pipeline::PipelineShaderStageCreateInfo::new(vep),
+            vulkano::pipeline::PipelineShaderStageCreateInfo::new(fep),
+        ];
+
+        let layout = PipelineLayout::new(
+            graphics.device.clone(),
+            PipelineDescriptorSetLayoutCreateInfo::from_stages(&stages)
+                .into_pipeline_layout_create_info(graphics.device.clone())
+                .unwrap(),
+        )
+        .unwrap();
+
+        let subpass = PipelineRenderingCreateInfo {
+            color_attachment_formats: vec![Some(format)],
+            ..Default::default()
+        };
+
+        let pipeline = GraphicsPipeline::new(
+            graphics.device.clone(),
+            None,
+            GraphicsPipelineCreateInfo {
+                stages,
+                vertex_input_state: Some(vertex_input_state),
+                input_assembly_state: Some(InputAssemblyState::default()),
+                viewport_state: Some(ViewportState::default()),
+                rasterization_state: Some(RasterizationState::default()),
+                multisample_state: Some(MultisampleState::default()),
+                color_blend_state: Some(ColorBlendState {
+                    attachments: vec![ColorBlendAttachmentState {
+                        blend: Some(AttachmentBlend::alpha()),
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                }),
+                dynamic_state: [DynamicState::Viewport].into_iter().collect(),
+                subpass: Some(subpass.into()),
+                ..GraphicsPipelineCreateInfo::layout(layout)
+            },
+        )
+        .unwrap();
+
+        Self {
+            graphics,
+            pipeline,
+            format,
+            data: WlxPipelineDynamic {},
+        }
+    }
+    #[allow(dead_code)]
+    pub fn create_pass(
+        self: &Arc<Self>,
+        dimensions: [f32; 2],
+        vertex_buffer: Subbuffer<[Vert2Uv]>,
+        index_buffer: Subbuffer<[u16]>,
+        descriptor_sets: Vec<Arc<DescriptorSet>>,
+    ) -> WlxPass<WlxPipelineDynamic> {
+        WlxPass::<WlxPipelineDynamic>::new(
+            self.clone(),
+            dimensions,
+            vertex_buffer,
+            index_buffer,
+            descriptor_sets,
+        )
+    }
+}
+
+impl WlxPipeline<WlxPipelineLegacy> {
     fn new(
         render_target: Arc<ImageView>,
         graphics: Arc<WlxGraphics>,
@@ -948,8 +1076,8 @@ impl WlxPipeline {
             .unwrap();
 
         let stages = smallvec![
-            PipelineShaderStageCreateInfo::new(vep),
-            PipelineShaderStageCreateInfo::new(fep),
+            vulkano::pipeline::PipelineShaderStageCreateInfo::new(vep),
+            vulkano::pipeline::PipelineShaderStageCreateInfo::new(fep),
         ];
 
         let layout = PipelineLayout::new(
@@ -997,12 +1125,32 @@ impl WlxPipeline {
             graphics,
             pipeline,
             format,
-            render_pass,
-            framebuffer,
-            view: render_target,
+            data: WlxPipelineLegacy {
+                render_pass,
+                framebuffer,
+                view: render_target,
+            },
         }
     }
 
+    pub fn create_pass(
+        self: &Arc<Self>,
+        dimensions: [f32; 2],
+        vertex_buffer: Subbuffer<[Vert2Uv]>,
+        index_buffer: Subbuffer<[u16]>,
+        descriptor_sets: Vec<Arc<DescriptorSet>>,
+    ) -> WlxPass<WlxPipelineLegacy> {
+        WlxPass::<WlxPipelineLegacy>::new(
+            self.clone(),
+            dimensions,
+            vertex_buffer,
+            index_buffer,
+            descriptor_sets,
+        )
+    }
+}
+
+impl<D> WlxPipeline<D> {
     pub fn inner(&self) -> Arc<GraphicsPipeline> {
         self.pipeline.clone()
     }
@@ -1064,36 +1212,20 @@ impl WlxPipeline {
         )
         .unwrap()
     }
-
-    pub fn create_pass(
-        self: &Arc<Self>,
-        dimensions: [f32; 2],
-        vertex_buffer: Subbuffer<[Vert2Uv]>,
-        index_buffer: Subbuffer<[u16]>,
-        descriptor_sets: Vec<Arc<DescriptorSet>>,
-    ) -> WlxPass {
-        WlxPass::new(
-            self.clone(),
-            dimensions,
-            vertex_buffer,
-            index_buffer,
-            descriptor_sets,
-        )
-    }
 }
 
 #[allow(dead_code)]
-pub struct WlxPass {
-    pipeline: Arc<WlxPipeline>,
+pub struct WlxPass<D> {
+    pipeline: Arc<WlxPipeline<D>>,
     vertex_buffer: Subbuffer<[Vert2Uv]>,
     index_buffer: Subbuffer<[u16]>,
     descriptor_sets: Vec<Arc<DescriptorSet>>,
     pub command_buffer: Arc<CommandBuffer>,
 }
 
-impl WlxPass {
+impl WlxPass<WlxPipelineLegacy> {
     fn new(
-        pipeline: Arc<WlxPipeline>,
+        pipeline: Arc<WlxPipeline<WlxPipelineLegacy>>,
         dimensions: [f32; 2],
         vertex_buffer: Subbuffer<[Vert2Uv]>,
         index_buffer: Subbuffer<[u16]>,
@@ -1115,8 +1247,79 @@ impl WlxPass {
                 inheritance_info: Some(CommandBufferInheritanceInfo {
                     render_pass: Some(CommandBufferInheritanceRenderPassType::BeginRenderPass(
                         CommandBufferInheritanceRenderPassInfo {
-                            subpass: Subpass::from(pipeline.render_pass.clone(), 0).unwrap(),
+                            subpass: Subpass::from(pipeline.data.render_pass.clone(), 0).unwrap(),
                             framebuffer: None,
+                        },
+                    )),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        unsafe {
+            command_buffer
+                .set_viewport(0, smallvec![viewport])
+                .unwrap()
+                .bind_pipeline_graphics(pipeline_inner)
+                .unwrap()
+                .bind_descriptor_sets(
+                    PipelineBindPoint::Graphics,
+                    pipeline.inner().layout().clone(),
+                    0,
+                    descriptor_sets.clone(),
+                )
+                .unwrap()
+                .bind_vertex_buffers(0, vertex_buffer.clone())
+                .unwrap()
+                .bind_index_buffer(index_buffer.clone())
+                .unwrap()
+                .draw_indexed(index_buffer.len() as u32, 1, 0, 0, 0)
+                .or_else(|err| {
+                    if let Some(source) = err.source() {
+                        log::error!("Failed to draw: {}", source);
+                    }
+                    Err(err)
+                })
+                .unwrap()
+        };
+
+        Self {
+            pipeline,
+            vertex_buffer,
+            index_buffer,
+            descriptor_sets,
+            command_buffer: command_buffer.end().unwrap(),
+        }
+    }
+}
+
+impl WlxPass<WlxPipelineDynamic> {
+    fn new(
+        pipeline: Arc<WlxPipeline<WlxPipelineDynamic>>,
+        dimensions: [f32; 2],
+        vertex_buffer: Subbuffer<[Vert2Uv]>,
+        index_buffer: Subbuffer<[u16]>,
+        descriptor_sets: Vec<Arc<DescriptorSet>>,
+    ) -> Self {
+        let viewport = Viewport {
+            offset: [0.0, 0.0],
+            extent: dimensions,
+            depth_range: 0.0..=1.0,
+        };
+        let pipeline_inner = pipeline.inner().clone();
+        let mut command_buffer = RecordingCommandBuffer::new(
+            pipeline.graphics.command_buffer_allocator.clone(),
+            pipeline.graphics.queue.queue_family_index(),
+            CommandBufferLevel::Secondary,
+            CommandBufferBeginInfo {
+                usage: CommandBufferUsage::MultipleSubmit,
+                inheritance_info: Some(CommandBufferInheritanceInfo {
+                    render_pass: Some(CommandBufferInheritanceRenderPassType::BeginRendering(
+                        CommandBufferInheritanceRenderingInfo {
+                            color_attachment_formats: vec![Some(pipeline.format)],
+                            ..Default::default()
                         },
                     )),
                     ..Default::default()
