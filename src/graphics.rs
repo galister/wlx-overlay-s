@@ -2,7 +2,10 @@ use std::{
     collections::HashMap,
     error::Error,
     io::Cursor,
-    os::fd::{FromRawFd, IntoRawFd},
+    os::{
+        fd::{FromRawFd, IntoRawFd},
+        raw::c_void,
+    },
     slice::Iter,
     sync::{Arc, RwLock},
 };
@@ -119,6 +122,9 @@ impl WlxGraphics {
     pub fn new_openxr(xr_instance: openxr::Instance, system: openxr::SystemId) -> Arc<Self> {
         use std::ffi::{self, c_char, CString};
 
+        use ash::vk::{
+            PhysicalDeviceDynamicRenderingFeatures, PhysicalDeviceDynamicRenderingFeaturesBuilder,
+        };
         use vulkano::Handle;
 
         let vk_target_version = vk::make_api_version(0, 1, 3, 0); // Vulkan 1.1 guarantees multiview support
@@ -204,19 +210,35 @@ impl WlxGraphics {
             })
             .collect::<Vec<_>>();
 
+        let features = Features {
+            dynamic_rendering: true,
+            ..Default::default()
+        };
+
+        let queue_create_info = vk::DeviceQueueCreateInfo::builder()
+            .queue_family_index(queue_family_index)
+            .queue_priorities(&[1.0])
+            .build();
+
+        let mut device_create_info = vk::DeviceCreateInfo::builder()
+            .queue_create_infos(&[queue_create_info])
+            .enabled_extension_names(&device_extensions_raw)
+            .build();
+
+        let mut dynamic_rendering = PhysicalDeviceDynamicRenderingFeatures::builder()
+            .dynamic_rendering(true)
+            .build();
+
+        dynamic_rendering.p_next = device_create_info.p_next as _;
+        device_create_info.p_next = (&mut dynamic_rendering) as *const _ as *const c_void;
+
         let (device, mut queues) = unsafe {
             let vk_device = xr_instance
                 .create_vulkan_device(
                     system,
                     std::mem::transmute(vk_entry.static_fn().get_instance_proc_addr),
                     physical_device.handle().as_raw() as _,
-                    &vk::DeviceCreateInfo::builder()
-                        .queue_create_infos(&[vk::DeviceQueueCreateInfo::builder()
-                            .queue_family_index(queue_family_index)
-                            .queue_priorities(&[1.0])
-                            .build()])
-                        .enabled_extension_names(&device_extensions_raw)
-                        as *const _ as *const _,
+                    (&device_create_info) as *const _ as *const _,
                 )
                 .expect("XR error creating Vulkan device")
                 .map_err(vk::Result::from_raw)
@@ -231,6 +253,7 @@ impl WlxGraphics {
                         ..Default::default()
                     }],
                     enabled_extensions: device_extensions,
+                    enabled_features: features,
                     ..Default::default()
                 },
             )

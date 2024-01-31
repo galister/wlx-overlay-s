@@ -3,13 +3,13 @@ use std::sync::Arc;
 use ash::vk;
 use openxr as xr;
 
+use smallvec::SmallVec;
 use vulkano::{
-    image::{sampler::Filter, view::ImageView, ImageCreateInfo, ImageUsage},
-    render_pass::{Framebuffer, FramebufferCreateInfo},
+    image::{sampler::Filter, sys::RawImage, view::ImageView, ImageCreateInfo, ImageUsage},
     Handle,
 };
 
-use crate::graphics::{WlxCommandBuffer, WlxGraphics, WlxPipeline, WlxPipelineLegacy};
+use crate::graphics::{WlxCommandBuffer, WlxGraphics, WlxPipeline, WlxPipelineDynamic};
 
 use super::XrState;
 
@@ -34,7 +34,14 @@ pub(super) fn create_swapchain_render_data(
         })
         .unwrap();
 
-    let sips: Vec<SwapchainImagePipeline> = swapchain
+    let shaders = graphics.shared_shaders.read().unwrap();
+    let pipeline = graphics.create_pipeline_dynamic(
+        shaders.get("vert_common").unwrap().clone(),
+        shaders.get("frag_srgb").unwrap().clone(),
+        graphics.native_format,
+    );
+
+    let images = swapchain
         .enumerate_images()
         .unwrap()
         .into_iter()
@@ -42,13 +49,13 @@ pub(super) fn create_swapchain_render_data(
             let vk_image = vk::Image::from_raw(handle);
             // thanks @yshui
             let raw_image = unsafe {
-                vulkano::image::sys::RawImage::from_handle(
+                RawImage::from_handle(
                     graphics.device.clone(),
                     vk_image,
                     ImageCreateInfo {
                         format: graphics.native_format,
                         extent,
-                        usage: ImageUsage::COLOR_ATTACHMENT | ImageUsage::TRANSFER_DST,
+                        usage: ImageUsage::COLOR_ATTACHMENT,
                         ..Default::default()
                     },
                 )
@@ -56,55 +63,23 @@ pub(super) fn create_swapchain_render_data(
             };
             // SAFETY: OpenXR guarantees that the image is a swapchain image, thus has memory backing it.
             let image = Arc::new(unsafe { raw_image.assume_bound() });
-            let view = ImageView::new_default(image).unwrap();
-
-            // HACK: maybe not create one pipeline per image?
-
-            let shaders = graphics.shared_shaders.read().unwrap();
-
-            let pipeline = graphics.create_pipeline(
-                view.clone(),
-                shaders.get("vert_common").unwrap().clone(),
-                shaders.get("frag_srgb").unwrap().clone(),
-                graphics.native_format,
-            );
-
-            let buffer = Framebuffer::new(
-                pipeline.data.render_pass.clone(),
-                FramebufferCreateInfo {
-                    attachments: vec![view.clone()],
-                    extent: [view.image().extent()[0] as _, view.image().extent()[1] as _],
-                    layers: 1,
-                    ..Default::default()
-                },
-            )
-            .unwrap();
-
-            SwapchainImagePipeline {
-                buffer,
-                view,
-                pipeline,
-            }
+            ImageView::new_default(image).unwrap()
         })
         .collect();
 
     SwapchainRenderData {
         swapchain,
-        images: sips,
+        pipeline,
+        images,
         extent,
     }
 }
 
 pub(super) struct SwapchainRenderData {
     pub(super) swapchain: xr::Swapchain<xr::Vulkan>,
+    pub(super) pipeline: Arc<WlxPipeline<WlxPipelineDynamic>>,
     pub(super) extent: [u32; 3],
-    pub(super) images: Vec<SwapchainImagePipeline>,
-}
-
-pub(super) struct SwapchainImagePipeline {
-    pub(super) view: Arc<ImageView>,
-    pub(super) buffer: Arc<Framebuffer>,
-    pub(super) pipeline: Arc<WlxPipeline<WlxPipelineLegacy>>,
+    pub(super) images: SmallVec<[Arc<ImageView>; 4]>,
 }
 
 impl SwapchainRenderData {
@@ -116,22 +91,21 @@ impl SwapchainRenderData {
         let idx = self.swapchain.acquire_image().unwrap() as usize;
         self.swapchain.wait_image(xr::Duration::INFINITE).unwrap();
 
-        let image = &mut self.images[idx];
-        let pipeline = image.pipeline.clone();
-        command_buffer.begin_render_pass(&pipeline);
+        let render_target = &mut self.images[idx];
+        command_buffer.begin_rendering(render_target.clone());
 
-        let target_extent = image.pipeline.data.view.image().extent();
-        let set = image
+        let target_extent = view.image().extent();
+        let set = self
             .pipeline
             .uniform_sampler(0, view.clone(), Filter::Linear);
-        let pass = image.pipeline.create_pass(
+        let pass = self.pipeline.create_pass(
             [target_extent[0] as _, target_extent[1] as _],
             command_buffer.graphics.quad_verts.clone(),
             command_buffer.graphics.quad_indices.clone(),
             vec![set],
         );
         command_buffer.run_ref(&pass);
-        command_buffer.end_render_pass();
+        command_buffer.end_rendering();
 
         self.swapchain.release_image().unwrap();
 
