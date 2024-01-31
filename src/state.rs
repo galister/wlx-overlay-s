@@ -10,7 +10,7 @@ use crate::{
     graphics::WlxGraphics,
     gui::font::FontCache,
     hid::HidProvider,
-    shaders::{frag_color, frag_glyph, frag_screen, frag_sprite, frag_srgb, vert_common},
+    shaders::{frag_color, frag_glyph, frag_sprite, frag_srgb, vert_common},
 };
 
 pub const WATCH_DEFAULT_POS: Vec3 = Vec3::new(-0.03, -0.01, 0.1);
@@ -52,9 +52,6 @@ impl AppState {
 
             let shader = frag_glyph::load(graphics.device.clone()).unwrap();
             shaders.insert("frag_glyph", shader);
-
-            let shader = frag_screen::load(graphics.device.clone()).unwrap();
-            shaders.insert("frag_screen", shader);
 
             let shader = frag_sprite::load(graphics.device.clone()).unwrap();
             shaders.insert("frag_sprite", shader);
