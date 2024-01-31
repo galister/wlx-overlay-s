@@ -122,9 +122,7 @@ impl WlxGraphics {
     pub fn new_openxr(xr_instance: openxr::Instance, system: openxr::SystemId) -> Arc<Self> {
         use std::ffi::{self, c_char, CString};
 
-        use ash::vk::{
-            PhysicalDeviceDynamicRenderingFeatures, PhysicalDeviceDynamicRenderingFeaturesBuilder,
-        };
+        use ash::vk::PhysicalDeviceDynamicRenderingFeatures;
         use vulkano::Handle;
 
         let vk_target_version = vk::make_api_version(0, 1, 3, 0); // Vulkan 1.1 guarantees multiview support
@@ -686,7 +684,6 @@ impl WlxGraphics {
         ))
     }
 
-    #[allow(dead_code)]
     pub fn create_pipeline_dynamic(
         self: &Arc<Self>,
         vert: Arc<ShaderModule>,
@@ -804,7 +801,6 @@ impl WlxCommandBuffer {
             .unwrap();
     }
 
-    #[allow(dead_code)]
     pub fn begin_rendering(&mut self, render_target: Arc<ImageView>) {
         self.command_buffer
             .begin_rendering(RenderingInfo {
@@ -900,7 +896,6 @@ impl WlxCommandBuffer {
             .unwrap();
     }
 
-    #[allow(dead_code)]
     pub fn end_rendering(&mut self) {
         self.command_buffer.end_rendering().unwrap();
     }
@@ -921,7 +916,6 @@ impl WlxCommandBuffer {
     }
 }
 
-#[allow(dead_code)]
 pub struct WlxPipelineDynamic {}
 
 pub struct WlxPipelineLegacy {
@@ -938,7 +932,6 @@ pub struct WlxPipeline<D> {
 }
 
 impl WlxPipeline<WlxPipelineDynamic> {
-    #[allow(dead_code)]
     fn new(
         graphics: Arc<WlxGraphics>,
         vert: Arc<ShaderModule>,
@@ -1001,7 +994,6 @@ impl WlxPipeline<WlxPipelineDynamic> {
             data: WlxPipelineDynamic {},
         }
     }
-    #[allow(dead_code)]
     pub fn create_pass(
         self: &Arc<Self>,
         dimensions: [f32; 2],
