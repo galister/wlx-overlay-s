@@ -10,6 +10,7 @@ use anyhow::{bail, ensure};
 use glam::{Affine3A, Quat, Vec3};
 use openxr as xr;
 use vulkano::{command_buffer::CommandBufferUsage, Handle, VulkanObject};
+use xr::OverlaySessionCreateFlagsEXTX;
 
 use crate::{
     backend::{
@@ -64,23 +65,24 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     app_state.hid_provider.set_desktop_extent(overlays.extent);
 
     let (session, mut frame_wait, mut frame_stream) = unsafe {
-        xr_instance
-            .create_session::<xr::Vulkan>(
-                system,
-                &xr::vulkan::SessionCreateInfo {
-                    instance: app_state.graphics.instance.handle().as_raw() as _,
-                    physical_device: app_state
-                        .graphics
-                        .device
-                        .physical_device()
-                        .handle()
-                        .as_raw() as _,
-                    device: app_state.graphics.device.handle().as_raw() as _,
-                    queue_family_index: app_state.graphics.queue.queue_family_index(),
-                    queue_index: 0,
-                },
-            )
-            .unwrap()
+        let raw_session = create_overlay_session(
+            &xr_instance,
+            system,
+            &xr::vulkan::SessionCreateInfo {
+                instance: app_state.graphics.instance.handle().as_raw() as _,
+                physical_device: app_state
+                    .graphics
+                    .device
+                    .physical_device()
+                    .handle()
+                    .as_raw() as _,
+                device: app_state.graphics.device.handle().as_raw() as _,
+                queue_family_index: app_state.graphics.queue.queue_family_index(),
+                queue_index: 0,
+            },
+        )
+        .unwrap();
+        xr::Session::from_raw(xr_instance.clone(), raw_session, Box::new(()))
     };
 
     let stage = session
@@ -337,6 +339,40 @@ fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
     }
 
     Ok((xr_instance, system))
+}
+unsafe fn create_overlay_session(
+    instance: &xr::Instance,
+    system: xr::SystemId,
+    info: &xr::vulkan::SessionCreateInfo,
+) -> Result<xr::sys::Session, xr::sys::Result> {
+    let overlay = xr::sys::SessionCreateInfoOverlayEXTX {
+        ty: xr::sys::SessionCreateInfoOverlayEXTX::TYPE,
+        next: std::ptr::null(),
+        create_flags: OverlaySessionCreateFlagsEXTX::EMPTY,
+        session_layers_placement: 5,
+    };
+    let binding = xr::sys::GraphicsBindingVulkanKHR {
+        ty: xr::sys::GraphicsBindingVulkanKHR::TYPE,
+        next: &overlay as *const _ as *const _,
+        instance: info.instance,
+        physical_device: info.physical_device,
+        device: info.device,
+        queue_family_index: info.queue_family_index,
+        queue_index: info.queue_index,
+    };
+    let info = xr::sys::SessionCreateInfo {
+        ty: xr::sys::SessionCreateInfo::TYPE,
+        next: &binding as *const _ as *const _,
+        create_flags: Default::default(),
+        system_id: system,
+    };
+    let mut out = xr::sys::Session::NULL;
+    let x = (instance.fp().create_session)(instance.as_raw(), &info, &mut out);
+    if x.into_raw() >= 0 {
+        Ok(out)
+    } else {
+        Err(x)
+    }
 }
 
 fn hmd_pose_from_views(views: &Vec<xr::View>) -> Affine3A {
