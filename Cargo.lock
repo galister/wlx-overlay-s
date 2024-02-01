@@ -4209,7 +4209,6 @@ dependencies = [
  "smallvec",
  "strum",
  "thiserror",
- "tinyvec",
  "vulkano",
  "vulkano-shaders",
  "winit",

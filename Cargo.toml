@@ -38,7 +38,6 @@ serde_yaml = "0.9.25"
 smallvec = "1.11.0"
 strum = { version = "0.25.0", features = ["derive"] }
 thiserror = "1.0.56"
-tinyvec = "1.6.0"
 vulkano = { git = "https://github.com/vulkano-rs/vulkano", rev = "94f50f1" }
 vulkano-shaders = { git = "https://github.com/vulkano-rs/vulkano", rev = "94f50f1" }
 winit = "0.29.10"

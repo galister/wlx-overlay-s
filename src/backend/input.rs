@@ -1,10 +1,10 @@
 use std::{collections::VecDeque, time::Instant};
 
 use glam::{Affine3A, Vec2, Vec3A};
-use tinyvec::array_vec;
 
 #[cfg(feature = "openvr")]
 use ovr_overlay::TrackedDeviceIndex;
+use smallvec::{smallvec, SmallVec};
 
 use crate::state::AppState;
 
@@ -341,7 +341,7 @@ impl Pointer {
     where
         O: Default,
     {
-        let mut hits = array_vec!([RayHit; 8]);
+        let mut hits: SmallVec<[RayHit; 8]> = smallvec!();
 
         for overlay in overlays.iter() {
             if !overlay.state.want_visible {
@@ -352,7 +352,7 @@ impl Pointer {
                 if hit.dist.is_infinite() || hit.dist.is_nan() {
                     continue;
                 }
-                hits.try_push(hit);
+                hits.push(hit);
             }
         }
 
