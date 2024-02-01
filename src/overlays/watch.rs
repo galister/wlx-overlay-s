@@ -12,6 +12,8 @@ use crate::{
     state::AppState,
 };
 
+pub const WATCH_NAME: &str = "watch";
+
 pub fn create_watch<O>(state: &AppState, screens: &[OverlayData<O>]) -> OverlayData<O>
 where
     O: Default,
@@ -168,7 +170,7 @@ where
 
     OverlayData {
         state: OverlayState {
-            name: "Watch".into(),
+            name: WATCH_NAME.into(),
             size: (400, 200),
             want_visible: true,
             spawn_scale: 0.11 * state.session.config.watch_scale,

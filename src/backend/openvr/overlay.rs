@@ -9,6 +9,7 @@ use vulkano::{Handle, VulkanObject};
 use crate::{
     backend::overlay::{OverlayData, RelativeTo},
     graphics::WlxGraphics,
+    overlays::watch::WATCH_NAME,
     state::AppState,
 };
 
@@ -42,7 +43,7 @@ impl OverlayData<OpenVrOverlayData> {
         log::debug!("{}: initialize", self.state.name);
 
         //watch
-        if self.state.id == 0 {
+        if *self.state.name == *WATCH_NAME {
             self.data.sort_order = 68;
         }
 
