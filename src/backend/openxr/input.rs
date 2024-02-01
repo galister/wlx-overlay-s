@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use glam::{bool, Affine3A, Quat, Vec3};
 use openxr as xr;
 
@@ -6,6 +8,28 @@ use crate::{backend::input::Pointer, state::AppState};
 use super::XrState;
 
 type XrSession = xr::Session<xr::Vulkan>;
+static DOUBLE_CLICK_TIME: Duration = Duration::from_millis(500);
+
+pub(super) struct DoubleClickCounter {
+    pub(super) last_click: Option<Instant>,
+}
+
+impl DoubleClickCounter {
+    pub(super) fn new() -> Self {
+        Self { last_click: None }
+    }
+
+    // submit a click. returns true if it should count as a double click
+    pub(super) fn click(&mut self) -> bool {
+        let now = Instant::now();
+        let double_click = match self.last_click {
+            Some(last_click) => now - last_click < DOUBLE_CLICK_TIME,
+            None => false,
+        };
+        self.last_click = if double_click { None } else { Some(now) };
+        double_click
+    }
+}
 
 pub(super) struct OpenXrInputSource {
     action_set: xr::ActionSet,

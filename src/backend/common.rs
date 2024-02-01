@@ -50,12 +50,14 @@ where
         overlays.insert(watch.state.id, watch);
 
         let mut keyboard = create_keyboard(&app);
+        keyboard.state.show_hide = true;
         keyboard.state.want_visible = true;
         overlays.insert(keyboard.state.id, keyboard);
 
         let mut first = true;
         for mut screen in screens {
             if first {
+                screen.state.show_hide = true;
                 screen.state.want_visible = true;
                 first = false;
             }
@@ -93,6 +95,19 @@ where
 
     pub fn iter_mut<'a>(&'a mut self) -> impl Iterator<Item = &'a mut OverlayData<T>> {
         self.overlays.values_mut()
+    }
+
+    pub fn show_hide(&mut self) {
+        let any_shown = self
+            .overlays
+            .values()
+            .any(|o| o.state.show_hide && o.state.want_visible);
+
+        self.overlays.values_mut().for_each(|o| {
+            if o.state.show_hide {
+                o.state.want_visible = !any_shown;
+            }
+        })
     }
 }
 

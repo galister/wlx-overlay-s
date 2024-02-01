@@ -16,7 +16,7 @@ use crate::{
     backend::{
         common::OverlayContainer,
         input::interact,
-        openxr::{lines::LinePool, overlay::OpenXrOverlayData},
+        openxr::{input::DoubleClickCounter, lines::LinePool, overlay::OpenXrOverlayData},
     },
     graphics::WlxGraphics,
     state::AppState,
@@ -114,6 +114,8 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     let mut session_running = false;
     let mut event_storage = xr::EventDataBuffer::new();
 
+    let mut show_hide_counter = DoubleClickCounter::new();
+
     'main_loop: loop {
         if !running.load(Ordering::Relaxed) {
             log::warn!("Received shutdown signal.");
@@ -183,6 +185,17 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         app_state.input_state.pre_update();
         input_source.update(&xr_state, &mut app_state);
         app_state.input_state.post_update();
+
+        if app_state
+            .input_state
+            .pointers
+            .iter()
+            .any(|p| p.now.show_hide && !p.before.show_hide)
+        {
+            if show_hide_counter.click() {
+                overlays.show_hide();
+            }
+        }
 
         let (_, views) = xr_state
             .session

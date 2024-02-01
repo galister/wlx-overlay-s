@@ -334,7 +334,6 @@ where
                 name: output.name.clone(),
                 size,
                 want_visible: session.show_screens.iter().any(|s| s == &*output.name),
-                show_hide: true,
                 grabbable: true,
                 spawn_scale: 1.5 * session.config.desktop_view_scale,
                 spawn_point: vec3a(0., 0.5, -1.),

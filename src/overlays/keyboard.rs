@@ -114,7 +114,6 @@ where
     OverlayData {
         state: OverlayState {
             name: Arc::from("kbd"),
-            show_hide: true,
             size: (size.x as _, size.y as _),
             grabbable: true,
             spawn_scale: width,

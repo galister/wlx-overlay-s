@@ -147,6 +147,15 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         input_source.update(&mut input_mngr, &mut system_mngr, &mut state);
         state.input_state.post_update();
 
+        if state
+            .input_state
+            .pointers
+            .iter()
+            .any(|p| p.now.show_hide && !p.before.show_hide)
+        {
+            overlays.show_hide();
+        }
+
         overlays
             .iter_mut()
             .for_each(|o| o.state.auto_movement(&mut state));

@@ -98,7 +98,8 @@ where
                 app.tasks.enqueue(TaskType::Overlay(
                     OverlaySelector::Name("kbd".into()),
                     Box::new(|_app, o| {
-                        o.want_visible = !o.want_visible;
+                        o.show_hide = !o.show_hide;
+                        o.want_visible = o.show_hide;
                     }),
                 ));
             } else {
@@ -144,7 +145,8 @@ where
                     app.tasks.enqueue(TaskType::Overlay(
                         OverlaySelector::Id(scr_idx),
                         Box::new(|_app, o| {
-                            o.want_visible = !o.want_visible;
+                            o.show_hide = !o.show_hide;
+                            o.want_visible = o.show_hide;
                         }),
                     ));
                 } else {
