@@ -39,6 +39,7 @@ impl PlayspaceMover {
 
             overlays.iter_mut().for_each(|overlay| {
                 if overlay.state.grabbable {
+                    overlay.state.dirty = true;
                     overlay.state.transform.translation += relative_pos * -1.0;
                 }
             });
