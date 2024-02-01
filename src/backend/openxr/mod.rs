@@ -1,4 +1,5 @@
 use std::{
+    collections::VecDeque,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -14,7 +15,7 @@ use xr::OverlaySessionCreateFlagsEXTX;
 
 use crate::{
     backend::{
-        common::OverlayContainer,
+        common::{OverlayContainer, TaskType},
         input::interact,
         openxr::{input::DoubleClickCounter, lines::LinePool, overlay::OpenXrOverlayData},
     },
@@ -108,6 +109,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     let mut event_storage = xr::EventDataBuffer::new();
 
     let mut show_hide_counter = DoubleClickCounter::new();
+    let mut due_tasks = VecDeque::with_capacity(4);
 
     'main_loop: loop {
         if !running.load(Ordering::Relaxed) {
@@ -173,6 +175,18 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 )
                 .unwrap();
             continue 'main_loop;
+        }
+
+        app_state.tasks.retrieve_due(&mut due_tasks);
+        while let Some(task) = due_tasks.pop_front() {
+            match task {
+                TaskType::Global(f) => f(&mut app_state),
+                TaskType::Overlay(sel, f) => {
+                    if let Some(o) = overlays.mut_by_selector(&sel) {
+                        f(&mut app_state, &mut o.state);
+                    }
+                }
+            }
         }
 
         app_state.input_state.pre_update();
