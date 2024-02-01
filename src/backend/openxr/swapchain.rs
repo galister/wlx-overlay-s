@@ -94,7 +94,7 @@ impl SwapchainRenderData {
         let render_target = &mut self.images[idx];
         command_buffer.begin_rendering(render_target.clone());
 
-        let target_extent = view.image().extent();
+        let target_extent = render_target.image().extent();
         let set = self
             .pipeline
             .uniform_sampler(0, view.clone(), Filter::Linear);
