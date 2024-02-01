@@ -10,6 +10,7 @@ use anyhow::{bail, ensure};
 use glam::{Affine3A, Quat, Vec3};
 use openxr as xr;
 use vulkano::{command_buffer::CommandBufferUsage, Handle, VulkanObject};
+use xr::EnvironmentBlendMode;
 
 use crate::{
     backend::{
@@ -48,9 +49,17 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         }
     };
 
-    let environment_blend_mode = xr_instance
-        .enumerate_environment_blend_modes(system, VIEW_TYPE)
-        .unwrap()[0];
+    let environment_blend_mode = {
+        let available = xr_instance
+            .enumerate_environment_blend_modes(system, VIEW_TYPE)
+            .unwrap();
+
+        if available.contains(&EnvironmentBlendMode::ALPHA_BLEND) {
+            EnvironmentBlendMode::ALPHA_BLEND
+        } else {
+            available[0]
+        }
+    };
     log::info!("Using environment blend mode: {:?}", environment_blend_mode);
 
     let mut app_state = {
