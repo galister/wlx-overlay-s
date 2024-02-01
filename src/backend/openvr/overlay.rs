@@ -208,7 +208,7 @@ impl OverlayData<OpenVrOverlayData> {
             m_pQueue: graphics.queue.handle().as_raw() as *mut _,
             m_nQueueFamilyIndex: graphics.queue.queue_family_index(),
         };
-        log::info!(
+        log::debug!(
             "{}: UploadTex {:?}, {}x{}, {:?}",
             self.state.name,
             format,
@@ -219,6 +219,6 @@ impl OverlayData<OpenVrOverlayData> {
         if let Err(e) = overlay.set_image_vulkan(handle, &mut texture) {
             panic!("Failed to set overlay texture: {}", e);
         }
-        log::info!("{}: Uploaded texture", self.state.name);
+        log::debug!("{}: Uploaded texture", self.state.name);
     }
 }

@@ -30,6 +30,7 @@ impl PlayspaceMover {
             let pointer = &state.input_state.pointers[hand];
             if !pointer.now.space_drag {
                 self.drag_hand = None;
+                log::info!("End space drag");
                 return;
             }
 
@@ -48,6 +49,7 @@ impl PlayspaceMover {
                 if pointer.now.space_drag {
                     self.drag_hand = Some(i);
                     self.start_position = pointer.pose.translation;
+                    log::info!("Start space drag");
                     break;
                 }
             }
