@@ -10,7 +10,7 @@ use crate::{
     backend::overlay::{OverlayData, OverlayState},
     config,
     gui::{color_parse, CanvasBuilder, Control},
-    hid::{KeyModifier, VirtualKey, KEYS_TO_MODS},
+    hid::{KeyModifier, VirtualKey, ALT, CTRL, KEYS_TO_MODS, META, SHIFT, SUPER},
     state::{AppSession, AppState},
 };
 use glam::{vec2, vec3a, Affine2};
@@ -21,6 +21,7 @@ use serde::{Deserialize, Serialize};
 
 const PIXELS_PER_UNIT: f32 = 80.;
 const BUTTON_PADDING: f32 = 4.;
+const AUTO_RELEASE_MODS: [KeyModifier; 5] = [SHIFT, CTRL, ALT, SUPER, META];
 
 pub fn create_keyboard<O>(app: &AppState) -> OverlayData<O>
 where
@@ -72,7 +73,6 @@ where
                         maybe_state = Some(KeyButtonData::Modifier {
                             modifier: *mods,
                             sticky: false,
-                            pressed: false,
                         });
                     } else {
                         maybe_state = Some(KeyButtonData::Key { vk, pressed: false });
@@ -138,16 +138,11 @@ fn key_press(
             app.hid_provider.send_key(*vk as _, true);
             *pressed = true;
         }
-        Some(KeyButtonData::Modifier {
-            modifier,
-            sticky,
-            pressed,
-        }) => {
+        Some(KeyButtonData::Modifier { modifier, sticky }) => {
             *sticky = data.modifiers & *modifier == 0;
             data.modifiers |= *modifier;
             data.key_click(&app.session);
             app.hid_provider.set_modifiers(data.modifiers);
-            *pressed = true;
         }
         Some(KeyButtonData::Macro { verbs }) => {
             data.key_click(&app.session);
@@ -178,16 +173,18 @@ fn key_release(
         Some(KeyButtonData::Key { vk, pressed }) => {
             app.hid_provider.send_key(*vk as _, false);
             *pressed = false;
+
+            for m in AUTO_RELEASE_MODS.iter() {
+                if data.modifiers & *m != 0 {
+                    data.modifiers &= !*m;
+                    app.hid_provider.set_modifiers(data.modifiers);
+                }
+            }
         }
-        Some(KeyButtonData::Modifier {
-            modifier,
-            sticky,
-            pressed,
-        }) => {
+        Some(KeyButtonData::Modifier { modifier, sticky }) => {
             if !*sticky {
                 data.modifiers &= !*modifier;
                 app.hid_provider.set_modifiers(data.modifiers);
-                *pressed = false;
             }
         }
         _ => {}
@@ -196,12 +193,12 @@ fn key_release(
 
 fn test_highlight(
     control: &Control<KeyboardData, KeyButtonData>,
-    _data: &mut KeyboardData,
+    data: &mut KeyboardData,
     _app: &mut AppState,
 ) -> bool {
     match control.state.as_ref() {
         Some(KeyButtonData::Key { pressed, .. }) => *pressed,
-        Some(KeyButtonData::Modifier { pressed, .. }) => *pressed,
+        Some(KeyButtonData::Modifier { modifier, .. }) => data.modifiers & *modifier != 0,
         _ => false,
     }
 }
@@ -240,22 +237,10 @@ impl KeyboardData {
 }
 
 enum KeyButtonData {
-    Key {
-        vk: VirtualKey,
-        pressed: bool,
-    },
-    Modifier {
-        modifier: KeyModifier,
-        sticky: bool,
-        pressed: bool,
-    },
-    Macro {
-        verbs: Vec<(VirtualKey, bool)>,
-    },
-    Exec {
-        program: String,
-        args: Vec<String>,
-    },
+    Key { vk: VirtualKey, pressed: bool },
+    Modifier { modifier: KeyModifier, sticky: bool },
+    Macro { verbs: Vec<(VirtualKey, bool)> },
+    Exec { program: String, args: Vec<String> },
 }
 
 static LAYOUT: Lazy<Layout> = Lazy::new(Layout::load_from_disk);
