@@ -443,6 +443,11 @@ impl Pointer {
         let d = plane.translation.dot(-plane_normal);
         let dist = -(d + self.pose.translation.dot(plane_normal)) / ray_dir.dot(plane_normal);
 
+        if dist < 0.0 {
+            // plane is behind the caster
+            return None;
+        }
+
         let hit_pos = self.pose.translation + ray_dir * dist;
 
         Some(RayHit {
