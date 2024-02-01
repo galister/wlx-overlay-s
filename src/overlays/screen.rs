@@ -10,11 +10,7 @@ use std::{
     sync::{mpsc::Receiver, Arc},
     time::{Duration, Instant},
 };
-use vulkano::{
-    command_buffer::CommandBufferUsage,
-    format::Format,
-    image::{sampler::Filter, view::ImageView, Image, ImageLayout},
-};
+use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 use wlx_capture::{
     frame::WlxFrame,
     pipewire::{pipewire_select_screen, PipewireCapture},
@@ -32,7 +28,7 @@ use crate::{
     },
     config::def_pw_tokens,
     config_io,
-    graphics::{fourcc_to_vk, WlxGraphics, WlxPipeline, WlxPipelineLegacy},
+    graphics::fourcc_to_vk,
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState},
 };
@@ -107,91 +103,11 @@ impl InteractionHandler for ScreenInteractionHandler {
     fn on_left(&mut self, _app: &mut AppState, _hand: usize) {}
 }
 
-struct ScreenPipeline {
-    graphics: Arc<WlxGraphics>,
-    pipeline: Arc<WlxPipeline<WlxPipelineLegacy>>,
-}
-
-impl ScreenPipeline {
-    fn new(graphics: Arc<WlxGraphics>, extent: &[u32; 3]) -> Self {
-        let render_texture = graphics.render_texture(extent[0], extent[1], Format::R8G8B8A8_UNORM);
-
-        let view = ImageView::new_default(render_texture).unwrap();
-
-        let pipeline = {
-            let shaders = graphics.shared_shaders.read().unwrap();
-
-            graphics.create_pipeline_with_layouts(
-                view,
-                shaders.get("vert_common").unwrap().clone(),
-                shaders.get("frag_sprite").unwrap().clone(),
-                Format::R8G8B8A8_UNORM,
-                ImageLayout::TransferSrcOptimal,
-                ImageLayout::TransferSrcOptimal,
-            )
-        };
-
-        Self { graphics, pipeline }
-    }
-
-    fn render(&mut self, image: Arc<Image>) {
-        /*
-        self.graphics
-            .transition_layout(
-                self.pipeline.view.image().clone(),
-                ImageLayout::TransferSrcOptimal,
-                ImageLayout::ColorAttachmentOptimal,
-            )
-            .wait(None)
-            .unwrap();
-            */
-
-        let mut command_buffer = self
-            .graphics
-            .create_command_buffer(CommandBufferUsage::OneTimeSubmit);
-        command_buffer.begin_render_pass(&self.pipeline);
-
-        let set0 = self.pipeline.uniform_sampler(
-            0,
-            ImageView::new_default(image).unwrap(),
-            Filter::Linear,
-        );
-
-        let dim = self.pipeline.data.view.image().extent();
-
-        let pass = self.pipeline.create_pass(
-            [dim[0] as _, dim[1] as _],
-            self.graphics.quad_verts.clone(),
-            self.graphics.quad_indices.clone(),
-            vec![set0],
-        );
-
-        command_buffer.run_ref(&pass);
-        command_buffer.end_render_pass();
-        command_buffer.build_and_execute_now();
-        /*
-        self.graphics
-            .transition_layout(
-                self.pipeline.view.image().clone(),
-                ImageLayout::ColorAttachmentOptimal,
-                ImageLayout::TransferSrcOptimal,
-            )
-            .wait(None)
-            .unwrap();
-            */
-    }
-
-    pub(super) fn view(&self) -> Arc<ImageView> {
-        self.pipeline.data.view.clone()
-    }
-}
-
 pub struct ScreenRenderer {
     name: Arc<str>,
     capture: Box<dyn WlxCapture>,
     receiver: Option<Receiver<WlxFrame>>,
-    pipeline: Option<ScreenPipeline>,
-    last_image: Option<Arc<ImageView>>,
+    last_view: Option<Arc<ImageView>>,
     extent: [u32; 3],
 }
 
@@ -206,8 +122,7 @@ impl ScreenRenderer {
             name: output.name.clone(),
             capture: Box::new(capture),
             receiver: None,
-            pipeline: None,
-            last_image: None,
+            last_view: None,
             extent: extent_from_res(output.size),
         })
     }
@@ -226,8 +141,7 @@ impl ScreenRenderer {
             name: output.name.clone(),
             capture: Box::new(capture),
             receiver: None,
-            pipeline: None,
-            last_image: None,
+            last_view: None,
             extent: extent_from_res(output.size),
         })
     }
@@ -236,11 +150,14 @@ impl ScreenRenderer {
 impl OverlayRenderer for ScreenRenderer {
     fn init(&mut self, app: &mut AppState) {
         let images = app.graphics.shared_images.read().unwrap();
-        self.last_image = Some(images.get("fallback").unwrap().clone());
-        self.pipeline = Some(ScreenPipeline::new(app.graphics.clone(), &self.extent));
+        self.last_view = Some(images.get("fallback").unwrap().clone());
     }
     fn render(&mut self, app: &mut AppState) {
-        let receiver = self.receiver.get_or_insert_with(|| self.capture.init());
+        let receiver = self.receiver.get_or_insert_with(|| {
+            let rx = self.capture.init();
+            self.capture.request_new_frame();
+            rx
+        });
 
         for frame in receiver.try_iter() {
             match frame {
@@ -249,13 +166,14 @@ impl OverlayRenderer for ScreenRenderer {
                         log::error!("Invalid frame");
                         continue;
                     }
-                    if let (Some(new), Some(pipeline)) =
-                        (app.graphics.dmabuf_texture(frame), self.pipeline.as_mut())
-                    {
-                        log::debug!("{}: New DMA-buf frame", self.name);
+                    if let Some(new) = app.graphics.dmabuf_texture(frame) {
+                        log::info!("{}: New DMA-buf frame", self.name);
 
-                        pipeline.render(new);
-                        self.last_image = Some(pipeline.view());
+                        let view = ImageView::new_default(new.clone()).unwrap();
+
+                        self.last_view = Some(view);
+                    } else {
+                        log::error!("{}: Failed to create DMA-buf texture", self.name);
                     }
                 }
                 WlxFrame::MemFd(frame) => {
@@ -292,7 +210,8 @@ impl OverlayRenderer for ScreenRenderer {
 
                     unsafe { libc::munmap(map as *mut _, len) };
 
-                    self.last_image = Some(ImageView::new_default(image).unwrap());
+                    self.last_view = Some(ImageView::new_default(image).unwrap());
+                    self.capture.request_new_frame();
                 }
                 WlxFrame::MemPtr(frame) => {
                     log::debug!("{}: New MemPtr frame", self.name);
@@ -308,12 +227,12 @@ impl OverlayRenderer for ScreenRenderer {
                         upload.texture2d(frame.format.width, frame.format.height, format, &data);
                     upload.build_and_execute_now();
 
-                    self.last_image = Some(ImageView::new_default(image).unwrap());
+                    self.last_view = Some(ImageView::new_default(image).unwrap());
+                    self.capture.request_new_frame();
                 }
                 _ => {}
             };
         }
-        self.capture.request_new_frame();
     }
     fn pause(&mut self, _app: &mut AppState) {
         self.capture.pause();
@@ -322,7 +241,7 @@ impl OverlayRenderer for ScreenRenderer {
         self.capture.resume();
     }
     fn view(&mut self) -> Option<Arc<ImageView>> {
-        self.last_image.take()
+        self.last_view.take()
     }
     fn extent(&self) -> [u32; 3] {
         self.extent.clone()
@@ -514,7 +433,7 @@ fn extent_from_res(res: (i32, i32)) -> [u32; 3] {
     // screens above a certain resolution will have severe aliasing
 
     // TODO make dynamic. maybe don't go above HMD resolution?
-    let w = res.0.min(1920) as u32;
+    let w = res.0.min(2560) as u32;
     let h = (res.1 as f32 / res.0 as f32 * w as f32) as u32;
     [w, h, 1]
 }

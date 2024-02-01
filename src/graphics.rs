@@ -17,6 +17,7 @@ use vulkano::{
         allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo},
         Buffer, BufferContents, BufferCreateInfo, BufferUsage, Subbuffer,
     },
+    command_buffer::CommandBufferInheritanceRenderingInfo,
     command_buffer::{
         allocator::{StandardCommandBufferAllocator, StandardCommandBufferAllocatorCreateInfo},
         sys::{CommandBufferBeginInfo, RawRecordingCommandBuffer},
@@ -43,6 +44,7 @@ use vulkano::{
         Image, ImageCreateInfo, ImageLayout, ImageTiling, ImageType, ImageUsage, SampleCount,
         SubresourceLayout,
     },
+    instance::InstanceCreateFlags,
     instance::InstanceExtensions,
     instance::{Instance, InstanceCreateInfo},
     memory::{
@@ -73,14 +75,12 @@ use vulkano::{
         SubpassDescription,
     },
     shader::ShaderModule,
+    swapchain::Surface,
     sync::{
         fence::Fence, future::NowFuture, AccessFlags, DependencyInfo, GpuFuture,
         ImageMemoryBarrier, PipelineStages,
     },
     DeviceSize, VulkanLibrary, VulkanObject,
-};
-use vulkano::{
-    command_buffer::CommandBufferInheritanceRenderingInfo, instance::InstanceCreateFlags,
 };
 
 use wlx_capture::frame::{
@@ -124,6 +124,22 @@ impl WlxGraphics {
 
         use ash::vk::PhysicalDeviceDynamicRenderingFeatures;
         use vulkano::Handle;
+        use winit::event_loop::EventLoop;
+
+        let event_loop = EventLoop::new().unwrap();
+        let instance_extensions = Surface::required_extensions(&event_loop).unwrap();
+
+        let instance_extensions_raw = instance_extensions
+            .clone()
+            .into_iter()
+            .filter_map(|(name, enabled)| {
+                if enabled {
+                    Some(ffi::CString::new(name).unwrap().into_raw() as *const c_char)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
 
         let vk_target_version = vk::make_api_version(0, 1, 3, 0); // Vulkan 1.1 guarantees multiview support
         let target_version = vulkano::Version::V1_3;
@@ -140,8 +156,10 @@ impl WlxGraphics {
                 .create_vulkan_instance(
                     system,
                     std::mem::transmute(vk_entry.static_fn().get_instance_proc_addr),
-                    &vk::InstanceCreateInfo::builder().application_info(&vk_app_info) as *const _
-                        as *const _,
+                    &vk::InstanceCreateInfo::builder()
+                        .application_info(&vk_app_info)
+                        .enabled_extension_names(&instance_extensions_raw)
+                        as *const _ as *const _,
                 )
                 .expect("XR error creating Vulkan instance")
                 .map_err(vk::Result::from_raw)
@@ -151,6 +169,7 @@ impl WlxGraphics {
                 library,
                 ash::vk::Instance::from_raw(vk_instance as _),
                 InstanceCreateInfo {
+                    enabled_extensions: instance_extensions,
                     ..Default::default()
                 },
             )
@@ -189,6 +208,7 @@ impl WlxGraphics {
             .expect("Vulkan device has no graphics queue") as u32;
 
         let device_extensions = DeviceExtensions {
+            khr_swapchain: true,
             khr_external_memory: true,
             khr_external_memory_fd: true,
             ext_external_memory_dma_buf: true,
