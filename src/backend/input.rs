@@ -400,7 +400,7 @@ impl Pointer {
             offset,
             grabbed_id: overlay.state.id,
         });
-        log::debug!("Hand {}: grabbed {}", self.idx, overlay.state.name);
+        log::info!("Hand {}: grabbed {}", self.idx, overlay.state.name);
     }
 
     fn handle_grabbed<O>(&mut self, overlay: &mut OverlayData<O>, hmd: &Affine3A)

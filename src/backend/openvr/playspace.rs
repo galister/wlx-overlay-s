@@ -35,14 +35,15 @@ impl PlayspaceMover {
             }
 
             let hand_pos = state.input_state.pointers[hand].pose.translation;
+            let relative_pos = hand_pos - self.start_position;
 
             overlays.iter_mut().for_each(|overlay| {
                 if overlay.state.grabbable {
-                    overlay.state.transform.translation += hand_pos * -1.0;
+                    overlay.state.transform.translation += relative_pos * -1.0;
                 }
             });
 
-            self.offset += hand_pos;
+            self.offset += relative_pos;
             self.apply_offset(chaperone_mgr);
         } else {
             for (i, pointer) in state.input_state.pointers.iter().enumerate() {
