@@ -7,13 +7,16 @@ use std::{
 };
 
 use crate::{
-    backend::overlay::{OverlayData, OverlayState},
+    backend::{
+        input::PointerMode,
+        overlay::{OverlayData, OverlayState},
+    },
     config,
     gui::{color_parse, CanvasBuilder, Control},
     hid::{KeyModifier, VirtualKey, ALT, CTRL, KEYS_TO_MODS, META, SHIFT, SUPER},
     state::{AppSession, AppState},
 };
-use glam::{vec2, vec3a, Affine2};
+use glam::{vec2, vec3a, Affine2, Vec4};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Source};
@@ -130,10 +133,17 @@ fn key_press(
     control: &mut Control<KeyboardData, KeyButtonData>,
     data: &mut KeyboardData,
     app: &mut AppState,
+    mode: PointerMode,
 ) {
     match control.state.as_mut() {
         Some(KeyButtonData::Key { vk, pressed }) => {
             data.key_click(&app.session);
+
+            if let PointerMode::Right = mode {
+                data.modifiers = data.modifiers | SHIFT;
+                app.hid_provider.set_modifiers(data.modifiers);
+            }
+
             app.hid_provider.send_key(*vk as _, true);
             *pressed = true;
         }
@@ -190,15 +200,23 @@ fn key_release(
     }
 }
 
+static PRESS_COLOR: Vec4 = Vec4::new(1.0, 1.0, 1.0, 0.5);
+
 fn test_highlight(
     control: &Control<KeyboardData, KeyButtonData>,
     data: &mut KeyboardData,
     _app: &mut AppState,
-) -> bool {
-    match control.state.as_ref() {
+) -> Option<Vec4> {
+    let pressed = match control.state.as_ref() {
         Some(KeyButtonData::Key { pressed, .. }) => *pressed,
         Some(KeyButtonData::Modifier { modifier, .. }) => data.modifiers & *modifier != 0,
         _ => false,
+    };
+
+    if pressed {
+        Some(PRESS_COLOR)
+    } else {
+        None
     }
 }
 

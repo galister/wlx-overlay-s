@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use glam::{Vec2, Vec3};
+use glam::{Vec2, Vec3, Vec4};
 use vulkano::{
     command_buffer::CommandBufferUsage,
     format::Format,
@@ -9,7 +9,7 @@ use vulkano::{
 
 use crate::{
     backend::{
-        input::{InteractionHandler, PointerHit},
+        input::{InteractionHandler, PointerHit, PointerMode},
         overlay::{OverlayBackend, OverlayRenderer},
     },
     graphics::{WlxCommandBuffer, WlxGraphics, WlxPass, WlxPipeline, WlxPipelineLegacy},
@@ -370,7 +370,7 @@ impl<D, S> InteractionHandler for Canvas<D, S> {
             if pressed {
                 if let Some(ref mut f) = c.on_press {
                     self.pressed_controls[hit.pointer] = Some(idx);
-                    f(c, &mut self.canvas.data, app);
+                    f(c, &mut self.canvas.data, app, hit.mode);
                 }
             } else if let Some(ref mut f) = c.on_release {
                 self.pressed_controls[hit.pointer] = None;
@@ -435,12 +435,18 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
         for (i, c) in self.controls.iter_mut().enumerate() {
             if let Some(render) = c.on_render_hl {
                 if let Some(test) = c.test_highlight {
-                    if test(c, &mut self.canvas.data, app) {
-                        render(c, &self.canvas, app, &mut cmd_buffer, true);
+                    if let Some(hl_color) = test(c, &mut self.canvas.data, app) {
+                        render(c, &self.canvas, app, &mut cmd_buffer, hl_color);
                     }
                 }
                 if self.hover_controls.contains(&Some(i)) {
-                    render(c, &self.canvas, app, &mut cmd_buffer, false);
+                    render(
+                        c,
+                        &self.canvas,
+                        app,
+                        &mut cmd_buffer,
+                        Vec4::new(1., 1., 1., 0.3),
+                    );
                 }
             }
         }
@@ -484,12 +490,12 @@ pub struct Control<D, S> {
     dirty: bool,
 
     pub on_update: Option<fn(&mut Self, &mut D, &mut AppState)>,
-    pub on_press: Option<fn(&mut Self, &mut D, &mut AppState)>,
+    pub on_press: Option<fn(&mut Self, &mut D, &mut AppState, PointerMode)>,
     pub on_release: Option<fn(&mut Self, &mut D, &mut AppState)>,
-    pub test_highlight: Option<fn(&Self, &mut D, &mut AppState) -> bool>,
+    pub test_highlight: Option<fn(&Self, &mut D, &mut AppState) -> Option<Vec4>>,
 
     on_render_bg: Option<fn(&Self, &CanvasData<D>, &mut AppState, &mut WlxCommandBuffer)>,
-    on_render_hl: Option<fn(&Self, &CanvasData<D>, &mut AppState, &mut WlxCommandBuffer, bool)>,
+    on_render_hl: Option<fn(&Self, &CanvasData<D>, &mut AppState, &mut WlxCommandBuffer, Vec4)>,
     on_render_fg: Option<fn(&Self, &CanvasData<D>, &mut AppState, &mut WlxCommandBuffer)>,
 }
 
@@ -562,7 +568,7 @@ impl<D, S> Control<D, S> {
         canvas: &CanvasData<D>,
         _: &mut AppState,
         cmd_buffer: &mut WlxCommandBuffer,
-        strong: bool,
+        color: Vec4,
     ) {
         let vertex_buffer = canvas.graphics.upload_verts(
             canvas.width as _,
@@ -572,10 +578,11 @@ impl<D, S> Control<D, S> {
             self.rect.w,
             self.rect.h,
         );
+
         let set0 = canvas
             .pipeline_bg_color
-            .uniform_buffer(0, vec![1.0, 1.0, 1.0, if strong { 0.5 } else { 0.3 }]); //FIXME why is
-                                                                                     //this green
+            .uniform_buffer(0, color.to_array().to_vec());
+
         let pass = canvas.pipeline_bg_color.create_pass(
             [canvas.width as _, canvas.height as _],
             vertex_buffer.clone(),

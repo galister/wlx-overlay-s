@@ -55,12 +55,12 @@ where
     canvas.fg_color = color_parse("#353535");
 
     let vol_up = canvas.button(327., 116., 46., 32., "+".into());
-    vol_up.on_press = Some(|_control, _data, _app| {
+    vol_up.on_press = Some(|_control, _data, _app, _| {
         println!("Volume up!"); //TODO
     });
 
     let vol_dn = canvas.button(327., 52., 46., 32., "-".into());
-    vol_dn.on_press = Some(|_control, _data, _app| {
+    vol_dn.on_press = Some(|_control, _data, _app, _| {
         println!("Volume down!"); //TODO
     });
 
@@ -68,7 +68,7 @@ where
     canvas.fg_color = color_parse("#353535");
 
     let settings = canvas.button(2., 162., 36., 36., "☰".into());
-    settings.on_press = Some(|_control, _data, _app| {
+    settings.on_press = Some(|_control, _data, _app, _| {
         println!("Settings!"); //TODO
     });
 
@@ -85,7 +85,7 @@ where
         scr_idx: 0,
     });
 
-    keyboard.on_press = Some(|control, _data, _app| {
+    keyboard.on_press = Some(|control, _data, _app, _| {
         if let Some(state) = control.state.as_mut() {
             state.pressed_at = Instant::now();
         }
@@ -131,7 +131,7 @@ where
             scr_idx: screen.state.id,
         });
 
-        button.on_press = Some(|control, _data, _app| {
+        button.on_press = Some(|control, _data, _app, _| {
             if let Some(state) = control.state.as_mut() {
                 state.pressed_at = Instant::now();
             }
