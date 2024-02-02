@@ -127,7 +127,9 @@ impl WlxGraphics {
         use winit::event_loop::EventLoop;
 
         let event_loop = EventLoop::new().unwrap();
-        let instance_extensions = Surface::required_extensions(&event_loop).unwrap();
+        let mut instance_extensions = Surface::required_extensions(&event_loop).unwrap();
+
+        instance_extensions.khr_get_physical_device_properties2 = true;
 
         let instance_extensions_raw = instance_extensions
             .clone()
@@ -320,17 +322,19 @@ impl WlxGraphics {
 
     #[cfg(feature = "openvr")]
     pub fn new_openvr(
-        vk_instance_extensions: InstanceExtensions,
+        mut vk_instance_extensions: InstanceExtensions,
         mut vk_device_extensions_fn: impl FnMut(&PhysicalDevice) -> DeviceExtensions,
     ) -> Arc<Self> {
-        #[cfg(debug_assertions)]
-        let layers = vec!["VK_LAYER_KHRONOS_validation".to_owned()];
-        #[cfg(not(debug_assertions))]
+        //#[cfg(debug_assertions)]
+        //let layers = vec!["VK_LAYER_KHRONOS_validation".to_owned()];
+        //#[cfg(not(debug_assertions))]
         let layers = vec![];
 
         let library = VulkanLibrary::new().unwrap();
 
         log::debug!("Instance exts for runtime: {:?}", &vk_instance_extensions);
+
+        vk_instance_extensions.khr_get_physical_device_properties2 = true;
 
         let instance = Instance::new(
             library,

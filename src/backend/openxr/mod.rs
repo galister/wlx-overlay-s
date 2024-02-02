@@ -204,6 +204,10 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             }
         }
 
+        overlays
+            .iter_mut()
+            .for_each(|o| o.after_input(&mut app_state));
+
         let (_, views) = xr_state
             .session
             .locate_views(

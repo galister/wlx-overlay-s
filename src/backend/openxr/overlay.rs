@@ -6,12 +6,14 @@ use super::{swapchain::SwapchainRenderData, transform_to_posef, XrState};
 use crate::{
     backend::{openxr::swapchain::create_swapchain_render_data, overlay::OverlayData},
     graphics::WlxCommandBuffer,
+    state::AppState,
 };
 use vulkano::image::view::ImageView;
 
 #[derive(Default)]
 pub struct OpenXrOverlayData {
     last_view: Option<Arc<ImageView>>,
+    last_visible: bool,
     pub(super) swapchain: Option<SwapchainRenderData>,
     pub(super) init: bool,
 }
@@ -66,5 +68,16 @@ impl OverlayData<OpenXrOverlayData> {
                 height: scale_y,
             });
         Some(quad)
+    }
+
+    pub(super) fn after_input(&mut self, app: &mut AppState) {
+        if self.data.last_visible != self.state.want_visible {
+            if self.state.want_visible {
+                self.backend.resume(app);
+            } else {
+                self.backend.pause(app);
+            }
+        }
+        self.data.last_visible = self.state.want_visible;
     }
 }

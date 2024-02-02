@@ -169,6 +169,17 @@ where
     pub fn view(&mut self) -> Option<Arc<ImageView>> {
         self.backend.view()
     }
+    pub fn set_visible(&mut self, app: &mut AppState, visible: bool) {
+        let old_visible = self.state.want_visible;
+        self.state.want_visible = visible;
+        if visible != old_visible {
+            if visible {
+                self.backend.resume(app);
+            } else {
+                self.backend.pause(app);
+            }
+        }
+    }
 }
 
 pub trait OverlayRenderer {

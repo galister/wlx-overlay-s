@@ -66,9 +66,9 @@ impl OverlayData<OpenVrOverlayData> {
 
     pub(super) fn after_input(&mut self, overlay: &mut OverlayManager, app: &mut AppState) {
         if self.state.want_visible && !self.data.visible {
-            self.show(overlay, app);
+            self.show_internal(overlay, app);
         } else if !self.state.want_visible && self.data.visible {
-            self.hide(overlay);
+            self.hide_internal(overlay, app);
         }
     }
 
@@ -82,7 +82,7 @@ impl OverlayData<OpenVrOverlayData> {
         }
     }
 
-    fn show(&mut self, overlay: &mut OverlayManager, app: &mut AppState) {
+    fn show_internal(&mut self, overlay: &mut OverlayManager, app: &mut AppState) {
         let handle = match self.data.handle {
             Some(handle) => handle,
             None => self.initialize(overlay, app),
@@ -92,9 +92,10 @@ impl OverlayData<OpenVrOverlayData> {
             panic!("Failed to show overlay: {}", e);
         }
         self.data.visible = true;
+        self.backend.resume(app);
     }
 
-    fn hide(&mut self, overlay: &mut OverlayManager) {
+    fn hide_internal(&mut self, overlay: &mut OverlayManager, app: &mut AppState) {
         let Some(handle) = self.data.handle else {
             return;
         };
@@ -103,6 +104,7 @@ impl OverlayData<OpenVrOverlayData> {
             panic!("Failed to hide overlay: {}", e);
         }
         self.data.visible = false;
+        self.backend.pause(app);
     }
 
     pub(super) fn upload_color(&self, overlay: &mut OverlayManager) {

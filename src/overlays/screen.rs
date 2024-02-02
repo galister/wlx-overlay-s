@@ -12,7 +12,10 @@ use std::{
 };
 use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 use wlx_capture::{
-    frame::WlxFrame,
+    frame::{
+        DrmFormat, WlxFrame, DRM_FORMAT_ABGR8888, DRM_FORMAT_ARGB8888, DRM_FORMAT_XBGR8888,
+        DRM_FORMAT_XRGB8888,
+    },
     pipewire::{pipewire_select_screen, PipewireCapture},
     wayland::{wayland_client::protocol::wl_output::Transform, WlxClient, WlxOutput},
     wlr_dmabuf::WlrDmabufCapture,
@@ -32,6 +35,8 @@ use crate::{
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState},
 };
+
+static DRM_FORMATS: once_cell::sync::OnceCell<Vec<DrmFormat>> = once_cell::sync::OnceCell::new();
 
 pub struct ScreenInteractionHandler {
     next_scroll: Instant,
@@ -154,7 +159,37 @@ impl OverlayRenderer for ScreenRenderer {
     }
     fn render(&mut self, app: &mut AppState) {
         let receiver = self.receiver.get_or_insert_with(|| {
-            let rx = self.capture.init();
+            let _drm_formats = DRM_FORMATS.get_or_init({
+                let graphics = app.graphics.clone();
+                move || {
+                    let possible_formats = [
+                        DRM_FORMAT_ABGR8888.into(),
+                        DRM_FORMAT_XBGR8888.into(),
+                        DRM_FORMAT_ARGB8888.into(),
+                        DRM_FORMAT_XRGB8888.into(),
+                    ];
+                    let mut final_formats = vec![];
+
+                    for &f in &possible_formats {
+                        let vk_fmt = fourcc_to_vk(f);
+                        let Ok(props) = graphics.device.physical_device().format_properties(vk_fmt)
+                        else {
+                            continue;
+                        };
+                        final_formats.push(DrmFormat {
+                            fourcc: f,
+                            modifiers: props
+                                .drm_format_modifier_properties
+                                .iter()
+                                .map(|m| m.drm_format_modifier)
+                                .collect(),
+                        })
+                    }
+                    final_formats
+                }
+            });
+
+            let rx = self.capture.init(&[]); // TODO: use drm_formats
             self.capture.request_new_frame();
             rx
         });
