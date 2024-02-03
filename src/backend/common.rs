@@ -4,7 +4,7 @@ use std::{
     time::Instant,
 };
 
-use glam::Vec2;
+use glam::{Affine3A, Vec2, Vec3A};
 use idmap::IdMap;
 
 use crate::{
@@ -179,4 +179,25 @@ impl TaskContainer {
             dest_buf.push_back(self.tasks.pop().unwrap().task);
         }
     }
+}
+
+pub fn raycast(
+    source: &Affine3A,
+    source_fwd: Vec3A,
+    plane: &Affine3A,
+    plane_norm: Vec3A,
+) -> Option<(Vec3A, f32)> {
+    let plane_normal = plane.transform_vector3a(plane_norm);
+    let ray_dir = source.transform_vector3a(source_fwd);
+
+    let d = plane.translation.dot(-plane_normal);
+    let dist = -(d + source.translation.dot(plane_normal)) / ray_dir.dot(plane_normal);
+
+    if dist < 0.0 {
+        // plane is behind the caster
+        return None;
+    }
+
+    let hit_pos = source.translation + ray_dir * dist;
+    Some((hit_pos, dist))
 }

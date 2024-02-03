@@ -230,6 +230,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 app_state.input_state.pointers[idx].pose,
                 *len,
                 app_state.input_state.pointers[idx].interaction.mode as usize + 1,
+                &app_state.input_state.hmd,
             );
         }
 
@@ -253,6 +254,10 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             let dist_sq = (app_state.input_state.hmd.translation - o.state.transform.translation)
                 .length_squared();
 
+            if !dist_sq.is_normal() {
+                continue;
+            }
+
             if let Some(quad) = o.present_xr(&xr_state, &mut command_buffer) {
                 layers.push((dist_sq, quad));
             };
@@ -264,7 +269,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
         command_buffer.build_and_execute_now();
 
-        layers.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+        layers.sort_by(|a, b| b.0.total_cmp(&a.0));
 
         let frame_ref = layers
             .iter()

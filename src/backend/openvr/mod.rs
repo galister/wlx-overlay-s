@@ -169,6 +169,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 state.input_state.pointers[idx].pose,
                 *len,
                 state.input_state.pointers[idx].interaction.mode as usize + 1,
+                &state.input_state.hmd,
             );
         }
 

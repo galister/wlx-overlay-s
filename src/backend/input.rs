@@ -8,7 +8,10 @@ use smallvec::{smallvec, SmallVec};
 
 use crate::state::AppState;
 
-use super::{common::OverlayContainer, overlay::OverlayData};
+use super::{
+    common::{raycast, OverlayContainer},
+    overlay::OverlayData,
+};
 
 pub struct TrackedDevice {
     #[cfg(feature = "openvr")]
@@ -437,18 +440,9 @@ impl Pointer {
     }
 
     fn ray_test(&self, overlay: usize, plane: &Affine3A) -> Option<RayHit> {
-        let plane_normal = plane.transform_vector3a(Vec3A::NEG_Z);
-        let ray_dir = self.pose.transform_vector3a(Vec3A::NEG_Z);
-
-        let d = plane.translation.dot(-plane_normal);
-        let dist = -(d + self.pose.translation.dot(plane_normal)) / ray_dir.dot(plane_normal);
-
-        if dist < 0.0 {
-            // plane is behind the caster
+        let Some((hit_pos, dist)) = raycast(&self.pose, Vec3A::NEG_Z, plane, Vec3A::NEG_Z) else {
             return None;
-        }
-
-        let hit_pos = self.pose.translation + ray_dir * dist;
+        };
 
         Some(RayHit {
             overlay,

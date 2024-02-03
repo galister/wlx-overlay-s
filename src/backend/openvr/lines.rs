@@ -87,11 +87,36 @@ impl LinePool {
         id
     }
 
-    pub fn draw_from(&mut self, id: usize, mut from: Affine3A, len: f32, color: usize) {
+    pub fn draw_from(
+        &mut self,
+        id: usize,
+        mut from: Affine3A,
+        len: f32,
+        color: usize,
+        hmd: &Affine3A,
+    ) {
         let rotation = Affine3A::from_axis_angle(Vec3::X, -PI * 0.5);
 
         from.translation = from.translation + from.transform_vector3a(Vec3A::NEG_Z) * (len * 0.5);
-        let transform = from * rotation * Affine3A::from_scale(Vec3::new(1., len / 0.002, 1.));
+        let mut transform = from * rotation * Affine3A::from_scale(Vec3::new(1., len / 0.002, 1.));
+
+        let to_hmd = hmd.translation - from.translation;
+        let sides = [Vec3A::Z, Vec3A::X, Vec3A::NEG_Z, Vec3A::NEG_X];
+        let rotations = [
+            Affine3A::IDENTITY,
+            Affine3A::from_axis_angle(Vec3::Y, PI * 0.5),
+            Affine3A::from_axis_angle(Vec3::Y, PI * 1.0),
+            Affine3A::from_axis_angle(Vec3::Y, PI * 1.5),
+        ];
+        let mut closest = (0, 0.0);
+        for (i, &side) in sides.iter().enumerate() {
+            let dot = to_hmd.dot(transform.transform_vector3a(side));
+            if i == 0 || dot > closest.1 {
+                closest = (i, dot);
+            }
+        }
+
+        transform = transform * rotations[closest.0];
 
         debug_assert!(color < self.colors.len());
 
