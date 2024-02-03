@@ -4,7 +4,7 @@ use std::{
     collections::HashMap,
     error::Error,
     f32::consts::PI,
-    ops::Deref,
+    ops::{Add, Deref},
     path::PathBuf,
     ptr,
     sync::{mpsc::Receiver, Arc},
@@ -98,11 +98,18 @@ impl InteractionHandler for ScreenInteractionHandler {
         let pos = self.mouse_transform.transform_point2(hit.uv);
         app.hid_provider.mouse_move(pos);
     }
-    fn on_scroll(&mut self, app: &mut AppState, _hit: &PointerHit, delta: f32) {
-        let millis = (1. - delta.abs()) * delta;
-        if let Some(next_scroll) = Instant::now().checked_add(Duration::from_millis(millis as _)) {
-            self.next_scroll = next_scroll;
+    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta: f32) {
+        if self.next_scroll > Instant::now() {
+            return;
         }
+        let max_millis = if matches!(hit.mode, PointerMode::Right) {
+            50.0
+        } else {
+            100.0
+        };
+
+        let millis = (1. - delta.abs()) * max_millis;
+        self.next_scroll = Instant::now().add(Duration::from_millis(millis as _));
         app.hid_provider.wheel(if delta < 0. { -1 } else { 1 })
     }
     fn on_left(&mut self, _app: &mut AppState, _hand: usize) {}
