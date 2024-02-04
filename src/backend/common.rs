@@ -11,6 +11,7 @@ use crate::{
     overlays::{
         keyboard::create_keyboard,
         screen::{get_screens_wayland, get_screens_x11},
+        toast::Toast,
         watch::create_watch,
     },
     state::AppState,
@@ -106,7 +107,7 @@ where
         self.overlays.values_mut().for_each(|o| {
             if o.state.show_hide {
                 o.state.want_visible = !any_shown;
-                if o.state.want_visible && app.session.recenter_on_show {
+                if o.state.want_visible && o.state.recenter {
                     o.state.reset(app, false);
                 }
             }
@@ -114,6 +115,7 @@ where
     }
 }
 
+#[derive(Clone)]
 pub enum OverlaySelector {
     Id(usize),
     Name(Arc<str>),
@@ -147,6 +149,7 @@ pub enum TaskType {
         OverlaySelector,
         Box<dyn FnOnce(&mut AppState, &mut OverlayState) + Send>,
     ),
+    Toast(Toast),
 }
 
 pub struct TaskContainer {

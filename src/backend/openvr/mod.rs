@@ -140,6 +140,10 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                         f(&mut state, &mut o.state);
                     }
                 }
+                TaskType::Toast(t) => {
+                    // TODO toasts
+                    log::info!("Toast: {} {}", t.title, t.body);
+                }
             }
         }
 

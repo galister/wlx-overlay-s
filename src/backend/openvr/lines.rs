@@ -21,7 +21,7 @@ static AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(1);
 pub(super) struct LinePool {
     lines: IdMap<usize, OverlayData<OpenVrOverlayData>>,
     view: Arc<ImageView>,
-    colors: [Vec4; 4],
+    colors: [Vec4; 5],
 }
 
 impl LinePool {
@@ -52,6 +52,7 @@ impl LinePool {
                 Vec4::new(0., 0.375, 0.5, 1.),
                 Vec4::new(0.69, 0.188, 0., 1.),
                 Vec4::new(0.375, 0., 0.5, 1.),
+                Vec4::new(1., 0., 0., 1.),
             ],
         }
     }

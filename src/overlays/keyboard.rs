@@ -3,7 +3,6 @@ use std::{
     io::Cursor,
     process::{Child, Command},
     str::FromStr,
-    sync::Arc,
 };
 
 use crate::{
@@ -25,6 +24,8 @@ use serde::{Deserialize, Serialize};
 const PIXELS_PER_UNIT: f32 = 80.;
 const BUTTON_PADDING: f32 = 4.;
 const AUTO_RELEASE_MODS: [KeyModifier; 5] = [SHIFT, CTRL, ALT, SUPER, META];
+
+pub const KEYBOARD_NAME: &str = "kbd";
 
 pub fn create_keyboard<O>(app: &AppState) -> OverlayData<O>
 where
@@ -116,9 +117,11 @@ where
 
     OverlayData {
         state: OverlayState {
-            name: Arc::from("kbd"),
+            name: KEYBOARD_NAME.into(),
             size: (size.x as _, size.y as _),
             grabbable: true,
+            recenter: true,
+            interactable: true,
             spawn_scale: width,
             spawn_point: vec3a(0., -0.5, -1.),
             interaction_transform,

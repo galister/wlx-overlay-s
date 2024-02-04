@@ -6,11 +6,14 @@ use glam::{vec2, Affine2};
 use crate::{
     backend::{
         common::{OverlaySelector, TaskType},
+        input::PointerMode,
         overlay::{OverlayData, OverlayState, RelativeTo},
     },
-    gui::{color_parse, CanvasBuilder},
+    gui::{color_parse, CanvasBuilder, Control},
     state::AppState,
 };
+
+use super::{keyboard::KEYBOARD_NAME, toast::Toast};
 
 pub const WATCH_NAME: &str = "watch";
 
@@ -79,44 +82,21 @@ where
     let button_width = 360. / num_buttons as f32;
     let mut button_x = 40.;
 
-    let keyboard = canvas.button(button_x + 2., 162., button_width - 4., 36., "kbd".into());
+    let keyboard = canvas.button(
+        button_x + 2.,
+        162.,
+        button_width - 4.,
+        36.,
+        KEYBOARD_NAME.into(),
+    );
     keyboard.state = Some(WatchButtonState {
         pressed_at: Instant::now(),
-        scr_idx: 0,
+        overlay: OverlaySelector::Name(KEYBOARD_NAME.into()),
+        mode: PointerMode::Left,
     });
 
-    keyboard.on_press = Some(|control, _data, _app, _| {
-        if let Some(state) = control.state.as_mut() {
-            state.pressed_at = Instant::now();
-        }
-    });
-    keyboard.on_release = Some(|control, _data, app| {
-        if let Some(state) = control.state.as_ref() {
-            if Instant::now()
-                .saturating_duration_since(state.pressed_at)
-                .as_millis()
-                < 2000
-            {
-                app.tasks.enqueue(TaskType::Overlay(
-                    OverlaySelector::Name("kbd".into()),
-                    Box::new(|app, o| {
-                        o.show_hide = !o.show_hide;
-                        o.want_visible = o.show_hide;
-                        if app.session.recenter_on_show {
-                            o.reset(app, false);
-                        }
-                    }),
-                ));
-            } else {
-                app.tasks.enqueue(TaskType::Overlay(
-                    OverlaySelector::Name("kbd".into()),
-                    Box::new(|app, o| {
-                        o.reset(app, true);
-                    }),
-                ));
-            }
-        }
-    });
+    keyboard.on_press = Some(overlay_button_dn);
+    keyboard.on_release = Some(overlay_button_up);
     button_x += button_width;
 
     canvas.bg_color = color_parse("#405060");
@@ -131,42 +111,12 @@ where
         );
         button.state = Some(WatchButtonState {
             pressed_at: Instant::now(),
-            scr_idx: screen.state.id,
+            overlay: OverlaySelector::Id(screen.state.id),
+            mode: PointerMode::Left,
         });
 
-        button.on_press = Some(|control, _data, _app, _| {
-            if let Some(state) = control.state.as_mut() {
-                state.pressed_at = Instant::now();
-            }
-        });
-        button.on_release = Some(|control, _data, app| {
-            if let Some(state) = control.state.as_ref() {
-                let scr_idx = state.scr_idx;
-                if Instant::now()
-                    .saturating_duration_since(state.pressed_at)
-                    .as_millis()
-                    < 2000
-                {
-                    app.tasks.enqueue(TaskType::Overlay(
-                        OverlaySelector::Id(scr_idx),
-                        Box::new(|app, o| {
-                            o.show_hide = !o.show_hide;
-                            o.want_visible = o.show_hide;
-                            if app.session.recenter_on_show {
-                                o.reset(app, false);
-                            }
-                        }),
-                    ));
-                } else {
-                    app.tasks.enqueue(TaskType::Overlay(
-                        OverlaySelector::Id(scr_idx),
-                        Box::new(|app, o| {
-                            o.reset(app, true);
-                        }),
-                    ));
-                }
-            }
-        });
+        button.on_press = Some(overlay_button_dn);
+        button.on_release = Some(overlay_button_up);
         button_x += button_width;
     }
     let interaction_transform =
@@ -179,6 +129,7 @@ where
             name: WATCH_NAME.into(),
             size: (400, 200),
             want_visible: true,
+            interactable: true,
             spawn_scale: 0.11 * state.session.config.watch_scale,
             spawn_point: state.session.watch_pos.into(),
             spawn_rotation: state.session.watch_rot,
@@ -193,5 +144,82 @@ where
 
 struct WatchButtonState {
     pressed_at: Instant,
-    scr_idx: usize,
+    mode: PointerMode,
+    overlay: OverlaySelector,
+}
+
+fn overlay_button_dn(
+    control: &mut Control<(), WatchButtonState>,
+    _: &mut (),
+    _: &mut AppState,
+    mode: PointerMode,
+) {
+    if let Some(state) = control.state.as_mut() {
+        state.pressed_at = Instant::now();
+        state.mode = mode;
+    }
+}
+
+fn overlay_button_up(control: &mut Control<(), WatchButtonState>, _: &mut (), app: &mut AppState) {
+    if let Some(state) = control.state.as_ref() {
+        let selector = state.overlay.clone();
+        if Instant::now()
+            .saturating_duration_since(state.pressed_at)
+            .as_millis()
+            < 2000
+        {
+            match state.mode {
+                PointerMode::Left => {
+                    app.tasks.enqueue(TaskType::Overlay(
+                        selector,
+                        Box::new(|app, o| {
+                            o.want_visible = !o.want_visible;
+                            if o.recenter {
+                                o.show_hide = o.want_visible;
+                                o.reset(app, false);
+                            }
+                        }),
+                    ));
+                }
+                PointerMode::Right => {
+                    app.tasks.enqueue(TaskType::Overlay(
+                        selector,
+                        Box::new(|app, o| {
+                            o.recenter = !o.recenter;
+                            o.grabbable = o.recenter;
+                            o.show_hide = o.recenter;
+                            if !o.recenter {
+                                app.tasks.enqueue(TaskType::Toast(Toast::new(
+                                    format!("{} is now locked in place!", o.name).into(),
+                                    "Right-click again to toggle.".into(),
+                                )))
+                            }
+                        }),
+                    ));
+                }
+                PointerMode::Middle => {
+                    app.tasks.enqueue(TaskType::Overlay(
+                        selector,
+                        Box::new(|app, o| {
+                            o.interactable = !o.interactable;
+                            if !o.interactable {
+                                app.tasks.enqueue(TaskType::Toast(Toast::new(
+                                    format!("{} is now non-interactable!", o.name).into(),
+                                    "Middle-click again to toggle.".into(),
+                                )))
+                            }
+                        }),
+                    ));
+                }
+                _ => {}
+            }
+        } else {
+            app.tasks.enqueue(TaskType::Overlay(
+                selector,
+                Box::new(|app, o| {
+                    o.reset(app, true);
+                }),
+            ));
+        }
+    }
 }

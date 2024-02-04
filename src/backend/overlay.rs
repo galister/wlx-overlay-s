@@ -24,8 +24,11 @@ pub struct OverlayState {
     pub want_visible: bool,
     pub show_hide: bool,
     pub grabbable: bool,
+    pub interactable: bool,
+    pub recenter: bool,
     pub dirty: bool,
     pub transform: Affine3A,
+    pub saved_point: Option<Vec3A>,
     pub spawn_scale: f32, // aka width
     pub spawn_point: Vec3A,
     pub spawn_rotation: Quat,
@@ -43,8 +46,11 @@ impl Default for OverlayState {
             want_visible: false,
             show_hide: false,
             grabbable: false,
+            recenter: false,
+            interactable: false,
             dirty: true,
             relative_to: RelativeTo::None,
+            saved_point: None,
             spawn_scale: 1.0,
             spawn_point: Vec3A::NEG_Z,
             spawn_rotation: Quat::IDENTITY,
@@ -90,26 +96,31 @@ impl OverlayState {
 
     pub fn auto_movement(&mut self, app: &mut AppState) {
         if let Some(parent) = self.parent_transform(app) {
+            let point = self.saved_point.unwrap_or(self.spawn_point);
             self.transform = parent
                 * Affine3A::from_scale_rotation_translation(
                     Vec3::ONE * self.spawn_scale,
                     self.spawn_rotation
                         * Quat::from_rotation_x(f32::to_radians(-180.0))
                         * Quat::from_rotation_z(f32::to_radians(180.0)),
-                    self.spawn_point.into(),
+                    point.into(),
                 );
 
             self.dirty = true;
         }
     }
 
-    pub fn reset(&mut self, app: &mut AppState, reset_scale: bool) {
-        let translation = app.input_state.hmd.transform_point3a(self.spawn_point);
-        let scale = if reset_scale {
+    pub fn reset(&mut self, app: &mut AppState, hard_reset: bool) {
+        let scale = if hard_reset {
+            self.saved_point = None;
             self.spawn_scale
         } else {
             self.transform.x_axis.length()
         };
+
+        let point = self.saved_point.unwrap_or(self.spawn_point);
+
+        let translation = app.input_state.hmd.transform_point3a(point);
         self.transform = Affine3A::from_scale_rotation_translation(
             Vec3::ONE * scale,
             Quat::IDENTITY,
