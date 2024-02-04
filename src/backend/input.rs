@@ -135,6 +135,7 @@ pub struct InteractionState {
     pub hovered_id: Option<usize>,
     pub release_actions: VecDeque<Box<dyn Fn()>>,
     pub next_push: Instant,
+    pub haptics: Option<f32>,
 }
 
 impl Default for InteractionState {
@@ -146,6 +147,7 @@ impl Default for InteractionState {
             hovered_id: None,
             release_actions: VecDeque::new(),
             next_push: Instant::now(),
+            haptics: None,
         }
     }
 }
@@ -193,8 +195,14 @@ pub struct PointerHit {
     pub dist: f32,
 }
 
+pub struct Haptics {
+    pub intensity: f32,
+    pub duration: f32,
+    pub frequency: f32,
+}
+
 pub trait InteractionHandler {
-    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit);
+    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> Option<Haptics>;
     fn on_left(&mut self, app: &mut AppState, pointer: usize);
     fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool);
     fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta: f32);
@@ -204,7 +212,9 @@ pub struct DummyInteractionHandler;
 
 impl InteractionHandler for DummyInteractionHandler {
     fn on_left(&mut self, _app: &mut AppState, _pointer: usize) {}
-    fn on_hover(&mut self, _app: &mut AppState, _hit: &PointerHit) {}
+    fn on_hover(&mut self, _app: &mut AppState, _hit: &PointerHit) -> Option<Haptics> {
+        None
+    }
     fn on_pointer(&mut self, _app: &mut AppState, _hit: &PointerHit, _pressed: bool) {}
     fn on_scroll(&mut self, _app: &mut AppState, _hit: &PointerHit, _delta: f32) {}
 }
@@ -231,7 +241,10 @@ pub enum PointerMode {
     Middle,
 }
 
-pub fn interact<O>(overlays: &mut OverlayContainer<O>, app: &mut AppState) -> [f32; 2]
+pub fn interact<O>(
+    overlays: &mut OverlayContainer<O>,
+    app: &mut AppState,
+) -> [(f32, Option<Haptics>); 2]
 where
     O: Default,
 {
@@ -241,7 +254,11 @@ where
     ]
 }
 
-fn interact_hand<O>(idx: usize, overlays: &mut OverlayContainer<O>, app: &mut AppState) -> f32
+fn interact_hand<O>(
+    idx: usize,
+    overlays: &mut OverlayContainer<O>,
+    app: &mut AppState,
+) -> (f32, Option<Haptics>)
 where
     O: Default,
 {
@@ -254,7 +271,7 @@ where
             log::warn!("Grabbed overlay {} does not exist", grab_data.grabbed_id);
             pointer.interaction.grabbed = None;
         }
-        return 0.1;
+        return (0.1, None);
     }
 
     let Some(mut hit) = pointer.get_nearest_hit(overlays) else {
@@ -276,7 +293,7 @@ where
                 clicked.backend.on_pointer(app, &hit, false);
             }
         }
-        return 0.0; // no hit
+        return (0.0, None); // no hit
     };
 
     if let Some(hovered_id) = pointer.interaction.hovered_id {
@@ -292,7 +309,7 @@ where
     }
     let Some(hovered) = overlays.mut_by_id(hit.overlay) else {
         log::warn!("Hit overlay {} does not exist", hit.overlay);
-        return 0.0; // no hit
+        return (0.0, None); // no hit
     };
 
     pointer.interaction.hovered_id = Some(hit.overlay);
@@ -312,10 +329,17 @@ where
 
     if pointer.now.grab && !pointer.before.grab && hovered.state.grabbable {
         pointer.start_grab(hovered);
-        return hit.dist;
+        return (
+            hit.dist,
+            Some(Haptics {
+                intensity: 0.25,
+                duration: 0.1,
+                frequency: 0.1,
+            }),
+        );
     }
 
-    hovered.backend.on_hover(app, &hit);
+    let haptics = hovered.backend.on_hover(app, &hit);
     pointer = &mut app.input_state.pointers[idx];
 
     if pointer.now.scroll.abs() > 0.1 {
@@ -336,7 +360,7 @@ where
             hovered.backend.on_pointer(app, &hit, false);
         }
     }
-    hit.dist
+    (hit.dist, haptics)
 }
 
 impl Pointer {

@@ -11,7 +11,7 @@ use vulkano::image::view::ImageView;
 
 use crate::state::AppState;
 
-use super::input::{DummyInteractionHandler, InteractionHandler, PointerHit};
+use super::input::{DummyInteractionHandler, Haptics, InteractionHandler, PointerHit};
 
 static AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(0);
 
@@ -259,8 +259,8 @@ impl InteractionHandler for SplitOverlayBackend {
     fn on_left(&mut self, app: &mut AppState, pointer: usize) {
         self.interaction.on_left(app, pointer);
     }
-    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) {
-        self.interaction.on_hover(app, hit);
+    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
+        self.interaction.on_hover(app, hit)
     }
     fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta: f32) {
         self.interaction.on_scroll(app, hit, delta);

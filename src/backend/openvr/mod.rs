@@ -162,8 +162,8 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
         space_mover.update(&mut chaperone_mgr, &mut overlays, &state);
 
-        let pointer_lengths = interact(&mut overlays, &mut state);
-        for (idx, len) in pointer_lengths.iter().enumerate() {
+        let lengths_haptics = interact(&mut overlays, &mut state);
+        for (idx, (len, haptics)) in lengths_haptics.iter().enumerate() {
             lines.draw_from(
                 pointer_lines[idx],
                 state.input_state.pointers[idx].pose,
@@ -171,6 +171,9 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 state.input_state.pointers[idx].interaction.mode as usize + 1,
                 &state.input_state.hmd,
             );
+            if let Some(haptics) = haptics {
+                input_source.haptics(&mut input_mngr, idx, haptics)
+            }
         }
 
         lines.update(&mut overlay_mngr, &mut state);

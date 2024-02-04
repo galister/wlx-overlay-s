@@ -223,8 +223,8 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             .iter_mut()
             .for_each(|o| o.state.auto_movement(&mut app_state));
 
-        let pointer_lengths = interact(&mut overlays, &mut app_state);
-        for (idx, len) in pointer_lengths.iter().enumerate() {
+        let lengths_haptics = interact(&mut overlays, &mut app_state);
+        for (idx, (len, haptics)) in lengths_haptics.iter().enumerate() {
             lines.draw_from(
                 pointer_lines[idx],
                 app_state.input_state.pointers[idx].pose,
@@ -232,6 +232,9 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 app_state.input_state.pointers[idx].interaction.mode as usize + 1,
                 &app_state.input_state.hmd,
             );
+            if let Some(haptics) = haptics {
+                //TODO!
+            }
         }
 
         let mut layers = vec![];

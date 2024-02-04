@@ -1,4 +1,4 @@
-use std::{array, io::Write, path::Path};
+use std::{array, io::Write, path::Path, time::Duration};
 
 use ovr_overlay::{
     input::{ActionHandle, ActionSetHandle, ActiveActionSet, InputManager, InputValueHandle},
@@ -11,7 +11,7 @@ use ovr_overlay::{
 };
 
 use crate::{
-    backend::input::{TrackedDevice, TrackedDeviceRole},
+    backend::input::{Haptics, TrackedDevice, TrackedDeviceRole},
     state::AppState,
 };
 
@@ -117,6 +117,18 @@ impl OpenVrInputSource {
             click_modifier_middle_hnd,
             hands,
         })
+    }
+
+    pub fn haptics(&mut self, input: &mut InputManager, hand: usize, haptics: &Haptics) {
+        let hnd = self.hands[hand].haptics_hnd;
+        let _ = input.trigger_haptic_vibration_action(
+            hnd,
+            0.0,
+            Duration::from_secs_f32(haptics.duration),
+            haptics.frequency,
+            haptics.intensity,
+            INPUT_ANY,
+        );
     }
 
     pub fn update(

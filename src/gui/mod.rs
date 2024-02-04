@@ -9,7 +9,7 @@ use vulkano::{
 
 use crate::{
     backend::{
-        input::{InteractionHandler, PointerHit, PointerMode},
+        input::{Haptics, InteractionHandler, PointerHit, PointerMode},
         overlay::{OverlayBackend, OverlayRenderer},
     },
     graphics::{WlxCommandBuffer, WlxGraphics, WlxPass, WlxPipeline, WlxPipelineLegacy},
@@ -351,11 +351,21 @@ impl<D, S> InteractionHandler for Canvas<D, S> {
     fn on_left(&mut self, _app: &mut AppState, pointer: usize) {
         self.hover_controls[pointer] = None;
     }
-    fn on_hover(&mut self, _app: &mut AppState, hit: &PointerHit) {
+    fn on_hover(&mut self, _app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
+        let old = self.hover_controls[hit.pointer];
         if let Some(i) = self.interactive_get_idx(hit.uv) {
             self.hover_controls[hit.pointer] = Some(i);
         } else {
             self.hover_controls[hit.pointer] = None;
+        }
+        if old != self.hover_controls[hit.pointer] {
+            Some(Haptics {
+                intensity: 0.1,
+                duration: 0.01,
+                frequency: 5.0,
+            })
+        } else {
+            None
         }
     }
     fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool) {

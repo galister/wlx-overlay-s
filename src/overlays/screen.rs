@@ -26,7 +26,7 @@ use glam::{vec2, vec3a, Affine2, Quat, Vec2, Vec3};
 
 use crate::{
     backend::{
-        input::{InteractionHandler, PointerHit, PointerMode},
+        input::{Haptics, InteractionHandler, PointerHit, PointerMode},
         overlay::{OverlayData, OverlayRenderer, OverlayState, SplitOverlayBackend},
     },
     config::def_pw_tokens,
@@ -73,13 +73,14 @@ impl ScreenInteractionHandler {
 }
 
 impl InteractionHandler for ScreenInteractionHandler {
-    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) {
+    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
         #[cfg(debug_assertions)]
         log::trace!("Hover: {:?}", hit.uv);
         if self.next_move < Instant::now() {
             let pos = self.mouse_transform.transform_point2(hit.uv);
             app.hid_provider.mouse_move(pos);
         }
+        None
     }
     fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool) {
         let btn = match hit.mode {
