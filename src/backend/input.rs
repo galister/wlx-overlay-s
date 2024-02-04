@@ -87,6 +87,10 @@ impl InputState {
                 }
             }
 
+            if hand.now.click {
+                hand.last_click = Instant::now();
+            }
+
             if hand.now.click_modifier_right {
                 hand.interaction.mode = PointerMode::Right;
                 continue;
@@ -157,6 +161,7 @@ pub struct Pointer {
     pub pose: Affine3A,
     pub now: PointerState,
     pub before: PointerState,
+    pub last_click: Instant,
     pub(super) interaction: InteractionState,
 }
 
@@ -168,6 +173,7 @@ impl Pointer {
             pose: Affine3A::IDENTITY,
             now: Default::default(),
             before: Default::default(),
+            last_click: Instant::now(),
             interaction: Default::default(),
         }
     }
@@ -249,10 +255,15 @@ pub fn interact<O>(
 where
     O: Default,
 {
-    [
-        interact_hand(0, overlays, app),
-        interact_hand(1, overlays, app),
-    ]
+    if app.input_state.pointers[1].last_click > app.input_state.pointers[0].last_click {
+        let right = interact_hand(1, overlays, app);
+        let left = interact_hand(0, overlays, app);
+        [left, right]
+    } else {
+        let left = interact_hand(0, overlays, app);
+        let right = interact_hand(1, overlays, app);
+        [left, right]
+    }
 }
 
 fn interact_hand<O>(

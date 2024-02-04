@@ -1,6 +1,8 @@
 use std::f32::consts::PI;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::thread::sleep;
+use std::time::Duration;
 
 use glam::{Affine3A, Vec3, Vec3A, Vec4};
 use idmap::IdMap;
@@ -80,6 +82,8 @@ impl LinePool {
             ..Default::default()
         };
         data.data.sort_order = 69;
+
+        sleep(Duration::from_millis(50));
 
         data.initialize(overlay, app);
         data.upload_texture(overlay, &app.graphics);
