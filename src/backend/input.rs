@@ -421,7 +421,6 @@ impl Pointer {
                     grab_data.offset.z -= self.now.scroll * 0.05;
                 }
                 _ => {
-                    log::warn!("scale: {}", self.now.scroll);
                     overlay.state.transform.matrix3 = overlay
                         .state
                         .transform
@@ -433,7 +432,9 @@ impl Pointer {
             overlay.state.realign(hmd);
             overlay.state.dirty = true;
         } else {
-            overlay.state.spawn_point = overlay.state.transform.translation.into();
+            overlay.state.spawn_point = hmd
+                .inverse()
+                .transform_point3a(overlay.state.transform.translation);
             self.interaction.grabbed = None;
             log::info!("Hand {}: dropped {}", self.idx, overlay.state.name);
         }

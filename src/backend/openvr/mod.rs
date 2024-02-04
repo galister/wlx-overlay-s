@@ -153,7 +153,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             .iter()
             .any(|p| p.now.show_hide && !p.before.show_hide)
         {
-            overlays.show_hide();
+            overlays.show_hide(&mut state);
         }
 
         overlays

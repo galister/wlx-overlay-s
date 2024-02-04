@@ -200,7 +200,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             .any(|p| p.now.show_hide && !p.before.show_hide)
         {
             if show_hide_counter.click() {
-                overlays.show_hide();
+                overlays.show_hide(&mut app_state);
             }
         }
 

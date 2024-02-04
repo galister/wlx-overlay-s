@@ -99,16 +99,19 @@ where
             {
                 app.tasks.enqueue(TaskType::Overlay(
                     OverlaySelector::Name("kbd".into()),
-                    Box::new(|_app, o| {
+                    Box::new(|app, o| {
                         o.show_hide = !o.show_hide;
                         o.want_visible = o.show_hide;
+                        if app.session.recenter_on_show {
+                            o.reset(app, false);
+                        }
                     }),
                 ));
             } else {
                 app.tasks.enqueue(TaskType::Overlay(
                     OverlaySelector::Name("kbd".into()),
                     Box::new(|app, o| {
-                        o.reset(app);
+                        o.reset(app, true);
                     }),
                 ));
             }
@@ -146,16 +149,19 @@ where
                 {
                     app.tasks.enqueue(TaskType::Overlay(
                         OverlaySelector::Id(scr_idx),
-                        Box::new(|_app, o| {
+                        Box::new(|app, o| {
                             o.show_hide = !o.show_hide;
                             o.want_visible = o.show_hide;
+                            if app.session.recenter_on_show {
+                                o.reset(app, false);
+                            }
                         }),
                     ));
                 } else {
                     app.tasks.enqueue(TaskType::Overlay(
                         OverlaySelector::Id(scr_idx),
                         Box::new(|app, o| {
-                            o.reset(app);
+                            o.reset(app, true);
                         }),
                     ));
                 }

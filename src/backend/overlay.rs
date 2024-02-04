@@ -103,15 +103,20 @@ impl OverlayState {
         }
     }
 
-    pub fn reset(&mut self, app: &mut AppState) {
+    pub fn reset(&mut self, app: &mut AppState, reset_scale: bool) {
         let translation = app.input_state.hmd.transform_point3a(self.spawn_point);
+        let scale = if reset_scale {
+            self.spawn_scale
+        } else {
+            self.transform.x_axis.length()
+        };
         self.transform = Affine3A::from_scale_rotation_translation(
-            Vec3::ONE * self.spawn_scale,
+            Vec3::ONE * scale,
             Quat::IDENTITY,
             translation.into(),
         );
-
         self.realign(&app.input_state.hmd);
+        self.dirty = true;
     }
 
     pub fn realign(&mut self, hmd: &Affine3A) {
@@ -160,7 +165,7 @@ where
     T: Default,
 {
     pub fn init(&mut self, app: &mut AppState) {
-        self.state.reset(app);
+        self.state.reset(app, true);
         self.backend.init(app);
     }
     pub fn render(&mut self, app: &mut AppState) {

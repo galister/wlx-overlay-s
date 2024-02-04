@@ -77,6 +77,7 @@ pub struct AppSession {
     pub config: GeneralConfig,
 
     pub show_screens: Vec<String>,
+    pub recenter_on_show: bool,
 
     pub watch_hand: usize,
     pub watch_pos: Vec3,
@@ -102,6 +103,7 @@ impl AppSession {
             config_root_path,
             config,
             show_screens: vec!["DP-3".to_string()],
+            recenter_on_show: true,
             capture_method: "auto".to_string(),
             primary_hand: 1,
             watch_hand: 0,

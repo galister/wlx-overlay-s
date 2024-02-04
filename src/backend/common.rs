@@ -97,7 +97,7 @@ where
         self.overlays.values_mut()
     }
 
-    pub fn show_hide(&mut self) {
+    pub fn show_hide(&mut self, app: &mut AppState) {
         let any_shown = self
             .overlays
             .values()
@@ -106,6 +106,9 @@ where
         self.overlays.values_mut().for_each(|o| {
             if o.state.show_hide {
                 o.state.want_visible = !any_shown;
+                if o.state.want_visible && app.session.recenter_on_show {
+                    o.state.reset(app, false);
+                }
             }
         })
     }
