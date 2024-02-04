@@ -233,7 +233,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 &app_state.input_state.hmd,
             );
             if let Some(haptics) = haptics {
-                //TODO!
+                input_source.haptics(&xr_state, idx, haptics);
             }
         }
 

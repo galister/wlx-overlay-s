@@ -3,7 +3,10 @@ use std::time::{Duration, Instant};
 use glam::{bool, Affine3A, Quat, Vec3};
 use openxr as xr;
 
-use crate::{backend::input::Pointer, state::AppState};
+use crate::{
+    backend::input::{Haptics, Pointer},
+    state::AppState,
+};
 
 use super::XrState;
 
@@ -75,6 +78,21 @@ impl OpenXrInputSource {
                 OpenXrHand::new(&xr, right_source),
             ],
         }
+    }
+
+    pub fn haptics(&self, xr: &XrState, hand: usize, haptics: &Haptics) {
+        let action = &self.hands[hand].source.action_haptics;
+
+        let duration_nanos = (haptics.duration as f64) * 1_000_000_000.0;
+
+        let _ = action.apply_feedback(
+            &xr.session,
+            xr::Path::NULL,
+            &xr::HapticVibration::new()
+                .amplitude(haptics.intensity)
+                .frequency(haptics.frequency)
+                .duration(xr::Duration::from_nanos(duration_nanos as _)),
+        );
     }
 
     pub fn update(&self, xr: &XrState, state: &mut AppState) {
