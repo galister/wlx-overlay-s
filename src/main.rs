@@ -24,6 +24,12 @@ fn main() {
         env!("CARGO_PKG_VERSION")
     );
 
+    #[cfg(feature = "openvr")]
+    if std::env::args().any(|arg| arg == "--uninstall") {
+        crate::backend::openvr::openvr_uninstall();
+        return;
+    }
+
     let running = Arc::new(AtomicBool::new(true));
     let _ = ctrlc::set_handler({
         let running = running.clone();

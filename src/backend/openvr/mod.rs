@@ -20,21 +20,33 @@ use vulkano::{
 use crate::{
     backend::{
         input::interact,
-        openvr::{input::OpenVrInputSource, lines::LinePool},
+        openvr::{input::OpenVrInputSource, lines::LinePool, manifest::install_manifest},
     },
     graphics::WlxGraphics,
     state::AppState,
 };
 
-use self::{input::action_manifest_path, overlay::OpenVrOverlayData};
+use self::{input::action_manifest_path, manifest::uninstall_manifest, overlay::OpenVrOverlayData};
 
 use super::common::{BackendError, OverlayContainer, TaskType};
 
 pub mod helpers;
 pub mod input;
 pub mod lines;
+pub mod manifest;
 pub mod overlay;
 pub mod playspace;
+
+pub fn openvr_uninstall() {
+    let app_type = EVRApplicationType::VRApplication_Overlay;
+    let Ok(context) = ovr_overlay::Context::init(app_type) else {
+        log::error!("Uninstall failed: could not reach OpenVR");
+        return;
+    };
+
+    let mut app_mgr = context.applications_mngr();
+    uninstall_manifest(&mut app_mgr);
+}
 
 pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     let app_type = EVRApplicationType::VRApplication_Overlay;
@@ -47,6 +59,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
     let mut overlay_mngr = context.overlay_mngr();
     //let mut settings_mngr = context.settings_mngr();
+    let mut app_mgr = context.applications_mngr();
     let mut input_mngr = context.input_mngr();
     let mut system_mngr = context.system_mngr();
     let mut chaperone_mgr = context.chaperone_setup_mngr();
@@ -68,6 +81,8 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         let graphics = WlxGraphics::new_openvr(instance_extensions, device_extensions_fn);
         AppState::from_graphics(graphics)
     };
+
+    install_manifest(&mut app_mgr);
 
     let mut overlays = OverlayContainer::<OpenVrOverlayData>::new(&mut state);
 
@@ -210,7 +225,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         let mut seconds_since_vsync = 0f32;
         std::thread::sleep(Duration::from_secs_f32(
             if system_mngr.get_time_since_last_vsync(&mut seconds_since_vsync, &mut 0u64) {
-                frame_time - (seconds_since_vsync % frame_time)
+                (frame_time - seconds_since_vsync).max(0.0)
             } else {
                 frame_time
             },
