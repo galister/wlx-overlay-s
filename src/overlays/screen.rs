@@ -230,9 +230,7 @@ pub struct ScreenRenderer {
 
 impl ScreenRenderer {
     pub fn new_wlr(output: &WlxOutput) -> Option<ScreenRenderer> {
-        let Some(client) = WlxClient::new() else {
-            return None;
-        };
+        let client = WlxClient::new()?;
         let capture = WlrDmabufCapture::new(client, output.id);
 
         Some(ScreenRenderer {
@@ -249,20 +247,27 @@ impl ScreenRenderer {
         output: &WlxOutput,
         token: Option<&str>,
         _fallback: bool,
-    ) -> Option<ScreenRenderer> {
+    ) -> Option<(
+        ScreenRenderer,
+        Option<String>, /* pipewire restore token */
+    )> {
         let name = output.name.clone();
-        let node_id = futures::executor::block_on(pipewire_select_screen(token)).ok()?;
+        let select_screen_result =
+            futures::executor::block_on(pipewire_select_screen(token)).ok()?;
 
-        let capture = PipewireCapture::new(name, node_id, 60);
+        let capture = PipewireCapture::new(name, select_screen_result.node_id, 60);
 
-        Some(ScreenRenderer {
-            name: output.name.clone(),
-            capture: Box::new(capture),
-            pipeline: None,
-            receiver: None,
-            last_view: None,
-            extent: extent_from_res(output.size),
-        })
+        Some((
+            ScreenRenderer {
+                name: output.name.clone(),
+                capture: Box::new(capture),
+                pipeline: None,
+                receiver: None,
+                last_view: None,
+                extent: extent_from_res(output.size),
+            },
+            select_screen_result.restore_token,
+        ))
     }
 
     pub fn new_xshm(screen: Arc<XshmScreen>) -> Option<ScreenRenderer> {
@@ -473,11 +478,20 @@ where
             );
         }
 
-        capture = ScreenRenderer::new_pw(
-            output,
-            token.as_deref(),
-            session.capture_method == "pw_fallback",
-        );
+        if let Some((renderer, restore_token)) =
+            ScreenRenderer::new_pw(output, token, session.capture_method == "pw_fallback")
+        {
+            capture = Some(renderer);
+
+            if let Some(token) = restore_token {
+                if pw_token_store
+                    .insert(String::from(display_name), token.clone())
+                    .is_none()
+                {
+                    println!("Adding Pipewire token {}", token);
+                }
+            }
+        }
     }
     if let Some(capture) = capture {
         let backend = Box::new(SplitOverlayBackend {
