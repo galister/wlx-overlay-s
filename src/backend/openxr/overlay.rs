@@ -2,7 +2,7 @@ use openxr as xr;
 use std::sync::Arc;
 use xr::{CompositionLayerFlags, EyeVisibility};
 
-use super::{swapchain::SwapchainRenderData, transform_to_posef, XrState};
+use super::{helpers, swapchain::SwapchainRenderData, XrState};
 use crate::{
     backend::{openxr::swapchain::create_swapchain_render_data, overlay::OverlayData},
     graphics::WlxCommandBuffer,
@@ -51,7 +51,7 @@ impl OverlayData<OpenXrOverlayData> {
         });
 
         let sub_image = data.acquire_present_release(command_buffer, my_view);
-        let posef = transform_to_posef(&self.state.transform);
+        let posef = helpers::transform_to_posef(&self.state.transform);
 
         let scale_x = self.state.transform.matrix3.col(0).length();
         let aspect_ratio = self.backend.extent()[1] as f32 / self.backend.extent()[0] as f32;

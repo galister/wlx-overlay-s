@@ -2886,6 +2886,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rosc"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b2e63d9e6b0d090be1485cf159b1e04c3973d2d3e1614963544ea2ff47a4a981"
+dependencies = [
+ "byteorder",
+ "nom",
+]
+
+[[package]]
 name = "roxmltree"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4295,6 +4305,7 @@ dependencies = [
  "raw-window-handle 0.5.2",
  "regex",
  "rodio",
+ "rosc",
  "serde",
  "serde_json",
  "serde_yaml",

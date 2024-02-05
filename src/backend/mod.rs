@@ -4,4 +4,6 @@ pub mod input;
 pub mod openvr;
 #[cfg(feature = "openxr")]
 pub mod openxr;
+#[cfg(feature = "osc")]
+pub mod osc;
 pub mod overlay;

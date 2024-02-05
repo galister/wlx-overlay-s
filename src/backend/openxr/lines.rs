@@ -11,11 +11,14 @@ use std::{
 
 use vulkano::{command_buffer::CommandBufferUsage, format::Format, image::view::ImageView};
 
-use crate::graphics::{WlxCommandBuffer, WlxGraphics};
+use crate::{
+    backend::openxr::helpers,
+    graphics::{WlxCommandBuffer, WlxGraphics},
+};
 
 use super::{
     swapchain::{create_swapchain_render_data, SwapchainRenderData},
-    transform_to_posef, XrState,
+    XrState,
 };
 
 static AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(1);
@@ -111,7 +114,7 @@ impl LinePool {
 
         transform = transform * rotations[closest.0];
 
-        let posef = transform_to_posef(&transform);
+        let posef = helpers::transform_to_posef(&transform);
 
         line.maybe_line = Some(Line {
             view: self.colors[color].clone(),

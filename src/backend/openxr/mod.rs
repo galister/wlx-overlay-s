@@ -7,17 +7,15 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{bail, ensure};
-use glam::{Affine3A, Quat, Vec3};
 use openxr as xr;
 use vulkano::{command_buffer::CommandBufferUsage, Handle, VulkanObject};
-use xr::OverlaySessionCreateFlagsEXTX;
 
 use crate::{
     backend::{
         common::{OverlayContainer, TaskType},
         input::interact,
         openxr::{input::DoubleClickCounter, lines::LinePool, overlay::OpenXrOverlayData},
+        osc::OscSender,
     },
     graphics::WlxGraphics,
     state::AppState,
@@ -25,6 +23,7 @@ use crate::{
 
 use super::common::BackendError;
 
+mod helpers;
 mod input;
 mod lines;
 mod overlay;
@@ -42,7 +41,7 @@ struct XrState {
 }
 
 pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
-    let (xr_instance, system) = match init_xr() {
+    let (xr_instance, system) = match helpers::init_xr() {
         Ok((xr_instance, system)) => (xr_instance, system),
         Err(e) => {
             log::warn!("Will not use OpenXR: {}", e);
@@ -63,10 +62,13 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     let mut overlays = OverlayContainer::<OpenXrOverlayData>::new(&mut app_state);
     let mut lines = LinePool::new(app_state.graphics.clone());
 
+    #[cfg(feature = "osc")]
+    let mut osc_sender = OscSender::new(9000).ok();
+
     app_state.hid_provider.set_desktop_extent(overlays.extent);
 
     let (session, mut frame_wait, mut frame_stream) = unsafe {
-        let raw_session = create_overlay_session(
+        let raw_session = helpers::create_overlay_session(
             &xr_instance,
             system,
             &xr::vulkan::SessionCreateInfo {
@@ -212,6 +214,11 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             .iter_mut()
             .for_each(|o| o.after_input(&mut app_state));
 
+        #[cfg(feature = "osc")]
+        if let Some(ref mut sender) = osc_sender {
+            let _ = sender.send_params(&overlays);
+        };
+
         let (_, views) = xr_state
             .session
             .locate_views(
@@ -221,7 +228,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             )
             .unwrap();
 
-        app_state.input_state.hmd = hmd_pose_from_views(&views);
+        app_state.input_state.hmd = helpers::hmd_pose_from_views(&views);
 
         overlays
             .iter_mut()
@@ -295,164 +302,4 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     }
 
     Ok(())
-}
-
-fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
-    let Ok(entry) = (unsafe { xr::Entry::load() }) else {
-        bail!("OpenXR Loader not found.");
-    };
-
-    let Ok(available_extensions) = entry.enumerate_extensions() else {
-        bail!("Failed to enumerate OpenXR extensions.");
-    };
-    ensure!(
-        available_extensions.khr_vulkan_enable2,
-        "Missing KHR_vulkan_enable2 extension."
-    );
-    ensure!(
-        available_extensions.extx_overlay,
-        "Missing EXTX_overlay extension."
-    );
-
-    let mut enabled_extensions = xr::ExtensionSet::default();
-    enabled_extensions.khr_vulkan_enable2 = true;
-    enabled_extensions.extx_overlay = true;
-
-    //#[cfg(not(debug_assertions))]
-    let layers = [];
-    //#[cfg(debug_assertions)]
-    //let layers = [
-    //    "XR_APILAYER_LUNARG_api_dump",
-    //    "XR_APILAYER_LUNARG_standard_validation",
-    //];
-
-    let Ok(xr_instance) = entry.create_instance(
-        &xr::ApplicationInfo {
-            application_name: "wlx-overlay-s",
-            application_version: 0,
-            engine_name: "wlx-overlay-s",
-            engine_version: 0,
-        },
-        &enabled_extensions,
-        &layers,
-    ) else {
-        bail!("Failed to create OpenXR instance.");
-    };
-
-    let Ok(instance_props) = xr_instance.properties() else {
-        bail!("Failed to query OpenXR instance properties.");
-    };
-    log::info!(
-        "Using OpenXR runtime: {} {}",
-        instance_props.runtime_name,
-        instance_props.runtime_version
-    );
-
-    let Ok(system) = xr_instance.system(xr::FormFactor::HEAD_MOUNTED_DISPLAY) else {
-        bail!("Failed to access OpenXR HMD system.");
-    };
-
-    let vk_target_version_xr = xr::Version::new(1, 1, 0);
-
-    let Ok(reqs) = xr_instance.graphics_requirements::<xr::Vulkan>(system) else {
-        bail!("Failed to query OpenXR Vulkan requirements.");
-    };
-
-    if vk_target_version_xr < reqs.min_api_version_supported
-        || vk_target_version_xr.major() > reqs.max_api_version_supported.major()
-    {
-        bail!(
-            "OpenXR runtime requires Vulkan version > {}, < {}.0.0",
-            reqs.min_api_version_supported,
-            reqs.max_api_version_supported.major() + 1
-        );
-    }
-
-    Ok((xr_instance, system))
-}
-unsafe fn create_overlay_session(
-    instance: &xr::Instance,
-    system: xr::SystemId,
-    info: &xr::vulkan::SessionCreateInfo,
-) -> Result<xr::sys::Session, xr::sys::Result> {
-    let overlay = xr::sys::SessionCreateInfoOverlayEXTX {
-        ty: xr::sys::SessionCreateInfoOverlayEXTX::TYPE,
-        next: std::ptr::null(),
-        create_flags: OverlaySessionCreateFlagsEXTX::EMPTY,
-        session_layers_placement: 5,
-    };
-    let binding = xr::sys::GraphicsBindingVulkanKHR {
-        ty: xr::sys::GraphicsBindingVulkanKHR::TYPE,
-        next: &overlay as *const _ as *const _,
-        instance: info.instance,
-        physical_device: info.physical_device,
-        device: info.device,
-        queue_family_index: info.queue_family_index,
-        queue_index: info.queue_index,
-    };
-    let info = xr::sys::SessionCreateInfo {
-        ty: xr::sys::SessionCreateInfo::TYPE,
-        next: &binding as *const _ as *const _,
-        create_flags: Default::default(),
-        system_id: system,
-    };
-    let mut out = xr::sys::Session::NULL;
-    let x = (instance.fp().create_session)(instance.as_raw(), &info, &mut out);
-    if x.into_raw() >= 0 {
-        Ok(out)
-    } else {
-        Err(x)
-    }
-}
-
-fn hmd_pose_from_views(views: &Vec<xr::View>) -> Affine3A {
-    let pos = {
-        let pos0: Vec3 = unsafe { std::mem::transmute(views[0].pose.position) };
-        let pos1: Vec3 = unsafe { std::mem::transmute(views[1].pose.position) };
-        (pos0 + pos1) * 0.5
-    };
-    let rot = {
-        let rot0 = unsafe { std::mem::transmute(views[0].pose.orientation) };
-        let rot1 = unsafe { std::mem::transmute(views[1].pose.orientation) };
-        quat_lerp(rot0, rot1, 0.5)
-    };
-
-    Affine3A::from_rotation_translation(rot, pos)
-}
-
-fn quat_lerp(a: Quat, mut b: Quat, t: f32) -> Quat {
-    let l2 = a.dot(b);
-    if l2 < 0.0 {
-        b = -b;
-    }
-
-    Quat::from_xyzw(
-        a.x - t * (a.x - b.x),
-        a.y - t * (a.y - b.y),
-        a.z - t * (a.z - b.z),
-        a.w - t * (a.w - b.w),
-    )
-    .normalize()
-}
-
-fn transform_to_posef(transform: &Affine3A) -> xr::Posef {
-    let translation = transform.translation;
-    let norm_mat3 = transform
-        .matrix3
-        .mul_scalar(1.0 / transform.matrix3.x_axis.length());
-    let rotation = Quat::from_mat3a(&norm_mat3).normalize();
-
-    xr::Posef {
-        orientation: xr::Quaternionf {
-            x: rotation.x,
-            y: rotation.y,
-            z: rotation.z,
-            w: rotation.w,
-        },
-        position: xr::Vector3f {
-            x: translation.x,
-            y: translation.y,
-            z: translation.z,
-        },
-    }
 }
