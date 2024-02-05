@@ -19,6 +19,7 @@ use wlx_capture::{
     pipewire::{pipewire_select_screen, PipewireCapture},
     wayland::{wayland_client::protocol::wl_output::Transform, WlxClient, WlxOutput},
     wlr_dmabuf::WlrDmabufCapture,
+    xshm::{XshmCapture, XshmScreen},
     WlxCapture,
 };
 
@@ -156,6 +157,18 @@ impl ScreenRenderer {
             receiver: None,
             last_view: None,
             extent: extent_from_res(output.size),
+        })
+    }
+
+    pub fn new_xshm(screen: Arc<XshmScreen>) -> Option<ScreenRenderer> {
+        let capture = XshmCapture::new(screen.clone());
+
+        Some(ScreenRenderer {
+            name: screen.name.clone(),
+            capture: Box::new(capture),
+            receiver: None,
+            last_view: None,
+            extent: extent_from_res((screen.monitor.width(), screen.monitor.height())),
         })
     }
 }
@@ -466,11 +479,64 @@ where
     (overlays, Vec2::new(extent.0 as f32, extent.1 as f32))
 }
 
-pub fn get_screens_x11<O>() -> (Vec<OverlayData<O>>, Vec2)
+pub fn get_screens_x11<O>(session: &AppSession) -> (Vec<OverlayData<O>>, Vec2)
 where
     O: Default,
 {
-    todo!()
+    let mut extent = vec2(0., 0.);
+
+    let overlays = XshmCapture::get_monitors()
+        .into_iter()
+        .map(|s| {
+            log::info!(
+                "{}: Res {}x{}, Pos {}x{}",
+                s.name,
+                s.monitor.width(),
+                s.monitor.height(),
+                s.monitor.x(),
+                s.monitor.y()
+            );
+            let size = (s.monitor.width(), s.monitor.height());
+            let capture: ScreenRenderer = ScreenRenderer::new_xshm(s.clone()).unwrap();
+
+            let backend = Box::new(SplitOverlayBackend {
+                renderer: Box::new(capture),
+                interaction: Box::new(ScreenInteractionHandler::new(
+                    vec2(s.monitor.x() as f32, s.monitor.y() as f32),
+                    vec2(s.monitor.width() as f32, s.monitor.height() as f32),
+                    Transform::Normal,
+                )),
+            });
+
+            let interaction_transform = Affine2::from_translation(Vec2 { x: 0.5, y: 0.5 })
+                * Affine2::from_scale(Vec2 {
+                    x: 1.,
+                    y: -size.0 as f32 / size.1 as f32,
+                });
+
+            extent.x = extent.x.max((s.monitor.x() + s.monitor.width()) as f32);
+            extent.y = extent.y.max((s.monitor.y() + s.monitor.height()) as f32);
+            OverlayData {
+                state: OverlayState {
+                    name: s.name.clone(),
+                    size,
+                    want_visible: session.show_screens.iter().any(|x| x == &*s.name),
+                    grabbable: true,
+                    recenter: true,
+                    interactable: true,
+                    spawn_scale: 1.5 * session.config.desktop_view_scale,
+                    spawn_point: vec3a(0., 0.5, -1.),
+                    spawn_rotation: Quat::IDENTITY,
+                    interaction_transform,
+                    ..Default::default()
+                },
+                backend,
+                ..Default::default()
+            }
+        })
+        .collect();
+
+    (overlays, extent)
 }
 
 fn extent_from_res(res: (i32, i32)) -> [u32; 3] {

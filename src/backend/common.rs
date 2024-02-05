@@ -43,7 +43,7 @@ where
         let (screens, extent) = if std::env::var("WAYLAND_DISPLAY").is_ok() {
             get_screens_wayland(&app.session)
         } else {
-            get_screens_x11()
+            get_screens_x11(&app.session)
         };
 
         let mut watch = create_watch::<T>(&app, &screens);
