@@ -276,8 +276,7 @@ impl OverlayRenderer for ScreenRenderer {
                         .create_command_buffer(CommandBufferUsage::OneTimeSubmit);
                     let format = fourcc_to_vk(frame.format.fourcc);
 
-                    let len = frame.format.width as usize * frame.format.height as usize;
-                    let data = unsafe { slice::from_raw_parts(frame.ptr as *const u8, len) };
+                    let data = unsafe { slice::from_raw_parts(frame.ptr as *const u8, frame.size) };
 
                     let image =
                         upload.texture2d(frame.format.width, frame.format.height, format, &data);
@@ -364,11 +363,21 @@ where
 
         let axis = Vec3::new(0., 0., 1.);
 
-        let angle = match output.transform {
-            Transform::_90 | Transform::Flipped90 => PI / 2.,
-            Transform::_180 | Transform::Flipped180 => PI,
-            Transform::_270 | Transform::Flipped270 => -PI / 2.,
-            _ => 0.,
+        let logical_ratio = output.logical_size.0 as f32 / output.logical_size.1 as f32;
+        let physical_ratio = output.size.0 as f32 / output.size.1 as f32;
+
+        let logical_rotated =
+            logical_ratio > 1. && physical_ratio < 1. || logical_ratio < 1. && physical_ratio > 1.;
+
+        let angle = if logical_rotated {
+            0.
+        } else {
+            match output.transform {
+                Transform::_90 | Transform::Flipped90 => PI / 2.,
+                Transform::_180 | Transform::Flipped180 => PI,
+                Transform::_270 | Transform::Flipped270 => -PI / 2.,
+                _ => 0.,
+            }
         };
 
         let interaction_transform = if output.size.0 >= output.size.1 {
