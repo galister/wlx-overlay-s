@@ -23,6 +23,10 @@ fn def_one() -> f32 {
     1.0
 }
 
+fn def_osc_port() -> u16 {
+    9000
+}
+
 #[derive(Deserialize, Serialize)]
 pub struct GeneralConfig {
     #[serde(default = "def_click_freeze_time_ms")]
@@ -42,6 +46,9 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_pw_tokens")]
     pub pw_tokens: Vec<(String, String)>,
+
+    #[serde(default = "def_osc_port")]
+    pub osc_out_port: u16,
 }
 
 impl GeneralConfig {

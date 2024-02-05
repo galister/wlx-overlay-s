@@ -21,6 +21,7 @@ use crate::{
     backend::{
         input::interact,
         openvr::{input::OpenVrInputSource, lines::LinePool, manifest::install_manifest},
+        osc::OscSender,
     },
     graphics::WlxGraphics,
     state::AppState,
@@ -87,6 +88,8 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     let mut overlays = OverlayContainer::<OpenVrOverlayData>::new(&mut state);
 
     let mut space_mover = playspace::PlayspaceMover::new();
+    #[cfg(feature = "osc")]
+    let mut osc_sender = OscSender::new(state.session.config.osc_out_port).ok();
 
     state.hid_provider.set_desktop_extent(overlays.extent);
 
@@ -200,6 +203,11 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         overlays
             .iter_mut()
             .for_each(|o| o.after_input(&mut overlay_mngr, &mut state));
+
+        #[cfg(feature = "osc")]
+        if let Some(ref mut sender) = osc_sender {
+            let _ = sender.send_params(&overlays);
+        };
 
         log::debug!("Rendering frame");
 

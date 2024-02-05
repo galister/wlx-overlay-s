@@ -63,7 +63,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     let mut lines = LinePool::new(app_state.graphics.clone());
 
     #[cfg(feature = "osc")]
-    let mut osc_sender = OscSender::new(9000).ok();
+    let mut osc_sender = OscSender::new(app_state.session.config.osc_out_port).ok();
 
     app_state.hid_provider.set_desktop_extent(overlays.extent);
 
