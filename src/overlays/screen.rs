@@ -193,8 +193,8 @@ impl ScreenPipeline {
             let vertex_buffer = app.graphics.upload_verts(
                 self.extentf[0],
                 self.extentf[1],
-                (mouse.x - 2) as _,
-                (mouse.y - 2) as _,
+                mouse.x * self.extentf[0] - 2.,
+                mouse.y * self.extentf[1] - 2.,
                 4.0,
                 4.0,
             );
