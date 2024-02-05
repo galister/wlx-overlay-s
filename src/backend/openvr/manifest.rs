@@ -57,6 +57,11 @@ pub(super) fn install_manifest(app_mgr: &mut ApplicationsManager) {
         log::error!("Failed to add manifest to OpenVR");
         return;
     };
+
+    let Ok(()) = app_mgr.set_application_auto_launch(APP_KEY, true) else {
+        log::error!("Failed to set auto launch");
+        return;
+    };
 }
 
 pub(super) fn uninstall_manifest(app_mgr: &mut ApplicationsManager) {
