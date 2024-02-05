@@ -10,11 +10,14 @@ use std::{
     sync::{mpsc::Receiver, Arc},
     time::{Duration, Instant},
 };
-use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
+use vulkano::{
+    command_buffer::CommandBufferUsage,
+    image::{sampler::Filter, view::ImageView, Image},
+};
 use wlx_capture::{
     frame::{
-        DrmFormat, WlxFrame, DRM_FORMAT_ABGR8888, DRM_FORMAT_ARGB8888, DRM_FORMAT_XBGR8888,
-        DRM_FORMAT_XRGB8888,
+        DrmFormat, MouseMeta, WlxFrame, DRM_FORMAT_ABGR8888, DRM_FORMAT_ARGB8888,
+        DRM_FORMAT_XBGR8888, DRM_FORMAT_XRGB8888,
     },
     pipewire::{pipewire_select_screen, PipewireCapture},
     wayland::{wayland_client::protocol::wl_output::Transform, WlxClient, WlxOutput},
@@ -32,7 +35,7 @@ use crate::{
     },
     config::def_pw_tokens,
     config_io,
-    graphics::fourcc_to_vk,
+    graphics::{fourcc_to_vk, WlxCommandBuffer, WlxPipeline, WlxPipelineLegacy},
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState},
 };
@@ -117,9 +120,109 @@ impl InteractionHandler for ScreenInteractionHandler {
     fn on_left(&mut self, _app: &mut AppState, _hand: usize) {}
 }
 
+struct ScreenPipeline {
+    view: Arc<ImageView>,
+    mouse: Option<Arc<ImageView>>,
+    pipeline: Arc<WlxPipeline<WlxPipelineLegacy>>,
+    extentf: [f32; 2],
+}
+
+impl ScreenPipeline {
+    fn new(extent: &[u32; 3], app: &mut AppState) -> ScreenPipeline {
+        let texture = app
+            .graphics
+            .render_texture(extent[0], extent[1], app.graphics.native_format);
+
+        let view = ImageView::new_default(texture).unwrap();
+
+        let shaders = app.graphics.shared_shaders.read().unwrap();
+
+        let pipeline = app.graphics.create_pipeline(
+            view.clone(),
+            shaders.get("vert_common").unwrap().clone(),
+            shaders.get("frag_sprite").unwrap().clone(),
+            app.graphics.native_format,
+        );
+
+        let extentf = [extent[0] as f32, extent[1] as f32];
+
+        ScreenPipeline {
+            view,
+            mouse: None,
+            pipeline,
+            extentf,
+        }
+    }
+
+    fn ensure_mouse_initialized(&mut self, uploads: &mut WlxCommandBuffer) {
+        if self.mouse.is_some() {
+            return;
+        }
+
+        #[rustfmt::skip]
+        let mouse_bytes = [
+            0x00, 0x00, 0x00, 0xff,  0x00, 0x00, 0x00, 0xff,  0x00, 0x00, 0x00, 0xff,  0x00, 0x00, 0x00, 0xff,
+            0x00, 0x00, 0x00, 0xff,  0xff, 0xff, 0xff, 0xff,  0xff, 0xff, 0xff, 0xff,  0x00, 0x00, 0x00, 0xff,
+            0x00, 0x00, 0x00, 0xff,  0xff, 0xff, 0xff, 0xff,  0xff, 0xff, 0xff, 0xff,  0x00, 0x00, 0x00, 0xff,
+            0x00, 0x00, 0x00, 0xff,  0x00, 0x00, 0x00, 0xff,  0x00, 0x00, 0x00, 0xff,  0x00, 0x00, 0x00, 0xff,
+        ];
+
+        let mouse_tex =
+            uploads.texture2d(4, 4, vulkano::format::Format::R8G8B8A8_UNORM, &mouse_bytes);
+        self.mouse = Some(ImageView::new_default(mouse_tex).unwrap());
+    }
+
+    fn render(&mut self, image: Arc<Image>, mouse: Option<&MouseMeta>, app: &mut AppState) {
+        let mut cmd = app
+            .graphics
+            .create_command_buffer(CommandBufferUsage::OneTimeSubmit);
+        let view = ImageView::new_default(image).unwrap();
+        let set0 = self.pipeline.uniform_sampler(0, view, Filter::Linear);
+
+        let pass = self.pipeline.create_pass(
+            self.extentf,
+            app.graphics.quad_verts.clone(),
+            app.graphics.quad_indices.clone(),
+            vec![set0],
+        );
+
+        cmd.begin_render_pass(&self.pipeline);
+        cmd.run_ref(&pass);
+
+        if let (Some(mouse), Some(mouse_view)) = (mouse, self.mouse.clone()) {
+            let vertex_buffer = app.graphics.upload_verts(
+                self.extentf[0],
+                self.extentf[1],
+                (mouse.x - 2) as _,
+                (mouse.y - 2) as _,
+                4.0,
+                4.0,
+            );
+
+            let set0 = self
+                .pipeline
+                .uniform_sampler(0, mouse_view.clone(), Filter::Nearest);
+
+            let pass = self.pipeline.create_pass(
+                self.extentf,
+                vertex_buffer,
+                app.graphics.quad_indices.clone(),
+                vec![set0],
+            );
+
+            cmd.run_ref(&pass);
+        }
+
+        cmd.end_render_pass();
+
+        cmd.build_and_execute_now();
+    }
+}
+
 pub struct ScreenRenderer {
     name: Arc<str>,
     capture: Box<dyn WlxCapture>,
+    pipeline: Option<ScreenPipeline>,
     receiver: Option<Receiver<WlxFrame>>,
     last_view: Option<Arc<ImageView>>,
     extent: [u32; 3],
@@ -135,6 +238,7 @@ impl ScreenRenderer {
         Some(ScreenRenderer {
             name: output.name.clone(),
             capture: Box::new(capture),
+            pipeline: None,
             receiver: None,
             last_view: None,
             extent: extent_from_res(output.size),
@@ -154,6 +258,7 @@ impl ScreenRenderer {
         Some(ScreenRenderer {
             name: output.name.clone(),
             capture: Box::new(capture),
+            pipeline: None,
             receiver: None,
             last_view: None,
             extent: extent_from_res(output.size),
@@ -166,6 +271,7 @@ impl ScreenRenderer {
         Some(ScreenRenderer {
             name: screen.name.clone(),
             capture: Box::new(capture),
+            pipeline: None,
             receiver: None,
             last_view: None,
             extent: extent_from_res((screen.monitor.width(), screen.monitor.height())),
@@ -214,6 +320,8 @@ impl OverlayRenderer for ScreenRenderer {
             self.capture.request_new_frame();
             rx
         });
+
+        let mut mouse = None;
 
         for frame in receiver.try_iter() {
             match frame {
@@ -274,18 +382,38 @@ impl OverlayRenderer for ScreenRenderer {
                     let mut upload = app
                         .graphics
                         .create_command_buffer(CommandBufferUsage::OneTimeSubmit);
+
                     let format = fourcc_to_vk(frame.format.fourcc);
 
                     let data = unsafe { slice::from_raw_parts(frame.ptr as *const u8, frame.size) };
 
                     let image =
                         upload.texture2d(frame.format.width, frame.format.height, format, &data);
+
+                    let mut pipeline = None;
+                    if mouse.is_some() {
+                        let new_pipeline = self.pipeline.get_or_insert_with(|| {
+                            let mut pipeline = ScreenPipeline::new(&self.extent, app);
+                            self.last_view = Some(pipeline.view.clone());
+                            pipeline.ensure_mouse_initialized(&mut upload);
+                            pipeline
+                        });
+                        pipeline = Some(new_pipeline);
+                    }
+
                     upload.build_and_execute_now();
 
-                    self.last_view = Some(ImageView::new_default(image).unwrap());
+                    if let Some(pipeline) = pipeline {
+                        pipeline.render(image, mouse.as_ref(), app);
+                    } else {
+                        let view = ImageView::new_default(image).unwrap();
+                        self.last_view = Some(view);
+                    }
                     self.capture.request_new_frame();
                 }
-                _ => {}
+                WlxFrame::Mouse(m) => {
+                    mouse = Some(m);
+                }
             };
         }
     }
