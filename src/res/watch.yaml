@@ -6,7 +6,6 @@
 #         (x, y) = (0, 0) is top-left
 # - bg_color: background color of panels and buttons
 # - fg_color: color of text
-# - font_size: 
 #
 # element types:
 # panel - simple colored rectangle

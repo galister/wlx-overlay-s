@@ -4249,7 +4249,7 @@ dependencies = [
 [[package]]
 name = "wlx-capture"
 version = "0.1.0"
-source = "git+https://github.com/galister/wlx-capture#8d90787b3bc9018f1f26a4a3e2abdcdbb6809a64"
+source = "git+https://github.com/galister/wlx-capture#a5efb4c5ea24a9464434d2d76f2c5c029853c8a6"
 dependencies = [
  "ashpd",
  "drm-fourcc",
