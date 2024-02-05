@@ -201,7 +201,7 @@ impl ScreenPipeline {
 
             let set0 = self
                 .pipeline
-                .uniform_sampler(0, mouse_view.clone(), Filter::Nearest);
+                .uniform_sampler(0, mouse_view.clone(), Filter::Linear);
 
             let pass = self.pipeline.create_pass(
                 self.extentf,

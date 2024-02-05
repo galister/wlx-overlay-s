@@ -1,0 +1,115 @@
+# Tips for optimization:
+# - try to re-use font sizes, every loaded font size uses additional VRAM.
+
+# common properties:
+# - rect: bounding rectangle [x, y, width, height]
+#         (x, y) = (0, 0) is top-left
+# - bg_color: background color of panels and buttons
+# - fg_color: color of text
+# - font_size: 
+#
+# element types:
+# panel - simple colored rectangle
+#   rect: bounding rectangle
+#   bg_color: color of rectangle. quotation marks mandatory.
+#
+# clock - date/time display with custom formatting
+#   rect: bounding rectangle
+#   fg_color: color of text. quotation marks mandatory.
+#   format: chrono format to print, see https://docs.rs/chrono/latest/chrono/format/strftime/index.html
+#   timezone: timezone to use, leave empty for local
+
+# render resolution of the watch
+
+watch_hand: Left
+
+watch_offset: []
+
+watch_rotation: []
+
+watch_size: [400, 200]
+
+watch_elements:
+  # background panel
+  - type: Panel
+    rect: [0, 0, 400, 200]
+    bg_color: "#353535"
+
+  # bottom row, of keyboard + overlays
+  - type: OverlayList
+    rect: [0, 160, 400, 40]
+    font_size: 14
+    kbd_fg_color: "#FFFFFF"
+    kbd_bg_color: "#406050"
+    scr_fg_color: "#FFFFFF"
+    scr_bg_color: "#405060"
+    layout: Horizontal
+
+  # main clock with date and day-of-week
+  - type: Clock
+    rect: [19, 90, 200, 50]
+    #format: "%h:%M %p" # 11:59 PM
+    format: "%H:%M" # 23:59
+    font_size: 46
+    fg_color: "#ffffff"
+  - type: Clock
+    rect: [20, 117, 200, 20]
+    format: "%x" # local date representation
+    font_size: 14
+    fg_color: "#ffffff"
+  - type: Clock
+    rect: [20, 137, 200, 50]
+    #format: "%a" # Tue
+    format: "%A" # Tuesday
+    font_size: 14
+    fg_color: "#ffffff"
+
+  # alt clock 1
+  - type: Clock
+    rect: [210, 90, 200, 50]
+    timezone: "Asia/Tokyo" # change TZ1 here
+    format: "%H:%M"
+    font_size: 24
+    fg_color: "#99BBAA"
+  - type: Label
+    rect: [210, 60, 200, 50]
+    font_size: 14
+    fg_color: "#99BBAA"
+    text: "Tokyo" # change TZ1 label here
+ 
+  # alt clock 2
+  - type: Clock
+    rect: [210, 150, 200, 50]
+    timezone: "America/Chicago" # change TZ2 here
+    format: "%H:%M"
+    font_size: 24
+    fg_color: "#AA99BB"
+  - type: Label
+    rect: [210, 120, 200, 50]
+    font_size: 14
+    fg_color: "#AA99BB"
+    text: "Chicago" # change TZ2 label here
+
+  # sample
+  - type: ExecLabel
+    rect: [50, 20, 200, 50]
+    font_size: 14
+    fg_color: "#FFFFFF"
+    exec: ["echo", "customize me! see watch.yaml"]
+    interval: 0 # seconds
+
+  # volume buttons
+  - type: ExecButton
+    rect: [327, 52, 46, 32]
+    font_size: 14
+    fg_color: "#FFFFFF"
+    bg_color: "#505050"
+    text: "+"
+    exec: [ "pactl", "set-sink-volume", "@DEFAULT_SINK@", "+5%" ]
+  - type: ExecButton
+    rect: [327, 116, 46, 32]
+    font_size: 14
+    fg_color: "#FFFFFF"
+    bg_color: "#505050"
+    text: "-"
+    exec: [ "pactl", "set-sink-volume", "@DEFAULT_SINK@", "-5%" ]

@@ -2,6 +2,7 @@ use crate::config_io;
 use crate::config_io::get_conf_d_path;
 use crate::load_with_fallback;
 use crate::overlays::keyboard;
+use crate::overlays::watch::WatchConfig;
 use log::error;
 use serde::Deserialize;
 use serde::Serialize;
@@ -69,6 +70,11 @@ impl GeneralConfig {
 pub fn load_keyboard() -> keyboard::Layout {
     let yaml_data = load_with_fallback!("keyboard.yaml", "res/keyboard.yaml");
     serde_yaml::from_str(&yaml_data).expect("Failed to parse keyboard.yaml")
+}
+
+pub fn load_watch() -> WatchConfig {
+    let yaml_data = load_with_fallback!("watch.yaml", "res/watch.yaml");
+    serde_yaml::from_str(&yaml_data).expect("Failed to parse watch.yaml")
 }
 
 pub fn load_general() -> GeneralConfig {

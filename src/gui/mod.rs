@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::bail;
 use glam::{Vec2, Vec3, Vec4};
 use vulkano::{
     command_buffer::CommandBufferUsage,
@@ -28,12 +29,20 @@ struct Rect {
 }
 
 // Parses a color from a HTML hex string
-pub fn color_parse(html_hex: &str) -> Vec3 {
-    let mut color = Vec3::ZERO;
-    color.x = u8::from_str_radix(&html_hex[1..3], 16).unwrap() as f32 / 255.;
-    color.y = u8::from_str_radix(&html_hex[3..5], 16).unwrap() as f32 / 255.;
-    color.z = u8::from_str_radix(&html_hex[5..7], 16).unwrap() as f32 / 255.;
-    color
+pub fn color_parse(html_hex: &str) -> anyhow::Result<Vec3> {
+    if html_hex.len() == 7 {
+        if let (Ok(r), Ok(g), Ok(b)) = (
+            u8::from_str_radix(&html_hex[1..3], 16),
+            u8::from_str_radix(&html_hex[3..5], 16),
+            u8::from_str_radix(&html_hex[5..7], 16),
+        ) {
+            return Ok(Vec3::new(r as f32 / 255., g as f32 / 255., b as f32 / 255.));
+        }
+    }
+    bail!(
+        "Invalid color string: '{}', must be 7 characters long (e.g. #FF00FF)",
+        &html_hex
+    )
 }
 
 pub struct CanvasBuilder<D, S> {
@@ -625,7 +634,7 @@ impl<D, S> Control<D, S> {
                     let set0 = canvas.pipeline_fg_glyph.uniform_sampler(
                         0,
                         ImageView::new_default(tex).unwrap(),
-                        Filter::Nearest,
+                        Filter::Linear,
                     );
                     let set1 = canvas.pipeline_fg_glyph.uniform_buffer(
                         1,
@@ -670,7 +679,7 @@ impl<D, S> Control<D, S> {
                     let set0 = canvas.pipeline_fg_glyph.uniform_sampler(
                         0,
                         ImageView::new_default(tex).unwrap(),
-                        Filter::Nearest,
+                        Filter::Linear,
                     );
                     let set1 = canvas.pipeline_fg_glyph.uniform_buffer(
                         1,

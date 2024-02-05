@@ -52,11 +52,11 @@ where
         data,
     );
 
-    canvas.bg_color = color_parse("#101010");
+    canvas.bg_color = color_parse("#101010").unwrap();
     canvas.panel(0., 0., size.x, size.y);
 
     canvas.font_size = 18;
-    canvas.bg_color = color_parse("#202020");
+    canvas.bg_color = color_parse("#202020").unwrap();
 
     let unit_size = size.x / LAYOUT.row_size;
     let h = unit_size - 2. * BUTTON_PADDING;
