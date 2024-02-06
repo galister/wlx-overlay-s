@@ -287,7 +287,6 @@ impl ScreenRenderer {
 impl OverlayRenderer for ScreenRenderer {
     fn init(&mut self, app: &mut AppState) {
         let images = app.graphics.shared_images.read().unwrap();
-        self.last_view = Some(images.get("fallback").unwrap().clone());
     }
     fn render(&mut self, app: &mut AppState) {
         let receiver = self.receiver.get_or_insert_with(|| {

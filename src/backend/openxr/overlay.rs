@@ -34,9 +34,9 @@ impl OverlayData<OpenXrOverlayData> {
             log::warn!("{}: Will not show - image not ready", self.state.name);
             return None;
         };
+        let extent = my_view.image().extent();
 
         let data = self.data.swapchain.get_or_insert_with(|| {
-            let extent = self.backend.extent();
             let srd = create_swapchain_render_data(xr, command_buffer.graphics.clone(), extent);
 
             log::info!(
@@ -54,7 +54,7 @@ impl OverlayData<OpenXrOverlayData> {
         let posef = helpers::transform_to_posef(&self.state.transform);
 
         let scale_x = self.state.transform.matrix3.col(0).length();
-        let aspect_ratio = self.backend.extent()[1] as f32 / self.backend.extent()[0] as f32;
+        let aspect_ratio = extent[1] as f32 / extent[0] as f32;
         let scale_y = scale_x * aspect_ratio;
 
         let quad = xr::CompositionLayerQuad::new()
