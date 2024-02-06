@@ -19,6 +19,10 @@ fn def_true() -> bool {
     true
 }
 
+fn def_false() -> bool {
+    false
+}
+
 fn def_one() -> f32 {
     1.0
 }
@@ -49,6 +53,9 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_osc_port")]
     pub osc_out_port: u16,
+
+    #[serde(default = "def_false")]
+    pub upright_screen_fix: bool,
 }
 
 impl GeneralConfig {

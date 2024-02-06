@@ -507,32 +507,28 @@ where
         let logical_ratio = output.logical_size.0 as f32 / output.logical_size.1 as f32;
         let physical_ratio = output.size.0 as f32 / output.size.1 as f32;
 
-        let logical_rotated =
-            logical_ratio > 1. && physical_ratio < 1. || logical_ratio < 1. && physical_ratio > 1.;
-
-        let angle = if logical_rotated {
-            0.
-        } else {
+        let angle = if session.config.upright_screen_fix {
             match output.transform {
                 Transform::_90 | Transform::Flipped90 => PI / 2.,
                 Transform::_180 | Transform::Flipped180 => PI,
                 Transform::_270 | Transform::Flipped270 => -PI / 2.,
                 _ => 0.,
             }
+        } else {
+            0.
         };
 
-        let interaction_transform = if output.size.0 >= output.size.1 {
-            Affine2::from_translation(Vec2 { x: 0.5, y: 0.5 })
-                * Affine2::from_scale(Vec2 {
-                    x: 1.,
-                    y: -output.size.0 as f32 / output.size.1 as f32,
-                })
-        } else {
-            Affine2::from_translation(Vec2 { x: 0.5, y: 0.5 })
-                * Affine2::from_scale(Vec2 {
-                    x: output.size.1 as f32 / output.size.0 as f32,
-                    y: -1.,
-                })
+
+        let center = Vec2 { x:0.5, y:0.5};
+        let interaction_transform = match output.transform {
+            Transform::_90 | Transform::Flipped90 =>
+                Affine2::from_cols(Vec2::NEG_Y * (output.size.0 as f32 / output.size.1 as f32), Vec2::X, center),
+            Transform::_180 | Transform::Flipped180 => 
+                Affine2::from_cols(Vec2::NEG_X, Vec2::NEG_Y * (-output.size.0 as f32 / output.size.1 as f32), center),
+            Transform::_270 | Transform::Flipped270 => 
+                Affine2::from_cols(Vec2::Y * (output.size.0 as f32 / output.size.1 as f32), Vec2::NEG_X, center),
+            _ => 
+                Affine2::from_cols(Vec2::X, Vec2::Y * (-output.size.0 as f32 / output.size.1 as f32), center)
         };
 
         Some(OverlayData {
