@@ -82,11 +82,7 @@ impl LinePool {
             ..Default::default()
         };
         data.data.sort_order = 69;
-
-        sleep(Duration::from_millis(50));
-
-        data.initialize(overlay, app);
-        data.upload_texture(overlay, &app.graphics);
+        data.state.dirty = true;
 
         self.lines.insert(id, data);
         id
@@ -150,6 +146,12 @@ impl LinePool {
         for data in self.lines.values_mut() {
             data.after_input(overlay, app);
             if data.state.want_visible {
+                if data.state.dirty {
+                    data.initialize(overlay, app);
+                    data.upload_texture(overlay, &app.graphics);
+                    data.state.dirty = false;
+                }
+
                 data.upload_transform(overlay);
                 data.upload_color(overlay);
             }
