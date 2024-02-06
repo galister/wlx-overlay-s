@@ -518,17 +518,28 @@ where
             0.
         };
 
-
-        let center = Vec2 { x:0.5, y:0.5};
+        let center = Vec2 { x: 0.5, y: 0.5 };
         let interaction_transform = match output.transform {
-            Transform::_90 | Transform::Flipped90 =>
-                Affine2::from_cols(Vec2::NEG_Y * (output.size.0 as f32 / output.size.1 as f32), Vec2::X, center),
-            Transform::_180 | Transform::Flipped180 => 
-                Affine2::from_cols(Vec2::NEG_X, Vec2::NEG_Y * (-output.size.0 as f32 / output.size.1 as f32), center),
-            Transform::_270 | Transform::Flipped270 => 
-                Affine2::from_cols(Vec2::Y * (output.size.0 as f32 / output.size.1 as f32), Vec2::NEG_X, center),
-            _ => 
-                Affine2::from_cols(Vec2::X, Vec2::Y * (-output.size.0 as f32 / output.size.1 as f32), center)
+            Transform::_90 | Transform::Flipped90 => Affine2::from_cols(
+                Vec2::NEG_Y * (output.size.0 as f32 / output.size.1 as f32),
+                Vec2::NEG_X,
+                center,
+            ),
+            Transform::_180 | Transform::Flipped180 => Affine2::from_cols(
+                Vec2::NEG_X,
+                Vec2::NEG_Y * (-output.size.0 as f32 / output.size.1 as f32),
+                center,
+            ),
+            Transform::_270 | Transform::Flipped270 => Affine2::from_cols(
+                Vec2::Y * (output.size.0 as f32 / output.size.1 as f32),
+                Vec2::X,
+                center,
+            ),
+            _ => Affine2::from_cols(
+                Vec2::X,
+                Vec2::Y * (-output.size.0 as f32 / output.size.1 as f32),
+                center,
+            ),
         };
 
         Some(OverlayData {
