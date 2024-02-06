@@ -53,9 +53,15 @@ impl OverlayData<OpenXrOverlayData> {
         let sub_image = data.acquire_present_release(command_buffer, my_view);
         let posef = helpers::transform_to_posef(&self.state.transform);
 
-        let scale_x = self.state.transform.matrix3.col(0).length();
         let aspect_ratio = extent[1] as f32 / extent[0] as f32;
-        let scale_y = scale_x * aspect_ratio;
+
+        let (scale_x, scale_y) = if aspect_ratio < 1.0 {
+            let major = self.state.transform.matrix3.col(0).length();
+            (major, major * aspect_ratio)
+        } else {
+            let major = self.state.transform.matrix3.col(1).length();
+            (major / aspect_ratio, major)
+        };
 
         let quad = xr::CompositionLayerQuad::new()
             .pose(posef)
