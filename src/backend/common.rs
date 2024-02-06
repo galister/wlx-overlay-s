@@ -52,14 +52,14 @@ where
 
         let mut keyboard = create_keyboard(&app);
         keyboard.state.show_hide = true;
-        keyboard.state.want_visible = true;
+        keyboard.state.want_visible = false;
         overlays.insert(keyboard.state.id, keyboard);
 
         let mut first = true;
         for mut screen in screens {
             if first {
                 screen.state.show_hide = true;
-                screen.state.want_visible = true;
+                screen.state.want_visible = false;
                 first = false;
             }
             overlays.insert(screen.state.id, screen);
