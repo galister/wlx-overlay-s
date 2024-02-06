@@ -7,12 +7,12 @@ use std::{
 
 use chrono::Local;
 use chrono_tz::Tz;
-use glam::{vec2, Affine2, Vec3};
+use glam::{vec2, Affine2, Vec3, Vec3A};
 use serde::Deserialize;
 
 use crate::{
     backend::{
-        common::{OverlaySelector, TaskType},
+        common::{OverlayContainer, OverlaySelector, TaskType},
         input::PointerMode,
         overlay::{OverlayData, OverlayState, RelativeTo},
     },
@@ -594,4 +594,27 @@ enum ListLayout {
 enum LeftRight {
     Left,
     Right,
+}
+
+pub fn watch_fade<D>(app: &mut AppState, overlays: &mut OverlayContainer<D>)
+where
+    D: Default,
+{
+    let watch = overlays
+        .mut_by_selector(&OverlaySelector::Name(WATCH_NAME.into()))
+        .unwrap();
+
+    let to_hmd = (watch.state.transform.translation - app.input_state.hmd.translation).normalize();
+    let watch_normal = watch
+        .state
+        .transform
+        .transform_vector3a(Vec3A::NEG_Z)
+        .normalize();
+    let dot = to_hmd.dot(watch_normal);
+
+    if dot < app.session.config.watch_view_angle {
+        watch.state.want_visible = false;
+    } else {
+        watch.state.want_visible = true;
+    }
 }

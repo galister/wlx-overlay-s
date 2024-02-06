@@ -24,6 +24,7 @@ use crate::{
         osc::OscSender,
     },
     graphics::WlxGraphics,
+    overlays::watch::watch_fade,
     state::AppState,
 };
 
@@ -179,6 +180,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             .iter_mut()
             .for_each(|o| o.state.auto_movement(&mut state));
 
+        watch_fade(&mut state, &mut overlays);
         space_mover.update(&mut chaperone_mgr, &mut overlays, &state);
 
         let lengths_haptics = interact(&mut overlays, &mut state);

@@ -20,12 +20,18 @@
 
 # render resolution of the watch
 
+watch_view_angle: 0.5 # 0 = 90 deg, 1 = 0 deg
+
+# TODO
 watch_hand: Left
 
+# TODO
 watch_offset: []
 
+# TODO
 watch_rotation: []
 
+# TODO
 watch_size: [400, 200]
 
 watch_elements:

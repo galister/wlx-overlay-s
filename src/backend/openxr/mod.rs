@@ -18,6 +18,7 @@ use crate::{
         osc::OscSender,
     },
     graphics::WlxGraphics,
+    overlays::watch::watch_fade,
     state::AppState,
 };
 
@@ -209,6 +210,8 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 overlays.show_hide(&mut app_state);
             }
         }
+
+        watch_fade(&mut app_state, &mut overlays);
 
         overlays
             .iter_mut()
