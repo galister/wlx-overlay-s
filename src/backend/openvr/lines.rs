@@ -1,8 +1,6 @@
 use std::f32::consts::PI;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::thread::sleep;
-use std::time::Duration;
 
 use glam::{Affine3A, Vec3, Vec3A, Vec4};
 use idmap::IdMap;
@@ -59,7 +57,7 @@ impl LinePool {
         }
     }
 
-    pub fn allocate(&mut self, overlay: &mut OverlayManager, app: &mut AppState) -> usize {
+    pub fn allocate(&mut self) -> usize {
         let id = AUTO_INCREMENT.fetch_add(1, Ordering::Relaxed);
 
         let mut data = OverlayData::<OpenVrOverlayData> {
@@ -147,7 +145,6 @@ impl LinePool {
             data.after_input(overlay, app);
             if data.state.want_visible {
                 if data.state.dirty {
-                    data.initialize(overlay, app);
                     data.upload_texture(overlay, &app.graphics);
                     data.state.dirty = false;
                 }

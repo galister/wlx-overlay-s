@@ -34,6 +34,7 @@ impl OverlayData<OpenVrOverlayData> {
         app: &mut AppState,
     ) -> OverlayHandle {
         let key = format!("wlx-{}", self.state.name);
+        log::debug!("Create overlay with key: {}", &key);
         let handle = match overlay.create_overlay(&key, &key) {
             Ok(handle) => handle,
             Err(e) => {

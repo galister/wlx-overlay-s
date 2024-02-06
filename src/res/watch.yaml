@@ -89,13 +89,26 @@ watch_elements:
     fg_color: "#AA99BB"
     text: "Chicago" # change TZ2 label here
 
-  # sample
-  - type: ExecLabel
-    rect: [50, 20, 200, 50]
+  - type: Batteries
+    rect: [0, 20, 400, 40]
     font_size: 14
-    fg_color: "#FFFFFF"
-    exec: ["echo", "customize me! see watch.yaml"]
-    interval: 0 # seconds
+    num_devices: 9
+    low_threshold: 15
+    normal_fg_color: "#406040"
+    normal_bg_color: "#353535"
+    low_fg_color: "#604040"
+    low_bg_color: "#353535"
+    charging_fg_color: "#204070"
+    charging_bg_color: "#353535"
+    layout: Horizontal
+
+  # sample
+  # - type: ExecLabel
+  #   rect: [50, 20, 200, 50]
+  #  font_size: 14
+  #  fg_color: "#FFFFFF"
+  #  exec: ["echo", "customize me! see watch.yaml"]
+  #  interval: 0 # seconds
 
   # volume buttons
   - type: ExecButton

@@ -118,10 +118,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     let mut due_tasks = VecDeque::with_capacity(4);
 
     let mut lines = LinePool::new(state.graphics.clone());
-    let pointer_lines = [
-        lines.allocate(&mut overlay_mngr, &mut state),
-        lines.allocate(&mut overlay_mngr, &mut state),
-    ];
+    let pointer_lines = [lines.allocate(), lines.allocate()];
 
     'main_loop: loop {
         if !running.load(Ordering::Relaxed) {

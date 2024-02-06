@@ -1,7 +1,7 @@
 use std::{path::PathBuf, sync::Arc};
 
 use glam::{Quat, Vec3};
-use vulkano::{command_buffer::CommandBufferUsage, format::Format, image::view::ImageView};
+use vulkano::format::Format;
 
 use crate::{
     backend::{common::TaskContainer, input::InputState},
@@ -30,16 +30,6 @@ impl AppState {
     pub fn from_graphics(graphics: Arc<WlxGraphics>) -> Self {
         // insert shared resources
         {
-            let mut uploads = graphics.create_command_buffer(CommandBufferUsage::OneTimeSubmit);
-            let texture = uploads.texture2d(1, 1, Format::R8G8B8A8_UNORM, &[255, 0, 255, 255]);
-            uploads.build_and_execute_now();
-
-            let Ok(mut images) = graphics.shared_images.write() else {
-                panic!("Shared Images RwLock poisoned");
-            };
-
-            images.insert("fallback", ImageView::new_default(texture).unwrap());
-
             let Ok(mut shaders) = graphics.shared_shaders.write() else {
                 panic!("Shared Shaders RwLock poisoned");
             };

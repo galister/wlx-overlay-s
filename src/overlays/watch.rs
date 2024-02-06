@@ -144,6 +144,49 @@ where
                 });
                 button.on_press = Some(exec_button);
             }
+            WatchElement::Batteries {
+                rect,
+                font_size,
+                num_devices,
+                normal_fg_color,
+                layout,
+                ..
+            } => {
+                let num_buttons = num_devices as f32;
+                let mut button_x = rect[0];
+                let mut button_y = rect[1];
+                let (button_w, button_h) = match layout {
+                    ListLayout::Horizontal => (rect[2] / num_buttons, rect[3]),
+                    ListLayout::Vertical => (rect[2], rect[3] / num_buttons),
+                };
+
+                canvas.font_size = font_size;
+                canvas.fg_color = color_parse(&normal_fg_color).unwrap_or(FALLBACK_COLOR);
+
+                for i in 0..num_devices {
+                    let label = canvas.label(
+                        button_x + 2.,
+                        button_y + 2.,
+                        button_w - 4.,
+                        button_h - 4.,
+                        empty_str.clone(),
+                    );
+                    label.state = Some(ElemState {
+                        battery: Some(i as usize),
+                        ..Default::default()
+                    });
+                    label.on_update = Some(battery_update);
+
+                    button_x += match layout {
+                        ListLayout::Horizontal => button_w,
+                        ListLayout::Vertical => 0.,
+                    };
+                    button_y += match layout {
+                        ListLayout::Horizontal => 0.,
+                        ListLayout::Vertical => button_h,
+                    };
+                }
+            }
             WatchElement::OverlayList {
                 rect,
                 font_size,
@@ -244,6 +287,7 @@ where
 
 #[derive(Default)]
 struct ElemState {
+    battery: Option<usize>,
     clock: Option<ClockState>,
     exec: Option<ExecState>,
     button: Option<WatchButtonState>,
@@ -265,6 +309,25 @@ struct ExecState {
     interval: f32,
     exec: Vec<Arc<str>>,
     child: Option<process::Child>,
+}
+
+fn battery_update(control: &mut Control<(), ElemState>, _: &mut (), app: &mut AppState) {
+    let state = control.state.as_ref().unwrap();
+    let device_idx = state.battery.unwrap();
+
+    let device = app.input_state.devices.get(device_idx);
+
+    let tags = ["", "H", "L", "R", "T"];
+
+    let text = match device {
+        Some(d) => d
+            .soc
+            .map(|soc| format!("{}{}", tags[d.role as usize], soc as u32))
+            .unwrap_or_else(|| "".into()),
+        None => "".into(),
+    };
+
+    control.set_text(&text);
 }
 
 fn exec_button(
@@ -461,6 +524,7 @@ pub struct WatchConfig {
     watch_elements: Vec<WatchElement>,
 }
 
+#[allow(dead_code)]
 #[derive(Deserialize)]
 #[serde(tag = "type")]
 enum WatchElement {
@@ -495,6 +559,19 @@ enum WatchElement {
         fg_color: Arc<str>,
         exec: Vec<Arc<str>>,
         text: Arc<str>,
+    },
+    Batteries {
+        rect: [f32; 4],
+        font_size: isize,
+        low_threshold: f32,
+        num_devices: u16,
+        normal_fg_color: Arc<str>,
+        normal_bg_color: Arc<str>,
+        low_fg_color: Arc<str>,
+        low_bg_color: Arc<str>,
+        charging_fg_color: Arc<str>,
+        charging_bg_color: Arc<str>,
+        layout: ListLayout,
     },
     OverlayList {
         rect: [f32; 4],

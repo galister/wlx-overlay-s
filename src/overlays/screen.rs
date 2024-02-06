@@ -285,9 +285,7 @@ impl ScreenRenderer {
 }
 
 impl OverlayRenderer for ScreenRenderer {
-    fn init(&mut self, app: &mut AppState) {
-        let images = app.graphics.shared_images.read().unwrap();
-    }
+    fn init(&mut self, _app: &mut AppState) {}
     fn render(&mut self, app: &mut AppState) {
         let receiver = self.receiver.get_or_insert_with(|| {
             let _drm_formats = DRM_FORMATS.get_or_init({
@@ -503,9 +501,6 @@ where
         });
 
         let axis = Vec3::new(0., 0., 1.);
-
-        let logical_ratio = output.logical_size.0 as f32 / output.logical_size.1 as f32;
-        let physical_ratio = output.size.0 as f32 / output.size.1 as f32;
 
         let angle = if session.config.upright_screen_fix {
             match output.transform {

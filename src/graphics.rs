@@ -114,7 +114,6 @@ pub struct WlxGraphics {
     pub quad_indices: Subbuffer<[u16]>,
 
     pub shared_shaders: RwLock<HashMap<&'static str, Arc<ShaderModule>>>,
-    pub shared_images: RwLock<HashMap<&'static str, Arc<ImageView>>>,
 }
 
 impl WlxGraphics {
@@ -313,7 +312,6 @@ impl WlxGraphics {
             descriptor_set_allocator,
             quad_indices,
             quad_verts,
-            shared_images: RwLock::new(HashMap::new()),
             shared_shaders: RwLock::new(HashMap::new()),
         };
 
@@ -440,7 +438,6 @@ impl WlxGraphics {
             descriptor_set_allocator,
             quad_indices,
             quad_verts,
-            shared_images: RwLock::new(HashMap::new()),
             shared_shaders: RwLock::new(HashMap::new()),
         };
 
