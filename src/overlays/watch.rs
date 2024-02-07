@@ -164,7 +164,7 @@ where
                 canvas.fg_color = color_parse(&normal_fg_color).unwrap_or(FALLBACK_COLOR);
 
                 for i in 0..num_devices {
-                    let label = canvas.label(
+                    let label = canvas.label_centered(
                         button_x + 2.,
                         button_y + 2.,
                         button_w - 4.,
@@ -322,7 +322,7 @@ fn battery_update(control: &mut Control<(), ElemState>, _: &mut (), app: &mut Ap
     let text = match device {
         Some(d) => d
             .soc
-            .map(|soc| format!("{}{}", tags[d.role as usize], soc as u32))
+            .map(|soc| format!("{}{}", tags[d.role as usize], (soc * 100.) as u32))
             .unwrap_or_else(|| "".into()),
         None => "".into(),
     };
