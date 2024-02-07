@@ -7,6 +7,7 @@ use std::{
     time::Duration,
 };
 
+use glam::Affine3A;
 use openxr as xr;
 use vulkano::{command_buffer::CommandBufferUsage, Handle, VulkanObject};
 
@@ -278,6 +279,17 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             if let Some(quad) = o.present_xr(&xr_state, &mut command_buffer) {
                 layers.push((dist_sq, quad));
             };
+        }
+
+        if layers.is_empty() && lines.num_pending() == 0 {
+            // HACK: we need to submit at least 1 layer, else the session hangs
+            lines.draw_from(
+                pointer_lines[0],
+                Affine3A::IDENTITY,
+                0.002,
+                0,
+                &app_state.input_state.hmd,
+            );
         }
 
         for quad in lines.present_xr(&xr_state, &mut command_buffer) {

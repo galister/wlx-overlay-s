@@ -7,6 +7,7 @@ use std::{
         atomic::{AtomicUsize, Ordering},
         Arc,
     },
+    usize,
 };
 
 use vulkano::{command_buffer::CommandBufferUsage, format::Format, image::view::ImageView};
@@ -151,6 +152,14 @@ impl LinePool {
         }
 
         quads
+    }
+
+    /// the number of lines that are waiting to be drawn
+    pub(super) fn num_pending(&self) -> usize {
+        self.lines
+            .values()
+            .filter(|l| l.maybe_line.is_some())
+            .count()
     }
 }
 
