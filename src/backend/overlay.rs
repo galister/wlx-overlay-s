@@ -27,6 +27,7 @@ pub struct OverlayState {
     pub interactable: bool,
     pub recenter: bool,
     pub dirty: bool,
+    pub alpha: f32,
     pub transform: Affine3A,
     pub saved_point: Option<Vec3A>,
     pub spawn_scale: f32, // aka width
@@ -49,6 +50,7 @@ impl Default for OverlayState {
             recenter: false,
             interactable: false,
             dirty: true,
+            alpha: 1.0,
             relative_to: RelativeTo::None,
             saved_point: None,
             spawn_scale: 1.0,

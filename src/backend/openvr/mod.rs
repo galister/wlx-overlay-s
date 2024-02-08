@@ -20,15 +20,18 @@ use vulkano::{
 use crate::{
     backend::{
         input::interact,
-        openvr::{input::OpenVrInputSource, lines::LinePool, manifest::install_manifest},
+        openvr::{
+            input::{set_action_manifest, OpenVrInputSource},
+            lines::LinePool,
+            manifest::{install_manifest, uninstall_manifest},
+            overlay::OpenVrOverlayData,
+        },
         osc::OscSender,
     },
     graphics::WlxGraphics,
     overlays::watch::watch_fade,
     state::AppState,
 };
-
-use self::{input::action_manifest_path, manifest::uninstall_manifest, overlay::OpenVrOverlayData};
 
 use super::common::{BackendError, OverlayContainer, TaskType};
 
@@ -94,8 +97,8 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
     state.hid_provider.set_desktop_extent(overlays.extent);
 
-    if let Err(e) = input_mngr.set_action_manifest(action_manifest_path()) {
-        log::error!("Failed to set action manifest: {}", e.description());
+    if let Err(e) = set_action_manifest(&mut input_mngr) {
+        log::error!("{}", e.to_string());
         return Err(BackendError::Fatal);
     };
 

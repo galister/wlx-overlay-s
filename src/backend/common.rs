@@ -12,7 +12,7 @@ use crate::{
         keyboard::create_keyboard,
         screen::{get_screens_wayland, get_screens_x11},
         toast::Toast,
-        watch::create_watch,
+        watch::{create_watch, WATCH_NAME, WATCH_SCALE},
     },
     state::AppState,
 };
@@ -110,6 +110,10 @@ where
                 if o.state.want_visible && o.state.recenter {
                     o.state.reset(app, false);
                 }
+            }
+            // toggle watch back on if it was hidden
+            if !any_shown && *o.state.name == *WATCH_NAME {
+                o.state.spawn_scale = WATCH_SCALE * app.session.config.watch_scale;
             }
         })
     }

@@ -1,4 +1,5 @@
 use std::{
+    f32::consts::PI,
     io::Read,
     process::{self, Stdio},
     sync::Arc,
@@ -7,7 +8,7 @@ use std::{
 
 use chrono::Local;
 use chrono_tz::Tz;
-use glam::{vec2, Affine2, Vec3, Vec3A};
+use glam::{vec2, Affine2, Quat, Vec3, Vec3A};
 use serde::Deserialize;
 
 use crate::{
@@ -30,6 +31,7 @@ const FALLBACK_COLOR: Vec3 = Vec3 {
 };
 
 pub const WATCH_NAME: &str = "watch";
+pub const WATCH_SCALE: f32 = 0.11;
 
 pub fn create_watch<O>(state: &AppState, screens: &[OverlayData<O>]) -> OverlayData<O>
 where
@@ -85,12 +87,9 @@ where
                 };
 
                 let label = canvas.label(x, y, w, h, empty_str.clone());
-                label.state = Some(ElemState {
-                    clock: Some(ClockState {
-                        timezone: tz,
-                        format,
-                    }),
-                    ..Default::default()
+                label.state = Some(ElemState::Clock {
+                    timezone: tz,
+                    format,
                 });
                 label.on_update = Some(clock_update);
             }
@@ -104,15 +103,11 @@ where
                 canvas.font_size = font_size;
                 canvas.fg_color = color_parse(&fg_color).unwrap_or(FALLBACK_COLOR);
                 let label = canvas.label(x, y, w, h, empty_str.clone());
-                label.state = Some(ElemState {
-                    exec: Some(ExecState {
-                        last_exec: Instant::now(),
-                        interval,
-                        exec,
-                        child: None,
-                    }),
-                    button: None,
-                    ..Default::default()
+                label.state = Some(ElemState::AutoExec {
+                    last_exec: Instant::now(),
+                    interval,
+                    exec,
+                    child: None,
                 });
                 label.on_update = Some(exec_label_update);
             }
@@ -128,21 +123,29 @@ where
                 canvas.fg_color = color_parse(&fg_color).unwrap_or(FALLBACK_COLOR);
                 canvas.font_size = font_size;
                 let button = canvas.button(x, y, w, h, text.clone());
-                button.state = Some(ElemState {
-                    exec: Some(ExecState {
-                        last_exec: Instant::now(),
-                        interval: 0.,
-                        exec,
-                        child: None,
-                    }),
-                    button: Some(WatchButtonState {
-                        pressed_at: Instant::now(),
-                        mode: PointerMode::Left,
-                        overlay: None,
-                    }),
-                    ..Default::default()
-                });
+                button.state = Some(ElemState::ExecButton { exec, child: None });
                 button.on_press = Some(exec_button);
+            }
+            WatchElement::FuncButton {
+                rect: [x, y, w, h],
+                font_size,
+                bg_color,
+                fg_color,
+                func,
+                func_right,
+                func_middle,
+                text,
+            } => {
+                canvas.bg_color = color_parse(&bg_color).unwrap_or(FALLBACK_COLOR);
+                canvas.fg_color = color_parse(&fg_color).unwrap_or(FALLBACK_COLOR);
+                canvas.font_size = font_size;
+                let button = canvas.button(x, y, w, h, text.clone());
+                button.state = Some(ElemState::FuncButton {
+                    func,
+                    func_right,
+                    func_middle,
+                });
+                button.on_press = Some(btn_func_dn);
             }
             WatchElement::Batteries {
                 rect,
@@ -171,10 +174,7 @@ where
                         button_h - 4.,
                         empty_str.clone(),
                     );
-                    label.state = Some(ElemState {
-                        battery: Some(i as usize),
-                        ..Default::default()
-                    });
+                    label.state = Some(ElemState::Battery { device: i as _ });
                     label.on_update = Some(battery_update);
 
                     button_x += match layout {
@@ -215,13 +215,10 @@ where
                     button_h - 4.,
                     KEYBOARD_NAME.into(),
                 );
-                keyboard.state = Some(ElemState {
-                    button: Some(WatchButtonState {
-                        pressed_at: Instant::now(),
-                        overlay: Some(OverlaySelector::Name(KEYBOARD_NAME.into())),
-                        mode: PointerMode::Left,
-                    }),
-                    ..Default::default()
+                keyboard.state = Some(ElemState::OverlayButton {
+                    pressed_at: Instant::now(),
+                    mode: PointerMode::Left,
+                    overlay: OverlaySelector::Name(KEYBOARD_NAME.into()),
                 });
                 keyboard.on_press = Some(overlay_button_dn);
                 keyboard.on_release = Some(overlay_button_up);
@@ -246,13 +243,10 @@ where
                         button_h - 4.,
                         screen.state.name.clone(),
                     );
-                    button.state = Some(ElemState {
-                        button: Some(WatchButtonState {
-                            pressed_at: Instant::now(),
-                            overlay: Some(OverlaySelector::Id(screen.state.id)),
-                            mode: PointerMode::Left,
-                        }),
-                        ..Default::default()
+                    button.state = Some(ElemState::OverlayButton {
+                        pressed_at: Instant::now(),
+                        mode: PointerMode::Left,
+                        overlay: OverlaySelector::Id(screen.state.id),
                     });
 
                     button.on_press = Some(overlay_button_dn);
@@ -273,7 +267,7 @@ where
             size: (400, 200),
             want_visible: true,
             interactable: true,
-            spawn_scale: 0.11 * state.session.config.watch_scale,
+            spawn_scale: WATCH_SCALE * state.session.config.watch_scale,
             spawn_point: state.session.watch_pos.into(),
             spawn_rotation: state.session.watch_rot,
             interaction_transform,
@@ -285,37 +279,105 @@ where
     }
 }
 
-#[derive(Default)]
-struct ElemState {
-    battery: Option<usize>,
-    clock: Option<ClockState>,
-    exec: Option<ExecState>,
-    button: Option<WatchButtonState>,
+enum ElemState {
+    Battery {
+        device: usize,
+    },
+    Clock {
+        timezone: Option<Tz>,
+        format: Arc<str>,
+    },
+    AutoExec {
+        last_exec: Instant,
+        interval: f32,
+        exec: Vec<Arc<str>>,
+        child: Option<process::Child>,
+    },
+    OverlayButton {
+        pressed_at: Instant,
+        mode: PointerMode,
+        overlay: OverlaySelector,
+    },
+    ExecButton {
+        exec: Vec<Arc<str>>,
+        child: Option<process::Child>,
+    },
+    FuncButton {
+        func: ButtonFunc,
+        func_right: Option<ButtonFunc>,
+        func_middle: Option<ButtonFunc>,
+    },
 }
 
-struct ClockState {
-    timezone: Option<Tz>,
-    format: Arc<str>,
-}
-
-struct WatchButtonState {
-    pressed_at: Instant,
+fn btn_func_dn(
+    control: &mut Control<(), ElemState>,
+    _: &mut (),
+    app: &mut AppState,
     mode: PointerMode,
-    overlay: Option<OverlaySelector>,
-}
+) {
+    let ElemState::FuncButton {
+        func,
+        func_right,
+        func_middle,
+    } = control.state.as_ref().unwrap()
+    else {
+        log::error!("FuncButton state not found");
+        return;
+    };
 
-struct ExecState {
-    last_exec: Instant,
-    interval: f32,
-    exec: Vec<Arc<str>>,
-    child: Option<process::Child>,
+    let func = match mode {
+        PointerMode::Left => func,
+        PointerMode::Right => func_right.as_ref().unwrap_or(func),
+        PointerMode::Middle => func_middle.as_ref().unwrap_or(func),
+        _ => return,
+    };
+
+    match func {
+        ButtonFunc::HideWatch => {
+            app.tasks.enqueue(TaskType::Overlay(
+                OverlaySelector::Name(WATCH_NAME.into()),
+                Box::new(|app, o| {
+                    o.want_visible = false;
+                    o.spawn_scale = 0.0;
+                    app.tasks.enqueue(TaskType::Toast(Toast::new(
+                        "Watch hidden".into(),
+                        "Use show/hide button to restore.".into(),
+                    )))
+                }),
+            ));
+        }
+        ButtonFunc::SwitchWatchHand => {
+            app.tasks.enqueue(TaskType::Overlay(
+                OverlaySelector::Name(WATCH_NAME.into()),
+                Box::new(|app, o| {
+                    if let RelativeTo::Hand(0) = o.relative_to {
+                        o.relative_to = RelativeTo::Hand(1);
+                        o.spawn_rotation = app.session.watch_rot;
+                        o.spawn_rotation = app.session.watch_rot
+                            * Quat::from_rotation_x(PI)
+                            * Quat::from_rotation_z(PI);
+                        o.spawn_point = app.session.watch_pos.into();
+                        o.spawn_point.x *= -1.;
+                    } else {
+                        o.relative_to = RelativeTo::Hand(0);
+                        o.spawn_rotation = app.session.watch_rot;
+                        o.spawn_point = app.session.watch_pos.into();
+                    }
+                    app.tasks.enqueue(TaskType::Toast(Toast::new(
+                        "Watch switched".into(),
+                        "Check your other hand".into(),
+                    )))
+                }),
+            ));
+        }
+    }
 }
 
 fn battery_update(control: &mut Control<(), ElemState>, _: &mut (), app: &mut AppState) {
-    let state = control.state.as_ref().unwrap();
-    let device_idx = state.battery.unwrap();
-
-    let device = app.input_state.devices.get(device_idx);
+    let ElemState::Battery { device } = control.state.as_ref().unwrap() else {
+        return;
+    };
+    let device = app.input_state.devices.get(*device);
 
     let tags = ["", "H", "L", "R", "T"];
 
@@ -336,30 +398,37 @@ fn exec_button(
     _: &mut AppState,
     _mode: PointerMode,
 ) {
-    let state = control.state.as_mut().unwrap();
-    let exec = state.exec.as_mut().unwrap();
-    if let Some(child) = &mut exec.child {
-        match child.try_wait() {
+    let ElemState::ExecButton {
+        exec,
+        ref mut child,
+        ..
+    } = control.state.as_mut().unwrap()
+    else {
+        log::error!("ExecButton state not found");
+        return;
+    };
+    if let Some(proc) = child {
+        match proc.try_wait() {
             Ok(Some(code)) => {
                 if !code.success() {
                     log::error!("Child process exited with code: {}", code);
                 }
-                exec.child = None;
+                *child = None;
             }
             Ok(None) => {
                 log::warn!("Unable to launch child process: previous child not exited yet");
                 return;
             }
             Err(e) => {
-                exec.child = None;
+                *child = None;
                 log::error!("Error checking child process: {:?}", e);
             }
         }
     }
-    let args = exec.exec.iter().map(|s| s.as_ref()).collect::<Vec<&str>>();
+    let args = exec.iter().map(|s| s.as_ref()).collect::<Vec<&str>>();
     match process::Command::new(args[0]).args(&args[1..]).spawn() {
-        Ok(child) => {
-            exec.child = Some(child);
+        Ok(proc) => {
+            *child = Some(proc);
         }
         Err(e) => {
             log::error!("Failed to spawn process {:?}: {:?}", args, e);
@@ -368,16 +437,24 @@ fn exec_button(
 }
 
 fn exec_label_update(control: &mut Control<(), ElemState>, _: &mut (), _: &mut AppState) {
-    let state = control.state.as_mut().unwrap();
-    let exec = state.exec.as_mut().unwrap();
+    let ElemState::AutoExec {
+        ref mut last_exec,
+        interval,
+        exec,
+        ref mut child,
+    } = control.state.as_mut().unwrap()
+    else {
+        log::error!("AutoExec state not found");
+        return;
+    };
 
-    if let Some(mut child) = exec.child.take() {
-        match child.try_wait() {
+    if let Some(mut proc) = child.take() {
+        match proc.try_wait() {
             Ok(Some(code)) => {
                 if !code.success() {
                     log::error!("Child process exited with code: {}", code);
                 } else {
-                    if let Some(mut stdout) = child.stdout.take() {
+                    if let Some(mut stdout) = proc.stdout.take() {
                         let mut buf = String::new();
                         if let Ok(_) = stdout.read_to_string(&mut buf) {
                             control.set_text(&buf);
@@ -393,12 +470,12 @@ fn exec_label_update(control: &mut Control<(), ElemState>, _: &mut (), _: &mut A
                 }
             }
             Ok(None) => {
-                exec.child = Some(child);
+                *child = Some(proc);
                 // not exited yet
                 return;
             }
             Err(e) => {
-                exec.child = None;
+                *child = None;
                 log::error!("Error checking child process: {:?}", e);
                 return;
             }
@@ -406,20 +483,20 @@ fn exec_label_update(control: &mut Control<(), ElemState>, _: &mut (), _: &mut A
     }
 
     if Instant::now()
-        .saturating_duration_since(exec.last_exec)
+        .saturating_duration_since(*last_exec)
         .as_secs_f32()
-        > exec.interval
+        > *interval
     {
-        exec.last_exec = Instant::now();
-        let args = exec.exec.iter().map(|s| s.as_ref()).collect::<Vec<&str>>();
+        *last_exec = Instant::now();
+        let args = exec.iter().map(|s| s.as_ref()).collect::<Vec<&str>>();
 
         match process::Command::new(args[0])
             .args(&args[1..])
             .stdout(Stdio::piped())
             .spawn()
         {
-            Ok(child) => {
-                exec.child = Some(child);
+            Ok(proc) => {
+                *child = Some(proc);
             }
             Err(e) => {
                 log::error!("Failed to spawn process {:?}: {:?}", args, e);
@@ -429,17 +506,17 @@ fn exec_label_update(control: &mut Control<(), ElemState>, _: &mut (), _: &mut A
 }
 
 fn clock_update(control: &mut Control<(), ElemState>, _: &mut (), _: &mut AppState) {
-    let state = control.state.as_mut().unwrap();
-    let clock = state.clock.as_mut().unwrap();
+    let ElemState::Clock { timezone, format } = control.state.as_ref().unwrap() else {
+        log::error!("Clock state not found");
+        return;
+    };
 
-    let fmt = clock.format.clone();
-
-    if let Some(tz) = clock.timezone {
-        let date = Local::now().with_timezone(&tz);
-        control.set_text(&format!("{}", &date.format(&fmt)));
+    if let Some(tz) = timezone {
+        let date = Local::now().with_timezone(tz);
+        control.set_text(&format!("{}", &date.format(format)));
     } else {
         let date = Local::now();
-        control.set_text(&format!("{}", &date.format(&fmt)));
+        control.set_text(&format!("{}", &date.format(format)));
     }
 }
 
@@ -447,25 +524,41 @@ fn overlay_button_dn(
     control: &mut Control<(), ElemState>,
     _: &mut (),
     _: &mut AppState,
-    mode: PointerMode,
+    ptr_mode: PointerMode,
 ) {
-    let btn = control.state.as_mut().unwrap().button.as_mut().unwrap();
-    btn.pressed_at = Instant::now();
-    btn.mode = mode;
+    let ElemState::OverlayButton {
+        ref mut pressed_at,
+        ref mut mode,
+        ..
+    } = control.state.as_mut().unwrap()
+    else {
+        log::error!("OverlayButton state not found");
+        return;
+    };
+    *pressed_at = Instant::now();
+    *mode = ptr_mode;
 }
 
 fn overlay_button_up(control: &mut Control<(), ElemState>, _: &mut (), app: &mut AppState) {
-    let btn = control.state.as_mut().unwrap().button.as_mut().unwrap();
-    let selector = btn.overlay.as_ref().unwrap().clone();
+    let ElemState::OverlayButton {
+        pressed_at,
+        mode,
+        overlay,
+    } = control.state.as_ref().unwrap()
+    else {
+        log::error!("OverlayButton state not found");
+        return;
+    };
+
     if Instant::now()
-        .saturating_duration_since(btn.pressed_at)
+        .saturating_duration_since(*pressed_at)
         .as_millis()
         < 2000
     {
-        match btn.mode {
+        match mode {
             PointerMode::Left => {
                 app.tasks.enqueue(TaskType::Overlay(
-                    selector,
+                    overlay.clone(),
                     Box::new(|app, o| {
                         o.want_visible = !o.want_visible;
                         if o.recenter {
@@ -477,7 +570,7 @@ fn overlay_button_up(control: &mut Control<(), ElemState>, _: &mut (), app: &mut
             }
             PointerMode::Right => {
                 app.tasks.enqueue(TaskType::Overlay(
-                    selector,
+                    overlay.clone(),
                     Box::new(|app, o| {
                         o.recenter = !o.recenter;
                         o.grabbable = o.recenter;
@@ -493,7 +586,7 @@ fn overlay_button_up(control: &mut Control<(), ElemState>, _: &mut (), app: &mut
             }
             PointerMode::Middle => {
                 app.tasks.enqueue(TaskType::Overlay(
-                    selector,
+                    overlay.clone(),
                     Box::new(|app, o| {
                         o.interactable = !o.interactable;
                         if !o.interactable {
@@ -509,7 +602,7 @@ fn overlay_button_up(control: &mut Control<(), ElemState>, _: &mut (), app: &mut
         }
     } else {
         app.tasks.enqueue(TaskType::Overlay(
-            selector,
+            overlay.clone(),
             Box::new(|app, o| {
                 o.reset(app, true);
             }),
@@ -582,6 +675,22 @@ enum WatchElement {
         scr_bg_color: Arc<str>,
         layout: ListLayout,
     },
+    FuncButton {
+        rect: [f32; 4],
+        font_size: isize,
+        bg_color: Arc<str>,
+        fg_color: Arc<str>,
+        func: ButtonFunc,
+        func_right: Option<ButtonFunc>,
+        func_middle: Option<ButtonFunc>,
+        text: Arc<str>,
+    },
+}
+
+#[derive(Deserialize)]
+enum ButtonFunc {
+    HideWatch,
+    SwitchWatchHand,
 }
 
 #[derive(Deserialize)]
@@ -604,6 +713,11 @@ where
         .mut_by_selector(&OverlaySelector::Name(WATCH_NAME.into()))
         .unwrap();
 
+    if watch.state.spawn_scale < f32::EPSILON {
+        watch.state.want_visible = false;
+        return;
+    }
+
     let to_hmd = (watch.state.transform.translation - app.input_state.hmd.translation).normalize();
     let watch_normal = watch
         .state
@@ -612,9 +726,14 @@ where
         .normalize();
     let dot = to_hmd.dot(watch_normal);
 
-    if dot < app.session.config.watch_view_angle {
+    if dot < app.session.config.watch_view_angle_min {
         watch.state.want_visible = false;
     } else {
         watch.state.want_visible = true;
+
+        watch.state.alpha = (dot - app.session.config.watch_view_angle_min)
+            / (app.session.config.watch_view_angle_max - app.session.config.watch_view_angle_min);
+        watch.state.alpha += 0.1;
+        watch.state.alpha = watch.state.alpha.clamp(0., 1.);
     }
 }

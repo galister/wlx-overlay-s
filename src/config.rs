@@ -31,6 +31,10 @@ fn def_half() -> f32 {
     0.5
 }
 
+fn def_point7() -> f32 {
+    0.7
+}
+
 fn def_osc_port() -> u16 {
     9000
 }
@@ -53,7 +57,10 @@ pub struct GeneralConfig {
     pub watch_scale: f32,
 
     #[serde(default = "def_half")]
-    pub watch_view_angle: f32,
+    pub watch_view_angle_min: f32,
+
+    #[serde(default = "def_point7")]
+    pub watch_view_angle_max: f32,
 
     #[serde(default = "def_pw_tokens")]
     pub pw_tokens: Vec<(String, String)>,

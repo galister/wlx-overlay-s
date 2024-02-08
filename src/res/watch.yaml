@@ -40,9 +40,19 @@ watch_elements:
     rect: [0, 0, 400, 200]
     bg_color: "#353535"
 
+  - type: FuncButton
+    rect: [2, 162, 26, 36]
+    font_size: 14
+    bg_color: "#808040"
+    fg_color: "#ffffff"
+    func: SwitchWatchHand
+    func_right: HideWatch
+    func_middle: ~
+    text: "W"
+
   # bottom row, of keyboard + overlays
   - type: OverlayList
-    rect: [0, 160, 400, 40]
+    rect: [30, 160, 370, 40]
     font_size: 14
     kbd_fg_color: "#FFFFFF"
     kbd_bg_color: "#406050"
@@ -96,9 +106,9 @@ watch_elements:
     text: "Chicago" # change TZ2 label here
 
   - type: Batteries
-    rect: [0, 0, 400, 40]
+    rect: [0, 0, 400, 30]
     font_size: 14
-    num_devices: 9
+    num_devices: 6
     low_threshold: 15
     layout: Horizontal
     normal_fg_color: "#99BBAA"

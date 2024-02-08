@@ -1,5 +1,6 @@
-use std::{array, io::Write, path::Path, time::Duration};
+use std::{array, fs::File, io::Write, time::Duration};
 
+use anyhow::bail;
 use ovr_overlay::{
     input::{ActionHandle, ActionSetHandle, ActiveActionSet, InputManager, InputValueHandle},
     sys::{
@@ -12,6 +13,7 @@ use ovr_overlay::{
 
 use crate::{
     backend::input::{Haptics, TrackedDevice, TrackedDeviceRole},
+    config_io::CONFIG_ROOT_PATH,
     state::AppState,
 };
 
@@ -282,29 +284,42 @@ fn get_tracked_device(
     })
 }
 
-pub fn action_manifest_path() -> &'static Path {
-    let action_path = "/tmp/wlxoverlay-s/actions.json";
-    std::fs::create_dir_all("/tmp/wlxoverlay-s").unwrap();
+pub fn set_action_manifest(input: &mut InputManager) -> anyhow::Result<()> {
+    let action_path = CONFIG_ROOT_PATH.join("actions.json");
 
-    std::fs::File::create(action_path)
-        .unwrap()
-        .write_all(include_bytes!("../../res/actions.json"))
-        .unwrap();
+    if !action_path.is_file() {
+        File::create(&action_path)
+            .unwrap()
+            .write_all(include_bytes!("../../res/actions.json"))
+            .unwrap();
+    }
 
-    std::fs::File::create("/tmp/wlxoverlay-s/actions_binding_knuckles.json")
-        .unwrap()
-        .write_all(include_bytes!("../../res/actions_binding_knuckles.json"))
-        .unwrap();
+    let binding_path = CONFIG_ROOT_PATH.join("actions_binding_knuckles.json");
+    if !binding_path.is_file() {
+        File::create(&binding_path)
+            .unwrap()
+            .write_all(include_bytes!("../../res/actions_binding_knuckles.json"))
+            .unwrap();
+    }
 
-    std::fs::File::create("/tmp/wlxoverlay-s/actions_binding_vive.json")
-        .unwrap()
-        .write_all(include_bytes!("../../res/actions_binding_vive.json"))
-        .unwrap();
+    let binding_path = CONFIG_ROOT_PATH.join("actions_binding_vive.json");
+    if !binding_path.is_file() {
+        File::create(&binding_path)
+            .unwrap()
+            .write_all(include_bytes!("../../res/actions_binding_vive.json"))
+            .unwrap();
+    }
 
-    std::fs::File::create("/tmp/wlxoverlay-s/actions_binding_oculus.json")
-        .unwrap()
-        .write_all(include_bytes!("../../res/actions_binding_oculus.json"))
-        .unwrap();
+    let binding_path = CONFIG_ROOT_PATH.join("actions_binding_oculus.json");
+    if !binding_path.is_file() {
+        File::create(&binding_path)
+            .unwrap()
+            .write_all(include_bytes!("../../res/actions_binding_oculus.json"))
+            .unwrap();
+    }
 
-    Path::new(action_path)
+    if let Err(e) = input.set_action_manifest(action_path.as_path()) {
+        bail!("Failed to set action manifest: {}", e.description());
+    }
+    Ok(())
 }

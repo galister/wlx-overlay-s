@@ -59,6 +59,7 @@ impl OverlayData<OpenVrOverlayData> {
 
         self.upload_width(overlay);
         self.upload_color(overlay);
+        self.upload_alpha(overlay);
         self.upload_curvature(overlay);
         self.upload_sort_order(overlay);
 
@@ -77,6 +78,7 @@ impl OverlayData<OpenVrOverlayData> {
         if self.data.visible {
             if self.state.dirty {
                 self.upload_transform(overlay);
+                self.upload_alpha(overlay);
                 self.state.dirty = false;
             }
             self.upload_texture(overlay, graphics);
@@ -108,14 +110,21 @@ impl OverlayData<OpenVrOverlayData> {
         self.backend.pause(app);
     }
 
+    pub(super) fn upload_alpha(&self, overlay: &mut OverlayManager) {
+        let Some(handle) = self.data.handle else {
+            log::debug!("{}: No overlay handle", self.state.name);
+            return;
+        };
+        if let Err(e) = overlay.set_opacity(handle, self.state.alpha) {
+            panic!("Failed to set overlay alpha: {}", e);
+        }
+    }
+
     pub(super) fn upload_color(&self, overlay: &mut OverlayManager) {
         let Some(handle) = self.data.handle else {
             log::debug!("{}: No overlay handle", self.state.name);
             return;
         };
-        if let Err(e) = overlay.set_opacity(handle, self.data.color.w) {
-            panic!("Failed to set overlay opacity: {}", e);
-        }
         if let Err(e) = overlay.set_tint(
             handle,
             ovr_overlay::ColorTint {
