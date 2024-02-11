@@ -1,26 +1,24 @@
 # WlxOverlay-S
 
-A lightweight OpenXR/OpenVR overlay for Wayland desktops, inspired by XSOverlay.
+A lightweight OpenXR/OpenVR overlay for Wayland and X11 desktops, inspired by XSOverlay.
+
+WlxOverlay-S allows you to access your desktop screens while in VR.
+
+Compared to similar software, WlxOverlay-S aims to run alongside your other VR games or experiences and have as little performance impact as possible. The UI looks and rendering methods are kept simple and efficient as much as possible.
 
 This is the coming-together of two of my previous projects:
 - [WlxOverlay](https://github.com/galister/WlxOverlay) (SteamVR overlay written in C#)
 - [WlxOverlay-X](https://github.com/galister/wlx-overlay-x) (OpenXR overlay using StereoKit, written in Rust)
 
-# What does WlxOverlay-S do?
+# Join the Linux VR Community
 
-Simply put, this program allows you to access your desktop screens while in VR.
-
-Compared to similar software, WlxOverlay-S aims to run alongside your other VR games or experiences and have as little performance impact as possible. The UI looks and rendering methods are kept simple and efficient as much as possible.
-
-# Under Development
-
-This project is in a highly experimental state. If you would like to give this a go, you might want to talk to us first.
-
-We are available under the `wlxoverlay` chat room on either:
+We are available on either:
 - Discord: https://discord.gg/gHwJ2vwSWV
 - Matrix Space: `#linux-vr-adventures:matrix.org`
 
-# Usage
+Questions/issues specific to WlxOverlay-S will be handled in the `wlxoverlay` chat room.
+
+# First Setup
 
 Recommend grabbing [rustup](https://rustup.rs/) if you don't have it yet.
 
@@ -32,24 +30,68 @@ cargo run --release
 
 **If you get a screen share pop-up, check the terminal and select the screens in the order it tells you to.**
 
-You'll see a screen and keyboard. You can turn these on and off using the watch on your left wrist.
+SteamVR users: WlxOverlay-S will register itself for auto-start, so you will not need to start it every time.
 
-Right click: Touch (do not push down) the B/Y button on your controller to get a ORANGE laser, and pull the trigger.
+**Please continue reading the guide below.**
 
-Middle click: Same as right click, but A/X to get a PURPLE laser.
+# Getting Started
 
-Move screen: Point your laser on the screen and then grab using grip. Adjust distance using stick up/down while gripping.
+### Pointer Modes AKA Laser Colors
 
-Resize screen: While grabbing, pull trigger to get a RED laser and use stick up/down
+Much of the functionality in WlxOverlay-S depends on what color of laser you are using to interact with a UI element.
+Using the default settings, there are 3 modes:
+- Regular: Blue laser
+- Right-click: Orange laser
+- Middle-click: Purple laser
 
-Reset size/position: Click the button corresponding to the screen or keyboard on your watch, hold for 3s, then release.
+Please see the bindings section below on how to activate these modes.
 
-Show/hide: Quickly hide or show your selection of screens by double-tapping B/Y on your left controller.
+The guide here uses the colors for ease of getting started.
 
-Lock a screen in place: On your non-watch hand, touch B/Y to get an ORANGE laser and click the screen's button on your watch. You will no longer be able to grab the screen, it will not re-center in front of you when show, nor it will react to the show/hide shortcut.
+### The Watch
 
-Make a screen non-clickable: On your non-watch hand, touch A/X to get a PURPLE laser and click the screen's button on your watch. You will no longer get a laser when pointing to that screen. Repeat to toggle back off.
+Check your left wrist for the watch. The watch is your primary tool for controlling the app.
+
+![Watch usage guide](https://github.com/galister/wlx-overlay-s/blob/guide/wlx-watch.png)
+
+### The Screens
+
+Hovering a pointer over a screen will move the mouse. If there are more than one pointers hovering a screen, the pointer that was last used to click will take precedence.
+
+The click depends on the laser color:
+- Blue laser: Left click
+- Orange laser: Right click
+- Purple laser: Middle click
+- Stick up/down: Scroll wheel
+
+See the bindings section on how to grab, move and resize screens.
+
+### The keyboard
+
+The keyboard is fully customizable via the [keyboard.yaml](https://raw.githubusercontent.com/galister/wlx-overlay-s/main/src/res/keyboard.yaml) file. Download it into your `~/.config/wlxoverlay/` folder and edit it to your liking.
+
+Use the BLUE laser when typing regularly.
+While using ORANGE laser, all keystrokes will have SHIFT applied.
+Purple laser has no effect as of now.
+
+**Modifier Keys:** Modifier keys are sticky. They will remain depressed until you press a non-modifier key.
+
+### Default Bindings
+
+![Index Controller Bindings](https://github.com/galister/wlx-overlay-s/blob/guide/wlx-index.png)
+
+![Touch Controller Bindings](https://github.com/galister/wlx-overlay-s/blob/guide/wlx-oculus.png)
+
+If your bindings are not supported, please reach out. We would like to work with you and include additional bindings.
 
 # Known Issues
 
-While WiVRn technically supports EXTX_overlay, I do not recommend using this software with WiVRn at this time, due to WiVRn not being optimized for overlay apps. You will likely get ghosting or stuttering while rotating your head.
+**OpenXR: Segfault with release build**: If you run into this, please use debug build until we figure this out.
+
+**OpenXR: Overlay opacity**: Translucent overlays are not supported on OpenXR yet.
+
+**Scroll wheel doesn't work**: This seems to be an issue specific to Electron apps (Discord, Element, Slack, Spotify) on Wayland. Scrolling will work when using these in your web browser.
+
+**WiVRn support**: While WiVRn technically supports EXTX_overlay, I do not recommend using this software with WiVRn at this time, due to WiVRn not being optimized for overlay apps. You will likely get ghosting or stuttering while rotating your head.
+
+**X11 limitations**: DPI scaling and upright screens are not supported on X11.
