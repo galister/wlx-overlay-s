@@ -101,7 +101,7 @@
             {
                "inputs" : {
                   "click" : {
-                     "output" : "/actions/default/in/altclick"
+                     "output" : "/actions/default/in/spacedrag"
                   }
                },
                "mode" : "button",
