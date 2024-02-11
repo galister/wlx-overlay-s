@@ -38,11 +38,11 @@ SteamVR users: WlxOverlay-S will register itself for auto-start, so you will not
 
 ### Pointer Modes AKA Laser Colors
 
-Much of the functionality in WlxOverlay-S depends on what color of laser you are using to interact with a UI element.
+Much of the functionality in WlxOverlay-S depends on what color of laser you are using to interact with a UI element. \
 Using the default settings, there are 3 modes:
-- Regular: Blue laser
-- Right-click: Orange laser
-- Middle-click: Purple laser
+- Regular Mode: Blue laser
+- Right-click Mode: Orange laser
+- Middle-click Mode: Purple laser
 
 Please see the bindings section below on how to activate these modes.
 
@@ -68,13 +68,15 @@ See the bindings section on how to grab, move and resize screens.
 
 ### The keyboard
 
-The keyboard is fully customizable via the [keyboard.yaml](https://raw.githubusercontent.com/galister/wlx-overlay-s/main/src/res/keyboard.yaml) file. Download it into your `~/.config/wlxoverlay/` folder and edit it to your liking.
+The keyboard is fully customizable via the [keyboard.yaml](https://raw.githubusercontent.com/galister/wlx-overlay-s/main/src/res/keyboard.yaml) file. \
+Download it into your `~/.config/wlxoverlay/` folder and edit it to your liking.
 
-Use the BLUE laser when typing regularly.
-While using ORANGE laser, all keystrokes will have SHIFT applied.
-Purple laser has no effect as of now.
+Typing
+- Use the BLUE laser when typing regularly.
+- While using ORANGE laser, all keystrokes will have SHIFT applied.
+- Purple laser has no effect as of now.
 
-**Modifier Keys:** Modifier keys are sticky. They will remain depressed until you press a non-modifier key.
+**Modifier Keys** are sticky. They will remain pressed until you press a non-modifier key, or toggle them off.
 
 ### Default Bindings
 
@@ -82,7 +84,8 @@ Purple laser has no effect as of now.
 
 ![Touch Controller Bindings](https://github.com/galister/wlx-overlay-s/blob/guide/wlx-oculus.png)
 
-If your bindings are not supported, please reach out. We would like to work with you and include additional bindings.
+If your bindings are not supported, please reach out. \
+We would like to work with you and include additional bindings.
 
 # Known Issues
 
