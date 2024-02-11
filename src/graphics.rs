@@ -122,7 +122,7 @@ impl WlxGraphics {
         use std::ffi::{self, c_char, CString};
 
         use ash::vk::PhysicalDeviceDynamicRenderingFeatures;
-        use vulkano::Handle;
+        use vulkano::{Handle, Version};
         use winit::event_loop::EventLoop;
 
         let event_loop = EventLoop::new().unwrap();
@@ -142,12 +142,12 @@ impl WlxGraphics {
             })
             .collect::<Vec<_>>();
 
-        let vk_target_version = vk::make_api_version(0, 1, 3, 0); // Vulkan 1.1 guarantees multiview support
+        let vk_target_version = vk::make_api_version(0, 1, 3, 0);
         let target_version = vulkano::Version::V1_3;
         let library = VulkanLibrary::new().unwrap();
         let vk_entry = unsafe { ash::Entry::load().unwrap() };
 
-        let vk_app_info = vk::ApplicationInfo::builder()
+        let vk_app_info_raw = vk::ApplicationInfo::builder()
             .application_version(0)
             .engine_version(0)
             .api_version(vk_target_version);
@@ -158,7 +158,7 @@ impl WlxGraphics {
                     system,
                     std::mem::transmute(vk_entry.static_fn().get_instance_proc_addr),
                     &vk::InstanceCreateInfo::builder()
-                        .application_info(&vk_app_info)
+                        .application_info(&vk_app_info_raw)
                         .enabled_extension_names(&instance_extensions_raw)
                         as *const _ as *const _,
                 )
@@ -170,6 +170,9 @@ impl WlxGraphics {
                 library,
                 ash::vk::Instance::from_raw(vk_instance as _),
                 InstanceCreateInfo {
+                    application_version: Version::major_minor(0, 0),
+                    engine_version: Version::major_minor(0, 0),
+                    max_api_version: Some(Version::V1_3),
                     enabled_extensions: instance_extensions,
                     ..Default::default()
                 },
