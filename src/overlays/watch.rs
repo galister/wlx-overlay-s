@@ -148,7 +148,7 @@ where
                 button.on_press = Some(btn_func_dn);
             }
             WatchElement::Batteries {
-                rect,
+                rect: [x, y, w, h],
                 font_size,
                 num_devices,
                 normal_fg_color,
@@ -156,11 +156,11 @@ where
                 ..
             } => {
                 let num_buttons = num_devices as f32;
-                let mut button_x = rect[0];
-                let mut button_y = rect[1];
+                let mut button_x = x;
+                let mut button_y = y;
                 let (button_w, button_h) = match layout {
-                    ListLayout::Horizontal => (rect[2] / num_buttons, rect[3]),
-                    ListLayout::Vertical => (rect[2], rect[3] / num_buttons),
+                    ListLayout::Horizontal => (w / num_buttons, h),
+                    ListLayout::Vertical => (w, h / num_buttons),
                 };
 
                 canvas.font_size = font_size;
@@ -187,34 +187,18 @@ where
                     };
                 }
             }
-            WatchElement::OverlayList {
-                rect,
+            WatchElement::KeyboardButton {
+                rect: [x, y, w, h],
                 font_size,
-                kbd_fg_color,
-                kbd_bg_color,
-                scr_fg_color,
-                scr_bg_color,
-                layout,
+                fg_color,
+                bg_color,
+                text,
             } => {
-                let num_buttons = screens.len() + 1;
-                let mut button_x = rect[0];
-                let mut button_y = rect[1];
-                let (button_w, button_h) = match layout {
-                    ListLayout::Horizontal => (rect[2] / (num_buttons as f32), rect[3]),
-                    ListLayout::Vertical => (rect[2], rect[3] / (num_buttons as f32)),
-                };
-
-                canvas.bg_color = color_parse(&kbd_bg_color).unwrap_or(FALLBACK_COLOR);
-                canvas.fg_color = color_parse(&kbd_fg_color).unwrap_or(FALLBACK_COLOR);
+                canvas.bg_color = color_parse(&bg_color).unwrap_or(FALLBACK_COLOR);
+                canvas.fg_color = color_parse(&fg_color).unwrap_or(FALLBACK_COLOR);
                 canvas.font_size = font_size;
 
-                let keyboard = canvas.button(
-                    button_x + 2.,
-                    button_y + 2.,
-                    button_w - 4.,
-                    button_h - 4.,
-                    KEYBOARD_NAME.into(),
-                );
+                let keyboard = canvas.button(x, y, w, h, text);
                 keyboard.state = Some(ElemState::OverlayButton {
                     pressed_at: Instant::now(),
                     mode: PointerMode::Left,
@@ -222,20 +206,28 @@ where
                 });
                 keyboard.on_press = Some(overlay_button_dn);
                 keyboard.on_release = Some(overlay_button_up);
+                keyboard.on_scroll = Some(overlay_button_scroll);
+            }
+            WatchElement::OverlayList {
+                rect: [x, y, w, h],
+                font_size,
+                fg_color,
+                bg_color,
+                layout,
+            } => {
+                let num_buttons = screens.len() as f32;
+                let mut button_x = x;
+                let mut button_y = y;
+                let (button_w, button_h) = match layout {
+                    ListLayout::Horizontal => (w / num_buttons, h),
+                    ListLayout::Vertical => (w, h / num_buttons),
+                };
 
-                canvas.bg_color = color_parse(&scr_bg_color).unwrap_or(FALLBACK_COLOR);
-                canvas.fg_color = color_parse(&scr_fg_color).unwrap_or(FALLBACK_COLOR);
+                canvas.bg_color = color_parse(&bg_color).unwrap_or(FALLBACK_COLOR);
+                canvas.fg_color = color_parse(&fg_color).unwrap_or(FALLBACK_COLOR);
+                canvas.font_size = font_size;
 
                 for screen in screens.iter() {
-                    button_x += match layout {
-                        ListLayout::Horizontal => button_w,
-                        ListLayout::Vertical => 0.,
-                    };
-                    button_y += match layout {
-                        ListLayout::Horizontal => 0.,
-                        ListLayout::Vertical => button_h,
-                    };
-
                     let button = canvas.button(
                         button_x + 2.,
                         button_y + 2.,
@@ -251,6 +243,16 @@ where
 
                     button.on_press = Some(overlay_button_dn);
                     button.on_release = Some(overlay_button_up);
+                    button.on_scroll = Some(overlay_button_scroll);
+
+                    button_x += match layout {
+                        ListLayout::Horizontal => button_w,
+                        ListLayout::Vertical => 0.,
+                    };
+                    button_y += match layout {
+                        ListLayout::Horizontal => 0.,
+                        ListLayout::Vertical => button_h,
+                    };
                 }
             }
         }
@@ -384,7 +386,7 @@ fn battery_update(control: &mut Control<(), ElemState>, _: &mut (), app: &mut Ap
     let text = match device {
         Some(d) => d
             .soc
-            .map(|soc| format!("{}{}", tags[d.role as usize], (soc * 100.) as u32))
+            .map(|soc| format!("{}{}", tags[d.role as usize], (soc * 100.).min(99.) as u32))
             .unwrap_or_else(|| "".into()),
         None => "".into(),
     };
@@ -517,6 +519,38 @@ fn clock_update(control: &mut Control<(), ElemState>, _: &mut (), _: &mut AppSta
     } else {
         let date = Local::now();
         control.set_text(&format!("{}", &date.format(format)));
+    }
+}
+
+fn overlay_button_scroll(
+    control: &mut Control<(), ElemState>,
+    _: &mut (),
+    app: &mut AppState,
+    delta: f32,
+) {
+    let ElemState::OverlayButton { overlay, .. } = control.state.as_mut().unwrap() else {
+        log::error!("OverlayButton state not found");
+        return;
+    };
+
+    if delta > 0. {
+        app.tasks.enqueue(TaskType::Overlay(
+            overlay.clone(),
+            Box::new(|_, o| {
+                o.alpha = (o.alpha + 0.025).min(1.);
+                o.dirty = true;
+                log::debug!("{}: alpha {}", o.name, o.alpha);
+            }),
+        ));
+    } else {
+        app.tasks.enqueue(TaskType::Overlay(
+            overlay.clone(),
+            Box::new(|_, o| {
+                o.alpha = (o.alpha - 0.025).max(0.1);
+                o.dirty = true;
+                log::debug!("{}: alpha {}", o.name, o.alpha);
+            }),
+        ));
     }
 }
 
@@ -666,13 +700,18 @@ enum WatchElement {
         charging_bg_color: Arc<str>,
         layout: ListLayout,
     },
+    KeyboardButton {
+        rect: [f32; 4],
+        font_size: isize,
+        fg_color: Arc<str>,
+        bg_color: Arc<str>,
+        text: Arc<str>,
+    },
     OverlayList {
         rect: [f32; 4],
         font_size: isize,
-        kbd_fg_color: Arc<str>,
-        kbd_bg_color: Arc<str>,
-        scr_fg_color: Arc<str>,
-        scr_bg_color: Arc<str>,
+        fg_color: Arc<str>,
+        bg_color: Arc<str>,
         layout: ListLayout,
     },
     FuncButton {

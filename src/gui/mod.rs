@@ -397,7 +397,16 @@ impl<D, S> InteractionHandler for Canvas<D, S> {
             }
         }
     }
-    fn on_scroll(&mut self, _app: &mut AppState, _hit: &PointerHit, _delta: f32) {}
+    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta: f32) {
+        let idx = self.hover_controls[hit.pointer];
+
+        if let Some(idx) = idx {
+            let c = &mut self.controls[idx];
+            if let Some(ref mut f) = c.on_scroll {
+                f(c, &mut self.canvas.data, app, delta);
+            }
+        }
+    }
 }
 
 impl<D, S> OverlayRenderer for Canvas<D, S> {
@@ -511,6 +520,7 @@ pub struct Control<D, S> {
     pub on_update: Option<fn(&mut Self, &mut D, &mut AppState)>,
     pub on_press: Option<fn(&mut Self, &mut D, &mut AppState, PointerMode)>,
     pub on_release: Option<fn(&mut Self, &mut D, &mut AppState)>,
+    pub on_scroll: Option<fn(&mut Self, &mut D, &mut AppState, f32)>,
     pub test_highlight: Option<fn(&Self, &mut D, &mut AppState) -> Option<Vec4>>,
 
     on_render_bg: Option<fn(&Self, &CanvasData<D>, &mut AppState, &mut WlxCommandBuffer)>,
@@ -540,6 +550,7 @@ impl<D, S> Control<D, S> {
             test_highlight: None,
             on_press: None,
             on_release: None,
+            on_scroll: None,
         }
     }
 
