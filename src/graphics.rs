@@ -80,7 +80,7 @@ use vulkano::{
         fence::Fence, future::NowFuture, AccessFlags, DependencyInfo, GpuFuture,
         ImageMemoryBarrier, PipelineStages,
     },
-    DeviceSize, VulkanLibrary, VulkanObject,
+    DeviceSize, VulkanObject,
 };
 
 use wlx_capture::frame::{
@@ -252,13 +252,15 @@ impl WlxGraphics {
             ..Default::default()
         };
 
-        let queue_create_info = vk::DeviceQueueCreateInfo::builder()
+        let queue_priorities = [1.0];
+
+        let queue_create_infos = [vk::DeviceQueueCreateInfo::builder()
             .queue_family_index(queue_family_index)
-            .queue_priorities(&[1.0])
-            .build();
+            .queue_priorities(&queue_priorities)
+            .build()];
 
         let mut device_create_info = vk::DeviceCreateInfo::builder()
-            .queue_create_infos(&[queue_create_info])
+            .queue_create_infos(&queue_create_infos)
             .enabled_extension_names(&device_extensions_raw)
             .build();
 
