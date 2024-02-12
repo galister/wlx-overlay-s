@@ -7,7 +7,7 @@ use std::{
         raw::c_void,
     },
     slice::Iter,
-    sync::{Arc, RwLock},
+    sync::{Arc, OnceLock, RwLock},
 };
 
 use ash::vk::{self, SubmitInfo};
@@ -116,6 +116,22 @@ pub struct WlxGraphics {
     pub shared_shaders: RwLock<HashMap<&'static str, Arc<ShaderModule>>>,
 }
 
+static VULKAN_LIBRARY: OnceLock<Arc<vulkano::VulkanLibrary>> = OnceLock::new();
+fn get_vulkan_library() -> &'static Arc<vulkano::VulkanLibrary> {
+    VULKAN_LIBRARY.get_or_init(|| vulkano::VulkanLibrary::new().unwrap())
+}
+
+#[cfg(feature = "openxr")]
+unsafe extern "system" fn get_instance_proc_addr(
+    instance: openxr::sys::platform::VkInstance,
+    name: *const std::ffi::c_char,
+) -> Option<unsafe extern "system" fn()> {
+    use vulkano::Handle;
+    let instance = ash::vk::Instance::from_raw(instance as _);
+    let library = get_vulkan_library();
+    library.get_instance_proc_addr(instance, name)
+}
+
 impl WlxGraphics {
     #[cfg(feature = "openxr")]
     pub fn new_openxr(xr_instance: openxr::Instance, system: openxr::SystemId) -> Arc<Self> {
@@ -144,8 +160,7 @@ impl WlxGraphics {
 
         let vk_target_version = vk::make_api_version(0, 1, 3, 0);
         let target_version = vulkano::Version::V1_3;
-        let library = VulkanLibrary::new().unwrap();
-        let vk_entry = unsafe { ash::Entry::load().unwrap() };
+        let library = get_vulkan_library();
 
         let vk_app_info_raw = vk::ApplicationInfo::builder()
             .application_version(0)
@@ -156,7 +171,7 @@ impl WlxGraphics {
             let vk_instance = xr_instance
                 .create_vulkan_instance(
                     system,
-                    std::mem::transmute(vk_entry.static_fn().get_instance_proc_addr),
+                    get_instance_proc_addr,
                     &vk::InstanceCreateInfo::builder()
                         .application_info(&vk_app_info_raw)
                         .enabled_extension_names(&instance_extensions_raw)
@@ -167,7 +182,7 @@ impl WlxGraphics {
                 .expect("Vulkan error creating Vulkan instance");
 
             Instance::from_handle(
-                library,
+                library.clone(),
                 ash::vk::Instance::from_raw(vk_instance as _),
                 InstanceCreateInfo {
                     application_version: Version::major_minor(0, 0),
@@ -258,7 +273,7 @@ impl WlxGraphics {
             let vk_device = xr_instance
                 .create_vulkan_device(
                     system,
-                    std::mem::transmute(vk_entry.static_fn().get_instance_proc_addr),
+                    get_instance_proc_addr,
                     physical_device.handle().as_raw() as _,
                     (&device_create_info) as *const _ as *const _,
                 )
@@ -332,14 +347,12 @@ impl WlxGraphics {
         //#[cfg(not(debug_assertions))]
         let layers = vec![];
 
-        let library = VulkanLibrary::new().unwrap();
-
         log::debug!("Instance exts for runtime: {:?}", &vk_instance_extensions);
 
         vk_instance_extensions.khr_get_physical_device_properties2 = true;
 
         let instance = Instance::new(
-            library,
+            get_vulkan_library().clone(),
             InstanceCreateInfo {
                 flags: InstanceCreateFlags::ENUMERATE_PORTABILITY,
                 enabled_extensions: vk_instance_extensions,
