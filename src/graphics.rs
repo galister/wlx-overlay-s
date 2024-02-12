@@ -272,6 +272,7 @@ impl WlxGraphics {
                 DeviceCreateInfo {
                     queue_create_infos: vec![QueueCreateInfo {
                         queue_family_index,
+                        queues: vec![1.0],
                         ..Default::default()
                     }],
                     enabled_extensions: device_extensions,
