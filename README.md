@@ -91,7 +91,14 @@ We would like to work with you and include additional bindings.
 
 ## OpenXR: Segfault with release build
 
-If you run into this, please use debug build until we figure this out.
+We are currently not sure what causes this.
+If you are affected, you can either revert to using debug builds,
+or alternatively add the following to `Cargo.toml` to only do basic optimizations:
+
+```toml
+[profile.release]
+opt-level = 1
+```
 
 ## OpenXR: Overlay opacity
 
