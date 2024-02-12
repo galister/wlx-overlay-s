@@ -89,12 +89,29 @@ We would like to work with you and include additional bindings.
 
 # Known Issues
 
-**OpenXR: Segfault with release build**: If you run into this, please use debug build until we figure this out.
+## OpenXR: Segfault with release build
 
-**OpenXR: Overlay opacity**: Translucent overlays are not supported on OpenXR yet.
+We are currently not sure what causes this.
+If you are affected, you can either revert to using debug builds,
+or alternatively add the following to `Cargo.toml` to only do basic optimizations:
 
-**Scroll wheel doesn't work**: This seems to be an issue specific to Electron apps (Discord, Element, Slack, Spotify) on Wayland. Scrolling will work when using these in your web browser.
+```toml
+[profile.release]
+opt-level = 1
+```
 
-**WiVRn support**: While WiVRn technically supports EXTX_overlay, I do not recommend using this software with WiVRn at this time, due to WiVRn not being optimized for overlay apps. You will likely get ghosting or stuttering while rotating your head.
+## OpenXR: Overlay opacity
 
-**X11 limitations**: DPI scaling and upright screens are not supported on X11.
+Translucent overlays are not supported on OpenXR yet.
+
+## Scroll wheel doesn't work
+
+This seems to be an issue specific to Electron apps (Discord, Element, Slack, Spotify) on Wayland. Scrolling will work when using these in your web browser.
+
+## WiVRn support
+
+While WiVRn technically supports EXTX_overlay, I do not recommend using this software with WiVRn at this time, due to WiVRn not being optimized for overlay apps. You will likely get ghosting or stuttering while rotating your head.
+
+## X11 limitations
+
+DPI scaling and upright screens are not supported on X11.
