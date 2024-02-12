@@ -744,14 +744,10 @@ enum LeftRight {
     Right,
 }
 
-pub fn watch_fade<D>(app: &mut AppState, overlays: &mut OverlayContainer<D>)
+pub fn watch_fade<D>(app: &mut AppState, watch: &mut OverlayData<D>)
 where
     D: Default,
 {
-    let watch = overlays
-        .mut_by_selector(&OverlaySelector::Name(WATCH_NAME.into()))
-        .unwrap();
-
     if watch.state.spawn_scale < f32::EPSILON {
         watch.state.want_visible = false;
         return;

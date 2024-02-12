@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use glam::Affine3A;
+use glam::{Affine3A, Vec3};
 use openxr as xr;
 use vulkano::{command_buffer::CommandBufferUsage, Handle, VulkanObject};
 
@@ -19,7 +19,7 @@ use crate::{
         osc::OscSender,
     },
     graphics::WlxGraphics,
-    overlays::watch::watch_fade,
+    overlays::watch::{watch_fade, WATCH_NAME},
     state::AppState,
 };
 
@@ -106,6 +106,8 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         lines.allocate(&xr_state, app_state.graphics.clone()),
         lines.allocate(&xr_state, app_state.graphics.clone()),
     ];
+
+    let watch_id = overlays.get_by_name(WATCH_NAME).unwrap().state.id;
 
     let input_source = input::OpenXrInputSource::new(&xr_state);
 
@@ -212,7 +214,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             }
         }
 
-        watch_fade(&mut app_state, &mut overlays);
+        watch_fade(&mut app_state, overlays.mut_by_id(watch_id).unwrap());
 
         overlays
             .iter_mut()
@@ -252,6 +254,17 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             }
         }
 
+        let watch = overlays.mut_by_id(watch_id).unwrap();
+        let watch_transform = watch.state.transform;
+        if !watch.state.want_visible {
+            watch.state.want_visible = true;
+            watch.state.transform = Affine3A::from_scale(Vec3 {
+                x: 0.001,
+                y: 0.001,
+                z: 0.001,
+            });
+        }
+
         let mut layers = vec![];
         let mut command_buffer = app_state
             .graphics
@@ -281,17 +294,6 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             };
         }
 
-        if layers.is_empty() && lines.num_pending() == 0 {
-            // HACK: we need to submit at least 1 layer, else the session hangs
-            lines.draw_from(
-                pointer_lines[0],
-                Affine3A::IDENTITY,
-                0.002,
-                0,
-                &app_state.input_state.hmd,
-            );
-        }
-
         for quad in lines.present_xr(&xr_state, &mut command_buffer) {
             layers.push((0.0, quad));
         }
@@ -314,6 +316,9 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             .unwrap();
 
         app_state.hid_provider.on_new_frame();
+
+        let watch = overlays.mut_by_id(watch_id).unwrap();
+        watch.state.transform = watch_transform;
     }
 
     Ok(())

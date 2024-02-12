@@ -29,7 +29,7 @@ use crate::{
         osc::OscSender,
     },
     graphics::WlxGraphics,
-    overlays::watch::watch_fade,
+    overlays::watch::{watch_fade, WATCH_NAME},
     state::AppState,
 };
 
@@ -117,6 +117,8 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
     log::info!("HMD running @ {} Hz", refresh_rate);
 
+    let watch_id = overlays.get_by_name(WATCH_NAME).unwrap().state.id;
+
     let frame_time = (1000.0 / refresh_rate).floor() * 0.001;
     let mut next_device_update = Instant::now();
     let mut due_tasks = VecDeque::with_capacity(4);
@@ -183,7 +185,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             .iter_mut()
             .for_each(|o| o.state.auto_movement(&mut state));
 
-        watch_fade(&mut state, &mut overlays);
+        watch_fade(&mut state, overlays.mut_by_id(watch_id).unwrap());
         space_mover.update(&mut chaperone_mgr, &mut overlays, &state);
 
         let lengths_haptics = interact(&mut overlays, &mut state);
