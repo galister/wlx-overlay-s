@@ -248,9 +248,10 @@ impl OpenVrInputSource {
             }
         }
         app.input_state.devices.sort_by(|a, b| {
-            (a.role as u8)
-                .cmp(&(b.role as u8))
-                .then(a.index.0.cmp(&b.index.0))
+            (a.soc.is_none() as u8)
+                .cmp(&(b.soc.is_none() as u8))
+                .then((a.role as u8).cmp(&(b.role as u8)))
+                .then(a.soc.unwrap_or(999.).total_cmp(&b.soc.unwrap_or(999.)))
         });
     }
 }

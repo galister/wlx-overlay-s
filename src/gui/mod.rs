@@ -563,6 +563,15 @@ impl<D, S> Control<D, S> {
         self.dirty = true;
     }
 
+    #[inline(always)]
+    pub fn set_fg_color(&mut self, color: Vec3) {
+        if self.fg_color == color {
+            return;
+        }
+        self.fg_color = color;
+        self.dirty = true;
+    }
+
     fn render_rect(
         &self,
         canvas: &CanvasData<D>,

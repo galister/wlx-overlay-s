@@ -114,14 +114,14 @@ watch_elements:
     rect: [0, 0, 400, 30]
     font_size: 14
     num_devices: 9
-    low_threshold: 15
+    low_threshold: 20
     layout: Horizontal
     normal_fg_color: "#99BBAA"
     # below is not yet implemented
     normal_bg_color: "#353535"
-    low_fg_color: "#604040"
+    low_fg_color: "#B06060"
     low_bg_color: "#353535"
-    charging_fg_color: "#204070"
+    charging_fg_color: "#6080A0"
     charging_bg_color: "#353535"
 
   # sample

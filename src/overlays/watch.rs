@@ -152,6 +152,9 @@ where
                 font_size,
                 num_devices,
                 normal_fg_color,
+                low_fg_color,
+                charging_fg_color,
+                low_threshold,
                 layout,
                 ..
             } => {
@@ -163,8 +166,11 @@ where
                     ListLayout::Vertical => (w, h / num_buttons),
                 };
 
+                let fg_color = color_parse(&normal_fg_color).unwrap_or(FALLBACK_COLOR);
+                let fg_color_low = color_parse(&low_fg_color).unwrap_or(FALLBACK_COLOR);
+                let fg_color_charging = color_parse(&charging_fg_color).unwrap_or(FALLBACK_COLOR);
                 canvas.font_size = font_size;
-                canvas.fg_color = color_parse(&normal_fg_color).unwrap_or(FALLBACK_COLOR);
+                canvas.fg_color = fg_color;
 
                 for i in 0..num_devices {
                     let label = canvas.label_centered(
@@ -174,7 +180,13 @@ where
                         button_h - 4.,
                         empty_str.clone(),
                     );
-                    label.state = Some(ElemState::Battery { device: i as _ });
+                    label.state = Some(ElemState::Battery {
+                        device: i as _,
+                        low_threshold: low_threshold * 0.01,
+                        fg_color,
+                        fg_color_low,
+                        fg_color_charging,
+                    });
                     label.on_update = Some(battery_update);
 
                     button_x += match layout {
@@ -284,6 +296,10 @@ where
 enum ElemState {
     Battery {
         device: usize,
+        low_threshold: f32,
+        fg_color: Vec3,
+        fg_color_low: Vec3,
+        fg_color_charging: Vec3,
     },
     Clock {
         timezone: Option<Tz>,
@@ -376,22 +392,45 @@ fn btn_func_dn(
 }
 
 fn battery_update(control: &mut Control<(), ElemState>, _: &mut (), app: &mut AppState) {
-    let ElemState::Battery { device } = control.state.as_ref().unwrap() else {
+    let ElemState::Battery {
+        device,
+        low_threshold,
+        fg_color,
+        fg_color_low,
+        fg_color_charging,
+    } = control.state.as_ref().unwrap()
+    else {
         return;
     };
     let device = app.input_state.devices.get(*device);
 
     let tags = ["", "H", "L", "R", "T"];
 
-    let text = match device {
-        Some(d) => d
+    if let Some(device) = device {
+        let (text, color) = device
             .soc
-            .map(|soc| format!("{}{}", tags[d.role as usize], (soc * 100.).min(99.) as u32))
-            .unwrap_or_else(|| "".into()),
-        None => "".into(),
-    };
+            .map(|soc| {
+                let text = format!(
+                    "{}{}",
+                    tags[device.role as usize],
+                    (soc * 100.).min(99.) as u32
+                );
+                let color = if device.charging {
+                    *fg_color_charging
+                } else if soc < *low_threshold {
+                    *fg_color_low
+                } else {
+                    *fg_color
+                };
+                (text, color)
+            })
+            .unwrap_or_else(|| ("".into(), Vec3::ZERO));
 
-    control.set_text(&text);
+        control.set_text(&text);
+        control.set_fg_color(color);
+    } else {
+        control.set_text("");
+    }
 }
 
 fn exec_button(
