@@ -135,10 +135,11 @@ impl LinePool {
             if let Some(inner) = line.maybe_line.take() {
                 let quad = xr::CompositionLayerQuad::new()
                     .pose(inner.pose)
-                    .sub_image(
-                        line.swapchain
-                            .acquire_present_release(command_buffer, inner.view),
-                    )
+                    .sub_image(line.swapchain.acquire_present_release(
+                        command_buffer,
+                        inner.view,
+                        1.0,
+                    ))
                     .eye_visibility(xr::EyeVisibility::BOTH)
                     .layer_flags(xr::CompositionLayerFlags::CORRECT_CHROMATIC_ABERRATION)
                     .space(&xr.stage)

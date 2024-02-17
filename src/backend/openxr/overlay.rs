@@ -50,7 +50,7 @@ impl OverlayData<OpenXrOverlayData> {
             srd
         });
 
-        let sub_image = data.acquire_present_release(command_buffer, my_view);
+        let sub_image = data.acquire_present_release(command_buffer, my_view, self.state.alpha);
         let posef = helpers::transform_to_posef(&self.state.transform);
 
         let aspect_ratio = extent[1] as f32 / extent[0] as f32;

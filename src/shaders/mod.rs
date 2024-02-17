@@ -92,6 +92,10 @@ pub mod frag_srgb {
             layout (location = 0) out vec4 out_color;
 
             layout (set = 0, binding = 0) uniform sampler2D in_texture;
+            layout (set = 1, binding = 0) uniform AlphaBlock {
+                uniform float alpha;
+            };
+
 
             void main()
             {
@@ -102,6 +106,7 @@ pub mod frag_srgb {
                 vec4 lower = out_color/vec4(12.92);
 
                 out_color = mix(higher, lower, cutoff);
+                out_color.a = alpha;
             }
         ",
     }

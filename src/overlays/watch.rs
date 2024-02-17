@@ -13,7 +13,7 @@ use serde::Deserialize;
 
 use crate::{
     backend::{
-        common::{OverlayContainer, OverlaySelector, TaskType},
+        common::{OverlaySelector, TaskType},
         input::PointerMode,
         overlay::{OverlayData, OverlayState, RelativeTo},
     },

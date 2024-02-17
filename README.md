@@ -100,10 +100,6 @@ or alternatively add the following to `Cargo.toml` to only do basic optimization
 opt-level = 1
 ```
 
-## OpenXR: Overlay opacity
-
-Translucent overlays are not supported on OpenXR yet.
-
 ## Scroll wheel doesn't work
 
 This seems to be an issue specific to Electron apps (Discord, Element, Slack, Spotify) on Wayland. Scrolling will work when using these in your web browser.

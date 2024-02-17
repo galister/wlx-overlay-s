@@ -4,8 +4,8 @@ use anyhow::bail;
 use ovr_overlay::{
     input::{ActionHandle, ActionSetHandle, ActiveActionSet, InputManager, InputValueHandle},
     sys::{
-        k_unMaxTrackedDeviceCount, ETrackedControllerRole, ETrackedDeviceClass,
-        ETrackedDeviceProperty, ETrackingUniverseOrigin,
+        ETrackedControllerRole, ETrackedDeviceClass, ETrackedDeviceProperty,
+        ETrackingUniverseOrigin,
     },
     system::SystemManager,
     TrackedDeviceIndex,

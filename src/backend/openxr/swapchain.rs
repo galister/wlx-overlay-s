@@ -87,6 +87,7 @@ impl SwapchainRenderData {
         &mut self,
         command_buffer: &mut WlxCommandBuffer,
         view: Arc<ImageView>,
+        alpha: f32,
     ) -> xr::SwapchainSubImage<xr::Vulkan> {
         let idx = self.swapchain.acquire_image().unwrap() as usize;
         self.swapchain.wait_image(xr::Duration::INFINITE).unwrap();
@@ -95,14 +96,18 @@ impl SwapchainRenderData {
         command_buffer.begin_rendering(render_target.clone());
 
         let target_extent = render_target.image().extent();
-        let set = self
+
+        let set0 = self
             .pipeline
             .uniform_sampler(0, view.clone(), Filter::Linear);
+
+        let set1 = self.pipeline.uniform_buffer(1, vec![alpha]);
+
         let pass = self.pipeline.create_pass(
             [target_extent[0] as _, target_extent[1] as _],
             command_buffer.graphics.quad_verts.clone(),
             command_buffer.graphics.quad_indices.clone(),
-            vec![set],
+            vec![set0, set1],
         );
         command_buffer.run_ref(&pass);
         command_buffer.end_rendering();
