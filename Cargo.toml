@@ -52,5 +52,7 @@ xdg = "2.5.2"
 openvr = ["dep:ovr_overlay", "dep:json"]
 openxr = ["dep:openxr"]
 osc = ["dep:rosc"]
-default = ["openvr", "openxr", "osc"]
+x11 = ["wlx-capture/xshm"]
+wayland = ["wlx-capture/pipewire", "wlx-capture/wlr"]
+default = ["openvr", "openxr", "osc", "x11", "wayland"]
 

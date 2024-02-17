@@ -229,6 +229,7 @@ pub struct ScreenRenderer {
 }
 
 impl ScreenRenderer {
+    #[cfg(feature = "wayland")]
     pub fn new_wlr(output: &WlxOutput) -> Option<ScreenRenderer> {
         let client = WlxClient::new()?;
         let capture = WlrDmabufCapture::new(client, output.id);
@@ -243,6 +244,7 @@ impl ScreenRenderer {
         })
     }
 
+    #[cfg(feature = "wayland")]
     pub fn new_pw(
         output: &WlxOutput,
         token: Option<&str>,
@@ -269,6 +271,7 @@ impl ScreenRenderer {
         ))
     }
 
+    #[cfg(feature = "x11")]
     pub fn new_xshm(screen: Arc<XshmScreen>) -> Option<ScreenRenderer> {
         let capture = XshmCapture::new(screen.clone());
 
@@ -441,6 +444,7 @@ impl OverlayRenderer for ScreenRenderer {
     }
 }
 
+#[cfg(feature = "wayland")]
 fn try_create_screen<O>(
     wl: &WlxClient,
     id: u32,
@@ -608,6 +612,15 @@ pub fn load_pw_token_config() -> Result<HashMap<String, String>, Box<dyn Error>>
     Ok(map)
 }
 
+#[cfg(not(feature = "wayland"))]
+pub fn get_screens_wayland<O>(_session: &AppSession) -> (Vec<OverlayData<O>>, Vec2)
+where
+    O: Default,
+{
+    panic!("Wayland support not enabled")
+}
+
+#[cfg(feature = "wayland")]
 pub fn get_screens_wayland<O>(session: &AppSession) -> (Vec<OverlayData<O>>, Vec2)
 where
     O: Default,
@@ -641,6 +654,15 @@ where
     (overlays, Vec2::new(extent.0 as f32, extent.1 as f32))
 }
 
+#[cfg(not(feature = "x11"))]
+pub fn get_screens_x11<O>(session: &AppSession) -> (Vec<OverlayData<O>>, Vec2)
+where
+    O: Default,
+{
+    panic!("X11 support not enabled")
+}
+
+#[cfg(feature = "x11")]
 pub fn get_screens_x11<O>(session: &AppSession) -> (Vec<OverlayData<O>>, Vec2)
 where
     O: Default,
