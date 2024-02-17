@@ -219,34 +219,48 @@ impl OpenVrInputSource {
 
     pub fn update_devices(&mut self, system: &mut SystemManager, app: &mut AppState) {
         app.input_state.devices.clear();
-        for i in 0..k_unMaxTrackedDeviceCount {
-            let index = TrackedDeviceIndex(i);
-            let maybe_role = match system.get_tracked_device_class(index) {
-                ETrackedDeviceClass::TrackedDeviceClass_HMD => Some(TrackedDeviceRole::Hmd),
-                ETrackedDeviceClass::TrackedDeviceClass_Controller => {
-                    let sys_role = system.get_controller_role_for_tracked_device_index(index);
-                    match sys_role {
-                        ETrackedControllerRole::TrackedControllerRole_LeftHand => {
-                            Some(TrackedDeviceRole::LeftHand)
-                        }
-                        ETrackedControllerRole::TrackedControllerRole_RightHand => {
-                            Some(TrackedDeviceRole::RightHand)
-                        }
-                        _ => None,
-                    }
+
+        get_tracked_device(system, TrackedDeviceIndex::HMD, TrackedDeviceRole::Hmd).and_then(
+            |device| {
+                app.input_state.devices.push(device);
+                Some(())
+            },
+        );
+
+        for controller_idx in system.get_sorted_tracked_device_indices_of_class(
+            ETrackedDeviceClass::TrackedDeviceClass_Controller,
+            TrackedDeviceIndex::HMD,
+        ) {
+            let sys_role = system.get_controller_role_for_tracked_device_index(controller_idx);
+            match sys_role {
+                ETrackedControllerRole::TrackedControllerRole_LeftHand => {
+                    Some(TrackedDeviceRole::LeftHand)
                 }
-                ETrackedDeviceClass::TrackedDeviceClass_GenericTracker => {
-                    Some(TrackedDeviceRole::Tracker)
+                ETrackedControllerRole::TrackedControllerRole_RightHand => {
+                    Some(TrackedDeviceRole::RightHand)
                 }
                 _ => None,
-            };
-
-            if let Some(role) = maybe_role {
-                if let Some(device) = get_tracked_device(system, index, role) {
-                    app.input_state.devices.push(device);
-                }
             }
+            .and_then(|role| {
+                get_tracked_device(system, controller_idx, role).and_then(|device| {
+                    app.input_state.devices.push(device);
+                    Some(())
+                })
+            });
         }
+
+        for tracker_idx in system.get_sorted_tracked_device_indices_of_class(
+            ETrackedDeviceClass::TrackedDeviceClass_GenericTracker,
+            TrackedDeviceIndex::HMD,
+        ) {
+            get_tracked_device(system, tracker_idx, TrackedDeviceRole::Tracker).and_then(
+                |device| {
+                    app.input_state.devices.push(device);
+                    Some(())
+                },
+            );
+        }
+
         app.input_state.devices.sort_by(|a, b| {
             (a.soc.is_none() as u8)
                 .cmp(&(b.soc.is_none() as u8))
