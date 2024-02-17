@@ -276,6 +276,20 @@ fn get_tracked_device(
         false
     };
 
+    // TODO: cache this
+    let is_alvr = system
+        .get_tracked_device_property(
+            index,
+            ETrackedDeviceProperty::Prop_TrackingSystemName_String,
+        )
+        .map(|x: String| x.contains("ALVR"))
+        .unwrap_or(false);
+
+    if is_alvr {
+        // don't show ALVR's fake trackers on battery panel
+        return None;
+    }
+
     Some(TrackedDevice {
         valid: true,
         index,
