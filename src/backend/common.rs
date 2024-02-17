@@ -55,12 +55,18 @@ where
         keyboard.state.want_visible = false;
         overlays.insert(keyboard.state.id, keyboard);
 
-        let mut first = true;
+        let mut show_screens = app.session.config.show_screens.clone();
+        if show_screens.is_empty() {
+            screens.first().and_then(|s| {
+                show_screens.push(s.state.name.clone());
+                Some(())
+            });
+        }
+
         for mut screen in screens {
-            if first {
+            if show_screens.contains(&screen.state.name) {
                 screen.state.show_hide = true;
                 screen.state.want_visible = false;
-                first = false;
             }
             overlays.insert(screen.state.id, screen);
         }

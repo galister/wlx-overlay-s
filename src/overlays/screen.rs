@@ -246,7 +246,6 @@ impl ScreenRenderer {
     pub fn new_pw(
         output: &WlxOutput,
         token: Option<&str>,
-        _fallback: bool,
     ) -> Option<(
         ScreenRenderer,
         Option<String>, /* pipewire restore token */
@@ -288,9 +287,18 @@ impl OverlayRenderer for ScreenRenderer {
     fn init(&mut self, _app: &mut AppState) {}
     fn render(&mut self, app: &mut AppState) {
         let receiver = self.receiver.get_or_insert_with(|| {
-            let _drm_formats = DRM_FORMATS.get_or_init({
+            let allow_dmabuf = &*app.session.config.capture_method != "pw_fallback";
+
+            let drm_formats = DRM_FORMATS.get_or_init({
                 let graphics = app.graphics.clone();
                 move || {
+                    if !allow_dmabuf {
+                        log::info!("Using MemFd capture due to pw_fallback");
+                        return vec![];
+                    }
+                    log::warn!("Using DMA-buf capture. If screens are blank for you, switch to SHM using:");
+                    log::warn!("echo 'capture_method: pw_fallback' > ~/.config/wlxoverlay/conf.d/pw_fallback.yaml");
+
                     let possible_formats = [
                         DRM_FORMAT_ABGR8888.into(),
                         DRM_FORMAT_XBGR8888.into(),
@@ -310,6 +318,8 @@ impl OverlayRenderer for ScreenRenderer {
                             modifiers: props
                                 .drm_format_modifier_properties
                                 .iter()
+                                // important bit: only allow single-plane
+                                .filter(|m| m.drm_format_modifier_plane_count == 1)
                                 .map(|m| m.drm_format_modifier)
                                 .collect(),
                         })
@@ -318,7 +328,7 @@ impl OverlayRenderer for ScreenRenderer {
                 }
             });
 
-            let rx = self.capture.init(&[]); // TODO: use drm_formats
+            let rx = self.capture.init(&drm_formats);
             self.capture.request_new_frame();
             rx
         });
@@ -333,8 +343,6 @@ impl OverlayRenderer for ScreenRenderer {
                         continue;
                     }
                     if let Some(new) = app.graphics.dmabuf_texture(frame) {
-                        log::info!("{}: New DMA-buf frame", self.name);
-
                         let view = ImageView::new_default(new.clone()).unwrap();
 
                         self.last_view = Some(view);
@@ -455,7 +463,7 @@ where
     let size = (output.size.0, output.size.1);
     let mut capture: Option<ScreenRenderer> = None;
 
-    if session.capture_method == "auto" && wl.maybe_wlr_dmabuf_mgr.is_some() {
+    if &*session.config.capture_method == "auto" && wl.maybe_wlr_dmabuf_mgr.is_some() {
         log::info!("{}: Using Wlr DMA-Buf", &output.name);
         capture = ScreenRenderer::new_wlr(output);
     }
@@ -475,9 +483,7 @@ where
             );
         }
 
-        if let Some((renderer, restore_token)) =
-            ScreenRenderer::new_pw(output, token, session.capture_method == "pw_fallback")
-        {
+        if let Some((renderer, restore_token)) = ScreenRenderer::new_pw(output, token) {
             capture = Some(renderer);
 
             if let Some(token) = restore_token {
@@ -541,7 +547,11 @@ where
             state: OverlayState {
                 name: output.name.clone(),
                 size,
-                want_visible: session.show_screens.iter().any(|s| s == &*output.name),
+                show_hide: session
+                    .config
+                    .show_screens
+                    .iter()
+                    .any(|s| s.as_ref() == output.name.as_ref()),
                 grabbable: true,
                 recenter: true,
                 interactable: true,
@@ -672,7 +682,11 @@ where
                 state: OverlayState {
                     name: s.name.clone(),
                     size,
-                    want_visible: session.show_screens.iter().any(|x| x == &*s.name),
+                    show_hide: session
+                        .config
+                        .show_screens
+                        .iter()
+                        .any(|x| x.as_ref() == s.name.as_ref()),
                     grabbable: true,
                     recenter: true,
                     interactable: true,

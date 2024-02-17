@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::config_io;
 use crate::config_io::get_conf_d_path;
 use crate::load_with_fallback;
@@ -39,6 +41,14 @@ fn def_osc_port() -> u16 {
     9000
 }
 
+fn def_screens() -> Vec<Arc<str>> {
+    vec![]
+}
+
+fn def_auto() -> Arc<str> {
+    "auto".into()
+}
+
 #[derive(Deserialize, Serialize)]
 pub struct GeneralConfig {
     #[serde(default = "def_click_freeze_time_ms")]
@@ -70,6 +80,12 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_false")]
     pub upright_screen_fix: bool,
+
+    #[serde(default = "def_screens")]
+    pub show_screens: Vec<Arc<str>>,
+
+    #[serde(default = "def_auto")]
+    pub capture_method: Arc<str>,
 }
 
 impl GeneralConfig {

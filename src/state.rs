@@ -66,15 +66,11 @@ pub struct AppSession {
     pub config_root_path: PathBuf,
     pub config: GeneralConfig,
 
-    pub show_screens: Vec<String>,
-
     pub watch_hand: usize,
     pub watch_pos: Vec3,
     pub watch_rot: Quat,
 
     pub primary_hand: usize,
-
-    pub capture_method: String,
 
     pub color_norm: Vec3,
     pub color_shift: Vec3,
@@ -91,8 +87,6 @@ impl AppSession {
         AppSession {
             config_root_path,
             config,
-            show_screens: vec!["DP-3".to_string()],
-            capture_method: "auto".to_string(),
             primary_hand: 1,
             watch_hand: 0,
             watch_pos: WATCH_DEFAULT_POS,
