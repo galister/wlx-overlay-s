@@ -16,7 +16,6 @@ use crate::{
         common::{OverlayContainer, TaskType},
         input::interact,
         openxr::{input::DoubleClickCounter, lines::LinePool, overlay::OpenXrOverlayData},
-        osc::OscSender,
     },
     graphics::WlxGraphics,
     overlays::watch::{watch_fade, WATCH_NAME},
@@ -65,7 +64,8 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     let mut lines = LinePool::new(app_state.graphics.clone());
 
     #[cfg(feature = "osc")]
-    let mut osc_sender = OscSender::new(app_state.session.config.osc_out_port).ok();
+    let mut osc_sender =
+        crate::backend::osc::OscSender::new(app_state.session.config.osc_out_port).ok();
 
     app_state.hid_provider.set_desktop_extent(overlays.extent);
 

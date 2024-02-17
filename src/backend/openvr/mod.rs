@@ -26,7 +26,6 @@ use crate::{
             manifest::{install_manifest, uninstall_manifest},
             overlay::OpenVrOverlayData,
         },
-        osc::OscSender,
     },
     graphics::WlxGraphics,
     overlays::watch::{watch_fade, WATCH_NAME},
@@ -93,7 +92,8 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
     let mut space_mover = playspace::PlayspaceMover::new();
     #[cfg(feature = "osc")]
-    let mut osc_sender = OscSender::new(state.session.config.osc_out_port).ok();
+    let mut osc_sender =
+        crate::backend::osc::OscSender::new(state.session.config.osc_out_port).ok();
 
     state.hid_provider.set_desktop_extent(overlays.extent);
 
