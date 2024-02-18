@@ -89,17 +89,6 @@ We would like to work with you and include additional bindings.
 
 # Known Issues
 
-## OpenXR: Segfault with release build
-
-We are currently not sure what causes this.
-If you are affected, you can either revert to using debug builds,
-or alternatively add the following to `Cargo.toml` to only do basic optimizations:
-
-```toml
-[profile.release]
-opt-level = 1
-```
-
 ## Scroll wheel doesn't work
 
 This seems to be an issue specific to Electron apps (Discord, Element, Slack, Spotify) on Wayland. Scrolling will work when using these in your web browser.
