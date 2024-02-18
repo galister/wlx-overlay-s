@@ -3,14 +3,24 @@
    "app_key" : "galister.wlxoverlay-s",
    "bindings" : {
       "/actions/default": {
-         "haptics" : [
+         "poses": [
             {
-               "output" : "/actions/default/out/hapticsleft",
-               "path" : "/user/hand/left/output/haptic"
+               "path": "/user/hand/left/pose/tip",
+               "output": "/actions/default/in/lefthand"
             },
             {
-               "output" : "/actions/default/out/hapticsright",
-               "path" : "/user/hand/right/output/haptic"
+               "path": "/user/hand/right/pose/tip",
+               "output": "/actions/default/in/righthand"
+            }
+         ],
+         "haptics": [
+            {
+               "output": "/actions/default/out/hapticsleft",
+               "path": "/user/hand/left/output/haptic"
+            },
+            {
+               "output": "/actions/default/out/hapticsright",
+               "path": "/user/hand/right/output/haptic"
             }
          ],
          "sources": [
@@ -54,7 +64,7 @@
                "path": "/user/hand/right/input/trackpad",
                "mode": "scroll",
                "parameters": {
-                  "scroll_mode": "smooth"
+                  "scroll_mode": "discrete"
                },
                "inputs": {
                   "scroll": {
@@ -65,6 +75,9 @@
             {
                "path": "/user/hand/left/input/trackpad",
                "mode": "scroll",
+               "parameters": {
+                  "scroll_mode": "discrete"
+               },
                "inputs": {
                   "scroll": {
                      "output": "/actions/default/in/scroll"
