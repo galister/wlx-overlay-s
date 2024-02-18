@@ -45,7 +45,7 @@ fn get_config_file_path(filename: &str) -> PathBuf {
 
 pub fn load(filename: &str) -> Option<String> {
     let path = get_config_file_path(filename);
-    println!("Loading config {}", path.to_string_lossy());
+    log::info!("Loading config {}", path.to_string_lossy());
 
     if let Ok(data) = fs::read_to_string(path) {
         Some(data)
@@ -60,7 +60,7 @@ macro_rules! load_with_fallback {
         if let Some(data) = config_io::load($filename) {
             data
         } else {
-            println!(
+            log::info!(
                 "Config {}/{} does not exist, using internal fallback",
                 config_io::CONFIG_ROOT_PATH.to_string_lossy(),
                 $filename

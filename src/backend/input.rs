@@ -395,10 +395,10 @@ impl Pointer {
             }
         }
 
-        hits.sort_by(|a, b| a.dist.partial_cmp(&b.dist).unwrap());
+        hits.sort_by(|a, b| a.dist.total_cmp(&b.dist));
 
         for hit in hits.iter() {
-            let overlay = overlays.get_by_id(hit.overlay).unwrap(); // this is safe
+            let overlay = overlays.get_by_id(hit.overlay).unwrap(); // safe because we just got the id from the overlay
 
             let uv = overlay
                 .state
@@ -447,27 +447,32 @@ impl Pointer {
         O: Default,
     {
         if self.now.grab {
-            let grab_data = self.interaction.grabbed.as_mut().unwrap();
-            if self.now.click {
-                self.interaction.mode = PointerMode::Special;
-                let cur_scale = overlay.state.transform.x_axis.length();
-                if cur_scale < 0.1 && self.now.scroll > 0.0 {
-                    return;
-                } else if cur_scale > 20. && self.now.scroll < 0.0 {
-                    return;
-                }
+            if let Some(grab_data) = self.interaction.grabbed.as_mut() {
+                if self.now.click {
+                    self.interaction.mode = PointerMode::Special;
+                    let cur_scale = overlay.state.transform.x_axis.length();
+                    if cur_scale < 0.1 && self.now.scroll > 0.0 {
+                        return;
+                    }
+                    if cur_scale > 20. && self.now.scroll < 0.0 {
+                        return;
+                    }
 
-                overlay.state.transform.matrix3 = overlay
-                    .state
-                    .transform
-                    .matrix3
-                    .mul_scalar(1.0 - 0.025 * self.now.scroll);
+                    overlay.state.transform.matrix3 = overlay
+                        .state
+                        .transform
+                        .matrix3
+                        .mul_scalar(1.0 - 0.025 * self.now.scroll);
+                } else {
+                    grab_data.offset.z -= self.now.scroll * 0.05;
+                }
+                overlay.state.transform.translation = self.pose.transform_point3a(grab_data.offset);
+                overlay.state.realign(hmd);
+                overlay.state.dirty = true;
             } else {
-                grab_data.offset.z -= self.now.scroll * 0.05;
+                log::error!("Grabbed overlay {} does not exist", overlay.state.id);
+                self.interaction.grabbed = None;
             }
-            overlay.state.transform.translation = self.pose.transform_point3a(grab_data.offset);
-            overlay.state.realign(hmd);
-            overlay.state.dirty = true;
         } else {
             overlay.state.saved_point = Some(
                 hmd.inverse()

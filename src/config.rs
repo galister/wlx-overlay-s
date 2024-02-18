@@ -135,7 +135,7 @@ pub fn load_general() -> GeneralConfig {
                 continue;
             }
 
-            println!("Loading config file {}", path.path().to_string_lossy());
+            log::info!("Loading config file {}", path.path().to_string_lossy());
 
             if let Ok(data) = std::fs::read_to_string(path.path()) {
                 yaml_data.push('\n'); // Just in case, if end of the config file was not newline

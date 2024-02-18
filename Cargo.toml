@@ -17,7 +17,7 @@ chrono = "0.4.29"
 chrono-tz = "0.8.5"
 cstr = "0.2.11"
 ctrlc = { version = "3.4.2", features = ["termination"] }
-env_logger = "0.10.0"
+flexi_logger = "0.27.4"
 fontconfig-rs = "0.1.1"
 freetype-rs = "0.32.0"
 futures = "0.3.29"

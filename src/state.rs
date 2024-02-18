@@ -1,5 +1,6 @@
 use std::{path::PathBuf, sync::Arc};
 
+use anyhow::bail;
 use glam::{Quat, Vec3};
 use vulkano::format::Format;
 
@@ -27,30 +28,30 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn from_graphics(graphics: Arc<WlxGraphics>) -> Self {
+    pub fn from_graphics(graphics: Arc<WlxGraphics>) -> anyhow::Result<Self> {
         // insert shared resources
         {
             let Ok(mut shaders) = graphics.shared_shaders.write() else {
-                panic!("Shared Shaders RwLock poisoned");
+                bail!("Failed to lock shared shaders");
             };
 
-            let shader = vert_common::load(graphics.device.clone()).unwrap();
+            let shader = vert_common::load(graphics.device.clone())?;
             shaders.insert("vert_common", shader);
 
-            let shader = frag_color::load(graphics.device.clone()).unwrap();
+            let shader = frag_color::load(graphics.device.clone())?;
             shaders.insert("frag_color", shader);
 
-            let shader = frag_glyph::load(graphics.device.clone()).unwrap();
+            let shader = frag_glyph::load(graphics.device.clone())?;
             shaders.insert("frag_glyph", shader);
 
-            let shader = frag_sprite::load(graphics.device.clone()).unwrap();
+            let shader = frag_sprite::load(graphics.device.clone())?;
             shaders.insert("frag_sprite", shader);
 
-            let shader = frag_srgb::load(graphics.device.clone()).unwrap();
+            let shader = frag_srgb::load(graphics.device.clone())?;
             shaders.insert("frag_srgb", shader);
         }
 
-        AppState {
+        Ok(AppState {
             fc: FontCache::new(),
             session: AppSession::load(),
             tasks: TaskContainer::new(),
@@ -58,7 +59,7 @@ impl AppState {
             format: Format::R8G8B8A8_UNORM,
             input_state: InputState::new(),
             hid_provider: crate::hid::initialize(),
-        }
+        })
     }
 }
 
@@ -81,7 +82,7 @@ pub struct AppSession {
 impl AppSession {
     pub fn load() -> Self {
         let config_root_path = config_io::ensure_config_root();
-        println!("Config root path: {}", config_root_path.to_string_lossy());
+        log::info!("Config root path: {}", config_root_path.to_string_lossy());
         let config = GeneralConfig::load_from_disk();
 
         AppSession {

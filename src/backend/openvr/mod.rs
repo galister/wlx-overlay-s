@@ -7,6 +7,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use anyhow::{anyhow, Result};
 use ovr_overlay::{
     sys::{ETrackedDeviceProperty, EVRApplicationType, EVREventType},
     TrackedDeviceIndex,
@@ -83,7 +84,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
     let mut state = {
         let graphics = WlxGraphics::new_openvr(instance_extensions, device_extensions_fn);
-        AppState::from_graphics(graphics)
+        AppState::from_graphics(graphics)?
     };
 
     install_manifest(&mut app_mgr);
@@ -97,22 +98,17 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
     state.hid_provider.set_desktop_extent(overlays.extent);
 
-    if let Err(e) = set_action_manifest(&mut input_mngr) {
-        log::error!("{}", e.to_string());
-        return Err(BackendError::Fatal);
-    };
+    set_action_manifest(&mut input_mngr)?;
 
-    let Ok(mut input_source) = OpenVrInputSource::new(&mut input_mngr) else {
-        log::error!("Failed to initialize input");
-        return Err(BackendError::Fatal);
-    };
+    let mut input_source = OpenVrInputSource::new(&mut input_mngr)?;
 
     let Ok(refresh_rate) = system_mngr.get_tracked_device_property::<f32>(
         TrackedDeviceIndex::HMD,
         ETrackedDeviceProperty::Prop_DisplayFrequency_Float,
     ) else {
-        log::error!("Failed to get display refresh rate");
-        return Err(BackendError::Fatal);
+        return Err(BackendError::Fatal(anyhow!(
+            "Failed to get HMD refresh rate"
+        )));
     };
 
     log::info!("HMD running @ {} Hz", refresh_rate);

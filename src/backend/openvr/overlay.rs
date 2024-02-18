@@ -92,7 +92,7 @@ impl OverlayData<OpenVrOverlayData> {
         };
         log::debug!("{}: show", self.state.name);
         if let Err(e) = overlay.set_visibility(handle, true) {
-            panic!("Failed to show overlay: {}", e);
+            log::error!("{}: Failed to show overlay: {}", self.state.name, e);
         }
         self.data.visible = true;
         self.backend.resume(app);
@@ -104,7 +104,7 @@ impl OverlayData<OpenVrOverlayData> {
         };
         log::debug!("{}: hide", self.state.name);
         if let Err(e) = overlay.set_visibility(handle, false) {
-            panic!("Failed to hide overlay: {}", e);
+            log::error!("{}: Failed to hide overlay: {}", self.state.name, e);
         }
         self.data.visible = false;
         self.backend.pause(app);
@@ -116,7 +116,7 @@ impl OverlayData<OpenVrOverlayData> {
             return;
         };
         if let Err(e) = overlay.set_opacity(handle, self.state.alpha) {
-            panic!("Failed to set overlay alpha: {}", e);
+            log::error!("{}: Failed to set overlay alpha: {}", self.state.name, e);
         }
     }
 
@@ -134,7 +134,7 @@ impl OverlayData<OpenVrOverlayData> {
                 a: self.data.color.w,
             },
         ) {
-            panic!("Failed to set overlay tint: {}", e);
+            log::error!("{}: Failed to set overlay tint: {}", self.state.name, e);
         }
     }
 
@@ -144,7 +144,7 @@ impl OverlayData<OpenVrOverlayData> {
             return;
         };
         if let Err(e) = overlay.set_width(handle, self.data.width) {
-            panic!("Failed to set overlay width: {}", e);
+            log::error!("{}: Failed to set overlay width: {}", self.state.name, e);
         }
     }
 
@@ -154,7 +154,11 @@ impl OverlayData<OpenVrOverlayData> {
             return;
         };
         if let Err(e) = overlay.set_curvature(handle, self.data.curvature) {
-            panic!("Failed to set overlay curvature: {}", e);
+            log::error!(
+                "{}: Failed to set overlay curvature: {}",
+                self.state.name,
+                e
+            );
         }
     }
 
@@ -164,7 +168,7 @@ impl OverlayData<OpenVrOverlayData> {
             return;
         };
         if let Err(e) = overlay.set_sort_order(handle, self.data.sort_order) {
-            panic!("Failed to set overlay z order: {}", e);
+            log::error!("{}: Failed to set overlay z order: {}", self.state.name, e);
         }
     }
 
@@ -181,7 +185,11 @@ impl OverlayData<OpenVrOverlayData> {
             ETrackingUniverseOrigin::TrackingUniverseStanding,
             &transform,
         ) {
-            panic!("Failed to set overlay transform: {}", e);
+            log::error!(
+                "{}: Failed to set overlay transform: {}",
+                self.state.name,
+                e
+            );
         }
     }
 
@@ -230,8 +238,7 @@ impl OverlayData<OpenVrOverlayData> {
             image.usage()
         );
         if let Err(e) = overlay.set_image_vulkan(handle, &mut texture) {
-            panic!("Failed to set overlay texture: {}", e);
+            log::error!("{}: Failed to set overlay texture: {}", self.state.name, e);
         }
-        log::debug!("{}: Uploaded texture", self.state.name);
     }
 }

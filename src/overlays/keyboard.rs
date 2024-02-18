@@ -87,7 +87,10 @@ where
                     });
                 } else if let Some(exec_args) = LAYOUT.exec_commands.get(key) {
                     maybe_state = Some(KeyButtonData::Exec {
-                        program: exec_args.first().unwrap().clone(),
+                        program: exec_args
+                            .first()
+                            .expect("Keyboard: Invalid EXEC args")
+                            .clone(),
                         args: exec_args.iter().skip(1).cloned().collect(),
                     });
                 } else {

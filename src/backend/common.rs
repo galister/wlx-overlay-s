@@ -6,6 +6,8 @@ use std::{
 
 use glam::{Affine3A, Vec2, Vec3A};
 use idmap::IdMap;
+use openxr as xr;
+use thiserror::Error;
 
 use crate::{
     overlays::{
@@ -18,11 +20,19 @@ use crate::{
 
 use super::overlay::{OverlayData, OverlayState};
 
+#[derive(Error, Debug)]
 pub enum BackendError {
+    #[error("backend not supported")]
     NotSupported,
+    #[cfg(feature = "openxr")]
+    #[error("openxr error {0}")]
+    OpenXrError(#[from] xr::sys::Result),
+    #[error("shutdown")]
     Shutdown,
+    #[error("restart")]
     Restart,
-    Fatal,
+    #[error("fatal")]
+    Fatal(#[from] anyhow::Error),
 }
 
 pub struct OverlayContainer<T>
@@ -191,6 +201,7 @@ impl TaskContainer {
                 break;
             }
 
+            // Safe unwrap because we peeked.
             dest_buf.push_back(self.tasks.pop().unwrap().task);
         }
     }

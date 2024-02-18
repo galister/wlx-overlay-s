@@ -481,9 +481,10 @@ where
         let token = pw_token_store.get(display_name).map(|s| s.as_str());
 
         if let Some(t) = token {
-            println!(
+            log::info!(
                 "Found existing Pipewire token for display {}: {}",
-                display_name, t
+                display_name,
+                t
             );
         }
 
@@ -495,7 +496,7 @@ where
                     .insert(String::from(display_name), token.clone())
                     .is_none()
                 {
-                    println!("Adding Pipewire token {}", token);
+                    log::info!("Adding Pipewire token {}", token);
                 }
             }
         }

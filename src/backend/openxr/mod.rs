@@ -57,7 +57,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
     let mut app_state = {
         let graphics = WlxGraphics::new_openxr(xr_instance.clone(), system);
-        AppState::from_graphics(graphics)
+        AppState::from_graphics(graphics)?
     };
 
     let mut overlays = OverlayContainer::<OpenXrOverlayData>::new(&mut app_state);
@@ -109,7 +109,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
     let watch_id = overlays.get_by_name(WATCH_NAME).unwrap().state.id;
 
-    let input_source = input::OpenXrInputSource::new(&xr_state);
+    let input_source = input::OpenXrInputSource::new(&xr_state)?;
 
     let mut session_running = false;
     let mut event_storage = xr::EventDataBuffer::new();
@@ -136,7 +136,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 SessionStateChanged(e) => {
                     // Session state change is where we can begin and end sessions, as well as
                     // find quit messages!
-                    println!("entered state {:?}", e.state());
+                    log::info!("entered state {:?}", e.state());
                     match e.state() {
                         xr::SessionState::READY => {
                             xr_state.session.begin(VIEW_TYPE).unwrap();
@@ -156,7 +156,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                     break 'main_loop;
                 }
                 EventsLost(e) => {
-                    println!("lost {} events", e.lost_event_count());
+                    log::warn!("lost {} events", e.lost_event_count());
                 }
                 _ => {}
             }
@@ -200,7 +200,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         }
 
         app_state.input_state.pre_update();
-        input_source.update(&xr_state, &mut app_state);
+        input_source.update(&xr_state, &mut app_state)?;
         app_state.input_state.post_update();
 
         if app_state

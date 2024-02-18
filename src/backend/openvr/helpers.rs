@@ -1,5 +1,8 @@
 use glam::Affine3A;
 use ovr_overlay::{pose::Matrix3x4, sys::HmdMatrix34_t};
+use thiserror::Error;
+
+use crate::backend::common::BackendError;
 
 pub trait Affine3AConvert {
     fn from_affine(affine: Affine3A) -> Self;
@@ -73,5 +76,23 @@ impl Affine3AConvert for HmdMatrix34_t {
             [self.m[0][2], self.m[1][2], self.m[2][2]],
             [self.m[0][3], self.m[1][3], self.m[2][3]],
         ])
+    }
+}
+
+#[derive(Error, Debug)]
+pub(super) enum OVRError {
+    #[error("ovr input error: {0}")]
+    InputError(&'static str),
+}
+
+impl From<ovr_overlay::errors::EVRInputError> for OVRError {
+    fn from(e: ovr_overlay::errors::EVRInputError) -> Self {
+        OVRError::InputError(e.description())
+    }
+}
+
+impl From<OVRError> for BackendError {
+    fn from(e: OVRError) -> Self {
+        BackendError::Fatal(anyhow::Error::new(e))
     }
 }

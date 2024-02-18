@@ -9,15 +9,25 @@ mod overlays;
 mod shaders;
 mod state;
 
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
+use std::{
+    io::{stdout, IsTerminal},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
 };
 
-use env_logger::Env;
+use flexi_logger::FileSpec;
 
-fn main() {
-    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    if stdout().is_terminal() {
+        flexi_logger::Logger::try_with_env_or_str("info")?.start()?;
+    } else {
+        flexi_logger::Logger::try_with_env_or_str("info")?
+            .log_to_file(FileSpec::default().directory("/tmp"))
+            .start()?;
+    }
+
     log::info!(
         "Welcome to {} version {}!",
         env!("CARGO_PKG_NAME"),
@@ -27,7 +37,7 @@ fn main() {
     #[cfg(feature = "openvr")]
     if std::env::args().any(|arg| arg == "--uninstall") {
         crate::backend::openvr::openvr_uninstall();
-        return;
+        return Ok(());
     }
 
     let running = Arc::new(AtomicBool::new(true));
@@ -38,33 +48,30 @@ fn main() {
         }
     });
 
-    #[cfg(all(feature = "openxr", feature = "openvr"))]
     auto_run(running);
 
-    // TODO: Handle error messages if using cherry-picked features
-    #[cfg(all(feature = "openvr", not(feature = "openxr")))]
-    let _ = crate::backend::openvr::openvr_run(running);
-
-    #[cfg(all(feature = "openxr", not(feature = "openvr")))]
-    let _ = crate::backend::openxr::openxr_run(running);
-
-    #[cfg(not(any(feature = "openxr", feature = "openvr")))]
-    compile_error!("You must enable at least one backend feature (openxr or openvr)");
+    Ok(())
 }
 
 #[cfg(all(feature = "openxr", feature = "openvr"))]
 fn auto_run(running: Arc<AtomicBool>) {
-    use crate::backend::openvr::openvr_run;
-    use crate::backend::openxr::openxr_run;
     use backend::common::BackendError;
 
-    let Err(BackendError::NotSupported) = openxr_run(running.clone()) else {
-        return;
-    };
+    #[cfg(feature = "openxr")]
+    {
+        use crate::backend::openxr::openxr_run;
+        let Err(BackendError::NotSupported) = openxr_run(running.clone()) else {
+            return;
+        };
+    }
 
-    let Err(BackendError::NotSupported) = openvr_run(running) else {
-        return;
-    };
+    #[cfg(feature = "openxr")]
+    {
+        use crate::backend::openvr::openvr_run;
+        let Err(BackendError::NotSupported) = openvr_run(running) else {
+            return;
+        };
+    }
 
     log::error!("No supported backends found");
 }

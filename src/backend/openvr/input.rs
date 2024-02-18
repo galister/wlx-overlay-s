@@ -17,16 +17,7 @@ use crate::{
     state::AppState,
 };
 
-use super::helpers::Affine3AConvert;
-
-macro_rules! result_str {
-    ( $e:expr ) => {
-        match $e {
-            Ok(x) => Ok(x),
-            Err(y) => Err(y.description()),
-        }
-    };
-}
+use super::helpers::{Affine3AConvert, OVRError};
 
 const SET_DEFAULT: &str = "/actions/default";
 const INPUT_SOURCES: [&str; 2] = ["/user/hand/left", "/user/hand/right"];
@@ -71,34 +62,32 @@ pub(super) struct OpenVrHandSource {
 }
 
 impl OpenVrInputSource {
-    pub fn new(input: &mut InputManager) -> Result<Self, &'static str> {
-        let set_hnd = result_str!(input.get_action_set_handle(SET_DEFAULT))?;
+    pub fn new(input: &mut InputManager) -> Result<Self, OVRError> {
+        let set_hnd = input.get_action_set_handle(SET_DEFAULT)?;
 
-        let click_hnd = result_str!(input.get_action_handle(PATH_CLICK))?;
-        let grab_hnd = result_str!(input.get_action_handle(PATH_GRAB))?;
-        let scroll_hnd = result_str!(input.get_action_handle(PATH_SCROLL))?;
-        let alt_click_hnd = result_str!(input.get_action_handle(PATH_ALT_CLICK))?;
-        let show_hide_hnd = result_str!(input.get_action_handle(PATH_SHOW_HIDE))?;
-        let space_drag_hnd = result_str!(input.get_action_handle(PATH_SPACE_DRAG))?;
-        let click_modifier_right_hnd =
-            result_str!(input.get_action_handle(PATH_CLICK_MODIFIER_RIGHT))?;
-        let click_modifier_middle_hnd =
-            result_str!(input.get_action_handle(PATH_CLICK_MODIFIER_MIDDLE))?;
+        let click_hnd = input.get_action_handle(PATH_CLICK)?;
+        let grab_hnd = input.get_action_handle(PATH_GRAB)?;
+        let scroll_hnd = input.get_action_handle(PATH_SCROLL)?;
+        let alt_click_hnd = input.get_action_handle(PATH_ALT_CLICK)?;
+        let show_hide_hnd = input.get_action_handle(PATH_SHOW_HIDE)?;
+        let space_drag_hnd = input.get_action_handle(PATH_SPACE_DRAG)?;
+        let click_modifier_right_hnd = input.get_action_handle(PATH_CLICK_MODIFIER_RIGHT)?;
+        let click_modifier_middle_hnd = input.get_action_handle(PATH_CLICK_MODIFIER_MIDDLE)?;
 
         let input_hnd: Vec<InputValueHandle> = INPUT_SOURCES
             .iter()
-            .map(|path| Ok(result_str!(input.get_input_source_handle(path))?))
-            .collect::<Result<_, &'static str>>()?;
+            .map(|path| Ok((input.get_input_source_handle(path))?))
+            .collect::<Result<_, OVRError>>()?;
 
         let pose_hnd: Vec<ActionHandle> = PATH_POSES
             .iter()
-            .map(|path| Ok(result_str!(input.get_action_handle(path))?))
-            .collect::<Result<_, &'static str>>()?;
+            .map(|path| Ok((input.get_action_handle(path))?))
+            .collect::<Result<_, OVRError>>()?;
 
         let haptics_hnd: Vec<ActionHandle> = PATH_HAPTICS
             .iter()
-            .map(|path| Ok(result_str!(input.get_action_handle(path))?))
-            .collect::<Result<_, &'static str>>()?;
+            .map(|path| Ok((input.get_action_handle(path))?))
+            .collect::<Result<_, OVRError>>()?;
 
         let hands: [OpenVrHandSource; 2] = array::from_fn(|i| OpenVrHandSource {
             has_pose: false,
@@ -317,38 +306,29 @@ pub fn set_action_manifest(input: &mut InputManager) -> anyhow::Result<()> {
     let action_path = CONFIG_ROOT_PATH.join("actions.json");
 
     if !action_path.is_file() {
-        File::create(&action_path)
-            .unwrap()
-            .write_all(include_bytes!("../../res/actions.json"))
-            .unwrap();
+        File::create(&action_path)?.write_all(include_bytes!("../../res/actions.json"))?;
     }
 
     let binding_path = CONFIG_ROOT_PATH.join("actions_binding_knuckles.json");
     if !binding_path.is_file() {
-        File::create(&binding_path)
-            .unwrap()
-            .write_all(include_bytes!("../../res/actions_binding_knuckles.json"))
-            .unwrap();
+        File::create(&binding_path)?
+            .write_all(include_bytes!("../../res/actions_binding_knuckles.json"))?;
     }
 
     let binding_path = CONFIG_ROOT_PATH.join("actions_binding_vive.json");
     if !binding_path.is_file() {
-        File::create(&binding_path)
-            .unwrap()
-            .write_all(include_bytes!("../../res/actions_binding_vive.json"))
-            .unwrap();
+        File::create(&binding_path)?
+            .write_all(include_bytes!("../../res/actions_binding_vive.json"))?;
     }
 
     let binding_path = CONFIG_ROOT_PATH.join("actions_binding_oculus.json");
     if !binding_path.is_file() {
-        File::create(&binding_path)
-            .unwrap()
-            .write_all(include_bytes!("../../res/actions_binding_oculus.json"))
-            .unwrap();
+        File::create(&binding_path)?
+            .write_all(include_bytes!("../../res/actions_binding_oculus.json"))?;
     }
 
     if let Err(e) = input.set_action_manifest(action_path.as_path()) {
-        bail!("Failed to set action manifest: {}", e.description());
+        bail!("Failed to set action manifest: {}", e);
     }
     Ok(())
 }

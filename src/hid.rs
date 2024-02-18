@@ -184,8 +184,9 @@ impl HidProvider for UInputProvider {
         for i in 0..7 {
             let m = 1 << i;
             if changed & m != 0 {
-                let vk = MODS_TO_KEYS.get(m).unwrap()[0] as u16;
-                self.send_key(vk, modifiers & m != 0);
+                if let Some(vk) = MODS_TO_KEYS.get(m).into_iter().flatten().next() {
+                    self.send_key(*vk as u16, modifiers & m != 0);
+                }
             }
         }
         self.cur_modifiers = modifiers;
