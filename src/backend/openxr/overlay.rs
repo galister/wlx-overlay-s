@@ -77,14 +77,15 @@ impl OverlayData<OpenXrOverlayData> {
         Ok(Some(quad))
     }
 
-    pub(super) fn after_input(&mut self, app: &mut AppState) {
+    pub(super) fn after_input(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         if self.data.last_visible != self.state.want_visible {
             if self.state.want_visible {
-                self.backend.resume(app);
+                self.backend.resume(app)?;
             } else {
-                self.backend.pause(app);
+                self.backend.pause(app)?;
             }
         }
         self.data.last_visible = self.state.want_visible;
+        Ok(())
     }
 }

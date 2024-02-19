@@ -83,7 +83,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     };
 
     let mut state = {
-        let graphics = WlxGraphics::new_openvr(instance_extensions, device_extensions_fn);
+        let graphics = WlxGraphics::new_openvr(instance_extensions, device_extensions_fn)?;
         AppState::from_graphics(graphics)?
     };
 
@@ -119,7 +119,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     let mut next_device_update = Instant::now();
     let mut due_tasks = VecDeque::with_capacity(4);
 
-    let mut lines = LinePool::new(state.graphics.clone());
+    let mut lines = LinePool::new(state.graphics.clone())?;
     let pointer_lines = [lines.allocate(), lines.allocate()];
 
     'main_loop: loop {
@@ -198,11 +198,11 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             }
         }
 
-        lines.update(&mut overlay_mngr, &mut state);
+        lines.update(&mut overlay_mngr, &mut state)?;
 
-        overlays
-            .iter_mut()
-            .for_each(|o| o.after_input(&mut overlay_mngr, &mut state));
+        for o in overlays.iter_mut() {
+            o.after_input(&mut overlay_mngr, &mut state)?;
+        }
 
         #[cfg(feature = "osc")]
         if let Some(ref mut sender) = osc_sender {
@@ -211,10 +211,11 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
         log::debug!("Rendering frame");
 
-        overlays
-            .iter_mut()
-            .filter(|o| o.state.want_visible)
-            .for_each(|o| o.render(&mut state));
+        for o in overlays.iter_mut() {
+            if o.state.want_visible {
+                o.render(&mut state)?;
+            }
+        }
 
         log::debug!("Rendering overlays");
 

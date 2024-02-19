@@ -55,12 +55,12 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     log::info!("Using environment blend mode: {:?}", environment_blend_mode);
 
     let mut app_state = {
-        let graphics = WlxGraphics::new_openxr(xr_instance.clone(), system);
+        let graphics = WlxGraphics::new_openxr(xr_instance.clone(), system)?;
         AppState::from_graphics(graphics)?
     };
 
     let mut overlays = OverlayContainer::<OpenXrOverlayData>::new(&mut app_state)?;
-    let mut lines = LinePool::new(app_state.graphics.clone());
+    let mut lines = LinePool::new(app_state.graphics.clone())?;
 
     #[cfg(feature = "osc")]
     let mut osc_sender =
@@ -211,9 +211,9 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
         watch_fade(&mut app_state, overlays.mut_by_id(watch_id).unwrap()); // want panic
 
-        overlays
-            .iter_mut()
-            .for_each(|o| o.after_input(&mut app_state));
+        for o in overlays.iter_mut() {
+            o.after_input(&mut app_state)?;
+        }
 
         #[cfg(feature = "osc")]
         if let Some(ref mut sender) = osc_sender {
@@ -260,7 +260,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         let mut layers = vec![];
         let mut command_buffer = app_state
             .graphics
-            .create_command_buffer(CommandBufferUsage::OneTimeSubmit);
+            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
 
         for o in overlays.iter_mut() {
             if !o.state.want_visible {
@@ -268,11 +268,11 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             }
 
             if !o.data.init {
-                o.init(&mut app_state);
+                o.init(&mut app_state)?;
                 o.data.init = true;
             }
 
-            o.render(&mut app_state);
+            o.render(&mut app_state)?;
 
             let dist_sq = (app_state.input_state.hmd.translation - o.state.transform.translation)
                 .length_squared();
@@ -290,7 +290,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             layers.push((0.0, quad));
         }
 
-        command_buffer.build_and_execute_now();
+        command_buffer.build_and_execute_now()?;
 
         layers.sort_by(|a, b| b.0.total_cmp(&a.0));
 

@@ -55,11 +55,11 @@ where
             crate::overlays::screen::get_screens_x11(&app.session)?
         };
 
-        let mut watch = create_watch::<T>(&app, &screens);
+        let mut watch = create_watch::<T>(&app, &screens)?;
         watch.state.want_visible = true;
         overlays.insert(watch.state.id, watch);
 
-        let mut keyboard = create_keyboard(&app);
+        let mut keyboard = create_keyboard(&app)?;
         keyboard.state.show_hide = true;
         keyboard.state.want_visible = false;
         overlays.insert(keyboard.state.id, keyboard);

@@ -33,7 +33,10 @@ const FALLBACK_COLOR: Vec3 = Vec3 {
 pub const WATCH_NAME: &str = "watch";
 pub const WATCH_SCALE: f32 = 0.11;
 
-pub fn create_watch<O>(state: &AppState, screens: &[OverlayData<O>]) -> OverlayData<O>
+pub fn create_watch<O>(
+    state: &AppState,
+    screens: &[OverlayData<O>],
+) -> anyhow::Result<OverlayData<O>>
 where
     O: Default,
 {
@@ -45,7 +48,7 @@ where
         state.graphics.clone(),
         state.format,
         (),
-    );
+    )?;
     let empty_str: Arc<str> = Arc::from("");
 
     for elem in config.watch_elements.into_iter() {
@@ -275,7 +278,7 @@ where
 
     let relative_to = RelativeTo::Hand(state.session.watch_hand);
 
-    OverlayData {
+    Ok(OverlayData {
         state: OverlayState {
             name: WATCH_NAME.into(),
             size: (400, 200),
@@ -290,7 +293,7 @@ where
         },
         backend: Box::new(canvas.build()),
         ..Default::default()
-    }
+    })
 }
 
 enum ElemState {

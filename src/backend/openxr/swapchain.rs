@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::bail;
 use ash::vk;
 use openxr as xr;
 
@@ -30,16 +31,17 @@ pub(super) fn create_swapchain_render_data(
         mip_count: 1,
     })?;
 
-    let shaders = graphics.shared_shaders.read().unwrap();
+    let Ok(shaders) = graphics.shared_shaders.read() else {
+        bail!("Failed to lock shared shaders for reading");
+    };
     let pipeline = graphics.create_pipeline_dynamic(
-        shaders.get("vert_common").unwrap().clone(),
-        shaders.get("frag_srgb").unwrap().clone(),
+        shaders.get("vert_common").unwrap().clone(), // want panic
+        shaders.get("frag_srgb").unwrap().clone(),   // want panic
         graphics.native_format,
-    );
+    )?;
 
     let images = swapchain
-        .enumerate_images()
-        .unwrap()
+        .enumerate_images()?
         .into_iter()
         .map(|handle| {
             let vk_image = vk::Image::from_raw(handle);
@@ -83,29 +85,29 @@ impl SwapchainRenderData {
         command_buffer: &mut WlxCommandBuffer,
         view: Arc<ImageView>,
         alpha: f32,
-    ) -> Result<xr::SwapchainSubImage<xr::Vulkan>, xr::sys::Result> {
+    ) -> anyhow::Result<xr::SwapchainSubImage<xr::Vulkan>> {
         let idx = self.swapchain.acquire_image()? as usize;
         self.swapchain.wait_image(xr::Duration::INFINITE)?;
 
         let render_target = &mut self.images[idx];
-        command_buffer.begin_rendering(render_target.clone());
+        command_buffer.begin_rendering(render_target.clone())?;
 
         let target_extent = render_target.image().extent();
 
         let set0 = self
             .pipeline
-            .uniform_sampler(0, view.clone(), Filter::Linear);
+            .uniform_sampler(0, view.clone(), Filter::Linear)?;
 
-        let set1 = self.pipeline.uniform_buffer(1, vec![alpha]);
+        let set1 = self.pipeline.uniform_buffer(1, vec![alpha])?;
 
         let pass = self.pipeline.create_pass(
             [target_extent[0] as _, target_extent[1] as _],
             command_buffer.graphics.quad_verts.clone(),
             command_buffer.graphics.quad_indices.clone(),
             vec![set0, set1],
-        );
-        command_buffer.run_ref(&pass);
-        command_buffer.end_rendering();
+        )?;
+        command_buffer.run_ref(&pass)?;
+        command_buffer.end_rendering()?;
 
         self.swapchain.release_image()?;
 

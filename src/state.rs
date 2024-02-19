@@ -52,7 +52,7 @@ impl AppState {
         }
 
         Ok(AppState {
-            fc: FontCache::new(),
+            fc: FontCache::new()?,
             session: AppSession::load(),
             tasks: TaskContainer::new(),
             graphics,

@@ -6,6 +6,7 @@ use std::{
     },
 };
 
+use anyhow::Ok;
 use glam::{Affine2, Affine3A, Mat3A, Quat, Vec3, Vec3A};
 use vulkano::image::view::ImageView;
 
@@ -177,34 +178,35 @@ impl<T> OverlayData<T>
 where
     T: Default,
 {
-    pub fn init(&mut self, app: &mut AppState) {
+    pub fn init(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         self.state.reset(app, true);
-        self.backend.init(app);
+        self.backend.init(app)
     }
-    pub fn render(&mut self, app: &mut AppState) {
-        self.backend.render(app);
+    pub fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
+        self.backend.render(app)
     }
     pub fn view(&mut self) -> Option<Arc<ImageView>> {
         self.backend.view()
     }
-    pub fn set_visible(&mut self, app: &mut AppState, visible: bool) {
+    pub fn set_visible(&mut self, app: &mut AppState, visible: bool) -> anyhow::Result<()> {
         let old_visible = self.state.want_visible;
         self.state.want_visible = visible;
         if visible != old_visible {
             if visible {
-                self.backend.resume(app);
+                self.backend.resume(app)?;
             } else {
-                self.backend.pause(app);
+                self.backend.pause(app)?;
             }
         }
+        Ok(())
     }
 }
 
 pub trait OverlayRenderer {
-    fn init(&mut self, app: &mut AppState);
-    fn pause(&mut self, app: &mut AppState);
-    fn resume(&mut self, app: &mut AppState);
-    fn render(&mut self, app: &mut AppState);
+    fn init(&mut self, app: &mut AppState) -> anyhow::Result<()>;
+    fn pause(&mut self, app: &mut AppState) -> anyhow::Result<()>;
+    fn resume(&mut self, app: &mut AppState) -> anyhow::Result<()>;
+    fn render(&mut self, app: &mut AppState) -> anyhow::Result<()>;
     fn view(&mut self) -> Option<Arc<ImageView>>;
     fn extent(&self) -> [u32; 3];
 }
@@ -212,10 +214,18 @@ pub trait OverlayRenderer {
 pub struct FallbackRenderer;
 
 impl OverlayRenderer for FallbackRenderer {
-    fn init(&mut self, _app: &mut AppState) {}
-    fn pause(&mut self, _app: &mut AppState) {}
-    fn resume(&mut self, _app: &mut AppState) {}
-    fn render(&mut self, _app: &mut AppState) {}
+    fn init(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+        Ok(())
+    }
+    fn pause(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+        Ok(())
+    }
+    fn resume(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+        Ok(())
+    }
+    fn render(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+        Ok(())
+    }
     fn view(&mut self) -> Option<Arc<ImageView>> {
         None
     }
@@ -249,17 +259,17 @@ impl Default for SplitOverlayBackend {
 
 impl OverlayBackend for SplitOverlayBackend {}
 impl OverlayRenderer for SplitOverlayBackend {
-    fn init(&mut self, app: &mut AppState) {
-        self.renderer.init(app);
+    fn init(&mut self, app: &mut AppState) -> anyhow::Result<()> {
+        self.renderer.init(app)
     }
-    fn pause(&mut self, app: &mut AppState) {
-        self.renderer.pause(app);
+    fn pause(&mut self, app: &mut AppState) -> anyhow::Result<()> {
+        self.renderer.pause(app)
     }
-    fn resume(&mut self, app: &mut AppState) {
-        self.renderer.resume(app);
+    fn resume(&mut self, app: &mut AppState) -> anyhow::Result<()> {
+        self.renderer.resume(app)
     }
-    fn render(&mut self, app: &mut AppState) {
-        self.renderer.render(app);
+    fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
+        self.renderer.render(app)
     }
     fn view(&mut self) -> Option<Arc<ImageView>> {
         self.renderer.view()

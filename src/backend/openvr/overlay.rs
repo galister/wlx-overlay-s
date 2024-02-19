@@ -32,7 +32,7 @@ impl OverlayData<OpenVrOverlayData> {
         &mut self,
         overlay: &mut OverlayManager,
         app: &mut AppState,
-    ) -> OverlayHandle {
+    ) -> anyhow::Result<OverlayHandle> {
         let key = format!("wlx-{}", self.state.name);
         log::debug!("Create overlay with key: {}", &key);
         let handle = match overlay.create_overlay(&key, &key) {
@@ -51,7 +51,7 @@ impl OverlayData<OpenVrOverlayData> {
         self.data.handle = Some(handle);
         self.data.color = Vec4::ONE;
 
-        self.init(app);
+        self.init(app)?;
 
         if self.data.width < f32::EPSILON {
             self.data.width = 1.0;
@@ -63,15 +63,20 @@ impl OverlayData<OpenVrOverlayData> {
         self.upload_curvature(overlay);
         self.upload_sort_order(overlay);
 
-        handle
+        Ok(handle)
     }
 
-    pub(super) fn after_input(&mut self, overlay: &mut OverlayManager, app: &mut AppState) {
+    pub(super) fn after_input(
+        &mut self,
+        overlay: &mut OverlayManager,
+        app: &mut AppState,
+    ) -> anyhow::Result<()> {
         if self.state.want_visible && !self.data.visible {
-            self.show_internal(overlay, app);
+            self.show_internal(overlay, app)?;
         } else if !self.state.want_visible && self.data.visible {
-            self.hide_internal(overlay, app);
+            self.hide_internal(overlay, app)?;
         }
+        Ok(())
     }
 
     pub(super) fn after_render(&mut self, overlay: &mut OverlayManager, graphics: &WlxGraphics) {
@@ -85,29 +90,37 @@ impl OverlayData<OpenVrOverlayData> {
         }
     }
 
-    fn show_internal(&mut self, overlay: &mut OverlayManager, app: &mut AppState) {
+    fn show_internal(
+        &mut self,
+        overlay: &mut OverlayManager,
+        app: &mut AppState,
+    ) -> anyhow::Result<()> {
         let handle = match self.data.handle {
             Some(handle) => handle,
-            None => self.initialize(overlay, app),
+            None => self.initialize(overlay, app)?,
         };
         log::debug!("{}: show", self.state.name);
         if let Err(e) = overlay.set_visibility(handle, true) {
             log::error!("{}: Failed to show overlay: {}", self.state.name, e);
         }
         self.data.visible = true;
-        self.backend.resume(app);
+        self.backend.resume(app)
     }
 
-    fn hide_internal(&mut self, overlay: &mut OverlayManager, app: &mut AppState) {
+    fn hide_internal(
+        &mut self,
+        overlay: &mut OverlayManager,
+        app: &mut AppState,
+    ) -> anyhow::Result<()> {
         let Some(handle) = self.data.handle else {
-            return;
+            return Ok(());
         };
         log::debug!("{}: hide", self.state.name);
         if let Err(e) = overlay.set_visibility(handle, false) {
             log::error!("{}: Failed to hide overlay: {}", self.state.name, e);
         }
         self.data.visible = false;
-        self.backend.pause(app);
+        self.backend.pause(app)
     }
 
     pub(super) fn upload_alpha(&self, overlay: &mut OverlayManager) {

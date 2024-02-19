@@ -31,8 +31,9 @@ pub(super) struct LinePool {
 }
 
 impl LinePool {
-    pub(super) fn new(graphics: Arc<WlxGraphics>) -> Self {
-        let mut command_buffer = graphics.create_command_buffer(CommandBufferUsage::OneTimeSubmit);
+    pub(super) fn new(graphics: Arc<WlxGraphics>) -> anyhow::Result<Self> {
+        let mut command_buffer =
+            graphics.create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
 
         // TODO customizable colors
         let colors = [
@@ -43,20 +44,22 @@ impl LinePool {
             [0xff, 0x00, 0x00, 0xff],
         ];
 
-        let views = colors
+        let views: anyhow::Result<Vec<Arc<ImageView>>> = colors
             .into_iter()
-            .map(|color| {
-                let tex = command_buffer.texture2d(1, 1, Format::R8G8B8A8_UNORM, &color);
-                ImageView::new_default(tex).unwrap()
-            })
+            .map(
+                |color| match command_buffer.texture2d(1, 1, Format::R8G8B8A8_UNORM, &color) {
+                    Ok(tex) => ImageView::new_default(tex).map_err(|e| anyhow::anyhow!(e)),
+                    Err(e) => Err(e),
+                },
+            )
             .collect();
 
-        command_buffer.build_and_execute_now();
+        command_buffer.build_and_execute_now()?;
 
-        LinePool {
+        Ok(LinePool {
             lines: IdMap::new(),
-            colors: views,
-        }
+            colors: views?,
+        })
     }
 
     pub(super) fn allocate(
@@ -132,7 +135,7 @@ impl LinePool {
         &'a mut self,
         xr: &'a XrState,
         command_buffer: &mut WlxCommandBuffer,
-    ) -> Result<Vec<xr::CompositionLayerQuad<xr::Vulkan>>, xr::sys::Result> {
+    ) -> anyhow::Result<Vec<xr::CompositionLayerQuad<xr::Vulkan>>> {
         let mut quads = Vec::new();
 
         for line in self.lines.values_mut() {

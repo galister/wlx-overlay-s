@@ -129,9 +129,9 @@ struct ScreenPipeline {
 
 impl ScreenPipeline {
     fn new(extent: &[u32; 3], app: &mut AppState) -> anyhow::Result<ScreenPipeline> {
-        let texture = app
-            .graphics
-            .render_texture(extent[0], extent[1], app.graphics.native_format);
+        let texture =
+            app.graphics
+                .render_texture(extent[0], extent[1], app.graphics.native_format)?;
 
         let view = ImageView::new_default(texture)?;
 
@@ -144,7 +144,7 @@ impl ScreenPipeline {
             shaders.get("vert_common").unwrap().clone(), // want panic
             shaders.get("frag_sprite").unwrap().clone(), // want panic
             app.graphics.native_format,
-        );
+        )?;
 
         let extentf = [extent[0] as f32, extent[1] as f32];
 
@@ -156,9 +156,9 @@ impl ScreenPipeline {
         })
     }
 
-    fn ensure_mouse_initialized(&mut self, uploads: &mut WlxCommandBuffer) {
+    fn ensure_mouse_initialized(&mut self, uploads: &mut WlxCommandBuffer) -> anyhow::Result<()> {
         if self.mouse.is_some() {
-            return;
+            return Ok(());
         }
 
         #[rustfmt::skip]
@@ -170,26 +170,32 @@ impl ScreenPipeline {
         ];
 
         let mouse_tex =
-            uploads.texture2d(4, 4, vulkano::format::Format::R8G8B8A8_UNORM, &mouse_bytes);
-        self.mouse = Some(ImageView::new_default(mouse_tex).unwrap());
+            uploads.texture2d(4, 4, vulkano::format::Format::R8G8B8A8_UNORM, &mouse_bytes)?;
+        self.mouse = Some(ImageView::new_default(mouse_tex)?);
+        Ok(())
     }
 
-    fn render(&mut self, image: Arc<Image>, mouse: Option<&MouseMeta>, app: &mut AppState) {
+    fn render(
+        &mut self,
+        image: Arc<Image>,
+        mouse: Option<&MouseMeta>,
+        app: &mut AppState,
+    ) -> anyhow::Result<()> {
         let mut cmd = app
             .graphics
-            .create_command_buffer(CommandBufferUsage::OneTimeSubmit);
-        let view = ImageView::new_default(image).unwrap();
-        let set0 = self.pipeline.uniform_sampler(0, view, Filter::Linear);
+            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+        let view = ImageView::new_default(image)?;
+        let set0 = self.pipeline.uniform_sampler(0, view, Filter::Linear)?;
 
         let pass = self.pipeline.create_pass(
             self.extentf,
             app.graphics.quad_verts.clone(),
             app.graphics.quad_indices.clone(),
             vec![set0],
-        );
+        )?;
 
-        cmd.begin_render_pass(&self.pipeline);
-        cmd.run_ref(&pass);
+        cmd.begin_render_pass(&self.pipeline)?;
+        cmd.run_ref(&pass)?;
 
         if let (Some(mouse), Some(mouse_view)) = (mouse, self.mouse.clone()) {
             let vertex_buffer = app.graphics.upload_verts(
@@ -199,25 +205,24 @@ impl ScreenPipeline {
                 mouse.y * self.extentf[1] - 2.,
                 4.0,
                 4.0,
-            );
+            )?;
 
             let set0 = self
                 .pipeline
-                .uniform_sampler(0, mouse_view.clone(), Filter::Linear);
+                .uniform_sampler(0, mouse_view.clone(), Filter::Linear)?;
 
             let pass = self.pipeline.create_pass(
                 self.extentf,
                 vertex_buffer,
                 app.graphics.quad_indices.clone(),
                 vec![set0],
-            );
+            )?;
 
-            cmd.run_ref(&pass);
+            cmd.run_ref(&pass)?;
         }
 
-        cmd.end_render_pass();
-
-        cmd.build_and_execute_now();
+        cmd.end_render_pass()?;
+        cmd.build_and_execute_now()
     }
 }
 
@@ -289,8 +294,10 @@ impl ScreenRenderer {
 }
 
 impl OverlayRenderer for ScreenRenderer {
-    fn init(&mut self, _app: &mut AppState) {}
-    fn render(&mut self, app: &mut AppState) {
+    fn init(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+        Ok(())
+    }
+    fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         let receiver = self.receiver.get_or_insert_with(|| {
             let allow_dmabuf = &*app.session.config.capture_method != "pw_fallback";
 
@@ -313,7 +320,9 @@ impl OverlayRenderer for ScreenRenderer {
                     let mut final_formats = vec![];
 
                     for &f in &possible_formats {
-                        let vk_fmt = fourcc_to_vk(f);
+                        let Ok(vk_fmt) = fourcc_to_vk(f) else {
+                            continue;
+                        };
                         let Ok(props) = graphics.device.physical_device().format_properties(vk_fmt)
                         else {
                             continue;
@@ -347,8 +356,8 @@ impl OverlayRenderer for ScreenRenderer {
                         log::error!("Invalid frame");
                         continue;
                     }
-                    if let Some(new) = app.graphics.dmabuf_texture(frame) {
-                        let view = ImageView::new_default(new.clone()).unwrap();
+                    if let Ok(new) = app.graphics.dmabuf_texture(frame) {
+                        let view = ImageView::new_default(new.clone())?;
 
                         self.last_view = Some(view);
                     } else {
@@ -358,14 +367,14 @@ impl OverlayRenderer for ScreenRenderer {
                 WlxFrame::MemFd(frame) => {
                     let mut upload = app
                         .graphics
-                        .create_command_buffer(CommandBufferUsage::OneTimeSubmit);
+                        .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
 
                     let Some(fd) = frame.plane.fd else {
                         log::error!("No fd");
                         continue;
                     };
                     log::debug!("{}: New MemFd frame", self.name);
-                    let format = fourcc_to_vk(frame.format.fourcc);
+                    let format = fourcc_to_vk(frame.format.fourcc)?;
 
                     let len = frame.plane.stride as usize * frame.format.height as usize;
                     let offset = frame.plane.offset as i64;
@@ -384,42 +393,42 @@ impl OverlayRenderer for ScreenRenderer {
                     let data = unsafe { slice::from_raw_parts(map, len) };
 
                     let image =
-                        upload.texture2d(frame.format.width, frame.format.height, format, &data);
-                    upload.build_and_execute_now();
+                        upload.texture2d(frame.format.width, frame.format.height, format, &data)?;
+                    upload.build_and_execute_now()?;
 
                     unsafe { libc::munmap(map as *mut _, len) };
 
-                    self.last_view = Some(ImageView::new_default(image).unwrap());
+                    self.last_view = Some(ImageView::new_default(image)?);
                     self.capture.request_new_frame();
                 }
                 WlxFrame::MemPtr(frame) => {
                     log::debug!("{}: New MemPtr frame", self.name);
                     let mut upload = app
                         .graphics
-                        .create_command_buffer(CommandBufferUsage::OneTimeSubmit);
+                        .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
 
-                    let format = fourcc_to_vk(frame.format.fourcc);
+                    let format = fourcc_to_vk(frame.format.fourcc)?;
 
                     let data = unsafe { slice::from_raw_parts(frame.ptr as *const u8, frame.size) };
 
                     let image =
-                        upload.texture2d(frame.format.width, frame.format.height, format, &data);
+                        upload.texture2d(frame.format.width, frame.format.height, format, &data)?;
 
                     let mut pipeline = None;
                     if mouse.is_some() {
                         let new_pipeline = self.pipeline.get_or_insert_with(|| {
                             let mut pipeline = ScreenPipeline::new(&self.extent, app).unwrap();
                             self.last_view = Some(pipeline.view.clone());
-                            pipeline.ensure_mouse_initialized(&mut upload);
+                            pipeline.ensure_mouse_initialized(&mut upload).unwrap(); // TODO
                             pipeline
                         });
                         pipeline = Some(new_pipeline);
                     }
 
-                    upload.build_and_execute_now();
+                    upload.build_and_execute_now()?;
 
                     if let Some(pipeline) = pipeline {
-                        pipeline.render(image, mouse.as_ref(), app);
+                        pipeline.render(image, mouse.as_ref(), app)?;
                     } else {
                         let view = ImageView::new_default(image).unwrap();
                         self.last_view = Some(view);
@@ -431,12 +440,15 @@ impl OverlayRenderer for ScreenRenderer {
                 }
             };
         }
+        Ok(())
     }
-    fn pause(&mut self, _app: &mut AppState) {
+    fn pause(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
         self.capture.pause();
+        Ok(())
     }
-    fn resume(&mut self, _app: &mut AppState) {
+    fn resume(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
         self.capture.resume();
+        Ok(())
     }
     fn view(&mut self) -> Option<Arc<ImageView>> {
         self.last_view.clone()

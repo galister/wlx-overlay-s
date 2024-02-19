@@ -25,26 +25,26 @@ pub(super) struct LinePool {
 }
 
 impl LinePool {
-    pub fn new(graphics: Arc<WlxGraphics>) -> Self {
-        let mut command_buffer = graphics.create_command_buffer(CommandBufferUsage::OneTimeSubmit);
+    pub fn new(graphics: Arc<WlxGraphics>) -> anyhow::Result<Self> {
+        let mut command_buffer =
+            graphics.create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
 
         let buf = vec![255; 16];
 
-        let texture = command_buffer.texture2d(2, 2, Format::R8G8B8A8_UNORM, &buf);
-        command_buffer.build_and_execute_now();
+        let texture = command_buffer.texture2d(2, 2, Format::R8G8B8A8_UNORM, &buf)?;
+        command_buffer.build_and_execute_now()?;
 
         graphics
             .transition_layout(
                 texture.clone(),
                 ImageLayout::ShaderReadOnlyOptimal,
                 ImageLayout::TransferSrcOptimal,
-            )
-            .wait(None)
-            .unwrap();
+            )?
+            .wait(None)?;
 
-        let view = ImageView::new_default(texture).unwrap();
+        let view = ImageView::new_default(texture)?;
 
-        LinePool {
+        Ok(LinePool {
             lines: IdMap::new(),
             view,
             colors: [
@@ -54,7 +54,7 @@ impl LinePool {
                 Vec4::new(0.375, 0., 0.5, 1.),
                 Vec4::new(1., 0., 0., 1.),
             ],
-        }
+        })
     }
 
     pub fn allocate(&mut self) -> usize {
@@ -140,9 +140,13 @@ impl LinePool {
         }
     }
 
-    pub fn update(&mut self, overlay: &mut OverlayManager, app: &mut AppState) {
+    pub fn update(
+        &mut self,
+        overlay: &mut OverlayManager,
+        app: &mut AppState,
+    ) -> anyhow::Result<()> {
         for data in self.lines.values_mut() {
-            data.after_input(overlay, app);
+            data.after_input(overlay, app)?;
             if data.state.want_visible {
                 if data.state.dirty {
                     data.upload_texture(overlay, &app.graphics);
@@ -153,6 +157,7 @@ impl LinePool {
                 data.upload_color(overlay);
             }
         }
+        Ok(())
     }
 }
 
@@ -161,10 +166,18 @@ struct StaticRenderer {
 }
 
 impl OverlayRenderer for StaticRenderer {
-    fn init(&mut self, _app: &mut AppState) {}
-    fn pause(&mut self, _app: &mut AppState) {}
-    fn resume(&mut self, _app: &mut AppState) {}
-    fn render(&mut self, _app: &mut AppState) {}
+    fn init(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+        Ok(())
+    }
+    fn pause(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+        Ok(())
+    }
+    fn resume(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+        Ok(())
+    }
+    fn render(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+        Ok(())
+    }
     fn view(&mut self) -> Option<Arc<ImageView>> {
         Some(self.view.clone())
     }

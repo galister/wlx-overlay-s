@@ -60,13 +60,13 @@ impl<D, S> CanvasBuilder<D, S> {
         graphics: Arc<WlxGraphics>,
         format: Format,
         data: D,
-    ) -> Self {
-        Self {
-            canvas: Canvas::new(width, height, graphics, format, data),
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
+            canvas: Canvas::new(width, height, graphics, format, data)?,
             bg_color: Vec3::ZERO,
             fg_color: Vec3::ONE,
             font_size: 16,
-        }
+        })
     }
 
     pub fn build(self) -> Canvas<D, S> {
@@ -225,62 +225,64 @@ impl<D, S> Canvas<D, S> {
         graphics: Arc<WlxGraphics>,
         format: Format,
         data: D,
-    ) -> Self {
-        let tex_fg = graphics.render_texture(width as _, height as _, format);
-        let tex_bg = graphics.render_texture(width as _, height as _, format);
-        let tex_final = graphics.render_texture(width as _, height as _, format);
+    ) -> anyhow::Result<Self> {
+        let tex_fg = graphics.render_texture(width as _, height as _, format)?;
+        let tex_bg = graphics.render_texture(width as _, height as _, format)?;
+        let tex_final = graphics.render_texture(width as _, height as _, format)?;
 
-        let view_fg = ImageView::new_default(tex_fg.clone()).unwrap();
-        let view_bg = ImageView::new_default(tex_bg.clone()).unwrap();
-        let view_final = ImageView::new_default(tex_final.clone()).unwrap();
+        let view_fg = ImageView::new_default(tex_fg.clone())?;
+        let view_bg = ImageView::new_default(tex_bg.clone())?;
+        let view_final = ImageView::new_default(tex_final.clone())?;
 
-        let shaders = graphics.shared_shaders.read().unwrap();
+        let Ok(shaders) = graphics.shared_shaders.read() else {
+            bail!("Failed to lock shared shaders for reading");
+        };
 
         let pipeline_bg_color = graphics.create_pipeline(
             view_bg.clone(),
-            shaders.get("vert_common").unwrap().clone(),
-            shaders.get("frag_color").unwrap().clone(),
+            shaders.get("vert_common").unwrap().clone(), // want panic
+            shaders.get("frag_color").unwrap().clone(),  // want panic
             format,
-        );
+        )?;
 
         let pipeline_fg_glyph = graphics.create_pipeline(
             view_fg.clone(),
-            shaders.get("vert_common").unwrap().clone(),
-            shaders.get("frag_glyph").unwrap().clone(),
+            shaders.get("vert_common").unwrap().clone(), // want panic
+            shaders.get("frag_glyph").unwrap().clone(),  // want panic
             format,
-        );
+        )?;
 
         let vertex_buffer =
-            graphics.upload_verts(width as _, height as _, 0., 0., width as _, height as _);
+            graphics.upload_verts(width as _, height as _, 0., 0., width as _, height as _)?;
 
         let pipeline_final = graphics.create_pipeline_with_layouts(
             view_final.clone(),
-            shaders.get("vert_common").unwrap().clone(),
-            shaders.get("frag_sprite").unwrap().clone(),
+            shaders.get("vert_common").unwrap().clone(), // want panic
+            shaders.get("frag_sprite").unwrap().clone(), // want panic
             format,
             ImageLayout::TransferSrcOptimal,
             ImageLayout::TransferSrcOptimal,
-        );
+        )?;
 
-        let set_fg = pipeline_final.uniform_sampler(0, view_fg.clone(), Filter::Linear);
-        let set_bg = pipeline_final.uniform_sampler(0, view_bg.clone(), Filter::Linear);
+        let set_fg = pipeline_final.uniform_sampler(0, view_fg.clone(), Filter::Linear)?;
+        let set_bg = pipeline_final.uniform_sampler(0, view_bg.clone(), Filter::Linear)?;
         let pass_fg = pipeline_final.create_pass(
             [width as _, height as _],
             vertex_buffer.clone(),
             graphics.quad_indices.clone(),
             vec![set_fg],
-        );
+        )?;
         let pass_bg = pipeline_final.create_pass(
             [width as _, height as _],
             vertex_buffer.clone(),
             graphics.quad_indices.clone(),
             vec![set_bg],
-        );
+        )?;
 
         let stride = width / RES_DIVIDER;
         let rows = height / RES_DIVIDER;
 
-        Self {
+        Ok(Self {
             canvas: CanvasData {
                 data,
                 width,
@@ -299,7 +301,7 @@ impl<D, S> Canvas<D, S> {
             view_final,
             pass_fg,
             pass_bg,
-        }
+        })
     }
 
     fn interactive_set_idx(&mut self, x: f32, y: f32, w: f32, h: f32, idx: usize) {
@@ -325,34 +327,34 @@ impl<D, S> Canvas<D, S> {
         self.interact_map[y * self.interact_stride + x].map(|x| x as usize)
     }
 
-    fn render_bg(&mut self, app: &mut AppState) {
+    fn render_bg(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         let mut cmd_buffer = self
             .canvas
             .graphics
-            .create_command_buffer(CommandBufferUsage::OneTimeSubmit);
-        cmd_buffer.begin_render_pass(&self.canvas.pipeline_bg_color);
+            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+        cmd_buffer.begin_render_pass(&self.canvas.pipeline_bg_color)?;
         for c in self.controls.iter_mut() {
             if let Some(fun) = c.on_render_bg {
-                fun(c, &self.canvas, app, &mut cmd_buffer);
+                fun(c, &self.canvas, app, &mut cmd_buffer)?;
             }
         }
-        cmd_buffer.end_render_pass();
-        cmd_buffer.build_and_execute_now();
+        cmd_buffer.end_render_pass()?;
+        cmd_buffer.build_and_execute_now()
     }
 
-    fn render_fg(&mut self, app: &mut AppState) {
+    fn render_fg(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         let mut cmd_buffer = self
             .canvas
             .graphics
-            .create_command_buffer(CommandBufferUsage::OneTimeSubmit);
-        cmd_buffer.begin_render_pass(&self.canvas.pipeline_fg_glyph);
+            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+        cmd_buffer.begin_render_pass(&self.canvas.pipeline_fg_glyph)?;
         for c in self.controls.iter_mut() {
             if let Some(fun) = c.on_render_fg {
-                fun(c, &self.canvas, app, &mut cmd_buffer);
+                fun(c, &self.canvas, app, &mut cmd_buffer)?;
             }
         }
-        cmd_buffer.end_render_pass();
-        cmd_buffer.build_and_execute_now();
+        cmd_buffer.end_render_pass()?;
+        cmd_buffer.build_and_execute_now()
     }
 }
 
@@ -410,13 +412,17 @@ impl<D, S> InteractionHandler for Canvas<D, S> {
 }
 
 impl<D, S> OverlayRenderer for Canvas<D, S> {
-    fn init(&mut self, app: &mut AppState) {
-        self.render_bg(app);
-        self.render_fg(app);
+    fn init(&mut self, app: &mut AppState) -> anyhow::Result<()> {
+        self.render_bg(app)?;
+        self.render_fg(app)
     }
-    fn pause(&mut self, _app: &mut AppState) {}
-    fn resume(&mut self, _app: &mut AppState) {}
-    fn render(&mut self, app: &mut AppState) {
+    fn pause(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+        Ok(())
+    }
+    fn resume(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+        Ok(())
+    }
+    fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         let mut dirty = false;
 
         for c in self.controls.iter_mut() {
@@ -430,8 +436,8 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
         }
 
         if dirty {
-            self.render_bg(app);
-            self.render_fg(app);
+            self.render_bg(app)?;
+            self.render_fg(app)?;
         }
 
         /*
@@ -454,17 +460,17 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
         let mut cmd_buffer = self
             .canvas
             .graphics
-            .create_command_buffer(CommandBufferUsage::OneTimeSubmit);
-        cmd_buffer.begin_render_pass(&self.canvas.pipeline_final);
+            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+        cmd_buffer.begin_render_pass(&self.canvas.pipeline_final)?;
 
         // static background
-        cmd_buffer.run_ref(&self.pass_bg);
+        cmd_buffer.run_ref(&self.pass_bg)?;
 
         for (i, c) in self.controls.iter_mut().enumerate() {
             if let Some(render) = c.on_render_hl {
                 if let Some(test) = c.test_highlight {
                     if let Some(hl_color) = test(c, &mut self.canvas.data, app) {
-                        render(c, &self.canvas, app, &mut cmd_buffer, hl_color);
+                        render(c, &self.canvas, app, &mut cmd_buffer, hl_color)?;
                     }
                 }
                 if self.hover_controls.contains(&Some(i)) {
@@ -474,16 +480,16 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
                         app,
                         &mut cmd_buffer,
                         Vec4::new(1., 1., 1., 0.3),
-                    );
+                    )?;
                 }
             }
         }
 
         // mostly static text
-        cmd_buffer.run_ref(&self.pass_fg);
+        cmd_buffer.run_ref(&self.pass_fg)?;
 
-        cmd_buffer.end_render_pass();
-        cmd_buffer.build_and_execute_now();
+        cmd_buffer.end_render_pass()?;
+        cmd_buffer.build_and_execute_now()
 
         /*
         self.canvas
@@ -523,9 +529,15 @@ pub struct Control<D, S> {
     pub on_scroll: Option<fn(&mut Self, &mut D, &mut AppState, f32)>,
     pub test_highlight: Option<fn(&Self, &mut D, &mut AppState) -> Option<Vec4>>,
 
-    on_render_bg: Option<fn(&Self, &CanvasData<D>, &mut AppState, &mut WlxCommandBuffer)>,
-    on_render_hl: Option<fn(&Self, &CanvasData<D>, &mut AppState, &mut WlxCommandBuffer, Vec4)>,
-    on_render_fg: Option<fn(&Self, &CanvasData<D>, &mut AppState, &mut WlxCommandBuffer)>,
+    on_render_bg: Option<
+        fn(&Self, &CanvasData<D>, &mut AppState, &mut WlxCommandBuffer) -> anyhow::Result<()>,
+    >,
+    on_render_hl: Option<
+        fn(&Self, &CanvasData<D>, &mut AppState, &mut WlxCommandBuffer, Vec4) -> anyhow::Result<()>,
+    >,
+    on_render_fg: Option<
+        fn(&Self, &CanvasData<D>, &mut AppState, &mut WlxCommandBuffer) -> anyhow::Result<()>,
+    >,
 }
 
 impl<D, S> Control<D, S> {
@@ -577,7 +589,7 @@ impl<D, S> Control<D, S> {
         canvas: &CanvasData<D>,
         _: &mut AppState,
         cmd_buffer: &mut WlxCommandBuffer,
-    ) {
+    ) -> anyhow::Result<()> {
         let pass = {
             let vertex_buffer = canvas.graphics.upload_verts(
                 canvas.width as _,
@@ -586,20 +598,20 @@ impl<D, S> Control<D, S> {
                 self.rect.y,
                 self.rect.w,
                 self.rect.h,
-            );
+            )?;
             let set0 = canvas.pipeline_bg_color.uniform_buffer(
                 0,
                 vec![self.bg_color.x, self.bg_color.y, self.bg_color.z, 1.],
-            );
+            )?;
             canvas.pipeline_bg_color.create_pass(
                 [canvas.width as _, canvas.height as _],
                 vertex_buffer,
                 canvas.graphics.quad_indices.clone(),
                 vec![set0],
-            )
+            )?
         };
 
-        cmd_buffer.run_ref(&pass);
+        cmd_buffer.run_ref(&pass)
     }
 
     fn render_highlight(
@@ -608,7 +620,7 @@ impl<D, S> Control<D, S> {
         _: &mut AppState,
         cmd_buffer: &mut WlxCommandBuffer,
         color: Vec4,
-    ) {
+    ) -> anyhow::Result<()> {
         let vertex_buffer = canvas.graphics.upload_verts(
             canvas.width as _,
             canvas.height as _,
@@ -616,20 +628,20 @@ impl<D, S> Control<D, S> {
             self.rect.y,
             self.rect.w,
             self.rect.h,
-        );
+        )?;
 
         let set0 = canvas
             .pipeline_bg_color
-            .uniform_buffer(0, color.to_array().to_vec());
+            .uniform_buffer(0, color.to_array().to_vec())?;
 
         let pass = canvas.pipeline_bg_color.create_pass(
             [canvas.width as _, canvas.height as _],
             vertex_buffer.clone(),
             canvas.graphics.quad_indices.clone(),
             vec![set0],
-        );
+        )?;
 
-        cmd_buffer.run_ref(&pass);
+        cmd_buffer.run_ref(&pass)
     }
 
     fn render_text(
@@ -637,11 +649,14 @@ impl<D, S> Control<D, S> {
         canvas: &CanvasData<D>,
         app: &mut AppState,
         cmd_buffer: &mut WlxCommandBuffer,
-    ) {
+    ) -> anyhow::Result<()> {
         let mut cur_y = self.rect.y;
         for line in self.text.lines() {
             let mut cur_x = self.rect.x;
-            for glyph in app.fc.get_glyphs(line, self.size, canvas.graphics.clone()) {
+            for glyph in app
+                .fc
+                .get_glyphs(line, self.size, canvas.graphics.clone())?
+            {
                 if let Some(tex) = glyph.tex.clone() {
                     let vertex_buffer = canvas.graphics.upload_verts(
                         canvas.width as _,
@@ -650,43 +665,47 @@ impl<D, S> Control<D, S> {
                         cur_y - glyph.top,
                         glyph.width,
                         glyph.height,
-                    );
+                    )?;
                     let set0 = canvas.pipeline_fg_glyph.uniform_sampler(
                         0,
                         ImageView::new_default(tex).unwrap(),
                         Filter::Linear,
-                    );
+                    )?;
                     let set1 = canvas.pipeline_fg_glyph.uniform_buffer(
                         1,
                         vec![self.fg_color.x, self.fg_color.y, self.fg_color.z, 1.],
-                    );
+                    )?;
                     let pass = canvas.pipeline_fg_glyph.create_pass(
                         [canvas.width as _, canvas.height as _],
                         vertex_buffer,
                         canvas.graphics.quad_indices.clone(),
                         vec![set0, set1],
-                    );
-                    cmd_buffer.run_ref(&pass);
+                    )?;
+                    cmd_buffer.run_ref(&pass)?;
                 }
                 cur_x += glyph.advance;
             }
             cur_y += (self.size as f32) * 1.5;
         }
+        Ok(())
     }
     fn render_text_centered(
         &self,
         canvas: &CanvasData<D>,
         app: &mut AppState,
         cmd_buffer: &mut WlxCommandBuffer,
-    ) {
+    ) -> anyhow::Result<()> {
         let (w, h) = app
             .fc
-            .get_text_size(&self.text, self.size, canvas.graphics.clone());
+            .get_text_size(&self.text, self.size, canvas.graphics.clone())?;
 
         let mut cur_y = self.rect.y + (self.rect.h) - (h * 0.5);
         for line in self.text.lines() {
             let mut cur_x = self.rect.x + (self.rect.w * 0.5) - (w * 0.5);
-            for glyph in app.fc.get_glyphs(line, self.size, canvas.graphics.clone()) {
+            for glyph in app
+                .fc
+                .get_glyphs(line, self.size, canvas.graphics.clone())?
+            {
                 if let Some(tex) = glyph.tex.clone() {
                     let vertex_buffer = canvas.graphics.upload_verts(
                         canvas.width as _,
@@ -695,27 +714,28 @@ impl<D, S> Control<D, S> {
                         cur_y - glyph.top,
                         glyph.width,
                         glyph.height,
-                    );
+                    )?;
                     let set0 = canvas.pipeline_fg_glyph.uniform_sampler(
                         0,
                         ImageView::new_default(tex).unwrap(),
                         Filter::Linear,
-                    );
+                    )?;
                     let set1 = canvas.pipeline_fg_glyph.uniform_buffer(
                         1,
                         vec![self.fg_color.x, self.fg_color.y, self.fg_color.z, 1.],
-                    );
+                    )?;
                     let pass = canvas.pipeline_fg_glyph.create_pass(
                         [canvas.width as _, canvas.height as _],
                         vertex_buffer,
                         canvas.graphics.quad_indices.clone(),
                         vec![set0, set1],
-                    );
-                    cmd_buffer.run_ref(&pass);
+                    )?;
+                    cmd_buffer.run_ref(&pass)?;
                 }
                 cur_x += glyph.advance;
             }
             cur_y += (self.size as f32) * 1.5;
         }
+        Ok(())
     }
 }

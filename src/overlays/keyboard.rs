@@ -27,7 +27,7 @@ const AUTO_RELEASE_MODS: [KeyModifier; 5] = [SHIFT, CTRL, ALT, SUPER, META];
 
 pub const KEYBOARD_NAME: &str = "kbd";
 
-pub fn create_keyboard<O>(app: &AppState) -> OverlayData<O>
+pub fn create_keyboard<O>(app: &AppState) -> anyhow::Result<OverlayData<O>>
 where
     O: Default,
 {
@@ -50,7 +50,7 @@ where
         app.graphics.clone(),
         app.format,
         data,
-    );
+    )?;
 
     canvas.bg_color = color_parse("#101010").unwrap(); //safe
     canvas.panel(0., 0., size.x, size.y);
@@ -118,7 +118,7 @@ where
 
     let width = LAYOUT.row_size * 0.05 * app.session.config.keyboard_scale;
 
-    OverlayData {
+    Ok(OverlayData {
         state: OverlayState {
             name: KEYBOARD_NAME.into(),
             size: (size.x as _, size.y as _),
@@ -132,7 +132,7 @@ where
         },
         backend: Box::new(canvas),
         ..Default::default()
-    }
+    })
 }
 
 fn key_press(
