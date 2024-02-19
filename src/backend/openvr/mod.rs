@@ -89,7 +89,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
     install_manifest(&mut app_mgr);
 
-    let mut overlays = OverlayContainer::<OpenVrOverlayData>::new(&mut state);
+    let mut overlays = OverlayContainer::<OpenVrOverlayData>::new(&mut state)?;
 
     let mut space_mover = playspace::PlayspaceMover::new();
     #[cfg(feature = "osc")]

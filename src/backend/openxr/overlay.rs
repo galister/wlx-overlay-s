@@ -23,7 +23,7 @@ impl OverlayData<OpenXrOverlayData> {
         &'a mut self,
         xr: &'a XrState,
         command_buffer: &mut WlxCommandBuffer,
-    ) -> Option<xr::CompositionLayerQuad<xr::Vulkan>> {
+    ) -> anyhow::Result<Option<xr::CompositionLayerQuad<xr::Vulkan>>> {
         if let Some(new_view) = self.view() {
             self.data.last_view = Some(new_view);
         }
@@ -32,12 +32,13 @@ impl OverlayData<OpenXrOverlayData> {
             view.clone()
         } else {
             log::warn!("{}: Will not show - image not ready", self.state.name);
-            return None;
+            return Ok(None);
         };
         let extent = my_view.image().extent();
 
         let data = self.data.swapchain.get_or_insert_with(|| {
-            let srd = create_swapchain_render_data(xr, command_buffer.graphics.clone(), extent);
+            let srd =
+                create_swapchain_render_data(xr, command_buffer.graphics.clone(), extent).unwrap(); //TODO
 
             log::info!(
                 "{}: Created swapchain {}x{}, {} images, {} MB",
@@ -50,7 +51,7 @@ impl OverlayData<OpenXrOverlayData> {
             srd
         });
 
-        let sub_image = data.acquire_present_release(command_buffer, my_view, self.state.alpha);
+        let sub_image = data.acquire_present_release(command_buffer, my_view, self.state.alpha)?;
         let posef = helpers::transform_to_posef(&self.state.transform);
 
         let aspect_ratio = extent[1] as f32 / extent[0] as f32;
@@ -73,7 +74,7 @@ impl OverlayData<OpenXrOverlayData> {
                 width: scale_x,
                 height: scale_y,
             });
-        Some(quad)
+        Ok(Some(quad))
     }
 
     pub(super) fn after_input(&mut self, app: &mut AppState) {

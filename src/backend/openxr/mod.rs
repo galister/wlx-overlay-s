@@ -50,9 +50,8 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         }
     };
 
-    let environment_blend_mode = xr_instance
-        .enumerate_environment_blend_modes(system, VIEW_TYPE)
-        .unwrap()[0];
+    let environment_blend_mode =
+        xr_instance.enumerate_environment_blend_modes(system, VIEW_TYPE)?[0];
     log::info!("Using environment blend mode: {:?}", environment_blend_mode);
 
     let mut app_state = {
@@ -60,7 +59,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         AppState::from_graphics(graphics)?
     };
 
-    let mut overlays = OverlayContainer::<OpenXrOverlayData>::new(&mut app_state);
+    let mut overlays = OverlayContainer::<OpenXrOverlayData>::new(&mut app_state)?;
     let mut lines = LinePool::new(app_state.graphics.clone());
 
     #[cfg(feature = "osc")]
@@ -85,14 +84,12 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 queue_family_index: app_state.graphics.queue.queue_family_index(),
                 queue_index: 0,
             },
-        )
-        .unwrap();
+        )?;
         xr::Session::from_raw(xr_instance.clone(), raw_session, Box::new(()))
     };
 
-    let stage = session
-        .create_reference_space(xr::ReferenceSpaceType::STAGE, xr::Posef::IDENTITY)
-        .unwrap();
+    let stage =
+        session.create_reference_space(xr::ReferenceSpaceType::STAGE, xr::Posef::IDENTITY)?;
 
     let mut xr_state = XrState {
         instance: xr_instance,
@@ -103,11 +100,11 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     };
 
     let pointer_lines = [
-        lines.allocate(&xr_state, app_state.graphics.clone()),
-        lines.allocate(&xr_state, app_state.graphics.clone()),
+        lines.allocate(&xr_state, app_state.graphics.clone())?,
+        lines.allocate(&xr_state, app_state.graphics.clone())?,
     ];
 
-    let watch_id = overlays.get_by_name(WATCH_NAME).unwrap().state.id;
+    let watch_id = overlays.get_by_name(WATCH_NAME).unwrap().state.id; // want panic
 
     let input_source = input::OpenXrInputSource::new(&xr_state)?;
 
@@ -130,7 +127,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             }
         }
 
-        while let Some(event) = xr_state.instance.poll_event(&mut event_storage).unwrap() {
+        while let Some(event) = xr_state.instance.poll_event(&mut event_storage)? {
             use xr::Event::*;
             match event {
                 SessionStateChanged(e) => {
@@ -139,11 +136,11 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                     log::info!("entered state {:?}", e.state());
                     match e.state() {
                         xr::SessionState::READY => {
-                            xr_state.session.begin(VIEW_TYPE).unwrap();
+                            xr_state.session.begin(VIEW_TYPE)?;
                             session_running = true;
                         }
                         xr::SessionState::STOPPING => {
-                            xr_state.session.end().unwrap();
+                            xr_state.session.end()?;
                             session_running = false;
                         }
                         xr::SessionState::EXITING | xr::SessionState::LOSS_PENDING => {
@@ -167,19 +164,17 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             continue 'main_loop;
         }
 
-        let xr_frame_state = frame_wait.wait().unwrap();
-        frame_stream.begin().unwrap();
+        let xr_frame_state = frame_wait.wait()?;
+        frame_stream.begin()?;
 
         xr_state.predicted_display_time = xr_frame_state.predicted_display_time;
 
         if !xr_frame_state.should_render {
-            frame_stream
-                .end(
-                    xr_frame_state.predicted_display_time,
-                    environment_blend_mode,
-                    &[],
-                )
-                .unwrap();
+            frame_stream.end(
+                xr_frame_state.predicted_display_time,
+                environment_blend_mode,
+                &[],
+            )?;
             continue 'main_loop;
         }
 
@@ -214,7 +209,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             }
         }
 
-        watch_fade(&mut app_state, overlays.mut_by_id(watch_id).unwrap());
+        watch_fade(&mut app_state, overlays.mut_by_id(watch_id).unwrap()); // want panic
 
         overlays
             .iter_mut()
@@ -225,14 +220,11 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             let _ = sender.send_params(&overlays);
         };
 
-        let (_, views) = xr_state
-            .session
-            .locate_views(
-                VIEW_TYPE,
-                xr_frame_state.predicted_display_time,
-                &xr_state.stage,
-            )
-            .unwrap();
+        let (_, views) = xr_state.session.locate_views(
+            VIEW_TYPE,
+            xr_frame_state.predicted_display_time,
+            &xr_state.stage,
+        )?;
 
         app_state.input_state.hmd = helpers::hmd_pose_from_views(&views);
 
@@ -254,7 +246,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             }
         }
 
-        let watch = overlays.mut_by_id(watch_id).unwrap();
+        let watch = overlays.mut_by_id(watch_id).unwrap(); // want panic
         let watch_transform = watch.state.transform;
         if !watch.state.want_visible {
             watch.state.want_visible = true;
@@ -289,12 +281,12 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 continue;
             }
 
-            if let Some(quad) = o.present_xr(&xr_state, &mut command_buffer) {
+            if let Some(quad) = o.present_xr(&xr_state, &mut command_buffer)? {
                 layers.push((dist_sq, quad));
             };
         }
 
-        for quad in lines.present_xr(&xr_state, &mut command_buffer) {
+        for quad in lines.present_xr(&xr_state, &mut command_buffer)? {
             layers.push((0.0, quad));
         }
 
@@ -307,17 +299,15 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             .map(|f| &f.1 as &xr::CompositionLayerBase<xr::Vulkan>)
             .collect::<Vec<_>>();
 
-        frame_stream
-            .end(
-                xr_state.predicted_display_time,
-                environment_blend_mode,
-                &frame_ref,
-            )
-            .unwrap();
+        frame_stream.end(
+            xr_state.predicted_display_time,
+            environment_blend_mode,
+            &frame_ref,
+        )?;
 
         app_state.hid_provider.on_new_frame();
 
-        let watch = overlays.mut_by_id(watch_id).unwrap();
+        let watch = overlays.mut_by_id(watch_id).unwrap(); // want panic
         watch.state.transform = watch_transform;
     }
 

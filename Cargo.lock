@@ -2987,8 +2987,9 @@ checksum = "7ffc183a10b4478d04cbbbfc96d0873219d962dd5accaff2ffbd4ceb7df837f4"
 
 [[package]]
 name = "rxscreen"
-version = "0.1.6"
-source = "git+https://github.com/galister/rxscreen.git#bb045fbe830d7ff4d2d5ffc408f3df8944e7d90f"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "afbab13f83503a8272b7150d487494992cf6c59c299dcaf5d8ffac75bad9fc96"
 dependencies = [
  "libc",
 ]
@@ -4291,8 +4292,8 @@ dependencies = [
 
 [[package]]
 name = "wlx-capture"
-version = "0.1.0"
-source = "git+https://github.com/galister/wlx-capture#332dd363357a845e4107aaada9a67899e7398839"
+version = "0.1.1"
+source = "git+https://github.com/galister/wlx-capture#06a6ff48464fdda0f563a3b5858fcb69ea0f5980"
 dependencies = [
  "ashpd",
  "drm-fourcc",

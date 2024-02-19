@@ -128,30 +128,32 @@ struct ScreenPipeline {
 }
 
 impl ScreenPipeline {
-    fn new(extent: &[u32; 3], app: &mut AppState) -> ScreenPipeline {
+    fn new(extent: &[u32; 3], app: &mut AppState) -> anyhow::Result<ScreenPipeline> {
         let texture = app
             .graphics
             .render_texture(extent[0], extent[1], app.graphics.native_format);
 
-        let view = ImageView::new_default(texture).unwrap();
+        let view = ImageView::new_default(texture)?;
 
-        let shaders = app.graphics.shared_shaders.read().unwrap();
+        let Ok(shaders) = app.graphics.shared_shaders.read() else {
+            return Err(anyhow::anyhow!("Could not lock shared shaders for reading"));
+        };
 
         let pipeline = app.graphics.create_pipeline(
             view.clone(),
-            shaders.get("vert_common").unwrap().clone(),
-            shaders.get("frag_sprite").unwrap().clone(),
+            shaders.get("vert_common").unwrap().clone(), // want panic
+            shaders.get("frag_sprite").unwrap().clone(), // want panic
             app.graphics.native_format,
         );
 
         let extentf = [extent[0] as f32, extent[1] as f32];
 
-        ScreenPipeline {
+        Ok(ScreenPipeline {
             view,
             mouse: None,
             pipeline,
             extentf,
-        }
+        })
     }
 
     fn ensure_mouse_initialized(&mut self, uploads: &mut WlxCommandBuffer) {
@@ -272,17 +274,17 @@ impl ScreenRenderer {
     }
 
     #[cfg(feature = "x11")]
-    pub fn new_xshm(screen: Arc<XshmScreen>) -> Option<ScreenRenderer> {
+    pub fn new_xshm(screen: Arc<XshmScreen>) -> ScreenRenderer {
         let capture = XshmCapture::new(screen.clone());
 
-        Some(ScreenRenderer {
+        ScreenRenderer {
             name: screen.name.clone(),
             capture: Box::new(capture),
             pipeline: None,
             receiver: None,
             last_view: None,
             extent: extent_from_res((screen.monitor.width(), screen.monitor.height())),
-        })
+        }
     }
 }
 
@@ -406,7 +408,7 @@ impl OverlayRenderer for ScreenRenderer {
                     let mut pipeline = None;
                     if mouse.is_some() {
                         let new_pipeline = self.pipeline.get_or_insert_with(|| {
-                            let mut pipeline = ScreenPipeline::new(&self.extent, app);
+                            let mut pipeline = ScreenPipeline::new(&self.extent, app).unwrap();
                             self.last_view = Some(pipeline.view.clone());
                             pipeline.ensure_mouse_initialized(&mut upload);
                             pipeline
@@ -622,12 +624,12 @@ where
 }
 
 #[cfg(feature = "wayland")]
-pub fn get_screens_wayland<O>(session: &AppSession) -> (Vec<OverlayData<O>>, Vec2)
+pub fn get_screens_wayland<O>(session: &AppSession) -> anyhow::Result<(Vec<OverlayData<O>>, Vec2)>
 where
     O: Default,
 {
     let mut overlays = vec![];
-    let wl = WlxClient::new().unwrap();
+    let wl = WlxClient::new().ok_or_else(|| anyhow::anyhow!("Failed to connect to Wayland"))?;
 
     // Load existing Pipewire tokens from file
     let mut pw_tokens: HashMap<String, String> = if let Ok(conf) = load_pw_token_config() {
@@ -652,7 +654,7 @@ where
     }
 
     let extent = wl.get_desktop_extent();
-    (overlays, Vec2::new(extent.0 as f32, extent.1 as f32))
+    Ok((overlays, Vec2::new(extent.0 as f32, extent.1 as f32)))
 }
 
 #[cfg(not(feature = "x11"))]
@@ -664,13 +666,22 @@ where
 }
 
 #[cfg(feature = "x11")]
-pub fn get_screens_x11<O>(session: &AppSession) -> (Vec<OverlayData<O>>, Vec2)
+pub fn get_screens_x11<O>(session: &AppSession) -> anyhow::Result<(Vec<OverlayData<O>>, Vec2)>
 where
     O: Default,
 {
+    use anyhow::bail;
+
     let mut extent = vec2(0., 0.);
 
-    let overlays = XshmCapture::get_monitors()
+    let monitors = match XshmCapture::get_monitors() {
+        Ok(m) => m,
+        Err(e) => {
+            bail!(e.to_string());
+        }
+    };
+
+    let overlays = monitors
         .into_iter()
         .map(|s| {
             log::info!(
@@ -682,7 +693,7 @@ where
                 s.monitor.y()
             );
             let size = (s.monitor.width(), s.monitor.height());
-            let capture: ScreenRenderer = ScreenRenderer::new_xshm(s.clone()).unwrap();
+            let capture: ScreenRenderer = ScreenRenderer::new_xshm(s.clone());
 
             let backend = Box::new(SplitOverlayBackend {
                 renderer: Box::new(capture),
@@ -725,7 +736,7 @@ where
         })
         .collect();
 
-    (overlays, extent)
+    Ok((overlays, extent))
 }
 
 fn extent_from_res(res: (i32, i32)) -> [u32; 3] {

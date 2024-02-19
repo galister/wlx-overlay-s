@@ -47,12 +47,12 @@ impl<T> OverlayContainer<T>
 where
     T: Default,
 {
-    pub fn new(app: &mut AppState) -> Self {
+    pub fn new(app: &mut AppState) -> anyhow::Result<Self> {
         let mut overlays = IdMap::new();
         let (screens, extent) = if std::env::var("WAYLAND_DISPLAY").is_ok() {
-            crate::overlays::screen::get_screens_wayland(&app.session)
+            crate::overlays::screen::get_screens_wayland(&app.session)?
         } else {
-            crate::overlays::screen::get_screens_x11(&app.session)
+            crate::overlays::screen::get_screens_x11(&app.session)?
         };
 
         let mut watch = create_watch::<T>(&app, &screens);
@@ -79,7 +79,7 @@ where
             }
             overlays.insert(screen.state.id, screen);
         }
-        Self { overlays, extent }
+        Ok(Self { overlays, extent })
     }
 
     pub fn mut_by_selector(&mut self, selector: &OverlaySelector) -> Option<&mut OverlayData<T>> {

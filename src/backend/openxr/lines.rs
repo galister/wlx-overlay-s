@@ -49,7 +49,7 @@ impl LinePool {
                 let tex = command_buffer.texture2d(1, 1, Format::R8G8B8A8_UNORM, &color);
                 ImageView::new_default(tex).unwrap()
             })
-            .collect::<Vec<_>>();
+            .collect();
 
         command_buffer.build_and_execute_now();
 
@@ -59,10 +59,14 @@ impl LinePool {
         }
     }
 
-    pub(super) fn allocate(&mut self, xr: &XrState, graphics: Arc<WlxGraphics>) -> usize {
+    pub(super) fn allocate(
+        &mut self,
+        xr: &XrState,
+        graphics: Arc<WlxGraphics>,
+    ) -> anyhow::Result<usize> {
         let id = AUTO_INCREMENT.fetch_add(1, Ordering::Relaxed);
 
-        let srd = create_swapchain_render_data(xr, graphics, [1, 1, 1]);
+        let srd = create_swapchain_render_data(xr, graphics, [1, 1, 1])?;
         self.lines.insert(
             id,
             LineContainer {
@@ -70,7 +74,7 @@ impl LinePool {
                 maybe_line: None,
             },
         );
-        id
+        Ok(id)
     }
 
     pub(super) fn draw_from(
@@ -128,7 +132,7 @@ impl LinePool {
         &'a mut self,
         xr: &'a XrState,
         command_buffer: &mut WlxCommandBuffer,
-    ) -> Vec<xr::CompositionLayerQuad<xr::Vulkan>> {
+    ) -> Result<Vec<xr::CompositionLayerQuad<xr::Vulkan>>, xr::sys::Result> {
         let mut quads = Vec::new();
 
         for line in self.lines.values_mut() {
@@ -139,7 +143,7 @@ impl LinePool {
                         command_buffer,
                         inner.view,
                         1.0,
-                    ))
+                    )?)
                     .eye_visibility(xr::EyeVisibility::BOTH)
                     .layer_flags(xr::CompositionLayerFlags::CORRECT_CHROMATIC_ABERRATION)
                     .space(&xr.stage)
@@ -152,7 +156,7 @@ impl LinePool {
             }
         }
 
-        quads
+        Ok(quads)
     }
 
     /// the number of lines that are waiting to be drawn

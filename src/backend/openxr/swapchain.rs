@@ -17,22 +17,18 @@ pub(super) fn create_swapchain_render_data(
     xr: &XrState,
     graphics: Arc<WlxGraphics>,
     extent: [u32; 3],
-) -> SwapchainRenderData {
-    let swapchain = xr
-        .session
-        .create_swapchain(&xr::SwapchainCreateInfo {
-            create_flags: xr::SwapchainCreateFlags::EMPTY,
-            usage_flags: xr::SwapchainUsageFlags::COLOR_ATTACHMENT
-                | xr::SwapchainUsageFlags::SAMPLED,
-            format: graphics.native_format as _,
-            sample_count: 1,
-            width: extent[0],
-            height: extent[1],
-            face_count: 1,
-            array_size: 1,
-            mip_count: 1,
-        })
-        .unwrap();
+) -> anyhow::Result<SwapchainRenderData> {
+    let swapchain = xr.session.create_swapchain(&xr::SwapchainCreateInfo {
+        create_flags: xr::SwapchainCreateFlags::EMPTY,
+        usage_flags: xr::SwapchainUsageFlags::COLOR_ATTACHMENT | xr::SwapchainUsageFlags::SAMPLED,
+        format: graphics.native_format as _,
+        sample_count: 1,
+        width: extent[0],
+        height: extent[1],
+        face_count: 1,
+        array_size: 1,
+        mip_count: 1,
+    })?;
 
     let shaders = graphics.shared_shaders.read().unwrap();
     let pipeline = graphics.create_pipeline_dynamic(
@@ -58,21 +54,20 @@ pub(super) fn create_swapchain_render_data(
                         usage: ImageUsage::COLOR_ATTACHMENT,
                         ..Default::default()
                     },
-                )
-                .unwrap()
+                )?
             };
             // SAFETY: OpenXR guarantees that the image is a swapchain image, thus has memory backing it.
             let image = Arc::new(unsafe { raw_image.assume_bound() });
-            ImageView::new_default(image).unwrap()
+            Ok(ImageView::new_default(image)?)
         })
-        .collect();
+        .collect::<anyhow::Result<SmallVec<[Arc<ImageView>; 4]>>>()?;
 
-    SwapchainRenderData {
+    Ok(SwapchainRenderData {
         swapchain,
         pipeline,
         images,
         extent,
-    }
+    })
 }
 
 pub(super) struct SwapchainRenderData {
@@ -88,9 +83,9 @@ impl SwapchainRenderData {
         command_buffer: &mut WlxCommandBuffer,
         view: Arc<ImageView>,
         alpha: f32,
-    ) -> xr::SwapchainSubImage<xr::Vulkan> {
-        let idx = self.swapchain.acquire_image().unwrap() as usize;
-        self.swapchain.wait_image(xr::Duration::INFINITE).unwrap();
+    ) -> Result<xr::SwapchainSubImage<xr::Vulkan>, xr::sys::Result> {
+        let idx = self.swapchain.acquire_image()? as usize;
+        self.swapchain.wait_image(xr::Duration::INFINITE)?;
 
         let render_target = &mut self.images[idx];
         command_buffer.begin_rendering(render_target.clone());
@@ -112,9 +107,9 @@ impl SwapchainRenderData {
         command_buffer.run_ref(&pass);
         command_buffer.end_rendering();
 
-        self.swapchain.release_image().unwrap();
+        self.swapchain.release_image()?;
 
-        xr::SwapchainSubImage::new()
+        Ok(xr::SwapchainSubImage::new()
             .swapchain(&self.swapchain)
             .image_rect(xr::Rect2Di {
                 offset: xr::Offset2Di { x: 0, y: 0 },
@@ -123,6 +118,6 @@ impl SwapchainRenderData {
                     height: target_extent[1] as _,
                 },
             })
-            .image_array_index(0)
+            .image_array_index(0))
     }
 }
