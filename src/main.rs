@@ -53,7 +53,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-#[cfg(all(feature = "openxr", feature = "openvr"))]
 fn auto_run(running: Arc<AtomicBool>) {
     use backend::common::BackendError;
 
@@ -65,7 +64,7 @@ fn auto_run(running: Arc<AtomicBool>) {
         };
     }
 
-    #[cfg(feature = "openxr")]
+    #[cfg(feature = "openvr")]
     {
         use crate::backend::openvr::openvr_run;
         let Err(BackendError::NotSupported) = openvr_run(running) else {

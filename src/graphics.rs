@@ -1,17 +1,24 @@
 use std::{
     collections::HashMap,
     io::Cursor,
-    os::{
-        fd::{FromRawFd, IntoRawFd},
-        raw::c_void,
-    },
+    os::fd::{FromRawFd, IntoRawFd},
     slice::Iter,
     sync::{Arc, OnceLock, RwLock},
 };
 
 use anyhow::{anyhow, bail};
-use ash::vk::{self, SubmitInfo};
+use ash::vk::SubmitInfo;
 use smallvec::smallvec;
+
+#[cfg(feature = "openvr")]
+use vulkano::{
+    device::physical::PhysicalDeviceType, instance::InstanceCreateFlags,
+    instance::InstanceExtensions,
+};
+
+#[cfg(feature = "openxr")]
+use {ash::vk, std::os::raw::c_void, vulkano::swapchain::Surface};
+
 use vulkano::{
     buffer::{
         allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo},
@@ -30,7 +37,6 @@ use vulkano::{
     descriptor_set::{
         allocator::StandardDescriptorSetAllocator, DescriptorSet, WriteDescriptorSet,
     },
-    device::physical::PhysicalDeviceType,
     device::Features,
     device::{
         physical::PhysicalDevice, Device, DeviceCreateInfo, DeviceExtensions, Queue,
@@ -44,8 +50,6 @@ use vulkano::{
         Image, ImageCreateInfo, ImageLayout, ImageTiling, ImageType, ImageUsage, SampleCount,
         SubresourceLayout,
     },
-    instance::InstanceCreateFlags,
-    instance::InstanceExtensions,
     instance::{Instance, InstanceCreateInfo},
     memory::{
         allocator::{
@@ -75,7 +79,6 @@ use vulkano::{
         SubpassDescription,
     },
     shader::ShaderModule,
-    swapchain::Surface,
     sync::{
         fence::Fence, future::NowFuture, AccessFlags, DependencyInfo, GpuFuture,
         ImageMemoryBarrier, PipelineStages,
@@ -729,6 +732,7 @@ impl WlxGraphics {
         )?))
     }
 
+    #[allow(dead_code)]
     pub fn create_pipeline_dynamic(
         self: &Arc<Self>,
         vert: Arc<ShaderModule>,
@@ -763,6 +767,7 @@ impl WlxGraphics {
         })
     }
 
+    #[allow(dead_code)]
     pub fn transition_layout(
         &self,
         image: Arc<Image>,
@@ -827,6 +832,7 @@ pub struct WlxCommandBuffer {
     pub command_buffer: RecordingCommandBuffer,
 }
 
+#[allow(dead_code)]
 impl WlxCommandBuffer {
     pub fn begin_render_pass(
         &mut self,
@@ -925,9 +931,7 @@ impl WlxCommandBuffer {
         reader.next_frame(&mut image_data)?;
         self.texture2d(width, height, Format::R8G8B8A8_UNORM, &image_data)
     }
-}
 
-impl WlxCommandBuffer {
     pub fn end_render_pass(&mut self) -> anyhow::Result<()> {
         self.command_buffer
             .end_render_pass(SubpassEndInfo::default())?;
@@ -971,6 +975,7 @@ pub struct WlxPipeline<D> {
     pub data: D,
 }
 
+#[allow(dead_code)]
 impl WlxPipeline<WlxPipelineDynamic> {
     fn new(
         graphics: Arc<WlxGraphics>,

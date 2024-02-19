@@ -1,11 +1,7 @@
 use core::slice;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
-    error::Error,
-    f32::consts::PI,
-    ops::{Add, Deref},
-    path::PathBuf,
+    ops::Add,
     ptr,
     sync::{mpsc::Receiver, Arc},
     time::{Duration, Instant},
@@ -19,14 +15,26 @@ use wlx_capture::{
         DrmFormat, MouseMeta, WlxFrame, DRM_FORMAT_ABGR8888, DRM_FORMAT_ARGB8888,
         DRM_FORMAT_XBGR8888, DRM_FORMAT_XRGB8888,
     },
-    pipewire::{pipewire_select_screen, PipewireCapture},
-    wayland::{wayland_client::protocol::wl_output::Transform, WlxClient, WlxOutput},
-    wlr_dmabuf::WlrDmabufCapture,
-    xshm::{XshmCapture, XshmScreen},
+    wayland::wayland_client::protocol::wl_output::Transform,
     WlxCapture,
 };
 
-use glam::{vec2, vec3a, Affine2, Quat, Vec2, Vec3};
+#[cfg(feature = "wayland")]
+use {
+    crate::config_io,
+    glam::Vec3,
+    std::{collections::HashMap, error::Error, f32::consts::PI, ops::Deref, path::PathBuf},
+    wlx_capture::{
+        pipewire::{pipewire_select_screen, PipewireCapture},
+        wayland::{WlxClient, WlxOutput},
+        wlr_dmabuf::WlrDmabufCapture,
+    },
+};
+
+#[cfg(feature = "x11")]
+use wlx_capture::xshm::{XshmCapture, XshmScreen};
+
+use glam::{vec2, vec3a, Affine2, Quat, Vec2};
 
 use crate::{
     backend::{
@@ -34,7 +42,6 @@ use crate::{
         overlay::{OverlayData, OverlayRenderer, OverlayState, SplitOverlayBackend},
     },
     config::def_pw_tokens,
-    config_io,
     graphics::{fourcc_to_vk, WlxCommandBuffer, WlxPipeline, WlxPipelineLegacy},
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState},
@@ -356,12 +363,15 @@ impl OverlayRenderer for ScreenRenderer {
                         log::error!("Invalid frame");
                         continue;
                     }
-                    if let Ok(new) = app.graphics.dmabuf_texture(frame) {
-                        let view = ImageView::new_default(new.clone())?;
+                    match app.graphics.dmabuf_texture(frame) {
+                        Ok(new) => {
+                            let view = ImageView::new_default(new.clone())?;
 
-                        self.last_view = Some(view);
-                    } else {
-                        log::error!("{}: Failed to create DMA-buf texture", self.name);
+                            self.last_view = Some(view);
+                        }
+                        Err(e) => {
+                            log::error!("{}: Failed to create DMA-buf texture: {}", self.name, e);
+                        }
                     }
                 }
                 WlxFrame::MemFd(frame) => {
@@ -596,12 +606,14 @@ pub struct TokenConf {
     pub pw_tokens: Vec<(String, String)>,
 }
 
+#[cfg(feature = "wayland")]
 fn get_pw_token_path() -> PathBuf {
     let mut path = config_io::get_conf_d_path();
     path.push("pw_tokens.yaml");
     path
 }
 
+#[cfg(feature = "wayland")]
 pub fn save_pw_token_config(tokens: &HashMap<String, String>) -> Result<(), Box<dyn Error>> {
     let mut conf = TokenConf::default();
 
@@ -615,6 +627,7 @@ pub fn save_pw_token_config(tokens: &HashMap<String, String>) -> Result<(), Box<
     Ok(())
 }
 
+#[cfg(feature = "wayland")]
 pub fn load_pw_token_config() -> Result<HashMap<String, String>, Box<dyn Error>> {
     let mut map: HashMap<String, String> = HashMap::new();
 
@@ -629,11 +642,11 @@ pub fn load_pw_token_config() -> Result<HashMap<String, String>, Box<dyn Error>>
 }
 
 #[cfg(not(feature = "wayland"))]
-pub fn get_screens_wayland<O>(_session: &AppSession) -> (Vec<OverlayData<O>>, Vec2)
+pub fn get_screens_wayland<O>(_session: &AppSession) -> anyhow::Result<(Vec<OverlayData<O>>, Vec2)>
 where
     O: Default,
 {
-    panic!("Wayland support not enabled")
+    anyhow::bail!("Wayland support not enabled")
 }
 
 #[cfg(feature = "wayland")]
@@ -671,11 +684,11 @@ where
 }
 
 #[cfg(not(feature = "x11"))]
-pub fn get_screens_x11<O>(session: &AppSession) -> (Vec<OverlayData<O>>, Vec2)
+pub fn get_screens_x11<O>(_session: &AppSession) -> anyhow::Result<(Vec<OverlayData<O>>, Vec2)>
 where
     O: Default,
 {
-    panic!("X11 support not enabled")
+    anyhow::bail!("X11 support not enabled")
 }
 
 #[cfg(feature = "x11")]

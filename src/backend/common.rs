@@ -4,9 +4,11 @@ use std::{
     time::Instant,
 };
 
+#[cfg(feature = "openxr")]
+use openxr as xr;
+
 use glam::{Affine3A, Vec2, Vec3A};
 use idmap::IdMap;
-use openxr as xr;
 use thiserror::Error;
 
 use crate::{
