@@ -50,7 +50,7 @@ pub fn openvr_uninstall() {
     };
 
     let mut app_mgr = context.applications_mngr();
-    uninstall_manifest(&mut app_mgr);
+    let _ = uninstall_manifest(&mut app_mgr);
 }
 
 pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
@@ -87,7 +87,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         AppState::from_graphics(graphics)?
     };
 
-    install_manifest(&mut app_mgr);
+    let _ = install_manifest(&mut app_mgr);
 
     let mut overlays = OverlayContainer::<OpenVrOverlayData>::new(&mut state)?;
 
@@ -113,7 +113,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
     log::info!("HMD running @ {} Hz", refresh_rate);
 
-    let watch_id = overlays.get_by_name(WATCH_NAME).unwrap().state.id;
+    let watch_id = overlays.get_by_name(WATCH_NAME).unwrap().state.id; // want panic
 
     let frame_time = (1000.0 / refresh_rate).floor() * 0.001;
     let mut next_device_update = Instant::now();
@@ -181,7 +181,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             .iter_mut()
             .for_each(|o| o.state.auto_movement(&mut state));
 
-        watch_fade(&mut state, overlays.mut_by_id(watch_id).unwrap());
+        watch_fade(&mut state, overlays.mut_by_id(watch_id).unwrap()); // want panic
         space_mover.update(&mut chaperone_mgr, &mut overlays, &state);
 
         let lengths_haptics = interact(&mut overlays, &mut state);

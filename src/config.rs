@@ -128,10 +128,11 @@ pub fn load_general() -> GeneralConfig {
     let path_conf_d = get_conf_d_path();
     if let Ok(paths_unsorted) = std::fs::read_dir(path_conf_d) {
         // Sort paths alphabetically
-        let mut paths: Vec<_> = paths_unsorted.map(|r| r.unwrap()).collect();
+        let mut paths: Vec<_> = paths_unsorted.map(|r| r.unwrap()).collect(); // TODO safe unwrap?
         paths.sort_by_key(|dir| dir.path());
         for path in paths {
             if !path.file_type().unwrap().is_file() {
+                // TODO safe unwrap?
                 continue;
             }
 

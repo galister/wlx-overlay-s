@@ -668,7 +668,7 @@ impl<D, S> Control<D, S> {
                     )?;
                     let set0 = canvas.pipeline_fg_glyph.uniform_sampler(
                         0,
-                        ImageView::new_default(tex).unwrap(),
+                        ImageView::new_default(tex)?,
                         Filter::Linear,
                     )?;
                     let set1 = canvas.pipeline_fg_glyph.uniform_buffer(
@@ -717,7 +717,7 @@ impl<D, S> Control<D, S> {
                     )?;
                     let set0 = canvas.pipeline_fg_glyph.uniform_sampler(
                         0,
-                        ImageView::new_default(tex).unwrap(),
+                        ImageView::new_default(tex)?,
                         Filter::Linear,
                     )?;
                     let set1 = canvas.pipeline_fg_glyph.uniform_buffer(

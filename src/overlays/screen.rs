@@ -417,7 +417,7 @@ impl OverlayRenderer for ScreenRenderer {
                     let mut pipeline = None;
                     if mouse.is_some() {
                         let new_pipeline = self.pipeline.get_or_insert_with(|| {
-                            let mut pipeline = ScreenPipeline::new(&self.extent, app).unwrap();
+                            let mut pipeline = ScreenPipeline::new(&self.extent, app).unwrap(); // TODO
                             self.last_view = Some(pipeline.view.clone());
                             pipeline.ensure_mouse_initialized(&mut upload).unwrap(); // TODO
                             pipeline
@@ -430,7 +430,7 @@ impl OverlayRenderer for ScreenRenderer {
                     if let Some(pipeline) = pipeline {
                         pipeline.render(image, mouse.as_ref(), app)?;
                     } else {
-                        let view = ImageView::new_default(image).unwrap();
+                        let view = ImageView::new_default(image)?;
                         self.last_view = Some(view);
                     }
                     self.capture.request_new_frame();
@@ -459,6 +459,7 @@ impl OverlayRenderer for ScreenRenderer {
 }
 
 #[cfg(feature = "wayland")]
+/// Panics if id is not a valid output id
 fn try_create_screen<O>(
     wl: &WlxClient,
     id: u32,
@@ -468,7 +469,7 @@ fn try_create_screen<O>(
 where
     O: Default,
 {
-    let output = &wl.outputs.get(id).unwrap();
+    let output = &wl.outputs.get(id).unwrap(); // safe due to contract
     log::info!(
         "{}: Res {}x{} Size {:?} Pos {:?}",
         output.name,

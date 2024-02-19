@@ -341,7 +341,7 @@ fn btn_func_dn(
         func_right,
         func_middle,
     } = control.state.as_ref().unwrap()
-    // want to panic if state not found
+    // want panic
     else {
         log::error!("FuncButton state not found");
         return;
@@ -403,7 +403,7 @@ fn battery_update(control: &mut Control<(), ElemState>, _: &mut (), app: &mut Ap
         fg_color_low,
         fg_color_charging,
     } = control.state.as_ref().unwrap()
-    // want to panic if state not found
+    // want panic
     else {
         return;
     };
@@ -449,7 +449,7 @@ fn exec_button(
         ref mut child,
         ..
     } = control.state.as_mut().unwrap()
-    // want to panic if state not found
+    // want panic
     else {
         log::error!("ExecButton state not found");
         return;
@@ -490,7 +490,7 @@ fn exec_label_update(control: &mut Control<(), ElemState>, _: &mut (), _: &mut A
         exec,
         ref mut child,
     } = control.state.as_mut().unwrap()
-    // want to panic if state not found
+    // want panic
     else {
         log::error!("AutoExec state not found");
         return;
@@ -553,7 +553,7 @@ fn exec_label_update(control: &mut Control<(), ElemState>, _: &mut (), _: &mut A
 }
 
 fn clock_update(control: &mut Control<(), ElemState>, _: &mut (), _: &mut AppState) {
-    // want to panic if state not found
+    // want panic
     let ElemState::Clock { timezone, format } = control.state.as_ref().unwrap() else {
         log::error!("Clock state not found");
         return;
@@ -574,7 +574,7 @@ fn overlay_button_scroll(
     app: &mut AppState,
     delta: f32,
 ) {
-    // want to panic if state not found
+    // want panic
     let ElemState::OverlayButton { overlay, .. } = control.state.as_mut().unwrap() else {
         log::error!("OverlayButton state not found");
         return;
@@ -612,7 +612,7 @@ fn overlay_button_dn(
         ref mut mode,
         ..
     } = control.state.as_mut().unwrap()
-    // want to panic if state not found
+    // want panic
     else {
         log::error!("OverlayButton state not found");
         return;
@@ -627,7 +627,7 @@ fn overlay_button_up(control: &mut Control<(), ElemState>, _: &mut (), app: &mut
         mode,
         overlay,
     } = control.state.as_ref().unwrap()
-    // want to panic if state not found
+    // want panic
     else {
         log::error!("OverlayButton state not found");
         return;
