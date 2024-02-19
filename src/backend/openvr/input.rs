@@ -209,45 +209,38 @@ impl OpenVrInputSource {
     pub fn update_devices(&mut self, system: &mut SystemManager, app: &mut AppState) {
         app.input_state.devices.clear();
 
-        get_tracked_device(system, TrackedDeviceIndex::HMD, TrackedDeviceRole::Hmd).and_then(
-            |device| {
+        for idx in 0..TrackedDeviceIndex::MAX {
+            let device = TrackedDeviceIndex::new(idx as _).unwrap(); // safe
+            if !system.is_tracked_device_connected(device) {
+                continue;
+            }
+
+            let class = system.get_tracked_device_class(device);
+
+            let role = match class {
+                ETrackedDeviceClass::TrackedDeviceClass_HMD => TrackedDeviceRole::Hmd,
+                ETrackedDeviceClass::TrackedDeviceClass_Controller => {
+                    let role = system.get_controller_role_for_tracked_device_index(device);
+                    match role {
+                        ETrackedControllerRole::TrackedControllerRole_LeftHand => {
+                            TrackedDeviceRole::LeftHand
+                        }
+                        ETrackedControllerRole::TrackedControllerRole_RightHand => {
+                            TrackedDeviceRole::RightHand
+                        }
+                        _ => continue,
+                    }
+                }
+                ETrackedDeviceClass::TrackedDeviceClass_GenericTracker => {
+                    TrackedDeviceRole::Tracker
+                }
+                _ => continue,
+            };
+
+            get_tracked_device(system, device, role).and_then(|device| {
                 app.input_state.devices.push(device);
                 Some(())
-            },
-        );
-
-        for controller_idx in system.get_sorted_tracked_device_indices_of_class(
-            ETrackedDeviceClass::TrackedDeviceClass_Controller,
-            TrackedDeviceIndex::HMD,
-        ) {
-            let sys_role = system.get_controller_role_for_tracked_device_index(controller_idx);
-            match sys_role {
-                ETrackedControllerRole::TrackedControllerRole_LeftHand => {
-                    Some(TrackedDeviceRole::LeftHand)
-                }
-                ETrackedControllerRole::TrackedControllerRole_RightHand => {
-                    Some(TrackedDeviceRole::RightHand)
-                }
-                _ => None,
-            }
-            .and_then(|role| {
-                get_tracked_device(system, controller_idx, role).and_then(|device| {
-                    app.input_state.devices.push(device);
-                    Some(())
-                })
             });
-        }
-
-        for tracker_idx in system.get_sorted_tracked_device_indices_of_class(
-            ETrackedDeviceClass::TrackedDeviceClass_GenericTracker,
-            TrackedDeviceIndex::HMD,
-        ) {
-            get_tracked_device(system, tracker_idx, TrackedDeviceRole::Tracker).and_then(
-                |device| {
-                    app.input_state.devices.push(device);
-                    Some(())
-                },
-            );
         }
 
         app.input_state.devices.sort_by(|a, b| {
