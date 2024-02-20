@@ -390,7 +390,11 @@ impl OverlayRenderer for ScreenRenderer {
                             self.last_view = Some(view);
                         }
                         Err(e) => {
-                            log::error!("{}: Failed to create DMA-buf texture: {}", self.name, e);
+                            log::error!(
+                                "{}: Failed to create DMA-buf texture: {}",
+                                self.name,
+                                e.to_string()
+                            );
                         }
                     }
                 }
