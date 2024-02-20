@@ -20,7 +20,7 @@ use crate::{
     state::AppState,
 };
 
-use super::overlay::{OverlayData, OverlayState};
+use super::overlay::{OverlayBackend, OverlayData, OverlayState};
 
 #[derive(Error, Debug)]
 pub enum BackendError {
@@ -91,6 +91,22 @@ where
         }
     }
 
+    pub fn drop_by_selector(&mut self, selector: &OverlaySelector) {
+        match selector {
+            OverlaySelector::Id(id) => {
+                self.overlays.remove(id);
+            }
+            OverlaySelector::Name(name) => {
+                let id = self
+                    .overlays
+                    .iter()
+                    .find(|(_, o)| *o.state.name == **name)
+                    .map(|(id, _)| *id);
+                id.and_then(|id| self.overlays.remove(&id));
+            }
+        };
+    }
+
     pub fn get_by_id<'a>(&'a mut self, id: usize) -> Option<&'a OverlayData<T>> {
         self.overlays.get(&id)
     }
@@ -113,6 +129,10 @@ where
 
     pub fn iter_mut<'a>(&'a mut self) -> impl Iterator<Item = &'a mut OverlayData<T>> {
         self.overlays.values_mut()
+    }
+
+    pub fn add(&mut self, overlay: OverlayData<T>) {
+        self.overlays.insert(overlay.state.id, overlay);
     }
 
     pub fn show_hide(&mut self, app: &mut AppState) {
@@ -170,6 +190,11 @@ pub enum TaskType {
         OverlaySelector,
         Box<dyn FnOnce(&mut AppState, &mut OverlayState) + Send>,
     ),
+    CreateOverlay(
+        OverlaySelector,
+        Box<dyn FnOnce(&mut AppState) -> Option<(OverlayState, Box<dyn OverlayBackend>)> + Send>,
+    ),
+    DropOverlay(OverlaySelector),
     Toast(Toast),
 }
 

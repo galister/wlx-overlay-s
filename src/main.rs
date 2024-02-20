@@ -59,16 +59,26 @@ fn auto_run(running: Arc<AtomicBool>) {
     #[cfg(feature = "openxr")]
     {
         use crate::backend::openxr::openxr_run;
-        let Err(BackendError::NotSupported) = openxr_run(running.clone()) else {
-            return;
+        match openxr_run(running.clone()) {
+            Ok(()) => return,
+            Err(BackendError::NotSupported) => (),
+            Err(e) => {
+                log::error!("{}", e);
+                return;
+            }
         };
     }
 
     #[cfg(feature = "openvr")]
     {
         use crate::backend::openvr::openvr_run;
-        let Err(BackendError::NotSupported) = openvr_run(running) else {
-            return;
+        match openvr_run(running.clone()) {
+            Ok(()) => return,
+            Err(BackendError::NotSupported) => (),
+            Err(e) => {
+                log::error!("{}", e);
+                return;
+            }
         };
     }
 

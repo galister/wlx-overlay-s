@@ -7,7 +7,7 @@ use std::{
 };
 
 use anyhow::Ok;
-use glam::{Affine2, Affine3A, Mat3A, Quat, Vec3, Vec3A};
+use glam::{Affine2, Affine3A, Mat3A, Quat, Vec2, Vec3, Vec3A};
 use vulkano::image::view::ImageView;
 
 use crate::state::AppState;
@@ -21,7 +21,6 @@ pub trait OverlayBackend: OverlayRenderer + InteractionHandler {}
 pub struct OverlayState {
     pub id: usize,
     pub name: Arc<str>,
-    pub size: (i32, i32),
     pub want_visible: bool,
     pub show_hide: bool,
     pub grabbable: bool,
@@ -44,7 +43,6 @@ impl Default for OverlayState {
         OverlayState {
             id: AUTO_INCREMENT.fetch_add(1, Ordering::Relaxed),
             name: Arc::from(""),
-            size: (0, 0),
             want_visible: false,
             show_hide: false,
             grabbable: false,
@@ -208,7 +206,6 @@ pub trait OverlayRenderer {
     fn resume(&mut self, app: &mut AppState) -> anyhow::Result<()>;
     fn render(&mut self, app: &mut AppState) -> anyhow::Result<()>;
     fn view(&mut self) -> Option<Arc<ImageView>>;
-    fn extent(&self) -> [u32; 3];
 }
 
 pub struct FallbackRenderer;
@@ -228,9 +225,6 @@ impl OverlayRenderer for FallbackRenderer {
     }
     fn view(&mut self) -> Option<Arc<ImageView>> {
         None
-    }
-    fn extent(&self) -> [u32; 3] {
-        [0, 0, 0]
     }
 }
 // Boilerplate and dummies
@@ -274,9 +268,6 @@ impl OverlayRenderer for SplitOverlayBackend {
     fn view(&mut self) -> Option<Arc<ImageView>> {
         self.renderer.view()
     }
-    fn extent(&self) -> [u32; 3] {
-        self.renderer.extent()
-    }
 }
 impl InteractionHandler for SplitOverlayBackend {
     fn on_left(&mut self, app: &mut AppState, pointer: usize) {
@@ -290,5 +281,22 @@ impl InteractionHandler for SplitOverlayBackend {
     }
     fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool) {
         self.interaction.on_pointer(app, hit, pressed);
+    }
+}
+
+pub fn ui_transform(extent: &[u32; 2]) -> Affine2 {
+    let center = Vec2 { x: 0.5, y: 0.5 };
+    if extent[1] > extent[0] {
+        Affine2::from_cols(
+            Vec2::X * (extent[1] as f32 / extent[0] as f32),
+            Vec2::NEG_Y,
+            center,
+        )
+    } else {
+        Affine2::from_cols(
+            Vec2::X,
+            Vec2::NEG_Y * (extent[0] as f32 / extent[1] as f32),
+            center,
+        )
     }
 }

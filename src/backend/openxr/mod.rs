@@ -16,6 +16,7 @@ use crate::{
         common::{OverlayContainer, TaskType},
         input::interact,
         openxr::{input::DoubleClickCounter, lines::LinePool, overlay::OpenXrOverlayData},
+        overlay::OverlayData,
     },
     graphics::WlxGraphics,
     overlays::watch::{watch_fade, WATCH_NAME},
@@ -186,6 +187,24 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                     if let Some(o) = overlays.mut_by_selector(&sel) {
                         f(&mut app_state, &mut o.state);
                     }
+                }
+                TaskType::CreateOverlay(sel, f) => {
+                    let None = overlays.mut_by_selector(&sel) else {
+                        continue;
+                    };
+
+                    let Some((state, backend)) = f(&mut app_state) else {
+                        continue;
+                    };
+
+                    overlays.add(OverlayData {
+                        state,
+                        backend,
+                        ..Default::default()
+                    });
+                }
+                TaskType::DropOverlay(sel) => {
+                    overlays.drop_by_selector(&sel);
                 }
                 TaskType::Toast(t) => {
                     // TODO toasts

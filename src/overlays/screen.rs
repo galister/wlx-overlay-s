@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     ops::Add,
     ptr,
-    sync::{mpsc::Receiver, Arc},
+    sync::Arc,
     time::{Duration, Instant},
 };
 use vulkano::{
@@ -237,12 +237,22 @@ pub struct ScreenRenderer {
     name: Arc<str>,
     capture: Box<dyn WlxCapture>,
     pipeline: Option<ScreenPipeline>,
-    receiver: Option<Receiver<WlxFrame>>,
     last_view: Option<Arc<ImageView>>,
     extent: [u32; 3],
 }
 
 impl ScreenRenderer {
+    #[cfg(feature = "wayland")]
+    pub fn new_raw(name: Arc<str>, capture: Box<dyn WlxCapture>) -> ScreenRenderer {
+        ScreenRenderer {
+            name,
+            capture,
+            pipeline: None,
+            last_view: None,
+            extent: [0; 3],
+        }
+    }
+
     #[cfg(feature = "wayland")]
     pub fn new_wlr(output: &WlxOutput) -> Option<ScreenRenderer> {
         let client = WlxClient::new()?;
@@ -252,7 +262,6 @@ impl ScreenRenderer {
             name: output.name.clone(),
             capture: Box::new(capture),
             pipeline: None,
-            receiver: None,
             last_view: None,
             extent: extent_from_res(output.size),
         })
@@ -268,7 +277,7 @@ impl ScreenRenderer {
     )> {
         let name = output.name.clone();
         let select_screen_result =
-            futures::executor::block_on(pipewire_select_screen(token)).ok()?;
+            futures::executor::block_on(pipewire_select_screen(token, true, true, true)).ok()?;
 
         let capture = PipewireCapture::new(name, select_screen_result.node_id, 60);
 
@@ -277,7 +286,6 @@ impl ScreenRenderer {
                 name: output.name.clone(),
                 capture: Box::new(capture),
                 pipeline: None,
-                receiver: None,
                 last_view: None,
                 extent: extent_from_res(output.size),
             },
@@ -293,7 +301,6 @@ impl ScreenRenderer {
             name: screen.name.clone(),
             capture: Box::new(capture),
             pipeline: None,
-            receiver: None,
             last_view: None,
             extent: extent_from_res((screen.monitor.width(), screen.monitor.height())),
         }
@@ -305,7 +312,7 @@ impl OverlayRenderer for ScreenRenderer {
         Ok(())
     }
     fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        let receiver = self.receiver.get_or_insert_with(|| {
+        if !self.capture.ready() {
             let allow_dmabuf = &*app.session.config.capture_method != "pw_fallback";
 
             let drm_formats = DRM_FORMATS.get_or_init({
@@ -349,14 +356,11 @@ impl OverlayRenderer for ScreenRenderer {
                 }
             });
 
-            let rx = self.capture.init(&drm_formats);
+            self.capture.init(&drm_formats);
             self.capture.request_new_frame();
-            rx
-        });
+        };
 
-        let mut mouse = None;
-
-        for frame in receiver.try_iter() {
+        for frame in self.capture.receive().into_iter() {
             match frame {
                 WlxFrame::Dmabuf(frame) => {
                     if !frame.is_valid() {
@@ -425,28 +429,28 @@ impl OverlayRenderer for ScreenRenderer {
                         upload.texture2d(frame.format.width, frame.format.height, format, &data)?;
 
                     let mut pipeline = None;
-                    if mouse.is_some() {
-                        let new_pipeline = self.pipeline.get_or_insert_with(|| {
-                            let mut pipeline = ScreenPipeline::new(&self.extent, app).unwrap(); // TODO
-                            self.last_view = Some(pipeline.view.clone());
-                            pipeline.ensure_mouse_initialized(&mut upload).unwrap(); // TODO
-                            pipeline
+                    if frame.mouse.is_some() {
+                        pipeline = Some(match self.pipeline {
+                            Some(ref mut p) => p,
+                            _ => {
+                                let mut pipeline = ScreenPipeline::new(&self.extent, app)?;
+                                self.last_view = Some(pipeline.view.clone());
+                                pipeline.ensure_mouse_initialized(&mut upload)?;
+                                self.pipeline = Some(pipeline);
+                                self.pipeline.as_mut().unwrap() // safe
+                            }
                         });
-                        pipeline = Some(new_pipeline);
                     }
 
                     upload.build_and_execute_now()?;
 
                     if let Some(pipeline) = pipeline {
-                        pipeline.render(image, mouse.as_ref(), app)?;
+                        pipeline.render(image, frame.mouse.as_ref(), app)?;
                     } else {
                         let view = ImageView::new_default(image)?;
                         self.last_view = Some(view);
                     }
                     self.capture.request_new_frame();
-                }
-                WlxFrame::Mouse(m) => {
-                    mouse = Some(m);
                 }
             };
         }
@@ -462,9 +466,6 @@ impl OverlayRenderer for ScreenRenderer {
     }
     fn view(&mut self) -> Option<Arc<ImageView>> {
         self.last_view.clone()
-    }
-    fn extent(&self) -> [u32; 3] {
-        self.extent.clone()
     }
 }
 
@@ -489,7 +490,6 @@ where
         output.logical_pos,
     );
 
-    let size = (output.size.0, output.size.1);
     let mut capture: Option<ScreenRenderer> = None;
 
     if &*session.config.capture_method == "auto" && wl.maybe_wlr_dmabuf_mgr.is_some() {
@@ -576,7 +576,6 @@ where
         Some(OverlayData {
             state: OverlayState {
                 name: output.name.clone(),
-                size,
                 show_hide: session
                     .config
                     .show_screens
@@ -741,7 +740,6 @@ where
             OverlayData {
                 state: OverlayState {
                     name: s.name.clone(),
-                    size,
                     show_hide: session
                         .config
                         .show_screens

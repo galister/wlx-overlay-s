@@ -64,7 +64,6 @@ impl LinePool {
             state: OverlayState {
                 name: Arc::from(format!("wlx-line{}", id)),
                 show_hide: true,
-                size: (0, 0),
                 ..Default::default()
             },
             backend: Box::new(SplitOverlayBackend {
@@ -180,8 +179,5 @@ impl OverlayRenderer for StaticRenderer {
     }
     fn view(&mut self) -> Option<Arc<ImageView>> {
         Some(self.view.clone())
-    }
-    fn extent(&self) -> [u32; 3] {
-        self.view.image().extent().clone()
     }
 }

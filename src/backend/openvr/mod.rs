@@ -27,6 +27,7 @@ use crate::{
             manifest::{install_manifest, uninstall_manifest},
             overlay::OpenVrOverlayData,
         },
+        overlay::OverlayData,
     },
     graphics::WlxGraphics,
     overlays::watch::{watch_fade, WATCH_NAME},
@@ -157,6 +158,27 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                         f(&mut state, &mut o.state);
                     }
                 }
+                TaskType::CreateOverlay(sel, f) => {
+                    let None = overlays.mut_by_selector(&sel) else {
+                        continue;
+                    };
+
+                    let Some((state, backend)) = f(&mut state) else {
+                        continue;
+                    };
+
+                    overlays.add(OverlayData {
+                        state,
+                        backend,
+                        ..Default::default()
+                    });
+                }
+                TaskType::DropOverlay(sel) => {
+                    if let Some(o) = overlays.mut_by_selector(&sel) {
+                        o.destroy(&mut overlay_mngr);
+                        overlays.drop_by_selector(&sel);
+                    }
+                }
                 TaskType::Toast(t) => {
                     // TODO toasts
                     log::info!("Toast: {} {}", t.title, t.body);
@@ -209,7 +231,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             let _ = sender.send_params(&overlays);
         };
 
-        log::debug!("Rendering frame");
+        log::trace!("Rendering frame");
 
         for o in overlays.iter_mut() {
             if o.state.want_visible {
@@ -217,7 +239,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             }
         }
 
-        log::debug!("Rendering overlays");
+        log::trace!("Rendering overlays");
 
         overlays
             .iter_mut()

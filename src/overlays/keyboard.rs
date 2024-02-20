@@ -121,7 +121,6 @@ where
     Ok(OverlayData {
         state: OverlayState {
             name: KEYBOARD_NAME.into(),
-            size: (size.x as _, size.y as _),
             grabbable: true,
             recenter: true,
             interactable: true,

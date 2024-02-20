@@ -8,14 +8,14 @@ use std::{
 
 use chrono::Local;
 use chrono_tz::Tz;
-use glam::{vec2, Affine2, Quat, Vec3, Vec3A};
+use glam::{Quat, Vec3, Vec3A};
 use serde::Deserialize;
 
 use crate::{
     backend::{
         common::{OverlaySelector, TaskType},
         input::PointerMode,
-        overlay::{OverlayData, OverlayState, RelativeTo},
+        overlay::{ui_transform, OverlayData, OverlayState, RelativeTo},
     },
     config::load_watch,
     gui::{color_parse, CanvasBuilder, Control},
@@ -270,24 +270,37 @@ where
                     };
                 }
             }
+            #[cfg(feature = "wayland")]
+            WatchElement::MirrorButton {
+                rect: [x, y, w, h],
+                font_size,
+                bg_color,
+                fg_color,
+                text,
+                name,
+                show_hide,
+            } => {
+                canvas.bg_color = color_parse(&bg_color).unwrap_or(FALLBACK_COLOR);
+                canvas.fg_color = color_parse(&fg_color).unwrap_or(FALLBACK_COLOR);
+                canvas.font_size = font_size;
+                let button = canvas.button(x, y, w, h, text.clone());
+                button.state = Some(ElemState::Mirror { name, show_hide });
+                button.on_press = Some(btn_mirror_dn::<O>);
+            }
         }
     }
-
-    let interaction_transform =
-        Affine2::from_translation(vec2(0.5, 0.5)) * Affine2::from_scale(vec2(1., -2.0));
 
     let relative_to = RelativeTo::Hand(state.session.watch_hand);
 
     Ok(OverlayData {
         state: OverlayState {
             name: WATCH_NAME.into(),
-            size: (400, 200),
             want_visible: true,
             interactable: true,
             spawn_scale: WATCH_SCALE * state.session.config.watch_scale,
             spawn_point: state.session.watch_pos.into(),
             spawn_rotation: state.session.watch_rot,
-            interaction_transform,
+            interaction_transform: ui_transform(&config.watch_size),
             relative_to,
             ..Default::default()
         },
@@ -328,6 +341,60 @@ enum ElemState {
         func_right: Option<ButtonFunc>,
         func_middle: Option<ButtonFunc>,
     },
+    #[cfg(feature = "wayland")]
+    Mirror { name: Arc<str>, show_hide: bool },
+}
+
+#[cfg(feature = "wayland")]
+fn btn_mirror_dn<O>(
+    control: &mut Control<(), ElemState>,
+    _: &mut (),
+    app: &mut AppState,
+    mode: PointerMode,
+) where
+    O: Default,
+{
+    let ElemState::Mirror { name, show_hide } = control.state.as_ref().unwrap()
+    // want panic
+    else {
+        log::error!("Mirror state not found");
+        return;
+    };
+
+    let selector = OverlaySelector::Name(name.clone());
+
+    match mode {
+        PointerMode::Left => {
+            app.tasks.enqueue(TaskType::Overlay(
+                selector.clone(),
+                Box::new(|_app, o| {
+                    o.want_visible = !o.want_visible;
+                }),
+            ));
+
+            app.tasks.enqueue(TaskType::CreateOverlay(
+                selector,
+                Box::new({
+                    let name = name.clone();
+                    let show_hide = *show_hide;
+                    move |app| super::mirror::new_mirror(name.clone(), show_hide, &app.session)
+                }),
+            ));
+        }
+        PointerMode::Right => {
+            app.tasks.enqueue(TaskType::Overlay(
+                selector,
+                Box::new(|_app, o| {
+                    o.grabbable = !o.grabbable;
+                    o.interactable = o.grabbable;
+                }),
+            ));
+        }
+        PointerMode::Middle => {
+            app.tasks.enqueue(TaskType::DropOverlay(selector));
+        }
+        _ => {}
+    }
 }
 
 fn btn_func_dn(
@@ -772,6 +839,16 @@ enum WatchElement {
         func_right: Option<ButtonFunc>,
         func_middle: Option<ButtonFunc>,
         text: Arc<str>,
+    },
+    #[cfg(feature = "wayland")]
+    MirrorButton {
+        rect: [f32; 4],
+        font_size: isize,
+        bg_color: Arc<str>,
+        fg_color: Arc<str>,
+        name: Arc<str>,
+        text: Arc<str>,
+        show_hide: bool,
     },
 }
 

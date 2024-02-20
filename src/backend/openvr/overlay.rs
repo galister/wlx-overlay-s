@@ -254,4 +254,13 @@ impl OverlayData<OpenVrOverlayData> {
             log::error!("{}: Failed to set overlay texture: {}", self.state.name, e);
         }
     }
+
+    pub(super) fn destroy(&mut self, overlay: &mut OverlayManager) {
+        if let Some(handle) = self.data.handle {
+            log::debug!("{}: destroy", self.state.name);
+            if let Err(e) = overlay.destroy_overlay(handle) {
+                log::error!("{}: Failed to destroy overlay: {}", self.state.name, e);
+            }
+        }
+    }
 }
