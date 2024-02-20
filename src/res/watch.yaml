@@ -145,23 +145,23 @@ watch_elements:
     # - Resizing, minimizing, maximizing windows may break stuff. Complain to your xdg-desktop-portal implementation.
     # - Selections are not saved across sessions
 
-  - type: MirrorButton
+  #- type: MirrorButton
+  #  rect: [327, 52, 46, 32]
+  #  font_size: 14
+  #  fg_color: "#FFFFFF"
+  #  bg_color: "#B05050"
+  #  name: "M1"
+  #  text: "M"
+  #  show_hide: false # should it respond to show/hide binding?
+
+  # volume buttons
+  - type: ExecButton
     rect: [327, 52, 46, 32]
     font_size: 14
     fg_color: "#FFFFFF"
-    bg_color: "#B05050"
-    name: "M1"
-    text: "M"
-    show_hide: false # should it respond to show/hide binding?
-
-  # volume buttons
-  #  - type: ExecButton
-    #rect: [327, 52, 46, 32]
-    #font_size: 14
-    #fg_color: "#FFFFFF"
-    #bg_color: "#505050"
-    # text: "+"
-    #    exec: [ "pactl", "set-sink-volume", "@DEFAULT_SINK@", "+5%" ]
+    bg_color: "#505050"
+    text: "+"
+    exec: [ "pactl", "set-sink-volume", "@DEFAULT_SINK@", "+5%" ]
   - type: ExecButton
     rect: [327, 116, 46, 32]
     font_size: 14
