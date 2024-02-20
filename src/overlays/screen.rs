@@ -28,6 +28,7 @@ use {
         pipewire::{pipewire_select_screen, PipewireCapture},
         wayland::{WlxClient, WlxOutput},
         wlr_dmabuf::WlrDmabufCapture,
+        wlr_screencopy::WlrScreencopyCapture,
     },
 };
 
@@ -254,9 +255,23 @@ impl ScreenRenderer {
     }
 
     #[cfg(feature = "wayland")]
-    pub fn new_wlr(output: &WlxOutput) -> Option<ScreenRenderer> {
+    pub fn new_wlr_dmabuf(output: &WlxOutput) -> Option<ScreenRenderer> {
         let client = WlxClient::new()?;
         let capture = WlrDmabufCapture::new(client, output.id);
+
+        Some(ScreenRenderer {
+            name: output.name.clone(),
+            capture: Box::new(capture),
+            pipeline: None,
+            last_view: None,
+            extent: extent_from_res(output.size),
+        })
+    }
+
+    #[cfg(feature = "wayland")]
+    pub fn new_wlr_screencopy(output: &WlxOutput) -> Option<ScreenRenderer> {
+        let client = WlxClient::new()?;
+        let capture = WlrScreencopyCapture::new(client, output.id);
 
         Some(ScreenRenderer {
             name: output.name.clone(),
@@ -313,7 +328,8 @@ impl OverlayRenderer for ScreenRenderer {
     }
     fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         if !self.capture.ready() {
-            let allow_dmabuf = &*app.session.config.capture_method != "pw_fallback";
+            let allow_dmabuf = &*app.session.config.capture_method != "pw_fallback"
+                && &*app.session.config.capture_method != "screencopy";
 
             let drm_formats = DRM_FORMATS.get_or_init({
                 let graphics = app.graphics.clone();
@@ -492,9 +508,16 @@ where
 
     let mut capture: Option<ScreenRenderer> = None;
 
-    if &*session.config.capture_method == "auto" && wl.maybe_wlr_dmabuf_mgr.is_some() {
+    if (&*session.config.capture_method == "auto" || &*session.config.capture_method == "dmabuf")
+        && wl.maybe_wlr_dmabuf_mgr.is_some()
+    {
         log::info!("{}: Using Wlr DMA-Buf", &output.name);
-        capture = ScreenRenderer::new_wlr(output);
+        capture = ScreenRenderer::new_wlr_dmabuf(output);
+    }
+
+    if &*session.config.capture_method == "screencopy" && wl.maybe_wlr_screencopy_mgr.is_some() {
+        log::info!("{}: Using Wlr Screencopy Wl-SHM", &output.name);
+        capture = ScreenRenderer::new_wlr_screencopy(output);
     }
 
     if capture.is_none() {
