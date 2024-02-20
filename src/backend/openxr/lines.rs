@@ -94,14 +94,14 @@ impl LinePool {
 
         debug_assert!(color < self.colors.len());
 
-        let Some(line) = self.lines.get_mut(&id) else {
+        let Some(line) = self.lines.get_mut(id) else {
             log::warn!("Line {} not found", id);
             return;
         };
 
         let rotation = Affine3A::from_axis_angle(Vec3::X, PI * 1.5);
 
-        from.translation = from.translation + from.transform_vector3a(Vec3A::NEG_Z) * (len * 0.5);
+        from.translation += from.transform_vector3a(Vec3A::NEG_Z) * (len * 0.5);
         let mut transform = from * rotation;
 
         let to_hmd = hmd.translation - from.translation;
@@ -120,7 +120,7 @@ impl LinePool {
             }
         }
 
-        transform = transform * rotations[closest.0];
+        transform *= rotations[closest.0];
 
         let posef = helpers::transform_to_posef(&transform);
 

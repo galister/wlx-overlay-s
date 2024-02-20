@@ -73,8 +73,8 @@ impl OpenXrInputSource {
         Ok(Self {
             action_set,
             hands: [
-                OpenXrHand::new(&xr, left_source)?,
-                OpenXrHand::new(&xr, right_source)?,
+                OpenXrHand::new(xr, left_source)?,
+                OpenXrHand::new(xr, right_source)?,
             ],
         })
     }

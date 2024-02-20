@@ -95,7 +95,7 @@ impl LinePool {
     ) {
         let rotation = Affine3A::from_axis_angle(Vec3::X, -PI * 0.5);
 
-        from.translation = from.translation + from.transform_vector3a(Vec3A::NEG_Z) * (len * 0.5);
+        from.translation += from.transform_vector3a(Vec3A::NEG_Z) * (len * 0.5);
         let mut transform = from * rotation * Affine3A::from_scale(Vec3::new(1., len / 0.002, 1.));
 
         let to_hmd = hmd.translation - from.translation;
@@ -114,7 +114,7 @@ impl LinePool {
             }
         }
 
-        transform = transform * rotations[closest.0];
+        transform *= rotations[closest.0];
 
         debug_assert!(color < self.colors.len());
 

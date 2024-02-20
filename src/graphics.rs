@@ -153,7 +153,6 @@ impl WlxGraphics {
         instance_extensions.khr_get_physical_device_properties2 = true;
 
         let instance_extensions_raw = instance_extensions
-            .clone()
             .into_iter()
             .filter_map(|(name, enabled)| {
                 if enabled {
@@ -241,7 +240,6 @@ impl WlxGraphics {
         };
 
         let device_extensions_raw = device_extensions
-            .clone()
             .into_iter()
             .filter_map(|(name, enabled)| {
                 if enabled {
@@ -590,7 +588,6 @@ impl WlxGraphics {
         let format = fourcc_to_vk(frame.format.fourcc)?;
 
         let layouts: Vec<SubresourceLayout> = (0..frame.num_planes)
-            .into_iter()
             .map(|i| {
                 let plane = &frame.planes[i];
                 SubresourceLayout {

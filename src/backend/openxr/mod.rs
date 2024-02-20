@@ -221,11 +221,8 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             .input_state
             .pointers
             .iter()
-            .any(|p| p.now.show_hide && !p.before.show_hide)
-        {
-            if show_hide_counter.click() {
-                overlays.show_hide(&mut app_state);
-            }
+            .any(|p| p.now.show_hide && !p.before.show_hide) && show_hide_counter.click() {
+            overlays.show_hide(&mut app_state);
         }
 
         watch_fade(&mut app_state, overlays.mut_by_id(watch_id).unwrap()); // want panic

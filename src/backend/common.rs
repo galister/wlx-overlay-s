@@ -57,20 +57,20 @@ where
             crate::overlays::screen::get_screens_x11(&app.session)?
         };
 
-        let mut watch = create_watch::<T>(&app, &screens)?;
+        let mut watch = create_watch::<T>(app, &screens)?;
         watch.state.want_visible = true;
         overlays.insert(watch.state.id, watch);
 
-        let mut keyboard = create_keyboard(&app)?;
+        let mut keyboard = create_keyboard(app)?;
         keyboard.state.show_hide = true;
         keyboard.state.want_visible = false;
         overlays.insert(keyboard.state.id, keyboard);
 
         let mut show_screens = app.session.config.show_screens.clone();
         if show_screens.is_empty() {
-            screens.first().and_then(|s| {
+            screens.first().map(|s| {
                 show_screens.push(s.state.name.clone());
-                Some(())
+                
             });
         }
 
@@ -102,17 +102,17 @@ where
                     .iter()
                     .find(|(_, o)| *o.state.name == **name)
                     .map(|(id, _)| *id);
-                id.and_then(|id| self.overlays.remove(&id));
+                id.and_then(|id| self.overlays.remove(id));
             }
         };
     }
 
-    pub fn get_by_id<'a>(&'a mut self, id: usize) -> Option<&'a OverlayData<T>> {
-        self.overlays.get(&id)
+    pub fn get_by_id(&mut self, id: usize) -> Option<&OverlayData<T>> {
+        self.overlays.get(id)
     }
 
-    pub fn mut_by_id<'a>(&'a mut self, id: usize) -> Option<&'a mut OverlayData<T>> {
-        self.overlays.get_mut(&id)
+    pub fn mut_by_id(&mut self, id: usize) -> Option<&mut OverlayData<T>> {
+        self.overlays.get_mut(id)
     }
 
     pub fn get_by_name<'a>(&'a mut self, name: &str) -> Option<&'a OverlayData<T>> {
@@ -123,11 +123,11 @@ where
         self.overlays.values_mut().find(|o| *o.state.name == *name)
     }
 
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a OverlayData<T>> {
+    pub fn iter(&self) -> impl Iterator<Item = &'_ OverlayData<T>> {
         self.overlays.values()
     }
 
-    pub fn iter_mut<'a>(&'a mut self) -> impl Iterator<Item = &'a mut OverlayData<T>> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &'_ mut OverlayData<T>> {
         self.overlays.values_mut()
     }
 

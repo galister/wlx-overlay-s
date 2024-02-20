@@ -128,15 +128,13 @@ impl OpenVrInputSource {
         system: &mut SystemManager,
         app: &mut AppState,
     ) {
-        let aas = ActiveActionSet {
-            0: ovr_overlay::sys::VRActiveActionSet_t {
+        let aas = ActiveActionSet(ovr_overlay::sys::VRActiveActionSet_t {
                 ulActionSet: self.set_hnd.0,
                 ulRestrictedToDevice: 0,
                 ulSecondaryActionSet: 0,
                 unPadding: 0,
                 nPriority: 0,
-            },
-        };
+            });
 
         let _ = input.update_actions(&mut [aas]);
 
@@ -155,10 +153,10 @@ impl OpenVrInputSource {
                     0.005,
                     INPUT_ANY,
                 )
-                .and_then(|pose| {
+                .map(|pose| {
                     app_hand.pose = pose.0.pose.mDeviceToAbsoluteTracking.to_affine();
                     hand.has_pose = true;
-                    Ok(())
+                    
                 });
 
             app_hand.now.click = input
@@ -237,9 +235,9 @@ impl OpenVrInputSource {
                 _ => continue,
             };
 
-            get_tracked_device(system, device, role).and_then(|device| {
+            get_tracked_device(system, device, role).map(|device| {
                 app.input_state.devices.push(device);
-                Some(())
+                
             });
         }
 

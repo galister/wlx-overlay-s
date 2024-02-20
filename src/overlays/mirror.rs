@@ -82,7 +82,7 @@ impl OverlayRenderer for MirrorRenderer {
             if let Some(view) = renderer.view() {
                 let extent = view.image().extent();
                 if self.last_extent != extent {
-                    self.last_extent = extent.clone();
+                    self.last_extent = extent;
                     // resized
                     app.tasks.enqueue(TaskType::Overlay(
                         OverlaySelector::Name(self.name.clone()),

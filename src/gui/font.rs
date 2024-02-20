@@ -188,7 +188,7 @@ impl FontCache {
 
         let bmp = glyph.bitmap();
         let buf = bmp.buffer().to_vec();
-        if buf.len() == 0 {
+        if buf.is_empty() {
             return Ok(font.glyphs[0].clone());
         }
 

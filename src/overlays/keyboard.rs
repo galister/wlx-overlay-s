@@ -145,7 +145,7 @@ fn key_press(
             data.key_click(&app.session);
 
             if let PointerMode::Right = mode {
-                data.modifiers = data.modifiers | SHIFT;
+                data.modifiers |= SHIFT;
                 app.hid_provider.set_modifiers(data.modifiers);
             }
 

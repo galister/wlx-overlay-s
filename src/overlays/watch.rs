@@ -80,14 +80,11 @@ where
                 canvas.font_size = font_size;
                 canvas.fg_color = color_parse(&fg_color).unwrap_or(FALLBACK_COLOR);
 
-                let tz: Option<Tz> = match timezone {
-                    Some(tz) => Some(tz.parse().unwrap_or_else(|_| {
+                let tz: Option<Tz> = timezone.map(|tz| tz.parse().unwrap_or_else(|_| {
                         log::error!("Failed to parse timezone '{}'", &tz);
                         canvas.fg_color = FALLBACK_COLOR;
                         Tz::UTC
-                    })),
-                    None => None,
-                };
+                    }));
 
                 let label = canvas.label(x, y, w, h, empty_str.clone());
                 label.state = Some(ElemState::Clock {

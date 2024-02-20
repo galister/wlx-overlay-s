@@ -356,7 +356,7 @@ impl OverlayRenderer for ScreenRenderer {
                 }
             });
 
-            self.capture.init(&drm_formats);
+            self.capture.init(drm_formats);
             self.capture.request_new_frame();
         };
 
@@ -407,7 +407,7 @@ impl OverlayRenderer for ScreenRenderer {
                     let data = unsafe { slice::from_raw_parts(map, len) };
 
                     let image =
-                        upload.texture2d(frame.format.width, frame.format.height, format, &data)?;
+                        upload.texture2d(frame.format.width, frame.format.height, format, data)?;
                     upload.build_and_execute_now()?;
 
                     unsafe { libc::munmap(map as *mut _, len) };
@@ -426,7 +426,7 @@ impl OverlayRenderer for ScreenRenderer {
                     let data = unsafe { slice::from_raw_parts(frame.ptr as *const u8, frame.size) };
 
                     let image =
-                        upload.texture2d(frame.format.width, frame.format.height, format, &data)?;
+                        upload.texture2d(frame.format.width, frame.format.height, format, data)?;
 
                     let mut pipeline = None;
                     if frame.mouse.is_some() {
