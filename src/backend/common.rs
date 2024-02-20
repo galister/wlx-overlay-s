@@ -27,13 +27,13 @@ pub enum BackendError {
     #[error("backend not supported")]
     NotSupported,
     #[cfg(feature = "openxr")]
-    #[error("OpenXR Error: {0}")]
+    #[error("OpenXR Error: {0:?}")]
     OpenXrError(#[from] xr::sys::Result),
     #[error("Shutdown")]
     Shutdown,
     #[error("Restart")]
     Restart,
-    #[error("Fatal: {0}")]
+    #[error("Fatal: {0:?}")]
     Fatal(#[from] anyhow::Error),
 }
 
