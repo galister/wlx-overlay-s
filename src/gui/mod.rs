@@ -695,7 +695,7 @@ impl<D, S> Control<D, S> {
             .fc
             .get_text_size(&self.text, self.size, canvas.graphics.clone())?;
 
-        let mut cur_y = self.rect.y + (self.rect.h) - (h * 0.5);
+        let mut cur_y = self.rect.y + (self.rect.h) - (h * 0.5) - (self.size as f32 * 0.25);
         for line in self.text.lines() {
             let mut cur_x = self.rect.x + (self.rect.w * 0.5) - (w * 0.5);
             for glyph in app
