@@ -146,12 +146,12 @@ watch_elements:
     # - Selections are not saved across sessions
 
   #- type: MirrorButton
-  #  rect: [327, 52, 46, 32]
+  #  rect: [354, 0, 46, 32]
   #  font_size: 14
   #  fg_color: "#FFFFFF"
   #  bg_color: "#B05050"
   #  name: "M1"
-  #  text: "M"
+  #  text: "M1"
   #  show_hide: false # should it respond to show/hide binding?
 
   # volume buttons
