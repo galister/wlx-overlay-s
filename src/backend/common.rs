@@ -27,13 +27,13 @@ pub enum BackendError {
     #[error("backend not supported")]
     NotSupported,
     #[cfg(feature = "openxr")]
-    #[error("openxr error {0}")]
+    #[error("OpenXR Error: {0}")]
     OpenXrError(#[from] xr::sys::Result),
-    #[error("shutdown")]
+    #[error("Shutdown")]
     Shutdown,
-    #[error("restart")]
+    #[error("Restart")]
     Restart,
-    #[error("fatal")]
+    #[error("Fatal: {0}")]
     Fatal(#[from] anyhow::Error),
 }
 
@@ -70,7 +70,6 @@ where
         if show_screens.is_empty() {
             screens.first().map(|s| {
                 show_screens.push(s.state.name.clone());
-                
             });
         }
 
