@@ -1,8 +1,4 @@
-use dbus::{
-    blocking::Connection,
-    channel::{MatchingReceiver, Token},
-    message::MatchRule,
-};
+use dbus::{blocking::Connection, channel::MatchingReceiver, message::MatchRule};
 use serde::Deserialize;
 use std::{
     sync::{
@@ -17,7 +13,7 @@ use crate::{overlays::toast::Toast, state::AppState};
 pub struct NotificationManager {
     rx_toast: mpsc::Receiver<Toast>,
     tx_toast: mpsc::SyncSender<Toast>,
-    dbus_data: Option<(Connection, Token)>,
+    dbus_data: Option<Connection>,
 }
 
 impl NotificationManager {
@@ -31,7 +27,7 @@ impl NotificationManager {
     }
 
     pub fn submit_pending(&self, app: &mut AppState) {
-        if let Some((c, _)) = &self.dbus_data {
+        if let Some(c) = &self.dbus_data {
             let _ = c.process(Duration::ZERO);
         }
 
@@ -58,30 +54,70 @@ impl NotificationManager {
         rule.path = Some("/org/freedesktop/Notifications".into());
         rule.eavesdrop = true;
 
-        let sender = self.tx_toast.clone();
+        let proxy = c.with_proxy(
+            "org.freedesktop.DBus",
+            "/org/freedesktop/DBus",
+            Duration::from_millis(5000),
+        );
+        let result: Result<(), dbus::Error> = proxy.method_call(
+            "org.freedesktop.DBus.Monitoring",
+            "BecomeMonitor",
+            (vec![rule.match_str()], 0u32),
+        );
 
-        let token = match c.add_match(rule, move |_: (), _, msg| {
-            if let Ok(toast) = parse_dbus(&msg) {
-                match sender.try_send(toast) {
-                    Ok(_) => {}
-                    Err(e) => {
-                        log::error!("Failed to send notification: {:?}", e);
+        match result {
+            Ok(_) => {
+                let sender = self.tx_toast.clone();
+                c.start_receive(
+                    rule,
+                    Box::new(move |msg, _| {
+                        if let Ok(toast) = parse_dbus(&msg) {
+                            match sender.try_send(toast) {
+                                Ok(_) => {}
+                                Err(e) => {
+                                    log::error!("Failed to send notification: {:?}", e);
+                                }
+                            }
+                        }
+                        true
+                    }),
+                );
+                log::info!("Listening to DBus notifications via BecomeMonitor.");
+            }
+            Err(_) => {
+                let rule_with_eavesdrop = {
+                    let mut rule = rule.clone();
+                    rule.eavesdrop = true;
+                    rule
+                };
+
+                let sender2 = self.tx_toast.clone();
+                let result = c.add_match(rule_with_eavesdrop, move |_: (), _, msg| {
+                    if let Ok(toast) = parse_dbus(&msg) {
+                        match sender2.try_send(toast) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                log::error!("Failed to send notification: {:?}", e);
+                            }
+                        }
+                    }
+                    true
+                });
+
+                match result {
+                    Ok(_) => {
+                        log::info!("Listening to DBus notifications via eavesdrop.");
+                    }
+                    Err(_) => {
+                        log::error!(
+                            "Failed to add DBus match. Desktop notifications will not work.",
+                        );
                     }
                 }
             }
-            true
-        }) {
-            Ok(t) => t,
-            Err(e) => {
-                log::error!(
-                    "Failed to eavesdrop. Desktop notifications will not work. Cause: {:?}",
-                    e
-                );
-                return;
-            }
-        };
+        }
 
-        self.dbus_data = Some((c, token));
+        self.dbus_data = Some(c);
     }
 
     pub fn run_udp(&mut self) {
@@ -133,14 +169,6 @@ impl NotificationManager {
                 }
             }
         });
-    }
-}
-
-impl Drop for NotificationManager {
-    fn drop(&mut self) {
-        if let Some((c, token)) = self.dbus_data.take() {
-            let _ = c.stop_receive(token);
-        }
     }
 }
 
