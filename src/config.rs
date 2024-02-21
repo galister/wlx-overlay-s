@@ -81,6 +81,9 @@ pub struct GeneralConfig {
     #[serde(default = "def_false")]
     pub upright_screen_fix: bool,
 
+    #[serde(default = "def_false")]
+    pub double_cursor_fix: bool,
+
     #[serde(default = "def_screens")]
     pub show_screens: Vec<Arc<str>>,
 

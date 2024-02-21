@@ -286,13 +286,16 @@ impl ScreenRenderer {
     pub fn new_pw(
         output: &WlxOutput,
         token: Option<&str>,
+        session: &AppSession,
     ) -> Option<(
         ScreenRenderer,
         Option<String>, /* pipewire restore token */
     )> {
         let name = output.name.clone();
+        let embed_mouse = !session.config.double_cursor_fix;
         let select_screen_result =
-            futures::executor::block_on(pipewire_select_screen(token, true, true, true)).ok()?;
+            futures::executor::block_on(pipewire_select_screen(token, embed_mouse, true, true))
+                .ok()?;
 
         let capture = PipewireCapture::new(name, select_screen_result.node_id, 60);
 
@@ -540,7 +543,7 @@ where
             );
         }
 
-        if let Some((renderer, restore_token)) = ScreenRenderer::new_pw(output, token) {
+        if let Some((renderer, restore_token)) = ScreenRenderer::new_pw(output, token, session) {
             capture = Some(renderer);
 
             if let Some(token) = restore_token {
