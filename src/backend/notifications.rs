@@ -41,9 +41,15 @@ impl NotificationManager {
     }
 
     pub fn run_dbus(&mut self) {
-        let Ok(c) = Connection::new_session() else {
-            log::error!("Failed to connect to dbus. Desktop notifications will not work.");
-            return;
+        let c = match Connection::new_session() {
+            Ok(c) => c,
+            Err(e) => {
+                log::error!(
+                    "Failed to connect to dbus. Desktop notifications will not work. Cause: {:?}",
+                    e
+                );
+                return;
+            }
         };
 
         let mut rule = MatchRule::new_method_call();
@@ -54,7 +60,7 @@ impl NotificationManager {
 
         let sender = self.tx_toast.clone();
 
-        let Ok(token) = c.add_match(rule, move |_: (), _, msg| {
+        let token = match c.add_match(rule, move |_: (), _, msg| {
             if let Ok(toast) = parse_dbus(&msg) {
                 match sender.try_send(toast) {
                     Ok(_) => {}
@@ -64,9 +70,15 @@ impl NotificationManager {
                 }
             }
             true
-        }) else {
-            log::error!("Failed to add dbus match. Desktop notifications will not work.");
-            return;
+        }) {
+            Ok(t) => t,
+            Err(e) => {
+                log::error!(
+                    "Failed to eavesdrop. Desktop notifications will not work. Cause: {:?}",
+                    e
+                );
+                return;
+            }
         };
 
         self.dbus_data = Some((c, token));
@@ -76,10 +88,11 @@ impl NotificationManager {
         let sender = self.tx_toast.clone();
         // NOTE: We're detaching the thread, as there's no simple way to gracefully stop it other than app shutdown.
         let _ = std::thread::spawn(move || {
-            let socket = match std::net::UdpSocket::bind("127.0.0.1:42069") {
+            let addr = "127.0.0.1:42069";
+            let socket = match std::net::UdpSocket::bind(addr) {
                 Ok(s) => s,
                 Err(e) => {
-                    log::error!("Failed to bind notification socket: {:?}", e);
+                    log::error!("Failed to bind notification socket @ {}: {:?}", addr, e);
                     return;
                 }
             };
