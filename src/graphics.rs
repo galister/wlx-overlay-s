@@ -19,27 +19,34 @@ use vulkano::{
 #[cfg(feature = "openxr")]
 use {ash::vk, std::os::raw::c_void, vulkano::swapchain::Surface};
 
+pub const BLEND_ALPHA: AttachmentBlend = AttachmentBlend {
+    src_color_blend_factor: BlendFactor::SrcAlpha,
+    dst_color_blend_factor: BlendFactor::OneMinusSrcAlpha,
+    color_blend_op: BlendOp::Add,
+    src_alpha_blend_factor: BlendFactor::One,
+    dst_alpha_blend_factor: BlendFactor::One,
+    alpha_blend_op: BlendOp::Max,
+};
+
 use vulkano::{
     buffer::{
         allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo},
         Buffer, BufferContents, BufferCreateInfo, BufferUsage, Subbuffer,
     },
-    command_buffer::CommandBufferInheritanceRenderingInfo,
     command_buffer::{
         allocator::{StandardCommandBufferAllocator, StandardCommandBufferAllocatorCreateInfo},
         sys::{CommandBufferBeginInfo, RawRecordingCommandBuffer},
         CommandBuffer, CommandBufferExecFuture, CommandBufferInheritanceInfo,
         CommandBufferInheritanceRenderPassInfo, CommandBufferInheritanceRenderPassType,
-        CommandBufferLevel, CommandBufferUsage, CopyBufferToImageInfo, RecordingCommandBuffer,
-        RenderPassBeginInfo, RenderingAttachmentInfo, RenderingInfo, SubpassBeginInfo,
-        SubpassContents, SubpassEndInfo,
+        CommandBufferInheritanceRenderingInfo, CommandBufferLevel, CommandBufferUsage,
+        CopyBufferToImageInfo, RecordingCommandBuffer, RenderPassBeginInfo,
+        RenderingAttachmentInfo, RenderingInfo, SubpassBeginInfo, SubpassContents, SubpassEndInfo,
     },
     descriptor_set::{
         allocator::StandardDescriptorSetAllocator, DescriptorSet, WriteDescriptorSet,
     },
-    device::Features,
     device::{
-        physical::PhysicalDevice, Device, DeviceCreateInfo, DeviceExtensions, Queue,
+        physical::PhysicalDevice, Device, DeviceCreateInfo, DeviceExtensions, Features, Queue,
         QueueCreateInfo, QueueFlags,
     },
     format::Format,
@@ -61,7 +68,9 @@ use vulkano::{
     },
     pipeline::{
         graphics::{
-            color_blend::{AttachmentBlend, ColorBlendAttachmentState, ColorBlendState},
+            color_blend::{
+                AttachmentBlend, BlendFactor, BlendOp, ColorBlendAttachmentState, ColorBlendState,
+            },
             input_assembly::InputAssemblyState,
             multisample::MultisampleState,
             rasterization::RasterizationState,
@@ -699,6 +708,7 @@ impl WlxGraphics {
         vert: Arc<ShaderModule>,
         frag: Arc<ShaderModule>,
         format: Format,
+        blend: Option<AttachmentBlend>,
     ) -> anyhow::Result<Arc<WlxPipeline<WlxPipelineLegacy>>> {
         Ok(Arc::new(WlxPipeline::<WlxPipelineLegacy>::new(
             render_target,
@@ -706,6 +716,7 @@ impl WlxGraphics {
             vert,
             frag,
             format,
+            blend,
         )?))
     }
 
@@ -715,6 +726,7 @@ impl WlxGraphics {
         vert: Arc<ShaderModule>,
         frag: Arc<ShaderModule>,
         format: Format,
+        blend: Option<AttachmentBlend>,
         initial_layout: ImageLayout,
         final_layout: ImageLayout,
     ) -> anyhow::Result<Arc<WlxPipeline<WlxPipelineLegacy>>> {
@@ -724,6 +736,7 @@ impl WlxGraphics {
             vert,
             frag,
             format,
+            blend,
             initial_layout,
             final_layout,
         )?))
@@ -735,12 +748,14 @@ impl WlxGraphics {
         vert: Arc<ShaderModule>,
         frag: Arc<ShaderModule>,
         format: Format,
+        blend: Option<AttachmentBlend>,
     ) -> anyhow::Result<Arc<WlxPipeline<WlxPipelineDynamic>>> {
         Ok(Arc::new(WlxPipeline::<WlxPipelineDynamic>::new(
             self.clone(),
             vert,
             frag,
             format,
+            blend,
         )?))
     }
 
@@ -978,6 +993,7 @@ impl WlxPipeline<WlxPipelineDynamic> {
         vert: Arc<ShaderModule>,
         frag: Arc<ShaderModule>,
         format: Format,
+        blend: Option<AttachmentBlend>,
     ) -> anyhow::Result<Self> {
         let vep = vert.entry_point("main").unwrap(); // want panic
         let fep = frag.entry_point("main").unwrap(); // want panic
@@ -1012,7 +1028,7 @@ impl WlxPipeline<WlxPipelineDynamic> {
                 multisample_state: Some(MultisampleState::default()),
                 color_blend_state: Some(ColorBlendState {
                     attachments: vec![ColorBlendAttachmentState {
-                        blend: Some(AttachmentBlend::alpha()),
+                        blend,
                         ..Default::default()
                     }],
                     ..Default::default()
@@ -1054,6 +1070,7 @@ impl WlxPipeline<WlxPipelineLegacy> {
         vert: Arc<ShaderModule>,
         frag: Arc<ShaderModule>,
         format: Format,
+        blend: Option<AttachmentBlend>,
     ) -> anyhow::Result<Self> {
         let render_pass = vulkano::single_pass_renderpass!(
             graphics.device.clone(),
@@ -1071,7 +1088,15 @@ impl WlxPipeline<WlxPipelineLegacy> {
             },
         )?;
 
-        Self::new_from_pass(render_target, render_pass, graphics, vert, frag, format)
+        Self::new_from_pass(
+            render_target,
+            render_pass,
+            graphics,
+            vert,
+            frag,
+            format,
+            blend,
+        )
     }
 
     fn new_with_layout(
@@ -1080,6 +1105,7 @@ impl WlxPipeline<WlxPipelineLegacy> {
         vert: Arc<ShaderModule>,
         frag: Arc<ShaderModule>,
         format: Format,
+        blend: Option<AttachmentBlend>,
         initial_layout: ImageLayout,
         final_layout: ImageLayout,
     ) -> anyhow::Result<Self> {
@@ -1106,7 +1132,15 @@ impl WlxPipeline<WlxPipelineLegacy> {
 
         let render_pass = RenderPass::new(graphics.device.clone(), render_pass_description)?;
 
-        Self::new_from_pass(render_target, render_pass, graphics, vert, frag, format)
+        Self::new_from_pass(
+            render_target,
+            render_pass,
+            graphics,
+            vert,
+            frag,
+            format,
+            blend,
+        )
     }
 
     fn new_from_pass(
@@ -1116,6 +1150,7 @@ impl WlxPipeline<WlxPipelineLegacy> {
         vert: Arc<ShaderModule>,
         frag: Arc<ShaderModule>,
         format: Format,
+        blend: Option<AttachmentBlend>,
     ) -> anyhow::Result<Self> {
         let vep = vert.entry_point("main").unwrap(); // want panic
         let fep = frag.entry_point("main").unwrap(); // want panic
@@ -1151,7 +1186,7 @@ impl WlxPipeline<WlxPipelineLegacy> {
                 viewport_state: Some(ViewportState::default()),
                 color_blend_state: Some(ColorBlendState {
                     attachments: vec![ColorBlendAttachmentState {
-                        blend: Some(AttachmentBlend::alpha()),
+                        blend,
                         ..Default::default()
                     }],
                     ..Default::default()

@@ -43,7 +43,7 @@ use crate::{
         overlay::{OverlayData, OverlayRenderer, OverlayState, SplitOverlayBackend},
     },
     config::def_pw_tokens,
-    graphics::{fourcc_to_vk, WlxCommandBuffer, WlxPipeline, WlxPipelineLegacy},
+    graphics::{fourcc_to_vk, WlxCommandBuffer, WlxPipeline, WlxPipelineLegacy, BLEND_ALPHA},
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState},
 };
@@ -152,6 +152,7 @@ impl ScreenPipeline {
             shaders.get("vert_common").unwrap().clone(), // want panic
             shaders.get("frag_sprite").unwrap().clone(), // want panic
             app.graphics.native_format,
+            Some(BLEND_ALPHA),
         )?;
 
         let extentf = [extent[0] as f32, extent[1] as f32];

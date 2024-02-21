@@ -13,7 +13,9 @@ use crate::{
         input::{Haptics, InteractionHandler, PointerHit, PointerMode},
         overlay::{OverlayBackend, OverlayRenderer},
     },
-    graphics::{WlxCommandBuffer, WlxGraphics, WlxPass, WlxPipeline, WlxPipelineLegacy},
+    graphics::{
+        WlxCommandBuffer, WlxGraphics, WlxPass, WlxPipeline, WlxPipelineLegacy, BLEND_ALPHA,
+    },
     state::AppState,
 };
 
@@ -243,6 +245,7 @@ impl<D, S> Canvas<D, S> {
             shaders.get("vert_common").unwrap().clone(), // want panic
             shaders.get("frag_color").unwrap().clone(),  // want panic
             format,
+            Some(BLEND_ALPHA),
         )?;
 
         let pipeline_fg_glyph = graphics.create_pipeline(
@@ -250,6 +253,7 @@ impl<D, S> Canvas<D, S> {
             shaders.get("vert_common").unwrap().clone(), // want panic
             shaders.get("frag_glyph").unwrap().clone(),  // want panic
             format,
+            Some(BLEND_ALPHA),
         )?;
 
         let vertex_buffer =
@@ -260,6 +264,7 @@ impl<D, S> Canvas<D, S> {
             shaders.get("vert_common").unwrap().clone(), // want panic
             shaders.get("frag_sprite").unwrap().clone(), // want panic
             format,
+            Some(BLEND_ALPHA),
             ImageLayout::TransferSrcOptimal,
             ImageLayout::TransferSrcOptimal,
         )?;

@@ -173,8 +173,6 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                         continue;
                     };
 
-                    log::info!("Creating overlay: {}", state.name);
-
                     overlays.add(OverlayData {
                         state,
                         backend,
@@ -183,7 +181,6 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 }
                 TaskType::DropOverlay(sel) => {
                     if let Some(o) = overlays.mut_by_selector(&sel) {
-                        log::info!("Dropping overlay: {}", o.state.name);
                         o.destroy(&mut overlay_mngr);
                         overlays.drop_by_selector(&sel);
                     }

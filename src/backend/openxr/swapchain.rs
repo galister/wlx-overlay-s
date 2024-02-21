@@ -7,6 +7,7 @@ use openxr as xr;
 use smallvec::SmallVec;
 use vulkano::{
     image::{sampler::Filter, sys::RawImage, view::ImageView, ImageCreateInfo, ImageUsage},
+    pipeline::graphics::color_blend::AttachmentBlend,
     Handle,
 };
 
@@ -38,6 +39,7 @@ pub(super) fn create_swapchain_render_data(
         shaders.get("vert_common").unwrap().clone(), // want panic
         shaders.get("frag_srgb").unwrap().clone(),   // want panic
         graphics.native_format,
+        Some(AttachmentBlend::alpha()),
     )?;
 
     let images = swapchain

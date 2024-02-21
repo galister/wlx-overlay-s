@@ -158,7 +158,7 @@ impl NotificationManager {
 
                     let toast = Toast::new(msg.title, msg.content.unwrap_or_else(|| "".into()))
                         .with_timeout(msg.timeout.unwrap_or(5.))
-                        .with_sound(msg.volume.unwrap_or(0.) > 0.1);
+                        .with_sound(msg.volume.unwrap_or(-1.) >= 0.); // XSOverlay still plays at 0,
 
                     match sender.try_send(toast) {
                         Ok(_) => {}
@@ -187,9 +187,9 @@ fn parse_dbus(msg: &dbus::Message) -> anyhow::Result<Toast> {
     };
 
     Ok(Toast::new(title.into(), body.into())
-        .with_sound(true)
         .with_timeout(5.0)
         .with_opacity(1.0))
+    // leave the audio part to the desktop env
 }
 
 #[allow(non_snake_case)]
