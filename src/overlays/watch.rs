@@ -745,6 +745,9 @@ fn overlay_button_up(control: &mut Control<(), ElemState>, _: &mut (), app: &mut
                                 "Right-click again to toggle.".into(),
                             )
                             .submit(app);
+                        } else {
+                            Toast::new(format!("{} is now unlocked!", o.name).into(), "".into())
+                                .submit(app);
                         }
                     }),
                 ));
@@ -759,6 +762,12 @@ fn overlay_button_up(control: &mut Control<(), ElemState>, _: &mut (), app: &mut
                             Toast::new(
                                 format!("{} is now non-interactable!", o.name).into(),
                                 "Middle-click again to toggle.".into(),
+                            )
+                            .submit(app);
+                        } else {
+                            Toast::new(
+                                format!("{} is now interactable!", o.name).into(),
+                                "".into(),
                             )
                             .submit(app);
                         }
