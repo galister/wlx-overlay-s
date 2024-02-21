@@ -17,6 +17,7 @@ chrono = "0.4.29"
 chrono-tz = "0.8.5"
 cstr = "0.2.11"
 ctrlc = { version = "3.4.2", features = ["termination"] }
+dbus = { version = "0.9.7", optional = true }
 flexi_logger = "0.27.4"
 fontconfig-rs = "0.1.1"
 freetype-rs = "0.32.0"
@@ -49,10 +50,11 @@ wlx-capture = { git = "https://github.com/galister/wlx-capture" }
 xdg = "2.5.2"
 
 [features]
+default = ["openvr", "openxr", "osc", "x11", "wayland", "notifications"]
+notifications = ["dep:dbus"]
 openvr = ["dep:ovr_overlay", "dep:json"]
 openxr = ["dep:openxr"]
 osc = ["dep:rosc"]
 x11 = ["wlx-capture/xshm"]
 wayland = ["wlx-capture/pipewire", "wlx-capture/wlr"]
-default = ["openvr", "openxr", "osc", "x11", "wayland"]
 

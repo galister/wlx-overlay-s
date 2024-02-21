@@ -21,6 +21,7 @@ use vulkano::{
 use crate::{
     backend::{
         input::interact,
+        notifications::NotificationManager,
         openvr::{
             input::{set_action_manifest, OpenVrInputSource},
             lines::LinePool,
@@ -91,6 +92,9 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     let _ = install_manifest(&mut app_mgr);
 
     let mut overlays = OverlayContainer::<OpenVrOverlayData>::new(&mut state)?;
+    let mut notifications = NotificationManager::new();
+    notifications.run_dbus();
+    notifications.run_udp();
 
     let mut space_mover = playspace::PlayspaceMover::new();
     #[cfg(feature = "osc")]
@@ -149,6 +153,8 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             next_device_update = Instant::now() + Duration::from_secs(30);
         }
 
+        notifications.submit_pending(&mut state);
+
         state.tasks.retrieve_due(&mut due_tasks);
         while let Some(task) = due_tasks.pop_front() {
             match task {
@@ -167,6 +173,8 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                         continue;
                     };
 
+                    log::info!("Creating overlay: {}", state.name);
+
                     overlays.add(OverlayData {
                         state,
                         backend,
@@ -175,13 +183,10 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 }
                 TaskType::DropOverlay(sel) => {
                     if let Some(o) = overlays.mut_by_selector(&sel) {
+                        log::info!("Dropping overlay: {}", o.state.name);
                         o.destroy(&mut overlay_mngr);
                         overlays.drop_by_selector(&sel);
                     }
-                }
-                TaskType::Toast(t) => {
-                    // TODO toasts
-                    log::info!("Toast: {} {}", t.title, t.body);
                 }
             }
         }
@@ -248,8 +253,6 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         // chaperone
 
         // close font handles?
-
-        // playspace moved end frame
 
         state.hid_provider.on_new_frame();
 

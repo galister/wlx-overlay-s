@@ -284,7 +284,7 @@ where
                 canvas.font_size = font_size;
                 let button = canvas.button(x, y, w, h, text.clone());
                 button.state = Some(ElemState::Mirror { name, show_hide });
-                button.on_press = Some(btn_mirror_dn::<O>);
+                button.on_press = Some(btn_mirror_dn);
                 button.on_scroll = Some(overlay_button_scroll);
             }
         }
@@ -346,14 +346,12 @@ enum ElemState {
 }
 
 #[cfg(feature = "wayland")]
-fn btn_mirror_dn<O>(
+fn btn_mirror_dn(
     control: &mut Control<(), ElemState>,
     _: &mut (),
     app: &mut AppState,
     mode: PointerMode,
-) where
-    O: Default,
-{
+) {
     let ElemState::Mirror { name, show_hide } = control.state.as_ref().unwrap()
     // want panic
     else {
@@ -428,10 +426,12 @@ fn btn_func_dn(
                 Box::new(|app, o| {
                     o.want_visible = false;
                     o.spawn_scale = 0.0;
-                    app.tasks.enqueue(TaskType::Toast(Toast::new(
+                    Toast::new(
                         "Watch hidden".into(),
                         "Use show/hide button to restore.".into(),
-                    )))
+                    )
+                    .with_timeout(3.)
+                    .submit(app);
                 }),
             ));
         }
@@ -441,7 +441,6 @@ fn btn_func_dn(
                 Box::new(|app, o| {
                     if let RelativeTo::Hand(0) = o.relative_to {
                         o.relative_to = RelativeTo::Hand(1);
-                        o.spawn_rotation = app.session.watch_rot;
                         o.spawn_rotation = app.session.watch_rot
                             * Quat::from_rotation_x(PI)
                             * Quat::from_rotation_z(PI);
@@ -452,10 +451,9 @@ fn btn_func_dn(
                         o.spawn_rotation = app.session.watch_rot;
                         o.spawn_point = app.session.watch_pos.into();
                     }
-                    app.tasks.enqueue(TaskType::Toast(Toast::new(
-                        "Watch switched".into(),
-                        "Check your other hand".into(),
-                    )))
+                    Toast::new("Watch switched".into(), "Check your other hand".into())
+                        .with_timeout(3.)
+                        .submit(app);
                 }),
             ));
         }
@@ -571,7 +569,7 @@ fn exec_label_update(control: &mut Control<(), ElemState>, _: &mut (), _: &mut A
                 } else {
                     if let Some(mut stdout) = proc.stdout.take() {
                         let mut buf = String::new();
-                        if let Ok(_) = stdout.read_to_string(&mut buf) {
+                        if stdout.read_to_string(&mut buf).is_ok() {
                             control.set_text(&buf);
                         } else {
                             log::error!("Failed to read stdout for child process");
@@ -730,10 +728,11 @@ fn overlay_button_up(control: &mut Control<(), ElemState>, _: &mut (), app: &mut
                         o.grabbable = o.recenter;
                         o.show_hide = o.recenter;
                         if !o.recenter {
-                            app.tasks.enqueue(TaskType::Toast(Toast::new(
+                            Toast::new(
                                 format!("{} is now locked in place!", o.name).into(),
                                 "Right-click again to toggle.".into(),
-                            )))
+                            )
+                            .submit(app);
                         }
                     }),
                 ));
@@ -744,10 +743,11 @@ fn overlay_button_up(control: &mut Control<(), ElemState>, _: &mut (), app: &mut
                     Box::new(|app, o| {
                         o.interactable = !o.interactable;
                         if !o.interactable {
-                            app.tasks.enqueue(TaskType::Toast(Toast::new(
+                            Toast::new(
                                 format!("{} is now non-interactable!", o.name).into(),
                                 "Middle-click again to toggle.".into(),
-                            )))
+                            )
+                            .submit(app);
                         }
                     }),
                 ));

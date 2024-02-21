@@ -15,7 +15,7 @@ use crate::{
 };
 
 pub const WATCH_DEFAULT_POS: Vec3 = Vec3::new(-0.03, -0.01, 0.125);
-pub const WATCH_DEFAULT_ROT: Quat = Quat::from_xyzw(0.7071066, 0., 0.7071066, 0.0007963);
+pub const WATCH_DEFAULT_ROT: Quat = Quat::from_xyzw(-0.7071066, 0.0007963618, 0.7071066, 0.0);
 
 pub struct AppState {
     pub fc: FontCache,

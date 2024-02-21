@@ -837,7 +837,7 @@ impl WlxCommandBuffer {
     ) -> anyhow::Result<()> {
         self.command_buffer.begin_render_pass(
             RenderPassBeginInfo {
-                clear_values: vec![Some([0.0, 0.0, 0.0, 1.0].into())],
+                clear_values: vec![Some([0.0, 0.0, 0.0, 0.0].into())],
                 ..RenderPassBeginInfo::framebuffer(pipeline.data.framebuffer.clone())
             },
             SubpassBeginInfo {
@@ -854,7 +854,7 @@ impl WlxCommandBuffer {
             color_attachments: vec![Some(RenderingAttachmentInfo {
                 load_op: AttachmentLoadOp::Clear,
                 store_op: AttachmentStoreOp::Store,
-                clear_value: Some([0.0, 0.0, 0.0, 1.0].into()),
+                clear_value: Some([0.0, 0.0, 0.0, 0.0].into()),
                 ..RenderingAttachmentInfo::image_view(render_target.clone())
             })],
             ..Default::default()
@@ -923,8 +923,7 @@ impl WlxCommandBuffer {
         let info = reader.info();
         let width = info.width;
         let height = info.height;
-        let mut image_data = Vec::new();
-        image_data.resize((info.width * info.height * 4) as usize, 0);
+        let mut image_data = vec![0; (info.width * info.height * 4) as usize];
         reader.next_frame(&mut image_data)?;
         self.texture2d(width, height, Format::R8G8B8A8_UNORM, &image_data)
     }

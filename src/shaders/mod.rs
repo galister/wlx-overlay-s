@@ -74,9 +74,7 @@ pub mod frag_sprite {
 
             void main()
             {
-                vec4 c = texture(in_texture, in_uv);
-                out_color.rgb = c.rgb;
-                out_color.a = min((c.r + c.g + c.b)*100.0, 1.0);
+                out_color = texture(in_texture, in_uv);
             }
         ",
     }

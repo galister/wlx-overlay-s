@@ -14,7 +14,6 @@ use thiserror::Error;
 use crate::{
     overlays::{
         keyboard::create_keyboard,
-        toast::Toast,
         watch::{create_watch, WATCH_NAME, WATCH_SCALE},
     },
     state::AppState,
@@ -58,6 +57,7 @@ where
         };
 
         let mut watch = create_watch::<T>(app, &screens)?;
+        log::info!("Watch Rotation: {:?}", watch.state.spawn_rotation);
         watch.state.want_visible = true;
         overlays.insert(watch.state.id, watch);
 
@@ -68,9 +68,9 @@ where
 
         let mut show_screens = app.session.config.show_screens.clone();
         if show_screens.is_empty() {
-            screens.first().map(|s| {
+            if let Some(s) = screens.first() {
                 show_screens.push(s.state.name.clone());
-            });
+            }
         }
 
         for mut screen in screens {
@@ -173,7 +173,7 @@ impl PartialEq<AppTask> for AppTask {
 }
 impl PartialOrd<AppTask> for AppTask {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.not_before.cmp(&other.not_before).reverse())
+        Some(self.cmp(other))
     }
 }
 impl Eq for AppTask {}
@@ -194,7 +194,6 @@ pub enum TaskType {
         Box<dyn FnOnce(&mut AppState) -> Option<(OverlayState, Box<dyn OverlayBackend>)> + Send>,
     ),
     DropOverlay(OverlaySelector),
-    Toast(Toast),
 }
 
 pub struct TaskContainer {

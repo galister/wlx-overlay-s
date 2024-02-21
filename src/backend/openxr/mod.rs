@@ -15,6 +15,7 @@ use crate::{
     backend::{
         common::{OverlayContainer, TaskType},
         input::interact,
+        notifications::NotificationManager,
         openxr::{input::DoubleClickCounter, lines::LinePool, overlay::OpenXrOverlayData},
         overlay::OverlayData,
     },
@@ -62,6 +63,10 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
     let mut overlays = OverlayContainer::<OpenXrOverlayData>::new(&mut app_state)?;
     let mut lines = LinePool::new(app_state.graphics.clone())?;
+
+    let mut notifications = NotificationManager::new();
+    notifications.run_dbus();
+    notifications.run_udp();
 
     #[cfg(feature = "osc")]
     let mut osc_sender =
@@ -179,6 +184,8 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             continue 'main_loop;
         }
 
+        notifications.submit_pending(&mut app_state);
+
         app_state.tasks.retrieve_due(&mut due_tasks);
         while let Some(task) = due_tasks.pop_front() {
             match task {
@@ -206,10 +213,6 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 TaskType::DropOverlay(sel) => {
                     overlays.drop_by_selector(&sel);
                 }
-                TaskType::Toast(t) => {
-                    // TODO toasts
-                    log::info!("Toast: {} {}", t.title, t.body);
-                }
             }
         }
 
@@ -221,7 +224,9 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             .input_state
             .pointers
             .iter()
-            .any(|p| p.now.show_hide && !p.before.show_hide) && show_hide_counter.click() {
+            .any(|p| p.now.show_hide && !p.before.show_hide)
+            && show_hide_counter.click()
+        {
             overlays.show_hide(&mut app_state);
         }
 

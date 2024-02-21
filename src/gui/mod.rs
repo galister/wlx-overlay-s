@@ -147,7 +147,7 @@ impl<D, S> CanvasBuilder<D, S> {
         y: f32,
         w: f32,
         h: f32,
-        label: &Vec<String>,
+        label: &[String],
     ) -> &mut Control<D, S> {
         let idx = self.canvas.controls.len();
         self.canvas.interactive_set_idx(x, y, w, h, idx);

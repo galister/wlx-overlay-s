@@ -111,7 +111,7 @@ pub(super) unsafe fn create_overlay_session(
     }
 }
 
-pub(super) fn hmd_pose_from_views(views: &Vec<xr::View>) -> Affine3A {
+pub(super) fn hmd_pose_from_views(views: &[xr::View]) -> Affine3A {
     let pos = {
         let pos0: Vec3 = unsafe { std::mem::transmute(views[0].pose.position) };
         let pos1: Vec3 = unsafe { std::mem::transmute(views[1].pose.position) };

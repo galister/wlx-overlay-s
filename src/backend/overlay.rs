@@ -101,9 +101,7 @@ impl OverlayState {
             self.transform = parent
                 * Affine3A::from_scale_rotation_translation(
                     Vec3::ONE * self.spawn_scale,
-                    self.spawn_rotation
-                        * Quat::from_rotation_x(f32::to_radians(-180.0))
-                        * Quat::from_rotation_z(f32::to_radians(180.0)),
+                    self.spawn_rotation,
                     point.into(),
                 );
 

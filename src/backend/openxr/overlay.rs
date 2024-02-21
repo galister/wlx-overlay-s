@@ -36,20 +36,23 @@ impl OverlayData<OpenXrOverlayData> {
         };
         let extent = my_view.image().extent();
 
-        let data = self.data.swapchain.get_or_insert_with(|| {
-            let srd =
-                create_swapchain_render_data(xr, command_buffer.graphics.clone(), extent).unwrap(); //TODO
-
-            log::info!(
-                "{}: Created swapchain {}x{}, {} images, {} MB",
-                self.state.name,
-                extent[0],
-                extent[1],
-                srd.images.len(),
-                extent[0] * extent[1] * 4 * srd.images.len() as u32 / 1024 / 1024
-            );
-            srd
-        });
+        let data = match self.data.swapchain {
+            Some(ref mut data) => data,
+            None => {
+                let srd =
+                    create_swapchain_render_data(xr, command_buffer.graphics.clone(), extent)?;
+                log::debug!(
+                    "{}: Created swapchain {}x{}, {} images, {} MB",
+                    self.state.name,
+                    extent[0],
+                    extent[1],
+                    srd.images.len(),
+                    extent[0] * extent[1] * 4 * srd.images.len() as u32 / 1024 / 1024
+                );
+                self.data.swapchain = Some(srd);
+                self.data.swapchain.as_mut().unwrap() //safe
+            }
+        };
 
         let sub_image = data.acquire_present_release(command_buffer, my_view, self.state.alpha)?;
         let posef = helpers::transform_to_posef(&self.state.transform);

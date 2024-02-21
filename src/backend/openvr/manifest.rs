@@ -18,7 +18,7 @@ pub(super) fn install_manifest(app_mgr: &mut ApplicationsManager) -> anyhow::Res
     if let Ok(true) = app_mgr.is_application_installed(APP_KEY) {
         if let Ok(mut file) = File::open(&manifest_path) {
             let mut buf = String::new();
-            if let Ok(_) = file.read_to_string(&mut buf) {
+            if file.read_to_string(&mut buf).is_ok() {
                 let manifest: json::JsonValue = json::parse(&buf)?;
                 if manifest["applications"][0]["binary_path_linux"] == executable_path {
                     log::info!("Manifest already up to date");
@@ -50,16 +50,20 @@ pub(super) fn install_manifest(app_mgr: &mut ApplicationsManager) -> anyhow::Res
         bail!("Failed to create manifest file at {:?}", manifest_path);
     };
 
-    let Ok(()) = manifest.write(&mut file) else {
-        bail!("Failed to write manifest file at {:?}", manifest_path);
+    if let Err(e) = manifest.write(&mut file) {
+        bail!(
+            "Failed to write manifest file at {:?}: {:?}",
+            manifest_path,
+            e
+        );
     };
 
-    let Ok(()) = app_mgr.add_application_manifest(&manifest_path, false) else {
-        bail!("Failed to add manifest to OpenVR");
+    if let Err(e) = app_mgr.add_application_manifest(&manifest_path, false) {
+        bail!("Failed to add manifest to OpenVR: {}", e.description());
     };
 
-    let Ok(()) = app_mgr.set_application_auto_launch(APP_KEY, true) else {
-        bail!("Failed to set auto launch");
+    if let Err(e) = app_mgr.set_application_auto_launch(APP_KEY, true) {
+        bail!("Failed to set auto launch: {}", e.description());
     };
 
     Ok(())
@@ -69,8 +73,8 @@ pub(super) fn uninstall_manifest(app_mgr: &mut ApplicationsManager) -> anyhow::R
     let manifest_path = CONFIG_ROOT_PATH.join("wlx-overlay-s.vrmanifest");
 
     if let Ok(true) = app_mgr.is_application_installed(APP_KEY) {
-        let Ok(()) = app_mgr.remove_application_manifest(&manifest_path) else {
-            bail!("Failed to remove manifest from OpenVR");
+        if let Err(e) = app_mgr.remove_application_manifest(&manifest_path) {
+            bail!("Failed to remove manifest from OpenVR: {}", e.description());
         };
         log::info!("Uninstalled manifest");
     }
