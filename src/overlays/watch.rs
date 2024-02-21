@@ -80,11 +80,13 @@ where
                 canvas.font_size = font_size;
                 canvas.fg_color = color_parse(&fg_color).unwrap_or(FALLBACK_COLOR);
 
-                let tz: Option<Tz> = timezone.map(|tz| tz.parse().unwrap_or_else(|_| {
+                let tz: Option<Tz> = timezone.map(|tz| {
+                    tz.parse().unwrap_or_else(|_| {
                         log::error!("Failed to parse timezone '{}'", &tz);
                         canvas.fg_color = FALLBACK_COLOR;
                         Tz::UTC
-                    }));
+                    })
+                });
 
                 let label = canvas.label(x, y, w, h, empty_str.clone());
                 label.state = Some(ElemState::Clock {
@@ -283,6 +285,7 @@ where
                 let button = canvas.button(x, y, w, h, text.clone());
                 button.state = Some(ElemState::Mirror { name, show_hide });
                 button.on_press = Some(btn_mirror_dn::<O>);
+                button.on_scroll = Some(overlay_button_scroll);
             }
         }
     }
@@ -639,14 +642,18 @@ fn overlay_button_scroll(
     delta: f32,
 ) {
     // want panic
-    let ElemState::OverlayButton { overlay, .. } = control.state.as_mut().unwrap() else {
-        log::error!("OverlayButton state not found");
-        return;
+    let overlay = match &mut control.state.as_mut().unwrap() {
+        ElemState::OverlayButton { overlay, .. } => overlay.clone(),
+        ElemState::Mirror { name, .. } => OverlaySelector::Name(name.clone()),
+        _ => {
+            log::error!("OverlayButton state not found");
+            return;
+        }
     };
 
     if delta > 0. {
         app.tasks.enqueue(TaskType::Overlay(
-            overlay.clone(),
+            overlay,
             Box::new(|_, o| {
                 o.alpha = (o.alpha + 0.025).min(1.);
                 o.dirty = true;
@@ -655,7 +662,7 @@ fn overlay_button_scroll(
         ));
     } else {
         app.tasks.enqueue(TaskType::Overlay(
-            overlay.clone(),
+            overlay,
             Box::new(|_, o| {
                 o.alpha = (o.alpha - 0.025).max(0.1);
                 o.dirty = true;

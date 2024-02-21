@@ -140,6 +140,7 @@ watch_elements:
     # - Blue Click: Show/hide. Shows pipewire prompt on first show.
     # - Orange Click: Toggle lock in place
     # - Purple Click: Stop capture. After doing this, you may Blue-click again to select a different source.
+    # - Scroll: Adjust opacity
     # Warning:
     # - Window shares may stop updating if the window goes off-screen or is on an inactive workspace
     # - Resizing, minimizing, maximizing windows may break stuff. Complain to your xdg-desktop-portal implementation.
