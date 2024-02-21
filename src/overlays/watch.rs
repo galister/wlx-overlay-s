@@ -1,6 +1,6 @@
 use std::{
     f32::consts::PI,
-    io::Read,
+    io::{Cursor, Read},
     process::{self, Stdio},
     sync::Arc,
     time::Instant,
@@ -9,6 +9,7 @@ use std::{
 use chrono::Local;
 use chrono_tz::Tz;
 use glam::{Quat, Vec3, Vec3A};
+use rodio::{Decoder, Source};
 use serde::Deserialize;
 
 use crate::{
@@ -395,6 +396,15 @@ fn btn_mirror_dn(
     }
 }
 
+fn audio_thump(app: &mut AppState) {
+    if let Some(handle) = app.audio.get_handle() {
+        let wav = include_bytes!("../res/380885.wav");
+        let cursor = Cursor::new(wav);
+        let source = Decoder::new_wav(cursor).unwrap();
+        let _ = handle.play_raw(source.convert_samples());
+    }
+}
+
 fn btn_func_dn(
     control: &mut Control<(), ElemState>,
     _: &mut (),
@@ -434,6 +444,7 @@ fn btn_func_dn(
                     .submit(app);
                 }),
             ));
+            audio_thump(app);
         }
         ButtonFunc::SwitchWatchHand => {
             app.tasks.enqueue(TaskType::Overlay(
@@ -456,6 +467,7 @@ fn btn_func_dn(
                         .submit(app);
                 }),
             ));
+            audio_thump(app);
         }
     }
 }
@@ -736,6 +748,7 @@ fn overlay_button_up(control: &mut Control<(), ElemState>, _: &mut (), app: &mut
                         }
                     }),
                 ));
+                audio_thump(app);
             }
             PointerMode::Middle => {
                 app.tasks.enqueue(TaskType::Overlay(
@@ -751,6 +764,7 @@ fn overlay_button_up(control: &mut Control<(), ElemState>, _: &mut (), app: &mut
                         }
                     }),
                 ));
+                audio_thump(app);
             }
             _ => {}
         }

@@ -13,12 +13,12 @@ use crate::{
     config,
     gui::{color_parse, CanvasBuilder, Control},
     hid::{KeyModifier, VirtualKey, ALT, CTRL, KEYS_TO_MODS, META, SHIFT, SUPER},
-    state::{AppSession, AppState},
+    state::AppState,
 };
 use glam::{vec2, vec3a, Affine2, Vec4};
 use once_cell::sync::Lazy;
 use regex::Regex;
-use rodio::{Decoder, OutputStream, OutputStreamHandle, Source};
+use rodio::{Decoder, Source};
 use serde::{Deserialize, Serialize};
 
 const PIXELS_PER_UNIT: f32 = 80.;
@@ -39,9 +39,6 @@ where
     let data = KeyboardData {
         modifiers: 0,
         processes: vec![],
-        audio_stream: None,
-        first_try: true,
-        audio_handle: None,
     };
 
     let mut canvas = CanvasBuilder::new(
@@ -142,7 +139,7 @@ fn key_press(
 ) {
     match control.state.as_mut() {
         Some(KeyButtonData::Key { vk, pressed }) => {
-            data.key_click(&app.session);
+            data.key_click(app);
 
             if let PointerMode::Right = mode {
                 data.modifiers |= SHIFT;
@@ -155,11 +152,11 @@ fn key_press(
         Some(KeyButtonData::Modifier { modifier, sticky }) => {
             *sticky = data.modifiers & *modifier == 0;
             data.modifiers |= *modifier;
-            data.key_click(&app.session);
+            data.key_click(app);
             app.hid_provider.set_modifiers(data.modifiers);
         }
         Some(KeyButtonData::Macro { verbs }) => {
-            data.key_click(&app.session);
+            data.key_click(app);
             for (vk, press) in verbs {
                 app.hid_provider.send_key(*vk as _, *press);
             }
@@ -169,7 +166,7 @@ fn key_press(
             data.processes
                 .retain_mut(|child| !matches!(child.try_wait(), Ok(Some(_))));
 
-            data.key_click(&app.session);
+            data.key_click(app);
             if let Ok(child) = Command::new(program).args(args).spawn() {
                 data.processes.push(child);
             }
@@ -228,28 +225,16 @@ fn test_highlight(
 struct KeyboardData {
     modifiers: KeyModifier,
     processes: Vec<Child>,
-    audio_stream: Option<OutputStream>,
-    audio_handle: Option<OutputStreamHandle>,
-    first_try: bool,
 }
 
 impl KeyboardData {
-    fn key_click(&mut self, session: &AppSession) {
-        if !session.config.keyboard_sound_enabled {
+    fn key_click(&mut self, app: &mut AppState) {
+        if !app.session.config.keyboard_sound_enabled {
             return;
         }
 
-        if self.audio_stream.is_none() && self.first_try {
-            self.first_try = false;
-            if let Ok((stream, handle)) = OutputStream::try_default() {
-                self.audio_stream = Some(stream);
-                self.audio_handle = Some(handle);
-            } else {
-                log::error!("Failed to open audio stream");
-            }
-        }
-
-        if let Some(handle) = &self.audio_handle {
+        if let Some(handle) = app.audio.get_handle() {
+            // https://freesound.org/people/UberBosser/sounds/421581/
             let wav = include_bytes!("../res/421581.wav");
             let cursor = Cursor::new(wav);
             let source = Decoder::new_wav(cursor).unwrap();

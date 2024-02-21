@@ -4,7 +4,13 @@ use dbus::{
     message::MatchRule,
 };
 use serde::Deserialize;
-use std::sync::{mpsc, Arc};
+use std::{
+    sync::{
+        mpsc::{self},
+        Arc,
+    },
+    time::Duration,
+};
 
 use crate::{overlays::toast::Toast, state::AppState};
 
@@ -25,6 +31,10 @@ impl NotificationManager {
     }
 
     pub fn submit_pending(&self, app: &mut AppState) {
+        if let Some((c, _)) = &self.dbus_data {
+            let _ = c.process(Duration::ZERO);
+        }
+
         self.rx_toast.try_iter().for_each(|toast| {
             toast.submit(app);
         });
@@ -44,20 +54,20 @@ impl NotificationManager {
 
         let sender = self.tx_toast.clone();
 
-        let token = c.start_receive(
-            rule,
-            Box::new(move |msg, _| {
-                if let Ok(toast) = parse_dbus(&msg) {
-                    match sender.try_send(toast) {
-                        Ok(_) => {}
-                        Err(e) => {
-                            log::error!("Failed to send notification: {:?}", e);
-                        }
+        let Ok(token) = c.add_match(rule, move |_: (), _, msg| {
+            if let Ok(toast) = parse_dbus(&msg) {
+                match sender.try_send(toast) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::error!("Failed to send notification: {:?}", e);
                     }
                 }
-                true
-            }),
-        );
+            }
+            true
+        }) else {
+            log::error!("Failed to add dbus match. Desktop notifications will not work.");
+            return;
+        };
 
         self.dbus_data = Some((c, token));
     }
@@ -73,7 +83,7 @@ impl NotificationManager {
                     return;
                 }
             };
-            let mut buf = [0u8; 1500];
+            let mut buf = [0u8; 1024 * 16]; // vrcx embeds icons as b64
 
             loop {
                 if let Ok((num_bytes, _)) = socket.recv_from(&mut buf) {
@@ -84,6 +94,7 @@ impl NotificationManager {
                             continue;
                         }
                     };
+                    log::info!("Received notification message: {}", json_str);
                     let msg = match serde_json::from_str::<XsoMessage>(json_str) {
                         Ok(m) => m,
                         Err(e) => {
@@ -92,10 +103,13 @@ impl NotificationManager {
                         }
                     };
 
+                    if msg.messageType != 1 {
+                        continue;
+                    }
+
                     let toast = Toast::new(msg.title, msg.content.unwrap_or_else(|| "".into()))
-                        .with_timeout(msg.timeout)
-                        .with_volume(msg.volume)
-                        .with_opacity(msg.opacity);
+                        .with_timeout(msg.timeout.unwrap_or(5.))
+                        .with_sound(msg.volume.unwrap_or(0.) > 0.1);
 
                     match sender.try_send(toast) {
                         Ok(_) => {}
@@ -131,23 +145,26 @@ fn parse_dbus(msg: &dbus::Message) -> anyhow::Result<Toast> {
         summary
     };
 
-    Ok(Toast::new(title.into(), body.into()))
+    Ok(Toast::new(title.into(), body.into())
+        .with_sound(true)
+        .with_timeout(5.0)
+        .with_opacity(1.0))
 }
 
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize)]
 struct XsoMessage {
     messageType: i32,
-    index: i32,
-    volume: f32,
-    audioPath: Arc<str>,
-    timeout: f32,
+    index: Option<i32>,
+    volume: Option<f32>,
+    audioPath: Option<Arc<str>>,
+    timeout: Option<f32>,
     title: Arc<str>,
     content: Option<Arc<str>>,
     icon: Option<Arc<str>>,
-    height: f32,
-    opacity: f32,
-    useBase64Icon: bool,
+    height: Option<f32>,
+    opacity: Option<f32>,
+    useBase64Icon: Option<bool>,
     sourceApp: Option<Arc<str>>,
-    alwaysShow: bool,
+    alwaysShow: Option<bool>,
 }

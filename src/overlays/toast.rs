@@ -1,7 +1,10 @@
 use std::{
+    io::Cursor,
     ops::Add,
     sync::{atomic::AtomicUsize, Arc},
 };
+
+use rodio::{Decoder, Source};
 
 use glam::vec3a;
 
@@ -24,8 +27,8 @@ pub struct Toast {
     pub title: Arc<str>,
     pub body: Arc<str>,
     pub opacity: f32,
-    pub volume: f32,
     pub timeout: f32,
+    pub sound: bool,
 }
 
 #[allow(dead_code)]
@@ -36,7 +39,7 @@ impl Toast {
             body,
             opacity: 1.0,
             timeout: 3.0,
-            volume: 0.0,
+            sound: false,
         }
     }
     pub fn with_timeout(mut self, timeout: f32) -> Self {
@@ -47,8 +50,8 @@ impl Toast {
         self.opacity = opacity;
         self
     }
-    pub fn with_volume(mut self, volume: f32) -> Self {
-        self.volume = volume;
+    pub fn with_sound(mut self, sound: bool) -> Self {
+        self.sound = sound;
         self
     }
     pub fn submit(self, app: &mut AppState) {
@@ -59,6 +62,8 @@ impl Toast {
         let destroy_at =
             std::time::Instant::now().add(std::time::Duration::from_secs_f32(self.timeout));
 
+        let has_sound = self.sound;
+
         app.tasks.enqueue(TaskType::CreateOverlay(
             selector.clone(),
             Box::new(move |app| new_toast(self, name, app)),
@@ -66,6 +71,15 @@ impl Toast {
 
         app.tasks
             .enqueue_at(TaskType::DropOverlay(selector), destroy_at);
+
+        if has_sound {
+            if let Some(handle) = app.audio.get_handle() {
+                let wav = include_bytes!("../res/557297.wav");
+                let cursor = Cursor::new(wav);
+                let source = Decoder::new_wav(cursor).unwrap();
+                let _ = handle.play_raw(source.convert_samples());
+            }
+        }
     }
 }
 
@@ -91,9 +105,11 @@ fn new_toast(
             .ok()?;
         (w0.max(w1), h1 + 50.)
     } else {
-        app.fc
+        let (w, h) = app
+            .fc
             .get_text_size(&title, FONT_SIZE, app.graphics.clone())
-            .ok()?
+            .ok()?;
+        (w, h + 20.)
     };
 
     let og_width = size.0;
@@ -123,7 +139,7 @@ fn new_toast(
         canvas.label_centered(PADDING.0, 16., og_width, FONT_SIZE as f32 + 2., title);
     } else {
         log::info!("Toast: {}", title);
-        canvas.label(0., 0., size.0, size.1, title);
+        canvas.label_centered(PADDING.0, 0., og_width, size.1, title);
     }
 
     let state = OverlayState {

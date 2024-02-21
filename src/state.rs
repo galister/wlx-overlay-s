@@ -2,6 +2,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use anyhow::bail;
 use glam::{Quat, Vec3};
+use rodio::{OutputStream, OutputStreamHandle};
 use vulkano::format::Format;
 
 use crate::{
@@ -25,6 +26,7 @@ pub struct AppState {
     pub format: vulkano::format::Format,
     pub input_state: InputState,
     pub hid_provider: Box<dyn HidProvider>,
+    pub audio: AudioOutput,
 }
 
 impl AppState {
@@ -59,6 +61,7 @@ impl AppState {
             format: Format::R8G8B8A8_UNORM,
             input_state: InputState::new(),
             hid_provider: crate::hid::initialize(),
+            audio: AudioOutput::new(),
         })
     }
 }
@@ -113,5 +116,32 @@ impl AppSession {
                 z: 0.,
             },
         }
+    }
+}
+
+pub struct AudioOutput {
+    audio_stream: Option<(OutputStream, OutputStreamHandle)>,
+    first_try: bool,
+}
+
+impl AudioOutput {
+    pub fn new() -> Self {
+        AudioOutput {
+            audio_stream: None,
+            first_try: true,
+        }
+    }
+
+    pub fn get_handle(&mut self) -> Option<&OutputStreamHandle> {
+        if self.audio_stream.is_none() && self.first_try {
+            self.first_try = false;
+            if let Ok((stream, handle)) = OutputStream::try_default() {
+                self.audio_stream = Some((stream, handle));
+            } else {
+                log::error!("Failed to open audio stream");
+                return None;
+            }
+        }
+        self.audio_stream.as_ref().map(|(_, h)| h)
     }
 }
