@@ -1,7 +1,5 @@
 pub mod common;
 pub mod input;
-
-#[cfg(feature = "notifications")]
 pub mod notifications;
 
 #[cfg(feature = "openvr")]

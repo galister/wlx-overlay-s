@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    io::Cursor,
     os::fd::{FromRawFd, IntoRawFd},
     slice::Iter,
     sync::{Arc, OnceLock, RwLock},
@@ -17,16 +16,7 @@ use vulkano::{
 };
 
 #[cfg(feature = "openxr")]
-use {ash::vk, std::os::raw::c_void, vulkano::swapchain::Surface};
-
-pub const BLEND_ALPHA: AttachmentBlend = AttachmentBlend {
-    src_color_blend_factor: BlendFactor::SrcAlpha,
-    dst_color_blend_factor: BlendFactor::OneMinusSrcAlpha,
-    color_blend_op: BlendOp::Add,
-    src_alpha_blend_factor: BlendFactor::One,
-    dst_alpha_blend_factor: BlendFactor::One,
-    alpha_blend_op: BlendOp::Max,
-};
+use {ash::vk, std::os::raw::c_void};
 
 use vulkano::{
     buffer::{
@@ -111,6 +101,15 @@ pub struct Vert2Uv {
 
 pub const INDICES: [u16; 6] = [2, 1, 0, 1, 2, 3];
 
+pub const BLEND_ALPHA: AttachmentBlend = AttachmentBlend {
+    src_color_blend_factor: BlendFactor::SrcAlpha,
+    dst_color_blend_factor: BlendFactor::OneMinusSrcAlpha,
+    color_blend_op: BlendOp::Add,
+    src_alpha_blend_factor: BlendFactor::One,
+    dst_alpha_blend_factor: BlendFactor::One,
+    alpha_blend_op: BlendOp::Max,
+};
+
 pub struct WlxGraphics {
     pub instance: Arc<Instance>,
     pub device: Arc<Device>,
@@ -154,12 +153,11 @@ impl WlxGraphics {
 
         use ash::vk::PhysicalDeviceDynamicRenderingFeatures;
         use vulkano::{Handle, Version};
-        use winit::event_loop::EventLoop;
 
-        let event_loop = EventLoop::new()?;
-        let mut instance_extensions = Surface::required_extensions(&event_loop)?;
-
-        instance_extensions.khr_get_physical_device_properties2 = true;
+        let instance_extensions = InstanceExtensions {
+            khr_get_physical_device_properties2: true,
+            ..InstanceExtensions::empty()
+        };
 
         let instance_extensions_raw = instance_extensions
             .into_iter()
@@ -928,19 +926,6 @@ impl WlxCommandBuffer {
             .copy_buffer_to_image(CopyBufferToImageInfo::buffer_image(buffer, image.clone()))?;
 
         Ok(image)
-    }
-
-    #[allow(dead_code)]
-    pub fn texture2d_png(&mut self, bytes: Vec<u8>) -> anyhow::Result<Arc<Image>> {
-        let cursor = Cursor::new(bytes);
-        let decoder = png::Decoder::new(cursor);
-        let mut reader = decoder.read_info()?;
-        let info = reader.info();
-        let width = info.width;
-        let height = info.height;
-        let mut image_data = vec![0; (info.width * info.height * 4) as usize];
-        reader.next_frame(&mut image_data)?;
-        self.texture2d(width, height, Format::R8G8B8A8_UNORM, &image_data)
     }
 
     pub fn end_render_pass(&mut self) -> anyhow::Result<()> {
