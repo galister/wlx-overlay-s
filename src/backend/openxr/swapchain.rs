@@ -49,7 +49,7 @@ pub(super) fn create_swapchain_render_data(
             let vk_image = vk::Image::from_raw(handle);
             // thanks @yshui
             let raw_image = unsafe {
-                RawImage::from_handle(
+                RawImage::from_handle_borrowed(
                     graphics.device.clone(),
                     vk_image,
                     ImageCreateInfo {

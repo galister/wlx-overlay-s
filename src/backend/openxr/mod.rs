@@ -1,7 +1,7 @@
 use std::{
     collections::VecDeque,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
     time::Duration,
@@ -34,6 +34,7 @@ mod swapchain;
 
 const VIEW_TYPE: xr::ViewConfigurationType = xr::ViewConfigurationType::PRIMARY_STEREO;
 const VIEW_COUNT: u32 = 2;
+static FRAME_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 struct XrState {
     instance: xr::Instance,
@@ -67,6 +68,8 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     let mut notifications = NotificationManager::new();
     notifications.run_dbus();
     notifications.run_udp();
+
+    let mut delete_queue = vec![];
 
     #[cfg(feature = "osc")]
     let mut osc_sender =
@@ -121,6 +124,8 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     let mut due_tasks = VecDeque::with_capacity(4);
 
     'main_loop: loop {
+        let cur_frame = FRAME_COUNTER.fetch_add(1, Ordering::Relaxed);
+
         if !running.load(Ordering::Relaxed) {
             log::warn!("Received shutdown signal.");
             match xr_state.session.request_exit() {
@@ -182,38 +187,6 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 &[],
             )?;
             continue 'main_loop;
-        }
-
-        notifications.submit_pending(&mut app_state);
-
-        app_state.tasks.retrieve_due(&mut due_tasks);
-        while let Some(task) = due_tasks.pop_front() {
-            match task {
-                TaskType::Global(f) => f(&mut app_state),
-                TaskType::Overlay(sel, f) => {
-                    if let Some(o) = overlays.mut_by_selector(&sel) {
-                        f(&mut app_state, &mut o.state);
-                    }
-                }
-                TaskType::CreateOverlay(sel, f) => {
-                    let None = overlays.mut_by_selector(&sel) else {
-                        continue;
-                    };
-
-                    let Some((state, backend)) = f(&mut app_state) else {
-                        continue;
-                    };
-
-                    overlays.add(OverlayData {
-                        state,
-                        backend,
-                        ..Default::default()
-                    });
-                }
-                TaskType::DropOverlay(sel) => {
-                    overlays.drop_by_selector(&sel);
-                }
-            }
         }
 
         app_state.input_state.pre_update();
@@ -325,6 +298,42 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             environment_blend_mode,
             &frame_ref,
         )?;
+
+        notifications.submit_pending(&mut app_state);
+
+        app_state.tasks.retrieve_due(&mut due_tasks);
+        while let Some(task) = due_tasks.pop_front() {
+            match task {
+                TaskType::Global(f) => f(&mut app_state),
+                TaskType::Overlay(sel, f) => {
+                    if let Some(o) = overlays.mut_by_selector(&sel) {
+                        f(&mut app_state, &mut o.state);
+                    }
+                }
+                TaskType::CreateOverlay(sel, f) => {
+                    let None = overlays.mut_by_selector(&sel) else {
+                        continue;
+                    };
+
+                    let Some((state, backend)) = f(&mut app_state) else {
+                        continue;
+                    };
+
+                    overlays.add(OverlayData {
+                        state,
+                        backend,
+                        ..Default::default()
+                    });
+                }
+                TaskType::DropOverlay(sel) => {
+                    let o = overlays.remove_by_selector(&sel);
+                    // set for deletion after all images are done showing
+                    delete_queue.push((o, cur_frame + 5));
+                }
+            }
+        }
+
+        delete_queue.retain(|(_, frame)| *frame > cur_frame);
 
         app_state.hid_provider.on_new_frame();
 

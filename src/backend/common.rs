@@ -90,20 +90,18 @@ where
         }
     }
 
-    pub fn drop_by_selector(&mut self, selector: &OverlaySelector) {
+    pub fn remove_by_selector(&mut self, selector: &OverlaySelector) -> Option<OverlayData<T>> {
         match selector {
-            OverlaySelector::Id(id) => {
-                self.overlays.remove(id);
-            }
+            OverlaySelector::Id(id) => self.overlays.remove(id),
             OverlaySelector::Name(name) => {
                 let id = self
                     .overlays
                     .iter()
                     .find(|(_, o)| *o.state.name == **name)
                     .map(|(id, _)| *id);
-                id.and_then(|id| self.overlays.remove(id));
+                id.and_then(|id| self.overlays.remove(id))
             }
-        };
+        }
     }
 
     pub fn get_by_id(&mut self, id: usize) -> Option<&OverlayData<T>> {

@@ -182,7 +182,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 TaskType::DropOverlay(sel) => {
                     if let Some(o) = overlays.mut_by_selector(&sel) {
                         o.destroy(&mut overlay_mngr);
-                        overlays.drop_by_selector(&sel);
+                        overlays.remove_by_selector(&sel);
                     }
                 }
             }
