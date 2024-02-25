@@ -9,14 +9,15 @@ use openxr as xr;
 
 use glam::{Affine3A, Vec2, Vec3A};
 use idmap::IdMap;
+use serde::Deserialize;
 use thiserror::Error;
 
 use crate::{
     overlays::{
         keyboard::create_keyboard,
-        watch::{create_watch, WATCH_NAME, WATCH_SCALE},
+        watch::{create_watch, WATCH_NAME},
     },
-    state::AppState,
+    state::{AppState, ScreenMeta},
 };
 
 use super::overlay::{OverlayBackend, OverlayData, OverlayState};
@@ -56,8 +57,15 @@ where
             crate::overlays::screen::get_screens_x11(&app.session)?
         };
 
-        let mut watch = create_watch::<T>(app, &screens)?;
-        log::info!("Watch Rotation: {:?}", watch.state.spawn_rotation);
+        app.screens.clear();
+        for screen in screens.iter() {
+            app.screens.push(ScreenMeta {
+                name: screen.state.name.clone(),
+                id: screen.state.id,
+            });
+        }
+
+        let mut watch = create_watch::<T>(app)?;
         watch.state.want_visible = true;
         overlays.insert(watch.state.id, watch);
 
@@ -147,13 +155,14 @@ where
             }
             // toggle watch back on if it was hidden
             if !any_shown && *o.state.name == *WATCH_NAME {
-                o.state.spawn_scale = WATCH_SCALE * app.session.config.watch_scale;
+                o.state.reset(app, true);
             }
         })
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize)]
+#[serde(untagged)]
 pub enum OverlaySelector {
     Id(usize),
     Name(Arc<str>),
@@ -181,17 +190,30 @@ impl Ord for AppTask {
     }
 }
 
+pub enum SystemTask {
+    ColorGain(ColorChannel, f32),
+    ResetPlayspace,
+    FixFloor,
+}
+
+pub type OverlayTask = dyn FnOnce(&mut AppState, &mut OverlayState) + Send;
+pub type CreateOverlayTask =
+    dyn FnOnce(&mut AppState) -> Option<(OverlayState, Box<dyn OverlayBackend>)> + Send;
+
 pub enum TaskType {
     Global(Box<dyn FnOnce(&mut AppState) + Send>),
-    Overlay(
-        OverlaySelector,
-        Box<dyn FnOnce(&mut AppState, &mut OverlayState) + Send>,
-    ),
-    CreateOverlay(
-        OverlaySelector,
-        Box<dyn FnOnce(&mut AppState) -> Option<(OverlayState, Box<dyn OverlayBackend>)> + Send>,
-    ),
+    Overlay(OverlaySelector, Box<OverlayTask>),
+    CreateOverlay(OverlaySelector, Box<CreateOverlayTask>),
     DropOverlay(OverlaySelector),
+    System(SystemTask),
+}
+
+#[derive(Deserialize, Clone, Copy)]
+pub enum ColorChannel {
+    R,
+    G,
+    B,
+    All,
 }
 
 pub struct TaskContainer {

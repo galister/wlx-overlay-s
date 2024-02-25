@@ -20,9 +20,11 @@ use vulkano::{
 
 use crate::{
     backend::{
+        common::SystemTask,
         input::interact,
         notifications::NotificationManager,
         openvr::{
+            helpers::adjust_gain,
             input::{set_action_manifest, OpenVrInputSource},
             lines::LinePool,
             manifest::{install_manifest, uninstall_manifest},
@@ -64,11 +66,11 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
     log::info!("Using OpenVR runtime");
 
-    let mut overlay_mngr = context.overlay_mngr();
-    //let mut settings_mngr = context.settings_mngr();
     let mut app_mgr = context.applications_mngr();
     let mut input_mngr = context.input_mngr();
     let mut system_mngr = context.system_mngr();
+    let mut overlay_mngr = context.overlay_mngr();
+    let mut settings_mngr = context.settings_mngr();
     let mut chaperone_mgr = context.chaperone_setup_mngr();
     let mut compositor_mngr = context.compositor_mngr();
 
@@ -185,6 +187,17 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                         overlays.remove_by_selector(&sel);
                     }
                 }
+                TaskType::System(task) => match task {
+                    SystemTask::ColorGain(channel, value) => {
+                        let _ = adjust_gain(&mut settings_mngr, channel, value);
+                    }
+                    SystemTask::FixFloor => {
+                        space_mover.fix_floor(&mut chaperone_mgr, &state.input_state);
+                    }
+                    SystemTask::ResetPlayspace => {
+                        space_mover.reset_offset(&mut chaperone_mgr);
+                    }
+                },
             }
         }
 

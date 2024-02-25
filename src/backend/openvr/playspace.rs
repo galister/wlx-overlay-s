@@ -1,7 +1,10 @@
 use glam::Vec3A;
 use ovr_overlay::{chaperone_setup::ChaperoneSetupManager, sys::EChaperoneConfigFile};
 
-use crate::{backend::common::OverlayContainer, state::AppState};
+use crate::{
+    backend::{common::OverlayContainer, input::InputState},
+    state::AppState,
+};
 
 use super::overlay::OpenVrOverlayData;
 
@@ -56,6 +59,18 @@ impl PlayspaceMover {
                 }
             }
         }
+    }
+
+    pub fn reset_offset(&mut self, chaperone_mgr: &mut ChaperoneSetupManager) {
+        self.offset = Vec3A::ZERO;
+        self.apply_offset(chaperone_mgr);
+    }
+
+    pub fn fix_floor(&mut self, chaperone_mgr: &mut ChaperoneSetupManager, input: &InputState) {
+        let y1 = input.pointers[0].pose.translation.y;
+        let y2 = input.pointers[1].pose.translation.y;
+        self.offset.y += y1.min(y2) - 0.03;
+        self.apply_offset(chaperone_mgr);
     }
 
     pub fn reset(&mut self) {

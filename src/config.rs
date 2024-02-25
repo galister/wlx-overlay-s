@@ -2,12 +2,25 @@ use std::sync::Arc;
 
 use crate::config_io;
 use crate::config_io::get_conf_d_path;
+use crate::gui::modular::ModularUiConfig;
 use crate::load_with_fallback;
-use crate::overlays::keyboard;
-use crate::overlays::watch::WatchConfig;
+use crate::state::LeftRight;
+use anyhow::bail;
 use log::error;
 use serde::Deserialize;
 use serde::Serialize;
+
+pub fn def_watch_pos() -> [f32; 3] {
+    [-0.03, -0.01, 0.125]
+}
+
+pub fn def_watch_rot() -> [f32; 4] {
+    [-0.7071066, 0.0007963618, 0.7071066, 0.0]
+}
+
+pub fn def_left() -> LeftRight {
+    LeftRight::Left
+}
 
 pub fn def_pw_tokens() -> Vec<(String, String)> {
     Vec::new()
@@ -51,8 +64,23 @@ fn def_auto() -> Arc<str> {
 
 #[derive(Deserialize, Serialize)]
 pub struct GeneralConfig {
+    #[serde(default = "def_watch_pos")]
+    pub watch_pos: [f32; 3],
+
+    #[serde(default = "def_watch_rot")]
+    pub watch_rot: [f32; 4],
+
+    #[serde(default = "def_left")]
+    pub watch_hand: LeftRight,
+
     #[serde(default = "def_click_freeze_time_ms")]
     pub click_freeze_time_ms: u32,
+
+    #[serde(default = "def_true")]
+    pub notifications_enabled: bool,
+
+    #[serde(default = "def_true")]
+    pub notifications_sound_enabled: bool,
 
     #[serde(default = "def_true")]
     pub keyboard_sound_enabled: bool,
@@ -63,14 +91,14 @@ pub struct GeneralConfig {
     #[serde(default = "def_one")]
     pub desktop_view_scale: f32,
 
-    #[serde(default = "def_one")]
-    pub watch_scale: f32,
-
     #[serde(default = "def_half")]
     pub watch_view_angle_min: f32,
 
     #[serde(default = "def_point7")]
     pub watch_view_angle_max: f32,
+
+    #[serde(default = "def_one")]
+    pub long_press_duration: f32,
 
     #[serde(default = "def_pw_tokens")]
     pub pw_tokens: Vec<(String, String)>,
@@ -110,18 +138,54 @@ impl GeneralConfig {
     fn post_load(&self) {
         GeneralConfig::sanitize_range("keyboard_scale", self.keyboard_scale, 0.0, 5.0);
         GeneralConfig::sanitize_range("desktop_view_scale", self.desktop_view_scale, 0.0, 5.0);
-        GeneralConfig::sanitize_range("watch_scale", self.watch_scale, 0.0, 5.0);
     }
 }
 
-pub fn load_keyboard() -> keyboard::Layout {
-    let yaml_data = load_with_fallback!("keyboard.yaml", "res/keyboard.yaml");
-    serde_yaml::from_str(&yaml_data).expect("Failed to parse keyboard.yaml")
+const FALLBACKS: [&str; 3] = [
+    include_str!("res/keyboard.yaml"),
+    include_str!("res/watch.yaml"),
+    include_str!("res/settings.yaml"),
+];
+
+const FILES: [&str; 3] = ["keyboard.yaml", "watch.yaml", "settings.yaml"];
+
+#[derive(Clone, Copy)]
+#[repr(usize)]
+pub enum ConfigType {
+    Keyboard,
+    Watch,
+    Settings,
 }
 
-pub fn load_watch() -> WatchConfig {
-    let yaml_data = load_with_fallback!("watch.yaml", "res/watch.yaml");
-    serde_yaml::from_str(&yaml_data).expect("Failed to parse watch.yaml")
+pub fn load_known_yaml<T>(config_type: ConfigType) -> T
+where
+    T: for<'de> Deserialize<'de>,
+{
+    let fallback = FALLBACKS[config_type as usize];
+    let file_name = FILES[config_type as usize];
+    let maybe_override = config_io::load(file_name);
+
+    for yaml in [maybe_override.as_deref(), Some(fallback)].iter() {
+        if let Some(yaml_data) = yaml {
+            match serde_yaml::from_str::<T>(yaml_data) {
+                Ok(d) => return d,
+                Err(e) => {
+                    error!("Failed to parse {}, falling back to defaults.", file_name);
+                    error!("{}", e);
+                }
+            }
+        }
+    }
+    // can only get here if internal fallback is broken
+    panic!("No usable config found.");
+}
+
+pub fn load_custom_ui(name: &str) -> anyhow::Result<ModularUiConfig> {
+    let filename = format!("{}.yaml", name);
+    let Some(yaml_data) = config_io::load(&filename) else {
+        bail!("Could not read file at {}", &filename);
+    };
+    Ok(serde_yaml::from_str(&yaml_data)?)
 }
 
 pub fn load_general() -> GeneralConfig {

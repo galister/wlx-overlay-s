@@ -10,7 +10,7 @@ use crate::{
         input::PointerMode,
         overlay::{OverlayData, OverlayState},
     },
-    config,
+    config::{self, ConfigType},
     gui::{color_parse, CanvasBuilder, Control},
     hid::{KeyModifier, VirtualKey, ALT, CTRL, KEYS_TO_MODS, META, SHIFT, SUPER},
     state::AppState,
@@ -268,7 +268,7 @@ pub struct Layout {
 
 impl Layout {
     fn load_from_disk() -> Layout {
-        let mut layout = config::load_keyboard();
+        let mut layout = config::load_known_yaml::<Layout>(ConfigType::Keyboard);
         layout.post_load();
         layout
     }

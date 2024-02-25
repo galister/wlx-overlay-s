@@ -2,6 +2,7 @@ use std::{
     io::Cursor,
     ops::Add,
     sync::{atomic::AtomicUsize, Arc},
+    time::Instant,
 };
 
 use rodio::{Decoder, Source};
@@ -55,19 +56,24 @@ impl Toast {
         self
     }
     pub fn submit(self, app: &mut AppState) {
+        self.submit_at(app, Instant::now());
+    }
+    pub fn submit_at(self, app: &mut AppState, instant: Instant) {
         let auto_increment = AUTO_INCREMENT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let name: Arc<str> = format!("toast-{}", auto_increment).into();
         let selector = OverlaySelector::Name(name.clone());
 
-        let destroy_at =
-            std::time::Instant::now().add(std::time::Duration::from_secs_f32(self.timeout));
+        let destroy_at = instant.add(std::time::Duration::from_secs_f32(self.timeout));
 
         let has_sound = self.sound;
 
-        app.tasks.enqueue(TaskType::CreateOverlay(
-            selector.clone(),
-            Box::new(move |app| new_toast(self, name, app)),
-        ));
+        app.tasks.enqueue_at(
+            TaskType::CreateOverlay(
+                selector.clone(),
+                Box::new(move |app| new_toast(self, name, app)),
+            ),
+            instant,
+        );
 
         app.tasks
             .enqueue_at(TaskType::DropOverlay(selector), destroy_at);

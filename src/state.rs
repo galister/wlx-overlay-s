@@ -1,8 +1,10 @@
 use std::{path::PathBuf, sync::Arc};
 
 use anyhow::bail;
-use glam::{Quat, Vec3};
+use glam::Vec3;
 use rodio::{OutputStream, OutputStreamHandle};
+use serde::{Deserialize, Serialize};
+use smallvec::{smallvec, SmallVec};
 use vulkano::format::Format;
 
 use crate::{
@@ -15,9 +17,6 @@ use crate::{
     shaders::{frag_color, frag_glyph, frag_sprite, frag_srgb, vert_common},
 };
 
-pub const WATCH_DEFAULT_POS: Vec3 = Vec3::new(-0.03, -0.01, 0.125);
-pub const WATCH_DEFAULT_ROT: Quat = Quat::from_xyzw(-0.7071066, 0.0007963618, 0.7071066, 0.0);
-
 pub struct AppState {
     pub fc: FontCache,
     pub session: AppSession,
@@ -27,6 +26,7 @@ pub struct AppState {
     pub input_state: InputState,
     pub hid_provider: Box<dyn HidProvider>,
     pub audio: AudioOutput,
+    pub screens: SmallVec<[ScreenMeta; 8]>,
 }
 
 impl AppState {
@@ -62,6 +62,7 @@ impl AppState {
             input_state: InputState::new(),
             hid_provider: crate::hid::initialize(),
             audio: AudioOutput::new(),
+            screens: smallvec![],
         })
     }
 }
@@ -69,12 +70,6 @@ impl AppState {
 pub struct AppSession {
     pub config_root_path: PathBuf,
     pub config: GeneralConfig,
-
-    pub watch_hand: usize,
-    pub watch_pos: Vec3,
-    pub watch_rot: Quat,
-
-    pub primary_hand: usize,
 
     pub color_norm: Vec3,
     pub color_shift: Vec3,
@@ -91,10 +86,6 @@ impl AppSession {
         AppSession {
             config_root_path,
             config,
-            primary_hand: 1,
-            watch_hand: 0,
-            watch_pos: WATCH_DEFAULT_POS,
-            watch_rot: WATCH_DEFAULT_ROT,
             color_norm: Vec3 {
                 x: 0.,
                 y: 1.,
@@ -144,4 +135,17 @@ impl AudioOutput {
         }
         self.audio_stream.as_ref().map(|(_, h)| h)
     }
+}
+
+pub struct ScreenMeta {
+    pub name: Arc<str>,
+    pub id: usize,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, Default)]
+#[repr(u8)]
+pub enum LeftRight {
+    #[default]
+    Left,
+    Right,
 }

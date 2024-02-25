@@ -1,8 +1,10 @@
+use std::ffi::CStr;
+
 use glam::Affine3A;
-use ovr_overlay::{pose::Matrix3x4, sys::HmdMatrix34_t};
+use ovr_overlay::{pose::Matrix3x4, settings::SettingsManager, sys::HmdMatrix34_t};
 use thiserror::Error;
 
-use crate::backend::common::BackendError;
+use crate::backend::common::{BackendError, ColorChannel};
 
 pub trait Affine3AConvert {
     fn from_affine(affine: Affine3A) -> Self;
@@ -95,4 +97,93 @@ impl From<OVRError> for BackendError {
     fn from(e: OVRError) -> Self {
         BackendError::Fatal(anyhow::Error::new(e))
     }
+}
+
+use cstr::cstr;
+const STEAMVR_SECTION: &CStr = cstr!("steamvr");
+const COLOR_GAIN_CSTR: [&'static CStr; 3] = [
+    cstr!("hmdDisplayColorGainR"),
+    cstr!("hmdDisplayColorGainG"),
+    cstr!("hmdDisplayColorGainB"),
+];
+
+pub(super) fn adjust_gain(
+    settings: &mut SettingsManager,
+    ch: ColorChannel,
+    delta: f32,
+) -> Option<()> {
+    let current = [
+        settings
+            .get_float(STEAMVR_SECTION, COLOR_GAIN_CSTR[0])
+            .ok()?,
+        settings
+            .get_float(STEAMVR_SECTION, COLOR_GAIN_CSTR[1])
+            .ok()?,
+        settings
+            .get_float(STEAMVR_SECTION, COLOR_GAIN_CSTR[2])
+            .ok()?,
+    ];
+
+    // prevent user from turning everything black
+    let mut min = if current[0] + current[1] + current[2] < 0.11 {
+        0.1
+    } else {
+        0.0
+    };
+
+    match ch {
+        ColorChannel::R => {
+            settings
+                .set_float(
+                    STEAMVR_SECTION,
+                    COLOR_GAIN_CSTR[0],
+                    (current[0] + delta).clamp(min, 1.0),
+                )
+                .ok()?;
+        }
+        ColorChannel::G => {
+            settings
+                .set_float(
+                    STEAMVR_SECTION,
+                    COLOR_GAIN_CSTR[1],
+                    (current[1] + delta).clamp(min, 1.0),
+                )
+                .ok()?;
+        }
+        ColorChannel::B => {
+            settings
+                .set_float(
+                    STEAMVR_SECTION,
+                    COLOR_GAIN_CSTR[2],
+                    (current[2] + delta).clamp(min, 1.0),
+                )
+                .ok()?;
+        }
+        ColorChannel::All => {
+            min *= 0.3333;
+            settings
+                .set_float(
+                    STEAMVR_SECTION,
+                    COLOR_GAIN_CSTR[0],
+                    (current[0] + delta).clamp(min, 1.0),
+                )
+                .ok()?;
+            settings
+                .set_float(
+                    STEAMVR_SECTION,
+                    COLOR_GAIN_CSTR[1],
+                    (current[1] + delta).clamp(min, 1.0),
+                )
+                .ok()?;
+            settings
+                .set_float(
+                    STEAMVR_SECTION,
+                    COLOR_GAIN_CSTR[2],
+                    (current[2] + delta).clamp(min, 1.0),
+                )
+                .ok()?;
+        }
+    }
+
+    Some(())
 }

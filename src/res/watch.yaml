@@ -1,61 +1,61 @@
-# Tips for optimization:
-# - try to re-use font sizes, every loaded font size uses additional VRAM.
-
-# common properties:
-# - rect: bounding rectangle [x, y, width, height]
-#         (x, y) = (0, 0) is top-left
-# - bg_color: background color of panels and buttons
-# - fg_color: color of text
+# lookng to make changes? 
+# drop me in ~/.config/wlxoverlay.settings.yaml
 #
-# element types:
-# panel - simple colored rectangle
-#   rect: bounding rectangle
-#   bg_color: color of rectangle. quotation marks mandatory.
-#
-# clock - date/time display with custom formatting
-#   rect: bounding rectangle
-#   fg_color: color of text. quotation marks mandatory.
-#   format: chrono format to print, see https://docs.rs/chrono/latest/chrono/format/strftime/index.html
-#   timezone: timezone to use, leave empty for local
 
-# render resolution of the watch
+width: 0.115
 
-watch_view_angle: 0.5 # 0 = 90 deg, 1 = 0 deg
+size: [400, 200]
 
-# TODO
-watch_hand: Left
-
-# TODO
-watch_offset: []
-
-# TODO
-watch_rotation: []
-
-# TODO
-watch_size: [400, 200]
-
-watch_elements:
+elements:
   # background panel
   - type: Panel
     rect: [0, 0, 400, 200]
     bg_color: "#353535"
 
-  - type: FuncButton
+  - type: Button
     rect: [2, 162, 26, 36]
     font_size: 14
     bg_color: "#808040"
     fg_color: "#ffffff"
-    func: SwitchWatchHand
-    func_right: HideWatch
-    func_middle: ~
-    text: "W"
+    text: "C"
+    click_up:
+      - type: Window
+        target: settings
+        action: ShowUi
 
-  - type: KeyboardButton
+  # Keyboard button
+  - type: Button
     rect: [32, 162, 60, 36]
     font_size: 14
     fg_color: "#FFFFFF"
     bg_color: "#406050"
-    text: "Kbd"
+    text: Kbd
+    click_up:
+      - type: Overlay
+        target: "kbd"
+        action: ToggleVisible
+    long_click_up:
+      - type: Overlay
+        target: "kbd"
+        action: Reset
+    right_up:
+      - type: Overlay
+        target: "kbd"
+        action: ToggleImmovable
+    middle_up:
+      - type: Overlay
+        target: "kbd"
+        action: ToggleInteraction
+    scroll_up:
+      - type: Overlay
+        target: "kbd"
+        action: 
+          Opacity: { delta: 0.025 }
+    scroll_down:
+      - type: Overlay
+        target: "kbd"
+        action: 
+          Opacity: { delta: -0.025 }
 
   # bottom row, of keyboard + overlays
   - type: OverlayList
@@ -64,109 +64,100 @@ watch_elements:
     fg_color: "#FFFFFF"
     bg_color: "#405060"
     layout: Horizontal
+    click_up: ToggleVisible
+    long_click_up: Reset
+    right_up: ToggleImmovable
+    middle_up: ToggleInteraction
+    scroll_up: 
+      Opacity: { delta: 0.025 }
+    scroll_down: 
+      Opacity: { delta: -0.025 }
 
-  # main clock with date and day-of-week
-  - type: Clock
+  # local clock
+  - type: Label
     rect: [19, 90, 200, 50]
-    #format: "%h:%M %p" # 11:59 PM
-    format: "%H:%M" # 23:59
     font_size: 46
     fg_color: "#ffffff"
-  - type: Clock
+    source: Clock
+    format: "%H:%M" # 23:59
+    #format: "%h:%M %p" # 11:59 PM
+ 
+  # local date
+  - type: Label
     rect: [20, 117, 200, 20]
+    font_size: 14
+    fg_color: "#ffffff"
+    source: Clock
     format: "%x" # local date representation
-    font_size: 14
-    fg_color: "#ffffff"
-  - type: Clock
+
+  # local day-of-week
+  - type: Label
     rect: [20, 137, 200, 50]
-    #format: "%a" # Tue
-    format: "%A" # Tuesday
     font_size: 14
     fg_color: "#ffffff"
+    source: Clock
+    format: "%A" # Tuesday
+    #format: "%a" # Tue
 
   # alt clock 1
-  - type: Clock
+  - type: Label
     rect: [210, 90, 200, 50]
-    timezone: "Asia/Tokyo" # change TZ1 here
-    format: "%H:%M"
     font_size: 24
     fg_color: "#99BBAA"
+    source: Clock
+    timezone: "Asia/Tokyo" # change TZ1 here
+    format: "%H:%M" # 23:59
+    #format: "%h:%M %p" # 11:59 PM
   - type: Label
     rect: [210, 60, 200, 50]
     font_size: 14
     fg_color: "#99BBAA"
+    source: Static
     text: "Tokyo" # change TZ1 label here
  
   # alt clock 2
-  - type: Clock
+  - type: Label
     rect: [210, 150, 200, 50]
-    timezone: "America/Chicago" # change TZ2 here
-    format: "%H:%M"
     font_size: 24
     fg_color: "#AA99BB"
+    source: Clock
+    timezone: "America/Chicago" # change TZ2 here
+    format: "%H:%M" # 23:59
+    #format: "%h:%M %p" # 11:59 PM
   - type: Label
     rect: [210, 120, 200, 50]
     font_size: 14
     fg_color: "#AA99BB"
+    source: Static
     text: "Chicago" # change TZ2 label here
 
-  - type: Batteries
+  # batteries
+  - type: BatteryList
     rect: [0, 0, 400, 30]
     font_size: 14
+    fg_color: "#99BBAA"
+    fg_color_low: "#B06060"
+    fg_color_charging: "#6080A0"
     num_devices: 9
-    low_threshold: 20
     layout: Horizontal
-    normal_fg_color: "#99BBAA"
-    # below is not yet implemented
-    normal_bg_color: "#353535"
-    low_fg_color: "#B06060"
-    low_bg_color: "#353535"
-    charging_fg_color: "#6080A0"
-    charging_bg_color: "#353535"
-
-  # sample
-  # - type: ExecLabel
-  #   rect: [50, 20, 200, 50]
-  #  font_size: 14
-  #  fg_color: "#FFFFFF"
-  #  exec: ["echo", "customize me! see watch.yaml"]
-  #  interval: 0 # seconds
-
-    ### MirrorButton
-    # Bring an additional PipeWire screen, window, region or virtual screen share into VR.
-    # These are view-only, and will not respond to pointers by moving your mouse.
-    # You may have as many as you like, but the `name` must be unique for each.
-    # Controls:
-    # - Blue Click: Show/hide. Shows pipewire prompt on first show.
-    # - Orange Click: Toggle lock in place
-    # - Purple Click: Stop capture. After doing this, you may Blue-click again to select a different source.
-    # - Scroll: Adjust opacity
-    # Warning:
-    # - Window shares may stop updating if the window goes off-screen or is on an inactive workspace
-    # - Resizing, minimizing, maximizing windows may break stuff. Complain to your xdg-desktop-portal implementation.
-    # - Selections are not saved across sessions
-
-  #- type: MirrorButton
-  #  rect: [354, 0, 46, 32]
-  #  font_size: 14
-  #  fg_color: "#FFFFFF"
-  #  bg_color: "#B05050"
-  #  name: "M1"
-  #  text: "M1"
-  #  show_hide: false # should it respond to show/hide binding?
+    low_threshold: 20
 
   # volume buttons
-  - type: ExecButton
+  - type: Button
     rect: [327, 52, 46, 32]
     font_size: 14
     fg_color: "#FFFFFF"
     bg_color: "#505050"
     text: "+"
-    exec: [ "pactl", "set-sink-volume", "@DEFAULT_SINK@", "+5%" ]
-  - type: ExecButton
+    click_down:
+      - type: Exec
+        command: [ "pactl", "set-sink-volume", "@DEFAULT_SINK@", "+5%" ]
+  - type: Button
     rect: [327, 116, 46, 32]
     font_size: 14
     fg_color: "#FFFFFF"
     bg_color: "#505050"
     text: "-"
-    exec: [ "pactl", "set-sink-volume", "@DEFAULT_SINK@", "-5%" ]
+    click_down:
+      - type: Exec
+        command: [ "pactl", "set-sink-volume", "@DEFAULT_SINK@", "-5%" ]

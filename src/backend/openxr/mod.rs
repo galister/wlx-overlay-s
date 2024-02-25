@@ -330,6 +330,9 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                     // set for deletion after all images are done showing
                     delete_queue.push((o, cur_frame + 5));
                 }
+                TaskType::System(_task) => {
+                    // Not implemented
+                }
             }
         }
 

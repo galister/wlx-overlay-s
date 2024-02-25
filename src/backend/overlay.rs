@@ -30,6 +30,7 @@ pub struct OverlayState {
     pub alpha: f32,
     pub transform: Affine3A,
     pub saved_point: Option<Vec3A>,
+    pub saved_scale: Option<f32>,
     pub spawn_scale: f32, // aka width
     pub spawn_point: Vec3A,
     pub spawn_rotation: Quat,
@@ -52,6 +53,7 @@ impl Default for OverlayState {
             alpha: 1.0,
             relative_to: RelativeTo::None,
             saved_point: None,
+            saved_scale: None,
             spawn_scale: 1.0,
             spawn_point: Vec3A::NEG_Z,
             spawn_rotation: Quat::IDENTITY,
@@ -97,10 +99,11 @@ impl OverlayState {
 
     pub fn auto_movement(&mut self, app: &mut AppState) {
         if let Some(parent) = self.parent_transform(app) {
+            let scale = self.saved_scale.unwrap_or(self.spawn_scale);
             let point = self.saved_point.unwrap_or(self.spawn_point);
             self.transform = parent
                 * Affine3A::from_scale_rotation_translation(
-                    Vec3::ONE * self.spawn_scale,
+                    Vec3::ONE * scale,
                     self.spawn_rotation,
                     point.into(),
                 );
@@ -110,13 +113,12 @@ impl OverlayState {
     }
 
     pub fn reset(&mut self, app: &mut AppState, hard_reset: bool) {
-        let scale = if hard_reset {
+        if hard_reset {
             self.saved_point = None;
-            self.spawn_scale
-        } else {
-            self.transform.x_axis.length()
-        };
+            self.saved_scale = None;
+        }
 
+        let scale = self.saved_scale.unwrap_or(self.spawn_scale);
         let point = self.saved_point.unwrap_or(self.spawn_point);
 
         let translation = app.input_state.hmd.transform_point3a(point);
@@ -284,17 +286,9 @@ impl InteractionHandler for SplitOverlayBackend {
 
 pub fn ui_transform(extent: &[u32; 2]) -> Affine2 {
     let center = Vec2 { x: 0.5, y: 0.5 };
-    if extent[1] > extent[0] {
-        Affine2::from_cols(
-            Vec2::X * (extent[1] as f32 / extent[0] as f32),
-            Vec2::NEG_Y,
-            center,
-        )
-    } else {
-        Affine2::from_cols(
-            Vec2::X,
-            Vec2::NEG_Y * (extent[0] as f32 / extent[1] as f32),
-            center,
-        )
-    }
+    Affine2::from_cols(
+        Vec2::X,
+        Vec2::NEG_Y * (extent[0] as f32 / extent[1] as f32),
+        center,
+    )
 }

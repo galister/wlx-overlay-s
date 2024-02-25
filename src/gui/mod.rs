@@ -20,6 +20,7 @@ use crate::{
 };
 
 pub mod font;
+pub mod modular;
 
 const RES_DIVIDER: usize = 4;
 

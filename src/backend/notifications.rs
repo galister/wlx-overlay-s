@@ -143,7 +143,6 @@ impl NotificationManager {
                             continue;
                         }
                     };
-                    log::info!("Received notification message: {}", json_str);
                     let msg = match serde_json::from_str::<XsoMessage>(json_str) {
                         Ok(m) => m,
                         Err(e) => {
