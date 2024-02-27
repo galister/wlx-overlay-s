@@ -9,6 +9,7 @@ use std::{
 use vulkano::{
     command_buffer::CommandBufferUsage,
     image::{sampler::Filter, view::ImageView, Image},
+    pipeline::graphics::color_blend::AttachmentBlend,
 };
 use wlx_capture::{
     frame::{
@@ -150,9 +151,9 @@ impl ScreenPipeline {
         let pipeline = app.graphics.create_pipeline(
             view.clone(),
             shaders.get("vert_common").unwrap().clone(), // want panic
-            shaders.get("frag_sprite").unwrap().clone(), // want panic
+            shaders.get("frag_screen").unwrap().clone(), // want panic
             app.graphics.native_format,
-            Some(BLEND_ALPHA),
+            Some(AttachmentBlend::default()),
         )?;
 
         let extentf = [extent[0] as f32, extent[1] as f32];
