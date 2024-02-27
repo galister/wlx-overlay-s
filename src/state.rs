@@ -14,7 +14,7 @@ use crate::{
     graphics::WlxGraphics,
     gui::font::FontCache,
     hid::HidProvider,
-    shaders::{frag_color, frag_glyph, frag_sprite, frag_srgb, vert_common},
+    shaders::{frag_color, frag_glyph, frag_screen, frag_sprite, frag_srgb, vert_common},
 };
 
 pub struct AppState {
@@ -48,6 +48,9 @@ impl AppState {
 
             let shader = frag_sprite::load(graphics.device.clone())?;
             shaders.insert("frag_sprite", shader);
+
+            let shader = frag_screen::load(graphics.device.clone())?;
+            shaders.insert("frag_screen", shader);
 
             let shader = frag_srgb::load(graphics.device.clone())?;
             shaders.insert("frag_srgb", shader);
