@@ -22,12 +22,12 @@ use flexi_logger::FileSpec;
 #[command(version, about, long_about = None)]
 struct Args {
     #[cfg(feature = "openvr")]
-    /// Start overlay with OpenVR backend
+    /// Force OpenVR backend
     #[arg(long)]
     openvr: bool,
 
     #[cfg(feature = "openxr")]
-    /// Start overlay with OpenXR backend
+    /// Force OpenXR backend
     #[arg(long)]
     openxr: bool,
 
@@ -35,8 +35,8 @@ struct Args {
     #[arg(long)]
     uninstall: bool,
 
-    /// Folder path to write logs to
-    #[arg(short, long)]
+    /// Path to write logs to
+    #[arg(short, long, value_name = "FOLDER")]
     log_to: Option<String>,
 }
 
