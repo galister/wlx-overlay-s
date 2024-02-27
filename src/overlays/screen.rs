@@ -44,7 +44,7 @@ use crate::{
         overlay::{OverlayData, OverlayRenderer, OverlayState, SplitOverlayBackend},
     },
     config::def_pw_tokens,
-    graphics::{fourcc_to_vk, WlxCommandBuffer, WlxPipeline, WlxPipelineLegacy, BLEND_ALPHA},
+    graphics::{fourcc_to_vk, WlxCommandBuffer, WlxPipeline, WlxPipelineLegacy},
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState},
 };

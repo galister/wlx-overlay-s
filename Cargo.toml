@@ -14,6 +14,7 @@ anyhow = "1.0.79"
 ash = "^0.37.2"
 chrono = "0.4.29"
 chrono-tz = "0.8.5"
+clap = { version = "4.5.1", features = ["derive"] }
 cstr = "0.2.11"
 ctrlc = { version = "3.4.2", features = ["termination"] }
 dbus = { version = "0.9.7" }
