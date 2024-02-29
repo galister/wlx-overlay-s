@@ -22,7 +22,7 @@ pub enum LabelContent {
         text: Arc<str>,
     },
     Exec {
-        exec: ExecArgs,
+        command: ExecArgs,
         interval: f32,
     },
     Clock {
@@ -85,10 +85,10 @@ pub fn modular_label_init(label: &mut ModularControl, content: &LabelContent) {
                 timezone: tz,
             })
         }
-        LabelContent::Exec { exec, interval } => Some(LabelData::Exec {
+        LabelContent::Exec { command, interval } => Some(LabelData::Exec {
             last_exec: Instant::now(),
             interval: *interval,
-            exec: exec.clone(),
+            command: command.clone(),
             child: None,
         }),
         LabelContent::Static { text } => {
@@ -158,7 +158,7 @@ pub(super) fn label_update(control: &mut ModularControl, _: &mut (), app: &mut A
         LabelData::Exec {
             last_exec,
             interval,
-            exec,
+            command,
             child,
         } => {
             if let Some(mut proc) = child.take() {
@@ -200,7 +200,7 @@ pub(super) fn label_update(control: &mut ModularControl, _: &mut (), app: &mut A
                 > *interval
             {
                 *last_exec = Instant::now();
-                let args = exec
+                let args = command
                     .iter()
                     .map(|s| s.as_ref())
                     .collect::<SmallVec<[&str; 8]>>();
