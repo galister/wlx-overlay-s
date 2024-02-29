@@ -89,6 +89,10 @@ We would like to work with you and include additional bindings.
 
 # Known Issues
 
+## SteamVR: laser pointers not visible
+
+This seems to be a rare issue with SteamVR startup overlays. Restarting the overlay will fix the issue.
+
 ## Scroll wheel doesn't work
 
 This seems to be an issue specific to Electron apps (Discord, Element, Slack, Spotify) on Wayland. Scrolling will work when using these in your web browser.
@@ -99,4 +103,4 @@ While WiVRn technically supports EXTX_overlay, I do not recommend using this sof
 
 ## X11 limitations
 
-DPI scaling and upright screens are not supported on X11.
+DPI scaling and upright screens are not supported on X11. These might display incorrectly or mess up your mouse position.
