@@ -332,15 +332,20 @@ impl OverlayRenderer for ScreenRenderer {
         Ok(())
     }
     fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        if !self.capture.ready() {
+        if !self.capture.is_ready() {
+            let supports_dmabuf = self.capture.supports_dmbuf();
             let allow_dmabuf = &*app.session.config.capture_method != "pw_fallback"
                 && &*app.session.config.capture_method != "screencopy";
 
             let drm_formats = DRM_FORMATS.get_or_init({
                 let graphics = app.graphics.clone();
                 move || {
+                    if !supports_dmabuf {
+                        log::info!("Capture method does not support DMA-buf");
+                        return vec![];
+                    }
                     if !allow_dmabuf {
-                        log::info!("Using MemFd capture due to pw_fallback");
+                        log::info!("Not using DMA-buf capture due to pw_fallback");
                         return vec![];
                     }
                     log::warn!("Using DMA-buf capture. If screens are blank for you, switch to SHM using:");
