@@ -52,7 +52,7 @@ pub enum LabelData {
     Exec {
         last_exec: Instant,
         interval: f32,
-        exec: Vec<Arc<str>>,
+        command: Vec<Arc<str>>,
         child: Option<process::Child>,
     },
 }
