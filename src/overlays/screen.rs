@@ -458,19 +458,16 @@ impl OverlayRenderer for ScreenRenderer {
                     let image =
                         upload.texture2d(frame.format.width, frame.format.height, format, data)?;
 
-                    let mut pipeline = None;
-                    if frame.mouse.is_some() {
-                        pipeline = Some(match self.pipeline {
-                            Some(ref mut p) => p,
-                            _ => {
-                                let mut pipeline = ScreenPipeline::new(&self.extent, app)?;
-                                self.last_view = Some(pipeline.view.clone());
-                                pipeline.ensure_mouse_initialized(&mut upload)?;
-                                self.pipeline = Some(pipeline);
-                                self.pipeline.as_mut().unwrap() // safe
-                            }
-                        });
-                    }
+                    let pipeline = Some(match self.pipeline {
+                        Some(ref mut p) => p,
+                        _ => {
+                            let mut pipeline = ScreenPipeline::new(&self.extent, app)?;
+                            self.last_view = Some(pipeline.view.clone());
+                            pipeline.ensure_mouse_initialized(&mut upload)?;
+                            self.pipeline = Some(pipeline);
+                            self.pipeline.as_mut().unwrap() // safe
+                        }
+                    });
 
                     upload.build_and_execute_now()?;
 
