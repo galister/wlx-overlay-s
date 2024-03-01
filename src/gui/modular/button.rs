@@ -15,6 +15,7 @@ use crate::{
     backend::{
         common::{ColorChannel, OverlaySelector, SystemTask, TaskType},
         input::PointerMode,
+        notifications::save_notifications,
         overlay::RelativeTo,
     },
     overlays::{
@@ -44,6 +45,8 @@ pub enum Axis {
 
 #[derive(Deserialize, Clone)]
 pub enum SystemAction {
+    ToggleNotificationSounds,
+    ToggleNotifications,
     PlayspaceResetOffset,
     PlayspaceFixFloor,
     RecalculateExtent,
@@ -315,10 +318,46 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
         SystemAction::RecalculateExtent => {
             todo!()
         }
+        SystemAction::ToggleNotifications => {
+            app.session.config.notifications_enabled = !app.session.config.notifications_enabled;
+            Toast::new(
+                format!(
+                    "Notifications are {}.",
+                    if app.session.config.notifications_enabled {
+                        "enabled"
+                    } else {
+                        "disabled"
+                    }
+                )
+                .into(),
+                "".into(),
+            )
+            .submit(app);
+        }
+        SystemAction::ToggleNotificationSounds => {
+            app.session.config.notifications_sound_enabled =
+                !app.session.config.notifications_sound_enabled;
+            Toast::new(
+                format!(
+                    "Notification sounds are {}.",
+                    if app.session.config.notifications_sound_enabled {
+                        "enabled"
+                    } else {
+                        "disabled"
+                    }
+                )
+                .into(),
+                "".into(),
+            )
+            .submit(app);
+        }
         SystemAction::PersistConfig => {
             if let Err(e) = save_watch(app) {
                 log::error!("Failed to save watch config: {:?}", e);
             };
+            if let Err(e) = save_notifications(app) {
+                log::error!("Failed to save notifications config: {:?}", e);
+            }
         }
     }
 }

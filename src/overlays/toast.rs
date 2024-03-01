@@ -65,7 +65,7 @@ impl Toast {
 
         let destroy_at = instant.add(std::time::Duration::from_secs_f32(self.timeout));
 
-        let has_sound = self.sound;
+        let has_sound = self.sound && app.session.config.notifications_sound_enabled;
 
         app.tasks.enqueue_at(
             TaskType::CreateOverlay(

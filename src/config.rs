@@ -30,7 +30,7 @@ fn def_click_freeze_time_ms() -> u32 {
     300
 }
 
-fn def_true() -> bool {
+pub fn def_true() -> bool {
     true
 }
 

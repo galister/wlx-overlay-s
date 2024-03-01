@@ -4,7 +4,7 @@
 
 width: 0.3
 
-size: [600, 520]
+size: [600, 700]
 
 # +X: right, +Y: up, +Z: back
 spawn_pos: [0, -0.1, -0.5]
@@ -502,12 +502,45 @@ elements:
       - type: System
         action: PlayspaceResetOffset
 
+  ####### Notifications Section #######
+
   - type: Panel
     rect: [50, 460, 500, 1]
     bg_color: "#c0c0c0"
 
+  - type: Label
+    rect: [325, 480, 90, 24]
+    font_size: 18
+    fg_color: "#ffffff"
+    source: Static
+    text: Notifications
+
   - type: Button
-    rect: [330, 480, 220, 30]
+    rect: [330, 495, 220, 30]
+    font_size: 12
+    fg_color: "#ffffff"
+    bg_color: "#606020"
+    text: "Enabled"
+    click_down:
+      - type: System
+        action: ToggleNotifications
+
+  - type: Button
+    rect: [330, 545, 220, 30]
+    font_size: 12
+    fg_color: "#ffffff"
+    bg_color: "#606020"
+    text: "Sound Enabled"
+    click_down:
+      - type: System
+        action: ToggleNotificationSounds
+
+  - type: Panel
+    rect: [50, 595, 500, 1]
+    bg_color: "#c0c0c0"
+
+  - type: Button
+    rect: [330, 615, 220, 30]
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#206060"

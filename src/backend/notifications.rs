@@ -1,14 +1,12 @@
 use dbus::{blocking::Connection, channel::MatchingReceiver, message::MatchRule};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{
-    sync::{
-        mpsc::{self},
-        Arc,
-    },
+    path::PathBuf,
+    sync::{mpsc, Arc},
     time::Duration,
 };
 
-use crate::{overlays::toast::Toast, state::AppState};
+use crate::{config::def_true, config_io, overlays::toast::Toast, state::AppState};
 
 pub struct NotificationManager {
     rx_toast: mpsc::Receiver<Toast>,
@@ -31,9 +29,14 @@ impl NotificationManager {
             let _ = c.process(Duration::ZERO);
         }
 
-        self.rx_toast.try_iter().for_each(|toast| {
-            toast.submit(app);
-        });
+        if app.session.config.notifications_enabled {
+            self.rx_toast.try_iter().for_each(|toast| {
+                toast.submit(app);
+            });
+        } else {
+            // consume without submitting
+            self.rx_toast.try_iter().last();
+        }
     }
 
     pub fn run_dbus(&mut self) {
@@ -207,4 +210,30 @@ struct XsoMessage {
     useBase64Icon: Option<bool>,
     sourceApp: Option<Arc<str>>,
     alwaysShow: Option<bool>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct NotifiConf {
+    #[serde(default = "def_true")]
+    pub notifications_enabled: bool,
+
+    #[serde(default = "def_true")]
+    pub notifications_sound_enabled: bool,
+}
+
+fn get_config_path() -> PathBuf {
+    let mut path = config_io::get_conf_d_path();
+    path.push("notifications.yaml");
+    path
+}
+pub fn save_notifications(app: &mut AppState) -> anyhow::Result<()> {
+    let conf = NotifiConf {
+        notifications_enabled: app.session.config.notifications_enabled,
+        notifications_sound_enabled: app.session.config.notifications_sound_enabled,
+    };
+
+    let yaml = serde_yaml::to_string(&conf)?;
+    std::fs::write(get_config_path(), yaml)?;
+
+    Ok(())
 }
