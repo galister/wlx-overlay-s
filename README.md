@@ -18,15 +18,18 @@ We are available on either:
 
 Questions/issues specific to WlxOverlay-S will be handled in the `wlxoverlay` chat room.
 
-# First Setup
+# Setup
 
-Recommend grabbing [rustup](https://rustup.rs/) if you don't have it yet.
+1. Grab the latest AppImage from [Releases](https://github.com/galister/wlx-overlay-s/releases).
+1. `chmod +x WlxOverlay-S-v0.2.3-3-x86_64.AppImage`
+1. Start Monado or SteamVR.
+1. Run the overlay
 
-Start Monado or SteamVR.
+AUR package is [wlx-overlay-s-git](https://aur.archlinux.org/packages/wlx-overlay-s-git).
 
-```sh
-cargo run --release
-```
+You may also want to [build from source](https://github.com/galister/wlx-overlay-s/wiki/Building-from-Source).
+
+# First Start
 
 **If you get a screen share pop-up, check the terminal and select the screens in the order it tells you to.**
 
