@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=WlxOverlay-S
+Exec=wlx-overlay-s
+Icon=wlx-overlay-s
+Terminal=true
+Categories=Utility;
