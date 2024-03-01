@@ -798,6 +798,7 @@ where
     Ok((overlays, extent))
 }
 
+#[allow(unused)]
 pub enum Transform {
     Normal,
     _90,

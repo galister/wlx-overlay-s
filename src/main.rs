@@ -115,9 +115,10 @@ fn auto_run(running: Arc<AtomicBool>, args: Args) {
     compile_error!("No desktop support! Enable either wayland or x11 features!");
 }
 
-fn args_get_openvr(args: &Args) -> bool {
+#[allow(dead_code)]
+fn args_get_openvr(_args: &Args) -> bool {
     #[cfg(feature = "openvr")]
-    let ret = args.openvr;
+    let ret = _args.openvr;
 
     #[cfg(not(feature = "openvr"))]
     let ret = false;
@@ -125,9 +126,10 @@ fn args_get_openvr(args: &Args) -> bool {
     ret
 }
 
-fn args_get_openxr(args: &Args) -> bool {
+#[allow(dead_code)]
+fn args_get_openxr(_args: &Args) -> bool {
     #[cfg(feature = "openxr")]
-    let ret = args.openxr;
+    let ret = _args.openxr;
 
     #[cfg(not(feature = "openxr"))]
     let ret = false;

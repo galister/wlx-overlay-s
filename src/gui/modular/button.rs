@@ -634,11 +634,6 @@ fn run_window(window: &Arc<str>, action: &WindowAction, app: &mut AppState) {
     }
 }
 
-#[cfg(not(feature = "wayland"))]
-fn run_action_window(_: Arc<str>, _: &WindowAction, _: &mut AppState) {
-    log::warn!("Cannot run Window action without Wayland feature.");
-}
-
 fn audio_thump(app: &mut AppState) {
     if let Some(handle) = app.audio.get_handle() {
         let wav = include_bytes!("../../res/380885.wav");
