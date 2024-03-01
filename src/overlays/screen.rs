@@ -16,7 +16,6 @@ use wlx_capture::{
         DrmFormat, MouseMeta, WlxFrame, DRM_FORMAT_ABGR8888, DRM_FORMAT_ARGB8888,
         DRM_FORMAT_XBGR8888, DRM_FORMAT_XRGB8888,
     },
-    wayland::wayland_client::protocol::wl_output::Transform,
     WlxCapture,
 };
 
@@ -27,7 +26,7 @@ use {
     std::{collections::HashMap, error::Error, f32::consts::PI, ops::Deref, path::PathBuf},
     wlx_capture::{
         pipewire::{pipewire_select_screen, PipewireCapture},
-        wayland::{WlxClient, WlxOutput},
+        wayland::{wayland_client::protocol::wl_output, WlxClient, WlxOutput},
         wlr_dmabuf::WlrDmabufCapture,
         wlr_screencopy::WlrScreencopyCapture,
     },
@@ -566,14 +565,16 @@ where
             interaction: Box::new(ScreenInteractionHandler::new(
                 vec2(output.logical_pos.0 as f32, output.logical_pos.1 as f32),
                 vec2(output.logical_size.0 as f32, output.logical_size.1 as f32),
-                output.transform,
+                output.transform.into(),
             )),
         });
 
         let axis = Vec3::new(0., 0., 1.);
 
+        let transform = output.transform.into();
+
         let angle = if session.config.upright_screen_fix {
-            match output.transform {
+            match transform {
                 Transform::_90 | Transform::Flipped90 => PI / 2.,
                 Transform::_180 | Transform::Flipped180 => PI,
                 Transform::_270 | Transform::Flipped270 => -PI / 2.,
@@ -584,7 +585,7 @@ where
         };
 
         let center = Vec2 { x: 0.5, y: 0.5 };
-        let interaction_transform = match output.transform {
+        let interaction_transform = match transform {
             Transform::_90 | Transform::Flipped90 => Affine2::from_cols(
                 Vec2::NEG_Y * (output.size.0 as f32 / output.size.1 as f32),
                 Vec2::NEG_X,
@@ -795,6 +796,33 @@ where
         .collect();
 
     Ok((overlays, extent))
+}
+
+pub enum Transform {
+    Normal,
+    _90,
+    _180,
+    _270,
+    Flipped90,
+    Flipped180,
+    Flipped270,
+}
+
+#[cfg(feature = "wayland")]
+impl From<wl_output::Transform> for Transform {
+    fn from(t: wl_output::Transform) -> Transform {
+        match t {
+            wl_output::Transform::Normal => Transform::Normal,
+            wl_output::Transform::_90 => Transform::_90,
+            wl_output::Transform::_180 => Transform::_180,
+            wl_output::Transform::_270 => Transform::_270,
+            wl_output::Transform::Flipped => Transform::Flipped180,
+            wl_output::Transform::Flipped90 => Transform::Flipped90,
+            wl_output::Transform::Flipped180 => Transform::Flipped180,
+            wl_output::Transform::Flipped270 => Transform::Flipped270,
+            _ => Transform::Normal,
+        }
+    }
 }
 
 fn extent_from_res(res: (i32, i32)) -> [u32; 3] {

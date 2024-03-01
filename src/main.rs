@@ -72,16 +72,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    auto_run(running, args.openvr, args.openxr);
+    auto_run(running, args);
 
     Ok(())
 }
 
-fn auto_run(running: Arc<AtomicBool>, openvr: bool, openxr: bool) {
+fn auto_run(running: Arc<AtomicBool>, args: Args) {
     use backend::common::BackendError;
 
     #[cfg(feature = "openxr")]
-    if !openvr {
+    if !args_get_openvr(&args) {
         use crate::backend::openxr::openxr_run;
         match openxr_run(running.clone()) {
             Ok(()) => return,
@@ -94,7 +94,7 @@ fn auto_run(running: Arc<AtomicBool>, openvr: bool, openxr: bool) {
     }
 
     #[cfg(feature = "openvr")]
-    if !openxr {
+    if !args_get_openxr(&args) {
         use crate::backend::openvr::openvr_run;
         match openvr_run(running.clone()) {
             Ok(()) => return,
@@ -107,4 +107,30 @@ fn auto_run(running: Arc<AtomicBool>, openvr: bool, openxr: bool) {
     }
 
     log::error!("No more backends to try");
+
+    #[cfg(not(any(feature = "openvr", feature = "openxr")))]
+    compile_error!("No VR support! Enable either openvr or openxr features!");
+
+    #[cfg(not(any(feature = "wayland", feature = "x11")))]
+    compile_error!("No desktop support! Enable either wayland or x11 features!");
+}
+
+fn args_get_openvr(args: &Args) -> bool {
+    #[cfg(feature = "openvr")]
+    let ret = args.openvr;
+
+    #[cfg(not(feature = "openvr"))]
+    let ret = false;
+
+    ret
+}
+
+fn args_get_openxr(args: &Args) -> bool {
+    #[cfg(feature = "openxr")]
+    let ret = args.openxr;
+
+    #[cfg(not(feature = "openxr"))]
+    let ret = false;
+
+    ret
 }

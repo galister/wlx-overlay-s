@@ -10,10 +10,7 @@ use ash::vk::SubmitInfo;
 use smallvec::smallvec;
 
 #[cfg(feature = "openvr")]
-use vulkano::{
-    device::physical::PhysicalDeviceType, instance::InstanceCreateFlags,
-    instance::InstanceExtensions,
-};
+use vulkano::{device::physical::PhysicalDeviceType, instance::InstanceCreateFlags};
 
 #[cfg(feature = "openxr")]
 use {ash::vk, std::os::raw::c_void};
@@ -47,7 +44,7 @@ use vulkano::{
         Image, ImageCreateInfo, ImageLayout, ImageTiling, ImageType, ImageUsage, SampleCount,
         SubresourceLayout,
     },
-    instance::{Instance, InstanceCreateInfo},
+    instance::{Instance, InstanceCreateInfo, InstanceExtensions},
     memory::{
         allocator::{
             AllocationCreateInfo, GenericMemoryAllocatorCreateInfo, MemoryAllocator,

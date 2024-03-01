@@ -19,7 +19,6 @@ use crate::{
         overlay::RelativeTo,
     },
     overlays::{
-        mirror,
         toast::Toast,
         watch::{save_watch, WATCH_NAME},
     },
@@ -577,7 +576,6 @@ fn run_overlay(overlay: &OverlaySelector, action: &OverlayAction, app: &mut AppS
     }
 }
 
-#[cfg(feature = "wayland")]
 fn run_window(window: &Arc<str>, action: &WindowAction, app: &mut AppState) {
     use crate::overlays::custom;
     let selector = OverlaySelector::Name(window.clone());
@@ -594,6 +592,7 @@ fn run_window(window: &Arc<str>, action: &WindowAction, app: &mut AppState) {
                     }
                 }),
             ));
+            #[cfg(feature = "wayland")]
             app.tasks.enqueue(TaskType::CreateOverlay(
                 OverlaySelector::Name(window.clone()),
                 Box::new({
@@ -602,10 +601,12 @@ fn run_window(window: &Arc<str>, action: &WindowAction, app: &mut AppState) {
                         Toast::new("Check your desktop for popup.".into(), "".into())
                             .with_sound(true)
                             .submit(app);
-                        mirror::new_mirror(name.clone(), false, &app.session)
+                        crate::overlays::mirror::new_mirror(name.clone(), false, &app.session)
                     }
                 }),
             ));
+            #[cfg(not(feature = "wayland"))]
+            log::warn!("Mirror not available without Wayland feature.");
         }
         WindowAction::ShowUi => {
             app.tasks.enqueue(TaskType::Overlay(
