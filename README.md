@@ -21,7 +21,7 @@ Questions/issues specific to WlxOverlay-S will be handled in the `wlxoverlay` ch
 # Setup
 
 1. Grab the latest AppImage from [Releases](https://github.com/galister/wlx-overlay-s/releases).
-1. `chmod +x WlxOverlay-S-v0.2.3-3-x86_64.AppImage`
+1. `chmod +x WlxOverlay-S-*.AppImage`
 1. Start Monado or SteamVR.
 1. Run the overlay
 
