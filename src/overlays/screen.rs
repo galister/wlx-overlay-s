@@ -830,7 +830,7 @@ fn extent_from_res(res: (i32, i32)) -> [u32; 3] {
     // screens above a certain resolution will have severe aliasing
 
     // TODO make dynamic. maybe don't go above HMD resolution?
-    let w = res.0.min(1920) as u32;
+    let w = res.0.min(2560) as u32;
     let h = (res.1 as f32 / res.0 as f32 * w as f32) as u32;
     [w, h, 1]
 }
