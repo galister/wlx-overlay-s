@@ -101,7 +101,7 @@ impl From<OVRError> for BackendError {
 
 use cstr::cstr;
 const STEAMVR_SECTION: &CStr = cstr!("steamvr");
-const COLOR_GAIN_CSTR: [&'static CStr; 3] = [
+const COLOR_GAIN_CSTR: [&CStr; 3] = [
     cstr!("hmdDisplayColorGainR"),
     cstr!("hmdDisplayColorGainG"),
     cstr!("hmdDisplayColorGainB"),

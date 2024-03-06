@@ -15,7 +15,7 @@ pub(super) fn install_manifest(app_mgr: &mut ApplicationsManager) -> anyhow::Res
     let executable_pathbuf = std::env::current_exe()?;
 
     let executable_path = match appimage_path {
-        Ok(ref path) => &path,
+        Ok(ref path) => path,
         Err(_) => executable_pathbuf
             .to_str()
             .ok_or_else(|| anyhow::anyhow!("Invalid executable path"))?,

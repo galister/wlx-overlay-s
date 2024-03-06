@@ -92,7 +92,7 @@ pub fn modular_label_init(label: &mut ModularControl, content: &LabelContent) {
             child: None,
         }),
         LabelContent::Static { text } => {
-            label.set_text(&text);
+            label.set_text(text);
             None
         }
     };

@@ -130,7 +130,7 @@ pub fn modular_canvas(
                 rect: [x, y, w, h],
                 bg_color,
             } => {
-                canvas.bg_color = color_parse(&bg_color).unwrap_or(FALLBACK_COLOR);
+                canvas.bg_color = color_parse(bg_color).unwrap_or(FALLBACK_COLOR);
                 canvas.panel(*x, *y, *w, *h);
             }
             ModularElement::Label {
@@ -140,9 +140,9 @@ pub fn modular_canvas(
                 data,
             } => {
                 canvas.font_size = *font_size;
-                canvas.fg_color = color_parse(&fg_color).unwrap_or(FALLBACK_COLOR);
-                let mut label = canvas.label(*x, *y, *w, *h, empty_str.clone());
-                modular_label_init(&mut label, data);
+                canvas.fg_color = color_parse(fg_color).unwrap_or(FALLBACK_COLOR);
+                let label = canvas.label(*x, *y, *w, *h, empty_str.clone());
+                modular_label_init(label, data);
             }
             ModularElement::Button {
                 rect: [x, y, w, h],
@@ -152,8 +152,8 @@ pub fn modular_canvas(
                 text,
                 data,
             } => {
-                canvas.bg_color = color_parse(&bg_color).unwrap_or(FALLBACK_COLOR);
-                canvas.fg_color = color_parse(&fg_color).unwrap_or(FALLBACK_COLOR);
+                canvas.bg_color = color_parse(bg_color).unwrap_or(FALLBACK_COLOR);
+                canvas.fg_color = color_parse(fg_color).unwrap_or(FALLBACK_COLOR);
                 canvas.font_size = *font_size;
                 let button = canvas.button(*x, *y, *w, *h, text.clone());
                 modular_button_init(button, data);
@@ -177,7 +177,7 @@ pub fn modular_canvas(
                     ListLayout::Vertical => (*w, *h / num_buttons),
                 };
 
-                let fg_color = color_parse(&fg_color).unwrap_or(FALLBACK_COLOR);
+                let fg_color = color_parse(fg_color).unwrap_or(FALLBACK_COLOR);
                 canvas.font_size = *font_size;
                 canvas.fg_color = fg_color;
 
@@ -225,8 +225,8 @@ pub fn modular_canvas(
                     ListLayout::Vertical => (*w, *h / num_buttons),
                 };
 
-                canvas.bg_color = color_parse(&bg_color).unwrap_or(FALLBACK_COLOR);
-                canvas.fg_color = color_parse(&fg_color).unwrap_or(FALLBACK_COLOR);
+                canvas.bg_color = color_parse(bg_color).unwrap_or(FALLBACK_COLOR);
+                canvas.fg_color = color_parse(fg_color).unwrap_or(FALLBACK_COLOR);
                 canvas.font_size = *font_size;
 
                 for screen in state.screens.iter() {

@@ -95,8 +95,8 @@ fn get_config_path() -> PathBuf {
 }
 pub fn save_watch(app: &mut AppState) -> anyhow::Result<()> {
     let conf = WatchConf {
-        watch_pos: app.session.config.watch_pos.clone(),
-        watch_rot: app.session.config.watch_rot.clone(),
+        watch_pos: app.session.config.watch_pos,
+        watch_rot: app.session.config.watch_rot,
         watch_hand: app.session.config.watch_hand,
         watch_view_angle_min: app.session.config.watch_view_angle_min,
         watch_view_angle_max: app.session.config.watch_view_angle_max,

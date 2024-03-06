@@ -96,7 +96,7 @@ impl NotificationManager {
 
                 let sender2 = self.tx_toast.clone();
                 let result = c.add_match(rule_with_eavesdrop, move |_: (), _, msg| {
-                    if let Ok(toast) = parse_dbus(&msg) {
+                    if let Ok(toast) = parse_dbus(msg) {
                         match sender2.try_send(toast) {
                             Ok(_) => {}
                             Err(e) => {

@@ -474,7 +474,7 @@ fn run_watch(data: &WatchAction, app: &mut AppState) {
             app.tasks.enqueue(TaskType::Overlay(
                 OverlaySelector::Name(WATCH_NAME.into()),
                 Box::new(move |app, o| {
-                    o.spawn_rotation = o.spawn_rotation * rot;
+                    o.spawn_rotation *= rot;
                     app.session.config.watch_rot = o.spawn_rotation.into();
                     o.dirty = true;
                 }),

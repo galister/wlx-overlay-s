@@ -44,7 +44,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     if let Some(ref log_to) = args.log_to {
         flexi_logger::Logger::try_with_env_or_str("info")?
-            .log_to_file(FileSpec::default().directory(&log_to))
+            .log_to_file(FileSpec::default().directory(log_to))
             .log_to_stdout()
             .start()?;
         println!("Logging to: {}", &log_to);
