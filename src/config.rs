@@ -165,14 +165,12 @@ where
     let file_name = FILES[config_type as usize];
     let maybe_override = config_io::load(file_name);
 
-    for yaml in [maybe_override.as_deref(), Some(fallback)].iter() {
-        if let Some(yaml_data) = yaml {
-            match serde_yaml::from_str::<T>(yaml_data) {
-                Ok(d) => return d,
-                Err(e) => {
-                    error!("Failed to parse {}, falling back to defaults.", file_name);
-                    error!("{}", e);
-                }
+    for yaml in [maybe_override.as_deref(), Some(fallback)].iter().flatten() {
+        match serde_yaml::from_str::<T>(yaml) {
+            Ok(d) => return d,
+            Err(e) => {
+                error!("Failed to parse {}, falling back to defaults.", file_name);
+                error!("{}", e);
             }
         }
     }
