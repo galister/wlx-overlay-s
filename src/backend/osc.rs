@@ -65,7 +65,11 @@ impl OscSender {
             match o.state.name.as_ref() {
                 WATCH_NAME => has_wrist = true,
                 KEYBOARD_NAME => has_keyboard = true,
-                _ => num_overlays += 1,
+                _ => {
+                    if o.state.interactable {
+                        num_overlays += 1
+                    }
+                }
             }
         }
 
