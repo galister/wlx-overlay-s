@@ -42,11 +42,11 @@ fn def_one() -> f32 {
     1.0
 }
 
-fn def_half() -> f32 {
+pub fn def_half() -> f32 {
     0.5
 }
 
-fn def_point7() -> f32 {
+pub fn def_point7() -> f32 {
     0.7
 }
 

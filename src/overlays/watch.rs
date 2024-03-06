@@ -4,7 +4,9 @@ use std::path::PathBuf;
 
 use crate::{
     backend::overlay::{ui_transform, OverlayData, OverlayState, RelativeTo},
-    config::{def_left, def_watch_pos, def_watch_rot, load_known_yaml, ConfigType},
+    config::{
+        def_half, def_left, def_point7, def_watch_pos, def_watch_rot, load_known_yaml, ConfigType,
+    },
     config_io,
     gui::modular::{modular_canvas, ModularUiConfig},
     state::{AppState, LeftRight},
@@ -78,6 +80,12 @@ pub struct WatchConf {
 
     #[serde(default = "def_left")]
     pub watch_hand: LeftRight,
+
+    #[serde(default = "def_half")]
+    pub watch_view_angle_min: f32,
+
+    #[serde(default = "def_point7")]
+    pub watch_view_angle_max: f32,
 }
 
 fn get_config_path() -> PathBuf {
@@ -90,6 +98,8 @@ pub fn save_watch(app: &mut AppState) -> anyhow::Result<()> {
         watch_pos: app.session.config.watch_pos.clone(),
         watch_rot: app.session.config.watch_rot.clone(),
         watch_hand: app.session.config.watch_hand,
+        watch_view_angle_min: app.session.config.watch_view_angle_min,
+        watch_view_angle_max: app.session.config.watch_view_angle_max,
     };
 
     let yaml = serde_yaml::to_string(&conf)?;
