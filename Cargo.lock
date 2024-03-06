@@ -1081,7 +1081,7 @@ version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330c60081dcc4c72131f8eb70510f1ac07223e5d4163db481a04a0befcffa412"
 dependencies = [
- "libloading 0.8.1",
+ "libloading 0.7.4",
 ]
 
 [[package]]
@@ -2198,7 +2198,7 @@ dependencies = [
 [[package]]
 name = "ovr_overlay"
 version = "0.0.0"
-source = "git+https://github.com/galister/ovr_overlay_oyasumi#c9794ab4439242fbaa908a2c625ed47fcf173508"
+source = "git+https://github.com/galister/ovr_overlay_oyasumi#376e817f9bf6438a486fbbfc6cf6ac2b8ff8ae36"
 dependencies = [
  "byteorder",
  "derive_more",
@@ -2213,7 +2213,7 @@ dependencies = [
 [[package]]
 name = "ovr_overlay_sys"
 version = "0.0.0"
-source = "git+https://github.com/galister/ovr_overlay_oyasumi#c9794ab4439242fbaa908a2c625ed47fcf173508"
+source = "git+https://github.com/galister/ovr_overlay_oyasumi#376e817f9bf6438a486fbbfc6cf6ac2b8ff8ae36"
 dependencies = [
  "autocxx",
  "autocxx-build",
