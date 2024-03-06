@@ -15,6 +15,15 @@ use vulkano::{device::physical::PhysicalDeviceType, instance::InstanceCreateFlag
 #[cfg(feature = "openxr")]
 use {ash::vk, std::os::raw::c_void};
 
+pub type Vert2Buf = Subbuffer<[Vert2Uv]>;
+pub type IndexBuf = Subbuffer<[u16]>;
+
+pub type LegacyPipeline = WlxPipeline<WlxPipelineLegacy>;
+pub type DynamicPipeline = WlxPipeline<WlxPipelineDynamic>;
+
+pub type LegacyPass = WlxPass<WlxPipelineLegacy>;
+pub type DynamicPass = WlxPass<WlxPipelineDynamic>;
+
 use vulkano::{
     buffer::{
         allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo},
@@ -118,8 +127,8 @@ pub struct WlxGraphics {
     pub command_buffer_allocator: Arc<StandardCommandBufferAllocator>,
     pub descriptor_set_allocator: Arc<StandardDescriptorSetAllocator>,
 
-    pub quad_verts: Subbuffer<[Vert2Uv]>,
-    pub quad_indices: Subbuffer<[u16]>,
+    pub quad_verts: Vert2Buf,
+    pub quad_indices: IndexBuf,
 
     pub shared_shaders: RwLock<HashMap<&'static str, Arc<ShaderModule>>>,
 }
@@ -474,7 +483,7 @@ impl WlxGraphics {
 
     fn default_quad(
         memory_allocator: Arc<StandardMemoryAllocator>,
-    ) -> anyhow::Result<(Subbuffer<[Vert2Uv]>, Subbuffer<[u16]>)> {
+    ) -> anyhow::Result<(Vert2Buf, IndexBuf)> {
         let vertices = [
             Vert2Uv {
                 in_pos: [0., 0.],
@@ -532,7 +541,7 @@ impl WlxGraphics {
         y: f32,
         w: f32,
         h: f32,
-    ) -> anyhow::Result<Subbuffer<[Vert2Uv]>> {
+    ) -> anyhow::Result<Vert2Buf> {
         let rw = width;
         let rh = height;
 
@@ -704,8 +713,8 @@ impl WlxGraphics {
         frag: Arc<ShaderModule>,
         format: Format,
         blend: Option<AttachmentBlend>,
-    ) -> anyhow::Result<Arc<WlxPipeline<WlxPipelineLegacy>>> {
-        Ok(Arc::new(WlxPipeline::<WlxPipelineLegacy>::new(
+    ) -> anyhow::Result<Arc<LegacyPipeline>> {
+        Ok(Arc::new(LegacyPipeline::new(
             render_target,
             self.clone(),
             vert,
@@ -724,8 +733,8 @@ impl WlxGraphics {
         blend: Option<AttachmentBlend>,
         initial_layout: ImageLayout,
         final_layout: ImageLayout,
-    ) -> anyhow::Result<Arc<WlxPipeline<WlxPipelineLegacy>>> {
-        Ok(Arc::new(WlxPipeline::<WlxPipelineLegacy>::new_with_layout(
+    ) -> anyhow::Result<Arc<LegacyPipeline>> {
+        Ok(Arc::new(LegacyPipeline::new_with_layout(
             render_target,
             self.clone(),
             vert,
@@ -744,8 +753,8 @@ impl WlxGraphics {
         frag: Arc<ShaderModule>,
         format: Format,
         blend: Option<AttachmentBlend>,
-    ) -> anyhow::Result<Arc<WlxPipeline<WlxPipelineDynamic>>> {
-        Ok(Arc::new(WlxPipeline::<WlxPipelineDynamic>::new(
+    ) -> anyhow::Result<Arc<DynamicPipeline>> {
+        Ok(Arc::new(DynamicPipeline::new(
             self.clone(),
             vert,
             frag,
@@ -841,10 +850,7 @@ pub struct WlxCommandBuffer {
 
 #[allow(dead_code)]
 impl WlxCommandBuffer {
-    pub fn begin_render_pass(
-        &mut self,
-        pipeline: &WlxPipeline<WlxPipelineLegacy>,
-    ) -> anyhow::Result<()> {
+    pub fn begin_render_pass(&mut self, pipeline: &LegacyPipeline) -> anyhow::Result<()> {
         self.command_buffer.begin_render_pass(
             RenderPassBeginInfo {
                 clear_values: vec![Some([0.0, 0.0, 0.0, 0.0].into())],
@@ -1031,11 +1037,11 @@ impl WlxPipeline<WlxPipelineDynamic> {
     pub fn create_pass(
         self: &Arc<Self>,
         dimensions: [f32; 2],
-        vertex_buffer: Subbuffer<[Vert2Uv]>,
-        index_buffer: Subbuffer<[u16]>,
+        vertex_buffer: Vert2Buf,
+        index_buffer: IndexBuf,
         descriptor_sets: Vec<Arc<DescriptorSet>>,
-    ) -> anyhow::Result<WlxPass<WlxPipelineDynamic>> {
-        WlxPass::<WlxPipelineDynamic>::new(
+    ) -> anyhow::Result<DynamicPass> {
+        DynamicPass::new(
             self.clone(),
             dimensions,
             vertex_buffer,
@@ -1200,11 +1206,11 @@ impl WlxPipeline<WlxPipelineLegacy> {
     pub fn create_pass(
         self: &Arc<Self>,
         dimensions: [f32; 2],
-        vertex_buffer: Subbuffer<[Vert2Uv]>,
-        index_buffer: Subbuffer<[u16]>,
+        vertex_buffer: Vert2Buf,
+        index_buffer: IndexBuf,
         descriptor_sets: Vec<Arc<DescriptorSet>>,
-    ) -> anyhow::Result<WlxPass<WlxPipelineLegacy>> {
-        WlxPass::<WlxPipelineLegacy>::new(
+    ) -> anyhow::Result<LegacyPass> {
+        LegacyPass::new(
             self.clone(),
             dimensions,
             vertex_buffer,
@@ -1278,18 +1284,18 @@ impl<D> WlxPipeline<D> {
 #[allow(dead_code)]
 pub struct WlxPass<D> {
     pipeline: Arc<WlxPipeline<D>>,
-    vertex_buffer: Subbuffer<[Vert2Uv]>,
-    index_buffer: Subbuffer<[u16]>,
+    vertex_buffer: Vert2Buf,
+    index_buffer: IndexBuf,
     descriptor_sets: Vec<Arc<DescriptorSet>>,
     pub command_buffer: Arc<CommandBuffer>,
 }
 
 impl WlxPass<WlxPipelineLegacy> {
     fn new(
-        pipeline: Arc<WlxPipeline<WlxPipelineLegacy>>,
+        pipeline: Arc<LegacyPipeline>,
         dimensions: [f32; 2],
-        vertex_buffer: Subbuffer<[Vert2Uv]>,
-        index_buffer: Subbuffer<[u16]>,
+        vertex_buffer: Vert2Buf,
+        index_buffer: IndexBuf,
         descriptor_sets: Vec<Arc<DescriptorSet>>,
     ) -> anyhow::Result<Self> {
         let viewport = Viewport {
@@ -1346,10 +1352,10 @@ impl WlxPass<WlxPipelineLegacy> {
 
 impl WlxPass<WlxPipelineDynamic> {
     fn new(
-        pipeline: Arc<WlxPipeline<WlxPipelineDynamic>>,
+        pipeline: Arc<DynamicPipeline>,
         dimensions: [f32; 2],
-        vertex_buffer: Subbuffer<[Vert2Uv]>,
-        index_buffer: Subbuffer<[u16]>,
+        vertex_buffer: Vert2Buf,
+        index_buffer: IndexBuf,
         descriptor_sets: Vec<Arc<DescriptorSet>>,
     ) -> anyhow::Result<Self> {
         let viewport = Viewport {
