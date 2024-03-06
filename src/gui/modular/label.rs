@@ -98,7 +98,7 @@ pub fn modular_label_init(label: &mut ModularControl, content: &LabelContent) {
     };
 
     if let Some(state) = state {
-        label.state = Some(ModularData::Label(state));
+        label.state = Some(ModularData::Label(Box::new(state)));
         label.on_update = Some(label_update);
     }
 }
@@ -107,7 +107,7 @@ pub(super) fn label_update(control: &mut ModularControl, _: &mut (), app: &mut A
     let ModularData::Label(data) = control.state.as_mut().unwrap() else {
         panic!("Label control has no state");
     };
-    match data {
+    match data.as_mut() {
         LabelData::Battery {
             device,
             low_threshold,

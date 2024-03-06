@@ -172,7 +172,7 @@ pub struct ButtonData {
 }
 
 pub fn modular_button_init(button: &mut ModularControl, data: &ButtonData) {
-    button.state = Some(ModularData::Button(data.clone()));
+    button.state = Some(ModularData::Button(Box::new(data.clone())));
     button.on_press = Some(modular_button_dn);
     button.on_release = Some(modular_button_up);
     button.on_scroll = Some(modular_button_scroll);

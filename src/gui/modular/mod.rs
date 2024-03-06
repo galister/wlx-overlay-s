@@ -70,7 +70,7 @@ pub enum ModularElement {
         bg_color: Arc<str>,
         text: Arc<str>,
         #[serde(flatten)]
-        data: ButtonData,
+        data: Box<ButtonData>,
     },
     /// Convenience type to save you from having to create a bunch of labels
     BatteryList {
@@ -90,7 +90,7 @@ pub enum ModularElement {
         bg_color: Arc<str>,
         layout: ListLayout,
         #[serde(flatten)]
-        template: OverlayListTemplate,
+        template: Box<OverlayListTemplate>,
     },
 }
 
@@ -107,8 +107,8 @@ pub enum ListLayout {
 }
 
 pub enum ModularData {
-    Label(LabelData),
-    Button(ButtonData),
+    Label(Box<LabelData>),
+    Button(Box<ButtonData>),
 }
 
 pub fn modular_canvas(
