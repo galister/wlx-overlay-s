@@ -9,11 +9,17 @@ use crate::config_io::CONFIG_ROOT_PATH;
 const APP_KEY: &str = "galister.wlxoverlay-s";
 
 pub(super) fn install_manifest(app_mgr: &mut ApplicationsManager) -> anyhow::Result<()> {
-    let executable_pathbuf = std::env::current_exe()?;
-    let executable_path = executable_pathbuf
-        .to_str()
-        .ok_or_else(|| anyhow::anyhow!("Invalid executable path"))?;
     let manifest_path = CONFIG_ROOT_PATH.join("wlx-overlay-s.vrmanifest");
+
+    let appimage_path = std::env::var("APPIMAGE");
+    let executable_pathbuf = std::env::current_exe()?;
+
+    let executable_path = match appimage_path {
+        Ok(ref path) => &path,
+        Err(_) => executable_pathbuf
+            .to_str()
+            .ok_or_else(|| anyhow::anyhow!("Invalid executable path"))?,
+    };
 
     if let Ok(true) = app_mgr.is_application_installed(APP_KEY) {
         if let Ok(mut file) = File::open(&manifest_path) {
