@@ -270,10 +270,13 @@ elements:
     fg_color: "#ffffff"
     bg_color: "#707070"
     text: "Show/Hide"
-    click_down:
+    click_down: # ToggleVisible if exists, else create
+      - type: Overlay
+        target: M1
+        action: ToggleVisible # only fires if overlay exists
       - type: Window
         target: M1
-        action: ShowMirror
+        action: ShowMirror # only fires if not exists
 
   - type: Button
     rect: [185, 270, 60, 30]
@@ -311,6 +314,9 @@ elements:
     bg_color: "#707070"
     text: "Show/Hide"
     click_down:
+      - type: Overlay
+        target: M2
+        action: ToggleVisible
       - type: Window
         target: M2
         action: ShowMirror
@@ -351,6 +357,9 @@ elements:
     bg_color: "#707070"
     text: "Show/Hide"
     click_down:
+      - type: Overlay
+        target: M3
+        action: ToggleVisible
       - type: Window
         target: M3
         action: ShowMirror

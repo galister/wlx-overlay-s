@@ -1,7 +1,7 @@
 use std::{
     collections::VecDeque,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
     time::{Duration, Instant},
@@ -46,6 +46,8 @@ pub mod manifest;
 pub mod overlay;
 pub mod playspace;
 
+static FRAME_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
 pub fn openvr_uninstall() {
     let app_type = EVRApplicationType::VRApplication_Overlay;
     let Ok(context) = ovr_overlay::Context::init(app_type) else {
@@ -67,15 +69,15 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     log::info!("Using OpenVR runtime");
 
     let mut app_mgr = context.applications_mngr();
-    let mut input_mngr = context.input_mngr();
-    let mut system_mngr = context.system_mngr();
-    let mut overlay_mngr = context.overlay_mngr();
-    let mut settings_mngr = context.settings_mngr();
+    let mut input_mgr = context.input_mngr();
+    let mut system_mgr = context.system_mngr();
+    let mut overlay_mgr = context.overlay_mngr();
+    let mut settings_mgr = context.settings_mngr();
     let mut chaperone_mgr = context.chaperone_setup_mngr();
-    let mut compositor_mngr = context.compositor_mngr();
+    let mut compositor_mgr = context.compositor_mngr();
 
     let device_extensions_fn = |device: &PhysicalDevice| {
-        let names = compositor_mngr.get_vulkan_device_extensions_required(device.handle().as_raw());
+        let names = compositor_mgr.get_vulkan_device_extensions_required(device.handle().as_raw());
         let ext = DeviceExtensions::from_iter(names.iter().map(|s| s.as_str()));
         ext
     };
@@ -105,11 +107,11 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
     state.hid_provider.set_desktop_extent(overlays.extent);
 
-    set_action_manifest(&mut input_mngr)?;
+    set_action_manifest(&mut input_mgr)?;
 
-    let mut input_source = OpenVrInputSource::new(&mut input_mngr)?;
+    let mut input_source = OpenVrInputSource::new(&mut input_mgr)?;
 
-    let Ok(refresh_rate) = system_mngr.get_tracked_device_property::<f32>(
+    let Ok(refresh_rate) = system_mgr.get_tracked_device_property::<f32>(
         TrackedDeviceIndex::HMD,
         ETrackedDeviceProperty::Prop_DisplayFrequency_Float,
     ) else {
@@ -135,7 +137,9 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             break 'main_loop;
         }
 
-        while let Some(event) = system_mngr.poll_next_event() {
+        let cur_frame = FRAME_COUNTER.fetch_add(1, Ordering::Relaxed);
+
+        while let Some(event) = system_mgr.poll_next_event() {
             match event.event_type {
                 EVREventType::VREvent_Quit => {
                     log::warn!("Received quit event, shutting down.");
@@ -151,7 +155,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         }
 
         if next_device_update <= Instant::now() {
-            input_source.update_devices(&mut system_mngr, &mut state);
+            input_source.update_devices(&mut system_mgr, &mut state);
             next_device_update = Instant::now() + Duration::from_secs(30);
         }
 
@@ -171,9 +175,10 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                         continue;
                     };
 
-                    let Some((state, backend)) = f(&mut state) else {
+                    let Some((mut state, backend)) = f(&mut state) else {
                         continue;
                     };
+                    state.birthframe = cur_frame;
 
                     overlays.add(OverlayData {
                         state,
@@ -183,13 +188,15 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 }
                 TaskType::DropOverlay(sel) => {
                     if let Some(o) = overlays.mut_by_selector(&sel) {
-                        o.destroy(&mut overlay_mngr);
-                        overlays.remove_by_selector(&sel);
+                        if o.state.birthframe < cur_frame {
+                            o.destroy(&mut overlay_mgr);
+                            overlays.remove_by_selector(&sel);
+                        }
                     }
                 }
                 TaskType::System(task) => match task {
                     SystemTask::ColorGain(channel, value) => {
-                        let _ = adjust_gain(&mut settings_mngr, channel, value);
+                        let _ = adjust_gain(&mut settings_mgr, channel, value);
                     }
                     SystemTask::FixFloor => {
                         space_mover.fix_floor(&mut chaperone_mgr, &state.input_state);
@@ -202,7 +209,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         }
 
         state.input_state.pre_update();
-        input_source.update(&mut input_mngr, &mut system_mngr, &mut state);
+        input_source.update(&mut input_mgr, &mut system_mgr, &mut state);
         state.input_state.post_update();
 
         if state
@@ -231,14 +238,14 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 &state.input_state.hmd,
             );
             if let Some(haptics) = haptics {
-                input_source.haptics(&mut input_mngr, idx, haptics)
+                input_source.haptics(&mut input_mgr, idx, haptics)
             }
         }
 
-        lines.update(&mut overlay_mngr, &mut state)?;
+        lines.update(&mut overlay_mgr, &mut state)?;
 
         for o in overlays.iter_mut() {
-            o.after_input(&mut overlay_mngr, &mut state)?;
+            o.after_input(&mut overlay_mgr, &mut state)?;
         }
 
         #[cfg(feature = "osc")]
@@ -258,7 +265,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
         overlays
             .iter_mut()
-            .for_each(|o| o.after_render(&mut overlay_mngr, &state.graphics));
+            .for_each(|o| o.after_render(&mut overlay_mgr, &state.graphics));
 
         // chaperone
 
@@ -268,7 +275,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
         let mut seconds_since_vsync = 0f32;
         std::thread::sleep(Duration::from_secs_f32(
-            if system_mngr.get_time_since_last_vsync(&mut seconds_since_vsync, &mut 0u64) {
+            if system_mgr.get_time_since_last_vsync(&mut seconds_since_vsync, &mut 0u64) {
                 (frame_time - seconds_since_vsync).max(0.0)
             } else {
                 frame_time

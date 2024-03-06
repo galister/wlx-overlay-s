@@ -18,10 +18,13 @@ elements:
     bg_color: "#808040"
     fg_color: "#ffffff"
     text: "C"
-    click_up:
+    click_up: # destroy if exists, otherwise create
       - type: Window
         target: settings
-        action: ShowUi
+        action: ShowUi # only triggers if not exists
+      - type: Window 
+        target: settings
+        action: Destroy # only triggers if exists since before current frame
 
   # Keyboard button
   - type: Button

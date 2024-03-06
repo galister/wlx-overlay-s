@@ -315,9 +315,10 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                         continue;
                     };
 
-                    let Some((state, backend)) = f(&mut app_state) else {
+                    let Some((mut state, backend)) = f(&mut app_state) else {
                         continue;
                     };
+                    state.birthframe = cur_frame;
 
                     overlays.add(OverlayData {
                         state,
@@ -326,9 +327,13 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                     });
                 }
                 TaskType::DropOverlay(sel) => {
-                    let o = overlays.remove_by_selector(&sel);
-                    // set for deletion after all images are done showing
-                    delete_queue.push((o, cur_frame + 5));
+                    if let Some(o) = overlays.mut_by_selector(&sel) {
+                        if o.state.birthframe < cur_frame {
+                            let o = overlays.remove_by_selector(&sel);
+                            // set for deletion after all images are done showing
+                            delete_queue.push((o, cur_frame + 5));
+                        }
+                    }
                 }
                 TaskType::System(_task) => {
                     // Not implemented

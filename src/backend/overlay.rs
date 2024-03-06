@@ -37,6 +37,7 @@ pub struct OverlayState {
     pub relative_to: RelativeTo,
     pub primary_pointer: Option<usize>,
     pub interaction_transform: Affine2,
+    pub birthframe: usize,
 }
 
 impl Default for OverlayState {
@@ -60,6 +61,7 @@ impl Default for OverlayState {
             transform: Affine3A::IDENTITY,
             primary_pointer: None,
             interaction_transform: Affine2::IDENTITY,
+            birthframe: 0,
         }
     }
 }

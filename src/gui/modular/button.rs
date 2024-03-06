@@ -578,20 +578,9 @@ fn run_overlay(overlay: &OverlaySelector, action: &OverlayAction, app: &mut AppS
 
 fn run_window(window: &Arc<str>, action: &WindowAction, app: &mut AppState) {
     use crate::overlays::custom;
-    let selector = OverlaySelector::Name(window.clone());
 
     match action {
         WindowAction::ShowMirror => {
-            app.tasks.enqueue(TaskType::Overlay(
-                selector,
-                Box::new(|app, o| {
-                    o.want_visible = !o.want_visible;
-                    if o.recenter {
-                        o.show_hide = o.want_visible;
-                        o.reset(app, false);
-                    }
-                }),
-            ));
             #[cfg(feature = "wayland")]
             app.tasks.enqueue(TaskType::CreateOverlay(
                 OverlaySelector::Name(window.clone()),
@@ -609,16 +598,6 @@ fn run_window(window: &Arc<str>, action: &WindowAction, app: &mut AppState) {
             log::warn!("Mirror not available without Wayland feature.");
         }
         WindowAction::ShowUi => {
-            app.tasks.enqueue(TaskType::Overlay(
-                selector,
-                Box::new(|app, o| {
-                    o.want_visible = !o.want_visible;
-                    if o.recenter {
-                        o.show_hide = o.want_visible;
-                        o.reset(app, false);
-                    }
-                }),
-            ));
             app.tasks.enqueue(TaskType::CreateOverlay(
                 OverlaySelector::Name(window.clone()),
                 Box::new({
