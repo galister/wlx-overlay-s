@@ -509,14 +509,14 @@ elements:
     bg_color: "#c0c0c0"
 
   - type: Label
-    rect: [325, 480, 90, 24]
+    rect: [325, 490, 90, 24]
     font_size: 18
     fg_color: "#ffffff"
     source: Static
     text: Notifications
 
   - type: Button
-    rect: [330, 495, 220, 30]
+    rect: [330, 505, 220, 30]
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#606020"
@@ -526,7 +526,7 @@ elements:
         action: ToggleNotifications
 
   - type: Button
-    rect: [330, 545, 220, 30]
+    rect: [330, 555, 220, 30]
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#606020"
@@ -536,11 +536,11 @@ elements:
         action: ToggleNotificationSounds
 
   - type: Panel
-    rect: [50, 595, 500, 1]
+    rect: [50, 605, 500, 1]
     bg_color: "#c0c0c0"
 
   - type: Button
-    rect: [330, 615, 220, 30]
+    rect: [330, 625, 220, 30]
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#206060"
