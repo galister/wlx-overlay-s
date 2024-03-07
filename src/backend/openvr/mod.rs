@@ -126,7 +126,9 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
     let watch_id = overlays.get_by_name(WATCH_NAME).unwrap().state.id; // want panic
 
-    let frame_time = (1000.0 / refresh_rate).floor() * 0.001;
+    // want at least half refresh rate
+    let frame_timeout = 2 * (1000.0 / refresh_rate).floor() as u32;
+
     let mut next_device_update = Instant::now();
     let mut due_tasks = VecDeque::with_capacity(4);
 
@@ -134,6 +136,8 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     let pointer_lines = [lines.allocate(), lines.allocate()];
 
     'main_loop: loop {
+        let _ = overlay_mgr.wait_frame_sync(frame_timeout);
+
         if !running.load(Ordering::Relaxed) {
             log::warn!("Received shutdown signal.");
             break 'main_loop;
@@ -279,15 +283,6 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         // close font handles?
 
         state.hid_provider.on_new_frame();
-
-        let mut seconds_since_vsync = 0f32;
-        std::thread::sleep(Duration::from_secs_f32(
-            if system_mgr.get_time_since_last_vsync(&mut seconds_since_vsync, &mut 0u64) {
-                (frame_time - seconds_since_vsync).max(0.0)
-            } else {
-                frame_time
-            },
-        ));
     }
 
     log::warn!("OpenVR shutdown");

@@ -2198,7 +2198,7 @@ dependencies = [
 [[package]]
 name = "ovr_overlay"
 version = "0.0.0"
-source = "git+https://github.com/galister/ovr_overlay_oyasumi#376e817f9bf6438a486fbbfc6cf6ac2b8ff8ae36"
+source = "git+https://github.com/galister/ovr_overlay_oyasumi#43a825d12bc86e225df5eaac8da9b3fd4880f9f1"
 dependencies = [
  "byteorder",
  "derive_more",
@@ -2213,7 +2213,7 @@ dependencies = [
 [[package]]
 name = "ovr_overlay_sys"
 version = "0.0.0"
-source = "git+https://github.com/galister/ovr_overlay_oyasumi#376e817f9bf6438a486fbbfc6cf6ac2b8ff8ae36"
+source = "git+https://github.com/galister/ovr_overlay_oyasumi#43a825d12bc86e225df5eaac8da9b3fd4880f9f1"
 dependencies = [
  "autocxx",
  "autocxx-build",
