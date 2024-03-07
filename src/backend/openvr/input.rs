@@ -56,6 +56,7 @@ pub(super) struct OpenVrInputSource {
 
 pub(super) struct OpenVrHandSource {
     has_pose: bool,
+    device: Option<TrackedDeviceIndex>,
     input_hnd: InputValueHandle,
     pose_hnd: ActionHandle,
     haptics_hnd: ActionHandle,
@@ -91,6 +92,7 @@ impl OpenVrInputSource {
 
         let hands: [OpenVrHandSource; 2] = array::from_fn(|i| OpenVrHandSource {
             has_pose: false,
+            device: None,
             input_hnd: input_hnd[i],
             pose_hnd: pose_hnd[i],
             haptics_hnd: haptics_hnd[i],
@@ -124,6 +126,7 @@ impl OpenVrInputSource {
 
     pub fn update(
         &mut self,
+        universe: ETrackingUniverseOrigin,
         input: &mut InputManager,
         system: &mut SystemManager,
         app: &mut AppState,
@@ -138,11 +141,18 @@ impl OpenVrInputSource {
 
         let _ = input.update_actions(&mut [aas]);
 
-        let universe = ETrackingUniverseOrigin::TrackingUniverseStanding;
+        let devices = system.get_device_to_absolute_tracking_pose(universe.clone(), 0.005);
+        app.input_state.hmd = devices[0].mDeviceToAbsoluteTracking.to_affine();
 
         for i in 0..2 {
             let hand = &mut self.hands[i];
             let app_hand = &mut app.input_state.pointers[i];
+
+            if let Some(device) = hand.device {
+                app_hand.raw_pose = devices[device.0 as usize]
+                    .mDeviceToAbsoluteTracking
+                    .to_affine();
+            }
 
             hand.has_pose = false;
 
@@ -198,14 +208,10 @@ impl OpenVrInputSource {
                 .map(|x| x.0.y)
                 .unwrap_or(0.0);
         }
-
-        let devices = system.get_device_to_absolute_tracking_pose(universe, 0.005);
-        app.input_state.hmd = devices[0].mDeviceToAbsoluteTracking.to_affine();
     }
 
     pub fn update_devices(&mut self, system: &mut SystemManager, app: &mut AppState) {
         app.input_state.devices.clear();
-
         for idx in 0..TrackedDeviceIndex::MAX {
             let device = TrackedDeviceIndex::new(idx as _).unwrap(); // safe
             if !system.is_tracked_device_connected(device) {
@@ -220,9 +226,11 @@ impl OpenVrInputSource {
                     let role = system.get_controller_role_for_tracked_device_index(device);
                     match role {
                         ETrackedControllerRole::TrackedControllerRole_LeftHand => {
+                            self.hands[0].device = Some(device);
                             TrackedDeviceRole::LeftHand
                         }
                         ETrackedControllerRole::TrackedControllerRole_RightHand => {
+                            self.hands[1].device = Some(device);
                             TrackedDeviceRole::RightHand
                         }
                         _ => continue,

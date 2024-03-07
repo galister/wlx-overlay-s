@@ -14,7 +14,6 @@ use super::{helpers::Affine3AConvert, overlay::OpenVrOverlayData};
 
 struct DragData {
     pose: Affine3A,
-    pose_inverse: Affine3A,
     hand: usize,
     hand_pos: Vec3A,
 }
@@ -46,24 +45,27 @@ impl PlayspaceMover {
                 log::info!("End space drag");
                 return;
             }
-            let new_hand = state.input_state.pointers[data.hand].pose.translation;
-            let new_hand_local = new_hand;
 
-            let relative_pos = data.pose.transform_vector3a(new_hand_local - data.hand_pos);
-            log::info!("Space drag: {:?}", relative_pos);
+            let new_hand =
+                state.input_state.pointers[data.hand].raw_pose.translation + data.pose.translation;
+            let relative_pos = data.pose.transform_vector3a(new_hand - data.hand_pos);
+
+            if relative_pos.length_squared() > 1000.0 {
+                log::warn!("Space drag too fast, ignoring");
+                return;
+            }
 
             overlays.iter_mut().for_each(|overlay| {
                 if overlay.state.grabbable {
                     overlay.state.dirty = true;
-                    overlay.state.transform.translation += relative_pos * -1.0;
+                    overlay.state.transform.translation -= relative_pos;
                 }
             });
 
-            let mut mat = data.pose.clone();
-            mat.translation += relative_pos;
-            //data.hand_pos = data.pose.inverse().transform_point3a(new_hand);
+            data.pose.translation += relative_pos;
+            data.hand_pos = new_hand;
 
-            set_working_copy(&universe, chaperone_mgr, &mat);
+            set_working_copy(&universe, chaperone_mgr, &data.pose);
             chaperone_mgr.commit_working_copy(EChaperoneConfigFile::EChaperoneConfigFile_Live);
         } else {
             for (i, pointer) in state.input_state.pointers.iter().enumerate() {
@@ -72,11 +74,9 @@ impl PlayspaceMover {
                         log::warn!("Can't space drag - failed to get zero pose");
                         return;
                     };
-                    let pose_inverse = mat.inverse();
-                    let hand_pos = pointer.pose.translation;
+                    let hand_pos = pointer.raw_pose.translation + mat.translation;
                     self.last = Some(DragData {
                         pose: mat,
-                        pose_inverse,
                         hand: i,
                         hand_pos,
                     });
@@ -128,6 +128,10 @@ impl PlayspaceMover {
             log::info!("Space drag interrupted by external change");
             self.last = None;
         }
+    }
+
+    pub fn get_universe(&self) -> ETrackingUniverseOrigin {
+        self.universe.clone()
     }
 }
 

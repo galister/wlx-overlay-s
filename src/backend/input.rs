@@ -159,6 +159,7 @@ impl Default for InteractionState {
 pub struct Pointer {
     pub idx: usize,
     pub pose: Affine3A,
+    pub raw_pose: Affine3A,
     pub now: PointerState,
     pub before: PointerState,
     pub last_click: Instant,
@@ -171,6 +172,7 @@ impl Pointer {
         Self {
             idx,
             pose: Affine3A::IDENTITY,
+            raw_pose: Affine3A::IDENTITY,
             now: Default::default(),
             before: Default::default(),
             last_click: Instant::now(),

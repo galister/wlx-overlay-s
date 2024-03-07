@@ -100,8 +100,8 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     notifications.run_dbus();
     notifications.run_udp();
 
-    let mut space_mover = playspace::PlayspaceMover::new();
-    space_mover.playspace_changed(&mut compositor_mgr, &mut chaperone_mgr);
+    let mut playspace = playspace::PlayspaceMover::new();
+    playspace.playspace_changed(&mut compositor_mgr, &mut chaperone_mgr);
 
     #[cfg(feature = "osc")]
     let mut osc_sender =
@@ -159,7 +159,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 EVREventType::VREvent_SeatedZeroPoseReset
                 | EVREventType::VREvent_StandingZeroPoseReset
                 | EVREventType::VREvent_ChaperoneUniverseHasChanged => {
-                    space_mover.playspace_changed(&mut compositor_mgr, &mut chaperone_mgr);
+                    playspace.playspace_changed(&mut compositor_mgr, &mut chaperone_mgr);
                 }
                 _ => {}
             }
@@ -210,17 +210,22 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                         let _ = adjust_gain(&mut settings_mgr, channel, value);
                     }
                     SystemTask::FixFloor => {
-                        space_mover.fix_floor(&mut chaperone_mgr, &state.input_state);
+                        playspace.fix_floor(&mut chaperone_mgr, &state.input_state);
                     }
                     SystemTask::ResetPlayspace => {
-                        space_mover.reset_offset(&mut chaperone_mgr);
+                        playspace.reset_offset(&mut chaperone_mgr);
                     }
                 },
             }
         }
 
         state.input_state.pre_update();
-        input_source.update(&mut input_mgr, &mut system_mgr, &mut state);
+        input_source.update(
+            playspace.get_universe(),
+            &mut input_mgr,
+            &mut system_mgr,
+            &mut state,
+        );
         state.input_state.post_update();
 
         if state
@@ -237,7 +242,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             .for_each(|o| o.state.auto_movement(&mut state));
 
         watch_fade(&mut state, overlays.mut_by_id(watch_id).unwrap()); // want panic
-        space_mover.update(&mut chaperone_mgr, &mut overlays, &state);
+        playspace.update(&mut chaperone_mgr, &mut overlays, &state);
 
         let lengths_haptics = interact(&mut overlays, &mut state);
         for (idx, (len, haptics)) in lengths_haptics.iter().enumerate() {
