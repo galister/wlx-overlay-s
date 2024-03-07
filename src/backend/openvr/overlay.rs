@@ -191,7 +191,7 @@ impl OverlayData<OpenVrOverlayData> {
             return;
         };
 
-        let transform = Matrix3x4::from_affine(self.state.transform);
+        let transform = Matrix3x4::from_affine(&self.state.transform);
 
         if let Err(e) = overlay.set_transform_absolute(
             handle,

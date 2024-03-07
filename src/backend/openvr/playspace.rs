@@ -1,25 +1,34 @@
-use glam::Vec3A;
-use ovr_overlay::{chaperone_setup::ChaperoneSetupManager, sys::EChaperoneConfigFile};
+use glam::{Affine3A, Vec3A};
+use ovr_overlay::{
+    chaperone_setup::ChaperoneSetupManager,
+    compositor::CompositorManager,
+    sys::{EChaperoneConfigFile, ETrackingUniverseOrigin, HmdMatrix34_t},
+};
 
 use crate::{
     backend::{common::OverlayContainer, input::InputState},
     state::AppState,
 };
 
-use super::overlay::OpenVrOverlayData;
+use super::{helpers::Affine3AConvert, overlay::OpenVrOverlayData};
+
+struct DragData {
+    pose: Affine3A,
+    pose_inverse: Affine3A,
+    hand: usize,
+    hand_pos: Vec3A,
+}
 
 pub(super) struct PlayspaceMover {
-    drag_hand: Option<usize>,
-    offset: Vec3A,
-    start_position: Vec3A,
+    universe: ETrackingUniverseOrigin,
+    last: Option<DragData>,
 }
 
 impl PlayspaceMover {
     pub fn new() -> Self {
         Self {
-            drag_hand: None,
-            offset: Vec3A::ZERO,
-            start_position: Vec3A::ZERO,
+            universe: ETrackingUniverseOrigin::TrackingUniverseRawAndUncalibrated,
+            last: None,
         }
     }
 
@@ -29,16 +38,19 @@ impl PlayspaceMover {
         overlays: &mut OverlayContainer<OpenVrOverlayData>,
         state: &AppState,
     ) {
-        if let Some(hand) = self.drag_hand {
-            let pointer = &state.input_state.pointers[hand];
+        let universe = self.universe.clone();
+        if let Some(data) = self.last.as_mut() {
+            let pointer = &state.input_state.pointers[data.hand];
             if !pointer.now.space_drag {
-                self.drag_hand = None;
+                self.last = None;
                 log::info!("End space drag");
                 return;
             }
+            let new_hand = state.input_state.pointers[data.hand].pose.translation;
+            let new_hand_local = new_hand;
 
-            let hand_pos = state.input_state.pointers[hand].pose.translation;
-            let relative_pos = hand_pos - self.start_position;
+            let relative_pos = data.pose.transform_vector3a(new_hand_local - data.hand_pos);
+            log::info!("Space drag: {:?}", relative_pos);
 
             overlays.iter_mut().for_each(|overlay| {
                 if overlay.state.grabbable {
@@ -47,13 +59,27 @@ impl PlayspaceMover {
                 }
             });
 
-            self.offset += relative_pos;
-            self.apply_offset(chaperone_mgr);
+            let mut mat = data.pose.clone();
+            mat.translation += relative_pos;
+            //data.hand_pos = data.pose.inverse().transform_point3a(new_hand);
+
+            set_working_copy(&universe, chaperone_mgr, &mat);
+            chaperone_mgr.commit_working_copy(EChaperoneConfigFile::EChaperoneConfigFile_Live);
         } else {
             for (i, pointer) in state.input_state.pointers.iter().enumerate() {
                 if pointer.now.space_drag {
-                    self.drag_hand = Some(i);
-                    self.start_position = pointer.pose.translation;
+                    let Some(mat) = get_working_copy(&universe, chaperone_mgr) else {
+                        log::warn!("Can't space drag - failed to get zero pose");
+                        return;
+                    };
+                    let pose_inverse = mat.inverse();
+                    let hand_pos = pointer.pose.translation;
+                    self.last = Some(DragData {
+                        pose: mat,
+                        pose_inverse,
+                        hand: i,
+                        hand_pos,
+                    });
                     log::info!("Start space drag");
                     break;
                 }
@@ -62,35 +88,81 @@ impl PlayspaceMover {
     }
 
     pub fn reset_offset(&mut self, chaperone_mgr: &mut ChaperoneSetupManager) {
-        self.offset = Vec3A::ZERO;
-        self.apply_offset(chaperone_mgr);
+        set_working_copy(&self.universe, chaperone_mgr, &Affine3A::IDENTITY);
+        chaperone_mgr.commit_working_copy(EChaperoneConfigFile::EChaperoneConfigFile_Live);
+
+        if self.last.is_some() {
+            log::info!("Space drag interrupted by manual reset");
+            self.last = None;
+        }
     }
 
     pub fn fix_floor(&mut self, chaperone_mgr: &mut ChaperoneSetupManager, input: &InputState) {
         let y1 = input.pointers[0].pose.translation.y;
         let y2 = input.pointers[1].pose.translation.y;
-        self.offset.y += y1.min(y2) - 0.03;
-        self.apply_offset(chaperone_mgr);
-    }
-
-    pub fn reset(&mut self) {
-        self.offset = Vec3A::ZERO;
-        self.start_position = Vec3A::ZERO;
-    }
-
-    fn apply_offset(&mut self, chaperone_mgr: &mut ChaperoneSetupManager) {
-        let Some(mut zero_pose) =
-            chaperone_mgr.get_working_standing_zero_pose_to_raw_tracking_pose()
-        else {
-            log::warn!("Can't space drag - failed to get zero pose");
+        let Some(mut mat) = get_working_copy(&self.universe, chaperone_mgr) else {
+            log::warn!("Can't fix floor - failed to get zero pose");
             return;
         };
-
-        zero_pose.m[0][3] = self.offset.x;
-        zero_pose.m[1][3] = self.offset.y;
-        zero_pose.m[2][3] = self.offset.z;
-
-        chaperone_mgr.set_working_standing_zero_pose_to_raw_tracking_pose(&zero_pose);
+        mat.translation.y += y1.min(y2) - 0.03;
+        set_working_copy(&self.universe, chaperone_mgr, &mat);
         chaperone_mgr.commit_working_copy(EChaperoneConfigFile::EChaperoneConfigFile_Live);
     }
+
+    pub fn playspace_changed(
+        &mut self,
+        compositor_mgr: &mut CompositorManager,
+        _chaperone_mgr: &mut ChaperoneSetupManager,
+    ) {
+        let new_universe = compositor_mgr.get_tracking_space();
+        if new_universe != self.universe {
+            log::info!(
+                "Playspace changed: {} -> {}",
+                universe_str(&self.universe),
+                universe_str(&new_universe)
+            );
+            self.universe = new_universe;
+        }
+
+        if self.last.is_some() {
+            log::info!("Space drag interrupted by external change");
+            self.last = None;
+        }
+    }
+}
+
+fn universe_str(universe: &ETrackingUniverseOrigin) -> &'static str {
+    match universe {
+        ETrackingUniverseOrigin::TrackingUniverseSeated => "Seated",
+        ETrackingUniverseOrigin::TrackingUniverseStanding => "Standing",
+        ETrackingUniverseOrigin::TrackingUniverseRawAndUncalibrated => "Raw",
+    }
+}
+
+fn get_working_copy(
+    universe: &ETrackingUniverseOrigin,
+    chaperone_mgr: &mut ChaperoneSetupManager,
+) -> Option<Affine3A> {
+    chaperone_mgr.revert_working_copy();
+    let mat = match universe {
+        ETrackingUniverseOrigin::TrackingUniverseStanding => {
+            chaperone_mgr.get_working_standing_zero_pose_to_raw_tracking_pose()
+        }
+        _ => chaperone_mgr.get_working_seated_zero_pose_to_raw_tracking_pose(),
+    };
+    mat.map(|m| m.to_affine())
+}
+
+fn set_working_copy(
+    universe: &ETrackingUniverseOrigin,
+    chaperone_mgr: &mut ChaperoneSetupManager,
+    mat: &Affine3A,
+) {
+    let mat = HmdMatrix34_t::from_affine(mat);
+    match universe {
+        ETrackingUniverseOrigin::TrackingUniverseStanding => {
+            chaperone_mgr.set_working_standing_zero_pose_to_raw_tracking_pose(&mat)
+        }
+        _ => chaperone_mgr.set_working_seated_zero_pose_to_raw_tracking_pose(&mat),
+    };
 }

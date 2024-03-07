@@ -101,6 +101,8 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     notifications.run_udp();
 
     let mut space_mover = playspace::PlayspaceMover::new();
+    space_mover.playspace_changed(&mut compositor_mgr, &mut chaperone_mgr);
+
     #[cfg(feature = "osc")]
     let mut osc_sender =
         crate::backend::osc::OscSender::new(state.session.config.osc_out_port).ok();
@@ -149,6 +151,11 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 | EVREventType::VREvent_TrackedDeviceDeactivated
                 | EVREventType::VREvent_TrackedDeviceUpdated => {
                     next_device_update = Instant::now();
+                }
+                EVREventType::VREvent_SeatedZeroPoseReset
+                | EVREventType::VREvent_StandingZeroPoseReset
+                | EVREventType::VREvent_ChaperoneUniverseHasChanged => {
+                    space_mover.playspace_changed(&mut compositor_mgr, &mut chaperone_mgr);
                 }
                 _ => {}
             }

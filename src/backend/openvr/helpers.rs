@@ -7,12 +7,12 @@ use thiserror::Error;
 use crate::backend::common::{BackendError, ColorChannel};
 
 pub trait Affine3AConvert {
-    fn from_affine(affine: Affine3A) -> Self;
+    fn from_affine(affine: &Affine3A) -> Self;
     fn to_affine(&self) -> Affine3A;
 }
 
 impl Affine3AConvert for Matrix3x4 {
-    fn from_affine(affine: Affine3A) -> Self {
+    fn from_affine(affine: &Affine3A) -> Self {
         Matrix3x4([
             [
                 affine.matrix3.x_axis.x,
@@ -46,7 +46,7 @@ impl Affine3AConvert for Matrix3x4 {
 }
 
 impl Affine3AConvert for HmdMatrix34_t {
-    fn from_affine(affine: Affine3A) -> Self {
+    fn from_affine(affine: &Affine3A) -> Self {
         HmdMatrix34_t {
             m: [
                 [
