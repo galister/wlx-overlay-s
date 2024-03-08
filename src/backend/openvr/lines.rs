@@ -5,6 +5,7 @@ use std::sync::Arc;
 use glam::{Affine3A, Vec3, Vec3A, Vec4};
 use idmap::IdMap;
 use ovr_overlay::overlay::OverlayManager;
+use ovr_overlay::sys::ETrackingUniverseOrigin;
 use vulkano::command_buffer::CommandBufferUsage;
 use vulkano::format::Format;
 use vulkano::image::view::ImageView;
@@ -141,6 +142,7 @@ impl LinePool {
 
     pub fn update(
         &mut self,
+        universe: ETrackingUniverseOrigin,
         overlay: &mut OverlayManager,
         app: &mut AppState,
     ) -> anyhow::Result<()> {
@@ -152,7 +154,7 @@ impl LinePool {
                     data.state.dirty = false;
                 }
 
-                data.upload_transform(overlay);
+                data.upload_transform(universe.clone(), overlay);
                 data.upload_color(overlay);
             }
         }

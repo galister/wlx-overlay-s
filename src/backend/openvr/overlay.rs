@@ -79,10 +79,15 @@ impl OverlayData<OpenVrOverlayData> {
         Ok(())
     }
 
-    pub(super) fn after_render(&mut self, overlay: &mut OverlayManager, graphics: &WlxGraphics) {
+    pub(super) fn after_render(
+        &mut self,
+        universe: ETrackingUniverseOrigin,
+        overlay: &mut OverlayManager,
+        graphics: &WlxGraphics,
+    ) {
         if self.data.visible {
             if self.state.dirty {
-                self.upload_transform(overlay);
+                self.upload_transform(universe, overlay);
                 self.upload_alpha(overlay);
                 self.state.dirty = false;
             }
@@ -185,7 +190,11 @@ impl OverlayData<OpenVrOverlayData> {
         }
     }
 
-    pub(super) fn upload_transform(&self, overlay: &mut OverlayManager) {
+    pub(super) fn upload_transform(
+        &self,
+        universe: ETrackingUniverseOrigin,
+        overlay: &mut OverlayManager,
+    ) {
         let Some(handle) = self.data.handle else {
             log::debug!("{}: No overlay handle", self.state.name);
             return;
@@ -193,11 +202,7 @@ impl OverlayData<OpenVrOverlayData> {
 
         let transform = Matrix3x4::from_affine(&self.state.transform);
 
-        if let Err(e) = overlay.set_transform_absolute(
-            handle,
-            ETrackingUniverseOrigin::TrackingUniverseStanding,
-            &transform,
-        ) {
+        if let Err(e) = overlay.set_transform_absolute(handle, universe, &transform) {
             log::error!(
                 "{}: Failed to set overlay transform: {}",
                 self.state.name,

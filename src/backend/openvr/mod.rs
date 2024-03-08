@@ -219,9 +219,11 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             }
         }
 
+        let universe = playspace.get_universe();
+
         state.input_state.pre_update();
         input_source.update(
-            playspace.get_universe(),
+            universe.clone(),
             &mut input_mgr,
             &mut system_mgr,
             &mut state,
@@ -258,7 +260,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             }
         }
 
-        lines.update(&mut overlay_mgr, &mut state)?;
+        lines.update(universe.clone(), &mut overlay_mgr, &mut state)?;
 
         for o in overlays.iter_mut() {
             o.after_input(&mut overlay_mgr, &mut state)?;
@@ -281,7 +283,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
         overlays
             .iter_mut()
-            .for_each(|o| o.after_render(&mut overlay_mgr, &state.graphics));
+            .for_each(|o| o.after_render(universe.clone(), &mut overlay_mgr, &state.graphics));
 
         // chaperone
 
