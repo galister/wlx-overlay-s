@@ -46,9 +46,10 @@ impl PlayspaceMover {
                 return;
             }
 
-            let new_hand =
-                state.input_state.pointers[data.hand].raw_pose.translation + data.pose.translation;
-            let relative_pos = data.pose.transform_vector3a(new_hand - data.hand_pos);
+            let new_hand = data
+                .pose
+                .transform_point3a(state.input_state.pointers[data.hand].raw_pose.translation);
+            let relative_pos = new_hand - data.hand_pos;
 
             if relative_pos.length_squared() > 1000.0 {
                 log::warn!("Space drag too fast, ignoring");
@@ -74,7 +75,7 @@ impl PlayspaceMover {
                         log::warn!("Can't space drag - failed to get zero pose");
                         return;
                     };
-                    let hand_pos = pointer.raw_pose.translation + mat.translation;
+                    let hand_pos = mat.transform_point3a(pointer.raw_pose.translation);
                     self.last = Some(DragData {
                         pose: mat,
                         hand: i,
