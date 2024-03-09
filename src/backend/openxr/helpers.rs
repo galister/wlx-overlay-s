@@ -4,9 +4,7 @@ use openxr as xr;
 use xr::OverlaySessionCreateFlagsEXTX;
 
 pub(super) fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
-    let Ok(entry) = (unsafe { xr::Entry::load() }) else {
-        bail!("OpenXR Loader not found.");
-    };
+    let entry = xr::Entry::linked();
 
     let Ok(available_extensions) = entry.enumerate_extensions() else {
         bail!("Failed to enumerate OpenXR extensions.");
