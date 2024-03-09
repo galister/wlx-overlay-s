@@ -2,7 +2,7 @@ use glam::{Affine3A, Vec3A};
 use ovr_overlay::{
     chaperone_setup::ChaperoneSetupManager,
     compositor::CompositorManager,
-    sys::{EChaperoneConfigFile, ETrackingUniverseOrigin, HmdMatrix34_t, HmdVector3_t},
+    sys::{EChaperoneConfigFile, ETrackingUniverseOrigin, HmdMatrix34_t},
 };
 
 use crate::{
