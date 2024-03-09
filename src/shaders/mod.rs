@@ -94,6 +94,12 @@ pub mod frag_screen {
             void main()
             {
                 out_color = texture(in_texture, in_uv);
+
+                // linear to srgb
+                bvec4 cutoff = lessThan(out_color, vec4(0.0031308));
+                vec4 higher = (pow(out_color, vec4(0.41666)) * vec4(1.055)) - vec4(0.055);
+                vec4 lower = out_color*vec4(12.92);
+                out_color = mix(higher, lower, cutoff);
                 out_color.a = 1.0;
             }
         ",
