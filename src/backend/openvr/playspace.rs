@@ -2,7 +2,7 @@ use glam::{Affine3A, Vec3A};
 use ovr_overlay::{
     chaperone_setup::ChaperoneSetupManager,
     compositor::CompositorManager,
-    sys::{EChaperoneConfigFile, ETrackingUniverseOrigin, HmdMatrix34_t},
+    sys::{EChaperoneConfigFile, ETrackingUniverseOrigin, HmdMatrix34_t, HmdVector3_t},
 };
 
 use crate::{
@@ -56,12 +56,16 @@ impl PlayspaceMover {
                 return;
             }
 
+            let overlay_offset = data.pose.inverse().transform_vector3a(relative_pos);
+
             overlays.iter_mut().for_each(|overlay| {
                 if overlay.state.grabbable {
                     overlay.state.dirty = true;
-                    overlay.state.transform.translation -= relative_pos;
+                    overlay.state.transform.translation -= overlay_offset;
                 }
             });
+            chaperone_mgr.revert_working_copy();
+            apply_chaperone_offset(overlay_offset, chaperone_mgr);
 
             data.pose.translation += relative_pos;
             data.hand_pos = new_hand;
@@ -170,4 +174,18 @@ fn set_working_copy(
         }
         _ => chaperone_mgr.set_working_seated_zero_pose_to_raw_tracking_pose(&mat),
     };
+}
+
+fn apply_chaperone_offset(offset: Vec3A, chaperone_mgr: &mut ChaperoneSetupManager) {
+    let mut quads = chaperone_mgr.get_working_collision_bounds_info();
+    quads.iter_mut().for_each(|quad| {
+        quad.vCorners.iter_mut().for_each(|corner| {
+            corner.v[0] += offset.x;
+            if corner.v[1] != 0.0 {
+                corner.v[1] += offset.y;
+            }
+            corner.v[2] += offset.z;
+        });
+    });
+    chaperone_mgr.set_working_collision_bounds_info(&mut quads);
 }

@@ -2198,7 +2198,7 @@ dependencies = [
 [[package]]
 name = "ovr_overlay"
 version = "0.0.0"
-source = "git+https://github.com/galister/ovr_overlay_oyasumi#7e1c8c545dd4d7c87d0a64cc441cba498082d810"
+source = "git+https://github.com/galister/ovr_overlay_oyasumi#9d8a3f4017024e79b6ec7fa518b97df401bf259c"
 dependencies = [
  "byteorder",
  "derive_more",
@@ -2213,7 +2213,7 @@ dependencies = [
 [[package]]
 name = "ovr_overlay_sys"
 version = "0.0.0"
-source = "git+https://github.com/galister/ovr_overlay_oyasumi#7e1c8c545dd4d7c87d0a64cc441cba498082d810"
+source = "git+https://github.com/galister/ovr_overlay_oyasumi#9d8a3f4017024e79b6ec7fa518b97df401bf259c"
 dependencies = [
  "autocxx",
  "autocxx-build",
@@ -3722,7 +3722,7 @@ dependencies = [
 
 [[package]]
 name = "wlx-overlay-s"
-version = "0.2.5"
+version = "0.2.6"
 dependencies = [
  "anyhow",
  "ash",
