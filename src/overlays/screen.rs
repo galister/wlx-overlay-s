@@ -48,6 +48,8 @@ use crate::{
     state::{AppSession, AppState},
 };
 
+const CURSOR_SIZE: f32 = 16. / 1440.;
+
 static DRM_FORMATS: once_cell::sync::OnceCell<Vec<DrmFormat>> = once_cell::sync::OnceCell::new();
 
 pub struct ScreenInteractionHandler {
@@ -207,18 +209,21 @@ impl ScreenPipeline {
         cmd.run_ref(&pass)?;
 
         if let (Some(mouse), Some(mouse_view)) = (mouse, self.mouse.clone()) {
+            let size = CURSOR_SIZE * self.extentf[1];
+            let half_size = size * 0.5;
+
             let vertex_buffer = app.graphics.upload_verts(
                 self.extentf[0],
                 self.extentf[1],
-                mouse.x * self.extentf[0] - 2.,
-                mouse.y * self.extentf[1] - 2.,
-                4.0,
-                4.0,
+                mouse.x * self.extentf[0] - half_size,
+                mouse.y * self.extentf[1] - half_size,
+                size,
+                size,
             )?;
 
             let set0 = self
                 .pipeline
-                .uniform_sampler(0, mouse_view.clone(), Filter::Linear)?;
+                .uniform_sampler(0, mouse_view.clone(), Filter::Nearest)?;
 
             let pass = self.pipeline.create_pass(
                 self.extentf,
