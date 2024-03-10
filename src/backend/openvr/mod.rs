@@ -214,7 +214,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                         playspace.fix_floor(&mut chaperone_mgr, &state.input_state);
                     }
                     SystemTask::ResetPlayspace => {
-                        playspace.reset_offset(&mut chaperone_mgr);
+                        playspace.reset_offset(&mut chaperone_mgr, &state.input_state);
                     }
                 },
             }
