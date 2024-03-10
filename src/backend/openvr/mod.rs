@@ -158,7 +158,8 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 }
                 EVREventType::VREvent_SeatedZeroPoseReset
                 | EVREventType::VREvent_StandingZeroPoseReset
-                | EVREventType::VREvent_ChaperoneUniverseHasChanged => {
+                | EVREventType::VREvent_ChaperoneUniverseHasChanged
+                | EVREventType::VREvent_SceneApplicationChanged => {
                     playspace.playspace_changed(&mut compositor_mgr, &mut chaperone_mgr);
                 }
                 _ => {}
