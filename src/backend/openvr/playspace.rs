@@ -49,7 +49,8 @@ impl PlayspaceMover {
                 return;
             }
 
-            let new_hand = Quat::from_affine3(&state.input_state.pointers[data.hand].raw_pose);
+            let new_hand =
+                Quat::from_affine3(&(data.pose * state.input_state.pointers[data.hand].raw_pose));
 
             let dq = new_hand * data.hand_pose.conjugate();
             let rel_y = f32::atan2(
@@ -89,7 +90,7 @@ impl PlayspaceMover {
                         log::warn!("Can't space rotate - failed to get zero pose");
                         return;
                     };
-                    let hand_pose = Quat::from_affine3(&pointer.raw_pose);
+                    let hand_pose = Quat::from_affine3(&(mat * pointer.raw_pose));
                     self.rotate = Some(MoverData {
                         pose: mat,
                         hand: i,
