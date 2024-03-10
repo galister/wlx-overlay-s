@@ -314,16 +314,22 @@ pub fn set_action_manifest(input: &mut InputManager) -> anyhow::Result<()> {
     File::create(&action_path)?.write_all(include_bytes!("../../res/actions.json"))?;
 
     let binding_path = CONFIG_ROOT_PATH.join("actions_binding_knuckles.json");
-    File::create(&binding_path)?
-        .write_all(include_bytes!("../../res/actions_binding_knuckles.json"))?;
+    if !binding_path.is_file() {
+        File::create(&binding_path)?
+            .write_all(include_bytes!("../../res/actions_binding_knuckles.json"))?;
+    }
 
     let binding_path = CONFIG_ROOT_PATH.join("actions_binding_vive.json");
-    File::create(&binding_path)?
-        .write_all(include_bytes!("../../res/actions_binding_vive.json"))?;
+    if !binding_path.is_file() {
+        File::create(&binding_path)?
+            .write_all(include_bytes!("../../res/actions_binding_vive.json"))?;
+    }
 
     let binding_path = CONFIG_ROOT_PATH.join("actions_binding_oculus.json");
-    File::create(&binding_path)?
-        .write_all(include_bytes!("../../res/actions_binding_oculus.json"))?;
+    if !binding_path.is_file() {
+        File::create(&binding_path)?
+            .write_all(include_bytes!("../../res/actions_binding_oculus.json"))?;
+    }
 
     if let Err(e) = input.set_action_manifest(action_path.as_path()) {
         bail!("Failed to set action manifest: {}", e);
