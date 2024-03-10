@@ -94,19 +94,16 @@ impl PlayspaceMover {
     }
 
     pub fn reset_offset(&mut self, chaperone_mgr: &mut ChaperoneSetupManager, input: &InputState) {
+        let mut height = 1.7;
+        if let Some(mat) = get_working_copy(&self.universe, chaperone_mgr) {
+            height = input.hmd.translation.y - mat.translation.y;
+        }
+        let xform = Affine3A::from_translation(Vec3::Y * height);
         if self.universe == ETrackingUniverseOrigin::TrackingUniverseStanding {
             chaperone_mgr.reload_from_disk(EChaperoneConfigFile::EChaperoneConfigFile_Live);
-            chaperone_mgr.commit_working_copy(EChaperoneConfigFile::EChaperoneConfigFile_Live);
-        } else {
-            let mut height = 1.7;
-            if let Some(mat) = get_working_copy(&self.universe, chaperone_mgr) {
-                height = input.hmd.translation.y - mat.translation.y;
-            }
-
-            let xform = Affine3A::from_translation(Vec3::Y * height);
-            set_working_copy(&self.universe, chaperone_mgr, &xform);
-            chaperone_mgr.commit_working_copy(EChaperoneConfigFile::EChaperoneConfigFile_Live);
         }
+        set_working_copy(&self.universe, chaperone_mgr, &xform);
+        chaperone_mgr.commit_working_copy(EChaperoneConfigFile::EChaperoneConfigFile_Live);
 
         if self.last.is_some() {
             log::info!("Space drag interrupted by manual reset");
