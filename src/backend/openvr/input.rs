@@ -36,6 +36,7 @@ const PATH_SCROLL: &str = "/actions/default/in/Scroll";
 const PATH_ALT_CLICK: &str = "/actions/default/in/AltClick";
 const PATH_SHOW_HIDE: &str = "/actions/default/in/ShowHide";
 const PATH_SPACE_DRAG: &str = "/actions/default/in/SpaceDrag";
+const PATH_SPACE_ROTATE: &str = "/actions/default/in/SpaceRotate";
 const PATH_CLICK_MODIFIER_RIGHT: &str = "/actions/default/in/ClickModifierRight";
 const PATH_CLICK_MODIFIER_MIDDLE: &str = "/actions/default/in/ClickModifierMiddle";
 
@@ -50,6 +51,7 @@ pub(super) struct OpenVrInputSource {
     alt_click_hnd: ActionHandle,
     show_hide_hnd: ActionHandle,
     space_drag_hnd: ActionHandle,
+    space_rotate_hnd: ActionHandle,
     click_modifier_right_hnd: ActionHandle,
     click_modifier_middle_hnd: ActionHandle,
 }
@@ -72,6 +74,7 @@ impl OpenVrInputSource {
         let alt_click_hnd = input.get_action_handle(PATH_ALT_CLICK)?;
         let show_hide_hnd = input.get_action_handle(PATH_SHOW_HIDE)?;
         let space_drag_hnd = input.get_action_handle(PATH_SPACE_DRAG)?;
+        let space_rotate_hnd = input.get_action_handle(PATH_SPACE_ROTATE)?;
         let click_modifier_right_hnd = input.get_action_handle(PATH_CLICK_MODIFIER_RIGHT)?;
         let click_modifier_middle_hnd = input.get_action_handle(PATH_CLICK_MODIFIER_MIDDLE)?;
 
@@ -106,6 +109,7 @@ impl OpenVrInputSource {
             alt_click_hnd,
             show_hide_hnd,
             space_drag_hnd,
+            space_rotate_hnd,
             click_modifier_right_hnd,
             click_modifier_middle_hnd,
             hands,
@@ -190,6 +194,11 @@ impl OpenVrInputSource {
 
             app_hand.now.space_drag = input
                 .get_digital_action_data(self.space_drag_hnd, hand.input_hnd)
+                .map(|x| x.0.bState)
+                .unwrap_or(false);
+
+            app_hand.now.space_rotate = input
+                .get_digital_action_data(self.space_rotate_hnd, hand.input_hnd)
                 .map(|x| x.0.bState)
                 .unwrap_or(false);
 
@@ -302,27 +311,19 @@ fn get_tracked_device(
 pub fn set_action_manifest(input: &mut InputManager) -> anyhow::Result<()> {
     let action_path = CONFIG_ROOT_PATH.join("actions.json");
 
-    if !action_path.is_file() {
-        File::create(&action_path)?.write_all(include_bytes!("../../res/actions.json"))?;
-    }
+    File::create(&action_path)?.write_all(include_bytes!("../../res/actions.json"))?;
 
     let binding_path = CONFIG_ROOT_PATH.join("actions_binding_knuckles.json");
-    if !binding_path.is_file() {
-        File::create(&binding_path)?
-            .write_all(include_bytes!("../../res/actions_binding_knuckles.json"))?;
-    }
+    File::create(&binding_path)?
+        .write_all(include_bytes!("../../res/actions_binding_knuckles.json"))?;
 
     let binding_path = CONFIG_ROOT_PATH.join("actions_binding_vive.json");
-    if !binding_path.is_file() {
-        File::create(&binding_path)?
-            .write_all(include_bytes!("../../res/actions_binding_vive.json"))?;
-    }
+    File::create(&binding_path)?
+        .write_all(include_bytes!("../../res/actions_binding_vive.json"))?;
 
     let binding_path = CONFIG_ROOT_PATH.join("actions_binding_oculus.json");
-    if !binding_path.is_file() {
-        File::create(&binding_path)?
-            .write_all(include_bytes!("../../res/actions_binding_oculus.json"))?;
-    }
+    File::create(&binding_path)?
+        .write_all(include_bytes!("../../res/actions_binding_oculus.json"))?;
 
     if let Err(e) = input.set_action_manifest(action_path.as_path()) {
         bail!("Failed to set action manifest: {}", e);

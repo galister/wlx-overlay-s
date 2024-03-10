@@ -71,6 +71,9 @@ impl InputState {
                 if hand.now.space_drag != hand.before.space_drag {
                     log::debug!("Hand {}: space_drag {}", hand.idx, hand.now.space_drag);
                 }
+                if hand.now.space_rotate != hand.before.space_rotate {
+                    log::debug!("Hand {}: space_rotate {}", hand.idx, hand.now.space_rotate);
+                }
                 if hand.now.click_modifier_right != hand.before.click_modifier_right {
                     log::debug!(
                         "Hand {}: click_modifier_right {}",
@@ -189,6 +192,7 @@ pub struct PointerState {
     pub alt_click: bool,
     pub show_hide: bool,
     pub space_drag: bool,
+    pub space_rotate: bool,
     pub click_modifier_right: bool,
     pub click_modifier_middle: bool,
 }
