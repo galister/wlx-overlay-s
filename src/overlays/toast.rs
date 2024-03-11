@@ -136,7 +136,6 @@ fn new_toast(
     canvas.panel(0., 0., size.0, size.1);
 
     if toast.body.len() > 0 {
-        log::info!("{}: {}", title, toast.body);
         canvas.label(PADDING.0, 54., og_width, size.1 - 54., toast.body);
 
         canvas.fg_color = color_parse("#101010").unwrap(); // want panic
@@ -144,7 +143,6 @@ fn new_toast(
         canvas.panel(0., 0., size.0, 30.);
         canvas.label_centered(PADDING.0, 16., og_width, FONT_SIZE as f32 + 2., title);
     } else {
-        log::info!("Toast: {}", title);
         canvas.label_centered(PADDING.0, 0., og_width, size.1, title);
     }
 
