@@ -29,6 +29,9 @@ pub enum LabelContent {
         format: Arc<str>,
         timezone: Option<Arc<str>>,
     },
+    Timer {
+        format: Arc<str>,
+    },
     Battery {
         device: usize,
         low_threshold: f32,
@@ -48,6 +51,10 @@ pub enum LabelData {
     Clock {
         format: Arc<str>,
         timezone: Option<Tz>,
+    },
+    Timer {
+        format: Arc<str>,
+        start: Instant,
     },
     Exec {
         last_exec: Instant,
@@ -85,6 +92,10 @@ pub fn modular_label_init(label: &mut ModularControl, content: &LabelContent) {
                 timezone: tz,
             })
         }
+        LabelContent::Timer { format } => Some(LabelData::Timer {
+            format: format.clone(),
+            start: Instant::now(),
+        }),
         LabelContent::Exec { command, interval } => Some(LabelData::Exec {
             last_exec: Instant::now(),
             interval: *interval,
@@ -154,6 +165,14 @@ pub(super) fn label_update(control: &mut ModularControl, _: &mut (), app: &mut A
                 let date = Local::now();
                 control.set_text(&format!("{}", &date.format(&format)));
             }
+        }
+        LabelData::Timer { format, start } => {
+            let mut format = format.clone().to_lowercase();
+            let duration = start.elapsed().as_secs();
+            format = format.replace("%s", &format!("{:02}", (duration % 60)));
+            format = format.replace("%m", &format!("{:02}", ((duration / 60) % 60)));
+            format = format.replace("%h", &format!("{:02}", ((duration / 60) / 60)));
+            control.set_text(&format);
         }
         LabelData::Exec {
             last_exec,
