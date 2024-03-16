@@ -293,19 +293,18 @@ impl ScreenRenderer {
         output: &WlxOutput,
         token: Option<&str>,
         session: &AppSession,
-    ) -> Option<(
+    ) -> anyhow::Result<(
         ScreenRenderer,
         Option<String>, /* pipewire restore token */
     )> {
         let name = output.name.clone();
         let embed_mouse = !session.config.double_cursor_fix;
         let select_screen_result =
-            futures::executor::block_on(pipewire_select_screen(token, embed_mouse, true, true))
-                .ok()?;
+            futures::executor::block_on(pipewire_select_screen(token, embed_mouse, true, true))?;
 
         let capture = PipewireCapture::new(name, select_screen_result.node_id, 60);
 
-        Some((
+        Ok((
             ScreenRenderer {
                 name: output.name.clone(),
                 capture: Box::new(capture),
@@ -551,16 +550,25 @@ where
             );
         }
 
-        if let Some((renderer, restore_token)) = ScreenRenderer::new_pw(output, token, session) {
-            capture = Some(renderer);
+        match ScreenRenderer::new_pw(output, token, session) {
+            Ok((renderer, restore_token)) => {
+                capture = Some(renderer);
 
-            if let Some(token) = restore_token {
-                if pw_token_store
-                    .insert(String::from(display_name), token.clone())
-                    .is_none()
-                {
-                    log::info!("Adding Pipewire token {}", token);
+                if let Some(token) = restore_token {
+                    if pw_token_store
+                        .insert(String::from(display_name), token.clone())
+                        .is_none()
+                    {
+                        log::info!("Adding Pipewire token {}", token);
+                    }
                 }
+            }
+            Err(e) => {
+                log::warn!(
+                    "{}: Failed to create Pipewire capture: {:?}",
+                    &output.name,
+                    e
+                );
             }
         }
     }
