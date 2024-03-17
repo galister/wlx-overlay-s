@@ -115,7 +115,7 @@ impl FontCache {
 
         let pattern = pattern.font_match(&mut self.fc);
 
-        if let Some(path) = pattern.filename() {
+        for path in pattern.filename().iter() {
             log::debug!(
                 "Loading font: {} {}pt",
                 pattern.name().unwrap_or(path),
@@ -124,12 +124,20 @@ impl FontCache {
 
             let font_idx = pattern.face_index().unwrap_or(0);
 
-            let face = self
-                .ft
-                .new_face(path, font_idx as _)
-                .expect("Failed to load font face");
-            face.set_char_size(size << 6, size << 6, 96, 96)
-                .expect("Failed to set font size");
+            let face = match self.ft.new_face(path, font_idx as _) {
+                Ok(face) => face,
+                Err(e) => {
+                    log::warn!("Failed to load font at {}: {:?}", path, e);
+                    break;
+                }
+            };
+            match face.set_char_size(size << 6, size << 6, 96, 96) {
+                Ok(_) => {}
+                Err(e) => {
+                    log::warn!("Failed to set font size: {:?}", e);
+                    break;
+                }
+            };
 
             let idx = coll.fonts.len();
             for cp in 0..0xFFFF {
@@ -156,11 +164,10 @@ impl FontCache {
             let font = Font { face, glyphs };
             coll.fonts.push(font);
 
-            idx
-        } else {
-            coll.cp_map.insert(cp, 0);
-            0
+            return idx;
         }
+        coll.cp_map.insert(cp, 0);
+        0
     }
 
     fn get_glyph_for_cp(
