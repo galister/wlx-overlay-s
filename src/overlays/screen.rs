@@ -702,7 +702,7 @@ where
     O: Default,
 {
     let mut overlays = vec![];
-    let wl = WlxClient::new().ok_or_else(|| anyhow::anyhow!("Failed to connect to Wayland"))?;
+    let mut wl = WlxClient::new().ok_or_else(|| anyhow::anyhow!("Failed to connect to Wayland"))?;
 
     // Load existing Pipewire tokens from file
     let mut pw_tokens: HashMap<String, String> = if let Ok(conf) = load_pw_token_config() {
@@ -712,6 +712,20 @@ where
     };
 
     let pw_tokens_copy = pw_tokens.clone();
+
+    let mut origin = (i32::MAX, i32::MAX);
+    for output in wl.outputs.values() {
+        origin.0 = origin.0.min(output.logical_pos.0);
+        origin.1 = origin.1.min(output.logical_pos.1);
+    }
+
+    log::info!("Desktop origin: {:?}", origin);
+
+    // adjust all outputs so that the top-left corner is at (0, 0)
+    for output in wl.outputs.values_mut() {
+        output.logical_pos.0 -= origin.0;
+        output.logical_pos.1 -= origin.1;
+    }
 
     for id in wl.outputs.keys() {
         if let Some(overlay) = try_create_screen(&wl, *id, &mut pw_tokens, session) {
