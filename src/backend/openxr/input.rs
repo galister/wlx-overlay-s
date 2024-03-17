@@ -5,7 +5,7 @@ use openxr as xr;
 
 use crate::{
     backend::input::{Haptics, Pointer},
-    state::AppState,
+    state::{AppSession, AppState},
 };
 
 use super::XrState;
@@ -98,12 +98,7 @@ impl OpenXrInputSource {
         xr.session.sync_actions(&[(&self.action_set).into()])?;
 
         for i in 0..2 {
-            self.hands[i].update(
-                &mut state.input_state.pointers[i],
-                &xr.stage,
-                &xr.session,
-                xr.predicted_display_time,
-            )?;
+            self.hands[i].update(&mut state.input_state.pointers[i], xr, &state.session)?;
         }
         Ok(())
     }
@@ -123,11 +118,10 @@ impl OpenXrHand {
     pub(super) fn update(
         &self,
         pointer: &mut Pointer,
-        stage: &xr::Space,
-        session: &XrSession,
-        time: xr::Time,
+        xr: &XrState,
+        session: &AppSession,
     ) -> Result<(), xr::sys::Result> {
-        let location = self.space.locate(stage, time)?;
+        let location = self.space.locate(&xr.stage, xr.predicted_display_time)?;
         if location
             .location_flags
             .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
@@ -140,46 +134,46 @@ impl OpenXrHand {
         pointer.now.click = self
             .source
             .action_click
-            .state(session, xr::Path::NULL)?
+            .state(&xr.session, xr::Path::NULL)?
             .current_state
-            > 0.7;
+            > session.config.xr_click_sensitivity;
 
         pointer.now.grab = self
             .source
             .action_grab
-            .state(session, xr::Path::NULL)?
+            .state(&xr.session, xr::Path::NULL)?
             .current_state
-            > 0.7;
+            > session.config.xr_grab_sensitivity;
 
         pointer.now.scroll = self
             .source
             .action_scroll
-            .state(session, xr::Path::NULL)?
+            .state(&xr.session, xr::Path::NULL)?
             .current_state;
 
         pointer.now.alt_click = self
             .source
             .action_alt_click
-            .state(session, xr::Path::NULL)?
+            .state(&xr.session, xr::Path::NULL)?
             .current_state
-            > 0.7;
+            > session.config.xr_alt_click_sensitivity;
 
         pointer.now.show_hide = self
             .source
             .action_show_hide
-            .state(session, xr::Path::NULL)?
+            .state(&xr.session, xr::Path::NULL)?
             .current_state;
 
         pointer.now.click_modifier_right = self
             .source
             .action_click_modifier_right
-            .state(session, xr::Path::NULL)?
+            .state(&xr.session, xr::Path::NULL)?
             .current_state;
 
         pointer.now.click_modifier_middle = self
             .source
             .action_click_modifier_middle
-            .state(session, xr::Path::NULL)?
+            .state(&xr.session, xr::Path::NULL)?
             .current_state;
 
         Ok(())

@@ -117,6 +117,15 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_auto")]
     pub capture_method: Arc<str>,
+
+    #[serde(default = "def_point7")]
+    pub xr_grab_sensitivity: f32,
+
+    #[serde(default = "def_point7")]
+    pub xr_click_sensitivity: f32,
+
+    #[serde(default = "def_point7")]
+    pub xr_alt_click_sensitivity: f32,
 }
 
 impl GeneralConfig {
