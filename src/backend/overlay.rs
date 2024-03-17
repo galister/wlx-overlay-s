@@ -161,6 +161,7 @@ impl OverlayState {
         }
 
         let scale = self.transform.x_axis.length();
+        self.saved_scale = Some(scale);
 
         let col_z = (self.transform.translation - hmd.translation).normalize();
         let col_y = up_dir;
