@@ -136,8 +136,8 @@ impl GeneralConfig {
     }
 
     fn post_load(&self) {
-        GeneralConfig::sanitize_range("keyboard_scale", self.keyboard_scale, 0.0, 5.0);
-        GeneralConfig::sanitize_range("desktop_view_scale", self.desktop_view_scale, 0.0, 5.0);
+        GeneralConfig::sanitize_range("keyboard_scale", self.keyboard_scale, 0.05, 5.0);
+        GeneralConfig::sanitize_range("desktop_view_scale", self.desktop_view_scale, 0.05, 5.0);
     }
 }
 
@@ -192,12 +192,31 @@ pub fn load_general() -> GeneralConfig {
     // Add files from conf.d directory
     let path_conf_d = get_conf_d_path();
     if let Ok(paths_unsorted) = std::fs::read_dir(path_conf_d) {
+        let mut paths: Vec<_> = paths_unsorted
+            .filter_map(|r| match r {
+                Ok(entry) => Some(entry),
+                Err(e) => {
+                    error!("Failed to read conf.d directory: {}", e);
+                    None
+                }
+            })
+            .collect();
         // Sort paths alphabetically
-        let mut paths: Vec<_> = paths_unsorted.map(|r| r.unwrap()).collect(); // TODO safe unwrap?
         paths.sort_by_key(|dir| dir.path());
         for path in paths {
-            if !path.file_type().unwrap().is_file() {
-                // TODO safe unwrap?
+            let file_type = match path.file_type() {
+                Ok(file_type) => file_type,
+                Err(e) => {
+                    error!(
+                        "Failed to get file type of {}: {}",
+                        path.path().to_string_lossy(),
+                        e
+                    );
+                    continue;
+                }
+            };
+
+            if !file_type.is_file() {
                 continue;
             }
 

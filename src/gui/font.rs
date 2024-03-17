@@ -106,9 +106,7 @@ impl FontCache {
         }
 
         let pattern_str = format!("{PRIMARY_FONT}-{size}:style=bold:charset={cp:04x}");
-
-        let mut pattern =
-            OwnedPattern::from_str(&pattern_str).expect("Failed to create fontconfig pattern");
+        let mut pattern = OwnedPattern::from_str(&pattern_str).unwrap(); // safe because PRIMARY_FONT is const
         self.fc
             .substitute(&mut pattern, fontconfig::MatchKind::Pattern);
         pattern.default_substitute();

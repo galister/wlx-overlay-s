@@ -1,6 +1,5 @@
 use std::{
     f32::consts::PI,
-    io::Cursor,
     ops::Add,
     process::{self, Child},
     sync::Arc,
@@ -8,7 +7,6 @@ use std::{
 };
 
 use glam::{Quat, Vec3A};
-use rodio::{Decoder, Source};
 use serde::Deserialize;
 
 use crate::{
@@ -613,11 +611,8 @@ fn run_window(window: &Arc<str>, action: &WindowAction, app: &mut AppState) {
     }
 }
 
+const THUMP_AUDIO_WAV: &'static [u8] = include_bytes!("../../res/380885.wav");
+
 fn audio_thump(app: &mut AppState) {
-    if let Some(handle) = app.audio.get_handle() {
-        let wav = include_bytes!("../../res/380885.wav");
-        let cursor = Cursor::new(wav);
-        let source = Decoder::new_wav(cursor).unwrap();
-        let _ = handle.play_raw(source.convert_samples());
-    }
+    app.audio.play(THUMP_AUDIO_WAV);
 }

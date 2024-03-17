@@ -1,11 +1,8 @@
 use std::{
-    io::Cursor,
     ops::Add,
     sync::{atomic::AtomicUsize, Arc},
     time::Instant,
 };
-
-use rodio::{Decoder, Source};
 
 use glam::vec3a;
 
@@ -21,6 +18,7 @@ use crate::{
 const FONT_SIZE: isize = 16;
 const PADDING: (f32, f32) = (25., 7.);
 const PIXELS_TO_METERS: f32 = 1. / 2000.;
+const TOAST_AUDIO_WAV: &'static [u8] = include_bytes!("../res/557297.wav");
 
 static AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(0);
 
@@ -79,12 +77,7 @@ impl Toast {
             .enqueue_at(TaskType::DropOverlay(selector), destroy_at);
 
         if has_sound {
-            if let Some(handle) = app.audio.get_handle() {
-                let wav = include_bytes!("../res/557297.wav");
-                let cursor = Cursor::new(wav);
-                let source = Decoder::new_wav(cursor).unwrap();
-                let _ = handle.play_raw(source.convert_samples());
-            }
+            app.audio.play(TOAST_AUDIO_WAV);
         }
     }
 }

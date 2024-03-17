@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    io::Cursor,
     process::{Child, Command},
     str::FromStr,
 };
@@ -18,7 +17,6 @@ use crate::{
 use glam::{vec2, vec3a, Affine2, Vec4};
 use once_cell::sync::Lazy;
 use regex::Regex;
-use rodio::{Decoder, Source};
 use serde::{Deserialize, Serialize};
 
 const PIXELS_PER_UNIT: f32 = 80.;
@@ -83,10 +81,14 @@ where
                         verbs: key_events_for_macro(macro_verbs),
                     });
                 } else if let Some(exec_args) = LAYOUT.exec_commands.get(key) {
+                    if exec_args.is_empty() {
+                        log::error!("Keyboard: EXEC args empty for {}", key);
+                        continue;
+                    }
                     maybe_state = Some(KeyButtonData::Exec {
                         program: exec_args
                             .first()
-                            .expect("Keyboard: Invalid EXEC args")
+                            .unwrap() // safe because we checked is_empty
                             .clone(),
                         args: exec_args.iter().skip(1).cloned().collect(),
                     });
@@ -227,18 +229,12 @@ struct KeyboardData {
     processes: Vec<Child>,
 }
 
+const KEY_AUDIO_WAV: &'static [u8] = include_bytes!("../res/421581.wav");
+
 impl KeyboardData {
     fn key_click(&mut self, app: &mut AppState) {
-        if !app.session.config.keyboard_sound_enabled {
-            return;
-        }
-
-        if let Some(handle) = app.audio.get_handle() {
-            // https://freesound.org/people/UberBosser/sounds/421581/
-            let wav = include_bytes!("../res/421581.wav");
-            let cursor = Cursor::new(wav);
-            let source = Decoder::new_wav(cursor).unwrap();
-            let _ = handle.play_raw(source.convert_samples());
+        if app.session.config.keyboard_sound_enabled {
+            app.audio.play(KEY_AUDIO_WAV);
         }
     }
 }
@@ -253,7 +249,7 @@ enum KeyButtonData {
 static LAYOUT: Lazy<Layout> = Lazy::new(Layout::load_from_disk);
 
 static MACRO_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^([A-Za-z0-1_-]+)(?: +(UP|DOWN))?$").unwrap());
+    Lazy::new(|| Regex::new(r"^([A-Za-z0-1_-]+)(?: +(UP|DOWN))?$").unwrap()); // want panic
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Layout {
@@ -314,11 +310,17 @@ impl Layout {
             key = &key[3..];
         }
         if key.contains('_') {
-            key = key.split('_').next().unwrap();
+            key = key.split('_').next().unwrap_or_else(|| {
+                log::error!(
+                    "keyboard.yaml: Key '{}' must not start or end with '_'!",
+                    key
+                );
+                "???"
+            });
         }
         vec![format!(
             "{}{}",
-            key.chars().next().unwrap().to_uppercase(),
+            key.chars().next().unwrap().to_uppercase(), // safe because we checked is_empty
             &key[1..].to_lowercase()
         )]
     }
