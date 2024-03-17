@@ -374,11 +374,11 @@ fn suggest_bindings(
             ),
             xr::Binding::new(
                 &hands[0].action_grab,
-                instance.string_to_path("/user/hand/left/input/squeeze/value")?,
+                instance.string_to_path("/user/hand/left/input/squeeze/force")?,
             ),
             xr::Binding::new(
                 &hands[1].action_grab,
-                instance.string_to_path("/user/hand/right/input/squeeze/value")?,
+                instance.string_to_path("/user/hand/right/input/squeeze/force")?,
             ),
             xr::Binding::new(
                 &hands[0].action_scroll,
