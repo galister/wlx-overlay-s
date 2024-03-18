@@ -288,10 +288,18 @@ impl InteractionHandler for SplitOverlayBackend {
 }
 
 pub fn ui_transform(extent: &[u32; 2]) -> Affine2 {
+    let aspect = extent[0] as f32 / extent[1] as f32;
+    let scale = if aspect < 1.0 {
+        Vec2 {
+            x: 1.0 / aspect,
+            y: -1.0,
+        }
+    } else {
+        Vec2 {
+            x: 1.0,
+            y: -1.0 * aspect,
+        }
+    };
     let center = Vec2 { x: 0.5, y: 0.5 };
-    Affine2::from_cols(
-        Vec2::X,
-        Vec2::NEG_Y * (extent[0] as f32 / extent[1] as f32),
-        center,
-    )
+    Affine2::from_scale_angle_translation(scale, 0.0, center)
 }
