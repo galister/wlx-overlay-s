@@ -160,6 +160,12 @@ impl LinePool {
         }
         Ok(())
     }
+
+    pub fn mark_dirty(&mut self) {
+        for data in self.lines.values_mut() {
+            data.state.dirty = true;
+        }
+    }
 }
 
 struct StaticRenderer {

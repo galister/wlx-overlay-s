@@ -237,6 +237,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             .iter()
             .any(|p| p.now.show_hide && !p.before.show_hide)
         {
+            lines.mark_dirty(); // workaround to prevent lines from not showing
             overlays.show_hide(&mut state);
         }
 
