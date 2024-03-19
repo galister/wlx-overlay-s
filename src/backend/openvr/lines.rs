@@ -75,6 +75,7 @@ impl LinePool {
             }),
             data: OpenVrOverlayData {
                 width: 0.002,
+                override_width: true,
                 ..Default::default()
             },
             ..Default::default()

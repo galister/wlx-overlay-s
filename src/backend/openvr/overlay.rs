@@ -24,6 +24,7 @@ pub(super) struct OpenVrOverlayData {
     pub(super) curvature: f32,
     pub(super) sort_order: u32,
     pub(crate) width: f32,
+    pub(super) override_width: bool,
     pub(super) relative_to: RelativeTo,
 }
 
@@ -233,6 +234,15 @@ impl OverlayData<OpenVrOverlayData> {
         }
 
         let dimensions = image.extent();
+        if !self.data.override_width {
+            let new_width = ((dimensions[0] as f32) / (dimensions[1] as f32)).min(1.0);
+            if (new_width - self.data.width).abs() > f32::EPSILON {
+                log::info!("{}: New width {}", self.state.name, new_width);
+                self.data.width = new_width;
+                self.upload_width(overlay);
+            }
+        }
+
         let format = image.format();
 
         let mut texture = VRVulkanTextureData_t {
