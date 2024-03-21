@@ -131,19 +131,31 @@ impl OpenXrHand {
             pointer.pose = Affine3A::from_rotation_translation(quat, pos);
         }
 
+        let click_sensitivity = if pointer.before.click {
+            session.config.xr_click_sensitivity_release
+        } else {
+            session.config.xr_click_sensitivity
+        };
+
         pointer.now.click = self
             .source
             .action_click
             .state(&xr.session, xr::Path::NULL)?
             .current_state
-            > session.config.xr_click_sensitivity;
+            > click_sensitivity;
+
+        let grab_sensitivity = if pointer.before.grab {
+            session.config.xr_grab_sensitivity_release
+        } else {
+            session.config.xr_grab_sensitivity
+        };
 
         pointer.now.grab = self
             .source
             .action_grab
             .state(&xr.session, xr::Path::NULL)?
             .current_state
-            > session.config.xr_grab_sensitivity;
+            > grab_sensitivity;
 
         pointer.now.scroll = self
             .source
@@ -151,12 +163,18 @@ impl OpenXrHand {
             .state(&xr.session, xr::Path::NULL)?
             .current_state;
 
+        let alt_click_sensitivity = if pointer.before.alt_click {
+            session.config.xr_alt_click_sensitivity_release
+        } else {
+            session.config.xr_alt_click_sensitivity
+        };
+
         pointer.now.alt_click = self
             .source
             .action_alt_click
             .state(&xr.session, xr::Path::NULL)?
             .current_state
-            > session.config.xr_alt_click_sensitivity;
+            > alt_click_sensitivity;
 
         pointer.now.show_hide = self
             .source

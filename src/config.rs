@@ -126,6 +126,15 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_point7")]
     pub xr_alt_click_sensitivity: f32,
+
+    #[serde(default = "def_half")]
+    pub xr_grab_sensitivity_release: f32,
+
+    #[serde(default = "def_half")]
+    pub xr_click_sensitivity_release: f32,
+
+    #[serde(default = "def_half")]
+    pub xr_alt_click_sensitivity_release: f32,
 }
 
 impl GeneralConfig {
