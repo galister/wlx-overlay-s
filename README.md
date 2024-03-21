@@ -22,7 +22,7 @@ Questions/issues specific to WlxOverlay-S will be handled in the `wlxoverlay` ch
 
 1. Grab the latest AppImage from [Releases](https://github.com/galister/wlx-overlay-s/releases).
 1. `chmod +x WlxOverlay-S-*.AppImage`
-1. Start Monado or SteamVR.
+1. Start Monado, WiVRn or SteamVR.
 1. Run the overlay
 
 AUR package is [wlx-overlay-s-git](https://aur.archlinux.org/packages/wlx-overlay-s-git).
@@ -92,17 +92,13 @@ We would like to work with you and include additional bindings.
 
 # Known Issues
 
-## SteamVR: laser pointers not visible
+## Modifiers get stuck in weird ways
 
-This seems to be a rare issue with SteamVR startup overlays. Restarting the overlay will fix the issue.
+This is a rare issue that can make your desktop not react to click or keys due to a modifier being stuck somewhere. Restarting the overlay fixes this.
 
 ## Scroll wheel doesn't work
 
 This seems to be an issue specific to Electron apps (Discord, Element, Slack, Spotify) on Wayland. Scrolling will work when using these in your web browser.
-
-## WiVRn support
-
-While WiVRn technically supports EXTX_overlay, I do not recommend using this software with WiVRn at this time, due to WiVRn not being optimized for overlay apps. You will likely get ghosting or stuttering while rotating your head.
 
 ## X11 limitations
 
