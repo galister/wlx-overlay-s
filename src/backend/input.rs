@@ -9,7 +9,7 @@ use smallvec::{smallvec, SmallVec};
 use crate::state::AppState;
 
 use super::{
-    common::{raycast, OverlayContainer},
+    common::{raycast_cylinder, raycast_plane, OverlayContainer},
     overlay::OverlayData,
 };
 
@@ -234,7 +234,8 @@ impl InteractionHandler for DummyInteractionHandler {
 #[derive(Debug, Clone, Copy, Default)]
 struct RayHit {
     overlay: usize,
-    hit_pos: Vec3A,
+    global_pos: Vec3A,
+    local_pos: Vec2,
     dist: f32,
 }
 
@@ -362,7 +363,28 @@ where
 
     if pointer.now.scroll.abs() > 0.1 {
         let scroll = pointer.now.scroll;
-        hovered.backend.on_scroll(app, &hit, scroll);
+        if app.input_state.pointers[1 - idx]
+            .interaction
+            .grabbed
+            .is_some_and(|x| x.grabbed_id == hit.overlay)
+        {
+            let is_portrait = hovered.view().is_some_and(|v| {
+                let extent = v.image().extent();
+                extent[0] >= extent[1]
+            });
+
+            if is_portrait {
+                let cur = hovered.state.curvature.unwrap_or(0.0);
+                let new = (cur - scroll * 0.01).min(0.35);
+                if new <= f32::EPSILON {
+                    hovered.state.curvature = None;
+                } else {
+                    hovered.state.curvature = Some(new);
+                }
+            }
+        } else {
+            hovered.backend.on_scroll(app, &hit, scroll);
+        }
         pointer = &mut app.input_state.pointers[idx];
     }
 
@@ -393,7 +415,11 @@ impl Pointer {
                 continue;
             }
 
-            if let Some(hit) = self.ray_test(overlay.state.id, &overlay.state.transform) {
+            if let Some(hit) = self.ray_test(
+                overlay.state.id,
+                &overlay.state.transform,
+                &overlay.state.curvature,
+            ) {
                 if hit.dist.is_infinite() || hit.dist.is_nan() {
                     continue;
                 }
@@ -408,12 +434,8 @@ impl Pointer {
 
             let uv = overlay
                 .state
-                .transform
-                .inverse()
-                .transform_point3a(hit.hit_pos)
-                .truncate();
-
-            let uv = overlay.state.interaction_transform.transform_point2(uv);
+                .interaction_transform
+                .transform_point2(hit.local_pos);
 
             if uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 {
                 continue;
@@ -489,14 +511,26 @@ impl Pointer {
         }
     }
 
-    fn ray_test(&self, overlay: usize, plane: &Affine3A) -> Option<RayHit> {
-        let Some((hit_pos, dist)) = raycast(&self.pose, Vec3A::NEG_Z, plane, Vec3A::NEG_Z) else {
+    fn ray_test(
+        &self,
+        overlay: usize,
+        transform: &Affine3A,
+        curvature: &Option<f32>,
+    ) -> Option<RayHit> {
+        let (dist, local_pos) = match curvature {
+            Some(curvature) => raycast_cylinder(&self.pose, Vec3A::NEG_Z, transform, *curvature),
+            _ => raycast_plane(&self.pose, Vec3A::NEG_Z, transform, Vec3A::NEG_Z),
+        }?;
+
+        if dist < 0.0 {
+            // hit is behind us
             return None;
-        };
+        }
 
         Some(RayHit {
             overlay,
-            hit_pos,
+            global_pos: self.pose.transform_point3a(Vec3A::NEG_Z * dist),
+            local_pos,
             dist,
         })
     }

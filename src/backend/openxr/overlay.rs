@@ -1,8 +1,9 @@
+use glam::Vec3A;
 use openxr as xr;
-use std::sync::Arc;
+use std::{f32::consts::PI, sync::Arc};
 use xr::{CompositionLayerFlags, EyeVisibility};
 
-use super::{helpers, swapchain::SwapchainRenderData, XrState};
+use super::{helpers, swapchain::SwapchainRenderData, CompositionLayer, XrState};
 use crate::{
     backend::{openxr::swapchain::create_swapchain_render_data, overlay::OverlayData},
     graphics::WlxCommandBuffer,
@@ -23,7 +24,7 @@ impl OverlayData<OpenXrOverlayData> {
         &'a mut self,
         xr: &'a XrState,
         command_buffer: &mut WlxCommandBuffer,
-    ) -> anyhow::Result<Option<xr::CompositionLayerQuad<xr::Vulkan>>> {
+    ) -> anyhow::Result<CompositionLayer> {
         if let Some(new_view) = self.view() {
             self.data.last_view = Some(new_view);
         }
@@ -32,7 +33,7 @@ impl OverlayData<OpenXrOverlayData> {
             view.clone()
         } else {
             log::warn!("{}: Will not show - image not ready", self.state.name);
-            return Ok(None);
+            return Ok(CompositionLayer::None);
         };
         let extent = my_view.image().extent();
 
@@ -55,10 +56,8 @@ impl OverlayData<OpenXrOverlayData> {
         };
 
         let sub_image = data.acquire_present_release(command_buffer, my_view, self.state.alpha)?;
-        let posef = helpers::transform_to_posef(&self.state.transform);
 
         let aspect_ratio = extent[1] as f32 / extent[0] as f32;
-
         let (scale_x, scale_y) = if aspect_ratio < 1.0 {
             let major = self.state.transform.matrix3.col(0).length();
             (major, major * aspect_ratio)
@@ -67,17 +66,38 @@ impl OverlayData<OpenXrOverlayData> {
             (major / aspect_ratio, major)
         };
 
-        let quad = xr::CompositionLayerQuad::new()
-            .pose(posef)
-            .sub_image(sub_image)
-            .eye_visibility(EyeVisibility::BOTH)
-            .layer_flags(CompositionLayerFlags::CORRECT_CHROMATIC_ABERRATION)
-            .space(&xr.stage)
-            .size(xr::Extent2Df {
-                width: scale_x,
-                height: scale_y,
-            });
-        Ok(Some(quad))
+        if let Some(curvature) = self.state.curvature {
+            let radius = scale_x / (2.0 * PI * curvature);
+            let quat = helpers::transform_to_norm_quat(&self.state.transform);
+            let center_point = self.state.transform.translation + quat.mul_vec3a(Vec3A::Z * radius);
+
+            let posef = helpers::translation_rotation_to_posef(center_point, quat);
+            let angle = 2.0 * (scale_x / (2.0 * radius));
+
+            let cylinder = xr::CompositionLayerCylinderKHR::new()
+                .pose(posef)
+                .sub_image(sub_image)
+                .eye_visibility(EyeVisibility::BOTH)
+                .layer_flags(CompositionLayerFlags::CORRECT_CHROMATIC_ABERRATION)
+                .space(&xr.stage)
+                .radius(radius)
+                .central_angle(angle)
+                .aspect_ratio(aspect_ratio);
+            Ok(CompositionLayer::Cylinder(cylinder))
+        } else {
+            let posef = helpers::transform_to_posef(&self.state.transform);
+            let quad = xr::CompositionLayerQuad::new()
+                .pose(posef)
+                .sub_image(sub_image)
+                .eye_visibility(EyeVisibility::BOTH)
+                .layer_flags(CompositionLayerFlags::CORRECT_CHROMATIC_ABERRATION)
+                .space(&xr.stage)
+                .size(xr::Extent2Df {
+                    width: scale_x,
+                    height: scale_y,
+                });
+            Ok(CompositionLayer::Quad(quad))
+        }
     }
 
     pub(super) fn after_input(&mut self, app: &mut AppState) -> anyhow::Result<()> {

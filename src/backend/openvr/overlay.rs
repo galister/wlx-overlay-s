@@ -1,3 +1,5 @@
+use core::f32;
+
 use glam::Vec4;
 use ovr_overlay::{
     overlay::{OverlayHandle, OverlayManager},
@@ -21,7 +23,6 @@ pub(super) struct OpenVrOverlayData {
     pub(super) last_image: Option<u64>,
     pub(super) visible: bool,
     pub(super) color: Vec4,
-    pub(super) curvature: f32,
     pub(super) sort_order: u32,
     pub(crate) width: f32,
     pub(super) override_width: bool,
@@ -88,6 +89,8 @@ impl OverlayData<OpenVrOverlayData> {
     ) {
         if self.data.visible {
             if self.state.dirty {
+                self.upload_curvature(overlay);
+
                 self.upload_transform(universe, overlay);
                 self.upload_alpha(overlay);
                 self.state.dirty = false;
@@ -172,7 +175,7 @@ impl OverlayData<OpenVrOverlayData> {
             log::debug!("{}: No overlay handle", self.state.name);
             return;
         };
-        if let Err(e) = overlay.set_curvature(handle, self.data.curvature) {
+        if let Err(e) = overlay.set_curvature(handle, self.state.curvature.unwrap_or(0.0)) {
             log::error!(
                 "{}: Failed to set overlay curvature: {}",
                 self.state.name,

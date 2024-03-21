@@ -275,13 +275,18 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 continue;
             }
 
-            if let Some(quad) = o.present_xr(&xr_state, &mut command_buffer)? {
-                layers.push((dist_sq, quad));
-            };
+            let maybe_layer = o.present_xr(&xr_state, &mut command_buffer)?;
+            if let CompositionLayer::None = maybe_layer {
+                continue;
+            }
+            layers.push((dist_sq, maybe_layer));
         }
 
-        for quad in lines.present_xr(&xr_state, &mut command_buffer)? {
-            layers.push((0.0, quad));
+        for maybe_layer in lines.present_xr(&xr_state, &mut command_buffer)? {
+            if let CompositionLayer::None = maybe_layer {
+                continue;
+            }
+            layers.push((0.0, maybe_layer));
         }
 
         command_buffer.build_and_execute_now()?;
@@ -290,7 +295,11 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
         let frame_ref = layers
             .iter()
-            .map(|f| &f.1 as &xr::CompositionLayerBase<xr::Vulkan>)
+            .map(|f| match f.1 {
+                CompositionLayer::Quad(ref l) => l as &xr::CompositionLayerBase<xr::Vulkan>,
+                CompositionLayer::Cylinder(ref l) => l as &xr::CompositionLayerBase<xr::Vulkan>,
+                CompositionLayer::None => unreachable!(),
+            })
             .collect::<Vec<_>>();
 
         frame_stream.end(
@@ -350,4 +359,10 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     }
 
     Ok(())
+}
+
+pub(super) enum CompositionLayer<'a> {
+    None,
+    Quad(xr::CompositionLayerQuad<'a, xr::Vulkan>),
+    Cylinder(xr::CompositionLayerCylinderKHR<'a, xr::Vulkan>),
 }

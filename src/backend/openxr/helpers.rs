@@ -1,5 +1,5 @@
 use anyhow::{bail, ensure};
-use glam::{Affine3A, Quat, Vec3};
+use glam::{Affine3A, Quat, Vec3, Vec3A};
 use openxr as xr;
 use xr::OverlaySessionCreateFlagsEXTX;
 
@@ -139,12 +139,14 @@ fn quat_lerp(a: Quat, mut b: Quat, t: f32) -> Quat {
     .normalize()
 }
 
-pub(super) fn transform_to_posef(transform: &Affine3A) -> xr::Posef {
-    let translation = transform.translation;
+pub(super) fn transform_to_norm_quat(transform: &Affine3A) -> Quat {
     let norm_mat3 = transform
         .matrix3
         .mul_scalar(1.0 / transform.matrix3.x_axis.length());
-    let mut rotation = Quat::from_mat3a(&norm_mat3).normalize();
+    Quat::from_mat3a(&norm_mat3).normalize()
+}
+
+pub(super) fn translation_rotation_to_posef(translation: Vec3A, mut rotation: Quat) -> xr::Posef {
     if !rotation.is_finite() {
         rotation = Quat::IDENTITY;
     }
@@ -162,4 +164,10 @@ pub(super) fn transform_to_posef(transform: &Affine3A) -> xr::Posef {
             z: translation.z,
         },
     }
+}
+
+pub(super) fn transform_to_posef(transform: &Affine3A) -> xr::Posef {
+    let translation = transform.translation;
+    let rotation = transform_to_norm_quat(transform);
+    translation_rotation_to_posef(translation, rotation)
 }

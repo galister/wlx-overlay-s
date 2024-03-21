@@ -19,7 +19,7 @@ use crate::{
 
 use super::{
     swapchain::{create_swapchain_render_data, SwapchainRenderData},
-    XrState,
+    CompositionLayer, XrState,
 };
 
 static AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(1);
@@ -135,7 +135,7 @@ impl LinePool {
         &'a mut self,
         xr: &'a XrState,
         command_buffer: &mut WlxCommandBuffer,
-    ) -> anyhow::Result<Vec<xr::CompositionLayerQuad<xr::Vulkan>>> {
+    ) -> anyhow::Result<Vec<CompositionLayer>> {
         let mut quads = Vec::new();
 
         for line in self.lines.values_mut() {
@@ -155,7 +155,7 @@ impl LinePool {
                         height: inner.length,
                     });
 
-                quads.push(quad);
+                quads.push(CompositionLayer::Quad(quad));
             }
         }
 
