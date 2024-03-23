@@ -1,6 +1,9 @@
-use std::{sync::Arc, thread::JoinHandle};
+use std::{
+    sync::Arc,
+    task::{Context, Poll},
+};
 
-use futures::executor;
+use futures::{Future, FutureExt};
 use glam::vec3a;
 use wlx_capture::pipewire::{pipewire_select_screen, PipewireCapture, PipewireSelectScreenResult};
 
@@ -15,21 +18,23 @@ use crate::{
 };
 
 use super::screen::ScreenRenderer;
+type PinnedSelectorFuture = core::pin::Pin<
+    Box<dyn Future<Output = Result<PipewireSelectScreenResult, wlx_capture::pipewire::AshpdError>>>,
+>;
 
 pub struct MirrorRenderer {
     name: Arc<str>,
     renderer: Option<ScreenRenderer>,
-    selector: Option<JoinHandle<Option<PipewireSelectScreenResult>>>,
+    selector: Option<PinnedSelectorFuture>,
     last_extent: [u32; 3],
 }
 impl MirrorRenderer {
     pub fn new(name: Arc<str>) -> Self {
+        let selector = Box::pin(pipewire_select_screen(None, false, false, false));
         Self {
             name,
             renderer: None,
-            selector: Some(std::thread::spawn(|| {
-                executor::block_on(pipewire_select_screen(None, false, false, false)).ok()
-            })),
+            selector: Some(selector),
             last_extent: [0; 3],
         }
     }
@@ -40,14 +45,18 @@ impl OverlayRenderer for MirrorRenderer {
         Ok(())
     }
     fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        if let Some(selector) = self.selector.take() {
-            if !selector.is_finished() {
-                self.selector = Some(selector);
-                return Ok(());
-            }
+        if let Some(mut selector) = self.selector.take() {
+            let maybe_pw_result = match selector
+                .poll_unpin(&mut Context::from_waker(futures::task::noop_waker_ref()))
+            {
+                Poll::Ready(result) => result,
+                Poll::Pending => {
+                    self.selector = Some(selector);
+                    return Ok(());
+                }
+            };
 
-            // safe unwrap because we know it's finished
-            if let Some(pw_result) = selector.join().unwrap() {
+            if let Ok(pw_result) = maybe_pw_result {
                 log::info!(
                     "{}: PipeWire node selected: {}",
                     self.name.clone(),

@@ -2,7 +2,10 @@ use dbus::{blocking::Connection, channel::MatchingReceiver, message::MatchRule};
 use serde::{Deserialize, Serialize};
 use std::{
     path::PathBuf,
-    sync::{mpsc, Arc},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc, Arc,
+    },
     time::Duration,
 };
 
@@ -12,6 +15,7 @@ pub struct NotificationManager {
     rx_toast: mpsc::Receiver<Toast>,
     tx_toast: mpsc::SyncSender<Toast>,
     dbus_data: Option<Connection>,
+    running: Arc<AtomicBool>,
 }
 
 impl NotificationManager {
@@ -21,6 +25,7 @@ impl NotificationManager {
             rx_toast,
             tx_toast,
             dbus_data: None,
+            running: Arc::new(AtomicBool::new(true)),
         }
     }
 
@@ -125,7 +130,7 @@ impl NotificationManager {
 
     pub fn run_udp(&mut self) {
         let sender = self.tx_toast.clone();
-        // NOTE: We're detaching the thread, as there's no simple way to gracefully stop it other than app shutdown.
+        let running = self.running.clone();
         let _ = std::thread::spawn(move || {
             let addr = "127.0.0.1:42069";
             let socket = match std::net::UdpSocket::bind(addr) {
@@ -135,9 +140,13 @@ impl NotificationManager {
                     return;
                 }
             };
+            if let Err(err) = socket.set_read_timeout(Some(Duration::from_millis(200))) {
+                log::error!("Failed to set read timeout: {:?}", err);
+            }
+
             let mut buf = [0u8; 1024 * 16]; // vrcx embeds icons as b64
 
-            loop {
+            while running.load(Ordering::Relaxed) {
                 if let Ok((num_bytes, _)) = socket.recv_from(&mut buf) {
                     let json_str = match std::str::from_utf8(&buf[..num_bytes]) {
                         Ok(s) => s,
@@ -170,7 +179,14 @@ impl NotificationManager {
                     }
                 }
             }
+            log::info!("Notification listener stopped.");
         });
+    }
+}
+
+impl Drop for NotificationManager {
+    fn drop(&mut self) {
+        self.running.store(false, Ordering::Relaxed);
     }
 }
 
