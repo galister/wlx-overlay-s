@@ -611,7 +611,7 @@ fn run_window(window: &Arc<str>, action: &WindowAction, app: &mut AppState) {
     }
 }
 
-const THUMP_AUDIO_WAV: &'static [u8] = include_bytes!("../../res/380885.wav");
+const THUMP_AUDIO_WAV: &[u8] = include_bytes!("../../res/380885.wav");
 
 fn audio_thump(app: &mut AppState) {
     app.audio.play(THUMP_AUDIO_WAV);

@@ -229,7 +229,7 @@ struct KeyboardData {
     processes: Vec<Child>,
 }
 
-const KEY_AUDIO_WAV: &'static [u8] = include_bytes!("../res/421581.wav");
+const KEY_AUDIO_WAV: &[u8] = include_bytes!("../res/421581.wav");
 
 impl KeyboardData {
     fn key_click(&mut self, app: &mut AppState) {

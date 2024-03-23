@@ -75,7 +75,7 @@ impl PlayspaceMover {
                 }
             });
 
-            data.pose = data.pose * space_transform;
+            data.pose *= space_transform;
             data.hand_pose = new_hand;
 
             if self.universe == ETrackingUniverseOrigin::TrackingUniverseStanding {

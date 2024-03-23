@@ -325,7 +325,7 @@ pub fn raycast_cylinder(
     let x_angle = (hit_local.x / r).asin();
 
     hit_local.x = x_angle / max_angle;
-    hit_local.y = hit_local.y / size;
+    hit_local.y /= size;
 
     Some((t, hit_local.xy()))
 }

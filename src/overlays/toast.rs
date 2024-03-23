@@ -18,7 +18,7 @@ use crate::{
 const FONT_SIZE: isize = 16;
 const PADDING: (f32, f32) = (25., 7.);
 const PIXELS_TO_METERS: f32 = 1. / 2000.;
-const TOAST_AUDIO_WAV: &'static [u8] = include_bytes!("../res/557297.wav");
+const TOAST_AUDIO_WAV: &[u8] = include_bytes!("../res/557297.wav");
 
 static AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(0);
 
