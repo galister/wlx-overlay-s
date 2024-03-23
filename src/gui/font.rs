@@ -113,7 +113,7 @@ impl FontCache {
 
         let pattern = pattern.font_match(&mut self.fc);
 
-        for path in pattern.filename().iter() {
+        if let Some(path) = pattern.filename() {
             log::debug!(
                 "Loading font: {} {}pt",
                 pattern.name().unwrap_or(path),
@@ -126,14 +126,16 @@ impl FontCache {
                 Ok(face) => face,
                 Err(e) => {
                     log::warn!("Failed to load font at {}: {:?}", path, e);
-                    break;
+                    coll.cp_map.insert(cp, 0);
+                    return 0;
                 }
             };
             match face.set_char_size(size << 6, size << 6, 96, 96) {
                 Ok(_) => {}
                 Err(e) => {
                     log::warn!("Failed to set font size: {:?}", e);
-                    break;
+                    coll.cp_map.insert(cp, 0);
+                    return 0;
                 }
             };
 
