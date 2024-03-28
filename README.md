@@ -92,6 +92,10 @@ We would like to work with you and include additional bindings.
 
 # Known Issues
 
+## Auto-Start not working on SteamVR 2.4.4
+
+This seems to only affect SteamVR 2.4.4 (stable as of writing). Try switching to `temp_v1.27.5` or `beta` using the SteamVR beta selection if this bothers you. (The `linux-v1.14` branch will not work.)
+
 ## Modifiers get stuck in weird ways
 
 This is a rare issue that can make your desktop not react to click or keys due to a modifier being stuck somewhere. Restarting the overlay fixes this.
