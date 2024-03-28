@@ -34,6 +34,7 @@ pub enum TrackedDeviceRole {
 
 pub struct InputState {
     pub hmd: Affine3A,
+    pub ipd: f32,
     pub pointers: [Pointer; 2],
     pub devices: Vec<TrackedDevice>,
 }
@@ -42,6 +43,7 @@ impl InputState {
     pub fn new() -> Self {
         Self {
             hmd: Affine3A::IDENTITY,
+            ipd: 0.0,
             pointers: [Pointer::new(0), Pointer::new(1)],
             devices: Vec::new(),
         }

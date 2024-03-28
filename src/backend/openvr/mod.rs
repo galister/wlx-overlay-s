@@ -93,6 +93,14 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         AppState::from_graphics(graphics)?
     };
 
+    if let Ok(ipd) = system_mgr.get_tracked_device_property::<f32>(
+        TrackedDeviceIndex::HMD,
+        ETrackedDeviceProperty::Prop_UserIpdMeters_Float,
+    ) {
+        state.input_state.ipd = (ipd * 10000.0).round() * 0.1;
+        log::info!("IPD: {:.1} mm", state.input_state.ipd);
+    }
+
     let _ = install_manifest(&mut app_mgr);
 
     let mut overlays = OverlayContainer::<OpenVrOverlayData>::new(&mut state)?;
@@ -161,6 +169,18 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 | EVREventType::VREvent_ChaperoneUniverseHasChanged
                 | EVREventType::VREvent_SceneApplicationChanged => {
                     playspace.playspace_changed(&mut compositor_mgr, &mut chaperone_mgr);
+                }
+                EVREventType::VREvent_IpdChanged => {
+                    if let Ok(ipd) = system_mgr.get_tracked_device_property::<f32>(
+                        TrackedDeviceIndex::HMD,
+                        ETrackedDeviceProperty::Prop_UserIpdMeters_Float,
+                    ) {
+                        let ipd = (ipd * 10000.0).round() * 0.1;
+                        if (ipd - state.input_state.ipd).abs() > 0.05 {
+                            log::info!("IPD: {:.1} mm -> {:.1} mm", state.input_state.ipd, ipd);
+                        }
+                        state.input_state.ipd = ipd;
+                    }
                 }
                 _ => {}
             }

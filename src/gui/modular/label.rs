@@ -38,6 +38,7 @@ pub enum LabelContent {
         low_color: Arc<str>,
         charging_color: Arc<str>,
     },
+    Ipd,
 }
 
 pub enum LabelData {
@@ -61,6 +62,9 @@ pub enum LabelData {
         interval: f32,
         command: Vec<Arc<str>>,
         child: Option<process::Child>,
+    },
+    Ipd {
+        last_ipd: f32,
     },
 }
 
@@ -106,6 +110,7 @@ pub fn modular_label_init(label: &mut ModularControl, content: &LabelContent) {
             label.set_text(text);
             None
         }
+        LabelContent::Ipd => Some(LabelData::Ipd { last_ipd: 0. }),
     };
 
     if let Some(state) = state {
@@ -236,6 +241,12 @@ pub(super) fn label_update(control: &mut ModularControl, _: &mut (), app: &mut A
                         log::error!("Failed to spawn process {:?}: {:?}", args, e);
                     }
                 };
+            }
+        }
+        LabelData::Ipd { last_ipd } => {
+            if (app.input_state.ipd - *last_ipd).abs() > 0.05 {
+                *last_ipd = app.input_state.ipd;
+                control.set_text(&format!("{:.1}", app.input_state.ipd));
             }
         }
     }

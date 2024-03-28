@@ -109,10 +109,12 @@ pub(super) unsafe fn create_overlay_session(
     }
 }
 
-pub(super) fn hmd_pose_from_views(views: &[xr::View]) -> Affine3A {
+pub(super) fn hmd_pose_from_views(views: &[xr::View]) -> (Affine3A, f32) {
+    let ipd;
     let pos = {
         let pos0: Vec3 = unsafe { std::mem::transmute(views[0].pose.position) };
         let pos1: Vec3 = unsafe { std::mem::transmute(views[1].pose.position) };
+        ipd = (pos0.distance(pos1) * 1000.0).round() * 0.1;
         (pos0 + pos1) * 0.5
     };
     let rot = {
@@ -121,7 +123,7 @@ pub(super) fn hmd_pose_from_views(views: &[xr::View]) -> Affine3A {
         quat_lerp(rot0, rot1, 0.5)
     };
 
-    Affine3A::from_rotation_translation(rot, pos)
+    (Affine3A::from_rotation_translation(rot, pos), ipd)
 }
 
 fn quat_lerp(a: Quat, mut b: Quat, t: f32) -> Quat {

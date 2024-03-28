@@ -220,7 +220,8 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             &xr_state.stage,
         )?;
 
-        app_state.input_state.hmd = helpers::hmd_pose_from_views(&views);
+        (app_state.input_state.hmd, app_state.input_state.ipd) =
+            helpers::hmd_pose_from_views(&views);
 
         overlays
             .iter_mut()
