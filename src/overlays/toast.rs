@@ -1,10 +1,11 @@
 use std::{
+    f32::consts::PI,
     ops::Add,
     sync::{atomic::AtomicUsize, Arc},
     time::Instant,
 };
 
-use glam::{vec3a, Vec3A};
+use glam::{vec3a, Quat, Vec3A};
 use idmap_derive::IntegerId;
 use serde::{Deserialize, Serialize};
 
@@ -108,22 +109,27 @@ fn new_toast(
 ) -> Option<(OverlayState, Box<dyn OverlayBackend>)> {
     let current_method = app
         .session
-        .config
         .toast_topics
         .get(toast.topic)
         .copied()
         .unwrap_or(DisplayMethod::Hide);
 
-    let (spawn_point, relative_to) = match current_method {
+    let (spawn_point, spawn_rotation, relative_to) = match current_method {
         DisplayMethod::Hide => return None,
-        DisplayMethod::Center => (vec3a(0., -2.0, -0.5), RelativeTo::Head),
+        DisplayMethod::Center => (vec3a(0., -0.2, -0.5), Quat::IDENTITY, RelativeTo::Head),
         DisplayMethod::Watch => {
+            let mut watch_pos =
+                Vec3A::from_slice(&app.session.config.watch_pos) + vec3a(-0.005, -0.05, 0.02);
+            let mut watch_rot = Quat::from_slice(&app.session.config.watch_rot);
             let relative_to = match app.session.config.watch_hand {
                 LeftRight::Left => RelativeTo::Hand(0),
-                LeftRight::Right => RelativeTo::Hand(1),
+                LeftRight::Right => {
+                    watch_pos.x = -watch_pos.x;
+                    watch_rot = watch_rot * Quat::from_rotation_x(PI) * Quat::from_rotation_z(PI);
+                    RelativeTo::Hand(1)
+                }
             };
-            let watch_pos = Vec3A::from_slice(&app.session.config.watch_pos);
-            (watch_pos + Vec3A::Y * 0.05, relative_to)
+            (watch_pos, watch_rot, relative_to)
         }
     };
 
@@ -183,6 +189,7 @@ fn new_toast(
         name,
         want_visible: true,
         spawn_scale: size.0 * PIXELS_TO_METERS,
+        spawn_rotation,
         spawn_point,
         relative_to,
         ..Default::default()

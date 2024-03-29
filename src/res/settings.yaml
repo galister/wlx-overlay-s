@@ -528,7 +528,7 @@ elements:
     rect: [330, 505, 220, 30]
     font_size: 12
     fg_color: "#ffffff"
-    bg_color: "#606020"
+    bg_color: "#303010"
     text: "Enabled"
     click_down:
       - type: System
@@ -539,7 +539,7 @@ elements:
     rect: [330, 555, 220, 30]
     font_size: 12
     fg_color: "#ffffff"
-    bg_color: "#606020"
+    bg_color: "#303010"
     text: "Sound Enabled"
     click_down:
       - type: System

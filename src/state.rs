@@ -2,6 +2,7 @@ use std::{io::Cursor, path::PathBuf, sync::Arc};
 
 use anyhow::bail;
 use glam::Vec3;
+use idmap::IdMap;
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Source};
 use serde::{Deserialize, Serialize};
 use smallvec::{smallvec, SmallVec};
@@ -14,6 +15,7 @@ use crate::{
     graphics::WlxGraphics,
     gui::font::FontCache,
     hid::HidProvider,
+    overlays::toast::{DisplayMethod, ToastTopic},
     shaders::{frag_color, frag_glyph, frag_screen, frag_sprite, frag_srgb, vert_common},
 };
 
@@ -74,6 +76,8 @@ pub struct AppSession {
     pub config_root_path: PathBuf,
     pub config: GeneralConfig,
 
+    pub toast_topics: IdMap<ToastTopic, DisplayMethod>,
+
     pub color_norm: Vec3,
     pub color_shift: Vec3,
     pub color_alt: Vec3,
@@ -86,9 +90,19 @@ impl AppSession {
         log::info!("Config root path: {}", config_root_path.to_string_lossy());
         let config = GeneralConfig::load_from_disk();
 
+        let mut toast_topics = IdMap::new();
+        toast_topics.insert(ToastTopic::System, DisplayMethod::Center);
+        toast_topics.insert(ToastTopic::DesktopNotification, DisplayMethod::Center);
+        toast_topics.insert(ToastTopic::XSNotification, DisplayMethod::Center);
+
+        config.notification_topics.iter().for_each(|(k, v)| {
+            toast_topics.insert(*k, *v);
+        });
+
         AppSession {
             config_root_path,
             config,
+            toast_topics,
             color_norm: Vec3 {
                 x: 0.,
                 y: 1.,
