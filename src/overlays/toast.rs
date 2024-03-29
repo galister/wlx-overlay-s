@@ -4,7 +4,9 @@ use std::{
     time::Instant,
 };
 
-use glam::vec3a;
+use glam::{vec3a, Vec3A};
+use idmap_derive::IntegerId;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     backend::{
@@ -12,7 +14,7 @@ use crate::{
         overlay::{OverlayBackend, OverlayState, RelativeTo},
     },
     gui::{color_parse, CanvasBuilder},
-    state::AppState,
+    state::{AppState, LeftRight},
 };
 
 const FONT_SIZE: isize = 16;
@@ -22,23 +24,40 @@ const TOAST_AUDIO_WAV: &[u8] = include_bytes!("../res/557297.wav");
 
 static AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(0);
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum DisplayMethod {
+    Hide,
+    Center,
+    Watch,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, IntegerId, Serialize, Deserialize)]
+pub enum ToastTopic {
+    System,
+    DesktopNotification,
+    XSNotification,
+    IpdChange,
+}
+
 pub struct Toast {
     pub title: Arc<str>,
     pub body: Arc<str>,
     pub opacity: f32,
     pub timeout: f32,
     pub sound: bool,
+    pub topic: ToastTopic,
 }
 
 #[allow(dead_code)]
 impl Toast {
-    pub fn new(title: Arc<str>, body: Arc<str>) -> Self {
+    pub fn new(topic: ToastTopic, title: Arc<str>, body: Arc<str>) -> Self {
         Toast {
             title,
             body,
             opacity: 1.0,
             timeout: 3.0,
             sound: false,
+            topic,
         }
     }
     pub fn with_timeout(mut self, timeout: f32) -> Self {
@@ -87,6 +106,27 @@ fn new_toast(
     name: Arc<str>,
     app: &mut AppState,
 ) -> Option<(OverlayState, Box<dyn OverlayBackend>)> {
+    let current_method = app
+        .session
+        .config
+        .toast_topics
+        .get(&toast.topic)
+        .copied()
+        .unwrap_or(DisplayMethod::Hide);
+
+    let (spawn_point, relative_to) = match current_method {
+        DisplayMethod::Hide => return None,
+        DisplayMethod::Center => (vec3a(0., -2.0, -0.5), RelativeTo::Head),
+        DisplayMethod::Watch => {
+            let relative_to = match app.session.config.watch_hand {
+                LeftRight::Left => RelativeTo::Hand(0),
+                LeftRight::Right => RelativeTo::Hand(1),
+            };
+            let watch_pos = Vec3A::from_slice(&app.session.config.watch_pos);
+            (watch_pos + Vec3A::Y * 0.05, relative_to)
+        }
+    };
+
     let title = if toast.title.len() > 0 {
         toast.title
     } else {
@@ -143,8 +183,8 @@ fn new_toast(
         name,
         want_visible: true,
         spawn_scale: size.0 * PIXELS_TO_METERS,
-        spawn_point: vec3a(0., -0.2, -0.5),
-        relative_to: RelativeTo::Head,
+        spawn_point,
+        relative_to,
         ..Default::default()
     };
     let backend = Box::new(canvas.build());

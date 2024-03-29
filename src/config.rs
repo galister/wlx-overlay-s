@@ -4,8 +4,11 @@ use crate::config_io;
 use crate::config_io::get_conf_d_path;
 use crate::gui::modular::ModularUiConfig;
 use crate::load_with_fallback;
+use crate::overlays::toast::DisplayMethod;
+use crate::overlays::toast::ToastTopic;
 use crate::state::LeftRight;
 use anyhow::bail;
+use idmap::IdMap;
 use log::error;
 use serde::Deserialize;
 use serde::Serialize;
@@ -62,6 +65,15 @@ fn def_auto() -> Arc<str> {
     "auto".into()
 }
 
+fn def_toast_topics() -> IdMap<ToastTopic, DisplayMethod> {
+    let mut map = IdMap::new();
+    map.insert(ToastTopic::System, DisplayMethod::Center);
+    map.insert(ToastTopic::DesktopNotification, DisplayMethod::Center);
+    map.insert(ToastTopic::XSNotification, DisplayMethod::Center);
+    map.insert(ToastTopic::IpdChange, DisplayMethod::Hide);
+    map
+}
+
 #[derive(Deserialize, Serialize)]
 pub struct GeneralConfig {
     #[serde(default = "def_watch_pos")]
@@ -102,6 +114,9 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_pw_tokens")]
     pub pw_tokens: Vec<(String, String)>,
+
+    #[serde(default = "def_toast_topics")]
+    pub toast_topics: IdMap<ToastTopic, DisplayMethod>,
 
     #[serde(default = "def_osc_port")]
     pub osc_out_port: u16,

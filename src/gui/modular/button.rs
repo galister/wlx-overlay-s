@@ -17,7 +17,7 @@ use crate::{
         overlay::RelativeTo,
     },
     overlays::{
-        toast::Toast,
+        toast::{Toast, ToastTopic},
         watch::{save_watch, WATCH_NAME},
     },
     state::AppState,
@@ -276,9 +276,13 @@ fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppStat
             body,
             seconds,
         } => {
-            Toast::new(message.clone(), body.clone().unwrap_or_else(|| "".into()))
-                .with_timeout(seconds.unwrap_or(5.))
-                .submit(app);
+            Toast::new(
+                ToastTopic::System,
+                message.clone(),
+                body.clone().unwrap_or_else(|| "".into()),
+            )
+            .with_timeout(seconds.unwrap_or(5.))
+            .submit(app);
         }
         ButtonAction::ColorAdjust { channel, delta } => {
             let channel = *channel;
@@ -303,6 +307,7 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
                 let at = now.add(i * sec);
                 let display = 5 - i;
                 Toast::new(
+                    ToastTopic::System,
                     format!("Fixing floor in {}", display).into(),
                     "Place either controller on the floor.".into(),
                 )
@@ -318,6 +323,7 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
         SystemAction::ToggleNotifications => {
             app.session.config.notifications_enabled = !app.session.config.notifications_enabled;
             Toast::new(
+                ToastTopic::System,
                 format!(
                     "Notifications are {}.",
                     if app.session.config.notifications_enabled {
@@ -335,6 +341,7 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
             app.session.config.notifications_sound_enabled =
                 !app.session.config.notifications_sound_enabled;
             Toast::new(
+                ToastTopic::System,
                 format!(
                     "Notification sounds are {}.",
                     if app.session.config.notifications_sound_enabled {
@@ -383,7 +390,7 @@ fn run_exec(args: &ExecArgs, toast: &Option<Arc<str>>, press: &mut PressData, ap
         Ok(proc) => {
             press.child = Some(proc);
             if let Some(toast) = toast.as_ref() {
-                Toast::new(toast.clone(), "".into()).submit(app);
+                Toast::new(ToastTopic::System, toast.clone(), "".into()).submit(app);
             }
         }
         Err(e) => {
@@ -403,6 +410,7 @@ fn run_watch(data: &WatchAction, app: &mut AppState) {
                         o.want_visible = false;
                         o.saved_scale = Some(0.0);
                         Toast::new(
+                            ToastTopic::System,
                             "Watch hidden".into(),
                             "Use show/hide binding to restore.".into(),
                         )
@@ -411,7 +419,8 @@ fn run_watch(data: &WatchAction, app: &mut AppState) {
                     } else {
                         o.want_visible = true;
                         o.saved_scale = None;
-                        Toast::new("Watch restored".into(), "".into()).submit(app);
+                        Toast::new(ToastTopic::System, "Watch restored".into(), "".into())
+                            .submit(app);
                     }
                 }),
             ));
@@ -434,9 +443,13 @@ fn run_watch(data: &WatchAction, app: &mut AppState) {
                         o.spawn_point = Vec3A::from_slice(&app.session.config.watch_pos);
                     }
                     o.dirty = true;
-                    Toast::new("Watch switched".into(), "Check your other hand".into())
-                        .with_timeout(3.)
-                        .submit(app);
+                    Toast::new(
+                        ToastTopic::System,
+                        "Watch switched".into(),
+                        "Check your other hand".into(),
+                    )
+                    .with_timeout(3.)
+                    .submit(app);
                 }),
             ));
             audio_thump(app);
@@ -504,7 +517,12 @@ fn run_overlay(overlay: &OverlaySelector, action: &OverlayAction, app: &mut AppS
                 overlay.clone(),
                 Box::new(|app, o| {
                     o.reset(app, true);
-                    Toast::new(format!("{} has been reset!", o.name).into(), "".into()).submit(app);
+                    Toast::new(
+                        ToastTopic::System,
+                        format!("{} has been reset!", o.name).into(),
+                        "".into(),
+                    )
+                    .submit(app);
                 }),
             ));
         }
@@ -529,13 +547,18 @@ fn run_overlay(overlay: &OverlaySelector, action: &OverlayAction, app: &mut AppS
                     o.show_hide = o.recenter;
                     if !o.recenter {
                         Toast::new(
+                            ToastTopic::System,
                             format!("{} is now locked in place!", o.name).into(),
                             "".into(),
                         )
                         .submit(app);
                     } else {
-                        Toast::new(format!("{} is now unlocked!", o.name).into(), "".into())
-                            .submit(app);
+                        Toast::new(
+                            ToastTopic::System,
+                            format!("{} is now unlocked!", o.name).into(),
+                            "".into(),
+                        )
+                        .submit(app);
                     }
                 }),
             ));
@@ -548,13 +571,18 @@ fn run_overlay(overlay: &OverlaySelector, action: &OverlayAction, app: &mut AppS
                     o.interactable = !o.interactable;
                     if !o.interactable {
                         Toast::new(
+                            ToastTopic::System,
                             format!("{} is now non-interactable!", o.name).into(),
                             "".into(),
                         )
                         .submit(app);
                     } else {
-                        Toast::new(format!("{} is now interactable!", o.name).into(), "".into())
-                            .submit(app);
+                        Toast::new(
+                            ToastTopic::System,
+                            format!("{} is now interactable!", o.name).into(),
+                            "".into(),
+                        )
+                        .submit(app);
                     }
                 }),
             ));
@@ -585,9 +613,13 @@ fn run_window(window: &Arc<str>, action: &WindowAction, app: &mut AppState) {
                 Box::new({
                     let name = window.clone();
                     move |app| {
-                        Toast::new("Check your desktop for popup.".into(), "".into())
-                            .with_sound(true)
-                            .submit(app);
+                        Toast::new(
+                            ToastTopic::System,
+                            "Check your desktop for popup.".into(),
+                            "".into(),
+                        )
+                        .with_sound(true)
+                        .submit(app);
                         crate::overlays::mirror::new_mirror(name.clone(), false, &app.session)
                     }
                 }),

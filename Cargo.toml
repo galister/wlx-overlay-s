@@ -23,7 +23,7 @@ fontconfig-rs = "0.1.1"
 freetype-rs = "0.32.0"
 futures = "0.3.29"
 glam = { version = "0.24.1", features = ["approx"] }
-idmap = "0.2.21"
+idmap = { version = "0.2.21", features = ["serde"] }
 idmap-derive = "0.1.2"
 input-linux = "0.6.0"
 json = { version = "0.12.4", optional = true }

@@ -33,7 +33,10 @@ use crate::{
         overlay::OverlayData,
     },
     graphics::WlxGraphics,
-    overlays::watch::{watch_fade, WATCH_NAME},
+    overlays::{
+        toast::{Toast, ToastTopic},
+        watch::{watch_fade, WATCH_NAME},
+    },
     state::AppState,
 };
 
@@ -178,6 +181,12 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                         let ipd = (ipd * 10000.0).round() * 0.1;
                         if (ipd - state.input_state.ipd).abs() > 0.05 {
                             log::info!("IPD: {:.1} mm -> {:.1} mm", state.input_state.ipd, ipd);
+                            Toast::new(
+                                ToastTopic::IpdChange,
+                                "IPD".into(),
+                                format!("{:.1} mm", ipd).into(),
+                            )
+                            .submit(&mut state);
                         }
                         state.input_state.ipd = ipd;
                     }

@@ -20,7 +20,10 @@ use crate::{
         overlay::OverlayData,
     },
     graphics::WlxGraphics,
-    overlays::watch::{watch_fade, WATCH_NAME},
+    overlays::{
+        toast::{Toast, ToastTopic},
+        watch::{watch_fade, WATCH_NAME},
+    },
     state::AppState,
 };
 
@@ -220,8 +223,18 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             &xr_state.stage,
         )?;
 
-        (app_state.input_state.hmd, app_state.input_state.ipd) =
-            helpers::hmd_pose_from_views(&views);
+        let (hmd, ipd) = helpers::hmd_pose_from_views(&views);
+        app_state.input_state.hmd = hmd;
+        if (app_state.input_state.ipd - ipd).abs() > 0.01 {
+            log::info!("IPD changed: {} -> {}", app_state.input_state.ipd, ipd);
+            app_state.input_state.ipd = ipd;
+            Toast::new(
+                ToastTopic::IpdChange,
+                "IPD".into(),
+                format!("{:.1} mm", ipd).into(),
+            )
+            .submit(&mut app_state);
+        }
 
         overlays
             .iter_mut()

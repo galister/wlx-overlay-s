@@ -1537,6 +1537,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dba885f996064df334b1639785897d1c58c0646750101b839b8359664cb26c0e"
 dependencies = [
  "fixedbitset",
+ "serde",
 ]
 
 [[package]]

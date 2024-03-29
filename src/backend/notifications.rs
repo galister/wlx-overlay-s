@@ -9,7 +9,12 @@ use std::{
     time::Duration,
 };
 
-use crate::{config::def_true, config_io, overlays::toast::Toast, state::AppState};
+use crate::{
+    config::def_true,
+    config_io,
+    overlays::toast::{Toast, ToastTopic},
+    state::AppState,
+};
 
 pub struct NotificationManager {
     rx_toast: mpsc::Receiver<Toast>,
@@ -167,9 +172,13 @@ impl NotificationManager {
                         continue;
                     }
 
-                    let toast = Toast::new(msg.title, msg.content.unwrap_or_else(|| "".into()))
-                        .with_timeout(msg.timeout.unwrap_or(5.))
-                        .with_sound(msg.volume.unwrap_or(-1.) >= 0.); // XSOverlay still plays at 0,
+                    let toast = Toast::new(
+                        ToastTopic::XSNotification,
+                        msg.title,
+                        msg.content.unwrap_or_else(|| "".into()),
+                    )
+                    .with_timeout(msg.timeout.unwrap_or(5.))
+                    .with_sound(msg.volume.unwrap_or(-1.) >= 0.); // XSOverlay still plays at 0,
 
                     match sender.try_send(toast) {
                         Ok(_) => {}
@@ -204,9 +213,11 @@ fn parse_dbus(msg: &dbus::Message) -> anyhow::Result<Toast> {
         summary
     };
 
-    Ok(Toast::new(title.into(), body.into())
-        .with_timeout(5.0)
-        .with_opacity(1.0))
+    Ok(
+        Toast::new(ToastTopic::DesktopNotification, title.into(), body.into())
+            .with_timeout(5.0)
+            .with_opacity(1.0),
+    )
     // leave the audio part to the desktop env
 }
 
