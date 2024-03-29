@@ -533,6 +533,7 @@ elements:
     click_down:
       - type: System
         action: ToggleNotifications
+    highlight: Notifications
 
   - type: Button
     rect: [330, 555, 220, 30]
@@ -543,6 +544,7 @@ elements:
     click_down:
       - type: System
         action: ToggleNotificationSounds
+    highlight: NotificationSounds
 
   - type: Panel
     rect: [50, 605, 500, 1]

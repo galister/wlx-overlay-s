@@ -6,7 +6,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use glam::{Quat, Vec3A};
+use glam::{Quat, Vec3A, Vec4};
 use serde::Deserialize;
 
 use crate::{
@@ -38,6 +38,12 @@ pub enum Axis {
     X,
     Y,
     Z,
+}
+
+#[derive(Deserialize, Clone)]
+pub enum HighlightTest {
+    NotificationSounds,
+    Notifications,
 }
 
 #[derive(Deserialize, Clone)]
@@ -167,6 +173,7 @@ pub struct ButtonData {
     pub(super) long_middle_up: Option<Vec<ButtonAction>>,
     pub(super) scroll_down: Option<Vec<ButtonAction>>,
     pub(super) scroll_up: Option<Vec<ButtonAction>>,
+    pub(super) highlight: Option<HighlightTest>,
 }
 
 pub fn modular_button_init(button: &mut ModularControl, data: &ButtonData) {
@@ -174,6 +181,7 @@ pub fn modular_button_init(button: &mut ModularControl, data: &ButtonData) {
     button.on_press = Some(modular_button_dn);
     button.on_release = Some(modular_button_up);
     button.on_scroll = Some(modular_button_scroll);
+    button.test_highlight = Some(modular_button_highlight);
 }
 
 fn modular_button_dn(
@@ -263,6 +271,33 @@ fn modular_button_scroll(button: &mut ModularControl, _: &mut (), app: &mut AppS
             handle_action(action, &mut data.press, app);
         }
     }
+}
+
+fn modular_button_highlight(
+    button: &ModularControl,
+    _: &mut (),
+    app: &mut AppState,
+) -> Option<Vec4> {
+    // want panic
+    let ModularData::Button(data) = button.state.as_ref().unwrap() else {
+        panic!("modular_button_highlight: button state is not Button");
+    };
+
+    if let Some(test) = &data.highlight {
+        match test {
+            HighlightTest::NotificationSounds => {
+                if app.session.config.notifications_sound_enabled {
+                    return Some(Vec4::new(1.0, 1.0, 1.0, 0.5));
+                }
+            }
+            HighlightTest::Notifications => {
+                if app.session.config.notifications_enabled {
+                    return Some(Vec4::new(1.0, 1.0, 1.0, 0.5));
+                }
+            }
+        }
+    }
+    None
 }
 
 fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppState) {
