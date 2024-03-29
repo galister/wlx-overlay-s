@@ -110,7 +110,7 @@ fn new_toast(
         .session
         .config
         .toast_topics
-        .get(&toast.topic)
+        .get(toast.topic)
         .copied()
         .unwrap_or(DisplayMethod::Hide);
 

@@ -494,10 +494,8 @@ impl Pointer {
                         .transform
                         .matrix3
                         .mul_scalar(1.0 - 0.025 * self.now.scroll);
-                } else {
-                    if config.allow_sliding && self.now.scroll.is_finite() {
-                        grab_data.offset.z -= self.now.scroll * 0.05;
-                    }
+                } else if config.allow_sliding && self.now.scroll.is_finite() {
+                    grab_data.offset.z -= self.now.scroll * 0.05;
                 }
                 overlay.state.transform.translation = self.pose.transform_point3a(grab_data.offset);
                 overlay.state.realign(hmd);
