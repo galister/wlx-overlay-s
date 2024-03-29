@@ -131,7 +131,9 @@ impl OverlayState {
             Quat::IDENTITY,
             translation.into(),
         );
-        self.realign(&app.input_state.hmd);
+        if self.grabbable {
+            self.realign(&app.input_state.hmd);
+        }
         self.dirty = true;
     }
 
