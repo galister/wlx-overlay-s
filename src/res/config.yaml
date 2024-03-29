@@ -11,3 +11,7 @@ keyboard_sound_enabled: true
 keyboard_scale: 1.0
 desktop_view_scale: 1.0
 watch_scale: 1.0
+
+# Enable / disable sliding windows back and forth with the scroll action
+# Default: true
+allow_sliding: true

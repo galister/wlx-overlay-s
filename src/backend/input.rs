@@ -6,6 +6,7 @@ use glam::{Affine3A, Vec2, Vec3A};
 use ovr_overlay::TrackedDeviceIndex;
 use smallvec::{smallvec, SmallVec};
 
+use crate::config::GeneralConfig;
 use crate::state::AppState;
 
 use super::{
@@ -287,7 +288,7 @@ where
     let mut pointer = &mut app.input_state.pointers[idx];
     if let Some(grab_data) = pointer.interaction.grabbed {
         if let Some(grabbed) = overlays.mut_by_id(grab_data.grabbed_id) {
-            pointer.handle_grabbed(grabbed, hmd);
+            pointer.handle_grabbed(grabbed, hmd, &app.session.config);
         } else {
             log::warn!("Grabbed overlay {} does not exist", grab_data.grabbed_id);
             pointer.interaction.grabbed = None;
@@ -472,7 +473,7 @@ impl Pointer {
         log::info!("Hand {}: grabbed {}", self.idx, overlay.state.name);
     }
 
-    fn handle_grabbed<O>(&mut self, overlay: &mut OverlayData<O>, hmd: &Affine3A)
+    fn handle_grabbed<O>(&mut self, overlay: &mut OverlayData<O>, hmd: &Affine3A, config: &GeneralConfig)
     where
         O: Default,
     {
@@ -494,7 +495,9 @@ impl Pointer {
                         .matrix3
                         .mul_scalar(1.0 - 0.025 * self.now.scroll);
                 } else {
-                    grab_data.offset.z -= self.now.scroll * 0.05;
+                    if config.allow_sliding && self.now.scroll.is_finite() {
+                        grab_data.offset.z -= self.now.scroll * 0.05;
+                    }
                 }
                 overlay.state.transform.translation = self.pose.transform_point3a(grab_data.offset);
                 overlay.state.realign(hmd);
