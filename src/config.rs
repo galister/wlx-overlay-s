@@ -135,6 +135,9 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_half")]
     pub xr_alt_click_sensitivity_release: f32,
+
+    #[serde(default = "def_true")]
+    pub allow_sliding: bool,
 }
 
 impl GeneralConfig {
