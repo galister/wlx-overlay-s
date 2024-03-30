@@ -148,6 +148,9 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_true")]
     pub allow_sliding: bool,
+
+    #[serde(default = "def_true")]
+    pub realign_on_showhide: bool,
 }
 
 impl GeneralConfig {

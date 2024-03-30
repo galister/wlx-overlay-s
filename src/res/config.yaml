@@ -15,3 +15,7 @@ watch_scale: 1.0
 # Enable / disable sliding windows back and forth with the scroll action
 # Default: true
 allow_sliding: true
+
+# Enable / disable realigning the working set windows when they are shown/hidden
+# Default: true
+realign_on_showhide: true

@@ -150,7 +150,7 @@ where
         self.overlays.values_mut().for_each(|o| {
             if o.state.show_hide {
                 o.state.want_visible = !any_shown;
-                if o.state.want_visible && o.state.recenter {
+                if o.state.want_visible && app.session.config.realign_on_showhide && o.state.recenter {
                     o.state.reset(app, false);
                 }
             }
