@@ -320,7 +320,10 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             &frame_ref,
         )?;
 
-        let _ = overlays.update(&mut app_state)?;
+        let removed_overlays = overlays.update(&mut app_state)?;
+        for o in removed_overlays {
+            delete_queue.push((o, cur_frame + 5));
+        }
 
         notifications.submit_pending(&mut app_state);
 
@@ -352,9 +355,10 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 TaskType::DropOverlay(sel) => {
                     if let Some(o) = overlays.mut_by_selector(&sel) {
                         if o.state.birthframe < cur_frame {
-                            let o = overlays.remove_by_selector(&sel);
-                            // set for deletion after all images are done showing
-                            delete_queue.push((o, cur_frame + 5));
+                            if let Some(o) = overlays.remove_by_selector(&sel) {
+                                // set for deletion after all images are done showing
+                                delete_queue.push((o, cur_frame + 5));
+                            }
                         }
                     }
                 }
