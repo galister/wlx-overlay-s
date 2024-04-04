@@ -546,6 +546,27 @@ elements:
         action: ToggleNotificationSounds
     highlight: NotificationSounds
 
+  ####### Behavior Section #######
+  - type: Label
+    rect: [15, 490, 570, 24]
+    font_size: 18
+    fg_color: "#ffffff"
+    source: Static
+    text: Behavior
+
+  - type: Button
+    rect: [30, 505, 220, 30]
+    font_size: 12
+    fg_color: "#ffffff"
+    bg_color: "#401010"
+    text: "Auto-Realign"
+    click_down:
+      - type: System
+        action: ToggleAutoRealign
+    highlight: AutoRealign
+
+  ####### Footer Section #######
+
   - type: Panel
     rect: [50, 605, 500, 1]
     bg_color: "#c0c0c0"

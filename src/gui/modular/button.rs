@@ -42,12 +42,14 @@ pub enum Axis {
 
 #[derive(Deserialize, Clone)]
 pub enum HighlightTest {
+    AutoRealign,
     NotificationSounds,
     Notifications,
 }
 
 #[derive(Deserialize, Clone)]
 pub enum SystemAction {
+    ToggleAutoRealign,
     ToggleNotificationSounds,
     ToggleNotifications,
     PlayspaceResetOffset,
@@ -284,17 +286,14 @@ fn modular_button_highlight(
     };
 
     if let Some(test) = &data.highlight {
-        match test {
-            HighlightTest::NotificationSounds => {
-                if app.session.config.notifications_sound_enabled {
-                    return Some(Vec4::new(1.0, 1.0, 1.0, 0.5));
-                }
-            }
-            HighlightTest::Notifications => {
-                if app.session.config.notifications_enabled {
-                    return Some(Vec4::new(1.0, 1.0, 1.0, 0.5));
-                }
-            }
+        let lit = match test {
+            HighlightTest::AutoRealign => app.session.config.realign_on_showhide,
+            HighlightTest::NotificationSounds => app.session.config.notifications_sound_enabled,
+            HighlightTest::Notifications => app.session.config.notifications_enabled,
+        };
+
+        if lit {
+            return Some(Vec4::new(1.0, 1.0, 1.0, 0.5));
         }
     }
     None
@@ -331,6 +330,23 @@ fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppStat
 
 fn run_system(action: &SystemAction, app: &mut AppState) {
     match action {
+        SystemAction::ToggleAutoRealign => {
+            app.session.config.realign_on_showhide = !app.session.config.realign_on_showhide;
+            Toast::new(
+                ToastTopic::System,
+                format!(
+                    "Auto realign is {}.",
+                    if app.session.config.realign_on_showhide {
+                        "enabled"
+                    } else {
+                        "disabled"
+                    }
+                )
+                .into(),
+                "".into(),
+            )
+            .submit(app);
+        }
         SystemAction::PlayspaceResetOffset => {
             app.tasks
                 .enqueue(TaskType::System(SystemTask::ResetPlayspace));
