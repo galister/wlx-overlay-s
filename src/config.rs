@@ -2,12 +2,14 @@ use std::sync::Arc;
 
 use crate::config_io;
 use crate::config_io::get_conf_d_path;
+use crate::config_io::CONFIG_ROOT_PATH;
 use crate::gui::modular::ModularUiConfig;
-use crate::load_with_fallback;
 use crate::overlays::toast::DisplayMethod;
 use crate::overlays::toast::ToastTopic;
 use crate::state::LeftRight;
 use anyhow::bail;
+use config::Config;
+use config::File;
 use idmap::IdMap;
 use log::error;
 use serde::Deserialize;
@@ -221,10 +223,19 @@ pub fn load_custom_ui(name: &str) -> anyhow::Result<ModularUiConfig> {
 }
 
 pub fn load_general() -> GeneralConfig {
-    let mut yaml_data = String::new();
+    let mut settings_builder = Config::builder();
 
     // Add files from conf.d directory
     let path_conf_d = get_conf_d_path();
+
+    for mut base_conf in [CONFIG_ROOT_PATH.clone(), path_conf_d.clone()] {
+        base_conf.push("config.yaml");
+        if base_conf.exists() {
+            log::info!("Loading config file: {}", base_conf.to_string_lossy());
+            settings_builder = settings_builder.add_source(File::from(base_conf));
+        }
+    }
+
     if let Ok(paths_unsorted) = std::fs::read_dir(path_conf_d) {
         let mut paths: Vec<_> = paths_unsorted
             .filter_map(|r| match r {
@@ -238,37 +249,24 @@ pub fn load_general() -> GeneralConfig {
         // Sort paths alphabetically
         paths.sort_by_key(|dir| dir.path());
         for path in paths {
-            let file_type = match path.file_type() {
-                Ok(file_type) => file_type,
-                Err(e) => {
-                    error!(
-                        "Failed to get file type of {}: {}",
-                        path.path().to_string_lossy(),
-                        e
-                    );
-                    continue;
-                }
-            };
-
-            if !file_type.is_file() {
-                continue;
-            }
-
-            log::info!("Loading config file {}", path.path().to_string_lossy());
-
-            if let Ok(data) = std::fs::read_to_string(path.path()) {
-                yaml_data.push('\n'); // Just in case, if end of the config file was not newline
-                yaml_data.push_str(data.as_str());
-            } else {
-                // Shouldn't happen anyways
-                error!("Failed to load {}", path.path().to_string_lossy());
-            }
+            log::info!("Loading config file: {}", path.path().to_string_lossy());
+            settings_builder = settings_builder.add_source(File::from(path.path()));
         }
     }
 
-    if yaml_data.is_empty() {
-        yaml_data.push_str(load_with_fallback!("config.yaml", "res/config.yaml").as_str());
-    }
-
-    serde_yaml::from_str(&yaml_data).expect("Failed to parse config.yaml")
+    match settings_builder.build() {
+        Ok(settings) => {
+            match settings.try_deserialize::<GeneralConfig>() {
+                Ok(config) => {
+                    return config;
+                }
+                Err(e) => {
+                    panic!("Failed to deserialize settings: {}", e);
+                }
+            };
+        }
+        Err(e) => {
+            panic!("Failed to build settings: {}", e);
+        }
+    };
 }

@@ -1,26 +1,28 @@
 use std::{
     f32::consts::PI,
     ops::Add,
+    path::PathBuf,
     process::{self, Child},
     sync::Arc,
     time::{Duration, Instant},
 };
 
 use glam::{Quat, Vec3A, Vec4};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     backend::{
         common::{ColorChannel, OverlaySelector, SystemTask, TaskType},
         input::PointerMode,
-        notifications::save_notifications,
         overlay::RelativeTo,
     },
+    config::{def_half, def_left, def_point7, def_true, def_watch_pos, def_watch_rot},
+    config_io,
     overlays::{
         toast::{Toast, ToastTopic},
-        watch::{save_watch, WATCH_NAME},
+        watch::WATCH_NAME,
     },
-    state::AppState,
+    state::{AppState, LeftRight},
 };
 
 use super::{ExecArgs, ModularControl, ModularData};
@@ -407,11 +409,8 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
             .submit(app);
         }
         SystemAction::PersistConfig => {
-            if let Err(e) = save_watch(app) {
-                log::error!("Failed to save watch config: {:?}", e);
-            };
-            if let Err(e) = save_notifications(app) {
-                log::error!("Failed to save notifications config: {:?}", e);
+            if let Err(e) = save_settings(app) {
+                log::error!("Failed to save config: {:?}", e);
             }
         }
     }
@@ -698,4 +697,54 @@ const THUMP_AUDIO_WAV: &[u8] = include_bytes!("../../res/380885.wav");
 
 fn audio_thump(app: &mut AppState) {
     app.audio.play(THUMP_AUDIO_WAV);
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct AutoSettings {
+    #[serde(default = "def_watch_pos")]
+    pub watch_pos: [f32; 3],
+
+    #[serde(default = "def_watch_rot")]
+    pub watch_rot: [f32; 4],
+
+    #[serde(default = "def_left")]
+    pub watch_hand: LeftRight,
+
+    #[serde(default = "def_half")]
+    pub watch_view_angle_min: f32,
+
+    #[serde(default = "def_point7")]
+    pub watch_view_angle_max: f32,
+
+    #[serde(default = "def_true")]
+    pub notifications_enabled: bool,
+
+    #[serde(default = "def_true")]
+    pub notifications_sound_enabled: bool,
+
+    #[serde(default = "def_true")]
+    pub realign_on_showhide: bool,
+}
+
+fn get_config_path() -> PathBuf {
+    let mut path = config_io::get_conf_d_path();
+    path.push("zz-saved-config.json5");
+    path
+}
+pub fn save_settings(app: &mut AppState) -> anyhow::Result<()> {
+    let conf = AutoSettings {
+        watch_pos: app.session.config.watch_pos,
+        watch_rot: app.session.config.watch_rot,
+        watch_hand: app.session.config.watch_hand,
+        watch_view_angle_min: app.session.config.watch_view_angle_min,
+        watch_view_angle_max: app.session.config.watch_view_angle_max,
+        notifications_enabled: app.session.config.notifications_enabled,
+        notifications_sound_enabled: app.session.config.notifications_sound_enabled,
+        realign_on_showhide: app.session.config.realign_on_showhide,
+    };
+
+    let json = serde_json::to_string_pretty(&conf).unwrap(); // want panic
+    std::fs::write(get_config_path(), json)?;
+
+    Ok(())
 }

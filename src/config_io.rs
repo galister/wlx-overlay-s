@@ -53,19 +53,3 @@ pub fn load(filename: &str) -> Option<String> {
         None
     }
 }
-
-#[macro_export]
-macro_rules! load_with_fallback {
-    ($filename: expr,  $fallback: expr) => {
-        if let Some(data) = config_io::load($filename) {
-            data
-        } else {
-            log::info!(
-                "Config {}/{} does not exist, using internal fallback",
-                config_io::CONFIG_ROOT_PATH.to_string_lossy(),
-                $filename
-            );
-            include_str!($fallback).to_string()
-        }
-    };
-}
