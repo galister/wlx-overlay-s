@@ -8,7 +8,10 @@ use crate::{
         def_half, def_left, def_point7, def_watch_pos, def_watch_rot, load_known_yaml, ConfigType,
     },
     config_io,
-    gui::modular::{modular_canvas, ModularUiConfig},
+    gui::{
+        modular::{modular_canvas, ModularData, ModularUiConfig},
+        Canvas,
+    },
     state::{AppState, LeftRight},
 };
 
@@ -19,8 +22,6 @@ where
     O: Default,
 {
     let config = load_known_yaml::<ModularUiConfig>(ConfigType::Watch);
-
-    let canvas = modular_canvas(&config.size, &config.elements, state)?;
 
     let relative_to = RelativeTo::Hand(state.session.config.watch_hand as usize);
 
@@ -36,9 +37,18 @@ where
             relative_to,
             ..Default::default()
         },
-        backend: Box::new(canvas),
+        backend: Box::new(create_watch_canvas(Some(config), state)?),
         ..Default::default()
     })
+}
+
+pub fn create_watch_canvas(
+    config: Option<ModularUiConfig>,
+    state: &AppState,
+) -> anyhow::Result<Canvas<(), ModularData>> {
+    let config = config.unwrap_or_else(|| load_known_yaml::<ModularUiConfig>(ConfigType::Watch));
+
+    modular_canvas(&config.size, &config.elements, state)
 }
 
 pub fn watch_fade<D>(app: &mut AppState, watch: &mut OverlayData<D>)

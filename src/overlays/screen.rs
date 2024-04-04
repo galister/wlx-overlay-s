@@ -40,12 +40,12 @@ use glam::{vec2, vec3a, Affine2, Quat, Vec2};
 use crate::{
     backend::{
         input::{Haptics, InteractionHandler, PointerHit, PointerMode},
-        overlay::{OverlayData, OverlayRenderer, OverlayState, SplitOverlayBackend},
+        overlay::{OverlayRenderer, OverlayState, SplitOverlayBackend},
     },
     config::def_pw_tokens,
     graphics::{fourcc_to_vk, WlxCommandBuffer, WlxPipeline, WlxPipelineLegacy},
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
-    state::{AppSession, AppState},
+    state::{AppSession, AppState, ScreenMeta},
 };
 
 const CURSOR_SIZE: f32 = 16. / 1440.;
@@ -130,6 +130,7 @@ impl InteractionHandler for ScreenInteractionHandler {
     fn on_left(&mut self, _app: &mut AppState, _hand: usize) {}
 }
 
+#[derive(Clone)]
 struct ScreenPipeline {
     view: Arc<ImageView>,
     mouse: Option<Arc<ImageView>>,
@@ -500,36 +501,22 @@ impl OverlayRenderer for ScreenRenderer {
 }
 
 #[cfg(feature = "wayland")]
-/// Panics if id is not a valid output id
-fn try_create_screen<O>(
-    wl: &WlxClient,
-    id: u32,
+pub fn create_screen_renderer_wl(
+    output: &WlxOutput,
+    has_wlr_dmabuf: bool,
+    has_wlr_screencopy: bool,
     pw_token_store: &mut HashMap<String, String>,
     session: &AppSession,
-) -> Option<OverlayData<O>>
-where
-    O: Default,
-{
-    let output = &wl.outputs.get(id).unwrap(); // safe due to contract
-    log::info!(
-        "{}: Res {}x{} Size {:?} Pos {:?}",
-        output.name,
-        output.size.0,
-        output.size.1,
-        output.logical_size,
-        output.logical_pos,
-    );
-
+) -> Option<ScreenRenderer> {
     let mut capture: Option<ScreenRenderer> = None;
-
     if (&*session.config.capture_method == "auto" || &*session.config.capture_method == "dmabuf")
-        && wl.maybe_wlr_dmabuf_mgr.is_some()
+        && has_wlr_dmabuf
     {
         log::info!("{}: Using Wlr DMA-Buf", &output.name);
         capture = ScreenRenderer::new_wlr_dmabuf(output);
     }
 
-    if &*session.config.capture_method == "screencopy" && wl.maybe_wlr_screencopy_mgr.is_some() {
+    if &*session.config.capture_method == "screencopy" && has_wlr_screencopy {
         log::info!("{}: Using Wlr Screencopy Wl-SHM", &output.name);
         capture = ScreenRenderer::new_wlr_screencopy(output);
     }
@@ -572,78 +559,67 @@ where
             }
         }
     }
-    if let Some(capture) = capture {
-        let backend = Box::new(SplitOverlayBackend {
-            renderer: Box::new(capture),
-            interaction: Box::new(ScreenInteractionHandler::new(
-                vec2(output.logical_pos.0 as f32, output.logical_pos.1 as f32),
-                vec2(output.logical_size.0 as f32, output.logical_size.1 as f32),
-                output.transform.into(),
-            )),
-        });
+    capture
+}
 
-        let axis = Vec3::new(0., 0., 1.);
+pub fn create_screen_interaction(
+    logical_pos: Vec2,
+    logical_size: Vec2,
+    transform: Transform,
+) -> ScreenInteractionHandler {
+    ScreenInteractionHandler::new(logical_pos, logical_size, transform)
+}
 
-        let transform = output.transform.into();
-
-        let angle = if session.config.upright_screen_fix {
-            match transform {
-                Transform::_90 | Transform::Flipped90 => PI / 2.,
-                Transform::_180 | Transform::Flipped180 => PI,
-                Transform::_270 | Transform::Flipped270 => -PI / 2.,
-                _ => 0.,
-            }
-        } else {
-            0.
-        };
-
-        let center = Vec2 { x: 0.5, y: 0.5 };
-        let interaction_transform = match transform {
-            Transform::_90 | Transform::Flipped90 => Affine2::from_cols(
-                Vec2::NEG_Y * (output.size.0 as f32 / output.size.1 as f32),
-                Vec2::NEG_X,
-                center,
-            ),
-            Transform::_180 | Transform::Flipped180 => Affine2::from_cols(
-                Vec2::NEG_X,
-                Vec2::NEG_Y * (-output.size.0 as f32 / output.size.1 as f32),
-                center,
-            ),
-            Transform::_270 | Transform::Flipped270 => Affine2::from_cols(
-                Vec2::Y * (output.size.0 as f32 / output.size.1 as f32),
-                Vec2::X,
-                center,
-            ),
-            _ => Affine2::from_cols(
-                Vec2::X,
-                Vec2::Y * (-output.size.0 as f32 / output.size.1 as f32),
-                center,
-            ),
-        };
-
-        Some(OverlayData {
-            state: OverlayState {
-                name: output.name.clone(),
-                show_hide: session
-                    .config
-                    .show_screens
-                    .iter()
-                    .any(|s| s.as_ref() == output.name.as_ref()),
-                grabbable: true,
-                recenter: true,
-                interactable: true,
-                spawn_scale: 1.5 * session.config.desktop_view_scale,
-                spawn_point: vec3a(0., 0.5, -1.),
-                spawn_rotation: Quat::from_axis_angle(axis, angle),
-                interaction_transform,
-                ..Default::default()
-            },
-            backend,
-            ..Default::default()
-        })
+fn create_screen_state(
+    name: Arc<str>,
+    res: (i32, i32),
+    transform: Transform,
+    session: &AppSession,
+) -> OverlayState {
+    let angle = if session.config.upright_screen_fix {
+        match transform {
+            Transform::_90 | Transform::Flipped90 => PI / 2.,
+            Transform::_180 | Transform::Flipped180 => PI,
+            Transform::_270 | Transform::Flipped270 => -PI / 2.,
+            _ => 0.,
+        }
     } else {
-        log::warn!("{}: Will not be used", &output.name);
-        None
+        0.
+    };
+
+    let center = Vec2 { x: 0.5, y: 0.5 };
+    let interaction_transform = match transform {
+        Transform::_90 | Transform::Flipped90 => Affine2::from_cols(
+            Vec2::NEG_Y * (res.0 as f32 / res.1 as f32),
+            Vec2::NEG_X,
+            center,
+        ),
+        Transform::_180 | Transform::Flipped180 => Affine2::from_cols(
+            Vec2::NEG_X,
+            Vec2::NEG_Y * (-res.0 as f32 / res.1 as f32),
+            center,
+        ),
+        Transform::_270 | Transform::Flipped270 => {
+            Affine2::from_cols(Vec2::Y * (res.0 as f32 / res.1 as f32), Vec2::X, center)
+        }
+        _ => Affine2::from_cols(Vec2::X, Vec2::Y * (-res.0 as f32 / res.1 as f32), center),
+    };
+
+    OverlayState {
+        name: name.clone(),
+        show_hide: session
+            .config
+            .show_screens
+            .iter()
+            .any(|s| s.as_ref() == name.as_ref()),
+        grabbable: true,
+        recenter: true,
+        interactable: true,
+        spawn_scale: 1.5 * session.config.desktop_view_scale,
+        spawn_point: vec3a(0., 0.5, -1.),
+        spawn_rotation: Quat::from_axis_angle(Vec3::Z, angle),
+        interaction_transform,
+        ..Default::default()
     }
 }
 
@@ -688,21 +664,24 @@ pub fn load_pw_token_config() -> Result<HashMap<String, String>, Box<dyn Error>>
     Ok(map)
 }
 
+pub(crate) struct ScreenCreateData {
+    pub screens: Vec<(ScreenMeta, OverlayState, Box<SplitOverlayBackend>)>,
+}
+
 #[cfg(not(feature = "wayland"))]
-pub fn get_screens_wayland<O>(_session: &AppSession) -> anyhow::Result<(Vec<OverlayData<O>>, Vec2)>
-where
-    O: Default,
-{
+pub fn create_screens_wayland(
+    wl: &mut WlxClient,
+    app: &AppState,
+) -> anyhow::Result<ScreenCreateData> {
     anyhow::bail!("Wayland support not enabled")
 }
 
 #[cfg(feature = "wayland")]
-pub fn get_screens_wayland<O>(session: &AppSession) -> anyhow::Result<(Vec<OverlayData<O>>, Vec2)>
-where
-    O: Default,
-{
-    let mut overlays = vec![];
-    let mut wl = WlxClient::new().ok_or_else(|| anyhow::anyhow!("Failed to connect to Wayland"))?;
+pub fn create_screens_wayland(
+    wl: &mut WlxClient,
+    app: &mut AppState,
+) -> anyhow::Result<ScreenCreateData> {
+    let mut screens = vec![];
 
     // Load existing Pipewire tokens from file
     let mut pw_tokens: HashMap<String, String> = if let Ok(conf) = load_pw_token_config() {
@@ -712,24 +691,47 @@ where
     };
 
     let pw_tokens_copy = pw_tokens.clone();
+    let has_wlr_dmabuf = wl.maybe_wlr_dmabuf_mgr.is_some();
+    let has_wlr_screencopy = wl.maybe_wlr_screencopy_mgr.is_some();
 
-    let mut origin = (i32::MAX, i32::MAX);
-    for output in wl.outputs.values() {
-        origin.0 = origin.0.min(output.logical_pos.0);
-        origin.1 = origin.1.min(output.logical_pos.1);
-    }
+    for (id, output) in wl.outputs.iter() {
+        if app.screens.iter().any(|s| s.name == output.name) {
+            continue;
+        }
 
-    log::info!("Desktop origin: {:?}", origin);
+        log::info!(
+            "{}: Init screen of res {:?}, logical {:?} at {:?}",
+            output.name,
+            output.size,
+            output.logical_size,
+            output.logical_pos,
+        );
 
-    // adjust all outputs so that the top-left corner is at (0, 0)
-    for output in wl.outputs.values_mut() {
-        output.logical_pos.0 -= origin.0;
-        output.logical_pos.1 -= origin.1;
-    }
+        if let Some(renderer) = create_screen_renderer_wl(
+            output,
+            has_wlr_dmabuf,
+            has_wlr_screencopy,
+            &mut pw_tokens,
+            &app.session,
+        ) {
+            let logical_pos = vec2(output.logical_pos.0 as f32, output.logical_pos.1 as f32);
+            let logical_size = vec2(output.logical_size.0 as f32, output.logical_size.1 as f32);
+            let transform = output.transform.into();
+            let interaction = create_screen_interaction(logical_pos, logical_size, transform);
+            let state =
+                create_screen_state(output.name.clone(), output.size, transform, &app.session);
 
-    for id in wl.outputs.keys() {
-        if let Some(overlay) = try_create_screen(&wl, *id, &mut pw_tokens, session) {
-            overlays.push(overlay);
+            let meta = ScreenMeta {
+                name: wl.outputs[id].name.clone(),
+                id: state.id,
+                native_handle: *id,
+            };
+
+            let backend = Box::new(SplitOverlayBackend {
+                renderer: Box::new(renderer),
+                interaction: Box::new(interaction),
+            });
+            screens.push((meta, state, backend));
         }
     }
 
@@ -741,22 +743,23 @@ where
     }
 
     let extent = wl.get_desktop_extent();
-    Ok((overlays, Vec2::new(extent.0 as f32, extent.1 as f32)))
+    let origin = wl.get_desktop_origin();
+
+    app.hid_provider
+        .set_desktop_extent(vec2(extent.0 as f32, extent.1 as f32));
+    app.hid_provider
+        .set_desktop_origin(vec2(origin.0 as f32, origin.1 as f32));
+
+    Ok(ScreenCreateData { screens })
 }
 
 #[cfg(not(feature = "x11"))]
-pub fn get_screens_x11<O>(_session: &AppSession) -> anyhow::Result<(Vec<OverlayData<O>>, Vec2)>
-where
-    O: Default,
-{
+pub fn create_screens_x11(session: &AppSession) -> anyhow::Result<ScreenCreateData> {
     anyhow::bail!("X11 support not enabled")
 }
 
 #[cfg(feature = "x11")]
-pub fn get_screens_x11<O>(session: &AppSession) -> anyhow::Result<(Vec<OverlayData<O>>, Vec2)>
-where
-    O: Default,
-{
+pub fn create_screens_x11(app: &mut AppState) -> anyhow::Result<ScreenCreateData> {
     use anyhow::bail;
 
     let mut extent = vec2(0., 0.);
@@ -768,64 +771,52 @@ where
         }
     };
 
-    let overlays = monitors
+    let screens = monitors
         .into_iter()
         .map(|s| {
-            log::info!(
-                "{}: Res {}x{}, Pos {}x{}",
-                s.name,
-                s.monitor.width(),
-                s.monitor.height(),
-                s.monitor.x(),
-                s.monitor.y()
-            );
-            let size = (s.monitor.width(), s.monitor.height());
-            let capture: ScreenRenderer = ScreenRenderer::new_xshm(s.clone());
-
-            let backend = Box::new(SplitOverlayBackend {
-                renderer: Box::new(capture),
-                interaction: Box::new(ScreenInteractionHandler::new(
-                    vec2(s.monitor.x() as f32, s.monitor.y() as f32),
-                    vec2(s.monitor.width() as f32, s.monitor.height() as f32),
-                    Transform::Normal,
-                )),
-            });
-
-            let interaction_transform = Affine2::from_translation(Vec2 { x: 0.5, y: 0.5 })
-                * Affine2::from_scale(Vec2 {
-                    x: 1.,
-                    y: -size.0 as f32 / size.1 as f32,
-                });
-
             extent.x = extent.x.max((s.monitor.x() + s.monitor.width()) as f32);
             extent.y = extent.y.max((s.monitor.y() + s.monitor.height()) as f32);
-            OverlayData {
-                state: OverlayState {
-                    name: s.name.clone(),
-                    show_hide: session
-                        .config
-                        .show_screens
-                        .iter()
-                        .any(|x| x.as_ref() == s.name.as_ref()),
-                    grabbable: true,
-                    recenter: true,
-                    interactable: true,
-                    spawn_scale: 1.5 * session.config.desktop_view_scale,
-                    spawn_point: vec3a(0., 0.5, -1.),
-                    spawn_rotation: Quat::IDENTITY,
-                    interaction_transform,
-                    ..Default::default()
-                },
-                backend,
-                ..Default::default()
-            }
+
+            let size = (s.monitor.width(), s.monitor.height());
+            let pos = (s.monitor.x(), s.monitor.y());
+            let renderer = ScreenRenderer::new_xshm(s.clone());
+
+            log::info!(
+                "{}: Init screen of res {:?} at {:?}",
+                s.name.clone(),
+                size,
+                pos,
+            );
+
+            let interaction = create_screen_interaction(
+                vec2(s.monitor.x() as f32, s.monitor.y() as f32),
+                vec2(size.0 as f32, size.1 as f32),
+                Transform::Normal,
+            );
+
+            let state = create_screen_state(s.name.clone(), size, Transform::Normal, &app.session);
+
+            let meta = ScreenMeta {
+                name: s.name.clone(),
+                id: state.id,
+                native_handle: 0,
+            };
+
+            let backend = Box::new(SplitOverlayBackend {
+                renderer: Box::new(renderer),
+                interaction: Box::new(interaction),
+            });
+            (meta, state, backend)
         })
         .collect();
 
-    Ok((overlays, extent))
+    app.hid_provider.set_desktop_extent(extent);
+
+    Ok(ScreenCreateData { screens })
 }
 
 #[allow(unused)]
+#[derive(Clone, Copy)]
 pub enum Transform {
     Normal,
     _90,

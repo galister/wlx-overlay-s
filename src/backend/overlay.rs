@@ -16,7 +16,10 @@ use super::input::{DummyInteractionHandler, Haptics, InteractionHandler, Pointer
 
 static AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(0);
 
-pub trait OverlayBackend: OverlayRenderer + InteractionHandler {}
+pub trait OverlayBackend: OverlayRenderer + InteractionHandler {
+    fn set_renderer(&mut self, renderer: Box<dyn OverlayRenderer>);
+    fn set_interaction(&mut self, interaction: Box<dyn InteractionHandler>);
+}
 
 pub struct OverlayState {
     pub id: usize,
@@ -258,7 +261,14 @@ impl Default for SplitOverlayBackend {
     }
 }
 
-impl OverlayBackend for SplitOverlayBackend {}
+impl OverlayBackend for SplitOverlayBackend {
+    fn set_renderer(&mut self, renderer: Box<dyn OverlayRenderer>) {
+        self.renderer = renderer;
+    }
+    fn set_interaction(&mut self, interaction: Box<dyn InteractionHandler>) {
+        self.interaction = interaction;
+    }
+}
 impl OverlayRenderer for SplitOverlayBackend {
     fn init(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         self.renderer.init(app)

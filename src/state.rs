@@ -172,6 +172,7 @@ impl AudioOutput {
 pub struct ScreenMeta {
     pub name: Arc<str>,
     pub id: usize,
+    pub native_handle: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Default)]

@@ -514,7 +514,10 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
     }
 }
 
-impl<D, S> OverlayBackend for Canvas<D, S> {}
+impl<D, S> OverlayBackend for Canvas<D, S> {
+    fn set_renderer(&mut self, _renderer: Box<dyn OverlayRenderer>) {}
+    fn set_interaction(&mut self, _interaction: Box<dyn InteractionHandler>) {}
+}
 
 pub struct Control<D, S> {
     pub state: Option<S>,

@@ -78,8 +78,6 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     let mut osc_sender =
         crate::backend::osc::OscSender::new(app_state.session.config.osc_out_port).ok();
 
-    app_state.hid_provider.set_desktop_extent(overlays.extent);
-
     let (session, mut frame_wait, mut frame_stream) = unsafe {
         let raw_session = helpers::create_overlay_session(
             &xr_instance,
@@ -321,6 +319,8 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             environment_blend_mode,
             &frame_ref,
         )?;
+
+        let _ = overlays.update(&mut app_state)?;
 
         notifications.submit_pending(&mut app_state);
 

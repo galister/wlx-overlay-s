@@ -8,17 +8,19 @@ use std::{
 #[cfg(feature = "openxr")]
 use openxr as xr;
 
-use glam::{Affine3A, Vec2, Vec3A, Vec3Swizzles};
+use glam::{vec2, Affine3A, Vec2, Vec3A, Vec3Swizzles};
 use idmap::IdMap;
 use serde::Deserialize;
 use thiserror::Error;
+use wlx_capture::wayland::{OutputChangeEvent, WlxClient};
 
 use crate::{
     overlays::{
         keyboard::create_keyboard,
-        watch::{create_watch, WATCH_NAME},
+        screen::{create_screen_interaction, create_screen_renderer_wl, load_pw_token_config},
+        watch::{create_watch, create_watch_canvas, WATCH_NAME},
     },
-    state::{AppState, ScreenMeta},
+    state::AppState,
 };
 
 use super::overlay::{OverlayBackend, OverlayData, OverlayState};
@@ -43,7 +45,7 @@ where
     T: Default,
 {
     overlays: IdMap<usize, OverlayData<T>>,
-    pub extent: Vec2,
+    wl: Option<WlxClient>,
 }
 
 impl<T> OverlayContainer<T>
@@ -52,18 +54,36 @@ where
 {
     pub fn new(app: &mut AppState) -> anyhow::Result<Self> {
         let mut overlays = IdMap::new();
-        let (screens, extent) = if std::env::var("WAYLAND_DISPLAY").is_ok() {
-            crate::overlays::screen::get_screens_wayland(&app.session)?
-        } else {
-            crate::overlays::screen::get_screens_x11(&app.session)?
-        };
+        let mut wl = WlxClient::new();
 
         app.screens.clear();
-        for screen in screens.iter() {
-            app.screens.push(ScreenMeta {
-                name: screen.state.name.clone(),
-                id: screen.state.id,
-            });
+        let data = if let Some(wl) = wl.as_mut() {
+            crate::overlays::screen::create_screens_wayland(wl, app)?
+        } else {
+            crate::overlays::screen::create_screens_x11(app)?
+        };
+
+        let mut show_screens = app.session.config.show_screens.clone();
+        if show_screens.is_empty() {
+            if let Some((_, s, _)) = data.screens.first() {
+                show_screens.push(s.name.clone());
+            }
+        }
+
+        for (meta, mut state, backend) in data.screens {
+            if show_screens.contains(&state.name) {
+                state.show_hide = true;
+                state.want_visible = false;
+            }
+            overlays.insert(
+                state.id,
+                OverlayData::<T> {
+                    state,
+                    backend,
+                    ..Default::default()
+                },
+            );
+            app.screens.push(meta);
         }
 
         let mut watch = create_watch::<T>(app)?;
@@ -75,21 +95,134 @@ where
         keyboard.state.want_visible = false;
         overlays.insert(keyboard.state.id, keyboard);
 
-        let mut show_screens = app.session.config.show_screens.clone();
-        if show_screens.is_empty() {
-            if let Some(s) = screens.first() {
-                show_screens.push(s.state.name.clone());
+        Ok(Self { overlays, wl })
+    }
+
+    pub fn update(&mut self, app: &mut AppState) -> anyhow::Result<Vec<OverlayData<T>>> {
+        let mut removed_overlays = vec![];
+        let Some(wl) = self.wl.as_mut() else {
+            return Ok(removed_overlays);
+        };
+
+        wl.dispatch_pending();
+
+        let mut create_ran = false;
+        let mut extent_dirty = false;
+        let mut watch_dirty = false;
+
+        let mut maybe_token_store = None;
+
+        for ev in wl.iter_events().collect::<Vec<_>>() {
+            match ev {
+                OutputChangeEvent::Create(_) => {
+                    if create_ran {
+                        continue;
+                    }
+                    let data = crate::overlays::screen::create_screens_wayland(wl, app)?;
+                    create_ran = true;
+                    for (meta, state, backend) in data.screens {
+                        self.overlays.insert(
+                            state.id,
+                            OverlayData::<T> {
+                                state,
+                                backend,
+                                ..Default::default()
+                            },
+                        );
+                        app.screens.push(meta);
+                        watch_dirty = true;
+                    }
+                }
+                OutputChangeEvent::Destroy(id) => {
+                    let Some(idx) = app.screens.iter().position(|s| s.native_handle == id) else {
+                        continue;
+                    };
+
+                    let meta = &app.screens[idx];
+                    let removed = self.overlays.remove(meta.id).unwrap();
+                    removed_overlays.push(removed);
+                    log::info!("{}: Destroyed", meta.name);
+                    app.screens.remove(idx);
+                    watch_dirty = true;
+                    extent_dirty = true;
+                }
+                OutputChangeEvent::Logical(id) => {
+                    let Some(meta) = app.screens.iter().find(|s| s.native_handle == id) else {
+                        continue;
+                    };
+                    let output = wl.outputs.get(id).unwrap();
+                    let Some(overlay) = self.overlays.get_mut(meta.id) else {
+                        continue;
+                    };
+                    let logical_pos =
+                        vec2(output.logical_pos.0 as f32, output.logical_pos.1 as f32);
+                    let logical_size =
+                        vec2(output.logical_size.0 as f32, output.logical_size.1 as f32);
+                    let transform = output.transform.into();
+                    overlay
+                        .backend
+                        .set_interaction(Box::new(create_screen_interaction(
+                            logical_pos,
+                            logical_size,
+                            transform,
+                        )));
+                    extent_dirty = true;
+                }
+                OutputChangeEvent::Physical(id) => {
+                    let Some(meta) = app.screens.iter().find(|s| s.native_handle == id) else {
+                        continue;
+                    };
+                    let output = wl.outputs.get(id).unwrap();
+                    let Some(overlay) = self.overlays.get_mut(meta.id) else {
+                        continue;
+                    };
+
+                    let has_wlr_dmabuf = wl.maybe_wlr_dmabuf_mgr.is_some();
+                    let has_wlr_screencopy = wl.maybe_wlr_screencopy_mgr.is_some();
+
+                    let pw_token_store = maybe_token_store.get_or_insert_with(|| {
+                        load_pw_token_config().unwrap_or_else(|e| {
+                            log::warn!("Failed to load PipeWire token config: {:?}", e);
+                            Default::default()
+                        })
+                    });
+
+                    if let Some(renderer) = create_screen_renderer_wl(
+                        output,
+                        has_wlr_dmabuf,
+                        has_wlr_screencopy,
+                        pw_token_store,
+                        &app.session,
+                    ) {
+                        overlay.backend.set_renderer(Box::new(renderer));
+                    }
+                    extent_dirty = true;
+                }
             }
         }
 
-        for mut screen in screens {
-            if show_screens.contains(&screen.state.name) {
-                screen.state.show_hide = true;
-                screen.state.want_visible = false;
-            }
-            overlays.insert(screen.state.id, screen);
+        if extent_dirty && !create_ran {
+            let extent = wl.get_desktop_extent();
+            let origin = wl.get_desktop_origin();
+            app.hid_provider
+                .set_desktop_extent(vec2(extent.0 as f32, extent.1 as f32));
+            app.hid_provider
+                .set_desktop_origin(vec2(origin.0 as f32, origin.1 as f32));
         }
-        Ok(Self { overlays, extent })
+
+        if watch_dirty {
+            let watch = self.mut_by_name(WATCH_NAME).unwrap(); // want panic
+            match create_watch_canvas(None, app) {
+                Ok(canvas) => {
+                    watch.backend = Box::new(canvas);
+                }
+                Err(e) => {
+                    log::error!("Failed to create watch canvas: {}", e);
+                }
+            }
+        }
+
+        Ok(removed_overlays)
     }
 
     pub fn mut_by_selector(&mut self, selector: &OverlaySelector) -> Option<&mut OverlayData<T>> {

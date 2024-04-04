@@ -35,12 +35,14 @@ pub trait HidProvider {
     fn set_modifiers(&mut self, mods: u8);
     fn send_key(&self, key: u16, down: bool);
     fn set_desktop_extent(&mut self, extent: Vec2);
+    fn set_desktop_origin(&mut self, origin: Vec2);
     fn on_new_frame(&mut self);
 }
 
 pub struct UInputProvider {
     handle: UInputHandle<File>,
     desktop_extent: Vec2,
+    desktop_origin: Vec2,
     mouse_moved: bool,
     cur_modifiers: u8,
 }
@@ -135,6 +137,7 @@ impl UInputProvider {
                 return Some(UInputProvider {
                     handle,
                     desktop_extent: Vec2::ZERO,
+                    desktop_origin: Vec2::ZERO,
                     mouse_moved: false,
                     cur_modifiers: 0,
                 });
@@ -154,7 +157,7 @@ impl HidProvider for UInputProvider {
         #[cfg(debug_assertions)]
         log::trace!("Mouse move: {:?}", pos);
 
-        let pos = pos * (MOUSE_EXTENT / self.desktop_extent);
+        let pos = (pos - self.desktop_origin) * (MOUSE_EXTENT / self.desktop_extent);
 
         let time = get_time();
         let events = [
@@ -209,8 +212,10 @@ impl HidProvider for UInputProvider {
         }
     }
     fn set_desktop_extent(&mut self, extent: Vec2) {
-        log::info!("Desktop extent: {:?}", extent);
         self.desktop_extent = extent;
+    }
+    fn set_desktop_origin(&mut self, origin: Vec2) {
+        self.desktop_origin = origin;
     }
     fn on_new_frame(&mut self) {
         self.mouse_moved = false;
@@ -224,6 +229,7 @@ impl HidProvider for DummyProvider {
     fn set_modifiers(&mut self, _modifiers: u8) {}
     fn send_key(&self, _key: u16, _down: bool) {}
     fn set_desktop_extent(&mut self, _extent: Vec2) {}
+    fn set_desktop_origin(&mut self, _origin: Vec2) {}
     fn on_new_frame(&mut self) {}
 }
 

@@ -118,8 +118,6 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     let mut osc_sender =
         crate::backend::osc::OscSender::new(state.session.config.osc_out_port).ok();
 
-    state.hid_provider.set_desktop_extent(overlays.extent);
-
     set_action_manifest(&mut input_mgr)?;
 
     let mut input_source = OpenVrInputSource::new(&mut input_mgr)?;
@@ -203,6 +201,12 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         notifications.submit_pending(&mut state);
 
         state.tasks.retrieve_due(&mut due_tasks);
+
+        let mut removed_overlays = overlays.update(&mut state)?;
+        for o in removed_overlays.iter_mut() {
+            o.destroy(&mut overlay_mgr);
+        }
+
         while let Some(task) = due_tasks.pop_front() {
             match task {
                 TaskType::Global(f) => f(&mut state),
