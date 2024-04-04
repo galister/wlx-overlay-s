@@ -67,6 +67,8 @@ The click depends on the laser color:
 - Purple laser: Middle click
 - Stick up/down: Scroll wheel
 
+To **curve screens**, grab them with one hand, then with the other hand, hover the laser over the overlay and use the scroll action.
+
 See the bindings section on how to grab, move and resize screens.
 
 ### The keyboard
