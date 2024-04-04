@@ -108,4 +108,6 @@ This seems to be an issue specific to Electron apps (Discord, Element, Slack, Sp
 
 ## X11 limitations
 
-DPI scaling and upright screens are not supported on X11. These might display incorrectly or mess up your mouse position.
+- DPI scaling is not supported and may cause the mouse to not follow the laser properly.
+- Upright screens are not supported and can cause the mouse to act weirdly.
+- Screen changes (connecting / disconnecting a display, resolution changes, etc) are not handled at runtime. Restart the overlay for these to take effect.
