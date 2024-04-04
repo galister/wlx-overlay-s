@@ -23,7 +23,7 @@ use wlx_capture::{
 use {
     crate::config_io,
     glam::Vec3,
-    std::{collections::HashMap, error::Error, f32::consts::PI, ops::Deref, path::PathBuf},
+    std::{error::Error, f32::consts::PI, ops::Deref, path::PathBuf},
     wlx_capture::{
         pipewire::{pipewire_select_screen, PipewireCapture},
         wayland::{wayland_client::protocol::wl_output, WlxClient, WlxOutput},
@@ -42,7 +42,7 @@ use crate::{
         input::{Haptics, InteractionHandler, PointerHit, PointerMode},
         overlay::{OverlayRenderer, OverlayState, SplitOverlayBackend},
     },
-    config::def_pw_tokens,
+    config::{def_pw_tokens, AStrMapExt, PwTokenMap},
     graphics::{fourcc_to_vk, WlxCommandBuffer, WlxPipeline, WlxPipelineLegacy},
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState, ScreenMeta},
@@ -505,7 +505,7 @@ pub fn create_screen_renderer_wl(
     output: &WlxOutput,
     has_wlr_dmabuf: bool,
     has_wlr_screencopy: bool,
-    pw_token_store: &mut HashMap<String, String>,
+    pw_token_store: &mut PwTokenMap,
     session: &AppSession,
 ) -> Option<ScreenRenderer> {
     let mut capture: Option<ScreenRenderer> = None;
@@ -527,7 +527,7 @@ pub fn create_screen_renderer_wl(
         let display_name = output.name.deref();
 
         // Find existing token by display
-        let token = pw_token_store.get(display_name).map(|s| s.as_str());
+        let token = pw_token_store.arc_get(display_name).map(|s| s.as_str());
 
         if let Some(t) = token {
             log::info!(
@@ -542,10 +542,7 @@ pub fn create_screen_renderer_wl(
                 capture = Some(renderer);
 
                 if let Some(token) = restore_token {
-                    if pw_token_store
-                        .insert(String::from(display_name), token.clone())
-                        .is_none()
-                    {
+                    if pw_token_store.arc_ins(display_name.into(), token.clone()) {
                         log::info!("Adding Pipewire token {}", token);
                     }
                 }
@@ -607,11 +604,6 @@ fn create_screen_state(
 
     OverlayState {
         name: name.clone(),
-        show_hide: session
-            .config
-            .show_screens
-            .iter()
-            .any(|s| s.as_ref() == name.as_ref()),
         grabbable: true,
         recenter: true,
         interactable: true,
@@ -626,7 +618,7 @@ fn create_screen_state(
 #[derive(Deserialize, Serialize, Default)]
 pub struct TokenConf {
     #[serde(default = "def_pw_tokens")]
-    pub pw_tokens: Vec<(String, String)>,
+    pub pw_tokens: PwTokenMap,
 }
 
 #[cfg(feature = "wayland")]
@@ -637,31 +629,18 @@ fn get_pw_token_path() -> PathBuf {
 }
 
 #[cfg(feature = "wayland")]
-pub fn save_pw_token_config(tokens: &HashMap<String, String>) -> Result<(), Box<dyn Error>> {
-    let mut conf = TokenConf::default();
-
-    for (name, token) in tokens {
-        conf.pw_tokens.push((name.clone(), token.clone()));
-    }
-
-    let yaml = serde_yaml::to_string(&conf)?;
+pub fn save_pw_token_config(tokens: &PwTokenMap) -> Result<(), Box<dyn Error>> {
+    let yaml = serde_yaml::to_string(tokens)?;
     std::fs::write(get_pw_token_path(), yaml)?;
 
     Ok(())
 }
 
 #[cfg(feature = "wayland")]
-pub fn load_pw_token_config() -> Result<HashMap<String, String>, Box<dyn Error>> {
-    let mut map: HashMap<String, String> = HashMap::new();
-
+pub fn load_pw_token_config() -> Result<PwTokenMap, Box<dyn Error>> {
     let yaml = std::fs::read_to_string(get_pw_token_path())?;
     let conf: TokenConf = serde_yaml::from_str(yaml.as_str())?;
-
-    for (name, token) in conf.pw_tokens {
-        map.insert(name, token);
-    }
-
-    Ok(map)
+    Ok(conf.pw_tokens)
 }
 
 pub(crate) struct ScreenCreateData {
@@ -681,13 +660,15 @@ pub fn create_screens_wayland(
     wl: &mut WlxClient,
     app: &mut AppState,
 ) -> anyhow::Result<ScreenCreateData> {
+    use crate::config::AStrMap;
+
     let mut screens = vec![];
 
     // Load existing Pipewire tokens from file
-    let mut pw_tokens: HashMap<String, String> = if let Ok(conf) = load_pw_token_config() {
+    let mut pw_tokens: PwTokenMap = if let Ok(conf) = load_pw_token_config() {
         conf
     } else {
-        HashMap::new()
+        AStrMap::new()
     };
 
     let pw_tokens_copy = pw_tokens.clone();

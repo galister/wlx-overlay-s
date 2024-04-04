@@ -565,6 +565,17 @@ elements:
         action: ToggleAutoRealign
     highlight: AutoRealign
 
+  - type: Button
+    rect: [30, 555, 220, 30]
+    font_size: 12
+    fg_color: "#ffffff"
+    bg_color: "#401010"
+    text: "Grab+Scroll Slide"
+    click_down:
+      - type: System
+        action: ToggleAllowSliding
+    highlight: AllowSliding
+
   ####### Footer Section #######
 
   - type: Panel

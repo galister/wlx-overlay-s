@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::config_io;
@@ -15,6 +16,68 @@ use log::error;
 use serde::Deserialize;
 use serde::Serialize;
 
+pub type AStrMap<V> = Vec<(Arc<str>, V)>;
+
+pub trait AStrMapExt<V> {
+    fn arc_ins(&mut self, key: Arc<str>, value: V) -> bool;
+    fn arc_get(&self, key: &str) -> Option<&V>;
+    fn arc_rm(&mut self, key: &str) -> Option<V>;
+}
+
+impl<V> AStrMapExt<V> for AStrMap<V> {
+    fn arc_ins(&mut self, key: Arc<str>, value: V) -> bool {
+        if self.iter().any(|(k, _)| k.as_ref().eq(key.as_ref())) {
+            return false;
+        }
+        self.push((key, value));
+        true
+    }
+
+    fn arc_get(&self, key: &str) -> Option<&V> {
+        self.iter()
+            .find_map(|(k, v)| if k.as_ref().eq(key) { Some(v) } else { None })
+    }
+
+    fn arc_rm(&mut self, key: &str) -> Option<V> {
+        let index = self.iter().position(|(k, _)| k.as_ref().eq(key));
+        index.map(|i| self.remove(i).1)
+    }
+}
+
+pub type AStrSet = Vec<Arc<str>>;
+
+pub trait AStrSetExt {
+    fn arc_ins(&mut self, value: Arc<str>) -> bool;
+    fn arc_get(&self, value: &str) -> bool;
+    fn arc_rm(&mut self, value: &str) -> bool;
+}
+
+impl AStrSetExt for AStrSet {
+    fn arc_ins(&mut self, value: Arc<str>) -> bool {
+        if self.iter().any(|v| v.as_ref().eq(value.as_ref())) {
+            return false;
+        }
+        self.push(value);
+        true
+    }
+
+    fn arc_get(&self, value: &str) -> bool {
+        self.iter().any(|v| v.as_ref().eq(value))
+    }
+
+    fn arc_rm(&mut self, value: &str) -> bool {
+        let index = self.iter().position(|v| v.as_ref().eq(value));
+        index
+            .map(|i| {
+                self.remove(i);
+                true
+            })
+            .unwrap_or(false)
+    }
+}
+
+pub type PwTokenMap = AStrMap<String>;
+
 pub fn def_watch_pos() -> [f32; 3] {
     [-0.03, -0.01, 0.125]
 }
@@ -27,8 +90,8 @@ pub fn def_left() -> LeftRight {
     LeftRight::Left
 }
 
-pub fn def_pw_tokens() -> Vec<(String, String)> {
-    Vec::new()
+pub fn def_pw_tokens() -> PwTokenMap {
+    AStrMap::new()
 }
 
 fn def_click_freeze_time_ms() -> u32 {
@@ -59,8 +122,12 @@ fn def_osc_port() -> u16 {
     9000
 }
 
-fn def_screens() -> Vec<Arc<str>> {
-    vec![]
+fn def_screens() -> AStrSet {
+    AStrSet::new()
+}
+
+fn def_curve_values() -> AStrMap<f32> {
+    AStrMap::new()
 }
 
 fn def_auto() -> Arc<str> {
@@ -113,7 +180,7 @@ pub struct GeneralConfig {
     pub long_press_duration: f32,
 
     #[serde(default = "def_pw_tokens")]
-    pub pw_tokens: Vec<(String, String)>,
+    pub pw_tokens: PwTokenMap,
 
     #[serde(default = "def_osc_port")]
     pub osc_out_port: u16,
@@ -125,7 +192,10 @@ pub struct GeneralConfig {
     pub double_cursor_fix: bool,
 
     #[serde(default = "def_screens")]
-    pub show_screens: Vec<Arc<str>>,
+    pub show_screens: AStrSet,
+
+    #[serde(default = "def_curve_values")]
+    pub curve_values: AStrMap<f32>,
 
     #[serde(default = "def_auto")]
     pub capture_method: Arc<str>,
@@ -269,4 +339,68 @@ pub fn load_general() -> GeneralConfig {
             panic!("Failed to build settings: {}", e);
         }
     };
+}
+
+// Config that is saved from the settings panel
+
+#[derive(Serialize)]
+pub struct AutoSettings {
+    pub watch_pos: [f32; 3],
+    pub watch_rot: [f32; 4],
+    pub watch_hand: LeftRight,
+    pub watch_view_angle_min: f32,
+    pub watch_view_angle_max: f32,
+    pub notifications_enabled: bool,
+    pub notifications_sound_enabled: bool,
+    pub realign_on_showhide: bool,
+    pub allow_sliding: bool,
+}
+
+fn get_settings_path() -> PathBuf {
+    let mut path = config_io::get_conf_d_path();
+    path.push("zz-saved-config.json5");
+    path
+}
+pub fn save_settings(config: &GeneralConfig) -> anyhow::Result<()> {
+    let conf = AutoSettings {
+        watch_pos: config.watch_pos,
+        watch_rot: config.watch_rot,
+        watch_hand: config.watch_hand,
+        watch_view_angle_min: config.watch_view_angle_min,
+        watch_view_angle_max: config.watch_view_angle_max,
+        notifications_enabled: config.notifications_enabled,
+        notifications_sound_enabled: config.notifications_sound_enabled,
+        realign_on_showhide: config.realign_on_showhide,
+        allow_sliding: config.allow_sliding,
+    };
+
+    let json = serde_json::to_string_pretty(&conf).unwrap(); // want panic
+    std::fs::write(get_settings_path(), json)?;
+
+    Ok(())
+}
+
+// Config that is saved after manipulating overlays
+
+#[derive(Serialize)]
+pub struct AutoState {
+    pub show_screens: AStrSet,
+    pub curve_values: AStrMap<f32>,
+}
+
+fn get_state_path() -> PathBuf {
+    let mut path = config_io::get_conf_d_path();
+    path.push("zz-saved-state.json5");
+    path
+}
+pub fn save_state(config: &GeneralConfig) -> anyhow::Result<()> {
+    let conf = AutoState {
+        show_screens: config.show_screens.clone(),
+        curve_values: config.curve_values.clone(),
+    };
+
+    let json = serde_json::to_string_pretty(&conf).unwrap(); // want panic
+    std::fs::write(get_state_path(), json)?;
+
+    Ok(())
 }

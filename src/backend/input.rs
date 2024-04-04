@@ -6,7 +6,7 @@ use glam::{Affine3A, Vec2, Vec3A};
 use ovr_overlay::TrackedDeviceIndex;
 use smallvec::{smallvec, SmallVec};
 
-use crate::config::GeneralConfig;
+use crate::config::{save_state, AStrMapExt, GeneralConfig};
 use crate::state::AppState;
 
 use super::{
@@ -246,6 +246,7 @@ struct RayHit {
 pub struct GrabData {
     pub offset: Vec3A,
     pub grabbed_id: usize,
+    pub old_curvature: Option<f32>,
 }
 
 #[repr(u8)]
@@ -288,7 +289,7 @@ where
     let mut pointer = &mut app.input_state.pointers[idx];
     if let Some(grab_data) = pointer.interaction.grabbed {
         if let Some(grabbed) = overlays.mut_by_id(grab_data.grabbed_id) {
-            pointer.handle_grabbed(grabbed, hmd, &app.session.config);
+            pointer.handle_grabbed(grabbed, hmd, &mut app.session.config);
         } else {
             log::warn!("Grabbed overlay {} does not exist", grab_data.grabbed_id);
             pointer.interaction.grabbed = None;
@@ -469,12 +470,17 @@ impl Pointer {
         self.interaction.grabbed = Some(GrabData {
             offset,
             grabbed_id: overlay.state.id,
+            old_curvature: overlay.state.curvature,
         });
         log::info!("Hand {}: grabbed {}", self.idx, overlay.state.name);
     }
 
-    fn handle_grabbed<O>(&mut self, overlay: &mut OverlayData<O>, hmd: &Affine3A, config: &GeneralConfig)
-    where
+    fn handle_grabbed<O>(
+        &mut self,
+        overlay: &mut OverlayData<O>,
+        hmd: &Affine3A,
+        config: &mut GeneralConfig,
+    ) where
         O: Default,
     {
         if self.now.grab {
@@ -509,6 +515,26 @@ impl Pointer {
                 hmd.inverse()
                     .transform_point3a(overlay.state.transform.translation),
             );
+
+            if let Some(grab_data) = self.interaction.grabbed.as_ref() {
+                let mut state_dirty = false;
+                if overlay.state.curvature != grab_data.old_curvature {
+                    if let Some(val) = overlay.state.curvature {
+                        config.curve_values.arc_ins(overlay.state.name.clone(), val);
+                    } else {
+                        let ref_name = overlay.state.name.as_ref();
+                        config.curve_values.arc_rm(ref_name);
+                    }
+                    state_dirty = true;
+                }
+                if state_dirty {
+                    match save_state(config) {
+                        Ok(_) => log::debug!("Saved state"),
+                        Err(e) => log::error!("Failed to save state: {:?}", e),
+                    }
+                }
+            }
+
             self.interaction.grabbed = None;
             log::info!("Hand {}: dropped {}", self.idx, overlay.state.name);
         }

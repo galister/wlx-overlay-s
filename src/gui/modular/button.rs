@@ -1,14 +1,13 @@
 use std::{
     f32::consts::PI,
     ops::Add,
-    path::PathBuf,
     process::{self, Child},
     sync::Arc,
     time::{Duration, Instant},
 };
 
 use glam::{Quat, Vec3A, Vec4};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use crate::{
     backend::{
@@ -16,13 +15,12 @@ use crate::{
         input::PointerMode,
         overlay::RelativeTo,
     },
-    config::{def_half, def_left, def_point7, def_true, def_watch_pos, def_watch_rot},
-    config_io,
+    config::{save_settings, save_state, AStrSetExt},
     overlays::{
         toast::{Toast, ToastTopic},
         watch::WATCH_NAME,
     },
-    state::{AppState, LeftRight},
+    state::AppState,
 };
 
 use super::{ExecArgs, ModularControl, ModularData};
@@ -44,6 +42,7 @@ pub enum Axis {
 
 #[derive(Deserialize, Clone)]
 pub enum HighlightTest {
+    AllowSliding,
     AutoRealign,
     NotificationSounds,
     Notifications,
@@ -51,6 +50,7 @@ pub enum HighlightTest {
 
 #[derive(Deserialize, Clone)]
 pub enum SystemAction {
+    ToggleAllowSliding,
     ToggleAutoRealign,
     ToggleNotificationSounds,
     ToggleNotifications,
@@ -289,6 +289,7 @@ fn modular_button_highlight(
 
     if let Some(test) = &data.highlight {
         let lit = match test {
+            HighlightTest::AllowSliding => app.session.config.allow_sliding,
             HighlightTest::AutoRealign => app.session.config.realign_on_showhide,
             HighlightTest::NotificationSounds => app.session.config.notifications_sound_enabled,
             HighlightTest::Notifications => app.session.config.notifications_enabled,
@@ -330,19 +331,30 @@ fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppStat
     }
 }
 
+const ENABLED_DISABLED: [&str; 2] = ["enabled", "disabled"];
+
 fn run_system(action: &SystemAction, app: &mut AppState) {
     match action {
+        SystemAction::ToggleAllowSliding => {
+            app.session.config.allow_sliding = !app.session.config.allow_sliding;
+            Toast::new(
+                ToastTopic::System,
+                format!(
+                    "Sliding is {}.",
+                    ENABLED_DISABLED[app.session.config.allow_sliding as usize]
+                )
+                .into(),
+                "".into(),
+            )
+            .submit(app);
+        }
         SystemAction::ToggleAutoRealign => {
             app.session.config.realign_on_showhide = !app.session.config.realign_on_showhide;
             Toast::new(
                 ToastTopic::System,
                 format!(
                     "Auto realign is {}.",
-                    if app.session.config.realign_on_showhide {
-                        "enabled"
-                    } else {
-                        "disabled"
-                    }
+                    ENABLED_DISABLED[app.session.config.realign_on_showhide as usize]
                 )
                 .into(),
                 "".into(),
@@ -379,11 +391,7 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
                 ToastTopic::System,
                 format!(
                     "Notifications are {}.",
-                    if app.session.config.notifications_enabled {
-                        "enabled"
-                    } else {
-                        "disabled"
-                    }
+                    ENABLED_DISABLED[app.session.config.notifications_enabled as usize]
                 )
                 .into(),
                 "".into(),
@@ -397,11 +405,7 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
                 ToastTopic::System,
                 format!(
                     "Notification sounds are {}.",
-                    if app.session.config.notifications_sound_enabled {
-                        "enabled"
-                    } else {
-                        "disabled"
-                    }
+                    ENABLED_DISABLED[app.session.config.notifications_sound_enabled as usize]
                 )
                 .into(),
                 "".into(),
@@ -409,7 +413,7 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
             .submit(app);
         }
         SystemAction::PersistConfig => {
-            if let Err(e) = save_settings(app) {
+            if let Err(e) = save_settings(&app.session.config) {
                 log::error!("Failed to save config: {:?}", e);
             }
         }
@@ -585,6 +589,20 @@ fn run_overlay(overlay: &OverlaySelector, action: &OverlayAction, app: &mut AppS
                         o.show_hide = o.want_visible;
                         o.reset(app, false);
                     }
+
+                    let mut state_dirty = false;
+                    if !o.want_visible {
+                        state_dirty |= app.session.config.show_screens.arc_rm(o.name.as_ref());
+                    } else if o.want_visible {
+                        state_dirty |= app.session.config.show_screens.arc_ins(o.name.clone());
+                    }
+
+                    if state_dirty {
+                        match save_state(&app.session.config) {
+                            Ok(_) => log::debug!("Saved state"),
+                            Err(e) => log::error!("Failed to save state: {:?}", e),
+                        }
+                    }
                 }),
             ));
         }
@@ -697,54 +715,4 @@ const THUMP_AUDIO_WAV: &[u8] = include_bytes!("../../res/380885.wav");
 
 fn audio_thump(app: &mut AppState) {
     app.audio.play(THUMP_AUDIO_WAV);
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct AutoSettings {
-    #[serde(default = "def_watch_pos")]
-    pub watch_pos: [f32; 3],
-
-    #[serde(default = "def_watch_rot")]
-    pub watch_rot: [f32; 4],
-
-    #[serde(default = "def_left")]
-    pub watch_hand: LeftRight,
-
-    #[serde(default = "def_half")]
-    pub watch_view_angle_min: f32,
-
-    #[serde(default = "def_point7")]
-    pub watch_view_angle_max: f32,
-
-    #[serde(default = "def_true")]
-    pub notifications_enabled: bool,
-
-    #[serde(default = "def_true")]
-    pub notifications_sound_enabled: bool,
-
-    #[serde(default = "def_true")]
-    pub realign_on_showhide: bool,
-}
-
-fn get_config_path() -> PathBuf {
-    let mut path = config_io::get_conf_d_path();
-    path.push("zz-saved-config.json5");
-    path
-}
-pub fn save_settings(app: &mut AppState) -> anyhow::Result<()> {
-    let conf = AutoSettings {
-        watch_pos: app.session.config.watch_pos,
-        watch_rot: app.session.config.watch_rot,
-        watch_hand: app.session.config.watch_hand,
-        watch_view_angle_min: app.session.config.watch_view_angle_min,
-        watch_view_angle_max: app.session.config.watch_view_angle_max,
-        notifications_enabled: app.session.config.notifications_enabled,
-        notifications_sound_enabled: app.session.config.notifications_sound_enabled,
-        realign_on_showhide: app.session.config.realign_on_showhide,
-    };
-
-    let json = serde_json::to_string_pretty(&conf).unwrap(); // want panic
-    std::fs::write(get_config_path(), json)?;
-
-    Ok(())
 }

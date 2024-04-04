@@ -15,8 +15,9 @@ use thiserror::Error;
 use wlx_capture::wayland::{OutputChangeEvent, WlxClient};
 
 use crate::{
+    config::{AStrMapExt, AStrSetExt},
     overlays::{
-        keyboard::create_keyboard,
+        keyboard::{create_keyboard, KEYBOARD_NAME},
         screen::{create_screen_interaction, create_screen_renderer_wl, load_pw_token_config},
         watch::{create_watch, create_watch_canvas, WATCH_NAME},
     },
@@ -66,15 +67,21 @@ where
         let mut show_screens = app.session.config.show_screens.clone();
         if show_screens.is_empty() {
             if let Some((_, s, _)) = data.screens.first() {
-                show_screens.push(s.name.clone());
+                show_screens.arc_ins(s.name.clone());
             }
         }
 
         for (meta, mut state, backend) in data.screens {
-            if show_screens.contains(&state.name) {
+            if show_screens.arc_get(state.name.as_ref()) {
                 state.show_hide = true;
                 state.want_visible = false;
             }
+            state.curvature = app
+                .session
+                .config
+                .curve_values
+                .arc_get(state.name.as_ref())
+                .copied();
             overlays.insert(
                 state.id,
                 OverlayData::<T> {
@@ -93,6 +100,12 @@ where
         let mut keyboard = create_keyboard(app)?;
         keyboard.state.show_hide = true;
         keyboard.state.want_visible = false;
+        keyboard.state.curvature = app
+            .session
+            .config
+            .curve_values
+            .arc_get(KEYBOARD_NAME)
+            .copied();
         overlays.insert(keyboard.state.id, keyboard);
 
         Ok(Self { overlays, wl })
@@ -283,7 +296,10 @@ where
         self.overlays.values_mut().for_each(|o| {
             if o.state.show_hide {
                 o.state.want_visible = !any_shown;
-                if o.state.want_visible && app.session.config.realign_on_showhide && o.state.recenter {
+                if o.state.want_visible
+                    && app.session.config.realign_on_showhide
+                    && o.state.recenter
+                {
                     o.state.reset(app, false);
                 }
             }
