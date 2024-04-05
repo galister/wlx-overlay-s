@@ -405,6 +405,15 @@ impl WlxGraphics {
                 if p.supported_extensions().contains(&my_extensions) {
                     Some((p, my_extensions))
                 } else {
+                    log::debug!(
+                        "Not using {} because it does not implement the following device extensions:",
+                        p.properties().device_name,
+                    );
+                    for (ext, missing) in p.supported_extensions().difference(&my_extensions) {
+                        if missing {
+                            log::debug!("  {}", ext);
+                        }
+                    }
                     None
                 }
             })
