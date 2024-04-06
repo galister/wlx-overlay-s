@@ -735,7 +735,7 @@ pub fn create_screens_wayland(
 }
 
 #[cfg(not(feature = "x11"))]
-pub fn create_screens_x11(session: &AppSession) -> anyhow::Result<ScreenCreateData> {
+pub fn create_screens_x11(_app: &mut AppState) -> anyhow::Result<ScreenCreateData> {
     anyhow::bail!("X11 support not enabled")
 }
 
