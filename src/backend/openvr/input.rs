@@ -39,6 +39,7 @@ const PATH_SPACE_DRAG: &str = "/actions/default/in/SpaceDrag";
 const PATH_SPACE_ROTATE: &str = "/actions/default/in/SpaceRotate";
 const PATH_CLICK_MODIFIER_RIGHT: &str = "/actions/default/in/ClickModifierRight";
 const PATH_CLICK_MODIFIER_MIDDLE: &str = "/actions/default/in/ClickModifierMiddle";
+const PATH_MOVE_MOUSE: &str = "/actions/default/in/MoveMouse";
 
 const INPUT_ANY: InputValueHandle = InputValueHandle(ovr_overlay::sys::k_ulInvalidInputValueHandle);
 
@@ -54,6 +55,7 @@ pub(super) struct OpenVrInputSource {
     space_rotate_hnd: ActionHandle,
     click_modifier_right_hnd: ActionHandle,
     click_modifier_middle_hnd: ActionHandle,
+    move_mouse_hnd: ActionHandle,
 }
 
 pub(super) struct OpenVrHandSource {
@@ -77,6 +79,7 @@ impl OpenVrInputSource {
         let space_rotate_hnd = input.get_action_handle(PATH_SPACE_ROTATE)?;
         let click_modifier_right_hnd = input.get_action_handle(PATH_CLICK_MODIFIER_RIGHT)?;
         let click_modifier_middle_hnd = input.get_action_handle(PATH_CLICK_MODIFIER_MIDDLE)?;
+        let move_mouse_hnd = input.get_action_handle(PATH_MOVE_MOUSE)?;
 
         let input_hnd: Vec<InputValueHandle> = INPUT_SOURCES
             .iter()
@@ -112,6 +115,7 @@ impl OpenVrInputSource {
             space_rotate_hnd,
             click_modifier_right_hnd,
             click_modifier_middle_hnd,
+            move_mouse_hnd,
             hands,
         })
     }
@@ -209,6 +213,11 @@ impl OpenVrInputSource {
 
             app_hand.now.click_modifier_middle = input
                 .get_digital_action_data(self.click_modifier_middle_hnd, hand.input_hnd)
+                .map(|x| x.0.bState)
+                .unwrap_or(false);
+
+            app_hand.now.move_mouse = input
+                .get_digital_action_data(self.move_mouse_hnd, hand.input_hnd)
                 .map(|x| x.0.bState)
                 .unwrap_or(false);
 

@@ -36,6 +36,11 @@
       "requirement": "optional"
     },
     {
+      "name": "/actions/default/in/MoveMouse",
+      "type": "boolean",
+      "requirement": "optional"
+    },
+    {
       "name": "/actions/default/in/SpaceDrag",
       "type": "boolean",
       "requirement": "optional"
