@@ -90,7 +90,9 @@ impl InteractionHandler for ScreenInteractionHandler {
     fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
         #[cfg(debug_assertions)]
         log::trace!("Hover: {:?}", hit.uv);
-        if self.next_move < Instant::now() {
+        if self.next_move < Instant::now() &&
+            (!app.session.config.focus_follows_mouse_mode
+                || app.input_state.pointers[hit.pointer].now.move_mouse) {
             let pos = self.mouse_transform.transform_point2(hit.uv);
             app.hid_provider.mouse_move(pos);
         }
@@ -112,6 +114,7 @@ impl InteractionHandler for ScreenInteractionHandler {
 
         let pos = self.mouse_transform.transform_point2(hit.uv);
         app.hid_provider.mouse_move(pos);
+
     }
     fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta: f32) {
         if self.next_scroll > Instant::now() {

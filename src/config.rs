@@ -223,6 +223,9 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_true")]
     pub realign_on_showhide: bool,
+
+    #[serde(default = "def_false")]
+    pub focus_follows_mouse_mode: bool,
 }
 
 impl GeneralConfig {

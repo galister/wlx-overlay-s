@@ -19,3 +19,9 @@ allow_sliding: true
 # Enable / disable realigning the working set windows when they are shown/hidden
 # Default: true
 realign_on_showhide: true
+
+# When enabled, the mouse pointer will not be moved on the screen, unless the trigger is touched
+# allowing for moving both pointers off the screens to the keyboard, while keeping the cursor position
+# unchanged, for when the desktop is configured to move the focus with the mouse cursor
+# Default: false
+focus_follows_mouse_mode: false

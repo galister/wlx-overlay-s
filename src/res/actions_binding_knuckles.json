@@ -67,6 +67,9 @@
                "inputs" : {
                   "click" : {
                      "output" : "/actions/default/in/click"
+                  },
+                  "touch": {
+                     "output": "/actions/default/in/movemouse"
                   }
                },
                "mode" : "button",
@@ -80,6 +83,9 @@
                "inputs" : {
                   "click" : {
                      "output" : "/actions/default/in/click"
+                  },
+                  "touch": {
+                     "output": "/actions/default/in/movemouse"
                   }
                },
                "mode" : "button",

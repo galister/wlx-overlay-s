@@ -198,6 +198,7 @@ pub struct PointerState {
     pub space_rotate: bool,
     pub click_modifier_right: bool,
     pub click_modifier_middle: bool,
+    pub move_mouse: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
