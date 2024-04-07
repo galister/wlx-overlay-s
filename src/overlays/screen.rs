@@ -632,8 +632,9 @@ fn get_pw_token_path() -> PathBuf {
 }
 
 #[cfg(feature = "wayland")]
-pub fn save_pw_token_config(tokens: &PwTokenMap) -> Result<(), Box<dyn Error>> {
-    let yaml = serde_yaml::to_string(tokens)?;
+pub fn save_pw_token_config(tokens: PwTokenMap) -> Result<(), Box<dyn Error>> {
+    let conf = TokenConf { pw_tokens: tokens };
+    let yaml = serde_yaml::to_string(&conf)?;
     std::fs::write(get_pw_token_path(), yaml)?;
 
     Ok(())
@@ -721,7 +722,7 @@ pub fn create_screens_wayland(
 
     if pw_tokens_copy != pw_tokens {
         // Token list changed, re-create token config file
-        if let Err(err) = save_pw_token_config(&pw_tokens) {
+        if let Err(err) = save_pw_token_config(pw_tokens) {
             log::error!("Failed to save Pipewire token config: {}", err);
         }
     }
