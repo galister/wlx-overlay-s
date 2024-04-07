@@ -179,9 +179,6 @@ pub struct GeneralConfig {
     #[serde(default = "def_one")]
     pub long_press_duration: f32,
 
-    #[serde(default = "def_pw_tokens")]
-    pub pw_tokens: PwTokenMap,
-
     #[serde(default = "def_osc_port")]
     pub osc_out_port: u16,
 
