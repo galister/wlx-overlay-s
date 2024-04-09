@@ -8,18 +8,17 @@ use std::{
 #[cfg(feature = "openxr")]
 use openxr as xr;
 
-use glam::{vec2, Affine3A, Vec2, Vec3A, Vec3Swizzles};
+use glam::{Affine3A, Vec2, Vec3A, Vec3Swizzles};
 use idmap::IdMap;
 use serde::Deserialize;
 use thiserror::Error;
-use wlx_capture::wayland::{OutputChangeEvent, WlxClient};
 
 use crate::{
     config::{AStrMapExt, AStrSetExt},
     overlays::{
         keyboard::{create_keyboard, KEYBOARD_NAME},
-        screen::{create_screen_interaction, create_screen_renderer_wl, load_pw_token_config},
-        watch::{create_watch, create_watch_canvas, WATCH_NAME},
+        screen::WlxClientAlias,
+        watch::{create_watch, WATCH_NAME},
     },
     state::AppState,
 };
@@ -41,12 +40,22 @@ pub enum BackendError {
     Fatal(#[from] anyhow::Error),
 }
 
+#[cfg(feature = "wayland")]
+fn create_wl_client() -> Option<WlxClientAlias> {
+    wlx_capture::wayland::WlxClient::new()
+}
+
+#[cfg(not(feature = "wayland"))]
+fn create_wl_client() -> Option<WlxClientAlias> {
+    None
+}
+
 pub struct OverlayContainer<T>
 where
     T: Default,
 {
     overlays: IdMap<usize, OverlayData<T>>,
-    wl: Option<WlxClient>,
+    wl: Option<WlxClientAlias>,
 }
 
 impl<T> OverlayContainer<T>
@@ -55,7 +64,7 @@ where
 {
     pub fn new(app: &mut AppState) -> anyhow::Result<Self> {
         let mut overlays = IdMap::new();
-        let mut wl = WlxClient::new();
+        let mut wl = create_wl_client();
 
         app.screens.clear();
         let data = if let Some(wl) = wl.as_mut() {
@@ -111,7 +120,19 @@ where
         Ok(Self { overlays, wl })
     }
 
+    #[cfg(not(feature = "wayland"))]
+    pub fn update(&mut self, _app: &mut AppState) -> anyhow::Result<Vec<OverlayData<T>>> {
+        Ok(vec![])
+    }
+    #[cfg(feature = "wayland")]
     pub fn update(&mut self, app: &mut AppState) -> anyhow::Result<Vec<OverlayData<T>>> {
+        use crate::overlays::{
+            screen::{create_screen_interaction, create_screen_renderer_wl, load_pw_token_config},
+            watch::create_watch_canvas,
+        };
+        use glam::vec2;
+        use wlx_capture::wayland::OutputChangeEvent;
+
         let mut removed_overlays = vec![];
         let Some(wl) = self.wl.as_mut() else {
             return Ok(removed_overlays);

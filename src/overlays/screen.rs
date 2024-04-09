@@ -1,6 +1,7 @@
 use core::slice;
 use serde::{Deserialize, Serialize};
 use std::{
+    f32::consts::PI,
     ops::Add,
     ptr,
     sync::Arc,
@@ -21,9 +22,9 @@ use wlx_capture::{
 
 #[cfg(feature = "wayland")]
 use {
+    crate::config::AStrMapExt,
     crate::config_io,
-    glam::Vec3,
-    std::{error::Error, f32::consts::PI, ops::Deref, path::PathBuf},
+    std::{error::Error, ops::Deref, path::PathBuf},
     wlx_capture::{
         pipewire::{pipewire_select_screen, PipewireCapture},
         wayland::{wayland_client::protocol::wl_output, WlxClient, WlxOutput},
@@ -35,18 +36,24 @@ use {
 #[cfg(feature = "x11")]
 use wlx_capture::xshm::{XshmCapture, XshmScreen};
 
-use glam::{vec2, vec3a, Affine2, Quat, Vec2};
+use glam::{vec2, vec3a, Affine2, Quat, Vec2, Vec3};
 
 use crate::{
     backend::{
         input::{Haptics, InteractionHandler, PointerHit, PointerMode},
         overlay::{OverlayRenderer, OverlayState, SplitOverlayBackend},
     },
-    config::{def_pw_tokens, AStrMapExt, PwTokenMap},
+    config::{def_pw_tokens, PwTokenMap},
     graphics::{fourcc_to_vk, WlxCommandBuffer, WlxPipeline, WlxPipelineLegacy},
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState, ScreenMeta},
 };
+
+#[cfg(feature = "wayland")]
+pub(crate) type WlxClientAlias = wlx_capture::wayland::WlxClient;
+
+#[cfg(not(feature = "wayland"))]
+pub(crate) type WlxClientAlias = ();
 
 const CURSOR_SIZE: f32 = 16. / 1440.;
 
@@ -90,9 +97,10 @@ impl InteractionHandler for ScreenInteractionHandler {
     fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
         #[cfg(debug_assertions)]
         log::trace!("Hover: {:?}", hit.uv);
-        if self.next_move < Instant::now() &&
-            (!app.session.config.focus_follows_mouse_mode
-                || app.input_state.pointers[hit.pointer].now.move_mouse) {
+        if self.next_move < Instant::now()
+            && (!app.session.config.focus_follows_mouse_mode
+                || app.input_state.pointers[hit.pointer].now.move_mouse)
+        {
             let pos = self.mouse_transform.transform_point2(hit.uv);
             app.hid_provider.mouse_move(pos);
         }
@@ -114,7 +122,6 @@ impl InteractionHandler for ScreenInteractionHandler {
 
         let pos = self.mouse_transform.transform_point2(hit.uv);
         app.hid_provider.mouse_move(pos);
-
     }
     fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta: f32) {
         if self.next_scroll > Instant::now() {
@@ -653,15 +660,15 @@ pub(crate) struct ScreenCreateData {
 
 #[cfg(not(feature = "wayland"))]
 pub fn create_screens_wayland(
-    wl: &mut WlxClient,
-    app: &AppState,
+    _wl: &mut WlxClientAlias,
+    _app: &AppState,
 ) -> anyhow::Result<ScreenCreateData> {
     anyhow::bail!("Wayland support not enabled")
 }
 
 #[cfg(feature = "wayland")]
 pub fn create_screens_wayland(
-    wl: &mut WlxClient,
+    wl: &mut WlxClientAlias,
     app: &mut AppState,
 ) -> anyhow::Result<ScreenCreateData> {
     use crate::config::AStrMap;
