@@ -1,0 +1,30 @@
+name: Build X11+OpenVR
+
+on:
+  push:
+    #branches: [ "main" ]
+  pull_request:
+    #branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup sccache
+      uses: mozilla-actions/sccache-action@v0.0.3
+    - name: Prepare Environment
+      run: |
+        sudo add-apt-repository -syn universe
+        sudo add-apt-repository -syn ppa:pipewire-debian/pipewire-upstream || sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 25088A0359807596
+        sudo apt-get update -y
+        sudo apt-get install -y fuse cmake pkg-config fontconfig libasound2-dev libxkbcommon-dev libopenxr-dev libfontconfig-dev libdbus-1-dev libpipewire-0.3-0 libpipewire-0.3-dev libspa-0.2-dev libx11-6 libxext6 libxrandr2 libx11-dev libxext-dev libxrandr-dev libopenvr-dev libopenvr-api1
+    - name: Build
+      run: cargo build --verbose --no-default-features --features=x11,openvr
+    - name: Run tests
+      run: cargo test --verbos --no-default-features --features=x11,openvre

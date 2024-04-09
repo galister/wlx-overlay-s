@@ -7,13 +7,17 @@ on:
 
 env:
   APPDIR: WlxOverlay-S.AppDir
+  CARGO_TERM_COLOR: always
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
   
 jobs:
   make_release:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
-      
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
       - name: Prepare Environment
         run: |
           sudo add-apt-repository -syn universe
