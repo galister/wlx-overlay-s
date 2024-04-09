@@ -1,4 +1,4 @@
-name: Build Wayland+OpenXR
+name: Check Wayland+OpenXR
 
 on:
   push:

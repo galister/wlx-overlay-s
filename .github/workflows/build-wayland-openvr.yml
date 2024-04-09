@@ -1,4 +1,4 @@
-name: Build Wayland+OpenVR
+name: Check Wayland+OpenVR
 
 on:
   push:

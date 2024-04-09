@@ -1,4 +1,4 @@
-name: Build X11+OpenXR
+name: Check X11+OpenXR
 
 on:
   push:

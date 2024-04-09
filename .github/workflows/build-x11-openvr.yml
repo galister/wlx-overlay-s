@@ -1,4 +1,4 @@
-name: Build X11+OpenVR
+name: Check X11+OpenVR
 
 on:
   push:
@@ -27,4 +27,4 @@ jobs:
     - name: Build
       run: cargo build --verbose --no-default-features --features=x11,openvr
     - name: Run tests
-      run: cargo test --verbos --no-default-features --features=x11,openvre
+      run: cargo test --verbose --no-default-features --features=x11,openvre

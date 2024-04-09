@@ -1,4 +1,4 @@
-name: Build Full
+name: Check Full
 
 on:
   push:
