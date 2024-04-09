@@ -325,20 +325,16 @@ pub fn load_general() -> GeneralConfig {
     }
 
     match settings_builder.build() {
-        Ok(settings) => {
-            match settings.try_deserialize::<GeneralConfig>() {
-                Ok(config) => {
-                    return config;
-                }
-                Err(e) => {
-                    panic!("Failed to deserialize settings: {}", e);
-                }
-            };
-        }
+        Ok(settings) => match settings.try_deserialize::<GeneralConfig>() {
+            Ok(config) => config,
+            Err(e) => {
+                panic!("Failed to deserialize settings: {}", e);
+            }
+        },
         Err(e) => {
             panic!("Failed to build settings: {}", e);
         }
-    };
+    }
 }
 
 // Config that is saved from the settings panel
