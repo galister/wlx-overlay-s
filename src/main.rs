@@ -18,7 +18,7 @@ use std::{
 };
 
 use clap::Parser;
-use flexi_logger::FileSpec;
+use flexi_logger::{Duplicate, FileSpec, LogSpecification};
 
 /// The lightweight desktop overlay for OpenVR and OpenXR
 #[derive(Parser, Debug)]
@@ -44,26 +44,15 @@ struct Args {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = Args::parse();
-    let maybe_logfile = std::env::var("WLX_LOGFILE").ok();
-
-    if let Some(ref log_to) = args.log_to.as_ref().or(maybe_logfile.as_ref()) {
-        let file_spec = FileSpec::try_from(PathBuf::from(log_to))?;
-        flexi_logger::Logger::try_with_env_or_str("info")?
-            .log_to_file(file_spec)
-            .duplicate_to_stderr(flexi_logger::Duplicate::Info)
-            .start()?;
-        println!("   ****** Logging to: {} ******", &log_to);
-        println!("   ****** Console logs limited to Info ******");
-    } else {
-        flexi_logger::Logger::try_with_env_or_str("info")?.start()?;
-    }
+    let mut args = Args::parse();
+    logging_init(&mut args)?;
 
     log::info!(
         "Welcome to {} version {}!",
         env!("CARGO_PKG_NAME"),
         env!("CARGO_PKG_VERSION")
     );
+    log::info!("It is {}.", chrono::Local::now().format("%c"));
 
     #[cfg(feature = "openvr")]
     if args.uninstall {
@@ -142,4 +131,46 @@ fn args_get_openxr(_args: &Args) -> bool {
     let ret = false;
 
     ret
+}
+
+fn logging_init(args: &mut Args) -> anyhow::Result<()> {
+    let log_file = args
+        .log_to
+        .take()
+        .or_else(|| std::env::var("WLX_LOGFILE").ok())
+        .or_else(|| Some("/tmp/wlx.log".to_string()));
+
+    if let Some(log_to) = log_file.filter(|s| !s.is_empty()) {
+        if let Err(e) = file_logging_init(&log_to) {
+            log::error!("Failed to initialize file logging: {}", e);
+            flexi_logger::Logger::try_with_env_or_str("info")?.start()?;
+        }
+    } else {
+        flexi_logger::Logger::try_with_env_or_str("info")?.start()?;
+    }
+    Ok(())
+}
+
+fn file_logging_init(log_to: &str) -> anyhow::Result<()> {
+    let file_spec = FileSpec::try_from(PathBuf::from(log_to))?;
+    let log_spec = LogSpecification::env_or_parse("info")?;
+
+    let duplicate = log_spec
+        .module_filters()
+        .iter()
+        .find(|m| m.module_name.is_none())
+        .map(|m| match m.level_filter {
+            log::LevelFilter::Trace => Duplicate::Trace,
+            log::LevelFilter::Debug => Duplicate::Debug,
+            log::LevelFilter::Info => Duplicate::Info,
+            log::LevelFilter::Warn => Duplicate::Warn,
+            _ => Duplicate::Error,
+        });
+
+    flexi_logger::Logger::with(log_spec)
+        .log_to_file(file_spec)
+        .duplicate_to_stderr(duplicate.unwrap_or(Duplicate::Error))
+        .start()?;
+    println!("Logging to: {}", log_to);
+    Ok(())
 }

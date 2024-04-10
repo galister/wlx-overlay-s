@@ -92,6 +92,10 @@ Typing
 If your bindings are not supported, please reach out. \
 We would like to work with you and include additional bindings.
 
+# Troubleshooting
+
+Check [here](https://github.com/galister/wlx-overlay-s/wiki/Troubleshooting) for tips.
+
 # Known Issues
 
 ## Auto-Start not working on SteamVR 2.4.4
