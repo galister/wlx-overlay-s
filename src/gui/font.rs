@@ -145,7 +145,7 @@ impl FontCache {
                     continue;
                 }
                 let g = face.get_char_index(cp);
-                if g > 0 {
+                if g.is_some() {
                     coll.cp_map.insert(cp, idx);
                 }
             }
