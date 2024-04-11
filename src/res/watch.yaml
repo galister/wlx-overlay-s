@@ -79,11 +79,11 @@ elements:
   # local clock
   - type: Label
     rect: [19, 90, 200, 50]
-    font_size: 46
+    font_size: 46 # Use 32 for 12-hour time
     fg_color: "#ffffff"
     source: Clock
     format: "%H:%M" # 23:59
-    #format: "%h:%M %p" # 11:59 PM
+    #format: "%I:%M %p" # 11:59 PM
  
   # local date
   - type: Label
@@ -105,12 +105,12 @@ elements:
   # alt clock 1
   - type: Label
     rect: [210, 90, 200, 50]
-    font_size: 24
+    font_size: 24 # Use 18 for 12-hour time
     fg_color: "#99BBAA"
     source: Clock
     timezone: "Asia/Tokyo" # change TZ1 here
     format: "%H:%M" # 23:59
-    #format: "%h:%M %p" # 11:59 PM
+    #format: "%I:%M %p" # 11:59 PM
   - type: Label
     rect: [210, 60, 200, 50]
     font_size: 14
@@ -121,12 +121,12 @@ elements:
   # alt clock 2
   - type: Label
     rect: [210, 150, 200, 50]
-    font_size: 24
+    font_size: 24 # Use 18 for 12-hour time
     fg_color: "#AA99BB"
     source: Clock
     timezone: "America/Chicago" # change TZ2 here
     format: "%H:%M" # 23:59
-    #format: "%h:%M %p" # 11:59 PM
+    #format: "%I:%M %p" # 11:59 PM
   - type: Label
     rect: [210, 120, 200, 50]
     font_size: 14
