@@ -21,6 +21,12 @@ pub(super) fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
     let mut enabled_extensions = xr::ExtensionSet::default();
     enabled_extensions.khr_vulkan_enable2 = true;
     enabled_extensions.extx_overlay = true;
+    if available_extensions.khr_binding_modification && available_extensions.ext_dpad_binding {
+        enabled_extensions.khr_binding_modification = true;
+        enabled_extensions.ext_dpad_binding = true;
+    } else {
+        log::warn!("Missing EXT_dpad_binding extension.");
+    }
 
     //#[cfg(not(debug_assertions))]
     let layers = [];

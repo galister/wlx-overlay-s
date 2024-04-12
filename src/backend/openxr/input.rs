@@ -521,5 +521,68 @@ fn suggest_bindings(
         ],
     )?;
 
+    let path = instance.string_to_path("/interaction_profiles/microsoft/motion_controller")?;
+    instance.suggest_interaction_profile_bindings(
+        path,
+        &[
+            xr::Binding::new(
+                &hands[0].action_pose,
+                instance.string_to_path("/user/hand/left/input/aim/pose")?,
+            ),
+            xr::Binding::new(
+                &hands[1].action_pose,
+                instance.string_to_path("/user/hand/right/input/aim/pose")?,
+            ),
+            xr::Binding::new(
+                &hands[1].action_click,
+                instance.string_to_path("/user/hand/right/input/trigger/value")?,
+            ),
+            xr::Binding::new(
+                &hands[0].action_grab,
+                instance.string_to_path("/user/hand/left/input/squeeze/click")?,
+            ),
+            xr::Binding::new(
+                &hands[1].action_grab,
+                instance.string_to_path("/user/hand/right/input/squeeze/click")?,
+            ),
+            xr::Binding::new(
+                &hands[0].action_click_modifier_right,
+                instance.string_to_path("/user/hand/left/input/trackpad/dpad_up")?,
+            ),
+            xr::Binding::new(
+                &hands[1].action_click_modifier_right,
+                instance.string_to_path("/user/hand/right/input/trackpad/dpad_up")?,
+            ),
+            xr::Binding::new(
+                &hands[0].action_click_modifier_middle,
+                instance.string_to_path("/user/hand/left/input/trackpad/dpad_down")?,
+            ),
+            xr::Binding::new(
+                &hands[1].action_click_modifier_middle,
+                instance.string_to_path("/user/hand/right/input/trackpad/dpad_down")?,
+            ),
+            xr::Binding::new(
+                &hands[0].action_scroll,
+                instance.string_to_path("/user/hand/left/input/thumbstick/y")?,
+            ),
+            xr::Binding::new(
+                &hands[1].action_scroll,
+                instance.string_to_path("/user/hand/right/input/thumbstick/y")?,
+            ),
+            xr::Binding::new(
+                &hands[0].action_show_hide,
+                instance.string_to_path("/user/hand/left/input/menu/click")?,
+            ),
+            xr::Binding::new(
+                &hands[0].action_haptics,
+                instance.string_to_path("/user/hand/left/output/haptic")?,
+            ),
+            xr::Binding::new(
+                &hands[1].action_haptics,
+                instance.string_to_path("/user/hand/right/output/haptic")?,
+            ),
+        ],
+    )?;
+
     Ok(())
 }
