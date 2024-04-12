@@ -120,6 +120,9 @@ impl InteractionHandler for ScreenInteractionHandler {
 
         app.hid_provider.send_button(btn, pressed);
 
+        if !pressed {
+            return;
+        }
         let pos = self.mouse_transform.transform_point2(hit.uv);
         app.hid_provider.mouse_move(pos);
     }
