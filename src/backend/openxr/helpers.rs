@@ -26,6 +26,11 @@ pub(super) fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
         enabled_extensions.ext_dpad_binding = true;
     } else {
         log::warn!("Missing EXT_dpad_binding extension.");
+    }    
+    if available_extensions.ext_hp_mixed_reality_controller {
+        enabled_extensions.ext_hp_mixed_reality_controller = true;
+    } else {
+        log::warn!("Missing EXT_hp_mixed_reality_controller extension.");
     }
 
     //#[cfg(not(debug_assertions))]
