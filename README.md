@@ -33,6 +33,9 @@ You may also want to [build from source](https://github.com/galister/wlx-overlay
 
 **If you get a screen share pop-up, check the terminal and select the screens in the order it tells you to.**
 
+If you selected the screens in the wrong order:
+  - `rm ~/.config/wlxoverlay/conf.d/pw_tokens.yaml` then restart
+
 SteamVR users: WlxOverlay-S will register itself for auto-start, so you will not need to start it every time.
 
 **Please continue reading the guide below.**
