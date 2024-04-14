@@ -129,9 +129,7 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
 
                 let new_modified = watch_path.metadata().unwrap().modified().unwrap();
                 if new_modified > path_last_modified {
-                    {
-                        let _ = preview.take(); // free swapchain
-                    }
+                    drop(preview.take());
                     preview = Some(
                         PreviewState::new(&mut state, surface.clone(), window.clone(), panel_name)
                             .unwrap(),
@@ -139,20 +137,29 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
                     path_last_modified = new_modified;
                 }
 
+                let (image_index, _, acquire_future) =
+                    match acquire_next_image(preview.as_ref().unwrap().swapchain.clone(), None)
+                        .map_err(Validated::unwrap)
+                    {
+                        Ok(r) => r,
+                        Err(VulkanError::OutOfDate) => {
+                            drop(preview.take());
+                            preview = Some(
+                                PreviewState::new(
+                                    &mut state,
+                                    surface.clone(),
+                                    window.clone(),
+                                    panel_name,
+                                )
+                                .unwrap(),
+                            );
+                            return;
+                        }
+                        Err(e) => panic!("failed to acquire next image: {e}"),
+                    };
+
                 {
                     let preview = preview.as_ref().unwrap();
-
-                    let (image_index, _, acquire_future) =
-                        match acquire_next_image(preview.swapchain.clone(), None)
-                            .map_err(Validated::unwrap)
-                        {
-                            Ok(r) => r,
-                            Err(VulkanError::OutOfDate) => {
-                                elwt.exit();
-                                return;
-                            }
-                            Err(e) => panic!("failed to acquire next image: {e}"),
-                        };
 
                     let target = preview.images[image_index as usize].clone();
 
