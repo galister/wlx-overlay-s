@@ -50,7 +50,7 @@ pub fn watch_fade<D>(app: &mut AppState, watch: &mut OverlayData<D>)
 where
     D: Default,
 {
-    if watch.state.saved_scale.is_some_and(|s| s < f32::EPSILON) {
+    if watch.state.saved_transform.is_some() {
         watch.state.want_visible = false;
         return;
     }

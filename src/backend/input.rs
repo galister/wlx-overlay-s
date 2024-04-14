@@ -6,6 +6,7 @@ use glam::{Affine3A, Vec2, Vec3A};
 use ovr_overlay::TrackedDeviceIndex;
 use smallvec::{smallvec, SmallVec};
 
+use crate::backend::common::snap_upright;
 use crate::config::{save_state, AStrMapExt, GeneralConfig};
 use crate::state::AppState;
 
@@ -286,11 +287,11 @@ fn interact_hand<O>(
 where
     O: Default,
 {
-    let hmd = &app.input_state.hmd;
+    let hmd = app.input_state.hmd;
     let mut pointer = &mut app.input_state.pointers[idx];
     if let Some(grab_data) = pointer.interaction.grabbed {
         if let Some(grabbed) = overlays.mut_by_id(grab_data.grabbed_id) {
-            pointer.handle_grabbed(grabbed, hmd, &mut app.session.config);
+            pointer.handle_grabbed(grabbed, &hmd, &mut app.session.config);
         } else {
             log::warn!("Grabbed overlay {} does not exist", grab_data.grabbed_id);
             pointer.interaction.grabbed = None;
@@ -512,10 +513,8 @@ impl Pointer {
                 self.interaction.grabbed = None;
             }
         } else {
-            overlay.state.saved_point = Some(
-                hmd.inverse()
-                    .transform_point3a(overlay.state.transform.translation),
-            );
+            overlay.state.saved_transform =
+                Some(snap_upright(*hmd, Vec3A::Y).inverse() * overlay.state.transform);
 
             if let Some(grab_data) = self.interaction.grabbed.as_ref() {
                 let mut state_dirty = false;

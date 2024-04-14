@@ -12,7 +12,10 @@ use vulkano::image::view::ImageView;
 
 use crate::state::AppState;
 
-use super::input::{DummyInteractionHandler, Haptics, InteractionHandler, PointerHit};
+use super::{
+    common::snap_upright,
+    input::{DummyInteractionHandler, Haptics, InteractionHandler, PointerHit},
+};
 
 static AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(0);
 
@@ -32,11 +35,10 @@ pub struct OverlayState {
     pub dirty: bool,
     pub alpha: f32,
     pub transform: Affine3A,
-    pub saved_point: Option<Vec3A>,
-    pub saved_scale: Option<f32>,
     pub spawn_scale: f32, // aka width
     pub spawn_point: Vec3A,
     pub spawn_rotation: Quat,
+    pub saved_transform: Option<Affine3A>,
     pub relative_to: RelativeTo,
     pub curvature: Option<f32>,
     pub primary_pointer: Option<usize>,
@@ -58,11 +60,10 @@ impl Default for OverlayState {
             alpha: 1.0,
             relative_to: RelativeTo::None,
             curvature: None,
-            saved_point: None,
-            saved_scale: None,
             spawn_scale: 1.0,
             spawn_point: Vec3A::NEG_Z,
             spawn_rotation: Quat::IDENTITY,
+            saved_transform: None,
             transform: Affine3A::IDENTITY,
             primary_pointer: None,
             interaction_transform: Affine2::IDENTITY,
@@ -104,38 +105,37 @@ impl OverlayState {
         }
     }
 
+    fn get_transform(&self) -> Affine3A {
+        self.saved_transform.unwrap_or_else(|| {
+            Affine3A::from_scale_rotation_translation(
+                Vec3::ONE * self.spawn_scale,
+                self.spawn_rotation,
+                self.spawn_point.into(),
+            )
+        })
+    }
+
     pub fn auto_movement(&mut self, app: &mut AppState) {
         if let Some(parent) = self.parent_transform(app) {
-            let scale = self.saved_scale.unwrap_or(self.spawn_scale);
-            let point = self.saved_point.unwrap_or(self.spawn_point);
-            self.transform = parent
-                * Affine3A::from_scale_rotation_translation(
-                    Vec3::ONE * scale,
-                    self.spawn_rotation,
-                    point.into(),
-                );
-
+            self.transform = parent * self.get_transform();
             self.dirty = true;
         }
     }
 
     pub fn reset(&mut self, app: &mut AppState, hard_reset: bool) {
         if hard_reset {
-            self.saved_point = None;
-            self.saved_scale = None;
+            self.saved_transform = None;
         }
 
-        let scale = self.saved_scale.unwrap_or(self.spawn_scale);
-        let point = self.saved_point.unwrap_or(self.spawn_point);
+        let hmd = snap_upright(app.input_state.hmd, Vec3A::Y);
+        self.transform = hmd * self.get_transform();
 
-        let translation = app.input_state.hmd.transform_point3a(point);
-        self.transform = Affine3A::from_scale_rotation_translation(
-            Vec3::ONE * scale,
-            Quat::IDENTITY,
-            translation.into(),
-        );
         if self.grabbable {
-            self.realign(&app.input_state.hmd);
+            if hard_reset {
+                self.realign(&app.input_state.hmd);
+            } else {
+                //self.transform = snap_upright(self.transform, app.input_state.hmd.y_axis);
+            }
         }
         self.dirty = true;
     }
@@ -168,7 +168,6 @@ impl OverlayState {
         }
 
         let scale = self.transform.x_axis.length();
-        self.saved_scale = Some(scale);
 
         let col_z = (self.transform.translation - hmd.translation).normalize();
         let col_y = up_dir;
