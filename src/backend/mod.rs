@@ -8,6 +8,9 @@ pub mod openvr;
 #[cfg(feature = "openxr")]
 pub mod openxr;
 
+#[cfg(feature = "uidev")]
+pub mod uidev;
+
 #[cfg(feature = "osc")]
 pub mod osc;
 

@@ -490,6 +490,142 @@ impl WlxGraphics {
         Ok(Arc::new(me))
     }
 
+    #[cfg(feature = "uidev")]
+    pub fn new_window() -> anyhow::Result<(
+        Arc<Self>,
+        winit::event_loop::EventLoop<()>,
+        Arc<winit::window::Window>,
+        Arc<vulkano::swapchain::Surface>,
+    )> {
+        use vulkano::swapchain::Surface;
+        use winit::{event_loop::EventLoop, window::WindowBuilder};
+
+        let event_loop = EventLoop::new().unwrap();
+        let mut vk_instance_extensions = Surface::required_extensions(&event_loop).unwrap();
+        vk_instance_extensions.khr_get_physical_device_properties2 = true;
+        log::debug!("Instance exts for runtime: {:?}", &vk_instance_extensions);
+
+        let instance = Instance::new(
+            get_vulkan_library().clone(),
+            InstanceCreateInfo {
+                flags: InstanceCreateFlags::ENUMERATE_PORTABILITY,
+                enabled_extensions: vk_instance_extensions,
+                ..Default::default()
+            },
+        )?;
+
+        let window = Arc::new(WindowBuilder::new().build(&event_loop).unwrap());
+        let surface = Surface::from_window(instance.clone(), window.clone())?;
+
+        let device_extensions = DeviceExtensions {
+            khr_swapchain: true,
+            khr_external_memory: true,
+            khr_external_memory_fd: true,
+            ext_external_memory_dma_buf: true,
+            ext_image_drm_format_modifier: true,
+            ..DeviceExtensions::empty()
+        };
+
+        log::debug!("Device exts for app: {:?}", &device_extensions);
+
+        let (physical_device, my_extensions, queue_family_index) = instance
+            .enumerate_physical_devices()?
+            .filter_map(|p| {
+                if p.supported_extensions().contains(&device_extensions) {
+                    Some((p, device_extensions))
+                } else {
+                    log::debug!(
+                        "Not using {} because it does not implement the following device extensions:",
+                        p.properties().device_name,
+                    );
+                    for (ext, missing) in p.supported_extensions().difference(&device_extensions) {
+                        if missing {
+                            log::debug!("  {}", ext);
+                        }
+                    }
+                    None
+                }
+            })
+            .filter_map(|(p, my_extensions)| {
+                p.queue_family_properties()
+                    .iter()
+                    .enumerate()
+                    .position(|(i, q)| q.queue_flags.intersects(QueueFlags::GRAPHICS)
+                    && p.surface_support(i as u32, &surface).unwrap_or(false))
+                    .map(|i| (p, my_extensions, i as u32))
+            })
+            .min_by_key(|(p, _, _)| match p.properties().device_type {
+                PhysicalDeviceType::DiscreteGpu => 0,
+                PhysicalDeviceType::IntegratedGpu => 1,
+                PhysicalDeviceType::VirtualGpu => 2,
+                PhysicalDeviceType::Cpu => 3,
+                PhysicalDeviceType::Other => 4,
+                _ => 5,
+            })
+            .expect("no suitable physical device found");
+
+        log::info!(
+            "Using vkPhysicalDevice: {}",
+            physical_device.properties().device_name,
+        );
+
+        let (device, mut queues) = Device::new(
+            physical_device,
+            DeviceCreateInfo {
+                enabled_extensions: my_extensions,
+                enabled_features: Features {
+                    dynamic_rendering: true,
+                    ..Features::empty()
+                },
+                queue_create_infos: vec![QueueCreateInfo {
+                    queue_family_index,
+                    ..Default::default()
+                }],
+                ..Default::default()
+            },
+        )?;
+
+        let native_format = device
+            .physical_device()
+            .surface_formats(&surface, Default::default())
+            .unwrap()[0]
+            .0;
+        log::info!("Using surface format: {:?}", native_format);
+
+        let queue = queues
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("no GPU queues available"))?;
+
+        let memory_allocator = memory_allocator(device.clone());
+        let command_buffer_allocator = Arc::new(StandardCommandBufferAllocator::new(
+            device.clone(),
+            StandardCommandBufferAllocatorCreateInfo {
+                secondary_buffer_count: 32,
+                ..Default::default()
+            },
+        ));
+        let descriptor_set_allocator = Arc::new(StandardDescriptorSetAllocator::new(
+            device.clone(),
+            Default::default(),
+        ));
+
+        let (quad_verts, quad_indices) = Self::default_quad(memory_allocator.clone())?;
+
+        let me = Self {
+            instance,
+            device,
+            queue,
+            memory_allocator,
+            native_format,
+            command_buffer_allocator,
+            descriptor_set_allocator,
+            quad_indices,
+            quad_verts,
+            shared_shaders: RwLock::new(HashMap::new()),
+        };
+
+        Ok((Arc::new(me), event_loop, window, surface))
+    }
     fn default_quad(
         memory_allocator: Arc<StandardMemoryAllocator>,
     ) -> anyhow::Result<(Vert2Buf, IndexBuf)> {

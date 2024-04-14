@@ -52,7 +52,9 @@ thiserror = "1.0.56"
 vulkano = { git = "https://github.com/vulkano-rs/vulkano", rev = "94f50f1" }
 vulkano-shaders = { git = "https://github.com/vulkano-rs/vulkano", rev = "94f50f1" }
 wlx-capture = { git = "https://github.com/galister/wlx-capture", tag = "v0.3.8", default-features = false }
+winit = { version = "0.29.15", optional = true }
 xdg = "2.5.2"
+notify = { version = "6.1.1", default-features = false, optional = true }
 
 [features]
 default = ["openvr", "openxr", "osc", "x11", "wayland"]
@@ -61,3 +63,4 @@ openxr = ["dep:openxr"]
 osc = ["dep:rosc"]
 x11 = ["wlx-capture/xshm"]
 wayland = ["wlx-capture/pipewire", "wlx-capture/wlr"]
+uidev = ["dep:notify", "dep:winit"]
