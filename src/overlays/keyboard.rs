@@ -43,7 +43,7 @@ where
         size.x as _,
         size.y as _,
         app.graphics.clone(),
-        app.format,
+        app.graphics.native_format,
         data,
     )?;
 

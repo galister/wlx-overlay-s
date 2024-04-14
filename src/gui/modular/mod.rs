@@ -120,7 +120,7 @@ pub fn modular_canvas(
         size[0] as _,
         size[1] as _,
         state.graphics.clone(),
-        state.format,
+        state.graphics.native_format,
         (),
     )?;
     let empty_str: Arc<str> = Arc::from("");

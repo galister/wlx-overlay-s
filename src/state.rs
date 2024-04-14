@@ -6,7 +6,6 @@ use idmap::IdMap;
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Source};
 use serde::{Deserialize, Serialize};
 use smallvec::{smallvec, SmallVec};
-use vulkano::format::Format;
 
 use crate::{
     backend::{common::TaskContainer, input::InputState},
@@ -24,7 +23,6 @@ pub struct AppState {
     pub session: AppSession,
     pub tasks: TaskContainer,
     pub graphics: Arc<WlxGraphics>,
-    pub format: vulkano::format::Format,
     pub input_state: InputState,
     pub hid_provider: Box<dyn HidProvider>,
     pub audio: AudioOutput,
@@ -63,7 +61,6 @@ impl AppState {
             session: AppSession::load(),
             tasks: TaskContainer::new(),
             graphics,
-            format: Format::R8G8B8A8_UNORM,
             input_state: InputState::new(),
             hid_provider: crate::hid::initialize(),
             audio: AudioOutput::new(),

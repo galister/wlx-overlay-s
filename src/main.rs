@@ -41,6 +41,11 @@ struct Args {
     /// Path to write logs to
     #[arg(short, long, value_name = "FILE_PATH")]
     log_to: Option<String>,
+
+    #[cfg(feature = "uidev")]
+    /// Show a desktop window of a UI panel for development
+    #[arg(short, long, value_name = "UI_NAME")]
+    uidev: Option<String>,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -57,6 +62,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "openvr")]
     if args.uninstall {
         crate::backend::openvr::openvr_uninstall();
+        return Ok(());
+    }
+
+    #[cfg(feature = "uidev")]
+    if let Some(panel_name) = args.uidev.as_ref() {
+        crate::backend::uidev::uidev_run(panel_name.as_str())?;
         return Ok(());
     }
 

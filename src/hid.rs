@@ -7,11 +7,18 @@ use input_linux::{
 };
 use libc::{input_event, timeval};
 use once_cell::sync::Lazy;
-use std::fs::File;
 use std::mem::transmute;
+use std::{fs::File, sync::atomic::AtomicBool};
 use strum::{EnumIter, EnumString, IntoEnumIterator};
 
+pub static USE_UINPUT: AtomicBool = AtomicBool::new(true);
+
 pub fn initialize() -> Box<dyn HidProvider> {
+    if !USE_UINPUT.load(std::sync::atomic::Ordering::Relaxed) {
+        log::info!("Uinput disabled by user.");
+        return Box::new(DummyProvider {});
+    }
+
     if let Some(uinput) = UInputProvider::try_new() {
         log::info!("Initialized uinput.");
         return Box::new(uinput);
