@@ -56,9 +56,11 @@ impl AppState {
             shaders.insert("frag_srgb", shader);
         }
 
+        let session = AppSession::load();
+
         Ok(AppState {
-            fc: FontCache::new()?,
-            session: AppSession::load(),
+            fc: FontCache::new(session.config.primary_font.clone())?,
+            session,
             tasks: TaskContainer::new(),
             graphics,
             input_state: InputState::new(),

@@ -1,8 +1,6 @@
 name: Check Wayland+OpenVR
 
 on:
-  push:
-    #branches: [ "main" ]
   pull_request:
     #branches: [ "main" ]
 

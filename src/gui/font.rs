@@ -7,9 +7,8 @@ use vulkano::{command_buffer::CommandBufferUsage, format::Format, image::Image};
 
 use crate::graphics::WlxGraphics;
 
-const PRIMARY_FONT: &str = "LiberationSans";
-
 pub struct FontCache {
+    primary_font: Arc<str>,
     fc: FontConfig,
     ft: Library,
     collections: IdMap<isize, FontCollection>,
@@ -35,11 +34,12 @@ pub struct Glyph {
 }
 
 impl FontCache {
-    pub fn new() -> anyhow::Result<Self> {
+    pub fn new(primary_font: Arc<str>) -> anyhow::Result<Self> {
         let ft = Library::init()?;
         let fc = FontConfig::default();
 
         Ok(FontCache {
+            primary_font,
             fc,
             ft,
             collections: IdMap::new(),
@@ -105,7 +105,8 @@ impl FontCache {
             return *font;
         }
 
-        let pattern_str = format!("{PRIMARY_FONT}-{size}:style=bold:charset={cp:04x}");
+        let primary_font = self.primary_font.clone();
+        let pattern_str = format!("{primary_font}:size={size}:charset={cp:04x}");
         let mut pattern = OwnedPattern::from_str(&pattern_str).unwrap(); // safe because PRIMARY_FONT is const
         self.fc
             .substitute(&mut pattern, fontconfig::MatchKind::Pattern);

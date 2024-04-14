@@ -424,6 +424,7 @@ impl OverlayRenderer for ScreenRenderer {
                             );
                         }
                     }
+                    self.capture.request_new_frame();
                 }
                 WlxFrame::MemFd(frame) => {
                     let mut upload = app

@@ -459,10 +459,9 @@ fn run_watch(data: &WatchAction, app: &mut AppState) {
             app.tasks.enqueue(TaskType::Overlay(
                 OverlaySelector::Name(WATCH_NAME.into()),
                 Box::new(|app, o| {
-                    if o.saved_scale.is_none() {
-                        o.saved_scale = Some(o.spawn_scale);
+                    if o.saved_transform.is_none() {
                         o.want_visible = false;
-                        o.saved_scale = Some(0.0);
+                        o.saved_transform = Some(o.transform);
                         Toast::new(
                             ToastTopic::System,
                             "Watch hidden".into(),
@@ -472,7 +471,7 @@ fn run_watch(data: &WatchAction, app: &mut AppState) {
                         .submit(app);
                     } else {
                         o.want_visible = true;
-                        o.saved_scale = None;
+                        o.saved_transform = None;
                         Toast::new(ToastTopic::System, "Watch restored".into(), "".into())
                             .submit(app);
                     }

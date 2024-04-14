@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::bail;
-use glam::{Vec2, Vec3, Vec4};
+use glam::{Vec2, Vec4};
 use vulkano::{
     command_buffer::CommandBufferUsage,
     format::Format,
@@ -19,6 +19,8 @@ use crate::{
     state::AppState,
 };
 
+use self::modular::GuiColor;
+
 pub mod font;
 pub mod modular;
 
@@ -32,14 +34,33 @@ struct Rect {
 }
 
 // Parses a color from a HTML hex string
-pub fn color_parse(html_hex: &str) -> anyhow::Result<Vec3> {
+pub fn color_parse(html_hex: &str) -> anyhow::Result<GuiColor> {
     if html_hex.len() == 7 {
         if let (Ok(r), Ok(g), Ok(b)) = (
             u8::from_str_radix(&html_hex[1..3], 16),
             u8::from_str_radix(&html_hex[3..5], 16),
             u8::from_str_radix(&html_hex[5..7], 16),
         ) {
-            return Ok(Vec3::new(r as f32 / 255., g as f32 / 255., b as f32 / 255.));
+            return Ok(Vec4::new(
+                r as f32 / 255.,
+                g as f32 / 255.,
+                b as f32 / 255.,
+                1.,
+            ));
+        }
+    } else if html_hex.len() == 9 {
+        if let (Ok(r), Ok(g), Ok(b), Ok(a)) = (
+            u8::from_str_radix(&html_hex[1..3], 16),
+            u8::from_str_radix(&html_hex[3..5], 16),
+            u8::from_str_radix(&html_hex[5..7], 16),
+            u8::from_str_radix(&html_hex[7..9], 16),
+        ) {
+            return Ok(Vec4::new(
+                r as f32 / 255.,
+                g as f32 / 255.,
+                b as f32 / 255.,
+                a as f32 / 255.,
+            ));
         }
     }
     bail!(
@@ -51,8 +72,8 @@ pub fn color_parse(html_hex: &str) -> anyhow::Result<Vec3> {
 pub struct CanvasBuilder<D, S> {
     canvas: Canvas<D, S>,
 
-    pub fg_color: Vec3,
-    pub bg_color: Vec3,
+    pub fg_color: GuiColor,
+    pub bg_color: GuiColor,
     pub font_size: isize,
 }
 
@@ -66,8 +87,8 @@ impl<D, S> CanvasBuilder<D, S> {
     ) -> anyhow::Result<Self> {
         Ok(Self {
             canvas: Canvas::new(width, height, graphics, format, data)?,
-            bg_color: Vec3::ZERO,
-            fg_color: Vec3::ONE,
+            bg_color: Vec4::ZERO,
+            fg_color: Vec4::ONE,
             font_size: 16,
         })
     }
@@ -522,8 +543,8 @@ impl<D, S> OverlayBackend for Canvas<D, S> {
 pub struct Control<D, S> {
     pub state: Option<S>,
     rect: Rect,
-    fg_color: Vec3,
-    bg_color: Vec3,
+    fg_color: GuiColor,
+    bg_color: GuiColor,
     text: Arc<str>,
     size: isize,
     dirty: bool,
@@ -554,8 +575,8 @@ impl<D, S> Control<D, S> {
                 w: 0.,
                 h: 0.,
             },
-            fg_color: Vec3::ONE,
-            bg_color: Vec3::ZERO,
+            fg_color: Vec4::ONE,
+            bg_color: Vec4::ZERO,
             text: Arc::from(""),
             dirty: true,
             size: 24,
@@ -581,7 +602,7 @@ impl<D, S> Control<D, S> {
     }
 
     #[inline(always)]
-    pub fn set_fg_color(&mut self, color: Vec3) {
+    pub fn set_fg_color(&mut self, color: GuiColor) {
         if self.fg_color == color {
             return;
         }
@@ -604,10 +625,9 @@ impl<D, S> Control<D, S> {
                 self.rect.w,
                 self.rect.h,
             )?;
-            let set0 = canvas.pipeline_bg_color.uniform_buffer(
-                0,
-                vec![self.bg_color.x, self.bg_color.y, self.bg_color.z, 1.],
-            )?;
+            let set0 = canvas
+                .pipeline_bg_color
+                .uniform_buffer(0, self.bg_color.to_array().to_vec())?;
             canvas.pipeline_bg_color.create_pass(
                 [canvas.width as _, canvas.height as _],
                 vertex_buffer,
@@ -624,7 +644,7 @@ impl<D, S> Control<D, S> {
         canvas: &CanvasData<D>,
         _: &mut AppState,
         cmd_buffer: &mut WlxCommandBuffer,
-        color: Vec4,
+        color: GuiColor,
     ) -> anyhow::Result<()> {
         let vertex_buffer = canvas.graphics.upload_verts(
             canvas.width as _,
@@ -676,10 +696,9 @@ impl<D, S> Control<D, S> {
                         ImageView::new_default(tex)?,
                         Filter::Linear,
                     )?;
-                    let set1 = canvas.pipeline_fg_glyph.uniform_buffer(
-                        1,
-                        vec![self.fg_color.x, self.fg_color.y, self.fg_color.z, 1.],
-                    )?;
+                    let set1 = canvas
+                        .pipeline_fg_glyph
+                        .uniform_buffer(1, self.fg_color.to_array().to_vec())?;
                     let pass = canvas.pipeline_fg_glyph.create_pass(
                         [canvas.width as _, canvas.height as _],
                         vertex_buffer,
@@ -725,10 +744,9 @@ impl<D, S> Control<D, S> {
                         ImageView::new_default(tex)?,
                         Filter::Linear,
                     )?;
-                    let set1 = canvas.pipeline_fg_glyph.uniform_buffer(
-                        1,
-                        vec![self.fg_color.x, self.fg_color.y, self.fg_color.z, 1.],
-                    )?;
+                    let set1 = canvas
+                        .pipeline_fg_glyph
+                        .uniform_buffer(1, self.fg_color.to_array().to_vec())?;
                     let pass = canvas.pipeline_fg_glyph.create_pass(
                         [canvas.width as _, canvas.height as _],
                         vertex_buffer,

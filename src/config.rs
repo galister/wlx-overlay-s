@@ -138,6 +138,10 @@ fn def_toast_topics() -> IdMap<ToastTopic, DisplayMethod> {
     IdMap::new()
 }
 
+fn def_font() -> Arc<str> {
+    "LiberationSans:style=Bold".into()
+}
+
 #[derive(Deserialize, Serialize)]
 pub struct GeneralConfig {
     #[serde(default = "def_watch_pos")]
@@ -223,6 +227,9 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_false")]
     pub focus_follows_mouse_mode: bool,
+
+    #[serde(default = "def_font")]
+    pub primary_font: Arc<str>,
 }
 
 impl GeneralConfig {

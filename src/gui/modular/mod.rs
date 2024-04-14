@@ -4,7 +4,8 @@ pub mod label;
 
 use std::sync::Arc;
 
-use glam::Vec3;
+use glam::Vec4;
+use once_cell::sync::Lazy;
 use serde::Deserialize;
 
 use crate::{backend::common::OverlaySelector, state::AppState};
@@ -19,11 +20,9 @@ use super::{color_parse, Canvas, CanvasBuilder, Control};
 type ModularControl = Control<(), ModularData>;
 type ExecArgs = Vec<Arc<str>>;
 
-const FALLBACK_COLOR: Vec3 = Vec3 {
-    x: 1.,
-    y: 0.,
-    z: 1.,
-};
+pub type GuiColor = Vec4;
+
+static FALLBACK_COLOR: Lazy<GuiColor> = Lazy::new(|| Vec4::new(1., 0., 1., 1.));
 
 #[derive(Deserialize)]
 pub struct ModularUiConfig {
@@ -130,7 +129,7 @@ pub fn modular_canvas(
                 rect: [x, y, w, h],
                 bg_color,
             } => {
-                canvas.bg_color = color_parse(bg_color).unwrap_or(FALLBACK_COLOR);
+                canvas.bg_color = color_parse(bg_color).unwrap_or(*FALLBACK_COLOR);
                 canvas.panel(*x, *y, *w, *h);
             }
             ModularElement::Label {
@@ -140,7 +139,7 @@ pub fn modular_canvas(
                 data,
             } => {
                 canvas.font_size = *font_size;
-                canvas.fg_color = color_parse(fg_color).unwrap_or(FALLBACK_COLOR);
+                canvas.fg_color = color_parse(fg_color).unwrap_or(*FALLBACK_COLOR);
                 let label = canvas.label(*x, *y, *w, *h, empty_str.clone());
                 modular_label_init(label, data);
             }
@@ -152,8 +151,8 @@ pub fn modular_canvas(
                 text,
                 data,
             } => {
-                canvas.bg_color = color_parse(bg_color).unwrap_or(FALLBACK_COLOR);
-                canvas.fg_color = color_parse(fg_color).unwrap_or(FALLBACK_COLOR);
+                canvas.bg_color = color_parse(bg_color).unwrap_or(*FALLBACK_COLOR);
+                canvas.fg_color = color_parse(fg_color).unwrap_or(*FALLBACK_COLOR);
                 canvas.font_size = *font_size;
                 let button = canvas.button(*x, *y, *w, *h, text.clone());
                 modular_button_init(button, data);
@@ -177,7 +176,7 @@ pub fn modular_canvas(
                     ListLayout::Vertical => (*w, *h / num_buttons),
                 };
 
-                let fg_color = color_parse(fg_color).unwrap_or(FALLBACK_COLOR);
+                let fg_color = color_parse(fg_color).unwrap_or(*FALLBACK_COLOR);
                 canvas.font_size = *font_size;
                 canvas.fg_color = fg_color;
 
@@ -225,8 +224,8 @@ pub fn modular_canvas(
                     ListLayout::Vertical => (*w, *h / num_buttons),
                 };
 
-                canvas.bg_color = color_parse(bg_color).unwrap_or(FALLBACK_COLOR);
-                canvas.fg_color = color_parse(fg_color).unwrap_or(FALLBACK_COLOR);
+                canvas.bg_color = color_parse(bg_color).unwrap_or(*FALLBACK_COLOR);
+                canvas.fg_color = color_parse(fg_color).unwrap_or(*FALLBACK_COLOR);
                 canvas.font_size = *font_size;
 
                 for screen in state.screens.iter() {
@@ -326,9 +325,9 @@ pub fn modular_canvas(
     Ok(canvas.build())
 }
 
-pub fn color_parse_or_default(color: &str) -> Vec3 {
+pub fn color_parse_or_default(color: &str) -> GuiColor {
     color_parse(color).unwrap_or_else(|e| {
         log::error!("Failed to parse color '{}': {}", color, e);
-        FALLBACK_COLOR
+        *FALLBACK_COLOR
     })
 }
