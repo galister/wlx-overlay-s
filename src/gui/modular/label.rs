@@ -1,6 +1,6 @@
 use chrono::Local;
 use chrono_tz::Tz;
-use glam::Vec3;
+use glam::Vec4;
 use smallvec::SmallVec;
 use std::{
     io::Read,
@@ -13,7 +13,7 @@ use crate::{gui::modular::FALLBACK_COLOR, state::AppState};
 
 use serde::Deserialize;
 
-use super::{color_parse_or_default, ExecArgs, ModularControl, ModularData};
+use super::{color_parse_or_default, ExecArgs, GuiColor, ModularControl, ModularData};
 
 #[derive(Deserialize)]
 #[serde(tag = "source")]
@@ -45,9 +45,9 @@ pub enum LabelData {
     Battery {
         device: usize,
         low_threshold: f32,
-        normal_color: Vec3,
-        low_color: Vec3,
-        charging_color: Vec3,
+        normal_color: GuiColor,
+        low_color: GuiColor,
+        charging_color: GuiColor,
     },
     Clock {
         format: Arc<str>,
@@ -86,7 +86,7 @@ pub fn modular_label_init(label: &mut ModularControl, content: &LabelContent) {
             let tz: Option<Tz> = timezone.as_ref().map(|tz| {
                 tz.parse().unwrap_or_else(|_| {
                     log::error!("Failed to parse timezone '{}'", &tz);
-                    label.set_fg_color(FALLBACK_COLOR);
+                    label.set_fg_color(*FALLBACK_COLOR);
                     Tz::UTC
                 })
             });
@@ -153,7 +153,7 @@ pub(super) fn label_update(control: &mut ModularControl, _: &mut (), app: &mut A
                         };
                         (text, color)
                     })
-                    .unwrap_or_else(|| ("".into(), Vec3::ZERO));
+                    .unwrap_or_else(|| ("".into(), Vec4::ZERO));
 
                 control.set_text(&text);
                 control.set_fg_color(color);
