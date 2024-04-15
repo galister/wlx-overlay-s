@@ -46,21 +46,21 @@ impl PreviewState {
         panel_name: &str,
     ) -> anyhow::Result<Self> {
         let config = load_custom_ui(panel_name)?;
-        let (swapchain, images) = create_swapchain(&state.graphics, surface.clone(), config.size)?;
 
         let logical_size = LogicalSize::new(config.size[0], config.size[1]);
-        log::info!("Setting window size to {:?}", logical_size);
         let _ = window.request_inner_size(logical_size);
         window.set_min_inner_size(Some(logical_size));
         window.set_max_inner_size(Some(logical_size));
-        window.set_resizable(false);
-        window.set_title("WlxOverlay UI Preview");
+
+        let inner_size = window.inner_size();
+        let swapchain_size = [inner_size.width, inner_size.height];
+        let (swapchain, images) =
+            create_swapchain(&state.graphics, surface.clone(), swapchain_size)?;
 
         let mut canvas = modular_canvas(&config.size, &config.elements, state)?;
         canvas.init(state)?;
         canvas.render(state).unwrap();
         let view = canvas.view().unwrap();
-        let extent = view.image().extent();
 
         let pipeline = {
             let shaders = state.graphics.shared_shaders.read().unwrap();
@@ -77,7 +77,7 @@ impl PreviewState {
 
         let pass = pipeline
             .create_pass(
-                [extent[0] as f32, extent[1] as f32],
+                [swapchain_size[0] as f32, swapchain_size[1] as f32],
                 state.graphics.quad_verts.clone(),
                 state.graphics.quad_indices.clone(),
                 vec![set0],
@@ -96,6 +96,8 @@ impl PreviewState {
 
 pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
     let (graphics, event_loop, window, surface) = WlxGraphics::new_window()?;
+    window.set_resizable(false);
+    window.set_title("WlxOverlay UI Preview");
 
     USE_UINPUT.store(false, std::sync::atomic::Ordering::Relaxed);
 
@@ -110,6 +112,7 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
 
     let watch_path = config_io::CONFIG_ROOT_PATH.join(format!("{}.yaml", panel_name));
     let mut path_last_modified = watch_path.metadata()?.modified()?;
+    let mut recreate = false;
 
     event_loop.run(move |event, elwt| {
         elwt.set_control_flow(ControlFlow::Poll);
@@ -122,6 +125,12 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
                 elwt.exit();
             }
             Event::WindowEvent {
+                event: WindowEvent::Resized(_),
+                ..
+            } => {
+                recreate = true;
+            }
+            Event::WindowEvent {
                 event: WindowEvent::RedrawRequested,
                 ..
             } => {
@@ -129,37 +138,32 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
 
                 let new_modified = watch_path.metadata().unwrap().modified().unwrap();
                 if new_modified > path_last_modified {
+                    recreate = true;
+                    path_last_modified = new_modified;
+                }
+
+                if recreate {
                     drop(preview.take());
                     preview = Some(
                         PreviewState::new(&mut state, surface.clone(), window.clone(), panel_name)
                             .unwrap(),
                     );
-                    path_last_modified = new_modified;
+                    recreate = false;
                 }
-
-                let (image_index, _, acquire_future) =
-                    match acquire_next_image(preview.as_ref().unwrap().swapchain.clone(), None)
-                        .map_err(Validated::unwrap)
-                    {
-                        Ok(r) => r,
-                        Err(VulkanError::OutOfDate) => {
-                            drop(preview.take());
-                            preview = Some(
-                                PreviewState::new(
-                                    &mut state,
-                                    surface.clone(),
-                                    window.clone(),
-                                    panel_name,
-                                )
-                                .unwrap(),
-                            );
-                            return;
-                        }
-                        Err(e) => panic!("failed to acquire next image: {e}"),
-                    };
 
                 {
                     let preview = preview.as_ref().unwrap();
+                    let (image_index, _, acquire_future) =
+                        match acquire_next_image(preview.swapchain.clone(), None)
+                            .map_err(Validated::unwrap)
+                        {
+                            Ok(r) => r,
+                            Err(VulkanError::OutOfDate) => {
+                                recreate = true;
+                                return;
+                            }
+                            Err(e) => panic!("failed to acquire next image: {e}"),
+                        };
 
                     let target = preview.images[image_index as usize].clone();
 
