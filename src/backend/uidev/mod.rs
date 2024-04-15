@@ -186,7 +186,9 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
                         .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
                         .unwrap();
                     cmd_buf.begin_rendering(target).unwrap();
-                    let _ = cmd_buf.run_ref(&preview.pass);
+                    if cmd_buf.run_ref(&preview.pass).is_err() {
+                        window.request_redraw();
+                    }
                     cmd_buf.end_rendering().unwrap();
 
                     let command_buffer = cmd_buf.build().unwrap();
