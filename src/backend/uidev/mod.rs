@@ -126,6 +126,7 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
     let watch_path = config_io::CONFIG_ROOT_PATH.join(format!("{}.yaml", panel_name));
     let mut path_last_modified = watch_path.metadata()?.modified()?;
     let mut recreate = false;
+    let mut last_draw = std::time::Instant::now();
 
     event_loop.run(move |event, elwt| {
         elwt.set_control_flow(ControlFlow::Poll);
@@ -190,6 +191,7 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
                         window.request_redraw();
                     }
                     cmd_buf.end_rendering().unwrap();
+                    last_draw = std::time::Instant::now();
 
                     let command_buffer = cmd_buf.build().unwrap();
                     let future = previous_frame_end
@@ -221,6 +223,11 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
                                 Some(vulkano::sync::now(state.graphics.device.clone()).boxed());
                         }
                     }
+                }
+            }
+            Event::AboutToWait => {
+                if last_draw.elapsed().as_secs() > 1 {
+                    window.request_redraw();
                 }
             }
             _ => (),
