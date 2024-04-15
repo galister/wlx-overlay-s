@@ -44,7 +44,7 @@ use crate::{
         overlay::{OverlayRenderer, OverlayState, SplitOverlayBackend},
     },
     config::{def_pw_tokens, PwTokenMap},
-    graphics::{fourcc_to_vk, WlxCommandBuffer, WlxPipeline, WlxPipelineLegacy},
+    graphics::{fourcc_to_vk, WlxCommandBuffer, WlxPipeline, WlxPipelineLegacy, DMA_BUF_SUPPORTED},
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState, ScreenMeta},
 };
@@ -350,7 +350,7 @@ impl OverlayRenderer for ScreenRenderer {
     }
     fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         if !self.capture.is_ready() {
-            let supports_dmabuf = self.capture.supports_dmbuf();
+            let supports_dmabuf = DMA_BUF_SUPPORTED && self.capture.supports_dmbuf();
             let allow_dmabuf = &*app.session.config.capture_method != "pw_fallback"
                 && &*app.session.config.capture_method != "screencopy";
 
@@ -778,7 +778,7 @@ pub fn create_screens_x11(app: &mut AppState) -> anyhow::Result<ScreenCreateData
             let renderer = ScreenRenderer::new_xshm(s.clone());
 
             log::info!(
-                "{}: Init screen of res {:?} at {:?}",
+                "{}: Init X11 screen of res {:?} at {:?}",
                 s.name.clone(),
                 size,
                 pos,
