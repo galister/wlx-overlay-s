@@ -162,6 +162,7 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
                             .unwrap(),
                     );
                     recreate = false;
+                    window.request_redraw();
                 }
 
                 {
@@ -220,7 +221,6 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
                     }
                 }
             }
-            Event::AboutToWait => window.request_redraw(),
             _ => (),
         }
     })?;
