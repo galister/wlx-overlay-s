@@ -30,6 +30,8 @@ use crate::{
 
 use super::overlay::OverlayRenderer;
 
+static LAST_SIZE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 struct PreviewState {
     canvas: Canvas<(), ModularData>,
     pipeline: Arc<DynamicPipeline>,
@@ -47,10 +49,21 @@ impl PreviewState {
     ) -> anyhow::Result<Self> {
         let config = load_custom_ui(panel_name)?;
 
-        let logical_size = LogicalSize::new(config.size[0], config.size[1]);
-        let _ = window.request_inner_size(logical_size);
-        window.set_min_inner_size(Some(logical_size));
-        window.set_max_inner_size(Some(logical_size));
+        let last_size = {
+            let size_u64 = LAST_SIZE.load(std::sync::atomic::Ordering::Relaxed);
+            [size_u64 as u32, (size_u64 >> 32) as u32]
+        };
+
+        if last_size != config.size {
+            let logical_size = LogicalSize::new(config.size[0], config.size[1]);
+            let _ = window.request_inner_size(logical_size);
+            window.set_min_inner_size(Some(logical_size));
+            window.set_max_inner_size(Some(logical_size));
+            LAST_SIZE.store(
+                (config.size[1] as u64) << 32 | config.size[0] as u64,
+                std::sync::atomic::Ordering::Relaxed,
+            );
+        }
 
         let inner_size = window.inner_size();
         let swapchain_size = [inner_size.width, inner_size.height];
