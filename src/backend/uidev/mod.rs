@@ -30,6 +30,8 @@ use crate::{
 
 use super::overlay::OverlayRenderer;
 
+static LAST_SIZE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 struct PreviewState {
     canvas: Canvas<(), ModularData>,
     pipeline: Arc<DynamicPipeline>,
@@ -46,21 +48,32 @@ impl PreviewState {
         panel_name: &str,
     ) -> anyhow::Result<Self> {
         let config = load_custom_ui(panel_name)?;
-        let (swapchain, images) = create_swapchain(&state.graphics, surface.clone(), config.size)?;
 
-        let logical_size = LogicalSize::new(config.size[0], config.size[1]);
-        log::info!("Setting window size to {:?}", logical_size);
-        let _ = window.request_inner_size(logical_size);
-        window.set_min_inner_size(Some(logical_size));
-        window.set_max_inner_size(Some(logical_size));
-        window.set_resizable(false);
-        window.set_title("WlxOverlay UI Preview");
+        let last_size = {
+            let size_u64 = LAST_SIZE.load(std::sync::atomic::Ordering::Relaxed);
+            [size_u64 as u32, (size_u64 >> 32) as u32]
+        };
+
+        if last_size != config.size {
+            let logical_size = LogicalSize::new(config.size[0], config.size[1]);
+            let _ = window.request_inner_size(logical_size);
+            window.set_min_inner_size(Some(logical_size));
+            window.set_max_inner_size(Some(logical_size));
+            LAST_SIZE.store(
+                (config.size[1] as u64) << 32 | config.size[0] as u64,
+                std::sync::atomic::Ordering::Relaxed,
+            );
+        }
+
+        let inner_size = window.inner_size();
+        let swapchain_size = [inner_size.width, inner_size.height];
+        let (swapchain, images) =
+            create_swapchain(&state.graphics, surface.clone(), swapchain_size)?;
 
         let mut canvas = modular_canvas(&config.size, &config.elements, state)?;
         canvas.init(state)?;
         canvas.render(state).unwrap();
         let view = canvas.view().unwrap();
-        let extent = view.image().extent();
 
         let pipeline = {
             let shaders = state.graphics.shared_shaders.read().unwrap();
@@ -77,7 +90,7 @@ impl PreviewState {
 
         let pass = pipeline
             .create_pass(
-                [extent[0] as f32, extent[1] as f32],
+                [swapchain_size[0] as f32, swapchain_size[1] as f32],
                 state.graphics.quad_verts.clone(),
                 state.graphics.quad_indices.clone(),
                 vec![set0],
@@ -96,6 +109,8 @@ impl PreviewState {
 
 pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
     let (graphics, event_loop, window, surface) = WlxGraphics::new_window()?;
+    window.set_resizable(false);
+    window.set_title("WlxOverlay UI Preview");
 
     USE_UINPUT.store(false, std::sync::atomic::Ordering::Relaxed);
 
@@ -110,6 +125,8 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
 
     let watch_path = config_io::CONFIG_ROOT_PATH.join(format!("{}.yaml", panel_name));
     let mut path_last_modified = watch_path.metadata()?.modified()?;
+    let mut recreate = false;
+    let mut last_draw = std::time::Instant::now();
 
     event_loop.run(move |event, elwt| {
         elwt.set_control_flow(ControlFlow::Poll);
@@ -122,6 +139,12 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
                 elwt.exit();
             }
             Event::WindowEvent {
+                event: WindowEvent::Resized(_),
+                ..
+            } => {
+                recreate = true;
+            }
+            Event::WindowEvent {
                 event: WindowEvent::RedrawRequested,
                 ..
             } => {
@@ -129,26 +152,29 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
 
                 let new_modified = watch_path.metadata().unwrap().modified().unwrap();
                 if new_modified > path_last_modified {
-                    {
-                        let _ = preview.take(); // free swapchain
-                    }
+                    recreate = true;
+                    path_last_modified = new_modified;
+                }
+
+                if recreate {
+                    drop(preview.take());
                     preview = Some(
                         PreviewState::new(&mut state, surface.clone(), window.clone(), panel_name)
                             .unwrap(),
                     );
-                    path_last_modified = new_modified;
+                    recreate = false;
+                    window.request_redraw();
                 }
 
                 {
                     let preview = preview.as_ref().unwrap();
-
                     let (image_index, _, acquire_future) =
                         match acquire_next_image(preview.swapchain.clone(), None)
                             .map_err(Validated::unwrap)
                         {
                             Ok(r) => r,
                             Err(VulkanError::OutOfDate) => {
-                                elwt.exit();
+                                recreate = true;
                                 return;
                             }
                             Err(e) => panic!("failed to acquire next image: {e}"),
@@ -161,8 +187,11 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
                         .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
                         .unwrap();
                     cmd_buf.begin_rendering(target).unwrap();
-                    let _ = cmd_buf.run_ref(&preview.pass);
+                    if cmd_buf.run_ref(&preview.pass).is_err() {
+                        window.request_redraw();
+                    }
                     cmd_buf.end_rendering().unwrap();
+                    last_draw = std::time::Instant::now();
 
                     let command_buffer = cmd_buf.build().unwrap();
                     let future = previous_frame_end
@@ -196,7 +225,11 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
                     }
                 }
             }
-            Event::AboutToWait => window.request_redraw(),
+            Event::AboutToWait => {
+                if last_draw.elapsed().as_secs() > 1 {
+                    window.request_redraw();
+                }
+            }
             _ => (),
         }
     })?;
