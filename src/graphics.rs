@@ -107,6 +107,11 @@ pub struct Vert2Uv {
 
 pub const INDICES: [u16; 6] = [2, 1, 0, 1, 2, 3];
 
+#[cfg(not(feature = "no-dmabuf"))]
+pub const DMA_BUF_SUPPORTED: bool = true;
+#[cfg(feature = "no-dmabuf")]
+pub const DMA_BUF_SUPPORTED: bool = false;
+
 pub const BLEND_ALPHA: AttachmentBlend = AttachmentBlend {
     src_color_blend_factor: BlendFactor::SrcAlpha,
     dst_color_blend_factor: BlendFactor::OneMinusSrcAlpha,
@@ -131,6 +136,19 @@ pub struct WlxGraphics {
     pub quad_indices: IndexBuf,
 
     pub shared_shaders: RwLock<HashMap<&'static str, Arc<ShaderModule>>>,
+}
+
+fn get_device_extensions() -> DeviceExtensions {
+    #[cfg(not(feature = "no-dmabuf"))]
+    return DeviceExtensions {
+        khr_external_memory: true,
+        khr_external_memory_fd: true,
+        ext_external_memory_dma_buf: true,
+        ext_image_drm_format_modifier: true,
+        ..DeviceExtensions::empty()
+    };
+    #[cfg(feature = "no-dmabuf")]
+    return DeviceExtensions::empty();
 }
 
 static VULKAN_LIBRARY: OnceLock<Arc<vulkano::VulkanLibrary>> = OnceLock::new();
@@ -243,15 +261,7 @@ impl WlxGraphics {
             .position(|(_, q)| q.queue_flags.intersects(QueueFlags::GRAPHICS))
             .expect("Vulkan device has no graphics queue") as u32;
 
-        let device_extensions = DeviceExtensions {
-            khr_swapchain: true,
-            khr_external_memory: true,
-            khr_external_memory_fd: true,
-            ext_external_memory_dma_buf: true,
-            ext_image_drm_format_modifier: true,
-            ..DeviceExtensions::empty()
-        };
-
+        let device_extensions = get_device_extensions();
         let device_extensions_raw = device_extensions
             .into_iter()
             .filter_map(|(name, enabled)| {
@@ -382,14 +392,7 @@ impl WlxGraphics {
             },
         )?;
 
-        let device_extensions = DeviceExtensions {
-            khr_external_memory: true,
-            khr_external_memory_fd: true,
-            ext_external_memory_dma_buf: true,
-            ext_image_drm_format_modifier: true,
-            ..DeviceExtensions::empty()
-        };
-
+        let device_extensions = get_device_extensions();
         log::debug!("Device exts for app: {:?}", &device_extensions);
 
         let (physical_device, my_extensions, queue_family_index) = instance
@@ -517,14 +520,8 @@ impl WlxGraphics {
         let window = Arc::new(WindowBuilder::new().build(&event_loop).unwrap());
         let surface = Surface::from_window(instance.clone(), window.clone())?;
 
-        let device_extensions = DeviceExtensions {
-            khr_swapchain: true,
-            khr_external_memory: true,
-            khr_external_memory_fd: true,
-            ext_external_memory_dma_buf: true,
-            ext_image_drm_format_modifier: true,
-            ..DeviceExtensions::empty()
-        };
+        let mut device_extensions = get_device_extensions();
+        device_extensions.khr_swapchain = true;
 
         log::debug!("Device exts for app: {:?}", &device_extensions);
 
