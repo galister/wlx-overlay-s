@@ -2,8 +2,6 @@ use std::{collections::VecDeque, time::Instant};
 
 use glam::{Affine3A, Vec2, Vec3A};
 
-#[cfg(feature = "openvr")]
-use ovr_overlay::TrackedDeviceIndex;
 use smallvec::{smallvec, SmallVec};
 
 use crate::backend::common::snap_upright;
@@ -16,9 +14,6 @@ use super::{
 };
 
 pub struct TrackedDevice {
-    #[cfg(feature = "openvr")]
-    pub index: TrackedDeviceIndex,
-    pub valid: bool,
     pub soc: Option<f32>,
     pub charging: bool,
     pub role: TrackedDeviceRole,

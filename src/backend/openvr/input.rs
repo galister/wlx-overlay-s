@@ -309,8 +309,6 @@ fn get_tracked_device(
     }
 
     Some(TrackedDevice {
-        valid: true,
-        index,
         soc,
         charging,
         role,
