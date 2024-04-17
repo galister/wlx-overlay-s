@@ -72,7 +72,6 @@ impl PreviewState {
 
         let mut canvas = modular_canvas(&config.size, &config.elements, state)?;
         canvas.init(state)?;
-        canvas.render(state).unwrap();
         let view = canvas.view().unwrap();
 
         let pipeline = {
@@ -121,7 +120,6 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
         window.clone(),
         panel_name,
     )?);
-    let mut previous_frame_end = Some(vulkano::sync::now(graphics.device.clone()).boxed());
 
     let watch_path = config_io::CONFIG_ROOT_PATH.join(format!("{}.yaml", panel_name));
     let mut path_last_modified = watch_path.metadata()?.modified()?;
@@ -148,8 +146,6 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
                 event: WindowEvent::RedrawRequested,
                 ..
             } => {
-                previous_frame_end.as_mut().unwrap().cleanup_finished();
-
                 let new_modified = watch_path.metadata().unwrap().modified().unwrap();
                 if new_modified > path_last_modified {
                     recreate = true;
@@ -167,7 +163,7 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
                 }
 
                 {
-                    let preview = preview.as_ref().unwrap();
+                    let preview = preview.as_mut().unwrap();
                     let (image_index, _, acquire_future) =
                         match acquire_next_image(preview.swapchain.clone(), None)
                             .map_err(Validated::unwrap)
@@ -180,6 +176,11 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
                             Err(e) => panic!("failed to acquire next image: {e}"),
                         };
 
+                    if let Err(e) = preview.canvas.render(&mut state) {
+                        log::error!("failed to render canvas: {e}");
+                        window.request_redraw();
+                    };
+
                     let target = preview.images[image_index as usize].clone();
 
                     let mut cmd_buf = state
@@ -187,16 +188,12 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
                         .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
                         .unwrap();
                     cmd_buf.begin_rendering(target).unwrap();
-                    if cmd_buf.run_ref(&preview.pass).is_err() {
-                        window.request_redraw();
-                    }
+                    cmd_buf.run_ref(&preview.pass).unwrap();
                     cmd_buf.end_rendering().unwrap();
                     last_draw = std::time::Instant::now();
 
                     let command_buffer = cmd_buf.build().unwrap();
-                    let future = previous_frame_end
-                        .take()
-                        .unwrap()
+                    vulkano::sync::now(graphics.device.clone())
                         .join(acquire_future)
                         .then_execute(graphics.queue.clone(), command_buffer)
                         .unwrap()
@@ -207,26 +204,14 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
                                 image_index,
                             ),
                         )
-                        .then_signal_fence_and_flush();
-
-                    match future.map_err(Validated::unwrap) {
-                        Ok(future) => {
-                            previous_frame_end = Some(future.boxed());
-                        }
-                        Err(VulkanError::OutOfDate) => {
-                            previous_frame_end =
-                                Some(vulkano::sync::now(state.graphics.device.clone()).boxed());
-                        }
-                        Err(e) => {
-                            println!("failed to flush future: {e}");
-                            previous_frame_end =
-                                Some(vulkano::sync::now(state.graphics.device.clone()).boxed());
-                        }
-                    }
+                        .then_signal_fence_and_flush()
+                        .unwrap()
+                        .wait(None)
+                        .unwrap();
                 }
             }
             Event::AboutToWait => {
-                if last_draw.elapsed().as_secs() > 1 {
+                if last_draw.elapsed().as_millis() > 100 {
                     window.request_redraw();
                 }
             }
