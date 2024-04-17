@@ -62,6 +62,13 @@ pub enum ModularElement {
         #[serde(flatten)]
         data: LabelContent,
     },
+    CenteredLabel {
+        rect: [f32; 4],
+        font_size: isize,
+        fg_color: Arc<str>,
+        #[serde(flatten)]
+        data: LabelContent,
+    },
     Button {
         rect: [f32; 4],
         font_size: isize,
@@ -133,6 +140,17 @@ pub fn modular_canvas(
                 canvas.panel(*x, *y, *w, *h);
             }
             ModularElement::Label {
+                rect: [x, y, w, h],
+                font_size,
+                fg_color,
+                data,
+            } => {
+                canvas.font_size = *font_size;
+                canvas.fg_color = color_parse(fg_color).unwrap_or(*FALLBACK_COLOR);
+                let label = canvas.label(*x, *y, *w, *h, empty_str.clone());
+                modular_label_init(label, data);
+            }
+            ModularElement::CenteredLabel {
                 rect: [x, y, w, h],
                 font_size,
                 fg_color,
