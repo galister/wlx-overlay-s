@@ -25,10 +25,13 @@ use crate::{
         Canvas,
     },
     hid::USE_UINPUT,
-    state::AppState,
+    state::{AppState, ScreenMeta},
 };
 
-use super::overlay::OverlayRenderer;
+use super::{
+    input::{TrackedDevice, TrackedDeviceRole},
+    overlay::OverlayRenderer,
+};
 
 static LAST_SIZE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
@@ -114,6 +117,9 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
     USE_UINPUT.store(false, std::sync::atomic::Ordering::Relaxed);
 
     let mut state = AppState::from_graphics(graphics.clone())?;
+    add_dummy_devices(&mut state);
+    add_dummy_screens(&mut state);
+
     let mut preview = Some(PreviewState::new(
         &mut state,
         surface.clone(),
@@ -256,4 +262,55 @@ fn create_swapchain(
         .collect::<Vec<_>>();
 
     Ok((swapchain, image_views))
+}
+
+fn add_dummy_devices(app: &mut AppState) {
+    app.input_state.devices.push(TrackedDevice {
+        role: TrackedDeviceRole::Hmd,
+        soc: Some(0.42),
+        charging: true,
+    });
+    app.input_state.devices.push(TrackedDevice {
+        role: TrackedDeviceRole::LeftHand,
+        soc: Some(0.72),
+        charging: false,
+    });
+    app.input_state.devices.push(TrackedDevice {
+        role: TrackedDeviceRole::RightHand,
+        soc: Some(0.73),
+        charging: false,
+    });
+    app.input_state.devices.push(TrackedDevice {
+        role: TrackedDeviceRole::Tracker,
+        soc: Some(0.65),
+        charging: false,
+    });
+    app.input_state.devices.push(TrackedDevice {
+        role: TrackedDeviceRole::Tracker,
+        soc: Some(0.67),
+        charging: false,
+    });
+    app.input_state.devices.push(TrackedDevice {
+        role: TrackedDeviceRole::Tracker,
+        soc: Some(0.69),
+        charging: false,
+    });
+}
+
+fn add_dummy_screens(app: &mut AppState) {
+    app.screens.push(ScreenMeta {
+        name: "HDMI-A-1".into(),
+        id: 0,
+        native_handle: 0,
+    });
+    app.screens.push(ScreenMeta {
+        name: "DP-2".into(),
+        id: 0,
+        native_handle: 0,
+    });
+    app.screens.push(ScreenMeta {
+        name: "DP-3".into(),
+        id: 0,
+        native_handle: 0,
+    });
 }
