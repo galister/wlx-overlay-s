@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use smallvec::{smallvec, SmallVec};
 
 use crate::{
-    backend::{common::TaskContainer, input::InputState},
+    backend::{input::InputState, task::TaskContainer},
     config::GeneralConfig,
     config_io,
     graphics::WlxGraphics,

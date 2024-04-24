@@ -124,7 +124,7 @@ impl OverlayState {
             self.saved_transform = None;
         }
 
-        self.transform = app.anchor * self.get_transform();
+        self.transform = self.parent_transform(app).unwrap_or(app.anchor) * self.get_transform();
 
         if self.grabbable && hard_reset {
             self.realign(&app.input_state.hmd);

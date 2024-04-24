@@ -15,3 +15,5 @@ pub mod uidev;
 pub mod osc;
 
 pub mod overlay;
+
+pub mod task;

@@ -1,18 +1,15 @@
-use std::{
-    f32::consts::PI,
-    ops::Add,
-    sync::{atomic::AtomicUsize, Arc},
-    time::Instant,
-};
+use std::{f32::consts::PI, ops::Add, sync::Arc, time::Instant};
 
 use glam::{vec3a, Quat, Vec3A};
 use idmap_derive::IntegerId;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     backend::{
-        common::{OverlaySelector, TaskType},
+        common::OverlaySelector,
         overlay::{OverlayBackend, OverlayState, RelativeTo},
+        task::TaskType,
     },
     gui::{color_parse, CanvasBuilder},
     state::{AppState, LeftRight},
@@ -22,8 +19,7 @@ const FONT_SIZE: isize = 16;
 const PADDING: (f32, f32) = (25., 7.);
 const PIXELS_TO_METERS: f32 = 1. / 2000.;
 const TOAST_AUDIO_WAV: &[u8] = include_bytes!("../res/557297.wav");
-
-static AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(0);
+static TOAST_NAME: Lazy<Arc<str>> = Lazy::new(|| "toast".into());
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum DisplayMethod {
@@ -77,24 +73,41 @@ impl Toast {
         self.submit_at(app, Instant::now());
     }
     pub fn submit_at(self, app: &mut AppState, instant: Instant) {
-        let auto_increment = AUTO_INCREMENT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let name: Arc<str> = format!("toast-{}", auto_increment).into();
-        let selector = OverlaySelector::Name(name.clone());
+        let selector = OverlaySelector::Name(TOAST_NAME.clone());
 
         let destroy_at = instant.add(std::time::Duration::from_secs_f32(self.timeout));
 
         let has_sound = self.sound && app.session.config.notifications_sound_enabled;
 
+        // drop any toast that was created before us.
+        // (DropOverlay only drops overlays that were
+        // created before current frame)
+        app.tasks
+            .enqueue_at(TaskType::DropOverlay(selector.clone()), instant);
+
+        // CreateOverlay only creates the overlay if
+        // the selector doesn't exist yet, so in case
+        // multiple toasts are submitted for the same
+        // frame, only the first one gets created
         app.tasks.enqueue_at(
             TaskType::CreateOverlay(
                 selector.clone(),
-                Box::new(move |app| new_toast(self, name, app)),
+                Box::new(move |app| {
+                    let mut maybe_toast = new_toast(self, app);
+                    if let Some((state, _)) = maybe_toast.as_mut() {
+                        state.auto_movement(app);
+                        app.tasks.enqueue_at(
+                            // at timeout, drop the overlay by ID instead
+                            // in order to avoid dropping any newer toasts
+                            TaskType::DropOverlay(OverlaySelector::Id(state.id)),
+                            destroy_at,
+                        );
+                    }
+                    maybe_toast
+                }),
             ),
             instant,
         );
-
-        app.tasks
-            .enqueue_at(TaskType::DropOverlay(selector), destroy_at);
 
         if has_sound {
             app.audio.play(TOAST_AUDIO_WAV);
@@ -102,11 +115,7 @@ impl Toast {
     }
 }
 
-fn new_toast(
-    toast: Toast,
-    name: Arc<str>,
-    app: &mut AppState,
-) -> Option<(OverlayState, Box<dyn OverlayBackend>)> {
+fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn OverlayBackend>)> {
     let current_method = app
         .session
         .toast_topics
@@ -186,7 +195,7 @@ fn new_toast(
     }
 
     let state = OverlayState {
-        name,
+        name: TOAST_NAME.clone(),
         want_visible: true,
         spawn_scale: size.0 * PIXELS_TO_METERS,
         spawn_rotation,

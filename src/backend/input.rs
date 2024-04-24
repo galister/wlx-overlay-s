@@ -4,12 +4,12 @@ use glam::{Affine3A, Vec2, Vec3, Vec3A};
 
 use smallvec::{smallvec, SmallVec};
 
-use crate::backend::common::{snap_upright, OverlaySelector, TaskType};
+use crate::backend::common::{snap_upright, OverlaySelector};
 use crate::config::{save_state, AStrMapExt, GeneralConfig};
 use crate::overlays::anchor::ANCHOR_NAME;
 use crate::state::AppState;
 
-use super::common::TaskContainer;
+use super::task::{TaskContainer, TaskType};
 use super::{
     common::{raycast_cylinder, raycast_plane, OverlayContainer},
     overlay::OverlayData,
