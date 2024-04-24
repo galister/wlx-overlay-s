@@ -13,11 +13,12 @@ use vulkano::{command_buffer::CommandBufferUsage, Handle, VulkanObject};
 
 use crate::{
     backend::{
-        common::{OverlayContainer, TaskType},
+        common::{BackendError, OverlayContainer},
         input::interact,
         notifications::NotificationManager,
         openxr::{input::DoubleClickCounter, lines::LinePool, overlay::OpenXrOverlayData},
         overlay::OverlayData,
+        task::TaskType,
     },
     graphics::WlxGraphics,
     overlays::{
@@ -26,8 +27,6 @@ use crate::{
     },
     state::AppState,
 };
-
-use super::common::BackendError;
 
 mod helpers;
 mod input;

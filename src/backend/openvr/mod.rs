@@ -20,7 +20,7 @@ use vulkano::{
 
 use crate::{
     backend::{
-        common::SystemTask,
+        common::{BackendError, OverlayContainer},
         input::interact,
         notifications::NotificationManager,
         openvr::{
@@ -31,6 +31,7 @@ use crate::{
             overlay::OpenVrOverlayData,
         },
         overlay::OverlayData,
+        task::{SystemTask, TaskType},
     },
     graphics::WlxGraphics,
     overlays::{
@@ -39,8 +40,6 @@ use crate::{
     },
     state::AppState,
 };
-
-use super::common::{BackendError, OverlayContainer, TaskType};
 
 pub mod helpers;
 pub mod input;

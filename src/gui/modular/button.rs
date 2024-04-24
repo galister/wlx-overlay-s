@@ -11,9 +11,10 @@ use serde::Deserialize;
 
 use crate::{
     backend::{
-        common::{ColorChannel, OverlaySelector, SystemTask, TaskType},
+        common::OverlaySelector,
         input::PointerMode,
         overlay::RelativeTo,
+        task::{ColorChannel, SystemTask, TaskType},
     },
     config::{save_settings, save_state, AStrSetExt},
     overlays::{

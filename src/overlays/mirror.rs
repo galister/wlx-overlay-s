@@ -9,10 +9,11 @@ use wlx_capture::pipewire::{pipewire_select_screen, PipewireCapture, PipewireSel
 
 use crate::{
     backend::{
-        common::{OverlaySelector, TaskType},
+        common::OverlaySelector,
         overlay::{
             ui_transform, OverlayBackend, OverlayRenderer, OverlayState, SplitOverlayBackend,
         },
+        task::TaskType,
     },
     state::{AppSession, AppState},
 };

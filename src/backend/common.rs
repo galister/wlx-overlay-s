@@ -1,9 +1,4 @@
-use std::{
-    collections::{BinaryHeap, VecDeque},
-    f32::consts::PI,
-    sync::Arc,
-    time::Instant,
-};
+use std::{f32::consts::PI, sync::Arc};
 
 use once_cell::sync::Lazy;
 #[cfg(feature = "openxr")]
@@ -25,7 +20,7 @@ use crate::{
     state::AppState,
 };
 
-use super::overlay::{OverlayBackend, OverlayData, OverlayState};
+use super::overlay::OverlayData;
 
 #[derive(Error, Debug)]
 pub enum BackendError {
@@ -349,90 +344,6 @@ where
 pub enum OverlaySelector {
     Id(usize),
     Name(Arc<str>),
-}
-
-struct AppTask {
-    pub not_before: Instant,
-    pub task: TaskType,
-}
-
-impl PartialEq<AppTask> for AppTask {
-    fn eq(&self, other: &Self) -> bool {
-        self.not_before == other.not_before
-    }
-}
-impl PartialOrd<AppTask> for AppTask {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-impl Eq for AppTask {}
-impl Ord for AppTask {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.not_before.cmp(&other.not_before).reverse()
-    }
-}
-
-pub enum SystemTask {
-    ColorGain(ColorChannel, f32),
-    ResetPlayspace,
-    FixFloor,
-}
-
-pub type OverlayTask = dyn FnOnce(&mut AppState, &mut OverlayState) + Send;
-pub type CreateOverlayTask =
-    dyn FnOnce(&mut AppState) -> Option<(OverlayState, Box<dyn OverlayBackend>)> + Send;
-
-pub enum TaskType {
-    Global(Box<dyn FnOnce(&mut AppState) + Send>),
-    Overlay(OverlaySelector, Box<OverlayTask>),
-    CreateOverlay(OverlaySelector, Box<CreateOverlayTask>),
-    DropOverlay(OverlaySelector),
-    System(SystemTask),
-}
-
-#[derive(Deserialize, Clone, Copy)]
-pub enum ColorChannel {
-    R,
-    G,
-    B,
-    All,
-}
-
-pub struct TaskContainer {
-    tasks: BinaryHeap<AppTask>,
-}
-
-impl TaskContainer {
-    pub fn new() -> Self {
-        Self {
-            tasks: BinaryHeap::new(),
-        }
-    }
-
-    pub fn enqueue(&mut self, task: TaskType) {
-        self.tasks.push(AppTask {
-            not_before: Instant::now(),
-            task,
-        });
-    }
-
-    pub fn enqueue_at(&mut self, task: TaskType, not_before: Instant) {
-        self.tasks.push(AppTask { not_before, task });
-    }
-
-    pub fn retrieve_due(&mut self, dest_buf: &mut VecDeque<TaskType>) {
-        let now = Instant::now();
-
-        while let Some(task) = self.tasks.peek() {
-            if task.not_before > now {
-                break;
-            }
-
-            // Safe unwrap because we peeked.
-            dest_buf.push_back(self.tasks.pop().unwrap().task);
-        }
-    }
 }
 
 pub fn raycast_plane(
