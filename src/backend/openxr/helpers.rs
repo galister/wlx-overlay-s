@@ -129,27 +129,12 @@ pub(super) fn hmd_pose_from_views(views: &[xr::View]) -> (Affine3A, f32) {
         (pos0 + pos1) * 0.5
     };
     let rot = {
-        let rot0 = unsafe { std::mem::transmute(views[0].pose.orientation) };
-        let rot1 = unsafe { std::mem::transmute(views[1].pose.orientation) };
-        quat_lerp(rot0, rot1, 0.5)
+        let rot0: Quat = unsafe { std::mem::transmute(views[0].pose.orientation) };
+        let rot1: Quat = unsafe { std::mem::transmute(views[1].pose.orientation) };
+        rot0.lerp(rot1, 0.5)
     };
 
     (Affine3A::from_rotation_translation(rot, pos), ipd)
-}
-
-fn quat_lerp(a: Quat, mut b: Quat, t: f32) -> Quat {
-    let l2 = a.dot(b);
-    if l2 < 0.0 {
-        b = -b;
-    }
-
-    Quat::from_xyzw(
-        a.x - t * (a.x - b.x),
-        a.y - t * (a.y - b.y),
-        a.z - t * (a.z - b.z),
-        a.w - t * (a.w - b.w),
-    )
-    .normalize()
 }
 
 pub(super) fn transform_to_norm_quat(transform: &Affine3A) -> Quat {
