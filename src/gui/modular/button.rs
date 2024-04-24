@@ -6,7 +6,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use glam::{Quat, Vec3A, Vec4};
+use glam::{Quat, Vec4};
 use serde::Deserialize;
 
 use crate::{
@@ -486,15 +486,15 @@ fn run_watch(data: &WatchAction, app: &mut AppState) {
                 Box::new(|app, o| {
                     if let RelativeTo::Hand(0) = o.relative_to {
                         o.relative_to = RelativeTo::Hand(1);
-                        o.spawn_rotation = Quat::from_slice(&app.session.config.watch_rot)
+                        o.spawn_rotation = app.session.config.watch_rot
                             * Quat::from_rotation_x(PI)
                             * Quat::from_rotation_z(PI);
-                        o.spawn_point = Vec3A::from_slice(&app.session.config.watch_pos);
+                        o.spawn_point = app.session.config.watch_pos;
                         o.spawn_point.x *= -1.;
                     } else {
                         o.relative_to = RelativeTo::Hand(0);
-                        o.spawn_rotation = Quat::from_slice(&app.session.config.watch_rot);
-                        o.spawn_point = Vec3A::from_slice(&app.session.config.watch_pos);
+                        o.spawn_rotation = app.session.config.watch_rot;
+                        o.spawn_point = app.session.config.watch_pos;
                     }
                     o.dirty = true;
                     Toast::new(

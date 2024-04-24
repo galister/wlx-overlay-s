@@ -11,6 +11,10 @@ use crate::state::LeftRight;
 use anyhow::bail;
 use config::Config;
 use config::File;
+use glam::vec3a;
+use glam::Affine3A;
+use glam::Quat;
+use glam::Vec3A;
 use idmap::IdMap;
 use log::error;
 use serde::Deserialize;
@@ -78,12 +82,12 @@ impl AStrSetExt for AStrSet {
 
 pub type PwTokenMap = AStrMap<String>;
 
-pub fn def_watch_pos() -> [f32; 3] {
-    [-0.03, -0.01, 0.125]
+pub fn def_watch_pos() -> Vec3A {
+    vec3a(-0.03, -0.01, 0.125)
 }
 
-pub fn def_watch_rot() -> [f32; 4] {
-    [-0.7071066, 0.0007963618, 0.7071066, 0.0]
+pub fn def_watch_rot() -> Quat {
+    Quat::from_xyzw(-0.7071066, 0.0007963618, 0.7071066, 0.0)
 }
 
 pub fn def_left() -> LeftRight {
@@ -130,6 +134,10 @@ fn def_curve_values() -> AStrMap<f32> {
     AStrMap::new()
 }
 
+fn def_transforms() -> AStrMap<Affine3A> {
+    AStrMap::new()
+}
+
 fn def_auto() -> Arc<str> {
     "auto".into()
 }
@@ -145,10 +153,10 @@ fn def_font() -> Arc<str> {
 #[derive(Deserialize, Serialize)]
 pub struct GeneralConfig {
     #[serde(default = "def_watch_pos")]
-    pub watch_pos: [f32; 3],
+    pub watch_pos: Vec3A,
 
     #[serde(default = "def_watch_rot")]
-    pub watch_rot: [f32; 4],
+    pub watch_rot: Quat,
 
     #[serde(default = "def_left")]
     pub watch_hand: LeftRight,
@@ -197,6 +205,9 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_curve_values")]
     pub curve_values: AStrMap<f32>,
+
+    #[serde(default = "def_transforms")]
+    pub transform_values: AStrMap<Affine3A>,
 
     #[serde(default = "def_auto")]
     pub capture_method: Arc<str>,
@@ -355,8 +366,8 @@ pub fn load_general() -> GeneralConfig {
 
 #[derive(Serialize)]
 pub struct AutoSettings {
-    pub watch_pos: [f32; 3],
-    pub watch_rot: [f32; 4],
+    pub watch_pos: Vec3A,
+    pub watch_rot: Quat,
     pub watch_hand: LeftRight,
     pub watch_view_angle_min: f32,
     pub watch_view_angle_max: f32,
@@ -396,6 +407,7 @@ pub fn save_settings(config: &GeneralConfig) -> anyhow::Result<()> {
 pub struct AutoState {
     pub show_screens: AStrSet,
     pub curve_values: AStrMap<f32>,
+    pub transform_values: AStrMap<Affine3A>,
 }
 
 fn get_state_path() -> PathBuf {
@@ -403,10 +415,12 @@ fn get_state_path() -> PathBuf {
     path.push("zz-saved-state.json5");
     path
 }
+
 pub fn save_state(config: &GeneralConfig) -> anyhow::Result<()> {
     let conf = AutoState {
         show_screens: config.show_screens.clone(),
         curve_values: config.curve_values.clone(),
+        transform_values: config.transform_values.clone(),
     };
 
     let json = serde_json::to_string_pretty(&conf).unwrap(); // want panic
