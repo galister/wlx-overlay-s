@@ -213,6 +213,8 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 TaskType::Overlay(sel, f) => {
                     if let Some(o) = overlays.mut_by_selector(&sel) {
                         f(&mut state, &mut o.state);
+                    } else {
+                        log::warn!("Overlay not found for task: {:?}", sel);
                     }
                 }
                 TaskType::CreateOverlay(sel, f) => {

@@ -5,10 +5,11 @@ use std::{
     time::Instant,
 };
 
+use once_cell::sync::Lazy;
 #[cfg(feature = "openxr")]
 use openxr as xr;
 
-use glam::{Affine3A, Vec2, Vec3A, Vec3Swizzles};
+use glam::{Affine3A, Vec2, Vec3, Vec3A, Vec3Swizzles};
 use idmap::IdMap;
 use serde::Deserialize;
 use thiserror::Error;
@@ -16,6 +17,7 @@ use thiserror::Error;
 use crate::{
     config::{AStrMapExt, AStrSetExt},
     overlays::{
+        anchor::create_anchor,
         keyboard::{create_keyboard, KEYBOARD_NAME},
         screen::WlxClientAlias,
         watch::{create_watch, WATCH_NAME},
@@ -101,6 +103,9 @@ where
             );
             app.screens.push(meta);
         }
+
+        let anchor = create_anchor(app)?;
+        overlays.insert(anchor.state.id, anchor);
 
         let mut watch = create_watch::<T>(app)?;
         watch.state.want_visible = true;
@@ -314,6 +319,13 @@ where
             .values()
             .any(|o| o.state.show_hide && o.state.want_visible);
 
+        if !any_shown {
+            static ANCHOR_LOCAL: Lazy<Affine3A> =
+                Lazy::new(|| Affine3A::from_translation(Vec3::NEG_Z));
+            let hmd = snap_upright(app.input_state.hmd, Vec3A::Y);
+            app.anchor = hmd * *ANCHOR_LOCAL;
+        }
+
         self.overlays.values_mut().for_each(|o| {
             if o.state.show_hide {
                 o.state.want_visible = !any_shown;
@@ -332,7 +344,7 @@ where
     }
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Deserialize, Debug)]
 #[serde(untagged)]
 pub enum OverlaySelector {
     Id(usize),

@@ -85,12 +85,12 @@ where
                         log::error!("Keyboard: EXEC args empty for {}", key);
                         continue;
                     }
+                    let mut iter = exec_args.iter().cloned();
                     maybe_state = Some(KeyButtonData::Exec {
-                        program: exec_args
-                            .first()
-                            .unwrap() // safe because we checked is_empty
-                            .clone(),
-                        args: exec_args.iter().skip(1).cloned().collect(),
+                        program: iter.next().unwrap(),
+                        args: iter.by_ref().take_while(|arg| arg[..] != *"null").collect(),
+                        release_program: iter.next(),
+                        release_args: iter.collect(),
                     });
                 } else {
                     log::error!("Unknown key: {}", key);
@@ -124,7 +124,7 @@ where
             recenter: true,
             interactable: true,
             spawn_scale: width,
-            spawn_point: vec3a(0., -0.5, -1.),
+            spawn_point: vec3a(0., -0.5, 0.),
             interaction_transform,
             ..Default::default()
         },
@@ -163,7 +163,7 @@ fn key_press(
                 app.hid_provider.send_key(*vk as _, *press);
             }
         }
-        Some(KeyButtonData::Exec { program, args }) => {
+        Some(KeyButtonData::Exec { program, args, .. }) => {
             // Reap previous processes
             data.processes
                 .retain_mut(|child| !matches!(child.try_wait(), Ok(Some(_))));
@@ -198,6 +198,21 @@ fn key_release(
             if !*sticky {
                 data.modifiers &= !*modifier;
                 app.hid_provider.set_modifiers(data.modifiers);
+            }
+        }
+        Some(KeyButtonData::Exec {
+            release_program,
+            release_args,
+            ..
+        }) => {
+            // Reap previous processes
+            data.processes
+                .retain_mut(|child| !matches!(child.try_wait(), Ok(Some(_))));
+
+            if let Some(program) = release_program {
+                if let Ok(child) = Command::new(program).args(release_args).spawn() {
+                    data.processes.push(child);
+                }
             }
         }
         _ => {}
@@ -240,10 +255,23 @@ impl KeyboardData {
 }
 
 enum KeyButtonData {
-    Key { vk: VirtualKey, pressed: bool },
-    Modifier { modifier: KeyModifier, sticky: bool },
-    Macro { verbs: Vec<(VirtualKey, bool)> },
-    Exec { program: String, args: Vec<String> },
+    Key {
+        vk: VirtualKey,
+        pressed: bool,
+    },
+    Modifier {
+        modifier: KeyModifier,
+        sticky: bool,
+    },
+    Macro {
+        verbs: Vec<(VirtualKey, bool)>,
+    },
+    Exec {
+        program: String,
+        args: Vec<String>,
+        release_program: Option<String>,
+        release_args: Vec<String>,
+    },
 }
 
 static LAYOUT: Lazy<Layout> = Lazy::new(Layout::load_from_disk);

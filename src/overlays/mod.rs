@@ -1,3 +1,4 @@
+pub mod anchor;
 pub mod custom;
 pub mod keyboard;
 #[cfg(feature = "wayland")]

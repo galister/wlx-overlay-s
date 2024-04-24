@@ -132,7 +132,7 @@ pub fn new_mirror(
         show_hide,
         want_visible: true,
         spawn_scale: 0.5 * session.config.desktop_view_scale,
-        spawn_point: vec3a(0., 0.5, -0.5),
+        spawn_point: vec3a(0., 0.5, 0.5),
         ..Default::default()
     };
     let backend = Box::new(SplitOverlayBackend {

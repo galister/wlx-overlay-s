@@ -11,7 +11,7 @@ use vulkano::{Handle, VulkanObject};
 use crate::{
     backend::overlay::{OverlayData, RelativeTo},
     graphics::WlxGraphics,
-    overlays::watch::WATCH_NAME,
+    overlays::{anchor::ANCHOR_NAME, watch::WATCH_NAME},
     state::AppState,
 };
 
@@ -48,6 +48,10 @@ impl OverlayData<OpenVrOverlayData> {
         //watch
         if *self.state.name == *WATCH_NAME {
             self.data.sort_order = 68;
+        }
+
+        if *self.state.name == *ANCHOR_NAME.as_ref() {
+            self.data.sort_order = 67;
         }
 
         self.data.handle = Some(handle);
@@ -260,7 +264,7 @@ impl OverlayData<OpenVrOverlayData> {
             m_pQueue: graphics.queue.handle().as_raw() as *mut _,
             m_nQueueFamilyIndex: graphics.queue.queue_family_index(),
         };
-        log::debug!(
+        log::trace!(
             "{}: UploadTex {:?}, {}x{}, {:?}",
             self.state.name,
             format,

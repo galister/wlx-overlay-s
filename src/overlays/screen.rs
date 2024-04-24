@@ -622,7 +622,7 @@ fn create_screen_state(
         recenter: true,
         interactable: true,
         spawn_scale: 1.5 * session.config.desktop_view_scale,
-        spawn_point: vec3a(0., 0.5, -1.),
+        spawn_point: vec3a(0., 0.5, 0.),
         spawn_rotation: Quat::from_axis_angle(Vec3::Z, angle),
         interaction_transform,
         ..Default::default()

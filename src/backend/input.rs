@@ -1,13 +1,15 @@
 use std::{collections::VecDeque, time::Instant};
 
-use glam::{Affine3A, Vec2, Vec3A};
+use glam::{Affine3A, Vec2, Vec3, Vec3A};
 
 use smallvec::{smallvec, SmallVec};
 
-use crate::backend::common::snap_upright;
+use crate::backend::common::{snap_upright, OverlaySelector, TaskType};
 use crate::config::{save_state, AStrMapExt, GeneralConfig};
+use crate::overlays::anchor::ANCHOR_NAME;
 use crate::state::AppState;
 
+use super::common::TaskContainer;
 use super::{
     common::{raycast_cylinder, raycast_plane, OverlayContainer},
     overlay::OverlayData,
@@ -244,6 +246,7 @@ pub struct GrabData {
     pub offset: Vec3A,
     pub grabbed_id: usize,
     pub old_curvature: Option<f32>,
+    pub grab_all: bool,
 }
 
 #[repr(u8)]
@@ -286,7 +289,13 @@ where
     let mut pointer = &mut app.input_state.pointers[idx];
     if let Some(grab_data) = pointer.interaction.grabbed {
         if let Some(grabbed) = overlays.mut_by_id(grab_data.grabbed_id) {
-            pointer.handle_grabbed(grabbed, &hmd, &mut app.session.config);
+            pointer.handle_grabbed(
+                grabbed,
+                &hmd,
+                &app.anchor,
+                &mut app.tasks,
+                &mut app.session.config,
+            );
         } else {
             log::warn!("Grabbed overlay {} does not exist", grab_data.grabbed_id);
             pointer.interaction.grabbed = None;
@@ -348,7 +357,7 @@ where
     log::trace!("Hit: {} {:?}", hovered.state.name, hit);
 
     if pointer.now.grab && !pointer.before.grab && hovered.state.grabbable {
-        pointer.start_grab(hovered);
+        pointer.start_grab(hovered, &mut app.tasks);
         return (
             hit.dist,
             Some(Haptics {
@@ -455,7 +464,7 @@ impl Pointer {
         None
     }
 
-    fn start_grab<O>(&mut self, overlay: &mut OverlayData<O>)
+    fn start_grab<O>(&mut self, overlay: &mut OverlayData<O>, tasks: &mut TaskContainer)
     where
         O: Default,
     {
@@ -468,7 +477,21 @@ impl Pointer {
             offset,
             grabbed_id: overlay.state.id,
             old_curvature: overlay.state.curvature,
+            grab_all: matches!(self.interaction.mode, PointerMode::Right),
         });
+        tasks.enqueue(TaskType::Overlay(
+            OverlaySelector::Name(ANCHOR_NAME.clone()),
+            Box::new(|app, o| {
+                o.transform = app.anchor
+                    * Affine3A::from_scale_rotation_translation(
+                        Vec3::ONE * o.spawn_scale,
+                        o.spawn_rotation,
+                        o.spawn_point.into(),
+                    );
+                o.dirty = true;
+                o.want_visible = true;
+            }),
+        ));
         log::info!("Hand {}: grabbed {}", self.idx, overlay.state.name);
     }
 
@@ -476,6 +499,8 @@ impl Pointer {
         &mut self,
         overlay: &mut OverlayData<O>,
         hmd: &Affine3A,
+        anchor: &Affine3A,
+        tasks: &mut TaskContainer,
         config: &mut GeneralConfig,
     ) where
         O: Default,
@@ -509,7 +534,7 @@ impl Pointer {
             }
         } else {
             overlay.state.saved_transform =
-                Some(snap_upright(*hmd, Vec3A::Y).inverse() * overlay.state.transform);
+                Some(snap_upright(*anchor, Vec3A::Y).inverse() * overlay.state.transform);
 
             if let Some(grab_data) = self.interaction.grabbed.as_ref() {
                 let mut state_dirty = false;
@@ -531,6 +556,12 @@ impl Pointer {
             }
 
             self.interaction.grabbed = None;
+            tasks.enqueue(TaskType::Overlay(
+                OverlaySelector::Name(ANCHOR_NAME.clone()),
+                Box::new(|_app, o| {
+                    o.want_visible = false;
+                }),
+            ));
             log::info!("Hand {}: dropped {}", self.idx, overlay.state.name);
         }
     }

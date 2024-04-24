@@ -1,7 +1,7 @@
 use std::{io::Cursor, path::PathBuf, sync::Arc};
 
 use anyhow::bail;
-use glam::Vec3;
+use glam::{Affine3A, Vec3};
 use idmap::IdMap;
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Source};
 use serde::{Deserialize, Serialize};
@@ -27,6 +27,7 @@ pub struct AppState {
     pub hid_provider: Box<dyn HidProvider>,
     pub audio: AudioOutput,
     pub screens: SmallVec<[ScreenMeta; 8]>,
+    pub anchor: Affine3A,
 }
 
 impl AppState {
@@ -67,6 +68,7 @@ impl AppState {
             hid_provider: crate::hid::initialize(),
             audio: AudioOutput::new(),
             screens: smallvec![],
+            anchor: Affine3A::IDENTITY,
         })
     }
 }

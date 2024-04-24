@@ -254,13 +254,19 @@ impl GeneralConfig {
     }
 }
 
-const FALLBACKS: [&str; 3] = [
+const FALLBACKS: [&str; 4] = [
     include_str!("res/keyboard.yaml"),
     include_str!("res/watch.yaml"),
     include_str!("res/settings.yaml"),
+    include_str!("res/anchor.yaml"),
 ];
 
-const FILES: [&str; 3] = ["keyboard.yaml", "watch.yaml", "settings.yaml"];
+const FILES: [&str; 4] = [
+    "keyboard.yaml",
+    "watch.yaml",
+    "settings.yaml",
+    "anchor.yaml",
+];
 
 #[derive(Clone, Copy)]
 #[repr(usize)]
@@ -268,6 +274,7 @@ pub enum ConfigType {
     Keyboard,
     Watch,
     Settings,
+    Anchor,
 }
 
 pub fn load_known_yaml<T>(config_type: ConfigType) -> T

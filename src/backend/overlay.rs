@@ -12,10 +12,7 @@ use vulkano::image::view::ImageView;
 
 use crate::state::AppState;
 
-use super::{
-    common::snap_upright,
-    input::{DummyInteractionHandler, Haptics, InteractionHandler, PointerHit},
-};
+use super::input::{DummyInteractionHandler, Haptics, InteractionHandler, PointerHit};
 
 static AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(0);
 
@@ -127,15 +124,10 @@ impl OverlayState {
             self.saved_transform = None;
         }
 
-        let hmd = snap_upright(app.input_state.hmd, Vec3A::Y);
-        self.transform = hmd * self.get_transform();
+        self.transform = app.anchor * self.get_transform();
 
-        if self.grabbable {
-            if hard_reset {
-                self.realign(&app.input_state.hmd);
-            } else {
-                //self.transform = snap_upright(self.transform, app.input_state.hmd.y_axis);
-            }
+        if self.grabbable && hard_reset {
+            self.realign(&app.input_state.hmd);
         }
         self.dirty = true;
     }
