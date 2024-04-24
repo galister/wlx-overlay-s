@@ -1,6 +1,7 @@
+use std::f32::consts::PI;
 use std::{collections::VecDeque, time::Instant};
 
-use glam::{Affine3A, Vec2, Vec3, Vec3A};
+use glam::{Affine3A, Vec2, Vec3, Vec3A, Vec3Swizzles};
 
 use smallvec::{smallvec, SmallVec};
 
@@ -10,10 +11,7 @@ use crate::overlays::anchor::ANCHOR_NAME;
 use crate::state::AppState;
 
 use super::task::{TaskContainer, TaskType};
-use super::{
-    common::{raycast_cylinder, raycast_plane, OverlayContainer},
-    overlay::OverlayData,
-};
+use super::{common::OverlayContainer, overlay::OverlayData};
 
 pub struct TrackedDevice {
     pub soc: Option<f32>,
@@ -589,4 +587,81 @@ impl Pointer {
             dist,
         })
     }
+}
+
+fn raycast_plane(
+    source: &Affine3A,
+    source_fwd: Vec3A,
+    plane: &Affine3A,
+    plane_norm: Vec3A,
+) -> Option<(f32, Vec2)> {
+    let plane_normal = plane.transform_vector3a(plane_norm);
+    let ray_dir = source.transform_vector3a(source_fwd);
+
+    let d = plane.translation.dot(-plane_normal);
+    let dist = -(d + source.translation.dot(plane_normal)) / ray_dir.dot(plane_normal);
+
+    let hit_local = plane
+        .inverse()
+        .transform_point3a(source.translation + ray_dir * dist)
+        .xy();
+
+    Some((dist, hit_local))
+}
+
+fn raycast_cylinder(
+    source: &Affine3A,
+    source_fwd: Vec3A,
+    plane: &Affine3A,
+    curvature: f32,
+) -> Option<(f32, Vec2)> {
+    // this is solved locally; (0,0) is the center of the cylinder, and the cylinder is aligned with the Y axis
+    let size = plane.x_axis.length();
+    let to_local = Affine3A {
+        matrix3: plane.matrix3.mul_scalar(1.0 / size),
+        translation: plane.translation,
+    }
+    .inverse();
+
+    let r = size / (2.0 * PI * curvature);
+
+    let ray_dir = to_local.transform_vector3a(source.transform_vector3a(source_fwd));
+    let ray_origin = to_local.transform_point3a(source.translation) + Vec3A::NEG_Z * r;
+
+    let d = ray_dir.xz();
+    let s = ray_origin.xz();
+
+    let a = d.dot(d);
+    let b = d.dot(s);
+    let c = s.dot(s) - r * r;
+
+    let d = (b * b) - (a * c);
+    if d < f32::EPSILON {
+        return None;
+    }
+
+    let sqrt_d = d.sqrt();
+
+    let t1 = (-b - sqrt_d) / a;
+    let t2 = (-b + sqrt_d) / a;
+
+    let t = t1.max(t2);
+
+    if t < f32::EPSILON {
+        return None;
+    }
+
+    let mut hit_local = ray_origin + ray_dir * t;
+    if hit_local.z > 0.0 {
+        // hitting the opposite half of the cylinder
+        return None;
+    }
+
+    let max_angle = 2.0 * (size / (2.0 * r));
+    let x_angle = (hit_local.x / r).asin();
+
+    hit_local.x = x_angle / max_angle;
+    hit_local.y /= size;
+
+    Some((t, hit_local.xy()))
 }
