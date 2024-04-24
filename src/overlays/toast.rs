@@ -1,6 +1,6 @@
 use std::{f32::consts::PI, ops::Add, sync::Arc, time::Instant};
 
-use glam::{vec3a, Quat, Vec3A};
+use glam::{vec3a, Quat};
 use idmap_derive::IntegerId;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -127,9 +127,8 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
         DisplayMethod::Hide => return None,
         DisplayMethod::Center => (vec3a(0., -0.2, -0.5), Quat::IDENTITY, RelativeTo::Head),
         DisplayMethod::Watch => {
-            let mut watch_pos =
-                Vec3A::from_slice(&app.session.config.watch_pos) + vec3a(-0.005, -0.05, 0.02);
-            let mut watch_rot = Quat::from_slice(&app.session.config.watch_rot);
+            let mut watch_pos = app.session.config.watch_pos + vec3a(-0.005, -0.05, 0.02);
+            let mut watch_rot = app.session.config.watch_rot;
             let relative_to = match app.session.config.watch_hand {
                 LeftRight::Left => RelativeTo::Hand(0),
                 LeftRight::Right => {

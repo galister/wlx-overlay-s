@@ -1,4 +1,4 @@
-use glam::{Quat, Vec3A};
+use glam::Vec3A;
 
 use crate::{
     backend::overlay::{ui_transform, OverlayData, OverlayState, RelativeTo},
@@ -26,8 +26,8 @@ where
             want_visible: true,
             interactable: true,
             spawn_scale: config.width,
-            spawn_point: Vec3A::from_slice(&state.session.config.watch_pos),
-            spawn_rotation: Quat::from_slice(&state.session.config.watch_rot),
+            spawn_point: state.session.config.watch_pos,
+            spawn_rotation: state.session.config.watch_rot,
             interaction_transform: ui_transform(&config.size),
             relative_to,
             ..Default::default()

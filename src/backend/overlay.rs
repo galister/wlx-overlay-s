@@ -10,7 +10,7 @@ use anyhow::Ok;
 use glam::{Affine2, Affine3A, Mat3A, Quat, Vec2, Vec3, Vec3A};
 use vulkano::image::view::ImageView;
 
-use crate::state::AppState;
+use crate::{config::AStrMapExt, state::AppState};
 
 use super::input::{DummyInteractionHandler, Haptics, InteractionHandler, PointerHit};
 
@@ -178,7 +178,26 @@ where
     T: Default,
 {
     pub fn init(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        self.state.reset(app, true);
+        self.state.curvature = app
+            .session
+            .config
+            .curve_values
+            .arc_get(self.state.name.as_ref())
+            .copied();
+
+        let hard_reset;
+        if let Some(transform) = app
+            .session
+            .config
+            .transform_values
+            .arc_get(self.state.name.as_ref())
+        {
+            self.state.saved_transform = Some(*transform);
+            hard_reset = false;
+        } else {
+            hard_reset = true;
+        }
+        self.state.reset(app, hard_reset);
         self.backend.init(app)
     }
     pub fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {

@@ -10,10 +10,10 @@ use serde::Deserialize;
 use thiserror::Error;
 
 use crate::{
-    config::{AStrMapExt, AStrSetExt},
+    config::AStrSetExt,
     overlays::{
         anchor::create_anchor,
-        keyboard::{create_keyboard, KEYBOARD_NAME},
+        keyboard::create_keyboard,
         screen::WlxClientAlias,
         watch::{create_watch, WATCH_NAME},
     },
@@ -82,12 +82,6 @@ where
                 state.show_hide = true;
                 state.want_visible = false;
             }
-            state.curvature = app
-                .session
-                .config
-                .curve_values
-                .arc_get(state.name.as_ref())
-                .copied();
             overlays.insert(
                 state.id,
                 OverlayData::<T> {
@@ -109,12 +103,6 @@ where
         let mut keyboard = create_keyboard(app)?;
         keyboard.state.show_hide = true;
         keyboard.state.want_visible = false;
-        keyboard.state.curvature = app
-            .session
-            .config
-            .curve_values
-            .arc_get(KEYBOARD_NAME)
-            .copied();
         overlays.insert(keyboard.state.id, keyboard);
 
         Ok(Self { overlays, wl })
