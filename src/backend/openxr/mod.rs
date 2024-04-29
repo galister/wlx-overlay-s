@@ -33,6 +33,7 @@ mod input;
 mod lines;
 mod overlay;
 mod swapchain;
+mod playspace;
 
 const VIEW_TYPE: xr::ViewConfigurationType = xr::ViewConfigurationType::PRIMARY_STEREO;
 const VIEW_COUNT: u32 = 2;
@@ -72,6 +73,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     notifications.run_udp();
 
     let mut delete_queue = vec![];
+    let mut space_mover = playspace::PlayspaceMover::new();
 
     #[cfg(feature = "osc")]
     let mut osc_sender =
@@ -204,6 +206,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         }
 
         watch_fade(&mut app_state, overlays.mut_by_id(watch_id).unwrap()); // want panic
+        space_mover.update(&mut overlays, &app_state);
 
         for o in overlays.iter_mut() {
             o.after_input(&mut app_state)?;
