@@ -179,7 +179,10 @@ impl FontCache {
     ) -> anyhow::Result<Rc<Glyph>> {
         let key = self.get_font_for_cp(cp, size);
 
-        let font = &mut self.collections[size].fonts[key];
+        let Some(font) = &mut self.collections[size].fonts.get_mut(key) else {
+            log::warn!("No font found for codepoint: {}", cp);
+            return Ok(self.collections[size].fonts[0].glyphs[0].clone());
+        };
 
         if let Some(glyph) = font.glyphs.get(cp) {
             return Ok(glyph.clone());
