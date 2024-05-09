@@ -42,6 +42,16 @@ SteamVR users: WlxOverlay-S will register itself for auto-start, so you will not
 
 # Getting Started
 
+### Working Set
+
+Your working set consists of your currently selected overlays; screens, mirrors, keyboard, etc.
+
+The working set appears in front of you when shown, and can be re-centered by hiding and showing again.
+
+Show and hide your working set using:
+- Non-vive controller: double-tap B or Y on your left controller.
+- Vive controller: double-tap the menu button on your left controller (OpenXR, for SteamVR, you might need to bind `showhide` yourself.)
+
 ### Pointer Modes AKA Laser Colors
 
 Much of the functionality in WlxOverlay-S depends on what color of laser you are using to interact with a UI element. \
