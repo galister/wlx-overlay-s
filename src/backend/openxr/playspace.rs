@@ -8,7 +8,7 @@ use crate::{
     state::AppState,
 };
 
-use super::overlay::OpenXrOverlayData;
+use super::{helpers, overlay::OpenXrOverlayData};
 
 pub(super) struct PlayspaceMover {
     drag_hand: Option<usize>,
@@ -27,17 +27,11 @@ pub(super) struct PlayspaceMover {
 impl PlayspaceMover {
     pub fn new() -> Self {
         unsafe {
-            //user currently has to manually specify this. ex: LIBMONADO_PATH="/home/sarah/.local/share/envision/prefixes/c6cea4c7-69d5-4a36-af9d-ddf14e1222a6/lib/libmonado.so"
-            let libmonado_path = std::env::var("LIBMONADO_PATH");
-            let libmonado_path = match libmonado_path {
-                Ok(path) => path,
-                Err(_) => {
-                    log::error!("please specify the path to libmonado.so using the LIBMONADO_PATH environment variable.");
-                    std::process::exit(1);
-                }
-            };
+            let libmonado = helpers::find_libmonado().unwrap_or_else(|e| {
+                log::error!("Failed to find libmonado: {}", e);
+                std::process::exit(1);
+            });
 
-            let libmonado = Library::new(libmonado_path).unwrap();
             let root_create: Symbol<extern "C" fn(*mut *mut c_void) -> i32> =
                 libmonado.get(b"mnd_root_create").unwrap();
             let playspace_move: Symbol<extern "C" fn(*mut c_void, f32, f32, f32) -> i32> =

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use anyhow::{bail, ensure};
 use glam::{Affine3A, Quat, Vec3, Vec3A};
 use openxr as xr;
@@ -168,4 +170,48 @@ pub(super) fn transform_to_posef(transform: &Affine3A) -> xr::Posef {
     let translation = transform.translation;
     let rotation = transform_to_norm_quat(transform);
     translation_rotation_to_posef(translation, rotation)
+}
+
+pub(super) fn find_libmonado() -> Result<libloading::Library, anyhow::Error> {
+    //query active linux processes
+    let output = std::process::Command::new("ps")
+        .arg("aux")
+        .output()?
+        .stdout;
+
+    //find monado-service file location
+    let mut monado_service = None;
+    let lines = String::from_utf8(output)?;
+    for line in lines.lines() {
+        if line.contains("monado-service") {
+            let mut parts = line.split_whitespace();
+            monado_service = parts.nth(8);
+            break;
+        }
+    }
+
+    //if monado-service is not found, return error
+    let monado_service = monado_service.ok_or_else(|| anyhow::anyhow!("monado-service not found"))?;
+
+    log::info!("monado-service: {}", monado_service);
+
+    //monado service is in /bin. go one folder up and look in /lib for libmonado.so
+    let mut libmonado = std::path::Path::new(monado_service)
+        .parent()
+        .ok_or_else(|| anyhow::anyhow!("monado-service path has no parent"))?
+        .parent()
+        .ok_or_else(|| anyhow::anyhow!("monado-service folder has no parent"))?
+        .join("lib")
+        .join("libmonado.so");
+
+    if !libmonado.exists() {
+        log::info!("libmonado.so wasn't found automatically. falling back to environment variable...");
+        libmonado = PathBuf::from(std::env::var("LIBMONADO_PATH")?);
+    }
+
+    //load libmonado.so
+    let libmonado = unsafe {
+        libloading::Library::new(libmonado)?
+    };
+    Ok(libmonado)
 }
