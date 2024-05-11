@@ -185,7 +185,7 @@ pub(super) fn find_libmonado() -> Result<libloading::Library, anyhow::Error> {
     for line in lines.lines() {
         if line.contains("monado-service") {
             let mut parts = line.split_whitespace();
-            monado_service = parts.nth(8);
+            monado_service = parts.nth(10);
             break;
         }
     }
