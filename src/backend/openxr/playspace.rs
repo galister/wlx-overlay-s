@@ -3,21 +3,16 @@ use std::ffi::c_void;
 use glam::Vec3A;
 use libloading::{Library, Symbol};
 
-use crate::{
-    backend::common::OverlayContainer,
-    state::AppState,
-};
+use crate::{backend::common::OverlayContainer, state::AppState};
 
-use super::{helpers, overlay::OpenXrOverlayData};
+use super::{helpers, input::DoubleClickCounter, overlay::OpenXrOverlayData};
 
 pub(super) struct PlayspaceMover {
     drag_hand: Option<usize>,
     offset: Vec3A,
     start_position: Vec3A,
 
-    has_pressed: bool,
-    has_unpressed: bool,
-    pressed_timer: std::time::Instant,
+    double_click_counter: DoubleClickCounter,
 
     libmonado: Library,
     mnd_root: *mut c_void,
@@ -51,9 +46,7 @@ impl PlayspaceMover {
                 offset: Vec3A::ZERO,
                 start_position: Vec3A::ZERO,
 
-                has_pressed: false,
-                has_unpressed: false,
-                pressed_timer: std::time::Instant::now(),
+                double_click_counter: DoubleClickCounter::new(),
 
                 libmonado,
                 mnd_root: root,
@@ -63,13 +56,6 @@ impl PlayspaceMover {
     }
 
     pub fn update(&mut self, overlays: &mut OverlayContainer<OpenXrOverlayData>, state: &AppState) {
-        if self.has_unpressed {
-            if self.pressed_timer.elapsed().as_secs_f32() > 0.2 {
-                self.has_unpressed = false;
-                self.has_pressed = false;
-            }
-        }
-
         if let Some(hand) = self.drag_hand {
             let pointer = &state.input_state.pointers[hand];
             if !pointer.now.space_drag {
@@ -91,28 +77,12 @@ impl PlayspaceMover {
             self.offset += relative_pos;
             self.apply_offset();
         } else {
-            let mut pressed = false;
             for (i, pointer) in state.input_state.pointers.iter().enumerate() {
-                if pointer.now.space_drag {
-                    pressed = true;
-                    if !self.has_pressed {
-                        self.has_pressed = true;
-                        break;
-                    }
-
-                    if self.has_pressed && self.has_unpressed {
-                        self.drag_hand = Some(i);
-                        self.start_position = pointer.pose.translation;
-                        self.has_pressed = false;
-                        self.has_unpressed = false;
-                        break;
-                    }
+                if pointer.now.space_drag && !pointer.before.space_drag && self.double_click_counter.click() {
+                    self.drag_hand = Some(i);
+                    self.start_position = pointer.pose.translation;
+                    break;
                 }
-            }
-
-            if !pressed && self.has_pressed && !self.has_unpressed {
-                self.has_unpressed = true;
-                self.pressed_timer = std::time::Instant::now();
             }
         }
     }

@@ -173,6 +173,16 @@ pub(super) fn transform_to_posef(transform: &Affine3A) -> xr::Posef {
 }
 
 pub(super) fn find_libmonado() -> Result<libloading::Library, anyhow::Error> {
+    //check env var first
+    if let Ok(path) = std::env::var("LIBMONADO_PATH") {
+        let path = PathBuf::from(path);
+        if path.exists() {
+            return Ok(unsafe { libloading::Library::new(path)? });
+        } else {
+            bail!("LIBMONADO_PATH does not exist");
+        }
+    }
+
     //query active linux processes
     let output = std::process::Command::new("ps")
         .arg("aux")
@@ -205,10 +215,8 @@ pub(super) fn find_libmonado() -> Result<libloading::Library, anyhow::Error> {
         .join("libmonado.so");
 
     if !libmonado.exists() {
-        log::info!("libmonado.so wasn't found automatically. falling back to environment variable...");
-        libmonado = PathBuf::from(std::env::var("LIBMONADO_PATH")?);
+        bail!("libmonado.so not found");
     }
-
     //load libmonado.so
     let libmonado = unsafe {
         libloading::Library::new(libmonado)?
