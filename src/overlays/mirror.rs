@@ -63,7 +63,7 @@ impl OverlayRenderer for MirrorRenderer {
                     self.name.clone(),
                     pw_result.node_id
                 );
-                let capture = PipewireCapture::new(self.name.clone(), pw_result.node_id, 60);
+                let capture = PipewireCapture::new(self.name.clone(), pw_result.node_id);
                 self.renderer = Some(ScreenRenderer::new_raw(
                     self.name.clone(),
                     Box::new(capture),

@@ -92,9 +92,11 @@ use vulkano::{
 };
 
 use wlx_capture::frame::{
-    DmabufFrame, FourCC, DRM_FORMAT_ABGR8888, DRM_FORMAT_ARGB8888, DRM_FORMAT_XBGR8888,
-    DRM_FORMAT_XRGB8888,
+    DmabufFrame, FourCC, DRM_FORMAT_ABGR2101010, DRM_FORMAT_ABGR8888, DRM_FORMAT_ARGB8888,
+    DRM_FORMAT_XBGR2101010, DRM_FORMAT_XBGR8888, DRM_FORMAT_XRGB8888,
 };
+
+pub const DRM_FORMAT_MOD_INVALID: u64 = 0xff_ffff_ffff_ffff;
 
 #[repr(C)]
 #[derive(BufferContents, Vertex, Copy, Clone, Debug)]
@@ -742,18 +744,24 @@ impl WlxGraphics {
 
         let format = fourcc_to_vk(frame.format.fourcc)?;
 
-        let layouts: Vec<SubresourceLayout> = (0..frame.num_planes)
-            .map(|i| {
+        let mut tiling: ImageTiling = ImageTiling::Optimal;
+        let mut modifiers: Vec<u64> = vec![];
+        let mut layouts: Vec<SubresourceLayout> = vec![];
+
+        if frame.format.modifier != DRM_FORMAT_MOD_INVALID {
+            (0..frame.num_planes).for_each(|i| {
                 let plane = &frame.planes[i];
-                SubresourceLayout {
+                layouts.push(SubresourceLayout {
                     offset: plane.offset as _,
                     size: 0,
                     row_pitch: plane.stride as _,
                     array_pitch: None,
                     depth_pitch: None,
-                }
-            })
-            .collect();
+                });
+                modifiers.push(frame.format.modifier);
+            });
+            tiling = ImageTiling::DrmFormatModifier;
+        };
 
         let image = unsafe {
             RawImage::new_unchecked(
@@ -763,8 +771,8 @@ impl WlxGraphics {
                     extent,
                     usage: ImageUsage::SAMPLED,
                     external_memory_handle_types: ExternalMemoryHandleTypes::DMA_BUF,
-                    tiling: ImageTiling::DrmFormatModifier,
-                    drm_format_modifiers: vec![frame.format.modifier],
+                    tiling,
+                    drm_format_modifiers: modifiers,
                     drm_format_modifier_plane_layouts: layouts,
                     ..Default::default()
                 },
@@ -1556,6 +1564,8 @@ pub fn fourcc_to_vk(fourcc: FourCC) -> anyhow::Result<Format> {
         DRM_FORMAT_XBGR8888 => Ok(Format::R8G8B8A8_UNORM),
         DRM_FORMAT_ARGB8888 => Ok(Format::B8G8R8A8_UNORM),
         DRM_FORMAT_XRGB8888 => Ok(Format::B8G8R8A8_UNORM),
+        DRM_FORMAT_ABGR2101010 => Ok(Format::A2B10G10R10_UNORM_PACK32),
+        DRM_FORMAT_XBGR2101010 => Ok(Format::A2B10G10R10_UNORM_PACK32),
         _ => bail!("Unsupported format {}", fourcc),
     }
 }

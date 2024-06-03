@@ -14,8 +14,8 @@ use vulkano::{
 };
 use wlx_capture::{
     frame::{
-        DrmFormat, MouseMeta, WlxFrame, DRM_FORMAT_ABGR8888, DRM_FORMAT_ARGB8888,
-        DRM_FORMAT_XBGR8888, DRM_FORMAT_XRGB8888,
+        DrmFormat, MouseMeta, WlxFrame, DRM_FORMAT_ABGR2101010, DRM_FORMAT_ABGR8888,
+        DRM_FORMAT_ARGB8888, DRM_FORMAT_XBGR2101010, DRM_FORMAT_XBGR8888, DRM_FORMAT_XRGB8888,
     },
     WlxCapture,
 };
@@ -44,7 +44,10 @@ use crate::{
         overlay::{OverlayRenderer, OverlayState, SplitOverlayBackend},
     },
     config::{def_pw_tokens, PwTokenMap},
-    graphics::{fourcc_to_vk, WlxCommandBuffer, WlxPipeline, WlxPipelineLegacy, DMA_BUF_SUPPORTED},
+    graphics::{
+        fourcc_to_vk, WlxCommandBuffer, WlxPipeline, WlxPipelineLegacy, DMA_BUF_SUPPORTED,
+        DRM_FORMAT_MOD_INVALID,
+    },
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState, ScreenMeta},
 };
@@ -316,7 +319,7 @@ impl ScreenRenderer {
         let select_screen_result =
             futures::executor::block_on(pipewire_select_screen(token, embed_mouse, true, true))?;
 
-        let capture = PipewireCapture::new(name, select_screen_result.node_id, 60);
+        let capture = PipewireCapture::new(name, select_screen_result.node_id);
 
         Ok((
             ScreenRenderer {
@@ -373,7 +376,10 @@ impl OverlayRenderer for ScreenRenderer {
                         DRM_FORMAT_XBGR8888.into(),
                         DRM_FORMAT_ARGB8888.into(),
                         DRM_FORMAT_XRGB8888.into(),
+                        DRM_FORMAT_ABGR2101010.into(),
+                        DRM_FORMAT_XBGR2101010.into(),
                     ];
+
                     let mut final_formats = vec![];
 
                     for &f in &possible_formats {
@@ -384,7 +390,7 @@ impl OverlayRenderer for ScreenRenderer {
                         else {
                             continue;
                         };
-                        final_formats.push(DrmFormat {
+                        let mut fmt = DrmFormat {
                             fourcc: f,
                             modifiers: props
                                 .drm_format_modifier_properties
@@ -393,7 +399,13 @@ impl OverlayRenderer for ScreenRenderer {
                                 .filter(|m| m.drm_format_modifier_plane_count == 1)
                                 .map(|m| m.drm_format_modifier)
                                 .collect(),
-                        })
+                        };
+                        fmt.modifiers.push(DRM_FORMAT_MOD_INVALID); // implicit modifiers support
+                        final_formats.push(fmt);
+                    }
+                    log::debug!("Supported DRM formats:");
+                    for f in &final_formats {
+                        log::debug!("  {} {:?}", f.fourcc, f.modifiers);
                     }
                     final_formats
                 }
