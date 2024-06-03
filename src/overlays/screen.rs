@@ -130,8 +130,8 @@ impl InteractionHandler for ScreenInteractionHandler {
         if self.next_scroll > Instant::now() {
             return;
         }
-        let max_millis = if matches!(hit.mode, PointerMode::Right) {
-            50.0
+        let max_millis = if matches!(hit.mode, PointerMode::Left) {
+            200.0
         } else {
             100.0
         };
