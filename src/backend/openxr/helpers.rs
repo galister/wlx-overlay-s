@@ -1,6 +1,9 @@
+use std::path::PathBuf;
+
 use anyhow::{bail, ensure};
 use glam::{Affine3A, Quat, Vec3, Vec3A};
 use openxr as xr;
+use sysinfo::Process;
 use xr::OverlaySessionCreateFlagsEXTX;
 
 pub(super) fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
@@ -168,4 +171,45 @@ pub(super) fn transform_to_posef(transform: &Affine3A) -> xr::Posef {
     let translation = transform.translation;
     let rotation = transform_to_norm_quat(transform);
     translation_rotation_to_posef(translation, rotation)
+}
+
+pub(super) fn find_libmonado() -> anyhow::Result<libloading::Library> {
+    //check env var first
+    if let Ok(path) = std::env::var("LIBMONADO_PATH") {
+        let path = PathBuf::from(path);
+        if path.exists() {
+            return Ok(unsafe { libloading::Library::new(path)? });
+        } else {
+            bail!("LIBMONADO_PATH points to a non-existing file.");
+        }
+    }
+
+    const PROC_NAMES: [&str; 1] = ["monado-service"];
+    let mut system = sysinfo::System::new();
+    system.refresh_processes();
+    for p in system.processes().values() {
+        for proc_name in PROC_NAMES.iter() {
+            if p.name().contains(proc_name) {
+                if let Some(lib) = proc_load_libmonado(p) {
+                    return Ok(lib);
+                }
+            }
+        }
+    }
+    bail!("Could not find libmonado.");
+}
+
+fn proc_load_libmonado(proc: &Process) -> Option<libloading::Library> {
+    let path = proc
+        .exe()?
+        .parent()?
+        .parent()?
+        .join("lib")
+        .join("libmonado.so");
+
+    if path.exists() {
+        Some(unsafe { libloading::Library::new(path).ok()? })
+    } else {
+        None
+    }
 }

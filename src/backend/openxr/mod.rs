@@ -32,6 +32,7 @@ mod helpers;
 mod input;
 mod lines;
 mod overlay;
+mod playspace;
 mod swapchain;
 
 const VIEW_TYPE: xr::ViewConfigurationType = xr::ViewConfigurationType::PRIMARY_STEREO;
@@ -72,6 +73,9 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     notifications.run_udp();
 
     let mut delete_queue = vec![];
+    let mut space_mover = playspace::PlayspaceMover::try_new()
+        .map_err(|e| log::warn!("Failed to initialize Monado playspace mover: {}", e))
+        .ok();
 
     #[cfg(feature = "osc")]
     let mut osc_sender =
@@ -204,6 +208,9 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         }
 
         watch_fade(&mut app_state, overlays.mut_by_id(watch_id).unwrap()); // want panic
+        if let Some(ref mut space_mover) = space_mover {
+            space_mover.update(&mut overlays, &app_state);
+        }
 
         for o in overlays.iter_mut() {
             o.after_input(&mut app_state)?;

@@ -30,6 +30,7 @@ input-linux = "0.6.0"
 json = { version = "0.12.4", optional = true }
 json5 = "0.4.1"
 libc = "0.2.153"
+libloading = "0.8.3"
 log = "0.4.21"
 once_cell = "1.19.0"
 openxr = { version = "0.17.1", features = ["linked"], optional = true }
@@ -48,6 +49,7 @@ serde_json = "1.0.113"
 serde_yaml = "0.9.34"
 smallvec = "1.11.0"
 strum = { version = "0.26.2", features = ["derive"] }
+sysinfo = { version = "0.30.0", optional = true }
 thiserror = "1.0.56"
 vulkano = { git = "https://github.com/vulkano-rs/vulkano", rev = "94f50f1" }
 vulkano-shaders = { git = "https://github.com/vulkano-rs/vulkano", rev = "94f50f1" }
@@ -59,7 +61,7 @@ log-panics = { version = "2.1.0", features = ["with-backtrace"] }
 [features]
 default = ["openvr", "openxr", "osc", "x11", "wayland"]
 openvr = ["dep:ovr_overlay", "dep:json"]
-openxr = ["dep:openxr"]
+openxr = ["dep:openxr", "dep:sysinfo"]
 osc = ["dep:rosc"]
 x11 = ["wlx-capture/xshm"]
 wayland = ["wlx-capture/pipewire", "wlx-capture/wlr"]

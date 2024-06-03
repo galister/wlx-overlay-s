@@ -51,6 +51,7 @@ pub(super) struct OpenXrHandSource {
     action_scroll: xr::Action<f32>,
     action_alt_click: xr::Action<f32>,
     action_show_hide: xr::Action<bool>,
+    action_space_drag: xr::Action<bool>,
     action_click_modifier_right: xr::Action<bool>,
     action_click_modifier_middle: xr::Action<bool>,
     action_move_mouse: xr::Action<bool>,
@@ -201,6 +202,12 @@ impl OpenXrHand {
             .state(&xr.session, xr::Path::NULL)?
             .current_state;
 
+        pointer.now.space_drag = self
+            .source
+            .action_space_drag
+            .state(&xr.session, xr::Path::NULL)?
+            .current_state;
+
         Ok(())
     }
 }
@@ -259,6 +266,11 @@ impl OpenXrHandSource {
             &format!("{} hand haptics", side),
             &[],
         )?;
+        let action_space_drag = action_set.create_action::<bool>(
+            &format!("{}_space_drag", side),
+            &format!("{} hand space drag", side),
+            &[],
+        )?;
 
         Ok(Self {
             action_pose,
@@ -271,6 +283,7 @@ impl OpenXrHandSource {
             action_click_modifier_middle,
             action_move_mouse,
             action_haptics,
+            action_space_drag,
         })
     }
 }
@@ -381,6 +394,10 @@ fn suggest_bindings(
                 instance.string_to_path("/user/hand/right/input/trigger/touch")?,
             ),
             xr::Binding::new(
+                &hands[0].action_space_drag,
+                instance.string_to_path("/user/hand/left/input/menu/click")?,
+            ),
+            xr::Binding::new(
                 &hands[0].action_haptics,
                 instance.string_to_path("/user/hand/left/output/haptic")?,
             ),
@@ -438,6 +455,10 @@ fn suggest_bindings(
             xr::Binding::new(
                 &hands[0].action_show_hide,
                 instance.string_to_path("/user/hand/left/input/b/click")?,
+            ),
+            xr::Binding::new(
+                &hands[1].action_space_drag,
+                instance.string_to_path("/user/hand/right/input/b/click")?,
             ),
             xr::Binding::new(
                 &hands[0].action_click_modifier_right,
