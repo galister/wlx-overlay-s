@@ -106,7 +106,7 @@
             },
             {
                "inputs" : {
-                  "click" : {
+                  "double" : {
                      "output" : "/actions/default/in/spacedrag"
                   }
                },

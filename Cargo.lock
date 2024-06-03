@@ -4250,6 +4250,7 @@ dependencies = [
  "json",
  "json5",
  "libc",
+ "libloading 0.8.3",
  "log",
  "log-panics",
  "once_cell",

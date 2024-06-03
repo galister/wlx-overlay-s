@@ -30,6 +30,7 @@ input-linux = "0.6.0"
 json = { version = "0.12.4", optional = true }
 json5 = "0.4.1"
 libc = "0.2.153"
+libloading = "0.8.3"
 log = "0.4.21"
 once_cell = "1.19.0"
 openxr = { version = "0.17.1", features = ["linked"], optional = true }
