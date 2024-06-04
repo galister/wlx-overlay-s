@@ -531,25 +531,27 @@ impl Pointer {
                 self.interaction.grabbed = None;
             }
         } else {
-            overlay.state.saved_transform =
-                Some(snap_upright(*anchor, Vec3A::Y).inverse() * overlay.state.transform);
+            if overlay.state.anchored {
+                overlay.state.saved_transform =
+                    Some(snap_upright(*anchor, Vec3A::Y).inverse() * overlay.state.transform);
 
-            if let Some(grab_data) = self.interaction.grabbed.as_ref() {
-                if overlay.state.curvature != grab_data.old_curvature {
-                    if let Some(val) = overlay.state.curvature {
-                        config.curve_values.arc_ins(overlay.state.name.clone(), val);
-                    } else {
-                        let ref_name = overlay.state.name.as_ref();
-                        config.curve_values.arc_rm(ref_name);
+                if let Some(grab_data) = self.interaction.grabbed.as_ref() {
+                    if overlay.state.curvature != grab_data.old_curvature {
+                        if let Some(val) = overlay.state.curvature {
+                            config.curve_values.arc_ins(overlay.state.name.clone(), val);
+                        } else {
+                            let ref_name = overlay.state.name.as_ref();
+                            config.curve_values.arc_rm(ref_name);
+                        }
                     }
-                }
-                config.transform_values.arc_ins(
-                    overlay.state.name.clone(),
-                    overlay.state.saved_transform.unwrap(),
-                );
-                match save_state(config) {
-                    Ok(_) => log::debug!("Saved state"),
-                    Err(e) => log::error!("Failed to save state: {:?}", e),
+                    config.transform_values.arc_ins(
+                        overlay.state.name.clone(),
+                        overlay.state.saved_transform.unwrap(),
+                    );
+                    match save_state(config) {
+                        Ok(_) => log::debug!("Saved state"),
+                        Err(e) => log::error!("Failed to save state: {:?}", e),
+                    }
                 }
             }
 

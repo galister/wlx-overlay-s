@@ -122,6 +122,7 @@ where
             name: KEYBOARD_NAME.into(),
             grabbable: true,
             recenter: true,
+            anchored: true,
             interactable: true,
             spawn_scale: width,
             spawn_point: vec3a(0., -0.5, 0.),

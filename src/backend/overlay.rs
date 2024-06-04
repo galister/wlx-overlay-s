@@ -29,6 +29,7 @@ pub struct OverlayState {
     pub grabbable: bool,
     pub interactable: bool,
     pub recenter: bool,
+    pub anchored: bool,
     pub dirty: bool,
     pub alpha: f32,
     pub transform: Affine3A,
@@ -53,6 +54,7 @@ impl Default for OverlayState {
             grabbable: false,
             recenter: false,
             interactable: false,
+            anchored: false,
             dirty: true,
             alpha: 1.0,
             relative_to: RelativeTo::None,
@@ -102,6 +104,15 @@ impl OverlayState {
         }
     }
 
+    fn get_anchor(&self, app: &AppState) -> Affine3A {
+        if self.anchored {
+            app.anchor
+        } else {
+            // fake anchor that's always in front of HMD
+            app.input_state.hmd
+        }
+    }
+
     fn get_transform(&self) -> Affine3A {
         self.saved_transform.unwrap_or_else(|| {
             Affine3A::from_scale_rotation_translation(
@@ -124,7 +135,10 @@ impl OverlayState {
             self.saved_transform = None;
         }
 
-        self.transform = self.parent_transform(app).unwrap_or(app.anchor) * self.get_transform();
+        self.transform = self
+            .parent_transform(app)
+            .unwrap_or_else(|| self.get_anchor(app))
+            * self.get_transform();
 
         if self.grabbable && hard_reset {
             self.realign(&app.input_state.hmd);

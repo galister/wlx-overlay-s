@@ -632,6 +632,7 @@ fn create_screen_state(
         name: name.clone(),
         grabbable: true,
         recenter: true,
+        anchored: true,
         interactable: true,
         spawn_scale: 1.5 * session.config.desktop_view_scale,
         spawn_point: vec3a(0., 0.5, 0.),
