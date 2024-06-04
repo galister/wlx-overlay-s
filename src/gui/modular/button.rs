@@ -16,7 +16,7 @@ use crate::{
         overlay::RelativeTo,
         task::{ColorChannel, SystemTask, TaskType},
     },
-    config::{save_settings, save_state, AStrSetExt},
+    config::{save_layout, save_settings, AStrSetExt},
     overlays::{
         toast::{Toast, ToastTopic},
         watch::WATCH_NAME,
@@ -59,6 +59,7 @@ pub enum SystemAction {
     PlayspaceFixFloor,
     RecalculateExtent,
     PersistConfig,
+    PersistLayout,
 }
 
 #[derive(Deserialize, Clone)]
@@ -418,6 +419,11 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
                 log::error!("Failed to save config: {:?}", e);
             }
         }
+        SystemAction::PersistLayout => {
+            if let Err(e) = save_layout(&app.session.config) {
+                log::error!("Failed to save layout: {:?}", e);
+            }
+        }
     }
 }
 
@@ -594,11 +600,11 @@ fn run_overlay(overlay: &OverlaySelector, action: &OverlayAction, app: &mut AppS
                     if !o.want_visible {
                         state_dirty |= app.session.config.show_screens.arc_rm(o.name.as_ref());
                     } else if o.want_visible {
-                        state_dirty |= app.session.config.show_screens.arc_ins(o.name.clone());
+                        state_dirty |= app.session.config.show_screens.arc_set(o.name.clone());
                     }
 
                     if state_dirty {
-                        match save_state(&app.session.config) {
+                        match save_layout(&app.session.config) {
                             Ok(_) => log::debug!("Saved state"),
                             Err(e) => log::error!("Failed to save state: {:?}", e),
                         }

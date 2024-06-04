@@ -73,7 +73,7 @@ where
         let mut show_screens = app.session.config.show_screens.clone();
         if show_screens.is_empty() {
             if let Some((_, s, _)) = data.screens.first() {
-                show_screens.arc_ins(s.name.clone());
+                show_screens.arc_set(s.name.clone());
             }
         }
 

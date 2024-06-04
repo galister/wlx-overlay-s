@@ -6,7 +6,7 @@ use glam::{Affine3A, Vec2, Vec3, Vec3A, Vec3Swizzles};
 use smallvec::{smallvec, SmallVec};
 
 use crate::backend::common::{snap_upright, OverlaySelector};
-use crate::config::{save_state, AStrMapExt, GeneralConfig};
+use crate::config::{AStrMapExt, GeneralConfig};
 use crate::overlays::anchor::ANCHOR_NAME;
 use crate::state::AppState;
 
@@ -538,21 +538,17 @@ impl Pointer {
                 if let Some(grab_data) = self.interaction.grabbed.as_ref() {
                     if overlay.state.curvature != grab_data.old_curvature {
                         if let Some(val) = overlay.state.curvature {
-                            config.curve_values.arc_ins(overlay.state.name.clone(), val);
+                            config.curve_values.arc_set(overlay.state.name.clone(), val);
                         } else {
                             let ref_name = overlay.state.name.as_ref();
                             config.curve_values.arc_rm(ref_name);
                         }
                     }
-                    config.transform_values.arc_ins(
-                        overlay.state.name.clone(),
-                        overlay.state.saved_transform.unwrap(),
-                    );
-                    match save_state(config) {
-                        Ok(_) => log::debug!("Saved state"),
-                        Err(e) => log::error!("Failed to save state: {:?}", e),
-                    }
                 }
+                config.transform_values.arc_set(
+                    overlay.state.name.clone(),
+                    overlay.state.saved_transform.unwrap(),
+                );
             }
 
             self.interaction.grabbed = None;

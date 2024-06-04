@@ -23,16 +23,15 @@ use serde::Serialize;
 pub type AStrMap<V> = Vec<(Arc<str>, V)>;
 
 pub trait AStrMapExt<V> {
-    fn arc_ins(&mut self, key: Arc<str>, value: V) -> bool;
+    fn arc_set(&mut self, key: Arc<str>, value: V) -> bool;
     fn arc_get(&self, key: &str) -> Option<&V>;
     fn arc_rm(&mut self, key: &str) -> Option<V>;
 }
 
 impl<V> AStrMapExt<V> for AStrMap<V> {
-    fn arc_ins(&mut self, key: Arc<str>, value: V) -> bool {
-        if self.iter().any(|(k, _)| k.as_ref().eq(key.as_ref())) {
-            return false;
-        }
+    fn arc_set(&mut self, key: Arc<str>, value: V) -> bool {
+        let index = self.iter().position(|(k, _)| k.as_ref().eq(key.as_ref()));
+        index.map(|i| self.remove(i).1);
         self.push((key, value));
         true
     }
@@ -51,13 +50,13 @@ impl<V> AStrMapExt<V> for AStrMap<V> {
 pub type AStrSet = Vec<Arc<str>>;
 
 pub trait AStrSetExt {
-    fn arc_ins(&mut self, value: Arc<str>) -> bool;
+    fn arc_set(&mut self, value: Arc<str>) -> bool;
     fn arc_get(&self, value: &str) -> bool;
     fn arc_rm(&mut self, value: &str) -> bool;
 }
 
 impl AStrSetExt for AStrSet {
-    fn arc_ins(&mut self, value: Arc<str>) -> bool {
+    fn arc_set(&mut self, value: Arc<str>) -> bool {
         if self.iter().any(|v| v.as_ref().eq(value.as_ref())) {
             return false;
         }
@@ -416,7 +415,7 @@ fn get_state_path() -> PathBuf {
     path
 }
 
-pub fn save_state(config: &GeneralConfig) -> anyhow::Result<()> {
+pub fn save_layout(config: &GeneralConfig) -> anyhow::Result<()> {
     let conf = AutoState {
         show_screens: config.show_screens.clone(),
         curve_values: config.curve_values.clone(),

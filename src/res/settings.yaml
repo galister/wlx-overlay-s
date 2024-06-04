@@ -591,4 +591,18 @@ elements:
     click_down:
       - type: System
         action: PersistConfig
+      - type: Toast
+        message: Settings saved successfully.
+
+  - type: Button
+    rect: [30, 625, 250, 30]
+    font_size: 12
+    fg_color: "#ffffff"
+    bg_color: "#206060"
+    text: "Save Overlay Layout"
+    click_down:
+      - type: System
+        action: PersistLayout
+      - type: Toast
+        message: Saved. You will see this layout on next startup.
 
