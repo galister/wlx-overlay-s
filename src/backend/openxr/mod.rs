@@ -18,7 +18,7 @@ use crate::{
         notifications::NotificationManager,
         openxr::{lines::LinePool, overlay::OpenXrOverlayData},
         overlay::OverlayData,
-        task::TaskType,
+        task::{SystemTask, TaskType},
     },
     graphics::WlxGraphics,
     overlays::{
@@ -45,6 +45,7 @@ struct XrState {
     session: xr::Session<xr::Vulkan>,
     predicted_display_time: xr::Time,
     stage: Arc<xr::Space>,
+    stage_offset: Affine3A,
 }
 
 pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
@@ -73,7 +74,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     notifications.run_udp();
 
     let mut delete_queue = vec![];
-    let mut space_mover = playspace::PlayspaceMover::try_new()
+    let mut playspace = playspace::PlayspaceMover::try_new()
         .map_err(|e| log::warn!("Failed to initialize Monado playspace mover: {}", e))
         .ok();
 
@@ -110,6 +111,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         session,
         predicted_display_time: xr::Time::from_nanos(0),
         stage: Arc::new(stage),
+        stage_offset: Affine3A::IDENTITY,
     };
 
     let pointer_lines = [
@@ -206,7 +208,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         }
 
         watch_fade(&mut app_state, overlays.mut_by_id(watch_id).unwrap()); // want panic
-        if let Some(ref mut space_mover) = space_mover {
+        if let Some(ref mut space_mover) = playspace {
             space_mover.update(&mut overlays, &app_state);
         }
 
@@ -370,9 +372,19 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                         }
                     }
                 }
-                TaskType::System(_task) => {
-                    // Not implemented
-                }
+                TaskType::System(task) => match task {
+                    SystemTask::FixFloor => {
+                        if let Some(ref mut playspace) = playspace {
+                            playspace.fix_floor(&app_state.input_state);
+                        }
+                    }
+                    SystemTask::ResetPlayspace => {
+                        if let Some(ref mut playspace) = playspace {
+                            playspace.reset_offset();
+                        }
+                    }
+                    _ => {}
+                },
             }
         }
 
