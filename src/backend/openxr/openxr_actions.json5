@@ -1,0 +1,243 @@
+// Available bindings:
+//
+// -- click --
+// primary click to interact with the watch or overlays. required
+//
+// -- grab --
+// used to manipulate position, size, orientation of overlays in 3D space
+//
+// -- show_hide --
+// used to quickly hide and show your last selection of screens + keyboard
+//
+// -- space_drag --
+// move your stage (playspace drag)
+//
+// -- space_rotate --
+// rotate your stage (playspace rotate, WIP)
+//
+// -- click_modifier_right --
+// while this is held, your pointer will turn ORANGE and your mouse clicks will be RIGHT clicks
+//
+// -- click_modifier_middle --
+// while this is held, your pointer will turn PURPLE and your mouse clicks will be MIDDLE clicks
+//
+// -- move_mouse --
+// when using `focus_follows_mouse_mode`, you need to hold this for the mouse to move
+//
+// -- pose, haptic --
+// do not mess with these, unless you know what you're doing
+
+[
+  // Fallback controller, intended for testing
+  {
+    profile: "/interaction_profiles/khr/simple_controller",
+    pose: {
+      left: "/user/hand/left/input/aim/pose",
+      right: "/user/hand/right/input/aim/pose"
+    },
+    haptic: {
+      left: "/user/hand/left/output/haptic",
+      right: "/user/hand/right/output/haptic"
+    },
+    click: {
+      // left trigger is click
+      left: "/user/hand/left/input/select/click",
+    },
+    grab: {
+      // right trigger is grab
+      right: "/user/hand/right/input/select/click"
+    },
+    show_hide: {
+      left: "/user/hand/left/input/menu/click"
+    }
+  },
+
+  // Oculus Touch Controller. Compatible with Quest 2, Quest 3, Quest Pro
+  {
+    profile: "/interaction_profiles/oculus/touch_controller",
+    pose: {
+      left: "/user/hand/left/input/aim/pose",
+      right: "/user/hand/right/input/aim/pose"
+    },
+    haptic: {
+      left: "/user/hand/left/output/haptic",
+      right: "/user/hand/right/output/haptic"
+    },
+    click: {
+      left: "/user/hand/left/input/trigger/value",
+      right: "/user/hand/right/input/trigger/value"
+    },
+    grab: {
+      left: "/user/hand/left/input/squeeze/value",
+      right: "/user/hand/right/input/squeeze/value"
+    },
+    scroll: {
+      left: "/user/hand/left/input/thumbstick/y",
+      right: "/user/hand/right/input/thumbstick/y"
+    },
+    show_hide: {
+      double_click: true,
+      left: "/user/hand/left/input/y/click",
+    },
+    space_drag: {
+      left: "/user/hand/left/input/menu/click",
+    },
+    click_modifier_right: {
+      left: "/user/hand/left/input/y/touch",
+      right: "/user/hand/right/input/b/touch"
+    },
+    click_modifier_middle: {
+      left: "/user/hand/left/input/x/touch",
+      right: "/user/hand/right/input/a/touch"
+    },
+    mouse_move: {
+      // used with focus_follows_mouse_mode
+      left: "/user/hand/left/input/trigger/touch",
+      right: "/user/hand/right/input/trigger/touch"
+    }
+  },
+
+  // Index controller
+  {
+    profile: "/interaction_profiles/valve/index_controller",
+    pose: {
+      left: "/user/hand/left/input/aim/pose",
+      right: "/user/hand/right/input/aim/pose"
+    },
+    haptic: {
+      left: "/user/hand/left/output/haptic",
+      right: "/user/hand/right/output/haptic"
+    },
+    click: {
+      left: "/user/hand/left/input/trigger/value",
+      right: "/user/hand/right/input/trigger/value"
+    },
+    alt_click: {
+      // left trackpad is space_drag
+      right: "/user/hand/right/input/trackpad/force",
+    },
+    grab: {
+      left: "/user/hand/left/input/squeeze/force",
+      right: "/user/hand/right/input/squeeze/force"
+    },
+    scroll: {
+      left: "/user/hand/left/input/thumbstick/y",
+      right: "/user/hand/right/input/thumbstick/y"
+    },
+    show_hide: {
+      double_click: true,
+      left: "/user/hand/left/input/b/click",
+    },
+    space_drag: {
+      left: "/user/hand/left/input/trackpad/force",
+      // right trackpad is alt_click
+    },
+    click_modifier_right: {
+      left: "/user/hand/left/input/b/touch",
+      right: "/user/hand/right/input/b/touch"
+    },
+    click_modifier_middle: {
+      left: "/user/hand/left/input/a/touch",
+      right: "/user/hand/right/input/a/touch"
+    },
+    mouse_move: {
+      // used with focus_follows_mouse_mode
+      left: "/user/hand/left/input/trigger/touch",
+      right: "/user/hand/right/input/trigger/touch"
+    }
+  },
+
+  // Vive controller
+  {
+    profile: "/interaction_profiles/htc/vive_controller",
+    pose: {
+      left: "/user/hand/left/input/aim/pose",
+      right: "/user/hand/right/input/aim/pose"
+    },
+    click: {
+      left: "/user/hand/left/input/trigger/value",
+      right: "/user/hand/right/input/trigger/value"
+    },
+    grab: {
+      left: "/user/hand/left/input/squeeze/click",
+      right: "/user/hand/right/input/squeeze/click"
+    },
+    scroll: {
+      left: "/user/hand/left/input/trackpad/y",
+      right: "/user/hand/right/input/trackpad/y"
+    },
+    show_hide: {
+      left: "/user/hand/left/input/menu/click",
+    },
+    space_drag: {
+      right: "/user/hand/right/input/menu/click",
+    },
+    haptic: {
+      left: "/user/hand/left/output/haptic",
+      right: "/user/hand/right/output/haptic"
+    }
+  },
+
+  // Windows Mixed Reality controller
+  {
+    profile: "/interaction_profiles/microsoft/motion_controller",
+    pose: {
+      left: "/user/hand/left/input/aim/pose",
+      right: "/user/hand/right/input/aim/pose"
+    },
+    haptic: {
+      left: "/user/hand/left/output/haptic",
+      right: "/user/hand/right/output/haptic"
+    },
+    click: {
+      left: "/user/hand/left/input/trigger/value",
+      right: "/user/hand/right/input/trigger/value"
+    },
+    grab: {
+      left: "/user/hand/left/input/squeeze/click",
+      right: "/user/hand/right/input/squeeze/click"
+    },
+    scroll: {
+      left: "/user/hand/left/input/thumbstick/y",
+      right: "/user/hand/right/input/thumbstick/y"
+    },
+    show_hide: {
+      left: "/user/hand/left/input/menu/click",
+    },
+    space_drag: {
+      right: "/user/hand/right/input/menu/click",
+    },
+  },
+
+  // HP Reverb G2 controller
+  {
+    profile: "/interaction_profiles/hp/mixed_reality_controller",
+    pose: {
+      left: "/user/hand/left/input/aim/pose",
+      right: "/user/hand/right/input/aim/pose"
+    },
+    haptic: {
+      left: "/user/hand/left/output/haptic",
+      right: "/user/hand/right/output/haptic"
+    },
+    click: {
+      left: "/user/hand/left/input/trigger/value",
+      right: "/user/hand/right/input/trigger/value"
+    },
+    grab: {
+      left: "/user/hand/left/input/squeeze/value",
+      right: "/user/hand/right/input/squeeze/value"
+    },
+    scroll: {
+      left: "/user/hand/left/input/thumbstick/y",
+      right: "/user/hand/right/input/thumbstick/y"
+    },
+    show_hide: {
+      left: "/user/hand/left/input/menu/click",
+    },
+    space_drag: {
+      right: "/user/hand/right/input/menu/click",
+    },
+  },
+
+]

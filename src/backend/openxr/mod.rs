@@ -16,7 +16,7 @@ use crate::{
         common::{BackendError, OverlayContainer},
         input::interact,
         notifications::NotificationManager,
-        openxr::{input::DoubleClickCounter, lines::LinePool, overlay::OpenXrOverlayData},
+        openxr::{lines::LinePool, overlay::OpenXrOverlayData},
         overlay::OverlayData,
         task::TaskType,
     },
@@ -119,12 +119,11 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
     let watch_id = overlays.get_by_name(WATCH_NAME).unwrap().state.id; // want panic
 
-    let input_source = input::OpenXrInputSource::new(&xr_state)?;
+    let mut input_source = input::OpenXrInputSource::new(&xr_state)?;
 
     let mut session_running = false;
     let mut event_storage = xr::EventDataBuffer::new();
 
-    let mut show_hide_counter = DoubleClickCounter::new();
     let mut due_tasks = VecDeque::with_capacity(4);
 
     'main_loop: loop {
@@ -202,7 +201,6 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             .pointers
             .iter()
             .any(|p| p.now.show_hide && !p.before.show_hide)
-            && show_hide_counter.click()
         {
             overlays.show_hide(&mut app_state);
         }

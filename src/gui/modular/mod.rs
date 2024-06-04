@@ -158,7 +158,7 @@ pub fn modular_canvas(
             } => {
                 canvas.font_size = *font_size;
                 canvas.fg_color = color_parse(fg_color).unwrap_or(*FALLBACK_COLOR);
-                let label = canvas.label(*x, *y, *w, *h, empty_str.clone());
+                let label = canvas.label_centered(*x, *y, *w, *h, empty_str.clone());
                 modular_label_init(label, data);
             }
             ModularElement::Button {

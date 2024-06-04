@@ -49,6 +49,8 @@ struct Args {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    std::env::set_var("RUST_BACKTRACE", "full");
+
     let mut args = Args::parse();
     logging_init(&mut args)?;
 

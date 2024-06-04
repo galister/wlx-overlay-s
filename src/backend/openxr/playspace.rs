@@ -5,14 +5,12 @@ use libloading::{Library, Symbol};
 
 use crate::{backend::common::OverlayContainer, state::AppState};
 
-use super::{helpers, input::DoubleClickCounter, overlay::OpenXrOverlayData};
+use super::{helpers, overlay::OpenXrOverlayData};
 
 pub(super) struct PlayspaceMover {
     drag_hand: Option<usize>,
     offset: Vec3A,
     start_position: Vec3A,
-
-    double_click_counter: DoubleClickCounter,
 
     libmonado: Library,
     mnd_root: *mut c_void,
@@ -42,8 +40,6 @@ impl PlayspaceMover {
                 drag_hand: None,
                 offset: Vec3A::ZERO,
                 start_position: Vec3A::ZERO,
-
-                double_click_counter: DoubleClickCounter::new(),
 
                 libmonado,
                 mnd_root: root,
@@ -75,10 +71,8 @@ impl PlayspaceMover {
             self.apply_offset();
         } else {
             for (i, pointer) in state.input_state.pointers.iter().enumerate() {
-                if pointer.now.space_drag
-                    && !pointer.before.space_drag
-                    && self.double_click_counter.click()
-                {
+                if pointer.now.space_drag && !pointer.before.space_drag {
+                    log::info!("Start space drag");
                     self.drag_hand = Some(i);
                     self.start_position = pointer.pose.translation;
                     break;

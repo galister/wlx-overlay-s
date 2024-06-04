@@ -540,7 +540,7 @@ fn run_watch(data: &WatchAction, app: &mut AppState) {
                 OverlaySelector::Name(WATCH_NAME.into()),
                 Box::new(move |app, o| {
                     o.spawn_rotation *= rot;
-                    app.session.config.watch_rot = o.spawn_rotation.into();
+                    app.session.config.watch_rot = o.spawn_rotation;
                     o.dirty = true;
                 }),
             ));
@@ -556,7 +556,7 @@ fn run_watch(data: &WatchAction, app: &mut AppState) {
                 OverlaySelector::Name(WATCH_NAME.into()),
                 Box::new(move |app, o| {
                     o.spawn_point[axis] += delta;
-                    app.session.config.watch_pos = o.spawn_point.into();
+                    app.session.config.watch_pos = o.spawn_point;
                     o.dirty = true;
                 }),
             ));

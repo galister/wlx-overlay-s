@@ -3099,6 +3099,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_json5"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32a6b754515e1a7bd79fc2edeaecee526fc80cb3a918607e5ca149225a3a9586"
+dependencies = [
+ "pest",
+ "pest_derive",
+ "serde",
+]
+
+[[package]]
 name = "serde_repr"
 version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4266,6 +4277,7 @@ dependencies = [
 [[package]]
 name = "wlx-capture"
 version = "0.3.9"
+source = "git+https://github.com/galister/wlx-capture?tag=v0.3.9#0552577c45ce135a2f42d11399bcca0034762e2a"
 dependencies = [
  "ashpd",
  "drm-fourcc",
@@ -4316,6 +4328,7 @@ dependencies = [
  "rosc",
  "serde",
  "serde_json",
+ "serde_json5",
  "serde_yaml",
  "smallvec",
  "strum",
