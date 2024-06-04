@@ -37,21 +37,34 @@ pub fn initialize() -> Box<dyn HidProvider> {
 
 pub trait HidProvider {
     fn mouse_move(&mut self, pos: Vec2);
-    fn send_button(&self, button: u16, down: bool);
-    fn wheel(&self, delta: i32);
+    fn send_button(&mut self, button: u16, down: bool);
+    fn wheel(&mut self, delta: i32);
     fn set_modifiers(&mut self, mods: u8);
     fn send_key(&self, key: u16, down: bool);
     fn set_desktop_extent(&mut self, extent: Vec2);
     fn set_desktop_origin(&mut self, origin: Vec2);
-    fn on_new_frame(&mut self);
+    fn commit(&mut self);
+}
+
+struct MouseButtonAction {
+    button: u16,
+    down: bool,
+}
+
+#[derive(Default)]
+struct MouseAction {
+    last_requested_pos: Option<Vec2>,
+    pos: Option<Vec2>,
+    button: Option<MouseButtonAction>,
+    scroll: Option<i32>,
 }
 
 pub struct UInputProvider {
     handle: UInputHandle<File>,
     desktop_extent: Vec2,
     desktop_origin: Vec2,
-    mouse_moved: bool,
     cur_modifiers: u8,
+    current_action: MouseAction,
 }
 
 pub struct DummyProvider;
@@ -145,22 +158,25 @@ impl UInputProvider {
                     handle,
                     desktop_extent: Vec2::ZERO,
                     desktop_origin: Vec2::ZERO,
-                    mouse_moved: false,
+                    current_action: Default::default(),
                     cur_modifiers: 0,
                 });
             }
         }
         None
     }
-}
 
-impl HidProvider for UInputProvider {
-    fn mouse_move(&mut self, pos: Vec2) {
-        if self.mouse_moved {
-            return;
+    fn send_button_internal(&self, button: u16, down: bool) {
+        let time = get_time();
+        let events = [
+            new_event(time, EV_KEY, button, down as _),
+            new_event(time, EV_SYN, 0, 0),
+        ];
+        if let Err(res) = self.handle.write(&events) {
+            log::error!("send_button: {}", res.to_string());
         }
-        self.mouse_moved = true;
-
+    }
+    fn mouse_move_internal(&mut self, pos: Vec2) {
         #[cfg(debug_assertions)]
         log::trace!("Mouse move: {:?}", pos);
 
@@ -176,17 +192,7 @@ impl HidProvider for UInputProvider {
             log::error!("{}", res.to_string());
         }
     }
-    fn send_button(&self, button: u16, down: bool) {
-        let time = get_time();
-        let events = [
-            new_event(time, EV_KEY, button, down as _),
-            new_event(time, EV_SYN, 0, 0),
-        ];
-        if let Err(res) = self.handle.write(&events) {
-            log::error!("send_button: {}", res.to_string());
-        }
-    }
-    fn wheel(&self, delta: i32) {
+    fn wheel_internal(&self, delta: i32) {
         let time = get_time();
         let events = [
             new_event(time, EV_REL, RelativeAxis::Wheel as _, delta),
@@ -196,6 +202,9 @@ impl HidProvider for UInputProvider {
             log::error!("wheel: {}", res.to_string());
         }
     }
+}
+
+impl HidProvider for UInputProvider {
     fn set_modifiers(&mut self, modifiers: u8) {
         let changed = self.cur_modifiers ^ modifiers;
         for i in 0..7 {
@@ -224,20 +233,45 @@ impl HidProvider for UInputProvider {
     fn set_desktop_origin(&mut self, origin: Vec2) {
         self.desktop_origin = origin;
     }
-    fn on_new_frame(&mut self) {
-        self.mouse_moved = false;
+    fn mouse_move(&mut self, pos: Vec2) {
+        if self.current_action.pos.is_none() {
+            self.current_action.pos = Some(pos);
+        }
+        self.current_action.last_requested_pos = Some(pos);
+    }
+    fn send_button(&mut self, button: u16, down: bool) {
+        if self.current_action.button.is_none() {
+            self.current_action.button = Some(MouseButtonAction { button, down });
+            self.current_action.pos = self.current_action.last_requested_pos;
+        }
+    }
+    fn wheel(&mut self, delta: i32) {
+        if self.current_action.scroll.is_none() {
+            self.current_action.scroll = Some(delta);
+        }
+    }
+    fn commit(&mut self) {
+        if let Some(pos) = self.current_action.pos.take() {
+            self.mouse_move_internal(pos);
+        }
+        if let Some(button) = self.current_action.button.take() {
+            self.send_button_internal(button.button, button.down);
+        }
+        if let Some(scroll) = self.current_action.scroll.take() {
+            self.wheel_internal(scroll);
+        }
     }
 }
 
 impl HidProvider for DummyProvider {
     fn mouse_move(&mut self, _pos: Vec2) {}
-    fn send_button(&self, _button: u16, _down: bool) {}
-    fn wheel(&self, _delta: i32) {}
+    fn send_button(&mut self, _button: u16, _down: bool) {}
+    fn wheel(&mut self, _delta: i32) {}
     fn set_modifiers(&mut self, _modifiers: u8) {}
     fn send_key(&self, _key: u16, _down: bool) {}
     fn set_desktop_extent(&mut self, _extent: Vec2) {}
     fn set_desktop_origin(&mut self, _origin: Vec2) {}
-    fn on_new_frame(&mut self) {}
+    fn commit(&mut self) {}
 }
 
 #[inline]

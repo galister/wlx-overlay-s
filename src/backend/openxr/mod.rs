@@ -256,6 +256,8 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             }
         }
 
+        app_state.hid_provider.commit();
+
         let watch = overlays.mut_by_id(watch_id).unwrap(); // want panic
         let watch_transform = watch.state.transform;
         if !watch.state.want_visible {
@@ -375,8 +377,6 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         }
 
         delete_queue.retain(|(_, frame)| *frame > cur_frame);
-
-        app_state.hid_provider.on_new_frame();
 
         let watch = overlays.mut_by_id(watch_id).unwrap(); // want panic
         watch.state.transform = watch_transform;

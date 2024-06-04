@@ -296,6 +296,8 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             }
         }
 
+        state.hid_provider.commit();
+
         lines.update(universe.clone(), &mut overlay_mgr, &mut state)?;
 
         for o in overlays.iter_mut() {
@@ -324,8 +326,6 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         // chaperone
 
         // close font handles?
-
-        state.hid_provider.on_new_frame();
     }
 
     log::warn!("OpenVR shutdown");

@@ -1,10 +1,11 @@
 use core::slice;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::{
     f32::consts::PI,
     ops::Add,
     ptr,
-    sync::Arc,
+    sync::{atomic::AtomicU64, Arc},
     time::{Duration, Instant},
 };
 use vulkano::{
@@ -62,9 +63,22 @@ const CURSOR_SIZE: f32 = 16. / 1440.;
 
 static DRM_FORMATS: once_cell::sync::OnceCell<Vec<DrmFormat>> = once_cell::sync::OnceCell::new();
 
+static START: Lazy<Instant> = Lazy::new(Instant::now);
+static NEXT_MOVE: AtomicU64 = AtomicU64::new(0);
+
+fn can_move() -> bool {
+    START.elapsed().as_millis() as u64 > NEXT_MOVE.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+fn set_next_move(millis_from_now: u64) {
+    NEXT_MOVE.store(
+        START.elapsed().as_millis() as u64 + millis_from_now,
+        std::sync::atomic::Ordering::Relaxed,
+    );
+}
+
 pub struct ScreenInteractionHandler {
     next_scroll: Instant,
-    next_move: Instant,
     mouse_transform: Affine2,
 }
 impl ScreenInteractionHandler {
@@ -90,7 +104,6 @@ impl ScreenInteractionHandler {
 
         ScreenInteractionHandler {
             next_scroll: Instant::now(),
-            next_move: Instant::now(),
             mouse_transform: transform,
         }
     }
@@ -100,7 +113,7 @@ impl InteractionHandler for ScreenInteractionHandler {
     fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
         #[cfg(debug_assertions)]
         log::trace!("Hover: {:?}", hit.uv);
-        if self.next_move < Instant::now()
+        if can_move()
             && (!app.session.config.focus_follows_mouse_mode
                 || app.input_state.pointers[hit.pointer].now.move_mouse)
         {
@@ -117,8 +130,7 @@ impl InteractionHandler for ScreenInteractionHandler {
         };
 
         if pressed {
-            self.next_move = Instant::now()
-                + Duration::from_millis(app.session.config.click_freeze_time_ms as u64);
+            set_next_move(app.session.config.click_freeze_time_ms as u64);
         }
 
         app.hid_provider.send_button(btn, pressed);
@@ -568,7 +580,7 @@ pub fn create_screen_renderer_wl(
                 capture = Some(renderer);
 
                 if let Some(token) = restore_token {
-                    if pw_token_store.arc_ins(display_name.into(), token.clone()) {
+                    if pw_token_store.arc_set(display_name.into(), token.clone()) {
                         log::info!("Adding Pipewire token {}", token);
                     }
                 }
