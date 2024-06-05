@@ -31,7 +31,7 @@ pub struct MirrorRenderer {
 }
 impl MirrorRenderer {
     pub fn new(name: Arc<str>) -> Self {
-        let selector = Box::pin(pipewire_select_screen(None, false, false, false));
+        let selector = Box::pin(pipewire_select_screen(None, false, false, false, false));
         Self {
             name,
             renderer: None,
@@ -58,12 +58,9 @@ impl OverlayRenderer for MirrorRenderer {
             };
 
             if let Ok(pw_result) = maybe_pw_result {
-                log::info!(
-                    "{}: PipeWire node selected: {}",
-                    self.name.clone(),
-                    pw_result.node_id
-                );
-                let capture = PipewireCapture::new(self.name.clone(), pw_result.node_id);
+                let node_id = pw_result.streams.first().unwrap().node_id; // streams guaranteed to have at least one element
+                log::info!("{}: PipeWire node selected: {}", self.name.clone(), node_id,);
+                let capture = PipewireCapture::new(self.name.clone(), node_id);
                 self.renderer = Some(ScreenRenderer::new_raw(
                     self.name.clone(),
                     Box::new(capture),

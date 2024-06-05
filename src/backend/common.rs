@@ -72,7 +72,13 @@ where
             crate::overlays::screen::create_screens_wayland(wl, app)?
         } else {
             keymap = get_keymap_x11().ok();
-            crate::overlays::screen::create_screens_x11(app)?
+            match crate::overlays::screen::create_screens_x11pw(app) {
+                Ok(data) => data,
+                Err(e) => {
+                    log::info!("Will not use PipeWire capture: {:?}", e);
+                    crate::overlays::screen::create_screens_xshm(app)?
+                }
+            }
         };
 
         let mut show_screens = app.session.config.show_screens.clone();

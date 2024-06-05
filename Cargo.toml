@@ -53,26 +53,24 @@ sysinfo = { version = "0.30.0", optional = true }
 thiserror = "1.0.56"
 vulkano = { git = "https://github.com/vulkano-rs/vulkano", rev = "94f50f1" }
 vulkano-shaders = { git = "https://github.com/vulkano-rs/vulkano", rev = "94f50f1" }
-wlx-capture = { git = "https://github.com/galister/wlx-capture", tag = "v0.3.9", default-features = false }
+wlx-capture = { git = "https://github.com/galister/wlx-capture", tag = "v0.3.10", default-features = false }
 winit = { version = "0.29.15", optional = true }
 xdg = "2.5.2"
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
 serde_json5 = "0.1.0"
 xkbcommon = { version = "0.7.0" }
-xcb = { version = "1.4.0", optional = true, features = ["as-raw-xcb-connection"] }
+xcb = { version = "1.4.0", optional = true, features = [
+  "as-raw-xcb-connection",
+] }
 
 [features]
 default = ["openvr", "openxr", "osc", "x11", "wayland"]
 openvr = ["dep:ovr_overlay", "dep:json"]
 openxr = ["dep:openxr", "dep:sysinfo"]
 osc = ["dep:rosc"]
-x11 = [
-  "dep:xcb",
-
-  "wlx-capture/xshm",
-  "xkbcommon/x11",
-]
-wayland = ["wlx-capture/pipewire", "wlx-capture/wlr", "xkbcommon/wayland"]
+x11 = ["dep:xcb", "wlx-capture/xshm", "xkbcommon/x11"]
+wayland = ["pipewire", "wlx-capture/wlr", "xkbcommon/wayland"]
+pipewire = ["wlx-capture/pipewire"]
 uidev = ["dep:winit"]
 no-dmabuf = []
 xcb = ["dep:xcb"]

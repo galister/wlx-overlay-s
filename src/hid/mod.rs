@@ -584,10 +584,14 @@ impl XkbKeymap {
 pub use wayland::get_keymap_wl;
 
 #[cfg(not(feature = "wayland"))]
-pub fn get_keymap_wl() -> anyhow::Result<XkbKeymap> {}
+pub fn get_keymap_wl() -> anyhow::Result<XkbKeymap> {
+    anyhow::bail!("Wayland support not enabled.")
+}
 
 #[cfg(feature = "x11")]
 pub use x11::get_keymap_x11;
 
 #[cfg(not(feature = "x11"))]
-pub fn get_keymap_x11() -> anyhow::Result<XkbKeymap> {}
+pub fn get_keymap_x11() -> anyhow::Result<XkbKeymap> {
+    anyhow::bail!("X11 support not enabled.")
+}
