@@ -10,6 +10,13 @@ use once_cell::sync::Lazy;
 use std::mem::transmute;
 use std::{fs::File, sync::atomic::AtomicBool};
 use strum::{EnumIter, EnumString, IntoEnumIterator};
+use xkbcommon::xkb;
+
+#[cfg(feature = "wayland")]
+mod wayland;
+
+#[cfg(feature = "x11")]
+mod x11;
 
 pub static USE_UINPUT: AtomicBool = AtomicBool::new(true);
 
@@ -487,3 +494,100 @@ pub static MODS_TO_KEYS: Lazy<IdMap<KeyModifier, Vec<VirtualKey>>> = Lazy::new(|
         META => vec![VirtualKey::Meta],
     }
 });
+
+pub enum KeyType {
+    Symbol,
+    NumPad,
+    Other,
+}
+
+macro_rules! key_between {
+    ($key:expr, $start:expr, $end:expr) => {
+        $key as u32 >= $start as u32 && $key as u32 <= $end as u32
+    };
+}
+
+macro_rules! key_is {
+    ($key:expr, $val:expr) => {
+        $key as u32 == $val as u32
+    };
+}
+
+pub fn get_key_type(key: VirtualKey) -> KeyType {
+    if key_between!(key, VirtualKey::N1, VirtualKey::Plus)
+        || key_between!(key, VirtualKey::Q, VirtualKey::Oem6)
+        || key_between!(key, VirtualKey::A, VirtualKey::Oem3)
+        || key_between!(key, VirtualKey::Oem5, VirtualKey::Oem2)
+        || key_is!(key, VirtualKey::Oem102)
+    {
+        KeyType::Symbol
+    } else if key_between!(key, VirtualKey::KP_7, VirtualKey::KP_0)
+        && !key_is!(key, VirtualKey::KP_Subtract)
+        && !key_is!(key, VirtualKey::KP_Add)
+    {
+        KeyType::NumPad
+    } else {
+        KeyType::Other
+    }
+}
+
+pub struct XkbKeymap {
+    pub context: xkb::Context,
+    pub keymap: xkb::Keymap,
+}
+
+impl XkbKeymap {
+    pub fn label_for_key(&self, key: VirtualKey, modifier: KeyModifier) -> String {
+        let mut state = xkb::State::new(&self.keymap);
+        if modifier > 0 {
+            if let Some(mod_key) = MODS_TO_KEYS.get(modifier) {
+                state.update_key(
+                    xkb::Keycode::from(mod_key[0] as u32),
+                    xkb::KeyDirection::Down,
+                );
+            }
+        }
+        state.key_get_utf8(xkb::Keycode::from(key as u32))
+    }
+
+    pub fn has_altgr(&self) -> bool {
+        let state0 = xkb::State::new(&self.keymap);
+        let mut state1 = xkb::State::new(&self.keymap);
+        state1.update_key(
+            xkb::Keycode::from(VirtualKey::Meta as u32),
+            xkb::KeyDirection::Down,
+        );
+
+        for key in [
+            VirtualKey::N0,
+            VirtualKey::N1,
+            VirtualKey::N2,
+            VirtualKey::N3,
+            VirtualKey::N4,
+            VirtualKey::N5,
+            VirtualKey::N6,
+            VirtualKey::N7,
+            VirtualKey::N8,
+            VirtualKey::N9,
+        ] {
+            let sym0 = state0.key_get_one_sym(xkb::Keycode::from(key as u32));
+            let sym1 = state1.key_get_one_sym(xkb::Keycode::from(key as u32));
+            if sym0 != sym1 {
+                return true;
+            }
+        }
+        false
+    }
+}
+
+#[cfg(feature = "wayland")]
+pub use wayland::get_keymap_wl;
+
+#[cfg(not(feature = "wayland"))]
+pub fn get_keymap_wl() -> anyhow::Result<XkbKeymap> {}
+
+#[cfg(feature = "x11")]
+pub use x11::get_keymap_x11;
+
+#[cfg(not(feature = "x11"))]
+pub fn get_keymap_x11() -> anyhow::Result<XkbKeymap> {}

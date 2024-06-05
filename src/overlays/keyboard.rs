@@ -10,8 +10,11 @@ use crate::{
         overlay::{OverlayData, OverlayState},
     },
     config::{self, ConfigType},
-    gui::{color_parse, CanvasBuilder, Control},
-    hid::{KeyModifier, VirtualKey, ALT, CTRL, KEYS_TO_MODS, META, SHIFT, SUPER},
+    gui::{color_parse, CanvasBuilder, Control, KeyCapType},
+    hid::{
+        get_key_type, KeyModifier, KeyType, VirtualKey, XkbKeymap, ALT, CTRL, KEYS_TO_MODS, META,
+        NUM_LOCK, SHIFT, SUPER,
+    },
     state::AppState,
 };
 use glam::{vec2, vec3a, Affine2, Vec4};
@@ -25,7 +28,10 @@ const AUTO_RELEASE_MODS: [KeyModifier; 5] = [SHIFT, CTRL, ALT, SUPER, META];
 
 pub const KEYBOARD_NAME: &str = "kbd";
 
-pub fn create_keyboard<O>(app: &AppState) -> anyhow::Result<OverlayData<O>>
+pub fn create_keyboard<O>(
+    app: &AppState,
+    keymap: Option<XkbKeymap>,
+) -> anyhow::Result<OverlayData<O>>
 where
     O: Default,
 {
@@ -53,6 +59,8 @@ where
     canvas.font_size = 18;
     canvas.bg_color = color_parse("#202020").unwrap(); //safe
 
+    let has_altgr = keymap.as_ref().map_or(false, |k| k.has_altgr());
+
     let unit_size = size.x / LAYOUT.row_size;
     let h = unit_size - 2. * BUTTON_PADDING;
 
@@ -66,8 +74,43 @@ where
             let w = unit_size * my_size - 2. * BUTTON_PADDING;
 
             if let Some(key) = LAYOUT.main_layout[row][col].as_ref() {
+                let mut label = Vec::with_capacity(2);
                 let mut maybe_state: Option<KeyButtonData> = None;
+                let mut cap_type = KeyCapType::Regular;
+
                 if let Ok(vk) = VirtualKey::from_str(key) {
+                    if let Some(keymap) = keymap.as_ref() {
+                        match get_key_type(vk) {
+                            KeyType::Symbol => {
+                                let label0 = keymap.label_for_key(vk, 0);
+                                let label1 = keymap.label_for_key(vk, SHIFT);
+
+                                if label0.chars().next().map_or(false, |f| f.is_alphabetic()) {
+                                    label.push(label1);
+                                    if has_altgr {
+                                        cap_type = KeyCapType::RegularAltGr;
+                                        label.push(keymap.label_for_key(vk, META));
+                                    } else {
+                                        cap_type = KeyCapType::Regular;
+                                    }
+                                } else {
+                                    label.push(label0);
+                                    label.push(label1);
+                                    if has_altgr {
+                                        label.push(keymap.label_for_key(vk, META));
+                                        cap_type = KeyCapType::ReversedAltGr;
+                                    } else {
+                                        cap_type = KeyCapType::Reversed;
+                                    }
+                                }
+                            }
+                            KeyType::NumPad => {
+                                label.push(keymap.label_for_key(vk, NUM_LOCK));
+                            }
+                            KeyType::Other => {}
+                        }
+                    }
+
                     if let Some(mods) = KEYS_TO_MODS.get(vk) {
                         maybe_state = Some(KeyButtonData::Modifier {
                             modifier: *mods,
@@ -97,8 +140,10 @@ where
                 }
 
                 if let Some(state) = maybe_state {
-                    let label = LAYOUT.label_for_key(key);
-                    let button = canvas.key_button(x, y, w, h, &label);
+                    if label.is_empty() {
+                        label = LAYOUT.label_for_key(key);
+                    }
+                    let button = canvas.key_button(x, y, w, h, cap_type, &label);
                     button.state = Some(state);
                     button.on_press = Some(key_press);
                     button.on_release = Some(key_release);

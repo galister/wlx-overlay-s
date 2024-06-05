@@ -11,6 +11,7 @@ use thiserror::Error;
 
 use crate::{
     config::AStrSetExt,
+    hid::{get_keymap_wl, get_keymap_x11},
     overlays::{
         anchor::create_anchor,
         keyboard::create_keyboard,
@@ -63,10 +64,14 @@ where
         let mut overlays = IdMap::new();
         let mut wl = create_wl_client();
 
+        let keymap;
+
         app.screens.clear();
         let data = if let Some(wl) = wl.as_mut() {
+            keymap = get_keymap_wl().ok();
             crate::overlays::screen::create_screens_wayland(wl, app)?
         } else {
+            keymap = get_keymap_x11().ok();
             crate::overlays::screen::create_screens_x11(app)?
         };
 
@@ -100,7 +105,7 @@ where
         watch.state.want_visible = true;
         overlays.insert(watch.state.id, watch);
 
-        let mut keyboard = create_keyboard(app)?;
+        let mut keyboard = create_keyboard(app, keymap)?;
         keyboard.state.show_hide = true;
         keyboard.state.want_visible = false;
         overlays.insert(keyboard.state.id, keyboard);

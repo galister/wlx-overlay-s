@@ -26,7 +26,7 @@ key_sizes:
     - [1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,     0.5, 1, 1, 1, 0.5,    1, 1, 1, 1]
     - [1.5,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.5,  0.5, 1, 1, 1, 0.5,    1, 1, 1, 1]
     - [1.75,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2.25,   4,                    1, 1, 1, 1]
-    - [2.25,    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2.75,    1.5,    1, 1.5,       1, 1, 1, 1]
+    - [1.25, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2.75,    1.5,    1, 1.5,       1, 1, 1, 1]
     - [1.25, 1.25, 1.25, 6.25, 1.25, 1.25, 1.25, 1.25, 0.5, 1, 1, 1, 0.5,    2,    1, 1]
 
 # The main (blue) layout of the keyboard.
@@ -40,7 +40,7 @@ main_layout:
     - ["Oem3", "N1", "N2", "N3", "N4", "N5", "N6", "N7", "N8", "N9", "N0", "Minus", "Plus", "BackSpace", ~, "Insert", "Home", "Prior", ~, "NumLock", "KP_Divide", "KP_Multiply", "KP_Subtract"]
     - ["Tab", "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "Oem4", "Oem6", "Oem5", ~, "Delete", "End", "Next", ~, "KP_7", "KP_8", "KP_9", "KP_Add"]
     - ["XF86Favorites", "A", "S", "D", "F", "G", "H", "J", "K", "L", "Oem1", "Oem7", "Return", ~, "KP_4", "KP_5", "KP_6", ~]
-    - ["LShift", "Z", "X", "C", "V", "B", "N", "M", "Comma", "Period", "Oem2", "RShift", ~, "Up", ~, "KP_1", "KP_2", "KP_3", "KP_Enter"]
+    - ["LShift", "Oem102", "Z", "X", "C", "V", "B", "N", "M", "Comma", "Period", "Oem2", "RShift", ~, "Up", ~, "KP_1", "KP_2", "KP_3", "KP_Enter"]
     - ["LCtrl", "LSuper", "LAlt", "Space", "Meta", "RSuper", "Menu", "RCtrl", ~, "Left", "Down", "Right", ~, "KP_0", "KP_Decimal", ~]
 
 # Shell commands to be used in a layout.
@@ -62,16 +62,6 @@ macros:
 # Value: Array of strings. 0th element is the upper row, 1st element is lower row.
 # For empty labels, use [] (do not use ~)
 labels:
-    "N1":            ["1", "!"]
-    "N2":            ["2", "@"]
-    "N3":            ["3", "#"]
-    "N4":            ["4", "$"]
-    "N5":            ["5", "%"]
-    "N6":            ["6", "^"]
-    "N7":            ["7", "&"]
-    "N8":            ["8", "*"]
-    "N9":            ["9", "("]
-    "N0":            ["0", ")"]
     "Escape":       ["Esc"]
     "Prior":        ["PgUp"]
     "Next":         ["PgDn"]
@@ -86,24 +76,15 @@ labels:
     "RShift":       ["Shift"]
     "Insert":       ["Ins"]
     "Delete":       ["Del"]
-    "Minus":        ["-", "_"]
-    "Plus":         ["=", "+"]
     "BackSpace":    ["<<"]
-    "Comma":        [" ,",  "<"]
-    "Period":       [" .",  ">"]
-    "Oem1":         [" ;",  ":"]
-    "Oem2":         [" /",  "?"]
-    "Oem3":         ["`", "~"]
-    "Oem4":         [" [",  "{"]
-    "Oem5":         [" \\", "|"]
-    "Oem6":         [" ]",  "}"]
-    "Oem7":         [" '",  "\""]
-    "Oem102":       [" \\", "|"]
     "KP_Divide":    [" /"]
     "KP_Add":       [" +"]
     "KP_Multiply":  [" *"]
     "KP_Decimal":   [" ."]
     "KP_Subtract":  [" -"]
     "KP_Enter":     ["Ent"]
+    "Print":        ["Prn"]
+    "Scroll":       ["Scr"]
+    "Pause":        ["Brk"]
     "XF86Favorites": ["Rofi"]
 

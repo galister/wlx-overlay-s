@@ -171,6 +171,7 @@ impl<D, S> CanvasBuilder<D, S> {
         y: f32,
         w: f32,
         h: f32,
+        cap_type: KeyCapType,
         label: &[String],
     ) -> &mut Control<D, S> {
         let idx = self.canvas.controls.len();
@@ -184,27 +185,88 @@ impl<D, S> CanvasBuilder<D, S> {
             ..Control::new()
         });
 
-        for (i, item) in label.iter().enumerate().take(label.len().min(2)) {
+        let renders = match cap_type {
+            KeyCapType::Regular => {
+                let render: ControlRenderer<D, S> = Control::render_text_centered;
+                let rect = Rect {
+                    x,
+                    y,
+                    w,
+                    h: h - self.font_size as f32,
+                };
+                vec![(render, rect, 1f32)]
+            }
+            KeyCapType::RegularAltGr => {
+                let render: ControlRenderer<D, S> = Control::render_text;
+                let rect0 = Rect {
+                    x: x + 12.,
+                    y: y + (self.font_size as f32) + 12.,
+                    w,
+                    h,
+                };
+                let rect1 = Rect {
+                    x: x + w * 0.5 + 12.,
+                    y: y + h - (self.font_size as f32) + 8.,
+                    w,
+                    h,
+                };
+                vec![(render, rect0, 1.0), (render, rect1, 0.8)]
+            }
+            KeyCapType::Reversed => {
+                let render: ControlRenderer<D, S> = Control::render_text_centered;
+                let rect0 = Rect {
+                    x,
+                    y: y + 2.0,
+                    w,
+                    h: h * 0.5,
+                };
+                let rect1 = Rect {
+                    x,
+                    y: y + h * 0.5 + 2.0,
+                    w,
+                    h: h * 0.5,
+                };
+                vec![(render, rect1, 1.0), (render, rect0, 0.8)]
+            }
+            KeyCapType::ReversedAltGr => {
+                let render: ControlRenderer<D, S> = Control::render_text;
+                let rect0 = Rect {
+                    x: x + 12.,
+                    y: y + (self.font_size as f32) + 8.,
+                    w,
+                    h,
+                };
+                let rect1 = Rect {
+                    x: x + 12.,
+                    y: y + h - (self.font_size as f32) + 4.,
+                    w,
+                    h,
+                };
+                let rect2 = Rect {
+                    x: x + w * 0.5 + 8.,
+                    y: y + h - (self.font_size as f32) + 4.,
+                    w,
+                    h,
+                };
+                vec![
+                    (render, rect1, 1.0),
+                    (render, rect0, 0.8),
+                    (render, rect2, 0.8),
+                ]
+            }
+        };
+
+        for (idx, (render, rect, alpha)) in renders.into_iter().enumerate() {
+            if idx >= label.len() {
+                break;
+            }
+
             self.canvas.controls.push(Control {
-                rect: if i == 0 {
-                    Rect {
-                        x: x + 4.,
-                        y: y + (self.font_size as f32) + 4.,
-                        w,
-                        h,
-                    }
-                } else {
-                    Rect {
-                        x: x + w * 0.5,
-                        y: y + h - (self.font_size as f32) + 4.,
-                        w,
-                        h,
-                    }
-                },
-                text: Arc::from(item.as_str()),
-                fg_color: self.fg_color,
+                rect,
+                text: Arc::from(label[idx].as_str()),
+                fg_color: self.fg_color * alpha,
                 size: self.font_size,
-                on_render_fg: Some(Control::render_text),
+                on_render_fg: Some(render),
                 ..Control::new()
             });
         }
@@ -540,6 +602,17 @@ impl<D, S> OverlayBackend for Canvas<D, S> {
     fn set_interaction(&mut self, _interaction: Box<dyn InteractionHandler>) {}
 }
 
+pub type ControlRenderer<D, S> =
+    fn(&Control<D, S>, &CanvasData<D>, &mut AppState, &mut WlxCommandBuffer) -> anyhow::Result<()>;
+
+pub type ControlRendererHl<D, S> = fn(
+    &Control<D, S>,
+    &CanvasData<D>,
+    &mut AppState,
+    &mut WlxCommandBuffer,
+    Vec4,
+) -> anyhow::Result<()>;
+
 pub struct Control<D, S> {
     pub state: Option<S>,
     rect: Rect,
@@ -555,15 +628,9 @@ pub struct Control<D, S> {
     pub on_scroll: Option<fn(&mut Self, &mut D, &mut AppState, f32)>,
     pub test_highlight: Option<fn(&Self, &mut D, &mut AppState) -> Option<Vec4>>,
 
-    on_render_bg: Option<
-        fn(&Self, &CanvasData<D>, &mut AppState, &mut WlxCommandBuffer) -> anyhow::Result<()>,
-    >,
-    on_render_hl: Option<
-        fn(&Self, &CanvasData<D>, &mut AppState, &mut WlxCommandBuffer, Vec4) -> anyhow::Result<()>,
-    >,
-    on_render_fg: Option<
-        fn(&Self, &CanvasData<D>, &mut AppState, &mut WlxCommandBuffer) -> anyhow::Result<()>,
-    >,
+    on_render_bg: Option<ControlRenderer<D, S>>,
+    on_render_hl: Option<ControlRendererHl<D, S>>,
+    on_render_fg: Option<ControlRenderer<D, S>>,
 }
 
 impl<D, S> Control<D, S> {
@@ -761,4 +828,19 @@ impl<D, S> Control<D, S> {
         }
         Ok(())
     }
+}
+
+pub enum KeyCapType {
+    /// Label is in center of keycap
+    Regular,
+    /// Label on the top
+    /// AltGr symbol on bottom
+    RegularAltGr,
+    /// Primary symbol on bottom
+    /// Shift symbol on top
+    Reversed,
+    /// Primary symbol on bottom-left
+    /// Shift symbol on top-left
+    /// AltGr symbol on bottom-right
+    ReversedAltGr,
 }

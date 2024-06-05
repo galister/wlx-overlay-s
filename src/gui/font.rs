@@ -17,6 +17,7 @@ pub struct FontCache {
 struct FontCollection {
     fonts: Vec<Font>,
     cp_map: IdMap<usize, usize>,
+    zero_glyph: Rc<Glyph>,
 }
 
 struct Font {
@@ -96,6 +97,14 @@ impl FontCache {
                 FontCollection {
                     fonts: Vec::new(),
                     cp_map: IdMap::new(),
+                    zero_glyph: Rc::new(Glyph {
+                        tex: None,
+                        top: 0.,
+                        left: 0.,
+                        width: 0.,
+                        height: 0.,
+                        advance: size as f32 / 3.,
+                    }),
                 },
             );
         }
@@ -181,7 +190,7 @@ impl FontCache {
 
         let Some(font) = &mut self.collections[size].fonts.get_mut(key) else {
             log::warn!("No font found for codepoint: {}", cp);
-            return Ok(self.collections[size].fonts[0].glyphs[0].clone());
+            return Ok(self.collections[size].zero_glyph.clone());
         };
 
         if let Some(glyph) = font.glyphs.get(cp) {
@@ -189,18 +198,18 @@ impl FontCache {
         }
 
         if font.face.load_char(cp, LoadFlag::DEFAULT).is_err() {
-            return Ok(font.glyphs[0].clone());
+            return Ok(self.collections[size].zero_glyph.clone());
         }
 
         let glyph = font.face.glyph();
         if glyph.render_glyph(freetype::RenderMode::Normal).is_err() {
-            return Ok(font.glyphs[0].clone());
+            return Ok(self.collections[size].zero_glyph.clone());
         }
 
         let bmp = glyph.bitmap();
         let buf = bmp.buffer().to_vec();
         if buf.is_empty() {
-            return Ok(font.glyphs[0].clone());
+            return Ok(self.collections[size].zero_glyph.clone());
         }
 
         let metrics = glyph.metrics();
@@ -209,7 +218,7 @@ impl FontCache {
             Ok(PixelMode::Gray) => Format::R8_UNORM,
             Ok(PixelMode::Gray2) => Format::R16_SFLOAT,
             Ok(PixelMode::Gray4) => Format::R32_SFLOAT,
-            _ => return Ok(font.glyphs[0].clone()),
+            _ => return Ok(self.collections[size].zero_glyph.clone()),
         };
 
         let mut cmd_buffer = graphics.create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
