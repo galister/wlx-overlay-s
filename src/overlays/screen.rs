@@ -46,8 +46,7 @@ use crate::{
     },
     config::{def_pw_tokens, PwTokenMap},
     graphics::{
-        fourcc_to_vk, WlxCommandBuffer, WlxPipeline, WlxPipelineLegacy, DMA_BUF_SUPPORTED,
-        DRM_FORMAT_MOD_INVALID,
+        fourcc_to_vk, WlxCommandBuffer, WlxPipeline, WlxPipelineLegacy, DRM_FORMAT_MOD_INVALID,
     },
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState, ScreenMeta},
@@ -365,9 +364,17 @@ impl OverlayRenderer for ScreenRenderer {
     }
     fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         if !self.capture.is_ready() {
-            let supports_dmabuf = DMA_BUF_SUPPORTED && self.capture.supports_dmbuf();
+            let supports_dmabuf = app
+                .graphics
+                .device
+                .enabled_extensions()
+                .ext_external_memory_dma_buf
+                && self.capture.supports_dmbuf();
+
             let allow_dmabuf = &*app.session.config.capture_method != "pw_fallback"
                 && &*app.session.config.capture_method != "screencopy";
+
+            let capture_method = app.session.config.capture_method.clone();
 
             let drm_formats = DRM_FORMATS.get_or_init({
                 let graphics = app.graphics.clone();
@@ -377,7 +384,7 @@ impl OverlayRenderer for ScreenRenderer {
                         return vec![];
                     }
                     if !allow_dmabuf {
-                        log::info!("Not using DMA-buf capture due to pw_fallback");
+                        log::info!("Not using DMA-buf capture due to {}", capture_method);
                         return vec![];
                     }
                     log::warn!("Using DMA-buf capture. If screens are blank for you, switch to SHM using:");

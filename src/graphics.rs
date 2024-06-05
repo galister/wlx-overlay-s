@@ -109,11 +109,6 @@ pub struct Vert2Uv {
 
 pub const INDICES: [u16; 6] = [2, 1, 0, 1, 2, 3];
 
-#[cfg(not(feature = "no-dmabuf"))]
-pub const DMA_BUF_SUPPORTED: bool = true;
-#[cfg(feature = "no-dmabuf")]
-pub const DMA_BUF_SUPPORTED: bool = false;
-
 pub const BLEND_ALPHA: AttachmentBlend = AttachmentBlend {
     src_color_blend_factor: BlendFactor::SrcAlpha,
     dst_color_blend_factor: BlendFactor::OneMinusSrcAlpha,
@@ -263,7 +258,14 @@ impl WlxGraphics {
             .position(|(_, q)| q.queue_flags.intersects(QueueFlags::GRAPHICS))
             .expect("Vulkan device has no graphics queue") as u32;
 
-        let device_extensions = get_device_extensions();
+        let mut device_extensions = get_device_extensions();
+        if !physical_device
+            .supported_extensions()
+            .ext_image_drm_format_modifier
+        {
+            device_extensions.ext_image_drm_format_modifier = false;
+        }
+
         let device_extensions_raw = device_extensions
             .into_iter()
             .filter_map(|(name, enabled)| {
@@ -406,10 +408,16 @@ impl WlxGraphics {
                     p.properties().device_name,
                     &runtime_extensions
                 );
-                let my_extensions = runtime_extensions.union(&device_extensions);
+                let mut my_extensions = runtime_extensions.union(&device_extensions);
                 if p.supported_extensions().contains(&my_extensions) {
                     Some((p, my_extensions))
                 } else {
+                    // try without DRM format modifiers
+                    my_extensions.ext_image_drm_format_modifier = false;
+                    if p.supported_extensions().contains(&my_extensions) {
+                        return Some((p, my_extensions));
+                    }
+
                     log::debug!(
                         "Not using {} because it does not implement the following device extensions:",
                         p.properties().device_name,
