@@ -75,7 +75,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
     let mut delete_queue = vec![];
     let mut playspace = playspace::PlayspaceMover::try_new()
-        .map_err(|e| log::warn!("Failed to initialize Monado playspace mover: {}", e))
+        .map_err(|e| log::warn!("Will not use Monado playspace mover: {}", e))
         .ok();
 
     #[cfg(feature = "osc")]
