@@ -393,7 +393,7 @@ fn suggest_bindings(instance: &xr::Instance, hands: &[&OpenXrHandSource; 2]) -> 
             }
         }
 
-        if let Some(action) = profile.haptics {
+        if let Some(action) = profile.haptic {
             if let Some(p) = to_path(&action.left, instance) {
                 bindings.push(xr::Binding::new(&hands[0].action_haptics, p));
             }
@@ -508,7 +508,7 @@ struct OpenXrActionConfProfile {
     click_modifier_middle: Option<OpenXrActionConfAction>,
     move_mouse: Option<OpenXrActionConfAction>,
     scroll: Option<OpenXrActionConfAction>,
-    haptics: Option<OpenXrActionConfAction>,
+    haptic: Option<OpenXrActionConfAction>,
 }
 
 const DEFAULT_PROFILES: &str = include_str!("openxr_actions.json5");
