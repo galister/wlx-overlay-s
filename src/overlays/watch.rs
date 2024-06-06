@@ -25,6 +25,7 @@ where
             name: WATCH_NAME.into(),
             want_visible: true,
             interactable: true,
+            z_order: 68,
             spawn_scale: config.width,
             spawn_point: state.session.config.watch_pos,
             spawn_rotation: state.session.config.watch_rot,

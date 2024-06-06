@@ -11,7 +11,6 @@ use vulkano::{Handle, VulkanObject};
 use crate::{
     backend::overlay::{OverlayData, RelativeTo},
     graphics::WlxGraphics,
-    overlays::{anchor::ANCHOR_NAME, watch::WATCH_NAME},
     state::AppState,
 };
 
@@ -23,7 +22,6 @@ pub(super) struct OpenVrOverlayData {
     pub(super) last_image: Option<u64>,
     pub(super) visible: bool,
     pub(super) color: Vec4,
-    pub(super) sort_order: u32,
     pub(crate) width: f32,
     pub(super) override_width: bool,
     pub(super) relative_to: RelativeTo,
@@ -44,15 +42,6 @@ impl OverlayData<OpenVrOverlayData> {
             }
         };
         log::debug!("{}: initialize", self.state.name);
-
-        //watch
-        if *self.state.name == *WATCH_NAME {
-            self.data.sort_order = 68;
-        }
-
-        if *self.state.name == *ANCHOR_NAME.as_ref() {
-            self.data.sort_order = 67;
-        }
 
         self.data.handle = Some(handle);
         self.data.color = Vec4::ONE;
@@ -193,7 +182,7 @@ impl OverlayData<OpenVrOverlayData> {
             log::debug!("{}: No overlay handle", self.state.name);
             return;
         };
-        if let Err(e) = overlay.set_sort_order(handle, self.data.sort_order) {
+        if let Err(e) = overlay.set_sort_order(handle, self.state.z_order) {
             log::error!("{}: Failed to set overlay z order: {}", self.state.name, e);
         }
     }

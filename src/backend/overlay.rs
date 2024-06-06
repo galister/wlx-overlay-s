@@ -32,6 +32,7 @@ pub struct OverlayState {
     pub anchored: bool,
     pub dirty: bool,
     pub alpha: f32,
+    pub z_order: u32,
     pub transform: Affine3A,
     pub spawn_scale: f32, // aka width
     pub spawn_point: Vec3A,
@@ -57,6 +58,7 @@ impl Default for OverlayState {
             anchored: false,
             dirty: true,
             alpha: 1.0,
+            z_order: 0,
             relative_to: RelativeTo::None,
             curvature: None,
             spawn_scale: 1.0,

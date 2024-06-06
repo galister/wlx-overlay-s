@@ -199,6 +199,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
         spawn_scale: size.0 * PIXELS_TO_METERS,
         spawn_rotation,
         spawn_point,
+        z_order: 70,
         relative_to,
         ..Default::default()
     };

@@ -1,7 +1,7 @@
 use glam::Vec3A;
 use openxr as xr;
 use std::{f32::consts::PI, sync::Arc};
-use xr::{CompositionLayerFlags, EyeVisibility};
+use xr::EyeVisibility;
 
 use super::{helpers, swapchain::SwapchainRenderData, CompositionLayer, XrState};
 use crate::{
@@ -78,7 +78,6 @@ impl OverlayData<OpenXrOverlayData> {
                 .pose(posef)
                 .sub_image(sub_image)
                 .eye_visibility(EyeVisibility::BOTH)
-                .layer_flags(CompositionLayerFlags::CORRECT_CHROMATIC_ABERRATION)
                 .space(&xr.stage)
                 .radius(radius)
                 .central_angle(angle)
@@ -90,7 +89,6 @@ impl OverlayData<OpenXrOverlayData> {
                 .pose(posef)
                 .sub_image(sub_image)
                 .eye_visibility(EyeVisibility::BOTH)
-                .layer_flags(CompositionLayerFlags::CORRECT_CHROMATIC_ABERRATION)
                 .space(&xr.stage)
                 .size(xr::Extent2Df {
                     width: scale_x,

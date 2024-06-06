@@ -21,6 +21,7 @@ where
             want_visible: false,
             interactable: false,
             grabbable: false,
+            z_order: 67,
             spawn_scale: config.width,
             spawn_point: Vec3A::NEG_Z * 0.5,
             ..Default::default()

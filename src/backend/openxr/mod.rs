@@ -289,7 +289,8 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
             o.render(&mut app_state)?;
 
             let dist_sq = (app_state.input_state.hmd.translation - o.state.transform.translation)
-                .length_squared();
+                .length_squared()
+                + (100f32 - o.state.z_order as f32);
 
             if !dist_sq.is_normal() {
                 continue;

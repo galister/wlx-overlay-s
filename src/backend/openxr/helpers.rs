@@ -88,6 +88,7 @@ pub(super) fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
 
     Ok((xr_instance, system))
 }
+
 pub(super) unsafe fn create_overlay_session(
     instance: &xr::Instance,
     system: xr::SystemId,

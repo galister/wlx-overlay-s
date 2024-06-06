@@ -148,7 +148,6 @@ impl LinePool {
                         1.0,
                     )?)
                     .eye_visibility(xr::EyeVisibility::BOTH)
-                    .layer_flags(xr::CompositionLayerFlags::CORRECT_CHROMATIC_ABERRATION)
                     .space(&xr.stage)
                     .size(xr::Extent2Df {
                         width: LINE_WIDTH,

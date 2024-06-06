@@ -80,7 +80,7 @@ impl LinePool {
             },
             ..Default::default()
         };
-        data.data.sort_order = 69;
+        data.state.z_order = 69;
         data.state.dirty = true;
 
         self.lines.insert(id, data);
