@@ -294,7 +294,7 @@ pub struct Canvas<D, S> {
     hover_controls: [Option<usize>; 2],
     pressed_controls: [Option<usize>; 2],
 
-    interact_map: Vec<Option<u8>>,
+    interact_map: Vec<Option<u16>>,
     interact_stride: usize,
     interact_rows: usize,
 
@@ -403,7 +403,7 @@ impl<D, S> Canvas<D, S> {
 
         for y in y_min..y_max {
             for x in x_min..x_max {
-                self.interact_map[y * self.interact_stride + x] = Some(idx as u8);
+                self.interact_map[y * self.interact_stride + x] = Some(idx as u16);
             }
         }
     }
