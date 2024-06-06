@@ -38,6 +38,14 @@ struct Args {
     #[arg(long)]
     uninstall: bool,
 
+    /// Replace running WlxOverlay-S instance
+    #[arg(long)]
+    replace: bool,
+
+    /// Allow multiple running instances of WlxOverlay-S (things may break!)
+    #[arg(long)]
+    multi: bool,
+
     /// Path to write logs to
     #[arg(short, long, value_name = "FILE_PATH")]
     log_to: Option<String>,
@@ -49,9 +57,14 @@ struct Args {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    std::env::set_var("RUST_BACKTRACE", "full");
-
     let mut args = Args::parse();
+
+    if !args.multi && !ensure_single_instance(args.replace) {
+        println!("Looks like WlxOverlay-S is already running.");
+        println!("Use --replace and I will terminate it for you.");
+        return Ok(());
+    }
+
     logging_init(&mut args)?;
 
     log::info!(
@@ -188,4 +201,34 @@ fn file_logging_init(log_to: &str) -> anyhow::Result<()> {
         .start()?;
     println!("Logging to: {}", log_to);
     Ok(())
+}
+
+fn ensure_single_instance(replace: bool) -> bool {
+    let mut path = std::env::var("XDG_RUNTIME_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("/tmp"));
+    path.push("wlx-overlay-s.pid");
+
+    if path.exists() {
+        // load contents
+        if let Ok(pid_str) = std::fs::read_to_string(&path) {
+            if let Ok(pid) = pid_str.trim().parse::<u32>() {
+                let mut system = sysinfo::System::new();
+                system.refresh_processes();
+                if let Some(proc) = system.process(sysinfo::Pid::from_u32(pid)) {
+                    if replace {
+                        proc.kill_with(sysinfo::Signal::Term);
+                        proc.wait();
+                    } else {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+
+    let pid = std::process::id().to_string();
+    std::fs::write(path, pid).unwrap();
+
+    true
 }
