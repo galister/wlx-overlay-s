@@ -100,9 +100,9 @@ where
 impl OverlayState {
     pub fn parent_transform(&self, app: &AppState) -> Option<Affine3A> {
         match self.relative_to {
-            RelativeTo::None => None,
             RelativeTo::Head => Some(app.input_state.hmd),
             RelativeTo::Hand(idx) => Some(app.input_state.pointers[idx].pose),
+            _ => None,
         }
     }
 
@@ -201,19 +201,21 @@ where
             .arc_get(self.state.name.as_ref())
             .copied();
 
-        let hard_reset;
-        if let Some(transform) = app
-            .session
-            .config
-            .transform_values
-            .arc_get(self.state.name.as_ref())
-        {
-            self.state.saved_transform = Some(*transform);
-            hard_reset = false;
-        } else {
-            hard_reset = true;
+        if matches!(self.state.relative_to, RelativeTo::None) {
+            let hard_reset;
+            if let Some(transform) = app
+                .session
+                .config
+                .transform_values
+                .arc_get(self.state.name.as_ref())
+            {
+                self.state.saved_transform = Some(*transform);
+                hard_reset = false;
+            } else {
+                hard_reset = true;
+            }
+            self.state.reset(app, hard_reset);
         }
-        self.state.reset(app, hard_reset);
         self.backend.init(app)
     }
     pub fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
@@ -267,10 +269,15 @@ impl OverlayRenderer for FallbackRenderer {
 
 #[derive(Clone, Copy, Debug, Default)]
 pub enum RelativeTo {
+    /// Stays in place unless rencentered
     #[default]
     None,
+    /// Stays in position relative to HMD
     Head,
+    /// Stays in position relative to hand
     Hand(usize),
+    /// Stays in place, no recentering
+    Stage,
 }
 
 pub struct SplitOverlayBackend {

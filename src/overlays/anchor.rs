@@ -2,7 +2,7 @@ use glam::Vec3A;
 use once_cell::sync::Lazy;
 use std::sync::Arc;
 
-use crate::backend::overlay::{OverlayData, OverlayState};
+use crate::backend::overlay::{OverlayData, OverlayState, RelativeTo};
 use crate::config::{load_known_yaml, ConfigType};
 use crate::gui::modular::{modular_canvas, ModularUiConfig};
 use crate::state::AppState;
@@ -24,6 +24,7 @@ where
             z_order: 67,
             spawn_scale: config.width,
             spawn_point: Vec3A::NEG_Z * 0.5,
+            relative_to: RelativeTo::Stage,
             ..Default::default()
         },
         backend: Box::new(modular_canvas(&config.size, &config.elements, state)?),
