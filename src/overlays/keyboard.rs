@@ -194,7 +194,7 @@ fn key_press(
                 app.hid_provider.set_modifiers(data.modifiers);
             }
 
-            app.hid_provider.send_key(*vk as _, true);
+            app.hid_provider.send_key(*vk, true);
             *pressed = true;
         }
         Some(KeyButtonData::Modifier { modifier, sticky }) => {
@@ -206,7 +206,7 @@ fn key_press(
         Some(KeyButtonData::Macro { verbs }) => {
             data.key_click(app);
             for (vk, press) in verbs {
-                app.hid_provider.send_key(*vk as _, *press);
+                app.hid_provider.send_key(*vk, *press);
             }
         }
         Some(KeyButtonData::Exec { program, args, .. }) => {
@@ -230,7 +230,7 @@ fn key_release(
 ) {
     match control.state.as_mut() {
         Some(KeyButtonData::Key { vk, pressed }) => {
-            app.hid_provider.send_key(*vk as _, false);
+            app.hid_provider.send_key(*vk, false);
             *pressed = false;
 
             for m in AUTO_RELEASE_MODS.iter() {

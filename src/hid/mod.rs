@@ -47,7 +47,7 @@ pub trait HidProvider {
     fn send_button(&mut self, button: u16, down: bool);
     fn wheel(&mut self, delta: i32);
     fn set_modifiers(&mut self, mods: u8);
-    fn send_key(&self, key: u16, down: bool);
+    fn send_key(&self, key: VirtualKey, down: bool);
     fn set_desktop_extent(&mut self, extent: Vec2);
     fn set_desktop_origin(&mut self, origin: Vec2);
     fn commit(&mut self);
@@ -218,16 +218,17 @@ impl HidProvider for UInputProvider {
             let m = 1 << i;
             if changed & m != 0 {
                 if let Some(vk) = MODS_TO_KEYS.get(m).into_iter().flatten().next() {
-                    self.send_key(*vk as u16, modifiers & m != 0);
+                    self.send_key(*vk, modifiers & m != 0);
                 }
             }
         }
         self.cur_modifiers = modifiers;
     }
-    fn send_key(&self, key: u16, down: bool) {
+    fn send_key(&self, key: VirtualKey, down: bool) {
+        log::debug!("send_key: {:?} {}", key, down);
         let time = get_time();
         let events = [
-            new_event(time, EV_KEY, key - 8, down as _),
+            new_event(time, EV_KEY, (key as u16) - 8, down as _),
             new_event(time, EV_SYN, 0, 0),
         ];
         if let Err(res) = self.handle.write(&events) {
@@ -275,7 +276,7 @@ impl HidProvider for DummyProvider {
     fn send_button(&mut self, _button: u16, _down: bool) {}
     fn wheel(&mut self, _delta: i32) {}
     fn set_modifiers(&mut self, _modifiers: u8) {}
-    fn send_key(&self, _key: u16, _down: bool) {}
+    fn send_key(&self, _key: VirtualKey, _down: bool) {}
     fn set_desktop_extent(&mut self, _extent: Vec2) {}
     fn set_desktop_origin(&mut self, _origin: Vec2) {}
     fn commit(&mut self) {}
