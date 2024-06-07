@@ -49,7 +49,7 @@ serde_json = "1.0.113"
 serde_yaml = "0.9.34"
 smallvec = "1.11.0"
 strum = { version = "0.26.2", features = ["derive"] }
-sysinfo = { version = "0.30.0", optional = true }
+sysinfo = { version = "0.30.0" }
 thiserror = "1.0.56"
 vulkano = { git = "https://github.com/vulkano-rs/vulkano", rev = "94f50f1" }
 vulkano-shaders = { git = "https://github.com/vulkano-rs/vulkano", rev = "94f50f1" }
@@ -66,7 +66,7 @@ xcb = { version = "1.4.0", optional = true, features = [
 [features]
 default = ["openvr", "openxr", "osc", "x11", "wayland"]
 openvr = ["dep:ovr_overlay", "dep:json"]
-openxr = ["dep:openxr", "dep:sysinfo"]
+openxr = ["dep:openxr"]
 osc = ["dep:rosc"]
 x11 = ["dep:xcb", "wlx-capture/xshm", "xkbcommon/x11"]
 wayland = ["pipewire", "wlx-capture/wlr", "xkbcommon/wayland"]
