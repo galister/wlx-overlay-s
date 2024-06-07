@@ -214,7 +214,7 @@ impl UInputProvider {
 impl HidProvider for UInputProvider {
     fn set_modifiers(&mut self, modifiers: u8) {
         let changed = self.cur_modifiers ^ modifiers;
-        for i in 0..7 {
+        for i in 0..8 {
             let m = 1 << i;
             if changed & m != 0 {
                 if let Some(vk) = MODS_TO_KEYS.get(m).into_iter().flatten().next() {
