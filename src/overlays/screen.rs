@@ -332,6 +332,14 @@ impl ScreenRenderer {
     )> {
         let name = output.name.clone();
         let embed_mouse = !session.config.double_cursor_fix;
+        log::info!(
+            "On screen share prompt, pick: {} {} {} (pos {}, {})",
+            &output.name,
+            &output.make,
+            &output.model,
+            &output.logical_pos.0,
+            &output.logical_pos.1,
+        );
         let select_screen_result = futures::executor::block_on(pipewire_select_screen(
             token,
             embed_mouse,
