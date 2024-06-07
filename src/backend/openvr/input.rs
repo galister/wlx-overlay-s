@@ -318,7 +318,11 @@ fn get_tracked_device(
 pub fn set_action_manifest(input: &mut InputManager) -> anyhow::Result<()> {
     let action_path = CONFIG_ROOT_PATH.join("actions.json");
 
-    File::create(&action_path)?.write_all(include_bytes!("../../res/actions.json"))?;
+    if let Err(e) = File::create(&action_path)
+        .and_then(|mut f| f.write_all(include_bytes!("../../res/actions.json")))
+    {
+        log::warn!("Could not write action manifest: {}", e);
+    }
 
     let binding_path = CONFIG_ROOT_PATH.join("actions_binding_knuckles.json");
     if !binding_path.is_file() {
