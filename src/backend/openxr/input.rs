@@ -84,7 +84,9 @@ impl CustomClickAction {
         let res = self
             .action_bool_double
             .state(&state.session, xr::Path::NULL)?;
-        if res.is_active && self.check_double_click(res.current_state) {
+        if res.is_active
+            && ((before && res.current_state) || self.check_double_click(res.current_state))
+        {
             return Ok(true);
         }
 
@@ -100,7 +102,10 @@ impl CustomClickAction {
         }
 
         let res = self.action_f32.state(&state.session, xr::Path::NULL)?;
-        if res.is_active && self.check_double_click(res.current_state > threshold) {
+        if res.is_active
+            && ((before && res.current_state > threshold)
+                || self.check_double_click(res.current_state > threshold))
+        {
             return Ok(true);
         }
 
