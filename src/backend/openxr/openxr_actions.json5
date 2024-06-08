@@ -90,7 +90,7 @@
       left: "/user/hand/left/input/x/touch",
       right: "/user/hand/right/input/a/touch"
     },
-    mouse_move: {
+    move_mouse: {
       // used with focus_follows_mouse_mode
       left: "/user/hand/left/input/trigger/touch",
       right: "/user/hand/right/input/trigger/touch"
@@ -140,7 +140,7 @@
       left: "/user/hand/left/input/a/touch",
       right: "/user/hand/right/input/a/touch"
     },
-    mouse_move: {
+    move_mouse: {
       // used with focus_follows_mouse_mode
       left: "/user/hand/left/input/trigger/touch",
       right: "/user/hand/right/input/trigger/touch"
