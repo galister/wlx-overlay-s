@@ -185,7 +185,8 @@ pub(super) fn find_libmonado() -> anyhow::Result<libloading::Library> {
         }
     }
 
-    const PROC_NAMES: [&str; 1] = ["monado-service"];
+    const PROC_NAMES: [&str; 2] = ["monado-service", "wivrn-server"];
+
     let mut system = sysinfo::System::new();
     system.refresh_processes();
     for p in system.processes().values() {
@@ -201,16 +202,20 @@ pub(super) fn find_libmonado() -> anyhow::Result<libloading::Library> {
 }
 
 fn proc_load_libmonado(proc: &Process) -> Option<libloading::Library> {
-    let path = proc
-        .exe()?
-        .parent()?
-        .parent()?
-        .join("lib")
-        .join("libmonado.so");
+    // relative to folder containing binary
+    const SEARCH_PATHS: [&str; 3] = [
+        "../lib/libmonado.so",
+        "../libmonado/libmonado.so",
+        "../_deps/monado-build/src/xrt/targets/libmonado/libmonado.so",
+    ];
 
-    if path.exists() {
-        Some(unsafe { libloading::Library::new(path).ok()? })
-    } else {
-        None
+    for &p in SEARCH_PATHS.iter() {
+        let path = proc.exe()?.parent()?.join(p);
+
+        if path.exists() {
+            return Some(unsafe { libloading::Library::new(path).ok()? });
+        }
     }
+
+    None
 }
