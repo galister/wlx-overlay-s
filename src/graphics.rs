@@ -42,7 +42,7 @@ use vulkano::{
         allocator::StandardDescriptorSetAllocator, DescriptorSet, WriteDescriptorSet,
     },
     device::{
-        physical::PhysicalDevice, Device, DeviceCreateInfo, DeviceExtensions, Features, Queue,
+        physical::PhysicalDevice, Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures, Queue,
         QueueCreateInfo, QueueFlags,
     },
     format::Format,
@@ -196,7 +196,7 @@ impl WlxGraphics {
         let target_version = vulkano::Version::V1_3;
         let library = get_vulkan_library();
 
-        let vk_app_info_raw = vk::ApplicationInfo::builder()
+        let vk_app_info_raw = vk::ApplicationInfo::default()
             .application_version(0)
             .engine_version(0)
             .api_version(vk_target_version);
@@ -206,7 +206,7 @@ impl WlxGraphics {
                 .create_vulkan_instance(
                     system,
                     get_instance_proc_addr,
-                    &vk::InstanceCreateInfo::builder()
+                    &vk::InstanceCreateInfo::default()
                         .application_info(&vk_app_info_raw)
                         .enabled_extension_names(&instance_extensions_raw)
                         as *const _ as *const _,
@@ -278,26 +278,23 @@ impl WlxGraphics {
             })
             .collect::<Vec<_>>();
 
-        let features = Features {
+        let features = DeviceFeatures {
             dynamic_rendering: true,
             ..Default::default()
         };
 
         let queue_priorities = [1.0];
 
-        let queue_create_infos = [vk::DeviceQueueCreateInfo::builder()
+        let queue_create_infos = [vk::DeviceQueueCreateInfo::default()
             .queue_family_index(queue_family_index)
-            .queue_priorities(&queue_priorities)
-            .build()];
+            .queue_priorities(&queue_priorities)];
 
-        let mut device_create_info = vk::DeviceCreateInfo::builder()
+        let mut device_create_info = vk::DeviceCreateInfo::default()
             .queue_create_infos(&queue_create_infos)
-            .enabled_extension_names(&device_extensions_raw)
-            .build();
+            .enabled_extension_names(&device_extensions_raw);
 
-        let mut dynamic_rendering = PhysicalDeviceDynamicRenderingFeatures::builder()
-            .dynamic_rendering(true)
-            .build();
+        let mut dynamic_rendering = PhysicalDeviceDynamicRenderingFeatures::default()
+            .dynamic_rendering(true);
 
         dynamic_rendering.p_next = device_create_info.p_next as _;
         device_create_info.p_next = (&mut dynamic_rendering) as *const _ as *const c_void;
@@ -456,9 +453,9 @@ impl WlxGraphics {
             physical_device,
             DeviceCreateInfo {
                 enabled_extensions: my_extensions,
-                enabled_features: Features {
+                enabled_features: DeviceFeatures {
                     dynamic_rendering: true,
-                    ..Features::empty()
+                    ..DeviceFeatures::empty()
                 },
                 queue_create_infos: vec![QueueCreateInfo {
                     queue_family_index,
@@ -580,9 +577,9 @@ impl WlxGraphics {
             physical_device,
             DeviceCreateInfo {
                 enabled_extensions: my_extensions,
-                enabled_features: Features {
+                enabled_features: DeviceFeatures {
                     dynamic_rendering: true,
-                    ..Features::empty()
+                    ..DeviceFeatures::empty()
                 },
                 queue_create_infos: vec![QueueCreateInfo {
                     queue_family_index,
@@ -988,9 +985,8 @@ impl WlxGraphics {
             (fns.v1_0.queue_submit)(
                 self.queue.handle(),
                 1,
-                [SubmitInfo::builder()
-                    .command_buffers(&[command_buffer.handle()])
-                    .build()]
+                [SubmitInfo::default()
+                    .command_buffers(&[command_buffer.handle()])]
                 .as_ptr(),
                 fence.handle(),
             )
@@ -1144,7 +1140,7 @@ impl WlxPipeline<WlxPipelineDynamic> {
         let vep = vert.entry_point("main").unwrap(); // want panic
         let fep = frag.entry_point("main").unwrap(); // want panic
 
-        let vertex_input_state = Vert2Uv::per_vertex().definition(&vep.info().input_interface)?;
+        let vertex_input_state = Vert2Uv::per_vertex().definition(&vep)?;
 
         let stages = smallvec![
             vulkano::pipeline::PipelineShaderStageCreateInfo::new(vep),
@@ -1301,7 +1297,7 @@ impl WlxPipeline<WlxPipelineLegacy> {
         let vep = vert.entry_point("main").unwrap(); // want panic
         let fep = frag.entry_point("main").unwrap(); // want panic
 
-        let vertex_input_state = Vert2Uv::per_vertex().definition(&vep.info().input_interface)?;
+        let vertex_input_state = Vert2Uv::per_vertex().definition(&vep)?;
 
         let stages = smallvec![
             vulkano::pipeline::PipelineShaderStageCreateInfo::new(vep),
