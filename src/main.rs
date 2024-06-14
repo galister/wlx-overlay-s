@@ -21,7 +21,7 @@ use clap::Parser;
 use flexi_logger::{Duplicate, FileSpec, LogSpecification};
 
 /// The lightweight desktop overlay for OpenVR and OpenXR
-#[derive(Parser, Debug)]
+#[derive(Default, Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
     #[cfg(feature = "openvr")]
@@ -57,7 +57,11 @@ struct Args {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut args = Args::parse();
+    let mut args = if std::env::args().skip(1).any(|a| !a.is_empty()) {
+        Args::parse()
+    } else {
+        Args::default()
+    };
 
     if !args.multi && !ensure_single_instance(args.replace) {
         println!("Looks like WlxOverlay-S is already running.");
