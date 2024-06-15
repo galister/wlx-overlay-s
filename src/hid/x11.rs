@@ -1,6 +1,9 @@
 use xkbcommon::xkb::{
     self,
-    x11::{get_core_keyboard_device_id, keymap_new_from_device},
+    x11::{
+        get_core_keyboard_device_id, keymap_new_from_device, setup_xkb_extension,
+        SetupXkbExtensionFlags, MIN_MAJOR_XKB_VERSION, MIN_MINOR_XKB_VERSION,
+    },
 };
 
 use super::XkbKeymap;
@@ -9,6 +12,17 @@ pub fn get_keymap_x11() -> anyhow::Result<XkbKeymap> {
     let context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
 
     let (conn, _) = xcb::Connection::connect(None)?;
+    setup_xkb_extension(
+        &conn,
+        MIN_MAJOR_XKB_VERSION,
+        MIN_MINOR_XKB_VERSION,
+        SetupXkbExtensionFlags::NoFlags,
+        &mut 0,
+        &mut 0,
+        &mut 0,
+        &mut 0,
+    );
+
     let device_id = get_core_keyboard_device_id(&conn);
     if device_id == -1 {
         return Err(anyhow::anyhow!(
