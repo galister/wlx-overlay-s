@@ -508,7 +508,7 @@ impl WlxGraphics {
         Arc<vulkano::swapchain::Surface>,
     )> {
         use vulkano::swapchain::Surface;
-        use winit::{event_loop::EventLoop, window::WindowBuilder};
+        use winit::{event_loop::EventLoop,window::Window};
 
         let event_loop = EventLoop::new().unwrap();
         let mut vk_instance_extensions = Surface::required_extensions(&event_loop).unwrap();
@@ -524,7 +524,7 @@ impl WlxGraphics {
             },
         )?;
 
-        let window = Arc::new(WindowBuilder::new().build(&event_loop).unwrap());
+        let window = Arc::new(event_loop.create_window(Window::default_attributes()).unwrap());
         let surface = Surface::from_window(instance.clone(), window.clone())?;
 
         let mut device_extensions = get_device_extensions();
