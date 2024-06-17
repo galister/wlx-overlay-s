@@ -200,6 +200,15 @@ impl PlayspaceMover {
 
         set_working_copy(&self.universe, chaperone_mgr, &mat);
         chaperone_mgr.commit_working_copy(EChaperoneConfigFile::EChaperoneConfigFile_Live);
+
+        if self.drag.is_some() {
+            log::info!("Space drag interrupted by fix floor");
+            self.drag = None;
+        }
+        if self.rotate.is_some() {
+            log::info!("Space rotate interrupted by fix floor");
+            self.rotate = None;
+        }
     }
 
     pub fn playspace_changed(

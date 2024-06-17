@@ -141,6 +141,7 @@ pub(super) struct OpenXrHandSource {
     action_alt_click: CustomClickAction,
     action_show_hide: CustomClickAction,
     action_space_drag: CustomClickAction,
+    action_space_rotate: CustomClickAction,
     action_modifier_right: CustomClickAction,
     action_modifier_middle: CustomClickAction,
     action_move_mouse: CustomClickAction,
@@ -271,6 +272,11 @@ impl OpenXrHand {
                 .action_space_drag
                 .state(pointer.before.space_drag, xr, session)?;
 
+        pointer.now.space_rotate =
+            self.source
+                .action_space_rotate
+                .state(pointer.before.space_rotate, xr, session)?;
+
         Ok(())
     }
 }
@@ -303,6 +309,7 @@ impl OpenXrHandSource {
             action_alt_click: CustomClickAction::new(action_set, "alt_click", side)?,
             action_show_hide: CustomClickAction::new(action_set, "show_hide", side)?,
             action_space_drag: CustomClickAction::new(action_set, "space_drag", side)?,
+            action_space_rotate: CustomClickAction::new(action_set, "space_rotate", side)?,
             action_modifier_right: CustomClickAction::new(
                 action_set,
                 "click_modifier_right",
@@ -457,6 +464,14 @@ fn suggest_bindings(instance: &xr::Instance, hands: &[&OpenXrHandSource; 2]) -> 
         );
 
         add_custom!(
+            profile.space_rotate,
+            &hands[0].action_space_rotate,
+            &hands[1].action_space_rotate,
+            bindings,
+            instance
+        );
+
+        add_custom!(
             profile.click_modifier_right,
             &hands[0].action_modifier_right,
             &hands[1].action_modifier_right,
@@ -509,6 +524,7 @@ struct OpenXrActionConfProfile {
     alt_click: Option<OpenXrActionConfAction>,
     show_hide: Option<OpenXrActionConfAction>,
     space_drag: Option<OpenXrActionConfAction>,
+    space_rotate: Option<OpenXrActionConfAction>,
     click_modifier_right: Option<OpenXrActionConfAction>,
     click_modifier_middle: Option<OpenXrActionConfAction>,
     move_mouse: Option<OpenXrActionConfAction>,
