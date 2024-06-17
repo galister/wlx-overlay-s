@@ -240,6 +240,9 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_font")]
     pub primary_font: Arc<str>,
+
+    #[serde(default = "def_one")]
+    pub space_drag_multiplier: f32,
 }
 
 impl GeneralConfig {
@@ -374,6 +377,7 @@ pub struct AutoSettings {
     pub notifications_sound_enabled: bool,
     pub realign_on_showhide: bool,
     pub allow_sliding: bool,
+    pub space_drag_multiplier: f32,
 }
 
 fn get_settings_path() -> PathBuf {
@@ -392,6 +396,7 @@ pub fn save_settings(config: &GeneralConfig) -> anyhow::Result<()> {
         notifications_sound_enabled: config.notifications_sound_enabled,
         realign_on_showhide: config.realign_on_showhide,
         allow_sliding: config.allow_sliding,
+        space_drag_multiplier: config.space_drag_multiplier,
     };
 
     let json = serde_json::to_string_pretty(&conf).unwrap(); // want panic

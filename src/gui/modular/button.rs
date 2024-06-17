@@ -134,6 +134,9 @@ pub enum ButtonAction {
         channel: ColorChannel,
         delta: f32,
     },
+    DragMultiplier {
+        delta: f32,
+    },
     System {
         action: SystemAction,
     },
@@ -330,6 +333,9 @@ fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppStat
                 .enqueue(TaskType::System(SystemTask::ColorGain(channel, delta)));
         }
         ButtonAction::System { action } => run_system(action, app),
+        ButtonAction::DragMultiplier { delta } => {
+            app.session.config.space_drag_multiplier += delta;
+        }
     }
 }
 

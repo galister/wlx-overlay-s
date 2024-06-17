@@ -95,7 +95,8 @@ impl PlayspaceMover {
             let new_hand = data
                 .pose
                 .transform_point3a(state.input_state.pointers[data.hand].pose.translation);
-            let relative_pos = new_hand - data.hand_pose;
+            let relative_pos =
+                (new_hand - data.hand_pose) * state.session.config.space_drag_multiplier;
 
             if relative_pos.length_squared() > 1000.0 {
                 log::warn!("Space drag too fast, ignoring");
