@@ -42,8 +42,8 @@ use vulkano::{
         allocator::StandardDescriptorSetAllocator, DescriptorSet, WriteDescriptorSet,
     },
     device::{
-        physical::PhysicalDevice, Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures, Queue,
-        QueueCreateInfo, QueueFlags,
+        physical::PhysicalDevice, Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures,
+        Queue, QueueCreateInfo, QueueFlags,
     },
     format::Format,
     image::{
@@ -135,17 +135,14 @@ pub struct WlxGraphics {
     pub shared_shaders: RwLock<HashMap<&'static str, Arc<ShaderModule>>>,
 }
 
-fn get_device_extensions() -> DeviceExtensions {
-    #[cfg(not(feature = "no-dmabuf"))]
-    return DeviceExtensions {
+fn get_dmabuf_extensions() -> DeviceExtensions {
+    DeviceExtensions {
         khr_external_memory: true,
         khr_external_memory_fd: true,
         ext_external_memory_dma_buf: true,
         ext_image_drm_format_modifier: true,
         ..DeviceExtensions::empty()
-    };
-    #[cfg(feature = "no-dmabuf")]
-    return DeviceExtensions::empty();
+    }
 }
 
 static VULKAN_LIBRARY: OnceLock<Arc<vulkano::VulkanLibrary>> = OnceLock::new();
@@ -258,12 +255,17 @@ impl WlxGraphics {
             .position(|(_, q)| q.queue_flags.intersects(QueueFlags::GRAPHICS))
             .expect("Vulkan device has no graphics queue") as u32;
 
-        let mut device_extensions = get_device_extensions();
-        if !physical_device
+        let mut device_extensions = DeviceExtensions::empty();
+        let dmabuf_extensions = get_dmabuf_extensions();
+
+        if physical_device
             .supported_extensions()
-            .ext_image_drm_format_modifier
+            .contains(&dmabuf_extensions)
         {
-            device_extensions.ext_image_drm_format_modifier = false;
+            device_extensions = device_extensions.union(&dmabuf_extensions);
+            device_extensions.ext_image_drm_format_modifier = physical_device
+                .supported_extensions()
+                .ext_image_drm_format_modifier;
         }
 
         let device_extensions_raw = device_extensions
@@ -293,8 +295,8 @@ impl WlxGraphics {
             .queue_create_infos(&queue_create_infos)
             .enabled_extension_names(&device_extensions_raw);
 
-        let mut dynamic_rendering = PhysicalDeviceDynamicRenderingFeatures::default()
-            .dynamic_rendering(true);
+        let mut dynamic_rendering =
+            PhysicalDeviceDynamicRenderingFeatures::default().dynamic_rendering(true);
 
         dynamic_rendering.p_next = device_create_info.p_next as _;
         device_create_info.p_next = (&mut dynamic_rendering) as *const _ as *const c_void;
@@ -326,6 +328,15 @@ impl WlxGraphics {
                 },
             )
         };
+
+        log::debug!(
+            "  DMA-buf supported: {}",
+            device.enabled_extensions().ext_external_memory_dma_buf
+        );
+        log::debug!(
+            "  DRM format modifiers supported: {}",
+            device.enabled_extensions().ext_image_drm_format_modifier
+        );
 
         // Drop the CStrings
         device_extensions_raw
@@ -377,6 +388,7 @@ impl WlxGraphics {
         //#[cfg(debug_assertions)]
         //let layers = vec!["VK_LAYER_KHRONOS_validation".to_owned()];
         //#[cfg(not(debug_assertions))]
+
         let layers = vec![];
 
         log::debug!("Instance exts for runtime: {:?}", &vk_instance_extensions);
@@ -393,30 +405,16 @@ impl WlxGraphics {
             },
         )?;
 
-        let device_extensions = get_device_extensions();
-        log::debug!("Device exts for app: {:?}", &device_extensions);
+        let dmabuf_extensions = get_dmabuf_extensions();
 
         let (physical_device, my_extensions, queue_family_index) = instance
             .enumerate_physical_devices()?
             .filter_map(|p| {
-                let runtime_extensions = vk_device_extensions_fn(&p);
-                log::debug!(
-                    "Device exts for {}: {:?}",
-                    p.properties().device_name,
-                    &runtime_extensions
-                );
-                let mut my_extensions = runtime_extensions.union(&device_extensions);
-                if p.supported_extensions().contains(&my_extensions) {
-                    Some((p, my_extensions))
-                } else {
-                    // try without DRM format modifiers
-                    my_extensions.ext_image_drm_format_modifier = false;
-                    if p.supported_extensions().contains(&my_extensions) {
-                        return Some((p, my_extensions));
-                    }
+                let mut my_extensions = vk_device_extensions_fn(&p);
 
+                if !p.supported_extensions().contains(&my_extensions) {
                     log::debug!(
-                        "Not using {} because it does not implement the following device extensions:",
+                        "Not using {} due to missing extensions:",
                         p.properties().device_name,
                     );
                     for (ext, missing) in p.supported_extensions().difference(&my_extensions) {
@@ -424,8 +422,21 @@ impl WlxGraphics {
                             log::debug!("  {}", ext);
                         }
                     }
-                    None
+                    return None;
                 }
+
+                if p.supported_extensions().contains(&dmabuf_extensions) {
+                    my_extensions = my_extensions.union(&dmabuf_extensions);
+                    my_extensions.ext_image_drm_format_modifier =
+                        p.supported_extensions().ext_image_drm_format_modifier;
+                }
+
+                log::debug!(
+                    "Device exts for {}: {:?}",
+                    p.properties().device_name,
+                    &my_extensions
+                );
+                Some((p, my_extensions))
             })
             .filter_map(|(p, my_extensions)| {
                 p.queue_family_properties()
@@ -464,6 +475,15 @@ impl WlxGraphics {
                 ..Default::default()
             },
         )?;
+
+        log::debug!(
+            "  DMA-buf supported: {}",
+            device.enabled_extensions().ext_external_memory_dma_buf
+        );
+        log::debug!(
+            "  DRM format modifiers supported: {}",
+            device.enabled_extensions().ext_image_drm_format_modifier
+        );
 
         let queue = queues
             .next()
@@ -508,7 +528,7 @@ impl WlxGraphics {
         Arc<vulkano::swapchain::Surface>,
     )> {
         use vulkano::swapchain::Surface;
-        use winit::{event_loop::EventLoop,window::Window};
+        use winit::{event_loop::EventLoop, window::Window};
 
         let event_loop = EventLoop::new().unwrap();
         let mut vk_instance_extensions = Surface::required_extensions(&event_loop).unwrap();
@@ -524,10 +544,14 @@ impl WlxGraphics {
             },
         )?;
 
-        let window = Arc::new(event_loop.create_window(Window::default_attributes()).unwrap());
+        let window = Arc::new(
+            event_loop
+                .create_window(Window::default_attributes())
+                .unwrap(),
+        );
         let surface = Surface::from_window(instance.clone(), window.clone())?;
 
-        let mut device_extensions = get_device_extensions();
+        let mut device_extensions = DeviceExtensions::empty();
         device_extensions.khr_swapchain = true;
 
         log::debug!("Device exts for app: {:?}", &device_extensions);
@@ -985,9 +1009,7 @@ impl WlxGraphics {
             (fns.v1_0.queue_submit)(
                 self.queue.handle(),
                 1,
-                [SubmitInfo::default()
-                    .command_buffers(&[command_buffer.handle()])]
-                .as_ptr(),
+                [SubmitInfo::default().command_buffers(&[command_buffer.handle()])].as_ptr(),
                 fence.handle(),
             )
         }
