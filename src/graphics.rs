@@ -140,7 +140,6 @@ fn get_dmabuf_extensions() -> DeviceExtensions {
         khr_external_memory: true,
         khr_external_memory_fd: true,
         ext_external_memory_dma_buf: true,
-        ext_image_drm_format_modifier: true,
         ..DeviceExtensions::empty()
     }
 }
