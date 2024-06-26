@@ -21,9 +21,9 @@ ctrlc = { version = "3.4.4", features = ["termination"] }
 dbus = { version = "0.9.7" }
 flexi_logger = "0.28.1"
 fontconfig-rs = "0.1.1"
-freetype-rs = "0.36.0"
+freetype-rs = "0.37.0"
 futures = "0.3.30"
-glam = { version = "0.27.0", features = ["approx", "serde"] }
+glam = { version = "0.28.0", features = ["approx", "serde"] }
 idmap = { version = "0.2.21", features = ["serde"] }
 idmap-derive = "0.1.2"
 input-linux = "0.6.0"
@@ -53,7 +53,7 @@ sysinfo = { version = "0.30.12" }
 thiserror = "1.0.61"
 vulkano = { git = "https://github.com/vulkano-rs/vulkano", rev = "b9f3e89" }
 vulkano-shaders = { git = "https://github.com/vulkano-rs/vulkano", rev = "b9f3e89" }
-wlx-capture = { git = "https://github.com/galister/wlx-capture", tag = "v0.3.11", default-features = false }
+wlx-capture = { git = "https://github.com/galister/wlx-capture", tag = "v0.3.12", default-features = false }
 winit = { version = "0.30.0", optional = true }
 xdg = "2.5.2"
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
