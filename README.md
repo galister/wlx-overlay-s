@@ -10,6 +10,8 @@ This is the coming-together of two of my previous projects:
 - [WlxOverlay](https://github.com/galister/WlxOverlay) (SteamVR overlay written in C#)
 - [WlxOverlay-X](https://github.com/galister/wlx-overlay-x) (OpenXR overlay using StereoKit, written in Rust)
 
+![Screenshot of WlxOverlay-S in Action](https://github.com/galister/wlx-overlay-s/blob/guide/wlx-s.png?raw=true)
+
 # Join the Linux VR Community
 
 We are available on either:
