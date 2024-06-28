@@ -146,6 +146,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
     let mut session_running = false;
     let mut event_storage = xr::EventDataBuffer::new();
 
+    let mut next_device_update = Instant::now();
     let mut due_tasks = VecDeque::with_capacity(4);
 
     let mut main_session_visible = false;
@@ -208,6 +209,11 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                 }
                 _ => {}
             }
+        }
+
+        if next_device_update <= Instant::now() {
+            input_source.update_devices(&mut app_state, monado.as_mut().unwrap());
+            next_device_update = Instant::now() + Duration::from_secs(30);
         }
 
         if !session_running {
