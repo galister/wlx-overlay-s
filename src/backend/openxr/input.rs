@@ -7,9 +7,10 @@ use std::{
 use glam::{bool, Affine3A, Quat, Vec3};
 use openxr::{self as xr, Quaternionf, Vector3f};
 use serde::{Deserialize, Serialize};
+use libmonado_rs::{Monado, Device};
 
 use crate::{
-    backend::input::{Haptics, Pointer},
+    backend::input::{Haptics, Pointer, TrackedDevice, TrackedDeviceRole},
     config_io,
     state::{AppSession, AppState},
 };
@@ -207,6 +208,67 @@ impl OpenXrInputSource {
             self.hands[i].update(&mut state.input_state.pointers[i], xr, &state.session)?;
         }
         Ok(())
+    }
+
+    fn update_device_battery_status(
+        device: &mut Device,
+        role: TrackedDeviceRole,
+        app: &mut AppState
+    ) {
+        if let Ok(status) = device.battery_status() {
+            if status.present {
+                app.input_state.devices.push(TrackedDevice {
+                    soc: Some(status.charge),
+                    charging: status.charging,
+                    role,
+                });
+                log::debug!("Device {} role {:#?}: {:.0}% (charging {})", device.index, role,
+                            status.charge * 100.0f32, status.charging);
+            }
+        }
+    }
+
+    pub fn update_devices(&mut self, app: &mut AppState, monado: &mut Monado) {
+        app.input_state.devices.clear();
+
+        let roles = [
+            ("head", TrackedDeviceRole::Hmd),
+            ("eyes", TrackedDeviceRole::None),
+            ("left", TrackedDeviceRole::LeftHand),
+            ("right", TrackedDeviceRole::RightHand),
+            ("gamepad", TrackedDeviceRole::None),
+            ("hand-tracking-left", TrackedDeviceRole::LeftHand),
+            ("hand-tracking-right", TrackedDeviceRole::RightHand),
+        ];
+        let mut seen = Vec::<u32>::with_capacity(32);
+        for (mnd_role, wlx_role) in roles {
+            let device = monado.device_from_role(mnd_role);
+            if let Ok(mut device) = device {
+                if !seen.contains(&device.index) {
+                    seen.push(device.index);
+                    Self::update_device_battery_status(&mut device, wlx_role, app);
+                }
+            }
+        }
+        if let Ok(devices) = monado.devices() {
+            for mut device in devices {
+                if !seen.contains(&device.index) {
+                    let role = if device.id >= 4 && device.id <= 8 {
+                        TrackedDeviceRole::Tracker
+                    } else {
+                        TrackedDeviceRole::None
+                    };
+                    Self::update_device_battery_status(&mut device, role, app);
+                }
+            }
+        }
+
+        app.input_state.devices.sort_by(|a, b| {
+            (a.soc.is_none() as u8)
+                .cmp(&(b.soc.is_none() as u8))
+                .then((a.role as u8).cmp(&(b.role as u8)))
+                .then(a.soc.unwrap_or(999.).total_cmp(&b.soc.unwrap_or(999.)))
+        });
     }
 }
 
