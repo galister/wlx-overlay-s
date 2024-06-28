@@ -1,25 +1,38 @@
 use std::time::{Duration, Instant};
+use std::ffi::c_void;
 
 use glam::{bool, Affine3A, Quat, Vec3};
 use openxr as xr;
 use serde::{Deserialize, Serialize};
+use libloading::{Library, Symbol};
 
 use crate::{
-    backend::input::{Haptics, Pointer},
+    backend::input::{Haptics, Pointer, TrackedDevice, TrackedDeviceRole},
     config_io,
     state::{AppSession, AppState},
 };
 
-use super::XrState;
+use super::{XrState, helpers};
 
 type XrSession = xr::Session<xr::Vulkan>;
 static DOUBLE_CLICK_TIME: Duration = Duration::from_millis(500);
+
+type GetDeviceCount = extern "C" fn(*mut c_void, *mut u32) -> i32;
+type GetDeviceInfo = extern "C" fn(*mut c_void, u32, *mut u32, *mut *const char) -> i32;
+type GetDeviceFromRole = extern "C" fn(*mut c_void, *const std::os::raw::c_char, *mut i32) -> i32;
+type GetDeviceBatteryStatus = extern "C" fn(*mut c_void, u32, *mut bool, *mut bool, *mut f32) -> i32;
 
 pub(super) struct OpenXrAction {}
 
 pub(super) struct OpenXrInputSource {
     action_set: xr::ActionSet,
     hands: [OpenXrHand; 2],
+    libmonado: Library,
+    mnd_root: *mut c_void,
+    get_device_count: Option<GetDeviceCount>,
+    get_device_info: Option<GetDeviceInfo>,
+    get_device_from_role: Option<GetDeviceFromRole>,
+    get_device_battery_status: Option<GetDeviceBatteryStatus>,
 }
 
 pub(super) struct OpenXrHand {
@@ -163,13 +176,50 @@ impl OpenXrInputSource {
 
         xr.session.attach_action_sets(&[&action_set])?;
 
-        Ok(Self {
-            action_set,
-            hands: [
-                OpenXrHand::new(xr, left_source)?,
-                OpenXrHand::new(xr, right_source)?,
-            ],
-        })
+        unsafe {
+            let libmonado = helpers::find_libmonado()?;
+
+            let root_create: Symbol<extern "C" fn(*mut *mut c_void) -> i32> =
+                libmonado.get(b"mnd_root_create\0")?;
+
+            let mut get_device_count: Option<GetDeviceCount> = None;
+            if let Ok(result) = libmonado.get(b"mnd_root_get_device_count\0") {
+                get_device_count = Some(*result);
+            }
+            let mut get_device_info: Option<GetDeviceInfo> = None;
+            if let Ok(result) = libmonado.get(b"mnd_root_get_device_info\0") {
+                get_device_info = Some(*result);
+            }
+            let mut get_device_from_role: Option<GetDeviceFromRole> = None;
+            if let Ok(result) = libmonado.get(b"mnd_root_get_device_from_role\0") {
+                get_device_from_role = Some(*result);
+            }
+            let mut get_device_battery_status: Option<GetDeviceBatteryStatus> = None;
+            if let Ok(result) = libmonado.get(b"mnd_root_get_device_battery_status\0") {
+                get_device_battery_status = Some(*result);
+            }
+
+            let mut root: *mut c_void = std::ptr::null_mut();
+            let ret = root_create(&mut root);
+            if ret != 0 {
+                anyhow::bail!("Failed to create root, code: {}", ret);
+            }
+
+            Ok(Self {
+                action_set,
+                hands: [
+                    OpenXrHand::new(xr, left_source)?,
+                    OpenXrHand::new(xr, right_source)?,
+                ],
+
+                libmonado,
+                mnd_root: root,
+                get_device_count,
+                get_device_info,
+                get_device_from_role,
+                get_device_battery_status,
+            })
+        }
     }
 
     pub fn haptics(&self, xr: &XrState, hand: usize, haptics: &Haptics) {
@@ -194,6 +244,82 @@ impl OpenXrInputSource {
             self.hands[i].update(&mut state.input_state.pointers[i], xr, &state.session)?;
         }
         Ok(())
+    }
+
+    fn update_device_battery_status(
+        get_device_battery_status: GetDeviceBatteryStatus,
+        mnd_root: *mut c_void,
+        dev_idx: u32,
+        role: TrackedDeviceRole,
+        app: &mut AppState
+    ) {
+        let mut supported: bool = false;
+        let mut charging: bool = false;
+        let mut charge: f32 = 1.0f32;
+        get_device_battery_status(mnd_root, dev_idx.try_into().unwrap(), &mut supported, &mut charging, &mut charge);
+        if supported {
+            app.input_state.devices.push(TrackedDevice {
+                soc: Some(charge),
+                charging,
+                role,
+            });
+            log::debug!("Device {} role {:#?}: {:.0}% (charging {})", dev_idx, role, charge * 100.0f32, charging);
+        }
+    }
+
+    pub fn update_devices(&mut self, app: &mut AppState) {
+        app.input_state.devices.clear();
+
+        if let Some(get_device_count) = self.get_device_count {
+            if let Some(get_device_info) = self.get_device_info {
+                if let Some(get_device_from_role) = self.get_device_from_role {
+                    if let Some(get_device_battery_status) = self.get_device_battery_status {
+                        let mut count: u32 = 0;
+                        if get_device_count(self.mnd_root, &mut count) == 0 {
+                            let roles = [
+                                (c"head", TrackedDeviceRole::Hmd),
+                                (c"eyes", TrackedDeviceRole::None),
+                                (c"left", TrackedDeviceRole::LeftHand),
+                                (c"right", TrackedDeviceRole::RightHand),
+                                (c"gamepad", TrackedDeviceRole::None),
+                                (c"hand-tracking-left", TrackedDeviceRole::LeftHand),
+                                (c"hand-tracking-right", TrackedDeviceRole::RightHand),
+                            ];
+                            let mut seen = Vec::<u32>::new();
+                            for (mnd_role, wlx_role) in roles {
+                                let mut dev_idx: i32 = -1;
+                                get_device_from_role(self.mnd_root, mnd_role.as_ptr(), &mut dev_idx);
+                                if dev_idx != -1 && !seen.contains(&(dev_idx as u32)) {
+                                    let dev_idx: u32 = dev_idx.try_into().unwrap();
+                                    seen.push(dev_idx);
+                                    Self::update_device_battery_status(get_device_battery_status, self.mnd_root, dev_idx, wlx_role, app);
+                                }
+                            }
+                            for dev_idx in 0..count {
+                                if !seen.contains(&dev_idx) {
+                                    let mut device_id: u32 = 0;
+                                    let mut dev_name: *const char = std::ptr::null();
+                                    get_device_info(self.mnd_root, dev_idx, &mut device_id, &mut dev_name);
+                                    let role = if device_id >= 4 && device_id <= 8 {
+                                        TrackedDeviceRole::Tracker
+                                    } else {
+                                        TrackedDeviceRole::None
+                                    };
+                                    Self::update_device_battery_status(get_device_battery_status, self.mnd_root, dev_idx, role, app);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        app.input_state.devices.sort_by(|a, b| {
+            (a.soc.is_none() as u8)
+                .cmp(&(b.soc.is_none() as u8))
+                .then((a.role as u8).cmp(&(b.role as u8)))
+                .then(a.soc.unwrap_or(999.).total_cmp(&b.soc.unwrap_or(999.)))
+        });
     }
 }
 
