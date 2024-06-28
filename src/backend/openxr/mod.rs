@@ -4,7 +4,7 @@ use std::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use glam::{Affine3A, Vec3};
@@ -126,6 +126,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
     let mut session_running = false;
     let mut event_storage = xr::EventDataBuffer::new();
 
+    let mut next_device_update = Instant::now();
     let mut due_tasks = VecDeque::with_capacity(4);
 
     'main_loop: loop {
@@ -173,6 +174,11 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
                 }
                 _ => {}
             }
+        }
+
+        if next_device_update <= Instant::now() {
+            input_source.update_devices(&mut app_state);
+            next_device_update = Instant::now() + Duration::from_secs(30);
         }
 
         if !session_running {
