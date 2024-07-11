@@ -15,7 +15,7 @@ use crate::{
     gui::font::FontCache,
     hid::HidProvider,
     overlays::toast::{DisplayMethod, ToastTopic},
-    shaders::{frag_color, frag_glyph, frag_screen, frag_sprite, frag_srgb, vert_common},
+    shaders::{frag_color, frag_glyph, frag_screen, frag_sprite, frag_swapchain, vert_common},
 };
 
 pub struct AppState {
@@ -53,8 +53,8 @@ impl AppState {
             let shader = frag_screen::load(graphics.device.clone())?;
             shaders.insert("frag_screen", shader);
 
-            let shader = frag_srgb::load(graphics.device.clone())?;
-            shaders.insert("frag_srgb", shader);
+            let shader = frag_swapchain::load(graphics.device.clone())?;
+            shaders.insert("frag_swapchain", shader);
         }
 
         let session = AppSession::load();

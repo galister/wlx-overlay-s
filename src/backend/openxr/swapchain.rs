@@ -6,6 +6,7 @@ use openxr as xr;
 
 use smallvec::SmallVec;
 use vulkano::{
+    format::Format,
     image::{sys::RawImage, view::ImageView, ImageCreateInfo, ImageUsage},
     pipeline::graphics::color_blend::AttachmentBlend,
     Handle,
@@ -23,7 +24,7 @@ pub(super) fn create_swapchain_render_data(
     let swapchain = xr.session.create_swapchain(&xr::SwapchainCreateInfo {
         create_flags: xr::SwapchainCreateFlags::EMPTY,
         usage_flags: xr::SwapchainUsageFlags::COLOR_ATTACHMENT | xr::SwapchainUsageFlags::SAMPLED,
-        format: graphics.native_format as _,
+        format: Format::R8G8B8A8_SRGB as _,
         sample_count: 1,
         width: extent[0],
         height: extent[1],
@@ -37,8 +38,8 @@ pub(super) fn create_swapchain_render_data(
     };
     let pipeline = graphics.create_pipeline_dynamic(
         shaders.get("vert_common").unwrap().clone(), // want panic
-        shaders.get("frag_srgb").unwrap().clone(),   // want panic
-        graphics.native_format,
+        shaders.get("frag_swapchain").unwrap().clone(), // want panic
+        Format::R8G8B8A8_UNORM,
         Some(AttachmentBlend::alpha()),
     )?;
 
@@ -53,7 +54,7 @@ pub(super) fn create_swapchain_render_data(
                     graphics.device.clone(),
                     vk_image,
                     ImageCreateInfo {
-                        format: graphics.native_format,
+                        format: Format::R8G8B8A8_UNORM, // actually SRGB but we lie
                         extent,
                         usage: ImageUsage::COLOR_ATTACHMENT,
                         ..Default::default()
