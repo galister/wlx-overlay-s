@@ -87,7 +87,7 @@ impl PreviewState {
             )
         }?;
         let set0 = pipeline
-            .uniform_sampler(0, view.clone(), Filter::Linear)
+            .uniform_sampler(0, view.clone(), pipeline.graphics.texture_filtering)
             .unwrap();
 
         let pass = pipeline

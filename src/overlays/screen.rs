@@ -229,7 +229,9 @@ impl ScreenPipeline {
             .graphics
             .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
         let view = ImageView::new_default(image)?;
-        let set0 = self.pipeline.uniform_sampler(0, view, Filter::Linear)?;
+        let set0 = self
+            .pipeline
+            .uniform_sampler(0, view, app.graphics.texture_filtering)?;
 
         let pass = self.pipeline.create_pass(
             self.extentf,

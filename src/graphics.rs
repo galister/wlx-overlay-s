@@ -124,6 +124,7 @@ pub struct WlxGraphics {
     pub queue: Arc<Queue>,
 
     pub native_format: Format,
+    pub texture_filtering: Filter,
 
     pub memory_allocator: Arc<StandardMemoryAllocator>,
     pub command_buffer_allocator: Arc<StandardCommandBufferAllocator>,
@@ -267,6 +268,10 @@ impl WlxGraphics {
                 .ext_image_drm_format_modifier;
         }
 
+        if physical_device.supported_extensions().ext_filter_cubic {
+            device_extensions.ext_filter_cubic = true;
+        }
+
         let device_extensions_raw = device_extensions
             .into_iter()
             .filter_map(|(name, enabled)| {
@@ -299,6 +304,12 @@ impl WlxGraphics {
 
         dynamic_rendering.p_next = device_create_info.p_next as _;
         device_create_info.p_next = (&mut dynamic_rendering) as *const _ as *const c_void;
+
+        let texture_filtering = if physical_device.supported_extensions().ext_filter_cubic {
+            Filter::Cubic
+        } else {
+            Filter::Linear
+        };
 
         let (device, mut queues) = unsafe {
             let vk_device = xr_instance
@@ -368,6 +379,7 @@ impl WlxGraphics {
             device,
             queue,
             native_format: Format::R8G8B8A8_UNORM,
+            texture_filtering,
             memory_allocator,
             command_buffer_allocator,
             descriptor_set_allocator,
@@ -430,6 +442,10 @@ impl WlxGraphics {
                         p.supported_extensions().ext_image_drm_format_modifier;
                 }
 
+                if p.supported_extensions().ext_filter_cubic {
+                    my_extensions.ext_filter_cubic = true;
+                }
+
                 log::debug!(
                     "Device exts for {}: {:?}",
                     p.properties().device_name,
@@ -458,6 +474,12 @@ impl WlxGraphics {
             "Using vkPhysicalDevice: {}",
             physical_device.properties().device_name,
         );
+
+        let texture_filtering = if physical_device.supported_extensions().ext_filter_cubic {
+            Filter::Cubic
+        } else {
+            Filter::Linear
+        };
 
         let (device, mut queues) = Device::new(
             physical_device,
@@ -509,6 +531,7 @@ impl WlxGraphics {
             queue,
             memory_allocator,
             native_format: Format::R8G8B8A8_UNORM,
+            texture_filtering,
             command_buffer_allocator,
             descriptor_set_allocator,
             quad_indices,
@@ -644,6 +667,7 @@ impl WlxGraphics {
             queue,
             memory_allocator,
             native_format,
+            texture_filtering: Filter::Linear,
             command_buffer_allocator,
             descriptor_set_allocator,
             quad_indices,

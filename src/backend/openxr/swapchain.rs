@@ -6,7 +6,7 @@ use openxr as xr;
 
 use smallvec::SmallVec;
 use vulkano::{
-    image::{sampler::Filter, sys::RawImage, view::ImageView, ImageCreateInfo, ImageUsage},
+    image::{sys::RawImage, view::ImageView, ImageCreateInfo, ImageUsage},
     pipeline::graphics::color_blend::AttachmentBlend,
     Handle,
 };
@@ -96,9 +96,11 @@ impl SwapchainRenderData {
 
         let target_extent = render_target.image().extent();
 
-        let set0 = self
-            .pipeline
-            .uniform_sampler(0, view.clone(), Filter::Linear)?;
+        let set0 = self.pipeline.uniform_sampler(
+            0,
+            view.clone(),
+            command_buffer.graphics.texture_filtering,
+        )?;
 
         let set1 = self.pipeline.uniform_buffer(1, vec![alpha])?;
 

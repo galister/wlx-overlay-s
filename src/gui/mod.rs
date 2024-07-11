@@ -5,7 +5,7 @@ use glam::{Vec2, Vec4};
 use vulkano::{
     command_buffer::CommandBufferUsage,
     format::Format,
-    image::{sampler::Filter, view::ImageView, ImageLayout},
+    image::{view::ImageView, ImageLayout},
 };
 
 use crate::{
@@ -353,8 +353,10 @@ impl<D, S> Canvas<D, S> {
             ImageLayout::TransferSrcOptimal,
         )?;
 
-        let set_fg = pipeline_final.uniform_sampler(0, view_fg.clone(), Filter::Linear)?;
-        let set_bg = pipeline_final.uniform_sampler(0, view_bg.clone(), Filter::Linear)?;
+        let set_fg =
+            pipeline_final.uniform_sampler(0, view_fg.clone(), graphics.texture_filtering)?;
+        let set_bg =
+            pipeline_final.uniform_sampler(0, view_bg.clone(), graphics.texture_filtering)?;
         let pass_fg = pipeline_final.create_pass(
             [width as _, height as _],
             vertex_buffer.clone(),
@@ -761,7 +763,7 @@ impl<D, S> Control<D, S> {
                     let set0 = canvas.pipeline_fg_glyph.uniform_sampler(
                         0,
                         ImageView::new_default(tex)?,
-                        Filter::Linear,
+                        app.graphics.texture_filtering,
                     )?;
                     let set1 = canvas
                         .pipeline_fg_glyph
@@ -809,7 +811,7 @@ impl<D, S> Control<D, S> {
                     let set0 = canvas.pipeline_fg_glyph.uniform_sampler(
                         0,
                         ImageView::new_default(tex)?,
-                        Filter::Linear,
+                        app.graphics.texture_filtering,
                     )?;
                     let set1 = canvas
                         .pipeline_fg_glyph
