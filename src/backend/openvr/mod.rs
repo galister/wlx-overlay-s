@@ -61,7 +61,7 @@ pub fn openvr_uninstall() {
     let _ = uninstall_manifest(&mut app_mgr);
 }
 
-pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
+pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(), BackendError> {
     let app_type = EVRApplicationType::VRApplication_Overlay;
     let Ok(context) = ovr_overlay::Context::init(app_type) else {
         log::warn!("Will not use OpenVR: Context init failed");
@@ -105,7 +105,7 @@ pub fn openvr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
 
     let _ = install_manifest(&mut app_mgr);
 
-    let mut overlays = OverlayContainer::<OpenVrOverlayData>::new(&mut state)?;
+    let mut overlays = OverlayContainer::<OpenVrOverlayData>::new(&mut state, show_by_default)?;
     let mut notifications = NotificationManager::new();
     notifications.run_dbus();
     notifications.run_udp();

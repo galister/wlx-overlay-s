@@ -48,7 +48,7 @@ struct XrState {
     stage_offset: Affine3A,
 }
 
-pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
+pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(), BackendError> {
     let (xr_instance, system) = match helpers::init_xr() {
         Ok((xr_instance, system)) => (xr_instance, system),
         Err(e) => {
@@ -66,7 +66,7 @@ pub fn openxr_run(running: Arc<AtomicBool>) -> Result<(), BackendError> {
         AppState::from_graphics(graphics)?
     };
 
-    let mut overlays = OverlayContainer::<OpenXrOverlayData>::new(&mut app_state)?;
+    let mut overlays = OverlayContainer::<OpenXrOverlayData>::new(&mut app_state, show_by_default)?;
     let mut lines = LinePool::new(app_state.graphics.clone())?;
 
     let mut notifications = NotificationManager::new();

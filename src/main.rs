@@ -34,6 +34,10 @@ struct Args {
     #[arg(long)]
     openxr: bool,
 
+    /// Show the working set of overlay on startup
+    #[arg(long)]
+    show: bool,
+
     /// Uninstall OpenVR manifest and exit
     #[arg(long)]
     uninstall: bool,
@@ -109,7 +113,7 @@ fn auto_run(running: Arc<AtomicBool>, args: Args) {
     #[cfg(feature = "openxr")]
     if !args_get_openvr(&args) {
         use crate::backend::openxr::openxr_run;
-        match openxr_run(running.clone()) {
+        match openxr_run(running.clone(), args.show) {
             Ok(()) => return,
             Err(BackendError::NotSupported) => (),
             Err(e) => {
@@ -122,7 +126,7 @@ fn auto_run(running: Arc<AtomicBool>, args: Args) {
     #[cfg(feature = "openvr")]
     if !args_get_openxr(&args) {
         use crate::backend::openvr::openvr_run;
-        match openvr_run(running.clone()) {
+        match openvr_run(running.clone(), args.show) {
             Ok(()) => return,
             Err(BackendError::NotSupported) => (),
             Err(e) => {
