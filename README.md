@@ -113,9 +113,9 @@ Check [here](https://github.com/galister/wlx-overlay-s/wiki/Troubleshooting) for
 
 # Known Issues
 
-## Auto-Start not working on SteamVR 2.4.4
+## Space-drag crashes SteamVR
 
-This seems to only affect SteamVR 2.4.4 (stable as of writing). Try switching to `temp_v1.27.5` or `beta` using the SteamVR beta selection if this bothers you. (The `linux-v1.14` branch will not work.)
+This has been idenfitied as an issue with SteamVR versions 2.5.5 and above (latest tested 2.7.2). One way to avoid the crash is by switching to the `temp-v1.27.5` branch of SteamVR (via beta selection) and selecting [Steam-Play-None](https://github.com/Scrumplex/Steam-Play-None) under the compatibility tab.
 
 ## Modifiers get stuck in weird ways
 
