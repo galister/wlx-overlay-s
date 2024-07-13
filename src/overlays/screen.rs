@@ -666,7 +666,11 @@ fn create_screen_state(
         Transform::_270 | Transform::Flipped270 => {
             Affine2::from_cols(Vec2::Y * (res.0 as f32 / res.1 as f32), Vec2::X, center)
         }
-        _ => Affine2::from_cols(Vec2::X, Vec2::Y * (-res.0 as f32 / res.1 as f32), center),
+        _ if res.1 > res.0 => {
+            // Xorg upright screens
+            Affine2::from_cols(Vec2::X * (res.1 as f32 / res.0 as f32), Vec2::NEG_Y, center)
+        }
+        _ => Affine2::from_cols(Vec2::X, Vec2::NEG_Y * (res.0 as f32 / res.1 as f32), center),
     };
 
     OverlayState {
