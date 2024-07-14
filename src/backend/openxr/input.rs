@@ -1,7 +1,11 @@
-use std::time::{Duration, Instant};
+use std::{
+    array::from_fn,
+    mem::transmute,
+    time::{Duration, Instant},
+};
 
 use glam::{bool, Affine3A, Quat, Vec3};
-use openxr as xr;
+use openxr::{self as xr, Quaternionf, Vector3f};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -13,7 +17,12 @@ use crate::{
 use super::XrState;
 
 type XrSession = xr::Session<xr::Vulkan>;
-static DOUBLE_CLICK_TIME: Duration = Duration::from_millis(500);
+
+static CLICK_TIMES: [Duration; 3] = [
+    Duration::ZERO,
+    Duration::from_millis(500),
+    Duration::from_millis(750),
+];
 
 pub(super) struct OpenXrAction {}
 
@@ -27,47 +36,91 @@ pub(super) struct OpenXrHand {
     space: xr::Space,
 }
 
-pub struct CustomClickAction {
+pub struct MultiClickHandler<const COUNT: usize> {
+    name: String,
     action_f32: xr::Action<f32>,
     action_bool: xr::Action<bool>,
-    action_f32_double: xr::Action<f32>,
-    action_bool_double: xr::Action<bool>,
-    last_click: Option<Instant>,
-    held: bool,
+    previous: [Instant; COUNT],
+    held_active: bool,
+    held_inactive: bool,
+}
+
+impl<const COUNT: usize> MultiClickHandler<COUNT> {
+    fn new(action_set: &xr::ActionSet, action_name: &str, side: &str) -> anyhow::Result<Self> {
+        let name = format!("{}_{}-{}", side, COUNT, action_name);
+        let name_f32 = format!("{}_value", &name);
+
+        let action_bool = action_set.create_action::<bool>(&name, &name, &[])?;
+        let action_f32 = action_set.create_action::<f32>(&name_f32, &name_f32, &[])?;
+
+        Ok(Self {
+            name,
+            action_f32,
+            action_bool,
+            previous: from_fn(|_| Instant::now()),
+            held_active: false,
+            held_inactive: false,
+        })
+    }
+    fn check<G>(&mut self, session: &xr::Session<G>, threshold: f32) -> anyhow::Result<bool> {
+        let res = self.action_bool.state(session, xr::Path::NULL)?;
+        let mut state = res.is_active && res.current_state;
+
+        if !state {
+            let res = self.action_f32.state(session, xr::Path::NULL)?;
+            state = res.is_active && res.current_state > threshold;
+        }
+
+        if !state {
+            self.held_active = false;
+            self.held_inactive = false;
+            return Ok(false);
+        }
+
+        if self.held_active {
+            return Ok(true);
+        }
+
+        if self.held_inactive {
+            return Ok(false);
+        }
+
+        let passed = self
+            .previous
+            .iter()
+            .all(|instant| instant.elapsed() < CLICK_TIMES[COUNT]);
+
+        if passed {
+            log::trace!("{}: passed", self.name);
+            self.held_active = true;
+            self.held_inactive = false;
+        } else if COUNT > 0 {
+            log::trace!("{}: rotate", self.name);
+            self.previous.rotate_right(1);
+            self.previous[0] = Instant::now();
+            self.held_inactive = true;
+        }
+
+        Ok(passed)
+    }
+}
+
+pub struct CustomClickAction {
+    single: MultiClickHandler<0>,
+    double: MultiClickHandler<1>,
+    triple: MultiClickHandler<2>,
 }
 
 impl CustomClickAction {
     pub fn new(action_set: &xr::ActionSet, name: &str, side: &str) -> anyhow::Result<Self> {
-        let action_f32 = action_set.create_action::<f32>(
-            &format!("{}_{}_value", side, name),
-            &format!("{} hand {} value", side, name),
-            &[],
-        )?;
-        let action_f32_double = action_set.create_action::<f32>(
-            &format!("{}_{}_value_double", side, name),
-            &format!("{} hand {} value double", side, name),
-            &[],
-        )?;
-
-        let action_bool = action_set.create_action::<bool>(
-            &format!("{}_{}", side, name),
-            &format!("{} hand {}", side, name),
-            &[],
-        )?;
-
-        let action_bool_double = action_set.create_action::<bool>(
-            &format!("{}_{}_double", side, name),
-            &format!("{} hand {} double", side, name),
-            &[],
-        )?;
+        let single = MultiClickHandler::new(action_set, name, side)?;
+        let double = MultiClickHandler::new(action_set, name, side)?;
+        let triple = MultiClickHandler::new(action_set, name, side)?;
 
         Ok(Self {
-            action_f32,
-            action_f32_double,
-            action_bool,
-            action_bool_double,
-            last_click: None,
-            held: false,
+            single,
+            double,
+            triple,
         })
     }
     pub fn state(
@@ -76,61 +129,15 @@ impl CustomClickAction {
         state: &XrState,
         session: &AppSession,
     ) -> anyhow::Result<bool> {
-        let res = self.action_bool.state(&state.session, xr::Path::NULL)?;
-        if res.is_active && res.current_state {
-            return Ok(true);
-        }
-
-        let res = self
-            .action_bool_double
-            .state(&state.session, xr::Path::NULL)?;
-        if res.is_active
-            && ((before && res.current_state) || self.check_double_click(res.current_state))
-        {
-            return Ok(true);
-        }
-
         let threshold = if before {
             session.config.xr_click_sensitivity_release
         } else {
             session.config.xr_click_sensitivity
         };
 
-        let res = self.action_f32.state(&state.session, xr::Path::NULL)?;
-        if res.is_active && res.current_state > threshold {
-            return Ok(true);
-        }
-
-        let res = self.action_f32.state(&state.session, xr::Path::NULL)?;
-        if res.is_active
-            && ((before && res.current_state > threshold)
-                || self.check_double_click(res.current_state > threshold))
-        {
-            return Ok(true);
-        }
-
-        Ok(false)
-    }
-
-    // submit a click. returns true if it should count as a double click
-    fn check_double_click(&mut self, state: bool) -> bool {
-        if !state {
-            self.held = false;
-            return false;
-        }
-
-        if self.held {
-            return false;
-        }
-
-        let now = Instant::now();
-        let double_click = match self.last_click {
-            Some(last_click) => now - last_click < DOUBLE_CLICK_TIME,
-            None => false,
-        };
-        self.last_click = if double_click { None } else { Some(now) };
-        self.held = true;
-        double_click
+        Ok(self.single.check(&state.session, threshold)?
+            || self.double.check(&state.session, threshold)?
+            || self.triple.check(&state.session, threshold)?)
     }
 }
 
@@ -219,8 +226,12 @@ impl OpenXrHand {
             .location_flags
             .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
         {
-            let quat = unsafe { std::mem::transmute::<_, Quat>(location.pose.orientation) };
-            let pos = unsafe { std::mem::transmute::<_, Vec3>(location.pose.position) };
+            let (quat, pos) = unsafe {
+                (
+                    transmute::<Quaternionf, Quat>(location.pose.orientation),
+                    transmute::<Vector3f, Vec3>(location.pose.position),
+                )
+            };
             pointer.pose = Affine3A::from_rotation_translation(quat, pos);
         }
 
@@ -353,31 +364,39 @@ macro_rules! add_custom {
         if let Some(action) = $action.as_ref() {
             if let Some(p) = to_path(&action.left, $instance) {
                 if is_bool(&action.left) {
-                    if action.double_click.unwrap_or(false) {
-                        $bindings.push(xr::Binding::new(&$left.action_bool_double, p));
+                    if action.triple_click.unwrap_or(false) {
+                        $bindings.push(xr::Binding::new(&$right.triple.action_bool, p));
+                    } else if action.double_click.unwrap_or(false) {
+                        $bindings.push(xr::Binding::new(&$left.double.action_bool, p));
                     } else {
-                        $bindings.push(xr::Binding::new(&$left.action_bool, p));
+                        $bindings.push(xr::Binding::new(&$left.single.action_bool, p));
                     }
                 } else {
-                    if action.double_click.unwrap_or(false) {
-                        $bindings.push(xr::Binding::new(&$left.action_f32_double, p));
+                    if action.triple_click.unwrap_or(false) {
+                        $bindings.push(xr::Binding::new(&$right.triple.action_f32, p));
+                    } else if action.double_click.unwrap_or(false) {
+                        $bindings.push(xr::Binding::new(&$left.double.action_f32, p));
                     } else {
-                        $bindings.push(xr::Binding::new(&$left.action_f32, p));
+                        $bindings.push(xr::Binding::new(&$left.single.action_f32, p));
                     }
                 }
             }
             if let Some(p) = to_path(&action.right, $instance) {
                 if is_bool(&action.right) {
-                    if action.double_click.unwrap_or(false) {
-                        $bindings.push(xr::Binding::new(&$right.action_bool_double, p));
+                    if action.triple_click.unwrap_or(false) {
+                        $bindings.push(xr::Binding::new(&$right.triple.action_bool, p));
+                    } else if action.double_click.unwrap_or(false) {
+                        $bindings.push(xr::Binding::new(&$right.double.action_bool, p));
                     } else {
-                        $bindings.push(xr::Binding::new(&$right.action_bool, p));
+                        $bindings.push(xr::Binding::new(&$right.single.action_bool, p));
                     }
                 } else {
-                    if action.double_click.unwrap_or(false) {
-                        $bindings.push(xr::Binding::new(&$right.action_f32_double, p));
+                    if action.triple_click.unwrap_or(false) {
+                        $bindings.push(xr::Binding::new(&$right.triple.action_f32, p));
+                    } else if action.double_click.unwrap_or(false) {
+                        $bindings.push(xr::Binding::new(&$right.double.action_f32, p));
                     } else {
-                        $bindings.push(xr::Binding::new(&$right.action_f32, p));
+                        $bindings.push(xr::Binding::new(&$right.single.action_f32, p));
                     }
                 }
             }
@@ -513,6 +532,7 @@ struct OpenXrActionConfAction {
     right: Option<String>,
     threshold: Option<[f32; 2]>,
     double_click: Option<bool>,
+    triple_click: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

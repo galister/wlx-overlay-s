@@ -7,7 +7,6 @@ use std::{
         atomic::{AtomicUsize, Ordering},
         Arc,
     },
-    usize,
 };
 
 use vulkano::{command_buffer::CommandBufferUsage, format::Format, image::view::ImageView};
