@@ -21,7 +21,7 @@ ctrlc = { version = "3.4.4", features = ["termination"] }
 dbus = { version = "0.9.7" }
 flexi_logger = "0.28.1"
 fontconfig-rs = "0.1.1"
-freetype-rs = "0.37.0"
+freetype-rs = "0.36.0" # latest version supported on ubuntu 22.04
 futures = "0.3.30"
 glam = { version = "0.28.0", features = ["approx", "serde"] }
 idmap = { version = "0.2.21", features = ["serde"] }
