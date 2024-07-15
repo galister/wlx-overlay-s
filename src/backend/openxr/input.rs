@@ -94,6 +94,12 @@ impl<const COUNT: usize> MultiClickHandler<COUNT> {
             log::trace!("{}: passed", self.name);
             self.held_active = true;
             self.held_inactive = false;
+
+            // reset to no prior clicks
+            let long_ago = Instant::now() - Duration::from_secs(10);
+            self.previous
+                .iter_mut()
+                .for_each(|instant| *instant = long_ago)
         } else if COUNT > 0 {
             log::trace!("{}: rotate", self.name);
             self.previous.rotate_right(1);
