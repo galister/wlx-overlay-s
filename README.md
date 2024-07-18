@@ -113,6 +113,13 @@ Check [here](https://github.com/galister/wlx-overlay-s/wiki/Troubleshooting) for
 
 # Known Issues
 
+## Mouse is not where it should be
+Hyprland users: Hyprland v0.41.0 changed their absolute input implementation to one that does not respect existing absolute input standards. Make your voice heard: [Hyprland#6023](https://github.com/hyprwm/Hyprland/issues/6023)・[Hyprland#6889](https://github.com/hyprwm/Hyprland/issues/6889)
+
+Niri users: use on Niri 0.1.7 or later.
+
+Other desktops: You may have selected the screens in the wrong order, see [First Start](#first-start).
+
 ## Space-drag crashes SteamVR
 
 This has been idenfitied as an issue with SteamVR versions 2.5.5 and above (latest tested 2.7.2). One way to avoid the crash is by switching to the `temp-v1.27.5` branch of SteamVR (via beta selection) and selecting [Steam-Play-None](https://github.com/Scrumplex/Steam-Play-None) under the compatibility tab.
