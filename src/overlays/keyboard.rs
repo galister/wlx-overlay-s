@@ -57,7 +57,7 @@ where
     )?;
 
     canvas.bg_color = color_parse("#101010").unwrap(); //safe
-    canvas.panel(0., 0., size.x, size.y);
+    canvas.panel(0., 0., size.x, size.y, 5.);
 
     canvas.font_size = 18;
     canvas.bg_color = color_parse("#202020").unwrap(); //safe
@@ -146,7 +146,7 @@ where
                     if label.is_empty() {
                         label = LAYOUT.label_for_key(key);
                     }
-                    let button = canvas.key_button(x, y, w, h, cap_type, &label);
+                    let button = canvas.key_button(x, y, w, h, 0., cap_type, &label);
                     button.state = Some(state);
                     button.on_press = Some(key_press);
                     button.on_release = Some(key_release);

@@ -11,15 +11,15 @@ spawn_pos: [0, 0, -1]
 
 elements:
   - type: Panel
-    rect: [98, 0, 4, 200]
+    rect: [98, 0, 4, 200, 2]
     bg_color: "#ffff00"
 
   - type: Panel
-    rect: [0, 98, 200, 4]
+    rect: [0, 98, 200, 4, 2]
     bg_color: "#ffff00"
 
   - type: Label
-    rect: [8, 90, 600, 70]
+    rect: [8, 90, 600, 70, 2]
     font_size: 18
     fg_color: "#ffff00"
     source: Static
