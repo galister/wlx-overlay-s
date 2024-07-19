@@ -53,18 +53,18 @@ pub struct OverlayListTemplate {
 #[serde(tag = "type")]
 pub enum ModularElement {
     Panel {
-        rect: [f32; 4],
+        rect: [f32; 5],
         bg_color: Arc<str>,
     },
     Label {
-        rect: [f32; 4],
+        rect: [f32; 5],
         font_size: isize,
         fg_color: Arc<str>,
         #[serde(flatten)]
         data: LabelContent,
     },
     CenteredLabel {
-        rect: [f32; 4],
+        rect: [f32; 5],
         font_size: isize,
         fg_color: Arc<str>,
         #[serde(flatten)]
@@ -76,7 +76,7 @@ pub enum ModularElement {
         sprite_st: Option<[f32; 4]>,
     },
     Button {
-        rect: [f32; 4],
+        rect: [f32; 5],
         font_size: isize,
         fg_color: Arc<str>,
         bg_color: Arc<str>,
@@ -86,7 +86,7 @@ pub enum ModularElement {
     },
     /// Convenience type to save you from having to create a bunch of labels
     BatteryList {
-        rect: [f32; 4],
+        rect: [f32; 5],
         font_size: isize,
         fg_color: Arc<str>,
         fg_color_low: Arc<str>,
@@ -96,7 +96,7 @@ pub enum ModularElement {
         layout: ListLayout,
     },
     OverlayList {
-        rect: [f32; 4],
+        rect: [f32; 5],
         font_size: isize,
         fg_color: Arc<str>,
         bg_color: Arc<str>,
@@ -139,32 +139,32 @@ pub fn modular_canvas(
     for elem in elements.iter() {
         match elem {
             ModularElement::Panel {
-                rect: [x, y, w, h],
+                rect: [x, y, w, h, r],
                 bg_color,
             } => {
                 canvas.bg_color = color_parse(bg_color).unwrap_or(*FALLBACK_COLOR);
-                canvas.panel(*x, *y, *w, *h);
+                canvas.panel(*x, *y, *w, *h, *r);
             }
             ModularElement::Label {
-                rect: [x, y, w, h],
+                rect: [x, y, w, h, r],
                 font_size,
                 fg_color,
                 data,
             } => {
                 canvas.font_size = *font_size;
                 canvas.fg_color = color_parse(fg_color).unwrap_or(*FALLBACK_COLOR);
-                let label = canvas.label(*x, *y, *w, *h, empty_str.clone());
+                let label = canvas.label(*x, *y, *w, *h, *r, empty_str.clone());
                 modular_label_init(label, data);
             }
             ModularElement::CenteredLabel {
-                rect: [x, y, w, h],
+                rect: [x, y, w, h, r],
                 font_size,
                 fg_color,
                 data,
             } => {
                 canvas.font_size = *font_size;
                 canvas.fg_color = color_parse(fg_color).unwrap_or(*FALLBACK_COLOR);
-                let label = canvas.label_centered(*x, *y, *w, *h, empty_str.clone());
+                let label = canvas.label_centered(*x, *y, *w, *h, *r, empty_str.clone());
                 modular_label_init(label, data);
             }
             ModularElement::Sprite {
@@ -187,7 +187,7 @@ pub fn modular_canvas(
                 }
             },
             ModularElement::Button {
-                rect: [x, y, w, h],
+                rect: [x, y, w, h, r],
                 font_size,
                 bg_color,
                 fg_color,
@@ -197,11 +197,11 @@ pub fn modular_canvas(
                 canvas.bg_color = color_parse(bg_color).unwrap_or(*FALLBACK_COLOR);
                 canvas.fg_color = color_parse(fg_color).unwrap_or(*FALLBACK_COLOR);
                 canvas.font_size = *font_size;
-                let button = canvas.button(*x, *y, *w, *h, text.clone());
+                let button = canvas.button(*x, *y, *w, *h, *r, text.clone());
                 modular_button_init(button, data);
             }
             ModularElement::BatteryList {
-                rect: [x, y, w, h],
+                rect: [x, y, w, h, r],
                 font_size,
                 fg_color,
                 fg_color_low,
@@ -229,6 +229,7 @@ pub fn modular_canvas(
                         button_y + 2.,
                         button_w - 4.,
                         button_h - 4.,
+                        *r,
                         empty_str.clone(),
                     );
                     modular_label_init(
@@ -252,7 +253,7 @@ pub fn modular_canvas(
                 }
             }
             ModularElement::OverlayList {
-                rect: [x, y, w, h],
+                rect: [x, y, w, h, r],
                 font_size,
                 fg_color,
                 bg_color,
@@ -277,6 +278,7 @@ pub fn modular_canvas(
                         button_y + 2.,
                         button_w - 4.,
                         button_h - 4.,
+                        *r,
                         screen.name.clone(),
                     );
 
