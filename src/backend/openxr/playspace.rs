@@ -1,7 +1,6 @@
-use std::ffi::c_void;
-
-use glam::{Affine3A, Quat, Vec3A};
+use glam::{Affine3A, Quat, Vec3, Vec3A};
 use libloading::{Library, Symbol};
+use std::ffi::c_void;
 
 use crate::{
     backend::{common::OverlayContainer, input::InputState},
@@ -11,10 +10,16 @@ use crate::{
 use super::{helpers, overlay::OpenXrOverlayData};
 
 #[repr(C)]
+#[derive(Default, Debug)]
 struct XrtPose {
     orientation: [f32; 4],
     position: [f32; 3],
 }
+
+const XRT_REFERENCE_TYPE_STAGE: i32 = 3;
+
+const MND_SUCCESS: i32 = 0;
+const MND_ERROR_BAD_SPACE_TYPE: i32 = -7;
 
 struct MoverData<T> {
     pose: Affine3A,
@@ -22,16 +27,23 @@ struct MoverData<T> {
     hand_pose: T,
 }
 
-// Legacy implementation
+// Legacy implementations
 type PlaySpaceMove = extern "C" fn(*mut c_void, f32, f32, f32) -> i32;
-
-// New implementation
 type ApplyStageOffset = extern "C" fn(*mut c_void, *const XrtPose) -> i32;
 
+// New implementation
+type GetReferenceSpaceOffset = extern "C" fn(*mut c_void, i32, *mut XrtPose) -> i32;
+type SetReferenceSpaceOffset = extern "C" fn(*mut c_void, i32, *const XrtPose) -> i32;
+
+// TODO: Clean up after merge into upstream Monado
 enum ApiImpl {
     None,
     PlaySpaceMove(PlaySpaceMove),
     ApplyStageOffset(ApplyStageOffset),
+    SpaceOffsetApi {
+        get_reference: GetReferenceSpaceOffset,
+        set_reference: SetReferenceSpaceOffset,
+    },
 }
 
 pub(super) struct PlayspaceMover {
@@ -52,12 +64,47 @@ impl PlayspaceMover {
             let root_create: Symbol<extern "C" fn(*mut *mut c_void) -> i32> =
                 libmonado.get(b"mnd_root_create\0")?;
 
+            let mut root: *mut c_void = std::ptr::null_mut();
+            let ret = root_create(&mut root);
+            if ret != 0 {
+                anyhow::bail!("Failed to create root, code: {}", ret);
+            }
+
             let mut api_impl = ApiImpl::None;
-            if let Ok(playspace_move) = libmonado.get(b"mnd_root_playspace_move\0") {
-                log::info!("Monado: using playspace_move");
+            let mut initial_offset = Affine3A::IDENTITY;
+
+            if let (Ok(get_reference), Ok(set_reference)) = (
+                libmonado.get(b"mnd_root_get_reference_space_offset\0"),
+                libmonado.get(b"mnd_root_set_reference_space_offset\0"),
+            ) {
+                log::info!("Monado: using space offset API");
+
+                let get_reference: GetReferenceSpaceOffset = *get_reference;
+                let set_reference: SetReferenceSpaceOffset = *set_reference;
+
+                let mut stage = XrtPose::default();
+                match (get_reference)(root, XRT_REFERENCE_TYPE_STAGE, &mut stage) {
+                    MND_SUCCESS => {
+                        log::debug!("STAGE is at {:?}, {:?}", stage.position, stage.orientation);
+                        initial_offset = Affine3A::from_rotation_translation(
+                            Quat::from_slice(&stage.orientation),
+                            Vec3::from_slice(&stage.position),
+                        );
+                    }
+                    _ => anyhow::bail!("Space offsets not supported."),
+                };
+
+                api_impl = ApiImpl::SpaceOffsetApi {
+                    get_reference,
+                    set_reference,
+                };
+            } else if let Ok(playspace_move) = libmonado.get(b"mnd_root_playspace_move\0") {
+                log::warn!("Monado: using playspace_move, which is obsolete. Consider updating.");
                 api_impl = ApiImpl::PlaySpaceMove(*playspace_move);
             } else if let Ok(apply_stage_offset) = libmonado.get(b"mnd_root_apply_stage_offset\0") {
-                log::info!("Monado: using apply_stage_offset");
+                log::warn!(
+                    "Monado: using apply_stage_offset, which is obsolete. Consider updating."
+                );
                 api_impl = ApiImpl::ApplyStageOffset(*apply_stage_offset);
             }
 
@@ -65,16 +112,9 @@ impl PlayspaceMover {
                 anyhow::bail!("Monado does not support playspace mover.");
             }
 
-            let mut root: *mut c_void = std::ptr::null_mut();
-
-            let ret = root_create(&mut root);
-
-            if ret != 0 {
-                anyhow::bail!("Failed to create root, code: {}", ret);
-            }
-
             Ok(Self {
-                last_transform: Affine3A::IDENTITY,
+                last_transform: initial_offset,
+
                 drag: None,
                 rotate: None,
 
@@ -95,7 +135,7 @@ impl PlayspaceMover {
             }
 
             let new_hand =
-                Quat::from_affine3(&(data.pose * state.input_state.pointers[data.hand].raw_pose));
+                Quat::from_affine3(&(data.pose * state.input_state.pointers[data.hand].pose));
 
             let dq = new_hand * data.hand_pose.conjugate();
             let rel_y = f32::atan2(
@@ -103,6 +143,7 @@ impl PlayspaceMover {
                 (2.0 * (dq.w * dq.w + dq.x * dq.x)) - 1.0,
             );
 
+            //let mut space_transform = Affine3A::from_rotation_translation(dq, Vec3::ZERO);
             let mut space_transform = Affine3A::from_rotation_y(rel_y);
             let offset = (space_transform.transform_vector3a(state.input_state.hmd.translation)
                 - state.input_state.hmd.translation)
@@ -239,6 +280,19 @@ impl PlayspaceMover {
                     position: transform.translation.into(),
                 };
                 (apply_stage_offset)(self.mnd_root, &xrt_pose);
+            }
+            ApiImpl::SpaceOffsetApi { set_reference, .. } => {
+                let xrt_pose = XrtPose {
+                    orientation: Quat::from_affine3(&transform).into(),
+                    position: transform.translation.into(),
+                };
+
+                let mnd_result =
+                    (set_reference)(self.mnd_root, XRT_REFERENCE_TYPE_STAGE, &xrt_pose);
+                //let mnd_result = (set_offset)(self.mnd_root, 0, &xrt_pose);
+                if mnd_result != MND_SUCCESS {
+                    log::warn!("Cannot move playspace: MND result code {}", mnd_result);
+                }
             }
             ApiImpl::None => {}
         }
