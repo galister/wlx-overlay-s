@@ -371,7 +371,7 @@ macro_rules! add_custom {
             if let Some(p) = to_path(&action.left, $instance) {
                 if is_bool(&action.left) {
                     if action.triple_click.unwrap_or(false) {
-                        $bindings.push(xr::Binding::new(&$right.triple.action_bool, p));
+                        $bindings.push(xr::Binding::new(&$left.triple.action_bool, p));
                     } else if action.double_click.unwrap_or(false) {
                         $bindings.push(xr::Binding::new(&$left.double.action_bool, p));
                     } else {
@@ -379,7 +379,7 @@ macro_rules! add_custom {
                     }
                 } else {
                     if action.triple_click.unwrap_or(false) {
-                        $bindings.push(xr::Binding::new(&$right.triple.action_f32, p));
+                        $bindings.push(xr::Binding::new(&$left.triple.action_f32, p));
                     } else if action.double_click.unwrap_or(false) {
                         $bindings.push(xr::Binding::new(&$left.double.action_f32, p));
                     } else {
