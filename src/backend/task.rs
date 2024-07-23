@@ -46,6 +46,7 @@ pub enum SystemTask {
     ColorGain(ColorChannel, f32),
     ResetPlayspace,
     FixFloor,
+    ShowHide,
 }
 
 pub type OverlayTask = dyn FnOnce(&mut AppState, &mut OverlayState) + Send;

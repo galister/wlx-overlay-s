@@ -1,5 +1,6 @@
 use std::{
     collections::VecDeque,
+    ops::Add,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
@@ -95,6 +96,13 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         AppState::from_graphics(graphics)?
     };
 
+    if show_by_default {
+        state.tasks.enqueue_at(
+            TaskType::System(SystemTask::ShowHide),
+            Instant::now().add(Duration::from_secs(1)),
+        )
+    }
+
     if let Ok(ipd) = system_mgr.get_tracked_device_property::<f32>(
         TrackedDeviceIndex::HMD,
         ETrackedDeviceProperty::Prop_UserIpdMeters_Float,
@@ -105,7 +113,7 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
 
     let _ = install_manifest(&mut app_mgr);
 
-    let mut overlays = OverlayContainer::<OpenVrOverlayData>::new(&mut state, show_by_default)?;
+    let mut overlays = OverlayContainer::<OpenVrOverlayData>::new(&mut state)?;
     let mut notifications = NotificationManager::new();
     notifications.run_dbus();
     notifications.run_udp();
@@ -249,6 +257,9 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                     }
                     SystemTask::ResetPlayspace => {
                         playspace.reset_offset(&mut chaperone_mgr, &state.input_state);
+                    }
+                    SystemTask::ShowHide => {
+                        overlays.show_hide(&mut state);
                     }
                 },
             }

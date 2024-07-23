@@ -60,7 +60,7 @@ impl<T> OverlayContainer<T>
 where
     T: Default,
 {
-    pub fn new(app: &mut AppState, show_by_default: bool) -> anyhow::Result<Self> {
+    pub fn new(app: &mut AppState) -> anyhow::Result<Self> {
         let mut overlays = IdMap::new();
         let mut wl = create_wl_client();
 
@@ -95,7 +95,6 @@ where
         for (meta, mut state, backend) in data.screens {
             if show_screens.arc_get(state.name.as_ref()) {
                 state.show_hide = true;
-                state.want_visible = show_by_default;
             }
             overlays.insert(
                 state.id,

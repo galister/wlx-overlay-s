@@ -1,10 +1,11 @@
 use std::{
     collections::VecDeque,
+    ops::Add,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use glam::{Affine3A, Vec3};
@@ -66,7 +67,14 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         AppState::from_graphics(graphics)?
     };
 
-    let mut overlays = OverlayContainer::<OpenXrOverlayData>::new(&mut app_state, show_by_default)?;
+    if show_by_default {
+        app_state.tasks.enqueue_at(
+            TaskType::System(SystemTask::ShowHide),
+            Instant::now().add(Duration::from_secs(1)),
+        )
+    }
+
+    let mut overlays = OverlayContainer::<OpenXrOverlayData>::new(&mut app_state)?;
     let mut lines = LinePool::new(app_state.graphics.clone())?;
 
     let mut notifications = NotificationManager::new();
@@ -383,6 +391,9 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                         if let Some(ref mut playspace) = playspace {
                             playspace.reset_offset();
                         }
+                    }
+                    SystemTask::ShowHide => {
+                        overlays.show_hide(&mut app_state);
                     }
                     _ => {}
                 },
