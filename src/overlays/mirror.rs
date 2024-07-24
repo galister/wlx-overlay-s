@@ -57,30 +57,33 @@ impl OverlayRenderer for MirrorRenderer {
                 }
             };
 
-            if let Ok(pw_result) = maybe_pw_result {
-                let node_id = pw_result.streams.first().unwrap().node_id; // streams guaranteed to have at least one element
-                log::info!("{}: PipeWire node selected: {}", self.name.clone(), node_id,);
-                let capture = PipewireCapture::new(self.name.clone(), node_id);
-                self.renderer = Some(ScreenRenderer::new_raw(
-                    self.name.clone(),
-                    Box::new(capture),
-                ));
-                app.tasks.enqueue(TaskType::Overlay(
-                    OverlaySelector::Name(self.name.clone()),
-                    Box::new(|app, o| {
-                        o.grabbable = true;
-                        o.interactable = true;
-                        o.reset(app, false);
-                    }),
-                ));
-            } else {
-                log::warn!("Failed to create pipewire mirror");
-                self.renderer = None;
-                // drop self
-                app.tasks
-                    .enqueue(TaskType::DropOverlay(OverlaySelector::Name(
+            match maybe_pw_result {
+                Ok(pw_result) => {
+                    let node_id = pw_result.streams.first().unwrap().node_id; // streams guaranteed to have at least one element
+                    log::info!("{}: PipeWire node selected: {}", self.name.clone(), node_id);
+                    let capture = PipewireCapture::new(self.name.clone(), node_id);
+                    self.renderer = Some(ScreenRenderer::new_raw(
                         self.name.clone(),
-                    )));
+                        Box::new(capture),
+                    ));
+                    app.tasks.enqueue(TaskType::Overlay(
+                        OverlaySelector::Name(self.name.clone()),
+                        Box::new(|app, o| {
+                            o.grabbable = true;
+                            o.interactable = true;
+                            o.reset(app, false);
+                        }),
+                    ));
+                }
+                Err(e) => {
+                    log::warn!("Failed to create mirror due to PipeWire error: {:?}", e);
+                    self.renderer = None;
+                    // drop self
+                    app.tasks
+                        .enqueue(TaskType::DropOverlay(OverlaySelector::Name(
+                            self.name.clone(),
+                        )));
+                }
             }
         }
 
