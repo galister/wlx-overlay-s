@@ -11,18 +11,21 @@ spawn_pos: [0, -0.1, -0.5]
 
 elements:
   - type: Panel
-    rect: [0, 0, 600, 800, 2]
+    rect: [0, 0, 600, 800]
+    corner_radius: 2
     bg_color: "#102030"
 
   - type: Label
-    rect: [15, 35, 600, 70, 2]
+    rect: [15, 35, 600, 70]
+    corner_radius: 2
     font_size: 24
     fg_color: "#ffffff"
     source: Static
     text: Settings
 
   - type: Button
-    rect: [560, 0, 40, 40, 2]
+    rect: [560, 0, 40, 40]
+    corner_radius: 2
     font_size: 16
     bg_color: "#880000"
     fg_color: "#ffffff"
@@ -33,31 +36,36 @@ elements:
         action: Destroy
 
   - type: Panel
-    rect: [50, 53, 500, 1, 2]
+    rect: [50, 53, 500, 1]
+    corner_radius: 2
     bg_color: "#c0c0c0"
 
   ####### Watch Section #######
 
   - type: Label
-    rect: [15, 85, 570, 24, 2]
+    rect: [15, 85, 570, 24]
+    corner_radius: 2
     font_size: 18
     fg_color: "#ffffff"
     source: Static
     text: Watch
 
   - type: Panel
-    rect: [250, 105, 1, 100, 2]
+    rect: [250, 105, 1, 100]
+    corner_radius: 2
     bg_color: "#c0c0c0"
 
   - type: Label
-    rect: [288, 105, 100, 24, 2]
+    rect: [288, 105, 100, 24]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     source: Static
     text: Visibility
 
   - type: Button
-    rect: [270, 120, 100, 30, 2]
+    rect: [270, 120, 100, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#306060"
@@ -67,7 +75,8 @@ elements:
         action: Hide
 
   - type: Button
-    rect: [270, 170, 100, 30, 2]
+    rect: [270, 170, 100, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#306060"
@@ -77,18 +86,21 @@ elements:
         action: SwitchHands
 
   - type: Panel
-    rect: [390, 105, 1, 100, 2]
+    rect: [390, 105, 1, 100]
+    corner_radius: 2
     bg_color: "#c0c0c0"
 
   - type: Label
-    rect: [430, 105, 120, 24, 2]
+    rect: [430, 105, 120, 24]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     source: Static
     text: Watch Fade
 
   - type: Button
-    rect: [410, 120, 140, 30, 2]
+    rect: [410, 120, 140, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#306060"
@@ -106,7 +118,8 @@ elements:
           ViewAngle: {kind: "MaxOpacity", delta: -0.01}
 
   - type: Button
-    rect: [410, 170, 140, 30, 2]
+    rect: [410, 170, 140, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#306060"
@@ -124,14 +137,16 @@ elements:
           ViewAngle: {kind: "MinOpacity", delta: -0.01}
 
   - type: Label
-    rect: [25, 140, 90, 30, 2]
+    rect: [25, 140, 90, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     source: Static
     text: Rotation
 
   - type: Button
-    rect: [108, 120, 30, 30, 2]
+    rect: [108, 120, 30, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#306060"
@@ -149,7 +164,8 @@ elements:
           Rotation: {axis: "X", delta: -0.25}
 
   - type: Button
-    rect: [153, 120, 30, 30, 2]
+    rect: [153, 120, 30, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#306060"
@@ -167,7 +183,8 @@ elements:
           Rotation: {axis: "Y", delta: -0.25}
 
   - type: Button
-    rect: [198, 120, 30, 30, 2]
+    rect: [198, 120, 30, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#306060"
@@ -185,14 +202,16 @@ elements:
           Rotation: {axis: "Z", delta: -0.25}
 
   - type: Label
-    rect: [25, 190, 90, 30, 2]
+    rect: [25, 190, 90, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     source: Static
     text: Position
 
   - type: Button
-    rect: [108, 170, 30, 30, 2]
+    rect: [108, 170, 30, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#306060"
@@ -210,7 +229,8 @@ elements:
           Position: {axis: "X", delta: -0.001}
 
   - type: Button
-    rect: [153, 170, 30, 30, 2]
+    rect: [153, 170, 30, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#306060"
@@ -228,7 +248,8 @@ elements:
           Position: {axis: "Y", delta: -0.001}
 
   - type: Button
-    rect: [198, 170, 30, 30, 2]
+    rect: [198, 170, 30, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#306060"
@@ -246,26 +267,30 @@ elements:
           Position: {axis: "Z", delta: -0.001}
 
   - type: Panel
-    rect: [50, 220, 500, 1, 2]
+    rect: [50, 220, 500, 1]
+    corner_radius: 2
     bg_color: "#c0c0c0"
 
   ####### Mirror Section #######
   - type: Label
-    rect: [15, 255, 570, 24, 2]
+    rect: [15, 255, 570, 24]
+    corner_radius: 2
     font_size: 18
     fg_color: "#ffffff"
     source: Static
     text: Mirrors
 
   - type: Label
-    rect: [25, 290, 30, 30, 2]
+    rect: [25, 290, 30, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     source: Static
     text: M1
 
   - type: Button
-    rect: [60, 270, 110, 30, 2]
+    rect: [60, 270, 110, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#707070"
@@ -279,7 +304,8 @@ elements:
         action: ShowMirror # only fires if not exists
 
   - type: Button
-    rect: [185, 270, 60, 30, 2]
+    rect: [185, 270, 60, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#707070"
@@ -290,7 +316,8 @@ elements:
         action: ToggleInteraction
 
   - type: Button
-    rect: [258, 270, 30, 30, 2]
+    rect: [258, 270, 30, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#880000"
@@ -301,14 +328,16 @@ elements:
         action: Destroy
 
   - type: Label
-    rect: [25, 340, 30, 30, 2]
+    rect: [25, 340, 30, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     source: Static
     text: M2
 
   - type: Button
-    rect: [60, 320, 110, 30, 2]
+    rect: [60, 320, 110, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#707070"
@@ -322,7 +351,8 @@ elements:
         action: ShowMirror
 
   - type: Button
-    rect: [185, 320, 60, 30, 2]
+    rect: [185, 320, 60, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#707070"
@@ -333,7 +363,8 @@ elements:
         action: ToggleInteraction
 
   - type: Button
-    rect: [258, 320, 30, 30, 2]
+    rect: [258, 320, 30, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#880000"
@@ -344,14 +375,16 @@ elements:
         action: Destroy
 
   - type: Label
-    rect: [25, 390, 30, 30, 2]
+    rect: [25, 390, 30, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     source: Static
     text: M3
 
   - type: Button
-    rect: [60, 370, 110, 30, 2]
+    rect: [60, 370, 110, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#707070"
@@ -365,7 +398,8 @@ elements:
         action: ShowMirror
 
   - type: Button
-    rect: [185, 370, 60, 30, 2]
+    rect: [185, 370, 60, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#707070"
@@ -376,7 +410,8 @@ elements:
         action: ToggleInteraction
 
   - type: Button
-    rect: [258, 370, 30, 30, 2]
+    rect: [258, 370, 30, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#880000"
@@ -387,27 +422,31 @@ elements:
         action: Destroy
 
   - type: Panel
-    rect: [300, 240, 1, 200, 2]
+    rect: [300, 240, 1, 200]
+    corner_radius: 2
     bg_color: "#c0c0c0"
 
   ####### Color Gain Section #######
 
   - type: Label
-    rect: [325, 255, 90, 24, 2]
+    rect: [325, 255, 90, 24]
+    corner_radius: 2
     font_size: 18
     fg_color: "#ffffff"
     source: Static
     text: Color Gain
 
   - type: Label
-    rect: [470, 255, 90, 30, 2]
+    rect: [470, 255, 90, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     source: Static
     text: (SteamVR)
 
   - type: Button
-    rect: [330, 270, 60, 30, 2]
+    rect: [330, 270, 60, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#707070"
@@ -425,7 +464,8 @@ elements:
         delta: -0.01
 
   - type: Button
-    rect: [405, 270, 30, 30, 2]
+    rect: [405, 270, 30, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#701010"
@@ -443,7 +483,8 @@ elements:
         delta: -0.01
 
   - type: Button
-    rect: [450, 270, 30, 30, 2]
+    rect: [450, 270, 30, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#107010"
@@ -461,7 +502,8 @@ elements:
         delta: -0.01
 
   - type: Button
-    rect: [495, 270, 30, 30, 2]
+    rect: [495, 270, 30, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#101070"
@@ -479,20 +521,23 @@ elements:
         delta: -0.01
 
   - type: Panel
-    rect: [325, 315, 225, 1, 2]
+    rect: [325, 315, 225, 1]
+    corner_radius: 2
     bg_color: "#c0c0c0"
 
   ####### Playspace Section #######
 
   - type: Label
-    rect: [325, 345, 90, 24, 2]
+    rect: [325, 345, 90, 24]
+    corner_radius: 2
     font_size: 18
     fg_color: "#ffffff"
     source: Static
     text: Playspace
 
   - type: Button
-    rect: [330, 360, 220, 30, 2]
+    rect: [330, 360, 220, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#206060"
@@ -502,7 +547,8 @@ elements:
         action: PlayspaceFixFloor
 
   - type: Button
-    rect: [330, 410, 220, 30, 2]
+    rect: [330, 410, 220, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#206060"
@@ -514,18 +560,21 @@ elements:
   ####### Notifications Section #######
 
   - type: Panel
-    rect: [50, 460, 500, 1, 2]
+    rect: [50, 460, 500, 1]
+    corner_radius: 2
     bg_color: "#c0c0c0"
 
   - type: Label
-    rect: [325, 490, 90, 24, 2]
+    rect: [325, 490, 90, 24]
+    corner_radius: 2
     font_size: 18
     fg_color: "#ffffff"
     source: Static
     text: Notifications
 
   - type: Button
-    rect: [330, 505, 220, 30, 2]
+    rect: [330, 505, 220, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#401010"
@@ -536,7 +585,8 @@ elements:
     highlight: Notifications
 
   - type: Button
-    rect: [330, 555, 220, 30, 2]
+    rect: [330, 555, 220, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#401010"
@@ -548,14 +598,16 @@ elements:
 
   ####### Behavior Section #######
   - type: Label
-    rect: [15, 490, 570, 24, 2]
+    rect: [15, 490, 570, 24]
+    corner_radius: 2
     font_size: 18
     fg_color: "#ffffff"
     source: Static
     text: Behavior
 
   - type: Button
-    rect: [30, 505, 220, 30, 2]
+    rect: [30, 505, 220, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#401010"
@@ -566,7 +618,8 @@ elements:
     highlight: AutoRealign
 
   - type: Button
-    rect: [30, 555, 220, 30, 2]
+    rect: [30, 555, 220, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#401010"
@@ -579,11 +632,13 @@ elements:
   ####### Footer Section #######
 
   - type: Panel
-    rect: [50, 605, 500, 1, 2]
+    rect: [50, 605, 500, 1]
+    corner_radius: 2
     bg_color: "#c0c0c0"
 
   - type: Button
-    rect: [330, 625, 220, 30, 2]
+    rect: [330, 625, 220, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#206060"
@@ -595,7 +650,8 @@ elements:
         message: Settings saved successfully.
 
   - type: Button
-    rect: [30, 625, 250, 30, 2]
+    rect: [30, 625, 250, 30]
+    corner_radius: 2
     font_size: 12
     fg_color: "#ffffff"
     bg_color: "#206060"

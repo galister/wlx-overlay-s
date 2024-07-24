@@ -26,7 +26,6 @@ pub struct Rect {
     y: f32,
     w: f32,
     h: f32,
-    r: f32,
 }
 
 pub struct CanvasData<D> {
