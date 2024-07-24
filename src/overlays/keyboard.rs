@@ -56,11 +56,12 @@ where
         data,
     )?;
 
-    canvas.bg_color = color_parse("#101010").unwrap(); //safe
-    canvas.panel(0., 0., size.x, size.y, 5.);
+    canvas.bg_color = color_parse("#181926").unwrap(); //safe
+    canvas.panel(0., 0., size.x, size.y, 12.);
 
     canvas.font_size = 18;
-    canvas.bg_color = color_parse("#202020").unwrap(); //safe
+    canvas.fg_color = color_parse("#cad3f5").unwrap(); //safe
+    canvas.bg_color = color_parse("#1e2030").unwrap(); //safe
 
     let has_altgr = keymap.as_ref().map_or(false, |k| k.has_altgr());
 
@@ -146,7 +147,7 @@ where
                     if label.is_empty() {
                         label = LAYOUT.label_for_key(key);
                     }
-                    let button = canvas.key_button(x, y, w, h, 0., cap_type, &label);
+                    let button = canvas.key_button(x, y, w, h, 12., cap_type, &label);
                     button.state = Some(state);
                     button.on_press = Some(key_press);
                     button.on_release = Some(key_release);
@@ -268,7 +269,7 @@ fn key_release(
     }
 }
 
-static PRESS_COLOR: Vec4 = Vec4::new(1.0, 1.0, 1.0, 0.5);
+static PRESS_COLOR: Vec4 = Vec4::new(198./255., 160./255., 246./255., 0.5);
 
 fn test_highlight(
     control: &Control<KeyboardData, KeyButtonData>,
