@@ -114,139 +114,35 @@ impl<D, S> Control<D, S> {
         cmd_buffer: &mut WlxCommandBuffer,
     ) -> anyhow::Result<()> {
         let pass = {
-            let r = self.corner_radius.min(self.rect.w / 2.0).min(self.rect.h / 2.0);
-            let rw = r / canvas.width as f32;
-            let ruw = r / self.rect.w as f32;
-            let rh = r / canvas.height as f32;
-            let ruh = r / self.rect.h as f32;
+            let vertex_buffer = canvas.graphics.upload_verts(
+                canvas.width as _,
+                canvas.height as _,
+                self.rect.x,
+                self.rect.y,
+                self.rect.w,
+                self.rect.h,
+            )?;
 
-            let x0 = self.rect.x / canvas.width as f32 + rw;
-            let y0 = self.rect.y / canvas.height as f32 + rh;
+            let clamped_radius = self.corner_radius.min(self.rect.w / 2.0).min(self.rect.h / 2.0);
 
-            let x1 = self.rect.w / canvas.width as f32 + x0 - rw - rw;
-            let y1 = self.rect.h / canvas.height as f32 + y0 - rh - rh;
-
-            let pi6s = (PI/6.).sin();
-            let pi6c = (PI/6.).cos();
-            let pi3s = (PI/3.).sin();
-            let pi3c = (PI/3.).cos();
-
-            let vertices = [
-                // Top Left Corner (0-3)
-                Vert2Uv {
-                    in_pos: [x0 - rw, y0],
-                    in_uv: [0.0, ruh],
-                },
-                Vert2Uv {
-                    in_pos: [x0 - rw * pi6c, y0 - rh * pi6s],
-                    in_uv: [ruw - ruw * pi6c, ruh - ruh * pi6s],
-                },
-                Vert2Uv {
-                    in_pos: [x0 - rw * pi3c, y0 - rh * pi3s],
-                    in_uv: [ruw - ruw * pi3c, ruh - ruh * pi3s],
-                },
-                Vert2Uv {
-                    in_pos: [x0, y0 - rh],
-                    in_uv: [ruw, 0.0],
-                },
-
-                // Top Right Corner (4-7)
-                Vert2Uv {
-                    in_pos: [x1, y0 - rh],
-                    in_uv: [1.0 - ruw, 0.0],
-                },
-                Vert2Uv {
-                    in_pos: [x1 + rw * pi3c, y0 - rh * pi3s],
-                    in_uv: [1.0 - ruw + ruw * pi3c, ruh - ruh * pi3s],
-                },
-                Vert2Uv {
-                    in_pos: [x1 + rw * pi6c, y0 - rh * pi6s],
-                    in_uv: [1.0 - ruw + ruw * pi6c, ruh - ruh * pi6s],
-                },
-                Vert2Uv {
-                    in_pos: [x1 + rw, y0],
-                    in_uv: [1.0, ruh],
-                },
-
-                // Bottom Right Corner (8-11)
-                Vert2Uv {
-                    in_pos: [x1 + rw, y1],
-                    in_uv: [1.0, 1.0 - ruh],
-                },
-                Vert2Uv {
-                    in_pos: [x1 + rw * pi6c, y1 + rh * pi6s],
-                    in_uv: [1.0 - ruw + ruw * pi6c, 1.0 - ruh + ruh * pi6s],
-                },
-                Vert2Uv {
-                    in_pos: [x1 + rw * pi3c, y1 + rh * pi3s],
-                    in_uv: [1.0 - ruw + ruw * pi3c, 1.0 - ruh + ruh * pi3s],
-                },
-                Vert2Uv {
-                    in_pos: [x1, y1 + rh],
-                    in_uv: [1.0 - ruw, 1.0],
-                },
-
-                // Bottom Left Corner (12-15)
-                Vert2Uv {
-                    in_pos: [x0, y1 + rh],
-                    in_uv: [ruw, 1.0],
-                },
-                Vert2Uv {
-                    in_pos: [x0 - rw * pi3c, y1 + rh * pi3s],
-                    in_uv: [ruw - ruw * pi3c, 1.0 - ruh + ruh * pi3s],
-                },
-                Vert2Uv {
-                    in_pos: [x0 - rw * pi6c, y1 + rh * pi6s],
-                    in_uv: [ruw - ruw * pi6c, 1.0 - ruh + ruh * pi6s],
-                },
-                Vert2Uv {
-                    in_pos: [x0 - rw, y1],
-                    in_uv: [0.0, 1.0 - ruh],
-                },
-            ];
-
-            let mut vertex_string = String::from("[");
-            for vertex in vertices.iter() {
-                vertex_string.push('(');
-                vertex_string.push_str(&vertex.in_uv[0].to_string());
-                vertex_string.push(',');
-                vertex_string.push_str(&vertex.in_uv[1].to_string());
-                vertex_string.push_str("),");
-            }
-            vertex_string.push(']');
-            //log::info!("{}", vertex_string);
-
-            let vertex_buffer = canvas.graphics.upload_buffer(BufferUsage::VERTEX_BUFFER, vertices.iter())?;
+            let skew_radius = vec![
+                clamped_radius / self.rect.w,
+                clamped_radius / self.rect.h];
 
             let set0 = canvas
                 .pipeline_bg_color
-                .uniform_buffer(0, self.bg_color.to_array().to_vec())?;
-
-            let indices: [u16; 42] =
-                [0,1,15, 14,15,1
-                ,1,2,14, 13,14,2
-                ,2,3,13, 12,13,3
-                ,3,4,12, 11,12,4
-                ,4,5,11, 10,12,5
-                ,5,6,10,  9,10,6
-                ,6,7,9,   8, 9,7];
+                .uniform_buffer(0, vec![
+                    self.bg_color.x,
+                    self.bg_color.y,
+                    self.bg_color.z,
+                    self.bg_color.w,
+                    skew_radius[0],
+                    skew_radius[1]])?;
 
             canvas.pipeline_bg_color.create_pass(
                 [canvas.width as _, canvas.height as _],
                 vertex_buffer,
-                Buffer::from_iter(
-                    canvas.graphics.memory_allocator.clone(),
-                    BufferCreateInfo {
-                        usage: BufferUsage::INDEX_BUFFER,
-                        ..Default::default()
-                    },
-                    AllocationCreateInfo {
-                        memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
-                            | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
-                        ..Default::default()
-                    },
-                    indices.iter().cloned(),
-                )?,
+                canvas.graphics.quad_indices.clone(),
                 vec![set0],
             )?
         };
@@ -269,9 +165,17 @@ impl<D, S> Control<D, S> {
                 self.rect.w,
                 self.rect.h,
             )?;
+
             let set0 = canvas
                 .pipeline_bg_color
-                .uniform_buffer(0, self.bg_color.to_array().to_vec())?;
+                .uniform_buffer(0, vec![
+                    self.bg_color.x,
+                    self.bg_color.y,
+                    self.bg_color.z,
+                    self.bg_color.w,
+                    0.,
+                    0.])?;
+
             canvas.pipeline_bg_color.create_pass(
                 [canvas.width as _, canvas.height as _],
                 vertex_buffer,
@@ -299,9 +203,21 @@ impl<D, S> Control<D, S> {
             self.rect.h,
         )?;
 
+        let clamped_radius = self.corner_radius.min(self.rect.w / 2.0).min(self.rect.h / 2.0);
+
+        let skew_radius = vec![
+            clamped_radius / self.rect.w,
+            clamped_radius / self.rect.h];
+
         let set0 = canvas
             .pipeline_bg_color
-            .uniform_buffer(0, color.to_array().to_vec())?;
+            .uniform_buffer(0, vec![
+                color.x,
+                color.y,
+                color.z,
+                color.w,
+                skew_radius[0],
+                skew_radius[1]])?;
 
         let pass = canvas.pipeline_bg_color.create_pass(
             [canvas.width as _, canvas.height as _],
