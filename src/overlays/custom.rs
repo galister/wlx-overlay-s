@@ -12,7 +12,7 @@ use crate::{
 const SETTINGS_NAME: &str = "settings";
 
 pub fn create_custom(
-    state: &AppState,
+    state: &mut AppState,
     name: Arc<str>,
 ) -> Option<(OverlayState, Box<dyn OverlayBackend>)> {
     let config = if &*name == SETTINGS_NAME {

@@ -222,7 +222,7 @@ impl FontCache {
         };
 
         let mut cmd_buffer = graphics.create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
-        let texture = cmd_buffer.texture2d(bmp.width() as _, bmp.rows() as _, format, &buf)?;
+        let texture = cmd_buffer.texture2d_raw(bmp.width() as _, bmp.rows() as _, format, &buf)?;
         cmd_buffer.build_and_execute_now()?;
 
         let g = Glyph {

@@ -17,7 +17,7 @@ use crate::{
 };
 
 use super::{
-    swapchain::{create_swapchain_render_data, SwapchainRenderData},
+    swapchain::{create_swapchain_render_data, SwapchainOpts, SwapchainRenderData},
     CompositionLayer, XrState,
 };
 
@@ -46,7 +46,7 @@ impl LinePool {
         let views: anyhow::Result<Vec<Arc<ImageView>>> = colors
             .into_iter()
             .map(
-                |color| match command_buffer.texture2d(1, 1, Format::R8G8B8A8_UNORM, &color) {
+                |color| match command_buffer.texture2d_raw(1, 1, Format::R8G8B8A8_UNORM, &color) {
                     Ok(tex) => ImageView::new_default(tex).map_err(|e| anyhow::anyhow!(e)),
                     Err(e) => Err(e),
                 },
@@ -68,7 +68,8 @@ impl LinePool {
     ) -> anyhow::Result<usize> {
         let id = AUTO_INCREMENT.fetch_add(1, Ordering::Relaxed);
 
-        let srd = create_swapchain_render_data(xr, graphics, [1, 1, 1])?;
+        let srd =
+            create_swapchain_render_data(xr, graphics, [1, 1, 1], SwapchainOpts::new().srgb())?;
         self.lines.insert(
             id,
             LineContainer {

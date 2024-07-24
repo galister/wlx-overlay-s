@@ -141,6 +141,10 @@ fn def_auto() -> Arc<str> {
     "auto".into()
 }
 
+fn def_empty() -> Arc<str> {
+    "".into()
+}
+
 fn def_toast_topics() -> IdMap<ToastTopic, DisplayMethod> {
     IdMap::new()
 }
@@ -243,6 +247,12 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_one")]
     pub space_drag_multiplier: f32,
+
+    #[serde(default = "def_empty")]
+    pub skybox_texture: Arc<str>,
+
+    #[serde(default = "def_true")]
+    pub use_skybox: bool,
 }
 
 impl GeneralConfig {

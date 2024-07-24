@@ -214,7 +214,7 @@ impl ScreenPipeline {
         ];
 
         let mouse_tex =
-            uploads.texture2d(4, 4, vulkano::format::Format::R8G8B8A8_UNORM, &mouse_bytes)?;
+            uploads.texture2d_raw(4, 4, vulkano::format::Format::R8G8B8A8_UNORM, &mouse_bytes)?;
         self.mouse = Some(ImageView::new_default(mouse_tex)?);
         Ok(())
     }
@@ -507,8 +507,12 @@ impl OverlayRenderer for ScreenRenderer {
 
                     let data = unsafe { slice::from_raw_parts(map, len) };
 
-                    let image =
-                        upload.texture2d(frame.format.width, frame.format.height, format, data)?;
+                    let image = upload.texture2d_raw(
+                        frame.format.width,
+                        frame.format.height,
+                        format,
+                        data,
+                    )?;
                     upload.build_and_execute_now()?;
 
                     unsafe { libc::munmap(map as *mut _, len) };
@@ -526,8 +530,12 @@ impl OverlayRenderer for ScreenRenderer {
 
                     let data = unsafe { slice::from_raw_parts(frame.ptr as *const u8, frame.size) };
 
-                    let image =
-                        upload.texture2d(frame.format.width, frame.format.height, format, data)?;
+                    let image = upload.texture2d_raw(
+                        frame.format.width,
+                        frame.format.height,
+                        format,
+                        data,
+                    )?;
 
                     let pipeline = Some(match self.pipeline {
                         Some(ref mut p) => p,

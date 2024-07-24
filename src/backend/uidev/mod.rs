@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use vulkano::{
     command_buffer::CommandBufferUsage,
-    image::{sampler::Filter, view::ImageView, ImageUsage},
+    image::{view::ImageView, ImageUsage},
     swapchain::{
         acquire_next_image, Surface, Swapchain, SwapchainCreateInfo, SwapchainPresentInfo,
     },
@@ -21,8 +21,8 @@ use crate::{
     config_io,
     graphics::{DynamicPass, DynamicPipeline, WlxGraphics, BLEND_ALPHA},
     gui::{
+        canvas::Canvas,
         modular::{modular_canvas, ModularData},
-        Canvas,
     },
     hid::USE_UINPUT,
     state::{AppState, ScreenMeta},
