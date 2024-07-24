@@ -1,12 +1,9 @@
 use glam::Vec4;
-use std::{sync::Arc, f32::consts::PI};
-use vulkano::{
-    buffer::{Buffer, BufferUsage, BufferCreateInfo},
-    image::view::ImageView,
-    memory::allocator::{AllocationCreateInfo, MemoryTypeFilter}};
+use std::sync::Arc;
+use vulkano::image::view::ImageView;
 
 use crate::{
-    backend::input::PointerMode, graphics::{WlxCommandBuffer, Vert2Uv}, gui::GuiColor, state::AppState,
+    backend::input::PointerMode, graphics::WlxCommandBuffer, gui::GuiColor, state::AppState,
 };
 
 use super::{CanvasData, Rect};
