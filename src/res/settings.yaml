@@ -12,23 +12,23 @@ spawn_pos: [0, -0.1, -0.5]
 elements:
   - type: Panel
     rect: [0, 0, 600, 800]
-    corner_radius: 2
-    bg_color: "#102030"
+    corner_radius: 8
+    bg_color: "#1e2030"
 
   - type: Label
     rect: [15, 35, 600, 70]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 24
-    fg_color: "#ffffff"
+    fg_color: "#cad3f5"
     source: Static
     text: Settings
 
   - type: Button
     rect: [560, 0, 40, 40]
-    corner_radius: 2
+    corner_radius: 8
     font_size: 16
-    bg_color: "#880000"
-    fg_color: "#ffffff"
+    bg_color: "#ed8796"
+    fg_color: "#24273a"
     text: X
     click_down:
       - type: Window
@@ -37,38 +37,38 @@ elements:
 
   - type: Panel
     rect: [50, 53, 500, 1]
-    corner_radius: 2
-    bg_color: "#c0c0c0"
+    corner_radius: 6
+    bg_color: "#6e738d"
 
   ####### Watch Section #######
 
   - type: Label
     rect: [15, 85, 570, 24]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 18
-    fg_color: "#ffffff"
+    fg_color: "#cad3f5"
     source: Static
     text: Watch
 
   - type: Panel
     rect: [250, 105, 1, 100]
-    corner_radius: 2
-    bg_color: "#c0c0c0"
+    corner_radius: 6
+    bg_color: "#6e738d"
 
   - type: Label
     rect: [288, 105, 100, 24]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
+    fg_color: "#cad3f5"
     source: Static
     text: Visibility
 
   - type: Button
     rect: [270, 120, 100, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#306060"
+    fg_color: "#24273a"
+    bg_color: "#eed49f"
     text: "Hide"
     click_down:
       - type: Watch
@@ -76,10 +76,10 @@ elements:
 
   - type: Button
     rect: [270, 170, 100, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#306060"
+    fg_color: "#24273a"
+    bg_color: "#eed49f"
     text: "Swap Hand"
     click_down:
       - type: Watch
@@ -87,23 +87,23 @@ elements:
 
   - type: Panel
     rect: [390, 105, 1, 100]
-    corner_radius: 2
-    bg_color: "#c0c0c0"
+    corner_radius: 6
+    bg_color: "#6e738d"
 
   - type: Label
     rect: [430, 105, 120, 24]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
+    fg_color: "#cad3f5"
     source: Static
     text: Watch Fade
 
   - type: Button
     rect: [410, 120, 140, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#306060"
+    fg_color: "#24273a"
+    bg_color: "#eed49f"
     text: "Cutoff Point"
     click_down:
       - type: Toast
@@ -119,10 +119,10 @@ elements:
 
   - type: Button
     rect: [410, 170, 140, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#306060"
+    fg_color: "#24273a"
+    bg_color: "#eed49f"
     text: "Cutoff Strength"
     click_down:
       - type: Toast
@@ -138,18 +138,18 @@ elements:
 
   - type: Label
     rect: [25, 140, 90, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
+    fg_color: "#cad3f5"
     source: Static
     text: Rotation
 
   - type: Button
     rect: [108, 120, 30, 30]
-    corner_radius: 2
+    corner_radius: 15
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#306060"
+    fg_color: "#24273a"
+    bg_color: "#eed49f"
     text: "X"
     click_down:
       - type: Toast
@@ -165,10 +165,10 @@ elements:
 
   - type: Button
     rect: [153, 120, 30, 30]
-    corner_radius: 2
+    corner_radius: 15
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#306060"
+    fg_color: "#24273a"
+    bg_color: "#eed49f"
     text: "Y"
     click_down:
       - type: Toast
@@ -184,10 +184,10 @@ elements:
 
   - type: Button
     rect: [198, 120, 30, 30]
-    corner_radius: 2
+    corner_radius: 15
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#306060"
+    fg_color: "#24273a"
+    bg_color: "#eed49f"
     text: "Z"
     click_down:
       - type: Toast
@@ -203,18 +203,18 @@ elements:
 
   - type: Label
     rect: [25, 190, 90, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
+    fg_color: "#cad3f5"
     source: Static
     text: Position
 
   - type: Button
     rect: [108, 170, 30, 30]
-    corner_radius: 2
+    corner_radius: 15
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#306060"
+    fg_color: "#24273a"
+    bg_color: "#eed49f"
     text: "X"
     click_down:
       - type: Toast
@@ -230,10 +230,10 @@ elements:
 
   - type: Button
     rect: [153, 170, 30, 30]
-    corner_radius: 2
+    corner_radius: 15
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#306060"
+    fg_color: "#24273a"
+    bg_color: "#eed49f"
     text: "Y"
     click_down:
       - type: Toast
@@ -249,10 +249,10 @@ elements:
 
   - type: Button
     rect: [198, 170, 30, 30]
-    corner_radius: 2
+    corner_radius: 15
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#306060"
+    fg_color: "#24273a"
+    bg_color: "#eed49f"
     text: "Z"
     click_down:
       - type: Toast
@@ -268,32 +268,32 @@ elements:
 
   - type: Panel
     rect: [50, 220, 500, 1]
-    corner_radius: 2
-    bg_color: "#c0c0c0"
+    corner_radius: 6
+    bg_color: "#6e738d"
 
   ####### Mirror Section #######
   - type: Label
     rect: [15, 255, 570, 24]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 18
-    fg_color: "#ffffff"
+    fg_color: "#cad3f5"
     source: Static
     text: Mirrors
 
   - type: Label
     rect: [25, 290, 30, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
+    fg_color: "#cad3f5"
     source: Static
     text: M1
 
   - type: Button
     rect: [60, 270, 110, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#707070"
+    fg_color: "#cad3f5"
+    bg_color: "#494d64"
     text: "Show/Hide"
     click_down: # ToggleVisible if exists, else create
       - type: Overlay
@@ -305,10 +305,10 @@ elements:
 
   - type: Button
     rect: [185, 270, 60, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#707070"
+    fg_color: "#cad3f5"
+    bg_color: "#494d64"
     text: "Lock"
     click_down:
       - type: Overlay
@@ -317,10 +317,10 @@ elements:
 
   - type: Button
     rect: [258, 270, 30, 30]
-    corner_radius: 2
+    corner_radius: 15
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#880000"
+    fg_color: "#24273a"
+    bg_color: "#ed8796"
     text: "X"
     click_down:
       - type: Window
@@ -329,18 +329,18 @@ elements:
 
   - type: Label
     rect: [25, 340, 30, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
+    fg_color: "#cad3f5"
     source: Static
     text: M2
 
   - type: Button
     rect: [60, 320, 110, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#707070"
+    fg_color: "#cad3f5"
+    bg_color: "#494d64"
     text: "Show/Hide"
     click_down:
       - type: Overlay
@@ -352,10 +352,10 @@ elements:
 
   - type: Button
     rect: [185, 320, 60, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#707070"
+    fg_color: "#cad3f5"
+    bg_color: "#494d64"
     text: "Lock"
     click_down:
       - type: Overlay
@@ -364,10 +364,10 @@ elements:
 
   - type: Button
     rect: [258, 320, 30, 30]
-    corner_radius: 2
+    corner_radius: 15
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#880000"
+    fg_color: "#24273a"
+    bg_color: "#ed8796"
     text: "X"
     click_down:
       - type: Window
@@ -376,18 +376,18 @@ elements:
 
   - type: Label
     rect: [25, 390, 30, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
+    fg_color: "#cad3f5"
     source: Static
     text: M3
 
   - type: Button
     rect: [60, 370, 110, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#707070"
+    fg_color: "#cad3f5"
+    bg_color: "#494d64"
     text: "Show/Hide"
     click_down:
       - type: Overlay
@@ -399,10 +399,10 @@ elements:
 
   - type: Button
     rect: [185, 370, 60, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#707070"
+    fg_color: "#cad3f5"
+    bg_color: "#494d64"
     text: "Lock"
     click_down:
       - type: Overlay
@@ -411,10 +411,10 @@ elements:
 
   - type: Button
     rect: [258, 370, 30, 30]
-    corner_radius: 2
+    corner_radius: 15
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#880000"
+    fg_color: "#24273a"
+    bg_color: "#ed8796"
     text: "X"
     click_down:
       - type: Window
@@ -423,33 +423,33 @@ elements:
 
   - type: Panel
     rect: [300, 240, 1, 200]
-    corner_radius: 2
-    bg_color: "#c0c0c0"
+    corner_radius: 6
+    bg_color: "#6e738d"
 
   ####### Color Gain Section #######
 
   - type: Label
     rect: [325, 255, 90, 24]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 18
-    fg_color: "#ffffff"
+    fg_color: "#cad3f5"
     source: Static
     text: Color Gain
 
   - type: Label
     rect: [470, 255, 90, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
+    fg_color: "#cad3f5"
     source: Static
     text: (SteamVR)
 
   - type: Button
     rect: [330, 270, 60, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#707070"
+    fg_color: "#cad3f5"
+    bg_color: "#494d64"
     text: "All"
     click_down:
       - type: Toast
@@ -465,10 +465,10 @@ elements:
 
   - type: Button
     rect: [405, 270, 30, 30]
-    corner_radius: 2
+    corner_radius: 15
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#701010"
+    fg_color: "#24273a"
+    bg_color: "#e78284"
     text: "R"
     click_down:
       - type: Toast
@@ -484,10 +484,10 @@ elements:
 
   - type: Button
     rect: [450, 270, 30, 30]
-    corner_radius: 2
+    corner_radius: 15
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#107010"
+    fg_color: "#24273a"
+    bg_color: "#a6d189"
     text: "G"
     click_down:
       - type: Toast
@@ -503,10 +503,10 @@ elements:
 
   - type: Button
     rect: [495, 270, 30, 30]
-    corner_radius: 2
+    corner_radius: 15
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#101070"
+    fg_color: "#24273a"
+    bg_color: "#8caaee"
     text: "B"
     click_down:
       - type: Toast
@@ -522,25 +522,25 @@ elements:
 
   - type: Panel
     rect: [325, 315, 225, 1]
-    corner_radius: 2
-    bg_color: "#c0c0c0"
+    corner_radius: 6
+    bg_color: "#6e738d"
 
   ####### Playspace Section #######
 
   - type: Label
     rect: [325, 345, 90, 24]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 18
-    fg_color: "#ffffff"
+    fg_color: "#cad3f5"
     source: Static
     text: Playspace
 
   - type: Button
     rect: [330, 360, 220, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#206060"
+    fg_color: "#24273a"
+    bg_color: "#eed49f"
     text: "Fix Floor"
     click_down:
       - type: System
@@ -548,10 +548,10 @@ elements:
 
   - type: Button
     rect: [330, 410, 220, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#206060"
+    fg_color: "#24273a"
+    bg_color: "#eed49f"
     text: "Reset Offset"
     click_down:
       - type: System
@@ -561,23 +561,23 @@ elements:
 
   - type: Panel
     rect: [50, 460, 500, 1]
-    corner_radius: 2
-    bg_color: "#c0c0c0"
+    corner_radius: 6
+    bg_color: "#6e738d"
 
   - type: Label
     rect: [325, 490, 90, 24]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 18
-    fg_color: "#ffffff"
+    fg_color: "#cad3f5"
     source: Static
     text: Notifications
 
   - type: Button
     rect: [330, 505, 220, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#401010"
+    fg_color: "#24273a"
+    bg_color: "#e64553"
     text: "Enabled"
     click_down:
       - type: System
@@ -586,10 +586,10 @@ elements:
 
   - type: Button
     rect: [330, 555, 220, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#401010"
+    fg_color: "#24273a"
+    bg_color: "#e64553"
     text: "Sound Enabled"
     click_down:
       - type: System
@@ -599,18 +599,18 @@ elements:
   ####### Behavior Section #######
   - type: Label
     rect: [15, 490, 570, 24]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 18
-    fg_color: "#ffffff"
+    fg_color: "#cad3f5"
     source: Static
     text: Behavior
 
   - type: Button
     rect: [30, 505, 220, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#401010"
+    fg_color: "#24273a"
+    bg_color: "#e64553"
     text: "Auto-Realign"
     click_down:
       - type: System
@@ -619,10 +619,10 @@ elements:
 
   - type: Button
     rect: [30, 555, 220, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#401010"
+    fg_color: "#24273a"
+    bg_color: "#e64553"
     text: "Grab+Scroll Slide"
     click_down:
       - type: System
@@ -633,15 +633,15 @@ elements:
 
   - type: Panel
     rect: [50, 605, 500, 1]
-    corner_radius: 2
-    bg_color: "#c0c0c0"
+    corner_radius: 6
+    bg_color: "#6e738d"
 
   - type: Button
     rect: [330, 625, 220, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#206060"
+    fg_color: "#24273a"
+    bg_color: "#eed49f"
     text: "Save Config"
     click_down:
       - type: System
@@ -651,10 +651,10 @@ elements:
 
   - type: Button
     rect: [30, 625, 250, 30]
-    corner_radius: 2
+    corner_radius: 6
     font_size: 12
-    fg_color: "#ffffff"
-    bg_color: "#206060"
+    fg_color: "#24273a"
+    bg_color: "#eed49f"
     text: "Save Overlay Layout"
     click_down:
       - type: System

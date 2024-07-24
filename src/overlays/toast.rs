@@ -178,19 +178,19 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
     .ok()?;
 
     canvas.font_size = FONT_SIZE;
-    canvas.fg_color = color_parse("#aaaaaa").unwrap(); // want panic
-    canvas.bg_color = color_parse("#333333").unwrap(); // want panic
-    canvas.panel(0., 0., size.0, size.1, 3.);
+    canvas.fg_color = color_parse("#cad3f5").unwrap(); // want panic
+    canvas.bg_color = color_parse("#1e2030").unwrap(); // want panic
+    canvas.panel(0., 0., size.0, size.1, 16.);
 
     if toast.body.len() > 0 {
         canvas.label(PADDING.0, 54., og_width, size.1 - 54., 3., toast.body);
 
-        canvas.fg_color = color_parse("#101010").unwrap(); // want panic
-        canvas.bg_color = color_parse("#666666").unwrap(); // want panic
-        canvas.panel(0., 0., size.0, 30., 3.);
-        canvas.label_centered(PADDING.0, 16., og_width, FONT_SIZE as f32 + 2., 3., title);
+        canvas.fg_color = color_parse("#b8c0e0").unwrap(); // want panic
+        canvas.bg_color = color_parse("#24273a").unwrap(); // want panic
+        canvas.panel(0., 0., size.0, 30., 16.);
+        canvas.label_centered(PADDING.0, 16., og_width, FONT_SIZE as f32 + 2., 16., title);
     } else {
-        canvas.label_centered(PADDING.0, 0., og_width, size.1, 3., title);
+        canvas.label_centered(PADDING.0, 0., og_width, size.1, 16., title);
     }
 
     let state = OverlayState {
