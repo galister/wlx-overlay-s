@@ -147,43 +147,6 @@ impl<D, S> Control<D, S> {
         cmd_buffer.run_ref(&pass)
     }
 
-    pub(super) fn render_rect(
-        &self,
-        canvas: &CanvasData<D>,
-        _: &mut AppState,
-        cmd_buffer: &mut WlxCommandBuffer,
-    ) -> anyhow::Result<()> {
-        let pass = {
-            let vertex_buffer = canvas.graphics.upload_verts(
-                canvas.width as _,
-                canvas.height as _,
-                self.rect.x,
-                self.rect.y,
-                self.rect.w,
-                self.rect.h,
-            )?;
-
-            let set0 = canvas
-                .pipeline_bg_color
-                .uniform_buffer(0, vec![
-                    self.bg_color.x,
-                    self.bg_color.y,
-                    self.bg_color.z,
-                    self.bg_color.w,
-                    0.,
-                    0.])?;
-
-            canvas.pipeline_bg_color.create_pass(
-                [canvas.width as _, canvas.height as _],
-                vertex_buffer,
-                canvas.graphics.quad_indices.clone(),
-                vec![set0],
-            )?
-        };
-
-        cmd_buffer.run_ref(&pass)
-    }
-
     pub(super) fn render_highlight(
         &self,
         canvas: &CanvasData<D>,
