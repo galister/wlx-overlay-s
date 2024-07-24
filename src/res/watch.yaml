@@ -9,11 +9,13 @@ size: [400, 200]
 elements:
   # background panel
   - type: Panel
-    rect: [0, 0, 400, 200, 3]
+    rect: [0, 0, 400, 200]
+    corner_radius: 3
     bg_color: "#353535"
 
   - type: Button
-    rect: [2, 162, 26, 36, 3]
+    rect: [2, 162, 26, 36]
+    corner_radius: 3
     font_size: 14
     bg_color: "#808040"
     fg_color: "#ffffff"
@@ -28,7 +30,8 @@ elements:
 
   # Keyboard button
   - type: Button
-    rect: [32, 162, 60, 36, 3]
+    rect: [32, 162, 60, 36]
+    corner_radius: 3
     font_size: 14
     fg_color: "#FFFFFF"
     bg_color: "#406050"
@@ -62,7 +65,8 @@ elements:
 
   # bottom row, of keyboard + overlays
   - type: OverlayList
-    rect: [94, 160, 306, 40, 3]
+    rect: [94, 160, 306, 40]
+    corner_radius: 3
     font_size: 14
     fg_color: "#FFFFFF"
     bg_color: "#405060"
@@ -78,7 +82,8 @@ elements:
 
   # local clock
   - type: Label
-    rect: [19, 90, 200, 50, 3]
+    rect: [19, 90, 200, 50]
+    corner_radius: 3
     font_size: 46 # Use 32 for 12-hour time
     fg_color: "#ffffff"
     source: Clock
@@ -87,7 +92,8 @@ elements:
  
   # local date
   - type: Label
-    rect: [20, 117, 200, 20, 3]
+    rect: [20, 117, 200, 20]
+    corner_radius: 3
     font_size: 14
     fg_color: "#ffffff"
     source: Clock
@@ -95,7 +101,8 @@ elements:
 
   # local day-of-week
   - type: Label
-    rect: [20, 137, 200, 50, 3]
+    rect: [20, 137, 200, 50]
+    corner_radius: 3
     font_size: 14
     fg_color: "#ffffff"
     source: Clock
@@ -104,7 +111,8 @@ elements:
 
   # alt clock 1
   - type: Label
-    rect: [210, 90, 200, 50, 3]
+    rect: [210, 90, 200, 50]
+    corner_radius: 3
     font_size: 24 # Use 18 for 12-hour time
     fg_color: "#99BBAA"
     source: Clock
@@ -112,7 +120,8 @@ elements:
     format: "%H:%M" # 23:59
     #format: "%I:%M %p" # 11:59 PM
   - type: Label
-    rect: [210, 60, 200, 50, 3]
+    rect: [210, 60, 200, 50]
+    corner_radius: 3
     font_size: 14
     fg_color: "#99BBAA"
     source: Static
@@ -120,7 +129,8 @@ elements:
  
   # alt clock 2
   - type: Label
-    rect: [210, 150, 200, 50, 3]
+    rect: [210, 150, 200, 50]
+    corner_radius: 3
     font_size: 24 # Use 18 for 12-hour time
     fg_color: "#AA99BB"
     source: Clock
@@ -128,7 +138,8 @@ elements:
     format: "%H:%M" # 23:59
     #format: "%I:%M %p" # 11:59 PM
   - type: Label
-    rect: [210, 120, 200, 50, 3]
+    rect: [210, 120, 200, 50]
+    corner_radius: 3
     font_size: 14
     fg_color: "#AA99BB"
     source: Static
@@ -136,7 +147,8 @@ elements:
 
   # batteries
   - type: BatteryList
-    rect: [0, 0, 400, 30, 3]
+    rect: [0, 0, 400, 30]
+    corner_radius: 3
     font_size: 14
     fg_color: "#99BBAA"
     fg_color_low: "#B06060"
@@ -147,7 +159,8 @@ elements:
 
   # volume buttons
   - type: Button
-    rect: [327, 52, 46, 32, 3]
+    rect: [327, 52, 46, 32]
+    corner_radius: 3
     font_size: 14
     fg_color: "#FFFFFF"
     bg_color: "#505050"
@@ -156,7 +169,8 @@ elements:
       - type: Exec
         command: [ "pactl", "set-sink-volume", "@DEFAULT_SINK@", "+5%" ]
   - type: Button
-    rect: [327, 116, 46, 32, 3]
+    rect: [327, 116, 46, 32]
+    corner_radius: 3
     font_size: 14
     fg_color: "#FFFFFF"
     bg_color: "#505050"

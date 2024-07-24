@@ -39,10 +39,11 @@ impl<D, S> CanvasBuilder<D, S> {
     }
 
     // Creates a panel with bg_color inherited from the canvas
-    pub fn panel(&mut self, x: f32, y: f32, w: f32, h: f32, r: f32) -> &mut Control<D, S> {
+    pub fn panel(&mut self, x: f32, y: f32, w: f32, h: f32, radius: f32) -> &mut Control<D, S> {
         let idx = self.canvas.controls.len();
         self.canvas.controls.push(Control {
-            rect: Rect { x, y, w, h, r },
+            rect: Rect { x, y, w, h },
+            corner_radius: radius,
             bg_color: self.bg_color,
             on_render_bg: Some(Control::render_rounded_rect),
             ..Control::new()
@@ -51,10 +52,11 @@ impl<D, S> CanvasBuilder<D, S> {
     }
 
     // Creates a label with fg_color, font_size inherited from the canvas
-    pub fn label(&mut self, x: f32, y: f32, w: f32, h: f32, r: f32, text: Arc<str>) -> &mut Control<D, S> {
+    pub fn label(&mut self, x: f32, y: f32, w: f32, h: f32, radius: f32, text: Arc<str>) -> &mut Control<D, S> {
         let idx = self.canvas.controls.len();
         self.canvas.controls.push(Control {
-            rect: Rect { x, y, w, h, r },
+            rect: Rect { x, y, w, h },
+            corner_radius: radius,
             text,
             fg_color: self.fg_color,
             size: self.font_size,
@@ -72,12 +74,13 @@ impl<D, S> CanvasBuilder<D, S> {
         y: f32,
         w: f32,
         h: f32,
-        r: f32,
+        radius: f32,
         text: Arc<str>,
     ) -> &mut Control<D, S> {
         let idx = self.canvas.controls.len();
         self.canvas.controls.push(Control {
-            rect: Rect { x, y, w, h, r },
+            rect: Rect { x, y, w, h },
+            corner_radius: radius,
             text,
             fg_color: self.fg_color,
             size: self.font_size,
@@ -91,7 +94,8 @@ impl<D, S> CanvasBuilder<D, S> {
     pub fn sprite(&mut self, x: f32, y: f32, w: f32, h: f32) -> &mut Control<D, S> {
         let idx = self.canvas.controls.len();
         self.canvas.controls.push(Control {
-            rect: Rect { x, y, w, h, r: 0. },
+            rect: Rect { x, y, w, h },
+            corner_radius: 0.,
             on_render_bg: Some(Control::render_sprite_bg),
             ..Control::new()
         });
@@ -102,7 +106,8 @@ impl<D, S> CanvasBuilder<D, S> {
     pub fn sprite_interactive(&mut self, x: f32, y: f32, w: f32, h: f32) -> &mut Control<D, S> {
         let idx = self.canvas.controls.len();
         self.canvas.controls.push(Control {
-            rect: Rect { x, y, w, h, r: 0. },
+            rect: Rect { x, y, w, h },
+            corner_radius: 0.,
             on_render_bg: Some(Control::render_sprite_bg),
             on_render_hl: Some(Control::render_sprite_hl),
             ..Control::new()
@@ -111,12 +116,13 @@ impl<D, S> CanvasBuilder<D, S> {
     }
 
     // Creates a button with fg_color, bg_color, font_size inherited from the canvas
-    pub fn button(&mut self, x: f32, y: f32, w: f32, h: f32, r: f32, text: Arc<str>) -> &mut Control<D, S> {
+    pub fn button(&mut self, x: f32, y: f32, w: f32, h: f32, radius: f32, text: Arc<str>) -> &mut Control<D, S> {
         let idx = self.canvas.controls.len();
 
         self.canvas.interactive_set_idx(x, y, w, h, idx);
         self.canvas.controls.push(Control {
-            rect: Rect { x, y, w, h, r },
+            rect: Rect { x, y, w, h },
+            corner_radius: radius,
             text,
             fg_color: self.fg_color,
             bg_color: self.bg_color,
@@ -136,7 +142,7 @@ impl<D, S> CanvasBuilder<D, S> {
         y: f32,
         w: f32,
         h: f32,
-        r: f32,
+        radius: f32,
         cap_type: KeyCapType,
         label: &[String],
     ) -> &mut Control<D, S> {
@@ -144,7 +150,8 @@ impl<D, S> CanvasBuilder<D, S> {
         self.canvas.interactive_set_idx(x, y, w, h, idx);
 
         self.canvas.controls.push(Control {
-            rect: Rect { x, y, w, h, r },
+            rect: Rect { x, y, w, h },
+            corner_radius: radius,
             bg_color: self.bg_color,
             on_render_bg: Some(Control::render_rounded_rect),
             on_render_hl: Some(Control::render_highlight),
@@ -159,7 +166,6 @@ impl<D, S> CanvasBuilder<D, S> {
                     y,
                     w,
                     h: h - self.font_size as f32,
-                    r: 0.,
                 };
                 vec![(render, rect, 1f32)]
             }
@@ -170,14 +176,12 @@ impl<D, S> CanvasBuilder<D, S> {
                     y: y + (self.font_size as f32) + 12.,
                     w,
                     h,
-                    r: 0.,
                 };
                 let rect1 = Rect {
                     x: x + w * 0.5 + 12.,
                     y: y + h - (self.font_size as f32) + 8.,
                     w,
                     h,
-                    r: 0.,
                 };
                 vec![(render, rect0, 1.0), (render, rect1, 0.8)]
             }
@@ -188,14 +192,12 @@ impl<D, S> CanvasBuilder<D, S> {
                     y: y + 2.0,
                     w,
                     h: h * 0.5,
-                    r: 0.,
                 };
                 let rect1 = Rect {
                     x,
                     y: y + h * 0.5 + 2.0,
                     w,
                     h: h * 0.5,
-                    r: 0.,
                 };
                 vec![(render, rect1, 1.0), (render, rect0, 0.8)]
             }
@@ -206,21 +208,18 @@ impl<D, S> CanvasBuilder<D, S> {
                     y: y + (self.font_size as f32) + 8.,
                     w,
                     h,
-                    r: 0.,
                 };
                 let rect1 = Rect {
                     x: x + 12.,
                     y: y + h - (self.font_size as f32) + 4.,
                     w,
                     h,
-                    r: 0.,
                 };
                 let rect2 = Rect {
                     x: x + w * 0.5 + 8.,
                     y: y + h - (self.font_size as f32) + 4.,
                     w,
                     h,
-                    r: 0.,
                 };
                 vec![
                     (render, rect1, 1.0),

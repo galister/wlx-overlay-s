@@ -25,6 +25,7 @@ pub type ControlRendererHl<D, S> = fn(
 pub(crate) struct Control<D, S> {
     pub state: Option<S>,
     pub rect: Rect,
+    pub corner_radius: f32,
     pub fg_color: GuiColor,
     pub bg_color: GuiColor,
     pub text: Arc<str>,
@@ -52,8 +53,8 @@ impl<D, S> Control<D, S> {
                 y: 0.,
                 w: 0.,
                 h: 0.,
-                r: 0.,
             },
+            corner_radius: 0.,
             fg_color: Vec4::ONE,
             bg_color: Vec4::ZERO,
             text: Arc::from(""),
@@ -113,7 +114,7 @@ impl<D, S> Control<D, S> {
         cmd_buffer: &mut WlxCommandBuffer,
     ) -> anyhow::Result<()> {
         let pass = {
-            let r = self.rect.r.min(self.rect.w / 2.0).min(self.rect.h / 2.0);
+            let r = self.corner_radius.min(self.rect.w / 2.0).min(self.rect.h / 2.0);
             let rw = r / canvas.width as f32;
             let ruw = r / self.rect.w as f32;
             let rh = r / canvas.height as f32;
