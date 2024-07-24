@@ -4,15 +4,15 @@ use crate::{
     backend::overlay::{ui_transform, OverlayData, OverlayState, RelativeTo},
     config::{load_known_yaml, ConfigType},
     gui::{
+        canvas::Canvas,
         modular::{modular_canvas, ModularData, ModularUiConfig},
-        Canvas,
     },
     state::AppState,
 };
 
 pub const WATCH_NAME: &str = "watch";
 
-pub fn create_watch<O>(state: &AppState) -> anyhow::Result<OverlayData<O>>
+pub fn create_watch<O>(state: &mut AppState) -> anyhow::Result<OverlayData<O>>
 where
     O: Default,
 {
@@ -40,7 +40,7 @@ where
 
 pub fn create_watch_canvas(
     config: Option<ModularUiConfig>,
-    state: &AppState,
+    state: &mut AppState,
 ) -> anyhow::Result<Canvas<(), ModularData>> {
     let config = config.unwrap_or_else(|| load_known_yaml::<ModularUiConfig>(ConfigType::Watch));
 

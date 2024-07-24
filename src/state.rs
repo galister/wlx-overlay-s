@@ -6,16 +6,20 @@ use idmap::IdMap;
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Source};
 use serde::{Deserialize, Serialize};
 use smallvec::{smallvec, SmallVec};
+use vulkano::image::view::ImageView;
 
 use crate::{
     backend::{input::InputState, task::TaskContainer},
-    config::GeneralConfig,
+    config::{AStrMap, GeneralConfig},
     config_io,
     graphics::WlxGraphics,
     gui::font::FontCache,
     hid::HidProvider,
     overlays::toast::{DisplayMethod, ToastTopic},
-    shaders::{frag_color, frag_glyph, frag_screen, frag_sprite, frag_swapchain, vert_common},
+    shaders::{
+        frag_color, frag_glyph, frag_grid, frag_screen, frag_sprite, frag_sprite2, frag_sprite2_hl,
+        frag_swapchain, vert_common,
+    },
 };
 
 pub struct AppState {
@@ -28,6 +32,7 @@ pub struct AppState {
     pub audio: AudioOutput,
     pub screens: SmallVec<[ScreenMeta; 8]>,
     pub anchor: Affine3A,
+    pub sprites: AStrMap<Arc<ImageView>>,
 }
 
 impl AppState {
@@ -47,8 +52,17 @@ impl AppState {
             let shader = frag_glyph::load(graphics.device.clone())?;
             shaders.insert("frag_glyph", shader);
 
+            let shader = frag_grid::load(graphics.device.clone())?;
+            shaders.insert("frag_grid", shader);
+
             let shader = frag_sprite::load(graphics.device.clone())?;
             shaders.insert("frag_sprite", shader);
+
+            let shader = frag_sprite2::load(graphics.device.clone())?;
+            shaders.insert("frag_sprite2", shader);
+
+            let shader = frag_sprite2_hl::load(graphics.device.clone())?;
+            shaders.insert("frag_sprite2_hl", shader);
 
             let shader = frag_screen::load(graphics.device.clone())?;
             shaders.insert("frag_screen", shader);
@@ -69,6 +83,7 @@ impl AppState {
             audio: AudioOutput::new(),
             screens: smallvec![],
             anchor: Affine3A::IDENTITY,
+            sprites: AStrMap::new(),
         })
     }
 }

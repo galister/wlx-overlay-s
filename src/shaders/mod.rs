@@ -61,6 +61,52 @@ pub mod frag_glyph {
     }
 }
 
+pub mod frag_sprite2 {
+    vulkano_shaders::shader! {
+        ty: "fragment",
+        src: r"#version 310 es
+            precision highp float;
+
+            layout (location = 0) in vec2 in_uv;
+            layout (location = 0) out vec4 out_color;
+
+            layout (set = 0, binding = 0) uniform sampler2D in_texture;
+            layout (set = 1, binding = 0) uniform UniBlock {
+                uniform vec4 st;
+                uniform vec4 mul;
+            };
+
+            void main()
+            {
+                out_color = texture(in_texture, (in_uv * st.xy) + st.zw) * mul;
+            }
+        ",
+    }
+}
+
+pub mod frag_sprite2_hl {
+    vulkano_shaders::shader! {
+        ty: "fragment",
+        src: r"#version 310 es
+            precision highp float;
+
+            layout (location = 0) in vec2 in_uv;
+            layout (location = 0) out vec4 out_color;
+
+            layout (set = 0, binding = 0) uniform sampler2D in_texture;
+            layout (set = 1, binding = 0) uniform UniBlock {
+                uniform vec4 st;
+                uniform vec4 mul;
+            };
+
+            void main()
+            {
+                out_color = texture(in_texture, (in_uv * st.xy) + st.zw).a * mul;
+            }
+        ",
+    }
+}
+
 pub mod frag_sprite {
     vulkano_shaders::shader! {
         ty: "fragment",
@@ -75,6 +121,31 @@ pub mod frag_sprite {
             void main()
             {
                 out_color = texture(in_texture, in_uv);
+            }
+        ",
+    }
+}
+
+pub mod frag_grid {
+    vulkano_shaders::shader! {
+        ty: "fragment",
+        src: r"#version 310 es
+            precision highp float;
+
+            layout (location = 0) in vec2 in_uv;
+            layout (location = 0) out vec4 out_color;
+
+            void main()
+            {
+                float fade = max(1.0 - 2.0 * length(in_uv.xy + vec2(-0.5, -0.5)), 0.0);
+                float grid;
+
+                if (fract(in_uv.x / 0.0005) < 0.01 || fract(in_uv.y / 0.0005) < 0.01) {
+                    grid = 1.0;
+                } else {
+                    grid = 0.0;
+                }
+                out_color = vec4(1.0, 1.0, 1.0, grid * fade);
             }
         ",
     }
@@ -153,7 +224,7 @@ pub mod frag_swapchain {
             void main()
             {
                 out_color = texture(in_texture, in_uv);
-                out_color.a = alpha;
+                out_color.a *= alpha;
             }
         ",
     }

@@ -11,7 +11,7 @@ use crate::{
         overlay::{OverlayBackend, OverlayState, RelativeTo},
         task::TaskType,
     },
-    gui::{color_parse, CanvasBuilder},
+    gui::{canvas::builder::CanvasBuilder, color_parse},
     state::{AppState, LeftRight},
 };
 

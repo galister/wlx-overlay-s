@@ -9,7 +9,7 @@ use crate::state::AppState;
 
 pub static ANCHOR_NAME: Lazy<Arc<str>> = Lazy::new(|| Arc::from("anchor"));
 
-pub fn create_anchor<O>(state: &AppState) -> anyhow::Result<OverlayData<O>>
+pub fn create_anchor<O>(state: &mut AppState) -> anyhow::Result<OverlayData<O>>
 where
     O: Default,
 {

@@ -10,6 +10,7 @@ use std::{
 
 use glam::{Affine3A, Vec3};
 use openxr as xr;
+use skybox::create_skybox;
 use vulkano::{command_buffer::CommandBufferUsage, Handle, VulkanObject};
 
 use crate::{
@@ -34,6 +35,7 @@ mod input;
 mod lines;
 mod overlay;
 mod playspace;
+mod skybox;
 mod swapchain;
 
 const VIEW_TYPE: xr::ViewConfigurationType = xr::ViewConfigurationType::PRIMARY_STEREO;
@@ -122,6 +124,8 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         stage_offset: Affine3A::IDENTITY,
     };
 
+    let mut skybox = create_skybox(&xr_state, &app_state);
+
     let pointer_lines = [
         lines.allocate(&xr_state, app_state.graphics.clone())?,
         lines.allocate(&xr_state, app_state.graphics.clone())?,
@@ -135,6 +139,8 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
     let mut event_storage = xr::EventDataBuffer::new();
 
     let mut due_tasks = VecDeque::with_capacity(4);
+
+    let mut main_session_visible = false;
 
     'main_loop: loop {
         let cur_frame = FRAME_COUNTER.fetch_add(1, Ordering::Relaxed);
@@ -178,6 +184,19 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                 }
                 EventsLost(e) => {
                     log::warn!("lost {} events", e.lost_event_count());
+                }
+                MainSessionVisibilityChangedEXTX(e) => {
+                    if main_session_visible != e.visible() {
+                        main_session_visible = e.visible();
+                        log::info!("Main session visible: {}", main_session_visible);
+                        if main_session_visible {
+                            log::debug!("Destroying skybox.");
+                            skybox = None;
+                        } else {
+                            log::debug!("Allocating skybox.");
+                            skybox = create_skybox(&xr_state, &app_state);
+                        }
+                    }
                 }
                 _ => {}
             }
@@ -284,6 +303,18 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
             .graphics
             .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
 
+        if !main_session_visible {
+            if let Some(skybox) = skybox.as_mut() {
+                for (idx, layer) in skybox
+                    .present_xr(&xr_state, app_state.input_state.hmd, &mut command_buffer)?
+                    .into_iter()
+                    .enumerate()
+                {
+                    layers.push((200.0 - 50.0 * (idx as f32), layer));
+                }
+            }
+        }
+
         for o in overlays.iter_mut() {
             if !o.state.want_visible {
                 continue;
@@ -327,6 +358,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
             .map(|f| match f.1 {
                 CompositionLayer::Quad(ref l) => l as &xr::CompositionLayerBase<xr::Vulkan>,
                 CompositionLayer::Cylinder(ref l) => l as &xr::CompositionLayerBase<xr::Vulkan>,
+                CompositionLayer::Equirect2(ref l) => l as &xr::CompositionLayerBase<xr::Vulkan>,
                 CompositionLayer::None => unreachable!(),
             })
             .collect::<Vec<_>>();
@@ -413,4 +445,5 @@ pub(super) enum CompositionLayer<'a> {
     None,
     Quad(xr::CompositionLayerQuad<'a, xr::Vulkan>),
     Cylinder(xr::CompositionLayerCylinderKHR<'a, xr::Vulkan>),
+    Equirect2(xr::CompositionLayerEquirect2KHR<'a, xr::Vulkan>),
 }

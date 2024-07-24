@@ -10,7 +10,10 @@ use crate::{
         overlay::{OverlayData, OverlayState},
     },
     config::{self, ConfigType},
-    gui::{color_parse, CanvasBuilder, Control, KeyCapType},
+    gui::{
+        canvas::{builder::CanvasBuilder, control::Control},
+        color_parse, KeyCapType,
+    },
     hid::{
         get_key_type, KeyModifier, KeyType, VirtualKey, XkbKeymap, ALT, CTRL, KEYS_TO_MODS, META,
         NUM_LOCK, SHIFT, SUPER,

@@ -1,28 +1,29 @@
 pub mod button;
 pub mod label;
-//pub mod slider;
 
-use std::sync::Arc;
+use std::{fs::File, sync::Arc};
 
 use glam::Vec4;
-use once_cell::sync::Lazy;
 use serde::Deserialize;
+use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 
-use crate::{backend::common::OverlaySelector, state::AppState};
+use crate::{
+    backend::common::OverlaySelector, config::AStrMapExt, config_io::CONFIG_ROOT_PATH,
+    graphics::dds::WlxCommandBufferDds, state::AppState,
+};
 
 use self::{
     button::{modular_button_init, ButtonAction, ButtonData, OverlayAction},
     label::{modular_label_init, LabelContent, LabelData},
 };
 
-use super::{color_parse, Canvas, CanvasBuilder, Control};
+use super::{
+    canvas::{builder::CanvasBuilder, control::Control, Canvas},
+    color_parse, GuiColor, FALLBACK_COLOR,
+};
 
 type ModularControl = Control<(), ModularData>;
 type ExecArgs = Vec<Arc<str>>;
-
-pub type GuiColor = Vec4;
-
-static FALLBACK_COLOR: Lazy<GuiColor> = Lazy::new(|| Vec4::new(1., 0., 1., 1.));
 
 #[derive(Deserialize)]
 pub struct ModularUiConfig {
@@ -68,6 +69,11 @@ pub enum ModularElement {
         fg_color: Arc<str>,
         #[serde(flatten)]
         data: LabelContent,
+    },
+    Sprite {
+        rect: [f32; 4],
+        sprite: Arc<str>,
+        sprite_st: Option<[f32; 4]>,
     },
     Button {
         rect: [f32; 4],
@@ -120,7 +126,7 @@ pub enum ModularData {
 pub fn modular_canvas(
     size: &[u32; 2],
     elements: &[ModularElement],
-    state: &AppState,
+    state: &mut AppState,
 ) -> anyhow::Result<Canvas<(), ModularData>> {
     let mut canvas = CanvasBuilder::new(
         size[0] as _,
@@ -161,6 +167,25 @@ pub fn modular_canvas(
                 let label = canvas.label_centered(*x, *y, *w, *h, empty_str.clone());
                 modular_label_init(label, data);
             }
+            ModularElement::Sprite {
+                rect: [x, y, w, h],
+                sprite,
+                sprite_st,
+            } => match sprite_from_path(sprite.clone(), state) {
+                Ok(view) => {
+                    let sprite = canvas.sprite(*x, *y, *w, *h);
+                    sprite.fg_color = Vec4::ONE;
+                    sprite.set_sprite(view);
+
+                    let st = sprite_st
+                        .map(|st| Vec4::from_slice(&st))
+                        .unwrap_or_else(|| Vec4::new(1., 1., 0., 0.));
+                    sprite.set_sprite_st(st);
+                }
+                Err(e) => {
+                    log::warn!("Could not load custom UI sprite: {:?}", e);
+                }
+            },
             ModularElement::Button {
                 rect: [x, y, w, h],
                 font_size,
@@ -348,4 +373,30 @@ pub fn color_parse_or_default(color: &str) -> GuiColor {
         log::error!("Failed to parse color '{}': {}", color, e);
         *FALLBACK_COLOR
     })
+}
+
+fn sprite_from_path(path: Arc<str>, app: &mut AppState) -> anyhow::Result<Arc<ImageView>> {
+    if let Some(view) = app.sprites.arc_get(&path) {
+        return Ok(view.clone());
+    }
+
+    let real_path = CONFIG_ROOT_PATH.join(&*path);
+
+    let Ok(f) = File::open(real_path) else {
+        anyhow::bail!("Could not open custom sprite at: {}", path);
+    };
+
+    let mut command_buffer = app
+        .graphics
+        .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+
+    match command_buffer.texture2d_dds(f) {
+        Ok(image) => {
+            command_buffer.build_and_execute_now()?;
+            Ok(ImageView::new_default(image)?)
+        }
+        Err(e) => {
+            anyhow::bail!("Could not use custom sprite at: {}\n{:?}", path, e);
+        }
+    }
 }

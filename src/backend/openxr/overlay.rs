@@ -1,11 +1,14 @@
 use glam::Vec3A;
-use openxr as xr;
+use openxr::{self as xr, CompositionLayerFlags};
 use std::{f32::consts::PI, sync::Arc};
 use xr::EyeVisibility;
 
 use super::{helpers, swapchain::SwapchainRenderData, CompositionLayer, XrState};
 use crate::{
-    backend::{openxr::swapchain::create_swapchain_render_data, overlay::OverlayData},
+    backend::{
+        openxr::swapchain::{create_swapchain_render_data, SwapchainOpts},
+        overlay::OverlayData,
+    },
     graphics::WlxCommandBuffer,
     state::AppState,
 };
@@ -40,8 +43,12 @@ impl OverlayData<OpenXrOverlayData> {
         let data = match self.data.swapchain {
             Some(ref mut data) => data,
             None => {
-                let srd =
-                    create_swapchain_render_data(xr, command_buffer.graphics.clone(), extent)?;
+                let srd = create_swapchain_render_data(
+                    xr,
+                    command_buffer.graphics.clone(),
+                    extent,
+                    SwapchainOpts::new(),
+                )?;
                 log::debug!(
                     "{}: Created swapchain {}x{}, {} images, {} MB",
                     self.state.name,
@@ -75,6 +82,7 @@ impl OverlayData<OpenXrOverlayData> {
             let angle = 2.0 * (scale_x / (2.0 * radius));
 
             let cylinder = xr::CompositionLayerCylinderKHR::new()
+                .layer_flags(CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA)
                 .pose(posef)
                 .sub_image(sub_image)
                 .eye_visibility(EyeVisibility::BOTH)
@@ -86,6 +94,7 @@ impl OverlayData<OpenXrOverlayData> {
         } else {
             let posef = helpers::transform_to_posef(&self.state.transform);
             let quad = xr::CompositionLayerQuad::new()
+                .layer_flags(CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA)
                 .pose(posef)
                 .sub_image(sub_image)
                 .eye_visibility(EyeVisibility::BOTH)

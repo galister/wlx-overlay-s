@@ -35,6 +35,11 @@ pub(super) fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
     } else {
         log::warn!("Missing EXT_hp_mixed_reality_controller extension.");
     }
+    if available_extensions.khr_composition_layer_equirect2 {
+        enabled_extensions.khr_composition_layer_equirect2 = true;
+    } else {
+        log::warn!("Missing EXT_composition_layer_equirect2 extension.");
+    }
 
     //#[cfg(not(debug_assertions))]
     let layers = [];
