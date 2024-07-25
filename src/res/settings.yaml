@@ -545,6 +545,9 @@ elements:
     click_down:
       - type: System
         action: PlayspaceFixFloor
+      - type: Window
+        target: "settings"
+        action: Destroy
 
   - type: Button
     rect: [330, 410, 220, 30]
@@ -556,6 +559,9 @@ elements:
     click_down:
       - type: System
         action: PlayspaceResetOffset
+      - type: Window
+        target: "settings"
+        action: Destroy
 
   ####### Notifications Section #######
 
