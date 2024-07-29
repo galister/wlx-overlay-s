@@ -121,6 +121,10 @@ impl OverlayRenderer for MirrorRenderer {
     fn view(&mut self) -> Option<std::sync::Arc<vulkano::image::view::ImageView>> {
         self.renderer.as_mut().and_then(|r| r.view())
     }
+
+    fn extent(&mut self) -> Option<[u32; 3]> {
+        Some(self.last_extent)
+    }
 }
 
 pub fn new_mirror(

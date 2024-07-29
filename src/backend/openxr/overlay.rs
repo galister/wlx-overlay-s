@@ -38,7 +38,8 @@ impl OverlayData<OpenXrOverlayData> {
             log::warn!("{}: Will not show - image not ready", self.state.name);
             return Ok(CompositionLayer::None);
         };
-        let extent = my_view.image().extent();
+
+        let extent = self.extent().unwrap(); // want panic
 
         let data = match self.data.swapchain {
             Some(ref mut data) => data,

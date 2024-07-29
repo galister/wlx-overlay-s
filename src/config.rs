@@ -153,6 +153,10 @@ fn def_font() -> Arc<str> {
     "LiberationSans:style=Bold".into()
 }
 
+fn def_max_height() -> u16 {
+    1440
+}
+
 #[derive(Deserialize, Serialize)]
 pub struct GeneralConfig {
     #[serde(default = "def_watch_pos")]
@@ -253,6 +257,9 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_true")]
     pub use_skybox: bool,
+
+    #[serde(default = "def_max_height")]
+    pub screen_max_height: u16,
 }
 
 impl GeneralConfig {

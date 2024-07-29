@@ -49,7 +49,7 @@ use crate::{
         input::{Haptics, InteractionHandler, PointerHit, PointerMode},
         overlay::{OverlayRenderer, OverlayState, SplitOverlayBackend},
     },
-    config::{def_pw_tokens, PwTokenMap},
+    config::{def_pw_tokens, GeneralConfig, PwTokenMap},
     graphics::{
         fourcc_to_vk, WlxCommandBuffer, WlxPipeline, WlxPipelineLegacy, DRM_FORMAT_MOD_INVALID,
     },
@@ -296,7 +296,7 @@ impl ScreenRenderer {
     }
 
     #[cfg(feature = "wayland")]
-    pub fn new_wlr_dmabuf(output: &WlxOutput) -> Option<ScreenRenderer> {
+    pub fn new_wlr_dmabuf(output: &WlxOutput, config: &GeneralConfig) -> Option<ScreenRenderer> {
         let client = WlxClient::new()?;
         let capture = WlrDmabufCapture::new(client, output.id);
 
@@ -305,12 +305,15 @@ impl ScreenRenderer {
             capture: Box::new(capture),
             pipeline: None,
             last_view: None,
-            extent: extent_from_res(output.size),
+            extent: extent_from_res(output.size, config),
         })
     }
 
     #[cfg(feature = "wayland")]
-    pub fn new_wlr_screencopy(output: &WlxOutput) -> Option<ScreenRenderer> {
+    pub fn new_wlr_screencopy(
+        output: &WlxOutput,
+        config: &GeneralConfig,
+    ) -> Option<ScreenRenderer> {
         let client = WlxClient::new()?;
         let capture = WlrScreencopyCapture::new(client, output.id);
 
@@ -319,7 +322,7 @@ impl ScreenRenderer {
             capture: Box::new(capture),
             pipeline: None,
             last_view: None,
-            extent: extent_from_res(output.size),
+            extent: extent_from_res(output.size, config),
         })
     }
 
@@ -360,14 +363,14 @@ impl ScreenRenderer {
                 capture: Box::new(capture),
                 pipeline: None,
                 last_view: None,
-                extent: extent_from_res(output.size),
+                extent: extent_from_res(output.size, &session.config),
             },
             select_screen_result.restore_token,
         ))
     }
 
     #[cfg(feature = "x11")]
-    pub fn new_xshm(screen: Arc<XshmScreen>) -> ScreenRenderer {
+    pub fn new_xshm(screen: Arc<XshmScreen>, config: &GeneralConfig) -> ScreenRenderer {
         let capture = XshmCapture::new(screen.clone());
 
         ScreenRenderer {
@@ -375,7 +378,7 @@ impl ScreenRenderer {
             capture: Box::new(capture),
             pipeline: None,
             last_view: None,
-            extent: extent_from_res((screen.monitor.width(), screen.monitor.height())),
+            extent: extent_from_res((screen.monitor.width(), screen.monitor.height()), config),
         }
     }
 }
@@ -573,6 +576,9 @@ impl OverlayRenderer for ScreenRenderer {
     fn view(&mut self) -> Option<Arc<ImageView>> {
         self.last_view.clone()
     }
+    fn extent(&mut self) -> Option<[u32; 3]> {
+        Some(self.extent)
+    }
 }
 
 #[cfg(feature = "wayland")]
@@ -588,12 +594,12 @@ pub fn create_screen_renderer_wl(
         && has_wlr_dmabuf
     {
         log::info!("{}: Using Wlr DMA-Buf", &output.name);
-        capture = ScreenRenderer::new_wlr_dmabuf(output);
+        capture = ScreenRenderer::new_wlr_dmabuf(output, &session.config);
     }
 
     if &*session.config.capture_method == "screencopy" && has_wlr_screencopy {
         log::info!("{}: Using Wlr Screencopy Wl-SHM", &output.name);
-        capture = ScreenRenderer::new_wlr_screencopy(output);
+        capture = ScreenRenderer::new_wlr_screencopy(output, &session.config);
     }
 
     if capture.is_none() {
@@ -893,7 +899,7 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
                 capture: Box::new(PipewireCapture::new(m.name.clone(), s.node_id)),
                 pipeline: None,
                 last_view: None,
-                extent: extent_from_res(size),
+                extent: extent_from_res(size, &app.session.config),
             };
 
             let backend = Box::new(SplitOverlayBackend {
@@ -931,7 +937,7 @@ pub fn create_screens_xshm(app: &mut AppState) -> anyhow::Result<ScreenCreateDat
 
             let size = (s.monitor.width(), s.monitor.height());
             let pos = (s.monitor.x(), s.monitor.y());
-            let renderer = ScreenRenderer::new_xshm(s.clone());
+            let renderer = ScreenRenderer::new_xshm(s.clone(), &app.session.config);
 
             log::info!(
                 "{}: Init X11 screen of res {:?} at {:?}",
@@ -997,12 +1003,11 @@ impl From<wl_output::Transform> for Transform {
     }
 }
 
-fn extent_from_res(res: (i32, i32)) -> [u32; 3] {
+fn extent_from_res(res: (i32, i32), config: &GeneralConfig) -> [u32; 3] {
     // screens above a certain resolution will have severe aliasing
 
-    // TODO make dynamic. maybe don't go above HMD resolution?
-    let w = res.0.min(2560) as u32;
-    let h = (res.1 as f32 / res.0 as f32 * w as f32) as u32;
+    let h = res.1.min(config.screen_max_height as i32) as u32;
+    let w = (res.0 as f32 / res.1 as f32 * h as f32) as u32;
     [w, h, 1]
 }
 

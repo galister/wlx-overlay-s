@@ -189,4 +189,7 @@ impl OverlayRenderer for StaticRenderer {
     fn view(&mut self) -> Option<Arc<ImageView>> {
         Some(self.view.clone())
     }
+    fn extent(&mut self) -> Option<[u32; 3]> {
+        Some(self.view.image().extent())
+    }
 }

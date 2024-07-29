@@ -224,6 +224,9 @@ where
     pub fn view(&mut self) -> Option<Arc<ImageView>> {
         self.backend.view()
     }
+    pub fn extent(&mut self) -> Option<[u32; 3]> {
+        self.backend.extent()
+    }
     pub fn set_visible(&mut self, app: &mut AppState, visible: bool) -> anyhow::Result<()> {
         let old_visible = self.state.want_visible;
         self.state.want_visible = visible;
@@ -239,11 +242,19 @@ where
 }
 
 pub trait OverlayRenderer {
+    /// Called once, before the first frame is rendered
     fn init(&mut self, app: &mut AppState) -> anyhow::Result<()>;
     fn pause(&mut self, app: &mut AppState) -> anyhow::Result<()>;
     fn resume(&mut self, app: &mut AppState) -> anyhow::Result<()>;
+    /// Called when the presentation layer is ready to present a new frame
     fn render(&mut self, app: &mut AppState) -> anyhow::Result<()>;
+    /// Called to retrieve the current image to be displayed
     fn view(&mut self) -> Option<Arc<ImageView>>;
+    /// Called to retrieve the effective extent of the image
+    /// Used for creating swapchains.
+    ///
+    /// Muse not be None if view() is also not None
+    fn extent(&mut self) -> Option<[u32; 3]>;
 }
 
 pub struct FallbackRenderer;
@@ -262,6 +273,9 @@ impl OverlayRenderer for FallbackRenderer {
         Ok(())
     }
     fn view(&mut self) -> Option<Arc<ImageView>> {
+        None
+    }
+    fn extent(&mut self) -> Option<[u32; 3]> {
         None
     }
 }
@@ -317,6 +331,9 @@ impl OverlayRenderer for SplitOverlayBackend {
     }
     fn view(&mut self) -> Option<Arc<ImageView>> {
         self.renderer.view()
+    }
+    fn extent(&mut self) -> Option<[u32; 3]> {
+        self.renderer.extent()
     }
 }
 impl InteractionHandler for SplitOverlayBackend {
