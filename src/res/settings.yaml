@@ -4,7 +4,7 @@
 
 width: 0.3
 
-size: [600, 700]
+size: [600, 750]
 
 # +X: right, +Y: up, +Z: back
 spawn_pos: [0, -0.1, -0.5]
@@ -635,15 +635,27 @@ elements:
         action: ToggleAllowSliding
     highlight: AllowSliding
 
+  - type: Button
+    rect: [30, 605, 220, 30]
+    corner_radius: 6
+    font_size: 12
+    fg_color: "#24273a"
+    bg_color: "#e64553"
+    text: "Scroll Opacity Adjustment"
+    click_down:
+      - type: System
+        action: ToggleOpacityAdjustment
+    highlight: OpacityAdjustment
+
   ####### Footer Section #######
 
   - type: Panel
-    rect: [50, 605, 500, 1]
+    rect: [50, 655, 500, 1]
     corner_radius: 6
     bg_color: "#6e738d"
 
   - type: Button
-    rect: [330, 625, 220, 30]
+    rect: [330, 675, 220, 30]
     corner_radius: 6
     font_size: 12
     fg_color: "#24273a"
@@ -656,7 +668,7 @@ elements:
         message: Settings saved successfully.
 
   - type: Button
-    rect: [30, 625, 250, 30]
+    rect: [30, 675, 250, 30]
     corner_radius: 6
     font_size: 12
     fg_color: "#24273a"

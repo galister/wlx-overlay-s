@@ -45,6 +45,7 @@ pub enum Axis {
 pub enum HighlightTest {
     AllowSliding,
     AutoRealign,
+    OpacityAdjustment,
     NotificationSounds,
     Notifications,
 }
@@ -53,6 +54,7 @@ pub enum HighlightTest {
 pub enum SystemAction {
     ToggleAllowSliding,
     ToggleAutoRealign,
+    ToggleOpacityAdjustment,
     ToggleNotificationSounds,
     ToggleNotifications,
     PlayspaceResetOffset,
@@ -296,6 +298,7 @@ fn modular_button_highlight(
         let lit = match test {
             HighlightTest::AllowSliding => app.session.config.allow_sliding,
             HighlightTest::AutoRealign => app.session.config.realign_on_showhide,
+            HighlightTest::OpacityAdjustment => app.session.config.overlay_opacity_adjustment,
             HighlightTest::NotificationSounds => app.session.config.notifications_sound_enabled,
             HighlightTest::Notifications => app.session.config.notifications_enabled,
         };
@@ -368,6 +371,19 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
                 "".into(),
             )
             .submit(app);
+        }
+        SystemAction::ToggleOpacityAdjustment => {
+            app.session.config.overlay_opacity_adjustment = !app.session.config.overlay_opacity_adjustment;
+            Toast::new(
+                ToastTopic::System,
+                format!(
+                    "Opacity adjustment is {}.",
+                    ENABLED_DISABLED[app.session.config.overlay_opacity_adjustment as usize]
+                )
+                    .into(),
+                "".into(),
+            )
+                .submit(app);
         }
         SystemAction::PlayspaceResetOffset => {
             app.tasks
@@ -669,15 +685,17 @@ fn run_overlay(overlay: &OverlaySelector, action: &OverlayAction, app: &mut AppS
             audio_thump(app);
         }
         OverlayAction::Opacity { delta } => {
-            let delta = *delta;
-            app.tasks.enqueue(TaskType::Overlay(
-                overlay.clone(),
-                Box::new(move |_, o| {
-                    o.alpha = (o.alpha + delta).clamp(0.1, 1.0);
-                    o.dirty = true;
-                    log::debug!("{}: alpha {}", o.name, o.alpha);
-                }),
-            ));
+            if (app.session.config.overlay_opacity_adjustment) {
+                let delta = *delta;
+                app.tasks.enqueue(TaskType::Overlay(
+                    overlay.clone(),
+                    Box::new(move |_, o| {
+                        o.alpha = (o.alpha + delta).clamp(0.1, 1.0);
+                        o.dirty = true;
+                        log::debug!("{}: alpha {}", o.name, o.alpha);
+                    }),
+                ));
+            }
         }
     }
 }

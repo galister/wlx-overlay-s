@@ -25,3 +25,8 @@ realign_on_showhide: true
 # unchanged, for when the desktop is configured to move the focus with the mouse cursor
 # Default: false
 focus_follows_mouse_mode: false
+
+# Enable / disable adjusting the opacity of overlays by using the scroll action on the watch buttons
+# for the screens / keyboard
+# Default: true
+overlay_opacity_adjustment: true
