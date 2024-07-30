@@ -1,13 +1,12 @@
-use glam::{Affine3A, Quat, Vec3, Vec3A};
-use libloading::{Library, Symbol};
-use std::ffi::c_void;
+use glam::{Affine3A, Quat, Vec3A};
+use libmonado_rs::{Monado, Pose, ReferenceSpaceType};
 
 use crate::{
     backend::{common::OverlayContainer, input::InputState},
     state::AppState,
 };
 
-use super::{helpers, overlay::OpenXrOverlayData};
+use super::overlay::OpenXrOverlayData;
 
 #[repr(C)]
 #[derive(Default, Debug)]
@@ -16,116 +15,46 @@ struct XrtPose {
     position: [f32; 3],
 }
 
-const XRT_REFERENCE_TYPE_STAGE: i32 = 3;
-
-const MND_SUCCESS: i32 = 0;
-const MND_ERROR_BAD_SPACE_TYPE: i32 = -7;
-
 struct MoverData<T> {
     pose: Affine3A,
     hand: usize,
     hand_pose: T,
 }
 
-// Legacy implementations
-type PlaySpaceMove = extern "C" fn(*mut c_void, f32, f32, f32) -> i32;
-type ApplyStageOffset = extern "C" fn(*mut c_void, *const XrtPose) -> i32;
-
-// New implementation
-type GetReferenceSpaceOffset = extern "C" fn(*mut c_void, i32, *mut XrtPose) -> i32;
-type SetReferenceSpaceOffset = extern "C" fn(*mut c_void, i32, *const XrtPose) -> i32;
-
-// TODO: Clean up after merge into upstream Monado
-enum ApiImpl {
-    None,
-    PlaySpaceMove(PlaySpaceMove),
-    ApplyStageOffset(ApplyStageOffset),
-    SpaceOffsetApi {
-        get_reference: GetReferenceSpaceOffset,
-        set_reference: SetReferenceSpaceOffset,
-    },
-}
-
 pub(super) struct PlayspaceMover {
     last_transform: Affine3A,
     drag: Option<MoverData<Vec3A>>,
     rotate: Option<MoverData<Quat>>,
-
-    libmonado: Library,
-    mnd_root: *mut c_void,
-    api_impl: ApiImpl,
 }
 
 impl PlayspaceMover {
-    pub fn try_new() -> anyhow::Result<Self> {
-        unsafe {
-            let libmonado = helpers::find_libmonado()?;
+    pub fn new(monado: &mut Monado) -> anyhow::Result<Self> {
+        log::info!("Monado: using space offset API");
 
-            let root_create: Symbol<extern "C" fn(*mut *mut c_void) -> i32> =
-                libmonado.get(b"mnd_root_create\0")?;
+        let Ok(stage) = monado.get_reference_space_offset(ReferenceSpaceType::Stage) else {
+            anyhow::bail!("Space offsets not supported.");
+        };
 
-            let mut root: *mut c_void = std::ptr::null_mut();
-            let ret = root_create(&mut root);
-            if ret != 0 {
-                anyhow::bail!("Failed to create root, code: {}", ret);
-            }
+        log::debug!("STAGE is at {:?}, {:?}", stage.position, stage.orientation);
 
-            let mut api_impl = ApiImpl::None;
-            let mut initial_offset = Affine3A::IDENTITY;
+        // initial offset
+        let last_transform =
+            Affine3A::from_rotation_translation(stage.orientation.into(), stage.position.into());
 
-            if let (Ok(get_reference), Ok(set_reference)) = (
-                libmonado.get(b"mnd_root_get_reference_space_offset\0"),
-                libmonado.get(b"mnd_root_set_reference_space_offset\0"),
-            ) {
-                log::info!("Monado: using space offset API");
+        Ok(Self {
+            last_transform,
 
-                let get_reference: GetReferenceSpaceOffset = *get_reference;
-                let set_reference: SetReferenceSpaceOffset = *set_reference;
-
-                let mut stage = XrtPose::default();
-                match (get_reference)(root, XRT_REFERENCE_TYPE_STAGE, &mut stage) {
-                    MND_SUCCESS => {
-                        log::debug!("STAGE is at {:?}, {:?}", stage.position, stage.orientation);
-                        initial_offset = Affine3A::from_rotation_translation(
-                            Quat::from_slice(&stage.orientation),
-                            Vec3::from_slice(&stage.position),
-                        );
-                    }
-                    _ => anyhow::bail!("Space offsets not supported."),
-                };
-
-                api_impl = ApiImpl::SpaceOffsetApi {
-                    get_reference,
-                    set_reference,
-                };
-            } else if let Ok(playspace_move) = libmonado.get(b"mnd_root_playspace_move\0") {
-                log::warn!("Monado: using playspace_move, which is obsolete. Consider updating.");
-                api_impl = ApiImpl::PlaySpaceMove(*playspace_move);
-            } else if let Ok(apply_stage_offset) = libmonado.get(b"mnd_root_apply_stage_offset\0") {
-                log::warn!(
-                    "Monado: using apply_stage_offset, which is obsolete. Consider updating."
-                );
-                api_impl = ApiImpl::ApplyStageOffset(*apply_stage_offset);
-            }
-
-            if let ApiImpl::None = api_impl {
-                anyhow::bail!("Monado does not support playspace mover.");
-            }
-
-            Ok(Self {
-                last_transform: initial_offset,
-
-                drag: None,
-                rotate: None,
-
-                libmonado,
-                mnd_root: root,
-                api_impl,
-            })
-        }
+            drag: None,
+            rotate: None,
+        })
     }
 
-    pub fn update(&mut self, overlays: &mut OverlayContainer<OpenXrOverlayData>, state: &AppState) {
+    pub fn update(
+        &mut self,
+        overlays: &mut OverlayContainer<OpenXrOverlayData>,
+        state: &AppState,
+        monado: &mut Monado,
+    ) {
         if let Some(mut data) = self.rotate.take() {
             let pointer = &state.input_state.pointers[data.hand];
             if !pointer.now.space_rotate {
@@ -164,7 +93,7 @@ impl PlayspaceMover {
             data.pose *= space_transform;
             data.hand_pose = new_hand;
 
-            self.apply_offset(data.pose);
+            self.apply_offset(data.pose, monado);
             self.rotate = Some(data);
         } else {
             for (i, pointer) in state.input_state.pointers.iter().enumerate() {
@@ -213,7 +142,7 @@ impl PlayspaceMover {
             data.pose.translation += relative_pos;
             data.hand_pose = new_hand;
 
-            self.apply_offset(data.pose);
+            self.apply_offset(data.pose, monado);
             self.drag = Some(data);
         } else {
             for (i, pointer) in state.input_state.pointers.iter().enumerate() {
@@ -233,7 +162,7 @@ impl PlayspaceMover {
         }
     }
 
-    pub fn reset_offset(&mut self) {
+    pub fn reset_offset(&mut self, monado: &mut Monado) {
         if self.drag.is_some() {
             log::info!("Space drag interrupted by manual reset");
             self.drag = None;
@@ -244,10 +173,10 @@ impl PlayspaceMover {
         }
 
         self.last_transform = Affine3A::IDENTITY;
-        self.apply_offset(self.last_transform);
+        self.apply_offset(self.last_transform, monado);
     }
 
-    pub fn fix_floor(&mut self, input: &InputState) {
+    pub fn fix_floor(&mut self, input: &InputState, monado: &mut Monado) {
         if self.drag.is_some() {
             log::info!("Space drag interrupted by fix floor");
             self.drag = None;
@@ -261,40 +190,14 @@ impl PlayspaceMover {
         let y2 = input.pointers[1].pose.translation.y;
         let delta = y1.min(y2) - 0.03;
         self.last_transform.translation.y += delta;
-        self.apply_offset(self.last_transform);
+        self.apply_offset(self.last_transform, monado);
     }
 
-    fn apply_offset(&self, transform: Affine3A) {
-        match self.api_impl {
-            ApiImpl::PlaySpaceMove(playspace_move) => {
-                (playspace_move)(
-                    self.mnd_root,
-                    transform.translation.x,
-                    transform.translation.y,
-                    transform.translation.z,
-                );
-            }
-            ApiImpl::ApplyStageOffset(apply_stage_offset) => {
-                let xrt_pose = XrtPose {
-                    orientation: Quat::from_affine3(&transform).into(),
-                    position: transform.translation.into(),
-                };
-                (apply_stage_offset)(self.mnd_root, &xrt_pose);
-            }
-            ApiImpl::SpaceOffsetApi { set_reference, .. } => {
-                let xrt_pose = XrtPose {
-                    orientation: Quat::from_affine3(&transform).into(),
-                    position: transform.translation.into(),
-                };
-
-                let mnd_result =
-                    (set_reference)(self.mnd_root, XRT_REFERENCE_TYPE_STAGE, &xrt_pose);
-                //let mnd_result = (set_offset)(self.mnd_root, 0, &xrt_pose);
-                if mnd_result != MND_SUCCESS {
-                    log::warn!("Cannot move playspace: MND result code {}", mnd_result);
-                }
-            }
-            ApiImpl::None => {}
-        }
+    fn apply_offset(&self, transform: Affine3A, monado: &mut Monado) {
+        let pose = Pose {
+            position: transform.translation.into(),
+            orientation: Quat::from_affine3(&transform).into(),
+        };
+        let _ = monado.set_reference_space_offset(ReferenceSpaceType::Stage, pose);
     }
 }

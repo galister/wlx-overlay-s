@@ -1,9 +1,6 @@
-use std::path::PathBuf;
-
 use anyhow::{bail, ensure};
 use glam::{Affine3A, Quat, Vec3, Vec3A};
 use openxr as xr;
-use sysinfo::Process;
 use xr::OverlaySessionCreateFlagsEXTX;
 
 pub(super) fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
@@ -35,6 +32,12 @@ pub(super) fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
     } else {
         log::warn!("Missing EXT_hp_mixed_reality_controller extension.");
     }
+    if available_extensions.khr_composition_layer_cylinder {
+        enabled_extensions.khr_composition_layer_cylinder = true;
+    } else {
+        log::warn!("Missing EXT_composition_layer_cylinder extension.");
+    }
+
     if available_extensions.khr_composition_layer_equirect2 {
         enabled_extensions.khr_composition_layer_equirect2 = true;
     } else {
@@ -177,50 +180,4 @@ pub(super) fn transform_to_posef(transform: &Affine3A) -> xr::Posef {
     let translation = transform.translation;
     let rotation = transform_to_norm_quat(transform);
     translation_rotation_to_posef(translation, rotation)
-}
-
-pub(super) fn find_libmonado() -> anyhow::Result<libloading::Library> {
-    //check env var first
-    if let Ok(path) = std::env::var("LIBMONADO_PATH") {
-        let path = PathBuf::from(path);
-        if path.exists() {
-            return Ok(unsafe { libloading::Library::new(path)? });
-        } else {
-            bail!("LIBMONADO_PATH points to a non-existing file.");
-        }
-    }
-
-    const PROC_NAMES: [&str; 2] = ["monado-service", "wivrn-server"];
-
-    let mut system = sysinfo::System::new();
-    system.refresh_processes();
-    for p in system.processes().values() {
-        for proc_name in PROC_NAMES.iter() {
-            if p.name().contains(proc_name) {
-                if let Some(lib) = proc_load_libmonado(p) {
-                    return Ok(lib);
-                }
-            }
-        }
-    }
-    bail!("Could not find libmonado.");
-}
-
-fn proc_load_libmonado(proc: &Process) -> Option<libloading::Library> {
-    // relative to folder containing binary
-    const SEARCH_PATHS: [&str; 3] = [
-        "../lib/libmonado.so",
-        "../libmonado/libmonado.so",
-        "../_deps/monado-build/src/xrt/targets/libmonado/libmonado.so",
-    ];
-
-    for &p in SEARCH_PATHS.iter() {
-        let path = proc.exe()?.parent()?.join(p);
-
-        if path.exists() {
-            return Some(unsafe { libloading::Library::new(path).ok()? });
-        }
-    }
-
-    None
 }

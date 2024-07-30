@@ -9,6 +9,7 @@ use std::{
 };
 
 use glam::{Affine3A, Vec3};
+use libmonado_rs::Monado;
 use openxr as xr;
 use skybox::create_skybox;
 use vulkano::{command_buffer::CommandBufferUsage, Handle, VulkanObject};
@@ -84,9 +85,16 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
     notifications.run_udp();
 
     let mut delete_queue = vec![];
-    let mut playspace = playspace::PlayspaceMover::try_new()
-        .map_err(|e| log::warn!("Will not use Monado playspace mover: {}", e))
+
+    let mut monado = Monado::auto_connect()
+        .map_err(|e| log::warn!("Will not use libmonado: {}", e))
         .ok();
+
+    let mut playspace = monado.as_mut().and_then(|m| {
+        playspace::PlayspaceMover::new(m)
+            .map_err(|e| log::warn!("Will not use Monado playspace mover: {}", e))
+            .ok()
+    });
 
     #[cfg(feature = "osc")]
     let mut osc_sender =
@@ -236,7 +244,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
 
         watch_fade(&mut app_state, overlays.mut_by_id(watch_id).unwrap()); // want panic
         if let Some(ref mut space_mover) = playspace {
-            space_mover.update(&mut overlays, &app_state);
+            space_mover.update(&mut overlays, &app_state, monado.as_mut().unwrap());
         }
 
         for o in overlays.iter_mut() {
@@ -416,12 +424,12 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                 TaskType::System(task) => match task {
                     SystemTask::FixFloor => {
                         if let Some(ref mut playspace) = playspace {
-                            playspace.fix_floor(&app_state.input_state);
+                            playspace.fix_floor(&app_state.input_state, monado.as_mut().unwrap());
                         }
                     }
                     SystemTask::ResetPlayspace => {
                         if let Some(ref mut playspace) = playspace {
-                            playspace.reset_offset();
+                            playspace.reset_offset(monado.as_mut().unwrap());
                         }
                     }
                     SystemTask::ShowHide => {
