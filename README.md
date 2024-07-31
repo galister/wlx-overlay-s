@@ -4,7 +4,7 @@ A lightweight OpenXR/OpenVR overlay for Wayland and X11 desktops, inspired by XS
 
 WlxOverlay-S allows you to access your desktop screens while in VR.
 
-Compared to similar software, WlxOverlay-S aims to run alongside your other VR games or experiences and have as little performance impact as possible. The UI looks and rendering methods are kept simple and efficient as much as possible.
+In comparison to similar overlays, WlxOverlay-S aims to run alongside VR games and experiences while having as little performance impact as possible. The UI appearance and rendering techniques are kept as simple and efficient as possible, while still allowing a high degree of customizability.
 
 This is the coming-together of two of my previous projects:
 - [WlxOverlay](https://github.com/galister/WlxOverlay) (SteamVR overlay written in C#)
@@ -82,9 +82,9 @@ The click depends on the laser color:
 - Purple laser: Middle click
 - Stick up/down: Scroll wheel
 
-To **curve screens**, grab them with one hand, then with the other hand, hover the laser over the overlay and use the scroll action.
+To **curve a screen**, grab it with one hand. Then, using your other hand, hover the laser over the screen and use the scroll action.
 
-See the bindings section on how to grab, move and resize screens.
+See the [bindings](#default-bindings) section on how to grab, move and resize screens.
 
 ### The keyboard
 
