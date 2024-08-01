@@ -112,7 +112,7 @@ pub fn modular_label_init(label: &mut ModularControl, content: &LabelContent) {
             label.set_text(text);
             None
         }
-        LabelContent::Ipd => Some(LabelData::Ipd { last_ipd: 0. }),
+        LabelContent::Ipd => Some(LabelData::Ipd { last_ipd: -1. }),
         LabelContent::DragMultiplier => Some(LabelData::DragMultiplier),
     };
 
