@@ -19,6 +19,7 @@ use std::{
 
 use clap::Parser;
 use flexi_logger::{Duplicate, FileSpec, LogSpecification};
+use sysinfo::Pid;
 
 /// The lightweight desktop overlay for OpenVR and OpenXR
 #[derive(Default, Parser, Debug)]
@@ -222,7 +223,7 @@ fn ensure_single_instance(replace: bool) -> bool {
         if let Ok(pid_str) = std::fs::read_to_string(&path) {
             if let Ok(pid) = pid_str.trim().parse::<u32>() {
                 let mut system = sysinfo::System::new();
-                system.refresh_processes();
+                system.refresh_processes(sysinfo::ProcessesToUpdate::Some(&[Pid::from_u32(pid)]));
                 if let Some(proc) = system.process(sysinfo::Pid::from_u32(pid)) {
                     if replace {
                         proc.kill_with(sysinfo::Signal::Term);
