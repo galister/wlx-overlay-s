@@ -212,8 +212,10 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         }
 
         if next_device_update <= Instant::now() {
-            input_source.update_devices(&mut app_state, monado.as_mut().unwrap());
-            next_device_update = Instant::now() + Duration::from_secs(30);
+            if let Some(monado) = &mut monado {
+                input_source.update_devices(&mut app_state, monado);
+                next_device_update = Instant::now() + Duration::from_secs(30);
+            }
         }
 
         if !session_running {
