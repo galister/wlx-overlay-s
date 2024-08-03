@@ -554,7 +554,7 @@ impl WlxGraphics {
         use vulkano::swapchain::Surface;
         use winit::{event_loop::EventLoop, window::Window};
 
-        let event_loop = EventLoop::new().unwrap();
+        let event_loop = EventLoop::new().unwrap(); // want panic
         let mut vk_instance_extensions = Surface::required_extensions(&event_loop).unwrap();
         vk_instance_extensions.khr_get_physical_device_properties2 = true;
         log::debug!("Instance exts for runtime: {:?}", &vk_instance_extensions);
@@ -571,7 +571,7 @@ impl WlxGraphics {
         let window = Arc::new(
             event_loop
                 .create_window(Window::default_attributes())
-                .unwrap(),
+                .unwrap(), // want panic
         );
         let surface = Surface::from_window(instance.clone(), window.clone())?;
 
@@ -640,7 +640,7 @@ impl WlxGraphics {
         let native_format = device
             .physical_device()
             .surface_formats(&surface, Default::default())
-            .unwrap()[0]
+            .unwrap()[0] // want panic
             .0;
         log::info!("Using surface format: {:?}", native_format);
 

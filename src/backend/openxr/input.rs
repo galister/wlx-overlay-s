@@ -5,9 +5,9 @@ use std::{
 };
 
 use glam::{bool, Affine3A, Quat, Vec3};
+use libmonado_rs::{Device, Monado};
 use openxr::{self as xr, Quaternionf, Vector3f};
 use serde::{Deserialize, Serialize};
-use libmonado_rs::{Monado, Device};
 
 use crate::{
     backend::input::{Haptics, Pointer, TrackedDevice, TrackedDeviceRole},
@@ -213,7 +213,7 @@ impl OpenXrInputSource {
     fn update_device_battery_status(
         device: &mut Device,
         role: TrackedDeviceRole,
-        app: &mut AppState
+        app: &mut AppState,
     ) {
         if let Ok(status) = device.battery_status() {
             if status.present {
@@ -222,8 +222,13 @@ impl OpenXrInputSource {
                     charging: status.charging,
                     role,
                 });
-                log::debug!("Device {} role {:#?}: {:.0}% (charging {})", device.index, role,
-                            status.charge * 100.0f32, status.charging);
+                log::debug!(
+                    "Device {} role {:#?}: {:.0}% (charging {})",
+                    device.index,
+                    role,
+                    status.charge * 100.0f32,
+                    status.charging
+                );
             }
         }
     }
@@ -420,7 +425,7 @@ fn to_path(maybe_path_str: &Option<String>, instance: &xr::Instance) -> Option<x
 fn is_bool(maybe_type_str: &Option<String>) -> bool {
     maybe_type_str
         .as_ref()
-        .unwrap()
+        .unwrap() // want panic
         .split('/')
         .last()
         .map(|last| matches!(last, "click" | "touch"))

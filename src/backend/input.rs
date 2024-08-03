@@ -547,7 +547,7 @@ impl Pointer {
                 }
                 config.transform_values.arc_set(
                     overlay.state.name.clone(),
-                    overlay.state.saved_transform.unwrap(),
+                    overlay.state.saved_transform.unwrap(), // safe
                 );
             }
 

@@ -123,6 +123,7 @@ pub fn modular_label_init(label: &mut ModularControl, content: &LabelContent) {
 }
 
 pub(super) fn label_update(control: &mut ModularControl, _: &mut (), app: &mut AppState) {
+    // want panic
     let ModularData::Label(data) = control.state.as_mut().unwrap() else {
         panic!("Label control has no state");
     };

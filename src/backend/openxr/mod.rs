@@ -252,7 +252,11 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
 
         watch_fade(&mut app_state, overlays.mut_by_id(watch_id).unwrap()); // want panic
         if let Some(ref mut space_mover) = playspace {
-            space_mover.update(&mut overlays, &app_state, monado.as_mut().unwrap());
+            space_mover.update(
+                &mut overlays,
+                &app_state,
+                monado.as_mut().unwrap(), // safe
+            );
         }
 
         for o in overlays.iter_mut() {
@@ -432,12 +436,15 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                 TaskType::System(task) => match task {
                     SystemTask::FixFloor => {
                         if let Some(ref mut playspace) = playspace {
-                            playspace.fix_floor(&app_state.input_state, monado.as_mut().unwrap());
+                            playspace.fix_floor(
+                                &app_state.input_state,
+                                monado.as_mut().unwrap(), // safe
+                            );
                         }
                     }
                     SystemTask::ResetPlayspace => {
                         if let Some(ref mut playspace) = playspace {
-                            playspace.reset_offset(monado.as_mut().unwrap());
+                            playspace.reset_offset(monado.as_mut().unwrap()); // safe
                         }
                     }
                     SystemTask::ShowHide => {

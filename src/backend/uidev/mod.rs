@@ -237,7 +237,7 @@ fn create_swapchain(
         .device
         .physical_device()
         .surface_capabilities(&surface, Default::default())
-        .unwrap();
+        .unwrap(); // want panic
 
     let (swapchain, images) = Swapchain::new(
         graphics.device.clone(),
@@ -251,13 +251,14 @@ fn create_swapchain(
                 .supported_composite_alpha
                 .into_iter()
                 .next()
-                .unwrap(),
+                .unwrap(), // want panic
             ..Default::default()
         },
     )?;
 
     let image_views = images
         .into_iter()
+        // want panic
         .map(|image| ImageView::new_default(image).unwrap())
         .collect::<Vec<_>>();
 

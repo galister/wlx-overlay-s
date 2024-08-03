@@ -133,12 +133,14 @@ where
                         continue;
                     }
                     let mut iter = exec_args.iter().cloned();
-                    maybe_state = Some(KeyButtonData::Exec {
-                        program: iter.next().unwrap(),
-                        args: iter.by_ref().take_while(|arg| arg[..] != *"null").collect(),
-                        release_program: iter.next(),
-                        release_args: iter.collect(),
-                    });
+                    if let Some(program) = iter.next() {
+                        maybe_state = Some(KeyButtonData::Exec {
+                            program,
+                            args: iter.by_ref().take_while(|arg| arg[..] != *"null").collect(),
+                            release_program: iter.next(),
+                            release_args: iter.collect(),
+                        })
+                    };
                 } else {
                     log::error!("Unknown key: {}", key);
                 }
@@ -269,7 +271,7 @@ fn key_release(
     }
 }
 
-static PRESS_COLOR: Vec4 = Vec4::new(198./255., 160./255., 246./255., 0.5);
+static PRESS_COLOR: Vec4 = Vec4::new(198. / 255., 160. / 255., 246. / 255., 0.5);
 
 fn test_highlight(
     control: &Control<KeyboardData, KeyButtonData>,
