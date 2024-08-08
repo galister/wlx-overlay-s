@@ -15,7 +15,7 @@ use vulkano::{
 };
 use wlx_capture::{
     frame::{
-        DrmFormat, MouseMeta, WlxFrame, DRM_FORMAT_ABGR2101010, DRM_FORMAT_ABGR8888,
+        DrmFormat, FrameFormat, MouseMeta, WlxFrame, DRM_FORMAT_ABGR2101010, DRM_FORMAT_ABGR8888,
         DRM_FORMAT_ARGB8888, DRM_FORMAT_XBGR2101010, DRM_FORMAT_XBGR8888, DRM_FORMAT_XRGB8888,
     },
     WlxCapture,
@@ -280,7 +280,7 @@ pub struct ScreenRenderer {
     capture: Box<dyn WlxCapture>,
     pipeline: Option<ScreenPipeline>,
     last_view: Option<Arc<ImageView>>,
-    extent: [u32; 3],
+    extent: Option<[u32; 3]>,
 }
 
 impl ScreenRenderer {
@@ -291,7 +291,7 @@ impl ScreenRenderer {
             capture,
             pipeline: None,
             last_view: None,
-            extent: [0; 3],
+            extent: None,
         }
     }
 
@@ -305,7 +305,7 @@ impl ScreenRenderer {
             capture: Box::new(capture),
             pipeline: None,
             last_view: None,
-            extent: extent_from_res(output.size, config),
+            extent: None,
         })
     }
 
@@ -322,7 +322,7 @@ impl ScreenRenderer {
             capture: Box::new(capture),
             pipeline: None,
             last_view: None,
-            extent: extent_from_res(output.size, config),
+            extent: None,
         })
     }
 
@@ -363,7 +363,7 @@ impl ScreenRenderer {
                 capture: Box::new(capture),
                 pipeline: None,
                 last_view: None,
-                extent: extent_from_res(output.size, &session.config),
+                extent: None,
             },
             select_screen_result.restore_token,
         ))
@@ -378,7 +378,7 @@ impl ScreenRenderer {
             capture: Box::new(capture),
             pipeline: None,
             last_view: None,
-            extent: extent_from_res((screen.monitor.width(), screen.monitor.height()), config),
+            extent: None,
         }
     }
 }
@@ -466,6 +466,9 @@ impl OverlayRenderer for ScreenRenderer {
                         log::error!("Invalid frame");
                         continue;
                     }
+                    self.extent.get_or_insert_with(|| {
+                        extent_from_format(frame.format, &app.session.config)
+                    });
                     match app.graphics.dmabuf_texture(frame) {
                         Ok(new) => {
                             let view = ImageView::new_default(new.clone())?;
@@ -491,6 +494,9 @@ impl OverlayRenderer for ScreenRenderer {
                         log::error!("No fd");
                         continue;
                     };
+                    self.extent.get_or_insert_with(|| {
+                        extent_from_format(frame.format, &app.session.config)
+                    });
                     log::debug!("{}: New MemFd frame", self.name);
                     let format = fourcc_to_vk(frame.format.fourcc)?;
 
@@ -543,10 +549,12 @@ impl OverlayRenderer for ScreenRenderer {
                     let pipeline = Some(match self.pipeline {
                         Some(ref mut p) => p,
                         _ => {
-                            let mut pipeline = ScreenPipeline::new(&self.extent, app)?;
+                            let extent = extent_from_format(frame.format, &app.session.config);
+                            let mut pipeline = ScreenPipeline::new(&extent, app)?;
                             self.last_view = Some(pipeline.view.clone());
                             pipeline.ensure_mouse_initialized(&mut upload)?;
                             self.pipeline = Some(pipeline);
+                            self.extent = Some(extent);
                             self.pipeline.as_mut().unwrap() // safe
                         }
                     });
@@ -577,7 +585,7 @@ impl OverlayRenderer for ScreenRenderer {
         self.last_view.clone()
     }
     fn extent(&mut self) -> Option<[u32; 3]> {
-        Some(self.extent)
+        self.extent
     }
 }
 
@@ -899,7 +907,11 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
                 capture: Box::new(PipewireCapture::new(m.name.clone(), s.node_id)),
                 pipeline: None,
                 last_view: None,
-                extent: extent_from_res(size, &app.session.config),
+                extent: Some(extent_from_res(
+                    size.0 as _,
+                    size.1 as _,
+                    &app.session.config,
+                )),
             };
 
             let backend = Box::new(SplitOverlayBackend {
@@ -1003,11 +1015,14 @@ impl From<wl_output::Transform> for Transform {
     }
 }
 
-fn extent_from_res(res: (i32, i32), config: &GeneralConfig) -> [u32; 3] {
-    // screens above a certain resolution will have severe aliasing
+fn extent_from_format(fmt: FrameFormat, config: &GeneralConfig) -> [u32; 3] {
+    extent_from_res(fmt.width, fmt.height, config)
+}
 
-    let h = res.1.min(config.screen_max_height as i32) as u32;
-    let w = (res.0 as f32 / res.1 as f32 * h as f32) as u32;
+fn extent_from_res(width: u32, height: u32, config: &GeneralConfig) -> [u32; 3] {
+    // screens above a certain resolution will have severe aliasing
+    let h = height.min(config.screen_max_height as u32);
+    let w = (width as f32 / height as f32 * h as f32) as u32;
     [w, h, 1]
 }
 

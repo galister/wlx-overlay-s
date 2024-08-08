@@ -384,12 +384,9 @@ where
             .grabbed
             .is_some_and(|x| x.grabbed_id == hit.overlay)
         {
-            let is_portrait = hovered.view().is_some_and(|v| {
-                let extent = v.image().extent();
-                extent[0] >= extent[1]
-            });
+            let can_curve = hovered.extent().is_some_and(|e| e[0] >= e[1]);
 
-            if is_portrait {
+            if can_curve {
                 let cur = hovered.state.curvature.unwrap_or(0.0);
                 let new = (cur - scroll * 0.01).min(0.35);
                 if new <= f32::EPSILON {
@@ -397,6 +394,8 @@ where
                 } else {
                     hovered.state.curvature = Some(new);
                 }
+            } else {
+                hovered.state.curvature = None;
             }
         } else {
             hovered.backend.on_scroll(app, &hit, scroll);
