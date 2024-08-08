@@ -132,21 +132,14 @@ pub(super) unsafe fn create_overlay_session(
     }
 }
 
-pub(super) fn hmd_pose_from_views(views: &[xr::View]) -> (Affine3A, f32) {
-    let ipd;
-    let pos = {
-        let pos0: Vec3 = unsafe { std::mem::transmute(views[0].pose.position) };
-        let pos1: Vec3 = unsafe { std::mem::transmute(views[1].pose.position) };
-        ipd = (pos0.distance(pos1) * 1000.0).round() * 0.1;
-        (pos0 + pos1) * 0.5
-    };
-    let rot = {
-        let rot0: Quat = unsafe { std::mem::transmute(views[0].pose.orientation) };
-        let rot1: Quat = unsafe { std::mem::transmute(views[1].pose.orientation) };
-        rot0.lerp(rot1, 0.5)
-    };
+type Vec3M = mint::Vector3<f32>;
+type QuatM = mint::Quaternion<f32>;
 
-    (Affine3A::from_rotation_translation(rot, pos), ipd)
+pub(super) fn ipd_from_views(views: &[xr::View]) -> f32 {
+    let p0: Vec3 = Vec3M::from(views[0].pose.position).into();
+    let p1: Vec3 = Vec3M::from(views[1].pose.position).into();
+
+    (p0.distance(p1) * 1000.0).round() * 0.1
 }
 
 pub(super) fn transform_to_norm_quat(transform: &Affine3A) -> Quat {
@@ -180,4 +173,10 @@ pub(super) fn transform_to_posef(transform: &Affine3A) -> xr::Posef {
     let translation = transform.translation;
     let rotation = transform_to_norm_quat(transform);
     translation_rotation_to_posef(translation, rotation)
+}
+
+pub(super) fn posef_to_transform(pose: &xr::Posef) -> Affine3A {
+    let rotation = QuatM::from(pose.orientation).into();
+    let translation = Vec3M::from(pose.position).into();
+    Affine3A::from_rotation_translation(rotation, translation)
 }

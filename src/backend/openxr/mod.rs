@@ -49,6 +49,7 @@ struct XrState {
     session: xr::Session<xr::Vulkan>,
     predicted_display_time: xr::Time,
     stage: Arc<xr::Space>,
+    view: Arc<xr::Space>,
     stage_offset: Affine3A,
 }
 
@@ -123,12 +124,15 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
     let stage =
         session.create_reference_space(xr::ReferenceSpaceType::STAGE, xr::Posef::IDENTITY)?;
 
+    let view = session.create_reference_space(xr::ReferenceSpaceType::VIEW, xr::Posef::IDENTITY)?;
+
     let mut xr_state = XrState {
         instance: xr_instance,
         system,
         session,
         predicted_display_time: xr::Time::from_nanos(0),
         stage: Arc::new(stage),
+        view: Arc::new(view),
         stage_offset: Affine3A::IDENTITY,
     };
 
@@ -274,8 +278,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
             &xr_state.stage,
         )?;
 
-        let (hmd, ipd) = helpers::hmd_pose_from_views(&views);
-        app_state.input_state.hmd = hmd;
+        let ipd = helpers::ipd_from_views(&views);
         if (app_state.input_state.ipd - ipd).abs() > 0.01 {
             log::info!("IPD changed: {} -> {}", app_state.input_state.ipd, ipd);
             app_state.input_state.ipd = ipd;

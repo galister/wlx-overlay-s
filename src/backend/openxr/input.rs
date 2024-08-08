@@ -15,7 +15,7 @@ use crate::{
     state::{AppSession, AppState},
 };
 
-use super::XrState;
+use super::{helpers::posef_to_transform, XrState};
 
 type XrSession = xr::Session<xr::Vulkan>;
 
@@ -203,6 +203,22 @@ impl OpenXrInputSource {
 
     pub fn update(&mut self, xr: &XrState, state: &mut AppState) -> anyhow::Result<()> {
         xr.session.sync_actions(&[(&self.action_set).into()])?;
+
+        let loc = xr.view.locate(&xr.stage, xr.predicted_display_time)?;
+        let hmd = posef_to_transform(&loc.pose);
+        if loc
+            .location_flags
+            .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
+        {
+            state.input_state.hmd.matrix3 = hmd.matrix3;
+        }
+
+        if loc
+            .location_flags
+            .contains(xr::SpaceLocationFlags::POSITION_VALID)
+        {
+            state.input_state.hmd.translation = hmd.translation;
+        }
 
         for i in 0..2 {
             self.hands[i].update(&mut state.input_state.pointers[i], xr, &state.session)?;
