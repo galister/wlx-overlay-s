@@ -26,8 +26,11 @@ use {
     crate::config_io,
     std::error::Error,
     std::{ops::Deref, path::PathBuf},
-    wlx_capture::pipewire::{pipewire_select_screen, PipewireCapture, PipewireStream},
+    wlx_capture::pipewire::{pipewire_select_screen, PipewireCapture},
 };
+
+#[cfg(all(feature = "x11", feature = "pipewire"))]
+use wlx_capture::pipewire::PipewireStream;
 
 #[cfg(feature = "wayland")]
 use {
@@ -296,7 +299,7 @@ impl ScreenRenderer {
     }
 
     #[cfg(feature = "wayland")]
-    pub fn new_wlr_dmabuf(output: &WlxOutput, config: &GeneralConfig) -> Option<ScreenRenderer> {
+    pub fn new_wlr_dmabuf(output: &WlxOutput) -> Option<ScreenRenderer> {
         let client = WlxClient::new()?;
         let capture = WlrDmabufCapture::new(client, output.id);
 
@@ -310,10 +313,7 @@ impl ScreenRenderer {
     }
 
     #[cfg(feature = "wayland")]
-    pub fn new_wlr_screencopy(
-        output: &WlxOutput,
-        config: &GeneralConfig,
-    ) -> Option<ScreenRenderer> {
+    pub fn new_wlr_screencopy(output: &WlxOutput) -> Option<ScreenRenderer> {
         let client = WlxClient::new()?;
         let capture = WlrScreencopyCapture::new(client, output.id);
 
@@ -370,7 +370,7 @@ impl ScreenRenderer {
     }
 
     #[cfg(feature = "x11")]
-    pub fn new_xshm(screen: Arc<XshmScreen>, config: &GeneralConfig) -> ScreenRenderer {
+    pub fn new_xshm(screen: Arc<XshmScreen>) -> ScreenRenderer {
         let capture = XshmCapture::new(screen.clone());
 
         ScreenRenderer {
@@ -602,12 +602,12 @@ pub fn create_screen_renderer_wl(
         && has_wlr_dmabuf
     {
         log::info!("{}: Using Wlr DMA-Buf", &output.name);
-        capture = ScreenRenderer::new_wlr_dmabuf(output, &session.config);
+        capture = ScreenRenderer::new_wlr_dmabuf(output);
     }
 
     if &*session.config.capture_method == "screencopy" && has_wlr_screencopy {
         log::info!("{}: Using Wlr Screencopy Wl-SHM", &output.name);
-        capture = ScreenRenderer::new_wlr_screencopy(output, &session.config);
+        capture = ScreenRenderer::new_wlr_screencopy(output);
     }
 
     if capture.is_none() {
@@ -949,7 +949,7 @@ pub fn create_screens_xshm(app: &mut AppState) -> anyhow::Result<ScreenCreateDat
 
             let size = (s.monitor.width(), s.monitor.height());
             let pos = (s.monitor.x(), s.monitor.y());
-            let renderer = ScreenRenderer::new_xshm(s.clone(), &app.session.config);
+            let renderer = ScreenRenderer::new_xshm(s.clone());
 
             log::info!(
                 "{}: Init X11 screen of res {:?} at {:?}",

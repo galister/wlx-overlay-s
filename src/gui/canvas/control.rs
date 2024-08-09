@@ -120,21 +120,24 @@ impl<D, S> Control<D, S> {
                 self.rect.h,
             )?;
 
-            let clamped_radius = self.corner_radius.min(self.rect.w / 2.0).min(self.rect.h / 2.0);
+            let clamped_radius = self
+                .corner_radius
+                .min(self.rect.w / 2.0)
+                .min(self.rect.h / 2.0);
 
-            let skew_radius = vec![
-                clamped_radius / self.rect.w,
-                clamped_radius / self.rect.h];
+            let skew_radius = [clamped_radius / self.rect.w, clamped_radius / self.rect.h];
 
-            let set0 = canvas
-                .pipeline_bg_color
-                .uniform_buffer(0, vec![
+            let set0 = canvas.pipeline_bg_color.uniform_buffer(
+                0,
+                vec![
                     self.bg_color.x,
                     self.bg_color.y,
                     self.bg_color.z,
                     self.bg_color.w,
                     skew_radius[0],
-                    skew_radius[1]])?;
+                    skew_radius[1],
+                ],
+            )?;
 
             canvas.pipeline_bg_color.create_pass(
                 [canvas.width as _, canvas.height as _],
@@ -163,21 +166,24 @@ impl<D, S> Control<D, S> {
             self.rect.h,
         )?;
 
-        let clamped_radius = self.corner_radius.min(self.rect.w / 2.0).min(self.rect.h / 2.0);
+        let clamped_radius = self
+            .corner_radius
+            .min(self.rect.w / 2.0)
+            .min(self.rect.h / 2.0);
 
-        let skew_radius = vec![
-            clamped_radius / self.rect.w,
-            clamped_radius / self.rect.h];
+        let skew_radius = [clamped_radius / self.rect.w, clamped_radius / self.rect.h];
 
-        let set0 = canvas
-            .pipeline_bg_color
-            .uniform_buffer(0, vec![
+        let set0 = canvas.pipeline_bg_color.uniform_buffer(
+            0,
+            vec![
                 color.x,
                 color.y,
                 color.z,
                 color.w,
                 skew_radius[0],
-                skew_radius[1]])?;
+                skew_radius[1],
+            ],
+        )?;
 
         let pass = canvas.pipeline_bg_color.create_pass(
             [canvas.width as _, canvas.height as _],

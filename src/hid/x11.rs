@@ -31,5 +31,5 @@ pub fn get_keymap_x11() -> anyhow::Result<XkbKeymap> {
     }
     let keymap = keymap_new_from_device(&context, &conn, device_id, xkb::KEYMAP_COMPILE_NO_FLAGS);
 
-    Ok(XkbKeymap { context, keymap })
+    Ok(XkbKeymap { keymap })
 }
