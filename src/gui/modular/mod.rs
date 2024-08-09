@@ -54,12 +54,12 @@ pub struct OverlayListTemplate {
 pub enum ModularElement {
     Panel {
         rect: [f32; 4],
-        corner_radius: f32,
+        corner_radius: Option<f32>,
         bg_color: Arc<str>,
     },
     Label {
         rect: [f32; 4],
-        corner_radius: f32,
+        corner_radius: Option<f32>,
         font_size: isize,
         fg_color: Arc<str>,
         #[serde(flatten)]
@@ -67,7 +67,7 @@ pub enum ModularElement {
     },
     CenteredLabel {
         rect: [f32; 4],
-        corner_radius: f32,
+        corner_radius: Option<f32>,
         font_size: isize,
         fg_color: Arc<str>,
         #[serde(flatten)]
@@ -80,7 +80,7 @@ pub enum ModularElement {
     },
     Button {
         rect: [f32; 4],
-        corner_radius: f32,
+        corner_radius: Option<f32>,
         font_size: isize,
         fg_color: Arc<str>,
         bg_color: Arc<str>,
@@ -91,7 +91,7 @@ pub enum ModularElement {
     /// Convenience type to save you from having to create a bunch of labels
     BatteryList {
         rect: [f32; 4],
-        corner_radius: f32,
+        corner_radius: Option<f32>,
         font_size: isize,
         fg_color: Arc<str>,
         fg_color_low: Arc<str>,
@@ -102,7 +102,7 @@ pub enum ModularElement {
     },
     OverlayList {
         rect: [f32; 4],
-        corner_radius: f32,
+        corner_radius: Option<f32>,
         font_size: isize,
         fg_color: Arc<str>,
         bg_color: Arc<str>,
@@ -150,7 +150,7 @@ pub fn modular_canvas(
                 bg_color,
             } => {
                 canvas.bg_color = color_parse(bg_color).unwrap_or(*FALLBACK_COLOR);
-                canvas.panel(*x, *y, *w, *h, *corner_radius);
+                canvas.panel(*x, *y, *w, *h, corner_radius.unwrap_or_default());
             }
             ModularElement::Label {
                 rect: [x, y, w, h],
@@ -161,7 +161,14 @@ pub fn modular_canvas(
             } => {
                 canvas.font_size = *font_size;
                 canvas.fg_color = color_parse(fg_color).unwrap_or(*FALLBACK_COLOR);
-                let label = canvas.label(*x, *y, *w, *h, *corner_radius, empty_str.clone());
+                let label = canvas.label(
+                    *x,
+                    *y,
+                    *w,
+                    *h,
+                    corner_radius.unwrap_or_default(),
+                    empty_str.clone(),
+                );
                 modular_label_init(label, data);
             }
             ModularElement::CenteredLabel {
@@ -173,7 +180,14 @@ pub fn modular_canvas(
             } => {
                 canvas.font_size = *font_size;
                 canvas.fg_color = color_parse(fg_color).unwrap_or(*FALLBACK_COLOR);
-                let label = canvas.label_centered(*x, *y, *w, *h, *corner_radius, empty_str.clone());
+                let label = canvas.label_centered(
+                    *x,
+                    *y,
+                    *w,
+                    *h,
+                    corner_radius.unwrap_or_default(),
+                    empty_str.clone(),
+                );
                 modular_label_init(label, data);
             }
             ModularElement::Sprite {
@@ -207,7 +221,14 @@ pub fn modular_canvas(
                 canvas.bg_color = color_parse(bg_color).unwrap_or(*FALLBACK_COLOR);
                 canvas.fg_color = color_parse(fg_color).unwrap_or(*FALLBACK_COLOR);
                 canvas.font_size = *font_size;
-                let button = canvas.button(*x, *y, *w, *h, *corner_radius, text.clone());
+                let button = canvas.button(
+                    *x,
+                    *y,
+                    *w,
+                    *h,
+                    corner_radius.unwrap_or_default(),
+                    text.clone(),
+                );
                 modular_button_init(button, data);
             }
             ModularElement::BatteryList {
@@ -240,7 +261,7 @@ pub fn modular_canvas(
                         button_y + 2.,
                         button_w - 4.,
                         button_h - 4.,
-                        *corner_radius,
+                        corner_radius.unwrap_or_default(),
                         empty_str.clone(),
                     );
                     modular_label_init(
@@ -290,7 +311,7 @@ pub fn modular_canvas(
                         button_y + 2.,
                         button_w - 4.,
                         button_h - 4.,
-                        *corner_radius,
+                        corner_radius.unwrap_or_default(),
                         screen.name.clone(),
                     );
 
