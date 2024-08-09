@@ -329,7 +329,7 @@ enum KeyButtonData {
 static LAYOUT: Lazy<Layout> = Lazy::new(Layout::load_from_disk);
 
 static MACRO_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^([A-Za-z0-1_-]+)(?: +(UP|DOWN))?$").unwrap()); // want panic
+    Lazy::new(|| Regex::new(r"^([A-Za-z0-9_-]+)(?: +(UP|DOWN))?$").unwrap()); // want panic
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Layout {
