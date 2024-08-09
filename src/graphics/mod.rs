@@ -1165,7 +1165,6 @@ pub struct WlxPipelineDynamic {}
 pub struct WlxPipelineLegacy {
     pub render_pass: Arc<RenderPass>,
     pub framebuffer: Arc<Framebuffer>,
-    pub view: Arc<ImageView>,
 }
 
 pub struct WlxPipeline<D> {
@@ -1399,7 +1398,6 @@ impl WlxPipeline<WlxPipelineLegacy> {
             data: WlxPipelineLegacy {
                 render_pass,
                 framebuffer,
-                view: render_target,
             },
         })
     }

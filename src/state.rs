@@ -1,7 +1,7 @@
-use std::{io::Cursor, path::PathBuf, sync::Arc};
+use std::{io::Cursor, sync::Arc};
 
 use anyhow::bail;
-use glam::{Affine3A, Vec3};
+use glam::Affine3A;
 use idmap::IdMap;
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Source};
 use serde::{Deserialize, Serialize};
@@ -89,15 +89,9 @@ impl AppState {
 }
 
 pub struct AppSession {
-    pub config_root_path: PathBuf,
     pub config: GeneralConfig,
 
     pub toast_topics: IdMap<ToastTopic, DisplayMethod>,
-
-    pub color_norm: Vec3,
-    pub color_shift: Vec3,
-    pub color_alt: Vec3,
-    pub color_grab: Vec3,
 }
 
 impl AppSession {
@@ -116,29 +110,8 @@ impl AppSession {
         });
 
         AppSession {
-            config_root_path,
             config,
             toast_topics,
-            color_norm: Vec3 {
-                x: 0.,
-                y: 1.,
-                z: 1.,
-            },
-            color_shift: Vec3 {
-                x: 1.,
-                y: 1.,
-                z: 0.,
-            },
-            color_alt: Vec3 {
-                x: 1.,
-                y: 0.,
-                z: 1.,
-            },
-            color_grab: Vec3 {
-                x: 1.,
-                y: 0.,
-                z: 0.,
-            },
         }
     }
 }

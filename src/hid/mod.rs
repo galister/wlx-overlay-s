@@ -533,7 +533,6 @@ pub fn get_key_type(key: VirtualKey) -> KeyType {
 }
 
 pub struct XkbKeymap {
-    pub context: xkb::Context,
     pub keymap: xkb::Keymap,
 }
 
