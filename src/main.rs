@@ -79,7 +79,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     log::info!(
         "Welcome to {} version {}!",
         env!("CARGO_PKG_NAME"),
-        env!("CARGO_PKG_VERSION")
+        env!("WLX_BUILD"),
     );
     log::info!("It is {}.", chrono::Local::now().format("%c"));
 
