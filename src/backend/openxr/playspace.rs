@@ -55,6 +55,16 @@ impl PlayspaceMover {
         state: &AppState,
         monado: &mut Monado,
     ) {
+        for (_i, pointer) in state.input_state.pointers.iter().enumerate() {
+            if pointer.now.space_reset {
+                if !pointer.before.space_reset {
+                    log::info!("Space reset");
+                    self.reset_offset(monado);
+                }
+                return;
+            }
+        }
+
         if let Some(mut data) = self.rotate.take() {
             let pointer = &state.input_state.pointers[data.hand];
             if !pointer.now.space_rotate {

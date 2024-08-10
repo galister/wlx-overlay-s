@@ -15,6 +15,9 @@
 // -- space_rotate --
 // rotate your stage (playspace rotate, WIP)
 //
+// -- space_reset --
+// reset your stage (reset the offset from playspace drag)
+//
 // -- click_modifier_right --
 // while this is held, your pointer will turn ORANGE and your mouse clicks will be RIGHT clicks
 //
@@ -131,6 +134,10 @@
     space_drag: {
       left: "/user/hand/left/input/trackpad/force",
       // right trackpad is alt_click
+    },
+    space_reset: {
+      double_click: true,
+      left: "/user/hand/left/input/trackpad/force",
     },
     click_modifier_right: {
       left: "/user/hand/left/input/b/touch",
