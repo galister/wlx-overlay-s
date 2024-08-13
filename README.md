@@ -128,12 +128,8 @@ This has been idenfitied as an issue with SteamVR versions 2.5.5 and above (late
 
 This is a rare issue that can make your desktop not react to click or keys due to a modifier being stuck somewhere. Restarting the overlay fixes this.
 
-## Scroll wheel doesn't work
-
-This seems to be an issue specific to Electron apps (Discord, Element, Slack, Spotify) on Wayland. Scrolling will work when using these in your web browser.
-
 ## X11 limitations
-
+- X11 capture can generally seem slow. This is because zero-copy GPU capture is not supported on the general X11 desktop. Consider trying Wayland or Picom.
 - DPI scaling is not supported and may cause the mouse to not follow the laser properly.
 - Upright screens are not supported and can cause the mouse to act weirdly.
 - Screen changes (connecting / disconnecting a display, resolution changes, etc) are not handled at runtime. Restart the overlay for these to take effect.
