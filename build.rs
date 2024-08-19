@@ -14,7 +14,7 @@ fn main() {
 fn get_version() -> Result<String, Box<dyn std::error::Error>> {
     let re = Regex::new(r"v([0-9.]+)-([0-9]+)-g([a-f0-9]+)").unwrap(); // safe
     let output = Command::new("git")
-        .args(["describe", "--tags", "--abbrev=7", "--dirty"])
+        .args(["describe", "--tags", "--abbrev=7", "--dirty", "--always"])
         .output()?;
 
     let output_str = String::from_utf8(output.stdout)?;
