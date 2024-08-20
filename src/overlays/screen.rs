@@ -474,6 +474,7 @@ impl OverlayRenderer for ScreenRenderer {
                             let pipeline = match self.pipeline {
                                 Some(ref mut p) => Some(p),
                                 None if app.session.config.screen_render_down => {
+                                    log::info!("{}: Using render-down pass.", self.name);
                                     let pipeline = ScreenPipeline::new(&self.extent.unwrap(), app)?; // safe
                                     self.last_view = Some(pipeline.view.clone());
                                     self.pipeline = Some(pipeline);
@@ -562,6 +563,7 @@ impl OverlayRenderer for ScreenRenderer {
                     let pipeline = Some(match self.pipeline {
                         Some(ref mut p) => p,
                         _ => {
+                            log::info!("{}: Using render-down pass.", self.name);
                             let extent = extent_from_format(frame.format, &app.session.config);
                             let mut pipeline = ScreenPipeline::new(&extent, app)?;
                             self.last_view = Some(pipeline.view.clone());
