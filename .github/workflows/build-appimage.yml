@@ -12,7 +12,7 @@ env:
   RUSTC_WRAPPER: "sccache"
   
 jobs:
-  make_release:
+  build_appimage:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
