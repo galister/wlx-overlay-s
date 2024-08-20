@@ -260,6 +260,9 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_max_height")]
     pub screen_max_height: u16,
+
+    #[serde(default = "def_false")]
+    pub screen_render_down: bool,
 }
 
 impl GeneralConfig {

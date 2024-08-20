@@ -471,9 +471,22 @@ impl OverlayRenderer for ScreenRenderer {
                     });
                     match app.graphics.dmabuf_texture(frame) {
                         Ok(new) => {
-                            let view = ImageView::new_default(new.clone())?;
-
-                            self.last_view = Some(view);
+                            let pipeline = match self.pipeline {
+                                Some(ref mut p) => Some(p),
+                                None if app.session.config.screen_render_down => {
+                                    let pipeline = ScreenPipeline::new(&self.extent.unwrap(), app)?; // safe
+                                    self.last_view = Some(pipeline.view.clone());
+                                    self.pipeline = Some(pipeline);
+                                    self.pipeline.as_mut()
+                                }
+                                None => None,
+                            };
+                            if let Some(pipeline) = pipeline {
+                                pipeline.render(new.clone(), None, app)?;
+                            } else {
+                                let view = ImageView::new_default(new.clone())?;
+                                self.last_view = Some(view);
+                            }
                         }
                         Err(e) => {
                             log::error!(
