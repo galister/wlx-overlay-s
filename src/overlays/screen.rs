@@ -613,9 +613,7 @@ pub fn create_screen_renderer_wl(
     session: &AppSession,
 ) -> Option<ScreenRenderer> {
     let mut capture: Option<ScreenRenderer> = None;
-    if (&*session.config.capture_method == "auto" || &*session.config.capture_method == "dmabuf")
-        && has_wlr_dmabuf
-    {
+    if (&*session.config.capture_method == "wlr-dmabuf") && has_wlr_dmabuf {
         log::info!("{}: Using Wlr DMA-Buf", &output.name);
         capture = ScreenRenderer::new_wlr_dmabuf(output);
     }
