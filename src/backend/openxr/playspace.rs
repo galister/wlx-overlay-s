@@ -55,7 +55,7 @@ impl PlayspaceMover {
         state: &AppState,
         monado: &mut Monado,
     ) {
-        for (_i, pointer) in state.input_state.pointers.iter().enumerate() {
+        for pointer in state.input_state.pointers.iter() {
             if pointer.now.space_reset {
                 if !pointer.before.space_reset {
                     log::info!("Space reset");
@@ -74,7 +74,7 @@ impl PlayspaceMover {
             }
 
             let new_hand =
-                Quat::from_affine3(&(data.pose * state.input_state.pointers[data.hand].pose));
+                Quat::from_affine3(&(data.pose * state.input_state.pointers[data.hand].raw_pose));
 
             let dq = new_hand * data.hand_pose.conjugate();
             let rel_y = f32::atan2(
@@ -131,7 +131,7 @@ impl PlayspaceMover {
 
             let new_hand = data
                 .pose
-                .transform_point3a(state.input_state.pointers[data.hand].pose.translation);
+                .transform_point3a(state.input_state.pointers[data.hand].raw_pose.translation);
             let relative_pos =
                 (new_hand - data.hand_pose) * state.session.config.space_drag_multiplier;
 
@@ -159,7 +159,7 @@ impl PlayspaceMover {
                 if pointer.now.space_drag {
                     let hand_pos = self
                         .last_transform
-                        .transform_point3a(pointer.pose.translation);
+                        .transform_point3a(pointer.raw_pose.translation);
                     self.drag = Some(MoverData {
                         pose: self.last_transform,
                         hand: i,
@@ -196,8 +196,8 @@ impl PlayspaceMover {
             self.rotate = None;
         }
 
-        let y1 = input.pointers[0].pose.translation.y;
-        let y2 = input.pointers[1].pose.translation.y;
+        let y1 = input.pointers[0].raw_pose.translation.y;
+        let y2 = input.pointers[1].raw_pose.translation.y;
         let delta = y1.min(y2) - 0.03;
         self.last_transform.translation.y += delta;
         self.apply_offset(self.last_transform, monado);

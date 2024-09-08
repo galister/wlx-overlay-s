@@ -316,13 +316,21 @@ impl OpenXrHand {
             .location_flags
             .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
         {
-            let (quat, pos) = unsafe {
+            let (cur_quat, cur_pos) = (Quat::from_affine3(&pointer.pose), pointer.pose.translation);
+
+            let (new_quat, new_pos) = unsafe {
                 (
                     transmute::<Quaternionf, Quat>(location.pose.orientation),
                     transmute::<Vector3f, Vec3>(location.pose.position),
                 )
             };
-            pointer.pose = Affine3A::from_rotation_translation(quat, pos);
+            pointer.raw_pose = Affine3A::from_rotation_translation(new_quat, new_pos);
+            pointer.pose = Affine3A::from_rotation_translation(
+                cur_quat.lerp(new_quat, session.config.pointer_lerp_factor),
+                cur_pos
+                    .lerp(new_pos.into(), session.config.pointer_lerp_factor)
+                    .into(),
+            );
         }
 
         pointer.now.click = self

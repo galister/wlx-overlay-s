@@ -121,6 +121,10 @@ pub fn def_point7() -> f32 {
     0.7
 }
 
+pub fn def_point3() -> f32 {
+    0.3
+}
+
 fn def_osc_port() -> u16 {
     9000
 }
@@ -263,6 +267,9 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_false")]
     pub screen_render_down: bool,
+
+    #[serde(default = "def_point3")]
+    pub pointer_lerp_factor: f32,
 }
 
 impl GeneralConfig {
