@@ -242,7 +242,7 @@ impl HidProvider for UInputProvider {
         self.desktop_origin = origin;
     }
     fn mouse_move(&mut self, pos: Vec2) {
-        if self.current_action.pos.is_none() {
+        if self.current_action.pos.is_none() && self.current_action.scroll.is_none() {
             self.current_action.pos = Some(pos);
         }
         self.current_action.last_requested_pos = Some(pos);
@@ -256,6 +256,9 @@ impl HidProvider for UInputProvider {
     fn wheel(&mut self, delta: i32) {
         if self.current_action.scroll.is_none() {
             self.current_action.scroll = Some(delta);
+            // Pass mouse motion events only if not scrolling
+            // (allows scrolling on all Chromium-based applications)
+            self.current_action.pos = None;
         }
     }
     fn commit(&mut self) {

@@ -370,18 +370,13 @@ where
         );
     }
 
-    let scroll_threshold = 0.1;
-    let mut haptics: Option<Haptics> = None;
-
     // Pass mouse motion events only if not scrolling
     // (allows scrolling on all Chromium-based applications)
-    if app.input_state.pointers[idx].now.scroll.abs() <= scroll_threshold {
-        haptics = hovered.backend.on_hover(app, &hit);
-    }
+    let haptics = hovered.backend.on_hover(app, &hit);
 
     pointer = &mut app.input_state.pointers[idx];
 
-    if pointer.now.scroll.abs() > scroll_threshold {
+    if pointer.now.scroll.abs() > 0.1 {
         let scroll = pointer.now.scroll;
         if app.input_state.pointers[1 - idx]
             .interaction
