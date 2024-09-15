@@ -48,6 +48,7 @@ struct XrState {
     system: xr::SystemId,
     session: xr::Session<xr::Vulkan>,
     predicted_display_time: xr::Time,
+    predicted_display_period: xr::Duration,
     stage: Arc<xr::Space>,
     view: Arc<xr::Space>,
     stage_offset: Affine3A,
@@ -131,6 +132,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         system,
         session,
         predicted_display_time: xr::Time::from_nanos(0),
+        predicted_display_period: xr::Duration::from_nanos(10_000_000),
         stage: Arc::new(stage),
         view: Arc::new(view),
         stage_offset: Affine3A::IDENTITY,
@@ -231,6 +233,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         frame_stream.begin()?;
 
         xr_state.predicted_display_time = xr_frame_state.predicted_display_time;
+        xr_state.predicted_display_period = xr_frame_state.predicted_display_period;
 
         if !xr_frame_state.should_render {
             frame_stream.end(
