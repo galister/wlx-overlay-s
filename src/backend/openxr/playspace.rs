@@ -92,14 +92,6 @@ impl PlayspaceMover {
             overlay_transform.translation = offset;
             space_transform.translation = offset;
 
-            overlays.iter_mut().for_each(|overlay| {
-                if overlay.state.grabbable {
-                    overlay.state.dirty = true;
-                    overlay.state.transform.translation =
-                        overlay_transform.transform_point3a(overlay.state.transform.translation);
-                }
-            });
-
             data.pose *= space_transform;
             data.hand_pose = new_hand;
 
@@ -108,7 +100,7 @@ impl PlayspaceMover {
         } else {
             for (i, pointer) in state.input_state.pointers.iter().enumerate() {
                 if pointer.now.space_rotate {
-                    let hand_pose = Quat::from_affine3(&self.last_transform);
+                    let hand_pose = Quat::from_affine3(&(self.last_transform * pointer.raw_pose));
                     self.rotate = Some(MoverData {
                         pose: self.last_transform,
                         hand: i,
