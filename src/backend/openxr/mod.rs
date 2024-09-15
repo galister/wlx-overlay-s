@@ -48,7 +48,7 @@ struct XrState {
     system: xr::SystemId,
     session: xr::Session<xr::Vulkan>,
     predicted_display_time: xr::Time,
-    predicted_display_period: xr::Duration,
+    fps: f32,
     stage: Arc<xr::Space>,
     view: Arc<xr::Space>,
     stage_offset: Affine3A,
@@ -132,7 +132,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         system,
         session,
         predicted_display_time: xr::Time::from_nanos(0),
-        predicted_display_period: xr::Duration::from_nanos(10_000_000),
+        fps: 30.0,
         stage: Arc::new(stage),
         view: Arc::new(view),
         stage_offset: Affine3A::IDENTITY,
@@ -154,6 +154,8 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
 
     let mut next_device_update = Instant::now();
     let mut due_tasks = VecDeque::with_capacity(4);
+
+    let mut fps_counter: VecDeque<Instant> = VecDeque::new();
 
     let mut main_session_visible = false;
 
@@ -233,7 +235,24 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         frame_stream.begin()?;
 
         xr_state.predicted_display_time = xr_frame_state.predicted_display_time;
-        xr_state.predicted_display_period = xr_frame_state.predicted_display_period;
+        xr_state.fps = {
+            fps_counter.push_back(Instant::now());
+
+            while let Some(time) = fps_counter.front() {
+                if time.elapsed().as_secs_f32() > 1. {
+                    fps_counter.pop_front();
+                } else {
+                    break;
+                }
+            }
+
+            let total_elapsed = fps_counter
+                .front()
+                .map(|time| time.elapsed().as_secs_f32())
+                .unwrap_or(0f32);
+
+            fps_counter.len() as f32 / total_elapsed
+        };
 
         if !xr_frame_state.should_render {
             frame_stream.end(

@@ -324,9 +324,8 @@ impl OpenXrHand {
                     transmute::<Vector3f, Vec3>(location.pose.position),
                 )
             };
-            let lerp_factor = (1.0 / (xr.predicted_display_period.as_nanos() / 10_000_000) as f32
-                * session.config.pointer_lerp_factor)
-                .clamp(0.1, 1.0);
+            let lerp_factor =
+                (1.0 / (xr.fps / 100.0) * session.config.pointer_lerp_factor).clamp(0.1, 1.0);
             pointer.raw_pose = Affine3A::from_rotation_translation(new_quat, new_pos);
             pointer.pose = Affine3A::from_rotation_translation(
                 cur_quat.lerp(new_quat, lerp_factor),
