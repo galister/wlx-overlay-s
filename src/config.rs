@@ -270,6 +270,9 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_point3")]
     pub pointer_lerp_factor: f32,
+
+    #[serde(default = "def_false")]
+    pub space_rotate_unlocked: bool,
 }
 
 impl GeneralConfig {

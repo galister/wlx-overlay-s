@@ -77,19 +77,20 @@ impl PlayspaceMover {
                 Quat::from_affine3(&(data.pose * state.input_state.pointers[data.hand].raw_pose));
 
             let dq = new_hand * data.hand_pose.conjugate();
-            let rel_y = f32::atan2(
-                2.0 * (dq.y * dq.w + dq.x * dq.z),
-                (2.0 * (dq.w * dq.w + dq.x * dq.x)) - 1.0,
-            );
+            let mut space_transform = if state.session.config.space_rotate_unlocked {
+                Affine3A::from_quat(dq)
+            } else {
+                let rel_y = f32::atan2(
+                    2.0 * (dq.y * dq.w + dq.x * dq.z),
+                    (2.0 * (dq.w * dq.w + dq.x * dq.x)) - 1.0,
+                );
 
-            //let mut space_transform = Affine3A::from_rotation_translation(dq, Vec3::ZERO);
-            let mut space_transform = Affine3A::from_rotation_y(rel_y);
+                Affine3A::from_rotation_y(rel_y)
+            };
             let offset = (space_transform.transform_vector3a(state.input_state.hmd.translation)
                 - state.input_state.hmd.translation)
                 * -1.0;
-            let mut overlay_transform = Affine3A::from_rotation_y(-rel_y);
 
-            overlay_transform.translation = offset;
             space_transform.translation = offset;
 
             data.pose *= space_transform;

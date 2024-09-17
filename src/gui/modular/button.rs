@@ -47,6 +47,7 @@ pub enum HighlightTest {
     AutoRealign,
     NotificationSounds,
     Notifications,
+    RorateLock,
 }
 
 #[derive(Deserialize, Clone)]
@@ -55,6 +56,7 @@ pub enum SystemAction {
     ToggleAutoRealign,
     ToggleNotificationSounds,
     ToggleNotifications,
+    ToggleRotateLock,
     PlayspaceResetOffset,
     PlayspaceFixFloor,
     RecalculateExtent,
@@ -298,6 +300,7 @@ fn modular_button_highlight(
             HighlightTest::AutoRealign => app.session.config.realign_on_showhide,
             HighlightTest::NotificationSounds => app.session.config.notifications_sound_enabled,
             HighlightTest::Notifications => app.session.config.notifications_enabled,
+            HighlightTest::RorateLock => !app.session.config.space_rotate_unlocked,
         };
 
         if lit {
@@ -363,6 +366,19 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
                 format!(
                     "Auto realign is {}.",
                     ENABLED_DISABLED[app.session.config.realign_on_showhide as usize]
+                )
+                .into(),
+                "".into(),
+            )
+            .submit(app);
+        }
+        SystemAction::ToggleRotateLock => {
+            app.session.config.space_rotate_unlocked = !app.session.config.space_rotate_unlocked;
+            Toast::new(
+                ToastTopic::System,
+                format!(
+                    "Space rotate axis lock now {}.",
+                    ENABLED_DISABLED[!app.session.config.space_rotate_unlocked as usize]
                 )
                 .into(),
                 "".into(),
