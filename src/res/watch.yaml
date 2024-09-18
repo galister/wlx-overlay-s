@@ -9,14 +9,14 @@ size: [400, 200]
 elements:
   # background panel
   - type: Panel
-    rect: [0, 0, 400, 200]
-    corner_radius: 4
+    rect: [0, 30, 400, 130]
+    corner_radius: 20
     bg_color: "#24273a"
 
   - type: Button
     rect: [2, 162, 26, 36]
     corner_radius: 4
-    font_size: 14
+    font_size: 15
     bg_color: "#c6a0f6"
     fg_color: "#24273a"
     text: "C"
@@ -32,7 +32,7 @@ elements:
   - type: Button
     rect: [32, 162, 60, 36]
     corner_radius: 4
-    font_size: 14
+    font_size: 15
     fg_color: "#24273a"
     bg_color: "#a6da95"
     text: Kbd
@@ -67,7 +67,7 @@ elements:
   - type: OverlayList
     rect: [94, 160, 306, 40]
     corner_radius: 4
-    font_size: 14
+    font_size: 15
     fg_color: "#cad3f5"
     bg_color: "#1e2030"
     layout: Horizontal
@@ -147,9 +147,9 @@ elements:
 
   # batteries
   - type: BatteryList
-    rect: [0, 0, 400, 30]
+    rect: [0, 5, 400, 30]
     corner_radius: 4
-    font_size: 14
+    font_size: 16
     fg_color: "#8bd5ca"
     fg_color_low: "#B06060"
     fg_color_charging: "#6080A0"
@@ -161,7 +161,7 @@ elements:
   - type: Button
     rect: [315, 52, 70, 32]
     corner_radius: 4
-    font_size: 14
+    font_size: 13
     fg_color: "#cad3f5"
     bg_color: "#5b6078"
     text: "Vol +"
@@ -171,7 +171,7 @@ elements:
   - type: Button
     rect: [315, 116, 70, 32]
     corner_radius: 4
-    font_size: 14
+    font_size: 13
     fg_color: "#cad3f5"
     bg_color: "#5b6078"
     text: "Vol -"
