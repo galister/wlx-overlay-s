@@ -28,8 +28,6 @@ AUR package is [wlx-overlay-s-git](https://aur.archlinux.org/packages/wlx-overla
 
 You may also want to [build from source](https://github.com/galister/wlx-overlay-s/wiki/Building-from-Source).
 
-If using Envision, set `wlx-overlay-s --openxr --show` as the _Autostart Command_ for your Envision profile! This will give you a home environment with a [customizable background](https://github.com/galister/wlx-overlay-s/wiki/OpenXR-Skybox)!
-
 ## First Start
 
 **When the screen share pop-up appears, check the terminal and select the screens in the order it requests.**
@@ -38,7 +36,9 @@ If you selected the screens in the wrong order:
 
 - `rm ~/.config/wlxoverlay/conf.d/pw_tokens.yaml` then restart
 
-SteamVR users: WlxOverlay-S will register itself for auto-start, so you will not need to start it every time.
+**SteamVR users**: WlxOverlay-S will register itself for auto-start, so you will not need to start it every time.
+
+**Envision users**: Set `wlx-overlay-s --openxr --show` as the _Autostart Command_ on your Envision profile! This will give you a home environment with a [customizable background](https://github.com/galister/wlx-overlay-s/wiki/OpenXR-Skybox)!
 
 **Please continue reading the guide below.**
 
