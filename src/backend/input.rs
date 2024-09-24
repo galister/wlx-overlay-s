@@ -313,15 +313,17 @@ where
             pointer = &mut app.input_state.pointers[idx];
             pointer.interaction.hovered_id = None;
         }
-        if let Some(clicked_id) = pointer.interaction.clicked_id.take() {
-            if let Some(clicked) = overlays.mut_by_id(clicked_id) {
-                let hit = PointerHit {
-                    pointer: pointer.idx,
-                    overlay: clicked_id,
-                    mode: pointer.interaction.mode,
-                    ..Default::default()
-                };
-                clicked.backend.on_pointer(app, &hit, false);
+        if !pointer.now.click && pointer.before.click {
+            if let Some(clicked_id) = pointer.interaction.clicked_id.take() {
+                if let Some(clicked) = overlays.mut_by_id(clicked_id) {
+                    let hit = PointerHit {
+                        pointer: pointer.idx,
+                        overlay: clicked_id,
+                        mode: pointer.interaction.mode,
+                        ..Default::default()
+                    };
+                    clicked.backend.on_pointer(app, &hit, false);
+                }
             }
         }
         return (0.0, None); // no hit
