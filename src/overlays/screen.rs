@@ -18,6 +18,7 @@ use wlx_capture::{
         DrmFormat, FrameFormat, MouseMeta, WlxFrame, DRM_FORMAT_ABGR2101010, DRM_FORMAT_ABGR8888,
         DRM_FORMAT_ARGB8888, DRM_FORMAT_XBGR2101010, DRM_FORMAT_XBGR8888, DRM_FORMAT_XRGB8888,
     },
+    pipewire::PipewireSelectScreenResult,
     WlxCapture,
 };
 
@@ -25,8 +26,8 @@ use wlx_capture::{
 use {
     crate::config_io,
     std::error::Error,
-    std::{ops::Deref, path::PathBuf},
-    wlx_capture::pipewire::{pipewire_select_screen, PipewireCapture},
+    std::{ops::Deref, path::PathBuf, task},
+    wlx_capture::pipewire::PipewireCapture,
 };
 
 #[cfg(all(feature = "x11", feature = "pipewire"))]
@@ -337,21 +338,22 @@ impl ScreenRenderer {
     )> {
         let name = output.name.clone();
         let embed_mouse = !session.config.double_cursor_fix;
-        log::info!(
-            "On screen share prompt, pick: {} {} {} (pos {}, {})",
-            &output.name,
-            &output.make,
-            &output.model,
-            &output.logical_pos.0,
-            &output.logical_pos.1,
-        );
-        let select_screen_result = futures::executor::block_on(pipewire_select_screen(
+
+        let select_screen_result = select_pw_screen(
+            &format!(
+                "Now select: {} {} {} @ {},{}",
+                &output.name,
+                &output.make,
+                &output.model,
+                &output.logical_pos.0,
+                &output.logical_pos.1
+            ),
             token,
             embed_mouse,
             true,
             true,
             false,
-        ))?;
+        )?;
 
         let node_id = select_screen_result.streams.first().unwrap().node_id; // streams guaranteed to have at least one element
 
@@ -866,8 +868,16 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
     let pw_tokens_copy = pw_tokens.clone();
     let token = pw_tokens.arc_get("x11").map(|s| s.as_str());
     let embed_mouse = !app.session.config.double_cursor_fix;
-    let select_screen_result =
-        futures::executor::block_on(pipewire_select_screen(token, embed_mouse, true, true, true))?;
+
+    let select_screen_result = select_pw_screen(
+        "Select ALL screens on the screencast pop-up!",
+        token,
+        embed_mouse,
+        true,
+        true,
+        true,
+    )?;
+
     if let Some(restore_token) = select_screen_result.restore_token {
         if pw_tokens.arc_set("x11".into(), restore_token.clone()) {
             log::info!("Adding Pipewire token {}", restore_token);
@@ -1065,4 +1075,55 @@ fn best_match<'a>(
     }
     log::debug!("best: {:?}", best.map(|b| &b.monitor));
     best
+}
+
+#[cfg(feature = "pipewire")]
+fn select_pw_screen(
+    instructions: &str,
+    token: Option<&str>,
+    embed_mouse: bool,
+    screens_only: bool,
+    persist: bool,
+    multiple: bool,
+) -> Result<PipewireSelectScreenResult, wlx_capture::pipewire::AshpdError> {
+    use crate::backend::notifications::DbusNotificationSender;
+    use wlx_capture::pipewire::pipewire_select_screen;
+
+    let future = async move {
+        let print_at = Instant::now() + Duration::from_millis(250);
+        let mut notify = None;
+
+        let f = pipewire_select_screen(token, embed_mouse, screens_only, persist, multiple);
+        futures::pin_mut!(f);
+
+        loop {
+            match futures::poll!(&mut f) {
+                task::Poll::Ready(result) => return result,
+                task::Poll::Pending => {
+                    if Instant::now() >= print_at {
+                        log::info!("{}", instructions);
+                        if let Ok(sender) = DbusNotificationSender::new() {
+                            if let Ok(id) = sender.notify_send(instructions, "", 2, 0, 0, true) {
+                                notify = Some((sender, id));
+                            }
+                        }
+                        break;
+                    }
+                    futures::future::lazy(|_| {
+                        std::thread::sleep(Duration::from_millis(10));
+                    })
+                    .await;
+                    continue;
+                }
+            }
+        }
+
+        let result = f.await;
+        if let Some((sender, id)) = notify {
+            let _ = sender.notify_close(id);
+        }
+        result
+    };
+
+    futures::executor::block_on(future)
 }
