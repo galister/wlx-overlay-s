@@ -17,6 +17,7 @@ use crate::{
         task::{ColorChannel, SystemTask, TaskType},
     },
     config::{save_layout, save_settings, AStrSetExt},
+    hid::VirtualKey,
     overlays::{
         toast::{Toast, ToastTopic},
         watch::WATCH_NAME,
@@ -25,6 +26,12 @@ use crate::{
 };
 
 use super::{ExecArgs, ModularControl, ModularData};
+
+#[derive(Deserialize, Clone)]
+pub enum PressRelease {
+    Release,
+    Press,
+}
 
 #[derive(Deserialize, Clone, Copy)]
 pub enum ViewAngleKind {
@@ -115,6 +122,10 @@ pub enum ButtonAction {
     Exec {
         command: ExecArgs,
         toast: Option<Arc<str>>,
+    },
+    VirtualKey {
+        keycode: VirtualKey,
+        action: PressRelease,
     },
     Watch {
         action: WatchAction,
@@ -316,6 +327,9 @@ fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppStat
         ButtonAction::Watch { action } => run_watch(action, app),
         ButtonAction::Overlay { target, action } => run_overlay(target, action, app),
         ButtonAction::Window { target, action } => run_window(target, action, app),
+        ButtonAction::VirtualKey { keycode, action } => app
+            .hid_provider
+            .send_key(*keycode, matches!(*action, PressRelease::Press)),
         ButtonAction::Toast {
             message,
             body,

@@ -7,6 +7,7 @@ use input_linux::{
 };
 use libc::{input_event, timeval};
 use once_cell::sync::Lazy;
+use serde::Deserialize;
 use std::mem::transmute;
 use std::{fs::File, sync::atomic::AtomicBool};
 use strum::{EnumIter, EnumString, IntoEnumIterator};
@@ -316,7 +317,7 @@ pub const META: KeyModifier = 0x80;
 
 #[allow(non_camel_case_types)]
 #[repr(u16)]
-#[derive(Debug, PartialEq, Clone, Copy, IntegerId, EnumString, EnumIter)]
+#[derive(Debug, Deserialize, PartialEq, Clone, Copy, IntegerId, EnumString, EnumIter)]
 pub enum VirtualKey {
     Escape = 9,
     N1, // number row
