@@ -1,4 +1,9 @@
-use dbus::{blocking::Connection, channel::MatchingReceiver, message::MatchRule};
+use dbus::{
+    arg::{PropMap, Variant},
+    blocking::Connection,
+    channel::MatchingReceiver,
+    message::MatchRule,
+};
 use serde::Deserialize;
 use std::{
     sync::{
@@ -9,6 +14,7 @@ use std::{
 };
 
 use crate::{
+    backend::notifications_dbus::OrgFreedesktopNotifications,
     overlays::toast::{Toast, ToastTopic},
     state::AppState,
 };
@@ -193,6 +199,60 @@ impl NotificationManager {
 impl Drop for NotificationManager {
     fn drop(&mut self) {
         self.running.store(false, Ordering::Relaxed);
+    }
+}
+
+pub struct DbusNotificationSender {
+    connection: Connection,
+}
+
+impl DbusNotificationSender {
+    pub fn new() -> anyhow::Result<Self> {
+        Ok(Self {
+            connection: Connection::new_session()?,
+        })
+    }
+
+    pub fn notify_send(
+        &self,
+        summary: &str,
+        body: &str,
+        urgency: u8,
+        timeout: i32,
+        replaces_id: u32,
+        transient: bool,
+    ) -> anyhow::Result<u32> {
+        let proxy = self.connection.with_proxy(
+            "org.freedesktop.Notifications",
+            "/org/freedesktop/Notifications",
+            Duration::from_millis(1000),
+        );
+
+        let mut hints = PropMap::new();
+        hints.insert("urgency".to_string(), Variant(Box::new(urgency)));
+        hints.insert("transient".to_string(), Variant(Box::new(transient)));
+
+        Ok(proxy.notify(
+            "WlxOverlay-S",
+            replaces_id,
+            "",
+            summary,
+            body,
+            vec![],
+            hints,
+            timeout,
+        )?)
+    }
+
+    pub fn notify_close(&self, id: u32) -> anyhow::Result<()> {
+        let proxy = self.connection.with_proxy(
+            "org.freedesktop.Notifications",
+            "/org/freedesktop/Notifications",
+            Duration::from_millis(1000),
+        );
+
+        proxy.close_notification(id)?;
+        Ok(())
     }
 }
 

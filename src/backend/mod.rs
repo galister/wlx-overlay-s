@@ -2,6 +2,9 @@ pub mod common;
 pub mod input;
 pub mod notifications;
 
+#[allow(clippy::all)]
+mod notifications_dbus;
+
 #[cfg(feature = "openvr")]
 pub mod openvr;
 
