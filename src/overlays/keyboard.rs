@@ -6,12 +6,12 @@ use std::{
 
 use crate::{
     backend::{
-        input::PointerMode,
-        overlay::{OverlayData, OverlayState},
+        input::{InteractionHandler, PointerMode},
+        overlay::{OverlayBackend, OverlayData, OverlayRenderer, OverlayState},
     },
     config::{self, ConfigType},
     gui::{
-        canvas::{builder::CanvasBuilder, control::Control},
+        canvas::{builder::CanvasBuilder, control::Control, Canvas},
         color_parse, KeyCapType,
     },
     hid::{
@@ -180,7 +180,7 @@ where
             interaction_transform,
             ..Default::default()
         },
-        backend: Box::new(canvas),
+        backend: Box::new(KeyboardBackend { canvas }),
         ..Default::default()
     })
 }
@@ -434,4 +434,69 @@ fn key_events_for_macro(macro_verbs: &Vec<String>) -> Vec<(VirtualKey, bool)> {
         }
     }
     key_events
+}
+
+struct KeyboardBackend {
+    canvas: Canvas<KeyboardData, KeyButtonData>,
+}
+
+impl OverlayBackend for KeyboardBackend {
+    fn set_interaction(&mut self, interaction: Box<dyn crate::backend::input::InteractionHandler>) {
+        self.canvas.set_interaction(interaction)
+    }
+    fn set_renderer(&mut self, renderer: Box<dyn crate::backend::overlay::OverlayRenderer>) {
+        self.canvas.set_renderer(renderer)
+    }
+}
+
+impl InteractionHandler for KeyboardBackend {
+    fn on_pointer(
+        &mut self,
+        app: &mut AppState,
+        hit: &crate::backend::input::PointerHit,
+        pressed: bool,
+    ) {
+        self.canvas.on_pointer(app, hit, pressed)
+    }
+    fn on_scroll(
+        &mut self,
+        app: &mut AppState,
+        hit: &crate::backend::input::PointerHit,
+        delta: f32,
+    ) {
+        self.canvas.on_scroll(app, hit, delta)
+    }
+    fn on_left(&mut self, app: &mut AppState, pointer: usize) {
+        self.canvas.on_left(app, pointer)
+    }
+    fn on_hover(
+        &mut self,
+        app: &mut AppState,
+        hit: &crate::backend::input::PointerHit,
+    ) -> Option<crate::backend::input::Haptics> {
+        self.canvas.on_hover(app, hit)
+    }
+}
+
+impl OverlayRenderer for KeyboardBackend {
+    fn init(&mut self, app: &mut AppState) -> anyhow::Result<()> {
+        self.canvas.init(app)
+    }
+    fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
+        self.canvas.render(app)
+    }
+    fn extent(&mut self) -> Option<[u32; 3]> {
+        self.canvas.extent()
+    }
+    fn view(&mut self) -> Option<std::sync::Arc<vulkano::image::view::ImageView>> {
+        self.canvas.view()
+    }
+    fn pause(&mut self, app: &mut AppState) -> anyhow::Result<()> {
+        self.canvas.data_mut().modifiers = 0;
+        app.hid_provider.set_modifiers(0);
+        self.canvas.pause(app)
+    }
+    fn resume(&mut self, app: &mut AppState) -> anyhow::Result<()> {
+        self.canvas.resume(app)
+    }
 }

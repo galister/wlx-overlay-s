@@ -220,6 +220,10 @@ impl<D, S> Canvas<D, S> {
         cmd_buffer.end_render_pass()?;
         cmd_buffer.build_and_execute_now()
     }
+
+    pub fn data_mut(&mut self) -> &mut D {
+        &mut self.canvas.data
+    }
 }
 
 impl<D, S> InteractionHandler for Canvas<D, S> {

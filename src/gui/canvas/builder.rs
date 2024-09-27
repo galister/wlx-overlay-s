@@ -52,7 +52,15 @@ impl<D, S> CanvasBuilder<D, S> {
     }
 
     // Creates a label with fg_color, font_size inherited from the canvas
-    pub fn label(&mut self, x: f32, y: f32, w: f32, h: f32, radius: f32, text: Arc<str>) -> &mut Control<D, S> {
+    pub fn label(
+        &mut self,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        radius: f32,
+        text: Arc<str>,
+    ) -> &mut Control<D, S> {
         let idx = self.canvas.controls.len();
         self.canvas.controls.push(Control {
             rect: Rect { x, y, w, h },
@@ -116,7 +124,15 @@ impl<D, S> CanvasBuilder<D, S> {
     }
 
     // Creates a button with fg_color, bg_color, font_size inherited from the canvas
-    pub fn button(&mut self, x: f32, y: f32, w: f32, h: f32, radius: f32, text: Arc<str>) -> &mut Control<D, S> {
+    pub fn button(
+        &mut self,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        radius: f32,
+        text: Arc<str>,
+    ) -> &mut Control<D, S> {
         let idx = self.canvas.controls.len();
 
         self.canvas.interactive_set_idx(x, y, w, h, idx);
