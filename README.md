@@ -2,7 +2,7 @@
 
 A lightweight OpenXR/OpenVR overlay for Wayland and X11 desktops, inspired by XSOverlay.
 
-WlxOverlay-S allows you to access your desktop screens while in VR.
+WlxOverlay-S lets you to access your desktop screens while in VR.
 
 In comparison to similar overlays, WlxOverlay-S aims to run alongside VR games and experiences while having as little performance impact as possible. The UI appearance and rendering techniques are kept as simple and efficient as possible, while still allowing a high degree of customizability.
 
@@ -32,13 +32,13 @@ You may also want to [build from source](https://github.com/galister/wlx-overlay
 
 **When the screen share pop-up appears, check the terminal and select the screens in the order it requests.**
 
-If you selected the screens in the wrong order:
+In case screens were selected in the wrong order:
 
 - `rm ~/.config/wlxoverlay/conf.d/pw_tokens.yaml` then restart
 
-**SteamVR users**: WlxOverlay-S will register itself for auto-start, so you will not need to start it every time.
+**SteamVR users**: WlxOverlay-S will register itself for auto-start, so there is no need to start it every time.
 
-**Envision users**: Set `wlx-overlay-s --openxr --show` as the _Autostart Command_ on your Envision profile! This will give you a home environment with a [customizable background](https://github.com/galister/wlx-overlay-s/wiki/OpenXR-Skybox)!
+**Envision users**: Set `wlx-overlay-s --openxr --show` as the _Autostart Command_ on your Envision profile! This will show a home environment with a [customizable background](https://github.com/galister/wlx-overlay-s/wiki/OpenXR-Skybox)!
 
 **Please continue reading the guide below.**
 
@@ -46,18 +46,18 @@ If you selected the screens in the wrong order:
 
 ### Working Set
 
-Your working set consists of your currently selected overlays; screens, mirrors, keyboard, etc.
+The working set consists of all currently selected overlays; screens, mirrors, keyboard, etc.
 
-The working set appears in front of you when shown, and can be re-centered by hiding and showing again.
+The working set appears in front of the headset when shown, and can be re-centered by hiding and showing again.
 
-Show and hide your working set using:
+Show and hide the working set using:
 
-- Non-vive controller: double-tap B or Y on your left controller.
-- Vive controller: double-tap the menu button on your left controller (OpenXR, for SteamVR, you might need to bind `showhide` yourself.)
+- Non-vive controller: double-tap B or Y on the left controller.
+- Vive controller: double-tap the menu button on the left controller (for SteamVR, the `showhide` binding must be bound)
 
 ### Pointer Modes AKA Laser Colors
 
-Much of the functionality in WlxOverlay-S depends on what color of laser you are using to interact with a UI element. \
+Much of the functionality in WlxOverlay-S depends on what color of laser is used to interact with a UI element. \
 Using the default settings, there are 3 modes:
 
 - Regular Mode: Blue laser
@@ -70,7 +70,7 @@ The guide here uses the colors for ease of getting started.
 
 ### The Watch
 
-Check your left wrist for the watch. The watch is your primary tool for controlling the app.
+Check your left wrist for the watch. The watch is the primary tool for controlling the app.
 
 ![Watch usage guide](https://github.com/galister/wlx-overlay-s/blob/guide/wlx-watch.png)
 
@@ -85,14 +85,14 @@ The click depends on the laser color:
 - Purple laser: Middle click
 - Stick up/down: Scroll wheel
 
-To **curve a screen**, grab it with one hand. Then, using your other hand, hover the laser over the screen and use the scroll action.
+To **curve a screen**, grab it with one hand. Then, using the other hand, hover the laser over the screen and use the scroll action.
 
 See the [bindings](#default-bindings) section on how to grab, move and resize screens.
 
 ### The keyboard
 
 The keyboard is fully customizable via the [keyboard.yaml](https://raw.githubusercontent.com/galister/wlx-overlay-s/main/src/res/keyboard.yaml) file. \
-Download it into your `~/.config/wlxoverlay/` folder and edit it to your liking.
+Download it into the `~/.config/wlxoverlay/` folder and edit it to your liking.
 
 Typing
 
@@ -100,7 +100,7 @@ Typing
 - While using ORANGE laser, all keystrokes will have SHIFT applied.
 - Purple laser has no effect as of now.
 
-**Modifier Keys** are sticky. They will remain pressed until you press a non-modifier key, or toggle them off.
+**Modifier Keys** are sticky. They will remain pressed until a non-modifier key is pressed, the modifier gets toggled off, or the keyboard gets hidden.
 
 ### Default Bindings
 
@@ -125,7 +125,7 @@ Hyprland users: Hyprland v0.41.0 changed their absolute input implementation to 
 
 Niri users: use on Niri 0.1.7 or later.
 
-Other desktops: You may have selected the screens in the wrong order, see [First Start](#first-start).
+Other desktops: The screens may have been selected in the wrong order, see [First Start](#first-start).
 
 ### Space-drag crashes SteamVR
 
@@ -133,7 +133,7 @@ This has been idenfitied as an issue with SteamVR versions 2.5.5 and above (late
 
 ### Modifiers get stuck in weird ways
 
-This is a rare issue that can make your desktop not react to click or keys due to a modifier being stuck somewhere. Restarting the overlay fixes this.
+This is a rare issue that can make KDE Plasma not react to click or keys due to what seems to be a race condition with modifiers. Restarting the overlay fixes this.
 
 ### X11 limitations
 
