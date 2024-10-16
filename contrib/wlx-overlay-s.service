@@ -1,0 +1,12 @@
+[Unit]
+Description=wlx-overlay-s - Lightweight OpenXR/OpenVR overlay for Wayland and X11 desktops
+After=monado.service
+BindsTo=monado.service
+Requires=monado.socket
+Requires=graphical-session.target
+
+[Service]
+ExecStart=@prefix@/bin/wlx-overlay-s
+
+[Install]
+WantedBy=monado.service
