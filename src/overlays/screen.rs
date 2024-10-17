@@ -18,7 +18,6 @@ use wlx_capture::{
         DrmFormat, FrameFormat, MouseMeta, WlxFrame, DRM_FORMAT_ABGR2101010, DRM_FORMAT_ABGR8888,
         DRM_FORMAT_ARGB8888, DRM_FORMAT_XBGR2101010, DRM_FORMAT_XBGR8888, DRM_FORMAT_XRGB8888,
     },
-    pipewire::PipewireSelectScreenResult,
     WlxCapture,
 };
 
@@ -28,6 +27,7 @@ use {
     std::error::Error,
     std::{ops::Deref, path::PathBuf, task},
     wlx_capture::pipewire::PipewireCapture,
+    wlx_capture::pipewire::PipewireSelectScreenResult,
 };
 
 #[cfg(all(feature = "x11", feature = "pipewire"))]

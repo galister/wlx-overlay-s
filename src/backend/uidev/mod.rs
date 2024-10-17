@@ -30,7 +30,7 @@ use crate::{
 
 use super::{
     input::{TrackedDevice, TrackedDeviceRole},
-    overlay::OverlayRenderer,
+    overlay::{OverlayID, OverlayRenderer},
 };
 
 static LAST_SIZE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
@@ -301,17 +301,17 @@ fn add_dummy_devices(app: &mut AppState) {
 fn add_dummy_screens(app: &mut AppState) {
     app.screens.push(ScreenMeta {
         name: "HDMI-A-1".into(),
-        id: 0,
+        id: OverlayID(0),
         native_handle: 0,
     });
     app.screens.push(ScreenMeta {
         name: "DP-2".into(),
-        id: 0,
+        id: OverlayID(0),
         native_handle: 0,
     });
     app.screens.push(ScreenMeta {
         name: "DP-3".into(),
-        id: 0,
+        id: OverlayID(0),
         native_handle: 0,
     });
 }
