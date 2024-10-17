@@ -10,6 +10,7 @@ use crate::config::{AStrMapExt, GeneralConfig};
 use crate::overlays::anchor::ANCHOR_NAME;
 use crate::state::AppState;
 
+use super::overlay::OverlayID;
 use super::task::{TaskContainer, TaskType};
 use super::{common::OverlayContainer, overlay::OverlayData};
 
@@ -140,8 +141,8 @@ impl InputState {
 pub struct InteractionState {
     pub mode: PointerMode,
     pub grabbed: Option<GrabData>,
-    pub clicked_id: Option<usize>,
-    pub hovered_id: Option<usize>,
+    pub clicked_id: Option<OverlayID>,
+    pub hovered_id: Option<OverlayID>,
     pub release_actions: VecDeque<Box<dyn Fn()>>,
     pub next_push: Instant,
     pub haptics: Option<f32>,
@@ -204,7 +205,7 @@ pub struct PointerState {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct PointerHit {
     pub pointer: usize,
-    pub overlay: usize,
+    pub overlay: OverlayID,
     pub mode: PointerMode,
     pub primary: bool,
     pub uv: Vec2,
@@ -237,7 +238,7 @@ impl InteractionHandler for DummyInteractionHandler {
 
 #[derive(Debug, Clone, Copy, Default)]
 struct RayHit {
-    overlay: usize,
+    overlay: OverlayID,
     global_pos: Vec3A,
     local_pos: Vec2,
     dist: f32,
@@ -246,7 +247,7 @@ struct RayHit {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct GrabData {
     pub offset: Vec3A,
-    pub grabbed_id: usize,
+    pub grabbed_id: OverlayID,
     pub old_curvature: Option<f32>,
     pub grab_all: bool,
 }
@@ -299,7 +300,7 @@ where
                 &mut app.session.config,
             );
         } else {
-            log::warn!("Grabbed overlay {} does not exist", grab_data.grabbed_id);
+            log::warn!("Grabbed overlay {} does not exist", grab_data.grabbed_id.0);
             pointer.interaction.grabbed = None;
         }
         return (0.1, None);
@@ -341,7 +342,7 @@ where
         }
     }
     let Some(hovered) = overlays.mut_by_id(hit.overlay) else {
-        log::warn!("Hit overlay {} does not exist", hit.overlay);
+        log::warn!("Hit overlay {} does not exist", hit.overlay.0);
         return (0.0, None); // no hit
     };
 
@@ -535,7 +536,7 @@ impl Pointer {
                 overlay.state.realign(hmd);
                 overlay.state.dirty = true;
             } else {
-                log::error!("Grabbed overlay {} does not exist", overlay.state.id);
+                log::error!("Grabbed overlay {} does not exist", overlay.state.id.0);
                 self.interaction.grabbed = None;
             }
         } else {
@@ -572,7 +573,7 @@ impl Pointer {
 
     fn ray_test(
         &self,
-        overlay: usize,
+        overlay: OverlayID,
         transform: &Affine3A,
         curvature: &Option<f32>,
     ) -> Option<RayHit> {
