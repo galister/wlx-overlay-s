@@ -9,7 +9,7 @@ use smallvec::{smallvec, SmallVec};
 use vulkano::image::view::ImageView;
 
 use crate::{
-    backend::{input::InputState, task::TaskContainer},
+    backend::{input::InputState, overlay::OverlayID, task::TaskContainer},
     config::{AStrMap, GeneralConfig},
     config_io,
     graphics::WlxGraphics,
@@ -160,7 +160,7 @@ impl AudioOutput {
 
 pub struct ScreenMeta {
     pub name: Arc<str>,
-    pub id: usize,
+    pub id: OverlayID,
     pub native_handle: u32,
 }
 

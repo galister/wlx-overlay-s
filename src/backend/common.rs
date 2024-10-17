@@ -21,7 +21,7 @@ use crate::{
     state::AppState,
 };
 
-use super::overlay::OverlayData;
+use super::overlay::{OverlayData, OverlayID};
 
 #[derive(Error, Debug)]
 pub enum BackendError {
@@ -97,7 +97,7 @@ where
                 state.show_hide = true;
             }
             overlays.insert(
-                state.id,
+                state.id.0,
                 OverlayData::<T> {
                     state,
                     backend,
@@ -108,16 +108,16 @@ where
         }
 
         let anchor = create_anchor(app)?;
-        overlays.insert(anchor.state.id, anchor);
+        overlays.insert(anchor.state.id.0, anchor);
 
         let mut watch = create_watch::<T>(app)?;
         watch.state.want_visible = true;
-        overlays.insert(watch.state.id, watch);
+        overlays.insert(watch.state.id.0, watch);
 
         let mut keyboard = create_keyboard(app, keymap)?;
         keyboard.state.show_hide = true;
         keyboard.state.want_visible = false;
-        overlays.insert(keyboard.state.id, keyboard);
+        overlays.insert(keyboard.state.id.0, keyboard);
 
         Ok(Self { overlays, wl })
     }
@@ -158,7 +158,7 @@ where
                     create_ran = true;
                     for (meta, state, backend) in data.screens {
                         self.overlays.insert(
-                            state.id,
+                            state.id.0,
                             OverlayData::<T> {
                                 state,
                                 backend,
@@ -175,7 +175,7 @@ where
                     };
 
                     let meta = &app.screens[idx];
-                    let removed = self.overlays.remove(meta.id).unwrap();
+                    let removed = self.overlays.remove(meta.id.0).unwrap();
                     removed_overlays.push(removed);
                     log::info!("{}: Destroyed", meta.name);
                     app.screens.remove(idx);
@@ -187,7 +187,7 @@ where
                         continue;
                     };
                     let output = wl.outputs.get(id).unwrap();
-                    let Some(overlay) = self.overlays.get_mut(meta.id) else {
+                    let Some(overlay) = self.overlays.get_mut(meta.id.0) else {
                         continue;
                     };
                     let logical_pos =
@@ -209,7 +209,7 @@ where
                         continue;
                     };
                     let output = wl.outputs.get(id).unwrap();
-                    let Some(overlay) = self.overlays.get_mut(meta.id) else {
+                    let Some(overlay) = self.overlays.get_mut(meta.id.0) else {
                         continue;
                     };
 
@@ -270,7 +270,7 @@ where
 
     pub fn remove_by_selector(&mut self, selector: &OverlaySelector) -> Option<OverlayData<T>> {
         match selector {
-            OverlaySelector::Id(id) => self.overlays.remove(id),
+            OverlaySelector::Id(id) => self.overlays.remove(id.0),
             OverlaySelector::Name(name) => {
                 let id = self
                     .overlays
@@ -282,12 +282,12 @@ where
         }
     }
 
-    pub fn get_by_id(&mut self, id: usize) -> Option<&OverlayData<T>> {
-        self.overlays.get(id)
+    pub fn get_by_id(&mut self, id: OverlayID) -> Option<&OverlayData<T>> {
+        self.overlays.get(id.0)
     }
 
-    pub fn mut_by_id(&mut self, id: usize) -> Option<&mut OverlayData<T>> {
-        self.overlays.get_mut(id)
+    pub fn mut_by_id(&mut self, id: OverlayID) -> Option<&mut OverlayData<T>> {
+        self.overlays.get_mut(id.0)
     }
 
     pub fn get_by_name<'a>(&'a mut self, name: &str) -> Option<&'a OverlayData<T>> {
@@ -307,7 +307,7 @@ where
     }
 
     pub fn add(&mut self, overlay: OverlayData<T>) {
-        self.overlays.insert(overlay.state.id, overlay);
+        self.overlays.insert(overlay.state.id.0, overlay);
     }
 
     pub fn show_hide(&mut self, app: &mut AppState) {
@@ -344,7 +344,7 @@ where
 #[derive(Clone, Deserialize, Debug)]
 #[serde(untagged)]
 pub enum OverlaySelector {
-    Id(usize),
+    Id(OverlayID),
     Name(Arc<str>),
 }
 

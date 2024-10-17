@@ -21,7 +21,7 @@ use super::{
     CompositionLayer, XrState,
 };
 
-static AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(1);
+static LINE_AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(1);
 pub(super) const LINE_WIDTH: f32 = 0.002;
 
 pub(super) struct LinePool {
@@ -66,7 +66,7 @@ impl LinePool {
         xr: &XrState,
         graphics: Arc<WlxGraphics>,
     ) -> anyhow::Result<usize> {
-        let id = AUTO_INCREMENT.fetch_add(1, Ordering::Relaxed);
+        let id = LINE_AUTO_INCREMENT.fetch_add(1, Ordering::Relaxed);
 
         let srd =
             create_swapchain_render_data(xr, graphics, [1, 1, 1], SwapchainOpts::new().srgb())?;

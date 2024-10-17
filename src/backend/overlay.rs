@@ -8,21 +8,25 @@ use std::{
 
 use anyhow::Ok;
 use glam::{Affine2, Affine3A, Mat3A, Quat, Vec2, Vec3, Vec3A};
+use serde::Deserialize;
 use vulkano::image::view::ImageView;
 
 use crate::{config::AStrMapExt, state::AppState};
 
 use super::input::{DummyInteractionHandler, Haptics, InteractionHandler, PointerHit};
 
-static AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(0);
+static OVERLAY_AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(0);
 
 pub trait OverlayBackend: OverlayRenderer + InteractionHandler {
     fn set_renderer(&mut self, renderer: Box<dyn OverlayRenderer>);
     fn set_interaction(&mut self, interaction: Box<dyn InteractionHandler>);
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Default)]
+pub struct OverlayID(pub usize);
+
 pub struct OverlayState {
-    pub id: usize,
+    pub id: OverlayID,
     pub name: Arc<str>,
     pub want_visible: bool,
     pub show_hide: bool,
@@ -48,7 +52,7 @@ pub struct OverlayState {
 impl Default for OverlayState {
     fn default() -> Self {
         OverlayState {
-            id: AUTO_INCREMENT.fetch_add(1, Ordering::Relaxed),
+            id: OverlayID(OVERLAY_AUTO_INCREMENT.fetch_add(1, Ordering::Relaxed)),
             name: Arc::from(""),
             want_visible: false,
             show_hide: false,

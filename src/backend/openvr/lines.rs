@@ -17,7 +17,7 @@ use crate::state::AppState;
 
 use super::overlay::OpenVrOverlayData;
 
-static AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(1);
+static LINE_AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(1);
 
 pub(super) struct LinePool {
     lines: IdMap<usize, OverlayData<OpenVrOverlayData>>,
@@ -59,7 +59,7 @@ impl LinePool {
     }
 
     pub fn allocate(&mut self) -> usize {
-        let id = AUTO_INCREMENT.fetch_add(1, Ordering::Relaxed);
+        let id = LINE_AUTO_INCREMENT.fetch_add(1, Ordering::Relaxed);
 
         let mut data = OverlayData::<OpenVrOverlayData> {
             state: OverlayState {
