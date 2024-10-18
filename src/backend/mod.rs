@@ -17,6 +17,9 @@ pub mod uidev;
 #[cfg(feature = "osc")]
 pub mod osc;
 
+#[cfg(feature = "wayvr")]
+pub mod wayvr;
+
 pub mod overlay;
 
 pub mod task;

@@ -336,6 +336,7 @@ impl<D, S> Control<D, S> {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub(super) fn render_sprite_hl(
         &self,
         canvas: &CanvasData<D>,

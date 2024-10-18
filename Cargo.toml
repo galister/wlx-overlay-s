@@ -10,7 +10,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.86"
+anyhow = "1.0.89"
 ash = "^0.37.2"
 chrono = "0.4.38"
 chrono-tz = "0.9.0"
@@ -70,11 +70,23 @@ image_dds = { version = "0.6.0", default-features = false, features = [
 ] }
 mint = "0.5.9"
 
+# WayVR-only deps
+khronos-egl = { version = "6.0.0", features = ["static"], optional = true }
+smithay = { git = "https://github.com/Smithay/smithay.git", default-features = false, features = [
+  "renderer_gl",
+  "backend_egl",
+  "xwayland",
+  "wayland_frontend",
+], optional = true }
+uuid = { version = "1.10.0", features = ["v4", "fast-rng"], optional = true }
+wayland-client = { version = "0.31.6", optional = true }
+wayland-egl = { version = "0.32.4", optional = true }
+
 [build-dependencies]
 regex = { version = "*" }
 
 [features]
-default = ["openvr", "openxr", "osc", "x11", "wayland"]
+default = ["openxr", "openvr", "osc", "x11", "wayland"]
 openvr = ["dep:ovr_overlay", "dep:json"]
 openxr = ["dep:openxr", "dep:libmonado-rs"]
 osc = ["dep:rosc"]
@@ -83,4 +95,11 @@ wayland = ["pipewire", "wlx-capture/wlr", "xkbcommon/wayland"]
 pipewire = ["wlx-capture/pipewire"]
 uidev = ["dep:winit"]
 xcb = ["dep:xcb"]
+wayvr = [
+  "dep:khronos-egl",
+  "dep:smithay",
+  "dep:uuid",
+  "dep:wayland-client",
+  "dep:wayland-egl",
+]
 as-raw-xcb-connection = []
