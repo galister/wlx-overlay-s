@@ -360,6 +360,11 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
             }
         }
 
+        #[cfg(feature = "wayvr")]
+        if let Some(wayvr) = &app_state.wayvr {
+            wayvr.borrow_mut().tick_events()?;
+        }
+
         for o in overlays.iter_mut() {
             if !o.state.want_visible {
                 continue;
@@ -392,6 +397,11 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                 continue;
             }
             layers.push((0.0, maybe_layer));
+        }
+
+        #[cfg(feature = "wayvr")]
+        if let Some(wayvr) = &app_state.wayvr {
+            wayvr.borrow_mut().tick_finish()?;
         }
 
         command_buffer.build_and_execute_now()?;

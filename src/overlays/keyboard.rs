@@ -18,7 +18,7 @@ use crate::{
         get_key_type, KeyModifier, KeyType, VirtualKey, XkbKeymap, ALT, CTRL, KEYS_TO_MODS, META,
         NUM_LOCK, SHIFT, SUPER,
     },
-    state::AppState,
+    state::{AppState, KeyboardFocus},
 };
 use glam::{vec2, vec3a, Affine2, Vec4};
 use once_cell::sync::Lazy;
@@ -30,6 +30,36 @@ const BUTTON_PADDING: f32 = 4.;
 const AUTO_RELEASE_MODS: [KeyModifier; 5] = [SHIFT, CTRL, ALT, SUPER, META];
 
 pub const KEYBOARD_NAME: &str = "kbd";
+
+fn send_key(app: &mut AppState, key: VirtualKey, down: bool) {
+    log::info!(
+        "Sending key {:?} to {:?} (down: {})",
+        key,
+        app.keyboard_focus,
+        down
+    );
+    match app.keyboard_focus {
+        KeyboardFocus::PhysicalScreen => {
+            app.hid_provider.send_key(key, down);
+        }
+        KeyboardFocus::WayVR =>
+        {
+            #[cfg(feature = "wayvr")]
+            if let Some(wayvr) = &app.wayvr {
+                wayvr.borrow_mut().send_key(key as u32, down);
+            }
+        }
+    }
+}
+
+fn set_modifiers(app: &mut AppState, mods: u8) {
+    match app.keyboard_focus {
+        KeyboardFocus::PhysicalScreen => {
+            app.hid_provider.set_modifiers(mods);
+        }
+        KeyboardFocus::WayVR => {}
+    }
+}
 
 pub fn create_keyboard<O>(
     app: &AppState,
@@ -197,22 +227,22 @@ fn key_press(
 
             if let PointerMode::Right = mode {
                 data.modifiers |= SHIFT;
-                app.hid_provider.set_modifiers(data.modifiers);
+                set_modifiers(app, data.modifiers);
             }
 
-            app.hid_provider.send_key(*vk, true);
+            send_key(app, *vk, true);
             *pressed = true;
         }
         Some(KeyButtonData::Modifier { modifier, sticky }) => {
             *sticky = data.modifiers & *modifier == 0;
             data.modifiers |= *modifier;
             data.key_click(app);
-            app.hid_provider.set_modifiers(data.modifiers);
+            set_modifiers(app, data.modifiers);
         }
         Some(KeyButtonData::Macro { verbs }) => {
             data.key_click(app);
             for (vk, press) in verbs {
-                app.hid_provider.send_key(*vk, *press);
+                send_key(app, *vk, *press);
             }
         }
         Some(KeyButtonData::Exec { program, args, .. }) => {
@@ -236,20 +266,20 @@ fn key_release(
 ) {
     match control.state.as_mut() {
         Some(KeyButtonData::Key { vk, pressed }) => {
-            app.hid_provider.send_key(*vk, false);
+            send_key(app, *vk, false);
             *pressed = false;
 
             for m in AUTO_RELEASE_MODS.iter() {
                 if data.modifiers & *m != 0 {
                     data.modifiers &= !*m;
-                    app.hid_provider.set_modifiers(data.modifiers);
+                    set_modifiers(app, data.modifiers);
                 }
             }
         }
         Some(KeyButtonData::Modifier { modifier, sticky }) => {
             if !*sticky {
                 data.modifiers &= !*modifier;
-                app.hid_provider.set_modifiers(data.modifiers);
+                set_modifiers(app, data.modifiers);
             }
         }
         Some(KeyButtonData::Exec {
@@ -493,7 +523,7 @@ impl OverlayRenderer for KeyboardBackend {
     }
     fn pause(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         self.canvas.data_mut().modifiers = 0;
-        app.hid_provider.set_modifiers(0);
+        set_modifiers(app, 0);
         self.canvas.pause(app)
     }
     fn resume(&mut self, app: &mut AppState) -> anyhow::Result<()> {

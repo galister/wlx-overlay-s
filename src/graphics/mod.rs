@@ -553,7 +553,9 @@ impl WlxGraphics {
         Arc<winit::window::Window>,
         Arc<vulkano::swapchain::Surface>,
     )> {
-        use vulkano::swapchain::Surface;
+        use vulkano::{
+            device::physical::PhysicalDeviceType, instance::InstanceCreateFlags, swapchain::Surface,
+        };
         use winit::{event_loop::EventLoop, window::Window};
 
         let event_loop = EventLoop::new().unwrap(); // want panic
@@ -795,29 +797,16 @@ impl WlxGraphics {
         )?)
     }
 
-    pub fn dmabuf_texture(&self, frame: DmabufFrame) -> anyhow::Result<Arc<Image>> {
+    pub fn dmabuf_texture_ex(
+        &self,
+        frame: DmabufFrame,
+        tiling: ImageTiling,
+        layouts: Vec<SubresourceLayout>,
+        modifiers: Vec<u64>,
+    ) -> anyhow::Result<Arc<Image>> {
         let extent = [frame.format.width, frame.format.height, 1];
 
         let format = fourcc_to_vk(frame.format.fourcc)?;
-
-        let mut tiling: ImageTiling = ImageTiling::Optimal;
-        let mut modifiers: Vec<u64> = vec![];
-        let mut layouts: Vec<SubresourceLayout> = vec![];
-
-        if frame.format.modifier != DRM_FORMAT_MOD_INVALID {
-            (0..frame.num_planes).for_each(|i| {
-                let plane = &frame.planes[i];
-                layouts.push(SubresourceLayout {
-                    offset: plane.offset as _,
-                    size: 0,
-                    row_pitch: plane.stride as _,
-                    array_pitch: None,
-                    depth_pitch: None,
-                });
-                modifiers.push(frame.format.modifier);
-            });
-            tiling = ImageTiling::DrmFormatModifier;
-        };
 
         let image = unsafe {
             RawImage::new_unchecked(
@@ -883,6 +872,29 @@ impl WlxGraphics {
                 }
             }
         }
+    }
+
+    pub fn dmabuf_texture(&self, frame: DmabufFrame) -> anyhow::Result<Arc<Image>> {
+        let mut modifiers: Vec<u64> = vec![];
+        let mut tiling: ImageTiling = ImageTiling::Optimal;
+        let mut layouts: Vec<SubresourceLayout> = vec![];
+
+        if frame.format.modifier != DRM_FORMAT_MOD_INVALID {
+            (0..frame.num_planes).for_each(|i| {
+                let plane = &frame.planes[i];
+                layouts.push(SubresourceLayout {
+                    offset: plane.offset as _,
+                    size: 0,
+                    row_pitch: plane.stride as _,
+                    array_pitch: None,
+                    depth_pitch: None,
+                });
+                modifiers.push(frame.format.modifier);
+            });
+            tiling = ImageTiling::DrmFormatModifier;
+        };
+
+        self.dmabuf_texture_ex(frame, tiling, layouts, modifiers)
     }
 
     pub fn render_texture(

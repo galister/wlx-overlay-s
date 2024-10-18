@@ -320,6 +320,11 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
             let _ = sender.send_params(&overlays);
         };
 
+        #[cfg(feature = "wayvr")]
+        if let Some(wayvr) = &state.wayvr {
+            wayvr.borrow_mut().tick_events()?;
+        }
+
         log::trace!("Rendering frame");
 
         for o in overlays.iter_mut() {
@@ -333,6 +338,11 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         overlays
             .iter_mut()
             .for_each(|o| o.after_render(universe.clone(), &mut overlay_mgr, &state.graphics));
+
+        #[cfg(feature = "wayvr")]
+        if let Some(wayvr) = &state.wayvr {
+            wayvr.borrow_mut().tick_finish()?;
+        }
 
         // chaperone
 

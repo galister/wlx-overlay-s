@@ -1,12 +1,17 @@
-use std::{io::Cursor, sync::Arc};
-
 use anyhow::bail;
 use glam::Affine3A;
 use idmap::IdMap;
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Source};
 use serde::{Deserialize, Serialize};
 use smallvec::{smallvec, SmallVec};
+use std::{io::Cursor, sync::Arc};
 use vulkano::image::view::ImageView;
+
+#[cfg(feature = "wayvr")]
+use std::{cell::RefCell, rc::Rc};
+
+#[cfg(feature = "wayvr")]
+use crate::backend::wayvr::WayVR;
 
 use crate::{
     backend::{input::InputState, overlay::OverlayID, task::TaskContainer},
@@ -22,6 +27,14 @@ use crate::{
     },
 };
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum KeyboardFocus {
+    PhysicalScreen,
+
+    #[allow(dead_code)] // Not available if "wayvr" feature is disabled
+    WayVR, // (for now without wayland window id data, it's handled internally),
+}
+
 pub struct AppState {
     pub fc: FontCache,
     pub session: AppSession,
@@ -33,6 +46,10 @@ pub struct AppState {
     pub screens: SmallVec<[ScreenMeta; 8]>,
     pub anchor: Affine3A,
     pub sprites: AStrMap<Arc<ImageView>>,
+    pub keyboard_focus: KeyboardFocus,
+
+    #[cfg(feature = "wayvr")]
+    pub wayvr: Option<Rc<RefCell<WayVR>>>, // Dynamically created if requested
 }
 
 impl AppState {
@@ -84,7 +101,24 @@ impl AppState {
             screens: smallvec![],
             anchor: Affine3A::IDENTITY,
             sprites: AStrMap::new(),
+            keyboard_focus: KeyboardFocus::PhysicalScreen,
+
+            #[cfg(feature = "wayvr")]
+            wayvr: None,
         })
+    }
+
+    #[cfg(feature = "wayvr")]
+    #[allow(dead_code)]
+    pub fn get_wayvr(&mut self) -> anyhow::Result<Rc<RefCell<WayVR>>> {
+        if let Some(wvr) = &self.wayvr {
+            Ok(wvr.clone())
+        } else {
+            log::info!("Initializing WayVR");
+            let wayvr = Rc::new(RefCell::new(WayVR::new()?));
+            self.wayvr = Some(wayvr.clone());
+            Ok(wayvr)
+        }
     }
 }
 

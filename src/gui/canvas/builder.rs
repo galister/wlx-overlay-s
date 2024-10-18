@@ -111,6 +111,7 @@ impl<D, S> CanvasBuilder<D, S> {
     }
 
     // Creates a sprite that highlights on pointer hover. Will not draw anything until set_sprite is called.
+    #[allow(dead_code)]
     pub fn sprite_interactive(&mut self, x: f32, y: f32, w: f32, h: f32) -> &mut Control<D, S> {
         let idx = self.canvas.controls.len();
         self.canvas.controls.push(Control {

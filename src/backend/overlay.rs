@@ -11,7 +11,10 @@ use glam::{Affine2, Affine3A, Mat3A, Quat, Vec2, Vec3, Vec3A};
 use serde::Deserialize;
 use vulkano::image::view::ImageView;
 
-use crate::{config::AStrMapExt, state::AppState};
+use crate::{
+    config::AStrMapExt,
+    state::{AppState, KeyboardFocus},
+};
 
 use super::input::{DummyInteractionHandler, Haptics, InteractionHandler, PointerHit};
 
@@ -34,6 +37,7 @@ pub struct OverlayState {
     pub interactable: bool,
     pub recenter: bool,
     pub anchored: bool,
+    pub keyboard_focus: Option<KeyboardFocus>,
     pub dirty: bool,
     pub alpha: f32,
     pub z_order: u32,
@@ -60,6 +64,7 @@ impl Default for OverlayState {
             recenter: false,
             interactable: false,
             anchored: false,
+            keyboard_focus: None,
             dirty: true,
             alpha: 1.0,
             z_order: 0,

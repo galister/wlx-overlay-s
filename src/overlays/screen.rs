@@ -58,7 +58,7 @@ use crate::{
         fourcc_to_vk, WlxCommandBuffer, WlxPipeline, WlxPipelineLegacy, DRM_FORMAT_MOD_INVALID,
     },
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
-    state::{AppSession, AppState, ScreenMeta},
+    state::{AppSession, AppState, KeyboardFocus, ScreenMeta},
 };
 
 #[cfg(feature = "wayland")]
@@ -712,6 +712,7 @@ fn create_screen_state(
 
     OverlayState {
         name: name.clone(),
+        keyboard_focus: Some(KeyboardFocus::PhysicalScreen),
         grabbable: true,
         recenter: true,
         anchored: true,

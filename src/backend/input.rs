@@ -8,9 +8,9 @@ use smallvec::{smallvec, SmallVec};
 use crate::backend::common::{snap_upright, OverlaySelector};
 use crate::config::{AStrMapExt, GeneralConfig};
 use crate::overlays::anchor::ANCHOR_NAME;
-use crate::state::AppState;
+use crate::state::{AppState, KeyboardFocus};
 
-use super::overlay::OverlayID;
+use super::overlay::{OverlayID, OverlayState};
 use super::task::{TaskContainer, TaskType};
 use super::{common::OverlayContainer, overlay::OverlayData};
 
@@ -262,6 +262,15 @@ pub enum PointerMode {
     Special,
 }
 
+fn update_focus(focus: &mut KeyboardFocus, state: &OverlayState) {
+    if let Some(f) = &state.keyboard_focus {
+        if *focus != *f {
+            log::info!("Setting keyboard focus to {:?}", *f);
+            *focus = *f;
+        }
+    }
+}
+
 pub fn interact<O>(
     overlays: &mut OverlayContainer<O>,
     app: &mut AppState,
@@ -362,6 +371,7 @@ where
     log::trace!("Hit: {} {:?}", hovered.state.name, hit);
 
     if pointer.now.grab && !pointer.before.grab && hovered.state.grabbable {
+        update_focus(&mut app.keyboard_focus, &hovered.state);
         pointer.start_grab(hovered, &mut app.tasks);
         return (
             hit.dist,
@@ -407,6 +417,7 @@ where
 
     if pointer.now.click && !pointer.before.click {
         pointer.interaction.clicked_id = Some(hit.overlay);
+        update_focus(&mut app.keyboard_focus, &hovered.state);
         hovered.backend.on_pointer(app, &hit, true);
     } else if !pointer.now.click && pointer.before.click {
         if let Some(clicked_id) = pointer.interaction.clicked_id.take() {
