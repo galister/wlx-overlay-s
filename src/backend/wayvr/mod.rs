@@ -178,10 +178,29 @@ impl WayVR {
             .map(|display| display.dmabuf_data.clone())
     }
 
+    pub fn get_display_by_name(&self, name: &str) -> Option<display::DisplayHandle> {
+        for (idx, cell) in self.displays.vec.iter().enumerate() {
+            if let Some(cell) = cell {
+                if cell.obj.name == name {
+                    return Some(DisplayVec::get_handle(cell, idx));
+                }
+            }
+        }
+        None
+    }
+
+    pub fn get_display_by_handle(
+        &self,
+        display: display::DisplayHandle,
+    ) -> Option<&display::Display> {
+        self.displays.get(&display)
+    }
+
     pub fn create_display(
         &mut self,
         width: u32,
         height: u32,
+        name: &str,
     ) -> anyhow::Result<display::DisplayHandle> {
         let display = display::Display::new(
             self.wm.clone(),
@@ -190,6 +209,7 @@ impl WayVR {
             self.manager.wayland_env.clone(),
             width,
             height,
+            name,
         )?;
         Ok(self.displays.add(display))
     }

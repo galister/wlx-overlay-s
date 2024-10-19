@@ -5,6 +5,9 @@ use std::{
     time::Instant,
 };
 
+#[cfg(feature = "wayvr")]
+use std::sync::Arc;
+
 use serde::Deserialize;
 
 use crate::state::AppState;
@@ -49,6 +52,12 @@ pub enum SystemTask {
     ShowHide,
 }
 
+#[cfg(feature = "wayvr")]
+pub struct WayVRTask {
+    pub catalog_name: Arc<str>,
+    pub app_name: Arc<str>,
+}
+
 pub type OverlayTask = dyn FnOnce(&mut AppState, &mut OverlayState) + Send;
 pub type CreateOverlayTask =
     dyn FnOnce(&mut AppState) -> Option<(OverlayState, Box<dyn OverlayBackend>)> + Send;
@@ -59,6 +68,8 @@ pub enum TaskType {
     CreateOverlay(OverlaySelector, Box<CreateOverlayTask>),
     DropOverlay(OverlaySelector),
     System(SystemTask),
+    #[cfg(feature = "wayvr")]
+    WayVR(WayVRTask),
 }
 
 #[derive(Deserialize, Clone, Copy)]

@@ -110,6 +110,15 @@ pub enum ModularElement {
         #[serde(flatten)]
         template: Box<OverlayListTemplate>,
     },
+    // Ignored if "wayvr" feature is not enabled
+    WayVRLauncher {
+        rect: [f32; 4],
+        corner_radius: Option<f32>,
+        font_size: isize,
+        fg_color: Arc<str>,
+        bg_color: Arc<str>,
+        catalog_name: Arc<str>,
+    },
 }
 
 #[derive(Deserialize, Clone)]
@@ -396,6 +405,58 @@ pub fn modular_canvas(
                         ListLayout::Horizontal => 0.,
                         ListLayout::Vertical => button_h,
                     };
+                }
+            }
+            #[allow(unused_variables)] // needed in case if wayvr feature is not enabled
+            ModularElement::WayVRLauncher {
+                rect: [x, y, w, h],
+                corner_radius,
+                font_size,
+                fg_color,
+                bg_color,
+                catalog_name,
+            } => {
+                #[cfg(feature = "wayvr")]
+                {
+                    if let Some(catalog) = state.session.wayvr_config.get_catalog(catalog_name) {
+                        let mut button_x = *x;
+                        let button_y = *y;
+
+                        for app in &catalog.apps {
+                            let button_w: f32 = *w / catalog.apps.len() as f32;
+                            let button_h: f32 = *h;
+
+                            canvas.bg_color = color_parse(bg_color).unwrap_or(*FALLBACK_COLOR);
+                            canvas.fg_color = color_parse(fg_color).unwrap_or(*FALLBACK_COLOR);
+                            canvas.font_size = *font_size;
+
+                            let button = canvas.button(
+                                button_x + 2.,
+                                button_y + 2.,
+                                button_w - 4.,
+                                button_h - 4.,
+                                corner_radius.unwrap_or_default(),
+                                Arc::from(app.name.as_str()),
+                            );
+
+                            let data = ButtonData {
+                                click_down: Some(vec![ButtonAction::WayVR {
+                                    catalog_name: catalog_name.clone(),
+                                    app_name: Arc::from(app.name.as_str()),
+                                }]),
+                                ..Default::default()
+                            };
+
+                            modular_button_init(button, &data);
+                            button_x += button_w;
+                        }
+                    } else {
+                        log::error!("WayVR catalog \"{}\" not found", catalog_name);
+                    }
+                }
+                #[cfg(not(feature = "wayvr"))]
+                {
+                    log::error!("WayVR feature is not available, ignoring");
                 }
             }
         }

@@ -25,6 +25,9 @@ use crate::{
     state::AppState,
 };
 
+#[cfg(feature = "wayvr")]
+use crate::backend::task::WayVRTask;
+
 use super::{ExecArgs, ModularControl, ModularData};
 
 #[derive(Deserialize, Clone)]
@@ -133,6 +136,11 @@ pub enum ButtonAction {
     Overlay {
         target: OverlaySelector,
         action: OverlayAction,
+    },
+    #[cfg(feature = "wayvr")]
+    WayVR {
+        catalog_name: Arc<str>,
+        app_name: Arc<str>,
     },
     Window {
         target: Arc<str>,
@@ -327,6 +335,16 @@ fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppStat
         ButtonAction::Watch { action } => run_watch(action, app),
         ButtonAction::Overlay { target, action } => run_overlay(target, action, app),
         ButtonAction::Window { target, action } => run_window(target, action, app),
+        #[cfg(feature = "wayvr")]
+        ButtonAction::WayVR {
+            catalog_name,
+            app_name,
+        } => {
+            app.tasks.enqueue(TaskType::WayVR(WayVRTask {
+                catalog_name: catalog_name.clone(),
+                app_name: app_name.clone(),
+            }));
+        }
         ButtonAction::VirtualKey { keycode, action } => app
             .hid_provider
             .send_key(*keycode, matches!(*action, PressRelease::Press)),

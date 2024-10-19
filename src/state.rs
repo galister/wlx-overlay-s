@@ -13,6 +13,9 @@ use std::{cell::RefCell, rc::Rc};
 #[cfg(feature = "wayvr")]
 use crate::backend::wayvr::WayVR;
 
+#[cfg(feature = "wayvr")]
+use crate::config_wayvr::{self, WayVRConfig};
+
 use crate::{
     backend::{input::InputState, overlay::OverlayID, task::TaskContainer},
     config::{AStrMap, GeneralConfig},
@@ -125,6 +128,9 @@ impl AppState {
 pub struct AppSession {
     pub config: GeneralConfig,
 
+    #[cfg(feature = "wayvr")]
+    pub wayvr_config: WayVRConfig,
+
     pub toast_topics: IdMap<ToastTopic, DisplayMethod>,
 }
 
@@ -143,9 +149,14 @@ impl AppSession {
             toast_topics.insert(*k, *v);
         });
 
+        #[cfg(feature = "wayvr")]
+        let wayvr_config = config_wayvr::load_wayvr();
+
         AppSession {
             config,
             toast_topics,
+            #[cfg(feature = "wayvr")]
+            wayvr_config,
         }
     }
 }

@@ -46,6 +46,7 @@ pub struct Display {
     // Display info stuff
     pub width: u32,
     pub height: u32,
+    pub name: String,
     wm: Rc<RefCell<window::WindowManager>>,
     displayed_windows: Vec<DisplayWindow>,
     wayland_env: super::WaylandEnv,
@@ -76,6 +77,7 @@ impl Display {
         wayland_env: super::WaylandEnv,
         width: u32,
         height: u32,
+        name: &str,
     ) -> anyhow::Result<Self> {
         let tex_format = ffi::RGBA;
         let internal_format = ffi::RGBA8;
@@ -102,6 +104,7 @@ impl Display {
             wm,
             width,
             height,
+            name: String::from(name),
             displayed_windows: Vec::new(),
             egl_data,
             dmabuf_data,
