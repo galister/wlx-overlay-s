@@ -86,7 +86,7 @@ wayland-egl = { version = "0.32.4", optional = true }
 regex = { version = "*" }
 
 [features]
-default = ["openxr", "openvr", "osc", "x11", "wayland"]
+default = ["openxr", "openvr", "osc", "x11", "wayland", "wayvr"]
 openvr = ["dep:ovr_overlay", "dep:json"]
 openxr = ["dep:openxr", "dep:libmonado-rs"]
 osc = ["dep:rosc"]

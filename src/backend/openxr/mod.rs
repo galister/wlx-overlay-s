@@ -31,6 +31,9 @@ use crate::{
     state::AppState,
 };
 
+#[cfg(feature = "wayvr")]
+use crate::overlays::wayvr::action_wayvr;
+
 mod helpers;
 mod input;
 mod lines;
@@ -487,6 +490,14 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                     }
                     _ => {}
                 },
+                #[cfg(feature = "wayvr")]
+                TaskType::WayVR(task) => {
+                    if let Some(overlay) =
+                        action_wayvr(&task.catalog_name, &task.app_name, &mut app_state)
+                    {
+                        overlays.add(overlay);
+                    }
+                }
             }
         }
 
