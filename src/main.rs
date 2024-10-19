@@ -9,6 +9,9 @@ mod overlays;
 mod shaders;
 mod state;
 
+#[cfg(feature = "wayvr")]
+mod config_wayvr;
+
 use std::{
     path::PathBuf,
     sync::{

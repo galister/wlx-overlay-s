@@ -1,0 +1,47 @@
+# This is an example WayVR panel configuration. It demonstrates all the capabilities of this module.
+# looking to make changes?
+# drop me in ~/.config/wlxoverlay/wayvr.yaml
+#
+
+version: 1
+
+displays:
+  disp_square:
+    width: 500
+    height: 350
+    scale: 1.0
+  disp_term:
+    width: 640
+    height: 480
+    scale: 1.25
+  disp_browser:
+    width: 1280
+    height: 720
+    scale: 2.0
+  disp_plasma:
+    width: 1280
+    height: 720
+    scale: 2.0
+
+catalogs:
+  default_catalog:
+    apps:
+      - name: "Calc"
+        target_display: "disp_square"
+        exec: "kcalc"
+        env: ["FOO=bar"]
+
+      - name: "Terminal"
+        target_display: "disp_term"
+        exec: "konsole"
+
+      - name: "Browser"
+        target_display: "disp_browser"
+        exec: "cage"
+        args: "chromium -- --incognito"
+
+      - name: "Plasma"
+        target_display: "disp_plasma"
+        exec: "cage"
+        args: "dbus-run-session -- kwin_wayland --xwayland plasmashell"
+        

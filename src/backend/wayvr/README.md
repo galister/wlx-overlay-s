@@ -30,7 +30,7 @@
 
 - Due to unknown circumstances, dma-buf textures may display various graphical glitches due to invalid dma-buf tiling modifier. Please report your GPU model when filing an issue. Alternatively, you can run wlx-overlay-s with `LIBGL_ALWAYS_SOFTWARE=1` to mitigate that (only the Smithay compositor will run in software renderer mode, wlx will still be accelerated).
 
-- Potential data race in the rendering pipeline - A texture could be displayed during the clear-and-blit process in the compositor, causing minor artifacts (no fence sync support yet).
+- ~~Potential data race in the rendering pipeline - A texture could be displayed during the clear-and-blit process in the compositor, causing minor artifacts (no fence sync support yet).~~ happens on all overlays on a simulated Monado driver
 
 - Even though some applications support Wayland, some still check for the `DISPLAY` environment variable and an available X11 server, throwing an error. This can be fixed by running `cage`.
 

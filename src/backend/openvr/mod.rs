@@ -42,6 +42,9 @@ use crate::{
     state::AppState,
 };
 
+#[cfg(feature = "wayvr")]
+use crate::overlays::wayvr::action_wayvr;
+
 pub mod helpers;
 pub mod input;
 pub mod lines;
@@ -262,6 +265,14 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                         overlays.show_hide(&mut state);
                     }
                 },
+                #[cfg(feature = "wayvr")]
+                TaskType::WayVR(task) => {
+                    if let Some(overlay) =
+                        action_wayvr(&task.catalog_name, &task.app_name, &mut state)
+                    {
+                        overlays.add(overlay);
+                    }
+                }
             }
         }
 
