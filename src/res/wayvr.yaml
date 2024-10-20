@@ -6,19 +6,11 @@
 version: 1
 
 displays:
-  disp_square:
-    width: 500
-    height: 350
-    scale: 1.0
-  disp_term:
+  Disp1:
     width: 640
     height: 480
     scale: 1.25
-  disp_browser:
-    width: 1280
-    height: 720
-    scale: 2.0
-  disp_plasma:
+  Disp2:
     width: 1280
     height: 720
     scale: 2.0
@@ -27,21 +19,17 @@ catalogs:
   default_catalog:
     apps:
       - name: "Calc"
-        target_display: "disp_square"
+        target_display: "Disp1"
         exec: "kcalc"
         env: ["FOO=bar"]
 
-      - name: "Terminal"
-        target_display: "disp_term"
+      - name: "htop"
+        target_display: "Disp1"
         exec: "konsole"
+        args: "-e htop"
 
       - name: "Browser"
-        target_display: "disp_browser"
+        target_display: "Disp2"
         exec: "cage"
         args: "chromium -- --incognito"
-
-      - name: "Plasma"
-        target_display: "disp_plasma"
-        exec: "cage"
-        args: "dbus-run-session -- kwin_wayland --xwayland plasmashell"
         

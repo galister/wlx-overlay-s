@@ -15,7 +15,7 @@ use smithay::{
     wayland::shell::xdg::ToplevelSurface,
 };
 
-use crate::gen_id;
+use crate::{backend::overlay::OverlayID, gen_id};
 
 use super::{
     client::WayVRManager, comp::send_frames_surface_tree, egl_data, smithay_wrapper, window,
@@ -47,6 +47,8 @@ pub struct Display {
     pub width: u32,
     pub height: u32,
     pub name: String,
+    pub visible: bool,
+    pub overlay_id: Option<OverlayID>,
     wm: Rc<RefCell<window::WindowManager>>,
     displayed_windows: Vec<DisplayWindow>,
     wayland_env: super::WaylandEnv,
@@ -112,6 +114,8 @@ impl Display {
             gles_texture,
             wayland_env,
             processes: Vec::new(),
+            visible: true,
+            overlay_id: None,
         })
     }
 
@@ -214,6 +218,11 @@ impl Display {
             }
         }
         None
+    }
+
+    pub fn set_visible(&mut self, visible: bool) {
+        log::info!("Display \"{}\" visible: {}", self.name.as_str(), visible);
+        self.visible = visible;
     }
 
     pub fn send_mouse_move(&self, manager: &mut WayVRManager, x: u32, y: u32) {

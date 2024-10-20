@@ -43,7 +43,7 @@ impl WaylandEnv {
 pub struct WayVR {
     time_start: u64,
     gles_renderer: GlesRenderer,
-    displays: display::DisplayVec,
+    pub displays: display::DisplayVec,
     manager: client::WayVRManager,
     wm: Rc<RefCell<window::WindowManager>>,
     egl_data: Rc<egl_data::EGLData>,
@@ -102,12 +102,18 @@ impl WayVR {
 
     pub fn tick_display(&mut self, display: display::DisplayHandle) -> anyhow::Result<()> {
         // millis since the start of wayvr
-        let time_ms = get_millis() - self.time_start;
 
         let display = self
             .displays
             .get(&display)
             .ok_or(anyhow::anyhow!("Invalid display handle"))?;
+
+        let time_ms = get_millis() - self.time_start;
+
+        if !display.visible {
+            // Display is invisible, do not render
+            return Ok(());
+        }
 
         display.tick_render(&mut self.gles_renderer, time_ms)?;
 
@@ -172,6 +178,12 @@ impl WayVR {
         self.manager.send_key(virtual_key, down);
     }
 
+    pub fn set_display_visible(&mut self, display: display::DisplayHandle, visible: bool) {
+        if let Some(display) = self.displays.get_mut(&display) {
+            display.set_visible(visible);
+        }
+    }
+
     pub fn get_dmabuf_data(&self, display: display::DisplayHandle) -> Option<egl_data::DMAbufData> {
         self.displays
             .get(&display)
@@ -188,14 +200,6 @@ impl WayVR {
         }
         None
     }
-
-    pub fn get_display_by_handle(
-        &self,
-        display: display::DisplayHandle,
-    ) -> Option<&display::Display> {
-        self.displays.get(&display)
-    }
-
     pub fn create_display(
         &mut self,
         width: u32,
