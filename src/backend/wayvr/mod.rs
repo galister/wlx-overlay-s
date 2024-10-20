@@ -5,6 +5,7 @@ pub mod egl_data;
 mod egl_ex;
 mod event_queue;
 mod handle;
+mod process;
 mod smithay_wrapper;
 mod time;
 mod window;
@@ -14,6 +15,8 @@ use std::{cell::RefCell, rc::Rc};
 use comp::Application;
 use display::DisplayVec;
 use event_queue::SyncEventQueue;
+use process::ProcessVec;
+use smallvec::SmallVec;
 use smithay::{
     backend::renderer::gles::GlesRenderer,
     input::SeatState,
@@ -27,6 +30,9 @@ use smithay::{
 };
 use time::get_millis;
 
+const STR_INVALID_HANDLE_DISP: &str = "Invalid display handle";
+const STR_INVALID_HANDLE_PROCESS: &str = "Invalid process handle";
+
 #[derive(Clone)]
 pub struct WaylandEnv {
     pub display_num: u32,
@@ -39,6 +45,12 @@ impl WaylandEnv {
     }
 }
 
+#[derive(Clone)]
+pub enum WayVRTask {
+    NewToplevel(ClientId, ToplevelSurface),
+    ProcessTerminationRequest(process::ProcessHandle),
+}
+
 #[allow(dead_code)]
 pub struct WayVR {
     time_start: u64,
@@ -47,8 +59,9 @@ pub struct WayVR {
     manager: client::WayVRManager,
     wm: Rc<RefCell<window::WindowManager>>,
     egl_data: Rc<egl_data::EGLData>,
+    pub processes: process::ProcessVec,
 
-    queue_new_toplevel: SyncEventQueue<(ClientId, ToplevelSurface)>,
+    tasks: SyncEventQueue<WayVRTask>,
 }
 
 pub enum MouseIndex {
@@ -72,7 +85,7 @@ impl WayVR {
         let seat_keyboard = seat.add_keyboard(Default::default(), 100, 100)?;
         let seat_pointer = seat.add_pointer();
 
-        let queue_new_toplevel = SyncEventQueue::new();
+        let tasks = SyncEventQueue::new();
 
         let state = Application {
             compositor,
@@ -80,7 +93,7 @@ impl WayVR {
             seat_state,
             shm,
             data_device,
-            queue_new_toplevel: queue_new_toplevel.clone(),
+            wayvr_tasks: tasks.clone(),
         };
 
         let time_start = get_millis();
@@ -94,19 +107,19 @@ impl WayVR {
             time_start,
             manager: client::WayVRManager::new(state, display, seat_keyboard, seat_pointer)?,
             displays: DisplayVec::new(),
+            processes: ProcessVec::new(),
             egl_data: Rc::new(egl_data),
             wm: Rc::new(RefCell::new(window::WindowManager::new())),
-            queue_new_toplevel,
+            tasks,
         })
     }
 
     pub fn tick_display(&mut self, display: display::DisplayHandle) -> anyhow::Result<()> {
         // millis since the start of wayvr
-
         let display = self
             .displays
             .get(&display)
-            .ok_or(anyhow::anyhow!("Invalid display handle"))?;
+            .ok_or(anyhow::anyhow!(STR_INVALID_HANDLE_DISP))?;
 
         let time_ms = get_millis() - self.time_start;
 
@@ -121,25 +134,68 @@ impl WayVR {
     }
 
     pub fn tick_events(&mut self) -> anyhow::Result<()> {
-        // Attach newly created toplevel surfaces to displayes
-        while let Some((client_id, toplevel)) = self.queue_new_toplevel.read() {
-            for client in &self.manager.clients {
-                if client.client.id() == client_id {
-                    let window_handle = self.wm.borrow_mut().create_window(&toplevel);
+        // Tick all child processes
+        let mut to_remove: SmallVec<[(process::ProcessHandle, display::DisplayHandle); 2]> =
+            SmallVec::new();
+        self.processes.iter_mut(&mut |handle, process| {
+            if !process.is_running() {
+                to_remove.push((handle, process.display_handle));
+            }
+        });
 
-                    if let Some(display) = self.displays.get_mut(&client.display_handle) {
-                        display.add_window(window_handle, &toplevel);
-                    } else {
-                        // This shouldn't happen, scream if it does
-                        log::error!("Could not attach window handle into display");
+        for (p_handle, disp_handle) in to_remove {
+            self.processes.remove(&p_handle);
+
+            if let Some(display) = self.displays.get(&disp_handle) {
+                display
+                    .tasks
+                    .send(display::DisplayTask::ProcessCleanup(p_handle));
+            }
+        }
+
+        for display in self.displays.vec.iter_mut().flatten() {
+            display.obj.tick();
+        }
+
+        while let Some(task) = self.tasks.read() {
+            match task {
+                WayVRTask::NewToplevel(client_id, toplevel) => {
+                    // Attach newly created toplevel surfaces to displays
+                    for client in &self.manager.clients {
+                        if client.client.id() == client_id {
+                            let window_handle = self.wm.borrow_mut().create_window(&toplevel);
+
+                            if let Some(process_handle) =
+                                process::find_by_pid(&self.processes, client.pid)
+                            {
+                                if let Some(display) = self.displays.get_mut(&client.display_handle)
+                                {
+                                    display.add_window(window_handle, process_handle, &toplevel);
+                                } else {
+                                    // This shouldn't happen, scream if it does
+                                    log::error!("Could not attach window handle into display");
+                                }
+                            } else {
+                                log::error!(
+                                    "Failed to find process by PID {}. It was probably spawned externally.",
+                                    client.pid
+                                );
+                            }
+
+                            break;
+                        }
                     }
-
-                    break;
+                }
+                WayVRTask::ProcessTerminationRequest(process_handle) => {
+                    if let Some(process) = self.processes.get_mut(&process_handle) {
+                        process.terminate();
+                    }
                 }
             }
         }
 
-        self.manager.tick_wayland(&mut self.displays)
+        self.manager
+            .tick_wayland(&mut self.displays, &mut self.processes)
     }
 
     pub fn tick_finish(&mut self) -> anyhow::Result<()> {
@@ -222,16 +278,59 @@ impl WayVR {
         self.displays.remove(&handle);
     }
 
+    // Check if process with given arguments already exists
+    pub fn process_query(
+        &self,
+        display_handle: display::DisplayHandle,
+        exec_path: &str,
+        args: &[&str],
+        _env: &[(&str, &str)],
+    ) -> Option<process::ProcessHandle> {
+        for (idx, cell) in self.processes.vec.iter().enumerate() {
+            if let Some(cell) = &cell {
+                let process = &cell.obj;
+                if process.display_handle != display_handle
+                    || process.exec_path != exec_path
+                    || process.args != args
+                {
+                    continue;
+                }
+
+                return Some(process::ProcessVec::get_handle(cell, idx));
+            }
+        }
+
+        None
+    }
+
+    pub fn terminate_process(&mut self, process_handle: process::ProcessHandle) {
+        self.tasks
+            .send(WayVRTask::ProcessTerminationRequest(process_handle));
+    }
+
     pub fn spawn_process(
         &mut self,
-        display: display::DisplayHandle,
+        display_handle: display::DisplayHandle,
         exec_path: &str,
         args: &[&str],
         env: &[(&str, &str)],
-    ) -> anyhow::Result<()> {
-        if let Some(display) = self.displays.get_mut(&display) {
-            display.spawn_process(exec_path, args, env)?
-        }
-        Ok(())
+    ) -> anyhow::Result<process::ProcessHandle> {
+        let display = self
+            .displays
+            .get_mut(&display_handle)
+            .ok_or(anyhow::anyhow!(STR_INVALID_HANDLE_DISP))?;
+
+        let res = display.spawn_process(exec_path, args, env)?;
+        Ok(self.processes.add(process::Process {
+            auth_key: res.auth_key,
+            child: res.child,
+            display_handle,
+            exec_path: String::from(exec_path),
+            args: args.iter().map(|x| String::from(*x)).collect(),
+            env: env
+                .iter()
+                .map(|(a, b)| (String::from(*a), String::from(*b)))
+                .collect(),
+        }))
     }
 }

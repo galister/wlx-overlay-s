@@ -218,7 +218,7 @@ impl OverlayRenderer for WayVRRenderer {
 }
 
 #[allow(dead_code)]
-pub fn create_wayvr<O>(
+pub fn create_wayvr_display_overlay<O>(
     app: &mut state::AppState,
     display_width: u32,
     display_height: u32,
@@ -285,7 +285,7 @@ fn action_app_click<O>(
 where
     O: Default,
 {
-    use crate::overlays::wayvr::create_wayvr;
+    use crate::overlays::wayvr::create_wayvr_display_overlay;
 
     let mut created_overlay: Option<OverlayData<O>> = None;
 
@@ -322,7 +322,7 @@ where
                 &app_entry.target_display,
             )?;
 
-            let overlay = create_wayvr::<O>(
+            let overlay = create_wayvr_display_overlay::<O>(
                 app,
                 conf_display.width,
                 conf_display.height,
@@ -354,7 +354,16 @@ where
             vec![]
         };
 
-        wayvr.spawn_process(disp_handle, &app_entry.exec, &args_vec, &env_vec)?
+        // Terminate existing process if required
+        if let Some(process_handle) =
+            wayvr.process_query(disp_handle, &app_entry.exec, &args_vec, &env_vec)
+        {
+            // Terminate process
+            wayvr.terminate_process(process_handle);
+        } else {
+            // Spawn process
+            wayvr.spawn_process(disp_handle, &app_entry.exec, &args_vec, &env_vec)?;
+        }
     }
 
     Ok(created_overlay)
