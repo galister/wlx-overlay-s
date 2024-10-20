@@ -27,6 +27,7 @@ use wayland_server::protocol::wl_surface::WlSurface;
 use wayland_server::Client;
 
 use super::event_queue::SyncEventQueue;
+use super::WayVRTask;
 
 pub struct Application {
     pub compositor: compositor::CompositorState,
@@ -35,7 +36,7 @@ pub struct Application {
     pub shm: ShmState,
     pub data_device: DataDeviceState,
 
-    pub queue_new_toplevel: SyncEventQueue<(ClientId, ToplevelSurface)>,
+    pub wayvr_tasks: SyncEventQueue<WayVRTask>,
 }
 
 impl compositor::CompositorHandler for Application {
@@ -125,7 +126,8 @@ impl XdgShellHandler for Application {
 
     fn new_toplevel(&mut self, surface: ToplevelSurface) {
         if let Some(client) = surface.wl_surface().client() {
-            self.queue_new_toplevel.send((client.id(), surface.clone()));
+            self.wayvr_tasks
+                .send(WayVRTask::NewToplevel(client.id(), surface.clone()));
         }
         surface.with_pending_state(|state| {
             state.states.set(xdg_toplevel::State::Activated);

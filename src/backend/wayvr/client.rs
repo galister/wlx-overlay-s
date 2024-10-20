@@ -9,13 +9,13 @@ use smithay::{
 
 use super::{
     comp::{self},
-    display,
+    display, process,
 };
 
 pub struct WayVRClient {
     pub client: wayland_server::Client,
     pub display_handle: display::DisplayHandle,
-    pub pid: i32,
+    pub pid: u32,
 }
 
 pub struct WayVRManager {
@@ -27,6 +27,8 @@ pub struct WayVRManager {
 
     display: wayland_server::Display<comp::Application>,
     listener: wayland_server::ListeningSocket,
+
+    toplevel_surf_count: u32, // for logging purposes
 
     pub clients: Vec<WayVRClient>,
 }
@@ -67,6 +69,7 @@ impl WayVRManager {
             wayland_env,
             serial_counter: SerialCounter::new(),
             clients: Vec::new(),
+            toplevel_surf_count: 0,
         })
     }
 
@@ -74,6 +77,7 @@ impl WayVRManager {
         &mut self,
         stream: UnixStream,
         displays: &mut display::DisplayVec,
+        processes: &mut process::ProcessVec,
     ) -> anyhow::Result<()> {
         let client = self
             .display
@@ -84,28 +88,34 @@ impl WayVRManager {
         let creds = client.get_credentials(&self.display.handle())?;
         let auth_key = get_display_auth_from_pid(creds.pid)?;
 
-        for (idx, cell) in displays.vec.iter().enumerate() {
-            if let Some(cell) = &cell {
-                let display = &cell.obj;
-                if display.auth_key_matches(auth_key.as_str()) {
-                    let display_handle = display::DisplayVec::get_handle(cell, idx);
+        // Find suitable auth key from the process list
+        for process in processes.vec.iter().flatten() {
+            let process = &process.obj;
 
+            // Find process with matching auth key
+            if process.auth_key.as_str() == auth_key {
+                // Check if display handle is valid
+                if displays.get(&process.display_handle).is_some() {
+                    // Add client
                     self.clients.push(WayVRClient {
                         client,
-                        display_handle,
-                        pid: creds.pid,
+                        display_handle: process.display_handle,
+                        pid: creds.pid as u32,
                     });
                     return Ok(());
                 }
             }
         }
-
         anyhow::bail!("Process auth key is invalid or selected display is non-existent");
     }
 
-    fn accept_connections(&mut self, displays: &mut display::DisplayVec) -> anyhow::Result<()> {
+    fn accept_connections(
+        &mut self,
+        displays: &mut display::DisplayVec,
+        processes: &mut process::ProcessVec,
+    ) -> anyhow::Result<()> {
         if let Some(stream) = self.listener.accept()? {
-            if let Err(e) = self.accept_connection(stream, displays) {
+            if let Err(e) = self.accept_connection(stream, displays, processes) {
                 log::error!("Failed to accept connection: {}", e);
             }
         }
@@ -113,13 +123,23 @@ impl WayVRManager {
         Ok(())
     }
 
-    pub fn tick_wayland(&mut self, displays: &mut display::DisplayVec) -> anyhow::Result<()> {
-        if let Err(e) = self.accept_connections(displays) {
+    pub fn tick_wayland(
+        &mut self,
+        displays: &mut display::DisplayVec,
+        processes: &mut process::ProcessVec,
+    ) -> anyhow::Result<()> {
+        if let Err(e) = self.accept_connections(displays, processes) {
             log::error!("accept_connections failed: {}", e);
         }
 
         self.display.dispatch_clients(&mut self.state)?;
         self.display.flush_clients()?;
+
+        let surf_count = self.state.xdg_shell.toplevel_surfaces().len() as u32;
+        if surf_count != self.toplevel_surf_count {
+            self.toplevel_surf_count = surf_count;
+            log::info!("Toplevel surface count changed: {}", surf_count);
+        }
 
         Ok(())
     }
