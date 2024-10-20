@@ -1,7 +1,7 @@
 #[cfg(not(feature = "wayvr"))]
 compile_error!("WayVR feature is not enabled");
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use serde::{Deserialize, Serialize};
 
@@ -38,7 +38,7 @@ impl WayVRCatalog {
 pub struct WayVRConfig {
     pub version: u32,
     pub catalogs: HashMap<String, WayVRCatalog>,
-    pub displays: HashMap<String, WayVRDisplay>,
+    pub displays: BTreeMap<String, WayVRDisplay>, // sorted alphabetically
 }
 
 impl WayVRConfig {

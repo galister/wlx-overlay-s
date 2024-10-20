@@ -1,10 +1,12 @@
 use glam::{vec3a, Affine2};
+use serde::Deserialize;
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 use vulkano::image::SubresourceLayout;
 use wlx_capture::frame::{DmabufFrame, FourCC, FrameFormat, FramePlane};
 
 use crate::{
     backend::{
+        common::OverlayContainer,
         input::{self, InteractionHandler},
         overlay::{ui_transform, OverlayData, OverlayRenderer, OverlayState, SplitOverlayBackend},
         wayvr,
@@ -53,7 +55,7 @@ impl InteractionHandler for WayVRInteractionHandler {
         let ctx = self.context.borrow();
 
         let mut wayvr = ctx.wayvr.borrow_mut();
-        if let Some(disp) = wayvr.get_display_by_handle(ctx.display) {
+        if let Some(disp) = wayvr.displays.get(&ctx.display) {
             let pos = self.mouse_transform.transform_point2(hit.uv);
             let x = ((pos.x * disp.width as f32) as i32).max(0);
             let y = ((pos.y * disp.height as f32) as i32).max(0);
@@ -128,7 +130,7 @@ impl WayVRRenderer {
 
             let ctx = self.context.borrow_mut();
             let wayvr = ctx.wayvr.borrow_mut();
-            if let Some(disp) = wayvr.get_display_by_handle(ctx.display) {
+            if let Some(disp) = wayvr.displays.get(&ctx.display) {
                 let frame = DmabufFrame {
                     format: FrameFormat {
                         width: disp.width,
@@ -175,10 +177,16 @@ impl OverlayRenderer for WayVRRenderer {
     }
 
     fn pause(&mut self, _app: &mut state::AppState) -> anyhow::Result<()> {
+        let ctx = self.context.borrow_mut();
+        let mut wayvr = ctx.wayvr.borrow_mut();
+        wayvr.set_display_visible(ctx.display, false);
         Ok(())
     }
 
     fn resume(&mut self, _app: &mut state::AppState) -> anyhow::Result<()> {
+        let ctx = self.context.borrow_mut();
+        let mut wayvr = ctx.wayvr.borrow_mut();
+        wayvr.set_display_visible(ctx.display, true);
         Ok(())
     }
 
@@ -212,17 +220,18 @@ impl OverlayRenderer for WayVRRenderer {
 #[allow(dead_code)]
 pub fn create_wayvr<O>(
     app: &mut state::AppState,
-    display: &wayvr::display::Display,
+    display_width: u32,
+    display_height: u32,
     display_handle: wayvr::display::DisplayHandle,
     display_scale: f32,
 ) -> anyhow::Result<OverlayData<O>>
 where
     O: Default,
 {
-    let transform = ui_transform(&[display.width, display.height]);
+    let transform = ui_transform(&[display_width, display_height]);
 
     let state = OverlayState {
-        name: format!("WayVR Screen ({}x{})", display.width, display.height).into(),
+        name: format!("WayVR Screen ({}x{})", display_width, display_height).into(),
         keyboard_focus: Some(KeyboardFocus::WayVR),
         want_visible: true,
         interactable: true,
@@ -250,10 +259,28 @@ where
     })
 }
 
-fn action_wayvr_internal<O>(
+#[derive(Deserialize, Clone)]
+pub enum WayVRDisplayClickAction {
+    ToggleVisibility,
+    Reset,
+}
+
+#[derive(Deserialize, Clone)]
+pub enum WayVRAction {
+    AppClick {
+        catalog_name: Arc<str>,
+        app_name: Arc<str>,
+    },
+    DisplayClick {
+        display_name: Arc<str>,
+        action: WayVRDisplayClickAction,
+    },
+}
+
+fn action_app_click<O>(
+    app: &mut AppState,
     catalog_name: &Arc<str>,
     app_name: &Arc<str>,
-    app: &mut AppState,
 ) -> anyhow::Result<Option<OverlayData<O>>>
 where
     O: Default,
@@ -294,13 +321,19 @@ where
                 conf_display.height,
                 &app_entry.target_display,
             )?;
-            let display = wayvr.get_display_by_handle(display_handle).unwrap(); // Never fails
-            created_overlay = Some(create_wayvr::<O>(
+
+            let overlay = create_wayvr::<O>(
                 app,
-                display,
+                conf_display.width,
+                conf_display.height,
                 display_handle,
                 conf_display.scale,
-            )?);
+            )?;
+
+            let display = wayvr.displays.get_mut(&display_handle).unwrap(); // Never fails
+            display.overlay_id = Some(overlay.state.id);
+
+            created_overlay = Some(overlay);
             display_handle
         };
 
@@ -327,22 +360,70 @@ where
     Ok(created_overlay)
 }
 
-// Returns newly created overlay (if needed)
-pub fn action_wayvr<O>(
-    catalog_name: &Arc<str>,
-    app_name: &Arc<str>,
+pub fn action_display_click<O>(
     app: &mut AppState,
-) -> Option<OverlayData<O>>
+    overlays: &mut OverlayContainer<O>,
+    display_name: &Arc<str>,
+    action: &WayVRDisplayClickAction,
+) -> anyhow::Result<()>
 where
     O: Default,
 {
-    match action_wayvr_internal(catalog_name, app_name, app) {
-        Ok(res) => res,
-        Err(e) => {
-            // Happens if something went wrong with initialization
-            // or input exec path is invalid. Do nothing, just print an error
-            log::error!("action_wayvr failed: {}", e);
-            None
+    let wayvr = app.get_wayvr()?;
+    let mut wayvr = wayvr.borrow_mut();
+
+    if let Some(handle) = wayvr.get_display_by_name(display_name) {
+        if let Some(display) = wayvr.displays.get_mut(&handle) {
+            if let Some(overlay_id) = display.overlay_id {
+                if let Some(overlay) = overlays.mut_by_id(overlay_id) {
+                    match action {
+                        WayVRDisplayClickAction::ToggleVisibility => {
+                            // Toggle visibility
+                            overlay.state.want_visible = !overlay.state.want_visible;
+                        }
+                        WayVRDisplayClickAction::Reset => {
+                            // Show it at the front
+                            overlay.state.want_visible = true;
+                            overlay.state.reset(app, true);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+pub fn wayvr_action<O>(app: &mut AppState, overlays: &mut OverlayContainer<O>, action: &WayVRAction)
+where
+    O: Default,
+{
+    match action {
+        WayVRAction::AppClick {
+            catalog_name,
+            app_name,
+        } => {
+            match action_app_click(app, catalog_name, app_name) {
+                Ok(res) => {
+                    if let Some(created_overlay) = res {
+                        overlays.add(created_overlay);
+                    }
+                }
+                Err(e) => {
+                    // Happens if something went wrong with initialization
+                    // or input exec path is invalid. Do nothing, just print an error
+                    log::error!("action_app_click failed: {}", e);
+                }
+            }
+        }
+        WayVRAction::DisplayClick {
+            display_name,
+            action,
+        } => {
+            if let Err(e) = action_display_click::<O>(app, overlays, display_name, action) {
+                log::error!("action_display_click failed: {}", e);
+            }
         }
     }
 }

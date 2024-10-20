@@ -12,6 +12,9 @@ use crate::{
     graphics::dds::WlxCommandBufferDds, state::AppState,
 };
 
+#[cfg(feature = "wayvr")]
+use crate::overlays::wayvr::{WayVRAction, WayVRDisplayClickAction};
+
 use self::{
     button::{modular_button_init, ButtonAction, ButtonData, OverlayAction},
     label::{modular_label_init, LabelContent, LabelData},
@@ -118,6 +121,14 @@ pub enum ModularElement {
         fg_color: Arc<str>,
         bg_color: Arc<str>,
         catalog_name: Arc<str>,
+    },
+    // Ignored if "wayvr" feature is not enabled
+    WayVRDisplayList {
+        rect: [f32; 4],
+        corner_radius: Option<f32>,
+        font_size: isize,
+        fg_color: Arc<str>,
+        bg_color: Arc<str>,
     },
 }
 
@@ -440,10 +451,10 @@ pub fn modular_canvas(
                             );
 
                             let data = ButtonData {
-                                click_down: Some(vec![ButtonAction::WayVR {
+                                click_up: Some(vec![ButtonAction::WayVR(WayVRAction::AppClick {
                                     catalog_name: catalog_name.clone(),
                                     app_name: Arc::from(app.name.as_str()),
-                                }]),
+                                })]),
                                 ..Default::default()
                             };
 
@@ -456,7 +467,60 @@ pub fn modular_canvas(
                 }
                 #[cfg(not(feature = "wayvr"))]
                 {
-                    log::error!("WayVR feature is not available, ignoring");
+                    log::error!("WayVR feature is not enabled, ignoring");
+                }
+            }
+            #[allow(unused_variables)]
+            ModularElement::WayVRDisplayList {
+                rect: [x, y, w, h],
+                corner_radius,
+                font_size,
+                fg_color,
+                bg_color,
+            } => {
+                #[cfg(feature = "wayvr")]
+                {
+                    let mut button_x = *x;
+                    let button_y = *y;
+                    let displays = &state.session.wayvr_config.displays;
+                    for (display_name, display) in displays {
+                        let button_w: f32 = (*w / displays.len() as f32).min(80.0);
+                        let button_h: f32 = *h;
+
+                        canvas.bg_color = color_parse(bg_color).unwrap_or(*FALLBACK_COLOR);
+                        canvas.fg_color = color_parse(fg_color).unwrap_or(*FALLBACK_COLOR);
+                        canvas.font_size = *font_size;
+
+                        let button = canvas.button(
+                            button_x + 2.,
+                            button_y + 2.,
+                            button_w - 4.,
+                            button_h - 4.,
+                            corner_radius.unwrap_or_default(),
+                            Arc::from(display_name.as_str()),
+                        );
+
+                        let data = ButtonData {
+                            click_up: Some(vec![ButtonAction::WayVR(WayVRAction::DisplayClick {
+                                display_name: Arc::from(display_name.as_str()),
+                                action: WayVRDisplayClickAction::ToggleVisibility,
+                            })]),
+                            long_click_up: Some(vec![ButtonAction::WayVR(
+                                WayVRAction::DisplayClick {
+                                    display_name: Arc::from(display_name.as_str()),
+                                    action: WayVRDisplayClickAction::Reset,
+                                },
+                            )]),
+                            ..Default::default()
+                        };
+
+                        modular_button_init(button, &data);
+                        button_x += button_w;
+                    }
+                }
+                #[cfg(not(feature = "wayvr"))]
+                {
+                    log::error!("WayVR feature is not enabled, ignoring")
                 }
             }
         }
