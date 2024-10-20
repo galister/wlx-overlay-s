@@ -18,7 +18,8 @@ use smithay::{
 use crate::{backend::overlay::OverlayID, gen_id};
 
 use super::{
-    client::WayVRManager, comp::send_frames_surface_tree, egl_data, smithay_wrapper, window,
+    client::WayVRManager, comp::send_frames_surface_tree, egl_data, event_queue::SyncEventQueue,
+    process, smithay_wrapper, window,
 };
 
 fn generate_auth_key() -> String {
@@ -26,20 +27,19 @@ fn generate_auth_key() -> String {
     uuid.to_string()
 }
 
-struct Process {
-    auth_key: String,
-    child: std::process::Child,
-}
-
-impl Drop for Process {
-    fn drop(&mut self) {
-        let _dont_care = self.child.kill();
-    }
-}
-
 struct DisplayWindow {
-    handle: window::WindowHandle,
+    window_handle: window::WindowHandle,
+    process_handle: process::ProcessHandle,
     toplevel: ToplevelSurface,
+}
+
+pub struct SpawnProcessResult {
+    pub auth_key: String,
+    pub child: std::process::Child,
+}
+
+pub enum DisplayTask {
+    ProcessCleanup(process::ProcessHandle),
 }
 
 pub struct Display {
@@ -59,7 +59,7 @@ pub struct Display {
     egl_data: Rc<egl_data::EGLData>,
     pub dmabuf_data: egl_data::DMAbufData,
 
-    processes: Vec<Process>,
+    pub tasks: SyncEventQueue<DisplayTask>,
 }
 
 impl Drop for Display {
@@ -113,25 +113,22 @@ impl Display {
             egl_image,
             gles_texture,
             wayland_env,
-            processes: Vec::new(),
             visible: true,
             overlay_id: None,
+            tasks: SyncEventQueue::new(),
         })
     }
 
-    pub fn auth_key_matches(&self, auth_key: &str) -> bool {
-        for process in &self.processes {
-            if process.auth_key.as_str() == auth_key {
-                return true;
-            }
-        }
-        false
-    }
-
-    pub fn add_window(&mut self, window_handle: window::WindowHandle, toplevel: &ToplevelSurface) {
+    pub fn add_window(
+        &mut self,
+        window_handle: window::WindowHandle,
+        process_handle: process::ProcessHandle,
+        toplevel: &ToplevelSurface,
+    ) {
         log::debug!("Attaching toplevel surface into display");
         self.displayed_windows.push(DisplayWindow {
-            handle: window_handle,
+            window_handle,
+            process_handle,
             toplevel: toplevel.clone(),
         });
         self.reposition_windows();
@@ -141,7 +138,7 @@ impl Display {
         let window_count = self.displayed_windows.len();
 
         for (i, win) in self.displayed_windows.iter_mut().enumerate() {
-            if let Some(window) = self.wm.borrow_mut().windows.get_mut(&win.handle) {
+            if let Some(window) = self.wm.borrow_mut().windows.get_mut(&win.window_handle) {
                 let d_cur = i as f32 / window_count as f32;
                 let d_next = (i + 1) as f32 / window_count as f32;
 
@@ -150,6 +147,24 @@ impl Display {
 
                 window.set_pos(left, 0);
                 window.set_size((right - left) as u32, self.height);
+            }
+        }
+    }
+
+    pub fn tick(&mut self) {
+        while let Some(task) = self.tasks.read() {
+            match task {
+                DisplayTask::ProcessCleanup(process_handle) => {
+                    self.displayed_windows
+                        .retain(|win| win.process_handle != process_handle);
+                    log::info!(
+                        "Cleanup finished for display \"{}\". Current window count: {}",
+                        self.name,
+                        self.displayed_windows.len()
+                    );
+
+                    self.reposition_windows();
+                }
             }
         }
     }
@@ -166,7 +181,7 @@ impl Display {
             .iter()
             .flat_map(|display_window| {
                 let wm = self.wm.borrow_mut();
-                if let Some(window) = wm.windows.get(&display_window.handle) {
+                if let Some(window) = wm.windows.get(&display_window.window_handle) {
                     render_elements_from_surface_tree(
                         renderer,
                         display_window.toplevel.wl_surface(),
@@ -207,13 +222,13 @@ impl Display {
         let wm = self.wm.borrow();
 
         for cell in self.displayed_windows.iter() {
-            if let Some(window) = wm.windows.get(&cell.handle) {
+            if let Some(window) = wm.windows.get(&cell.window_handle) {
                 if (cursor_x as i32) >= window.pos_x
                     && (cursor_x as i32) < window.pos_x + window.size_x as i32
                     && (cursor_y as i32) >= window.pos_y
                     && (cursor_y as i32) < window.pos_y + window.size_y as i32
                 {
-                    return Some(cell.handle);
+                    return Some(cell.window_handle);
                 }
             }
         }
@@ -335,7 +350,7 @@ impl Display {
         exec_path: &str,
         args: &[&str],
         env: &[(&str, &str)],
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<SpawnProcessResult> {
         log::info!("Spawning subprocess with exec path \"{}\"", exec_path);
 
         let auth_key = generate_auth_key();
@@ -349,9 +364,7 @@ impl Display {
         }
 
         match cmd.spawn() {
-            Ok(child) => {
-                self.processes.push(Process { child, auth_key });
-            }
+            Ok(child) => Ok(SpawnProcessResult { auth_key, child }),
             Err(e) => {
                 anyhow::bail!(
 					"Failed to launch process with path \"{}\": {}. Make sure your exec path exists.",
@@ -360,8 +373,6 @@ impl Display {
 				);
             }
         }
-
-        Ok(())
     }
 }
 
