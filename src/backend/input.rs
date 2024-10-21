@@ -1,4 +1,5 @@
 use std::f32::consts::PI;
+use std::process::{Child, Command};
 use std::{collections::VecDeque, time::Instant};
 
 use glam::{Affine3A, Vec2, Vec3, Vec3A, Vec3Swizzles};
@@ -8,7 +9,7 @@ use smallvec::{smallvec, SmallVec};
 use crate::backend::common::{snap_upright, OverlaySelector};
 use crate::config::{AStrMapExt, GeneralConfig};
 use crate::overlays::anchor::ANCHOR_NAME;
-use crate::state::{AppState, KeyboardFocus};
+use crate::state::{AppSession, AppState, KeyboardFocus};
 
 use super::overlay::{OverlayID, OverlayState};
 use super::task::{TaskContainer, TaskType};
@@ -35,6 +36,7 @@ pub struct InputState {
     pub ipd: f32,
     pub pointers: [Pointer; 2],
     pub devices: Vec<TrackedDevice>,
+    processes: Vec<Child>,
 }
 
 impl InputState {
@@ -44,6 +46,7 @@ impl InputState {
             ipd: 0.0,
             pointers: [Pointer::new(0), Pointer::new(1)],
             devices: Vec::new(),
+            processes: Vec::new(),
         }
     }
 
@@ -52,7 +55,7 @@ impl InputState {
         self.pointers[1].before = self.pointers[1].now;
     }
 
-    pub fn post_update(&mut self) {
+    pub fn post_update(&mut self, session: &AppSession) {
         for hand in &mut self.pointers {
             #[cfg(debug_assertions)]
             {
@@ -134,6 +137,24 @@ impl InputState {
                 }
                 _ => {}
             };
+
+            if hand.now.alt_click != hand.before.alt_click {
+                // Reap previous processes
+                self.processes
+                    .retain_mut(|child| !matches!(child.try_wait(), Ok(Some(_))));
+
+                let mut args = if hand.now.alt_click {
+                    session.config.alt_click_down.iter()
+                } else {
+                    session.config.alt_click_up.iter()
+                };
+
+                if let Some(program) = args.next() {
+                    if let Ok(child) = Command::new(program).args(args).spawn() {
+                        self.processes.push(child);
+                    }
+                }
+            }
         }
     }
 }
