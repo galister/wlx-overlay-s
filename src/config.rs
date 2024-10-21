@@ -129,6 +129,10 @@ fn def_osc_port() -> u16 {
     9000
 }
 
+fn def_empty_vec_string() -> Vec<String> {
+    Vec::new()
+}
+
 fn def_screens() -> AStrSet {
     AStrSet::new()
 }
@@ -273,6 +277,12 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_false")]
     pub space_rotate_unlocked: bool,
+
+    #[serde(default = "def_empty_vec_string")]
+    pub alt_click_down: Vec<String>,
+
+    #[serde(default = "def_empty_vec_string")]
+    pub alt_click_up: Vec<String>,
 }
 
 impl GeneralConfig {

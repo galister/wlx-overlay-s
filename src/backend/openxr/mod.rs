@@ -268,7 +268,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
 
         app_state.input_state.pre_update();
         input_source.update(&xr_state, &mut app_state)?;
-        app_state.input_state.post_update();
+        app_state.input_state.post_update(&app_state.session);
 
         if app_state
             .input_state

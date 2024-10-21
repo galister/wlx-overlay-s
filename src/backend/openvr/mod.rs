@@ -281,7 +281,7 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
             &mut system_mgr,
             &mut state,
         );
-        state.input_state.post_update();
+        state.input_state.post_update(&state.session);
 
         if state
             .input_state
