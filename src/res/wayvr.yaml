@@ -6,6 +6,13 @@
 version: 1
 
 displays:
+  Watch:
+    width: 400
+    height: 600
+    scale: 0.4
+    attach_to: "HandRight" # HandLeft, HandRight
+    pos: [0.0, 0.0, 0.125]
+    rotation: {axis: [1.0, 0.0, 0.0], angle: -45.0}
   Disp1:
     width: 640
     height: 480
@@ -24,7 +31,7 @@ catalogs:
         env: ["FOO=bar"]
 
       - name: "htop"
-        target_display: "Disp1"
+        target_display: "Watch"
         exec: "konsole"
         args: "-e htop"
 

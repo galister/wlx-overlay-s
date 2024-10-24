@@ -1,4 +1,4 @@
-use glam::{vec3a, Affine2};
+use glam::{vec3a, Affine2, Vec3, Vec3A};
 use serde::Deserialize;
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 use vulkano::image::SubresourceLayout;
@@ -314,7 +314,8 @@ where
                 .ok_or(anyhow::anyhow!(
                     "Cannot find display named \"{}\"",
                     app_entry.target_display
-                ))?;
+                ))?
+                .clone();
 
             let display_handle = wayvr.create_display(
                 conf_display.width,
@@ -322,13 +323,28 @@ where
                 &app_entry.target_display,
             )?;
 
-            let overlay = create_wayvr_display_overlay::<O>(
+            let mut overlay = create_wayvr_display_overlay::<O>(
                 app,
                 conf_display.width,
                 conf_display.height,
                 display_handle,
                 conf_display.scale,
             )?;
+
+            if let Some(attach_to) = &conf_display.attach_to {
+                overlay.state.relative_to = attach_to.get_relative_to();
+            }
+
+            if let Some(rot) = &conf_display.rotation {
+                overlay.state.spawn_rotation = glam::Quat::from_axis_angle(
+                    Vec3::from_slice(&rot.axis),
+                    f32::to_radians(rot.angle),
+                );
+            }
+
+            if let Some(pos) = &conf_display.pos {
+                overlay.state.spawn_point = Vec3A::from_slice(pos);
+            }
 
             let display = wayvr.displays.get_mut(&display_handle).unwrap(); // Never fails
             display.overlay_id = Some(overlay.state.id);
