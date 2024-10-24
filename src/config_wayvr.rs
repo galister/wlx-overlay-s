@@ -5,7 +5,38 @@ use std::collections::{BTreeMap, HashMap};
 
 use serde::{Deserialize, Serialize};
 
-use crate::config::{load_known_yaml, ConfigType};
+use crate::{
+    backend::overlay::RelativeTo,
+    config::{load_known_yaml, ConfigType},
+};
+
+// Flat version of RelativeTo
+#[derive(Clone, Deserialize, Serialize)]
+pub enum AttachTo {
+    None,
+    HandLeft,
+    HandRight,
+    Head,
+    Stage,
+}
+
+impl AttachTo {
+    pub fn get_relative_to(&self) -> RelativeTo {
+        match self {
+            AttachTo::None => RelativeTo::None,
+            AttachTo::HandLeft => RelativeTo::Hand(0),
+            AttachTo::HandRight => RelativeTo::Hand(1),
+            AttachTo::Stage => RelativeTo::Stage,
+            AttachTo::Head => RelativeTo::Head,
+        }
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+pub struct Rotation {
+    pub axis: [f32; 3],
+    pub angle: f32,
+}
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct WayVRAppEntry {
@@ -21,6 +52,9 @@ pub struct WayVRDisplay {
     pub width: u32,
     pub height: u32,
     pub scale: f32,
+    pub rotation: Option<Rotation>,
+    pub pos: Option<[f32; 3]>,
+    pub attach_to: Option<AttachTo>,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
