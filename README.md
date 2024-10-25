@@ -115,6 +115,10 @@ We would like to work with you and include additional bindings.
 
 ## Troubleshooting
 
+When an error is detected, we often print tips for fixing into the log file.
+
+Logs will be at `/tmp/wlx.log` for most distros.
+
 Check [here](https://github.com/galister/wlx-overlay-s/wiki/Troubleshooting) for tips.
 
 ## Known Issues
@@ -125,7 +129,21 @@ Hyprland users: Hyprland v0.41.0 changed their absolute input implementation to 
 
 Niri users: use on Niri 0.1.7 or later.
 
+X11 users might be dealing with a [Phantom Monitor](https://wiki.archlinux.org/title/Xrandr#Disabling_phantom_monitor).
+
 Other desktops: The screens may have been selected in the wrong order, see [First Start](#first-start).
+
+### Crashes, blank screens
+
+There are some driver-desktop combinations that don't play nice with DMA-buf capture. 
+
+Disabling DMA-buf capture is a good first step to try when encountering an app crash or gpu driver reset.
+
+```bash
+echo 'capture_method: pw_fallback' > ~/.config/wlxoverlay/conf.d/pw_fallback.yaml
+```
+
+Without DMA-buf capture, capturing screens takes CPU power, so let's try and not show too many screens at the same time.
 
 ### Space-drag crashes SteamVR
 
