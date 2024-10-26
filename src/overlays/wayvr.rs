@@ -328,7 +328,7 @@ where
                 conf_display.width,
                 conf_display.height,
                 display_handle,
-                conf_display.scale,
+                conf_display.scale.unwrap_or(1.0),
             )?;
 
             if let Some(attach_to) = &conf_display.attach_to {
