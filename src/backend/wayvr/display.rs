@@ -27,10 +27,10 @@ fn generate_auth_key() -> String {
     uuid.to_string()
 }
 
-struct DisplayWindow {
-    window_handle: window::WindowHandle,
+pub struct DisplayWindow {
+    pub window_handle: window::WindowHandle,
+    pub toplevel: ToplevelSurface,
     process_handle: process::ProcessHandle,
-    toplevel: ToplevelSurface,
 }
 
 pub struct SpawnProcessResult {
@@ -49,8 +49,9 @@ pub struct Display {
     pub name: String,
     pub visible: bool,
     pub overlay_id: Option<OverlayID>,
+    pub wants_redraw: bool,
     wm: Rc<RefCell<window::WindowManager>>,
-    displayed_windows: Vec<DisplayWindow>,
+    pub displayed_windows: Vec<DisplayWindow>,
     wayland_env: super::WaylandEnv,
 
     // Render data stuff
@@ -108,6 +109,7 @@ impl Display {
             height,
             name: String::from(name),
             displayed_windows: Vec::new(),
+            wants_redraw: true,
             egl_data,
             dmabuf_data,
             egl_image,
