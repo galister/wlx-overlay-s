@@ -91,12 +91,21 @@ impl AppState {
             shaders.insert("frag_swapchain", shader);
         }
 
+        #[cfg(feature = "wayvr")]
+        let mut tasks = TaskContainer::new();
+
+        #[cfg(not(feature = "wayvr"))]
+        let tasks = TaskContainer::new();
+
         let session = AppSession::load();
+
+        #[cfg(feature = "wayvr")]
+        session.wayvr_config.post_load(&mut tasks);
 
         Ok(AppState {
             fc: FontCache::new(session.config.primary_font.clone())?,
             session,
-            tasks: TaskContainer::new(),
+            tasks,
             graphics,
             input_state: InputState::new(),
             hid_provider: crate::hid::initialize(),
