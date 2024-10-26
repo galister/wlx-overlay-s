@@ -10,7 +10,7 @@ mod smithay_wrapper;
 mod time;
 mod window;
 
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashSet, rc::Rc};
 
 use comp::Application;
 use display::DisplayVec;
@@ -94,6 +94,7 @@ impl WayVR {
             shm,
             data_device,
             wayvr_tasks: tasks.clone(),
+            redraw_requests: HashSet::new(),
         };
 
         let time_start = get_millis();
@@ -118,22 +119,41 @@ impl WayVR {
         // millis since the start of wayvr
         let display = self
             .displays
-            .get(&display)
+            .get_mut(&display)
             .ok_or(anyhow::anyhow!(STR_INVALID_HANDLE_DISP))?;
 
-        let time_ms = get_millis() - self.time_start;
+        if !display.wants_redraw {
+            // Nothing changed, do not render
+            return Ok(());
+        }
 
         if !display.visible {
             // Display is invisible, do not render
             return Ok(());
         }
 
+        let time_ms = get_millis() - self.time_start;
+
         display.tick_render(&mut self.gles_renderer, time_ms)?;
+        display.wants_redraw = false;
 
         Ok(())
     }
 
     pub fn tick_events(&mut self) -> anyhow::Result<()> {
+        // Check for redraw events
+        self.displays.iter_mut(&mut |_, disp| {
+            for disp_window in &disp.displayed_windows {
+                if self
+                    .manager
+                    .state
+                    .check_redraw(disp_window.toplevel.wl_surface())
+                {
+                    disp.wants_redraw = true;
+                }
+            }
+        });
+
         // Tick all child processes
         let mut to_remove: SmallVec<[(process::ProcessHandle, display::DisplayHandle); 2]> =
             SmallVec::new();

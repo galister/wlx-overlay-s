@@ -1,13 +1,15 @@
 use smithay::backend::renderer::utils::on_commit_buffer_handler;
 use smithay::input::{Seat, SeatHandler, SeatState};
 use smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel;
+use smithay::reexports::wayland_server;
 use smithay::reexports::wayland_server::protocol::{wl_buffer, wl_seat, wl_surface};
-use smithay::reexports::wayland_server::{self, Resource};
+use smithay::reexports::wayland_server::Resource;
 use smithay::wayland::buffer::BufferHandler;
 use smithay::wayland::shm::{ShmHandler, ShmState};
 use smithay::{
     delegate_compositor, delegate_data_device, delegate_seat, delegate_shm, delegate_xdg_shell,
 };
+use std::collections::HashSet;
 use std::os::fd::OwnedFd;
 
 use smithay::utils::Serial;
@@ -35,8 +37,14 @@ pub struct Application {
     pub seat_state: SeatState<Application>,
     pub shm: ShmState,
     pub data_device: DataDeviceState,
-
     pub wayvr_tasks: SyncEventQueue<WayVRTask>,
+    pub redraw_requests: HashSet<wayland_server::backend::ObjectId>,
+}
+
+impl Application {
+    pub fn check_redraw(&mut self, surface: &WlSurface) -> bool {
+        self.redraw_requests.remove(&surface.id())
+    }
 }
 
 impl compositor::CompositorHandler for Application {
@@ -53,6 +61,7 @@ impl compositor::CompositorHandler for Application {
 
     fn commit(&mut self, surface: &WlSurface) {
         on_commit_buffer_handler::<Self>(surface);
+        self.redraw_requests.insert(surface.id());
     }
 }
 
