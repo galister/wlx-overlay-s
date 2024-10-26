@@ -1,13 +1,20 @@
 #[cfg(not(feature = "wayvr"))]
 compile_error!("WayVR feature is not enabled");
 
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    backend::overlay::RelativeTo,
+    backend::{
+        overlay::RelativeTo,
+        task::{TaskContainer, TaskType},
+    },
     config::{load_known_yaml, ConfigType},
+    overlays::wayvr::WayVRAction,
 };
 
 // Flat version of RelativeTo
@@ -45,13 +52,14 @@ pub struct WayVRAppEntry {
     pub exec: String,
     pub args: Option<String>,
     pub env: Option<Vec<String>>,
+    pub shown_at_start: Option<bool>,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct WayVRDisplay {
     pub width: u32,
     pub height: u32,
-    pub scale: f32,
+    pub scale: Option<f32>,
     pub rotation: Option<Rotation>,
     pub pos: Option<[f32; 3]>,
     pub attach_to: Option<AttachTo>,
@@ -82,6 +90,21 @@ impl WayVRConfig {
 
     pub fn get_display(&self, name: &str) -> Option<&WayVRDisplay> {
         self.displays.get(name)
+    }
+
+    pub fn post_load(&self, tasks: &mut TaskContainer) {
+        for (catalog_name, catalog) in &self.catalogs {
+            for app in &catalog.apps {
+                if let Some(b) = app.shown_at_start {
+                    if b {
+                        tasks.enqueue(TaskType::WayVR(WayVRAction::AppClick {
+                            catalog_name: Arc::from(catalog_name.as_str()),
+                            app_name: Arc::from(app.name.as_str()),
+                        }));
+                    }
+                }
+            }
+        }
     }
 }
 

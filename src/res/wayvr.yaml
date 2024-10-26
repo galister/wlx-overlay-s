@@ -16,7 +16,6 @@ displays:
   Disp1:
     width: 640
     height: 480
-    scale: 1.25
   Disp2:
     width: 1280
     height: 720
@@ -29,6 +28,7 @@ catalogs:
         target_display: "Disp1"
         exec: "kcalc"
         env: ["FOO=bar"]
+        shown_at_start: false
 
       - name: "htop"
         target_display: "Watch"
