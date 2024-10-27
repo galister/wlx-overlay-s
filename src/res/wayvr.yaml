@@ -5,6 +5,10 @@
 
 version: 1
 
+# Set to true if you want to make Wyland server instantly available
+# (used for remote starting external processes)
+run_compositor_at_start: false 
+
 displays:
   Watch:
     width: 400
@@ -16,6 +20,7 @@ displays:
   Disp1:
     width: 640
     height: 480
+    primary: true # Required if you want to attach external processes (not spawned by WayVR itself) without WAYVR_DISPLAY_NAME set
   Disp2:
     width: 1280
     height: 720

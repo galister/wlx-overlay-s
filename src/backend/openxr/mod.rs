@@ -364,9 +364,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         }
 
         #[cfg(feature = "wayvr")]
-        if let Some(wayvr) = &app_state.wayvr {
-            wayvr.borrow_mut().tick_events()?;
-        }
+        crate::overlays::wayvr::tick_events::<OpenXrOverlayData>(&mut app_state, &mut overlays)?;
 
         for o in overlays.iter_mut() {
             if !o.state.want_visible {

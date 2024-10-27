@@ -1,4 +1,4 @@
-mod client;
+pub mod client;
 mod comp;
 pub mod display;
 pub mod egl_data;
@@ -46,8 +46,22 @@ impl WaylandEnv {
 }
 
 #[derive(Clone)]
+pub struct ProcessWayVREnv {
+    pub display_auth: Option<String>,
+    pub display_name: Option<String>, // Externally spawned process by a user script
+}
+
+#[derive(Clone)]
+pub struct ExternalProcessRequest {
+    pub env: ProcessWayVREnv,
+    pub client: wayland_server::Client,
+    pub pid: u32,
+}
+
+#[derive(Clone)]
 pub enum WayVRTask {
     NewToplevel(ClientId, ToplevelSurface),
+    NewExternalProcess(ExternalProcessRequest),
     ProcessTerminationRequest(process::ProcessHandle),
 }
 
@@ -56,7 +70,7 @@ pub struct WayVR {
     time_start: u64,
     gles_renderer: GlesRenderer,
     pub displays: display::DisplayVec,
-    manager: client::WayVRManager,
+    pub manager: client::WayVRManager,
     wm: Rc<RefCell<window::WindowManager>>,
     egl_data: Rc<egl_data::EGLData>,
     pub processes: process::ProcessVec,
@@ -70,8 +84,13 @@ pub enum MouseIndex {
     Right,
 }
 
+pub enum TickResult {
+    NewExternalProcess(ExternalProcessRequest), // Call WayVRManager::add_client after receiving this message
+}
+
 impl WayVR {
     pub fn new() -> anyhow::Result<Self> {
+        log::info!("Initializing WayVR");
         let display: wayland_server::Display<Application> = wayland_server::Display::new()?;
         let dh = display.handle();
         let compositor = compositor::CompositorState::new::<Application>(&dh);
@@ -140,7 +159,9 @@ impl WayVR {
         Ok(())
     }
 
-    pub fn tick_events(&mut self) -> anyhow::Result<()> {
+    pub fn tick_events(&mut self) -> anyhow::Result<Vec<TickResult>> {
+        let mut res: Vec<TickResult> = Vec::new();
+
         // Check for redraw events
         self.displays.iter_mut(&mut |_, disp| {
             for disp_window in &disp.displayed_windows {
@@ -159,17 +180,18 @@ impl WayVR {
             SmallVec::new();
         self.processes.iter_mut(&mut |handle, process| {
             if !process.is_running() {
-                to_remove.push((handle, process.display_handle));
+                to_remove.push((handle, process.display_handle()));
             }
         });
 
         for (p_handle, disp_handle) in to_remove {
             self.processes.remove(&p_handle);
 
-            if let Some(display) = self.displays.get(&disp_handle) {
+            if let Some(display) = self.displays.get_mut(&disp_handle) {
                 display
                     .tasks
                     .send(display::DisplayTask::ProcessCleanup(p_handle));
+                display.wants_redraw = true;
             }
         }
 
@@ -179,6 +201,9 @@ impl WayVR {
 
         while let Some(task) = self.tasks.read() {
             match task {
+                WayVRTask::NewExternalProcess(req) => {
+                    res.push(TickResult::NewExternalProcess(req));
+                }
                 WayVRTask::NewToplevel(client_id, toplevel) => {
                     // Attach newly created toplevel surfaces to displays
                     for client in &self.manager.clients {
@@ -197,7 +222,7 @@ impl WayVR {
                                 }
                             } else {
                                 log::error!(
-                                    "Failed to find process by PID {}. It was probably spawned externally.",
+                                    "WayVR window creation failed: Unexpected process PID {}. It wasn't registered before.",
                                     client.pid
                                 );
                             }
@@ -215,7 +240,9 @@ impl WayVR {
         }
 
         self.manager
-            .tick_wayland(&mut self.displays, &mut self.processes)
+            .tick_wayland(&mut self.displays, &mut self.processes)?;
+
+        Ok(res)
     }
 
     pub fn tick_finish(&mut self) -> anyhow::Result<()> {
@@ -266,8 +293,22 @@ impl WayVR {
             .map(|display| display.dmabuf_data.clone())
     }
 
-    pub fn get_display_by_name(&self, name: &str) -> Option<display::DisplayHandle> {
-        for (idx, cell) in self.displays.vec.iter().enumerate() {
+    pub fn get_primary_display(displays: &DisplayVec) -> Option<display::DisplayHandle> {
+        for (idx, cell) in displays.vec.iter().enumerate() {
+            if let Some(cell) = cell {
+                if cell.obj.primary {
+                    return Some(DisplayVec::get_handle(cell, idx));
+                }
+            }
+        }
+        None
+    }
+
+    pub fn get_display_by_name(
+        displays: &DisplayVec,
+        name: &str,
+    ) -> Option<display::DisplayHandle> {
+        for (idx, cell) in displays.vec.iter().enumerate() {
             if let Some(cell) = cell {
                 if cell.obj.name == name {
                     return Some(DisplayVec::get_handle(cell, idx));
@@ -276,11 +317,13 @@ impl WayVR {
         }
         None
     }
+
     pub fn create_display(
         &mut self,
         width: u32,
         height: u32,
         name: &str,
+        primary: bool,
     ) -> anyhow::Result<display::DisplayHandle> {
         let display = display::Display::new(
             self.wm.clone(),
@@ -290,6 +333,7 @@ impl WayVR {
             width,
             height,
             name,
+            primary,
         )?;
         Ok(self.displays.add(display))
     }
@@ -308,15 +352,15 @@ impl WayVR {
     ) -> Option<process::ProcessHandle> {
         for (idx, cell) in self.processes.vec.iter().enumerate() {
             if let Some(cell) = &cell {
-                let process = &cell.obj;
-                if process.display_handle != display_handle
-                    || process.exec_path != exec_path
-                    || process.args != args
-                {
-                    continue;
+                if let process::Process::Managed(process) = &cell.obj {
+                    if process.display_handle != display_handle
+                        || process.exec_path != exec_path
+                        || process.args != args
+                    {
+                        continue;
+                    }
+                    return Some(process::ProcessVec::get_handle(cell, idx));
                 }
-
-                return Some(process::ProcessVec::get_handle(cell, idx));
             }
         }
 
@@ -326,6 +370,18 @@ impl WayVR {
     pub fn terminate_process(&mut self, process_handle: process::ProcessHandle) {
         self.tasks
             .send(WayVRTask::ProcessTerminationRequest(process_handle));
+    }
+
+    pub fn add_external_process(
+        &mut self,
+        display_handle: display::DisplayHandle,
+        pid: u32,
+    ) -> process::ProcessHandle {
+        self.processes
+            .add(process::Process::External(process::ExternalProcess {
+                display_handle,
+                pid,
+            }))
     }
 
     pub fn spawn_process(
@@ -341,16 +397,18 @@ impl WayVR {
             .ok_or(anyhow::anyhow!(STR_INVALID_HANDLE_DISP))?;
 
         let res = display.spawn_process(exec_path, args, env)?;
-        Ok(self.processes.add(process::Process {
-            auth_key: res.auth_key,
-            child: res.child,
-            display_handle,
-            exec_path: String::from(exec_path),
-            args: args.iter().map(|x| String::from(*x)).collect(),
-            env: env
-                .iter()
-                .map(|(a, b)| (String::from(*a), String::from(*b)))
-                .collect(),
-        }))
+        Ok(self
+            .processes
+            .add(process::Process::Managed(process::WayVRProcess {
+                auth_key: res.auth_key,
+                child: res.child,
+                display_handle,
+                exec_path: String::from(exec_path),
+                args: args.iter().map(|x| String::from(*x)).collect(),
+                env: env
+                    .iter()
+                    .map(|(a, b)| (String::from(*a), String::from(*b)))
+                    .collect(),
+            })))
     }
 }

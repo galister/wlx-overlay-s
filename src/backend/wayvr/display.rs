@@ -50,6 +50,7 @@ pub struct Display {
     pub visible: bool,
     pub overlay_id: Option<OverlayID>,
     pub wants_redraw: bool,
+    pub primary: bool,
     wm: Rc<RefCell<window::WindowManager>>,
     pub displayed_windows: Vec<DisplayWindow>,
     wayland_env: super::WaylandEnv,
@@ -81,6 +82,7 @@ impl Display {
         width: u32,
         height: u32,
         name: &str,
+        primary: bool,
     ) -> anyhow::Result<Self> {
         let tex_format = ffi::RGBA;
         let internal_format = ffi::RGBA8;
@@ -116,6 +118,7 @@ impl Display {
             gles_texture,
             wayland_env,
             visible: true,
+            primary,
             overlay_id: None,
             tasks: SyncEventQueue::new(),
         })
@@ -239,7 +242,12 @@ impl Display {
 
     pub fn set_visible(&mut self, visible: bool) {
         log::info!("Display \"{}\" visible: {}", self.name.as_str(), visible);
-        self.visible = visible;
+        if self.visible != visible {
+            self.visible = visible;
+            if visible {
+                self.wants_redraw = true;
+            }
+        }
     }
 
     pub fn send_mouse_move(&self, manager: &mut WayVRManager, x: u32, y: u32) {

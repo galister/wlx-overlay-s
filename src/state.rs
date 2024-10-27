@@ -100,7 +100,7 @@ impl AppState {
         let session = AppSession::load();
 
         #[cfg(feature = "wayvr")]
-        session.wayvr_config.post_load(&mut tasks);
+        let wayvr = session.wayvr_config.post_load(&mut tasks)?;
 
         Ok(AppState {
             fc: FontCache::new(session.config.primary_font.clone())?,
@@ -116,7 +116,7 @@ impl AppState {
             keyboard_focus: KeyboardFocus::PhysicalScreen,
 
             #[cfg(feature = "wayvr")]
-            wayvr: None,
+            wayvr,
         })
     }
 
@@ -126,7 +126,6 @@ impl AppState {
         if let Some(wvr) = &self.wayvr {
             Ok(wvr.clone())
         } else {
-            log::info!("Initializing WayVR");
             let wayvr = Rc::new(RefCell::new(WayVR::new()?));
             self.wayvr = Some(wayvr.clone());
             Ok(wayvr)

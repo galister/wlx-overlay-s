@@ -1,4 +1,4 @@
-use std::{io::Read, os::unix::net::UnixStream, sync::Arc};
+use std::{io::Read, os::unix::net::UnixStream, path::PathBuf, sync::Arc};
 
 use smithay::{
     backend::input::Keycode,
@@ -7,9 +7,11 @@ use smithay::{
     utils::SerialCounter,
 };
 
+use crate::backend::wayvr::{ExternalProcessRequest, WayVRTask};
+
 use super::{
     comp::{self},
-    display, process,
+    display, process, ProcessWayVREnv,
 };
 
 pub struct WayVRClient {
@@ -33,22 +35,29 @@ pub struct WayVRManager {
     pub clients: Vec<WayVRClient>,
 }
 
-fn get_display_auth_from_pid(pid: i32) -> anyhow::Result<String> {
+fn get_wayvr_env_from_pid(pid: i32) -> anyhow::Result<ProcessWayVREnv> {
     let path = format!("/proc/{}/environ", pid);
     let mut env_data = String::new();
     std::fs::File::open(path)?.read_to_string(&mut env_data)?;
 
     let lines: Vec<&str> = env_data.split('\0').filter(|s| !s.is_empty()).collect();
 
+    let mut env = ProcessWayVREnv {
+        display_auth: None,
+        display_name: None,
+    };
+
     for line in lines {
         if let Some((key, value)) = line.split_once('=') {
             if key == "WAYVR_DISPLAY_AUTH" {
-                return Ok(String::from(value));
+                env.display_auth = Some(String::from(value));
+            } else if key == "WAYVR_DISPLAY_NAME" {
+                env.display_name = Some(String::from(value));
             }
         }
     }
 
-    anyhow::bail!("Failed to get display auth from PID {}", pid);
+    Ok(env)
 }
 
 impl WayVRManager {
@@ -73,6 +82,10 @@ impl WayVRManager {
         })
     }
 
+    pub fn add_client(&mut self, client: WayVRClient) {
+        self.clients.push(client);
+    }
+
     fn accept_connection(
         &mut self,
         stream: UnixStream,
@@ -86,27 +99,46 @@ impl WayVRManager {
             .unwrap();
 
         let creds = client.get_credentials(&self.display.handle())?;
-        let auth_key = get_display_auth_from_pid(creds.pid)?;
+
+        let process_env = get_wayvr_env_from_pid(creds.pid)?;
 
         // Find suitable auth key from the process list
-        for process in processes.vec.iter().flatten() {
-            let process = &process.obj;
-
-            // Find process with matching auth key
-            if process.auth_key.as_str() == auth_key {
-                // Check if display handle is valid
-                if displays.get(&process.display_handle).is_some() {
-                    // Add client
-                    self.clients.push(WayVRClient {
-                        client,
-                        display_handle: process.display_handle,
-                        pid: creds.pid as u32,
-                    });
-                    return Ok(());
+        for p in processes.vec.iter().flatten() {
+            if let process::Process::Managed(process) = &p.obj {
+                if let Some(auth_key) = &process_env.display_auth {
+                    // Find process with matching auth key
+                    if process.auth_key.as_str() == auth_key {
+                        // Check if display handle is valid
+                        if displays.get(&process.display_handle).is_some() {
+                            // Add client
+                            self.add_client(WayVRClient {
+                                client,
+                                display_handle: process.display_handle,
+                                pid: creds.pid as u32,
+                            });
+                            return Ok(());
+                        }
+                    }
                 }
             }
         }
-        anyhow::bail!("Process auth key is invalid or selected display is non-existent");
+
+        // This is a new process which we didn't met before.
+        // Treat external processes exclusively (spawned by the user or external program)
+        log::warn!(
+            "External process ID {} connected to this Wayland server",
+            creds.pid
+        );
+
+        self.state
+            .wayvr_tasks
+            .send(WayVRTask::NewExternalProcess(ExternalProcessRequest {
+                env: process_env,
+                client,
+                pid: creds.pid as u32,
+            }));
+
+        Ok(())
     }
 
     fn accept_connections(
@@ -164,6 +196,15 @@ impl WayVRManager {
 
 const STARTING_WAYLAND_ADDR_IDX: u32 = 20;
 
+fn export_display_number(display_num: u32) -> anyhow::Result<()> {
+    let mut path = std::env::var("XDG_RUNTIME_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("/tmp"));
+    path.push("wayvr.disp");
+    std::fs::write(path, format!("{}\n", display_num)).unwrap();
+    Ok(())
+}
+
 fn create_wayland_listener() -> anyhow::Result<(super::WaylandEnv, wayland_server::ListeningSocket)>
 {
     let mut env = super::WaylandEnv {
@@ -193,6 +234,8 @@ fn create_wayland_listener() -> anyhow::Result<(super::WaylandEnv, wayland_serve
             }
         }
     };
+
+    let _ = export_display_number(env.display_num);
 
     Ok((env, listener))
 }
