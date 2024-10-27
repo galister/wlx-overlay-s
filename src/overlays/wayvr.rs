@@ -9,7 +9,7 @@ use crate::{
         common::OverlayContainer,
         input::{self, InteractionHandler},
         overlay::{ui_transform, OverlayData, OverlayRenderer, OverlayState, SplitOverlayBackend},
-        wayvr,
+        wayvr::{self, display, WayVR},
     },
     graphics::WlxGraphics,
     state::{self, AppState, KeyboardFocus},
@@ -117,6 +117,121 @@ impl WayVRRenderer {
             graphics: app.graphics.clone(),
         })
     }
+}
+
+fn get_or_create_display<O>(
+    app: &mut AppState,
+    wayvr: &mut WayVR,
+    disp_name: &str,
+) -> anyhow::Result<(display::DisplayHandle, Option<OverlayData<O>>)>
+where
+    O: Default,
+{
+    let created_overlay: Option<OverlayData<O>>;
+
+    let disp_handle = if let Some(disp) = WayVR::get_display_by_name(&wayvr.displays, disp_name) {
+        created_overlay = None;
+        disp
+    } else {
+        let conf_display = app
+            .session
+            .wayvr_config
+            .get_display(disp_name)
+            .ok_or(anyhow::anyhow!(
+                "Cannot find display named \"{}\"",
+                disp_name
+            ))?
+            .clone();
+
+        let disp_handle = wayvr.create_display(
+            conf_display.width,
+            conf_display.height,
+            disp_name,
+            conf_display.primary.unwrap_or(false),
+        )?;
+
+        let mut overlay = create_wayvr_display_overlay::<O>(
+            app,
+            conf_display.width,
+            conf_display.height,
+            disp_handle,
+            conf_display.scale.unwrap_or(1.0),
+        )?;
+
+        if let Some(attach_to) = &conf_display.attach_to {
+            overlay.state.relative_to = attach_to.get_relative_to();
+        }
+
+        if let Some(rot) = &conf_display.rotation {
+            overlay.state.spawn_rotation = glam::Quat::from_axis_angle(
+                Vec3::from_slice(&rot.axis),
+                f32::to_radians(rot.angle),
+            );
+        }
+
+        if let Some(pos) = &conf_display.pos {
+            overlay.state.spawn_point = Vec3A::from_slice(pos);
+        }
+
+        let display = wayvr.displays.get_mut(&disp_handle).unwrap(); // Never fails
+        display.overlay_id = Some(overlay.state.id);
+
+        created_overlay = Some(overlay);
+
+        disp_handle
+    };
+
+    Ok((disp_handle, created_overlay))
+}
+
+pub fn tick_events<O>(app: &mut AppState, overlays: &mut OverlayContainer<O>) -> anyhow::Result<()>
+where
+    O: Default,
+{
+    if let Some(wayvr) = app.wayvr.clone() {
+        let res = wayvr.borrow_mut().tick_events()?;
+
+        for result in res {
+            match result {
+                wayvr::TickResult::NewExternalProcess(req) => {
+                    let config = &app.session.wayvr_config;
+
+                    let disp_name = if let Some(display_name) = req.env.display_name {
+                        config
+                            .get_display(display_name.as_str())
+                            .map(|_| display_name)
+                    } else {
+                        config
+                            .get_default_display()
+                            .map(|(display_name, _)| display_name)
+                    };
+
+                    if let Some(disp_name) = disp_name {
+                        let mut wayvr = wayvr.borrow_mut();
+
+                        log::info!("Registering external process with PID {}", req.pid);
+
+                        let (disp_handle, created_overlay) =
+                            get_or_create_display::<O>(app, &mut wayvr, &disp_name)?;
+
+                        wayvr.add_external_process(disp_handle, req.pid);
+
+                        wayvr.manager.add_client(wayvr::client::WayVRClient {
+                            client: req.client,
+                            display_handle: disp_handle,
+                            pid: req.pid,
+                        });
+
+                        if let Some(created_overlay) = created_overlay {
+                            overlays.add(created_overlay);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
 
 impl WayVRRenderer {
@@ -285,10 +400,6 @@ fn action_app_click<O>(
 where
     O: Default,
 {
-    use crate::overlays::wayvr::create_wayvr_display_overlay;
-
-    let mut created_overlay: Option<OverlayData<O>> = None;
-
     let wayvr = app.get_wayvr()?.clone();
 
     let catalog = app
@@ -304,54 +415,8 @@ where
     if let Some(app_entry) = catalog.get_app(app_name) {
         let mut wayvr = wayvr.borrow_mut();
 
-        let disp_handle = if let Some(disp) = wayvr.get_display_by_name(&app_entry.target_display) {
-            disp
-        } else {
-            let conf_display = app
-                .session
-                .wayvr_config
-                .get_display(&app_entry.target_display)
-                .ok_or(anyhow::anyhow!(
-                    "Cannot find display named \"{}\"",
-                    app_entry.target_display
-                ))?
-                .clone();
-
-            let display_handle = wayvr.create_display(
-                conf_display.width,
-                conf_display.height,
-                &app_entry.target_display,
-            )?;
-
-            let mut overlay = create_wayvr_display_overlay::<O>(
-                app,
-                conf_display.width,
-                conf_display.height,
-                display_handle,
-                conf_display.scale.unwrap_or(1.0),
-            )?;
-
-            if let Some(attach_to) = &conf_display.attach_to {
-                overlay.state.relative_to = attach_to.get_relative_to();
-            }
-
-            if let Some(rot) = &conf_display.rotation {
-                overlay.state.spawn_rotation = glam::Quat::from_axis_angle(
-                    Vec3::from_slice(&rot.axis),
-                    f32::to_radians(rot.angle),
-                );
-            }
-
-            if let Some(pos) = &conf_display.pos {
-                overlay.state.spawn_point = Vec3A::from_slice(pos);
-            }
-
-            let display = wayvr.displays.get_mut(&display_handle).unwrap(); // Never fails
-            display.overlay_id = Some(overlay.state.id);
-
-            created_overlay = Some(overlay);
-            display_handle
-        };
+        let (disp_handle, created_overlay) =
+            get_or_create_display::<O>(app, &mut wayvr, &app_entry.target_display)?;
 
         // Parse additional args
         let args_vec: Vec<&str> = if let Some(args) = &app_entry.args {
@@ -380,9 +445,10 @@ where
             // Spawn process
             wayvr.spawn_process(disp_handle, &app_entry.exec, &args_vec, &env_vec)?;
         }
+        Ok(created_overlay)
+    } else {
+        Ok(None)
     }
-
-    Ok(created_overlay)
 }
 
 pub fn action_display_click<O>(
@@ -397,7 +463,7 @@ where
     let wayvr = app.get_wayvr()?;
     let mut wayvr = wayvr.borrow_mut();
 
-    if let Some(handle) = wayvr.get_display_by_name(display_name) {
+    if let Some(handle) = WayVR::get_display_by_name(&wayvr.displays, display_name) {
         if let Some(display) = wayvr.displays.get_mut(&handle) {
             if let Some(overlay_id) = display.overlay_id {
                 if let Some(overlay) = overlays.mut_by_id(overlay_id) {
