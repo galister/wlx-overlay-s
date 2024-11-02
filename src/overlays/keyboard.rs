@@ -225,9 +225,16 @@ fn key_press(
         Some(KeyButtonData::Key { vk, pressed }) => {
             data.key_click(app);
 
-            if let PointerMode::Right = mode {
-                data.modifiers |= SHIFT;
-                set_modifiers(app, data.modifiers);
+            match mode {
+                PointerMode::Right => {
+                    data.modifiers |= SHIFT;
+                    app.hid_provider.set_modifiers(data.modifiers);
+                },
+                PointerMode::Middle => {
+                    data.modifiers |= CTRL;
+                    app.hid_provider.set_modifiers(data.modifiers);
+                },
+                _ => {},
             }
 
             send_key(app, *vk, true);
