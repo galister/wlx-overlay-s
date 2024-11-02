@@ -75,6 +75,14 @@ where
 
     let data = KeyboardData {
         modifiers: 0,
+        alt_modifier: match LAYOUT.alt_modifier {
+            AltModifier::Shift => SHIFT,
+            AltModifier::Ctrl => CTRL,
+            AltModifier::Alt => ALT,
+            AltModifier::Super => SUPER,
+            AltModifier::Meta => META,
+            _ => 0,
+        },
         processes: vec![],
     };
 
@@ -225,17 +233,14 @@ fn key_press(
         Some(KeyButtonData::Key { vk, pressed }) => {
             data.key_click(app);
 
-            match mode {
-                PointerMode::Right => {
-                    data.modifiers |= SHIFT;
-                    app.hid_provider.set_modifiers(data.modifiers);
-                },
-                PointerMode::Middle => {
-                    data.modifiers |= CTRL;
-                    app.hid_provider.set_modifiers(data.modifiers);
-                },
-                _ => {},
-            }
+            data.modifiers |= match mode {
+                PointerMode::Right => SHIFT,
+                PointerMode::Middle => data.alt_modifier,
+                _ => 0,
+            };
+
+            app.hid_provider.set_modifiers(data.modifiers);
+
 
             send_key(app, *vk, true);
             *pressed = true;
@@ -330,6 +335,7 @@ fn test_highlight(
 
 struct KeyboardData {
     modifiers: KeyModifier,
+    alt_modifier: KeyModifier,
     processes: Vec<Child>,
 }
 
@@ -368,12 +374,24 @@ static LAYOUT: Lazy<Layout> = Lazy::new(Layout::load_from_disk);
 static MACRO_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^([A-Za-z0-9_-]+)(?: +(UP|DOWN))?$").unwrap()); // want panic
 
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[repr(usize)]
+pub enum AltModifier {
+    None,
+    Shift,
+    Ctrl,
+    Alt,
+    Super,
+    Meta,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Layout {
     name: String,
     row_size: f32,
     key_sizes: Vec<Vec<f32>>,
     main_layout: Vec<Vec<Option<String>>>,
+    alt_modifier: AltModifier,
     exec_commands: HashMap<String, Vec<String>>,
     macros: HashMap<String, Vec<String>>,
     labels: HashMap<String, Vec<String>>,

@@ -43,6 +43,15 @@ main_layout:
     - ["LShift", "Oem102", "Z", "X", "C", "V", "B", "N", "M", "Comma", "Period", "Oem2", "RShift", ~, "Up", ~, "KP_1", "KP_2", "KP_3", "KP_Enter"]
     - ["LCtrl", "LSuper", "LAlt", "Space", "Meta", "RSuper", "Menu", "RCtrl", ~, "Left", "Down", "Right", ~, "KP_0", "KP_Decimal", ~]
 
+# When using the purple pointer...
+# None   - No special functionality when using purple pointer (Default)
+# Shift  - Use same functionality as the orange pointer
+# Ctrl   - Use Main layout with Ctrl modifier
+# Alt    - Use Main layout with Alt modifier
+# Super  - Use Main layout with Super (WinKey) modifier
+# Meta   - Use Main layout with Meta (AltGr) modifier
+alt_modifier: None
+
 # Shell commands to be used in a layout.
 # Value is an array of string arguments.
 exec_commands:
