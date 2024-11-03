@@ -20,7 +20,7 @@ macro_rules! gen_id {
         }
 
         //ThingHandle
-        #[derive(Default, Clone, Copy, PartialEq)]
+        #[derive(Default, Clone, Copy, PartialEq, Hash, Eq)]
         pub struct $handle_name {
             idx: u32,
             generation: u64,

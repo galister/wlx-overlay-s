@@ -32,12 +32,6 @@ const AUTO_RELEASE_MODS: [KeyModifier; 5] = [SHIFT, CTRL, ALT, SUPER, META];
 pub const KEYBOARD_NAME: &str = "kbd";
 
 fn send_key(app: &mut AppState, key: VirtualKey, down: bool) {
-    log::info!(
-        "Sending key {:?} to {:?} (down: {})",
-        key,
-        app.keyboard_focus,
-        down
-    );
     match app.keyboard_focus {
         KeyboardFocus::PhysicalScreen => {
             app.hid_provider.send_key(key, down);
@@ -46,7 +40,7 @@ fn send_key(app: &mut AppState, key: VirtualKey, down: bool) {
         {
             #[cfg(feature = "wayvr")]
             if let Some(wayvr) = &app.wayvr {
-                wayvr.borrow_mut().send_key(key as u32, down);
+                wayvr.borrow_mut().state.send_key(key as u32, down);
             }
         }
     }
@@ -240,7 +234,6 @@ fn key_press(
             };
 
             app.hid_provider.set_modifiers(data.modifiers);
-
 
             send_key(app, *vk, true);
             *pressed = true;

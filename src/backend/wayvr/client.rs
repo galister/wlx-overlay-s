@@ -201,7 +201,7 @@ fn export_display_number(display_num: u32) -> anyhow::Result<()> {
         .map(PathBuf::from)
         .unwrap_or_else(|_| PathBuf::from("/tmp"));
     path.push("wayvr.disp");
-    std::fs::write(path, format!("{}\n", display_num)).unwrap();
+    std::fs::write(path, format!("{}\n", display_num))?;
     Ok(())
 }
 
