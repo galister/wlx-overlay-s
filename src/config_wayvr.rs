@@ -17,7 +17,7 @@ use crate::{
         wayvr,
     },
     config::{load_known_yaml, ConfigType},
-    overlays::wayvr::WayVRAction,
+    overlays::wayvr::{WayVRAction, WayVRState},
 };
 
 // Flat version of RelativeTo
@@ -106,10 +106,19 @@ impl WayVRConfig {
         None
     }
 
+    pub fn get_wayvr_config(config: &crate::config::GeneralConfig) -> wayvr::Config {
+        wayvr::Config {
+            click_freeze_time_ms: config.click_freeze_time_ms,
+            keyboard_repeat_delay_ms: 200,
+            keyboard_repeat_rate: 50,
+        }
+    }
+
     pub fn post_load(
         &self,
+        config: &crate::config::GeneralConfig,
         tasks: &mut TaskContainer,
-    ) -> anyhow::Result<Option<Rc<RefCell<wayvr::WayVR>>>> {
+    ) -> anyhow::Result<Option<Rc<RefCell<WayVRState>>>> {
         let primary_count = self
             .displays
             .iter()
@@ -137,7 +146,9 @@ impl WayVRConfig {
 
         if self.run_compositor_at_start {
             // Start Wayland server instantly
-            Ok(Some(Rc::new(RefCell::new(wayvr::WayVR::new()?))))
+            Ok(Some(Rc::new(RefCell::new(WayVRState::new(
+                Self::get_wayvr_config(config),
+            )?))))
         } else {
             // Lazy-init WayVR later if the user requested
             Ok(None)

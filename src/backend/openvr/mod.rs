@@ -346,7 +346,7 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
 
         #[cfg(feature = "wayvr")]
         if let Some(wayvr) = &state.wayvr {
-            wayvr.borrow_mut().tick_finish()?;
+            wayvr.borrow_mut().state.tick_finish()?;
         }
 
         // chaperone

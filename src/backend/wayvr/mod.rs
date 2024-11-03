@@ -65,6 +65,12 @@ pub enum WayVRTask {
     ProcessTerminationRequest(process::ProcessHandle),
 }
 
+pub struct Config {
+    pub click_freeze_time_ms: u32,
+    pub keyboard_repeat_delay_ms: u32,
+    pub keyboard_repeat_rate: u32,
+}
+
 #[allow(dead_code)]
 pub struct WayVR {
     time_start: u64,
@@ -74,6 +80,7 @@ pub struct WayVR {
     wm: Rc<RefCell<window::WindowManager>>,
     egl_data: Rc<egl_data::EGLData>,
     pub processes: process::ProcessVec,
+    config: Config,
 
     tasks: SyncEventQueue<WayVRTask>,
 }
@@ -89,7 +96,7 @@ pub enum TickResult {
 }
 
 impl WayVR {
-    pub fn new() -> anyhow::Result<Self> {
+    pub fn new(config: Config) -> anyhow::Result<Self> {
         log::info!("Initializing WayVR");
         let display: wayland_server::Display<Application> = wayland_server::Display::new()?;
         let dh = display.handle();
@@ -100,8 +107,11 @@ impl WayVR {
         let data_device = DataDeviceState::new::<Application>(&dh);
         let mut seat = seat_state.new_wl_seat(&dh, "wayvr");
 
-        // TODO: Keyboard repeat delay and rate?
-        let seat_keyboard = seat.add_keyboard(Default::default(), 100, 100)?;
+        let seat_keyboard = seat.add_keyboard(
+            Default::default(),
+            config.keyboard_repeat_delay_ms as i32,
+            config.keyboard_repeat_rate as i32,
+        )?;
         let seat_pointer = seat.add_pointer();
 
         let tasks = SyncEventQueue::new();
@@ -131,6 +141,7 @@ impl WayVR {
             egl_data: Rc::new(egl_data),
             wm: Rc::new(RefCell::new(window::WindowManager::new())),
             tasks,
+            config,
         })
     }
 
@@ -222,7 +233,7 @@ impl WayVR {
                                 }
                             } else {
                                 log::error!(
-                                    "WayVR window creation failed: Unexpected process PID {}. It wasn't registered before.",
+                                    "WayVR window creation failed: Unexpected process ID {}. It wasn't registered before.",
                                     client.pid
                                 );
                             }
@@ -255,12 +266,12 @@ impl WayVR {
 
     pub fn send_mouse_move(&mut self, display: display::DisplayHandle, x: u32, y: u32) {
         if let Some(display) = self.displays.get(&display) {
-            display.send_mouse_move(&mut self.manager, x, y);
+            display.send_mouse_move(&self.config, &mut self.manager, x, y);
         }
     }
 
     pub fn send_mouse_down(&mut self, display: display::DisplayHandle, index: MouseIndex) {
-        if let Some(display) = self.displays.get(&display) {
+        if let Some(display) = self.displays.get_mut(&display) {
             display.send_mouse_down(&mut self.manager, index);
         }
     }

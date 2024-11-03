@@ -19,7 +19,7 @@ use crate::{backend::overlay::OverlayID, gen_id};
 
 use super::{
     client::WayVRManager, comp::send_frames_surface_tree, egl_data, event_queue::SyncEventQueue,
-    process, smithay_wrapper, window,
+    process, smithay_wrapper, time, window,
 };
 
 fn generate_auth_key() -> String {
@@ -54,6 +54,7 @@ pub struct Display {
     wm: Rc<RefCell<window::WindowManager>>,
     pub displayed_windows: Vec<DisplayWindow>,
     wayland_env: super::WaylandEnv,
+    last_pressed_time_ms: u64,
 
     // Render data stuff
     gles_texture: GlesTexture, // TODO: drop texture
@@ -121,6 +122,7 @@ impl Display {
             primary,
             overlay_id: None,
             tasks: SyncEventQueue::new(),
+            last_pressed_time_ms: 0,
         })
     }
 
@@ -250,7 +252,18 @@ impl Display {
         }
     }
 
-    pub fn send_mouse_move(&self, manager: &mut WayVRManager, x: u32, y: u32) {
+    pub fn send_mouse_move(
+        &self,
+        config: &super::Config,
+        manager: &mut WayVRManager,
+        x: u32,
+        y: u32,
+    ) {
+        let current_ms = time::get_millis();
+        if self.last_pressed_time_ms + config.click_freeze_time_ms as u64 > current_ms {
+            return;
+        }
+
         if let Some(window_handle) = self.get_hovered_window(x, y) {
             let wm = self.wm.borrow();
             if let Some(window) = wm.windows.get(&window_handle) {
@@ -283,9 +296,11 @@ impl Display {
         }
     }
 
-    pub fn send_mouse_down(&self, manager: &mut WayVRManager, index: super::MouseIndex) {
+    pub fn send_mouse_down(&mut self, manager: &mut WayVRManager, index: super::MouseIndex) {
         // Change keyboard focus to pressed window
         let loc = manager.seat_pointer.current_location();
+
+        self.last_pressed_time_ms = time::get_millis();
 
         if let Some(window_handle) =
             self.get_hovered_window(loc.x.max(0.0) as u32, loc.y.max(0.0) as u32)

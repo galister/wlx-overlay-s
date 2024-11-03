@@ -8,13 +8,11 @@ use std::{io::Cursor, sync::Arc};
 use vulkano::image::view::ImageView;
 
 #[cfg(feature = "wayvr")]
-use std::{cell::RefCell, rc::Rc};
-
-#[cfg(feature = "wayvr")]
-use crate::backend::wayvr::WayVR;
-
-#[cfg(feature = "wayvr")]
-use crate::config_wayvr::{self, WayVRConfig};
+use {
+    crate::config_wayvr::{self, WayVRConfig},
+    crate::overlays::wayvr::WayVRState,
+    std::{cell::RefCell, rc::Rc},
+};
 
 use crate::{
     backend::{input::InputState, overlay::OverlayID, task::TaskContainer},
@@ -52,7 +50,7 @@ pub struct AppState {
     pub keyboard_focus: KeyboardFocus,
 
     #[cfg(feature = "wayvr")]
-    pub wayvr: Option<Rc<RefCell<WayVR>>>, // Dynamically created if requested
+    pub wayvr: Option<Rc<RefCell<WayVRState>>>, // Dynamically created if requested
 }
 
 impl AppState {
@@ -100,7 +98,9 @@ impl AppState {
         let session = AppSession::load();
 
         #[cfg(feature = "wayvr")]
-        let wayvr = session.wayvr_config.post_load(&mut tasks)?;
+        let wayvr = session
+            .wayvr_config
+            .post_load(&session.config, &mut tasks)?;
 
         Ok(AppState {
             fc: FontCache::new(session.config.primary_font.clone())?,
@@ -122,11 +122,13 @@ impl AppState {
 
     #[cfg(feature = "wayvr")]
     #[allow(dead_code)]
-    pub fn get_wayvr(&mut self) -> anyhow::Result<Rc<RefCell<WayVR>>> {
+    pub fn get_wayvr(&mut self) -> anyhow::Result<Rc<RefCell<WayVRState>>> {
         if let Some(wvr) = &self.wayvr {
             Ok(wvr.clone())
         } else {
-            let wayvr = Rc::new(RefCell::new(WayVR::new()?));
+            let wayvr = Rc::new(RefCell::new(WayVRState::new(
+                WayVRConfig::get_wayvr_config(&self.session.config),
+            )?));
             self.wayvr = Some(wayvr.clone());
             Ok(wayvr)
         }
