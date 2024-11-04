@@ -66,8 +66,14 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         }
     };
 
-    let environment_blend_mode =
-        xr_instance.enumerate_environment_blend_modes(system, VIEW_TYPE)?[0];
+    let environment_blend_mode = {
+        let modes = xr_instance.enumerate_environment_blend_modes(system, VIEW_TYPE)?;
+        if modes.contains(&xr::EnvironmentBlendMode::ALPHA_BLEND) {
+            xr::EnvironmentBlendMode::ALPHA_BLEND
+        } else {
+            modes[0]
+        }
+    };
     log::info!("Using environment blend mode: {:?}", environment_blend_mode);
 
     let mut app_state = {
@@ -141,7 +147,11 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         stage_offset: Affine3A::IDENTITY,
     };
 
-    let mut skybox = create_skybox(&xr_state, &app_state);
+    let mut skybox = if environment_blend_mode == xr::EnvironmentBlendMode::OPAQUE {
+        create_skybox(&xr_state, &app_state)
+    } else {
+        None
+    };
 
     let pointer_lines = [
         lines.allocate(&xr_state, app_state.graphics.clone())?,
