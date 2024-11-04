@@ -1,7 +1,11 @@
 use std::{rc::Rc, str::FromStr, sync::Arc};
 
 use fontconfig::{FontConfig, OwnedPattern};
-use freetype::{bitmap::PixelMode, face::LoadFlag, Face, Library};
+use freetype::{
+    bitmap::PixelMode,
+    face::{CharIterator, LoadFlag},
+    Face, Library,
+};
 use idmap::IdMap;
 use vulkano::{command_buffer::CommandBufferUsage, format::Format, image::Image};
 
@@ -124,11 +128,8 @@ impl FontCache {
         let pattern = pattern.font_match(&mut self.fc);
 
         if let Some(path) = pattern.filename() {
-            log::debug!(
-                "Loading font: {} {}pt",
-                pattern.name().unwrap_or(path),
-                size
-            );
+            let name = pattern.name().unwrap_or(path);
+            log::debug!("Loading font: {} {}pt", name, size);
 
             let font_idx = pattern.face_index().unwrap_or(0);
 
@@ -150,14 +151,16 @@ impl FontCache {
             };
 
             let idx = coll.fonts.len();
-            for cp in 0..0xFFFF {
+            for (cp, _) in face.chars() {
                 if coll.cp_map.contains_key(cp) {
                     continue;
                 }
-                let g = face.get_char_index(cp);
-                if g.is_some() {
-                    coll.cp_map.insert(cp, idx);
-                }
+                coll.cp_map.insert(cp, idx);
+            }
+
+            if !coll.cp_map.contains_key(cp) {
+                log::warn!("Got font '{name}' for CP 0x{cp:x}, but CP is not present in font!",);
+                coll.cp_map.insert(cp, 0);
             }
 
             let zero_glyph = Rc::new(Glyph {
@@ -189,7 +192,7 @@ impl FontCache {
         let key = self.get_font_for_cp(cp, size);
 
         let Some(font) = &mut self.collections[size].fonts.get_mut(key) else {
-            log::warn!("No font found for codepoint: {}", cp);
+            log::warn!("No font found for codepoint: 0x{cp:x}");
             return Ok(self.collections[size].zero_glyph.clone());
         };
 
