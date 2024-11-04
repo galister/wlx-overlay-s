@@ -1,11 +1,7 @@
 use std::{rc::Rc, str::FromStr, sync::Arc};
 
 use fontconfig::{FontConfig, OwnedPattern};
-use freetype::{
-    bitmap::PixelMode,
-    face::{CharIterator, LoadFlag},
-    Face, Library,
-};
+use freetype::{bitmap::PixelMode, face::LoadFlag, Face, Library};
 use idmap::IdMap;
 use vulkano::{command_buffer::CommandBufferUsage, format::Format, image::Image};
 
