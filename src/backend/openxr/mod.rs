@@ -222,7 +222,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                         if main_session_visible {
                             log::debug!("Destroying skybox.");
                             skybox = None;
-                        } else {
+                        } else if environment_blend_mode == xr::EnvironmentBlendMode::OPAQUE {
                             log::debug!("Allocating skybox.");
                             skybox = create_skybox(&xr_state, &app_state);
                         }
