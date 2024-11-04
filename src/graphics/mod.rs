@@ -848,7 +848,7 @@ impl WlxGraphics {
 
             let file = std::fs::File::from_raw_fd(fd);
             let new_file = file.try_clone()?;
-            file.into_raw_fd();
+            let _ = file.into_raw_fd();
 
             let memory = DeviceMemory::allocate_unchecked(
                 self.device.clone(),
