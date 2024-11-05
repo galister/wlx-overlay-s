@@ -65,10 +65,16 @@ pub enum WayVRTask {
     ProcessTerminationRequest(process::ProcessHandle),
 }
 
+#[derive(Clone)]
+pub enum WayVRSignal {
+    DisplayHideRequest(display::DisplayHandle),
+}
+
 pub struct Config {
     pub click_freeze_time_ms: u32,
     pub keyboard_repeat_delay_ms: u32,
     pub keyboard_repeat_rate: u32,
+    pub auto_hide_delay: Option<u32>, // if None, auto-hide is disabled
 }
 
 #[allow(dead_code)]
@@ -83,6 +89,7 @@ pub struct WayVR {
     config: Config,
 
     tasks: SyncEventQueue<WayVRTask>,
+    pub signals: SyncEventQueue<WayVRSignal>,
 }
 
 pub enum MouseIndex {
@@ -140,6 +147,7 @@ impl WayVR {
             processes: ProcessVec::new(),
             egl_data: Rc::new(egl_data),
             wm: Rc::new(RefCell::new(window::WindowManager::new())),
+            signals: SyncEventQueue::new(),
             tasks,
             config,
         })
@@ -206,9 +214,9 @@ impl WayVR {
             }
         }
 
-        for display in self.displays.vec.iter_mut().flatten() {
-            display.obj.tick();
-        }
+        self.displays.iter_mut(&mut |handle, display| {
+            display.tick(&self.config, &handle, &mut self.signals);
+        });
 
         while let Some(task) = self.tasks.read() {
             match task {

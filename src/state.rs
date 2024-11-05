@@ -127,7 +127,7 @@ impl AppState {
             Ok(wvr.clone())
         } else {
             let wayvr = Rc::new(RefCell::new(WayVRState::new(
-                WayVRConfig::get_wayvr_config(&self.session.config),
+                WayVRConfig::get_wayvr_config(&self.session.config, &self.session.wayvr_config),
             )?));
             self.wayvr = Some(wayvr.clone());
             Ok(wayvr)

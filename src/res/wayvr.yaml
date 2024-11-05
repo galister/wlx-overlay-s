@@ -9,6 +9,19 @@ version: 1
 # (used for remote starting external processes)
 run_compositor_at_start: false 
 
+# Automatically close overlays with zero window count?
+auto_hide: true
+
+# For how long an overlay should be visible in case if there are no windows present? (in milliseconds, auto_hide needs to be enabled)
+# This value shouldn't be set at 0, because some programs could re-initialize a window during startup (splash screens for example)
+auto_hide_delay: 750
+
+# In milliseconds
+keyboard_repeat_delay: 200
+
+# Chars per second
+keyboard_repeat_rate: 50
+
 displays:
   Watch:
     width: 400
