@@ -6,12 +6,13 @@ use wlx_capture::frame::{DmabufFrame, FourCC, FrameFormat, FramePlane};
 
 use crate::{
     backend::{
-        common::OverlayContainer,
+        common::{OverlayContainer, OverlaySelector},
         input::{self, InteractionHandler},
         overlay::{
             ui_transform, OverlayData, OverlayID, OverlayRenderer, OverlayState,
             SplitOverlayBackend,
         },
+        task::TaskType,
         wayvr::{self, display, WayVR},
     },
     graphics::WlxGraphics,
@@ -213,8 +214,27 @@ pub fn tick_events<O>(app: &mut AppState, overlays: &mut OverlayContainer<O>) ->
 where
     O: Default,
 {
-    if let Some(wayvr) = app.wayvr.clone() {
-        let res = wayvr.borrow_mut().state.tick_events()?;
+    if let Some(r_wayvr) = app.wayvr.clone() {
+        let mut wayvr = r_wayvr.borrow_mut();
+        while let Some(signal) = wayvr.state.signals.read() {
+            match signal {
+                wayvr::WayVRSignal::DisplayHideRequest(display_handle) => {
+                    if let Some(overlay_id) = wayvr.display_handle_map.get(&display_handle) {
+                        let overlay_id = *overlay_id;
+                        wayvr.state.set_display_visible(display_handle, false);
+                        app.tasks.enqueue(TaskType::Overlay(
+                            OverlaySelector::Id(overlay_id),
+                            Box::new(move |_app, o| {
+                                o.want_visible = false;
+                            }),
+                        ));
+                    }
+                }
+            }
+        }
+
+        let res = wayvr.state.tick_events()?;
+        drop(wayvr);
 
         for result in res {
             match result {
@@ -232,7 +252,7 @@ where
                     };
 
                     if let Some(disp_name) = disp_name {
-                        let mut wayvr = wayvr.borrow_mut();
+                        let mut wayvr = r_wayvr.borrow_mut();
 
                         log::info!("Registering external process with PID {}", req.pid);
 
