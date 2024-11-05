@@ -80,12 +80,40 @@ impl WayVRCatalog {
     }
 }
 
+fn def_true() -> bool {
+    true
+}
+
+fn def_autohide_delay() -> u32 {
+    750
+}
+
+fn def_keyboard_repeat_delay() -> u32 {
+    200
+}
+
+fn def_keyboard_repeat_rate() -> u32 {
+    50
+}
+
 #[derive(Deserialize, Serialize)]
 pub struct WayVRConfig {
     pub version: u32,
     pub run_compositor_at_start: bool,
     pub catalogs: HashMap<String, WayVRCatalog>,
     pub displays: BTreeMap<String, WayVRDisplay>, // sorted alphabetically
+
+    #[serde(default = "def_true")]
+    pub auto_hide: bool,
+
+    #[serde(default = "def_autohide_delay")]
+    pub auto_hide_delay: u32,
+
+    #[serde(default = "def_keyboard_repeat_delay")]
+    pub keyboard_repeat_delay: u32,
+
+    #[serde(default = "def_keyboard_repeat_rate")]
+    pub keyboard_repeat_rate: u32,
 }
 
 impl WayVRConfig {
@@ -106,11 +134,19 @@ impl WayVRConfig {
         None
     }
 
-    pub fn get_wayvr_config(config: &crate::config::GeneralConfig) -> wayvr::Config {
+    pub fn get_wayvr_config(
+        config_general: &crate::config::GeneralConfig,
+        config_wayvr: &crate::config_wayvr::WayVRConfig,
+    ) -> wayvr::Config {
         wayvr::Config {
-            click_freeze_time_ms: config.click_freeze_time_ms,
-            keyboard_repeat_delay_ms: 200,
-            keyboard_repeat_rate: 50,
+            click_freeze_time_ms: config_general.click_freeze_time_ms,
+            keyboard_repeat_delay_ms: config_wayvr.keyboard_repeat_delay,
+            keyboard_repeat_rate: config_wayvr.keyboard_repeat_rate,
+            auto_hide_delay: if config_wayvr.auto_hide {
+                Some(config_wayvr.auto_hide_delay)
+            } else {
+                None
+            },
         }
     }
 
@@ -147,7 +183,7 @@ impl WayVRConfig {
         if self.run_compositor_at_start {
             // Start Wayland server instantly
             Ok(Some(Rc::new(RefCell::new(WayVRState::new(
-                Self::get_wayvr_config(config),
+                Self::get_wayvr_config(config, &self),
             )?))))
         } else {
             // Lazy-init WayVR later if the user requested

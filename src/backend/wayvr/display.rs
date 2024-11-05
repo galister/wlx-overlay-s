@@ -15,11 +15,14 @@ use smithay::{
     wayland::shell::xdg::ToplevelSurface,
 };
 
-use crate::{backend::overlay::OverlayID, gen_id};
+use crate::{
+    backend::{overlay::OverlayID, wayvr::time::get_millis},
+    gen_id,
+};
 
 use super::{
     client::WayVRManager, comp::send_frames_surface_tree, egl_data, event_queue::SyncEventQueue,
-    process, smithay_wrapper, time, window,
+    process, smithay_wrapper, time, window, WayVRSignal,
 };
 
 fn generate_auth_key() -> String {
@@ -55,6 +58,7 @@ pub struct Display {
     pub displayed_windows: Vec<DisplayWindow>,
     wayland_env: super::WaylandEnv,
     last_pressed_time_ms: u64,
+    pub no_windows_since: Option<u64>,
 
     // Render data stuff
     gles_texture: GlesTexture, // TODO: drop texture
@@ -123,6 +127,7 @@ impl Display {
             overlay_id: None,
             tasks: SyncEventQueue::new(),
             last_pressed_time_ms: 0,
+            no_windows_since: None,
         })
     }
 
@@ -158,7 +163,24 @@ impl Display {
         }
     }
 
-    pub fn tick(&mut self) {
+    pub fn tick(
+        &mut self,
+        config: &super::Config,
+        handle: &DisplayHandle,
+        signals: &mut SyncEventQueue<WayVRSignal>,
+    ) {
+        if self.visible {
+            if !self.displayed_windows.is_empty() {
+                self.no_windows_since = None;
+            } else if let Some(auto_hide_delay) = config.auto_hide_delay {
+                if let Some(s) = self.no_windows_since {
+                    if s + (auto_hide_delay as u64) < get_millis() {
+                        signals.send(WayVRSignal::DisplayHideRequest(*handle));
+                    }
+                }
+            }
+        }
+
         while let Some(task) = self.tasks.read() {
             match task {
                 DisplayTask::ProcessCleanup(process_handle) => {
@@ -169,6 +191,7 @@ impl Display {
                         self.name,
                         self.displayed_windows.len()
                     );
+                    self.no_windows_since = Some(get_millis());
 
                     self.reposition_windows();
                 }
@@ -248,6 +271,7 @@ impl Display {
             self.visible = visible;
             if visible {
                 self.wants_redraw = true;
+                self.no_windows_since = None;
             }
         }
     }
