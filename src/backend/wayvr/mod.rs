@@ -20,6 +20,7 @@ use smallvec::SmallVec;
 use smithay::{
     backend::renderer::gles::GlesRenderer,
     input::SeatState,
+    output::{Mode, Output},
     reexports::wayland_server::{self, backend::ClientId},
     wayland::{
         compositor,
@@ -113,6 +114,29 @@ impl WayVR {
         let shm = ShmState::new::<Application>(&dh, Vec::new());
         let data_device = DataDeviceState::new::<Application>(&dh);
         let mut seat = seat_state.new_wl_seat(&dh, "wayvr");
+
+        let dummy_width = 1280;
+        let dummy_height = 720;
+        let dummy_milli_hz = 60000; /* refresh rate in millihertz */
+
+        let output = Output::new(
+            String::from("wayvr_display"),
+            smithay::output::PhysicalProperties {
+                size: (dummy_width, dummy_height).into(),
+                subpixel: smithay::output::Subpixel::None,
+                make: String::from("Completely Legit"),
+                model: String::from("Virtual WayVR Display"),
+            },
+        );
+
+        let mode = Mode {
+            refresh: dummy_milli_hz,
+            size: (dummy_width, dummy_height).into(),
+        };
+
+        output.change_current_state(Some(mode), None, None, None);
+        output.set_preferred(mode);
+        let _global = output.create_global::<Application>(&dh);
 
         let seat_keyboard = seat.add_keyboard(
             Default::default(),
