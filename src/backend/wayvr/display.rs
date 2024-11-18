@@ -229,13 +229,13 @@ impl Display {
 
         let mut frame = renderer.render(size, Transform::Normal)?;
 
-        let clear_opacity = if self.displayed_windows.is_empty() {
-            0.5
+        let clear_color = if self.displayed_windows.is_empty() {
+            Color32F::new(1.0, 1.0, 1.0, 0.5)
         } else {
-            0.0
+            Color32F::new(0.0, 0.0, 0.0, 0.0)
         };
 
-        frame.clear(Color32F::new(1.0, 1.0, 1.0, clear_opacity), &[damage])?;
+        frame.clear(clear_color, &[damage])?;
 
         draw_render_elements(&mut frame, 1.0, &elements, &[damage])?;
 

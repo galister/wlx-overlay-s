@@ -30,7 +30,7 @@ That's it; you're all set!
 
 ### Supported software
 
-- Basically all Qt applications (they work out of the box)
+- Basically all Qt and GTK applications (they work out of the box)
 - Most XWayland applications via `cage`
 
 ### XWayland

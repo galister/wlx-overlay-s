@@ -5,9 +5,11 @@ use smithay::reexports::wayland_server;
 use smithay::reexports::wayland_server::protocol::{wl_buffer, wl_seat, wl_surface};
 use smithay::reexports::wayland_server::Resource;
 use smithay::wayland::buffer::BufferHandler;
+use smithay::wayland::output::OutputHandler;
 use smithay::wayland::shm::{ShmHandler, ShmState};
 use smithay::{
-    delegate_compositor, delegate_data_device, delegate_seat, delegate_shm, delegate_xdg_shell,
+    delegate_compositor, delegate_data_device, delegate_output, delegate_seat, delegate_shm,
+    delegate_xdg_shell,
 };
 use std::collections::HashSet;
 use std::os::fd::OwnedFd;
@@ -168,11 +170,14 @@ impl ShmHandler for Application {
     }
 }
 
+impl OutputHandler for Application {}
+
 delegate_xdg_shell!(Application);
 delegate_compositor!(Application);
 delegate_shm!(Application);
 delegate_seat!(Application);
 delegate_data_device!(Application);
+delegate_output!(Application);
 
 pub fn send_frames_surface_tree(surface: &wl_surface::WlSurface, time: u32) {
     with_surface_tree_downward(
