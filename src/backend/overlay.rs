@@ -233,8 +233,8 @@ where
     pub fn view(&mut self) -> Option<Arc<ImageView>> {
         self.backend.view()
     }
-    pub fn extent(&mut self) -> Option<[u32; 3]> {
-        self.backend.extent()
+    pub fn frame_transform(&mut self) -> Option<FrameTransform> {
+        self.backend.frame_transform()
     }
     pub fn set_visible(&mut self, app: &mut AppState, visible: bool) -> anyhow::Result<()> {
         let old_visible = self.state.want_visible;
@@ -250,6 +250,12 @@ where
     }
 }
 
+#[derive(Default)]
+pub struct FrameTransform {
+    pub extent: [u32; 3],
+    pub transform: Affine3A,
+}
+
 pub trait OverlayRenderer {
     /// Called once, before the first frame is rendered
     fn init(&mut self, app: &mut AppState) -> anyhow::Result<()>;
@@ -263,7 +269,7 @@ pub trait OverlayRenderer {
     /// Used for creating swapchains.
     ///
     /// Muse not be None if view() is also not None
-    fn extent(&mut self) -> Option<[u32; 3]>;
+    fn frame_transform(&mut self) -> Option<FrameTransform>;
 }
 
 pub struct FallbackRenderer;
@@ -284,7 +290,7 @@ impl OverlayRenderer for FallbackRenderer {
     fn view(&mut self) -> Option<Arc<ImageView>> {
         None
     }
-    fn extent(&mut self) -> Option<[u32; 3]> {
+    fn frame_transform(&mut self) -> Option<FrameTransform> {
         None
     }
 }
@@ -341,8 +347,8 @@ impl OverlayRenderer for SplitOverlayBackend {
     fn view(&mut self) -> Option<Arc<ImageView>> {
         self.renderer.view()
     }
-    fn extent(&mut self) -> Option<[u32; 3]> {
-        self.renderer.extent()
+    fn frame_transform(&mut self) -> Option<FrameTransform> {
+        self.renderer.frame_transform()
     }
 }
 impl InteractionHandler for SplitOverlayBackend {

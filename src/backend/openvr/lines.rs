@@ -11,7 +11,9 @@ use vulkano::format::Format;
 use vulkano::image::view::ImageView;
 use vulkano::image::ImageLayout;
 
-use crate::backend::overlay::{OverlayData, OverlayRenderer, OverlayState, SplitOverlayBackend};
+use crate::backend::overlay::{
+    FrameTransform, OverlayData, OverlayRenderer, OverlayState, SplitOverlayBackend,
+};
 use crate::graphics::WlxGraphics;
 use crate::state::AppState;
 
@@ -189,7 +191,10 @@ impl OverlayRenderer for StaticRenderer {
     fn view(&mut self) -> Option<Arc<ImageView>> {
         Some(self.view.clone())
     }
-    fn extent(&mut self) -> Option<[u32; 3]> {
-        Some(self.view.image().extent())
+    fn frame_transform(&mut self) -> Option<FrameTransform> {
+        Some(FrameTransform {
+            extent: self.view.image().extent(),
+            ..Default::default()
+        })
     }
 }

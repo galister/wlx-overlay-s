@@ -10,7 +10,8 @@ use crate::{
     backend::{
         common::OverlaySelector,
         overlay::{
-            ui_transform, OverlayBackend, OverlayRenderer, OverlayState, SplitOverlayBackend,
+            ui_transform, FrameTransform, OverlayBackend, OverlayRenderer, OverlayState,
+            SplitOverlayBackend,
         },
         task::TaskType,
     },
@@ -121,8 +122,11 @@ impl OverlayRenderer for MirrorRenderer {
         self.renderer.as_mut().and_then(|r| r.view())
     }
 
-    fn extent(&mut self) -> Option<[u32; 3]> {
-        Some(self.last_extent)
+    fn frame_transform(&mut self) -> Option<FrameTransform> {
+        Some(FrameTransform {
+            extent: self.last_extent,
+            ..Default::default()
+        })
     }
 }
 

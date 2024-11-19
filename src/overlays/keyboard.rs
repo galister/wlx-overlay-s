@@ -7,7 +7,7 @@ use std::{
 use crate::{
     backend::{
         input::{InteractionHandler, PointerMode},
-        overlay::{OverlayBackend, OverlayData, OverlayRenderer, OverlayState},
+        overlay::{FrameTransform, OverlayBackend, OverlayData, OverlayRenderer, OverlayState},
     },
     config::{self, ConfigType},
     gui::{
@@ -533,8 +533,8 @@ impl OverlayRenderer for KeyboardBackend {
     fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         self.canvas.render(app)
     }
-    fn extent(&mut self) -> Option<[u32; 3]> {
-        self.canvas.extent()
+    fn frame_transform(&mut self) -> Option<FrameTransform> {
+        self.canvas.frame_transform()
     }
     fn view(&mut self) -> Option<std::sync::Arc<vulkano::image::view::ImageView>> {
         self.canvas.view()
