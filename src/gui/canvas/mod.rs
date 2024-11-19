@@ -13,7 +13,7 @@ use vulkano::{
 use crate::{
     backend::{
         input::{Haptics, InteractionHandler, PointerHit},
-        overlay::{OverlayBackend, OverlayRenderer},
+        overlay::{FrameTransform, OverlayBackend, OverlayRenderer},
     },
     graphics::{WlxGraphics, WlxPass, WlxPipeline, WlxPipelineLegacy, BLEND_ALPHA},
     state::AppState,
@@ -375,8 +375,11 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
         Some(self.view_final.clone())
     }
 
-    fn extent(&mut self) -> Option<[u32; 3]> {
-        Some(self.view_final.image().extent())
+    fn frame_transform(&mut self) -> Option<FrameTransform> {
+        Some(FrameTransform {
+            extent: self.view_final.image().extent(),
+            ..Default::default()
+        })
     }
 }
 

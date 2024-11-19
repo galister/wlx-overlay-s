@@ -9,7 +9,7 @@ use crate::{
         common::{OverlayContainer, OverlaySelector},
         input::{self, InteractionHandler},
         overlay::{
-            ui_transform, OverlayData, OverlayID, OverlayRenderer, OverlayState,
+            ui_transform, FrameTransform, OverlayData, OverlayID, OverlayRenderer, OverlayState,
             SplitOverlayBackend,
         },
         task::TaskType,
@@ -299,6 +299,7 @@ impl WayVRRenderer {
                             value: data.mod_info.fourcc,
                         },
                         modifier: data.mod_info.modifiers[0], /* possibly not proper? */
+                        ..Default::default()
                     },
                     num_planes: 1,
                     planes,
@@ -373,8 +374,11 @@ impl OverlayRenderer for WayVRRenderer {
         self.view.clone()
     }
 
-    fn extent(&mut self) -> Option<[u32; 3]> {
-        self.view.as_ref().map(|view| view.image().extent())
+    fn frame_transform(&mut self) -> Option<FrameTransform> {
+        self.view.as_ref().map(|view| FrameTransform {
+            extent: view.image().extent(),
+            ..Default::default()
+        })
     }
 }
 
