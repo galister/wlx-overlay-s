@@ -39,7 +39,8 @@ impl OverlayData<OpenXrOverlayData> {
             return Ok(CompositionLayer::None);
         };
 
-        let extent = self.extent().unwrap(); // want panic
+        let frame_transform = self.frame_transform().unwrap(); // want panic
+        let extent = frame_transform.extent;
 
         let data = match self.data.swapchain {
             Some(ref mut data) => data,
@@ -74,10 +75,12 @@ impl OverlayData<OpenXrOverlayData> {
             (major / aspect_ratio, major)
         };
 
+        let transform = self.state.transform * frame_transform.transform;
+
         if let Some(curvature) = self.state.curvature {
             let radius = scale_x / (2.0 * PI * curvature);
-            let quat = helpers::transform_to_norm_quat(&self.state.transform);
-            let center_point = self.state.transform.translation + quat.mul_vec3a(Vec3A::Z * radius);
+            let quat = helpers::transform_to_norm_quat(&transform);
+            let center_point = transform.translation + quat.mul_vec3a(Vec3A::Z * radius);
 
             let posef = helpers::translation_rotation_to_posef(center_point, quat);
             let angle = 2.0 * (scale_x / (2.0 * radius));
@@ -93,7 +96,7 @@ impl OverlayData<OpenXrOverlayData> {
                 .aspect_ratio(aspect_ratio);
             Ok(CompositionLayer::Cylinder(cylinder))
         } else {
-            let posef = helpers::transform_to_posef(&self.state.transform);
+            let posef = helpers::transform_to_posef(&transform);
             let quad = xr::CompositionLayerQuad::new()
                 .layer_flags(CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA)
                 .pose(posef)

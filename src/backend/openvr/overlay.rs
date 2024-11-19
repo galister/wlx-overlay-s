@@ -188,7 +188,7 @@ impl OverlayData<OpenVrOverlayData> {
     }
 
     pub(super) fn upload_transform(
-        &self,
+        &mut self,
         universe: ETrackingUniverseOrigin,
         overlay: &mut OverlayManager,
     ) {
@@ -197,7 +197,14 @@ impl OverlayData<OpenVrOverlayData> {
             return;
         };
 
-        let transform = Matrix3x4::from_affine(&self.state.transform);
+        let effective = self.state.transform
+            * self
+                .backend
+                .frame_transform()
+                .map(|f| f.transform)
+                .unwrap_or_default();
+
+        let transform = Matrix3x4::from_affine(&effective);
 
         if let Err(e) = overlay.set_transform_absolute(handle, universe, &transform) {
             log::error!(
