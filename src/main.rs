@@ -197,6 +197,7 @@ fn file_logging_init(log_to: &str) -> anyhow::Result<()> {
     env_logger::Builder::new()
         .target(env_logger::Target::Pipe(target))
         .filter(None, log::LevelFilter::Info)
+        .filter_module("zbus", log::LevelFilter::Warn)
         .parse_default_env()
         .format(|buf, record| {
             eprintln!("[{}] {}", record.level(), record.args());
