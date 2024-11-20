@@ -477,9 +477,11 @@ impl OverlayRenderer for ScreenRenderer {
                         continue;
                     }
                     self.extent.get_or_insert_with(|| {
-                        self.transform = affine_from_format(&frame.format);
                         extent_from_format(frame.format, &app.session.config)
                     });
+                    if let Some(new_transform) = affine_from_format(&frame.format) {
+                        self.transform = new_transform;
+                    }
                     match app.graphics.dmabuf_texture(frame) {
                         Ok(new) => {
                             let pipeline = match self.pipeline {
@@ -520,9 +522,11 @@ impl OverlayRenderer for ScreenRenderer {
                         continue;
                     };
                     self.extent.get_or_insert_with(|| {
-                        self.transform = affine_from_format(&frame.format);
                         extent_from_format(frame.format, &app.session.config)
                     });
+                    if let Some(new_transform) = affine_from_format(&frame.format) {
+                        self.transform = new_transform;
+                    }
                     log::debug!("{}: New MemFd frame", self.name);
                     let format = fourcc_to_vk(frame.format.fourcc)?;
 
@@ -1053,29 +1057,30 @@ fn extent_from_res(width: u32, height: u32, config: &GeneralConfig) -> [u32; 3] 
     [w, h, 1]
 }
 
-fn affine_from_format(format: &FrameFormat) -> Affine3A {
+fn affine_from_format(format: &FrameFormat) -> Option<Affine3A> {
     const FLIP_X: Vec3 = Vec3 {
         x: -1.0,
         y: 1.0,
         z: 1.0,
     };
 
-    match format.transform {
-        wlx_frame::Transform::None => Affine3A::IDENTITY,
-        wlx_frame::Transform::Rotated90 => Affine3A::from_rotation_z(PI / 2.0),
+    Some(match format.transform {
+        wlx_frame::Transform::Normal => Affine3A::IDENTITY,
+        wlx_frame::Transform::Rotated90 => Affine3A::from_rotation_z(-PI / 2.0),
         wlx_frame::Transform::Rotated180 => Affine3A::from_rotation_z(PI),
-        wlx_frame::Transform::Rotated270 => Affine3A::from_rotation_z(-PI / 2.0),
+        wlx_frame::Transform::Rotated270 => Affine3A::from_rotation_z(PI / 2.0),
         wlx_frame::Transform::Flipped => Affine3A::from_scale(FLIP_X),
         wlx_frame::Transform::Flipped90 => {
-            Affine3A::from_scale(FLIP_X) * Affine3A::from_rotation_z(PI / 2.0)
+            Affine3A::from_scale(FLIP_X) * Affine3A::from_rotation_z(-PI / 2.0)
         }
         wlx_frame::Transform::Flipped180 => {
             Affine3A::from_scale(FLIP_X) * Affine3A::from_rotation_z(PI)
         }
         wlx_frame::Transform::Flipped270 => {
-            Affine3A::from_scale(FLIP_X) * Affine3A::from_rotation_z(-PI / 2.0)
+            Affine3A::from_scale(FLIP_X) * Affine3A::from_rotation_z(PI / 2.0)
         }
-    }
+        wlx_frame::Transform::Undefined => return None,
+    })
 }
 
 #[cfg(all(feature = "pipewire", feature = "x11"))]
