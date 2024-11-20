@@ -21,7 +21,6 @@ use std::{
 };
 
 use clap::Parser;
-use flexi_logger::{Duplicate, FileSpec, LogSpecification};
 use sysinfo::Pid;
 
 /// The lightweight desktop overlay for OpenVR and OpenXR
@@ -181,10 +180,10 @@ fn logging_init(args: &mut Args) -> anyhow::Result<()> {
     if let Some(log_to) = log_file.filter(|s| !s.is_empty()) {
         if let Err(e) = file_logging_init(&log_to) {
             log::error!("Failed to initialize file logging: {}", e);
-            flexi_logger::Logger::try_with_env_or_str("info")?.start()?;
+            env_logger::init();
         }
     } else {
-        flexi_logger::Logger::try_with_env_or_str("info")?.start()?;
+        env_logger::init();
     }
 
     log_panics::init();
@@ -192,25 +191,26 @@ fn logging_init(args: &mut Args) -> anyhow::Result<()> {
 }
 
 fn file_logging_init(log_to: &str) -> anyhow::Result<()> {
-    let file_spec = FileSpec::try_from(PathBuf::from(log_to))?;
-    let log_spec = LogSpecification::env_or_parse("info")?;
+    use std::io::Write;
+    let target = Box::new(std::fs::File::create(log_to)?);
 
-    let duplicate = log_spec
-        .module_filters()
-        .iter()
-        .find(|m| m.module_name.is_none())
-        .map(|m| match m.level_filter {
-            log::LevelFilter::Trace => Duplicate::Trace,
-            log::LevelFilter::Debug => Duplicate::Debug,
-            log::LevelFilter::Info => Duplicate::Info,
-            log::LevelFilter::Warn => Duplicate::Warn,
-            _ => Duplicate::Error,
-        });
+    env_logger::Builder::new()
+        .target(env_logger::Target::Pipe(target))
+        .filter(None, log::LevelFilter::Info)
+        .parse_default_env()
+        .format(|buf, record| {
+            eprintln!("[{}] {}", record.level(), record.args());
+            writeln!(
+                buf,
+                "[{} {} {}] {}",
+                chrono::Local::now().format("%H:%M:%S%.3f"),
+                record.level(),
+                record.module_path().unwrap_or_default(),
+                record.args()
+            )
+        })
+        .init();
 
-    flexi_logger::Logger::with(log_spec)
-        .log_to_file(file_spec)
-        .duplicate_to_stderr(duplicate.unwrap_or(Duplicate::Error))
-        .start()?;
     println!("Logging to: {}", log_to);
     Ok(())
 }
@@ -226,7 +226,10 @@ fn ensure_single_instance(replace: bool) -> bool {
         if let Ok(pid_str) = std::fs::read_to_string(&path) {
             if let Ok(pid) = pid_str.trim().parse::<u32>() {
                 let mut system = sysinfo::System::new();
-                system.refresh_processes(sysinfo::ProcessesToUpdate::Some(&[Pid::from_u32(pid)]));
+                system.refresh_processes(
+                    sysinfo::ProcessesToUpdate::Some(&[Pid::from_u32(pid)]),
+                    false,
+                );
                 if let Some(proc) = system.process(sysinfo::Pid::from_u32(pid)) {
                     if replace {
                         proc.kill_with(sysinfo::Signal::Term);
