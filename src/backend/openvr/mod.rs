@@ -324,7 +324,7 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
 
         #[cfg(feature = "osc")]
         if let Some(ref mut sender) = osc_sender {
-            let _ = sender.send_params(&overlays);
+            let _ = sender.send_params(&overlays, &state); // i love inconsistent naming; in openxr.rs `state` is called `app_state`
         };
 
         #[cfg(feature = "wayvr")]
