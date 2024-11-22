@@ -100,8 +100,8 @@ impl OscSender {
 
         for device in &app.input_state.devices {
 
-            // i believe soc is the battery level, based on input.rs (status.charge)
-            let level = device.soc.unwrap();
+            // soc is the battery level (set to device status.charge)
+            let level = device.soc.unwrap_or(-1.0);
             let mut parameter = "";
 
             match device.role {
