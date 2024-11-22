@@ -9,8 +9,8 @@ use rosc::{OscMessage, OscPacket, OscType};
 use crate::overlays::{keyboard::KEYBOARD_NAME, watch::WATCH_NAME};
 
 use crate::{
-    backend::input::{TrackedDevice, TrackedDeviceRole},
-    state::{AppState},
+    backend::input::TrackedDeviceRole,
+    state::AppState,
 };
 
 use super::common::OverlayContainer;
@@ -98,24 +98,57 @@ impl OscSender {
         // battery levels
         let mut tracker_idx = 0;
 
-        let devices = &app.input_state.devices;
-        for device in devices {
+        for device in &app.input_state.devices {
+
+            // i believe soc is the battery level, based on input.rs (status.charge)
+            let level = device.soc.unwrap();
+            let mut parameter = "";
+
             match device.role {
-                TrackedDeviceRole::None => {
+                TrackedDeviceRole::None =>      {}
+                TrackedDeviceRole::Hmd =>       {
+                    // XSOverlay style (float)
+                    // this parameter doesn't exist, but it's a stepping stone for 0-1 values (i presume XSOverlay would use the full name headset and not the abbreviation hmd)
+                    parameter = "headsetBattery";
+
+                    // legacy OVR Toolkit style (int)
+                    // according to their docs, OVR Toolkit is now supposed to use float 0-1.
+                    // as of 20 Nov 2024 they still use int 0-100, but this may change in a future update.
+                    //TODO: remove once their implementation matches the docs
+                    self.send_message(
+                        "/avatar/parameters/hmdBattery".into(),
+                                      vec![OscType::Int((level * 100.0f32).round() as i32)],
+                    )?;
 
                 }
-                TrackedDeviceRole::Hmd => {
+                TrackedDeviceRole::LeftHand =>  {parameter = "leftControllerBattery"}
+                TrackedDeviceRole::RightHand => {parameter = "rightControllerBattery"}
+                TrackedDeviceRole::Tracker =>   {
+                    //TODO: the String gets dropped i presume once this block exits (so parameter becomes a null ref), even if i set owner.
+                    //parameter = format!("tracker{tracker_idx}Battery").as_str();
+                    //            ^^^^^^ "temporary value dropped" ^^^^^
 
-                }
-                TrackedDeviceRole::LeftHand => {
-
-                }
-                TrackedDeviceRole::RightHand => {
-
-                }
-                TrackedDeviceRole::Tracker => {
-                    
+                    //TODO: figure out how to put the number in the string properly as above (which doesn't work)
+                    parameter = "tracker";
                     tracker_idx += 1;
+                }
+            }
+
+            // send level parameter
+            if !parameter.is_empty() {
+                //TODO: figure out how to put the number in the string, ideally in the TrackedDeviceRole section where we set the parameters
+                if parameter == "tracker" {
+                    self.send_message(
+                        format!("/avatar/parameters/tracker{tracker_idx}Battery").into(),
+                                    vec![OscType::Float(level)],
+                    )?;
+                }
+
+                else {
+                    self.send_message(
+                        format!("/avatar/parameters/{parameter}").into(),
+                                    vec![OscType::Float(level)],
+                    )?;
                 }
             }
         }
