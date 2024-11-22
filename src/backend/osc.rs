@@ -8,6 +8,11 @@ use rosc::{OscMessage, OscPacket, OscType};
 
 use crate::overlays::{keyboard::KEYBOARD_NAME, watch::WATCH_NAME};
 
+use crate::{
+    backend::input::{TrackedDevice, TrackedDeviceRole},
+    state::{AppState},
+};
+
 use super::common::OverlayContainer;
 
 pub struct OscSender {
@@ -46,7 +51,7 @@ impl OscSender {
         Ok(())
     }
 
-    pub fn send_params<D>(&mut self, overlays: &OverlayContainer<D>) -> anyhow::Result<()>
+    pub fn send_params<D>(&mut self, overlays: &OverlayContainer<D>, app: &AppState) -> anyhow::Result<()>
     where
         D: Default,
     {
@@ -89,6 +94,32 @@ impl OscSender {
             "/avatar/parameters/openOverlayCount".into(),
             vec![OscType::Int(num_overlays)],
         )?;
+
+        // battery levels
+        let mut tracker_idx = 0;
+
+        let devices = &app.input_state.devices;
+        for device in devices {
+            match device.role {
+                TrackedDeviceRole::None => {
+
+                }
+                TrackedDeviceRole::Hmd => {
+
+                }
+                TrackedDeviceRole::LeftHand => {
+
+                }
+                TrackedDeviceRole::RightHand => {
+
+                }
+                TrackedDeviceRole::Tracker => {
+                    
+                    tracker_idx += 1;
+                }
+            }
+        }
+        
 
         Ok(())
     }
