@@ -98,7 +98,7 @@ pub fn def_pw_tokens() -> PwTokenMap {
 }
 
 fn def_mouse_move_interval_ms() -> u32 {
-    14 // ~72fps
+    10 // 100fps
 }
 
 fn def_click_freeze_time_ms() -> u32 {
