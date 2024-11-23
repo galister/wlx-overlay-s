@@ -97,6 +97,10 @@ pub fn def_pw_tokens() -> PwTokenMap {
     AStrMap::new()
 }
 
+fn def_mouse_move_interval_ms() -> u32 {
+    14 // ~72fps
+}
+
 fn def_click_freeze_time_ms() -> u32 {
     300
 }
@@ -178,6 +182,9 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_click_freeze_time_ms")]
     pub click_freeze_time_ms: u32,
+
+    #[serde(default = "def_mouse_move_interval_ms")]
+    pub mouse_move_interval_ms: u32,
 
     #[serde(default = "def_true")]
     pub notifications_enabled: bool,

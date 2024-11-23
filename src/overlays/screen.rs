@@ -129,6 +129,7 @@ impl InteractionHandler for ScreenInteractionHandler {
         {
             let pos = self.mouse_transform.transform_point2(hit.uv);
             app.hid_provider.mouse_move(pos);
+            set_next_move(app.session.config.mouse_move_interval_ms as u64);
         }
         None
     }
