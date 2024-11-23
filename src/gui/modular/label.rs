@@ -16,6 +16,13 @@ use serde::Deserialize;
 use super::{color_parse_or_default, ExecArgs, GuiColor, ModularControl, ModularData};
 
 #[derive(Deserialize)]
+#[serde(untagged)]
+pub enum TimezoneDef {
+    Idx(usize),
+    Str(Arc<str>),
+}
+
+#[derive(Deserialize)]
 #[serde(tag = "source")]
 pub enum LabelContent {
     Static {
@@ -27,7 +34,10 @@ pub enum LabelContent {
     },
     Clock {
         format: Arc<str>,
-        timezone: Option<Arc<str>>,
+        timezone: Option<TimezoneDef>,
+    },
+    Timezone {
+        timezone: usize,
     },
     Timer {
         format: Arc<str>,
@@ -70,7 +80,7 @@ pub enum LabelData {
     DragMultiplier,
 }
 
-pub fn modular_label_init(label: &mut ModularControl, content: &LabelContent) {
+pub fn modular_label_init(label: &mut ModularControl, content: &LabelContent, app: &AppState) {
     let state = match content {
         LabelContent::Battery {
             device,
@@ -85,18 +95,48 @@ pub fn modular_label_init(label: &mut ModularControl, content: &LabelContent) {
             charging_color: color_parse_or_default(charging_color),
         }),
         LabelContent::Clock { format, timezone } => {
-            let tz: Option<Tz> = timezone.as_ref().map(|tz| {
-                tz.parse().unwrap_or_else(|_| {
-                    log::error!("Failed to parse timezone '{}'", &tz);
-                    label.set_fg_color(*FALLBACK_COLOR);
-                    Tz::UTC
-                })
-            });
+            let tz_str = match timezone {
+                Some(TimezoneDef::Idx(idx)) => {
+                    if let Some(tz) = app.session.config.timezones.get(*idx) {
+                        Some(tz.as_str())
+                    } else {
+                        log::error!("Timezone index out of range '{}'", idx);
+                        label.set_fg_color(*FALLBACK_COLOR);
+                        None
+                    }
+                }
+                Some(TimezoneDef::Str(tz_str)) => Some(tz_str.as_ref()),
+                None => None,
+            };
 
             Some(LabelData::Clock {
                 format: format.clone(),
-                timezone: tz,
+                timezone: tz_str.and_then(|tz| {
+                    tz.parse()
+                        .map_err(|_| {
+                            log::error!("Failed to parse timezone '{}'", &tz);
+                            label.set_fg_color(*FALLBACK_COLOR);
+                        })
+                        .ok()
+                }),
             })
+        }
+        LabelContent::Timezone { timezone } => {
+            if let Some(tz) = app.session.config.timezones.get(*timezone) {
+                let pretty_tz = tz.split('/').last().map(|x| x.replace("_", " "));
+
+                if let Some(pretty_tz) = pretty_tz {
+                    label.set_text(&pretty_tz);
+                    return;
+                } else {
+                    log::error!("Timezone name not valid '{}'", &tz);
+                }
+            } else {
+                log::error!("Timezone index out of range '{}'", &timezone);
+            }
+            label.set_fg_color(*FALLBACK_COLOR);
+            label.set_text("Error");
+            None
         }
         LabelContent::Timer { format } => Some(LabelData::Timer {
             format: format.clone(),

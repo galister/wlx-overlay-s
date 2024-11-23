@@ -189,7 +189,7 @@ pub fn modular_canvas(
                     corner_radius.unwrap_or_default(),
                     empty_str.clone(),
                 );
-                modular_label_init(label, data);
+                modular_label_init(label, data, state);
             }
             ModularElement::CenteredLabel {
                 rect: [x, y, w, h],
@@ -208,7 +208,7 @@ pub fn modular_canvas(
                     corner_radius.unwrap_or_default(),
                     empty_str.clone(),
                 );
-                modular_label_init(label, data);
+                modular_label_init(label, data, state);
             }
             ModularElement::Sprite {
                 rect: [x, y, w, h],
@@ -292,6 +292,7 @@ pub fn modular_canvas(
                             low_color: fg_color_low.clone(),
                             charging_color: fg_color_charging.clone(),
                         },
+                        state,
                     );
 
                     button_x += match layout {

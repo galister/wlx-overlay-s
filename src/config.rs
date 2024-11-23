@@ -1,3 +1,4 @@
+use std::i32;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -9,6 +10,7 @@ use crate::overlays::toast::DisplayMethod;
 use crate::overlays::toast::ToastTopic;
 use crate::state::LeftRight;
 use anyhow::bail;
+use chrono::Offset;
 use config::Config;
 use config::File;
 use glam::vec3a;
@@ -135,6 +137,19 @@ fn def_osc_port() -> u16 {
 
 fn def_empty_vec_string() -> Vec<String> {
     Vec::new()
+}
+
+fn def_timezones() -> Vec<String> {
+    let offset = chrono::Local::now().offset().fix();
+
+    const EMEA: i32 = -1;
+    const APAC: i32 = 60 * 60 * 5 - 1;
+
+    match offset.local_minus_utc() {
+        i32::MIN..EMEA => vec!["Europe/Paris".into(), "Asia/Tokyo".into()],
+        EMEA..APAC => vec!["America/New_York".into(), "Asia/Tokyo".into()],
+        APAC..=i32::MAX => vec!["Europe/Paris".into(), "America/New_York".into()],
+    }
 }
 
 fn def_screens() -> AStrSet {
@@ -290,6 +305,9 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_empty_vec_string")]
     pub alt_click_up: Vec<String>,
+
+    #[serde(default = "def_timezones")]
+    pub timezones: Vec<String>,
 }
 
 impl GeneralConfig {

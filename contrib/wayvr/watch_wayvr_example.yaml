@@ -131,7 +131,7 @@ elements:
     font_size: 24 # Use 18 for 12-hour time
     fg_color: "#8bd5ca"
     source: Clock
-    timezone: "Asia/Tokyo" # change TZ1 here
+    timezone: 0 # change TZ1 here
     format: "%H:%M" # 23:59
     #format: "%I:%M %p" # 11:59 PM
   - type: Label
@@ -139,8 +139,8 @@ elements:
     corner_radius: 4
     font_size: 14
     fg_color: "#8bd5ca"
-    source: Static
-    text: "Tokyo" # change TZ1 label here
+    source: Timezone
+    timezone: 0 # change TZ1 label here
 
   # alt clock 2
   - type: Label
@@ -149,7 +149,7 @@ elements:
     font_size: 24 # Use 18 for 12-hour time
     fg_color: "#b7bdf8"
     source: Clock
-    timezone: "America/Chicago" # change TZ2 here
+    timezone: 1 # change TZ2 here
     format: "%H:%M" # 23:59
     #format: "%I:%M %p" # 11:59 PM
   - type: Label
@@ -157,8 +157,8 @@ elements:
     corner_radius: 4
     font_size: 14
     fg_color: "#b7bdf8"
-    source: Static
-    text: "Chicago" # change TZ2 label here
+    source: Timezone
+    timezone: 1 # change TZ2 label here
 
   # batteries
   - type: BatteryList
