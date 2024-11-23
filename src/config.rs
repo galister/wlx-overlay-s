@@ -1,4 +1,3 @@
-use std::i32;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -142,8 +141,8 @@ fn def_empty_vec_string() -> Vec<String> {
 fn def_timezones() -> Vec<String> {
     let offset = chrono::Local::now().offset().fix();
 
-    const EMEA: i32 = -1;
-    const APAC: i32 = 60 * 60 * 5 - 1;
+    const EMEA: i32 = -60 * 60; // UTC-1
+    const APAC: i32 = 5 * 60 * 60; // UTC+5
 
     match offset.local_minus_utc() {
         i32::MIN..EMEA => vec!["Europe/Paris".into(), "Asia/Tokyo".into()],
