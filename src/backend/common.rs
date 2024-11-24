@@ -14,7 +14,7 @@ use crate::{
     hid::{get_keymap_wl, get_keymap_x11},
     overlays::{
         anchor::create_anchor,
-        keyboard::create_keyboard,
+        keyboard::{create_keyboard, KEYBOARD_NAME},
         screen::WlxClientAlias,
         watch::{create_watch, WATCH_NAME},
     },
@@ -115,7 +115,7 @@ where
         overlays.insert(watch.state.id.0, watch);
 
         let mut keyboard = create_keyboard(app, keymap)?;
-        keyboard.state.show_hide = true;
+        keyboard.state.show_hide = show_screens.arc_get(KEYBOARD_NAME);
         keyboard.state.want_visible = false;
         overlays.insert(keyboard.state.id.0, keyboard);
 

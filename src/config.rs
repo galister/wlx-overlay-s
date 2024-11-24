@@ -9,6 +9,7 @@ use crate::overlays::toast::DisplayMethod;
 use crate::overlays::toast::ToastTopic;
 use crate::state::LeftRight;
 use anyhow::bail;
+use chrono::Offset;
 use config::Config;
 use config::File;
 use glam::vec3a;
@@ -97,6 +98,10 @@ pub fn def_pw_tokens() -> PwTokenMap {
     AStrMap::new()
 }
 
+fn def_mouse_move_interval_ms() -> u32 {
+    10 // 100fps
+}
+
 fn def_click_freeze_time_ms() -> u32 {
     300
 }
@@ -131,6 +136,19 @@ fn def_osc_port() -> u16 {
 
 fn def_empty_vec_string() -> Vec<String> {
     Vec::new()
+}
+
+fn def_timezones() -> Vec<String> {
+    let offset = chrono::Local::now().offset().fix();
+
+    const EMEA: i32 = -60 * 60; // UTC-1
+    const APAC: i32 = 5 * 60 * 60; // UTC+5
+
+    match offset.local_minus_utc() {
+        i32::MIN..EMEA => vec!["Europe/Paris".into(), "Asia/Tokyo".into()],
+        EMEA..APAC => vec!["America/New_York".into(), "Asia/Tokyo".into()],
+        APAC..=i32::MAX => vec!["Europe/Paris".into(), "America/New_York".into()],
+    }
 }
 
 fn def_screens() -> AStrSet {
@@ -178,6 +196,9 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_click_freeze_time_ms")]
     pub click_freeze_time_ms: u32,
+
+    #[serde(default = "def_mouse_move_interval_ms")]
+    pub mouse_move_interval_ms: u32,
 
     #[serde(default = "def_true")]
     pub notifications_enabled: bool,
@@ -269,7 +290,7 @@ pub struct GeneralConfig {
     #[serde(default = "def_max_height")]
     pub screen_max_height: u16,
 
-    #[serde(default = "def_false")]
+    #[serde(default = "def_true")]
     pub screen_render_down: bool,
 
     #[serde(default = "def_point3")]
@@ -283,6 +304,9 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_empty_vec_string")]
     pub alt_click_up: Vec<String>,
+
+    #[serde(default = "def_timezones")]
+    pub timezones: Vec<String>,
 }
 
 impl GeneralConfig {

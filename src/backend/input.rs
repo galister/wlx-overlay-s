@@ -423,7 +423,7 @@ where
 
             if can_curve {
                 let cur = hovered.state.curvature.unwrap_or(0.0);
-                let new = (cur - scroll * 0.01).min(0.35);
+                let new = (cur - scroll * 0.01).min(0.5);
                 if new <= f32::EPSILON {
                     hovered.state.curvature = None;
                 } else {
