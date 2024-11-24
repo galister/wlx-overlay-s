@@ -102,14 +102,14 @@ impl OscSender {
 
             // soc is the battery level (set to device status.charge)
             let level = device.soc.unwrap_or(-1.0);
-            let mut parameter = "";
+            let parameter;
 
             match device.role {
-                TrackedDeviceRole::None =>      {}
+                TrackedDeviceRole::None =>      {parameter = String::from("")}
                 TrackedDeviceRole::Hmd =>       {
                     // XSOverlay style (float)
                     // this parameter doesn't exist, but it's a stepping stone for 0-1 values (i presume XSOverlay would use the full name headset and not the abbreviation hmd)
-                    parameter = "headset";
+                    parameter = String::from("headset");
 
                     // legacy OVR Toolkit style (int)
                     // according to their docs, OVR Toolkit is now supposed to use float 0-1.
@@ -121,43 +121,22 @@ impl OscSender {
                     )?;
 
                 }
-                TrackedDeviceRole::LeftHand =>  {parameter = "leftController"}
-                TrackedDeviceRole::RightHand => {parameter = "rightController"}
-                TrackedDeviceRole::Tracker =>   {
-                    //TODO: the String gets dropped i presume once this block exits (so parameter becomes a null ref)
-                    // get this working, we can remove the duplicated code for sending the parameter below
-                    //parameter = format!("tracker{tracker_idx}").as_str();
-                    //            ^^^^^^ "temporary value dropped" ^^^^^
-
-                    parameter = "tracker";
-                    tracker_idx += 1;
-                }
+                TrackedDeviceRole::LeftHand =>  {parameter = String::from("leftController")}
+                TrackedDeviceRole::RightHand => {parameter = String::from("rightController")}
+                TrackedDeviceRole::Tracker =>   {parameter = format!("tracker{tracker_idx}"); tracker_idx += 1;}
             }
 
-            // send level parameter
+            // send battery parameters
             if !parameter.is_empty() {
-                //TODO: figure out how to put the number in the string in the TrackedDeviceRole section above where we set the parameters
-                if parameter == "tracker" {
-                    self.send_message(
-                        format!("/avatar/parameters/tracker{tracker_idx}Battery").into(),
-                                    vec![OscType::Float(level)],
-                    )?;
-                    self.send_message(
-                        format!("/avatar/parameters/tracker{tracker_idx}Charging").into(),
-                                    vec![OscType::Bool(device.charging)],
-                    )?;
-                }
 
-                else {
-                    self.send_message(
-                        format!("/avatar/parameters/{parameter}Battery").into(),
-                                    vec![OscType::Float(level)],
-                    )?;
-                    self.send_message(
-                        format!("/avatar/parameters/{parameter}Charging").into(),
-                                    vec![OscType::Bool(device.charging)],
-                    )?;
-                }
+                self.send_message(
+                    format!("/avatar/parameters/{parameter}Battery").into(),
+                                vec![OscType::Float(level)],
+                )?;
+                self.send_message(
+                    format!("/avatar/parameters/{parameter}Charging").into(),
+                                vec![OscType::Bool(device.charging)],
+                )?;
             }
         }
         
