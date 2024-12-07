@@ -147,7 +147,9 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         stage_offset: Affine3A::IDENTITY,
     };
 
-    let mut skybox = if environment_blend_mode == xr::EnvironmentBlendMode::OPAQUE {
+    let mut skybox = if environment_blend_mode == xr::EnvironmentBlendMode::OPAQUE
+        || !app_state.session.config.use_passthrough
+    {
         create_skybox(&xr_state, &app_state)
     } else {
         None
@@ -222,7 +224,9 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                         if main_session_visible {
                             log::debug!("Destroying skybox.");
                             skybox = None;
-                        } else if environment_blend_mode == xr::EnvironmentBlendMode::OPAQUE {
+                        } else if environment_blend_mode == xr::EnvironmentBlendMode::OPAQUE
+                            || !app_state.session.config.use_passthrough
+                        {
                             log::debug!("Allocating skybox.");
                             skybox = create_skybox(&xr_state, &app_state);
                         }
