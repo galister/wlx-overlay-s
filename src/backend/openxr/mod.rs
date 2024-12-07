@@ -66,20 +66,22 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         }
     };
 
+    let mut app_state = {
+        let graphics = WlxGraphics::new_openxr(xr_instance.clone(), system)?;
+        AppState::from_graphics(graphics)?
+    };
+
     let environment_blend_mode = {
         let modes = xr_instance.enumerate_environment_blend_modes(system, VIEW_TYPE)?;
-        if modes.contains(&xr::EnvironmentBlendMode::ALPHA_BLEND) {
+        if modes.contains(&xr::EnvironmentBlendMode::ALPHA_BLEND)
+            && app_state.session.config.use_passthrough
+        {
             xr::EnvironmentBlendMode::ALPHA_BLEND
         } else {
             modes[0]
         }
     };
     log::info!("Using environment blend mode: {:?}", environment_blend_mode);
-
-    let mut app_state = {
-        let graphics = WlxGraphics::new_openxr(xr_instance.clone(), system)?;
-        AppState::from_graphics(graphics)?
-    };
 
     if show_by_default {
         app_state.tasks.enqueue_at(
@@ -147,9 +149,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         stage_offset: Affine3A::IDENTITY,
     };
 
-    let mut skybox = if environment_blend_mode == xr::EnvironmentBlendMode::OPAQUE
-        || !app_state.session.config.use_passthrough
-    {
+    let mut skybox = if environment_blend_mode == xr::EnvironmentBlendMode::OPAQUE {
         create_skybox(&xr_state, &app_state)
     } else {
         None
@@ -224,9 +224,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                         if main_session_visible {
                             log::debug!("Destroying skybox.");
                             skybox = None;
-                        } else if environment_blend_mode == xr::EnvironmentBlendMode::OPAQUE
-                            || !app_state.session.config.use_passthrough
-                        {
+                        } else if environment_blend_mode == xr::EnvironmentBlendMode::OPAQUE {
                             log::debug!("Allocating skybox.");
                             skybox = create_skybox(&xr_state, &app_state);
                         }
