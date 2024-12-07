@@ -287,6 +287,9 @@ pub struct GeneralConfig {
     #[serde(default = "def_true")]
     pub use_skybox: bool,
 
+    #[serde(default = "def_true")]
+    pub use_passthrough: bool,
+
     #[serde(default = "def_max_height")]
     pub screen_max_height: u16,
 
