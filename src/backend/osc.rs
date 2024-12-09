@@ -126,8 +126,8 @@ impl OscSender {
                     TrackedDeviceRole::LeftHand =>  {"leftController"}
                     TrackedDeviceRole::RightHand => {"rightController"}
                     TrackedDeviceRole::Tracker =>   {
-                        tracker_idx += 1;
                         tracker_param = format!("tracker{tracker_idx}");
+                        tracker_idx += 1;
                         tracker_param.as_str()
                     }
                 };
