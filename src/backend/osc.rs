@@ -106,32 +106,31 @@ impl OscSender {
             let mut tracker_idx = 0;
 
             for device in &app.input_state.devices {
+                let tracker_param;
 
                 // soc is the battery level (set to device status.charge)
                 let level = device.soc.unwrap_or(-1.0);
-                let parameter;
-
-                match device.role {
-                    TrackedDeviceRole::None =>      {parameter = String::from("")}
+                let parameter = match device.role {
+                    TrackedDeviceRole::None =>      {""}
                     TrackedDeviceRole::Hmd =>       {
-                        // XSOverlay style (float)
-                        // this parameter doesn't exist, but it's a stepping stone for 0-1 values (i presume XSOverlay would use the full name headset and not the abbreviation hmd)
-                        parameter = String::from("headset");
-
                         // legacy OVR Toolkit style (int)
-                        // according to their docs, OVR Toolkit is now supposed to use float 0-1.
-                        // as of 20 Nov 2024 they still use int 0-100, but this may change in a future update.
-                        //TODO: remove once their implementation matches the docs
+                        // as of 20 Nov 2024 OVR Toolkit uses int 0-100, but this may change in a future update.
+                        //TODO: update this once their implementation matches their docs
                         self.send_message(
                             "/avatar/parameters/hmdBattery".into(),
                                         vec![OscType::Int((level * 100.0f32).round() as i32)],
                         )?;
 
+                        "headset"
                     }
-                    TrackedDeviceRole::LeftHand =>  {parameter = String::from("leftController")}
-                    TrackedDeviceRole::RightHand => {parameter = String::from("rightController")}
-                    TrackedDeviceRole::Tracker =>   {parameter = format!("tracker{tracker_idx}"); tracker_idx += 1;}
-                }
+                    TrackedDeviceRole::LeftHand =>  {"leftController"}
+                    TrackedDeviceRole::RightHand => {"rightController"}
+                    TrackedDeviceRole::Tracker =>   {
+                        tracker_idx += 1;
+                        tracker_param = format!("tracker{tracker_idx}");
+                        tracker_param.as_str()
+                    }
+                };
 
                 // send battery parameters
                 if !parameter.is_empty() {
