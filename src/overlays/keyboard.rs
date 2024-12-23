@@ -57,7 +57,7 @@ fn set_modifiers(app: &mut AppState, mods: u8) {
 
 pub fn create_keyboard<O>(
     app: &AppState,
-    keymap: Option<XkbKeymap>,
+    mut keymap: Option<XkbKeymap>,
 ) -> anyhow::Result<OverlayData<O>>
 where
     O: Default,
@@ -96,6 +96,10 @@ where
     canvas.bg_color = color_parse("#1e2030").unwrap(); //safe
 
     let has_altgr = keymap.as_ref().map_or(false, |k| k.has_altgr());
+
+    if !LAYOUT.auto_labels.unwrap_or(true) {
+        keymap = None;
+    }
 
     let unit_size = size.x / LAYOUT.row_size;
     let h = unit_size - 2. * BUTTON_PADDING;
@@ -388,6 +392,7 @@ pub struct Layout {
     exec_commands: HashMap<String, Vec<String>>,
     macros: HashMap<String, Vec<String>>,
     labels: HashMap<String, Vec<String>>,
+    auto_labels: Option<bool>,
 }
 
 impl Layout {
