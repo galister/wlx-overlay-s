@@ -6,9 +6,11 @@ mod egl_ex;
 mod event_queue;
 mod handle;
 mod process;
+mod server_ipc;
 mod smithay_wrapper;
 mod time;
 mod window;
+mod wlx_server_ipc;
 
 use std::{cell::RefCell, collections::HashSet, rc::Rc};
 
@@ -16,6 +18,7 @@ use comp::Application;
 use display::DisplayVec;
 use event_queue::SyncEventQueue;
 use process::ProcessVec;
+use server_ipc::WayVRServer;
 use smallvec::SmallVec;
 use smithay::{
     backend::renderer::gles::GlesRenderer,
@@ -88,6 +91,8 @@ pub struct WayVR {
     egl_data: Rc<egl_data::EGLData>,
     pub processes: process::ProcessVec,
     config: Config,
+
+    ipc_server: WayVRServer,
 
     tasks: SyncEventQueue<WayVRTask>,
     pub signals: SyncEventQueue<WayVRSignal>,
@@ -163,6 +168,8 @@ impl WayVR {
         let smithay_context = smithay_wrapper::get_egl_context(&egl_data, &smithay_display)?;
         let gles_renderer = unsafe { GlesRenderer::new(smithay_context)? };
 
+        let ipc_server = WayVRServer::new()?;
+
         Ok(Self {
             gles_renderer,
             time_start,
@@ -174,6 +181,7 @@ impl WayVR {
             signals: SyncEventQueue::new(),
             tasks,
             config,
+            ipc_server,
         })
     }
 
@@ -204,6 +212,8 @@ impl WayVR {
 
     pub fn tick_events(&mut self) -> anyhow::Result<Vec<TickResult>> {
         let mut res: Vec<TickResult> = Vec::new();
+
+        self.ipc_server.tick()?;
 
         // Check for redraw events
         self.displays.iter_mut(&mut |_, disp| {
