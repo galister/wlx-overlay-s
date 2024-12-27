@@ -214,62 +214,65 @@ pub fn tick_events<O>(app: &mut AppState, overlays: &mut OverlayContainer<O>) ->
 where
     O: Default,
 {
-    if let Some(r_wayvr) = app.wayvr.clone() {
-        let mut wayvr = r_wayvr.borrow_mut();
-        while let Some(signal) = wayvr.state.signals.read() {
-            match signal {
-                wayvr::WayVRSignal::DisplayHideRequest(display_handle) => {
-                    if let Some(overlay_id) = wayvr.display_handle_map.get(&display_handle) {
-                        let overlay_id = *overlay_id;
-                        wayvr.state.set_display_visible(display_handle, false);
-                        app.tasks.enqueue(TaskType::Overlay(
-                            OverlaySelector::Id(overlay_id),
-                            Box::new(move |_app, o| {
-                                o.want_visible = false;
-                            }),
-                        ));
-                    }
+    let Some(r_wayvr) = app.wayvr.clone() else {
+        return Ok(());
+    };
+
+    let mut wayvr = r_wayvr.borrow_mut();
+
+    while let Some(signal) = wayvr.state.signals.read() {
+        match signal {
+            wayvr::WayVRSignal::DisplayHideRequest(display_handle) => {
+                if let Some(overlay_id) = wayvr.display_handle_map.get(&display_handle) {
+                    let overlay_id = *overlay_id;
+                    wayvr.state.set_display_visible(display_handle, false);
+                    app.tasks.enqueue(TaskType::Overlay(
+                        OverlaySelector::Id(overlay_id),
+                        Box::new(move |_app, o| {
+                            o.want_visible = false;
+                        }),
+                    ));
                 }
             }
         }
+    }
 
-        let res = wayvr.state.tick_events()?;
-        drop(wayvr);
+    let res = wayvr.state.tick_events()?;
+    drop(wayvr);
 
-        for result in res {
-            match result {
-                wayvr::TickResult::NewExternalProcess(req) => {
-                    let config = &app.session.wayvr_config;
+    for result in res {
+        match result {
+            wayvr::TickResult::NewExternalProcess(req) => {
+                let config = &app.session.wayvr_config;
 
-                    let disp_name = if let Some(display_name) = req.env.display_name {
-                        config
-                            .get_display(display_name.as_str())
-                            .map(|_| display_name)
-                    } else {
-                        config
-                            .get_default_display()
-                            .map(|(display_name, _)| display_name)
-                    };
+                let disp_name = if let Some(display_name) = req.env.display_name {
+                    config
+                        .get_display(display_name.as_str())
+                        .map(|_| display_name)
+                } else {
+                    config
+                        .get_default_display()
+                        .map(|(display_name, _)| display_name)
+                };
 
-                    if let Some(disp_name) = disp_name {
-                        let mut wayvr = r_wayvr.borrow_mut();
+                if let Some(disp_name) = disp_name {
+                    let mut wayvr = r_wayvr.borrow_mut();
 
-                        log::info!("Registering external process with PID {}", req.pid);
+                    log::info!("Registering external process with PID {}", req.pid);
 
-                        let (disp_handle, created_overlay) =
-                            get_or_create_display::<O>(app, &mut wayvr, &disp_name)?;
+                    let (disp_handle, created_overlay) =
+                        get_or_create_display::<O>(app, &mut wayvr, &disp_name)?;
 
-                        wayvr.state.add_external_process(disp_handle, req.pid);
+                    wayvr.state.add_external_process(disp_handle, req.pid);
 
-                        wayvr.state.manager.add_client(wayvr::client::WayVRClient {
-                            client: req.client,
-                            display_handle: disp_handle,
-                            pid: req.pid,
-                        });
+                    wayvr.state.manager.add_client(wayvr::client::WayVRClient {
+                        client: req.client,
+                        display_handle: disp_handle,
+                        pid: req.pid,
+                    });
 
-                        if let Some(created_overlay) = created_overlay {
-                            overlays.add(created_overlay);
-                        }
+                    if let Some(created_overlay) = created_overlay {
+                        overlays.add(created_overlay);
                     }
                 }
             }
