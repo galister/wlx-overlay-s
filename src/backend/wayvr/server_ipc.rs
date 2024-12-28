@@ -6,7 +6,7 @@ use std::io::{Read, Write};
 use crate::backend::wayvr::wlx_server_ipc::ipc::{self, binary_decode};
 
 use super::{
-    display,
+    display, process,
     wlx_server_ipc::{
         ipc::{binary_encode, Serial},
         packet_client::PacketClient,
@@ -69,6 +69,7 @@ fn read_payload(conn: &mut local_socket::Stream, size: u32) -> Option<Payload> {
 
 pub struct TickParams<'a> {
     pub displays: &'a super::display::DisplayVec,
+    pub processes: &'a mut super::process::ProcessVec,
 }
 
 impl Connection {
@@ -152,7 +153,55 @@ impl Connection {
         Ok(())
     }
 
-    fn process_payload(&mut self, params: &TickParams, payload: Payload) -> anyhow::Result<()> {
+    fn process_list_processes(
+        &mut self,
+        params: &TickParams,
+        serial: Serial,
+    ) -> anyhow::Result<()> {
+        let list: Vec<packet_server::Process> = params
+            .processes
+            .vec
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, opt_cell)| {
+                let Some(cell) = opt_cell else {
+                    return None;
+                };
+                let process = &cell.obj;
+                Some(process.to_packet(process::ProcessHandle::new(idx as u32, cell.generation)))
+            })
+            .collect();
+
+        send_packet(
+            &mut self.conn,
+            &binary_encode(&PacketServer::ListProcessesResponse(
+                serial,
+                packet_server::ProcessList { list },
+            )),
+        )?;
+
+        Ok(())
+    }
+
+    // This request doesn't return anything to the client
+    fn process_terminate_process(
+        &mut self,
+        params: &mut TickParams,
+        process_handle: packet_server::ProcessHandle,
+    ) -> anyhow::Result<()> {
+        let native_handle = &process::ProcessHandle::from_packet(process_handle.clone());
+        let process = params.processes.get_mut(native_handle);
+
+        let Some(process) = process else {
+            return Ok(());
+        };
+
+        process.terminate();
+
+        Ok(())
+    }
+
+    fn process_payload(&mut self, params: &mut TickParams, payload: Payload) -> anyhow::Result<()> {
         if self.handshaking {
             self.process_handshake(payload)?;
             return Ok(());
@@ -166,12 +215,18 @@ impl Connection {
             PacketClient::GetDisplay(serial, display_handle) => {
                 self.process_get_display(params, serial, display_handle)?;
             }
+            PacketClient::ListProcesses(serial) => {
+                self.process_list_processes(params, serial)?;
+            }
+            PacketClient::TerminateProcess(process_handle) => {
+                self.process_terminate_process(params, process_handle)?;
+            }
         }
 
         Ok(())
     }
 
-    fn process_check_payload(&mut self, params: &TickParams, payload: Payload) -> bool {
+    fn process_check_payload(&mut self, params: &mut TickParams, payload: Payload) -> bool {
         log::debug!("payload size {}", payload.len());
 
         if let Err(e) = self.process_payload(params, payload) {
@@ -183,7 +238,7 @@ impl Connection {
         }
     }
 
-    fn read_packet(&mut self, params: &TickParams) -> bool {
+    fn read_packet(&mut self, params: &mut TickParams) -> bool {
         if let Some(payload_size) = self.next_packet {
             let Some(payload) = read_payload(&mut self.conn, payload_size) else {
                 // still failed to read payload, try in next tick
@@ -229,7 +284,7 @@ impl Connection {
         true
     }
 
-    fn tick(&mut self, params: &TickParams) {
+    fn tick(&mut self, params: &mut TickParams) {
         while self.read_packet(params) {}
     }
 }
@@ -273,7 +328,7 @@ impl WayVRServer {
         self.connections.push(Connection::new(conn));
     }
 
-    fn tick_connections(&mut self, params: &TickParams) {
+    fn tick_connections(&mut self, params: &mut TickParams) {
         for c in &mut self.connections {
             c.tick(params);
         }
@@ -282,7 +337,7 @@ impl WayVRServer {
         self.connections.retain(|c| c.alive);
     }
 
-    pub fn tick(&mut self, params: &TickParams) -> anyhow::Result<()> {
+    pub fn tick(&mut self, params: &mut TickParams) -> anyhow::Result<()> {
         self.accept_connections();
         self.tick_connections(params);
         Ok(())

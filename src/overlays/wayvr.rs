@@ -518,7 +518,7 @@ where
                 .state
                 .spawn_process(disp_handle, &app_entry.exec, &args_vec, &env_vec)?;
 
-            show_display(&mut wayvr, overlays, &app_entry.target_display.as_str());
+            show_display(&mut wayvr, overlays, app_entry.target_display.as_str());
         }
         Ok(created_overlay)
     } else {
@@ -538,23 +538,31 @@ where
     let wayvr = app.get_wayvr()?;
     let mut wayvr = wayvr.borrow_mut();
 
-    if let Some(handle) = WayVR::get_display_by_name(&wayvr.state.displays, display_name) {
-        if let Some(display) = wayvr.state.displays.get_mut(&handle) {
-            if let Some(overlay_id) = display.overlay_id {
-                if let Some(overlay) = overlays.mut_by_id(overlay_id) {
-                    match action {
-                        WayVRDisplayClickAction::ToggleVisibility => {
-                            // Toggle visibility
-                            overlay.state.want_visible = !overlay.state.want_visible;
-                        }
-                        WayVRDisplayClickAction::Reset => {
-                            // Show it at the front
-                            overlay.state.want_visible = true;
-                            overlay.state.reset(app, true);
-                        }
-                    }
-                }
-            }
+    let Some(handle) = WayVR::get_display_by_name(&wayvr.state.displays, display_name) else {
+        return Ok(());
+    };
+
+    let Some(display) = wayvr.state.displays.get_mut(&handle) else {
+        return Ok(());
+    };
+
+    let Some(overlay_id) = display.overlay_id else {
+        return Ok(());
+    };
+
+    let Some(overlay) = overlays.mut_by_id(overlay_id) else {
+        return Ok(());
+    };
+
+    match action {
+        WayVRDisplayClickAction::ToggleVisibility => {
+            // Toggle visibility
+            overlay.state.want_visible = !overlay.state.want_visible;
+        }
+        WayVRDisplayClickAction::Reset => {
+            // Show it at the front
+            overlay.state.want_visible = true;
+            overlay.state.reset(app, true);
         }
     }
 
