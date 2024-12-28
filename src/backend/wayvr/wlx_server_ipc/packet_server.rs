@@ -4,28 +4,28 @@ use serde::{Deserialize, Serialize};
 
 use super::ipc::Serial;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DisplayHandle {
-	pub idx: u64,
-	pub generation: u64,
+    pub idx: u32,
+    pub generation: u64,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Display {
-	pub width: u32,
-	pub height: u32,
-	pub name: String,
-	pub visible: bool,
-	pub handle: DisplayHandle,
+    pub width: u32,
+    pub height: u32,
+    pub name: String,
+    pub visible: bool,
+    pub handle: DisplayHandle,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DisplayList {
-	pub list: Vec<Display>,
+    pub list: Vec<Display>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum PacketServer {
-	ListDisplaysResponse(Serial, DisplayList),
-	GetDisplayResponse(Serial, Option<Display>),
+    ListDisplaysResponse(Serial, DisplayList),
+    GetDisplayResponse(Serial, Option<Display>),
 }

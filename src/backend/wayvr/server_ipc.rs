@@ -1,14 +1,38 @@
+use bytes::BufMut;
 use interprocess::local_socket::{self, traits::Listener, ToNsName};
 use smallvec::SmallVec;
-use std::io::Read;
+use std::io::{Read, Write};
 
-use crate::backend::wayvr::wlx_server_ipc::ipc;
+use crate::backend::wayvr::wlx_server_ipc::ipc::{self, binary_decode};
+
+use super::{
+    display,
+    wlx_server_ipc::{
+        ipc::{binary_encode, Serial},
+        packet_client::PacketClient,
+        packet_server::{self, PacketServer},
+    },
+};
 
 pub struct Connection {
     alive: bool,
     conn: local_socket::Stream,
-    next_packet_size: Option<u32>,
+    next_packet: Option<u32>,
     handshaking: bool,
+}
+
+pub fn send_packet(conn: &mut local_socket::Stream, data: &[u8]) -> anyhow::Result<()> {
+    let mut bytes = bytes::BytesMut::new();
+
+    // packet size
+    bytes.put_u32(data.len() as u32);
+
+    // packet data
+    bytes.put_slice(data);
+
+    conn.write_all(&bytes)?;
+
+    Ok(())
 }
 
 fn read_check(expected_size: u32, res: std::io::Result<usize>) -> bool {
@@ -24,8 +48,8 @@ fn read_check(expected_size: u32, res: std::io::Result<usize>) -> bool {
                 true // read succeeded
             }
         }
-        Err(e) => {
-            log::error!("failed to get packet size: {}", e);
+        Err(_e) => {
+            //log::error!("failed to get packet size: {}", e);
             false
         }
     }
@@ -43,13 +67,17 @@ fn read_payload(conn: &mut local_socket::Stream, size: u32) -> Option<Payload> {
     }
 }
 
+pub struct TickParams<'a> {
+    pub displays: &'a super::display::DisplayVec,
+}
+
 impl Connection {
     fn new(conn: local_socket::Stream) -> Self {
         Self {
             conn,
             alive: true,
             handshaking: true,
-            next_packet_size: None,
+            next_packet: None,
         }
     }
 
@@ -57,71 +85,152 @@ impl Connection {
         self.alive = false;
     }
 
-    fn process_payload(&mut self, payload: Payload) {
+    fn process_handshake(&mut self, payload: Payload) -> anyhow::Result<()> {
+        let Ok(handshake) = binary_decode::<ipc::Handshake>(&payload) else {
+            anyhow::bail!("Invalid handshake");
+        };
+
+        if handshake.protocol_version != ipc::PROTOCOL_VERSION {
+            anyhow::bail!(
+                "Unsupported protocol version {}",
+                handshake.protocol_version
+            );
+        }
+
+        if handshake.magic != ipc::CONNECTION_MAGIC {
+            anyhow::bail!("Invalid magic");
+        }
+
+        log::info!("Accepted new connection");
+        self.handshaking = false;
+        Ok(())
+    }
+
+    fn process_list_displays(&mut self, params: &TickParams, serial: Serial) -> anyhow::Result<()> {
+        let list: Vec<packet_server::Display> = params
+            .displays
+            .vec
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, opt_cell)| {
+                let Some(cell) = opt_cell else {
+                    return None;
+                };
+                let display = &cell.obj;
+                Some(display.to_packet(display::DisplayHandle::new(idx as u32, cell.generation)))
+            })
+            .collect();
+
+        send_packet(
+            &mut self.conn,
+            &binary_encode(&PacketServer::ListDisplaysResponse(
+                serial,
+                packet_server::DisplayList { list },
+            )),
+        )?;
+
+        Ok(())
+    }
+
+    fn process_get_display(
+        &mut self,
+        params: &TickParams,
+        serial: Serial,
+        display_handle: packet_server::DisplayHandle,
+    ) -> anyhow::Result<()> {
+        let native_handle = &display::DisplayHandle::from_packet(display_handle.clone());
+        let disp = params
+            .displays
+            .get(native_handle)
+            .map(|disp| disp.to_packet(*native_handle));
+
+        send_packet(
+            &mut self.conn,
+            &binary_encode(&PacketServer::GetDisplayResponse(serial, disp)),
+        )?;
+
+        Ok(())
+    }
+
+    fn process_payload(&mut self, params: &TickParams, payload: Payload) -> anyhow::Result<()> {
         if self.handshaking {
-            let handshake: ipc::Handshake = match postcard::from_bytes(&payload) {
-                Ok(o) => o,
-                Err(e) => {
-                    log::error!("Invalid packet: {}", e);
-                    self.kill();
-                    return;
-                }
-            };
+            self.process_handshake(payload)?;
+            return Ok(());
+        }
 
-            if handshake.protocol_version != ipc::PROTOCOL_VERSION {
-                log::error!(
-                    "Unsupported protocol version {}",
-                    handshake.protocol_version
-                );
-                self.kill();
+        let packet: PacketClient = binary_decode(&payload)?;
+        match packet {
+            PacketClient::ListDisplays(serial) => {
+                self.process_list_displays(params, serial)?;
             }
-
-            if handshake.magic != ipc::CONNECTION_MAGIC {
-                log::error!("Invalid magic");
-                self.kill();
+            PacketClient::GetDisplay(serial, display_handle) => {
+                self.process_get_display(params, serial, display_handle)?;
             }
+        }
 
-            log::info!("Accepted new connection");
-            self.handshaking = false;
+        Ok(())
+    }
+
+    fn process_check_payload(&mut self, params: &TickParams, payload: Payload) -> bool {
+        log::debug!("payload size {}", payload.len());
+
+        if let Err(e) = self.process_payload(params, payload) {
+            log::error!("Invalid payload from the client, closing connection: {}", e);
+            self.kill();
+            false
+        } else {
+            true
         }
     }
 
-    fn read_packet(&mut self) -> bool {
-        if let Some(next_packet_size) = self.next_packet_size {
-            let Some(payload) = read_payload(&mut self.conn, next_packet_size) else {
+    fn read_packet(&mut self, params: &TickParams) -> bool {
+        if let Some(payload_size) = self.next_packet {
+            let Some(payload) = read_payload(&mut self.conn, payload_size) else {
                 // still failed to read payload, try in next tick
                 return false;
             };
 
-            self.process_payload(payload);
-            self.next_packet_size = None;
+            if !self.process_check_payload(params, payload) {
+                return false;
+            }
+
+            self.next_packet = None;
         }
 
-        let mut buf_packet_size: [u8; 4] = [0; 4];
-        if !read_check(4, self.conn.read(&mut buf_packet_size)) {
+        let mut buf_packet_header: [u8; 4] = [0; 4];
+        if !read_check(4, self.conn.read(&mut buf_packet_header)) {
             return false;
         }
 
-        let packet_size = u32::from_be_bytes(buf_packet_size);
+        let payload_size = u32::from_be_bytes(buf_packet_header[0..4].try_into().unwrap()); // 0-3 bytes (u32 size)
 
-        if packet_size > 128 * 1024 {
+        let size_limit: u32 = 128 * 1024;
+
+        if payload_size > size_limit {
             // over 128 KiB?
+            log::error!(
+                "Client sent a packet header with the size over {} bytes, closing connection.",
+                size_limit
+            );
             self.kill();
             return false;
         }
 
-        let Some(payload) = read_payload(&mut self.conn, packet_size) else {
+        let Some(payload) = read_payload(&mut self.conn, payload_size) else {
             // failed to read payload, try in next tick
-            self.next_packet_size = Some(packet_size);
+            self.next_packet = Some(payload_size);
             return false;
         };
 
-        self.process_payload(payload);
+        if !self.process_check_payload(params, payload) {
+            return false;
+        }
+
         true
     }
 
-    fn tick(&mut self) {
-        while self.read_packet() {}
+    fn tick(&mut self, params: &TickParams) {
+        while self.read_packet(params) {}
     }
 }
 
@@ -164,18 +273,18 @@ impl WayVRServer {
         self.connections.push(Connection::new(conn));
     }
 
-    fn tick_connections(&mut self) {
+    fn tick_connections(&mut self, params: &TickParams) {
         for c in &mut self.connections {
-            c.tick();
+            c.tick(params);
         }
 
         // remove killed connections
         self.connections.retain(|c| c.alive);
     }
 
-    pub fn tick(&mut self) -> anyhow::Result<()> {
+    pub fn tick(&mut self, params: &TickParams) -> anyhow::Result<()> {
         self.accept_connections();
-        self.tick_connections();
+        self.tick_connections(params);
         Ok(())
     }
 }

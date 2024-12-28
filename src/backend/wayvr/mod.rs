@@ -213,7 +213,9 @@ impl WayVR {
     pub fn tick_events(&mut self) -> anyhow::Result<Vec<TickResult>> {
         let mut res: Vec<TickResult> = Vec::new();
 
-        self.ipc_server.tick()?;
+        self.ipc_server.tick(&server_ipc::TickParams {
+            displays: &self.displays,
+        })?;
 
         // Check for redraw events
         self.displays.iter_mut(&mut |_, disp| {
