@@ -1,17 +1,12 @@
+use super::{display, process};
 use bytes::BufMut;
 use interprocess::local_socket::{self, traits::Listener, ToNsName};
 use smallvec::SmallVec;
 use std::io::{Read, Write};
-
-use crate::backend::wayvr::wlx_server_ipc::ipc::{self, binary_decode};
-
-use super::{
-    display, process,
-    wlx_server_ipc::{
-        ipc::{binary_encode, Serial},
-        packet_client::PacketClient,
-        packet_server::{self, PacketServer},
-    },
+use wayvr_ipc::{
+    ipc::{self, binary_decode, binary_encode},
+    packet_client::PacketClient,
+    packet_server::{self, PacketServer},
 };
 
 pub struct Connection {
@@ -107,7 +102,11 @@ impl Connection {
         Ok(())
     }
 
-    fn handle_display_list(&mut self, params: &TickParams, serial: Serial) -> anyhow::Result<()> {
+    fn handle_display_list(
+        &mut self,
+        params: &TickParams,
+        serial: ipc::Serial,
+    ) -> anyhow::Result<()> {
         let list: Vec<packet_server::Display> = params
             .displays
             .vec
@@ -118,7 +117,7 @@ impl Connection {
                     return None;
                 };
                 let display = &cell.obj;
-                Some(display.to_packet(display::DisplayHandle::new(idx as u32, cell.generation)))
+                Some(display.as_packet(display::DisplayHandle::new(idx as u32, cell.generation)))
             })
             .collect();
 
@@ -136,14 +135,14 @@ impl Connection {
     fn handle_process_get(
         &mut self,
         params: &TickParams,
-        serial: Serial,
+        serial: ipc::Serial,
         display_handle: packet_server::DisplayHandle,
     ) -> anyhow::Result<()> {
         let native_handle = &display::DisplayHandle::from_packet(display_handle.clone());
         let disp = params
             .displays
             .get(native_handle)
-            .map(|disp| disp.to_packet(*native_handle));
+            .map(|disp| disp.as_packet(*native_handle));
 
         send_packet(
             &mut self.conn,
@@ -153,7 +152,11 @@ impl Connection {
         Ok(())
     }
 
-    fn handle_process_list(&mut self, params: &TickParams, serial: Serial) -> anyhow::Result<()> {
+    fn handle_process_list(
+        &mut self,
+        params: &TickParams,
+        serial: ipc::Serial,
+    ) -> anyhow::Result<()> {
         let list: Vec<packet_server::Process> = params
             .processes
             .vec
@@ -298,7 +301,7 @@ pub struct WayVRServer {
 
 impl WayVRServer {
     pub fn new() -> anyhow::Result<Self> {
-        let printname = "/tmp/wlx_dashboard_ipc.sock";
+        let printname = "/tmp/wayvr_ipc.sock";
         let name = printname.to_ns_name::<local_socket::GenericNamespaced>()?;
         let opts = local_socket::ListenerOptions::new()
             .name(name)
