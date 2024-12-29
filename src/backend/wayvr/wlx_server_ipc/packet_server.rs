@@ -44,17 +44,17 @@ pub struct ProcessList {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum PacketServer {
-    ListDisplaysResponse(Serial, DisplayList),
-    GetDisplayResponse(Serial, Option<Display>),
-    ListProcessesResponse(Serial, ProcessList),
+    DisplayListResponse(Serial, DisplayList),
+    DisplayGetResponse(Serial, Option<Display>),
+    ProcessListResponse(Serial, ProcessList),
 }
 
 impl PacketServer {
     pub fn serial(&self) -> Option<&Serial> {
         match self {
-            PacketServer::ListDisplaysResponse(serial, _) => Some(serial),
-            PacketServer::GetDisplayResponse(serial, _) => Some(serial),
-            PacketServer::ListProcessesResponse(serial, _) => Some(serial),
+            PacketServer::DisplayListResponse(serial, _) => Some(serial),
+            PacketServer::DisplayGetResponse(serial, _) => Some(serial),
+            PacketServer::ProcessListResponse(serial, _) => Some(serial),
         }
     }
 }

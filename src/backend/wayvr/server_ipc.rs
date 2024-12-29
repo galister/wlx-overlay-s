@@ -107,7 +107,7 @@ impl Connection {
         Ok(())
     }
 
-    fn process_list_displays(&mut self, params: &TickParams, serial: Serial) -> anyhow::Result<()> {
+    fn handle_display_list(&mut self, params: &TickParams, serial: Serial) -> anyhow::Result<()> {
         let list: Vec<packet_server::Display> = params
             .displays
             .vec
@@ -124,7 +124,7 @@ impl Connection {
 
         send_packet(
             &mut self.conn,
-            &binary_encode(&PacketServer::ListDisplaysResponse(
+            &binary_encode(&PacketServer::DisplayListResponse(
                 serial,
                 packet_server::DisplayList { list },
             )),
@@ -133,7 +133,7 @@ impl Connection {
         Ok(())
     }
 
-    fn process_get_display(
+    fn handle_process_get(
         &mut self,
         params: &TickParams,
         serial: Serial,
@@ -147,17 +147,13 @@ impl Connection {
 
         send_packet(
             &mut self.conn,
-            &binary_encode(&PacketServer::GetDisplayResponse(serial, disp)),
+            &binary_encode(&PacketServer::DisplayGetResponse(serial, disp)),
         )?;
 
         Ok(())
     }
 
-    fn process_list_processes(
-        &mut self,
-        params: &TickParams,
-        serial: Serial,
-    ) -> anyhow::Result<()> {
+    fn handle_process_list(&mut self, params: &TickParams, serial: Serial) -> anyhow::Result<()> {
         let list: Vec<packet_server::Process> = params
             .processes
             .vec
@@ -174,7 +170,7 @@ impl Connection {
 
         send_packet(
             &mut self.conn,
-            &binary_encode(&PacketServer::ListProcessesResponse(
+            &binary_encode(&PacketServer::ProcessListResponse(
                 serial,
                 packet_server::ProcessList { list },
             )),
@@ -184,7 +180,7 @@ impl Connection {
     }
 
     // This request doesn't return anything to the client
-    fn process_terminate_process(
+    fn handle_process_terminate(
         &mut self,
         params: &mut TickParams,
         process_handle: packet_server::ProcessHandle,
@@ -209,17 +205,17 @@ impl Connection {
 
         let packet: PacketClient = binary_decode(&payload)?;
         match packet {
-            PacketClient::ListDisplays(serial) => {
-                self.process_list_displays(params, serial)?;
+            PacketClient::DisplayList(serial) => {
+                self.handle_display_list(params, serial)?;
             }
-            PacketClient::GetDisplay(serial, display_handle) => {
-                self.process_get_display(params, serial, display_handle)?;
+            PacketClient::DisplayGet(serial, display_handle) => {
+                self.handle_process_get(params, serial, display_handle)?;
             }
-            PacketClient::ListProcesses(serial) => {
-                self.process_list_processes(params, serial)?;
+            PacketClient::ProcessList(serial) => {
+                self.handle_process_list(params, serial)?;
             }
-            PacketClient::TerminateProcess(process_handle) => {
-                self.process_terminate_process(params, process_handle)?;
+            PacketClient::ProcessTerminate(process_handle) => {
+                self.handle_process_terminate(params, process_handle)?;
             }
         }
 
@@ -302,7 +298,7 @@ pub struct WayVRServer {
 
 impl WayVRServer {
     pub fn new() -> anyhow::Result<Self> {
-        let printname = "wlx_dashboard_ipc.sock";
+        let printname = "/tmp/wlx_dashboard_ipc.sock";
         let name = printname.to_ns_name::<local_socket::GenericNamespaced>()?;
         let opts = local_socket::ListenerOptions::new()
             .name(name)
