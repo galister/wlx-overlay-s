@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 pub type Serial = u64;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct SerialGenerator {
     serial: Arc<SyncMutex<u64>>,
 }
@@ -16,7 +16,7 @@ impl SerialGenerator {
         }
     }
 
-    pub fn increment_get(&mut self) -> Serial {
+    pub fn increment_get(&self) -> Serial {
         let mut serial = self.serial.lock().unwrap();
         let cur = *serial;
         *serial += 1;
