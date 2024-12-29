@@ -38,7 +38,7 @@ In case screens were selected in the wrong order:
 
 **SteamVR users**: WlxOverlay-S will register itself for auto-start, so there is no need to start it every time.
 
-**Envision users**: Set `wlx-overlay-s --openxr --show` as the _Autostart Command_ on your Envision profile! This will show a home environment with a [customizable background](https://github.com/galister/wlx-overlay-s/wiki/OpenXR-Skybox)!
+**Envision users**: Set `wlx-overlay-s --openxr --show` as the _Autostart Command_ on your Envision profile! This will show a home environment with headset passthrough by default or a [customizable background](https://github.com/galister/wlx-overlay-s/wiki/OpenXR-Skybox)! If you are using the appimage instead, set the _Autostart Command_ to the location of tha appimage binary, e.g `/full/path/to/wlx-overlay-s.appimage --openxr --show`.
 
 **Please continue reading the guide below.**
 
