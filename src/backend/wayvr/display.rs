@@ -14,6 +14,7 @@ use smithay::{
     utils::{Logical, Point, Rectangle, Size, Transform},
     wayland::shell::xdg::ToplevelSurface,
 };
+use wayvr_ipc::packet_server;
 
 use crate::{
     backend::{overlay::OverlayID, wayvr::time::get_millis},
@@ -22,7 +23,7 @@ use crate::{
 
 use super::{
     client::WayVRManager, comp::send_frames_surface_tree, egl_data, event_queue::SyncEventQueue,
-    process, smithay_wrapper, time, window, wlx_server_ipc::packet_server, WayVRSignal,
+    process, smithay_wrapper, time, window, WayVRSignal,
 };
 
 fn generate_auth_key() -> String {
@@ -131,13 +132,13 @@ impl Display {
         })
     }
 
-    pub fn to_packet(&self, handle: DisplayHandle) -> packet_server::Display {
+    pub fn as_packet(&self, handle: DisplayHandle) -> packet_server::Display {
         packet_server::Display {
             width: self.width,
             height: self.height,
             name: self.name.clone(),
             visible: self.visible,
-            handle: handle.to_packet(),
+            handle: handle.as_packet(),
         }
     }
 
@@ -445,7 +446,7 @@ impl DisplayHandle {
         }
     }
 
-    pub fn to_packet(&self) -> packet_server::DisplayHandle {
+    pub fn as_packet(&self) -> packet_server::DisplayHandle {
         packet_server::DisplayHandle {
             idx: self.idx,
             generation: self.generation,

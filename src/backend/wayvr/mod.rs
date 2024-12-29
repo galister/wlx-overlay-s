@@ -10,10 +10,6 @@ mod server_ipc;
 mod smithay_wrapper;
 mod time;
 mod window;
-mod wlx_server_ipc;
-
-use std::{cell::RefCell, collections::HashSet, rc::Rc};
-
 use comp::Application;
 use display::DisplayVec;
 use event_queue::SyncEventQueue;
@@ -32,6 +28,7 @@ use smithay::{
         shm::ShmState,
     },
 };
+use std::{cell::RefCell, collections::HashSet, rc::Rc};
 use time::get_millis;
 
 const STR_INVALID_HANDLE_DISP: &str = "Invalid display handle";

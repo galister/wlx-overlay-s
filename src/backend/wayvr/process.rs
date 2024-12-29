@@ -1,6 +1,8 @@
+use wayvr_ipc::packet_server;
+
 use crate::gen_id;
 
-use super::{display, wlx_server_ipc::packet_server};
+use super::display;
 
 pub struct WayVRProcess {
     pub auth_key: String,
@@ -48,13 +50,13 @@ impl Process {
         match self {
             Process::Managed(p) => packet_server::Process {
                 name: p.get_name().unwrap_or(String::from("unknown")),
-                display_handle: p.display_handle.to_packet(),
-                handle: handle.to_packet(),
+                display_handle: p.display_handle.as_packet(),
+                handle: handle.as_packet(),
             },
             Process::External(p) => packet_server::Process {
                 name: p.get_name().unwrap_or(String::from("unknown")),
-                display_handle: p.display_handle.to_packet(),
-                handle: handle.to_packet(),
+                display_handle: p.display_handle.as_packet(),
+                handle: handle.as_packet(),
             },
         }
     }
@@ -162,7 +164,7 @@ impl ProcessHandle {
         }
     }
 
-    pub fn to_packet(&self) -> packet_server::ProcessHandle {
+    pub fn as_packet(&self) -> packet_server::ProcessHandle {
         packet_server::ProcessHandle {
             idx: self.idx,
             generation: self.generation,
