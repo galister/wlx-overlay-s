@@ -137,9 +137,9 @@ impl OscSender {
                         "rightController"
                     }
                     TrackedDeviceRole::Tracker =>   {
-                        tracker_param = format!("tracker{tracker_count}");
                         tracker_count += 1;
                         tracker_total_bat += level;
+                        tracker_param = format!("tracker{tracker_count}");
                         tracker_param.as_str()
                     }
                 };
