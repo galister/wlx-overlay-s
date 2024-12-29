@@ -103,49 +103,67 @@ impl OscSender {
         if self.last_sent_battery.elapsed().as_millis() >= 10000 {
             self.last_sent_battery = Instant::now();
 
-            let mut tracker_idx = 0;
+            let mut tracker_count: i8 = 0;
+            let mut controller_count: i8 = 0;
+            let mut tracker_total_bat = 0.0;
+            let mut controller_total_bat = 0.0;
 
             for device in &app.input_state.devices {
+                let tracker_param;
 
                 // soc is the battery level (set to device status.charge)
                 let level = device.soc.unwrap_or(-1.0);
-                let parameter;
-
-                match device.role {
-                    TrackedDeviceRole::None =>      {parameter = String::from("")}
+                let parameter = match device.role {
+                    TrackedDeviceRole::None =>      {continue}
                     TrackedDeviceRole::Hmd =>       {
-                        // XSOverlay style (float)
-                        // this parameter doesn't exist, but it's a stepping stone for 0-1 values (i presume XSOverlay would use the full name headset and not the abbreviation hmd)
-                        parameter = String::from("headset");
-
                         // legacy OVR Toolkit style (int)
-                        // according to their docs, OVR Toolkit is now supposed to use float 0-1.
-                        // as of 20 Nov 2024 they still use int 0-100, but this may change in a future update.
-                        //TODO: remove once their implementation matches the docs
+                        // as of 20 Nov 2024 OVR Toolkit uses int 0-100, but this may change in a future update.
+                        //TODO: update this once their implementation matches their docs
                         self.send_message(
                             "/avatar/parameters/hmdBattery".into(),
                                         vec![OscType::Int((level * 100.0f32).round() as i32)],
                         )?;
 
+                        "headset"
                     }
-                    TrackedDeviceRole::LeftHand =>  {parameter = String::from("leftController")}
-                    TrackedDeviceRole::RightHand => {parameter = String::from("rightController")}
-                    TrackedDeviceRole::Tracker =>   {parameter = format!("tracker{tracker_idx}"); tracker_idx += 1;}
-                }
+                    TrackedDeviceRole::LeftHand =>  {
+                        controller_count += 1;
+                        controller_total_bat += level;
+                        "leftController"
+                    }
+                    TrackedDeviceRole::RightHand => {
+                        controller_count += 1;
+                        controller_total_bat += level;
+                        "rightController"
+                    }
+                    TrackedDeviceRole::Tracker =>   {
+                        tracker_count += 1;
+                        tracker_total_bat += level;
+                        tracker_param = format!("tracker{tracker_count}");
+                        tracker_param.as_str()
+                    }
+                };
 
-                // send battery parameters
-                if !parameter.is_empty() {
-
-                    self.send_message(
-                        format!("/avatar/parameters/{parameter}Battery").into(),
-                                    vec![OscType::Float(level)],
-                    )?;
-                    self.send_message(
-                        format!("/avatar/parameters/{parameter}Charging").into(),
-                                    vec![OscType::Bool(device.charging)],
-                    )?;
-                }
+                // send device battery parameters
+                self.send_message(
+                    format!("/avatar/parameters/{parameter}Battery").into(),
+                                vec![OscType::Float(level)],
+                )?;
+                self.send_message(
+                    format!("/avatar/parameters/{parameter}Charging").into(),
+                                vec![OscType::Bool(device.charging)],
+                )?;
             }
+
+            // send average controller and tracker battery parameters
+            self.send_message(
+                format!("/avatar/parameters/averageControllerBattery").into(),
+                            vec![OscType::Float(controller_total_bat / controller_count as f32)],
+            )?;
+            self.send_message(
+                format!("/avatar/parameters/averageTrackerBattery").into(),
+                            vec![OscType::Float(tracker_total_bat / tracker_count as f32)],
+            )?;
         }
 
         Ok(())
