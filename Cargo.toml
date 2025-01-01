@@ -93,7 +93,7 @@ wayvr_ipc = { git = "https://github.com/olekolek1000/wayvr-ipc.git", optional = 
 regex = { version = "*" }
 
 [features]
-default = ["openxr", "osc", "wayland", "wayvr"]
+default = ["openxr", "openvr", "osc", "x11", "wayland", "wayvr"]
 openvr = ["dep:ovr_overlay", "dep:json"]
 openxr = ["dep:openxr", "dep:libmonado-rs"]
 osc = ["dep:rosc"]
