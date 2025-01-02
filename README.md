@@ -19,10 +19,27 @@ Questions/issues specific to WlxOverlay-S will be handled in the `wlxoverlay` ch
 
 ## Setup
 
+### General Setup
+
 1. Grab the latest AppImage from [Releases](https://github.com/galister/wlx-overlay-s/releases).
 1. `chmod +x WlxOverlay-S-*.AppImage`
 1. Start Monado, WiVRn or SteamVR.
 1. Run the overlay
+
+**Note:** If you are using Monado or WiVRn, no additional setup steps are required for Flatpak Steam compatibility—most people use WlxOverlay-S seamlessly with Monado/WiVRn.
+
+### SteamVR via Steam Flatpak
+
+For users specifically running **SteamVR via Steam Flatpak**, follow these steps:
+
+1. Grab the latest AppImage from [Releases](https://github.com/galister/wlx-overlay-s/releases).
+1. `WlxOverlay-S-*.AppImage --appimage-extract`
+1. `chmod +x squashfs-root/AppRun`
+1. Move the newly created `squashfs-root` folder to a location accessible by the Steam Flatpak.
+1. `flatpak override com.valvesoftware.Steam --user --filesystem=xdg-run/pipewire-0/:rw`
+1. Restart Steam.
+1. Start SteamVR.
+1. `flatpak run --command='/path/to/squashfs-root/AppRun' com.valvesoftware.Steam`
 
 AUR package is [wlx-overlay-s-git](https://aur.archlinux.org/packages/wlx-overlay-s-git).
 
