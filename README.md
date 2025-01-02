@@ -26,7 +26,11 @@ Questions/issues specific to WlxOverlay-S will be handled in the `wlxoverlay` ch
 1. Start Monado, WiVRn or SteamVR.
 1. Run the overlay
 
-### Steam Flatpak
+**Note:** If you are using Monado or WiVRn, no additional setup steps are required for Flatpak Steam compatibility—most people use WlxOverlay-S seamlessly with Monado/WiVRn.
+
+### SteamVR via Steam Flatpak
+
+For users specifically running **SteamVR via Steam Flatpak**, follow these steps:
 
 1. Grab the latest AppImage from [Releases](https://github.com/galister/wlx-overlay-s/releases).
 1. `WlxOverlay-S-*.AppImage --appimage-extract`
