@@ -36,6 +36,8 @@ For users specifically running **SteamVR via Steam Flatpak**, follow these steps
 1. `WlxOverlay-S-*.AppImage --appimage-extract`
 1. `chmod +x squashfs-root/AppRun`
 1. Move the newly created `squashfs-root` folder to a location accessible by the Steam Flatpak.
+1. `flatpak override com.valvesoftware.Steam --user --filesystem=xdg-run/pipewire-0/:rw`
+1. Restart Steam.
 1. Start SteamVR.
 1. `flatpak run --command='/path/to/squashfs-root/AppRun' com.valvesoftware.Steam`
 
