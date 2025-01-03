@@ -17,7 +17,7 @@ use crate::{
         wayvr,
     },
     config::{load_known_yaml, ConfigType},
-    overlays::wayvr::{WayVRAction, WayVRState},
+    overlays::wayvr::{WayVRAction, WayVRData},
 };
 
 // Flat version of RelativeTo
@@ -40,6 +40,16 @@ impl AttachTo {
             AttachTo::Head => RelativeTo::Head,
         }
     }
+
+    pub fn from_packet(input: &wayvr_ipc::packet_client::AttachTo) -> AttachTo {
+        match input {
+            wayvr_ipc::packet_client::AttachTo::None => AttachTo::None,
+            wayvr_ipc::packet_client::AttachTo::HandLeft => AttachTo::HandLeft,
+            wayvr_ipc::packet_client::AttachTo::HandRight => AttachTo::HandRight,
+            wayvr_ipc::packet_client::AttachTo::Head => AttachTo::Head,
+            wayvr_ipc::packet_client::AttachTo::Stage => AttachTo::Stage,
+        }
+    }
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -60,8 +70,8 @@ pub struct WayVRAppEntry {
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct WayVRDisplay {
-    pub width: u32,
-    pub height: u32,
+    pub width: u16,
+    pub height: u16,
     pub scale: Option<f32>,
     pub rotation: Option<Rotation>,
     pub pos: Option<[f32; 3]>,
@@ -154,7 +164,7 @@ impl WayVRConfig {
         &self,
         config: &crate::config::GeneralConfig,
         tasks: &mut TaskContainer,
-    ) -> anyhow::Result<Option<Rc<RefCell<WayVRState>>>> {
+    ) -> anyhow::Result<Option<Rc<RefCell<WayVRData>>>> {
         let primary_count = self
             .displays
             .iter()
@@ -182,7 +192,7 @@ impl WayVRConfig {
 
         if self.run_compositor_at_start {
             // Start Wayland server instantly
-            Ok(Some(Rc::new(RefCell::new(WayVRState::new(
+            Ok(Some(Rc::new(RefCell::new(WayVRData::new(
                 Self::get_wayvr_config(config, &self),
             )?))))
         } else {

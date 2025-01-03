@@ -1,11 +1,11 @@
-use super::{display, process};
+use super::{display, process, TickTask};
 use bytes::BufMut;
 use interprocess::local_socket::{self, traits::Listener, ToNsName};
 use smallvec::SmallVec;
 use std::io::{Read, Write};
 use wayvr_ipc::{
     ipc::{self, binary_decode, binary_encode},
-    packet_client::PacketClient,
+    packet_client::{self, PacketClient},
     packet_server::{self, PacketServer},
 };
 
@@ -63,8 +63,20 @@ fn read_payload(conn: &mut local_socket::Stream, size: u32) -> Option<Payload> {
 }
 
 pub struct TickParams<'a> {
-    pub displays: &'a super::display::DisplayVec,
-    pub processes: &'a mut super::process::ProcessVec,
+    pub state: &'a mut super::WayVRState,
+    pub tasks: &'a mut Vec<TickTask>,
+}
+
+pub fn gen_args_vec(input: &str) -> Vec<&str> {
+    input.split_whitespace().collect()
+}
+
+pub fn gen_env_vec(input: &Vec<String>) -> Vec<(&str, &str)> {
+    let res = input
+        .iter()
+        .filter_map(|e| e.as_str().split_once('='))
+        .collect();
+    res
 }
 
 impl Connection {
@@ -102,12 +114,13 @@ impl Connection {
         Ok(())
     }
 
-    fn handle_display_list(
+    fn handle_wvr_display_list(
         &mut self,
         params: &TickParams,
         serial: ipc::Serial,
     ) -> anyhow::Result<()> {
-        let list: Vec<packet_server::Display> = params
+        let list: Vec<packet_server::WvrDisplay> = params
+            .state
             .displays
             .vec
             .iter()
@@ -123,41 +136,96 @@ impl Connection {
 
         send_packet(
             &mut self.conn,
-            &binary_encode(&PacketServer::DisplayListResponse(
+            &binary_encode(&PacketServer::WvrDisplayListResponse(
                 serial,
-                packet_server::DisplayList { list },
+                packet_server::WvrDisplayList { list },
             )),
         )?;
 
         Ok(())
     }
 
-    fn handle_process_get(
+    fn handle_wvr_display_create(
+        &mut self,
+        params: &mut TickParams,
+        serial: ipc::Serial,
+        packet_params: packet_client::WvrDisplayCreateParams,
+    ) -> anyhow::Result<()> {
+        let display_handle = params.state.create_display(
+            packet_params.width,
+            packet_params.height,
+            &packet_params.name,
+            false,
+        )?;
+
+        params
+            .tasks
+            .push(TickTask::NewDisplay(packet_params.clone()));
+
+        send_packet(
+            &mut self.conn,
+            &binary_encode(&PacketServer::WvrDisplayCreateResponse(
+                serial,
+                display_handle.as_packet(),
+            )),
+        )?;
+        Ok(())
+    }
+
+    fn handle_wvr_process_launch(
+        &mut self,
+        params: &mut TickParams,
+        serial: ipc::Serial,
+        packet_params: packet_client::WvrProcessLaunchParams,
+    ) -> anyhow::Result<()> {
+        let args_vec = gen_args_vec(&packet_params.args);
+        let env_vec = gen_env_vec(&packet_params.env);
+
+        let res = params.state.spawn_process(
+            super::display::DisplayHandle::from_packet(packet_params.target_display),
+            &packet_params.exec,
+            &args_vec,
+            &env_vec,
+        );
+
+        let res = res.map(|r| r.as_packet()).map_err(|e| e.to_string());
+
+        send_packet(
+            &mut self.conn,
+            &binary_encode(&PacketServer::WvrProcessLaunchResponse(serial, res)),
+        )?;
+
+        Ok(())
+    }
+
+    fn handle_wvr_process_get(
         &mut self,
         params: &TickParams,
         serial: ipc::Serial,
-        display_handle: packet_server::DisplayHandle,
+        display_handle: packet_server::WvrDisplayHandle,
     ) -> anyhow::Result<()> {
         let native_handle = &display::DisplayHandle::from_packet(display_handle.clone());
         let disp = params
+            .state
             .displays
             .get(native_handle)
             .map(|disp| disp.as_packet(*native_handle));
 
         send_packet(
             &mut self.conn,
-            &binary_encode(&PacketServer::DisplayGetResponse(serial, disp)),
+            &binary_encode(&PacketServer::WvrDisplayGetResponse(serial, disp)),
         )?;
 
         Ok(())
     }
 
-    fn handle_process_list(
+    fn handle_wvr_process_list(
         &mut self,
         params: &TickParams,
         serial: ipc::Serial,
     ) -> anyhow::Result<()> {
-        let list: Vec<packet_server::Process> = params
+        let list: Vec<packet_server::WvrProcess> = params
+            .state
             .processes
             .vec
             .iter()
@@ -173,9 +241,9 @@ impl Connection {
 
         send_packet(
             &mut self.conn,
-            &binary_encode(&PacketServer::ProcessListResponse(
+            &binary_encode(&PacketServer::WvrProcessListResponse(
                 serial,
-                packet_server::ProcessList { list },
+                packet_server::WvrProcessList { list },
             )),
         )?;
 
@@ -183,13 +251,13 @@ impl Connection {
     }
 
     // This request doesn't return anything to the client
-    fn handle_process_terminate(
+    fn handle_wvr_process_terminate(
         &mut self,
         params: &mut TickParams,
-        process_handle: packet_server::ProcessHandle,
+        process_handle: packet_server::WvrProcessHandle,
     ) -> anyhow::Result<()> {
         let native_handle = &process::ProcessHandle::from_packet(process_handle.clone());
-        let process = params.processes.get_mut(native_handle);
+        let process = params.state.processes.get_mut(native_handle);
 
         let Some(process) = process else {
             return Ok(());
@@ -208,17 +276,23 @@ impl Connection {
 
         let packet: PacketClient = binary_decode(&payload)?;
         match packet {
-            PacketClient::DisplayList(serial) => {
-                self.handle_display_list(params, serial)?;
+            PacketClient::WvrDisplayList(serial) => {
+                self.handle_wvr_display_list(params, serial)?;
             }
-            PacketClient::DisplayGet(serial, display_handle) => {
-                self.handle_process_get(params, serial, display_handle)?;
+            PacketClient::WvrDisplayGet(serial, display_handle) => {
+                self.handle_wvr_process_get(params, serial, display_handle)?;
             }
-            PacketClient::ProcessList(serial) => {
-                self.handle_process_list(params, serial)?;
+            PacketClient::WvrProcessList(serial) => {
+                self.handle_wvr_process_list(params, serial)?;
             }
-            PacketClient::ProcessTerminate(process_handle) => {
-                self.handle_process_terminate(params, process_handle)?;
+            PacketClient::WvrProcessLaunch(serial, packet_params) => {
+                self.handle_wvr_process_launch(params, serial, packet_params)?;
+            }
+            PacketClient::WvrDisplayCreate(serial, packet_params) => {
+                self.handle_wvr_display_create(params, serial, packet_params)?;
+            }
+            PacketClient::WvrProcessTerminate(process_handle) => {
+                self.handle_wvr_process_terminate(params, process_handle)?;
             }
         }
 

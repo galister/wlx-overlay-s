@@ -414,7 +414,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
 
         #[cfg(feature = "wayvr")]
         if let Some(wayvr) = &app_state.wayvr {
-            wayvr.borrow_mut().state.tick_finish()?;
+            wayvr.borrow_mut().data.tick_finish()?;
         }
 
         command_buffer.build_and_execute_now()?;
