@@ -46,14 +46,14 @@ impl Process {
         }
     }
 
-    pub fn to_packet(&self, handle: ProcessHandle) -> packet_server::Process {
+    pub fn to_packet(&self, handle: ProcessHandle) -> packet_server::WvrProcess {
         match self {
-            Process::Managed(p) => packet_server::Process {
+            Process::Managed(p) => packet_server::WvrProcess {
                 name: p.get_name().unwrap_or(String::from("unknown")),
                 display_handle: p.display_handle.as_packet(),
                 handle: handle.as_packet(),
             },
-            Process::External(p) => packet_server::Process {
+            Process::External(p) => packet_server::WvrProcess {
                 name: p.get_name().unwrap_or(String::from("unknown")),
                 display_handle: p.display_handle.as_packet(),
                 handle: handle.as_packet(),
@@ -157,15 +157,15 @@ pub fn find_by_pid(processes: &ProcessVec, pid: u32) -> Option<ProcessHandle> {
 }
 
 impl ProcessHandle {
-    pub fn from_packet(handle: packet_server::ProcessHandle) -> Self {
+    pub fn from_packet(handle: packet_server::WvrProcessHandle) -> Self {
         Self {
             generation: handle.generation,
             idx: handle.idx,
         }
     }
 
-    pub fn as_packet(&self) -> packet_server::ProcessHandle {
-        packet_server::ProcessHandle {
+    pub fn as_packet(&self) -> packet_server::WvrProcessHandle {
+        packet_server::WvrProcessHandle {
             idx: self.idx,
             generation: self.generation,
         }
