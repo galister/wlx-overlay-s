@@ -371,9 +371,10 @@ static LAYOUT: Lazy<Layout> = Lazy::new(Layout::load_from_disk);
 static MACRO_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^([A-Za-z0-9_-]+)(?: +(UP|DOWN))?$").unwrap()); // want panic
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, Copy, Deserialize, Serialize)]
 #[repr(usize)]
 pub enum AltModifier {
+    #[default]
     None,
     Shift,
     Ctrl,
