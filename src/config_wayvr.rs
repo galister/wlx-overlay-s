@@ -107,11 +107,19 @@ fn def_keyboard_repeat_rate() -> u32 {
 }
 
 #[derive(Deserialize, Serialize)]
+pub struct WayVRDashboard {
+    pub exec: String,
+    pub args: Option<String>,
+    pub env: Option<Vec<String>>,
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct WayVRConfig {
     pub version: u32,
     pub run_compositor_at_start: bool,
     pub catalogs: HashMap<String, WayVRCatalog>,
     pub displays: BTreeMap<String, WayVRDisplay>, // sorted alphabetically
+    pub dashboard: WayVRDashboard,
 
     #[serde(default = "def_true")]
     pub auto_hide: bool,
@@ -193,7 +201,7 @@ impl WayVRConfig {
         if self.run_compositor_at_start {
             // Start Wayland server instantly
             Ok(Some(Rc::new(RefCell::new(WayVRData::new(
-                Self::get_wayvr_config(config, &self),
+                Self::get_wayvr_config(config, self),
             )?))))
         } else {
             // Lazy-init WayVR later if the user requested

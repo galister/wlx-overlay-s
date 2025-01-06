@@ -10,7 +10,7 @@ use crate::{
         input::{self, InteractionHandler},
         overlay::{
             ui_transform, FrameTransform, OverlayData, OverlayID, OverlayRenderer, OverlayState,
-            SplitOverlayBackend,
+            SplitOverlayBackend, Z_ORDER_DASHBOARD,
         },
         task::TaskType,
         wayvr::{
@@ -23,6 +23,11 @@ use crate::{
     graphics::WlxGraphics,
     state::{self, AppState, KeyboardFocus},
 };
+
+// Hard-coded for now
+const DASHBOARD_WIDTH: u16 = 960;
+const DASHBOARD_HEIGHT: u16 = 540;
+const DASHBOARD_DISPLAY_NAME: &str = "_DASHBOARD";
 
 pub struct WayVRContext {
     wayvr: Rc<RefCell<WayVRData>>,
@@ -212,11 +217,102 @@ fn get_or_create_display_by_name(
     Ok(disp_handle)
 }
 
+fn toggle_dashboard<O>(
+    app: &mut AppState,
+    overlays: &mut OverlayContainer<O>,
+    wayvr: &mut WayVRData,
+) -> anyhow::Result<()>
+where
+    O: Default,
+{
+    let (newly_created, disp_handle) = wayvr.data.state.get_or_create_dashboard_display(
+        DASHBOARD_WIDTH,
+        DASHBOARD_HEIGHT,
+        DASHBOARD_DISPLAY_NAME,
+    )?;
+
+    if newly_created {
+        log::info!("Creating dashboard overlay");
+
+        let mut overlay = create_overlay::<O>(
+            app,
+            wayvr,
+            DASHBOARD_DISPLAY_NAME,
+            OverlayToCreate {
+                disp_handle,
+                conf_display: config_wayvr::WayVRDisplay {
+                    attach_to: None,
+                    width: DASHBOARD_WIDTH,
+                    height: DASHBOARD_HEIGHT,
+                    scale: None,
+                    rotation: None,
+                    pos: None,
+                    primary: None,
+                },
+            },
+        )?;
+
+        overlay.state.want_visible = true;
+        overlay.state.spawn_scale = 1.25;
+        overlay.state.z_order = Z_ORDER_DASHBOARD;
+        overlay.state.reset(app, true);
+
+        // FIXME: overlay curvature needs to be dispatched for some unknown reason, this value is not set otherwise
+        app.tasks.enqueue(TaskType::Overlay(
+            OverlaySelector::Id(overlay.state.id),
+            Box::new(move |_app, o| {
+                o.curvature = Some(0.15);
+            }),
+        ));
+
+        overlays.add(overlay);
+
+        let conf_dash = &app.session.wayvr_config.dashboard;
+
+        let args_vec = match &conf_dash.args {
+            Some(args) => gen_args_vec(args),
+            None => vec![],
+        };
+
+        let env_vec = match &conf_dash.env {
+            Some(env) => gen_env_vec(env),
+            None => vec![],
+        };
+
+        // Start dashboard specified in the WayVR config
+        let _process_handle_unused =
+            wayvr
+                .data
+                .state
+                .spawn_process(disp_handle, &conf_dash.exec, &args_vec, &env_vec)?;
+
+        return Ok(());
+    }
+
+    let display = wayvr.data.state.displays.get(&disp_handle).unwrap(); // safe
+    let Some(overlay_id) = display.overlay_id else {
+        anyhow::bail!("Overlay ID not set for dashboard display");
+    };
+
+    app.tasks.enqueue(TaskType::Overlay(
+        OverlaySelector::Id(overlay_id),
+        Box::new(move |app, o| {
+            // Toggle visibility
+            o.want_visible = !o.want_visible;
+            if o.want_visible {
+                o.reset(app, true);
+            }
+        }),
+    ));
+
+    Ok(())
+}
+
 fn create_overlay<O>(
     app: &mut AppState,
     data: &mut WayVRData,
-    cell: OverlayToCreate,
     name: &str,
+    cell: OverlayToCreate,
 ) -> anyhow::Result<OverlayData<O>>
 where
     O: Default,
@@ -272,7 +368,7 @@ where
 
         let name = disp.name.clone();
 
-        let overlay = create_overlay::<O>(app, data, cell, name.as_str())?;
+        let overlay = create_overlay::<O>(app, data, name.as_str(), cell)?;
         overlays.add(overlay); // Insert freshly created WayVR overlay into wlx stack
     }
 
@@ -543,6 +639,7 @@ pub enum WayVRAction {
         display_name: Arc<str>,
         action: WayVRDisplayClickAction,
     },
+    ToggleDashboard,
 }
 
 fn show_display<O>(wayvr: &mut WayVRData, overlays: &mut OverlayContainer<O>, display_name: &str)
@@ -588,12 +685,12 @@ where
             get_or_create_display_by_name(app, &mut wayvr, &app_entry.target_display)?;
 
         let args_vec = match &app_entry.args {
-            Some(args) => gen_args_vec(&args),
+            Some(args) => gen_args_vec(args),
             None => vec![],
         };
 
         let env_vec = match &app_entry.env {
-            Some(env) => gen_env_vec(&env),
+            Some(env) => gen_env_vec(env),
             None => vec![],
         };
 
@@ -684,6 +781,14 @@ where
         } => {
             if let Err(e) = action_display_click::<O>(app, overlays, display_name, action) {
                 log::error!("action_display_click failed: {}", e);
+            }
+        }
+        WayVRAction::ToggleDashboard => {
+            let wayvr = app.get_wayvr().unwrap(); /* safe */
+            let mut wayvr = wayvr.borrow_mut();
+
+            if let Err(e) = toggle_dashboard::<O>(app, overlays, &mut wayvr) {
+                log::error!("toggle_dashboard failed: {}", e);
             }
         }
     }
