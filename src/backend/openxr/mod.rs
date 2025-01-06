@@ -32,7 +32,7 @@ use crate::{
 };
 
 #[cfg(feature = "wayvr")]
-use crate::overlays::wayvr::wayvr_action;
+use crate::overlays::wayvr::{wayvr_action, WayVRAction};
 
 mod helpers;
 mod input;
@@ -289,6 +289,16 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
             .any(|p| p.now.show_hide && !p.before.show_hide)
         {
             overlays.show_hide(&mut app_state);
+        }
+
+        #[cfg(feature = "wayvr")]
+        if app_state
+            .input_state
+            .pointers
+            .iter()
+            .any(|p| p.now.toggle_dashboard && !p.before.toggle_dashboard)
+        {
+            wayvr_action(&mut app_state, &mut overlays, &WayVRAction::ToggleDashboard);
         }
 
         watch_fade(&mut app_state, overlays.mut_by_id(watch_id).unwrap()); // want panic

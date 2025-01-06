@@ -71,6 +71,13 @@ impl InputState {
                 if hand.now.show_hide != hand.before.show_hide {
                     log::debug!("Hand {}: show_hide {}", hand.idx, hand.now.show_hide);
                 }
+                if hand.now.toggle_dashboard != hand.before.toggle_dashboard {
+                    log::debug!(
+                        "Hand {}: toggle_dashboard {}",
+                        hand.idx,
+                        hand.now.toggle_dashboard
+                    );
+                }
                 if hand.now.space_drag != hand.before.space_drag {
                     log::debug!("Hand {}: space_drag {}", hand.idx, hand.now.space_drag);
                 }
@@ -215,6 +222,7 @@ pub struct PointerState {
     pub grab: bool,
     pub alt_click: bool,
     pub show_hide: bool,
+    pub toggle_dashboard: bool,
     pub space_drag: bool,
     pub space_rotate: bool,
     pub space_reset: bool,

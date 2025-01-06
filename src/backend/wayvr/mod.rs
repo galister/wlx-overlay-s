@@ -88,6 +88,7 @@ pub struct WayVRState {
     egl_data: Rc<egl_data::EGLData>,
     pub processes: process::ProcessVec,
     config: Config,
+    dashboard_display: Option<display::DisplayHandle>,
 }
 
 pub struct WayVR {
@@ -179,6 +180,7 @@ impl WayVR {
             egl_data: Rc::new(egl_data),
             wm: Rc::new(RefCell::new(window::WindowManager::new())),
             config,
+            dashboard_display: None,
         };
 
         Ok(Self {
@@ -408,6 +410,25 @@ impl WayVRState {
             primary,
         )?;
         Ok(self.displays.add(display))
+    }
+
+    pub fn get_or_create_dashboard_display(
+        &mut self,
+        width: u16,
+        height: u16,
+        name: &str,
+    ) -> anyhow::Result<(bool /* newly created? */, display::DisplayHandle)> {
+        if let Some(handle) = &self.dashboard_display {
+            // ensure it still exists
+            if self.displays.get(handle).is_some() {
+                return Ok((false, *handle));
+            }
+        }
+
+        let new_disp = self.create_display(width, height, name, false)?;
+        self.dashboard_display = Some(new_disp);
+
+        Ok((true, new_disp))
     }
 
     pub fn destroy_display(&mut self, handle: display::DisplayHandle) {
