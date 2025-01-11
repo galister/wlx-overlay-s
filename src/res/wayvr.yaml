@@ -5,8 +5,9 @@
 
 version: 1
 
-# Set to true if you want to make Wyland server instantly available
-# (used for remote starting external processes)
+# Set to true if you want to make Wyland server instantly available.
+# By default, WayVR starts only when it's needed.
+# (this option is primarily used for remote starting external processes and development purposes)
 run_compositor_at_start: false 
 
 # Automatically close overlays with zero window count?
@@ -21,6 +22,17 @@ keyboard_repeat_delay: 200
 
 # Chars per second
 keyboard_repeat_rate: 50
+
+# WayVR-compatible dashboard.
+# For now, there is only one kind of dashboard with WayVR IPC support (WayVR Dashboard).
+# Build instructions: https://github.com/olekolek1000/wayvr-dashboard
+# exec: Executable path, for example /home/USER/wayvr_dashboard/src-tauri/target/release/wayvr_dashboard
+# GDK_BACKEND=wayland: Force-use Wayland for GTK apps
+# LIBGL_ALWAYS_SOFTWARE: Mesa crash mitigation for Tauri apps on AMD GPUs
+dashboard:
+  exec: "wayvr_dashboard"
+  args: ""
+  env: ["GDK_BACKEND=wayland", "LIBGL_ALWAYS_SOFTWARE=1"]
 
 displays:
   Watch:

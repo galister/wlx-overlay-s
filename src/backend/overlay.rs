@@ -28,6 +28,12 @@ pub trait OverlayBackend: OverlayRenderer + InteractionHandler {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Default)]
 pub struct OverlayID(pub usize);
 
+pub const Z_ORDER_TOAST: u32 = 70;
+pub const Z_ORDER_LINES: u32 = 69;
+pub const Z_ORDER_WATCH: u32 = 68;
+pub const Z_ORDER_ANCHOR: u32 = 67;
+pub const Z_ORDER_DASHBOARD: u32 = 66;
+
 pub struct OverlayState {
     pub id: OverlayID,
     pub name: Arc<str>,

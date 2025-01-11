@@ -14,6 +14,7 @@ use smithay::{
     utils::{Logical, Point, Rectangle, Size, Transform},
     wayland::shell::xdg::ToplevelSurface,
 };
+use wayvr_ipc::packet_server;
 
 use crate::{
     backend::{overlay::OverlayID, wayvr::time::get_millis},
@@ -21,7 +22,7 @@ use crate::{
 };
 
 use super::{
-    client::WayVRManager, comp::send_frames_surface_tree, egl_data, event_queue::SyncEventQueue,
+    client::WayVRCompositor, comp::send_frames_surface_tree, egl_data, event_queue::SyncEventQueue,
     process, smithay_wrapper, time, window, WayVRSignal,
 };
 
@@ -45,10 +46,12 @@ pub enum DisplayTask {
     ProcessCleanup(process::ProcessHandle),
 }
 
+const MAX_DISPLAY_SIZE: u16 = 8192;
+
 pub struct Display {
     // Display info stuff
-    pub width: u32,
-    pub height: u32,
+    pub width: u16,
+    pub height: u16,
     pub name: String,
     pub visible: bool,
     pub overlay_id: Option<OverlayID>,
@@ -84,25 +87,41 @@ impl Display {
         renderer: &mut GlesRenderer,
         egl_data: Rc<egl_data::EGLData>,
         wayland_env: super::WaylandEnv,
-        width: u32,
-        height: u32,
+        width: u16,
+        height: u16,
         name: &str,
         primary: bool,
     ) -> anyhow::Result<Self> {
+        if width > MAX_DISPLAY_SIZE {
+            anyhow::bail!(
+                "display width ({}) is larger than {}",
+                width,
+                MAX_DISPLAY_SIZE
+            );
+        }
+
+        if height > MAX_DISPLAY_SIZE {
+            anyhow::bail!(
+                "display height ({}) is larger than {}",
+                height,
+                MAX_DISPLAY_SIZE
+            );
+        }
+
         let tex_format = ffi::RGBA;
         let internal_format = ffi::RGBA8;
 
         let tex_id = renderer.with_context(|gl| {
             smithay_wrapper::create_framebuffer_texture(
                 gl,
-                width,
-                height,
+                width as u32,
+                height as u32,
                 tex_format,
                 internal_format,
             )
         })?;
 
-        let egl_image = egl_data.create_egl_image(tex_id, width, height)?;
+        let egl_image = egl_data.create_egl_image(tex_id, width as u32, height as u32)?;
         let dmabuf_data = egl_data.create_dmabuf_data(&egl_image)?;
 
         let opaque = false;
@@ -129,6 +148,16 @@ impl Display {
             last_pressed_time_ms: 0,
             no_windows_since: None,
         })
+    }
+
+    pub fn as_packet(&self, handle: DisplayHandle) -> packet_server::WvrDisplay {
+        packet_server::WvrDisplay {
+            width: self.width,
+            height: self.height,
+            name: self.name.clone(),
+            visible: self.visible,
+            handle: handle.as_packet(),
+        }
     }
 
     pub fn add_window(
@@ -158,7 +187,7 @@ impl Display {
                 let right = (d_next * self.width as f32) as i32;
 
                 window.set_pos(left, 0);
-                window.set_size((right - left) as u32, self.height);
+                window.set_size((right - left) as u32, self.height as u32);
             }
         }
     }
@@ -279,7 +308,7 @@ impl Display {
     pub fn send_mouse_move(
         &self,
         config: &super::Config,
-        manager: &mut WayVRManager,
+        manager: &mut WayVRCompositor,
         x: u32,
         y: u32,
     ) {
@@ -320,7 +349,7 @@ impl Display {
         }
     }
 
-    pub fn send_mouse_down(&mut self, manager: &mut WayVRManager, index: super::MouseIndex) {
+    pub fn send_mouse_down(&mut self, manager: &mut WayVRCompositor, index: super::MouseIndex) {
         // Change keyboard focus to pressed window
         let loc = manager.seat_pointer.current_location();
 
@@ -356,7 +385,7 @@ impl Display {
         manager.seat_pointer.frame(&mut manager.state);
     }
 
-    pub fn send_mouse_up(&self, manager: &mut WayVRManager, index: super::MouseIndex) {
+    pub fn send_mouse_up(&self, manager: &mut WayVRCompositor, index: super::MouseIndex) {
         manager.seat_pointer.button(
             &mut manager.state,
             &input::pointer::ButtonEvent {
@@ -370,7 +399,7 @@ impl Display {
         manager.seat_pointer.frame(&mut manager.state);
     }
 
-    pub fn send_mouse_scroll(&self, manager: &mut WayVRManager, delta: f32) {
+    pub fn send_mouse_scroll(&self, manager: &mut WayVRCompositor, delta: f32) {
         manager.seat_pointer.axis(
             &mut manager.state,
             input::pointer::AxisFrame {
@@ -426,3 +455,19 @@ impl Display {
 }
 
 gen_id!(DisplayVec, Display, DisplayCell, DisplayHandle);
+
+impl DisplayHandle {
+    pub fn from_packet(handle: packet_server::WvrDisplayHandle) -> Self {
+        Self {
+            generation: handle.generation,
+            idx: handle.idx,
+        }
+    }
+
+    pub fn as_packet(&self) -> packet_server::WvrDisplayHandle {
+        packet_server::WvrDisplayHandle {
+            idx: self.idx,
+            generation: self.generation,
+        }
+    }
+}

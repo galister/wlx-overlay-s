@@ -1,3 +1,5 @@
+use wayvr_ipc::packet_server;
+
 use crate::gen_id;
 
 use super::display;
@@ -43,6 +45,21 @@ impl Process {
             Process::External(p) => p.terminate(),
         }
     }
+
+    pub fn to_packet(&self, handle: ProcessHandle) -> packet_server::WvrProcess {
+        match self {
+            Process::Managed(p) => packet_server::WvrProcess {
+                name: p.get_name().unwrap_or(String::from("unknown")),
+                display_handle: p.display_handle.as_packet(),
+                handle: handle.as_packet(),
+            },
+            Process::External(p) => packet_server::WvrProcess {
+                name: p.get_name().unwrap_or(String::from("unknown")),
+                display_handle: p.display_handle.as_packet(),
+                handle: handle.as_packet(),
+            },
+        }
+    }
 }
 
 impl Drop for WayVRProcess {
@@ -74,6 +91,23 @@ impl WayVRProcess {
             libc::kill(self.child.id() as i32, libc::SIGTERM);
         }
     }
+
+    pub fn get_name(&self) -> Option<String> {
+        get_exec_name_from_pid(self.child.id())
+    }
+}
+
+fn get_exec_name_from_pid(pid: u32) -> Option<String> {
+    let path = format!("/proc/{}/exe", pid);
+    match std::fs::read_link(&path) {
+        Ok(buf) => {
+            if let Some(process_name) = buf.file_name().and_then(|s| s.to_str()) {
+                return Some(String::from(process_name));
+            }
+            None
+        }
+        Err(_) => None,
+    }
 }
 
 impl ExternalProcess {
@@ -93,6 +127,10 @@ impl ExternalProcess {
             }
         }
         self.pid = 0;
+    }
+
+    pub fn get_name(&self) -> Option<String> {
+        get_exec_name_from_pid(self.pid)
     }
 }
 
@@ -116,4 +154,20 @@ pub fn find_by_pid(processes: &ProcessVec, pid: u32) -> Option<ProcessHandle> {
         }
     }
     None
+}
+
+impl ProcessHandle {
+    pub fn from_packet(handle: packet_server::WvrProcessHandle) -> Self {
+        Self {
+            generation: handle.generation,
+            idx: handle.idx,
+        }
+    }
+
+    pub fn as_packet(&self) -> packet_server::WvrProcessHandle {
+        packet_server::WvrProcessHandle {
+            idx: self.idx,
+            generation: self.generation,
+        }
+    }
 }

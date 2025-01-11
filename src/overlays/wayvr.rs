@@ -10,23 +10,33 @@ use crate::{
         input::{self, InteractionHandler},
         overlay::{
             ui_transform, FrameTransform, OverlayData, OverlayID, OverlayRenderer, OverlayState,
-            SplitOverlayBackend,
+            SplitOverlayBackend, Z_ORDER_DASHBOARD,
         },
         task::TaskType,
-        wayvr::{self, display, WayVR},
+        wayvr::{
+            self, display,
+            server_ipc::{gen_args_vec, gen_env_vec},
+            WayVR,
+        },
     },
+    config_wayvr,
     graphics::WlxGraphics,
     state::{self, AppState, KeyboardFocus},
 };
 
+// Hard-coded for now
+const DASHBOARD_WIDTH: u16 = 960;
+const DASHBOARD_HEIGHT: u16 = 540;
+const DASHBOARD_DISPLAY_NAME: &str = "_DASHBOARD";
+
 pub struct WayVRContext {
-    wayvr: Rc<RefCell<WayVRState>>,
+    wayvr: Rc<RefCell<WayVRData>>,
     display: wayvr::display::DisplayHandle,
 }
 
 impl WayVRContext {
     pub fn new(
-        wvr: Rc<RefCell<WayVRState>>,
+        wvr: Rc<RefCell<WayVRData>>,
         display: wayvr::display::DisplayHandle,
     ) -> anyhow::Result<Self> {
         Ok(Self {
@@ -36,17 +46,45 @@ impl WayVRContext {
     }
 }
 
-pub struct WayVRState {
-    pub display_handle_map: HashMap<display::DisplayHandle, OverlayID>,
-    pub state: WayVR,
+struct OverlayToCreate {
+    pub conf_display: config_wayvr::WayVRDisplay,
+    pub disp_handle: display::DisplayHandle,
 }
 
-impl WayVRState {
+pub struct WayVRData {
+    display_handle_map: HashMap<display::DisplayHandle, OverlayID>,
+    overlays_to_create: Vec<OverlayToCreate>,
+    pub data: WayVR,
+}
+
+impl WayVRData {
     pub fn new(config: wayvr::Config) -> anyhow::Result<Self> {
         Ok(Self {
             display_handle_map: Default::default(),
-            state: WayVR::new(config)?,
+            data: WayVR::new(config)?,
+            overlays_to_create: Vec::new(),
         })
+    }
+
+    fn get_unique_display_name(&self, mut candidate: String) -> String {
+        let mut num = 0;
+
+        while !self
+            .data
+            .state
+            .displays
+            .vec
+            .iter()
+            .flatten()
+            .any(|d| d.obj.name == candidate)
+        {
+            if num > 0 {
+                candidate = format!("{} ({})", candidate, num);
+            }
+            num += 1;
+        }
+
+        candidate
     }
 }
 
@@ -72,14 +110,15 @@ impl InteractionHandler for WayVRInteractionHandler {
     ) -> Option<input::Haptics> {
         let ctx = self.context.borrow();
 
-        let wayvr = &mut ctx.wayvr.borrow_mut().state;
-        if let Some(disp) = wayvr.displays.get(&ctx.display) {
+        let wayvr = &mut ctx.wayvr.borrow_mut().data;
+
+        if let Some(disp) = wayvr.state.displays.get(&ctx.display) {
             let pos = self.mouse_transform.transform_point2(hit.uv);
             let x = ((pos.x * disp.width as f32) as i32).max(0);
             let y = ((pos.y * disp.height as f32) as i32).max(0);
 
             let ctx = self.context.borrow();
-            wayvr.send_mouse_move(ctx.display, x as u32, y as u32);
+            wayvr.state.send_mouse_move(ctx.display, x as u32, y as u32);
         }
 
         None
@@ -100,11 +139,11 @@ impl InteractionHandler for WayVRInteractionHandler {
             }
         } {
             let ctx = self.context.borrow();
-            let wayvr = &mut ctx.wayvr.borrow_mut().state;
+            let wayvr = &mut ctx.wayvr.borrow_mut().data;
             if pressed {
-                wayvr.send_mouse_down(ctx.display, index);
+                wayvr.state.send_mouse_down(ctx.display, index);
             } else {
-                wayvr.send_mouse_up(ctx.display, index);
+                wayvr.state.send_mouse_up(ctx.display, index);
             }
         }
     }
@@ -113,6 +152,7 @@ impl InteractionHandler for WayVRInteractionHandler {
         let ctx = self.context.borrow();
         ctx.wayvr
             .borrow_mut()
+            .data
             .state
             .send_mouse_scroll(ctx.display, delta);
     }
@@ -127,8 +167,8 @@ pub struct WayVRRenderer {
 
 impl WayVRRenderer {
     pub fn new(
-        app: &mut state::AppState,
-        wvr: Rc<RefCell<WayVRState>>,
+        app: &state::AppState,
+        wvr: Rc<RefCell<WayVRData>>,
         display: wayvr::display::DisplayHandle,
     ) -> anyhow::Result<Self> {
         Ok(Self {
@@ -140,19 +180,13 @@ impl WayVRRenderer {
     }
 }
 
-fn get_or_create_display<O>(
+fn get_or_create_display_by_name(
     app: &mut AppState,
-    wayvr: &mut WayVRState,
+    wayvr: &mut WayVRData,
     disp_name: &str,
-) -> anyhow::Result<(display::DisplayHandle, Option<OverlayData<O>>)>
-where
-    O: Default,
-{
-    let created_overlay: Option<OverlayData<O>>;
-
+) -> anyhow::Result<display::DisplayHandle> {
     let disp_handle =
-        if let Some(disp) = WayVR::get_display_by_name(&wayvr.state.displays, disp_name) {
-            created_overlay = None;
+        if let Some(disp) = WayVR::get_display_by_name(&wayvr.data.state.displays, disp_name) {
             disp
         } else {
             let conf_display = app
@@ -165,116 +199,279 @@ where
                 ))?
                 .clone();
 
-            let disp_handle = wayvr.state.create_display(
+            let disp_handle = wayvr.data.state.create_display(
                 conf_display.width,
                 conf_display.height,
                 disp_name,
                 conf_display.primary.unwrap_or(false),
             )?;
 
-            let mut overlay = create_wayvr_display_overlay::<O>(
-                app,
-                conf_display.width,
-                conf_display.height,
+            wayvr.overlays_to_create.push(OverlayToCreate {
+                conf_display,
                 disp_handle,
-                conf_display.scale.unwrap_or(1.0),
-            )?;
-
-            wayvr
-                .display_handle_map
-                .insert(disp_handle, overlay.state.id);
-
-            if let Some(attach_to) = &conf_display.attach_to {
-                overlay.state.relative_to = attach_to.get_relative_to();
-            }
-
-            if let Some(rot) = &conf_display.rotation {
-                overlay.state.spawn_rotation = glam::Quat::from_axis_angle(
-                    Vec3::from_slice(&rot.axis),
-                    f32::to_radians(rot.angle),
-                );
-            }
-
-            if let Some(pos) = &conf_display.pos {
-                overlay.state.spawn_point = Vec3A::from_slice(pos);
-            }
-
-            let display = wayvr.state.displays.get_mut(&disp_handle).unwrap(); // Never fails
-            display.overlay_id = Some(overlay.state.id);
-
-            created_overlay = Some(overlay);
+            });
 
             disp_handle
         };
 
-    Ok((disp_handle, created_overlay))
+    Ok(disp_handle)
+}
+
+fn toggle_dashboard<O>(
+    app: &mut AppState,
+    overlays: &mut OverlayContainer<O>,
+    wayvr: &mut WayVRData,
+) -> anyhow::Result<()>
+where
+    O: Default,
+{
+    let (newly_created, disp_handle) = wayvr.data.state.get_or_create_dashboard_display(
+        DASHBOARD_WIDTH,
+        DASHBOARD_HEIGHT,
+        DASHBOARD_DISPLAY_NAME,
+    )?;
+
+    if newly_created {
+        log::info!("Creating dashboard overlay");
+
+        let mut overlay = create_overlay::<O>(
+            app,
+            wayvr,
+            DASHBOARD_DISPLAY_NAME,
+            OverlayToCreate {
+                disp_handle,
+                conf_display: config_wayvr::WayVRDisplay {
+                    attach_to: None,
+                    width: DASHBOARD_WIDTH,
+                    height: DASHBOARD_HEIGHT,
+                    scale: None,
+                    rotation: None,
+                    pos: None,
+                    primary: None,
+                },
+            },
+        )?;
+
+        overlay.state.want_visible = true;
+        overlay.state.spawn_scale = 1.25;
+        overlay.state.z_order = Z_ORDER_DASHBOARD;
+        overlay.state.reset(app, true);
+
+        // FIXME: overlay curvature needs to be dispatched for some unknown reason, this value is not set otherwise
+        app.tasks.enqueue(TaskType::Overlay(
+            OverlaySelector::Id(overlay.state.id),
+            Box::new(move |_app, o| {
+                o.curvature = Some(0.15);
+            }),
+        ));
+
+        overlays.add(overlay);
+
+        let conf_dash = &app.session.wayvr_config.dashboard;
+
+        let args_vec = match &conf_dash.args {
+            Some(args) => gen_args_vec(args),
+            None => vec![],
+        };
+
+        let env_vec = match &conf_dash.env {
+            Some(env) => gen_env_vec(env),
+            None => vec![],
+        };
+
+        // Start dashboard specified in the WayVR config
+        let _process_handle_unused =
+            wayvr
+                .data
+                .state
+                .spawn_process(disp_handle, &conf_dash.exec, &args_vec, &env_vec)?;
+
+        return Ok(());
+    }
+
+    let display = wayvr.data.state.displays.get(&disp_handle).unwrap(); // safe
+    let Some(overlay_id) = display.overlay_id else {
+        anyhow::bail!("Overlay ID not set for dashboard display");
+    };
+
+    app.tasks.enqueue(TaskType::Overlay(
+        OverlaySelector::Id(overlay_id),
+        Box::new(move |app, o| {
+            // Toggle visibility
+            o.want_visible = !o.want_visible;
+            if o.want_visible {
+                o.reset(app, true);
+            }
+        }),
+    ));
+
+    Ok(())
+}
+
+fn create_overlay<O>(
+    app: &mut AppState,
+    data: &mut WayVRData,
+    name: &str,
+    cell: OverlayToCreate,
+) -> anyhow::Result<OverlayData<O>>
+where
+    O: Default,
+{
+    let conf_display = &cell.conf_display;
+    let disp_handle = cell.disp_handle;
+
+    let mut overlay = create_wayvr_display_overlay::<O>(
+        app,
+        conf_display.width,
+        conf_display.height,
+        disp_handle,
+        conf_display.scale.unwrap_or(1.0),
+        name,
+    )?;
+
+    data.display_handle_map
+        .insert(disp_handle, overlay.state.id);
+
+    if let Some(attach_to) = &conf_display.attach_to {
+        overlay.state.relative_to = attach_to.get_relative_to();
+    }
+
+    if let Some(rot) = &conf_display.rotation {
+        overlay.state.spawn_rotation =
+            glam::Quat::from_axis_angle(Vec3::from_slice(&rot.axis), f32::to_radians(rot.angle));
+    }
+
+    if let Some(pos) = &conf_display.pos {
+        overlay.state.spawn_point = Vec3A::from_slice(pos);
+    }
+
+    let display = data.data.state.displays.get_mut(&disp_handle).unwrap(); // Never fails
+    display.overlay_id = Some(overlay.state.id);
+
+    Ok(overlay)
+}
+
+fn create_queued_displays<O>(
+    app: &mut AppState,
+    data: &mut WayVRData,
+    overlays: &mut OverlayContainer<O>,
+) -> anyhow::Result<()>
+where
+    O: Default,
+{
+    let overlays_to_create = std::mem::take(&mut data.overlays_to_create);
+
+    for cell in overlays_to_create {
+        let Some(disp) = data.data.state.displays.get(&cell.disp_handle) else {
+            continue; // this shouldn't happen
+        };
+
+        let name = disp.name.clone();
+
+        let overlay = create_overlay::<O>(app, data, name.as_str(), cell)?;
+        overlays.add(overlay); // Insert freshly created WayVR overlay into wlx stack
+    }
+
+    Ok(())
 }
 
 pub fn tick_events<O>(app: &mut AppState, overlays: &mut OverlayContainer<O>) -> anyhow::Result<()>
 where
     O: Default,
 {
-    if let Some(r_wayvr) = app.wayvr.clone() {
-        let mut wayvr = r_wayvr.borrow_mut();
-        while let Some(signal) = wayvr.state.signals.read() {
-            match signal {
-                wayvr::WayVRSignal::DisplayHideRequest(display_handle) => {
-                    if let Some(overlay_id) = wayvr.display_handle_map.get(&display_handle) {
-                        let overlay_id = *overlay_id;
-                        wayvr.state.set_display_visible(display_handle, false);
-                        app.tasks.enqueue(TaskType::Overlay(
-                            OverlaySelector::Id(overlay_id),
-                            Box::new(move |_app, o| {
-                                o.want_visible = false;
-                            }),
-                        ));
-                    }
-                }
-            }
-        }
+    let Some(r_wayvr) = app.wayvr.clone() else {
+        return Ok(());
+    };
 
-        let res = wayvr.state.tick_events()?;
-        drop(wayvr);
+    let mut wayvr = r_wayvr.borrow_mut();
 
-        for result in res {
-            match result {
-                wayvr::TickResult::NewExternalProcess(req) => {
-                    let config = &app.session.wayvr_config;
-
-                    let disp_name = if let Some(display_name) = req.env.display_name {
-                        config
-                            .get_display(display_name.as_str())
-                            .map(|_| display_name)
-                    } else {
-                        config
-                            .get_default_display()
-                            .map(|(display_name, _)| display_name)
-                    };
-
-                    if let Some(disp_name) = disp_name {
-                        let mut wayvr = r_wayvr.borrow_mut();
-
-                        log::info!("Registering external process with PID {}", req.pid);
-
-                        let (disp_handle, created_overlay) =
-                            get_or_create_display::<O>(app, &mut wayvr, &disp_name)?;
-
-                        wayvr.state.add_external_process(disp_handle, req.pid);
-
-                        wayvr.state.manager.add_client(wayvr::client::WayVRClient {
-                            client: req.client,
-                            display_handle: disp_handle,
-                            pid: req.pid,
-                        });
-
-                        if let Some(created_overlay) = created_overlay {
-                            overlays.add(created_overlay);
-                        }
-                    }
+    while let Some(signal) = wayvr.data.signals.read() {
+        match signal {
+            wayvr::WayVRSignal::DisplayHideRequest(display_handle) => {
+                if let Some(overlay_id) = wayvr.display_handle_map.get(&display_handle) {
+                    let overlay_id = *overlay_id;
+                    wayvr.data.state.set_display_visible(display_handle, false);
+                    app.tasks.enqueue(TaskType::Overlay(
+                        OverlaySelector::Id(overlay_id),
+                        Box::new(move |_app, o| {
+                            o.want_visible = false;
+                        }),
+                    ));
                 }
             }
         }
     }
+
+    let res = wayvr.data.tick_events()?;
+    drop(wayvr);
+
+    for result in res {
+        match result {
+            wayvr::TickTask::NewExternalProcess(req) => {
+                let config = &app.session.wayvr_config;
+
+                let disp_name = if let Some(display_name) = req.env.display_name {
+                    config
+                        .get_display(display_name.as_str())
+                        .map(|_| display_name)
+                } else {
+                    config
+                        .get_default_display()
+                        .map(|(display_name, _)| display_name)
+                };
+
+                if let Some(disp_name) = disp_name {
+                    let mut wayvr = r_wayvr.borrow_mut();
+
+                    log::info!("Registering external process with PID {}", req.pid);
+
+                    let disp_handle = get_or_create_display_by_name(app, &mut wayvr, &disp_name)?;
+
+                    wayvr.data.state.add_external_process(disp_handle, req.pid);
+
+                    wayvr
+                        .data
+                        .state
+                        .manager
+                        .add_client(wayvr::client::WayVRClient {
+                            client: req.client,
+                            display_handle: disp_handle,
+                            pid: req.pid,
+                        });
+                }
+            }
+            wayvr::TickTask::NewDisplay(cpar) => {
+                log::info!("Creating new display with name \"{}\"", cpar.name);
+
+                let mut wayvr = r_wayvr.borrow_mut();
+
+                let unique_name = wayvr.get_unique_display_name(cpar.name);
+
+                let disp_handle = wayvr.data.state.create_display(
+                    cpar.width,
+                    cpar.height,
+                    &unique_name,
+                    false,
+                )?;
+
+                wayvr.overlays_to_create.push(OverlayToCreate {
+                    disp_handle,
+                    conf_display: config_wayvr::WayVRDisplay {
+                        attach_to: Some(config_wayvr::AttachTo::from_packet(&cpar.attach_to)),
+                        width: cpar.width,
+                        height: cpar.height,
+                        pos: None,
+                        primary: None,
+                        rotation: None,
+                        scale: cpar.scale,
+                    },
+                });
+            }
+        }
+    }
+
+    let mut wayvr = r_wayvr.borrow_mut();
+    create_queued_displays(app, &mut wayvr, overlays)?;
 
     Ok(())
 }
@@ -290,11 +487,11 @@ impl WayVRRenderer {
 
             let ctx = self.context.borrow_mut();
             let wayvr = ctx.wayvr.borrow_mut();
-            if let Some(disp) = wayvr.state.displays.get(&ctx.display) {
+            if let Some(disp) = wayvr.data.state.displays.get(&ctx.display) {
                 let frame = DmabufFrame {
                     format: FrameFormat {
-                        width: disp.width,
-                        height: disp.height,
+                        width: disp.width as u32,
+                        height: disp.height as u32,
                         fourcc: FourCC {
                             value: data.mod_info.fourcc,
                         },
@@ -339,15 +536,15 @@ impl OverlayRenderer for WayVRRenderer {
 
     fn pause(&mut self, _app: &mut state::AppState) -> anyhow::Result<()> {
         let ctx = self.context.borrow_mut();
-        let wayvr = &mut ctx.wayvr.borrow_mut().state;
-        wayvr.set_display_visible(ctx.display, false);
+        let wayvr = &mut ctx.wayvr.borrow_mut().data;
+        wayvr.state.set_display_visible(ctx.display, false);
         Ok(())
     }
 
     fn resume(&mut self, _app: &mut state::AppState) -> anyhow::Result<()> {
         let ctx = self.context.borrow_mut();
-        let wayvr = &mut ctx.wayvr.borrow_mut().state;
-        wayvr.set_display_visible(ctx.display, true);
+        let wayvr = &mut ctx.wayvr.borrow_mut().data;
+        wayvr.state.set_display_visible(ctx.display, true);
         Ok(())
     }
 
@@ -355,9 +552,10 @@ impl OverlayRenderer for WayVRRenderer {
         let ctx = self.context.borrow();
         let mut wayvr = ctx.wayvr.borrow_mut();
 
-        wayvr.state.tick_display(ctx.display)?;
+        wayvr.data.tick_display(ctx.display)?;
 
         let dmabuf_data = wayvr
+            .data
             .state
             .get_dmabuf_data(ctx.display)
             .ok_or(anyhow::anyhow!("Failed to fetch dmabuf data"))?
@@ -385,18 +583,19 @@ impl OverlayRenderer for WayVRRenderer {
 #[allow(dead_code)]
 pub fn create_wayvr_display_overlay<O>(
     app: &mut state::AppState,
-    display_width: u32,
-    display_height: u32,
+    display_width: u16,
+    display_height: u16,
     display_handle: wayvr::display::DisplayHandle,
     display_scale: f32,
+    name: &str,
 ) -> anyhow::Result<OverlayData<O>>
 where
     O: Default,
 {
-    let transform = ui_transform(&[display_width, display_height]);
+    let transform = ui_transform(&[display_width as u32, display_height as u32]);
 
     let state = OverlayState {
-        name: format!("WayVR Screen ({}x{})", display_width, display_height).into(),
+        name: format!("WayVR - {}", name).into(),
         keyboard_focus: Some(KeyboardFocus::WayVR),
         want_visible: true,
         interactable: true,
@@ -440,20 +639,21 @@ pub enum WayVRAction {
         display_name: Arc<str>,
         action: WayVRDisplayClickAction,
     },
+    ToggleDashboard,
 }
 
-fn show_display<O>(wayvr: &mut WayVRState, overlays: &mut OverlayContainer<O>, display_name: &str)
+fn show_display<O>(wayvr: &mut WayVRData, overlays: &mut OverlayContainer<O>, display_name: &str)
 where
     O: Default,
 {
-    if let Some(display) = WayVR::get_display_by_name(&wayvr.state.displays, display_name) {
+    if let Some(display) = WayVR::get_display_by_name(&wayvr.data.state.displays, display_name) {
         if let Some(overlay_id) = wayvr.display_handle_map.get(&display) {
             if let Some(overlay) = overlays.mut_by_id(*overlay_id) {
                 overlay.state.want_visible = true;
             }
         }
 
-        wayvr.state.set_display_visible(display, true);
+        wayvr.data.state.set_display_visible(display, true);
     }
 }
 
@@ -462,7 +662,7 @@ fn action_app_click<O>(
     overlays: &mut OverlayContainer<O>,
     catalog_name: &Arc<str>,
     app_name: &Arc<str>,
-) -> anyhow::Result<Option<OverlayData<O>>>
+) -> anyhow::Result<()>
 where
     O: Default,
 {
@@ -481,46 +681,40 @@ where
     if let Some(app_entry) = catalog.get_app(app_name) {
         let mut wayvr = wayvr.borrow_mut();
 
-        let (disp_handle, created_overlay) =
-            get_or_create_display::<O>(app, &mut wayvr, &app_entry.target_display)?;
+        let disp_handle =
+            get_or_create_display_by_name(app, &mut wayvr, &app_entry.target_display)?;
 
-        // Parse additional args
-        let args_vec: Vec<&str> = if let Some(args) = &app_entry.args {
-            args.as_str().split_whitespace().collect()
-        } else {
-            vec![]
+        let args_vec = match &app_entry.args {
+            Some(args) => gen_args_vec(args),
+            None => vec![],
         };
 
-        // Parse additional env
-        let env_vec: Vec<(&str, &str)> = if let Some(env) = &app_entry.env {
-            // splits "FOO=BAR=TEST,123" into (&"foo", &"bar=test,123")
-            env.iter()
-                .filter_map(|e| e.as_str().split_once('='))
-                .collect()
-        } else {
-            vec![]
+        let env_vec = match &app_entry.env {
+            Some(env) => gen_env_vec(env),
+            None => vec![],
         };
 
         // Terminate existing process if required
         if let Some(process_handle) =
             wayvr
+                .data
                 .state
                 .process_query(disp_handle, &app_entry.exec, &args_vec, &env_vec)
         {
             // Terminate process
-            wayvr.state.terminate_process(process_handle);
+            wayvr.data.terminate_process(process_handle);
         } else {
             // Spawn process
             wayvr
+                .data
                 .state
                 .spawn_process(disp_handle, &app_entry.exec, &args_vec, &env_vec)?;
 
-            show_display(&mut wayvr, overlays, &app_entry.target_display.as_str());
+            show_display::<O>(&mut wayvr, overlays, app_entry.target_display.as_str());
         }
-        Ok(created_overlay)
-    } else {
-        Ok(None)
     }
+
+    Ok(())
 }
 
 pub fn action_display_click<O>(
@@ -535,23 +729,31 @@ where
     let wayvr = app.get_wayvr()?;
     let mut wayvr = wayvr.borrow_mut();
 
-    if let Some(handle) = WayVR::get_display_by_name(&wayvr.state.displays, display_name) {
-        if let Some(display) = wayvr.state.displays.get_mut(&handle) {
-            if let Some(overlay_id) = display.overlay_id {
-                if let Some(overlay) = overlays.mut_by_id(overlay_id) {
-                    match action {
-                        WayVRDisplayClickAction::ToggleVisibility => {
-                            // Toggle visibility
-                            overlay.state.want_visible = !overlay.state.want_visible;
-                        }
-                        WayVRDisplayClickAction::Reset => {
-                            // Show it at the front
-                            overlay.state.want_visible = true;
-                            overlay.state.reset(app, true);
-                        }
-                    }
-                }
-            }
+    let Some(handle) = WayVR::get_display_by_name(&wayvr.data.state.displays, display_name) else {
+        return Ok(());
+    };
+
+    let Some(display) = wayvr.data.state.displays.get_mut(&handle) else {
+        return Ok(());
+    };
+
+    let Some(overlay_id) = display.overlay_id else {
+        return Ok(());
+    };
+
+    let Some(overlay) = overlays.mut_by_id(overlay_id) else {
+        return Ok(());
+    };
+
+    match action {
+        WayVRDisplayClickAction::ToggleVisibility => {
+            // Toggle visibility
+            overlay.state.want_visible = !overlay.state.want_visible;
+        }
+        WayVRDisplayClickAction::Reset => {
+            // Show it at the front
+            overlay.state.want_visible = true;
+            overlay.state.reset(app, true);
         }
     }
 
@@ -567,17 +769,10 @@ where
             catalog_name,
             app_name,
         } => {
-            match action_app_click(app, overlays, catalog_name, app_name) {
-                Ok(res) => {
-                    if let Some(created_overlay) = res {
-                        overlays.add(created_overlay);
-                    }
-                }
-                Err(e) => {
-                    // Happens if something went wrong with initialization
-                    // or input exec path is invalid. Do nothing, just print an error
-                    log::error!("action_app_click failed: {}", e);
-                }
+            if let Err(e) = action_app_click(app, overlays, catalog_name, app_name) {
+                // Happens if something went wrong with initialization
+                // or input exec path is invalid. Do nothing, just print an error
+                log::error!("action_app_click failed: {}", e);
             }
         }
         WayVRAction::DisplayClick {
@@ -586,6 +781,14 @@ where
         } => {
             if let Err(e) = action_display_click::<O>(app, overlays, display_name, action) {
                 log::error!("action_display_click failed: {}", e);
+            }
+        }
+        WayVRAction::ToggleDashboard => {
+            let wayvr = app.get_wayvr().unwrap(); /* safe */
+            let mut wayvr = wayvr.borrow_mut();
+
+            if let Err(e) = toggle_dashboard::<O>(app, overlays, &mut wayvr) {
+                log::error!("toggle_dashboard failed: {}", e);
             }
         }
     }

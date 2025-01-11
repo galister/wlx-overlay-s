@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     backend::{
         common::OverlaySelector,
-        overlay::{OverlayBackend, OverlayState, RelativeTo},
+        overlay::{OverlayBackend, OverlayState, RelativeTo, Z_ORDER_TOAST},
         task::TaskType,
     },
     gui::{canvas::builder::CanvasBuilder, color_parse},
@@ -199,7 +199,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
         spawn_scale: size.0 * PIXELS_TO_METERS,
         spawn_rotation,
         spawn_point,
-        z_order: 70,
+        z_order: Z_ORDER_TOAST,
         relative_to,
         ..Default::default()
     };

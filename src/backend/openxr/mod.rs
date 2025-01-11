@@ -32,7 +32,7 @@ use crate::{
 };
 
 #[cfg(feature = "wayvr")]
-use crate::overlays::wayvr::wayvr_action;
+use crate::overlays::wayvr::{wayvr_action, WayVRAction};
 
 mod helpers;
 mod input;
@@ -291,6 +291,16 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
             overlays.show_hide(&mut app_state);
         }
 
+        #[cfg(feature = "wayvr")]
+        if app_state
+            .input_state
+            .pointers
+            .iter()
+            .any(|p| p.now.toggle_dashboard && !p.before.toggle_dashboard)
+        {
+            wayvr_action(&mut app_state, &mut overlays, &WayVRAction::ToggleDashboard);
+        }
+
         watch_fade(&mut app_state, overlays.mut_by_id(watch_id).unwrap()); // want panic
         if let Some(ref mut space_mover) = playspace {
             space_mover.update(
@@ -414,7 +424,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
 
         #[cfg(feature = "wayvr")]
         if let Some(wayvr) = &app_state.wayvr {
-            wayvr.borrow_mut().state.tick_finish()?;
+            wayvr.borrow_mut().data.tick_finish()?;
         }
 
         command_buffer.build_and_execute_now()?;

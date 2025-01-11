@@ -12,7 +12,7 @@ use vulkano::image::view::ImageView;
 use vulkano::image::ImageLayout;
 
 use crate::backend::overlay::{
-    FrameTransform, OverlayData, OverlayRenderer, OverlayState, SplitOverlayBackend,
+    FrameTransform, OverlayData, OverlayRenderer, OverlayState, SplitOverlayBackend, Z_ORDER_LINES,
 };
 use crate::graphics::WlxGraphics;
 use crate::state::AppState;
@@ -82,7 +82,7 @@ impl LinePool {
             },
             ..Default::default()
         };
-        data.state.z_order = 69;
+        data.state.z_order = Z_ORDER_LINES;
         data.state.dirty = true;
 
         self.lines.insert(id, data);
