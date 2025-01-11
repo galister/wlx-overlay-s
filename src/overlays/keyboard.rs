@@ -40,7 +40,7 @@ fn send_key(app: &mut AppState, key: VirtualKey, down: bool) {
         {
             #[cfg(feature = "wayvr")]
             if let Some(wayvr) = &app.wayvr {
-                wayvr.borrow_mut().state.send_key(key as u32, down);
+                wayvr.borrow_mut().data.state.send_key(key as u32, down);
             }
         }
     }

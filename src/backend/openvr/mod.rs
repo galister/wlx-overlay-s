@@ -43,7 +43,7 @@ use crate::{
 };
 
 #[cfg(feature = "wayvr")]
-use crate::overlays::wayvr::wayvr_action;
+use crate::overlays::wayvr::{wayvr_action, WayVRAction};
 
 pub mod helpers;
 pub mod input;
@@ -293,6 +293,16 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
             overlays.show_hide(&mut state);
         }
 
+        #[cfg(feature = "wayvr")]
+        if state
+            .input_state
+            .pointers
+            .iter()
+            .any(|p| p.now.toggle_dashboard && !p.before.toggle_dashboard)
+        {
+            wayvr_action(&mut state, &mut overlays, &WayVRAction::ToggleDashboard);
+        }
+
         overlays
             .iter_mut()
             .for_each(|o| o.state.auto_movement(&mut state));
@@ -346,7 +356,7 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
 
         #[cfg(feature = "wayvr")]
         if let Some(wayvr) = &state.wayvr {
-            wayvr.borrow_mut().state.tick_finish()?;
+            wayvr.borrow_mut().data.tick_finish()?;
         }
 
         // chaperone

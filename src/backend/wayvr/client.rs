@@ -20,7 +20,7 @@ pub struct WayVRClient {
     pub pid: u32,
 }
 
-pub struct WayVRManager {
+pub struct WayVRCompositor {
     pub state: comp::Application,
     pub seat_keyboard: KeyboardHandle<comp::Application>,
     pub seat_pointer: PointerHandle<comp::Application>,
@@ -60,7 +60,7 @@ fn get_wayvr_env_from_pid(pid: i32) -> anyhow::Result<ProcessWayVREnv> {
     Ok(env)
 }
 
-impl WayVRManager {
+impl WayVRCompositor {
     pub fn new(
         state: comp::Application,
         display: wayland_server::Display<comp::Application>,

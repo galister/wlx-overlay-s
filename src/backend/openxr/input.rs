@@ -154,6 +154,7 @@ pub(super) struct OpenXrHandSource {
     action_grab: CustomClickAction,
     action_alt_click: CustomClickAction,
     action_show_hide: CustomClickAction,
+    action_toggle_dashboard: CustomClickAction,
     action_space_drag: CustomClickAction,
     action_space_rotate: CustomClickAction,
     action_space_reset: CustomClickAction,
@@ -365,6 +366,12 @@ impl OpenXrHand {
             session,
         )?;
 
+        pointer.now.toggle_dashboard = self.source.action_toggle_dashboard.state(
+            pointer.before.toggle_dashboard,
+            xr,
+            session,
+        )?;
+
         pointer.now.click_modifier_middle = self.source.action_modifier_middle.state(
             pointer.before.click_modifier_middle,
             xr,
@@ -422,6 +429,7 @@ impl OpenXrHandSource {
             action_scroll,
             action_alt_click: CustomClickAction::new(action_set, "alt_click", side)?,
             action_show_hide: CustomClickAction::new(action_set, "show_hide", side)?,
+            action_toggle_dashboard: CustomClickAction::new(action_set, "toggle_dashboard", side)?,
             action_space_drag: CustomClickAction::new(action_set, "space_drag", side)?,
             action_space_rotate: CustomClickAction::new(action_set, "space_rotate", side)?,
             action_space_reset: CustomClickAction::new(action_set, "space_reset", side)?,
@@ -579,6 +587,14 @@ fn suggest_bindings(instance: &xr::Instance, hands: &[&OpenXrHandSource; 2]) -> 
         );
 
         add_custom!(
+            profile.toggle_dashboard,
+            &hands[0].action_toggle_dashboard,
+            &hands[1].action_toggle_dashboard,
+            bindings,
+            instance
+        );
+
+        add_custom!(
             profile.space_drag,
             &hands[0].action_space_drag,
             &hands[1].action_space_drag,
@@ -655,6 +671,7 @@ struct OpenXrActionConfProfile {
     grab: Option<OpenXrActionConfAction>,
     alt_click: Option<OpenXrActionConfAction>,
     show_hide: Option<OpenXrActionConfAction>,
+    toggle_dashboard: Option<OpenXrActionConfAction>,
     space_drag: Option<OpenXrActionConfAction>,
     space_rotate: Option<OpenXrActionConfAction>,
     space_reset: Option<OpenXrActionConfAction>,

@@ -10,7 +10,7 @@ use vulkano::image::view::ImageView;
 #[cfg(feature = "wayvr")]
 use {
     crate::config_wayvr::{self, WayVRConfig},
-    crate::overlays::wayvr::WayVRState,
+    crate::overlays::wayvr::WayVRData,
     std::{cell::RefCell, rc::Rc},
 };
 
@@ -50,7 +50,7 @@ pub struct AppState {
     pub keyboard_focus: KeyboardFocus,
 
     #[cfg(feature = "wayvr")]
-    pub wayvr: Option<Rc<RefCell<WayVRState>>>, // Dynamically created if requested
+    pub wayvr: Option<Rc<RefCell<WayVRData>>>, // Dynamically created if requested
 }
 
 impl AppState {
@@ -122,11 +122,11 @@ impl AppState {
 
     #[cfg(feature = "wayvr")]
     #[allow(dead_code)]
-    pub fn get_wayvr(&mut self) -> anyhow::Result<Rc<RefCell<WayVRState>>> {
+    pub fn get_wayvr(&mut self) -> anyhow::Result<Rc<RefCell<WayVRData>>> {
         if let Some(wvr) = &self.wayvr {
             Ok(wvr.clone())
         } else {
-            let wayvr = Rc::new(RefCell::new(WayVRState::new(
+            let wayvr = Rc::new(RefCell::new(WayVRData::new(
                 WayVRConfig::get_wayvr_config(&self.session.config, &self.session.wayvr_config),
             )?));
             self.wayvr = Some(wayvr.clone());

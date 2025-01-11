@@ -1,7 +1,7 @@
 use glam::Vec3A;
 
 use crate::{
-    backend::overlay::{ui_transform, OverlayData, OverlayState, RelativeTo},
+    backend::overlay::{ui_transform, OverlayData, OverlayState, RelativeTo, Z_ORDER_WATCH},
     config::{load_known_yaml, ConfigType},
     gui::{
         canvas::Canvas,
@@ -25,7 +25,7 @@ where
             name: WATCH_NAME.into(),
             want_visible: true,
             interactable: true,
-            z_order: 68,
+            z_order: Z_ORDER_WATCH,
             spawn_scale: config.width,
             spawn_point: state.session.config.watch_pos,
             spawn_rotation: state.session.config.watch_rot,

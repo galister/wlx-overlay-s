@@ -30,16 +30,17 @@ const PATH_HAPTICS: [&str; 2] = [
     "/actions/default/out/HapticsRight",
 ];
 
+const PATH_ALT_CLICK: &str = "/actions/default/in/AltClick";
+const PATH_CLICK_MODIFIER_MIDDLE: &str = "/actions/default/in/ClickModifierMiddle";
+const PATH_CLICK_MODIFIER_RIGHT: &str = "/actions/default/in/ClickModifierRight";
 const PATH_CLICK: &str = "/actions/default/in/Click";
 const PATH_GRAB: &str = "/actions/default/in/Grab";
+const PATH_MOVE_MOUSE: &str = "/actions/default/in/MoveMouse";
 const PATH_SCROLL: &str = "/actions/default/in/Scroll";
-const PATH_ALT_CLICK: &str = "/actions/default/in/AltClick";
 const PATH_SHOW_HIDE: &str = "/actions/default/in/ShowHide";
 const PATH_SPACE_DRAG: &str = "/actions/default/in/SpaceDrag";
 const PATH_SPACE_ROTATE: &str = "/actions/default/in/SpaceRotate";
-const PATH_CLICK_MODIFIER_RIGHT: &str = "/actions/default/in/ClickModifierRight";
-const PATH_CLICK_MODIFIER_MIDDLE: &str = "/actions/default/in/ClickModifierMiddle";
-const PATH_MOVE_MOUSE: &str = "/actions/default/in/MoveMouse";
+const PATH_TOGGLE_DASHBOARD: &str = "/actions/default/in/ToggleDashboard";
 
 const INPUT_ANY: InputValueHandle = InputValueHandle(ovr_overlay::sys::k_ulInvalidInputValueHandle);
 
@@ -51,6 +52,7 @@ pub(super) struct OpenVrInputSource {
     scroll_hnd: ActionHandle,
     alt_click_hnd: ActionHandle,
     show_hide_hnd: ActionHandle,
+    toggle_dashboard_hnd: ActionHandle,
     space_drag_hnd: ActionHandle,
     space_rotate_hnd: ActionHandle,
     click_modifier_right_hnd: ActionHandle,
@@ -75,6 +77,7 @@ impl OpenVrInputSource {
         let scroll_hnd = input.get_action_handle(PATH_SCROLL)?;
         let alt_click_hnd = input.get_action_handle(PATH_ALT_CLICK)?;
         let show_hide_hnd = input.get_action_handle(PATH_SHOW_HIDE)?;
+        let toggle_dashboard_hnd = input.get_action_handle(PATH_TOGGLE_DASHBOARD)?;
         let space_drag_hnd = input.get_action_handle(PATH_SPACE_DRAG)?;
         let space_rotate_hnd = input.get_action_handle(PATH_SPACE_ROTATE)?;
         let click_modifier_right_hnd = input.get_action_handle(PATH_CLICK_MODIFIER_RIGHT)?;
@@ -111,6 +114,7 @@ impl OpenVrInputSource {
             scroll_hnd,
             alt_click_hnd,
             show_hide_hnd,
+            toggle_dashboard_hnd,
             space_drag_hnd,
             space_rotate_hnd,
             click_modifier_right_hnd,
@@ -193,6 +197,11 @@ impl OpenVrInputSource {
 
             app_hand.now.show_hide = input
                 .get_digital_action_data(self.show_hide_hnd, hand.input_hnd)
+                .map(|x| x.0.bState)
+                .unwrap_or(false);
+
+            app_hand.now.toggle_dashboard = input
+                .get_digital_action_data(self.toggle_dashboard_hnd, hand.input_hnd)
                 .map(|x| x.0.bState)
                 .unwrap_or(false);
 

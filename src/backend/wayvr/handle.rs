@@ -8,7 +8,7 @@ macro_rules! gen_id {
         //ThingCell
         pub struct $cell_name {
             pub obj: $instance_name,
-            generation: u64,
+            pub generation: u64,
         }
 
         //ThingVec
@@ -38,6 +38,10 @@ macro_rules! gen_id {
 
             pub fn id(&self) -> u32 {
                 self.idx
+            }
+
+            pub fn new(idx: u32, generation: u64) -> Self {
+                Self { idx, generation }
             }
         }
 
