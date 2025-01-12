@@ -2,11 +2,12 @@
 
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
+#[derive(Debug)]
 struct Data<DataType> {
     queue: VecDeque<DataType>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct SyncEventQueue<DataType> {
     data: Rc<RefCell<Data<DataType>>>,
 }

@@ -31,6 +31,7 @@ fn generate_auth_key() -> String {
     uuid.to_string()
 }
 
+#[derive(Debug)]
 pub struct DisplayWindow {
     pub window_handle: window::WindowHandle,
     pub toplevel: ToplevelSurface,
@@ -42,12 +43,14 @@ pub struct SpawnProcessResult {
     pub child: std::process::Child,
 }
 
+#[derive(Debug)]
 pub enum DisplayTask {
     ProcessCleanup(process::ProcessHandle),
 }
 
 const MAX_DISPLAY_SIZE: u16 = 8192;
 
+#[derive(Debug)]
 pub struct Display {
     // Display info stuff
     pub width: u16,

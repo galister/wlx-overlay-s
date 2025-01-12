@@ -35,7 +35,7 @@ use wayvr_ipc::packet_client;
 const STR_INVALID_HANDLE_DISP: &str = "Invalid display handle";
 const STR_INVALID_HANDLE_PROCESS: &str = "Invalid process handle";
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct WaylandEnv {
     pub display_num: u32,
 }
@@ -106,7 +106,10 @@ pub enum MouseIndex {
 
 pub enum TickTask {
     NewExternalProcess(ExternalProcessRequest), // Call WayVRCompositor::add_client after receiving this message
-    NewDisplay(packet_client::WvrDisplayCreateParams),
+    NewDisplay(
+        packet_client::WvrDisplayCreateParams,
+        Option<display::DisplayHandle>, /* existing handle? */
+    ),
 }
 
 impl WayVR {

@@ -158,9 +158,10 @@ impl Connection {
             false,
         )?;
 
-        params
-            .tasks
-            .push(TickTask::NewDisplay(packet_params.clone()));
+        params.tasks.push(TickTask::NewDisplay(
+            packet_params.clone(),
+            Some(display_handle),
+        ));
 
         send_packet(
             &mut self.conn,

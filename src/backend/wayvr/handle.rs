@@ -6,12 +6,14 @@ macro_rules! gen_id {
 		$cell_name:ident,
 		$handle_name:ident) => {
         //ThingCell
+        #[derive(Debug)]
         pub struct $cell_name {
             pub obj: $instance_name,
             pub generation: u64,
         }
 
         //ThingVec
+        #[derive(Debug)]
         pub struct $container_name {
             // Vec<Option<ThingCell>>
             pub vec: Vec<Option<$cell_name>>,
@@ -20,7 +22,7 @@ macro_rules! gen_id {
         }
 
         //ThingHandle
-        #[derive(Default, Clone, Copy, PartialEq, Hash, Eq)]
+        #[derive(Default, Debug, Clone, Copy, PartialEq, Hash, Eq)]
         pub struct $handle_name {
             idx: u32,
             generation: u64,

@@ -440,19 +440,22 @@ where
                         });
                 }
             }
-            wayvr::TickTask::NewDisplay(cpar) => {
+            wayvr::TickTask::NewDisplay(cpar, disp_handle) => {
                 log::info!("Creating new display with name \"{}\"", cpar.name);
 
                 let mut wayvr = r_wayvr.borrow_mut();
 
                 let unique_name = wayvr.get_unique_display_name(cpar.name);
 
-                let disp_handle = wayvr.data.state.create_display(
-                    cpar.width,
-                    cpar.height,
-                    &unique_name,
-                    false,
-                )?;
+                let disp_handle = match disp_handle {
+                    Some(d) => d,
+                    None => wayvr.data.state.create_display(
+                        cpar.width,
+                        cpar.height,
+                        &unique_name,
+                        false,
+                    )?,
+                };
 
                 wayvr.overlays_to_create.push(OverlayToCreate {
                     disp_handle,
