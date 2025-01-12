@@ -2,6 +2,7 @@ use smithay::wayland::shell::xdg::ToplevelSurface;
 
 use crate::gen_id;
 
+#[derive(Debug)]
 pub struct Window {
     pub pos_x: i32,
     pub pos_y: i32,
@@ -38,6 +39,7 @@ impl Window {
     }
 }
 
+#[derive(Debug)]
 pub struct WindowManager {
     pub windows: WindowVec,
 }
