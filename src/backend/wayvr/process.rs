@@ -4,6 +4,7 @@ use crate::gen_id;
 
 use super::display;
 
+#[derive(Debug)]
 pub struct WayVRProcess {
     pub auth_key: String,
     pub child: std::process::Child,
@@ -14,11 +15,13 @@ pub struct WayVRProcess {
     pub env: Vec<(String, String)>,
 }
 
+#[derive(Debug)]
 pub struct ExternalProcess {
     pub pid: u32,
     pub display_handle: display::DisplayHandle,
 }
 
+#[derive(Debug)]
 pub enum Process {
     Managed(WayVRProcess),     // Process spawned by WayVR
     External(ExternalProcess), // External process not directly controlled by us

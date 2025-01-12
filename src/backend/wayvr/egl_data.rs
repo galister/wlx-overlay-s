@@ -1,6 +1,7 @@
 use super::egl_ex;
 use anyhow::anyhow;
 
+#[derive(Debug)]
 pub struct EGLData {
     pub egl: khronos_egl::Instance<khronos_egl::Static>,
     pub display: khronos_egl::Display,
@@ -15,13 +16,13 @@ macro_rules! bind_egl_function {
     };
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct DMAbufModifierInfo {
     pub modifiers: Vec<u64>,
     pub fourcc: u32,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct DMAbufData {
     pub fd: i32,
     pub stride: i32,
