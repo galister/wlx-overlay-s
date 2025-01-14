@@ -84,9 +84,8 @@ uuid = { version = "1.10.0", features = ["v4", "fast-rng"], optional = true }
 wayland-client = { version = "0.31.6", optional = true }
 wayland-egl = { version = "0.32.4", optional = true }
 interprocess = { version = "2.2.2", optional = true }
-postcard = { version = "1.1.1", optional = true }
 bytes = { version = "1.9.0", optional = true }
-wayvr_ipc = { git = "https://github.com/olekolek1000/wayvr-ipc.git", rev = "c2a6438ffdcc78ff9c0637d914df1bc673723824", default-features = false, optional = true }
+wayvr_ipc = { git = "https://github.com/olekolek1000/wayvr-ipc.git", rev = "b484d1f0607b3f67e2c9e49797819738344bcb5c", default-features = false, optional = true }
 ################################
 
 [build-dependencies]
@@ -109,7 +108,6 @@ wayvr = [
   "dep:wayland-client",
   "dep:wayland-egl",
   "dep:interprocess",
-  "dep:postcard",
   "dep:bytes",
   "dep:wayvr_ipc",
 ]
