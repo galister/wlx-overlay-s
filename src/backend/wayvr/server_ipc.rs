@@ -4,16 +4,21 @@ use interprocess::local_socket::{self, traits::Listener, ToNsName};
 use smallvec::SmallVec;
 use std::io::{Read, Write};
 use wayvr_ipc::{
-    ipc::{self, binary_decode, binary_encode},
+    ipc::{self},
     packet_client::{self, PacketClient},
     packet_server::{self, PacketServer},
 };
+
+pub struct AuthInfo {
+    pub client_name: String,
+    pub protocol_version: u32, // client protocol version
+}
 
 pub struct Connection {
     alive: bool,
     conn: local_socket::Stream,
     next_packet: Option<u32>,
-    handshaking: bool,
+    auth: Option<AuthInfo>,
 }
 
 pub fn send_packet(conn: &mut local_socket::Stream, data: &[u8]) -> anyhow::Result<()> {
@@ -71,7 +76,7 @@ pub fn gen_args_vec(input: &str) -> Vec<&str> {
     input.split_whitespace().collect()
 }
 
-pub fn gen_env_vec(input: &Vec<String>) -> Vec<(&str, &str)> {
+pub fn gen_env_vec(input: &[String]) -> Vec<(&str, &str)> {
     let res = input
         .iter()
         .filter_map(|e| e.as_str().split_once('='))
@@ -84,19 +89,25 @@ impl Connection {
         Self {
             conn,
             alive: true,
-            handshaking: true,
+            auth: None,
             next_packet: None,
         }
     }
 
-    fn kill(&mut self) {
+    fn kill(&mut self, reason: &str) {
+        let _dont_care = send_packet(
+            &mut self.conn,
+            &ipc::data_encode(&PacketServer::Disconnect(packet_server::Disconnect {
+                reason: String::from(reason),
+            })),
+        );
         self.alive = false;
     }
 
-    fn process_handshake(&mut self, payload: Payload) -> anyhow::Result<()> {
-        let Ok(handshake) = binary_decode::<ipc::Handshake>(&payload) else {
-            anyhow::bail!("Invalid handshake");
-        };
+    fn process_handshake(&mut self, handshake: &packet_client::Handshake) -> anyhow::Result<()> {
+        if self.auth.is_some() {
+            anyhow::bail!("You were already authenticated");
+        }
 
         if handshake.protocol_version != ipc::PROTOCOL_VERSION {
             anyhow::bail!(
@@ -109,8 +120,29 @@ impl Connection {
             anyhow::bail!("Invalid magic");
         }
 
-        log::info!("Accepted new connection");
-        self.handshaking = false;
+        match handshake.client_name.len() {
+            0 => anyhow::bail!("Client name is empty"),
+            1..32 => {}
+            _ => anyhow::bail!("Client name is too long"),
+        }
+
+        log::info!("IPC: Client \"{}\" connected.", handshake.client_name);
+
+        self.auth = Some(AuthInfo {
+            client_name: handshake.client_name.clone(),
+            protocol_version: handshake.protocol_version,
+        });
+
+        // Send auth response
+        send_packet(
+            &mut self.conn,
+            &ipc::data_encode(&PacketServer::HandshakeSuccess(
+                packet_server::HandshakeSuccess {
+                    runtime: String::from("wlx-overlay-s"),
+                },
+            )),
+        )?;
+
         Ok(())
     }
 
@@ -136,7 +168,7 @@ impl Connection {
 
         send_packet(
             &mut self.conn,
-            &binary_encode(&PacketServer::WvrDisplayListResponse(
+            &ipc::data_encode(&PacketServer::WvrDisplayListResponse(
                 serial,
                 packet_server::WvrDisplayList { list },
             )),
@@ -165,7 +197,7 @@ impl Connection {
 
         send_packet(
             &mut self.conn,
-            &binary_encode(&PacketServer::WvrDisplayCreateResponse(
+            &ipc::data_encode(&PacketServer::WvrDisplayCreateResponse(
                 serial,
                 display_handle.as_packet(),
             )),
@@ -193,7 +225,7 @@ impl Connection {
 
         send_packet(
             &mut self.conn,
-            &binary_encode(&PacketServer::WvrProcessLaunchResponse(serial, res)),
+            &ipc::data_encode(&PacketServer::WvrProcessLaunchResponse(serial, res)),
         )?;
 
         Ok(())
@@ -214,7 +246,7 @@ impl Connection {
 
         send_packet(
             &mut self.conn,
-            &binary_encode(&PacketServer::WvrDisplayGetResponse(serial, disp)),
+            &ipc::data_encode(&PacketServer::WvrDisplayGetResponse(serial, disp)),
         )?;
 
         Ok(())
@@ -242,7 +274,7 @@ impl Connection {
 
         send_packet(
             &mut self.conn,
-            &binary_encode(&PacketServer::WvrProcessListResponse(
+            &ipc::data_encode(&PacketServer::WvrProcessListResponse(
                 serial,
                 packet_server::WvrProcessList { list },
             )),
@@ -270,13 +302,15 @@ impl Connection {
     }
 
     fn process_payload(&mut self, params: &mut TickParams, payload: Payload) -> anyhow::Result<()> {
-        if self.handshaking {
-            self.process_handshake(payload)?;
+        let packet: PacketClient = ipc::data_decode(&payload)?;
+
+        if let PacketClient::Handshake(handshake) = &packet {
+            self.process_handshake(handshake)?;
             return Ok(());
         }
 
-        let packet: PacketClient = binary_decode(&payload)?;
         match packet {
+            PacketClient::Handshake(_) => unreachable!(), // handled previously
             PacketClient::WvrDisplayList(serial) => {
                 self.handle_wvr_display_list(params, serial)?;
             }
@@ -305,7 +339,8 @@ impl Connection {
 
         if let Err(e) = self.process_payload(params, payload) {
             log::error!("Invalid payload from the client, closing connection: {}", e);
-            self.kill();
+            // send also error message directly to the client before disconnecting
+            self.kill(format!("{}", e).as_str());
             false
         } else {
             true
@@ -341,7 +376,7 @@ impl Connection {
                 "Client sent a packet header with the size over {} bytes, closing connection.",
                 size_limit
             );
-            self.kill();
+            self.kill("Too big packet received (over 128 KiB)");
             return false;
         }
 
