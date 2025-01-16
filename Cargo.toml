@@ -77,6 +77,7 @@ khronos-egl = { version = "6.0.0", features = ["static"], optional = true }
 smithay = { git = "https://github.com/Smithay/smithay.git", default-features = false, features = [
   "renderer_gl",
   "backend_egl",
+  "backend_drm",
   "xwayland",
   "wayland_frontend",
 ], optional = true }

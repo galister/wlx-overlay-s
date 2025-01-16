@@ -1,15 +1,21 @@
+use smithay::backend::allocator::dmabuf::Dmabuf;
+use smithay::backend::renderer::gles::GlesRenderer;
 use smithay::backend::renderer::utils::on_commit_buffer_handler;
+use smithay::backend::renderer::ImportDma;
 use smithay::input::{Seat, SeatHandler, SeatState};
 use smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel;
 use smithay::reexports::wayland_server;
 use smithay::reexports::wayland_server::protocol::{wl_buffer, wl_seat, wl_surface};
 use smithay::reexports::wayland_server::Resource;
 use smithay::wayland::buffer::BufferHandler;
+use smithay::wayland::dmabuf::{
+    DmabufFeedback, DmabufGlobal, DmabufHandler, DmabufState, ImportNotifier,
+};
 use smithay::wayland::output::OutputHandler;
 use smithay::wayland::shm::{ShmHandler, ShmState};
 use smithay::{
-    delegate_compositor, delegate_data_device, delegate_output, delegate_seat, delegate_shm,
-    delegate_xdg_shell,
+    delegate_compositor, delegate_data_device, delegate_dmabuf, delegate_output, delegate_seat,
+    delegate_shm, delegate_xdg_shell,
 };
 use std::collections::HashSet;
 use std::os::fd::OwnedFd;
@@ -34,6 +40,8 @@ use super::event_queue::SyncEventQueue;
 use super::WayVRTask;
 
 pub struct Application {
+    pub gles_renderer: GlesRenderer,
+    pub dmabuf_state: (DmabufState, DmabufGlobal, Option<DmabufFeedback>),
     pub compositor: compositor::CompositorState,
     pub xdg_shell: XdgShellState,
     pub seat_state: SeatState<Application>,
@@ -172,6 +180,26 @@ impl ShmHandler for Application {
 
 impl OutputHandler for Application {}
 
+impl DmabufHandler for Application {
+    fn dmabuf_state(&mut self) -> &mut DmabufState {
+        &mut self.dmabuf_state.0
+    }
+
+    fn dmabuf_imported(
+        &mut self,
+        _global: &DmabufGlobal,
+        dmabuf: Dmabuf,
+        notifier: ImportNotifier,
+    ) {
+        if self.gles_renderer.import_dmabuf(&dmabuf, None).is_ok() {
+            let _ = notifier.successful::<Application>();
+        } else {
+            notifier.failed();
+        }
+    }
+}
+
+delegate_dmabuf!(Application);
 delegate_xdg_shell!(Application);
 delegate_compositor!(Application);
 delegate_shm!(Application);
