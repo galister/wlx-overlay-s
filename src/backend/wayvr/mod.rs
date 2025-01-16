@@ -17,12 +17,16 @@ use process::ProcessVec;
 use server_ipc::WayVRServer;
 use smallvec::SmallVec;
 use smithay::{
-    backend::renderer::gles::GlesRenderer,
+    backend::{
+        egl,
+        renderer::{gles::GlesRenderer, ImportDma},
+    },
     input::SeatState,
     output::{Mode, Output},
     reexports::wayland_server::{self, backend::ClientId},
     wayland::{
         compositor,
+        dmabuf::{DmabufFeedbackBuilder, DmabufState},
         selection::data_device::DataDeviceState,
         shell::xdg::{ToplevelSurface, XdgShellState},
         shm::ShmState,
@@ -81,7 +85,6 @@ pub struct Config {
 
 pub struct WayVRState {
     time_start: u64,
-    gles_renderer: GlesRenderer,
     pub displays: display::DisplayVec,
     pub manager: client::WayVRCompositor,
     wm: Rc<RefCell<window::WindowManager>>,
@@ -143,9 +146,55 @@ impl WayVR {
             size: (dummy_width, dummy_height).into(),
         };
 
+        let _global = output.create_global::<Application>(&dh);
         output.change_current_state(Some(mode), None, None, None);
         output.set_preferred(mode);
-        let _global = output.create_global::<Application>(&dh);
+
+        let egl_data = egl_data::EGLData::new()?;
+
+        let smithay_display = smithay_wrapper::get_egl_display(&egl_data)?;
+        let smithay_context = smithay_wrapper::get_egl_context(&egl_data, &smithay_display)?;
+
+        let render_node = egl::EGLDevice::device_for_display(&smithay_display)
+            .and_then(|device| device.try_get_render_node());
+
+        let gles_renderer = unsafe { GlesRenderer::new(smithay_context)? };
+
+        let dmabuf_default_feedback = match render_node {
+            Ok(Some(node)) => {
+                let dmabuf_formats = gles_renderer.dmabuf_formats();
+                let dmabuf_default_feedback =
+                    DmabufFeedbackBuilder::new(node.dev_id(), dmabuf_formats)
+                        .build()
+                        .unwrap();
+                Some(dmabuf_default_feedback)
+            }
+            Ok(None) => {
+                log::warn!("dmabuf: Failed to query render node");
+                debug_assert!(false);
+                None
+            }
+            Err(err) => {
+                log::warn!("dmabuf: Failed to get egl device for display: {}", err);
+                debug_assert!(false);
+                None
+            }
+        };
+
+        let dmabuf_state = if let Some(default_feedback) = dmabuf_default_feedback {
+            let mut dmabuf_state = DmabufState::new();
+            let dmabuf_global = dmabuf_state.create_global_with_default_feedback::<Application>(
+                &display.handle(),
+                &default_feedback,
+            );
+            (dmabuf_state, dmabuf_global, Some(default_feedback))
+        } else {
+            let dmabuf_formats = gles_renderer.dmabuf_formats();
+            let mut dmabuf_state = DmabufState::new();
+            let dmabuf_global =
+                dmabuf_state.create_global::<Application>(&display.handle(), dmabuf_formats);
+            (dmabuf_state, dmabuf_global, None)
+        };
 
         let seat_keyboard = seat.add_keyboard(
             Default::default(),
@@ -164,18 +213,15 @@ impl WayVR {
             data_device,
             wayvr_tasks: tasks.clone(),
             redraw_requests: HashSet::new(),
+            dmabuf_state,
+            gles_renderer,
         };
 
         let time_start = get_millis();
-        let egl_data = egl_data::EGLData::new()?;
-        let smithay_display = smithay_wrapper::get_egl_display(&egl_data)?;
-        let smithay_context = smithay_wrapper::get_egl_context(&egl_data, &smithay_display)?;
-        let gles_renderer = unsafe { GlesRenderer::new(smithay_context)? };
 
         let ipc_server = WayVRServer::new()?;
 
         let state = WayVRState {
-            gles_renderer,
             time_start,
             manager: client::WayVRCompositor::new(state, display, seat_keyboard, seat_pointer)?,
             displays: DisplayVec::new(),
@@ -214,7 +260,7 @@ impl WayVR {
 
         let time_ms = get_millis() - self.state.time_start;
 
-        display.tick_render(&mut self.state.gles_renderer, time_ms)?;
+        display.tick_render(&mut self.state.manager.state.gles_renderer, time_ms)?;
         display.wants_redraw = false;
 
         Ok(())
@@ -316,10 +362,14 @@ impl WayVR {
     }
 
     pub fn tick_finish(&mut self) -> anyhow::Result<()> {
-        self.state.gles_renderer.with_context(|gl| unsafe {
-            gl.Flush();
-            gl.Finish();
-        })?;
+        self.state
+            .manager
+            .state
+            .gles_renderer
+            .with_context(|gl| unsafe {
+                gl.Flush();
+                gl.Finish();
+            })?;
         Ok(())
     }
 
@@ -404,7 +454,7 @@ impl WayVRState {
     ) -> anyhow::Result<display::DisplayHandle> {
         let display = display::Display::new(
             self.wm.clone(),
-            &mut self.gles_renderer,
+            &mut self.manager.state.gles_renderer,
             self.egl_data.clone(),
             self.manager.wayland_env.clone(),
             width,
