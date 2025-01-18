@@ -19,14 +19,14 @@ use crate::{
     config::{save_layout, save_settings, AStrSetExt},
     hid::VirtualKey,
     overlays::{
-        toast::{Toast, ToastTopic},
+        toast::{error_toast, Toast, ToastTopic},
         watch::WATCH_NAME,
     },
     state::AppState,
 };
 
-#[cfg(feature = "wayvr")]
-use crate::overlays::wayvr::WayVRAction;
+#[cfg(not(feature = "wayvr"))]
+use crate::overlays::toast::error_toast_str;
 
 use super::{ExecArgs, ModularControl, ModularData};
 
@@ -120,6 +120,26 @@ pub enum WindowAction {
 }
 
 #[derive(Deserialize, Clone)]
+pub enum WayVRDisplayClickAction {
+    ToggleVisibility,
+    Reset,
+}
+
+#[derive(Deserialize, Clone)]
+#[allow(dead_code)] // in case if WayVR feature is disabled
+pub enum WayVRAction {
+    AppClick {
+        catalog_name: Arc<str>,
+        app_name: Arc<str>,
+    },
+    DisplayClick {
+        display_name: Arc<str>,
+        action: WayVRDisplayClickAction,
+    },
+    ToggleDashboard,
+}
+
+#[derive(Deserialize, Clone)]
 #[serde(tag = "type")]
 pub enum ButtonAction {
     Exec {
@@ -137,8 +157,10 @@ pub enum ButtonAction {
         target: OverlaySelector,
         action: OverlayAction,
     },
-    #[cfg(feature = "wayvr")]
-    WayVR(WayVRAction),
+    // Ignored if "wayvr" feature is not enabled
+    WayVR {
+        action: WayVRAction,
+    },
     Window {
         target: Arc<str>,
         action: WindowAction,
@@ -332,9 +354,16 @@ fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppStat
         ButtonAction::Watch { action } => run_watch(action, app),
         ButtonAction::Overlay { target, action } => run_overlay(target, action, app),
         ButtonAction::Window { target, action } => run_window(target, action, app),
-        #[cfg(feature = "wayvr")]
-        ButtonAction::WayVR(action) => {
-            app.tasks.enqueue(TaskType::WayVR(action.clone()));
+        ButtonAction::WayVR { action } => {
+            #[cfg(feature = "wayvr")]
+            {
+                app.tasks.enqueue(TaskType::WayVR(action.clone()));
+            }
+            #[cfg(not(feature = "wayvr"))]
+            {
+                let _ = &action;
+                error_toast_str(app, "WayVR feature is not enabled");
+            }
         }
         ButtonAction::VirtualKey { keycode, action } => app
             .hid_provider
@@ -461,12 +490,12 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
         }
         SystemAction::PersistConfig => {
             if let Err(e) = save_settings(&app.session.config) {
-                log::error!("Failed to save config: {:?}", e);
+                error_toast(app, "Failed to save config", e);
             }
         }
         SystemAction::PersistLayout => {
             if let Err(e) = save_layout(&app.session.config) {
-                log::error!("Failed to save layout: {:?}", e);
+                error_toast(app, "Failed to save layout", e);
             }
         }
     }
@@ -477,7 +506,7 @@ fn run_exec(args: &ExecArgs, toast: &Option<Arc<str>>, press: &mut PressData, ap
         match proc.try_wait() {
             Ok(Some(code)) => {
                 if !code.success() {
-                    log::error!("Child process exited with code: {}", code);
+                    error_toast(app, "Child process exited with code", code);
                 }
                 press.child = None;
             }
@@ -487,7 +516,7 @@ fn run_exec(args: &ExecArgs, toast: &Option<Arc<str>>, press: &mut PressData, ap
             }
             Err(e) => {
                 press.child = None;
-                log::error!("Error checking child process: {:?}", e);
+                error_toast(app, "Error checking child process", e);
             }
         }
     }
@@ -500,7 +529,7 @@ fn run_exec(args: &ExecArgs, toast: &Option<Arc<str>>, press: &mut PressData, ap
             }
         }
         Err(e) => {
-            log::error!("Failed to spawn process {:?}: {:?}", args, e);
+            error_toast(app, &format!("Failed to spawn process {:?}", args), e);
         }
     };
 }
@@ -651,7 +680,9 @@ fn run_overlay(overlay: &OverlaySelector, action: &OverlayAction, app: &mut AppS
                     if state_dirty {
                         match save_layout(&app.session.config) {
                             Ok(_) => log::debug!("Saved state"),
-                            Err(e) => log::error!("Failed to save state: {:?}", e),
+                            Err(e) => {
+                                error_toast(app, "Failed to save state", e);
+                            }
                         }
                     }
                 }),

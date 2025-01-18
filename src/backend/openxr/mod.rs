@@ -32,7 +32,7 @@ use crate::{
 };
 
 #[cfg(feature = "wayvr")]
-use crate::overlays::wayvr::{wayvr_action, WayVRAction};
+use crate::{gui::modular::button::WayVRAction, overlays::wayvr::wayvr_action};
 
 mod helpers;
 mod input;

@@ -3,6 +3,9 @@ pub mod label;
 
 use std::{fs::File, sync::Arc};
 
+#[cfg(feature = "wayvr")]
+use button::{WayVRAction, WayVRDisplayClickAction};
+
 use glam::Vec4;
 use serde::Deserialize;
 use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
@@ -11,9 +14,6 @@ use crate::{
     backend::common::OverlaySelector, config::AStrMapExt, config_io::CONFIG_ROOT_PATH,
     graphics::dds::WlxCommandBufferDds, state::AppState,
 };
-
-#[cfg(feature = "wayvr")]
-use crate::overlays::wayvr::{WayVRAction, WayVRDisplayClickAction};
 
 use self::{
     button::{modular_button_init, ButtonAction, ButtonData, OverlayAction},
@@ -452,10 +452,12 @@ pub fn modular_canvas(
                             );
 
                             let data = ButtonData {
-                                click_up: Some(vec![ButtonAction::WayVR(WayVRAction::AppClick {
-                                    catalog_name: catalog_name.clone(),
-                                    app_name: Arc::from(app.name.as_str()),
-                                })]),
+                                click_up: Some(vec![ButtonAction::WayVR {
+                                    action: WayVRAction::AppClick {
+                                        catalog_name: catalog_name.clone(),
+                                        app_name: Arc::from(app.name.as_str()),
+                                    },
+                                }]),
                                 ..Default::default()
                             };
 
@@ -502,16 +504,18 @@ pub fn modular_canvas(
                         );
 
                         let data = ButtonData {
-                            click_up: Some(vec![ButtonAction::WayVR(WayVRAction::DisplayClick {
-                                display_name: Arc::from(display_name.as_str()),
-                                action: WayVRDisplayClickAction::ToggleVisibility,
-                            })]),
-                            long_click_up: Some(vec![ButtonAction::WayVR(
-                                WayVRAction::DisplayClick {
+                            click_up: Some(vec![ButtonAction::WayVR {
+                                action: WayVRAction::DisplayClick {
+                                    display_name: Arc::from(display_name.as_str()),
+                                    action: WayVRDisplayClickAction::ToggleVisibility,
+                                },
+                            }]),
+                            long_click_up: Some(vec![ButtonAction::WayVR {
+                                action: WayVRAction::DisplayClick {
                                     display_name: Arc::from(display_name.as_str()),
                                     action: WayVRDisplayClickAction::Reset,
                                 },
-                            )]),
+                            }]),
                             ..Default::default()
                         };
 
