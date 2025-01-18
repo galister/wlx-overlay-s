@@ -83,6 +83,8 @@ impl EGLData {
 
             let context = egl.create_context(display, config, None, &context_attrib_list)?;
 
+            log::debug!("eglMakeCurrent");
+
             egl.make_current(display, None, None, Some(context))?;
 
             Ok(EGLData {
@@ -92,18 +94,6 @@ impl EGLData {
                 context,
             })
         }
-    }
-
-    #[allow(dead_code)]
-    pub fn make_current(&self, surface: &khronos_egl::Surface) -> anyhow::Result<()> {
-        self.egl.make_current(
-            self.display,
-            Some(*surface),
-            Some(*surface),
-            Some(self.context),
-        )?;
-
-        Ok(())
     }
 
     fn query_dmabuf_mod_info(&self) -> anyhow::Result<DMAbufModifierInfo> {

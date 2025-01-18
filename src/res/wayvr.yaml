@@ -28,11 +28,10 @@ keyboard_repeat_rate: 50
 # Build instructions: https://github.com/olekolek1000/wayvr-dashboard
 # exec: Executable path, for example /home/USER/wayvr_dashboard/src-tauri/target/release/wayvr_dashboard
 # GDK_BACKEND=wayland: Force-use Wayland for GTK apps
-# LIBGL_ALWAYS_SOFTWARE: Mesa crash mitigation for Tauri apps on AMD GPUs
 dashboard:
   exec: "wayvr_dashboard"
   args: ""
-  env: ["GDK_BACKEND=wayland", "LIBGL_ALWAYS_SOFTWARE=1"]
+  env: ["GDK_BACKEND=wayland"]
 
 displays:
   Watch:

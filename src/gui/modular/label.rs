@@ -9,7 +9,11 @@ use std::{
     time::Instant,
 };
 
-use crate::{gui::modular::FALLBACK_COLOR, state::AppState};
+use crate::{
+    gui::modular::FALLBACK_COLOR,
+    overlays::toast::{error_toast, error_toast_str},
+    state::AppState,
+};
 
 use serde::Deserialize;
 
@@ -233,14 +237,21 @@ pub(super) fn label_update(control: &mut ModularControl, _: &mut (), app: &mut A
                 match proc.try_wait() {
                     Ok(Some(code)) => {
                         if !code.success() {
-                            log::error!("Child process exited with code: {}", code);
+                            error_toast(
+                                app,
+                                "LabelData::Exec: Child process exited with code",
+                                code,
+                            );
                         } else {
                             if let Some(mut stdout) = proc.stdout.take() {
                                 let mut buf = String::new();
                                 if stdout.read_to_string(&mut buf).is_ok() {
                                     control.set_text(&buf);
                                 } else {
-                                    log::error!("Failed to read stdout for child process");
+                                    error_toast_str(
+                                        app,
+                                        "LabelData::Exec: Failed to read stdout for child process",
+                                    );
                                     return;
                                 }
                                 return;
@@ -256,7 +267,7 @@ pub(super) fn label_update(control: &mut ModularControl, _: &mut (), app: &mut A
                     }
                     Err(e) => {
                         *child = None;
-                        log::error!("Error checking child process: {:?}", e);
+                        error_toast(app, "Error checking child process", e);
                         return;
                     }
                 }
@@ -282,7 +293,7 @@ pub(super) fn label_update(control: &mut ModularControl, _: &mut (), app: &mut A
                         *child = Some(proc);
                     }
                     Err(e) => {
-                        log::error!("Failed to spawn process {:?}: {:?}", args, e);
+                        error_toast(app, &format!("Failed to spawn process {:?}", args), e);
                     }
                 };
             }

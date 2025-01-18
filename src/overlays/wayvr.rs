@@ -1,5 +1,4 @@
 use glam::{vec3a, Affine2, Vec3, Vec3A};
-use serde::Deserialize;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 use vulkano::image::SubresourceLayout;
 use wlx_capture::frame::{DmabufFrame, FourCC, FrameFormat, FramePlane};
@@ -21,8 +20,11 @@ use crate::{
     },
     config_wayvr,
     graphics::WlxGraphics,
+    gui::modular::button::{WayVRAction, WayVRDisplayClickAction},
     state::{self, AppState, KeyboardFocus},
 };
+
+use super::toast::error_toast;
 
 // Hard-coded for now
 const DASHBOARD_WIDTH: u16 = 960;
@@ -54,6 +56,7 @@ struct OverlayToCreate {
 pub struct WayVRData {
     display_handle_map: HashMap<display::DisplayHandle, OverlayID>,
     overlays_to_create: Vec<OverlayToCreate>,
+    dashboard_executed: bool,
     pub data: WayVR,
 }
 
@@ -63,6 +66,7 @@ impl WayVRData {
             display_handle_map: Default::default(),
             data: WayVR::new(config)?,
             overlays_to_create: Vec::new(),
+            dashboard_executed: false,
         })
     }
 
@@ -217,6 +221,19 @@ fn get_or_create_display_by_name(
     Ok(disp_handle)
 }
 
+fn executable_exists_in_path(command: &str) -> bool {
+    let Ok(path) = std::env::var("PATH") else {
+        return false; // very unlikely to happen
+    };
+    for dir in path.split(':') {
+        let exec_path = std::path::PathBuf::from(dir).join(command);
+        if exec_path.exists() && exec_path.is_file() {
+            return true; // executable found
+        }
+    }
+    false
+}
+
 fn toggle_dashboard<O>(
     app: &mut AppState,
     overlays: &mut OverlayContainer<O>,
@@ -225,6 +242,12 @@ fn toggle_dashboard<O>(
 where
     O: Default,
 {
+    let conf_dash = &app.session.wayvr_config.dashboard;
+
+    if !wayvr.dashboard_executed && !executable_exists_in_path(&conf_dash.exec) {
+        anyhow::bail!("Executable \"{}\" not found", &conf_dash.exec);
+    }
+
     let (newly_created, disp_handle) = wayvr.data.state.get_or_create_dashboard_display(
         DASHBOARD_WIDTH,
         DASHBOARD_HEIGHT,
@@ -257,6 +280,8 @@ where
         overlay.state.z_order = Z_ORDER_DASHBOARD;
         overlay.state.reset(app, true);
 
+        let conf_dash = &app.session.wayvr_config.dashboard;
+
         // FIXME: overlay curvature needs to be dispatched for some unknown reason, this value is not set otherwise
         app.tasks.enqueue(TaskType::Overlay(
             OverlaySelector::Id(overlay.state.id),
@@ -266,8 +291,6 @@ where
         ));
 
         overlays.add(overlay);
-
-        let conf_dash = &app.session.wayvr_config.dashboard;
 
         let args_vec = match &conf_dash.args {
             Some(args) => gen_args_vec(args),
@@ -285,6 +308,8 @@ where
                 .data
                 .state
                 .spawn_process(disp_handle, &conf_dash.exec, &args_vec, &env_vec)?;
+
+        wayvr.dashboard_executed = true;
 
         return Ok(());
     }
@@ -626,25 +651,6 @@ where
     })
 }
 
-#[derive(Deserialize, Clone)]
-pub enum WayVRDisplayClickAction {
-    ToggleVisibility,
-    Reset,
-}
-
-#[derive(Deserialize, Clone)]
-pub enum WayVRAction {
-    AppClick {
-        catalog_name: Arc<str>,
-        app_name: Arc<str>,
-    },
-    DisplayClick {
-        display_name: Arc<str>,
-        action: WayVRDisplayClickAction,
-    },
-    ToggleDashboard,
-}
-
 fn show_display<O>(wayvr: &mut WayVRData, overlays: &mut OverlayContainer<O>, display_name: &str)
 where
     O: Default,
@@ -775,7 +781,7 @@ where
             if let Err(e) = action_app_click(app, overlays, catalog_name, app_name) {
                 // Happens if something went wrong with initialization
                 // or input exec path is invalid. Do nothing, just print an error
-                log::error!("action_app_click failed: {}", e);
+                error_toast(app, "action_app_click failed", e);
             }
         }
         WayVRAction::DisplayClick {
@@ -783,7 +789,7 @@ where
             action,
         } => {
             if let Err(e) = action_display_click::<O>(app, overlays, display_name, action) {
-                log::error!("action_display_click failed: {}", e);
+                error_toast(app, "action_display_click failed", e);
             }
         }
         WayVRAction::ToggleDashboard => {
@@ -791,7 +797,7 @@ where
             let mut wayvr = wayvr.borrow_mut();
 
             if let Err(e) = toggle_dashboard::<O>(app, overlays, &mut wayvr) {
-                log::error!("toggle_dashboard failed: {}", e);
+                error_toast(app, "toggle_dashboard failed", e);
             }
         }
     }

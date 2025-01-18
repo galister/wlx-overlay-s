@@ -17,7 +17,8 @@ use crate::{
         wayvr,
     },
     config::{load_known_yaml, ConfigType},
-    overlays::wayvr::{WayVRAction, WayVRData},
+    gui::modular::button::WayVRAction,
+    overlays::wayvr::WayVRData,
 };
 
 // Flat version of RelativeTo

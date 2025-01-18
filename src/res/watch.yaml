@@ -28,9 +28,21 @@ elements:
         target: settings
         action: Destroy # only triggers if exists since before current frame
 
+  # Dashboard toggle button
+  - type: Button
+    rect: [32, 162, 48, 36]
+    corner_radius: 4
+    font_size: 15
+    bg_color: "#2288FF"
+    fg_color: "#24273a"
+    text: "Dash"
+    click_up:
+      - type: WayVR
+        action: ToggleDashboard
+
   # Keyboard button
   - type: Button
-    rect: [32, 162, 60, 36]
+    rect: [84, 162, 48, 36]
     corner_radius: 4
     font_size: 15
     fg_color: "#24273a"
@@ -65,7 +77,7 @@ elements:
 
   # bottom row, of keyboard + overlays
   - type: OverlayList
-    rect: [94, 160, 306, 40]
+    rect: [134, 160, 266, 40]
     corner_radius: 4
     font_size: 15
     fg_color: "#cad3f5"
