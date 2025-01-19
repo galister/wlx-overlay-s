@@ -49,6 +49,13 @@ impl Process {
         }
     }
 
+    pub fn get_name(&self) -> String {
+        match self {
+            Process::Managed(p) => p.get_name().unwrap_or(String::from("unknown")),
+            Process::External(p) => p.get_name().unwrap_or(String::from("unknown")),
+        }
+    }
+
     pub fn to_packet(&self, handle: ProcessHandle) -> packet_server::WvrProcess {
         match self {
             Process::Managed(p) => packet_server::WvrProcess {

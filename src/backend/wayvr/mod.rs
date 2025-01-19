@@ -68,6 +68,7 @@ pub struct ExternalProcessRequest {
 pub enum WayVRTask {
     NewToplevel(ClientId, ToplevelSurface),
     NewExternalProcess(ExternalProcessRequest),
+    DropOverlay(super::overlay::OverlayID),
     ProcessTerminationRequest(process::ProcessHandle),
 }
 
@@ -92,12 +93,13 @@ pub struct WayVRState {
     pub processes: process::ProcessVec,
     config: Config,
     dashboard_display: Option<display::DisplayHandle>,
+    tasks: SyncEventQueue<WayVRTask>,
+    ticks: u64,
 }
 
 pub struct WayVR {
     pub state: WayVRState,
     ipc_server: WayVRServer,
-    tasks: SyncEventQueue<WayVRTask>,
     pub signals: SyncEventQueue<WayVRSignal>,
 }
 
@@ -113,6 +115,7 @@ pub enum TickTask {
         packet_client::WvrDisplayCreateParams,
         Option<display::DisplayHandle>, /* existing handle? */
     ),
+    DropOverlay(super::overlay::OverlayID),
 }
 
 impl WayVR {
@@ -230,12 +233,13 @@ impl WayVR {
             wm: Rc::new(RefCell::new(window::WindowManager::new())),
             config,
             dashboard_display: None,
+            ticks: 0,
+            tasks,
         };
 
         Ok(Self {
             state,
             signals: SyncEventQueue::new(),
-            tasks,
             ipc_server,
         })
     }
@@ -313,10 +317,13 @@ impl WayVR {
             display.tick(&self.state.config, &handle, &mut self.signals);
         });
 
-        while let Some(task) = self.tasks.read() {
+        while let Some(task) = self.state.tasks.read() {
             match task {
                 WayVRTask::NewExternalProcess(req) => {
                     tasks.push(TickTask::NewExternalProcess(req));
+                }
+                WayVRTask::DropOverlay(overlay_id) => {
+                    tasks.push(TickTask::DropOverlay(overlay_id));
                 }
                 WayVRTask::NewToplevel(client_id, toplevel) => {
                     // Attach newly created toplevel surfaces to displays
@@ -357,6 +364,12 @@ impl WayVR {
         self.state
             .manager
             .tick_wayland(&mut self.state.displays, &mut self.state.processes)?;
+
+        if self.state.ticks % 200 == 0 {
+            self.state.manager.cleanup_clients();
+        }
+
+        self.state.ticks += 1;
 
         Ok(tasks)
     }
@@ -399,7 +412,8 @@ impl WayVR {
     }
 
     pub fn terminate_process(&mut self, process_handle: process::ProcessHandle) {
-        self.tasks
+        self.state
+            .tasks
             .send(WayVRTask::ProcessTerminationRequest(process_handle));
     }
 }
@@ -465,6 +479,46 @@ impl WayVRState {
         Ok(self.displays.add(display))
     }
 
+    pub fn destroy_display(&mut self, handle: display::DisplayHandle) -> anyhow::Result<()> {
+        let Some(display) = self.displays.get(&handle) else {
+            anyhow::bail!("Display not found");
+        };
+
+        if let Some(overlay_id) = display.overlay_id {
+            self.tasks.send(WayVRTask::DropOverlay(overlay_id));
+        } else {
+            log::warn!("Destroying display without OverlayID set"); // This shouldn't happen, but log it anyways.
+        }
+
+        let mut process_names = Vec::<String>::new();
+
+        self.processes.iter_mut(&mut |_, process| {
+            if process.display_handle() == handle {
+                process_names.push(process.get_name());
+            }
+        });
+
+        if !display.displayed_windows.is_empty() || !process_names.is_empty() {
+            anyhow::bail!(
+                "Display is not empty. Attached processes: {}",
+                process_names.join(", ")
+            );
+        }
+
+        self.manager.cleanup_clients();
+
+        for client in self.manager.clients.iter() {
+            if client.display_handle == handle {
+                // This shouldn't happen, but make sure we are all set to destroy this display
+                anyhow::bail!("Wayland client still exists");
+            }
+        }
+
+        self.displays.remove(&handle);
+
+        Ok(())
+    }
+
     pub fn get_or_create_dashboard_display(
         &mut self,
         width: u16,
@@ -482,10 +536,6 @@ impl WayVRState {
         self.dashboard_display = Some(new_disp);
 
         Ok((true, new_disp))
-    }
-
-    pub fn destroy_display(&mut self, handle: display::DisplayHandle) {
-        self.displays.remove(&handle);
     }
 
     // Check if process with given arguments already exists

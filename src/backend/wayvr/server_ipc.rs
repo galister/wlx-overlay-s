@@ -205,6 +205,24 @@ impl Connection {
         Ok(())
     }
 
+    fn handle_wvr_display_remove(
+        &mut self,
+        params: &mut TickParams,
+        serial: ipc::Serial,
+        handle: packet_server::WvrDisplayHandle,
+    ) -> anyhow::Result<()> {
+        let res = params
+            .state
+            .destroy_display(display::DisplayHandle::from_packet(handle))
+            .map_err(|e| format!("{:?}", e));
+
+        send_packet(
+            &mut self.conn,
+            &ipc::data_encode(&PacketServer::WvrDisplayRemoveResponse(serial, res)),
+        )?;
+        Ok(())
+    }
+
     fn handle_wvr_process_launch(
         &mut self,
         params: &mut TickParams,
@@ -316,6 +334,9 @@ impl Connection {
             }
             PacketClient::WvrDisplayGet(serial, display_handle) => {
                 self.handle_wvr_process_get(params, serial, display_handle)?;
+            }
+            PacketClient::WvrDisplayRemove(serial, display_handle) => {
+                self.handle_wvr_display_remove(params, serial, display_handle)?;
             }
             PacketClient::WvrProcessList(serial) => {
                 self.handle_wvr_process_list(params, serial)?;
