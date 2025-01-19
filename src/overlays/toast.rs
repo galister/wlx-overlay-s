@@ -207,3 +207,26 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
 
     Some((state, backend))
 }
+
+fn msg_err(app: &mut AppState, message: &str) {
+    Toast::new(ToastTopic::System, "Error".into(), message.into())
+        .with_timeout(3.)
+        .submit(app);
+}
+
+// Display the same error in the terminal and as a toast in VR.
+// Formatted as "Failed to XYZ: Object is not defined"
+pub fn error_toast<ErrorType>(app: &mut AppState, title: &str, err: ErrorType)
+where
+    ErrorType: std::fmt::Display + std::fmt::Debug,
+{
+    log::error!("{}: {:?}", title, err); // More detailed version (use Debug)
+
+    // Brief version (use Display)
+    msg_err(app, &format!("{}: {}", title, err));
+}
+
+pub fn error_toast_str(app: &mut AppState, message: &str) {
+    log::error!("{}", message);
+    msg_err(app, message);
+}
