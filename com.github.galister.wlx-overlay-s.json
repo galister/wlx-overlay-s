@@ -10,5 +10,6 @@
   "description": "A lightweight OpenXR/OpenVR overlay for Wayland and X11 desktops, inspired by XSOverlay.\n\nWlxOverlay-S allows you to access your desktop screens while in VR.\n\nIn comparison to similar overlays, WlxOverlay-S aims to run alongside VR games and experiences while having as little performance impact as possible. The UI appearance and rendering techniques are kept as simple and efficient as possible, while still allowing a high degree of customizability.",
   "short_description": "Access your Wayland/X11 desktop",
   "exec_url": "https://github.com/galister/wlx-overlay-s/releases/download/v0.6/WlxOverlay-S-v0.6-x86_64.AppImage",
-  "launch_opts": ["--openxr"]
+  "luanch_opts": ["--openxr"],
+  "args": ["--openxr"]
 }
