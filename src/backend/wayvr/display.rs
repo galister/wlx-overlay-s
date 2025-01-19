@@ -60,7 +60,7 @@ pub struct Display {
     pub overlay_id: Option<OverlayID>,
     pub wants_redraw: bool,
     pub primary: bool,
-    wm: Rc<RefCell<window::WindowManager>>,
+    pub wm: Rc<RefCell<window::WindowManager>>,
     pub displayed_windows: Vec<DisplayWindow>,
     wayland_env: super::WaylandEnv,
     last_pressed_time_ms: u64,

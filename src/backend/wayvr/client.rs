@@ -10,7 +10,7 @@ use smithay::{
 use crate::backend::wayvr::{ExternalProcessRequest, WayVRTask};
 
 use super::{
-    comp::{self},
+    comp::{self, ClientState},
     display, process, ProcessWayVREnv,
 };
 
@@ -84,6 +84,20 @@ impl WayVRCompositor {
 
     pub fn add_client(&mut self, client: WayVRClient) {
         self.clients.push(client);
+    }
+
+    pub fn cleanup_clients(&mut self) {
+        self.clients.retain(|client| {
+            let Some(data) = client.client.get_data::<ClientState>() else {
+                return false;
+            };
+
+            if *data.disconnected.lock().unwrap() {
+                return false;
+            }
+
+            true
+        });
     }
 
     fn accept_connection(

@@ -495,6 +495,10 @@ where
                     },
                 });
             }
+            wayvr::TickTask::DropOverlay(overlay_id) => {
+                app.tasks
+                    .enqueue(TaskType::DropOverlay(OverlaySelector::Id(overlay_id)));
+            }
         }
     }
 
@@ -580,7 +584,13 @@ impl OverlayRenderer for WayVRRenderer {
         let ctx = self.context.borrow();
         let mut wayvr = ctx.wayvr.borrow_mut();
 
-        wayvr.data.tick_display(ctx.display)?;
+        match wayvr.data.tick_display(ctx.display) {
+            Ok(_) => {}
+            Err(e) => {
+                log::error!("tick_display failed: {}", e);
+                return Ok(()); // do not proceed further
+            }
+        }
 
         let dmabuf_data = wayvr
             .data

@@ -19,6 +19,7 @@ use smithay::{
 };
 use std::collections::HashSet;
 use std::os::fd::OwnedFd;
+use std::sync::{Arc, Mutex};
 
 use smithay::utils::Serial;
 use smithay::wayland::compositor::{
@@ -116,6 +117,7 @@ impl SelectionHandler for Application {
 #[derive(Default)]
 pub struct ClientState {
     compositor_state: compositor::CompositorClientState,
+    pub disconnected: Arc<Mutex<bool>>,
 }
 
 impl ClientData for ClientState {
@@ -124,6 +126,7 @@ impl ClientData for ClientState {
     }
 
     fn disconnected(&self, client_id: ClientId, reason: DisconnectReason) {
+        *self.disconnected.lock().unwrap() = true;
         log::debug!(
             "Client ID {:?} disconnected. Reason: {:?}",
             client_id,
