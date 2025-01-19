@@ -484,6 +484,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                 TaskType::DropOverlay(sel) => {
                     if let Some(o) = overlays.mut_by_selector(&sel) {
                         if o.state.birthframe < cur_frame {
+                            log::debug!("{}: destroy", o.state.name);
                             if let Some(o) = overlays.remove_by_selector(&sel) {
                                 // set for deletion after all images are done showing
                                 delete_queue.push((o, cur_frame + 5));
