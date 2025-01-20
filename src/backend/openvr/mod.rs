@@ -330,7 +330,7 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
 
         #[cfg(feature = "osc")]
         if let Some(ref mut sender) = state.osc_sender {
-            let _ = sender.send_params(&overlays, &mut state);
+            let _ = sender.send_params(&overlays, &state.input_state.devices);
         };
 
         #[cfg(feature = "wayvr")]

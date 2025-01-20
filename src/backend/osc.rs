@@ -13,7 +13,7 @@ use crate::{
     state::AppState,
 };
 
-use super::common::OverlayContainer;
+use super::{common::OverlayContainer, input::TrackedDevice};
 
 pub struct OscSender {
     last_sent_overlay: Instant,
@@ -53,7 +53,7 @@ impl OscSender {
         Ok(())
     }
 
-    pub fn send_params<D>(&mut self, overlays: &OverlayContainer<D>, app: &AppState) -> anyhow::Result<()>
+    pub fn send_params<D>(&mut self, overlays: &OverlayContainer<D>, devices: &Vec<TrackedDevice>) -> anyhow::Result<()>
     where
         D: Default,
     {
@@ -108,7 +108,7 @@ impl OscSender {
             let mut tracker_total_bat = 0.0;
             let mut controller_total_bat = 0.0;
 
-            for device in &app.input_state.devices {
+            for device in devices {
                 let tracker_param;
 
                 // soc is the battery level (set to device status.charge)

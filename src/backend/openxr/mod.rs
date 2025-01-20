@@ -312,7 +312,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
 
         #[cfg(feature = "osc")]
         if let Some(ref mut sender) = app_state.osc_sender {
-            let _ = sender.send_params(&overlays, &app_state);
+            let _ = sender.send_params(&overlays, &app_state.input_state.devices);
         };
 
         let (_, views) = xr_state.session.locate_views(
