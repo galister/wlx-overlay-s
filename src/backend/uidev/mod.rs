@@ -127,7 +127,7 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
         panel_name,
     )?);
 
-    let watch_path = config_io::CONFIG_ROOT_PATH.join(format!("{}.yaml", panel_name));
+    let watch_path = config_io::get_config_root().join(format!("{}.yaml", panel_name));
     let mut path_last_modified = watch_path.metadata()?.modified()?;
     let mut recreate = false;
     let mut last_draw = std::time::Instant::now();
