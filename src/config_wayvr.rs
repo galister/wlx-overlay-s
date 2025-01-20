@@ -16,7 +16,8 @@ use crate::{
         task::{TaskContainer, TaskType},
         wayvr,
     },
-    config::{load_known_yaml, ConfigType},
+    config::load_config_with_conf_d,
+    config_io,
     gui::modular::button::WayVRAction,
     overlays::wayvr::WayVRData,
 };
@@ -120,7 +121,7 @@ pub struct WayVRConfig {
     pub run_compositor_at_start: bool,
     pub catalogs: HashMap<String, WayVRCatalog>,
     pub displays: BTreeMap<String, WayVRDisplay>, // sorted alphabetically
-    pub dashboard: WayVRDashboard,
+    pub dashboard: Option<WayVRDashboard>,
 
     #[serde(default = "def_true")]
     pub auto_hide: bool,
@@ -212,7 +213,15 @@ impl WayVRConfig {
 }
 
 pub fn load_wayvr() -> WayVRConfig {
-    let config = load_known_yaml::<WayVRConfig>(ConfigType::WayVR);
+    let config_root_path = config_io::ConfigRoot::WayVR.ensure_dir();
+    log::info!("WayVR Config root path: {:?}", config_root_path);
+    log::info!(
+        "WayVR conf.d path: {:?}",
+        config_io::ConfigRoot::WayVR.get_conf_d_path()
+    );
+
+    let config = load_config_with_conf_d::<WayVRConfig>("wayvr.yaml", config_io::ConfigRoot::WayVR);
+
     if config.version != 1 {
         panic!("WayVR config version {} is not supported", config.version);
     }

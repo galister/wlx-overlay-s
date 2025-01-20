@@ -244,6 +244,10 @@ where
 {
     let conf_dash = &app.session.wayvr_config.dashboard;
 
+    let Some(conf_dash) = &conf_dash else {
+        anyhow::bail!("Dashboard is not configured");
+    };
+
     if !wayvr.dashboard_executed && !executable_exists_in_path(&conf_dash.exec) {
         anyhow::bail!("Executable \"{}\" not found", &conf_dash.exec);
     }
@@ -280,7 +284,9 @@ where
         overlay.state.z_order = Z_ORDER_DASHBOARD;
         overlay.state.reset(app, true);
 
-        let conf_dash = &app.session.wayvr_config.dashboard;
+        let Some(conf_dash) = &app.session.wayvr_config.dashboard else {
+            unreachable!(); /* safe, not possible to trigger */
+        };
 
         // FIXME: overlay curvature needs to be dispatched for some unknown reason, this value is not set otherwise
         app.tasks.enqueue(TaskType::Overlay(

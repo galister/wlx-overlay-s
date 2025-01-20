@@ -4,12 +4,12 @@ use anyhow::bail;
 use json::{array, object};
 use ovr_overlay::applications::ApplicationsManager;
 
-use crate::config_io::CONFIG_ROOT_PATH;
+use crate::config_io;
 
 const APP_KEY: &str = "galister.wlxoverlay-s";
 
 pub(super) fn install_manifest(app_mgr: &mut ApplicationsManager) -> anyhow::Result<()> {
-    let manifest_path = CONFIG_ROOT_PATH.join("wlx-overlay-s.vrmanifest");
+    let manifest_path = config_io::get_config_root().join("wlx-overlay-s.vrmanifest");
 
     let appimage_path = std::env::var("APPIMAGE");
     let executable_pathbuf = std::env::current_exe()?;
@@ -76,7 +76,7 @@ pub(super) fn install_manifest(app_mgr: &mut ApplicationsManager) -> anyhow::Res
 }
 
 pub(super) fn uninstall_manifest(app_mgr: &mut ApplicationsManager) -> anyhow::Result<()> {
-    let manifest_path = CONFIG_ROOT_PATH.join("wlx-overlay-s.vrmanifest");
+    let manifest_path = config_io::get_config_root().join("wlx-overlay-s.vrmanifest");
 
     if let Ok(true) = app_mgr.is_application_installed(APP_KEY) {
         if let Err(e) = app_mgr.remove_application_manifest(&manifest_path) {

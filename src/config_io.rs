@@ -1,13 +1,16 @@
 use log::error;
 use once_cell::sync::Lazy;
-use std::{
-    fs::{self, create_dir},
-    path::PathBuf,
-};
+use std::path::PathBuf;
+
+pub enum ConfigRoot {
+    Generic,
+    #[allow(dead_code)]
+    WayVR,
+}
 
 const FALLBACK_CONFIG_PATH: &str = "/tmp/wlxoverlay";
 
-pub static CONFIG_ROOT_PATH: Lazy<PathBuf> = Lazy::new(|| {
+static CONFIG_ROOT_PATH: Lazy<PathBuf> = Lazy::new(|| {
     if let Ok(xdg_dirs) = xdg::BaseDirectories::new() {
         let mut dir = xdg_dirs.get_config_home();
         dir.push("wlxoverlay");
@@ -21,33 +24,38 @@ pub static CONFIG_ROOT_PATH: Lazy<PathBuf> = Lazy::new(|| {
     PathBuf::from(FALLBACK_CONFIG_PATH)
 });
 
-pub fn get_conf_d_path() -> PathBuf {
-    let mut config_root = CONFIG_ROOT_PATH.clone();
-    config_root.push("conf.d");
-    config_root
+pub fn get_config_root() -> PathBuf {
+    CONFIG_ROOT_PATH.clone()
 }
 
-// Make sure config directory is present and return root config path
-pub fn ensure_config_root() -> PathBuf {
-    let path = CONFIG_ROOT_PATH.clone();
-    let _ = create_dir(&path);
+impl ConfigRoot {
+    pub fn get_conf_d_path(&self) -> PathBuf {
+        get_config_root().join(match self {
+            ConfigRoot::Generic => "conf.d",
+            ConfigRoot::WayVR => "wayvr.conf.d",
+        })
+    }
 
-    let path_conf_d = get_conf_d_path();
-    let _ = create_dir(path_conf_d);
-    path
+    // Make sure config directory is present and return root config path
+    pub fn ensure_dir(&self) -> PathBuf {
+        let path = get_config_root();
+        let _ = std::fs::create_dir(&path);
+
+        let path_conf_d = self.get_conf_d_path();
+        let _ = std::fs::create_dir(path_conf_d);
+        path
+    }
 }
 
-fn get_config_file_path(filename: &str) -> PathBuf {
-    let mut config_root = CONFIG_ROOT_PATH.clone();
-    config_root.push(filename);
-    config_root
+pub fn get_config_file_path(filename: &str) -> PathBuf {
+    get_config_root().join(filename)
 }
 
 pub fn load(filename: &str) -> Option<String> {
     let path = get_config_file_path(filename);
-    log::info!("Loading config {}", path.to_string_lossy());
+    log::info!("Loading config: {}", path.to_string_lossy());
 
-    if let Ok(data) = fs::read_to_string(path) {
+    if let Ok(data) = std::fs::read_to_string(path) {
         Some(data)
     } else {
         None
