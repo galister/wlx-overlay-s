@@ -25,7 +25,7 @@ use crate::{
     state::AppState,
 };
 
-#[cfg(not(feature = "wayvr"))]
+#[cfg(any(not(feature = "wayvr"), not(feature = "osc")))]
 use crate::overlays::toast::error_toast_str;
 
 #[cfg(feature = "osc")]
@@ -406,7 +406,8 @@ fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppStat
             };
             #[cfg(not(feature = "osc"))]
             {
-                let _ = &action;
+                let _ = &parameter;
+                let _ = &value;
                 error_toast_str(app, "OSC feature is not enabled");
             }
         }
