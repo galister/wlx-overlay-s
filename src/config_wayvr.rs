@@ -92,6 +92,10 @@ impl WayVRCatalog {
     }
 }
 
+fn def_false() -> bool {
+    true
+}
+
 fn def_true() -> bool {
     true
 }
@@ -108,6 +112,10 @@ fn def_keyboard_repeat_rate() -> u32 {
     50
 }
 
+fn def_version() -> u32 {
+    1
+}
+
 #[derive(Deserialize, Serialize)]
 pub struct WayVRDashboard {
     pub exec: String,
@@ -117,10 +125,18 @@ pub struct WayVRDashboard {
 
 #[derive(Deserialize, Serialize)]
 pub struct WayVRConfig {
+    #[serde(default = "def_version")]
     pub version: u32,
+    #[serde(default = "def_false")]
     pub run_compositor_at_start: bool,
+
+    #[serde(default = "Default::default")]
     pub catalogs: HashMap<String, WayVRCatalog>,
+
+    #[serde(default = "Default::default")]
     pub displays: BTreeMap<String, WayVRDisplay>, // sorted alphabetically
+
+    #[serde(default = "Default::default")]
     pub dashboard: Option<WayVRDashboard>,
 
     #[serde(default = "def_true")]
@@ -222,7 +238,7 @@ pub fn load_wayvr() -> WayVRConfig {
 
     let config = load_config_with_conf_d::<WayVRConfig>("wayvr.yaml", config_io::ConfigRoot::WayVR);
 
-    if config.version != 1 {
+    if config.version != def_version() {
         panic!("WayVR config version {} is not supported", config.version);
     }
     config
