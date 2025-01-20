@@ -29,7 +29,7 @@ use crate::{
 use crate::overlays::toast::error_toast_str;
 
 #[cfg(feature = "osc")]
-use rosc::{OscMessage, OscPacket, OscType};
+use rosc::OscType;
 
 use super::{ExecArgs, ModularControl, ModularData};
 

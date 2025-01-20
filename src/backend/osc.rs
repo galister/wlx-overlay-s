@@ -8,10 +8,7 @@ use rosc::{OscMessage, OscPacket, OscType};
 
 use crate::overlays::{keyboard::KEYBOARD_NAME, watch::WATCH_NAME};
 
-use crate::{
-    backend::input::TrackedDeviceRole,
-    state::AppState,
-};
+use crate::backend::input::TrackedDeviceRole;
 
 use super::{common::OverlayContainer, input::TrackedDevice};
 
@@ -169,8 +166,10 @@ impl OscSender {
         Ok(())
     }
 
-    pub fn send_single_param(&mut self, parameter: String, value: OscType) {
-        self.send_message(parameter, vec![value]);
+    pub fn send_single_param(&mut self, parameter: String, value: OscType) -> anyhow::Result<()> {
+        self.send_message(parameter, vec![value])?;
+
+        Ok(())
     }
 
 }
