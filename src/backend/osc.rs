@@ -168,4 +168,9 @@ impl OscSender {
 
         Ok(())
     }
+
+    pub fn send_single_param(&mut self, parameter: String, value: OscType) {
+        self.send_message(parameter, vec![value]);
+    }
+
 }

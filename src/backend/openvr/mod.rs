@@ -124,10 +124,6 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
     let mut playspace = playspace::PlayspaceMover::new();
     playspace.playspace_changed(&mut compositor_mgr, &mut chaperone_mgr);
 
-    #[cfg(feature = "osc")]
-    let mut osc_sender =
-        crate::backend::osc::OscSender::new(state.session.config.osc_out_port).ok();
-
     set_action_manifest(&mut input_mgr)?;
 
     let mut input_source = OpenVrInputSource::new(&mut input_mgr)?;
@@ -333,8 +329,8 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         }
 
         #[cfg(feature = "osc")]
-        if let Some(ref mut sender) = osc_sender {
-            let _ = sender.send_params(&overlays, &state);
+        if let Some(ref mut sender) = state.osc_sender {
+            let _ = sender.send_params(&overlays, &mut state);
         };
 
         #[cfg(feature = "wayvr")]

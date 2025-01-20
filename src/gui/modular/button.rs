@@ -28,6 +28,9 @@ use crate::{
 #[cfg(not(feature = "wayvr"))]
 use crate::overlays::toast::error_toast_str;
 
+#[cfg(feature = "osc")]
+use rosc::{OscMessage, OscPacket, OscType};
+
 use super::{ExecArgs, ModularControl, ModularData};
 
 #[derive(Deserialize, Clone)]
@@ -180,6 +183,11 @@ pub enum ButtonAction {
     System {
         action: SystemAction,
     },
+    SendOSCFloat {
+        parameter: Arc<str>,
+        value: Option<f32>,
+        //message: Option<Arc<str>>,
+    }
 }
 
 pub(super) struct PressData {
@@ -390,6 +398,17 @@ fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppStat
         ButtonAction::System { action } => run_system(action, app),
         ButtonAction::DragMultiplier { delta } => {
             app.session.config.space_drag_multiplier += delta;
+        }
+        ButtonAction::SendOSCFloat { parameter, value } => {
+            #[cfg(feature = "osc")]
+            if let Some(ref mut sender) = app.osc_sender {
+                let _ = sender.send_single_param(parameter.to_string(), OscType::Float(value.unwrap_or_default()));
+            };
+            #[cfg(not(feature = "osc"))]
+            {
+                let _ = &action;
+                error_toast_str(app, "OSC feature is not enabled");
+            }
         }
     }
 }

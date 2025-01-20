@@ -109,10 +109,6 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
             .ok()
     });
 
-    #[cfg(feature = "osc")]
-    let mut osc_sender =
-        crate::backend::osc::OscSender::new(app_state.session.config.osc_out_port).ok();
-
     let (session, mut frame_wait, mut frame_stream) = unsafe {
         let raw_session = helpers::create_overlay_session(
             &xr_instance,
@@ -315,7 +311,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         }
 
         #[cfg(feature = "osc")]
-        if let Some(ref mut sender) = osc_sender {
+        if let Some(ref mut sender) = app_state.osc_sender {
             let _ = sender.send_params(&overlays, &app_state);
         };
 
