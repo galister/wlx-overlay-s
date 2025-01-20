@@ -13,7 +13,7 @@ use ovr_overlay::{
 
 use crate::{
     backend::input::{Haptics, TrackedDevice, TrackedDeviceRole},
-    config_io::CONFIG_ROOT_PATH,
+    config_io,
     state::AppState,
 };
 
@@ -325,7 +325,7 @@ fn get_tracked_device(
 }
 
 pub fn set_action_manifest(input: &mut InputManager) -> anyhow::Result<()> {
-    let action_path = CONFIG_ROOT_PATH.join("actions.json");
+    let action_path = config_io::get_config_root().join("actions.json");
 
     if let Err(e) = File::create(&action_path)
         .and_then(|mut f| f.write_all(include_bytes!("../../res/actions.json")))
@@ -333,19 +333,19 @@ pub fn set_action_manifest(input: &mut InputManager) -> anyhow::Result<()> {
         log::warn!("Could not write action manifest: {}", e);
     }
 
-    let binding_path = CONFIG_ROOT_PATH.join("actions_binding_knuckles.json");
+    let binding_path = config_io::get_config_root().join("actions_binding_knuckles.json");
     if !binding_path.is_file() {
         File::create(&binding_path)?
             .write_all(include_bytes!("../../res/actions_binding_knuckles.json"))?;
     }
 
-    let binding_path = CONFIG_ROOT_PATH.join("actions_binding_vive.json");
+    let binding_path = config_io::get_config_root().join("actions_binding_vive.json");
     if !binding_path.is_file() {
         File::create(&binding_path)?
             .write_all(include_bytes!("../../res/actions_binding_vive.json"))?;
     }
 
-    let binding_path = CONFIG_ROOT_PATH.join("actions_binding_oculus.json");
+    let binding_path = config_io::get_config_root().join("actions_binding_oculus.json");
     if !binding_path.is_file() {
         File::create(&binding_path)?
             .write_all(include_bytes!("../../res/actions_binding_oculus.json"))?;

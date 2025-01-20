@@ -11,7 +11,7 @@ use serde::Deserialize;
 use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 
 use crate::{
-    backend::common::OverlaySelector, config::AStrMapExt, config_io::CONFIG_ROOT_PATH,
+    backend::common::OverlaySelector, config::AStrMapExt, config_io,
     graphics::dds::WlxCommandBufferDds, state::AppState,
 };
 
@@ -545,7 +545,7 @@ fn sprite_from_path(path: Arc<str>, app: &mut AppState) -> anyhow::Result<Arc<Im
         return Ok(view.clone());
     }
 
-    let real_path = CONFIG_ROOT_PATH.join(&*path);
+    let real_path = config_io::get_config_root().join(&*path);
 
     let Ok(f) = File::open(real_path) else {
         anyhow::bail!("Could not open custom sprite at: {}", path);

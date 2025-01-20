@@ -7,7 +7,7 @@ use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 
 use crate::{
     backend::openxr::{helpers::translation_rotation_to_posef, swapchain::SwapchainOpts},
-    config_io::CONFIG_ROOT_PATH,
+    config_io,
     graphics::{dds::WlxCommandBufferDds, format_is_srgb, WlxCommandBuffer},
     state::AppState,
 };
@@ -35,7 +35,7 @@ impl Skybox {
                 break 'custom_tex;
             }
 
-            let real_path = CONFIG_ROOT_PATH.join(&*app.session.config.skybox_texture);
+            let real_path = config_io::get_config_root().join(&*app.session.config.skybox_texture);
             let Ok(f) = File::open(real_path) else {
                 log::warn!(
                     "Could not open custom skybox texture at: {}",

@@ -751,7 +751,7 @@ pub struct TokenConf {
 
 #[cfg(feature = "pipewire")]
 fn get_pw_token_path() -> PathBuf {
-    let mut path = config_io::get_conf_d_path();
+    let mut path = config_io::ConfigRoot::Generic.get_conf_d_path();
     path.push("pw_tokens.yaml");
     path
 }

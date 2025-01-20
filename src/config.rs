@@ -2,8 +2,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::config_io;
-use crate::config_io::get_conf_d_path;
-use crate::config_io::CONFIG_ROOT_PATH;
 use crate::gui::modular::ModularUiConfig;
 use crate::overlays::toast::DisplayMethod;
 use crate::overlays::toast::ToastTopic;
@@ -390,14 +388,20 @@ pub fn load_custom_ui(name: &str) -> anyhow::Result<ModularUiConfig> {
     Ok(serde_yaml::from_str(&yaml_data)?)
 }
 
-pub fn load_general() -> GeneralConfig {
+pub fn load_config_with_conf_d<ConfigData>(
+    root_config_filename: &str,
+    ctype: config_io::ConfigRoot,
+) -> ConfigData
+where
+    ConfigData: for<'de> Deserialize<'de>,
+{
     let mut settings_builder = Config::builder();
 
     // Add files from conf.d directory
-    let path_conf_d = get_conf_d_path();
+    let path_conf_d = ctype.get_conf_d_path();
 
-    for mut base_conf in [CONFIG_ROOT_PATH.clone(), path_conf_d.clone()] {
-        base_conf.push("config.yaml");
+    for mut base_conf in [config_io::get_config_root(), path_conf_d.clone()] {
+        base_conf.push(root_config_filename);
         if base_conf.exists() {
             log::info!("Loading config file: {}", base_conf.to_string_lossy());
             settings_builder = settings_builder.add_source(File::from(base_conf));
@@ -423,7 +427,7 @@ pub fn load_general() -> GeneralConfig {
     }
 
     match settings_builder.build() {
-        Ok(settings) => match settings.try_deserialize::<GeneralConfig>() {
+        Ok(settings) => match settings.try_deserialize::<ConfigData>() {
             Ok(config) => config,
             Err(e) => {
                 panic!("Failed to deserialize settings: {}", e);
@@ -433,6 +437,10 @@ pub fn load_general() -> GeneralConfig {
             panic!("Failed to build settings: {}", e);
         }
     }
+}
+
+pub fn load_general() -> GeneralConfig {
+    load_config_with_conf_d::<GeneralConfig>("config.yaml", config_io::ConfigRoot::Generic)
 }
 
 // Config that is saved from the settings panel
@@ -452,10 +460,11 @@ pub struct AutoSettings {
 }
 
 fn get_settings_path() -> PathBuf {
-    let mut path = config_io::get_conf_d_path();
-    path.push("zz-saved-config.json5");
-    path
+    config_io::ConfigRoot::Generic
+        .get_conf_d_path()
+        .join("zz-saved-config.json5")
 }
+
 pub fn save_settings(config: &GeneralConfig) -> anyhow::Result<()> {
     let conf = AutoSettings {
         watch_pos: config.watch_pos,
@@ -486,9 +495,9 @@ pub struct AutoState {
 }
 
 fn get_state_path() -> PathBuf {
-    let mut path = config_io::get_conf_d_path();
-    path.push("zz-saved-state.json5");
-    path
+    config_io::ConfigRoot::Generic
+        .get_conf_d_path()
+        .join("zz-saved-state.json5")
 }
 
 pub fn save_layout(config: &GeneralConfig) -> anyhow::Result<()> {
