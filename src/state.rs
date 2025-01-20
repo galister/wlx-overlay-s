@@ -14,8 +14,11 @@ use {
     std::{cell::RefCell, rc::Rc},
 };
 
+#[cfg(feature = "osc")]
+use crate::backend::osc::OscSender;
+
 use crate::{
-    backend::{input::InputState, osc::OscSender, overlay::OverlayID, task::TaskContainer},
+    backend::{input::InputState, overlay::OverlayID, task::TaskContainer},
     config::{AStrMap, GeneralConfig},
     config_io,
     graphics::WlxGraphics,
