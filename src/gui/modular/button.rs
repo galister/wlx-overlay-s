@@ -410,10 +410,48 @@ fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppStat
         ButtonAction::DragMultiplier { delta } => {
             app.session.config.space_drag_multiplier += delta;
         }
-        ButtonAction::SendOSCInt { parameter, value } => try_send_osc(parameter, OscType::Int(value.unwrap_or_default()), app),
-        ButtonAction::SendOSCFloat { parameter, value } => try_send_osc(parameter, OscType::Float(value.unwrap_or_default()), app),
-        ButtonAction::SendOSCBool { parameter, value } => try_send_osc(parameter, OscType::Bool(value.unwrap_or_default()), app),
-        ButtonAction::SendOSCString { parameter, value } => try_send_osc(parameter, OscType::String(value.clone().unwrap_or_default().to_string()), app), // clone here because can't "move" the value
+        ButtonAction::SendOSCInt { parameter, value } => {
+
+            #[cfg(feature = "osc")]
+            try_send_osc(parameter, OscType::Int(value.unwrap_or_default()), app);
+
+            #[cfg(not(feature = "osc"))]
+            {
+                let _ = &parameter;
+                let _ = &value;
+                notify_failed_osc(app);
+            }
+        },
+        ButtonAction::SendOSCFloat { parameter, value } => {
+            #[cfg(feature = "osc")]
+            try_send_osc(parameter, OscType::Float(value.unwrap_or_default()), app);
+            #[cfg(not(feature = "osc"))]
+            {
+                let _ = &parameter;
+                let _ = &value;
+                notify_failed_osc(app);
+            }
+        },
+        ButtonAction::SendOSCBool { parameter, value } => {
+            #[cfg(feature = "osc")]
+            try_send_osc(parameter, OscType::Bool(value.unwrap_or_default()), app);
+            #[cfg(not(feature = "osc"))]
+            {
+                let _ = &parameter;
+                let _ = &value;
+                notify_failed_osc(app);
+            }
+        },
+        ButtonAction::SendOSCString { parameter, value } => {
+            #[cfg(feature = "osc")]
+            try_send_osc(parameter, OscType::String(value.clone().unwrap_or_default().to_string()), app); // clone here because can't "move" the value
+            #[cfg(not(feature = "osc"))]
+            {
+                let _ = &parameter;
+                let _ = &value;
+                notify_failed_osc(app);
+            }
+        },
     }
 }
 
@@ -816,18 +854,17 @@ fn run_window(window: &Arc<str>, action: &WindowAction, app: &mut AppState) {
     }
 }
 
+#[cfg(feature = "osc")]
 fn try_send_osc(parameter: &Arc<str>, value: OscType, app: &mut AppState) {
-    #[cfg(feature = "osc")]
     if let Some(ref mut sender) = app.osc_sender {
         let _ = sender.send_single_param(parameter.to_string(), value);
         audio_thump(app); // play sound for feedback
     };
-    #[cfg(not(feature = "osc"))]
-    {
-        let _ = &parameter;
-        let _ = &value;
-        error_toast_str(app, "OSC feature is not enabled");
-    }
+}
+
+#[cfg(not(feature = "osc"))]
+fn notify_failed_osc(app: &mut AppState) {
+    error_toast_str(app, "OSC feature is not enabled");
 }
 
 const THUMP_AUDIO_WAV: &[u8] = include_bytes!("../../res/380885.wav");
