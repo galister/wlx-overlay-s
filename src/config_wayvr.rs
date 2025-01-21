@@ -93,7 +93,7 @@ impl WayVRCatalog {
 }
 
 fn def_false() -> bool {
-    true
+    false
 }
 
 fn def_true() -> bool {
