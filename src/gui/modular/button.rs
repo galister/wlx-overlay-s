@@ -186,7 +186,18 @@ pub enum ButtonAction {
     SendOSCFloat {
         parameter: Arc<str>,
         value: Option<f32>,
-        //message: Option<Arc<str>>,
+    },
+    SendOSCBool {
+        parameter: Arc<str>,
+        value: Option<bool>,
+    },
+    SendOSCInt {
+        parameter: Arc<str>,
+        value: Option<i32>,
+    },
+    SendOSCString {
+        parameter: Arc<str>,
+        value: Option<Arc<str>>,
     }
 }
 
@@ -399,18 +410,10 @@ fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppStat
         ButtonAction::DragMultiplier { delta } => {
             app.session.config.space_drag_multiplier += delta;
         }
-        ButtonAction::SendOSCFloat { parameter, value } => {
-            #[cfg(feature = "osc")]
-            if let Some(ref mut sender) = app.osc_sender {
-                let _ = sender.send_single_param(parameter.to_string(), OscType::Float(value.unwrap_or_default()));
-            };
-            #[cfg(not(feature = "osc"))]
-            {
-                let _ = &parameter;
-                let _ = &value;
-                error_toast_str(app, "OSC feature is not enabled");
-            }
-        }
+        ButtonAction::SendOSCInt { parameter, value } => try_send_osc(parameter, OscType::Int(value.unwrap_or_default()), app),
+        ButtonAction::SendOSCFloat { parameter, value } => try_send_osc(parameter, OscType::Float(value.unwrap_or_default()), app),
+        ButtonAction::SendOSCBool { parameter, value } => try_send_osc(parameter, OscType::Bool(value.unwrap_or_default()), app),
+        ButtonAction::SendOSCString { parameter, value } => try_send_osc(parameter, OscType::String(value.clone().unwrap_or_default().to_string()), app), // clone here because can't "move" the value
     }
 }
 
@@ -810,6 +813,20 @@ fn run_window(window: &Arc<str>, action: &WindowAction, app: &mut AppState) {
             app.tasks
                 .enqueue(TaskType::DropOverlay(OverlaySelector::Name(window.clone())));
         }
+    }
+}
+
+fn try_send_osc(parameter: &Arc<str>, value: OscType, app: &mut AppState) {
+    #[cfg(feature = "osc")]
+    if let Some(ref mut sender) = app.osc_sender {
+        let _ = sender.send_single_param(parameter.to_string(), value);
+        audio_thump(app); // play sound for feedback
+    };
+    #[cfg(not(feature = "osc"))]
+    {
+        let _ = &parameter;
+        let _ = &value;
+        error_toast_str(app, "OSC feature is not enabled");
     }
 }
 
