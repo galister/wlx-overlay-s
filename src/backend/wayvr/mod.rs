@@ -70,11 +70,12 @@ pub enum WayVRTask {
     NewExternalProcess(ExternalProcessRequest),
     DropOverlay(super::overlay::OverlayID),
     ProcessTerminationRequest(process::ProcessHandle),
+    Haptics(super::input::Haptics),
 }
 
 #[derive(Clone)]
 pub enum WayVRSignal {
-    DisplayHideRequest(display::DisplayHandle),
+    DisplayVisibility(display::DisplayHandle, bool),
 }
 
 pub struct Config {
@@ -93,14 +94,15 @@ pub struct WayVRState {
     pub processes: process::ProcessVec,
     config: Config,
     dashboard_display: Option<display::DisplayHandle>,
-    tasks: SyncEventQueue<WayVRTask>,
+    pub tasks: SyncEventQueue<WayVRTask>,
+    pub signals: SyncEventQueue<WayVRSignal>,
     ticks: u64,
+    pub pending_haptic: Option<super::input::Haptics>,
 }
 
 pub struct WayVR {
     pub state: WayVRState,
     ipc_server: WayVRServer,
-    pub signals: SyncEventQueue<WayVRSignal>,
 }
 
 pub enum MouseIndex {
@@ -235,13 +237,11 @@ impl WayVR {
             dashboard_display: None,
             ticks: 0,
             tasks,
+            pending_haptic: None,
+            signals: SyncEventQueue::new(),
         };
 
-        Ok(Self {
-            state,
-            signals: SyncEventQueue::new(),
-            ipc_server,
-        })
+        Ok(Self { state, ipc_server })
     }
 
     pub fn tick_display(&mut self, display: display::DisplayHandle) -> anyhow::Result<()> {
@@ -314,7 +314,7 @@ impl WayVR {
         }
 
         self.state.displays.iter_mut(&mut |handle, display| {
-            display.tick(&self.state.config, &handle, &mut self.signals);
+            display.tick(&self.state.config, &handle, &mut self.state.signals);
         });
 
         while let Some(task) = self.state.tasks.read() {
@@ -357,6 +357,9 @@ impl WayVR {
                     if let Some(process) = self.state.processes.get_mut(&process_handle) {
                         process.terminate();
                     }
+                }
+                WayVRTask::Haptics(haptics) => {
+                    self.state.pending_haptic = Some(haptics);
                 }
             }
         }

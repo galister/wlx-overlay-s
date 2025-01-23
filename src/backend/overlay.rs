@@ -32,7 +32,8 @@ pub const Z_ORDER_TOAST: u32 = 70;
 pub const Z_ORDER_LINES: u32 = 69;
 pub const Z_ORDER_WATCH: u32 = 68;
 pub const Z_ORDER_ANCHOR: u32 = 67;
-pub const Z_ORDER_DASHBOARD: u32 = 66;
+pub const Z_ORDER_DEFAULT: u32 = 0;
+pub const Z_ORDER_DASHBOARD: u32 = Z_ORDER_DEFAULT;
 
 pub struct OverlayState {
     pub id: OverlayID,
@@ -73,7 +74,7 @@ impl Default for OverlayState {
             keyboard_focus: None,
             dirty: true,
             alpha: 1.0,
-            z_order: 0,
+            z_order: Z_ORDER_DEFAULT,
             relative_to: RelativeTo::None,
             curvature: None,
             spawn_scale: 1.0,

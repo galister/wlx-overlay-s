@@ -27,7 +27,7 @@ impl OverlayData<OpenXrOverlayData> {
         &'a mut self,
         xr: &'a XrState,
         command_buffer: &mut WlxCommandBuffer,
-    ) -> anyhow::Result<CompositionLayer> {
+    ) -> anyhow::Result<CompositionLayer<'a>> {
         if let Some(new_view) = self.view() {
             self.data.last_view = Some(new_view);
         }

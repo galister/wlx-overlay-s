@@ -241,6 +241,7 @@ pub struct PointerHit {
     pub dist: f32,
 }
 
+#[derive(Clone)]
 pub struct Haptics {
     pub intensity: f32,
     pub duration: f32,

@@ -1,4 +1,4 @@
-use super::{display, process, TickTask};
+use super::{display, process, TickTask, WayVRSignal};
 use bytes::BufMut;
 use interprocess::local_socket::{self, traits::Listener, ToNsName};
 use smallvec::SmallVec;
@@ -223,6 +223,19 @@ impl Connection {
         Ok(())
     }
 
+    fn handle_wvr_display_set_visible(
+        &mut self,
+        params: &mut TickParams,
+        handle: packet_server::WvrDisplayHandle,
+        visible: bool,
+    ) -> anyhow::Result<()> {
+        params.state.signals.send(WayVRSignal::DisplayVisibility(
+            display::DisplayHandle::from_packet(handle),
+            visible,
+        ));
+        Ok(())
+    }
+
     fn handle_wvr_process_launch(
         &mut self,
         params: &mut TickParams,
@@ -319,6 +332,22 @@ impl Connection {
         Ok(())
     }
 
+    fn handle_wlx_haptics(
+        &mut self,
+        params: &mut TickParams,
+        haptics_params: packet_client::WlxHapticsParams,
+    ) -> anyhow::Result<()> {
+        params
+            .state
+            .tasks
+            .send(super::WayVRTask::Haptics(crate::backend::input::Haptics {
+                duration: haptics_params.duration,
+                frequency: haptics_params.frequency,
+                intensity: haptics_params.intensity,
+            }));
+        Ok(())
+    }
+
     fn process_payload(&mut self, params: &mut TickParams, payload: Payload) -> anyhow::Result<()> {
         let packet: PacketClient = ipc::data_decode(&payload)?;
 
@@ -338,6 +367,9 @@ impl Connection {
             PacketClient::WvrDisplayRemove(serial, display_handle) => {
                 self.handle_wvr_display_remove(params, serial, display_handle)?;
             }
+            PacketClient::WvrDisplaySetVisible(display_handle, visible) => {
+                self.handle_wvr_display_set_visible(params, display_handle, visible)?;
+            }
             PacketClient::WvrProcessList(serial) => {
                 self.handle_wvr_process_list(params, serial)?;
             }
@@ -349,6 +381,9 @@ impl Connection {
             }
             PacketClient::WvrProcessTerminate(process_handle) => {
                 self.handle_wvr_process_terminate(params, process_handle)?;
+            }
+            PacketClient::WlxHaptics(haptics_params) => {
+                self.handle_wlx_haptics(params, haptics_params)?;
             }
         }
 

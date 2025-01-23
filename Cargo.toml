@@ -86,7 +86,7 @@ wayland-client = { version = "0.31.6", optional = true }
 wayland-egl = { version = "0.32.4", optional = true }
 interprocess = { version = "2.2.2", optional = true }
 bytes = { version = "1.9.0", optional = true }
-wayvr_ipc = { git = "https://github.com/olekolek1000/wayvr-ipc.git", rev = "94ab6125ec07c091099bf71b028d701b58eccccf", default-features = false, optional = true }
+wayvr_ipc = { git = "https://github.com/olekolek1000/wayvr-ipc.git", rev = "fe2e8be04c7b86adcf972be7ebe46961bd881f35", default-features = false, optional = true }
 ################################
 
 [build-dependencies]

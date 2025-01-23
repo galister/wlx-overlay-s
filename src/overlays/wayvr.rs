@@ -27,8 +27,8 @@ use crate::{
 use super::toast::error_toast;
 
 // Hard-coded for now
-const DASHBOARD_WIDTH: u16 = 960;
-const DASHBOARD_HEIGHT: u16 = 540;
+const DASHBOARD_WIDTH: u16 = 1920;
+const DASHBOARD_HEIGHT: u16 = 1080;
 const DASHBOARD_DISPLAY_NAME: &str = "_DASHBOARD";
 
 pub struct WayVRContext {
@@ -125,7 +125,7 @@ impl InteractionHandler for WayVRInteractionHandler {
             wayvr.state.send_mouse_move(ctx.display, x as u32, y as u32);
         }
 
-        None
+        wayvr.state.pending_haptic.take()
     }
 
     fn on_left(&mut self, _app: &mut state::AppState, _pointer: usize) {
@@ -280,7 +280,8 @@ where
         )?;
 
         overlay.state.want_visible = true;
-        overlay.state.spawn_scale = 1.25;
+        overlay.state.spawn_scale = 2.0;
+        overlay.state.spawn_point = vec3a(0.0, -0.35, -1.75);
         overlay.state.z_order = Z_ORDER_DASHBOARD;
         overlay.state.reset(app, true);
 
@@ -416,16 +417,19 @@ where
 
     let mut wayvr = r_wayvr.borrow_mut();
 
-    while let Some(signal) = wayvr.data.signals.read() {
+    while let Some(signal) = wayvr.data.state.signals.read() {
         match signal {
-            wayvr::WayVRSignal::DisplayHideRequest(display_handle) => {
+            wayvr::WayVRSignal::DisplayVisibility(display_handle, visible) => {
                 if let Some(overlay_id) = wayvr.display_handle_map.get(&display_handle) {
                     let overlay_id = *overlay_id;
-                    wayvr.data.state.set_display_visible(display_handle, false);
+                    wayvr
+                        .data
+                        .state
+                        .set_display_visible(display_handle, visible);
                     app.tasks.enqueue(TaskType::Overlay(
                         OverlaySelector::Id(overlay_id),
                         Box::new(move |_app, o| {
-                            o.want_visible = false;
+                            o.want_visible = visible;
                         }),
                     ));
                 }

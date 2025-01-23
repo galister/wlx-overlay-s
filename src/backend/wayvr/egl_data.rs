@@ -45,7 +45,9 @@ impl EGLData {
 
             let display = egl
                 .get_display(khronos_egl::DEFAULT_DISPLAY)
-                .ok_or(anyhow!("eglGetDisplay failed"))?;
+                .ok_or(anyhow!(
+                    "eglGetDisplay failed. This shouldn't happen unless you don't have any display manager running. Cannot continue, check your EGL installation."
+                ))?;
 
             let (major, minor) = egl.initialize(display)?;
             log::debug!("EGL version: {}.{}", major, minor);
@@ -242,25 +244,14 @@ impl EGLData {
         }
     }
 
-    pub fn create_egl_image(
-        &self,
-        gl_tex_id: u32,
-        width: u32,
-        height: u32,
-    ) -> anyhow::Result<khronos_egl::Image> {
+    pub fn create_egl_image(&self, gl_tex_id: u32) -> anyhow::Result<khronos_egl::Image> {
         unsafe {
             Ok(self.egl.create_image(
                 self.display,
                 self.context,
                 khronos_egl::GL_TEXTURE_2D as std::ffi::c_uint,
                 khronos_egl::ClientBuffer::from_ptr(gl_tex_id as *mut std::ffi::c_void),
-                &[
-                    khronos_egl::WIDTH as usize,
-                    width as usize,
-                    khronos_egl::HEIGHT as usize,
-                    height as usize,
-                    khronos_egl::ATTRIB_NONE,
-                ],
+                &[khronos_egl::ATTRIB_NONE],
             )?)
         }
     }
