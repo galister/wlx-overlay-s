@@ -124,7 +124,7 @@ impl Display {
             )
         })?;
 
-        let egl_image = egl_data.create_egl_image(tex_id, width as u32, height as u32)?;
+        let egl_image = egl_data.create_egl_image(tex_id)?;
         let dmabuf_data = egl_data.create_dmabuf_data(&egl_image)?;
 
         let opaque = false;
@@ -207,7 +207,8 @@ impl Display {
             } else if let Some(auto_hide_delay) = config.auto_hide_delay {
                 if let Some(s) = self.no_windows_since {
                     if s + (auto_hide_delay as u64) < get_millis() {
-                        signals.send(WayVRSignal::DisplayHideRequest(*handle));
+                        // Auto-hide after specific time
+                        signals.send(WayVRSignal::DisplayVisibility(*handle, false));
                     }
                 }
             }

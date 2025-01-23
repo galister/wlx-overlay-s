@@ -135,7 +135,7 @@ impl LinePool {
         &'a mut self,
         xr: &'a XrState,
         command_buffer: &mut WlxCommandBuffer,
-    ) -> anyhow::Result<Vec<CompositionLayer>> {
+    ) -> anyhow::Result<Vec<CompositionLayer<'a>>> {
         let mut quads = Vec::new();
 
         for line in self.lines.values_mut() {
