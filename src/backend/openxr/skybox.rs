@@ -74,7 +74,7 @@ impl Skybox {
         xr: &'a XrState,
         hmd: Affine3A,
         command_buffer: &mut WlxCommandBuffer,
-    ) -> anyhow::Result<Vec<CompositionLayer>> {
+    ) -> anyhow::Result<Vec<CompositionLayer<'a>>> {
         let (sky_image, grid_image) = if let Some((ref mut srd_sky, ref mut srd_grid)) = self.srd {
             (srd_sky.present_last()?, srd_grid.present_last()?)
         } else {
