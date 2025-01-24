@@ -183,22 +183,26 @@ pub enum ButtonAction {
     System {
         action: SystemAction,
     },
-    SendOSCFloat {
+    SendOscValue {
         parameter: Arc<str>,
-        value: Option<f32>,
-    },
-    SendOSCBool {
-        parameter: Arc<str>,
-        value: Option<bool>,
-    },
-    SendOSCInt {
-        parameter: Arc<str>,
-        value: Option<i32>,
-    },
-    SendOSCString {
-        parameter: Arc<str>,
-        value: Option<Arc<str>>,
+        values: Option<Vec<OscValue>>,
     }
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(tag = "type")]
+#[cfg(feature = "osc")]
+pub enum OscValue {
+    Int {value: i32},
+    Float {value: f32},
+    String {value: String},
+    Bool {value: bool},
+}
+#[derive(Deserialize, Clone)]
+#[serde(tag = "type")]
+#[cfg(not(feature = "osc"))]
+pub enum OscValue {
+    None
 }
 
 pub(super) struct PressData {
@@ -410,48 +414,36 @@ fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppStat
         ButtonAction::DragMultiplier { delta } => {
             app.session.config.space_drag_multiplier += delta;
         }
-        ButtonAction::SendOSCInt { parameter, value } => {
+        ButtonAction::SendOscValue { parameter, values } => {
 
             #[cfg(feature = "osc")]
-            try_send_osc(parameter, OscType::Int(value.unwrap_or_default()), app);
+            if let Some(ref mut sender) = app.osc_sender {
+                // convert OscValue to OscType
+                let mut converted: Vec<OscType> = Vec::new();
+
+                for value in values.as_ref().unwrap() {
+                    let converted_value = match value {
+                        OscValue::Bool { value } => {OscType::Bool(*value)},
+                        OscValue::Int { value } => {OscType::Int(*value)},
+                        OscValue::Float { value } => {OscType::Float(*value)},
+                        OscValue::String { value } => {OscType::String(value.to_string())},
+                    };
+
+                    converted.push(converted_value);
+                }
+
+                let _ = sender.send_single_param(parameter.to_string(), converted);
+                audio_thump(app); // play sound for feedback
+            };
 
             #[cfg(not(feature = "osc"))]
             {
                 let _ = &parameter;
-                let _ = &value;
-                notify_failed_osc(app);
+                let _ = &values;
+                error_toast_str(app, "OSC feature is not enabled");
             }
         },
-        ButtonAction::SendOSCFloat { parameter, value } => {
-            #[cfg(feature = "osc")]
-            try_send_osc(parameter, OscType::Float(value.unwrap_or_default()), app);
-            #[cfg(not(feature = "osc"))]
-            {
-                let _ = &parameter;
-                let _ = &value;
-                notify_failed_osc(app);
-            }
-        },
-        ButtonAction::SendOSCBool { parameter, value } => {
-            #[cfg(feature = "osc")]
-            try_send_osc(parameter, OscType::Bool(value.unwrap_or_default()), app);
-            #[cfg(not(feature = "osc"))]
-            {
-                let _ = &parameter;
-                let _ = &value;
-                notify_failed_osc(app);
-            }
-        },
-        ButtonAction::SendOSCString { parameter, value } => {
-            #[cfg(feature = "osc")]
-            try_send_osc(parameter, OscType::String(value.clone().unwrap_or_default().to_string()), app); // clone here because can't "move" the value
-            #[cfg(not(feature = "osc"))]
-            {
-                let _ = &parameter;
-                let _ = &value;
-                notify_failed_osc(app);
-            }
-        },
+ 
     }
 }
 
@@ -852,19 +844,6 @@ fn run_window(window: &Arc<str>, action: &WindowAction, app: &mut AppState) {
                 .enqueue(TaskType::DropOverlay(OverlaySelector::Name(window.clone())));
         }
     }
-}
-
-#[cfg(feature = "osc")]
-fn try_send_osc(parameter: &Arc<str>, value: OscType, app: &mut AppState) {
-    if let Some(ref mut sender) = app.osc_sender {
-        let _ = sender.send_single_param(parameter.to_string(), value);
-        audio_thump(app); // play sound for feedback
-    };
-}
-
-#[cfg(not(feature = "osc"))]
-fn notify_failed_osc(app: &mut AppState) {
-    error_toast_str(app, "OSC feature is not enabled");
 }
 
 const THUMP_AUDIO_WAV: &[u8] = include_bytes!("../../res/380885.wav");

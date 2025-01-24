@@ -166,8 +166,8 @@ impl OscSender {
         Ok(())
     }
 
-    pub fn send_single_param(&mut self, parameter: String, value: OscType) -> anyhow::Result<()> {
-        self.send_message(parameter, vec![value])?;
+    pub fn send_single_param(&mut self, parameter: String, values: Vec<OscType>) -> anyhow::Result<()> {
+        self.send_message(parameter, values)?;
 
         Ok(())
     }
