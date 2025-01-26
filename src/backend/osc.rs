@@ -8,12 +8,9 @@ use rosc::{OscMessage, OscPacket, OscType};
 
 use crate::overlays::{keyboard::KEYBOARD_NAME, watch::WATCH_NAME};
 
-use crate::{
-    backend::input::TrackedDeviceRole,
-    state::AppState,
-};
+use crate::backend::input::TrackedDeviceRole;
 
-use super::common::OverlayContainer;
+use super::{common::OverlayContainer, input::TrackedDevice};
 
 pub struct OscSender {
     last_sent_overlay: Instant,
@@ -53,7 +50,11 @@ impl OscSender {
         Ok(())
     }
 
-    pub fn send_params<D>(&mut self, overlays: &OverlayContainer<D>, app: &AppState) -> anyhow::Result<()>
+    pub fn send_params<D>(
+        &mut self,
+        overlays: &OverlayContainer<D>,
+        devices: &Vec<TrackedDevice>,
+    ) -> anyhow::Result<()>
     where
         D: Default,
     {
@@ -96,7 +97,6 @@ impl OscSender {
                 "/avatar/parameters/openOverlayCount".into(),
                 vec![OscType::Int(num_overlays)],
             )?;
-
         }
 
         // send battery levels every 10 seconds
@@ -108,25 +108,25 @@ impl OscSender {
             let mut tracker_total_bat = 0.0;
             let mut controller_total_bat = 0.0;
 
-            for device in &app.input_state.devices {
+            for device in devices {
                 let tracker_param;
 
                 // soc is the battery level (set to device status.charge)
                 let level = device.soc.unwrap_or(-1.0);
                 let parameter = match device.role {
-                    TrackedDeviceRole::None =>      {continue}
-                    TrackedDeviceRole::Hmd =>       {
+                    TrackedDeviceRole::None => continue,
+                    TrackedDeviceRole::Hmd => {
                         // legacy OVR Toolkit style (int)
                         // as of 20 Nov 2024 OVR Toolkit uses int 0-100, but this may change in a future update.
                         //TODO: update this once their implementation matches their docs
                         self.send_message(
                             "/avatar/parameters/hmdBattery".into(),
-                                        vec![OscType::Int((level * 100.0f32).round() as i32)],
+                            vec![OscType::Int((level * 100.0f32).round() as i32)],
                         )?;
 
                         "headset"
                     }
-                    TrackedDeviceRole::LeftHand =>  {
+                    TrackedDeviceRole::LeftHand => {
                         controller_count += 1;
                         controller_total_bat += level;
                         "leftController"
@@ -136,7 +136,7 @@ impl OscSender {
                         controller_total_bat += level;
                         "rightController"
                     }
-                    TrackedDeviceRole::Tracker =>   {
+                    TrackedDeviceRole::Tracker => {
                         tracker_count += 1;
                         tracker_total_bat += level;
                         tracker_param = format!("tracker{tracker_count}");
@@ -147,24 +147,36 @@ impl OscSender {
                 // send device battery parameters
                 self.send_message(
                     format!("/avatar/parameters/{parameter}Battery").into(),
-                                vec![OscType::Float(level)],
+                    vec![OscType::Float(level)],
                 )?;
                 self.send_message(
                     format!("/avatar/parameters/{parameter}Charging").into(),
-                                vec![OscType::Bool(device.charging)],
+                    vec![OscType::Bool(device.charging)],
                 )?;
             }
 
             // send average controller and tracker battery parameters
             self.send_message(
                 format!("/avatar/parameters/averageControllerBattery").into(),
-                            vec![OscType::Float(controller_total_bat / controller_count as f32)],
+                vec![OscType::Float(
+                    controller_total_bat / controller_count as f32,
+                )],
             )?;
             self.send_message(
                 format!("/avatar/parameters/averageTrackerBattery").into(),
-                            vec![OscType::Float(tracker_total_bat / tracker_count as f32)],
+                vec![OscType::Float(tracker_total_bat / tracker_count as f32)],
             )?;
         }
+
+        Ok(())
+    }
+
+    pub fn send_single_param(
+        &mut self,
+        parameter: String,
+        values: Vec<OscType>,
+    ) -> anyhow::Result<()> {
+        self.send_message(parameter, values)?;
 
         Ok(())
     }

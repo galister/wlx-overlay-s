@@ -25,8 +25,11 @@ use crate::{
     state::AppState,
 };
 
-#[cfg(not(feature = "wayvr"))]
+#[cfg(any(not(feature = "wayvr"), not(feature = "osc")))]
 use crate::overlays::toast::error_toast_str;
+
+#[cfg(feature = "osc")]
+use rosc::OscType;
 
 use super::{ExecArgs, ModularControl, ModularData};
 
@@ -180,6 +183,26 @@ pub enum ButtonAction {
     System {
         action: SystemAction,
     },
+    SendOscValue {
+        parameter: Arc<str>,
+        values: Option<Vec<OscValue>>,
+    },
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(tag = "type")]
+#[cfg(feature = "osc")]
+pub enum OscValue {
+    Int { value: i32 },
+    Float { value: f32 },
+    String { value: String },
+    Bool { value: bool },
+}
+#[derive(Deserialize, Clone)]
+#[serde(tag = "type")]
+#[cfg(not(feature = "osc"))]
+pub enum OscValue {
+    None,
 }
 
 pub(super) struct PressData {
@@ -390,6 +413,34 @@ fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppStat
         ButtonAction::System { action } => run_system(action, app),
         ButtonAction::DragMultiplier { delta } => {
             app.session.config.space_drag_multiplier += delta;
+        }
+        ButtonAction::SendOscValue { parameter, values } => {
+            #[cfg(feature = "osc")]
+            if let Some(ref mut sender) = app.osc_sender {
+                // convert OscValue to OscType
+                let mut converted: Vec<OscType> = Vec::new();
+
+                for value in values.as_ref().unwrap() {
+                    let converted_value = match value {
+                        OscValue::Bool { value } => OscType::Bool(*value),
+                        OscValue::Int { value } => OscType::Int(*value),
+                        OscValue::Float { value } => OscType::Float(*value),
+                        OscValue::String { value } => OscType::String(value.to_string()),
+                    };
+
+                    converted.push(converted_value);
+                }
+
+                let _ = sender.send_single_param(parameter.to_string(), converted);
+                audio_thump(app); // play sound for feedback
+            };
+
+            #[cfg(not(feature = "osc"))]
+            {
+                let _ = &parameter;
+                let _ = &values;
+                error_toast_str(app, "OSC feature is not enabled");
+            }
         }
     }
 }
