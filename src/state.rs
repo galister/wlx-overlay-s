@@ -109,8 +109,7 @@ impl AppState {
             .post_load(&session.config, &mut tasks)?;
 
         #[cfg(feature = "osc")]
-        let osc_sender = 
-            crate::backend::osc::OscSender::new(session.config.osc_out_port).ok();
+        let osc_sender = crate::backend::osc::OscSender::new(session.config.osc_out_port).ok();
 
         Ok(AppState {
             fc: FontCache::new(session.config.primary_font.clone())?,

@@ -186,23 +186,23 @@ pub enum ButtonAction {
     SendOscValue {
         parameter: Arc<str>,
         values: Option<Vec<OscValue>>,
-    }
+    },
 }
 
 #[derive(Deserialize, Clone)]
 #[serde(tag = "type")]
 #[cfg(feature = "osc")]
 pub enum OscValue {
-    Int {value: i32},
-    Float {value: f32},
-    String {value: String},
-    Bool {value: bool},
+    Int { value: i32 },
+    Float { value: f32 },
+    String { value: String },
+    Bool { value: bool },
 }
 #[derive(Deserialize, Clone)]
 #[serde(tag = "type")]
 #[cfg(not(feature = "osc"))]
 pub enum OscValue {
-    None
+    None,
 }
 
 pub(super) struct PressData {
@@ -415,7 +415,6 @@ fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppStat
             app.session.config.space_drag_multiplier += delta;
         }
         ButtonAction::SendOscValue { parameter, values } => {
-
             #[cfg(feature = "osc")]
             if let Some(ref mut sender) = app.osc_sender {
                 // convert OscValue to OscType
@@ -423,10 +422,10 @@ fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppStat
 
                 for value in values.as_ref().unwrap() {
                     let converted_value = match value {
-                        OscValue::Bool { value } => {OscType::Bool(*value)},
-                        OscValue::Int { value } => {OscType::Int(*value)},
-                        OscValue::Float { value } => {OscType::Float(*value)},
-                        OscValue::String { value } => {OscType::String(value.to_string())},
+                        OscValue::Bool { value } => OscType::Bool(*value),
+                        OscValue::Int { value } => OscType::Int(*value),
+                        OscValue::Float { value } => OscType::Float(*value),
+                        OscValue::String { value } => OscType::String(value.to_string()),
                     };
 
                     converted.push(converted_value);
@@ -442,8 +441,7 @@ fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppStat
                 let _ = &values;
                 error_toast_str(app, "OSC feature is not enabled");
             }
-        },
- 
+        }
     }
 }
 
