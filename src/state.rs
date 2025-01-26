@@ -14,6 +14,9 @@ use {
     std::{cell::RefCell, rc::Rc},
 };
 
+#[cfg(feature = "osc")]
+use crate::backend::osc::OscSender;
+
 use crate::{
     backend::{input::InputState, overlay::OverlayID, task::TaskContainer},
     config::{AStrMap, GeneralConfig},
@@ -48,6 +51,9 @@ pub struct AppState {
     pub anchor: Affine3A,
     pub sprites: AStrMap<Arc<ImageView>>,
     pub keyboard_focus: KeyboardFocus,
+
+    #[cfg(feature = "osc")]
+    pub osc_sender: Option<OscSender>,
 
     #[cfg(feature = "wayvr")]
     pub wayvr: Option<Rc<RefCell<WayVRData>>>, // Dynamically created if requested
@@ -102,6 +108,9 @@ impl AppState {
             .wayvr_config
             .post_load(&session.config, &mut tasks)?;
 
+        #[cfg(feature = "osc")]
+        let osc_sender = crate::backend::osc::OscSender::new(session.config.osc_out_port).ok();
+
         Ok(AppState {
             fc: FontCache::new(session.config.primary_font.clone())?,
             session,
@@ -114,6 +123,9 @@ impl AppState {
             anchor: Affine3A::IDENTITY,
             sprites: AStrMap::new(),
             keyboard_focus: KeyboardFocus::PhysicalScreen,
+
+            #[cfg(feature = "osc")]
+            osc_sender,
 
             #[cfg(feature = "wayvr")]
             wayvr,
