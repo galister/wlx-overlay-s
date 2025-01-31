@@ -1,6 +1,9 @@
 use smithay::wayland::shell::xdg::ToplevelSurface;
+use wayvr_ipc::packet_server;
 
 use crate::gen_id;
+
+use super::display;
 
 #[derive(Debug)]
 pub struct Window {
@@ -8,17 +11,21 @@ pub struct Window {
     pub pos_y: i32,
     pub size_x: u32,
     pub size_y: u32,
+    pub visible: bool,
     pub toplevel: ToplevelSurface,
+    pub display_handle: display::DisplayHandle,
 }
 
 impl Window {
-    pub fn new(toplevel: &ToplevelSurface) -> Self {
+    pub fn new(display_handle: display::DisplayHandle, toplevel: &ToplevelSurface) -> Self {
         Self {
             pos_x: 0,
             pos_y: 0,
             size_x: 0,
             size_y: 0,
+            visible: true,
             toplevel: toplevel.clone(),
+            display_handle,
         }
     }
 
@@ -63,9 +70,29 @@ impl WindowManager {
         None
     }
 
-    pub fn create_window(&mut self, toplevel: &ToplevelSurface) -> WindowHandle {
-        self.windows.add(Window::new(toplevel))
+    pub fn create_window(
+        &mut self,
+        display_handle: display::DisplayHandle,
+        toplevel: &ToplevelSurface,
+    ) -> WindowHandle {
+        self.windows.add(Window::new(display_handle, toplevel))
     }
 }
 
 gen_id!(WindowVec, Window, WindowCell, WindowHandle);
+
+impl WindowHandle {
+    pub fn from_packet(handle: packet_server::WvrWindowHandle) -> Self {
+        Self {
+            generation: handle.generation,
+            idx: handle.idx,
+        }
+    }
+
+    pub fn as_packet(&self) -> packet_server::WvrWindowHandle {
+        packet_server::WvrWindowHandle {
+            idx: self.idx,
+            generation: self.generation,
+        }
+    }
+}

@@ -382,7 +382,11 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         }
 
         #[cfg(feature = "wayvr")]
-        crate::overlays::wayvr::tick_events::<OpenXrOverlayData>(&mut app_state, &mut overlays)?;
+        if let Err(e) =
+            crate::overlays::wayvr::tick_events::<OpenXrOverlayData>(&mut app_state, &mut overlays)
+        {
+            log::error!("WayVR tick_events failed: {:?}", e);
+        }
 
         for o in overlays.iter_mut() {
             if !o.state.want_visible {

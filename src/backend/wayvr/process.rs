@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use wayvr_ipc::packet_server;
 
 use crate::gen_id;
@@ -13,6 +15,8 @@ pub struct WayVRProcess {
     pub exec_path: String,
     pub args: Vec<String>,
     pub env: Vec<(String, String)>,
+
+    pub userdata: HashMap<String, String>,
 }
 
 #[derive(Debug)]
@@ -60,11 +64,13 @@ impl Process {
         match self {
             Process::Managed(p) => packet_server::WvrProcess {
                 name: p.get_name().unwrap_or(String::from("unknown")),
+                userdata: p.userdata.clone(),
                 display_handle: p.display_handle.as_packet(),
                 handle: handle.as_packet(),
             },
             Process::External(p) => packet_server::WvrProcess {
                 name: p.get_name().unwrap_or(String::from("unknown")),
+                userdata: Default::default(),
                 display_handle: p.display_handle.as_packet(),
                 handle: handle.as_packet(),
             },

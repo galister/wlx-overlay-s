@@ -11,7 +11,7 @@ mod smithay_wrapper;
 mod time;
 mod window;
 use comp::Application;
-use display::DisplayVec;
+use display::{DisplayInitParams, DisplayVec};
 use event_queue::SyncEventQueue;
 use process::ProcessVec;
 use server_ipc::WayVRServer;
@@ -32,9 +32,13 @@ use smithay::{
         shm::ShmState,
     },
 };
-use std::{cell::RefCell, collections::HashSet, rc::Rc};
+use std::{
+    cell::RefCell,
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
 use time::get_millis;
-use wayvr_ipc::packet_client;
+use wayvr_ipc::{packet_client, packet_server};
 
 const STR_INVALID_HANDLE_DISP: &str = "Invalid display handle";
 const STR_INVALID_HANDLE_PROCESS: &str = "Invalid process handle";
@@ -76,6 +80,11 @@ pub enum WayVRTask {
 #[derive(Clone)]
 pub enum WayVRSignal {
     DisplayVisibility(display::DisplayHandle, bool),
+    DisplayWindowLayout(
+        display::DisplayHandle,
+        packet_server::WvrDisplayWindowLayout,
+    ),
+    BroadcastStateChanged(packet_server::WvrStateChanged),
 }
 
 pub struct Config {
@@ -102,7 +111,7 @@ pub struct WayVRState {
 
 pub struct WayVR {
     pub state: WayVRState,
-    ipc_server: WayVRServer,
+    pub ipc_server: WayVRServer,
 }
 
 pub enum MouseIndex {
@@ -302,13 +311,13 @@ impl WayVR {
             }
         });
 
-        for (p_handle, disp_handle) in to_remove {
-            self.state.processes.remove(&p_handle);
+        for (p_handle, disp_handle) in &to_remove {
+            self.state.processes.remove(p_handle);
 
-            if let Some(display) = self.state.displays.get_mut(&disp_handle) {
+            if let Some(display) = self.state.displays.get_mut(disp_handle) {
                 display
                     .tasks
-                    .send(display::DisplayTask::ProcessCleanup(p_handle));
+                    .send(display::DisplayTask::ProcessCleanup(*p_handle));
                 display.wants_redraw = true;
             }
         }
@@ -316,6 +325,12 @@ impl WayVR {
         self.state.displays.iter_mut(&mut |handle, display| {
             display.tick(&self.state.config, &handle, &mut self.state.signals);
         });
+
+        if !to_remove.is_empty() {
+            self.state.signals.send(WayVRSignal::BroadcastStateChanged(
+                packet_server::WvrStateChanged::ProcessRemoved,
+            ));
+        }
 
         while let Some(task) = self.state.tasks.read() {
             match task {
@@ -329,15 +344,22 @@ impl WayVR {
                     // Attach newly created toplevel surfaces to displays
                     for client in &self.state.manager.clients {
                         if client.client.id() == client_id {
-                            let window_handle = self.state.wm.borrow_mut().create_window(&toplevel);
-
                             if let Some(process_handle) =
                                 process::find_by_pid(&self.state.processes, client.pid)
                             {
+                                let window_handle = self
+                                    .state
+                                    .wm
+                                    .borrow_mut()
+                                    .create_window(client.display_handle, &toplevel);
+
                                 if let Some(display) =
                                     self.state.displays.get_mut(&client.display_handle)
                                 {
                                     display.add_window(window_handle, process_handle, &toplevel);
+                                    self.state.signals.send(WayVRSignal::BroadcastStateChanged(
+                                        packet_server::WvrStateChanged::WindowCreated,
+                                    ));
                                 } else {
                                     // This shouldn't happen, scream if it does
                                     log::error!("Could not attach window handle into display");
@@ -456,6 +478,16 @@ impl WayVRState {
         }
     }
 
+    pub fn set_display_layout(
+        &mut self,
+        display: display::DisplayHandle,
+        layout: packet_server::WvrDisplayWindowLayout,
+    ) {
+        if let Some(display) = self.displays.get_mut(&display) {
+            display.set_layout(layout);
+        }
+    }
+
     pub fn get_dmabuf_data(&self, display: display::DisplayHandle) -> Option<egl_data::DMAbufData> {
         self.displays
             .get(&display)
@@ -469,17 +501,24 @@ impl WayVRState {
         name: &str,
         primary: bool,
     ) -> anyhow::Result<display::DisplayHandle> {
-        let display = display::Display::new(
-            self.wm.clone(),
-            &mut self.manager.state.gles_renderer,
-            self.egl_data.clone(),
-            self.manager.wayland_env.clone(),
+        let display = display::Display::new(DisplayInitParams {
+            wm: self.wm.clone(),
+            egl_data: self.egl_data.clone(),
+            renderer: &mut self.manager.state.gles_renderer,
+            wayland_env: self.manager.wayland_env.clone(),
             width,
             height,
             name,
             primary,
-        )?;
-        Ok(self.displays.add(display))
+        })?;
+
+        let handle = self.displays.add(display);
+
+        self.signals.send(WayVRSignal::BroadcastStateChanged(
+            packet_server::WvrStateChanged::DisplayCreated,
+        ));
+
+        Ok(handle)
     }
 
     pub fn destroy_display(&mut self, handle: display::DisplayHandle) -> anyhow::Result<()> {
@@ -518,6 +557,10 @@ impl WayVRState {
         }
 
         self.displays.remove(&handle);
+
+        self.signals.send(WayVRSignal::BroadcastStateChanged(
+            packet_server::WvrStateChanged::DisplayRemoved,
+        ));
 
         Ok(())
     }
@@ -584,6 +627,7 @@ impl WayVRState {
         exec_path: &str,
         args: &[&str],
         env: &[(&str, &str)],
+        userdata: HashMap<String, String>,
     ) -> anyhow::Result<process::ProcessHandle> {
         let display = self
             .displays
@@ -591,18 +635,26 @@ impl WayVRState {
             .ok_or(anyhow::anyhow!(STR_INVALID_HANDLE_DISP))?;
 
         let res = display.spawn_process(exec_path, args, env)?;
-        Ok(self
+
+        let handle = self
             .processes
             .add(process::Process::Managed(process::WayVRProcess {
                 auth_key: res.auth_key,
                 child: res.child,
                 display_handle,
                 exec_path: String::from(exec_path),
+                userdata,
                 args: args.iter().map(|x| String::from(*x)).collect(),
                 env: env
                     .iter()
                     .map(|(a, b)| (String::from(*a), String::from(*b)))
                     .collect(),
-            })))
+            }));
+
+        self.signals.send(WayVRSignal::BroadcastStateChanged(
+            packet_server::WvrStateChanged::ProcessCreated,
+        ));
+
+        Ok(handle)
     }
 }
