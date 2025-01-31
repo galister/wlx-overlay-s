@@ -334,7 +334,11 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         };
 
         #[cfg(feature = "wayvr")]
-        crate::overlays::wayvr::tick_events::<OpenVrOverlayData>(&mut state, &mut overlays)?;
+        if let Err(e) =
+            crate::overlays::wayvr::tick_events::<OpenVrOverlayData>(&mut state, &mut overlays)
+        {
+            log::error!("WayVR tick_events failed: {:?}", e);
+        }
 
         log::trace!("Rendering frame");
 

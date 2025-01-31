@@ -1,6 +1,7 @@
 use glam::{vec3a, Affine2, Vec3, Vec3A};
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 use vulkano::image::SubresourceLayout;
+use wayvr_ipc::packet_server;
 use wlx_capture::frame::{DmabufFrame, FourCC, FrameFormat, FramePlane};
 
 use crate::{
@@ -309,12 +310,17 @@ where
             None => vec![],
         };
 
+        let mut userdata = HashMap::new();
+        userdata.insert(String::from("type"), String::from("dashboard"));
+
         // Start dashboard specified in the WayVR config
-        let _process_handle_unused =
-            wayvr
-                .data
-                .state
-                .spawn_process(disp_handle, &conf_dash.exec, &args_vec, &env_vec)?;
+        let _process_handle_unused = wayvr.data.state.spawn_process(
+            disp_handle,
+            &conf_dash.exec,
+            &args_vec,
+            &env_vec,
+            userdata,
+        )?;
 
         wayvr.dashboard_executed = true;
 
@@ -433,6 +439,15 @@ where
                         }),
                     ));
                 }
+            }
+            wayvr::WayVRSignal::DisplayWindowLayout(display_handle, layout) => {
+                wayvr.data.state.set_display_layout(display_handle, layout);
+            }
+            wayvr::WayVRSignal::BroadcastStateChanged(packet) => {
+                wayvr
+                    .data
+                    .ipc_server
+                    .broadcast(packet_server::PacketServer::WvrStateChanged(packet))?;
             }
         }
     }
@@ -734,10 +749,13 @@ where
             wayvr.data.terminate_process(process_handle);
         } else {
             // Spawn process
-            wayvr
-                .data
-                .state
-                .spawn_process(disp_handle, &app_entry.exec, &args_vec, &env_vec)?;
+            wayvr.data.state.spawn_process(
+                disp_handle,
+                &app_entry.exec,
+                &args_vec,
+                &env_vec,
+                Default::default(),
+            )?;
 
             show_display::<O>(&mut wayvr, overlays, app_entry.target_display.as_str());
         }

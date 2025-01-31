@@ -35,7 +35,7 @@ fn generate_auth_key() -> String {
 pub struct DisplayWindow {
     pub window_handle: window::WindowHandle,
     pub toplevel: ToplevelSurface,
-    process_handle: process::ProcessHandle,
+    pub process_handle: process::ProcessHandle,
 }
 
 pub struct SpawnProcessResult {
@@ -57,6 +57,7 @@ pub struct Display {
     pub height: u16,
     pub name: String,
     pub visible: bool,
+    pub layout: packet_server::WvrDisplayWindowLayout,
     pub overlay_id: Option<OverlayID>,
     pub wants_redraw: bool,
     pub primary: bool,
@@ -84,29 +85,31 @@ impl Drop for Display {
     }
 }
 
+pub struct DisplayInitParams<'a> {
+    pub wm: Rc<RefCell<window::WindowManager>>,
+    pub renderer: &'a mut GlesRenderer,
+    pub egl_data: Rc<egl_data::EGLData>,
+    pub wayland_env: super::WaylandEnv,
+    pub width: u16,
+    pub height: u16,
+    pub name: &'a str,
+    pub primary: bool,
+}
+
 impl Display {
-    pub fn new(
-        wm: Rc<RefCell<window::WindowManager>>,
-        renderer: &mut GlesRenderer,
-        egl_data: Rc<egl_data::EGLData>,
-        wayland_env: super::WaylandEnv,
-        width: u16,
-        height: u16,
-        name: &str,
-        primary: bool,
-    ) -> anyhow::Result<Self> {
-        if width > MAX_DISPLAY_SIZE {
+    pub fn new(params: DisplayInitParams) -> anyhow::Result<Self> {
+        if params.width > MAX_DISPLAY_SIZE {
             anyhow::bail!(
                 "display width ({}) is larger than {}",
-                width,
+                params.width,
                 MAX_DISPLAY_SIZE
             );
         }
 
-        if height > MAX_DISPLAY_SIZE {
+        if params.height > MAX_DISPLAY_SIZE {
             anyhow::bail!(
                 "display height ({}) is larger than {}",
-                height,
+                params.height,
                 MAX_DISPLAY_SIZE
             );
         }
@@ -114,42 +117,44 @@ impl Display {
         let tex_format = ffi::RGBA;
         let internal_format = ffi::RGBA8;
 
-        let tex_id = renderer.with_context(|gl| {
+        let tex_id = params.renderer.with_context(|gl| {
             smithay_wrapper::create_framebuffer_texture(
                 gl,
-                width as u32,
-                height as u32,
+                params.width as u32,
+                params.height as u32,
                 tex_format,
                 internal_format,
             )
         })?;
 
-        let egl_image = egl_data.create_egl_image(tex_id)?;
-        let dmabuf_data = egl_data.create_dmabuf_data(&egl_image)?;
+        let egl_image = params.egl_data.create_egl_image(tex_id)?;
+        let dmabuf_data = params.egl_data.create_dmabuf_data(&egl_image)?;
 
         let opaque = false;
-        let size = (width as i32, height as i32).into();
-        let gles_texture =
-            unsafe { GlesTexture::from_raw(renderer, Some(tex_format), opaque, tex_id, size) };
+        let size = (params.width as i32, params.height as i32).into();
+        let gles_texture = unsafe {
+            GlesTexture::from_raw(params.renderer, Some(tex_format), opaque, tex_id, size)
+        };
 
         Ok(Self {
-            wm,
-            width,
-            height,
-            name: String::from(name),
+            egl_data: params.egl_data,
+            width: params.width,
+            height: params.height,
+            name: String::from(params.name),
+            primary: params.primary,
+            wayland_env: params.wayland_env,
+            wm: params.wm,
             displayed_windows: Vec::new(),
-            wants_redraw: true,
-            egl_data,
             dmabuf_data,
             egl_image,
             gles_texture,
-            wayland_env,
-            visible: true,
-            primary,
-            overlay_id: None,
-            tasks: SyncEventQueue::new(),
             last_pressed_time_ms: 0,
             no_windows_since: None,
+            overlay_id: None,
+            tasks: SyncEventQueue::new(),
+            visible: true,
+            wants_redraw: true,
+            layout: packet_server::WvrDisplayWindowLayout::Tiling,
         })
     }
 
@@ -178,19 +183,62 @@ impl Display {
         self.reposition_windows();
     }
 
-    fn reposition_windows(&mut self) {
+    pub fn reposition_windows(&mut self) {
         let window_count = self.displayed_windows.len();
 
-        for (i, win) in self.displayed_windows.iter_mut().enumerate() {
-            if let Some(window) = self.wm.borrow_mut().windows.get_mut(&win.window_handle) {
-                let d_cur = i as f32 / window_count as f32;
-                let d_next = (i + 1) as f32 / window_count as f32;
+        match &self.layout {
+            packet_server::WvrDisplayWindowLayout::Tiling => {
+                let mut i = 0;
+                for win in self.displayed_windows.iter_mut() {
+                    if let Some(window) = self.wm.borrow_mut().windows.get_mut(&win.window_handle) {
+                        if !window.visible {
+                            continue;
+                        }
+                        let d_cur = i as f32 / window_count as f32;
+                        let d_next = (i + 1) as f32 / window_count as f32;
 
-                let left = (d_cur * self.width as f32) as i32;
-                let right = (d_next * self.width as f32) as i32;
+                        let left = (d_cur * self.width as f32) as i32;
+                        let right = (d_next * self.width as f32) as i32;
 
-                window.set_pos(left, 0);
-                window.set_size((right - left) as u32, self.height as u32);
+                        window.set_pos(left, 0);
+                        window.set_size((right - left) as u32, self.height as u32);
+                        i += 1;
+                    }
+                }
+            }
+            packet_server::WvrDisplayWindowLayout::Stacking(opts) => {
+                let do_margins = |margins: &packet_server::Margins, window: &mut window::Window| {
+                    let top = margins.top as i32;
+                    let bottom = self.height as i32 - margins.bottom as i32;
+                    let left = margins.left as i32;
+                    let right = self.width as i32 - margins.right as i32;
+                    let width = right - left;
+                    let height = bottom - top;
+                    if width < 0 || height < 0 {
+                        return; // wrong parameters, do nothing!
+                    }
+
+                    window.set_pos(left, top);
+                    window.set_size(width as u32, height as u32);
+                };
+
+                let mut i = 0;
+                for win in self.displayed_windows.iter_mut() {
+                    if let Some(window) = self.wm.borrow_mut().windows.get_mut(&win.window_handle) {
+                        if !window.visible {
+                            continue;
+                        }
+                        do_margins(
+                            if i == 0 {
+                                &opts.margins_first
+                            } else {
+                                &opts.margins_rest
+                            },
+                            window,
+                        );
+                        i += 1;
+                    }
+                }
             }
         }
     }
@@ -217,6 +265,7 @@ impl Display {
         while let Some(task) = self.tasks.read() {
             match task {
                 DisplayTask::ProcessCleanup(process_handle) => {
+                    let count = self.displayed_windows.len();
                     self.displayed_windows
                         .retain(|win| win.process_handle != process_handle);
                     log::info!(
@@ -225,6 +274,12 @@ impl Display {
                         self.displayed_windows.len()
                     );
                     self.no_windows_since = Some(get_millis());
+
+                    if count != self.displayed_windows.len() {
+                        signals.send(WayVRSignal::BroadcastStateChanged(
+                            packet_server::WvrStateChanged::WindowRemoved,
+                        ));
+                    }
 
                     self.reposition_windows();
                 }
@@ -245,6 +300,9 @@ impl Display {
             .flat_map(|display_window| {
                 let wm = self.wm.borrow_mut();
                 if let Some(window) = wm.windows.get(&display_window.window_handle) {
+                    if !window.visible {
+                        return vec![];
+                    }
                     render_elements_from_surface_tree(
                         renderer,
                         display_window.toplevel.wl_surface(),
@@ -284,8 +342,12 @@ impl Display {
     fn get_hovered_window(&self, cursor_x: u32, cursor_y: u32) -> Option<window::WindowHandle> {
         let wm = self.wm.borrow();
 
-        for cell in self.displayed_windows.iter() {
+        for cell in self.displayed_windows.iter().rev() {
             if let Some(window) = wm.windows.get(&cell.window_handle) {
+                if !window.visible {
+                    continue;
+                }
+
                 if (cursor_x as i32) >= window.pos_x
                     && (cursor_x as i32) < window.pos_x + window.size_x as i32
                     && (cursor_y as i32) >= window.pos_y
@@ -298,15 +360,30 @@ impl Display {
         None
     }
 
+    pub fn trigger_rerender(&mut self) {
+        self.wants_redraw = true;
+    }
+
     pub fn set_visible(&mut self, visible: bool) {
         log::info!("Display \"{}\" visible: {}", self.name.as_str(), visible);
-        if self.visible != visible {
-            self.visible = visible;
-            if visible {
-                self.wants_redraw = true;
-                self.no_windows_since = None;
-            }
+        if self.visible == visible {
+            return;
         }
+        self.visible = visible;
+        if visible {
+            self.no_windows_since = None;
+            self.trigger_rerender();
+        }
+    }
+
+    pub fn set_layout(&mut self, layout: packet_server::WvrDisplayWindowLayout) {
+        log::info!("Display \"{}\" layout: {:?}", self.name.as_str(), layout);
+        if self.layout == layout {
+            return;
+        }
+        self.layout = layout;
+        self.trigger_rerender();
+        self.reposition_windows();
     }
 
     pub fn send_mouse_move(
