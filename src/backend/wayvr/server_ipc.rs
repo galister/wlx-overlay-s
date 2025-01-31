@@ -1,4 +1,4 @@
-use super::{display, process, TickTask, WayVRSignal};
+use super::{display, process, window, TickTask, WayVRSignal};
 use bytes::BufMut;
 use interprocess::local_socket::{self, traits::Listener, ToNsName};
 use smallvec::SmallVec;
@@ -236,6 +236,97 @@ impl Connection {
         Ok(())
     }
 
+    fn handle_wvr_display_set_window_layout(
+        &mut self,
+        params: &mut TickParams,
+        handle: packet_server::WvrDisplayHandle,
+        layout: packet_server::WvrDisplayWindowLayout,
+    ) -> anyhow::Result<()> {
+        params.state.signals.send(WayVRSignal::DisplayWindowLayout(
+            display::DisplayHandle::from_packet(handle),
+            layout,
+        ));
+        Ok(())
+    }
+
+    fn handle_wvr_display_window_list(
+        &mut self,
+        params: &mut TickParams,
+        serial: ipc::Serial,
+        display_handle: packet_server::WvrDisplayHandle,
+    ) -> anyhow::Result<()> {
+        let mut send = |list: Option<packet_server::WvrWindowList>| -> anyhow::Result<()> {
+            send_packet(
+                &mut self.conn,
+                &ipc::data_encode(&PacketServer::WvrDisplayWindowListResponse(serial, list)),
+            )
+        };
+
+        let Some(display) = params
+            .state
+            .displays
+            .get(&display::DisplayHandle::from_packet(display_handle.clone()))
+        else {
+            return send(None);
+        };
+
+        send(Some(packet_server::WvrWindowList {
+            list: display
+                .displayed_windows
+                .iter()
+                .filter_map(|disp_win| {
+                    params
+                        .state
+                        .wm
+                        .borrow_mut()
+                        .windows
+                        .get(&disp_win.window_handle)
+                        .map(|win| packet_server::WvrWindow {
+                            handle: window::WindowHandle::as_packet(&disp_win.window_handle),
+                            process_handle: process::ProcessHandle::as_packet(
+                                &disp_win.process_handle,
+                            ),
+                            pos_x: win.pos_x,
+                            pos_y: win.pos_y,
+                            size_x: win.size_x,
+                            size_y: win.size_y,
+                            visible: win.visible,
+                            display_handle: display_handle.clone(),
+                        })
+                })
+                .collect::<Vec<_>>(),
+        }))
+    }
+
+    fn handle_wvr_window_set_visible(
+        &mut self,
+        params: &mut TickParams,
+        handle: packet_server::WvrWindowHandle,
+        visible: bool,
+    ) -> anyhow::Result<()> {
+        let mut to_resize = None;
+
+        if let Some(window) = params
+            .state
+            .wm
+            .borrow_mut()
+            .windows
+            .get_mut(&window::WindowHandle::from_packet(handle))
+        {
+            window.visible = visible;
+            to_resize = Some(window.display_handle);
+        }
+
+        if let Some(to_resize) = to_resize {
+            if let Some(display) = params.state.displays.get_mut(&to_resize) {
+                display.reposition_windows();
+                display.trigger_rerender();
+            }
+        }
+
+        Ok(())
+    }
+
     fn handle_wvr_process_launch(
         &mut self,
         params: &mut TickParams,
@@ -250,6 +341,7 @@ impl Connection {
             &packet_params.exec,
             &args_vec,
             &env_vec,
+            packet_params.userdata,
         );
 
         let res = res.map(|r| r.as_packet()).map_err(|e| e.to_string());
@@ -262,7 +354,7 @@ impl Connection {
         Ok(())
     }
 
-    fn handle_wvr_process_get(
+    fn handle_wvr_display_get(
         &mut self,
         params: &TickParams,
         serial: ipc::Serial,
@@ -332,6 +424,27 @@ impl Connection {
         Ok(())
     }
 
+    fn handle_wvr_process_get(
+        &mut self,
+        params: &TickParams,
+        serial: ipc::Serial,
+        process_handle: packet_server::WvrProcessHandle,
+    ) -> anyhow::Result<()> {
+        let native_handle = &process::ProcessHandle::from_packet(process_handle.clone());
+        let process = params
+            .state
+            .processes
+            .get(native_handle)
+            .map(|process| process.to_packet(*native_handle));
+
+        send_packet(
+            &mut self.conn,
+            &ipc::data_encode(&PacketServer::WvrProcessGetResponse(serial, process)),
+        )?;
+
+        Ok(())
+    }
+
     fn handle_wlx_haptics(
         &mut self,
         params: &mut TickParams,
@@ -362,13 +475,25 @@ impl Connection {
                 self.handle_wvr_display_list(params, serial)?;
             }
             PacketClient::WvrDisplayGet(serial, display_handle) => {
-                self.handle_wvr_process_get(params, serial, display_handle)?;
+                self.handle_wvr_display_get(params, serial, display_handle)?;
             }
             PacketClient::WvrDisplayRemove(serial, display_handle) => {
                 self.handle_wvr_display_remove(params, serial, display_handle)?;
             }
             PacketClient::WvrDisplaySetVisible(display_handle, visible) => {
                 self.handle_wvr_display_set_visible(params, display_handle, visible)?;
+            }
+            PacketClient::WvrDisplaySetWindowLayout(display_handle, layout) => {
+                self.handle_wvr_display_set_window_layout(params, display_handle, layout)?;
+            }
+            PacketClient::WvrDisplayWindowList(serial, display_handle) => {
+                self.handle_wvr_display_window_list(params, serial, display_handle)?;
+            }
+            PacketClient::WvrWindowSetVisible(window_handle, visible) => {
+                self.handle_wvr_window_set_visible(params, window_handle, visible)?;
+            }
+            PacketClient::WvrProcessGet(serial, process_handle) => {
+                self.handle_wvr_process_get(params, serial, process_handle)?;
             }
             PacketClient::WvrProcessList(serial) => {
                 self.handle_wvr_process_list(params, serial)?;
@@ -505,6 +630,13 @@ impl WayVRServer {
     pub fn tick(&mut self, params: &mut TickParams) -> anyhow::Result<()> {
         self.accept_connections();
         self.tick_connections(params);
+        Ok(())
+    }
+
+    pub fn broadcast(&mut self, packet: packet_server::PacketServer) -> anyhow::Result<()> {
+        for connection in &mut self.connections {
+            send_packet(&mut connection.conn, &ipc::data_encode(&packet))?;
+        }
         Ok(())
     }
 }
