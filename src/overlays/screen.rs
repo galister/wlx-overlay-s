@@ -33,7 +33,7 @@ use {
 };
 
 #[cfg(all(feature = "x11", feature = "pipewire"))]
-use wlx_capture::pipewire::PipewireStream;
+use {crate::config::AStrMapExt, wlx_capture::pipewire::PipewireStream};
 
 #[cfg(feature = "wayland")]
 use {
