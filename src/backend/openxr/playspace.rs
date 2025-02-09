@@ -1,5 +1,5 @@
 use glam::{Affine3A, Quat, Vec3A};
-use libmonado_rs::{Monado, Pose, ReferenceSpaceType};
+use libmonado::{Monado, Pose, ReferenceSpaceType};
 
 use crate::{
     backend::{common::OverlayContainer, input::InputState},

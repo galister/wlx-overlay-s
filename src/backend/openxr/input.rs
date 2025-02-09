@@ -5,7 +5,7 @@ use std::{
 };
 
 use glam::{bool, Affine3A, Quat, Vec3};
-use libmonado_rs::{Device, Monado};
+use libmonado::{Device, Monado};
 use openxr::{self as xr, Quaternionf, Vector3f};
 use serde::{Deserialize, Serialize};
 
