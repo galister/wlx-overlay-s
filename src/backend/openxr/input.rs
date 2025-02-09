@@ -5,7 +5,7 @@ use std::{
 };
 
 use glam::{bool, Affine3A, Quat, Vec3};
-use libmonado::{Device, Monado};
+use libmonado::{Device, DeviceRole, Monado};
 use openxr::{self as xr, Quaternionf, Vector3f};
 use serde::{Deserialize, Serialize};
 
@@ -255,13 +255,13 @@ impl OpenXrInputSource {
         app.input_state.devices.clear();
 
         let roles = [
-            ("head", TrackedDeviceRole::Hmd),
-            ("eyes", TrackedDeviceRole::None),
-            ("left", TrackedDeviceRole::LeftHand),
-            ("right", TrackedDeviceRole::RightHand),
-            ("gamepad", TrackedDeviceRole::None),
-            ("hand-tracking-left", TrackedDeviceRole::LeftHand),
-            ("hand-tracking-right", TrackedDeviceRole::RightHand),
+            (DeviceRole::Head, TrackedDeviceRole::Hmd),
+            (DeviceRole::Eyes, TrackedDeviceRole::None),
+            (DeviceRole::Left, TrackedDeviceRole::LeftHand),
+            (DeviceRole::Right, TrackedDeviceRole::RightHand),
+            (DeviceRole::Gamepad, TrackedDeviceRole::None),
+            (DeviceRole::HandTrackingLeft, TrackedDeviceRole::LeftHand),
+            (DeviceRole::HandTrackingRight, TrackedDeviceRole::RightHand),
         ];
         let mut seen = Vec::<u32>::with_capacity(32);
         for (mnd_role, wlx_role) in roles {
@@ -276,7 +276,7 @@ impl OpenXrInputSource {
         if let Ok(devices) = monado.devices() {
             for mut device in devices {
                 if !seen.contains(&device.index) {
-                    let role = if device.id >= 4 && device.id <= 8 {
+                    let role = if device.name_id >= 4 && device.name_id <= 8 {
                         TrackedDeviceRole::Tracker
                     } else {
                         TrackedDeviceRole::None
