@@ -25,7 +25,7 @@ use wlx_capture::{
 
 #[cfg(feature = "pipewire")]
 use {
-    crate::config_io,
+    crate::{config::AStrMapExt, config_io},
     std::error::Error,
     std::{ops::Deref, path::PathBuf, task},
     wlx_capture::pipewire::PipewireCapture,
@@ -33,16 +33,13 @@ use {
 };
 
 #[cfg(all(feature = "x11", feature = "pipewire"))]
-use {crate::config::AStrMapExt, wlx_capture::pipewire::PipewireStream};
+use wlx_capture::pipewire::PipewireStream;
 
 #[cfg(feature = "wayland")]
-use {
-    crate::config::AStrMapExt,
-    wlx_capture::{
-        wayland::{wayland_client::protocol::wl_output, WlxClient, WlxOutput},
-        wlr_dmabuf::WlrDmabufCapture,
-        wlr_screencopy::WlrScreencopyCapture,
-    },
+use wlx_capture::{
+    wayland::{wayland_client::protocol::wl_output, WlxClient, WlxOutput},
+    wlr_dmabuf::WlrDmabufCapture,
+    wlr_screencopy::WlrScreencopyCapture,
 };
 
 #[cfg(feature = "x11")]
