@@ -185,12 +185,10 @@ impl WayVR {
             }
             Ok(None) => {
                 log::warn!("dmabuf: Failed to query render node");
-                debug_assert!(false);
                 None
             }
             Err(err) => {
                 log::warn!("dmabuf: Failed to get egl device for display: {}", err);
-                debug_assert!(false);
                 None
             }
         };
