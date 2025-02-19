@@ -5,7 +5,7 @@ use std::{
 };
 
 use glam::{bool, Affine3A, Quat, Vec3};
-use libmonado_rs::{Device, Monado};
+use libmonado as mnd;
 use openxr::{self as xr, Quaternionf, Vector3f};
 use serde::{Deserialize, Serialize};
 
@@ -229,7 +229,7 @@ impl OpenXrInputSource {
     }
 
     fn update_device_battery_status(
-        device: &mut Device,
+        device: &mut mnd::Device,
         role: TrackedDeviceRole,
         app: &mut AppState,
     ) {
@@ -251,17 +251,23 @@ impl OpenXrInputSource {
         }
     }
 
-    pub fn update_devices(&mut self, app: &mut AppState, monado: &mut Monado) {
+    pub fn update_devices(&mut self, app: &mut AppState, monado: &mut mnd::Monado) {
         app.input_state.devices.clear();
 
         let roles = [
-            ("head", TrackedDeviceRole::Hmd),
-            ("eyes", TrackedDeviceRole::None),
-            ("left", TrackedDeviceRole::LeftHand),
-            ("right", TrackedDeviceRole::RightHand),
-            ("gamepad", TrackedDeviceRole::None),
-            ("hand-tracking-left", TrackedDeviceRole::LeftHand),
-            ("hand-tracking-right", TrackedDeviceRole::RightHand),
+            (mnd::DeviceRole::Head, TrackedDeviceRole::Hmd),
+            (mnd::DeviceRole::Eyes, TrackedDeviceRole::None),
+            (mnd::DeviceRole::Left, TrackedDeviceRole::LeftHand),
+            (mnd::DeviceRole::Right, TrackedDeviceRole::RightHand),
+            (mnd::DeviceRole::Gamepad, TrackedDeviceRole::None),
+            (
+                mnd::DeviceRole::HandTrackingLeft,
+                TrackedDeviceRole::LeftHand,
+            ),
+            (
+                mnd::DeviceRole::HandTrackingRight,
+                TrackedDeviceRole::RightHand,
+            ),
         ];
         let mut seen = Vec::<u32>::with_capacity(32);
         for (mnd_role, wlx_role) in roles {
@@ -276,7 +282,7 @@ impl OpenXrInputSource {
         if let Ok(devices) = monado.devices() {
             for mut device in devices {
                 if !seen.contains(&device.index) {
-                    let role = if device.id >= 4 && device.id <= 8 {
+                    let role = if device.name_id >= 4 && device.name_id <= 8 {
                         TrackedDeviceRole::Tracker
                     } else {
                         TrackedDeviceRole::None
