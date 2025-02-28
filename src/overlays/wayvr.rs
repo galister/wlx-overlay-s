@@ -1,7 +1,7 @@
 use glam::{vec3a, Affine2, Vec3, Vec3A};
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 use vulkano::image::SubresourceLayout;
-use wayvr_ipc::packet_server;
+use wayvr_ipc::packet_server::{self, PacketServer, WvrStateChanged};
 use wlx_capture::frame::{DmabufFrame, FourCC, FrameFormat, FramePlane};
 
 use crate::{
@@ -332,12 +332,23 @@ where
         anyhow::bail!("Overlay ID not set for dashboard display");
     };
 
+    let cur_visibility = !display.visible;
+
+    wayvr
+        .data
+        .ipc_server
+        .broadcast(PacketServer::WvrStateChanged(if cur_visibility {
+            WvrStateChanged::DashboardShown
+        } else {
+            WvrStateChanged::DashboardHidden
+        }));
+
     app.tasks.enqueue(TaskType::Overlay(
         OverlaySelector::Id(overlay_id),
         Box::new(move |app, o| {
             // Toggle visibility
-            o.want_visible = !o.want_visible;
-            if o.want_visible {
+            o.want_visible = cur_visibility;
+            if cur_visibility {
                 o.reset(app, true);
             }
         }),
@@ -447,12 +458,12 @@ where
                 wayvr
                     .data
                     .ipc_server
-                    .broadcast(packet_server::PacketServer::WvrStateChanged(packet))?;
+                    .broadcast(packet_server::PacketServer::WvrStateChanged(packet));
             }
         }
     }
 
-    let res = wayvr.data.tick_events()?;
+    let res = wayvr.data.tick_events(app)?;
     drop(wayvr);
 
     for result in res {

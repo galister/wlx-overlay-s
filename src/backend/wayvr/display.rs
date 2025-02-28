@@ -291,8 +291,7 @@ impl Display {
         renderer.bind(self.gles_texture.clone())?;
 
         let size = Size::from((self.width as i32, self.height as i32));
-        let damage: Rectangle<i32, smithay::utils::Physical> =
-            Rectangle::from_loc_and_size((0, 0), size);
+        let damage: Rectangle<i32, smithay::utils::Physical> = Rectangle::from_size(size);
 
         let elements: Vec<WaylandSurfaceRenderElement<GlesRenderer>> = self
             .displayed_windows

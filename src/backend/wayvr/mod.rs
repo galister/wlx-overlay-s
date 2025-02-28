@@ -40,6 +40,8 @@ use std::{
 use time::get_millis;
 use wayvr_ipc::{packet_client, packet_server};
 
+use crate::state::AppState;
+
 const STR_INVALID_HANDLE_DISP: &str = "Invalid display handle";
 const STR_INVALID_HANDLE_PROCESS: &str = "Invalid process handle";
 
@@ -277,12 +279,13 @@ impl WayVR {
         Ok(())
     }
 
-    pub fn tick_events(&mut self) -> anyhow::Result<Vec<TickTask>> {
+    pub fn tick_events(&mut self, app: &AppState) -> anyhow::Result<Vec<TickTask>> {
         let mut tasks: Vec<TickTask> = Vec::new();
 
         self.ipc_server.tick(&mut server_ipc::TickParams {
             state: &mut self.state,
             tasks: &mut tasks,
+            app,
         })?;
 
         // Check for redraw events

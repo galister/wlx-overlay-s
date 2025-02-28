@@ -153,6 +153,7 @@ impl<D, S> CanvasBuilder<D, S> {
         &mut self.canvas.controls[idx]
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn key_button(
         &mut self,
         x: f32,

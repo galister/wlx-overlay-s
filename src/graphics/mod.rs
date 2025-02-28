@@ -942,6 +942,7 @@ impl WlxGraphics {
         )?))
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn create_pipeline_with_layouts(
         self: &Arc<Self>,
         render_target: Arc<ImageView>,
@@ -1304,6 +1305,7 @@ impl WlxPipeline<WlxPipelineLegacy> {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn new_with_layout(
         render_target: Arc<ImageView>,
         graphics: Arc<WlxGraphics>,
