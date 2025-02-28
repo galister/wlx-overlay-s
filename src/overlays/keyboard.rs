@@ -95,7 +95,7 @@ where
     canvas.fg_color = color_parse("#cad3f5").unwrap(); //safe
     canvas.bg_color = color_parse("#1e2030").unwrap(); //safe
 
-    let has_altgr = keymap.as_ref().map_or(false, |k| k.has_altgr());
+    let has_altgr = keymap.as_ref().is_some_and(|k| k.has_altgr());
 
     if !LAYOUT.auto_labels.unwrap_or(true) {
         keymap = None;
@@ -125,7 +125,7 @@ where
                                 let label0 = keymap.label_for_key(vk, 0);
                                 let label1 = keymap.label_for_key(vk, SHIFT);
 
-                                if label0.chars().next().map_or(false, |f| f.is_alphabetic()) {
+                                if label0.chars().next().is_some_and(|f| f.is_alphabetic()) {
                                     label.push(label1);
                                     if has_altgr {
                                         cap_type = KeyCapType::RegularAltGr;
