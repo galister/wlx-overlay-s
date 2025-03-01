@@ -18,7 +18,6 @@ use crate::{
 const FONT_SIZE: isize = 16;
 const PADDING: (f32, f32) = (25., 7.);
 const PIXELS_TO_METERS: f32 = 1. / 2000.;
-const TOAST_AUDIO_WAV: &[u8] = include_bytes!("../res/557297.wav");
 static TOAST_NAME: Lazy<Arc<str>> = Lazy::new(|| "toast".into());
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -206,6 +205,15 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
     let backend = Box::new(canvas.build());
 
     Some((state, backend))
+}
+
+pub fn load_sound()
+{
+
+    TOAST_AUDIO_WAV = include_bytes!("../res/557297.wav");
+
+
+    TOAST_AUDIO_WAV_PATH
 }
 
 fn msg_err(app: &mut AppState, message: &str) {

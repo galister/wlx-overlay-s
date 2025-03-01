@@ -51,6 +51,7 @@ pub struct AppState {
     pub anchor: Affine3A,
     pub sprites: AStrMap<Arc<ImageView>>,
     pub keyboard_focus: KeyboardFocus,
+    pub notification_sound: Arc<[u8]>,
 
     #[cfg(feature = "osc")]
     pub osc_sender: Option<OscSender>,
@@ -111,6 +112,9 @@ impl AppState {
         #[cfg(feature = "osc")]
         let osc_sender = crate::backend::osc::OscSender::new(session.config.osc_out_port).ok();
 
+        let a: String = "hi".to_owned();
+        let notification_sound_wav = include_bytes!(a);
+
         Ok(AppState {
             fc: FontCache::new(session.config.primary_font.clone())?,
             session,
@@ -123,6 +127,7 @@ impl AppState {
             anchor: Affine3A::IDENTITY,
             sprites: AStrMap::new(),
             keyboard_focus: KeyboardFocus::PhysicalScreen,
+            notification_sound: notification_sound_wav,
 
             #[cfg(feature = "osc")]
             osc_sender,
