@@ -139,7 +139,7 @@ pub(super) fn ipd_from_views(views: &[xr::View]) -> f32 {
     let p0: Vec3 = Vec3M::from(views[0].pose.position).into();
     let p1: Vec3 = Vec3M::from(views[1].pose.position).into();
 
-    (p0.distance(p1) * 1000.0).round() * 0.1
+    (p0.distance(p1) * 10000.0).round() * 0.1
 }
 
 pub(super) fn transform_to_norm_quat(transform: &Affine3A) -> Quat {
