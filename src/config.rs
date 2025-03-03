@@ -173,9 +173,9 @@ fn def_toast_topics() -> IdMap<ToastTopic, DisplayMethod> {
     IdMap::new()
 }
 
-fn def_notification_sound() -> Arc<str> {
-    "../res/557297.wav".into()
-}
+//fn def_notification_sound() -> Arc<str> {
+//    "../res/557297.wav".into()
+//}
 
 fn def_font() -> Arc<str> {
     "LiberationSans:style=Bold".into()
@@ -211,8 +211,9 @@ pub struct GeneralConfig {
     #[serde(default = "def_toast_topics")]
     pub notification_topics: IdMap<ToastTopic, DisplayMethod>,
 
-    #[serde(default = "def_notification_sound")]
-    pub notification_sound_path: Arc<str>,
+    //#[serde(default = "def_notification_sound")]
+    #[serde(default = "def_empty")]
+    pub notification_sound: Arc<str>,
 
     #[serde(default = "def_true")]
     pub keyboard_sound_enabled: bool,

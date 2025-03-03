@@ -112,8 +112,8 @@ impl AppState {
         #[cfg(feature = "osc")]
         let osc_sender = crate::backend::osc::OscSender::new(session.config.osc_out_port).ok();
 
-        let a: String = "hi".to_owned();
-        let notification_sound_wav = include_bytes!(a);
+        let real_path = config_io::get_config_root().join(&*session.config.notification_sound);
+        let notification_sound_wav = std::fs::read(real_path)?;
 
         Ok(AppState {
             fc: FontCache::new(session.config.primary_font.clone())?,
@@ -127,7 +127,7 @@ impl AppState {
             anchor: Affine3A::IDENTITY,
             sprites: AStrMap::new(),
             keyboard_focus: KeyboardFocus::PhysicalScreen,
-            notification_sound: notification_sound_wav,
+            notification_sound: notification_sound_wav.into(),
 
             #[cfg(feature = "osc")]
             osc_sender,

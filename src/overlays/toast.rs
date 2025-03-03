@@ -18,6 +18,7 @@ use crate::{
 const FONT_SIZE: isize = 16;
 const PADDING: (f32, f32) = (25., 7.);
 const PIXELS_TO_METERS: f32 = 1. / 2000.;
+static TOAST_DEFAULT_WAV: &[u8] = include_bytes!("../res/557297.wav");
 static TOAST_NAME: Lazy<Arc<str>> = Lazy::new(|| "toast".into());
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -77,6 +78,7 @@ impl Toast {
         let destroy_at = instant.add(std::time::Duration::from_secs_f32(self.timeout));
 
         let has_sound = self.sound && app.session.config.notifications_sound_enabled;
+        let wav_bytes = &*app.notification_sound;
 
         // drop any toast that was created before us.
         // (DropOverlay only drops overlays that were
@@ -109,7 +111,12 @@ impl Toast {
         );
 
         if has_sound {
-            app.audio.play(TOAST_AUDIO_WAV);
+            if app.notification_sound.is_empty() {
+                app.audio.play(TOAST_DEFAULT_WAV);
+            }
+            else {
+                app.audio.play(wav_bytes);
+            }
         }
     }
 }
@@ -205,15 +212,6 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
     let backend = Box::new(canvas.build());
 
     Some((state, backend))
-}
-
-pub fn load_sound()
-{
-
-    TOAST_AUDIO_WAV = include_bytes!("../res/557297.wav");
-
-
-    TOAST_AUDIO_WAV_PATH
 }
 
 fn msg_err(app: &mut AppState, message: &str) {
