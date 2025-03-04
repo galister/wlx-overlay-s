@@ -130,9 +130,6 @@ impl AppState {
                 break 'custom_toast;
             };
 
-            //let wav: &mut Vec<u8>;
-            //f.read_to_end(wav);
-            //toast_sound_wav = &*<&mut Vec<u8> as Arc<u8>>::into();
             match std::fs::read(real_path.clone()){
                 Ok(f) => {toast_sound_wav = f.into()},
                 Err(e) => {
