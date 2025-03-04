@@ -357,7 +357,7 @@ impl OpenXrHand {
             .current_state;
 
         pointer.now.scroll_x = scroll.x;
-        pointer.now.scroll_y = scroll.x;
+        pointer.now.scroll_y = scroll.y;
 
         pointer.now.alt_click =
             self.source
