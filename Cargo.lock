@@ -2743,6 +2743,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "nvfbc"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b339b5c554c55904a032ec03598191071b8fbead3b89a8aabc2465727803ecc2"
+dependencies = [
+ "nvfbc-sys",
+]
+
+[[package]]
+name = "nvfbc-sys"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1312c329848acc8f07a288dac9ba67edddae2c222a018916c01e47dad1f14d5b"
+
+[[package]]
 name = "objc"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5166,13 +5181,13 @@ dependencies = [
 [[package]]
 name = "wlx-capture"
 version = "0.4.2"
-source = "git+https://github.com/galister/wlx-capture?tag=v0.4.2#514a81c0cfd900edb89ae4ec33f927848a49eae3"
 dependencies = [
  "ashpd",
  "drm-fourcc",
  "idmap",
  "libc",
  "log",
+ "nvfbc",
  "once_cell",
  "pipewire",
  "rxscreen",
