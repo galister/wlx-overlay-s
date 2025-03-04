@@ -87,7 +87,13 @@ where
                     Ok(data) => data,
                     Err(e) => {
                         log::info!("Will not use X11 PipeWire capture: {e:?}");
-                        crate::overlays::screen::create_screens_xshm(app)?
+                        match crate::overlays::screen::create_screens_nvfbc(app) {
+                            Ok(data) => data,
+                            Err(e) => {
+                                log::info!("Will not use NvFBC capture: {:?}", e);
+                                crate::overlays::screen::create_screens_xshm(app)?
+                            }
+                        }
                     }
                 }
             };

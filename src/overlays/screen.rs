@@ -44,6 +44,8 @@ use {
 
 #[cfg(feature = "x11")]
 use wlx_capture::xshm::{XshmCapture, XshmScreen};
+#[cfg(feature = "nvfbc")]
+use wlx_capture::nvfbc::NVFBCCapture;
 
 use glam::{vec2, vec3a, Affine2, Affine3A, Quat, Vec2, Vec3};
 
@@ -501,6 +503,20 @@ fn receive_callback(me: &WlxCaptureIn, frame: wlx_frame::WlxFrame) -> Option<Wlx
             })
         }
     }
+    
+    #[cfg(feature = "nvfbc")]
+    pub fn new_nvfbc(screen: Arc<XshmScreen>) -> ScreenRenderer {
+        let capture = NVFBCCapture::new(); // TODO: Filter by screen
+
+        ScreenRenderer {
+            name: screen.name.clone(),
+            capture: Box::new(capture),
+            pipeline: None,
+            last_view: None,
+            transform: Affine3A::IDENTITY,
+            extent: None,
+        }
+    }
 }
 
 impl OverlayRenderer for ScreenRenderer {
@@ -863,6 +879,12 @@ pub fn create_screens_x11pw(_app: &mut AppState) -> anyhow::Result<ScreenCreateD
     anyhow::bail!("Pipewire support not enabled")
 }
 
+#[cfg(not(feature = "nvfbc"))]
+pub fn create_screens_nvfbc(_app: &mut AppState) -> anyhow::Result<ScreenCreateData> {
+    anyhow::bail!("NVFBC support not enabled")
+}
+
+
 #[cfg(all(feature = "x11", feature = "pipewire"))]
 pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateData> {
     use wlx_capture::xshm::xshm_get_monitors;
@@ -1008,6 +1030,65 @@ pub fn create_screens_xshm(app: &mut AppState) -> anyhow::Result<ScreenCreateDat
 
     Ok(ScreenCreateData { screens })
 }
+
+#[cfg(all(feature = "x11", feature = "nvfbc"))]
+pub fn create_screens_nvfbc(app: &mut AppState) -> anyhow::Result<ScreenCreateData> {
+    use anyhow::bail;
+
+    let mut extent = vec2(0., 0.);
+
+    let monitors = match XshmCapture::get_monitors() {
+        Ok(m) => m,
+        Err(e) => {
+            bail!(e.to_string());
+        }
+    };
+
+    let screens = monitors
+        .into_iter()
+        .map(|s| {
+            extent.x = extent.x.max((s.monitor.x() + s.monitor.width()) as f32);
+            extent.y = extent.y.max((s.monitor.y() + s.monitor.height()) as f32);
+
+            let size = (s.monitor.width(), s.monitor.height());
+            let pos = (s.monitor.x(), s.monitor.y());
+            let renderer = ScreenRenderer::new_nvfbc(s.clone());
+
+            log::info!(
+                "{}: Init NVFBC screen of res {:?} at {:?}",
+                s.name.clone(),
+                size,
+                pos,
+            );
+
+            let interaction = create_screen_interaction(
+                vec2(s.monitor.x() as f32, s.monitor.y() as f32),
+                vec2(size.0 as f32, size.1 as f32),
+                Transform::Normal,
+            );
+
+            let state = create_screen_state(s.name.clone(), size, Transform::Normal, &app.session);
+
+            let meta = ScreenMeta {
+                name: s.name.clone(),
+                id: state.id,
+                native_handle: 0,
+            };
+
+            let backend = Box::new(SplitOverlayBackend {
+                renderer: Box::new(renderer),
+                interaction: Box::new(interaction),
+            });
+            (meta, state, backend)
+        })
+        .collect();
+
+    app.hid_provider.set_desktop_extent(extent);
+    app.hid_provider.set_desktop_origin(vec2(0.0, 0.0));
+
+    Ok(ScreenCreateData { screens })
+}
+
 
 #[allow(unused)]
 #[derive(Clone, Copy)]
