@@ -173,10 +173,6 @@ fn def_toast_topics() -> IdMap<ToastTopic, DisplayMethod> {
     IdMap::new()
 }
 
-//fn def_notification_sound() -> Arc<str> {
-//    "../res/557297.wav".into()
-//}
-
 fn def_font() -> Arc<str> {
     "LiberationSans:style=Bold".into()
 }
