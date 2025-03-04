@@ -479,7 +479,7 @@ impl Display {
         manager.seat_pointer.frame(&mut manager.state);
     }
 
-    pub fn send_mouse_scroll(&self, manager: &mut WayVRCompositor, delta: f32) {
+    pub fn send_mouse_scroll(&self, manager: &mut WayVRCompositor, delta_y: f32, delta_x: f32) {
         manager.seat_pointer.axis(
             &mut manager.state,
             input::pointer::AxisFrame {
@@ -489,8 +489,8 @@ impl Display {
                     smithay::backend::input::AxisRelativeDirection::Identical,
                 ),
                 time: 0,
-                axis: (0.0, -delta as f64),
-                v120: Some((0, (delta * -120.0) as i32)),
+                axis: (delta_x as f64, -delta_y as f64),
+                v120: Some((0, (delta_y * -120.0) as i32)),
                 stop: (false, false),
             },
         );

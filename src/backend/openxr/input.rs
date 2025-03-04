@@ -6,7 +6,7 @@ use std::{
 
 use glam::{bool, Affine3A, Quat, Vec3};
 use libmonado as mnd;
-use openxr::{self as xr, Quaternionf, Vector3f};
+use openxr::{self as xr, Quaternionf, Vector2f, Vector3f};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -161,7 +161,7 @@ pub(super) struct OpenXrHandSource {
     action_modifier_right: CustomClickAction,
     action_modifier_middle: CustomClickAction,
     action_move_mouse: CustomClickAction,
-    action_scroll: xr::Action<f32>,
+    action_scroll: xr::Action<Vector2f>,
     action_haptics: xr::Action<xr::Haptic>,
 }
 
@@ -350,11 +350,14 @@ impl OpenXrHand {
             .action_grab
             .state(pointer.before.grab, xr, session)?;
 
-        pointer.now.scroll = self
+        let scroll = self
             .source
             .action_scroll
             .state(&xr.session, xr::Path::NULL)?
             .current_state;
+
+        pointer.now.scroll_x = scroll.x;
+        pointer.now.scroll_y = scroll.x;
 
         pointer.now.alt_click =
             self.source
@@ -417,7 +420,7 @@ impl OpenXrHandSource {
             &[],
         )?;
 
-        let action_scroll = action_set.create_action::<f32>(
+        let action_scroll = action_set.create_action::<Vector2f>(
             &format!("{}_scroll", side),
             &format!("{} hand scroll", side),
             &[],
