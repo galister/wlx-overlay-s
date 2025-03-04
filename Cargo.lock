@@ -5286,7 +5286,8 @@ dependencies = [
 
 [[package]]
 name = "wlx-capture"
-version = "0.5.3"
+version = "0.5.4"
+source = "git+https://github.com/cheesecakecg/wlx-capture?branch=nvfbc-support#1f033b01265044b3f348986fb2eabd45034c8c3e"
 dependencies = [
  "ashpd",
  "drm-fourcc",
