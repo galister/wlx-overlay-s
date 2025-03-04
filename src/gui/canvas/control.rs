@@ -19,6 +19,7 @@ pub type ControlRendererHl<D, S> = fn(
     Vec4,
 ) -> anyhow::Result<()>;
 
+#[allow(clippy::type_complexity)]
 pub(crate) struct Control<D, S> {
     pub state: Option<S>,
     pub rect: Rect,

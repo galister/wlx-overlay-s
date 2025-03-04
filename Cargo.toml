@@ -4,7 +4,7 @@ debug = true
 
 [package]
 name = "wlx-overlay-s"
-version = "0.6.0"
+version = "25.3.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -56,7 +56,7 @@ thiserror = "2.0.3"
 vulkano = { git = "https://github.com/vulkano-rs/vulkano", rev = "94f50f1" }
 vulkano-shaders = { git = "https://github.com/vulkano-rs/vulkano", rev = "94f50f1" }
 wlx-capture = { git = "https://github.com/galister/wlx-capture", tag = "v0.4.2", default-features = false }
-libmonado-rs = { git = "https://github.com/technobaboo/libmonado-rs", rev = "a495f6d", optional = true }
+libmonado = { git = "https://github.com/technobaboo/libmonado-rs", rev = "256895b18c8f9368174fad8a6232ff07764eeacb", optional = true }
 winit = { version = "0.30.0", optional = true }
 xdg = "2.5.2"
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
@@ -86,7 +86,7 @@ wayland-client = { version = "0.31.6", optional = true }
 wayland-egl = { version = "0.32.4", optional = true }
 interprocess = { version = "2.2.2", optional = true }
 bytes = { version = "1.9.0", optional = true }
-wayvr_ipc = { git = "https://github.com/olekolek1000/wayvr-ipc.git", rev = "3c411d09ba1bba2609288e29739c0f1ec736b012", default-features = false, optional = true }
+wayvr_ipc = { git = "https://github.com/olekolek1000/wayvr-ipc.git", rev = "a72587d23f3bb8624d9aeb1f13c0a21e65350f51", default-features = false, optional = true }
 ################################
 
 [build-dependencies]
@@ -95,7 +95,7 @@ regex = { version = "*" }
 [features]
 default = ["openvr", "openxr", "osc", "x11", "wayland", "wayvr"]
 openvr = ["dep:ovr_overlay", "dep:json"]
-openxr = ["dep:openxr", "dep:libmonado-rs"]
+openxr = ["dep:openxr", "dep:libmonado"]
 osc = ["dep:rosc"]
 x11 = ["dep:xcb", "wlx-capture/xshm", "xkbcommon/x11"]
 wayland = ["pipewire", "wlx-capture/wlr", "xkbcommon/wayland"]

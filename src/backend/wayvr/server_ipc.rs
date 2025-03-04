@@ -1,12 +1,15 @@
+use crate::state::AppState;
+
 use super::{display, process, window, TickTask, WayVRSignal};
 use bytes::BufMut;
+use glam::Vec3A;
 use interprocess::local_socket::{self, traits::Listener, ToNsName};
 use smallvec::SmallVec;
 use std::io::{Read, Write};
 use wayvr_ipc::{
     ipc::{self},
     packet_client::{self, PacketClient},
-    packet_server::{self, PacketServer},
+    packet_server::{self, PacketServer, WlxInputStatePointer},
 };
 
 pub struct AuthInfo {
@@ -70,6 +73,7 @@ fn read_payload(conn: &mut local_socket::Stream, size: u32) -> Option<Payload> {
 pub struct TickParams<'a> {
     pub state: &'a mut super::WayVRState,
     pub tasks: &'a mut Vec<TickTask>,
+    pub app: &'a AppState,
 }
 
 pub fn gen_args_vec(input: &str) -> Vec<&str> {
@@ -171,6 +175,34 @@ impl Connection {
             &ipc::data_encode(&PacketServer::WvrDisplayListResponse(
                 serial,
                 packet_server::WvrDisplayList { list },
+            )),
+        )?;
+
+        Ok(())
+    }
+
+    fn handle_wlx_input_state(
+        &mut self,
+        params: &TickParams,
+        serial: ipc::Serial,
+    ) -> anyhow::Result<()> {
+        let input_state = &params.app.input_state;
+
+        let to_arr = |vec: &Vec3A| -> [f32; 3] { [vec.x, vec.y, vec.z] };
+
+        send_packet(
+            &mut self.conn,
+            &ipc::data_encode(&PacketServer::WlxInputStateResponse(
+                serial,
+                packet_server::WlxInputState {
+                    hmd_pos: to_arr(&input_state.hmd.translation),
+                    left: WlxInputStatePointer {
+                        pos: to_arr(&input_state.pointers[0].raw_pose.translation),
+                    },
+                    right: WlxInputStatePointer {
+                        pos: to_arr(&input_state.pointers[0].raw_pose.translation),
+                    },
+                },
             )),
         )?;
 
@@ -471,6 +503,9 @@ impl Connection {
 
         match packet {
             PacketClient::Handshake(_) => unreachable!(), // handled previously
+            PacketClient::WlxInputState(serial) => {
+                self.handle_wlx_input_state(params, serial)?;
+            }
             PacketClient::WvrDisplayList(serial) => {
                 self.handle_wvr_display_list(params, serial)?;
             }
@@ -633,10 +668,11 @@ impl WayVRServer {
         Ok(())
     }
 
-    pub fn broadcast(&mut self, packet: packet_server::PacketServer) -> anyhow::Result<()> {
+    pub fn broadcast(&mut self, packet: packet_server::PacketServer) {
         for connection in &mut self.connections {
-            send_packet(&mut connection.conn, &ipc::data_encode(&packet))?;
+            if let Err(e) = send_packet(&mut connection.conn, &ipc::data_encode(&packet)) {
+                log::error!("failed to broadcast packet: {:?}", e);
+            }
         }
-        Ok(())
     }
 }
