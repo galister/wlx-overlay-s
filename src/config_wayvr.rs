@@ -200,7 +200,9 @@ impl WayVRConfig {
         if primary_count > 1 {
             anyhow::bail!("Number of primary displays is more than 1")
         } else if primary_count == 0 {
-            log::warn!("No primary display specified");
+            log::warn!(
+                "No primary display specified. External Wayland applications will not be attached."
+            );
         }
 
         for (catalog_name, catalog) in &self.catalogs {

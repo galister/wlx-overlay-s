@@ -22,6 +22,8 @@ use std::{
 
 use clap::Parser;
 use sysinfo::Pid;
+use tracing::level_filters::LevelFilter;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 /// The lightweight desktop overlay for OpenVR and OpenXR
 #[derive(Default, Parser, Debug)]
@@ -171,48 +173,58 @@ fn args_get_openxr(_args: &Args) -> bool {
 }
 
 fn logging_init(args: &mut Args) -> anyhow::Result<()> {
-    let log_file = args
+    let log_file_path = args
         .log_to
         .take()
         .or_else(|| std::env::var("WLX_LOGFILE").ok())
-        .or_else(|| Some("/tmp/wlx.log".to_string()));
+        .unwrap_or(String::from("/tmp/wlx.log"));
 
-    if let Some(log_to) = log_file.filter(|s| !s.is_empty()) {
-        if let Err(e) = file_logging_init(&log_to) {
-            log::error!("Failed to initialize file logging: {}", e);
-            env_logger::init();
+    let file_writer = match std::fs::OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(&log_file_path)
+    {
+        Ok(file) => {
+            println!("Logging to {}", &log_file_path);
+            Some(file)
         }
+        Err(e) => {
+            println!("Failed to open log file (path: {:?}): {}", e, log_file_path);
+            None
+        }
+    };
+
+    let registry = tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::fmt::layer()
+                .pretty()
+                .with_writer(std::io::stderr),
+        )
+        .with(
+            /* read RUST_LOG env var */
+            EnvFilter::builder()
+                .with_default_directive(LevelFilter::INFO.into())
+                .from_env_lossy()
+                .add_directive("zbus=warn".parse().unwrap())
+                .add_directive("wlx_capture::wayland=info".parse().unwrap())
+                .add_directive("smithay=debug".parse().unwrap()), /* GLES render spam */
+        );
+
+    if let Some(writer) = file_writer {
+        registry
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .with_file(true)
+                    .with_line_number(true)
+                    .with_writer(writer)
+                    .with_ansi(false),
+            )
+            .init();
     } else {
-        env_logger::init();
+        registry.init();
     }
 
     log_panics::init();
-    Ok(())
-}
-
-fn file_logging_init(log_to: &str) -> anyhow::Result<()> {
-    use std::io::Write;
-    let target = Box::new(std::fs::File::create(log_to)?);
-
-    env_logger::Builder::new()
-        .target(env_logger::Target::Pipe(target))
-        .filter(None, log::LevelFilter::Info)
-        .filter_module("zbus", log::LevelFilter::Warn)
-        .parse_default_env()
-        .format(|buf, record| {
-            eprintln!("[{}] {}", record.level(), record.args());
-            writeln!(
-                buf,
-                "[{} {} {}] {}",
-                chrono::Local::now().format("%H:%M:%S%.3f"),
-                record.level(),
-                record.module_path().unwrap_or_default(),
-                record.args()
-            )
-        })
-        .init();
-
-    println!("Logging to: {}", log_to);
     Ok(())
 }
 
