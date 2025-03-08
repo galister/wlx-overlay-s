@@ -3864,8 +3864,9 @@ checksum = "7fcf8323ef1faaee30a44a340193b1ac6814fd9b7b4e88e9d4519a3e4abe1cfd"
 
 [[package]]
 name = "smithay"
-version = "0.4.0"
-source = "git+https://github.com/Smithay/smithay.git#0cd3345c59f7cb139521f267956a1a4e33248393"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "497aa82b881bf392470c286b213e01f7aa30b2fb08857831f81c87b251ba4d89"
 dependencies = [
  "appendlist",
  "bitflags 2.8.0",
