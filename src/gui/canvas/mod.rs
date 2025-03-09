@@ -267,13 +267,13 @@ impl<D, S> InteractionHandler for Canvas<D, S> {
             }
         }
     }
-    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta: f32) {
+    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32) {
         let idx = self.hover_controls[hit.pointer];
 
         if let Some(idx) = idx {
             let c = &mut self.controls[idx];
             if let Some(ref mut f) = c.on_scroll {
-                f(c, &mut self.canvas.data, app, delta);
+                f(c, &mut self.canvas.data, app, delta_y, delta_x);
             }
         }
     }

@@ -463,9 +463,9 @@ impl WayVRState {
         }
     }
 
-    pub fn send_mouse_scroll(&mut self, display: display::DisplayHandle, delta: f32) {
+    pub fn send_mouse_scroll(&mut self, display: display::DisplayHandle, delta_y: f32, delta_x: f32) {
         if let Some(display) = self.displays.get(&display) {
-            display.send_mouse_scroll(&mut self.manager, delta);
+            display.send_mouse_scroll(&mut self.manager, delta_y, delta_x);
         }
     }
 

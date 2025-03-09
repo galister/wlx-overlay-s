@@ -1,4 +1,4 @@
-use glam::Vec2;
+use glam::{IVec2, Vec2};
 use idmap::{idmap, IdMap};
 use idmap_derive::IntegerId;
 use input_linux::{
@@ -46,7 +46,7 @@ pub fn initialize() -> Box<dyn HidProvider> {
 pub trait HidProvider {
     fn mouse_move(&mut self, pos: Vec2);
     fn send_button(&mut self, button: u16, down: bool);
-    fn wheel(&mut self, delta: i32);
+    fn wheel(&mut self, delta_y: i32, delta_x: i32);
     fn set_modifiers(&mut self, mods: u8);
     fn send_key(&self, key: VirtualKey, down: bool);
     fn set_desktop_extent(&mut self, extent: Vec2);
@@ -64,7 +64,7 @@ struct MouseAction {
     last_requested_pos: Option<Vec2>,
     pos: Option<Vec2>,
     button: Option<MouseButtonAction>,
-    scroll: Option<i32>,
+    scroll: Option<IVec2>,
 }
 
 pub struct UInputProvider {
@@ -149,7 +149,8 @@ impl UInputProvider {
         mouse_handle.set_evbit(EventKind::Relative).ok()?;
         mouse_handle.set_absbit(AbsoluteAxis::X).ok()?;
         mouse_handle.set_absbit(AbsoluteAxis::Y).ok()?;
-        mouse_handle.set_relbit(RelativeAxis::Wheel).ok()?;
+        mouse_handle.set_relbit(RelativeAxis::WheelHiRes).ok()?;
+        mouse_handle.set_relbit(RelativeAxis::HorizontalWheelHiRes).ok()?;
         mouse_handle.set_evbit(EventKind::Key).ok()?;
 
         for btn in MOUSE_LEFT..=MOUSE_MIDDLE {
@@ -193,10 +194,11 @@ impl UInputProvider {
             log::error!("{}", res.to_string());
         }
     }
-    fn wheel_internal(&self, delta: i32) {
+    fn wheel_internal(&self, delta_y: i32, delta_x: i32) {
         let time = get_time();
         let events = [
-            new_event(time, EV_REL, RelativeAxis::Wheel as _, delta),
+            new_event(time, EV_REL, RelativeAxis::WheelHiRes as _, delta_y),
+            new_event(time, EV_REL, RelativeAxis::HorizontalWheelHiRes as _, delta_x),
             new_event(time, EV_SYN, 0, 0),
         ];
         if let Err(res) = self.mouse_handle.write(&events) {
@@ -247,9 +249,9 @@ impl HidProvider for UInputProvider {
             self.current_action.pos = self.current_action.last_requested_pos;
         }
     }
-    fn wheel(&mut self, delta: i32) {
+    fn wheel(&mut self, delta_y: i32, delta_x: i32) {
         if self.current_action.scroll.is_none() {
-            self.current_action.scroll = Some(delta);
+            self.current_action.scroll = Some(IVec2::new(delta_x, delta_y));
             // Pass mouse motion events only if not scrolling
             // (allows scrolling on all Chromium-based applications)
             self.current_action.pos = None;
@@ -263,7 +265,7 @@ impl HidProvider for UInputProvider {
             self.send_button_internal(button.button, button.down);
         }
         if let Some(scroll) = self.current_action.scroll.take() {
-            self.wheel_internal(scroll);
+            self.wheel_internal(scroll.y, scroll.x);
         }
     }
 }
@@ -271,7 +273,7 @@ impl HidProvider for UInputProvider {
 impl HidProvider for DummyProvider {
     fn mouse_move(&mut self, _pos: Vec2) {}
     fn send_button(&mut self, _button: u16, _down: bool) {}
-    fn wheel(&mut self, _delta: i32) {}
+    fn wheel(&mut self, _delta_y: i32, _delta_x: i32) {}
     fn set_modifiers(&mut self, _modifiers: u8) {}
     fn send_key(&self, _key: VirtualKey, _down: bool) {}
     fn set_desktop_extent(&mut self, _extent: Vec2) {}

@@ -516,9 +516,10 @@ impl InteractionHandler for KeyboardBackend {
         &mut self,
         app: &mut AppState,
         hit: &crate::backend::input::PointerHit,
-        delta: f32,
+        delta_y: f32,
+        delta_x: f32,
     ) {
-        self.canvas.on_scroll(app, hit, delta)
+        self.canvas.on_scroll(app, hit, delta_y, delta_x)
     }
     fn on_left(&mut self, app: &mut AppState, pointer: usize) {
         self.canvas.on_left(app, pointer)

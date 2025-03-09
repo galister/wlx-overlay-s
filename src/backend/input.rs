@@ -217,7 +217,8 @@ impl Pointer {
 
 #[derive(Clone, Copy, Default)]
 pub struct PointerState {
-    pub scroll: f32,
+    pub scroll_x: f32,
+    pub scroll_y: f32,
     pub click: bool,
     pub grab: bool,
     pub alt_click: bool,
@@ -252,7 +253,7 @@ pub trait InteractionHandler {
     fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> Option<Haptics>;
     fn on_left(&mut self, app: &mut AppState, pointer: usize);
     fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool);
-    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta: f32);
+    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32);
 }
 
 pub struct DummyInteractionHandler;
@@ -263,7 +264,7 @@ impl InteractionHandler for DummyInteractionHandler {
         None
     }
     fn on_pointer(&mut self, _app: &mut AppState, _hit: &PointerHit, _pressed: bool) {}
-    fn on_scroll(&mut self, _app: &mut AppState, _hit: &PointerHit, _delta: f32) {}
+    fn on_scroll(&mut self, _app: &mut AppState, _hit: &PointerHit, _delta_y: f32, _delta_x: f32) {}
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -419,8 +420,9 @@ where
 
     pointer = &mut app.input_state.pointers[idx];
 
-    if pointer.now.scroll.abs() > 0.1 {
-        let scroll = pointer.now.scroll;
+    if pointer.now.scroll_x.abs() > 0.1 || pointer.now.scroll_y.abs() > 0.1 {
+        let scroll_x = pointer.now.scroll_x;
+        let scroll_y = pointer.now.scroll_y;
         if app.input_state.pointers[1 - idx]
             .interaction
             .grabbed
@@ -432,7 +434,7 @@ where
 
             if can_curve {
                 let cur = hovered.state.curvature.unwrap_or(0.0);
-                let new = (cur - scroll * 0.01).min(0.5);
+                let new = (cur - scroll_y * 0.01).min(0.5);
                 if new <= f32::EPSILON {
                     hovered.state.curvature = None;
                 } else {
@@ -442,7 +444,7 @@ where
                 hovered.state.curvature = None;
             }
         } else {
-            hovered.backend.on_scroll(app, &hit, scroll);
+            hovered.backend.on_scroll(app, &hit, scroll_y, scroll_x);
         }
         pointer = &mut app.input_state.pointers[idx];
     }
@@ -560,10 +562,10 @@ impl Pointer {
                 if self.now.click {
                     self.interaction.mode = PointerMode::Special;
                     let cur_scale = overlay.state.transform.x_axis.length();
-                    if cur_scale < 0.1 && self.now.scroll > 0.0 {
+                    if cur_scale < 0.1 && self.now.scroll_y > 0.0 {
                         return;
                     }
-                    if cur_scale > 20. && self.now.scroll < 0.0 {
+                    if cur_scale > 20. && self.now.scroll_y < 0.0 {
                         return;
                     }
 
@@ -571,9 +573,9 @@ impl Pointer {
                         .state
                         .transform
                         .matrix3
-                        .mul_scalar(1.0 - 0.025 * self.now.scroll);
-                } else if config.allow_sliding && self.now.scroll.is_finite() {
-                    grab_data.offset.z -= self.now.scroll * 0.05;
+                        .mul_scalar(1.0 - 0.025 * self.now.scroll_y);
+                } else if config.allow_sliding && self.now.scroll_y.is_finite() {
+                    grab_data.offset.z -= self.now.scroll_y * 0.05;
                 }
                 overlay.state.transform.translation = self.pose.transform_point3a(grab_data.offset);
                 overlay.state.realign(hmd);

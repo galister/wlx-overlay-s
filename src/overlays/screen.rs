@@ -88,7 +88,6 @@ fn set_next_move(millis_from_now: u64) {
 }
 
 pub struct ScreenInteractionHandler {
-    next_scroll: Instant,
     mouse_transform: Affine2,
 }
 impl ScreenInteractionHandler {
@@ -113,7 +112,6 @@ impl ScreenInteractionHandler {
         };
 
         ScreenInteractionHandler {
-            next_scroll: Instant::now(),
             mouse_transform: transform,
         }
     }
@@ -152,19 +150,8 @@ impl InteractionHandler for ScreenInteractionHandler {
         let pos = self.mouse_transform.transform_point2(hit.uv);
         app.hid_provider.mouse_move(pos);
     }
-    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta: f32) {
-        if self.next_scroll > Instant::now() {
-            return;
-        }
-        let max_millis = if matches!(hit.mode, PointerMode::Left) {
-            200.0
-        } else {
-            100.0
-        };
-
-        let millis = (1. - delta.abs()) * max_millis;
-        self.next_scroll = Instant::now().add(Duration::from_millis(millis as _));
-        app.hid_provider.wheel(if delta < 0. { -1 } else { 1 })
+    fn on_scroll(&mut self, app: &mut AppState, _hit: &PointerHit, delta_y: f32, delta_x: f32) {
+        app.hid_provider.wheel((delta_y*64.) as i32, (delta_x*64.) as i32)
     }
     fn on_left(&mut self, _app: &mut AppState, _hand: usize) {}
 }
