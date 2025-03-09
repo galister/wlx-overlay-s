@@ -51,7 +51,13 @@ fn set_modifiers(app: &mut AppState, mods: u8) {
         KeyboardFocus::PhysicalScreen => {
             app.hid_provider.set_modifiers(mods);
         }
-        KeyboardFocus::WayVR => {}
+        KeyboardFocus::WayVR =>
+        {
+            #[cfg(feature = "wayvr")]
+            if let Some(wayvr) = &app.wayvr {
+                wayvr.borrow_mut().data.state.set_modifiers(mods);
+            }
+        }
     }
 }
 

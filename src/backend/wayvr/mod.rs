@@ -40,7 +40,7 @@ use std::{
 use time::get_millis;
 use wayvr_ipc::{packet_client, packet_server};
 
-use crate::state::AppState;
+use crate::{hid::MODS_TO_KEYS, state::AppState};
 
 const STR_INVALID_HANDLE_DISP: &str = "Invalid display handle";
 const STR_INVALID_HANDLE_PROCESS: &str = "Invalid process handle";
@@ -109,6 +109,7 @@ pub struct WayVRState {
     pub signals: SyncEventQueue<WayVRSignal>,
     ticks: u64,
     pub pending_haptic: Option<super::input::Haptics>,
+    cur_modifiers: u8,
 }
 
 pub struct WayVR {
@@ -248,6 +249,7 @@ impl WayVR {
             tasks,
             pending_haptic: None,
             signals: SyncEventQueue::new(),
+            cur_modifiers: 0,
         };
 
         Ok(Self { state, ipc_server })
@@ -463,7 +465,12 @@ impl WayVRState {
         }
     }
 
-    pub fn send_mouse_scroll(&mut self, display: display::DisplayHandle, delta_y: f32, delta_x: f32) {
+    pub fn send_mouse_scroll(
+        &mut self,
+        display: display::DisplayHandle,
+        delta_y: f32,
+        delta_x: f32,
+    ) {
         if let Some(display) = self.displays.get(&display) {
             display.send_mouse_scroll(&mut self.manager, delta_y, delta_x);
         }
@@ -471,6 +478,19 @@ impl WayVRState {
 
     pub fn send_key(&mut self, virtual_key: u32, down: bool) {
         self.manager.send_key(virtual_key, down);
+    }
+
+    pub fn set_modifiers(&mut self, modifiers: u8) {
+        let changed = self.cur_modifiers ^ modifiers;
+        for i in 0..8 {
+            let m = 1 << i;
+            if changed & m != 0 {
+                if let Some(vk) = MODS_TO_KEYS.get(m).into_iter().flatten().next() {
+                    self.send_key(*vk as u32, modifiers & m != 0);
+                }
+            }
+        }
+        self.cur_modifiers = modifiers;
     }
 
     pub fn set_display_visible(&mut self, display: display::DisplayHandle, visible: bool) {
