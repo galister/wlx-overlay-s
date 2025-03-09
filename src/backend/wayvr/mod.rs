@@ -346,35 +346,35 @@ impl WayVR {
                 WayVRTask::NewToplevel(client_id, toplevel) => {
                     // Attach newly created toplevel surfaces to displays
                     for client in &self.state.manager.clients {
-                        if client.client.id() == client_id {
-                            if let Some(process_handle) =
-                                process::find_by_pid(&self.state.processes, client.pid)
+                        if client.client.id() != client_id {
+                            continue;
+                        }
+
+                        if let Some(process_handle) =
+                            process::find_by_pid(&self.state.processes, client.pid)
+                        {
+                            let window_handle = self
+                                .state
+                                .wm
+                                .borrow_mut()
+                                .create_window(client.display_handle, &toplevel);
+
+                            if let Some(display) =
+                                self.state.displays.get_mut(&client.display_handle)
                             {
-                                let window_handle = self
-                                    .state
-                                    .wm
-                                    .borrow_mut()
-                                    .create_window(client.display_handle, &toplevel);
-
-                                if let Some(display) =
-                                    self.state.displays.get_mut(&client.display_handle)
-                                {
-                                    display.add_window(window_handle, process_handle, &toplevel);
-                                    self.state.signals.send(WayVRSignal::BroadcastStateChanged(
-                                        packet_server::WvrStateChanged::WindowCreated,
-                                    ));
-                                } else {
-                                    // This shouldn't happen, scream if it does
-                                    log::error!("Could not attach window handle into display");
-                                }
+                                display.add_window(window_handle, process_handle, &toplevel);
+                                self.state.signals.send(WayVRSignal::BroadcastStateChanged(
+                                    packet_server::WvrStateChanged::WindowCreated,
+                                ));
                             } else {
-                                log::error!(
-                                    "WayVR window creation failed: Unexpected process ID {}. It wasn't registered before.",
-                                    client.pid
-                                );
+                                // This shouldn't happen, scream if it does
+                                log::error!("Could not attach window handle into display");
                             }
-
-                            break;
+                        } else {
+                            log::error!(
+                            "WayVR window creation failed: Unexpected process ID {}. It wasn't registered before.",
+                            client.pid
+                        );
                         }
                     }
                 }

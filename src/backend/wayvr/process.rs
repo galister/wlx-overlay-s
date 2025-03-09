@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, io::Read};
 
 use wayvr_ipc::packet_server;
 
@@ -88,6 +88,23 @@ impl Drop for WayVRProcess {
     }
 }
 
+fn get_process_env_value(pid: i32, key: &str) -> anyhow::Result<Option<String>> {
+    let path = format!("/proc/{}/environ", pid);
+    let mut env_data = String::new();
+    std::fs::File::open(path)?.read_to_string(&mut env_data)?;
+    let lines: Vec<&str> = env_data.split('\0').filter(|s| !s.is_empty()).collect();
+
+    for line in lines {
+        if let Some(cell) = line.split_once('=') {
+            if cell.0 == key {
+                return Ok(Some(String::from(cell.1)));
+            }
+        }
+    }
+
+    Ok(None)
+}
+
 impl WayVRProcess {
     fn is_running(&mut self) -> bool {
         match self.child.try_wait() {
@@ -153,22 +170,42 @@ impl ExternalProcess {
 gen_id!(ProcessVec, Process, ProcessCell, ProcessHandle);
 
 pub fn find_by_pid(processes: &ProcessVec, pid: u32) -> Option<ProcessHandle> {
+    log::debug!("Finding process with PID {}", pid);
+
     for (idx, cell) in processes.vec.iter().enumerate() {
-        if let Some(cell) = cell {
-            match &cell.obj {
-                Process::Managed(wayvr_process) => {
-                    if wayvr_process.child.id() == pid {
-                        return Some(ProcessVec::get_handle(cell, idx));
-                    }
+        let Some(cell) = cell else {
+            continue;
+        };
+        match &cell.obj {
+            Process::Managed(wayvr_process) => {
+                if wayvr_process.child.id() == pid {
+                    return Some(ProcessVec::get_handle(cell, idx));
                 }
-                Process::External(external_process) => {
-                    if external_process.pid == pid {
-                        return Some(ProcessVec::get_handle(cell, idx));
-                    }
+            }
+            Process::External(external_process) => {
+                if external_process.pid == pid {
+                    return Some(ProcessVec::get_handle(cell, idx));
                 }
             }
         }
     }
+
+    log::debug!("Finding by PID failed, trying WAYVR_DISPLAY_AUTH...");
+
+    if let Ok(Some(value)) = get_process_env_value(pid as i32, "WAYVR_DISPLAY_AUTH") {
+        for (idx, cell) in processes.vec.iter().enumerate() {
+            let Some(cell) = cell else {
+                continue;
+            };
+            if let Process::Managed(wayvr_process) = &cell.obj {
+                if wayvr_process.auth_key == value {
+                    return Some(ProcessVec::get_handle(cell, idx));
+                }
+            }
+        }
+    }
+
+    log::debug!("Process find with PID {} failed", pid);
     None
 }
 
