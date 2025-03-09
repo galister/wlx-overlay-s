@@ -3,7 +3,6 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::{
     f32::consts::PI,
-    ops::Add,
     ptr,
     sync::{atomic::AtomicU64, Arc},
     time::{Duration, Instant},
@@ -151,7 +150,8 @@ impl InteractionHandler for ScreenInteractionHandler {
         app.hid_provider.mouse_move(pos);
     }
     fn on_scroll(&mut self, app: &mut AppState, _hit: &PointerHit, delta_y: f32, delta_x: f32) {
-        app.hid_provider.wheel((delta_y*64.) as i32, (delta_x*64.) as i32)
+        app.hid_provider
+            .wheel((delta_y * 64.) as i32, (delta_x * 64.) as i32)
     }
     fn on_left(&mut self, _app: &mut AppState, _hand: usize) {}
 }

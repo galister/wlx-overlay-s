@@ -326,7 +326,13 @@ fn modular_button_up(button: &mut ModularControl, _: &mut (), app: &mut AppState
     }
 }
 
-fn modular_button_scroll(button: &mut ModularControl, _: &mut (), app: &mut AppState, delta_y: f32, delta_x: f32) {
+fn modular_button_scroll(
+    button: &mut ModularControl,
+    _: &mut (),
+    app: &mut AppState,
+    delta_y: f32,
+    _delta_x: f32,
+) {
     // want panic
     let ModularData::Button(data) = button.state.as_mut().unwrap() else {
         panic!("modular_button_scroll: button state is not Button");
