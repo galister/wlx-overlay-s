@@ -81,6 +81,10 @@
       left: "/user/hand/left/input/thumbstick/y",
       right: "/user/hand/right/input/thumbstick/y"
     },
+    scroll_horizontal: {
+      left: "/user/hand/left/input/thumbstick/x",
+      right: "/user/hand/right/input/thumbstick/x"
+    },
     show_hide: {
       double_click: true,
       left: "/user/hand/left/input/y/click",
@@ -129,6 +133,10 @@
     scroll: {
       left: "/user/hand/left/input/thumbstick/y",
       right: "/user/hand/right/input/thumbstick/y"
+    },
+    scroll_horizontal: {
+      left: "/user/hand/left/input/thumbstick/x",
+      right: "/user/hand/right/input/thumbstick/x"
     },
 		toggle_dashboard: {
 			double_click: false,
@@ -180,6 +188,10 @@
       left: "/user/hand/left/input/trackpad/y",
       right: "/user/hand/right/input/trackpad/y"
     },
+    scroll_horizontal: {
+      left: "/user/hand/left/input/trackpad/x",
+      right: "/user/hand/right/input/trackpad/x"
+    },
     show_hide: {
       left: "/user/hand/left/input/menu/click",
     },
@@ -215,6 +227,10 @@
       left: "/user/hand/left/input/thumbstick/y",
       right: "/user/hand/right/input/thumbstick/y"
     },
+    scroll_horizontal: {
+      left: "/user/hand/left/input/thumbstick/x",
+      right: "/user/hand/right/input/thumbstick/x"
+    },
     show_hide: {
       left: "/user/hand/left/input/menu/click",
     },
@@ -245,6 +261,10 @@
     scroll: {
       left: "/user/hand/left/input/thumbstick/y",
       right: "/user/hand/right/input/thumbstick/y"
+    },
+    scroll_horizontal: {
+      left: "/user/hand/left/input/thumbstick/x",
+      right: "/user/hand/right/input/thumbstick/x"
     },
     show_hide: {
       left: "/user/hand/left/input/menu/click",
