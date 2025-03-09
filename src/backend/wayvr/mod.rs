@@ -73,6 +73,7 @@ pub struct ExternalProcessRequest {
 #[derive(Clone)]
 pub enum WayVRTask {
     NewToplevel(ClientId, ToplevelSurface),
+    DropToplevel(ClientId, ToplevelSurface),
     NewExternalProcess(ExternalProcessRequest),
     DropOverlay(super::overlay::OverlayID),
     ProcessTerminationRequest(process::ProcessHandle),
@@ -350,32 +351,59 @@ impl WayVR {
                             continue;
                         }
 
-                        if let Some(process_handle) =
+                        let Some(process_handle) =
                             process::find_by_pid(&self.state.processes, client.pid)
-                        {
-                            let window_handle = self
-                                .state
-                                .wm
-                                .borrow_mut()
-                                .create_window(client.display_handle, &toplevel);
-
-                            if let Some(display) =
-                                self.state.displays.get_mut(&client.display_handle)
-                            {
-                                display.add_window(window_handle, process_handle, &toplevel);
-                                self.state.signals.send(WayVRSignal::BroadcastStateChanged(
-                                    packet_server::WvrStateChanged::WindowCreated,
-                                ));
-                            } else {
-                                // This shouldn't happen, scream if it does
-                                log::error!("Could not attach window handle into display");
-                            }
-                        } else {
+                        else {
                             log::error!(
-                            "WayVR window creation failed: Unexpected process ID {}. It wasn't registered before.",
-                            client.pid
-                        );
+                                    "WayVR window creation failed: Unexpected process ID {}. It wasn't registered before.",
+                                    client.pid
+                                );
+                            continue;
+                        };
+
+                        let window_handle = self
+                            .state
+                            .wm
+                            .borrow_mut()
+                            .create_window(client.display_handle, &toplevel);
+
+                        let Some(display) = self.state.displays.get_mut(&client.display_handle)
+                        else {
+                            // This shouldn't happen, scream if it does
+                            log::error!("Could not attach window handle into display");
+                            continue;
+                        };
+
+                        display.add_window(window_handle, process_handle, &toplevel);
+                        self.state.signals.send(WayVRSignal::BroadcastStateChanged(
+                            packet_server::WvrStateChanged::WindowCreated,
+                        ));
+                    }
+                }
+                WayVRTask::DropToplevel(client_id, toplevel) => {
+                    for client in &self.state.manager.clients {
+                        if client.client.id() != client_id {
+                            continue;
                         }
+
+                        let mut wm = self.state.wm.borrow_mut();
+                        let Some(window_handle) = wm.find_window_handle(&toplevel) else {
+                            log::warn!("DropToplevel: Couldn't find matching window handle");
+                            continue;
+                        };
+
+                        let Some(display) = self.state.displays.get_mut(&client.display_handle)
+                        else {
+                            log::warn!("DropToplevel: Couldn't find matching display");
+                            continue;
+                        };
+
+                        display.remove_window(window_handle);
+                        wm.remove_window(window_handle);
+
+                        drop(wm);
+
+                        display.reposition_windows();
                     }
                 }
                 WayVRTask::ProcessTerminationRequest(process_handle) => {

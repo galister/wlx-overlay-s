@@ -157,6 +157,13 @@ impl XdgShellHandler for Application {
         surface.send_configure();
     }
 
+    fn toplevel_destroyed(&mut self, surface: ToplevelSurface) {
+        if let Some(client) = surface.wl_surface().client() {
+            self.wayvr_tasks
+                .send(WayVRTask::DropToplevel(client.id(), surface.clone()));
+        }
+    }
+
     fn new_popup(&mut self, _surface: PopupSurface, _positioner: PositionerState) {
         // Handle popup creation here
     }

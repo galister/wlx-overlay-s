@@ -77,6 +77,10 @@ impl WindowManager {
     ) -> WindowHandle {
         self.windows.add(Window::new(display_handle, toplevel))
     }
+
+    pub fn remove_window(&mut self, window_handle: WindowHandle) {
+        self.windows.remove(&window_handle);
+    }
 }
 
 gen_id!(WindowVec, Window, WindowCell, WindowHandle);

@@ -183,6 +183,11 @@ impl Display {
         self.reposition_windows();
     }
 
+    pub fn remove_window(&mut self, window_handle: window::WindowHandle) {
+        self.displayed_windows
+            .retain(|disp| disp.window_handle != window_handle);
+    }
+
     pub fn reposition_windows(&mut self) {
         let window_count = self.displayed_windows.len();
 
