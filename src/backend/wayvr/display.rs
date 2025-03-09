@@ -442,13 +442,11 @@ impl Display {
             if let Some(window) = wm.windows.get(&window_handle) {
                 let surf = window.toplevel.wl_surface().clone();
 
-                if manager.seat_keyboard.current_focus().is_none() {
-                    manager.seat_keyboard.set_focus(
-                        &mut manager.state,
-                        Some(surf),
-                        manager.serial_counter.next_serial(),
-                    );
-                }
+                manager.seat_keyboard.set_focus(
+                    &mut manager.state,
+                    Some(surf),
+                    manager.serial_counter.next_serial(),
+                );
             }
         }
 
