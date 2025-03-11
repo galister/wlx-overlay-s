@@ -112,8 +112,8 @@ fn def_keyboard_repeat_rate() -> u32 {
     50
 }
 
-fn def_version() -> u32 {
-    1
+fn def_blit_method() -> String {
+    String::from("dmabuf")
 }
 
 #[derive(Deserialize, Serialize)]
@@ -125,8 +125,6 @@ pub struct WayVRDashboard {
 
 #[derive(Deserialize, Serialize)]
 pub struct WayVRConfig {
-    #[serde(default = "def_version")]
-    pub version: u32,
     #[serde(default = "def_false")]
     pub run_compositor_at_start: bool,
 
@@ -150,6 +148,9 @@ pub struct WayVRConfig {
 
     #[serde(default = "def_keyboard_repeat_rate")]
     pub keyboard_repeat_rate: u32,
+
+    #[serde(default = "def_blit_method")]
+    pub blit_method: String,
 }
 
 impl WayVRConfig {
@@ -173,17 +174,19 @@ impl WayVRConfig {
     pub fn get_wayvr_config(
         config_general: &crate::config::GeneralConfig,
         config_wayvr: &crate::config_wayvr::WayVRConfig,
-    ) -> wayvr::Config {
-        wayvr::Config {
+    ) -> anyhow::Result<wayvr::Config> {
+        Ok(wayvr::Config {
             click_freeze_time_ms: config_general.click_freeze_time_ms,
             keyboard_repeat_delay_ms: config_wayvr.keyboard_repeat_delay,
             keyboard_repeat_rate: config_wayvr.keyboard_repeat_rate,
+            blit_method: wayvr::BlitMethod::from_string(&config_wayvr.blit_method)
+                .ok_or(anyhow::anyhow!("Unknown blit method"))?,
             auto_hide_delay: if config_wayvr.auto_hide {
                 Some(config_wayvr.auto_hide_delay)
             } else {
                 None
             },
-        }
+        })
     }
 
     pub fn post_load(
@@ -221,7 +224,7 @@ impl WayVRConfig {
         if self.run_compositor_at_start {
             // Start Wayland server instantly
             Ok(Some(Rc::new(RefCell::new(WayVRData::new(
-                Self::get_wayvr_config(config, self),
+                Self::get_wayvr_config(config, self)?,
             )?))))
         } else {
             // Lazy-init WayVR later if the user requested
@@ -238,10 +241,5 @@ pub fn load_wayvr() -> WayVRConfig {
         config_io::ConfigRoot::WayVR.get_conf_d_path()
     );
 
-    let config = load_config_with_conf_d::<WayVRConfig>("wayvr.yaml", config_io::ConfigRoot::WayVR);
-
-    if config.version != def_version() {
-        panic!("WayVR config version {} is not supported", config.version);
-    }
-    config
+    load_config_with_conf_d::<WayVRConfig>("wayvr.yaml", config_io::ConfigRoot::WayVR)
 }
