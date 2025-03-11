@@ -150,14 +150,18 @@ impl UInputProvider {
         mouse_handle.set_absbit(AbsoluteAxis::X).ok()?;
         mouse_handle.set_absbit(AbsoluteAxis::Y).ok()?;
         mouse_handle.set_relbit(RelativeAxis::WheelHiRes).ok()?;
-        mouse_handle.set_relbit(RelativeAxis::HorizontalWheelHiRes).ok()?;
+        mouse_handle
+            .set_relbit(RelativeAxis::HorizontalWheelHiRes)
+            .ok()?;
         mouse_handle.set_evbit(EventKind::Key).ok()?;
 
         for btn in MOUSE_LEFT..=MOUSE_MIDDLE {
             let mouse_btn: Key = unsafe { transmute(btn) };
             mouse_handle.set_keybit(mouse_btn).ok()?;
         }
-        mouse_handle.create(&mouse_id, mouse_name, 0, &abs_info).ok()?;
+        mouse_handle
+            .create(&mouse_id, mouse_name, 0, &abs_info)
+            .ok()?;
 
         Some(UInputProvider {
             keyboard_handle,
@@ -198,7 +202,12 @@ impl UInputProvider {
         let time = get_time();
         let events = [
             new_event(time, EV_REL, RelativeAxis::WheelHiRes as _, delta_y),
-            new_event(time, EV_REL, RelativeAxis::HorizontalWheelHiRes as _, delta_x),
+            new_event(
+                time,
+                EV_REL,
+                RelativeAxis::HorizontalWheelHiRes as _,
+                delta_x,
+            ),
             new_event(time, EV_SYN, 0, 0),
         ];
         if let Err(res) = self.mouse_handle.write(&events) {
@@ -221,7 +230,9 @@ impl HidProvider for UInputProvider {
         self.cur_modifiers = modifiers;
     }
     fn send_key(&self, key: VirtualKey, down: bool) {
-        log::debug!("send_key: {:?} {}", key, down);
+        #[cfg(debug_assertions)]
+        log::trace!("send_key: {:?} {}", key, down);
+
         let time = get_time();
         let events = [
             new_event(time, EV_KEY, (key as u16) - 8, down as _),
