@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use super::egl_ex;
 use anyhow::anyhow;
 
@@ -23,11 +25,24 @@ pub struct DMAbufModifierInfo {
 }
 
 #[derive(Debug, Clone)]
-pub struct DMAbufData {
+pub struct RenderDMAbufData {
     pub fd: i32,
     pub stride: i32,
     pub offset: i32,
     pub mod_info: DMAbufModifierInfo,
+}
+
+#[derive(Debug, Clone)]
+pub struct RenderSoftwarePixelsData {
+    pub data: Arc<[u8]>,
+    pub width: u16,
+    pub height: u16,
+}
+
+#[derive(Debug, Clone)]
+pub enum RenderData {
+    Dmabuf(RenderDMAbufData),
+    Software(Option<RenderSoftwarePixelsData>), // will be set if the next image data is available
 }
 
 impl EGLData {
@@ -207,7 +222,10 @@ impl EGLData {
         }
     }
 
-    pub fn create_dmabuf_data(&self, egl_image: &khronos_egl::Image) -> anyhow::Result<DMAbufData> {
+    pub fn create_dmabuf_data(
+        &self,
+        egl_image: &khronos_egl::Image,
+    ) -> anyhow::Result<RenderDMAbufData> {
         use egl_ex::PFNEGLEXPORTDMABUFIMAGEMESAPROC as FUNC;
         unsafe {
             let egl_export_dmabuf_image_mesa =
@@ -235,7 +253,7 @@ impl EGLData {
 
             let mod_info = self.query_dmabuf_mod_info()?;
 
-            Ok(DMAbufData {
+            Ok(RenderDMAbufData {
                 fd: fds[0],
                 stride: strides[0],
                 offset: offsets[0],

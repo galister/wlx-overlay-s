@@ -1,6 +1,9 @@
 use glam::{vec3a, Affine2, Vec3, Vec3A};
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
-use vulkano::image::SubresourceLayout;
+use vulkano::{
+    command_buffer::CommandBufferUsage,
+    image::{view::ImageView, SubresourceLayout},
+};
 use wayvr_ipc::packet_server::{self, PacketServer, WvrStateChanged};
 use wlx_capture::frame::{DmabufFrame, FourCC, FrameFormat, FramePlane};
 
@@ -170,8 +173,8 @@ impl InteractionHandler for WayVRInteractionHandler {
 }
 
 pub struct WayVRRenderer {
-    dmabuf_image: Option<Arc<vulkano::image::Image>>,
-    view: Option<Arc<vulkano::image::view::ImageView>>,
+    vk_image: Option<Arc<vulkano::image::Image>>,
+    vk_image_view: Option<Arc<vulkano::image::view::ImageView>>,
     context: Rc<RefCell<WayVRContext>>,
     graphics: Arc<WlxGraphics>,
 }
@@ -184,8 +187,8 @@ impl WayVRRenderer {
     ) -> anyhow::Result<Self> {
         Ok(Self {
             context: Rc::new(RefCell::new(WayVRContext::new(wvr, display)?)),
-            dmabuf_image: None,
-            view: None,
+            vk_image: None,
+            vk_image_view: None,
             graphics: app.graphics.clone(),
         })
     }
@@ -551,54 +554,82 @@ where
 }
 
 impl WayVRRenderer {
-    fn ensure_dmabuf(&mut self, data: wayvr::egl_data::DMAbufData) -> anyhow::Result<()> {
-        if self.dmabuf_image.is_none() {
-            // First init
-            let mut planes = [FramePlane::default(); 4];
-            planes[0].fd = Some(data.fd);
-            planes[0].offset = data.offset as u32;
-            planes[0].stride = data.stride;
+    fn ensure_software_data(
+        &mut self,
+        data: &wayvr::egl_data::RenderSoftwarePixelsData,
+    ) -> anyhow::Result<()> {
+        let mut upload = self
+            .graphics
+            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
 
-            let ctx = self.context.borrow_mut();
-            let wayvr = ctx.wayvr.borrow_mut();
-            if let Some(disp) = wayvr.data.state.displays.get(&ctx.display) {
-                let frame = DmabufFrame {
-                    format: FrameFormat {
-                        width: disp.width as u32,
-                        height: disp.height as u32,
-                        fourcc: FourCC {
-                            value: data.mod_info.fourcc,
-                        },
-                        modifier: data.mod_info.modifiers[0], /* possibly not proper? */
-                        ..Default::default()
-                    },
-                    num_planes: 1,
-                    planes,
-                };
+        let tex = upload.texture2d_raw(
+            data.width as u32,
+            data.height as u32,
+            vulkano::format::Format::R8G8B8A8_UNORM,
+            &data.data,
+        )?;
 
-                drop(wayvr);
+        upload.build_and_execute_now()?;
 
-                let layouts: Vec<SubresourceLayout> = vec![SubresourceLayout {
-                    offset: data.offset as _,
-                    size: 0,
-                    row_pitch: data.stride as _,
-                    array_pitch: None,
-                    depth_pitch: None,
-                }];
+        self.vk_image = Some(tex.clone());
+        self.vk_image_view = Some(ImageView::new_default(tex).unwrap());
 
-                let tex = self.graphics.dmabuf_texture_ex(
-                    frame,
-                    vulkano::image::ImageTiling::DrmFormatModifier,
-                    layouts,
-                    data.mod_info.modifiers,
-                )?;
-                self.dmabuf_image = Some(tex.clone());
-                self.view = Some(vulkano::image::view::ImageView::new_default(tex).unwrap());
-            } else {
-                anyhow::bail!("Failed to fetch WayVR display")
-            }
+        Ok(())
+    }
+
+    fn ensure_dmabuf_data(
+        &mut self,
+        data: &wayvr::egl_data::RenderDMAbufData,
+    ) -> anyhow::Result<()> {
+        if self.vk_image.is_some() {
+            return Ok(()); // already initialized and automatically updated due to direct zero-copy textue access
         }
 
+        // First init
+        let mut planes = [FramePlane::default(); 4];
+        planes[0].fd = Some(data.fd);
+        planes[0].offset = data.offset as u32;
+        planes[0].stride = data.stride;
+
+        let ctx = self.context.borrow_mut();
+        let wayvr = ctx.wayvr.borrow_mut();
+        let Some(disp) = wayvr.data.state.displays.get(&ctx.display) else {
+            anyhow::bail!("Failed to fetch WayVR display")
+        };
+
+        let frame = DmabufFrame {
+            format: FrameFormat {
+                width: disp.width as u32,
+                height: disp.height as u32,
+                fourcc: FourCC {
+                    value: data.mod_info.fourcc,
+                },
+                modifier: data.mod_info.modifiers[0], /* possibly not proper? */
+                ..Default::default()
+            },
+            num_planes: 1,
+            planes,
+        };
+
+        drop(wayvr);
+
+        let layouts: Vec<SubresourceLayout> = vec![SubresourceLayout {
+            offset: data.offset as _,
+            size: 0,
+            row_pitch: data.stride as _,
+            array_pitch: None,
+            depth_pitch: None,
+        }];
+
+        let tex = self.graphics.dmabuf_texture_ex(
+            frame,
+            vulkano::image::ImageTiling::DrmFormatModifier,
+            layouts,
+            &data.mod_info.modifiers,
+        )?;
+
+        self.vk_image = Some(tex.clone());
+        self.vk_image_view = Some(vulkano::image::view::ImageView::new_default(tex).unwrap());
         Ok(())
     }
 }
@@ -626,34 +657,48 @@ impl OverlayRenderer for WayVRRenderer {
         let ctx = self.context.borrow();
         let mut wayvr = ctx.wayvr.borrow_mut();
 
-        match wayvr.data.tick_display(ctx.display) {
-            Ok(_) => {}
+        let redrawn = match wayvr.data.tick_display(ctx.display) {
+            Ok(r) => r,
             Err(e) => {
                 log::error!("tick_display failed: {}", e);
                 return Ok(()); // do not proceed further
             }
+        };
+
+        if !redrawn {
+            return Ok(());
         }
 
-        let dmabuf_data = wayvr
+        let data = wayvr
             .data
             .state
-            .get_dmabuf_data(ctx.display)
-            .ok_or(anyhow::anyhow!("Failed to fetch dmabuf data"))?
+            .get_render_data(ctx.display)
+            .ok_or(anyhow::anyhow!("Failed to fetch render data"))?
             .clone();
 
         drop(wayvr);
         drop(ctx);
-        self.ensure_dmabuf(dmabuf_data.clone())?;
+
+        match data {
+            wayvr::egl_data::RenderData::Dmabuf(data) => {
+                self.ensure_dmabuf_data(&data)?;
+            }
+            wayvr::egl_data::RenderData::Software(data) => {
+                if let Some(new_frame) = &data {
+                    self.ensure_software_data(new_frame)?;
+                }
+            }
+        }
 
         Ok(())
     }
 
     fn view(&mut self) -> Option<Arc<vulkano::image::view::ImageView>> {
-        self.view.clone()
+        self.vk_image_view.clone()
     }
 
     fn frame_transform(&mut self) -> Option<FrameTransform> {
-        self.view.as_ref().map(|view| FrameTransform {
+        self.vk_image_view.as_ref().map(|view| FrameTransform {
             extent: view.image().extent(),
             ..Default::default()
         })
