@@ -46,11 +46,11 @@ pub mod frag_color {
         ",
     }
 }
-            //layout (location = 1) in float corner_radius;
-                //out_color = in_color;
-                // Some equation that determines whether to keep the pixel
-                // Use Lerp not if
-                //out_color.a = 0;
+//layout (location = 1) in float corner_radius;
+//out_color = in_color;
+// Some equation that determines whether to keep the pixel
+// Use Lerp not if
+//out_color.a = 0;
 
 pub mod frag_glyph {
     vulkano_shaders::shader! {
