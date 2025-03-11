@@ -90,11 +90,27 @@ pub enum WayVRSignal {
     BroadcastStateChanged(packet_server::WvrStateChanged),
 }
 
+pub enum BlitMethod {
+    Dmabuf,
+    Software,
+}
+
+impl BlitMethod {
+    pub fn from_string(str: &str) -> Option<BlitMethod> {
+        match str {
+            "dmabuf" => Some(BlitMethod::Dmabuf),
+            "software" => Some(BlitMethod::Software),
+            _ => None,
+        }
+    }
+}
+
 pub struct Config {
     pub click_freeze_time_ms: u32,
     pub keyboard_repeat_delay_ms: u32,
     pub keyboard_repeat_rate: u32,
     pub auto_hide_delay: Option<u32>, // if None, auto-hide is disabled
+    pub blit_method: BlitMethod,
 }
 
 pub struct WayVRState {
@@ -104,7 +120,7 @@ pub struct WayVRState {
     wm: Rc<RefCell<window::WindowManager>>,
     egl_data: Rc<egl_data::EGLData>,
     pub processes: process::ProcessVec,
-    config: Config,
+    pub config: Config,
     dashboard_display: Option<display::DisplayHandle>,
     pub tasks: SyncEventQueue<WayVRTask>,
     pub signals: SyncEventQueue<WayVRSignal>,
@@ -256,7 +272,7 @@ impl WayVR {
         Ok(Self { state, ipc_server })
     }
 
-    pub fn tick_display(&mut self, display: display::DisplayHandle) -> anyhow::Result<()> {
+    pub fn tick_display(&mut self, display: display::DisplayHandle) -> anyhow::Result<bool> {
         // millis since the start of wayvr
         let display = self
             .state
@@ -266,12 +282,12 @@ impl WayVR {
 
         if !display.wants_redraw {
             // Nothing changed, do not render
-            return Ok(());
+            return Ok(false);
         }
 
         if !display.visible {
             // Display is invisible, do not render
-            return Ok(());
+            return Ok(false);
         }
 
         let time_ms = get_millis() - self.state.time_start;
@@ -279,7 +295,7 @@ impl WayVR {
         display.tick_render(&mut self.state.manager.state.gles_renderer, time_ms)?;
         display.wants_redraw = false;
 
-        Ok(())
+        Ok(true)
     }
 
     pub fn tick_events(&mut self, app: &AppState) -> anyhow::Result<Vec<TickTask>> {
@@ -537,10 +553,13 @@ impl WayVRState {
         }
     }
 
-    pub fn get_dmabuf_data(&self, display: display::DisplayHandle) -> Option<egl_data::DMAbufData> {
+    pub fn get_render_data(
+        &self,
+        display: display::DisplayHandle,
+    ) -> Option<&egl_data::RenderData> {
         self.displays
             .get(&display)
-            .map(|display| display.dmabuf_data.clone())
+            .map(|display| &display.render_data)
     }
 
     pub fn create_display(
@@ -555,12 +574,12 @@ impl WayVRState {
             egl_data: self.egl_data.clone(),
             renderer: &mut self.manager.state.gles_renderer,
             wayland_env: self.manager.wayland_env.clone(),
+            config: &self.config,
             width,
             height,
             name,
             primary,
         })?;
-
         let handle = self.displays.add(display);
 
         self.signals.send(WayVRSignal::BroadcastStateChanged(

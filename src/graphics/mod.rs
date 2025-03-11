@@ -802,10 +802,9 @@ impl WlxGraphics {
         frame: DmabufFrame,
         tiling: ImageTiling,
         layouts: Vec<SubresourceLayout>,
-        modifiers: Vec<u64>,
+        modifiers: &[u64],
     ) -> anyhow::Result<Arc<Image>> {
         let extent = [frame.format.width, frame.format.height, 1];
-
         let format = fourcc_to_vk(frame.format.fourcc)?;
 
         let image = unsafe {
@@ -817,7 +816,7 @@ impl WlxGraphics {
                     usage: ImageUsage::SAMPLED,
                     external_memory_handle_types: ExternalMemoryHandleTypes::DMA_BUF,
                     tiling,
-                    drm_format_modifiers: modifiers,
+                    drm_format_modifiers: modifiers.to_owned(),
                     drm_format_modifier_plane_layouts: layouts,
                     ..Default::default()
                 },
@@ -894,7 +893,7 @@ impl WlxGraphics {
             tiling = ImageTiling::DrmFormatModifier;
         };
 
-        self.dmabuf_texture_ex(frame, tiling, layouts, modifiers)
+        self.dmabuf_texture_ex(frame, tiling, layouts, &modifiers)
     }
 
     pub fn render_texture(
