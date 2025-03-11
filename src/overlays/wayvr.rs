@@ -153,7 +153,13 @@ impl InteractionHandler for WayVRInteractionHandler {
         }
     }
 
-    fn on_scroll(&mut self, _app: &mut state::AppState, _hit: &input::PointerHit, delta_y: f32, delta_x: f32) {
+    fn on_scroll(
+        &mut self,
+        _app: &mut state::AppState,
+        _hit: &input::PointerHit,
+        delta_y: f32,
+        delta_x: f32,
+    ) {
         let ctx = self.context.borrow();
         ctx.wayvr
             .borrow_mut()
