@@ -787,8 +787,11 @@ where
     if let Some(app_entry) = catalog.get_app(app_name) {
         let mut wayvr = wayvr.borrow_mut();
 
-        let disp_handle =
-            get_or_create_display_by_name(app, &mut wayvr, &app_entry.target_display)?;
+        let disp_handle = get_or_create_display_by_name(
+            app,
+            &mut wayvr,
+            &app_entry.target_display.to_lowercase(),
+        )?;
 
         let args_vec = match &app_entry.args {
             Some(args) => gen_args_vec(args),
