@@ -40,7 +40,7 @@ use std::{
 use time::get_millis;
 use wayvr_ipc::{packet_client, packet_server};
 
-use crate::state::AppState;
+use crate::{hid::MODS_TO_KEYS, state::AppState};
 
 const STR_INVALID_HANDLE_DISP: &str = "Invalid display handle";
 const STR_INVALID_HANDLE_PROCESS: &str = "Invalid process handle";
@@ -73,6 +73,7 @@ pub struct ExternalProcessRequest {
 #[derive(Clone)]
 pub enum WayVRTask {
     NewToplevel(ClientId, ToplevelSurface),
+    DropToplevel(ClientId, ToplevelSurface),
     NewExternalProcess(ExternalProcessRequest),
     DropOverlay(super::overlay::OverlayID),
     ProcessTerminationRequest(process::ProcessHandle),
@@ -89,11 +90,27 @@ pub enum WayVRSignal {
     BroadcastStateChanged(packet_server::WvrStateChanged),
 }
 
+pub enum BlitMethod {
+    Dmabuf,
+    Software,
+}
+
+impl BlitMethod {
+    pub fn from_string(str: &str) -> Option<BlitMethod> {
+        match str {
+            "dmabuf" => Some(BlitMethod::Dmabuf),
+            "software" => Some(BlitMethod::Software),
+            _ => None,
+        }
+    }
+}
+
 pub struct Config {
     pub click_freeze_time_ms: u32,
     pub keyboard_repeat_delay_ms: u32,
     pub keyboard_repeat_rate: u32,
     pub auto_hide_delay: Option<u32>, // if None, auto-hide is disabled
+    pub blit_method: BlitMethod,
 }
 
 pub struct WayVRState {
@@ -103,12 +120,13 @@ pub struct WayVRState {
     wm: Rc<RefCell<window::WindowManager>>,
     egl_data: Rc<egl_data::EGLData>,
     pub processes: process::ProcessVec,
-    config: Config,
+    pub config: Config,
     dashboard_display: Option<display::DisplayHandle>,
     pub tasks: SyncEventQueue<WayVRTask>,
     pub signals: SyncEventQueue<WayVRSignal>,
     ticks: u64,
     pub pending_haptic: Option<super::input::Haptics>,
+    cur_modifiers: u8,
 }
 
 pub struct WayVR {
@@ -248,12 +266,13 @@ impl WayVR {
             tasks,
             pending_haptic: None,
             signals: SyncEventQueue::new(),
+            cur_modifiers: 0,
         };
 
         Ok(Self { state, ipc_server })
     }
 
-    pub fn tick_display(&mut self, display: display::DisplayHandle) -> anyhow::Result<()> {
+    pub fn tick_display(&mut self, display: display::DisplayHandle) -> anyhow::Result<bool> {
         // millis since the start of wayvr
         let display = self
             .state
@@ -263,12 +282,12 @@ impl WayVR {
 
         if !display.wants_redraw {
             // Nothing changed, do not render
-            return Ok(());
+            return Ok(false);
         }
 
         if !display.visible {
             // Display is invisible, do not render
-            return Ok(());
+            return Ok(false);
         }
 
         let time_ms = get_millis() - self.state.time_start;
@@ -276,7 +295,7 @@ impl WayVR {
         display.tick_render(&mut self.state.manager.state.gles_renderer, time_ms)?;
         display.wants_redraw = false;
 
-        Ok(())
+        Ok(true)
     }
 
     pub fn tick_events(&mut self, app: &AppState) -> anyhow::Result<Vec<TickTask>> {
@@ -344,36 +363,63 @@ impl WayVR {
                 WayVRTask::NewToplevel(client_id, toplevel) => {
                     // Attach newly created toplevel surfaces to displays
                     for client in &self.state.manager.clients {
-                        if client.client.id() == client_id {
-                            if let Some(process_handle) =
-                                process::find_by_pid(&self.state.processes, client.pid)
-                            {
-                                let window_handle = self
-                                    .state
-                                    .wm
-                                    .borrow_mut()
-                                    .create_window(client.display_handle, &toplevel);
+                        if client.client.id() != client_id {
+                            continue;
+                        }
 
-                                if let Some(display) =
-                                    self.state.displays.get_mut(&client.display_handle)
-                                {
-                                    display.add_window(window_handle, process_handle, &toplevel);
-                                    self.state.signals.send(WayVRSignal::BroadcastStateChanged(
-                                        packet_server::WvrStateChanged::WindowCreated,
-                                    ));
-                                } else {
-                                    // This shouldn't happen, scream if it does
-                                    log::error!("Could not attach window handle into display");
-                                }
-                            } else {
-                                log::error!(
+                        let Some(process_handle) =
+                            process::find_by_pid(&self.state.processes, client.pid)
+                        else {
+                            log::error!(
                                     "WayVR window creation failed: Unexpected process ID {}. It wasn't registered before.",
                                     client.pid
                                 );
-                            }
+                            continue;
+                        };
 
-                            break;
+                        let window_handle = self
+                            .state
+                            .wm
+                            .borrow_mut()
+                            .create_window(client.display_handle, &toplevel);
+
+                        let Some(display) = self.state.displays.get_mut(&client.display_handle)
+                        else {
+                            // This shouldn't happen, scream if it does
+                            log::error!("Could not attach window handle into display");
+                            continue;
+                        };
+
+                        display.add_window(window_handle, process_handle, &toplevel);
+                        self.state.signals.send(WayVRSignal::BroadcastStateChanged(
+                            packet_server::WvrStateChanged::WindowCreated,
+                        ));
+                    }
+                }
+                WayVRTask::DropToplevel(client_id, toplevel) => {
+                    for client in &self.state.manager.clients {
+                        if client.client.id() != client_id {
+                            continue;
                         }
+
+                        let mut wm = self.state.wm.borrow_mut();
+                        let Some(window_handle) = wm.find_window_handle(&toplevel) else {
+                            log::warn!("DropToplevel: Couldn't find matching window handle");
+                            continue;
+                        };
+
+                        let Some(display) = self.state.displays.get_mut(&client.display_handle)
+                        else {
+                            log::warn!("DropToplevel: Couldn't find matching display");
+                            continue;
+                        };
+
+                        display.remove_window(window_handle);
+                        wm.remove_window(window_handle);
+
+                        drop(wm);
+
+                        display.reposition_windows();
                     }
                 }
                 WayVRTask::ProcessTerminationRequest(process_handle) => {
@@ -463,14 +509,32 @@ impl WayVRState {
         }
     }
 
-    pub fn send_mouse_scroll(&mut self, display: display::DisplayHandle, delta: f32) {
+    pub fn send_mouse_scroll(
+        &mut self,
+        display: display::DisplayHandle,
+        delta_y: f32,
+        delta_x: f32,
+    ) {
         if let Some(display) = self.displays.get(&display) {
-            display.send_mouse_scroll(&mut self.manager, delta);
+            display.send_mouse_scroll(&mut self.manager, delta_y, delta_x);
         }
     }
 
     pub fn send_key(&mut self, virtual_key: u32, down: bool) {
         self.manager.send_key(virtual_key, down);
+    }
+
+    pub fn set_modifiers(&mut self, modifiers: u8) {
+        let changed = self.cur_modifiers ^ modifiers;
+        for i in 0..8 {
+            let m = 1 << i;
+            if changed & m != 0 {
+                if let Some(vk) = MODS_TO_KEYS.get(m).into_iter().flatten().next() {
+                    self.send_key(*vk as u32, modifiers & m != 0);
+                }
+            }
+        }
+        self.cur_modifiers = modifiers;
     }
 
     pub fn set_display_visible(&mut self, display: display::DisplayHandle, visible: bool) {
@@ -489,10 +553,13 @@ impl WayVRState {
         }
     }
 
-    pub fn get_dmabuf_data(&self, display: display::DisplayHandle) -> Option<egl_data::DMAbufData> {
+    pub fn get_render_data(
+        &self,
+        display: display::DisplayHandle,
+    ) -> Option<&egl_data::RenderData> {
         self.displays
             .get(&display)
-            .map(|display| display.dmabuf_data.clone())
+            .map(|display| &display.render_data)
     }
 
     pub fn create_display(
@@ -507,12 +574,12 @@ impl WayVRState {
             egl_data: self.egl_data.clone(),
             renderer: &mut self.manager.state.gles_renderer,
             wayland_env: self.manager.wayland_env.clone(),
+            config: &self.config,
             width,
             height,
             name,
             primary,
         })?;
-
         let handle = self.displays.add(display);
 
         self.signals.send(WayVRSignal::BroadcastStateChanged(

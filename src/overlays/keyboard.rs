@@ -51,7 +51,13 @@ fn set_modifiers(app: &mut AppState, mods: u8) {
         KeyboardFocus::PhysicalScreen => {
             app.hid_provider.set_modifiers(mods);
         }
-        KeyboardFocus::WayVR => {}
+        KeyboardFocus::WayVR =>
+        {
+            #[cfg(feature = "wayvr")]
+            if let Some(wayvr) = &app.wayvr {
+                wayvr.borrow_mut().data.state.set_modifiers(mods);
+            }
+        }
     }
 }
 
@@ -516,9 +522,10 @@ impl InteractionHandler for KeyboardBackend {
         &mut self,
         app: &mut AppState,
         hit: &crate::backend::input::PointerHit,
-        delta: f32,
+        delta_y: f32,
+        delta_x: f32,
     ) {
-        self.canvas.on_scroll(app, hit, delta)
+        self.canvas.on_scroll(app, hit, delta_y, delta_x)
     }
     fn on_left(&mut self, app: &mut AppState, pointer: usize) {
         self.canvas.on_left(app, pointer)

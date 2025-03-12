@@ -19,7 +19,6 @@ config = "0.14.0"
 cstr = "0.2.12"
 ctrlc = { version = "3.4.4", features = ["termination"] }
 dbus = { version = "0.9.7" }
-env_logger = "0.11.5"
 fontconfig-rs = "0.1.1"
 freetype-rs = "0.36.0" # latest version supported on ubuntu 22.04
 futures = "0.3.30"
@@ -69,12 +68,14 @@ image_dds = { version = "0.6.0", default-features = false, features = [
   "ddsfile",
 ] }
 mint = "0.5.9"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+tracing = "0.1.41"
 
 ################################
 #WayVR-only deps
 ################################
 khronos-egl = { version = "6.0.0", features = ["static"], optional = true }
-smithay = { git = "https://github.com/Smithay/smithay.git", default-features = false, features = [
+smithay = { version = "0.5.1", default-features = false, features = [
   "renderer_gl",
   "backend_egl",
   "backend_drm",
