@@ -41,18 +41,18 @@ dashboard:
   env: ["GDK_BACKEND=wayland"]
 
 displays:
-  Watch:
+  watch:
     width: 400
     height: 600
     scale: 0.4
     attach_to: "HandRight" # HandLeft, HandRight
     pos: [0.0, 0.0, 0.125]
     rotation: {axis: [1.0, 0.0, 0.0], angle: -45.0}
-  Disp1:
+  disp1:
     width: 640
     height: 480
     primary: true # Required if you want to attach external processes (not spawned by WayVR itself) without WAYVR_DISPLAY_NAME set
-  Disp2:
+  disp2:
     width: 1280
     height: 720
     scale: 2.0
@@ -61,18 +61,18 @@ catalogs:
   default_catalog:
     apps:
       - name: "Calc"
-        target_display: "Disp1"
+        target_display: "disp1"
         exec: "kcalc"
         env: ["FOO=bar"]
         shown_at_start: false
 
       - name: "htop"
-        target_display: "Watch"
+        target_display: "watch"
         exec: "konsole"
         args: "-e htop"
 
       - name: "Browser"
-        target_display: "Disp2"
+        target_display: "disp2"
         exec: "cage"
         args: "chromium -- --incognito"
         
