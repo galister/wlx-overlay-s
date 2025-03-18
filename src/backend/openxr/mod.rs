@@ -9,7 +9,7 @@ use std::{
 };
 
 use glam::{Affine3A, Vec3};
-use libmonado_rs::Monado;
+use libmonado::Monado;
 use openxr as xr;
 use skybox::create_skybox;
 use vulkano::{command_buffer::CommandBufferUsage, Handle, VulkanObject};

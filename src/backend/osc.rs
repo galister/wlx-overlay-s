@@ -146,24 +146,24 @@ impl OscSender {
 
                 // send device battery parameters
                 self.send_message(
-                    format!("/avatar/parameters/{parameter}Battery").into(),
+                    format!("/avatar/parameters/{parameter}Battery"),
                     vec![OscType::Float(level)],
                 )?;
                 self.send_message(
-                    format!("/avatar/parameters/{parameter}Charging").into(),
+                    format!("/avatar/parameters/{parameter}Charging"),
                     vec![OscType::Bool(device.charging)],
                 )?;
             }
 
             // send average controller and tracker battery parameters
             self.send_message(
-                format!("/avatar/parameters/averageControllerBattery").into(),
+                String::from("/avatar/parameters/averageControllerBattery"),
                 vec![OscType::Float(
                     controller_total_bat / controller_count as f32,
                 )],
             )?;
             self.send_message(
-                format!("/avatar/parameters/averageTrackerBattery").into(),
+                String::from("/avatar/parameters/averageTrackerBattery"),
                 vec![OscType::Float(tracker_total_bat / tracker_count as f32)],
             )?;
         }

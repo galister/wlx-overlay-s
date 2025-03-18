@@ -1,4 +1,4 @@
-use glam::Vec2;
+use glam::{IVec2, Vec2};
 use idmap::{idmap, IdMap};
 use idmap_derive::IntegerId;
 use input_linux::{
@@ -46,7 +46,7 @@ pub fn initialize() -> Box<dyn HidProvider> {
 pub trait HidProvider {
     fn mouse_move(&mut self, pos: Vec2);
     fn send_button(&mut self, button: u16, down: bool);
-    fn wheel(&mut self, delta: i32);
+    fn wheel(&mut self, delta_y: i32, delta_x: i32);
     fn set_modifiers(&mut self, mods: u8);
     fn send_key(&self, key: VirtualKey, down: bool);
     fn set_desktop_extent(&mut self, extent: Vec2);
@@ -64,11 +64,12 @@ struct MouseAction {
     last_requested_pos: Option<Vec2>,
     pos: Option<Vec2>,
     button: Option<MouseButtonAction>,
-    scroll: Option<i32>,
+    scroll: Option<IVec2>,
 }
 
 pub struct UInputProvider {
-    handle: UInputHandle<File>,
+    keyboard_handle: UInputHandle<File>,
+    mouse_handle: UInputHandle<File>,
     desktop_extent: Vec2,
     desktop_origin: Vec2,
     cur_modifiers: u8,
@@ -90,97 +91,94 @@ const EV_ABS: u16 = 0x3;
 
 impl UInputProvider {
     fn try_new() -> Option<Self> {
-        if let Ok(file) = File::create("/dev/uinput") {
-            let handle = UInputHandle::new(file);
+        let keyboard_file = File::create("/dev/uinput").ok()?;
+        let keyboard_handle = UInputHandle::new(keyboard_file);
 
-            let id = InputId {
-                bustype: 0x03,
-                vendor: 0x4711,
-                product: 0x0829,
-                version: 5,
-            };
+        let mouse_file = File::create("/dev/uinput").ok()?;
+        let mouse_handle = UInputHandle::new(mouse_file);
 
-            let name = b"WlxOverlay-S Keyboard-Mouse Hybrid Thing\0";
+        let kbd_id = InputId {
+            bustype: 0x03,
+            vendor: 0x4711,
+            product: 0x0829,
+            version: 5,
+        };
+        let mouse_id = InputId {
+            bustype: 0x03,
+            vendor: 0x4711,
+            product: 0x0830,
+            version: 5,
+        };
+        let kbd_name = b"WlxOverlay-S Keyboard\0";
+        let mouse_name = b"WlxOverlay-S Mouse\0";
 
-            let abs_info = vec![
-                AbsoluteInfoSetup {
-                    axis: input_linux::AbsoluteAxis::X,
-                    info: AbsoluteInfo {
-                        value: 0,
-                        minimum: 0,
-                        maximum: MOUSE_EXTENT as _,
-                        fuzz: 0,
-                        flat: 0,
-                        resolution: 10,
-                    },
+        let abs_info = vec![
+            AbsoluteInfoSetup {
+                axis: input_linux::AbsoluteAxis::X,
+                info: AbsoluteInfo {
+                    value: 0,
+                    minimum: 0,
+                    maximum: MOUSE_EXTENT as _,
+                    fuzz: 0,
+                    flat: 0,
+                    resolution: 10,
                 },
-                AbsoluteInfoSetup {
-                    axis: input_linux::AbsoluteAxis::Y,
-                    info: AbsoluteInfo {
-                        value: 0,
-                        minimum: 0,
-                        maximum: MOUSE_EXTENT as _,
-                        fuzz: 0,
-                        flat: 0,
-                        resolution: 10,
-                    },
+            },
+            AbsoluteInfoSetup {
+                axis: input_linux::AbsoluteAxis::Y,
+                info: AbsoluteInfo {
+                    value: 0,
+                    minimum: 0,
+                    maximum: MOUSE_EXTENT as _,
+                    fuzz: 0,
+                    flat: 0,
+                    resolution: 10,
                 },
-            ];
+            },
+        ];
 
-            if handle.set_evbit(EventKind::Key).is_err() {
-                return None;
-            }
-            if handle.set_evbit(EventKind::Absolute).is_err() {
-                return None;
-            }
-            if handle.set_evbit(EventKind::Relative).is_err() {
-                return None;
-            }
-
-            for btn in MOUSE_LEFT..=MOUSE_MIDDLE {
-                let key: Key = unsafe { transmute(btn) };
-                if handle.set_keybit(key).is_err() {
-                    return None;
-                }
-            }
-
-            for key in VirtualKey::iter() {
-                let key: Key = unsafe { transmute((key as u16) - 8) };
-                if handle.set_keybit(key).is_err() {
-                    return None;
-                }
-            }
-
-            if handle.set_absbit(AbsoluteAxis::X).is_err() {
-                return None;
-            }
-            if handle.set_absbit(AbsoluteAxis::Y).is_err() {
-                return None;
-            }
-            if handle.set_relbit(RelativeAxis::Wheel).is_err() {
-                return None;
-            }
-
-            if handle.create(&id, name, 0, &abs_info).is_ok() {
-                return Some(UInputProvider {
-                    handle,
-                    desktop_extent: Vec2::ZERO,
-                    desktop_origin: Vec2::ZERO,
-                    current_action: Default::default(),
-                    cur_modifiers: 0,
-                });
-            }
+        keyboard_handle.set_evbit(EventKind::Key).ok()?;
+        for key in VirtualKey::iter() {
+            let mapped_key: Key = unsafe { std::mem::transmute((key as u16) - 8) };
+            keyboard_handle.set_keybit(mapped_key).ok()?;
         }
-        None
-    }
 
+        keyboard_handle.create(&kbd_id, kbd_name, 0, &[]).ok()?;
+
+        mouse_handle.set_evbit(EventKind::Absolute).ok()?;
+        mouse_handle.set_evbit(EventKind::Relative).ok()?;
+        mouse_handle.set_absbit(AbsoluteAxis::X).ok()?;
+        mouse_handle.set_absbit(AbsoluteAxis::Y).ok()?;
+        mouse_handle.set_relbit(RelativeAxis::WheelHiRes).ok()?;
+        mouse_handle
+            .set_relbit(RelativeAxis::HorizontalWheelHiRes)
+            .ok()?;
+        mouse_handle.set_evbit(EventKind::Key).ok()?;
+
+        for btn in MOUSE_LEFT..=MOUSE_MIDDLE {
+            let mouse_btn: Key = unsafe { transmute(btn) };
+            mouse_handle.set_keybit(mouse_btn).ok()?;
+        }
+        mouse_handle
+            .create(&mouse_id, mouse_name, 0, &abs_info)
+            .ok()?;
+
+        Some(UInputProvider {
+            keyboard_handle,
+            mouse_handle,
+            desktop_extent: Vec2::ZERO,
+            desktop_origin: Vec2::ZERO,
+            current_action: Default::default(),
+            cur_modifiers: 0,
+        })
+    }
     fn send_button_internal(&self, button: u16, down: bool) {
         let time = get_time();
         let events = [
             new_event(time, EV_KEY, button, down as _),
             new_event(time, EV_SYN, 0, 0),
         ];
-        if let Err(res) = self.handle.write(&events) {
+        if let Err(res) = self.mouse_handle.write(&events) {
             log::error!("send_button: {}", res.to_string());
         }
     }
@@ -196,17 +194,23 @@ impl UInputProvider {
             new_event(time, EV_ABS, AbsoluteAxis::Y as _, pos.y as i32),
             new_event(time, EV_SYN, 0, 0),
         ];
-        if let Err(res) = self.handle.write(&events) {
+        if let Err(res) = self.mouse_handle.write(&events) {
             log::error!("{}", res.to_string());
         }
     }
-    fn wheel_internal(&self, delta: i32) {
+    fn wheel_internal(&self, delta_y: i32, delta_x: i32) {
         let time = get_time();
         let events = [
-            new_event(time, EV_REL, RelativeAxis::Wheel as _, delta),
+            new_event(time, EV_REL, RelativeAxis::WheelHiRes as _, delta_y),
+            new_event(
+                time,
+                EV_REL,
+                RelativeAxis::HorizontalWheelHiRes as _,
+                delta_x,
+            ),
             new_event(time, EV_SYN, 0, 0),
         ];
-        if let Err(res) = self.handle.write(&events) {
+        if let Err(res) = self.mouse_handle.write(&events) {
             log::error!("wheel: {}", res.to_string());
         }
     }
@@ -226,13 +230,15 @@ impl HidProvider for UInputProvider {
         self.cur_modifiers = modifiers;
     }
     fn send_key(&self, key: VirtualKey, down: bool) {
-        log::debug!("send_key: {:?} {}", key, down);
+        #[cfg(debug_assertions)]
+        log::trace!("send_key: {:?} {}", key, down);
+
         let time = get_time();
         let events = [
             new_event(time, EV_KEY, (key as u16) - 8, down as _),
             new_event(time, EV_SYN, 0, 0),
         ];
-        if let Err(res) = self.handle.write(&events) {
+        if let Err(res) = self.keyboard_handle.write(&events) {
             log::error!("send_key: {}", res.to_string());
         }
     }
@@ -254,9 +260,9 @@ impl HidProvider for UInputProvider {
             self.current_action.pos = self.current_action.last_requested_pos;
         }
     }
-    fn wheel(&mut self, delta: i32) {
+    fn wheel(&mut self, delta_y: i32, delta_x: i32) {
         if self.current_action.scroll.is_none() {
-            self.current_action.scroll = Some(delta);
+            self.current_action.scroll = Some(IVec2::new(delta_x, delta_y));
             // Pass mouse motion events only if not scrolling
             // (allows scrolling on all Chromium-based applications)
             self.current_action.pos = None;
@@ -270,7 +276,7 @@ impl HidProvider for UInputProvider {
             self.send_button_internal(button.button, button.down);
         }
         if let Some(scroll) = self.current_action.scroll.take() {
-            self.wheel_internal(scroll);
+            self.wheel_internal(scroll.y, scroll.x);
         }
     }
 }
@@ -278,7 +284,7 @@ impl HidProvider for UInputProvider {
 impl HidProvider for DummyProvider {
     fn mouse_move(&mut self, _pos: Vec2) {}
     fn send_button(&mut self, _button: u16, _down: bool) {}
-    fn wheel(&mut self, _delta: i32) {}
+    fn wheel(&mut self, _delta_y: i32, _delta_x: i32) {}
     fn set_modifiers(&mut self, _modifiers: u8) {}
     fn send_key(&self, _key: VirtualKey, _down: bool) {}
     fn set_desktop_extent(&mut self, _extent: Vec2) {}

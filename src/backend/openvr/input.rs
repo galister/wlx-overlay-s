@@ -239,10 +239,12 @@ impl OpenVrInputSource {
                 .map(|x| x.0.bState)
                 .unwrap_or(false);
 
-            app_hand.now.scroll = input
+            let scroll = input
                 .get_analog_action_data(self.scroll_hnd, hand.input_hnd)
-                .map(|x| x.0.y)
-                .unwrap_or(0.0);
+                .map(|x| (x.0.x, x.0.y))
+                .unwrap_or((0.0, 0.0));
+            app_hand.now.scroll_x = scroll.0;
+            app_hand.now.scroll_y = scroll.1;
         }
     }
 

@@ -368,8 +368,8 @@ impl InteractionHandler for SplitOverlayBackend {
     fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
         self.interaction.on_hover(app, hit)
     }
-    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta: f32) {
-        self.interaction.on_scroll(app, hit, delta);
+    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32) {
+        self.interaction.on_scroll(app, hit, delta_y, delta_x);
     }
     fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool) {
         self.interaction.on_pointer(app, hit, pressed);

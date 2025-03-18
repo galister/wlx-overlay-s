@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use smithay::{
     backend::renderer::{
@@ -23,7 +23,7 @@ use crate::{
 
 use super::{
     client::WayVRCompositor, comp::send_frames_surface_tree, egl_data, event_queue::SyncEventQueue,
-    process, smithay_wrapper, time, window, WayVRSignal,
+    process, smithay_wrapper, time, window, BlitMethod, WayVRSignal,
 };
 
 fn generate_auth_key() -> String {
@@ -71,7 +71,8 @@ pub struct Display {
     gles_texture: GlesTexture, // TODO: drop texture
     egl_image: khronos_egl::Image,
     egl_data: Rc<egl_data::EGLData>,
-    pub dmabuf_data: egl_data::DMAbufData,
+
+    pub render_data: egl_data::RenderData,
 
     pub tasks: SyncEventQueue<DisplayTask>,
 }
@@ -87,6 +88,7 @@ impl Drop for Display {
 
 pub struct DisplayInitParams<'a> {
     pub wm: Rc<RefCell<window::WindowManager>>,
+    pub config: &'a super::Config,
     pub renderer: &'a mut GlesRenderer,
     pub egl_data: Rc<egl_data::EGLData>,
     pub wayland_env: super::WaylandEnv,
@@ -128,7 +130,13 @@ impl Display {
         })?;
 
         let egl_image = params.egl_data.create_egl_image(tex_id)?;
-        let dmabuf_data = params.egl_data.create_dmabuf_data(&egl_image)?;
+
+        let render_data = match params.config.blit_method {
+            BlitMethod::Dmabuf => {
+                egl_data::RenderData::Dmabuf(params.egl_data.create_dmabuf_data(&egl_image)?)
+            }
+            BlitMethod::Software => egl_data::RenderData::Software(None),
+        };
 
         let opaque = false;
         let size = (params.width as i32, params.height as i32).into();
@@ -145,7 +153,7 @@ impl Display {
             wayland_env: params.wayland_env,
             wm: params.wm,
             displayed_windows: Vec::new(),
-            dmabuf_data,
+            render_data,
             egl_image,
             gles_texture,
             last_pressed_time_ms: 0,
@@ -181,6 +189,11 @@ impl Display {
             toplevel: toplevel.clone(),
         });
         self.reposition_windows();
+    }
+
+    pub fn remove_window(&mut self, window_handle: window::WindowHandle) {
+        self.displayed_windows
+            .retain(|disp| disp.window_handle != window_handle);
     }
 
     pub fn reposition_windows(&mut self) {
@@ -287,12 +300,11 @@ impl Display {
         }
     }
 
-    pub fn tick_render(&self, renderer: &mut GlesRenderer, time_ms: u64) -> anyhow::Result<()> {
+    pub fn tick_render(&mut self, renderer: &mut GlesRenderer, time_ms: u64) -> anyhow::Result<()> {
         renderer.bind(self.gles_texture.clone())?;
 
         let size = Size::from((self.width as i32, self.height as i32));
-        let damage: Rectangle<i32, smithay::utils::Physical> =
-            Rectangle::from_loc_and_size((0, 0), size);
+        let damage: Rectangle<i32, smithay::utils::Physical> = Rectangle::from_size(size);
 
         let elements: Vec<WaylandSurfaceRenderElement<GlesRenderer>> = self
             .displayed_windows
@@ -334,6 +346,35 @@ impl Display {
 
         for window in &self.displayed_windows {
             send_frames_surface_tree(window.toplevel.wl_surface(), time_ms as u32);
+        }
+
+        if let egl_data::RenderData::Software(_) = &self.render_data {
+            // Read OpenGL texture into memory. Slow!
+            let pixel_data = renderer.with_context(|gl| unsafe {
+                gl.BindTexture(ffi::TEXTURE_2D, self.gles_texture.tex_id());
+
+                let len = self.width as usize * self.height as usize * 4;
+                let mut data: Box<[u8]> = Box::new_uninit_slice(len).assume_init();
+                gl.ReadPixels(
+                    0,
+                    0,
+                    self.width as i32,
+                    self.height as i32,
+                    ffi::RGBA,
+                    ffi::UNSIGNED_BYTE,
+                    data.as_mut_ptr().cast(),
+                );
+
+                let data: Arc<[u8]> = Arc::from(data);
+                data
+            })?;
+
+            self.render_data =
+                egl_data::RenderData::Software(Some(egl_data::RenderSoftwarePixelsData {
+                    data: pixel_data,
+                    width: self.width,
+                    height: self.height,
+                }));
         }
 
         Ok(())
@@ -443,13 +484,11 @@ impl Display {
             if let Some(window) = wm.windows.get(&window_handle) {
                 let surf = window.toplevel.wl_surface().clone();
 
-                if manager.seat_keyboard.current_focus().is_none() {
-                    manager.seat_keyboard.set_focus(
-                        &mut manager.state,
-                        Some(surf),
-                        manager.serial_counter.next_serial(),
-                    );
-                }
+                manager.seat_keyboard.set_focus(
+                    &mut manager.state,
+                    Some(surf),
+                    manager.serial_counter.next_serial(),
+                );
             }
         }
 
@@ -480,7 +519,7 @@ impl Display {
         manager.seat_pointer.frame(&mut manager.state);
     }
 
-    pub fn send_mouse_scroll(&self, manager: &mut WayVRCompositor, delta: f32) {
+    pub fn send_mouse_scroll(&self, manager: &mut WayVRCompositor, delta_y: f32, delta_x: f32) {
         manager.seat_pointer.axis(
             &mut manager.state,
             input::pointer::AxisFrame {
@@ -490,8 +529,8 @@ impl Display {
                     smithay::backend::input::AxisRelativeDirection::Identical,
                 ),
                 time: 0,
-                axis: (0.0, -delta as f64),
-                v120: Some((0, (delta * -120.0) as i32)),
+                axis: (delta_x as f64, -delta_y as f64),
+                v120: Some((0, (delta_y * -120.0) as i32)),
                 stop: (false, false),
             },
         );

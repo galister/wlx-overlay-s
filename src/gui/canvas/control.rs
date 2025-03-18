@@ -19,6 +19,7 @@ pub type ControlRendererHl<D, S> = fn(
     Vec4,
 ) -> anyhow::Result<()>;
 
+#[allow(clippy::type_complexity)]
 pub(crate) struct Control<D, S> {
     pub state: Option<S>,
     pub rect: Rect,
@@ -34,7 +35,7 @@ pub(crate) struct Control<D, S> {
     pub on_update: Option<fn(&mut Self, &mut D, &mut AppState)>,
     pub on_press: Option<fn(&mut Self, &mut D, &mut AppState, PointerMode)>,
     pub on_release: Option<fn(&mut Self, &mut D, &mut AppState)>,
-    pub on_scroll: Option<fn(&mut Self, &mut D, &mut AppState, f32)>,
+    pub on_scroll: Option<fn(&mut Self, &mut D, &mut AppState, f32, f32)>,
     pub test_highlight: Option<fn(&Self, &mut D, &mut AppState) -> Option<Vec4>>,
 
     pub(super) on_render_bg: Option<ControlRenderer<D, S>>,
