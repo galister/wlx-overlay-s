@@ -197,12 +197,15 @@ impl OverlayData<OpenVrOverlayData> {
             return;
         };
 
-        let effective = self.state.transform
+        let mut effective = self.state.transform
             * self
                 .backend
                 .frame_transform()
                 .map(|f| f.transform)
                 .unwrap_or_default();
+
+        // combine self.state.transform with self.state.offset
+        effective.translation = self.state.offset.transform_point3a(effective.translation);
 
         let transform = Matrix3x4::from_affine(&effective);
 

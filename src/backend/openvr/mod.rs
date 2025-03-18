@@ -255,7 +255,7 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                         playspace.fix_floor(&mut chaperone_mgr, &state.input_state);
                     }
                     SystemTask::ResetPlayspace => {
-                        playspace.reset_offset(&mut chaperone_mgr);
+                        playspace.reset_offset(&mut chaperone_mgr, &mut overlays);
                     }
                     SystemTask::ShowHide => {
                         overlays.show_hide(&mut state);

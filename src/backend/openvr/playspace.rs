@@ -1,4 +1,4 @@
-use glam::{Affine3A, Quat, Vec3, Vec3A};
+use glam::{Affine3A, Quat, Vec3A};
 use ovr_overlay::{
     chaperone_setup::ChaperoneSetupManager,
     compositor::CompositorManager,
@@ -9,7 +9,6 @@ use crate::{
     backend::{common::OverlayContainer, input::InputState},
     state::AppState,
 };
-
 use super::{helpers::Affine3AConvert, overlay::OpenVrOverlayData};
 
 struct MoverData<T> {
@@ -70,7 +69,7 @@ impl PlayspaceMover {
             overlays.iter_mut().for_each(|overlay| {
                 if overlay.state.grabbable {
                     overlay.state.dirty = true;
-                    overlay.state.transform.translation =
+                    overlay.state.offset.translation =
                         overlay_transform.transform_point3a(overlay.state.transform.translation);
                 }
             });
@@ -123,7 +122,7 @@ impl PlayspaceMover {
             overlays.iter_mut().for_each(|overlay| {
                 if overlay.state.grabbable {
                     overlay.state.dirty = true;
-                    overlay.state.transform.translation += overlay_offset;
+                    overlay.state.offset.translation += overlay_offset;
                 }
             });
 
@@ -136,7 +135,7 @@ impl PlayspaceMover {
                 if pointer.now.space_reset {
                     if !pointer.before.space_reset {
                         log::info!("Space reset!");
-                        self.reset_offset(chaperone_mgr);
+                        self.reset_offset(chaperone_mgr, overlays);
                     }
                     return;
                 }else if pointer.now.space_drag {
@@ -158,9 +157,14 @@ impl PlayspaceMover {
         }
     }
 
-    pub fn reset_offset(&mut self, chaperone_mgr: &mut ChaperoneSetupManager) {
+    pub fn reset_offset(&mut self, chaperone_mgr: &mut ChaperoneSetupManager, overlays: &mut OverlayContainer<OpenVrOverlayData>) {
         chaperone_mgr.revert_working_copy();
         chaperone_mgr.hide_working_set_preview();
+        
+        overlays.iter_mut().for_each(|overlay| {
+            overlay.state.dirty = true;
+            overlay.state.offset = Affine3A::IDENTITY;
+        });
 
         if self.drag.is_some() {
             log::info!("Space drag interrupted by manual reset");
@@ -238,7 +242,6 @@ fn get_working_copy(
     universe: &ETrackingUniverseOrigin,
     chaperone_mgr: &mut ChaperoneSetupManager,
 ) -> Option<Affine3A> {
-    chaperone_mgr.revert_working_copy();
     let mat = match universe {
         ETrackingUniverseOrigin::TrackingUniverseStanding => {
             chaperone_mgr.get_working_standing_zero_pose_to_raw_tracking_pose()
