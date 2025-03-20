@@ -78,8 +78,7 @@ impl Toast {
 
         let has_sound = self.sound && app.session.config.notifications_sound_enabled;
         if has_sound {
-            // Box is used here to work around `app.toast_sound`'s lifetime
-            app.audio.play(Box::leak(Box::new(app.toast_sound.clone())));
+            app.audio.play(app.toast_sound);
         }
 
         // drop any toast that was created before us.

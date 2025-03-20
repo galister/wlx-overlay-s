@@ -51,7 +51,7 @@ pub struct AppState {
     pub anchor: Affine3A,
     pub sprites: AStrMap<Arc<ImageView>>,
     pub keyboard_focus: KeyboardFocus,
-    pub toast_sound: Arc<[u8]>,
+    pub toast_sound: &'static [u8],
 
     #[cfg(feature = "osc")]
     pub osc_sender: Option<OscSender>,
@@ -113,7 +113,7 @@ impl AppState {
         let osc_sender = crate::backend::osc::OscSender::new(session.config.osc_out_port).ok();
 
 
-        let mut toast_sound_wav: Arc<[u8]> = include_bytes!("res/557297.wav").to_owned().into();
+        let mut toast_sound_wav: &'static [u8] = include_bytes!("res/557297.wav");
 
         'custom_toast: {
             if session.config.notification_sound.is_empty() {
@@ -131,7 +131,8 @@ impl AppState {
             };
 
             match std::fs::read(real_path.clone()){
-                Ok(f) => {toast_sound_wav = f.into()},
+                // Box is used here to work around `f`'s lifetime
+                Ok(f) => {toast_sound_wav = Box::leak(Box::new(f)).as_slice()},
                 Err(e) => {
                     log::warn!(
                         "Failed to read custom toast sound at: {}",
@@ -155,7 +156,7 @@ impl AppState {
             anchor: Affine3A::IDENTITY,
             sprites: AStrMap::new(),
             keyboard_focus: KeyboardFocus::PhysicalScreen,
-            toast_sound: toast_sound_wav.into(),
+            toast_sound: toast_sound_wav,
 
             #[cfg(feature = "osc")]
             osc_sender,
