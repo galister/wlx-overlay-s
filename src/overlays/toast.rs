@@ -18,7 +18,6 @@ use crate::{
 const FONT_SIZE: isize = 16;
 const PADDING: (f32, f32) = (25., 7.);
 const PIXELS_TO_METERS: f32 = 1. / 2000.;
-const TOAST_AUDIO_WAV: &[u8] = include_bytes!("../res/557297.wav");
 static TOAST_NAME: Lazy<Arc<str>> = Lazy::new(|| "toast".into());
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -78,6 +77,9 @@ impl Toast {
         let destroy_at = instant.add(std::time::Duration::from_secs_f32(self.timeout));
 
         let has_sound = self.sound && app.session.config.notifications_sound_enabled;
+        if has_sound {
+            app.audio.play(app.toast_sound);
+        }
 
         // drop any toast that was created before us.
         // (DropOverlay only drops overlays that were
@@ -109,9 +111,6 @@ impl Toast {
             instant,
         );
 
-        if has_sound {
-            app.audio.play(TOAST_AUDIO_WAV);
-        }
     }
 }
 
