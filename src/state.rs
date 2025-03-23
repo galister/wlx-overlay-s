@@ -112,37 +112,10 @@ impl AppState {
         #[cfg(feature = "osc")]
         let osc_sender = crate::backend::osc::OscSender::new(session.config.osc_out_port).ok();
 
-
-        let mut toast_sound_wav: &'static [u8] = include_bytes!("res/557297.wav");
-
-        'custom_toast: {
-            if session.config.notification_sound.is_empty() {
-                break 'custom_toast;
-            }
-
-            let real_path = config_io::get_config_root().join(&*session.config.notification_sound);
-
-            if std::fs::File::open(real_path.clone()).is_err() {
-                log::warn!(
-                    "Could not open custom toast sound at: {}",
-                    session.config.notification_sound
-                );
-                break 'custom_toast;
-            };
-
-            match std::fs::read(real_path.clone()){
-                // Box is used here to work around `f`'s lifetime
-                Ok(f) => {toast_sound_wav = Box::leak(Box::new(f)).as_slice()},
-                Err(e) => {
-                    log::warn!(
-                        "Failed to read custom toast sound at: {}",
-                        session.config.notification_sound
-                    );
-                    log::warn!("{:?}", e);
-                    break 'custom_toast
-                }
-            };
-        }
+        let toast_sound_wav = AppState::try_load_bytes(
+            &session.config.notification_sound,
+            include_bytes!("res/557297.wav")
+        );
 
         Ok(AppState {
             fc: FontCache::new(session.config.primary_font.clone())?,
@@ -179,6 +152,43 @@ impl AppState {
             Ok(wayvr)
         }
     }
+
+    pub fn try_load_bytes(path: &str, fallback_data: &'static [u8]) -> &'static [u8]
+    {
+        let mut loaded_u8: &'static [u8] = fallback_data;
+
+        'u8_load_routine: {
+            if path.is_empty() {
+                break 'u8_load_routine;
+            }
+
+            let real_path = config_io::get_config_root().join(&*path);
+
+            if std::fs::File::open(real_path.clone()).is_err() {
+                log::warn!(
+                    "Could not open file at: {}",
+                    path
+                );
+                break 'u8_load_routine;
+            };
+
+            match std::fs::read(real_path.clone()){
+                // Box is used here to work around `f`'s limited lifetime
+                Ok(f) => {loaded_u8 = Box::leak(Box::new(f)).as_slice()},
+                Err(e) => {
+                    log::warn!(
+                        "Failed to read file at: {}",
+                        path
+                    );
+                    log::warn!("{:?}", e);
+                    break 'u8_load_routine
+                }
+            };
+        }
+
+        return loaded_u8;
+    }
+
 }
 
 pub struct AppSession {
