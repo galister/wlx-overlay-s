@@ -155,38 +155,35 @@ impl AppState {
 
     pub fn try_load_bytes(path: &str, fallback_data: &'static [u8]) -> &'static [u8]
     {
-        let mut loaded_u8: &'static [u8] = fallback_data;
-
-        'u8_load_routine: {
-            if path.is_empty() {
-                break 'u8_load_routine;
-            }
-
-            let real_path = config_io::get_config_root().join(&*path);
-
-            if std::fs::File::open(real_path.clone()).is_err() {
-                log::warn!(
-                    "Could not open file at: {}",
-                    path
-                );
-                break 'u8_load_routine;
-            };
-
-            match std::fs::read(real_path.clone()){
-                // Box is used here to work around `f`'s limited lifetime
-                Ok(f) => {loaded_u8 = Box::leak(Box::new(f)).as_slice()},
-                Err(e) => {
-                    log::warn!(
-                        "Failed to read file at: {}",
-                        path
-                    );
-                    log::warn!("{:?}", e);
-                    break 'u8_load_routine
-                }
-            };
+        if path.is_empty() {
+            return fallback_data;
         }
 
-        return loaded_u8;
+        let real_path = config_io::get_config_root().join(&*path);
+
+        if std::fs::File::open(real_path.clone()).is_err() {
+            log::warn!(
+                "Could not open file at: {}",
+                path
+            );
+            return fallback_data;
+        };
+
+        return match std::fs::read(real_path.clone()){
+            // Box is used here to work around `f`'s limited lifetime
+            Ok(f) => {
+                Box::leak(Box::new(f)).as_slice()
+            },
+            Err(e) => {
+                log::warn!(
+                    "Failed to read file at: {}",
+                    path
+                );
+                log::warn!("{:?}", e);
+                fallback_data
+            }
+        };
+
     }
 
 }
