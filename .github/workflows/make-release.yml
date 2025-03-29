@@ -44,6 +44,13 @@ jobs:
           ./linuxdeploy-x86_64.AppImage -dwlx-overlay-s.desktop -iwlx-overlay-s.png --appdir=${APPDIR} --output appimage --exclude-library '*libpipewire*'
           mv WlxOverlay-S-$VERSION-x86_64.AppImage WlxOverlay-S-x86_64.AppImage
 
+      - name: Make tarball
+        run: |
+          pip install portage pycargoebuild
+          wget https://github.com/gentoo/gentoo/raw/refs/heads/master/metadata/license-mapping.conf
+          mkdir dist
+          pycargoebuild --distdir dist --license-mapping license-mapping.conf --crate-tarball --crate-tarball-path wlx-overlay-s-crates.tar.xz
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -64,3 +71,13 @@ jobs:
           asset_path: ./WlxOverlay-S-x86_64.AppImage
           asset_name: WlxOverlay-S-${{ github.ref_name }}-x86_64.AppImage
           asset_content_type: application/octet-stream
+
+      - name: Upload crates tarball
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_KEY }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./wlx-overlay-s-crates.tar.xz
+          asset_name: WlxOverlay-S-${{ github.ref_name }}-crates.tar.xz
+          asset_content_type: application/x-gtar
