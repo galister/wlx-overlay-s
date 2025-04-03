@@ -51,6 +51,7 @@ pub struct AppState {
     pub anchor: Affine3A,
     pub sprites: AStrMap<Arc<ImageView>>,
     pub keyboard_focus: KeyboardFocus,
+    pub toast_sound: &'static [u8],
 
     #[cfg(feature = "osc")]
     pub osc_sender: Option<OscSender>,
@@ -111,6 +112,11 @@ impl AppState {
         #[cfg(feature = "osc")]
         let osc_sender = crate::backend::osc::OscSender::new(session.config.osc_out_port).ok();
 
+        let toast_sound_wav = AppState::try_load_bytes(
+            &session.config.notification_sound,
+            include_bytes!("res/557297.wav")
+        );
+
         Ok(AppState {
             fc: FontCache::new(session.config.primary_font.clone())?,
             session,
@@ -123,6 +129,7 @@ impl AppState {
             anchor: Affine3A::IDENTITY,
             sprites: AStrMap::new(),
             keyboard_focus: KeyboardFocus::PhysicalScreen,
+            toast_sound: toast_sound_wav,
 
             #[cfg(feature = "osc")]
             osc_sender,
@@ -145,6 +152,40 @@ impl AppState {
             Ok(wayvr)
         }
     }
+
+    pub fn try_load_bytes(path: &str, fallback_data: &'static [u8]) -> &'static [u8]
+    {
+        if path.is_empty() {
+            return fallback_data;
+        }
+
+        let real_path = config_io::get_config_root().join(&*path);
+
+        if std::fs::File::open(real_path.clone()).is_err() {
+            log::warn!(
+                "Could not open file at: {}",
+                path
+            );
+            return fallback_data;
+        };
+
+        return match std::fs::read(real_path.clone()){
+            // Box is used here to work around `f`'s limited lifetime
+            Ok(f) => {
+                Box::leak(Box::new(f)).as_slice()
+            },
+            Err(e) => {
+                log::warn!(
+                    "Failed to read file at: {}",
+                    path
+                );
+                log::warn!("{:?}", e);
+                fallback_data
+            }
+        };
+
+    }
+
 }
 
 pub struct AppSession {

@@ -207,6 +207,9 @@ pub struct GeneralConfig {
     #[serde(default = "def_toast_topics")]
     pub notification_topics: IdMap<ToastTopic, DisplayMethod>,
 
+    #[serde(default = "def_empty")]
+    pub notification_sound: Arc<str>,
+
     #[serde(default = "def_true")]
     pub keyboard_sound_enabled: bool,
 
