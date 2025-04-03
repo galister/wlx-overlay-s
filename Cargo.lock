@@ -5184,7 +5184,7 @@ dependencies = [
 
 [[package]]
 name = "wlx-overlay-s"
-version = "25.3.0"
+version = "25.4.0"
 dependencies = [
  "anyhow",
  "ash",
