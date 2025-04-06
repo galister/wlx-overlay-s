@@ -30,7 +30,8 @@ pub(crate) struct Control<D, S> {
     pub size: isize,
     pub sprite: Option<Arc<ImageView>>,
     pub sprite_st: Vec4,
-    pub(super) dirty: bool,
+    pub(super) bg_dirty: bool,
+    pub(super) fg_dirty: bool,
 
     pub on_update: Option<fn(&mut Self, &mut D, &mut AppState)>,
     pub on_press: Option<fn(&mut Self, &mut D, &mut AppState, PointerMode)>,
@@ -58,7 +59,8 @@ impl<D, S> Control<D, S> {
             text: Arc::from(""),
             sprite: None,
             sprite_st: Vec4::new(1., 1., 0., 0.),
-            dirty: true,
+            bg_dirty: true,
+            fg_dirty: true,
             size: 24,
             state: None,
             on_update: None,
@@ -78,13 +80,13 @@ impl<D, S> Control<D, S> {
             return;
         }
         self.text = text.into();
-        self.dirty = true;
+        self.fg_dirty = true;
     }
 
     #[inline(always)]
     pub fn set_sprite(&mut self, sprite: Arc<ImageView>) {
         self.sprite.replace(sprite);
-        self.dirty = true;
+        self.bg_dirty = true;
     }
 
     #[inline(always)]
@@ -93,7 +95,7 @@ impl<D, S> Control<D, S> {
             return;
         }
         self.sprite_st = sprite_st;
-        self.dirty = true;
+        self.bg_dirty = true;
     }
 
     #[inline(always)]
@@ -102,7 +104,7 @@ impl<D, S> Control<D, S> {
             return;
         }
         self.fg_color = color;
-        self.dirty = true;
+        self.fg_dirty = true;
     }
 
     pub fn render_rounded_rect(
@@ -174,7 +176,7 @@ impl<D, S> Control<D, S> {
 
         let skew_radius = [clamped_radius / self.rect.w, clamped_radius / self.rect.h];
 
-        let set0 = canvas.pipeline_bg_color.uniform_buffer(
+        let set0 = canvas.pipeline_hl_color.uniform_buffer(
             0,
             vec![
                 color.x,
@@ -186,7 +188,7 @@ impl<D, S> Control<D, S> {
             ],
         )?;
 
-        let pass = canvas.pipeline_bg_color.create_pass(
+        let pass = canvas.pipeline_hl_color.create_pass(
             [canvas.width as _, canvas.height as _],
             vertex_buffer.clone(),
             canvas.graphics.quad_indices.clone(),

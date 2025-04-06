@@ -20,12 +20,6 @@ use {ash::vk, std::os::raw::c_void};
 pub type Vert2Buf = Subbuffer<[Vert2Uv]>;
 pub type IndexBuf = Subbuffer<[u16]>;
 
-pub type LegacyPipeline = WlxPipeline<WlxPipelineLegacy>;
-pub type DynamicPipeline = WlxPipeline<WlxPipelineDynamic>;
-
-pub type LegacyPass = WlxPass<WlxPipelineLegacy>;
-pub type DynamicPass = WlxPass<WlxPipelineDynamic>;
-
 use vulkano::{
     buffer::{
         allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo},
@@ -35,10 +29,9 @@ use vulkano::{
         allocator::{StandardCommandBufferAllocator, StandardCommandBufferAllocatorCreateInfo},
         sys::{CommandBufferBeginInfo, RawRecordingCommandBuffer},
         CommandBuffer, CommandBufferExecFuture, CommandBufferInheritanceInfo,
-        CommandBufferInheritanceRenderPassInfo, CommandBufferInheritanceRenderPassType,
-        CommandBufferInheritanceRenderingInfo, CommandBufferLevel, CommandBufferUsage,
-        CopyBufferToImageInfo, RecordingCommandBuffer, RenderPassBeginInfo,
-        RenderingAttachmentInfo, RenderingInfo, SubpassBeginInfo, SubpassContents, SubpassEndInfo,
+        CommandBufferInheritanceRenderPassType, CommandBufferInheritanceRenderingInfo,
+        CommandBufferLevel, CommandBufferUsage, CopyBufferToImageInfo, RecordingCommandBuffer,
+        RenderingAttachmentInfo, RenderingInfo, SubpassContents,
     },
     descriptor_set::{
         allocator::StandardDescriptorSetAllocator, DescriptorSet, WriteDescriptorSet,
@@ -52,8 +45,7 @@ use vulkano::{
         sampler::{Filter, Sampler, SamplerAddressMode, SamplerCreateInfo},
         sys::RawImage,
         view::ImageView,
-        Image, ImageCreateInfo, ImageLayout, ImageTiling, ImageType, ImageUsage, SampleCount,
-        SubresourceLayout,
+        Image, ImageCreateInfo, ImageLayout, ImageTiling, ImageType, ImageUsage, SubresourceLayout,
     },
     instance::{Instance, InstanceCreateInfo, InstanceExtensions},
     memory::{
@@ -80,11 +72,7 @@ use vulkano::{
         layout::PipelineDescriptorSetLayoutCreateInfo,
         DynamicState, GraphicsPipeline, Pipeline, PipelineBindPoint, PipelineLayout,
     },
-    render_pass::{
-        AttachmentDescription, AttachmentLoadOp, AttachmentReference, AttachmentStoreOp,
-        Framebuffer, FramebufferCreateInfo, RenderPass, RenderPassCreateInfo, Subpass,
-        SubpassDescription,
-    },
+    render_pass::{AttachmentLoadOp, AttachmentStoreOp},
     shader::ShaderModule,
     sync::{
         fence::Fence, future::NowFuture, AccessFlags, DependencyInfo, GpuFuture,
@@ -108,6 +96,8 @@ pub struct Vert2Uv {
     #[format(R32G32_SFLOAT)]
     pub in_uv: [f32; 2],
 }
+
+pub const SWAPCHAIN_FORMAT: Format = Format::R8G8B8A8_SRGB;
 
 pub const INDICES: [u16; 6] = [2, 1, 0, 1, 2, 3];
 
@@ -546,6 +536,7 @@ impl WlxGraphics {
         Ok(Arc::new(me))
     }
 
+    #[allow(clippy::type_complexity)]
     #[cfg(feature = "uidev")]
     pub fn new_window() -> anyhow::Result<(
         Arc<Self>,
@@ -572,6 +563,7 @@ impl WlxGraphics {
             },
         )?;
 
+        #[allow(deprecated)]
         let window = Arc::new(
             event_loop
                 .create_window(Window::default_attributes())
@@ -925,54 +917,12 @@ impl WlxGraphics {
 
     pub fn create_pipeline(
         self: &Arc<Self>,
-        render_target: Arc<ImageView>,
         vert: Arc<ShaderModule>,
         frag: Arc<ShaderModule>,
         format: Format,
         blend: Option<AttachmentBlend>,
-    ) -> anyhow::Result<Arc<LegacyPipeline>> {
-        Ok(Arc::new(LegacyPipeline::new(
-            render_target,
-            self.clone(),
-            vert,
-            frag,
-            format,
-            blend,
-        )?))
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub fn create_pipeline_with_layouts(
-        self: &Arc<Self>,
-        render_target: Arc<ImageView>,
-        vert: Arc<ShaderModule>,
-        frag: Arc<ShaderModule>,
-        format: Format,
-        blend: Option<AttachmentBlend>,
-        initial_layout: ImageLayout,
-        final_layout: ImageLayout,
-    ) -> anyhow::Result<Arc<LegacyPipeline>> {
-        Ok(Arc::new(LegacyPipeline::new_with_layout(
-            render_target,
-            self.clone(),
-            vert,
-            frag,
-            format,
-            blend,
-            initial_layout,
-            final_layout,
-        )?))
-    }
-
-    #[allow(dead_code)]
-    pub fn create_pipeline_dynamic(
-        self: &Arc<Self>,
-        vert: Arc<ShaderModule>,
-        frag: Arc<ShaderModule>,
-        format: Format,
-        blend: Option<AttachmentBlend>,
-    ) -> anyhow::Result<Arc<DynamicPipeline>> {
-        Ok(Arc::new(DynamicPipeline::new(
+    ) -> anyhow::Result<Arc<WlxPipeline>> {
+        Ok(Arc::new(WlxPipeline::new(
             self.clone(),
             vert,
             frag,
@@ -1001,7 +951,6 @@ impl WlxGraphics {
         })
     }
 
-    #[allow(dead_code)]
     pub fn transition_layout(
         &self,
         image: Arc<Image>,
@@ -1066,22 +1015,7 @@ pub struct WlxCommandBuffer {
     pub command_buffer: RecordingCommandBuffer,
 }
 
-#[allow(dead_code)]
 impl WlxCommandBuffer {
-    pub fn begin_render_pass(&mut self, pipeline: &LegacyPipeline) -> anyhow::Result<()> {
-        self.command_buffer.begin_render_pass(
-            RenderPassBeginInfo {
-                clear_values: vec![Some([0.0, 0.0, 0.0, 0.0].into())],
-                ..RenderPassBeginInfo::framebuffer(pipeline.data.framebuffer.clone())
-            },
-            SubpassBeginInfo {
-                contents: SubpassContents::SecondaryCommandBuffers,
-                ..Default::default()
-            },
-        )?;
-        Ok(())
-    }
-
     pub fn begin_rendering(&mut self, render_target: Arc<ImageView>) -> anyhow::Result<()> {
         self.command_buffer.begin_rendering(RenderingInfo {
             contents: SubpassContents::SecondaryCommandBuffers,
@@ -1096,7 +1030,7 @@ impl WlxCommandBuffer {
         Ok(())
     }
 
-    pub fn run_ref<D>(&mut self, pass: &WlxPass<D>) -> anyhow::Result<()> {
+    pub fn run_ref(&mut self, pass: &WlxPass) -> anyhow::Result<()> {
         self.command_buffer
             .execute_commands(pass.command_buffer.clone())?;
         Ok(())
@@ -1149,12 +1083,6 @@ impl WlxCommandBuffer {
         Ok(image)
     }
 
-    pub fn end_render_pass(&mut self) -> anyhow::Result<()> {
-        self.command_buffer
-            .end_render_pass(SubpassEndInfo::default())?;
-        Ok(())
-    }
-
     pub fn end_rendering(&mut self) -> anyhow::Result<()> {
         self.command_buffer.end_rendering()?;
         Ok(())
@@ -1177,22 +1105,13 @@ impl WlxCommandBuffer {
     }
 }
 
-pub struct WlxPipelineDynamic {}
-
-pub struct WlxPipelineLegacy {
-    pub render_pass: Arc<RenderPass>,
-    pub framebuffer: Arc<Framebuffer>,
-}
-
-pub struct WlxPipeline<D> {
+pub struct WlxPipeline {
     pub graphics: Arc<WlxGraphics>,
     pub pipeline: Arc<GraphicsPipeline>,
     pub format: Format,
-    pub data: D,
 }
 
-#[allow(dead_code)]
-impl WlxPipeline<WlxPipelineDynamic> {
+impl WlxPipeline {
     fn new(
         graphics: Arc<WlxGraphics>,
         vert: Arc<ShaderModule>,
@@ -1248,7 +1167,6 @@ impl WlxPipeline<WlxPipelineDynamic> {
             graphics,
             pipeline,
             format,
-            data: WlxPipelineDynamic {},
         })
     }
     pub fn create_pass(
@@ -1257,8 +1175,8 @@ impl WlxPipeline<WlxPipelineDynamic> {
         vertex_buffer: Vert2Buf,
         index_buffer: IndexBuf,
         descriptor_sets: Vec<Arc<DescriptorSet>>,
-    ) -> anyhow::Result<DynamicPass> {
-        DynamicPass::new(
+    ) -> anyhow::Result<WlxPass> {
+        WlxPass::new(
             self.clone(),
             dimensions,
             vertex_buffer,
@@ -1266,178 +1184,24 @@ impl WlxPipeline<WlxPipelineDynamic> {
             descriptor_sets,
         )
     }
-}
 
-impl WlxPipeline<WlxPipelineLegacy> {
-    fn new(
-        render_target: Arc<ImageView>,
-        graphics: Arc<WlxGraphics>,
-        vert: Arc<ShaderModule>,
-        frag: Arc<ShaderModule>,
-        format: Format,
-        blend: Option<AttachmentBlend>,
-    ) -> anyhow::Result<Self> {
-        let render_pass = vulkano::single_pass_renderpass!(
-            graphics.device.clone(),
-            attachments: {
-                color: {
-                    format: format,
-                    samples: 1,
-                    load_op: Clear,
-                    store_op: Store,
-                },
-            },
-            pass: {
-                color: [color],
-                depth_stencil: {},
-            },
-        )?;
-
-        Self::new_from_pass(
-            render_target,
-            render_pass,
-            graphics,
-            vert,
-            frag,
-            format,
-            blend,
-        )
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn new_with_layout(
-        render_target: Arc<ImageView>,
-        graphics: Arc<WlxGraphics>,
-        vert: Arc<ShaderModule>,
-        frag: Arc<ShaderModule>,
-        format: Format,
-        blend: Option<AttachmentBlend>,
-        initial_layout: ImageLayout,
-        final_layout: ImageLayout,
-    ) -> anyhow::Result<Self> {
-        let render_pass_description = RenderPassCreateInfo {
-            attachments: vec![AttachmentDescription {
-                format,
-                samples: SampleCount::Sample1,
-                load_op: AttachmentLoadOp::Clear,
-                store_op: AttachmentStoreOp::Store,
-                initial_layout,
-                final_layout,
-                ..Default::default()
-            }],
-            subpasses: vec![SubpassDescription {
-                color_attachments: vec![Some(AttachmentReference {
-                    attachment: 0,
-                    layout: ImageLayout::ColorAttachmentOptimal,
-                    ..Default::default()
-                })],
-                ..Default::default()
-            }],
-            ..Default::default()
-        };
-
-        let render_pass = RenderPass::new(graphics.device.clone(), render_pass_description)?;
-
-        Self::new_from_pass(
-            render_target,
-            render_pass,
-            graphics,
-            vert,
-            frag,
-            format,
-            blend,
-        )
-    }
-
-    fn new_from_pass(
-        render_target: Arc<ImageView>,
-        render_pass: Arc<RenderPass>,
-        graphics: Arc<WlxGraphics>,
-        vert: Arc<ShaderModule>,
-        frag: Arc<ShaderModule>,
-        format: Format,
-        blend: Option<AttachmentBlend>,
-    ) -> anyhow::Result<Self> {
-        let vep = vert.entry_point("main").unwrap(); // want panic
-        let fep = frag.entry_point("main").unwrap(); // want panic
-
-        let vertex_input_state = Vert2Uv::per_vertex().definition(&vep.info().input_interface)?;
-
-        let stages = smallvec![
-            vulkano::pipeline::PipelineShaderStageCreateInfo::new(vep),
-            vulkano::pipeline::PipelineShaderStageCreateInfo::new(fep),
-        ];
-
-        let layout = PipelineLayout::new(
-            graphics.device.clone(),
-            PipelineDescriptorSetLayoutCreateInfo::from_stages(&stages)
-                .into_pipeline_layout_create_info(graphics.device.clone())?,
-        )?;
-
-        let framebuffer = Framebuffer::new(
-            render_pass.clone(),
-            FramebufferCreateInfo {
-                attachments: vec![render_target.clone()],
-                ..Default::default()
-            },
-        )?;
-
-        let pipeline = GraphicsPipeline::new(
-            graphics.device.clone(),
-            None,
-            GraphicsPipelineCreateInfo {
-                stages,
-                vertex_input_state: Some(vertex_input_state),
-                input_assembly_state: Some(InputAssemblyState::default()),
-                viewport_state: Some(ViewportState::default()),
-                color_blend_state: Some(ColorBlendState {
-                    attachments: vec![ColorBlendAttachmentState {
-                        blend,
-                        ..Default::default()
-                    }],
-                    ..Default::default()
-                }),
-                rasterization_state: Some(RasterizationState::default()),
-                multisample_state: Some(MultisampleState::default()),
-                dynamic_state: [DynamicState::Viewport].into_iter().collect(),
-                subpass: Some(
-                    Subpass::from(render_pass.clone(), 0)
-                        .ok_or_else(|| anyhow!("Failed to create subpass"))?
-                        .into(),
-                ),
-                ..GraphicsPipelineCreateInfo::layout(layout)
-            },
-        )?;
-
-        Ok(Self {
-            graphics,
-            pipeline,
-            format,
-            data: WlxPipelineLegacy {
-                render_pass,
-                framebuffer,
-            },
-        })
-    }
-
-    pub fn create_pass(
+    pub fn create_pass_for_target(
         self: &Arc<Self>,
-        dimensions: [f32; 2],
-        vertex_buffer: Vert2Buf,
-        index_buffer: IndexBuf,
+        tgt: Arc<ImageView>,
         descriptor_sets: Vec<Arc<DescriptorSet>>,
-    ) -> anyhow::Result<LegacyPass> {
-        LegacyPass::new(
+    ) -> anyhow::Result<WlxPass> {
+        let extent = tgt.image().extent();
+        WlxPass::new(
             self.clone(),
-            dimensions,
-            vertex_buffer,
-            index_buffer,
+            [extent[0] as _, extent[1] as _],
+            self.graphics.quad_verts.clone(),
+            self.graphics.quad_indices.clone(),
             descriptor_sets,
         )
     }
 }
 
-impl<D> WlxPipeline<D> {
+impl WlxPipeline {
     pub fn inner(&self) -> Arc<GraphicsPipeline> {
         self.pipeline.clone()
     }
@@ -1498,78 +1262,13 @@ impl<D> WlxPipeline<D> {
     }
 }
 
-#[allow(dead_code)]
-pub struct WlxPass<D> {
-    pipeline: Arc<WlxPipeline<D>>,
-    vertex_buffer: Vert2Buf,
-    index_buffer: IndexBuf,
-    descriptor_sets: Vec<Arc<DescriptorSet>>,
+pub struct WlxPass {
     pub command_buffer: Arc<CommandBuffer>,
 }
 
-impl WlxPass<WlxPipelineLegacy> {
+impl WlxPass {
     fn new(
-        pipeline: Arc<LegacyPipeline>,
-        dimensions: [f32; 2],
-        vertex_buffer: Vert2Buf,
-        index_buffer: IndexBuf,
-        descriptor_sets: Vec<Arc<DescriptorSet>>,
-    ) -> anyhow::Result<Self> {
-        let viewport = Viewport {
-            offset: [0.0, 0.0],
-            extent: dimensions,
-            depth_range: 0.0..=1.0,
-        };
-
-        let pipeline_inner = pipeline.inner().clone();
-        let mut command_buffer = RecordingCommandBuffer::new(
-            pipeline.graphics.command_buffer_allocator.clone(),
-            pipeline.graphics.queue.queue_family_index(),
-            CommandBufferLevel::Secondary,
-            CommandBufferBeginInfo {
-                usage: CommandBufferUsage::MultipleSubmit,
-                inheritance_info: Some(CommandBufferInheritanceInfo {
-                    render_pass: Some(CommandBufferInheritanceRenderPassType::BeginRenderPass(
-                        CommandBufferInheritanceRenderPassInfo {
-                            subpass: Subpass::from(pipeline.data.render_pass.clone(), 0)
-                                .ok_or_else(|| anyhow!("Failed to get subpass"))?,
-                            framebuffer: None,
-                        },
-                    )),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            },
-        )?;
-
-        unsafe {
-            command_buffer
-                .set_viewport(0, smallvec![viewport])?
-                .bind_pipeline_graphics(pipeline_inner)?
-                .bind_descriptor_sets(
-                    PipelineBindPoint::Graphics,
-                    pipeline.inner().layout().clone(),
-                    0,
-                    descriptor_sets.clone(),
-                )?
-                .bind_vertex_buffers(0, vertex_buffer.clone())?
-                .bind_index_buffer(index_buffer.clone())?
-                .draw_indexed(index_buffer.len() as u32, 1, 0, 0, 0)?
-        };
-
-        Ok(Self {
-            pipeline,
-            vertex_buffer,
-            index_buffer,
-            descriptor_sets,
-            command_buffer: command_buffer.end()?,
-        })
-    }
-}
-
-impl WlxPass<WlxPipelineDynamic> {
-    fn new(
-        pipeline: Arc<DynamicPipeline>,
+        pipeline: Arc<WlxPipeline>,
         dimensions: [f32; 2],
         vertex_buffer: Vert2Buf,
         index_buffer: IndexBuf,
@@ -1616,12 +1315,54 @@ impl WlxPass<WlxPipelineDynamic> {
         };
 
         Ok(Self {
-            pipeline,
-            vertex_buffer,
-            index_buffer,
-            descriptor_sets,
             command_buffer: command_buffer.end()?,
         })
+    }
+}
+
+#[derive(Default)]
+pub struct CommandBuffers {
+    inner: Vec<Arc<CommandBuffer>>,
+}
+
+impl CommandBuffers {
+    pub fn push(&mut self, buffer: Arc<CommandBuffer>) {
+        self.inner.push(buffer);
+    }
+    pub fn execute_now(self, queue: Arc<Queue>) -> anyhow::Result<Option<Box<dyn GpuFuture>>> {
+        let mut buffers = self.inner.into_iter();
+        let Some(first) = buffers.next() else {
+            return Ok(None);
+        };
+
+        let future = first.execute(queue.clone())?;
+        let mut future: Box<dyn GpuFuture> = Box::new(future);
+
+        for buf in buffers {
+            future = Box::new(future.then_execute_same_queue(buf)?);
+        }
+
+        Ok(Some(future))
+    }
+    #[cfg(feature = "uidev")]
+    pub fn execute_after(
+        self,
+        queue: Arc<Queue>,
+        future: Box<dyn GpuFuture>,
+    ) -> anyhow::Result<Box<dyn GpuFuture>> {
+        let mut buffers = self.inner.into_iter();
+        let Some(first) = buffers.next() else {
+            return Ok(future);
+        };
+
+        let future = future.then_execute(queue, first)?;
+        let mut future: Box<dyn GpuFuture> = Box::new(future);
+
+        for buf in buffers {
+            future = Box::new(future.then_execute_same_queue(buf)?);
+        }
+
+        Ok(future)
     }
 }
 
@@ -1674,16 +1415,4 @@ fn memory_allocator(device: Arc<Device>) -> Arc<StandardMemoryAllocator> {
     };
 
     Arc::new(StandardMemoryAllocator::new(device, create_info))
-}
-
-pub fn format_is_srgb(format: Format) -> bool {
-    matches!(
-        format,
-        Format::R8G8B8A8_SRGB
-            | Format::B8G8R8A8_SRGB
-            | Format::BC1_RGBA_SRGB_BLOCK
-            | Format::BC2_SRGB_BLOCK
-            | Format::BC3_SRGB_BLOCK
-            | Format::BC7_SRGB_BLOCK
-    )
 }

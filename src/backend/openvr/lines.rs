@@ -12,9 +12,10 @@ use vulkano::image::view::ImageView;
 use vulkano::image::ImageLayout;
 
 use crate::backend::overlay::{
-    FrameTransform, OverlayData, OverlayRenderer, OverlayState, SplitOverlayBackend, Z_ORDER_LINES,
+    FrameMeta, OverlayData, OverlayRenderer, OverlayState, ShouldRender, SplitOverlayBackend,
+    Z_ORDER_LINES,
 };
-use crate::graphics::WlxGraphics;
+use crate::graphics::{CommandBuffers, WlxGraphics};
 use crate::state::AppState;
 
 use super::overlay::OpenVrOverlayData;
@@ -185,14 +186,20 @@ impl OverlayRenderer for StaticRenderer {
     fn resume(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
         Ok(())
     }
-    fn render(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
-        Ok(())
+    fn should_render(&mut self, _app: &mut AppState) -> anyhow::Result<ShouldRender> {
+        Ok(ShouldRender::Unable)
     }
-    fn view(&mut self) -> Option<Arc<ImageView>> {
-        Some(self.view.clone())
+    fn render(
+        &mut self,
+        _app: &mut AppState,
+        _tgt: Arc<ImageView>,
+        _buf: &mut CommandBuffers,
+        _alpha: f32,
+    ) -> anyhow::Result<bool> {
+        Ok(false)
     }
-    fn frame_transform(&mut self) -> Option<FrameTransform> {
-        Some(FrameTransform {
+    fn frame_meta(&mut self) -> Option<FrameMeta> {
+        Some(FrameMeta {
             extent: self.view.image().extent(),
             ..Default::default()
         })

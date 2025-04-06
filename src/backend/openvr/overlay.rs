@@ -1,4 +1,5 @@
 use core::f32;
+use std::sync::Arc;
 
 use glam::Vec4;
 use ovr_overlay::{
@@ -6,7 +7,7 @@ use ovr_overlay::{
     pose::Matrix3x4,
     sys::{ETrackingUniverseOrigin, VRVulkanTextureData_t},
 };
-use vulkano::{Handle, VulkanObject};
+use vulkano::{image::view::ImageView, Handle, VulkanObject};
 
 use crate::{
     backend::overlay::{OverlayData, RelativeTo},
@@ -19,12 +20,13 @@ use super::helpers::Affine3AConvert;
 #[derive(Default)]
 pub(super) struct OpenVrOverlayData {
     pub(super) handle: Option<OverlayHandle>,
-    pub(super) last_image: Option<u64>,
     pub(super) visible: bool,
     pub(super) color: Vec4,
     pub(crate) width: f32,
     pub(super) override_width: bool,
     pub(super) relative_to: RelativeTo,
+    pub(super) image_view: Option<Arc<ImageView>>,
+    pub(super) image_dirty: bool,
 }
 
 impl OverlayData<OpenVrOverlayData> {
@@ -59,6 +61,20 @@ impl OverlayData<OpenVrOverlayData> {
         self.upload_sort_order(overlay);
 
         Ok(handle)
+    }
+
+    pub(super) fn ensure_image_allocated(&mut self, app: &mut AppState) -> anyhow::Result<bool> {
+        if self.data.image_view.is_some() {
+            return Ok(true);
+        }
+        let Some(meta) = self.backend.frame_meta() else {
+            return Ok(false);
+        };
+        let image = app
+            .graphics
+            .render_texture(meta.extent[0], meta.extent[1], meta.format)?;
+        self.data.image_view = Some(ImageView::new_default(image)?);
+        Ok(true)
     }
 
     pub(super) fn after_input(
@@ -200,7 +216,7 @@ impl OverlayData<OpenVrOverlayData> {
         let effective = self.state.transform
             * self
                 .backend
-                .frame_transform()
+                .frame_meta()
                 .map(|f| f.transform)
                 .unwrap_or_default();
 
@@ -221,21 +237,17 @@ impl OverlayData<OpenVrOverlayData> {
             return;
         };
 
-        let Some(view) = self.backend.view() else {
+        let Some(view) = self.data.image_view.as_ref() else {
             log::debug!("{}: Not rendered", self.state.name);
             return;
         };
 
-        let image = view.image().clone();
-
-        let raw_image = image.handle().as_raw();
-
-        if let Some(last_image) = self.data.last_image {
-            if last_image == raw_image {
-                return;
-            }
+        if !self.data.image_dirty {
+            return;
         }
+        self.data.image_dirty = false;
 
+        let image = view.image().clone();
         let dimensions = image.extent();
         if !self.data.override_width {
             let new_width = ((dimensions[0] as f32) / (dimensions[1] as f32)).min(1.0);
@@ -246,6 +258,7 @@ impl OverlayData<OpenVrOverlayData> {
             }
         }
 
+        let raw_image = image.handle().as_raw();
         let format = image.format();
 
         let mut texture = VRVulkanTextureData_t {

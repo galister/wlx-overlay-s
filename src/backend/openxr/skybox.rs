@@ -1,25 +1,29 @@
 use std::{f32::consts::PI, fs::File, sync::Arc};
 
-use glam::{Affine3A, Quat, Vec3A};
+use glam::{Quat, Vec3A};
 use once_cell::sync::Lazy;
 use openxr::{self as xr, CompositionLayerFlags};
-use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
+use vulkano::{
+    command_buffer::CommandBufferUsage, image::view::ImageView,
+    pipeline::graphics::color_blend::AttachmentBlend,
+};
 
 use crate::{
     backend::openxr::{helpers::translation_rotation_to_posef, swapchain::SwapchainOpts},
     config_io,
-    graphics::{dds::WlxCommandBufferDds, format_is_srgb, WlxCommandBuffer},
+    graphics::{dds::WlxCommandBufferDds, CommandBuffers, SWAPCHAIN_FORMAT},
     state::AppState,
 };
 
 use super::{
-    swapchain::{create_swapchain_render_data, SwapchainRenderData},
+    swapchain::{create_swapchain, WlxSwapchain},
     CompositionLayer, XrState,
 };
 
 pub(super) struct Skybox {
     view: Arc<ImageView>,
-    srd: Option<(SwapchainRenderData, SwapchainRenderData)>,
+    sky: Option<WlxSwapchain>,
+    grid: Option<WlxSwapchain>,
 }
 
 impl Skybox {
@@ -66,53 +70,127 @@ impl Skybox {
 
         let view = ImageView::new_default(maybe_image.unwrap())?; // safe unwrap
 
-        Ok(Self { view, srd: None })
+        Ok(Self {
+            view,
+            sky: None,
+            grid: None,
+        })
     }
 
-    pub(super) fn present_xr<'a>(
+    fn prepare_sky<'a>(
         &'a mut self,
         xr: &'a XrState,
-        hmd: Affine3A,
-        command_buffer: &mut WlxCommandBuffer,
-    ) -> anyhow::Result<Vec<CompositionLayer<'a>>> {
-        let (sky_image, grid_image) = if let Some((ref mut srd_sky, ref mut srd_grid)) = self.srd {
-            (srd_sky.present_last()?, srd_grid.present_last()?)
-        } else {
-            log::debug!("Render skybox.");
+        app: &AppState,
+        buf: &mut CommandBuffers,
+    ) -> anyhow::Result<()> {
+        if self.sky.is_some() {
+            return Ok(());
+        }
+        let opts = SwapchainOpts::new().immutable();
 
-            let mut opts = SwapchainOpts::new().immutable();
-            opts.srgb = format_is_srgb(self.view.image().format());
-
-            let srd_sky = create_swapchain_render_data(
-                xr,
-                command_buffer.graphics.clone(),
-                self.view.image().extent(),
-                opts,
-            )?;
-
-            let srd_grid = create_swapchain_render_data(
-                xr,
-                command_buffer.graphics.clone(),
-                [1024, 1024, 1],
-                SwapchainOpts::new().immutable().grid(),
-            )?;
-
-            self.srd = Some((srd_sky, srd_grid));
-
-            let (srd_sky, srd_grid) = self.srd.as_mut().unwrap(); // safe unwrap
-
-            (
-                srd_sky.acquire_present_release(command_buffer, self.view.clone(), 1.0)?,
-                srd_grid.acquire_compute_release(command_buffer)?,
-            )
+        let Ok(shaders) = app.graphics.shared_shaders.read() else {
+            anyhow::bail!("Failed to lock shared shaders for reading");
         };
+
+        let extent = self.view.image().extent();
+        let mut swapchain = create_swapchain(xr, app.graphics.clone(), extent, opts)?;
+        let tgt = swapchain.acquire_wait_image()?;
+        let pipeline = app.graphics.create_pipeline(
+            shaders.get("vert_common").unwrap().clone(), // want panic
+            shaders.get("frag_srgb").unwrap().clone(),   // want panic
+            SWAPCHAIN_FORMAT,
+            None,
+        )?;
+
+        let set0 =
+            pipeline.uniform_sampler(0, self.view.clone(), app.graphics.texture_filtering)?;
+
+        let set1 = pipeline.uniform_buffer(1, vec![1f32])?;
+
+        let pass = pipeline.create_pass_for_target(tgt.clone(), vec![set0, set1])?;
+
+        let mut cmd_buffer = app
+            .graphics
+            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+        cmd_buffer.begin_rendering(tgt)?;
+        cmd_buffer.run_ref(&pass)?;
+        cmd_buffer.end_rendering()?;
+
+        buf.push(cmd_buffer.build()?);
+
+        self.sky = Some(swapchain);
+        Ok(())
+    }
+
+    fn prepare_grid<'a>(
+        &'a mut self,
+        xr: &'a XrState,
+        app: &AppState,
+        buf: &mut CommandBuffers,
+    ) -> anyhow::Result<()> {
+        if self.grid.is_some() {
+            return Ok(());
+        }
+        let Ok(shaders) = app.graphics.shared_shaders.read() else {
+            anyhow::bail!("Failed to lock shared shaders for reading");
+        };
+
+        let extent = [1024, 1024, 1];
+        let mut swapchain = create_swapchain(
+            xr,
+            app.graphics.clone(),
+            extent,
+            SwapchainOpts::new().immutable(),
+        )?;
+        let pipeline = app.graphics.create_pipeline(
+            shaders.get("vert_common").unwrap().clone(), // want panic
+            shaders.get("frag_grid").unwrap().clone(),   // want panic
+            SWAPCHAIN_FORMAT,
+            Some(AttachmentBlend::alpha()),
+        )?;
+
+        let tgt = swapchain.acquire_wait_image()?;
+        let pass = pipeline.create_pass_for_target(tgt.clone(), vec![])?;
+
+        let mut cmd_buffer = app
+            .graphics
+            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+        cmd_buffer.begin_rendering(tgt)?;
+        cmd_buffer.run_ref(&pass)?;
+        cmd_buffer.end_rendering()?;
+
+        buf.push(cmd_buffer.build()?);
+
+        self.grid = Some(swapchain);
+        Ok(())
+    }
+
+    pub(super) fn render(
+        &mut self,
+        xr: &XrState,
+        app: &AppState,
+        buf: &mut CommandBuffers,
+    ) -> anyhow::Result<()> {
+        self.prepare_sky(xr, app, buf)?;
+        self.prepare_grid(xr, app, buf)?;
+        Ok(())
+    }
+
+    pub(super) fn present<'a>(
+        &'a mut self,
+        xr: &'a XrState,
+        app: &AppState,
+    ) -> anyhow::Result<Vec<CompositionLayer<'a>>> {
+        static GRID_POSE: Lazy<xr::Posef> = Lazy::new(|| {
+            translation_rotation_to_posef(Vec3A::ZERO, Quat::from_rotation_x(PI * -0.5))
+        });
 
         let pose = xr::Posef {
             orientation: xr::Quaternionf::IDENTITY,
             position: xr::Vector3f {
-                x: hmd.translation.x,
-                y: hmd.translation.y,
-                z: hmd.translation.z,
+                x: app.input_state.hmd.translation.x,
+                y: app.input_state.hmd.translation.y,
+                z: app.input_state.hmd.translation.z,
             },
         };
 
@@ -121,25 +199,20 @@ impl Skybox {
         const HI_VERT_ANGLE: f32 = 0.5 * PI;
         const LO_VERT_ANGLE: f32 = -0.5 * PI;
 
-        let mut layers = vec![];
+        self.sky.as_mut().unwrap().ensure_image_released()?;
 
         let sky = xr::CompositionLayerEquirect2KHR::new()
             .layer_flags(CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA)
             .pose(pose)
             .radius(10.0)
-            .sub_image(sky_image)
+            .sub_image(self.sky.as_ref().unwrap().get_subimage())
             .eye_visibility(xr::EyeVisibility::BOTH)
             .space(&xr.stage)
             .central_horizontal_angle(HORIZ_ANGLE)
             .upper_vertical_angle(HI_VERT_ANGLE)
             .lower_vertical_angle(LO_VERT_ANGLE);
 
-        layers.push(CompositionLayer::Equirect2(sky));
-
-        static GRID_POSE: Lazy<xr::Posef> = Lazy::new(|| {
-            translation_rotation_to_posef(Vec3A::ZERO, Quat::from_rotation_x(PI * -0.5))
-        });
-
+        self.grid.as_mut().unwrap().ensure_image_released()?;
         let grid = xr::CompositionLayerQuad::new()
             .layer_flags(CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA)
             .pose(*GRID_POSE)
@@ -147,13 +220,14 @@ impl Skybox {
                 width: 10.0,
                 height: 10.0,
             })
-            .sub_image(grid_image)
+            .sub_image(self.grid.as_ref().unwrap().get_subimage())
             .eye_visibility(xr::EyeVisibility::BOTH)
             .space(&xr.stage);
 
-        layers.push(CompositionLayer::Quad(grid));
-
-        Ok(layers)
+        Ok(vec![
+            CompositionLayer::Equirect2(sky),
+            CompositionLayer::Quad(grid),
+        ])
     }
 }
 

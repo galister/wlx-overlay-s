@@ -4,17 +4,19 @@ use std::{
 };
 
 use futures::{Future, FutureExt};
+use vulkano::image::view::ImageView;
 use wlx_capture::pipewire::{pipewire_select_screen, PipewireCapture, PipewireSelectScreenResult};
 
 use crate::{
     backend::{
         common::OverlaySelector,
         overlay::{
-            ui_transform, FrameTransform, OverlayBackend, OverlayRenderer, OverlayState,
+            ui_transform, FrameMeta, OverlayBackend, OverlayRenderer, OverlayState, ShouldRender,
             SplitOverlayBackend,
         },
         task::TaskType,
     },
+    graphics::CommandBuffers,
     state::{AppSession, AppState},
 };
 
@@ -45,7 +47,19 @@ impl OverlayRenderer for MirrorRenderer {
     fn init(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
         Ok(())
     }
-    fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
+    fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
+        self.renderer
+            .as_mut()
+            .map(|r| r.should_render(app))
+            .unwrap_or(Ok(ShouldRender::Unable))
+    }
+    fn render(
+        &mut self,
+        app: &mut AppState,
+        tgt: Arc<ImageView>,
+        buf: &mut CommandBuffers,
+        alpha: f32,
+    ) -> anyhow::Result<bool> {
         if let Some(mut selector) = self.selector.take() {
             let maybe_pw_result = match selector
                 .poll_unpin(&mut Context::from_waker(futures::task::noop_waker_ref()))
@@ -53,7 +67,7 @@ impl OverlayRenderer for MirrorRenderer {
                 Poll::Ready(result) => result,
                 Poll::Pending => {
                     self.selector = Some(selector);
-                    return Ok(());
+                    return Ok(false);
                 }
             };
 
@@ -87,10 +101,11 @@ impl OverlayRenderer for MirrorRenderer {
             }
         }
 
+        let mut result = false;
         if let Some(renderer) = self.renderer.as_mut() {
-            renderer.render(app)?;
-            if let Some(view) = renderer.view() {
-                let extent = view.image().extent();
+            result = renderer.render(app, tgt, buf, alpha)?;
+            if let Some(meta) = renderer.frame_meta() {
+                let extent = meta.extent;
                 if self.last_extent != extent {
                     self.last_extent = extent;
                     // resized
@@ -104,7 +119,7 @@ impl OverlayRenderer for MirrorRenderer {
             }
         }
 
-        Ok(())
+        Ok(result)
     }
     fn pause(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         if let Some(renderer) = self.renderer.as_mut() {
@@ -118,12 +133,9 @@ impl OverlayRenderer for MirrorRenderer {
         }
         Ok(())
     }
-    fn view(&mut self) -> Option<std::sync::Arc<vulkano::image::view::ImageView>> {
-        self.renderer.as_mut().and_then(|r| r.view())
-    }
 
-    fn frame_transform(&mut self) -> Option<FrameTransform> {
-        Some(FrameTransform {
+    fn frame_meta(&mut self) -> Option<FrameMeta> {
+        Some(FrameMeta {
             extent: self.last_extent,
             ..Default::default()
         })

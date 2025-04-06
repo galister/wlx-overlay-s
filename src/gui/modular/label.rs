@@ -127,7 +127,7 @@ pub fn modular_label_init(label: &mut ModularControl, content: &LabelContent, ap
         }
         LabelContent::Timezone { timezone } => {
             if let Some(tz) = app.session.config.timezones.get(*timezone) {
-                let pretty_tz = tz.split('/').last().map(|x| x.replace("_", " "));
+                let pretty_tz = tz.split('/').next_back().map(|x| x.replace("_", " "));
 
                 if let Some(pretty_tz) = pretty_tz {
                     label.set_text(&pretty_tz);

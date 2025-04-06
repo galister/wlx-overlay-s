@@ -475,7 +475,7 @@ fn is_bool(maybe_type_str: &Option<String>) -> bool {
         .as_ref()
         .unwrap() // want panic
         .split('/')
-        .last()
+        .next_back()
         .map(|last| matches!(last, "click" | "touch"))
         .unwrap_or(false)
 }

@@ -110,7 +110,6 @@ impl Toast {
             ),
             instant,
         );
-
     }
 }
 
@@ -140,13 +139,13 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
         }
     };
 
-    let title = if toast.title.len() > 0 {
+    let title = if !toast.title.is_empty() {
         toast.title
     } else {
         "Notification".into()
     };
 
-    let mut size = if toast.body.len() > 0 {
+    let mut size = if !toast.body.is_empty() {
         let (w0, _) = app
             .fc
             .get_text_size(&title, FONT_SIZE, app.graphics.clone())
@@ -181,7 +180,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
     canvas.bg_color = color_parse("#1e2030").unwrap(); // want panic
     canvas.panel(0., 0., size.0, size.1, 16.);
 
-    if toast.body.len() > 0 {
+    if !toast.body.is_empty() {
         canvas.label(PADDING.0, 54., og_width, size.1 - 54., 3., toast.body);
 
         canvas.fg_color = color_parse("#b8c0e0").unwrap(); // want panic

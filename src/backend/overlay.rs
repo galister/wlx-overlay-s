@@ -9,10 +9,11 @@ use std::{
 use anyhow::Ok;
 use glam::{Affine2, Affine3A, Mat3A, Quat, Vec2, Vec3, Vec3A};
 use serde::Deserialize;
-use vulkano::image::view::ImageView;
+use vulkano::{format::Format, image::view::ImageView};
 
 use crate::{
     config::AStrMapExt,
+    graphics::CommandBuffers,
     state::{AppState, KeyboardFocus},
 };
 
@@ -234,14 +235,20 @@ where
         }
         self.backend.init(app)
     }
-    pub fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        self.backend.render(app)
+    pub fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
+        self.backend.should_render(app)
     }
-    pub fn view(&mut self) -> Option<Arc<ImageView>> {
-        self.backend.view()
+    pub fn render(
+        &mut self,
+        app: &mut AppState,
+        tgt: Arc<ImageView>,
+        buf: &mut CommandBuffers,
+        alpha: f32,
+    ) -> anyhow::Result<bool> {
+        self.backend.render(app, tgt, buf, alpha)
     }
-    pub fn frame_transform(&mut self) -> Option<FrameTransform> {
-        self.backend.frame_transform()
+    pub fn frame_meta(&mut self) -> Option<FrameMeta> {
+        self.backend.frame_meta()
     }
     pub fn set_visible(&mut self, app: &mut AppState, visible: bool) -> anyhow::Result<()> {
         let old_visible = self.state.want_visible;
@@ -257,10 +264,17 @@ where
     }
 }
 
-#[derive(Default)]
-pub struct FrameTransform {
+#[derive(Default, Clone, Copy)]
+pub struct FrameMeta {
     pub extent: [u32; 3],
     pub transform: Affine3A,
+    pub format: Format,
+}
+
+pub enum ShouldRender {
+    Should,
+    Can,
+    Unable,
 }
 
 pub trait OverlayRenderer {
@@ -268,15 +282,24 @@ pub trait OverlayRenderer {
     fn init(&mut self, app: &mut AppState) -> anyhow::Result<()>;
     fn pause(&mut self, app: &mut AppState) -> anyhow::Result<()>;
     fn resume(&mut self, app: &mut AppState) -> anyhow::Result<()>;
+
     /// Called when the presentation layer is ready to present a new frame
-    fn render(&mut self, app: &mut AppState) -> anyhow::Result<()>;
-    /// Called to retrieve the current image to be displayed
-    fn view(&mut self) -> Option<Arc<ImageView>>;
+    fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender>;
+
+    /// Called when the contents need to be rendered to the swapchain
+    fn render(
+        &mut self,
+        app: &mut AppState,
+        tgt: Arc<ImageView>,
+        buf: &mut CommandBuffers,
+        alpha: f32,
+    ) -> anyhow::Result<bool>;
+
     /// Called to retrieve the effective extent of the image
     /// Used for creating swapchains.
     ///
-    /// Muse not be None if view() is also not None
-    fn frame_transform(&mut self) -> Option<FrameTransform>;
+    /// Must be true if should_render was also true on the same frame.
+    fn frame_meta(&mut self) -> Option<FrameMeta>;
 }
 
 pub struct FallbackRenderer;
@@ -291,13 +314,19 @@ impl OverlayRenderer for FallbackRenderer {
     fn resume(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
         Ok(())
     }
-    fn render(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
-        Ok(())
+    fn should_render(&mut self, _app: &mut AppState) -> anyhow::Result<ShouldRender> {
+        Ok(ShouldRender::Unable)
     }
-    fn view(&mut self) -> Option<Arc<ImageView>> {
-        None
+    fn render(
+        &mut self,
+        _app: &mut AppState,
+        _tgt: Arc<ImageView>,
+        _buf: &mut CommandBuffers,
+        _alpha: f32,
+    ) -> anyhow::Result<bool> {
+        Ok(false)
     }
-    fn frame_transform(&mut self) -> Option<FrameTransform> {
+    fn frame_meta(&mut self) -> Option<FrameMeta> {
         None
     }
 }
@@ -348,16 +377,23 @@ impl OverlayRenderer for SplitOverlayBackend {
     fn resume(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         self.renderer.resume(app)
     }
-    fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        self.renderer.render(app)
+    fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
+        self.renderer.should_render(app)
     }
-    fn view(&mut self) -> Option<Arc<ImageView>> {
-        self.renderer.view()
+    fn render(
+        &mut self,
+        app: &mut AppState,
+        tgt: Arc<ImageView>,
+        buf: &mut CommandBuffers,
+        alpha: f32,
+    ) -> anyhow::Result<bool> {
+        self.renderer.render(app, tgt, buf, alpha)
     }
-    fn frame_transform(&mut self) -> Option<FrameTransform> {
-        self.renderer.frame_transform()
+    fn frame_meta(&mut self) -> Option<FrameMeta> {
+        self.renderer.frame_meta()
     }
 }
+
 impl InteractionHandler for SplitOverlayBackend {
     fn on_left(&mut self, app: &mut AppState, pointer: usize) {
         self.interaction.on_left(app, pointer);
