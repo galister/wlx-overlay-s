@@ -17,7 +17,7 @@ categories = ["games"]
 
 [dependencies]
 anyhow = "1.0.89"
-ash = "^0.37.2" # must match vulkano
+ash = "^0.38.0" # must match vulkano
 chrono = "0.4.38"
 chrono-tz = "0.10.0"
 clap = { version = "4.5.6", features = ["derive"] }
@@ -58,8 +58,8 @@ smallvec = "1.13.2"
 strum = { version = "0.27.1", features = ["derive"] }
 sysinfo = { version = "0.34.2" }
 thiserror = "2.0.3"
-vulkano = { git = "https://github.com/vulkano-rs/vulkano", rev = "94f50f1" }
-vulkano-shaders = { git = "https://github.com/vulkano-rs/vulkano", rev = "94f50f1" }
+vulkano = { version = "0.35.1" }
+vulkano-shaders = { version = "0.35.0" }
 wlx-capture = { git = "https://github.com/galister/wlx-capture", tag = "v0.5.0", default-features = false }
 libmonado = { git = "https://github.com/technobaboo/libmonado-rs", rev = "256895b18c8f9368174fad8a6232ff07764eeacb", optional = true }
 winit = { version = "0.30.0", optional = true }
