@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use super::egl_ex;
 use anyhow::anyhow;
-use smithay::backend::egl::ffi::egl::types::EGLBoolean;
 
 #[derive(Debug)]
 pub struct EGLData {
@@ -135,7 +134,7 @@ impl EGLData {
                 &mut num_formats,
             );
 
-            // Retrieve format list
+            // Retrieve formt list
             let mut formats: Vec<i32> = vec![0; num_formats as usize];
             egl_query_dmabuf_formats_ext(
                 self.display.as_ptr(),
@@ -179,24 +178,23 @@ impl EGLData {
             }
 
             let mut mods: Vec<u64> = vec![0; num_mods as usize];
-            let mut external: Vec<EGLBoolean> = vec![2; num_mods as usize];
             egl_query_dmabuf_modifiers_ext(
                 self.display.as_ptr(),
                 target_fourcc,
                 num_mods,
                 mods.as_mut_ptr(),
-                external.as_mut_ptr(),
+                std::ptr::null_mut(),
                 &mut num_mods,
             );
 
-            /*if mods[0] == 0xFFFF_FFFF_FFFF_FFFF {
+            if mods[0] == 0xFFFF_FFFF_FFFF_FFFF {
                 anyhow::bail!("modifier is -1")
             }
 
-            /*log::error!("Modifier list:");
+            log::trace!("Modifier list:");
             for modifier in &mods {
-                log::error!("{modifier:#x}");
-            }*/
+                log::trace!("{modifier:#x}");
+            }
 
             // We should not change these modifier values. Passing all of them to the Vulkan dmabuf
             // texture system causes significant graphical corruption due to invalid memory layout and
@@ -215,19 +213,10 @@ impl EGLData {
                     mods = vec![*modifier, 0x0 /* also important (???) */];
                     break;
                 }
-            }*/
-
-            let mods_filtered: Vec<u64> = mods
-                .into_iter()
-                .zip(external)
-                .map(|(modifier, external)| {
-                    log::info!("modifier {modifier}, external {external}");
-                    modifier
-                })
-                .collect();
+            }
 
             Ok(DMAbufModifierInfo {
-                modifiers: mods_filtered,
+                modifiers: mods,
                 fourcc: target_fourcc as u32,
             })
         }
