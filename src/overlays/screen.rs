@@ -537,7 +537,7 @@ impl OverlayRenderer for ScreenRenderer {
             };
 
             self.capture
-                .init(&dmabuf_formats, user_data, receive_callback);
+                .init(dmabuf_formats, user_data, receive_callback);
             self.capture.request_new_frame();
             return Ok(ShouldRender::Unable);
         }
