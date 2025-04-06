@@ -240,11 +240,13 @@ impl ScreenPipeline {
                 .pipeline
                 .uniform_sampler(0, mouse_view, Filter::Nearest)?;
 
+            let set1 = self.pipeline.uniform_buffer(1, vec![alpha])?;
+
             let pass = self.pipeline.create_pass(
                 self.extentf,
                 vertex_buffer,
                 app.graphics.quad_indices.clone(),
-                vec![set0],
+                vec![set0, set1],
             )?;
 
             cmd.run_ref(&pass)?;
