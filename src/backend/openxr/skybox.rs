@@ -33,7 +33,7 @@ impl Skybox {
     pub fn new(app: &AppState) -> anyhow::Result<Self> {
         let mut command_buffer = app
             .graphics
-            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+            .create_uploads_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
 
         let mut maybe_image = None;
 

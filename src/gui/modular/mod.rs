@@ -554,7 +554,7 @@ fn sprite_from_path(path: Arc<str>, app: &mut AppState) -> anyhow::Result<Arc<Im
 
     let mut command_buffer = app
         .graphics
-        .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+        .create_uploads_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
 
     match command_buffer.texture2d_dds(f) {
         Ok(image) => {

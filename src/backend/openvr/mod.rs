@@ -357,7 +357,7 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
 
         log::trace!("Rendering overlays");
 
-        if let Some(mut future) = buffers.execute_now(state.graphics.queue.clone())? {
+        if let Some(mut future) = buffers.execute_now(state.graphics.graphics_queue.clone())? {
             if let Err(e) = future.flush() {
                 return Err(BackendError::Fatal(e.into()));
             }

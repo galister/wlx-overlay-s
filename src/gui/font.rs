@@ -5,7 +5,7 @@ use freetype::{bitmap::PixelMode, face::LoadFlag, Face, Library};
 use idmap::IdMap;
 use vulkano::{command_buffer::CommandBufferUsage, format::Format, image::Image};
 
-use crate::graphics::{WlxCommandBuffer, WlxGraphics};
+use crate::graphics::{WlxGraphics, WlxUploadsBuffer};
 
 pub struct FontCache {
     primary_font: Arc<str>,
@@ -202,7 +202,7 @@ impl FontCache {
         cp: usize,
         size: isize,
         graphics: Arc<WlxGraphics>,
-        cmd_buffer: &mut Option<WlxCommandBuffer>,
+        cmd_buffer: &mut Option<WlxUploadsBuffer>,
     ) -> anyhow::Result<Rc<Glyph>> {
         let key = self.get_font_for_cp(cp, size);
 
@@ -240,7 +240,8 @@ impl FontCache {
         };
 
         if cmd_buffer.is_none() {
-            *cmd_buffer = Some(graphics.create_command_buffer(CommandBufferUsage::OneTimeSubmit)?);
+            *cmd_buffer =
+                Some(graphics.create_uploads_command_buffer(CommandBufferUsage::OneTimeSubmit)?);
         }
 
         let texture = cmd_buffer.as_mut().unwrap().texture2d_raw(
