@@ -17,28 +17,26 @@ use vulkano::{device::physical::PhysicalDeviceType, instance::InstanceCreateFlag
 #[cfg(feature = "openxr")]
 use {ash::vk, std::os::raw::c_void};
 
-pub type Vert2Buf = Subbuffer<[Vert2Uv]>;
-pub type IndexBuf = Subbuffer<[u16]>;
-
 use vulkano::{
     buffer::{
         allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo},
-        Buffer, BufferContents, BufferCreateInfo, BufferUsage, Subbuffer,
+        Buffer, BufferContents, BufferCreateInfo, BufferUsage, IndexBuffer, Subbuffer,
     },
     command_buffer::{
         allocator::{StandardCommandBufferAllocator, StandardCommandBufferAllocatorCreateInfo},
-        sys::{CommandBufferBeginInfo, RawRecordingCommandBuffer},
-        CommandBuffer, CommandBufferExecFuture, CommandBufferInheritanceInfo,
-        CommandBufferInheritanceRenderPassType, CommandBufferInheritanceRenderingInfo,
-        CommandBufferLevel, CommandBufferUsage, CopyBufferToImageInfo, RecordingCommandBuffer,
-        RenderingAttachmentInfo, RenderingInfo, SubpassContents,
+        AutoCommandBufferBuilder, CommandBufferBeginInfo, CommandBufferExecFuture,
+        CommandBufferInheritanceInfo, CommandBufferInheritanceRenderPassType,
+        CommandBufferInheritanceRenderingInfo, CommandBufferLevel, CommandBufferUsage,
+        CopyBufferToImageInfo, PrimaryAutoCommandBuffer, PrimaryCommandBufferAbstract,
+        RecordingCommandBuffer, RenderingAttachmentInfo, RenderingInfo, SecondaryAutoCommandBuffer,
+        SubpassContents,
     },
     descriptor_set::{
         allocator::StandardDescriptorSetAllocator, DescriptorSet, WriteDescriptorSet,
     },
     device::{
-        physical::PhysicalDevice, Device, DeviceCreateInfo, DeviceExtensions, Features, Queue,
-        QueueCreateInfo, QueueFlags,
+        physical::PhysicalDevice, Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures,
+        Queue, QueueCreateInfo, QueueFlags,
     },
     format::Format,
     image::{
@@ -85,6 +83,9 @@ use wlx_capture::frame::{
     DmabufFrame, FourCC, DRM_FORMAT_ABGR2101010, DRM_FORMAT_ABGR8888, DRM_FORMAT_ARGB8888,
     DRM_FORMAT_XBGR2101010, DRM_FORMAT_XBGR8888, DRM_FORMAT_XRGB8888,
 };
+
+pub type Vert2Buf = Subbuffer<[Vert2Uv]>;
+pub type IndexBuf = IndexBuffer;
 
 pub const DRM_FORMAT_MOD_INVALID: u64 = 0xff_ffff_ffff_ffff;
 
@@ -162,7 +163,6 @@ impl WlxGraphics {
     ) -> anyhow::Result<Arc<Self>> {
         use std::ffi::{self, CString};
 
-        use ash::vk::PhysicalDeviceDynamicRenderingFeatures;
         use vulkano::{
             descriptor_set::allocator::StandardDescriptorSetAllocatorCreateInfo, Handle, Version,
         };
@@ -188,7 +188,7 @@ impl WlxGraphics {
         let target_version = vulkano::Version::V1_3;
         let library = get_vulkan_library();
 
-        let vk_app_info_raw = vk::ApplicationInfo::builder()
+        let vk_app_info_raw = vk::ApplicationInfo::default()
             .application_version(0)
             .engine_version(0)
             .api_version(vk_target_version);
@@ -199,7 +199,7 @@ impl WlxGraphics {
                     system,
                     get_instance_proc_addr,
                     std::ptr::from_ref(
-                        &vk::InstanceCreateInfo::builder()
+                        &vk::InstanceCreateInfo::default()
                             .application_info(&vk_app_info_raw)
                             .enabled_extension_names(&instance_extensions_raw),
                     )
@@ -279,25 +279,23 @@ impl WlxGraphics {
             })
             .collect::<Vec<_>>();
 
-        let features = Features {
+        let features = DeviceFeatures {
             dynamic_rendering: true,
             ..Default::default()
         };
 
         let queue_priorities = [1.0];
 
-        let queue_create_infos = [vk::DeviceQueueCreateInfo::builder()
+        let queue_create_infos = [vk::DeviceQueueCreateInfo::default()
             .queue_family_index(queue_family_index)
-            .queue_priorities(&queue_priorities)
-            .build()];
+            .queue_priorities(&queue_priorities)];
 
-        let mut device_create_info = vk::DeviceCreateInfo::builder()
+        let mut device_create_info = vk::DeviceCreateInfo::default()
             .queue_create_infos(&queue_create_infos)
-            .enabled_extension_names(&device_extensions_raw)
-            .build();
+            .enabled_extension_names(&device_extensions_raw);
 
         let mut dynamic_rendering =
-            PhysicalDeviceDynamicRenderingFeatures::builder().dynamic_rendering(true);
+            vk::PhysicalDeviceDynamicRenderingFeatures::default().dynamic_rendering(true);
 
         dynamic_rendering.p_next = device_create_info.p_next.cast_mut();
         device_create_info.p_next = &raw mut dynamic_rendering as *const c_void;
@@ -485,9 +483,9 @@ impl WlxGraphics {
             physical_device,
             DeviceCreateInfo {
                 enabled_extensions: my_extensions,
-                enabled_features: Features {
+                enabled_features: DeviceFeatures {
                     dynamic_rendering: true,
-                    ..Features::empty()
+                    ..DeviceFeatures::empty()
                 },
                 queue_create_infos: vec![QueueCreateInfo {
                     queue_family_index,
@@ -630,9 +628,9 @@ impl WlxGraphics {
             physical_device,
             DeviceCreateInfo {
                 enabled_extensions: my_extensions,
-                enabled_features: Features {
+                enabled_features: DeviceFeatures {
                     dynamic_rendering: true,
-                    ..Features::empty()
+                    ..DeviceFeatures::empty()
                 },
                 queue_create_infos: vec![QueueCreateInfo {
                     queue_family_index,
@@ -733,7 +731,7 @@ impl WlxGraphics {
             INDICES.iter().copied(),
         )?;
 
-        Ok((quad_verts, quad_indices))
+        Ok((quad_verts, IndexBuffer::U16(quad_indices)))
     }
 
     pub fn upload_verts(
@@ -944,15 +942,10 @@ impl WlxGraphics {
         self: &Arc<Self>,
         usage: CommandBufferUsage,
     ) -> anyhow::Result<WlxCommandBuffer> {
-        let command_buffer = RecordingCommandBuffer::new(
+        let command_buffer = AutoCommandBufferBuilder::primary(
             self.command_buffer_allocator.clone(),
             self.queue.queue_family_index(),
-            CommandBufferLevel::Primary,
-            CommandBufferBeginInfo {
-                usage,
-                inheritance_info: None,
-                ..Default::default()
-            },
+            usage,
         )?;
         Ok(WlxCommandBuffer {
             graphics: self.clone(),
@@ -978,7 +971,7 @@ impl WlxGraphics {
         };
 
         let command_buffer = unsafe {
-            let mut builder = RawRecordingCommandBuffer::new(
+            let mut builder = RecordingCommandBuffer::new(
                 self.command_buffer_allocator.clone(),
                 self.queue.queue_family_index(),
                 CommandBufferLevel::Primary,
@@ -1006,10 +999,7 @@ impl WlxGraphics {
             (fns.v1_0.queue_submit)(
                 self.queue.handle(),
                 1,
-                [SubmitInfo::builder()
-                    .command_buffers(&[command_buffer.handle()])
-                    .build()]
-                .as_ptr(),
+                [SubmitInfo::default().command_buffers(&[command_buffer.handle()])].as_ptr(),
                 fence.handle(),
             )
         }
@@ -1021,7 +1011,7 @@ impl WlxGraphics {
 
 pub struct WlxCommandBuffer {
     pub graphics: Arc<WlxGraphics>,
-    pub command_buffer: RecordingCommandBuffer,
+    pub command_buffer: AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>,
 }
 
 impl WlxCommandBuffer {
@@ -1097,8 +1087,8 @@ impl WlxCommandBuffer {
         Ok(())
     }
 
-    pub fn build(self) -> anyhow::Result<Arc<CommandBuffer>> {
-        Ok(self.command_buffer.end()?)
+    pub fn build(self) -> anyhow::Result<Arc<PrimaryAutoCommandBuffer>> {
+        Ok(self.command_buffer.build()?)
     }
 
     pub fn build_and_execute(self) -> anyhow::Result<CommandBufferExecFuture<NowFuture>> {
@@ -1131,7 +1121,7 @@ impl WlxPipeline {
         let vep = vert.entry_point("main").unwrap(); // want panic
         let fep = frag.entry_point("main").unwrap(); // want panic
 
-        let vertex_input_state = Vert2Uv::per_vertex().definition(&vep.info().input_interface)?;
+        let vertex_input_state = Vert2Uv::per_vertex().definition(&vep)?;
 
         let stages = smallvec![
             vulkano::pipeline::PipelineShaderStageCreateInfo::new(vep),
@@ -1272,7 +1262,7 @@ impl WlxPipeline {
 }
 
 pub struct WlxPass {
-    pub command_buffer: Arc<CommandBuffer>,
+    pub command_buffer: Arc<SecondaryAutoCommandBuffer>,
 }
 
 impl WlxPass {
@@ -1289,21 +1279,18 @@ impl WlxPass {
             depth_range: 0.0..=1.0,
         };
         let pipeline_inner = pipeline.inner();
-        let mut command_buffer = RecordingCommandBuffer::new(
+        let mut command_buffer = AutoCommandBufferBuilder::secondary(
             pipeline.graphics.command_buffer_allocator.clone(),
             pipeline.graphics.queue.queue_family_index(),
-            CommandBufferLevel::Secondary,
-            CommandBufferBeginInfo {
-                usage: CommandBufferUsage::MultipleSubmit,
-                inheritance_info: Some(CommandBufferInheritanceInfo {
-                    render_pass: Some(CommandBufferInheritanceRenderPassType::BeginRendering(
-                        CommandBufferInheritanceRenderingInfo {
-                            color_attachment_formats: vec![Some(pipeline.format)],
-                            ..Default::default()
-                        },
-                    )),
-                    ..Default::default()
-                }),
+            CommandBufferUsage::MultipleSubmit,
+            CommandBufferInheritanceInfo {
+                render_pass: Some(CommandBufferInheritanceRenderPassType::BeginRendering(
+                    CommandBufferInheritanceRenderingInfo {
+                        color_attachment_formats: vec![Some(pipeline.format)],
+
+                        ..Default::default()
+                    },
+                )),
                 ..Default::default()
             },
         )?;
@@ -1324,18 +1311,18 @@ impl WlxPass {
         };
 
         Ok(Self {
-            command_buffer: command_buffer.end()?,
+            command_buffer: command_buffer.build()?,
         })
     }
 }
 
 #[derive(Default)]
 pub struct CommandBuffers {
-    inner: Vec<Arc<CommandBuffer>>,
+    inner: Vec<Arc<PrimaryAutoCommandBuffer>>,
 }
 
 impl CommandBuffers {
-    pub fn push(&mut self, buffer: Arc<CommandBuffer>) {
+    pub fn push(&mut self, buffer: Arc<PrimaryAutoCommandBuffer>) {
         self.inner.push(buffer);
     }
     pub fn execute_now(self, queue: Arc<Queue>) -> anyhow::Result<Option<Box<dyn GpuFuture>>> {
