@@ -623,7 +623,20 @@ impl WayVRRenderer {
 
         drop(wayvr);
 
-        let tex = self.graphics.dmabuf_texture(frame)?;
+        let layouts: Vec<SubresourceLayout> = vec![SubresourceLayout {
+            offset: data.offset as _,
+            size: 0,
+            row_pitch: data.stride as _,
+            array_pitch: None,
+            depth_pitch: None,
+        }];
+
+        let tex = self.graphics.dmabuf_texture_ex(
+            frame,
+            vulkano::image::ImageTiling::DrmFormatModifier,
+            layouts,
+            &data.mod_info.modifiers,
+        )?;
 
         self.vk_image = Some(tex.clone());
         self.vk_image_view = Some(vulkano::image::view::ImageView::new_default(tex).unwrap());
