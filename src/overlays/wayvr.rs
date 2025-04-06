@@ -1,11 +1,8 @@
 use glam::{vec3a, Affine2, Vec3, Vec3A};
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
-use vulkano::{
-    command_buffer::CommandBufferUsage,
-    image::{view::ImageView, SubresourceLayout},
-};
+use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 use wayvr_ipc::packet_server::{self, PacketServer, WvrStateChanged};
-use wlx_capture::frame::{DmabufFrame, FourCC, FrameFormat, FramePlane};
+use wlx_capture::frame::{DmabufFrame, FrameFormat, FramePlane};
 
 use crate::{
     backend::{
@@ -607,26 +604,66 @@ impl WayVRRenderer {
             anyhow::bail!("Failed to fetch WayVR display")
         };
 
+        let drm_formats = &self.graphics.drm_formats;
+
+        let mut drm_format = None;
+        for fmt in drm_formats {
+            if fmt.fourcc.value == 0x3432_4258
+            /* XB24 */
+            {
+                drm_format = Some(fmt);
+                log::info!("format fourcc {} mod {:?}", fmt.fourcc.value, fmt.modifiers);
+                break;
+            }
+        }
+
+        let Some(drm_format) = drm_format else {
+            anyhow::bail!("Couldn't find XB24 dmabuf format");
+        };
+
+        let tex = self.graphics.dmabuf_texture(DmabufFrame {
+            format: FrameFormat {
+                width: u32::from(disp.width),
+                height: u32::from(disp.height),
+                fourcc: drm_format.fourcc,
+                modifier: drm_format.modifiers[1], /* FIXME !!!!!!!!!!!!!!!!!!!!!!!!!!! */
+                ..Default::default()
+            },
+            num_planes: 1,
+            planes,
+        })?;
+
+        /*let layouts: Vec<SubresourceLayout> = vec![SubresourceLayout {
+            offset: data.offset as _,
+            size: 0,
+            row_pitch: data.stride as _,
+            array_pitch: None,
+            depth_pitch: None,
+        }];
+
         let frame = DmabufFrame {
             format: FrameFormat {
                 width: u32::from(disp.width),
                 height: u32::from(disp.height),
-                fourcc: FourCC {
-                    value: data.mod_info.fourcc,
-                },
-                modifier: data.mod_info.modifiers[0], /* possibly not proper? */
+                fourcc: drm_format.fourcc,
+                modifier: DRM_FORMAT_MOD_INVALID, /* possibly not proper? */
                 ..Default::default()
             },
             num_planes: 1,
             planes,
         };
 
+        let tex = self.graphics.dmabuf_texture_ex(
+            frame,
+            vulkano::image::ImageTiling::DrmFormatModifier,
+            layouts,
+            &data.mod_info.modifiers,
+        )?;*/
+
         drop(wayvr);
 
-        let tex = self.graphics.dmabuf_texture(frame)?;
-
         self.vk_image = Some(tex.clone());
-        self.vk_image_view = Some(vulkano::image::view::ImageView::new_default(tex).unwrap());
+        self.vk_image_view = Some(vulkano::image::view::ImageView::new_default(tex)?);
         Ok(())
     }
 }
