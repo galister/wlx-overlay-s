@@ -22,7 +22,6 @@ chrono = "0.4.38"
 chrono-tz = "0.10.0"
 clap = { version = "4.5.6", features = ["derive"] }
 config = "0.15.11"
-cstr = "0.2.12"
 ctrlc = { version = "3.4.4", features = ["termination"] }
 dbus = { version = "0.9.7" }
 fontconfig-rs = "0.1.1"
