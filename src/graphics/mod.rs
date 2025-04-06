@@ -1,4 +1,5 @@
 pub mod dds;
+pub mod dmabuf;
 
 use std::{
     collections::HashMap,
@@ -9,6 +10,7 @@ use std::{
 
 use anyhow::{anyhow, bail};
 use ash::vk::SubmitInfo;
+use dmabuf::create_dmabuf_image;
 use smallvec::smallvec;
 
 #[cfg(feature = "openvr")]
@@ -41,7 +43,6 @@ use vulkano::{
     format::Format,
     image::{
         sampler::{Filter, Sampler, SamplerAddressMode, SamplerCreateInfo},
-        sys::RawImage,
         view::ImageView,
         Image, ImageCreateInfo, ImageLayout, ImageTiling, ImageType, ImageUsage, SubresourceLayout,
     },
@@ -912,7 +913,7 @@ impl WlxGraphics {
         final_formats
     }
 
-    fn dmabuf_texture_ex(
+    pub fn dmabuf_texture_ex(
         &self,
         frame: DmabufFrame,
         tiling: ImageTiling,
@@ -922,19 +923,21 @@ impl WlxGraphics {
         let extent = [frame.format.width, frame.format.height, 1];
         let format = fourcc_to_vk(frame.format.fourcc)?;
 
-        let image = RawImage::new(
-            self.device.clone(),
-            ImageCreateInfo {
-                format,
-                extent,
-                usage: ImageUsage::SAMPLED,
-                external_memory_handle_types: ExternalMemoryHandleTypes::DMA_BUF,
-                tiling,
-                drm_format_modifiers: modifiers.to_owned(),
-                drm_format_modifier_plane_layouts: layouts,
-                ..Default::default()
-            },
-        )?;
+        let image = unsafe {
+            create_dmabuf_image(
+                self.device.clone(),
+                ImageCreateInfo {
+                    format,
+                    extent,
+                    usage: ImageUsage::SAMPLED,
+                    external_memory_handle_types: ExternalMemoryHandleTypes::DMA_BUF,
+                    tiling,
+                    drm_format_modifiers: modifiers.to_owned(),
+                    drm_format_modifier_plane_layouts: layouts,
+                    ..Default::default()
+                },
+            )?
+        };
 
         let requirements = image.memory_requirements()[0];
         let memory_type_index = self
