@@ -99,12 +99,11 @@ impl From<OVRError> for BackendError {
     }
 }
 
-use cstr::cstr;
-const STEAMVR_SECTION: &CStr = cstr!("steamvr");
+const STEAMVR_SECTION: &CStr = c"steamvr";
 const COLOR_GAIN_CSTR: [&CStr; 3] = [
-    cstr!("hmdDisplayColorGainR"),
-    cstr!("hmdDisplayColorGainG"),
-    cstr!("hmdDisplayColorGainB"),
+    c"hmdDisplayColorGainR",
+    c"hmdDisplayColorGainG",
+    c"hmdDisplayColorGainB",
 ];
 
 pub(super) fn adjust_gain(
