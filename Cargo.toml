@@ -11,18 +11,18 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.89"
-ash = "^0.37.2"
+ash = "^0.37.2" # must match vulkano
 chrono = "0.4.38"
 chrono-tz = "0.10.0"
 clap = { version = "4.5.6", features = ["derive"] }
-config = "0.14.0"
+config = "0.15.11"
 cstr = "0.2.12"
 ctrlc = { version = "3.4.4", features = ["termination"] }
 dbus = { version = "0.9.7" }
 fontconfig-rs = "0.1.1"
 freetype-rs = "0.36.0" # latest version supported on ubuntu 22.04
 futures = "0.3.30"
-glam = { version = "0.29.2", features = ["approx", "mint", "serde"] }
+glam = { version = "0.30.1", features = ["approx", "mint", "serde"] }
 idmap = { version = "0.2.21", features = ["serde"] }
 idmap-derive = "0.1.2"
 input-linux = "0.7.0"
@@ -44,13 +44,13 @@ rodio = { version = "0.20.1", default-features = false, features = [
   "wav",
   "hound",
 ] }
-rosc = { version = "0.10.1", optional = true }
+rosc = { version = "0.11.4", optional = true }
 serde = { version = "1.0.203", features = ["derive", "rc"] }
 serde_json = "1.0.117"
 serde_yaml = "0.9.34"
 smallvec = "1.13.2"
-strum = { version = "0.26.2", features = ["derive"] }
-sysinfo = { version = "0.32.0" }
+strum = { version = "0.27.1", features = ["derive"] }
+sysinfo = { version = "0.34.2" }
 thiserror = "2.0.3"
 vulkano = { git = "https://github.com/vulkano-rs/vulkano", rev = "94f50f1" }
 vulkano-shaders = { git = "https://github.com/vulkano-rs/vulkano", rev = "94f50f1" }
@@ -59,12 +59,12 @@ libmonado = { git = "https://github.com/technobaboo/libmonado-rs", rev = "256895
 winit = { version = "0.30.0", optional = true }
 xdg = "2.5.2"
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
-serde_json5 = "0.1.0"
+serde_json5 = "0.2.1"
 xkbcommon = { version = "0.8.0" }
 xcb = { version = "1.4.0", optional = true, features = [
   "as-raw-xcb-connection",
 ] }
-image_dds = { version = "0.6.0", default-features = false, features = [
+image_dds = { version = "0.7.2", default-features = false, features = [
   "ddsfile",
 ] }
 mint = "0.5.9"
