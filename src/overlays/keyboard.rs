@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     process::{Child, Command},
     str::FromStr,
-    sync::Arc,
+    sync::{Arc, LazyLock},
 };
 
 use crate::{
@@ -25,7 +25,6 @@ use crate::{
     state::{AppState, KeyboardFocus},
 };
 use glam::{vec2, vec3a, Affine2, Vec4};
-use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use vulkano::image::view::ImageView;
@@ -378,10 +377,10 @@ enum KeyButtonData {
     },
 }
 
-static LAYOUT: Lazy<Layout> = Lazy::new(Layout::load_from_disk);
+static LAYOUT: LazyLock<Layout> = LazyLock::new(Layout::load_from_disk);
 
-static MACRO_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^([A-Za-z0-9_-]+)(?: +(UP|DOWN))?$").unwrap()); // want panic
+static MACRO_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^([A-Za-z0-9_-]+)(?: +(UP|DOWN))?$").unwrap()); // want panic
 
 #[derive(Debug, Default, Clone, Copy, Deserialize, Serialize)]
 #[repr(usize)]

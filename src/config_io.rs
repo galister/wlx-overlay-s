@@ -1,6 +1,5 @@
 use log::error;
-use once_cell::sync::Lazy;
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::LazyLock};
 
 pub enum ConfigRoot {
     Generic,
@@ -10,16 +9,14 @@ pub enum ConfigRoot {
 
 const FALLBACK_CONFIG_PATH: &str = "/tmp/wlxoverlay";
 
-static CONFIG_ROOT_PATH: Lazy<PathBuf> = Lazy::new(|| {
+static CONFIG_ROOT_PATH: LazyLock<PathBuf> = LazyLock::new(|| {
     if let Ok(xdg_dirs) = xdg::BaseDirectories::new() {
         let mut dir = xdg_dirs.get_config_home();
         dir.push("wlxoverlay");
         return dir;
     }
     //Return fallback config path
-    error!(
-        "Err: Failed to find config path, using {FALLBACK_CONFIG_PATH}"
-    );
+    error!("Err: Failed to find config path, using {FALLBACK_CONFIG_PATH}");
     PathBuf::from(FALLBACK_CONFIG_PATH)
 });
 

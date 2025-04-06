@@ -1,13 +1,12 @@
 use glam::Vec3A;
-use once_cell::sync::Lazy;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use crate::backend::overlay::{OverlayData, OverlayState, RelativeTo, Z_ORDER_ANCHOR};
 use crate::config::{load_known_yaml, ConfigType};
 use crate::gui::modular::{modular_canvas, ModularUiConfig};
 use crate::state::AppState;
 
-pub static ANCHOR_NAME: Lazy<Arc<str>> = Lazy::new(|| Arc::from("anchor"));
+pub static ANCHOR_NAME: LazyLock<Arc<str>> = LazyLock::new(|| Arc::from("anchor"));
 
 pub fn create_anchor<O>(state: &mut AppState) -> anyhow::Result<OverlayData<O>>
 where

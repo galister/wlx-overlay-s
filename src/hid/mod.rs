@@ -6,9 +6,9 @@ use input_linux::{
     UInputHandle,
 };
 use libc::{input_event, timeval};
-use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::mem::transmute;
+use std::sync::LazyLock;
 use std::{fs::File, sync::atomic::AtomicBool};
 use strum::{EnumIter, EnumString, IntoEnumIterator};
 use xkbcommon::xkb;
@@ -476,7 +476,7 @@ pub enum VirtualKey {
     XF86Search = 225,
 }
 
-pub static KEYS_TO_MODS: Lazy<IdMap<VirtualKey, KeyModifier>> = Lazy::new(|| {
+pub static KEYS_TO_MODS: LazyLock<IdMap<VirtualKey, KeyModifier>> = LazyLock::new(|| {
     idmap! {
         VirtualKey::LShift => SHIFT,
         VirtualKey::RShift => SHIFT,
@@ -491,7 +491,7 @@ pub static KEYS_TO_MODS: Lazy<IdMap<VirtualKey, KeyModifier>> = Lazy::new(|| {
     }
 });
 
-pub static MODS_TO_KEYS: Lazy<IdMap<KeyModifier, Vec<VirtualKey>>> = Lazy::new(|| {
+pub static MODS_TO_KEYS: LazyLock<IdMap<KeyModifier, Vec<VirtualKey>>> = LazyLock::new(|| {
     idmap! {
         SHIFT => vec![VirtualKey::LShift, VirtualKey::RShift],
         CAPS_LOCK => vec![VirtualKey::Caps],

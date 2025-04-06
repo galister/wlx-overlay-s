@@ -1,12 +1,13 @@
+use std::sync::LazyLock;
+
 use glam::Vec4;
-use once_cell::sync::Lazy;
 
 pub mod canvas;
 pub mod font;
 pub mod modular;
 
 pub type GuiColor = Vec4;
-pub static FALLBACK_COLOR: Lazy<GuiColor> = Lazy::new(|| Vec4::new(1., 0., 1., 1.));
+pub static FALLBACK_COLOR: LazyLock<GuiColor> = LazyLock::new(|| Vec4::new(1., 0., 1., 1.));
 
 // Parses a color from a HTML hex string
 pub fn color_parse(html_hex: &str) -> anyhow::Result<GuiColor> {

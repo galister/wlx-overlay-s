@@ -5328,7 +5328,6 @@ dependencies = [
  "log",
  "log-panics",
  "mint",
- "once_cell",
  "openxr",
  "ovr_overlay",
  "regex",
