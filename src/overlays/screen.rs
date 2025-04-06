@@ -72,8 +72,6 @@ pub(crate) type WlxClientAlias = ();
 
 const CURSOR_SIZE: f32 = 16. / 1440.;
 
-static DRM_FORMATS: once_cell::sync::OnceCell<Vec<DrmFormat>> = once_cell::sync::OnceCell::new();
-
 static START: Lazy<Instant> = Lazy::new(Instant::now);
 static NEXT_MOVE: AtomicU64 = AtomicU64::new(0);
 
@@ -521,59 +519,20 @@ impl OverlayRenderer for ScreenRenderer {
 
             let capture_method = app.session.config.capture_method.clone();
 
-            let dmabuf_formats = DRM_FORMATS.get_or_init({
-                let graphics = app.graphics.clone();
-                move || {
-                    if !supports_dmabuf {
-                        log::info!("Capture method does not support DMA-buf");
-                        return vec![];
-                    }
-                    if !allow_dmabuf {
-                        log::info!("Not using DMA-buf capture due to {capture_method}");
-                        return vec![];
-                    }
-                    log::warn!("Using DMA-buf capture. If screens are blank for you, switch to SHM using:");
-                    log::warn!("echo 'capture_method: pw_fallback' > ~/.config/wlxoverlay/conf.d/pw_fallback.yaml");
+            let dmabuf_formats = if !supports_dmabuf {
+                log::info!("Capture method does not support DMA-buf");
+                &Vec::new()
+            } else if !allow_dmabuf {
+                log::info!("Not using DMA-buf capture due to {capture_method}");
+                &Vec::new()
+            } else {
+                log::warn!(
+                    "Using DMA-buf capture. If screens are blank for you, switch to SHM using:"
+                );
+                log::warn!("echo 'capture_method: pw_fallback' > ~/.config/wlxoverlay/conf.d/pw_fallback.yaml");
 
-                    let possible_formats = [
-                        DRM_FORMAT_ABGR8888.into(),
-                        DRM_FORMAT_XBGR8888.into(),
-                        DRM_FORMAT_ARGB8888.into(),
-                        DRM_FORMAT_XRGB8888.into(),
-                        DRM_FORMAT_ABGR2101010.into(),
-                        DRM_FORMAT_XBGR2101010.into(),
-                    ];
-
-                    let mut final_formats = vec![];
-
-                    for &f in &possible_formats {
-                        let Ok(vk_fmt) = fourcc_to_vk(f) else {
-                            continue;
-                        };
-                        let Ok(props) = graphics.device.physical_device().format_properties(vk_fmt)
-                        else {
-                            continue;
-                        };
-                        let mut fmt = DrmFormat {
-                            fourcc: f,
-                            modifiers: props
-                                .drm_format_modifier_properties
-                                .iter()
-                                // important bit: only allow single-plane
-                                .filter(|m| m.drm_format_modifier_plane_count == 1)
-                                .map(|m| m.drm_format_modifier)
-                                .collect(),
-                        };
-                        fmt.modifiers.push(DRM_FORMAT_MOD_INVALID); // implicit modifiers support
-                        final_formats.push(fmt);
-                    }
-                    log::debug!("Supported DRM formats:");
-                    for f in &final_formats {
-                        log::debug!("  {} {:?}", f.fourcc, f.modifiers);
-                    }
-                    final_formats
-                }
-            });
+                &app.graphics.drm_formats
+            };
 
             let user_data = WlxCaptureIn {
                 name: self.name.clone(),

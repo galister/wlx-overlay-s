@@ -80,8 +80,8 @@ use vulkano::{
 };
 
 use wlx_capture::frame::{
-    DmabufFrame, FourCC, DRM_FORMAT_ABGR2101010, DRM_FORMAT_ABGR8888, DRM_FORMAT_ARGB8888,
-    DRM_FORMAT_XBGR2101010, DRM_FORMAT_XBGR8888, DRM_FORMAT_XRGB8888,
+    DmabufFrame, DrmFormat, FourCC, DRM_FORMAT_ABGR2101010, DRM_FORMAT_ABGR8888,
+    DRM_FORMAT_ARGB8888, DRM_FORMAT_XBGR2101010, DRM_FORMAT_XBGR8888, DRM_FORMAT_XRGB8888,
 };
 
 pub type Vert2Buf = Subbuffer<[Vert2Uv]>;
@@ -127,6 +127,7 @@ pub struct WlxGraphics {
     pub quad_indices: IndexBuf,
 
     pub shared_shaders: RwLock<HashMap<&'static str, Arc<ShaderModule>>>,
+    pub drm_formats: Vec<DrmFormat>,
 }
 
 const fn get_dmabuf_extensions() -> DeviceExtensions {
@@ -368,6 +369,7 @@ impl WlxGraphics {
         ));
 
         let (quad_verts, quad_indices) = Self::default_quad(memory_allocator.clone())?;
+        let drm_formats = Self::get_drm_formats(device.clone());
 
         let me = Self {
             instance,
@@ -381,6 +383,7 @@ impl WlxGraphics {
             quad_indices,
             quad_verts,
             shared_shaders: RwLock::new(HashMap::new()),
+            drm_formats,
         };
 
         Ok(Arc::new(me))
@@ -522,6 +525,7 @@ impl WlxGraphics {
         ));
 
         let (quad_verts, quad_indices) = Self::default_quad(memory_allocator.clone())?;
+        let drm_formats = Self::get_drm_formats(device.clone());
 
         let me = Self {
             instance,
@@ -535,6 +539,7 @@ impl WlxGraphics {
             quad_indices,
             quad_verts,
             shared_shaders: RwLock::new(HashMap::new()),
+            drm_formats,
         };
 
         Ok(Arc::new(me))
@@ -665,6 +670,7 @@ impl WlxGraphics {
         ));
 
         let (quad_verts, quad_indices) = Self::default_quad(memory_allocator.clone())?;
+        let drm_formats = Self::get_drm_formats(device.clone());
 
         let me = Self {
             instance,
@@ -678,6 +684,7 @@ impl WlxGraphics {
             quad_indices,
             quad_verts,
             shared_shaders: RwLock::new(HashMap::new()),
+            drm_formats,
         };
 
         Ok((Arc::new(me), event_loop, window, surface))
@@ -796,7 +803,46 @@ impl WlxGraphics {
         )?)
     }
 
-    pub fn dmabuf_texture_ex(
+    fn get_drm_formats(device: Arc<Device>) -> Vec<DrmFormat> {
+        let possible_formats = [
+            DRM_FORMAT_ABGR8888.into(),
+            DRM_FORMAT_XBGR8888.into(),
+            DRM_FORMAT_ARGB8888.into(),
+            DRM_FORMAT_XRGB8888.into(),
+            DRM_FORMAT_ABGR2101010.into(),
+            DRM_FORMAT_XBGR2101010.into(),
+        ];
+
+        let mut final_formats = vec![];
+
+        for &f in &possible_formats {
+            let Ok(vk_fmt) = fourcc_to_vk(f) else {
+                continue;
+            };
+            let Ok(props) = device.physical_device().format_properties(vk_fmt) else {
+                continue;
+            };
+            let mut fmt = DrmFormat {
+                fourcc: f,
+                modifiers: props
+                    .drm_format_modifier_properties
+                    .iter()
+                    // important bit: only allow single-plane
+                    .filter(|m| m.drm_format_modifier_plane_count == 1)
+                    .map(|m| m.drm_format_modifier)
+                    .collect(),
+            };
+            fmt.modifiers.push(DRM_FORMAT_MOD_INVALID); // implicit modifiers support
+            final_formats.push(fmt);
+        }
+        log::debug!("Supported DRM formats:");
+        for f in &final_formats {
+            log::debug!("  {} {:?}", f.fourcc, f.modifiers);
+        }
+        final_formats
+    }
+
+    fn dmabuf_texture_ex(
         &self,
         frame: DmabufFrame,
         tiling: ImageTiling,
@@ -806,21 +852,19 @@ impl WlxGraphics {
         let extent = [frame.format.width, frame.format.height, 1];
         let format = fourcc_to_vk(frame.format.fourcc)?;
 
-        let image = unsafe {
-            RawImage::new_unchecked(
-                self.device.clone(),
-                ImageCreateInfo {
-                    format,
-                    extent,
-                    usage: ImageUsage::SAMPLED,
-                    external_memory_handle_types: ExternalMemoryHandleTypes::DMA_BUF,
-                    tiling,
-                    drm_format_modifiers: modifiers.to_owned(),
-                    drm_format_modifier_plane_layouts: layouts,
-                    ..Default::default()
-                },
-            )?
-        };
+        let image = RawImage::new(
+            self.device.clone(),
+            ImageCreateInfo {
+                format,
+                extent,
+                usage: ImageUsage::SAMPLED,
+                external_memory_handle_types: ExternalMemoryHandleTypes::DMA_BUF,
+                tiling,
+                drm_format_modifiers: modifiers.to_owned(),
+                drm_format_modifier_plane_layouts: layouts,
+                ..Default::default()
+            },
+        )?;
 
         let requirements = image.memory_requirements()[0];
         let memory_type_index = self
