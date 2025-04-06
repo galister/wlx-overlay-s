@@ -662,6 +662,7 @@ impl OverlayRenderer for WayVRRenderer {
         wayvr.state.set_display_visible(ctx.display, true);
         Ok(())
     }
+
     fn should_render(&mut self, _app: &mut AppState) -> anyhow::Result<ShouldRender> {
         let ctx = self.context.borrow();
         let mut wayvr = ctx.wayvr.borrow_mut();
@@ -679,6 +680,7 @@ impl OverlayRenderer for WayVRRenderer {
             Ok(ShouldRender::Can)
         }
     }
+
     fn render(
         &mut self,
         app: &mut state::AppState,
@@ -737,10 +739,17 @@ impl OverlayRenderer for WayVRRenderer {
     }
 
     fn frame_meta(&mut self) -> Option<FrameMeta> {
-        self.vk_image_view.as_ref().map(|view| FrameMeta {
-            extent: view.image().extent(),
-            ..Default::default()
-        })
+        let ctx = self.context.borrow();
+        let wayvr = ctx.wayvr.borrow_mut();
+        wayvr
+            .data
+            .state
+            .displays
+            .get(&ctx.display)
+            .map(|disp| FrameMeta {
+                extent: [disp.width as _, disp.height as _, 1],
+                ..Default::default()
+            })
     }
 }
 
