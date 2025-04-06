@@ -114,7 +114,9 @@ pub const BLEND_ALPHA: AttachmentBlend = AttachmentBlend {
 pub struct WlxGraphics {
     pub instance: Arc<Instance>,
     pub device: Arc<Device>,
-    pub queue: Arc<Queue>,
+    pub graphics_queue: Arc<Queue>,
+    pub transfer_queue: Arc<Queue>,
+    pub capture_queue: Arc<Queue>,
 
     pub native_format: Format,
     pub texture_filtering: Filter,
@@ -244,12 +246,21 @@ impl WlxGraphics {
             physical_device.properties().device_name,
         );
 
-        let queue_family_index = physical_device
+        let queue_family_index_gfx = physical_device
             .queue_family_properties()
             .iter()
             .enumerate()
             .position(|(_, q)| q.queue_flags.intersects(QueueFlags::GRAPHICS))
-            .expect("Vulkan device has no graphics queue") as u32;
+            .expect("Vulkan device has no graphics queue")
+            as u32;
+
+        let queue_family_index_xfer = physical_device
+            .queue_family_properties()
+            .iter()
+            .enumerate()
+            .position(|(_, q)| q.queue_flags.intersects(QueueFlags::TRANSFER))
+            .expect("Vulkan device has no transfer queue")
+            as u32;
 
         let mut device_extensions = DeviceExtensions::empty();
         let dmabuf_extensions = get_dmabuf_extensions();
@@ -285,11 +296,19 @@ impl WlxGraphics {
             ..Default::default()
         };
 
-        let queue_priorities = [1.0];
+        let queue_priorities = vec![1.0];
 
-        let queue_create_infos = [vk::DeviceQueueCreateInfo::default()
-            .queue_family_index(queue_family_index)
-            .queue_priorities(&queue_priorities)];
+        let queue_create_infos = [
+            vk::DeviceQueueCreateInfo::default()
+                .queue_family_index(queue_family_index_gfx)
+                .queue_priorities(&queue_priorities),
+            vk::DeviceQueueCreateInfo::default()
+                .queue_family_index(queue_family_index_xfer)
+                .queue_priorities(&queue_priorities),
+            vk::DeviceQueueCreateInfo::default()
+                .queue_family_index(queue_family_index_xfer)
+                .queue_priorities(&queue_priorities),
+        ];
 
         let mut device_create_info = vk::DeviceCreateInfo::default()
             .queue_create_infos(&queue_create_infos)
@@ -323,11 +342,23 @@ impl WlxGraphics {
                 physical_device,
                 vk::Device::from_raw(vk_device as _),
                 DeviceCreateInfo {
-                    queue_create_infos: vec![QueueCreateInfo {
-                        queue_family_index,
-                        queues: vec![1.0],
-                        ..Default::default()
-                    }],
+                    queue_create_infos: vec![
+                        QueueCreateInfo {
+                            queue_family_index: queue_family_index_gfx,
+                            queues: queue_priorities.clone(),
+                            ..Default::default()
+                        },
+                        QueueCreateInfo {
+                            queue_family_index: queue_family_index_xfer,
+                            queues: queue_priorities.clone(),
+                            ..Default::default()
+                        },
+                        QueueCreateInfo {
+                            queue_family_index: queue_family_index_xfer,
+                            queues: queue_priorities,
+                            ..Default::default()
+                        },
+                    ],
                     enabled_extensions: device_extensions,
                     enabled_features: features,
                     ..Default::default()
@@ -351,9 +382,15 @@ impl WlxGraphics {
                 let _ = CString::from_raw(c_string.cast_mut());
             });
 
-        let queue = queues
+        let graphics_queue = queues
             .next()
-            .ok_or_else(|| anyhow::anyhow!("no GPU queues available"))?;
+            .ok_or_else(|| anyhow::anyhow!("no graphics queues available"))?;
+        let transfer_queue = queues
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("no transfer queues available"))?;
+        let capture_queue = queues
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("not enough transfer queues available"))?;
 
         let memory_allocator = memory_allocator(device.clone());
         let command_buffer_allocator = Arc::new(StandardCommandBufferAllocator::new(
@@ -374,7 +411,9 @@ impl WlxGraphics {
         let me = Self {
             instance,
             device,
-            queue,
+            graphics_queue,
+            transfer_queue,
+            capture_queue,
             native_format: Format::R8G8B8A8_UNORM,
             texture_filtering,
             memory_allocator,
@@ -419,57 +458,65 @@ impl WlxGraphics {
 
         let dmabuf_extensions = get_dmabuf_extensions();
 
-        let (physical_device, my_extensions, queue_family_index) = instance
-            .enumerate_physical_devices()?
-            .filter_map(|p| {
-                let mut my_extensions = vk_device_extensions_fn(&p);
+        let (physical_device, my_extensions, queue_family_index_gfx, queue_family_index_xfer) =
+            instance
+                .enumerate_physical_devices()?
+                .filter_map(|p| {
+                    let mut my_extensions = vk_device_extensions_fn(&p);
 
-                if !p.supported_extensions().contains(&my_extensions) {
-                    log::debug!(
-                        "Not using {} due to missing extensions:",
-                        p.properties().device_name,
-                    );
-                    for (ext, missing) in p.supported_extensions().difference(&my_extensions) {
-                        if missing {
-                            log::debug!("  {ext}");
+                    if !p.supported_extensions().contains(&my_extensions) {
+                        log::debug!(
+                            "Not using {} due to missing extensions:",
+                            p.properties().device_name,
+                        );
+                        for (ext, missing) in p.supported_extensions().difference(&my_extensions) {
+                            if missing {
+                                log::debug!("  {ext}");
+                            }
                         }
+                        return None;
                     }
-                    return None;
-                }
 
-                if p.supported_extensions().contains(&dmabuf_extensions) {
-                    my_extensions = my_extensions.union(&dmabuf_extensions);
-                    my_extensions.ext_image_drm_format_modifier =
-                        p.supported_extensions().ext_image_drm_format_modifier;
-                }
+                    if p.supported_extensions().contains(&dmabuf_extensions) {
+                        my_extensions = my_extensions.union(&dmabuf_extensions);
+                        my_extensions.ext_image_drm_format_modifier =
+                            p.supported_extensions().ext_image_drm_format_modifier;
+                    }
 
-                if p.supported_extensions().ext_filter_cubic {
-                    my_extensions.ext_filter_cubic = true;
-                }
+                    if p.supported_extensions().ext_filter_cubic {
+                        my_extensions.ext_filter_cubic = true;
+                    }
 
-                log::debug!(
-                    "Device exts for {}: {:?}",
-                    p.properties().device_name,
-                    &my_extensions
-                );
-                Some((p, my_extensions))
-            })
-            .filter_map(|(p, my_extensions)| {
-                p.queue_family_properties()
-                    .iter()
-                    .enumerate()
-                    .position(|(_, q)| q.queue_flags.intersects(QueueFlags::GRAPHICS))
-                    .map(|i| (p, my_extensions, i as u32))
-            })
-            .min_by_key(|(p, _, _)| match p.properties().device_type {
-                PhysicalDeviceType::DiscreteGpu => 0,
-                PhysicalDeviceType::IntegratedGpu => 1,
-                PhysicalDeviceType::VirtualGpu => 2,
-                PhysicalDeviceType::Cpu => 3,
-                PhysicalDeviceType::Other => 4,
-                _ => 5,
-            })
-            .expect("no suitable physical device found");
+                    log::debug!(
+                        "Device exts for {}: {:?}",
+                        p.properties().device_name,
+                        &my_extensions
+                    );
+                    Some((p, my_extensions))
+                })
+                .filter_map(|(p, my_extensions)| {
+                    p.queue_family_properties()
+                        .iter()
+                        .enumerate()
+                        .position(|(_, q)| q.queue_flags.intersects(QueueFlags::GRAPHICS))
+                        .map(|i| (p, my_extensions, i as u32))
+                })
+                .filter_map(|(p, my_extensions, queue_family_index)| {
+                    p.queue_family_properties()
+                        .iter()
+                        .enumerate()
+                        .position(|(_, q)| q.queue_flags.intersects(QueueFlags::TRANSFER))
+                        .map(|i| (p, my_extensions, queue_family_index, i as u32))
+                })
+                .min_by_key(|(p, _, _, _)| match p.properties().device_type {
+                    PhysicalDeviceType::DiscreteGpu => 0,
+                    PhysicalDeviceType::IntegratedGpu => 1,
+                    PhysicalDeviceType::VirtualGpu => 2,
+                    PhysicalDeviceType::Cpu => 3,
+                    PhysicalDeviceType::Other => 4,
+                    _ => 5,
+                })
+                .expect("no suitable physical device found");
 
         log::info!(
             "Using vkPhysicalDevice: {}",
@@ -490,10 +537,23 @@ impl WlxGraphics {
                     dynamic_rendering: true,
                     ..DeviceFeatures::empty()
                 },
-                queue_create_infos: vec![QueueCreateInfo {
-                    queue_family_index,
-                    ..Default::default()
-                }],
+                queue_create_infos: vec![
+                    QueueCreateInfo {
+                        queue_family_index: queue_family_index_gfx,
+                        queues: vec![1.0],
+                        ..Default::default()
+                    },
+                    QueueCreateInfo {
+                        queue_family_index: queue_family_index_xfer,
+                        queues: vec![1.0],
+                        ..Default::default()
+                    },
+                    QueueCreateInfo {
+                        queue_family_index: queue_family_index_xfer,
+                        queues: vec![1.0],
+                        ..Default::default()
+                    },
+                ],
                 ..Default::default()
             },
         )?;
@@ -507,9 +567,15 @@ impl WlxGraphics {
             device.enabled_extensions().ext_image_drm_format_modifier
         );
 
-        let queue = queues
+        let graphics_queue = queues
             .next()
-            .ok_or_else(|| anyhow::anyhow!("no GPU queues available"))?;
+            .ok_or_else(|| anyhow::anyhow!("no graphics queues available"))?;
+        let transfer_queue = queues
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("no transfer queues available"))?;
+        let capture_queue = queues
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("no transfer queues available"))?;
 
         let memory_allocator = memory_allocator(device.clone());
         let command_buffer_allocator = Arc::new(StandardCommandBufferAllocator::new(
@@ -530,7 +596,9 @@ impl WlxGraphics {
         let me = Self {
             instance,
             device,
-            queue,
+            graphics_queue,
+            transfer_queue,
+            capture_queue,
             memory_allocator,
             native_format: Format::R8G8B8A8_UNORM,
             texture_filtering,
@@ -675,7 +743,9 @@ impl WlxGraphics {
         let me = Self {
             instance,
             device,
-            queue,
+            graphics_queue: queue.clone(),
+            transfer_queue: queue.clone(), // what could go wrong!
+            capture_queue: queue,
             memory_allocator,
             native_format,
             texture_filtering: Filter::Linear,
@@ -982,18 +1052,57 @@ impl WlxGraphics {
         )?))
     }
 
+    /// Creates a CommandBuffer to be used for graphics workloads on the main thread.
     pub fn create_command_buffer(
         self: &Arc<Self>,
         usage: CommandBufferUsage,
     ) -> anyhow::Result<WlxCommandBuffer> {
         let command_buffer = AutoCommandBufferBuilder::primary(
             self.command_buffer_allocator.clone(),
-            self.queue.queue_family_index(),
+            self.graphics_queue.queue_family_index(),
             usage,
         )?;
         Ok(WlxCommandBuffer {
             graphics: self.clone(),
+            queue: self.graphics_queue.clone(),
             command_buffer,
+            dummy: None,
+        })
+    }
+
+    /// Creates a CommandBuffer to be used for texture uploads on the main thread.
+    pub fn create_uploads_command_buffer(
+        self: &Arc<Self>,
+        usage: CommandBufferUsage,
+    ) -> anyhow::Result<WlxUploadsBuffer> {
+        let command_buffer = AutoCommandBufferBuilder::primary(
+            self.command_buffer_allocator.clone(),
+            self.transfer_queue.queue_family_index(),
+            usage,
+        )?;
+        Ok(WlxUploadsBuffer {
+            graphics: self.clone(),
+            queue: self.transfer_queue.clone(),
+            command_buffer,
+            dummy: None,
+        })
+    }
+
+    /// Creates a CommandBuffer to be used for texture uploads on the capture thread.
+    pub fn create_capture_command_buffer(
+        self: &Arc<Self>,
+        usage: CommandBufferUsage,
+    ) -> anyhow::Result<WlxUploadsBuffer> {
+        let command_buffer = AutoCommandBufferBuilder::primary(
+            self.command_buffer_allocator.clone(),
+            self.capture_queue.queue_family_index(),
+            usage,
+        )?;
+        Ok(WlxUploadsBuffer {
+            graphics: self.clone(),
+            queue: self.capture_queue.clone(),
+            command_buffer,
+            dummy: None,
         })
     }
 
@@ -1017,7 +1126,7 @@ impl WlxGraphics {
         let command_buffer = unsafe {
             let mut builder = RecordingCommandBuffer::new(
                 self.command_buffer_allocator.clone(),
-                self.queue.queue_family_index(),
+                self.graphics_queue.queue_family_index(),
                 CommandBufferLevel::Primary,
                 CommandBufferBeginInfo {
                     usage: CommandBufferUsage::OneTimeSubmit,
@@ -1041,7 +1150,7 @@ impl WlxGraphics {
         let fns = self.device.fns();
         unsafe {
             (fns.v1_0.queue_submit)(
-                self.queue.handle(),
+                self.graphics_queue.handle(),
                 1,
                 [SubmitInfo::default().command_buffers(&[command_buffer.handle()])].as_ptr(),
                 fence.handle(),
@@ -1053,12 +1162,34 @@ impl WlxGraphics {
     }
 }
 
-pub struct WlxCommandBuffer {
+pub type WlxCommandBuffer = AnyCommandBuffer<GraphicsBuffer>;
+pub type WlxUploadsBuffer = AnyCommandBuffer<UploadBuffer>;
+
+pub struct GraphicsBuffer;
+pub struct UploadBuffer;
+
+pub struct AnyCommandBuffer<T> {
     pub graphics: Arc<WlxGraphics>,
     pub command_buffer: AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>,
+    pub queue: Arc<Queue>,
+    dummy: Option<T>,
 }
 
-impl WlxCommandBuffer {
+impl<T> AnyCommandBuffer<T> {
+    pub fn build_and_execute(self) -> anyhow::Result<CommandBufferExecFuture<NowFuture>> {
+        let queue = self.queue.clone();
+        Ok(self.command_buffer.build()?.execute(queue)?)
+    }
+
+    pub fn build_and_execute_now(self) -> anyhow::Result<()> {
+        let mut exec = self.build_and_execute()?;
+        exec.flush()?;
+        exec.cleanup_finished();
+        Ok(())
+    }
+}
+
+impl AnyCommandBuffer<GraphicsBuffer> {
     pub fn begin_rendering(&mut self, render_target: Arc<ImageView>) -> anyhow::Result<()> {
         self.command_buffer.begin_rendering(RenderingInfo {
             contents: SubpassContents::SecondaryCommandBuffers,
@@ -1073,12 +1204,23 @@ impl WlxCommandBuffer {
         Ok(())
     }
 
+    pub fn build(self) -> anyhow::Result<Arc<PrimaryAutoCommandBuffer>> {
+        Ok(self.command_buffer.build()?)
+    }
+
     pub fn run_ref(&mut self, pass: &WlxPass) -> anyhow::Result<()> {
         self.command_buffer
             .execute_commands(pass.command_buffer.clone())?;
         Ok(())
     }
 
+    pub fn end_rendering(&mut self) -> anyhow::Result<()> {
+        self.command_buffer.end_rendering()?;
+        Ok(())
+    }
+}
+
+impl AnyCommandBuffer<UploadBuffer> {
     pub fn texture2d_raw(
         &mut self,
         width: u32,
@@ -1124,27 +1266,6 @@ impl WlxCommandBuffer {
             .copy_buffer_to_image(CopyBufferToImageInfo::buffer_image(buffer, image.clone()))?;
 
         Ok(image)
-    }
-
-    pub fn end_rendering(&mut self) -> anyhow::Result<()> {
-        self.command_buffer.end_rendering()?;
-        Ok(())
-    }
-
-    pub fn build(self) -> anyhow::Result<Arc<PrimaryAutoCommandBuffer>> {
-        Ok(self.command_buffer.build()?)
-    }
-
-    pub fn build_and_execute(self) -> anyhow::Result<CommandBufferExecFuture<NowFuture>> {
-        let queue = self.graphics.queue.clone();
-        Ok(self.build()?.execute(queue)?)
-    }
-
-    pub fn build_and_execute_now(self) -> anyhow::Result<()> {
-        let mut exec = self.build_and_execute()?;
-        exec.flush()?;
-        exec.cleanup_finished();
-        Ok(())
     }
 }
 
@@ -1325,7 +1446,7 @@ impl WlxPass {
         let pipeline_inner = pipeline.inner();
         let mut command_buffer = AutoCommandBufferBuilder::secondary(
             pipeline.graphics.command_buffer_allocator.clone(),
-            pipeline.graphics.queue.queue_family_index(),
+            pipeline.graphics.graphics_queue.queue_family_index(),
             CommandBufferUsage::MultipleSubmit,
             CommandBufferInheritanceInfo {
                 render_pass: Some(CommandBufferInheritanceRenderPassType::BeginRendering(

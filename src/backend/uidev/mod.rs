@@ -81,6 +81,7 @@ impl PreviewState {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
     let (graphics, event_loop, window, surface) = WlxGraphics::new_window()?;
     window.set_resizable(false);
@@ -169,10 +170,13 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
                     last_draw = std::time::Instant::now();
 
                     canvas_cmd_buf
-                        .execute_after(state.graphics.queue.clone(), Box::new(acquire_future))
+                        .execute_after(
+                            state.graphics.graphics_queue.clone(),
+                            Box::new(acquire_future),
+                        )
                         .unwrap()
                         .then_swapchain_present(
-                            graphics.queue.clone(),
+                            graphics.graphics_queue.clone(),
                             SwapchainPresentInfo::swapchain_image_index(
                                 preview.swapchain.clone(),
                                 image_index,

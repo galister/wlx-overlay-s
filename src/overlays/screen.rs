@@ -53,7 +53,7 @@ use crate::{
     },
     config::{def_pw_tokens, GeneralConfig, PwTokenMap},
     graphics::{
-        fourcc_to_vk, CommandBuffers, WlxCommandBuffer, WlxGraphics, WlxPipeline, SWAPCHAIN_FORMAT,
+        fourcc_to_vk, CommandBuffers, WlxGraphics, WlxPipeline, WlxUploadsBuffer, SWAPCHAIN_FORMAT,
     },
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState, KeyboardFocus, ScreenMeta},
@@ -180,7 +180,7 @@ impl ScreenPipeline {
         })
     }
 
-    fn ensure_mouse_initialized(&mut self, uploads: &mut WlxCommandBuffer) -> anyhow::Result<()> {
+    fn ensure_mouse_initialized(&mut self, uploads: &mut WlxUploadsBuffer) -> anyhow::Result<()> {
         if self.mouse.is_some() {
             return Ok(());
         }
@@ -386,7 +386,7 @@ fn upload_image(
 ) -> Option<Arc<Image>> {
     let mut upload = match me
         .graphics
-        .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
+        .create_capture_command_buffer(CommandBufferUsage::OneTimeSubmit)
     {
         Ok(x) => x,
         Err(e) => {
@@ -556,7 +556,7 @@ impl OverlayRenderer for ScreenRenderer {
                 let mut pipeline = ScreenPipeline::new(&capture.image.extent(), app)?;
                 let mut upload = app
                     .graphics
-                    .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+                    .create_uploads_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
                 pipeline.ensure_mouse_initialized(&mut upload)?;
                 upload.build_and_execute_now()?;
                 pipeline

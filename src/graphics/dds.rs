@@ -9,7 +9,7 @@ use vulkano::{
     DeviceSize,
 };
 
-use super::WlxCommandBuffer;
+use super::WlxUploadsBuffer;
 
 pub trait WlxCommandBufferDds {
     fn texture2d_dds<R>(&mut self, r: R) -> anyhow::Result<Arc<Image>>
@@ -17,7 +17,7 @@ pub trait WlxCommandBufferDds {
         R: Read;
 }
 
-impl WlxCommandBufferDds for WlxCommandBuffer {
+impl WlxCommandBufferDds for WlxUploadsBuffer {
     fn texture2d_dds<R>(&mut self, r: R) -> anyhow::Result<Arc<Image>>
     where
         R: Read,

@@ -265,8 +265,8 @@ impl OverlayData<OpenVrOverlayData> {
             m_pDevice: graphics.device.handle().as_raw() as *mut _,
             m_pPhysicalDevice: graphics.device.physical_device().handle().as_raw() as *mut _,
             m_pInstance: graphics.instance.handle().as_raw() as *mut _,
-            m_pQueue: graphics.queue.handle().as_raw() as *mut _,
-            m_nQueueFamilyIndex: graphics.queue.queue_family_index(),
+            m_pQueue: graphics.graphics_queue.handle().as_raw() as *mut _,
+            m_nQueueFamilyIndex: graphics.graphics_queue.queue_family_index(),
         };
         log::trace!(
             "{}: UploadTex {:?}, {}x{}, {:?}",

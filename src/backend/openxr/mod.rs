@@ -116,7 +116,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                 instance: app.graphics.instance.handle().as_raw() as _,
                 physical_device: app.graphics.device.physical_device().handle().as_raw() as _,
                 device: app.graphics.device.handle().as_raw() as _,
-                queue_family_index: app.graphics.queue.queue_family_index(),
+                queue_family_index: app.graphics.graphics_queue.queue_family_index(),
                 queue_index: 0,
             },
         )?;
@@ -405,7 +405,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
 
         lines.render(app.graphics.clone(), &mut buffers)?;
 
-        let future = buffers.execute_now(app.graphics.queue.clone())?;
+        let future = buffers.execute_now(app.graphics.graphics_queue.clone())?;
         if let Some(mut future) = future {
             if let Err(e) = future.flush() {
                 return Err(BackendError::Fatal(e.into()));

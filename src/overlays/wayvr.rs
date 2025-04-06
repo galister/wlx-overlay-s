@@ -564,7 +564,7 @@ impl WayVRRenderer {
     ) -> anyhow::Result<()> {
         let mut upload = self
             .graphics
-            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+            .create_uploads_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
 
         let tex = upload.texture2d_raw(
             u32::from(data.width),
