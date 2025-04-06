@@ -53,7 +53,7 @@ impl LinePool {
             None,
         )?;
 
-        Ok(LinePool {
+        Ok(Self {
             lines: IdMap::new(),
             pipeline,
         })
@@ -92,7 +92,7 @@ impl LinePool {
         debug_assert!(color < COLORS.len());
 
         let Some(line) = self.lines.get_mut(id) else {
-            log::warn!("Line {} not found", id);
+            log::warn!("Line {id} not found");
             return;
         };
 
@@ -183,14 +183,6 @@ impl LinePool {
         }
 
         Ok(quads)
-    }
-
-    /// the number of lines that are waiting to be drawn
-    pub(super) fn num_pending(&self) -> usize {
-        self.lines
-            .values()
-            .filter(|l| l.maybe_line.is_some())
-            .count()
     }
 }
 

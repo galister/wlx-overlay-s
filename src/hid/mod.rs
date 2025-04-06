@@ -34,10 +34,7 @@ pub fn initialize() -> Box<dyn HidProvider> {
     log::error!("Could not create uinput provider. Keyboard/Mouse input will not work!");
     log::error!("To check if you're in input group, run: id -nG");
     if let Ok(user) = std::env::var("USER") {
-        log::error!(
-            "To add yourself to the input group, run: sudo usermod -aG input {}",
-            user
-        );
+        log::error!("To add yourself to the input group, run: sudo usermod -aG input {user}");
         log::error!("After adding yourself to the input group, you will need to reboot.");
     }
     Box::new(DummyProvider {})
@@ -163,28 +160,28 @@ impl UInputProvider {
             .create(&mouse_id, mouse_name, 0, &abs_info)
             .ok()?;
 
-        Some(UInputProvider {
+        Some(Self {
             keyboard_handle,
             mouse_handle,
             desktop_extent: Vec2::ZERO,
             desktop_origin: Vec2::ZERO,
-            current_action: Default::default(),
+            current_action: MouseAction::default(),
             cur_modifiers: 0,
         })
     }
     fn send_button_internal(&self, button: u16, down: bool) {
         let time = get_time();
         let events = [
-            new_event(time, EV_KEY, button, down as _),
+            new_event(time, EV_KEY, button, down.into()),
             new_event(time, EV_SYN, 0, 0),
         ];
         if let Err(res) = self.mouse_handle.write(&events) {
-            log::error!("send_button: {}", res.to_string());
+            log::error!("send_button: {res}");
         }
     }
     fn mouse_move_internal(&mut self, pos: Vec2) {
         #[cfg(debug_assertions)]
-        log::trace!("Mouse move: {:?}", pos);
+        log::trace!("Mouse move: {pos:?}");
 
         let pos = (pos - self.desktop_origin) * (MOUSE_EXTENT / self.desktop_extent);
 
@@ -195,7 +192,7 @@ impl UInputProvider {
             new_event(time, EV_SYN, 0, 0),
         ];
         if let Err(res) = self.mouse_handle.write(&events) {
-            log::error!("{}", res.to_string());
+            log::error!("{res}");
         }
     }
     fn wheel_internal(&self, delta_y: i32, delta_x: i32) {
@@ -211,7 +208,7 @@ impl UInputProvider {
             new_event(time, EV_SYN, 0, 0),
         ];
         if let Err(res) = self.mouse_handle.write(&events) {
-            log::error!("wheel: {}", res.to_string());
+            log::error!("wheel: {res}");
         }
     }
 }
@@ -231,15 +228,15 @@ impl HidProvider for UInputProvider {
     }
     fn send_key(&self, key: VirtualKey, down: bool) {
         #[cfg(debug_assertions)]
-        log::trace!("send_key: {:?} {}", key, down);
+        log::trace!("send_key: {key:?} {down}");
 
         let time = get_time();
         let events = [
-            new_event(time, EV_KEY, (key as u16) - 8, down as _),
+            new_event(time, EV_KEY, (key as u16) - 8, down.into()),
             new_event(time, EV_SYN, 0, 0),
         ];
         if let Err(res) = self.keyboard_handle.write(&events) {
-            log::error!("send_key: {}", res.to_string());
+            log::error!("send_key: {res}");
         }
     }
     fn set_desktop_extent(&mut self, extent: Vec2) {
@@ -303,7 +300,7 @@ fn get_time() -> timeval {
 }
 
 #[inline]
-fn new_event(time: timeval, type_: u16, code: u16, value: i32) -> input_event {
+const fn new_event(time: timeval, type_: u16, code: u16, value: i32) -> input_event {
     input_event {
         time,
         type_,
@@ -323,7 +320,7 @@ pub const META: KeyModifier = 0x80;
 
 #[allow(non_camel_case_types)]
 #[repr(u16)]
-#[derive(Debug, Deserialize, PartialEq, Clone, Copy, IntegerId, EnumString, EnumIter)]
+#[derive(Debug, Deserialize, PartialEq, Eq, Clone, Copy, IntegerId, EnumString, EnumIter)]
 pub enum VirtualKey {
     Escape = 9,
     N1, // number row
@@ -524,7 +521,7 @@ macro_rules! key_is {
     };
 }
 
-pub fn get_key_type(key: VirtualKey) -> KeyType {
+pub const fn get_key_type(key: VirtualKey) -> KeyType {
     if key_between!(key, VirtualKey::N1, VirtualKey::Plus)
         || key_between!(key, VirtualKey::Q, VirtualKey::Oem6)
         || key_between!(key, VirtualKey::A, VirtualKey::Oem3)

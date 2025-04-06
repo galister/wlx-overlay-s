@@ -1,5 +1,5 @@
-pub(crate) mod builder;
-pub(crate) mod control;
+pub mod builder;
+pub mod control;
 
 use std::sync::Arc;
 
@@ -40,7 +40,7 @@ pub struct CanvasData<D> {
 
 pub struct Canvas<D, S> {
     controls: Vec<control::Control<D, S>>,
-    canvas: CanvasData<D>,
+    data: CanvasData<D>,
 
     hover_controls: [Option<usize>; 2],
     pressed_controls: [Option<usize>; 2],
@@ -51,14 +51,14 @@ pub struct Canvas<D, S> {
 
     pipeline_final: Arc<WlxPipeline>,
 
-    view_fg: Arc<ImageView>,
-    view_bg: Arc<ImageView>,
+    view_fore: Arc<ImageView>,
+    view_back: Arc<ImageView>,
 
     format: Format,
 
-    bg_dirty: bool,
-    hl_dirty: bool,
-    fg_dirty: bool,
+    back_dirty: bool,
+    high_dirty: bool,
+    fore_dirty: bool,
 }
 
 impl<D, S> Canvas<D, S> {
@@ -69,11 +69,11 @@ impl<D, S> Canvas<D, S> {
         format: Format,
         data: D,
     ) -> anyhow::Result<Self> {
-        let tex_fg = graphics.render_texture(width as _, height as _, format)?;
-        let tex_bg = graphics.render_texture(width as _, height as _, format)?;
+        let tex_fore = graphics.render_texture(width as _, height as _, format)?;
+        let tex_back = graphics.render_texture(width as _, height as _, format)?;
 
-        let view_fg = ImageView::new_default(tex_fg.clone())?;
-        let view_bg = ImageView::new_default(tex_bg.clone())?;
+        let view_fore = ImageView::new_default(tex_fore)?;
+        let view_back = ImageView::new_default(tex_back)?;
 
         let Ok(shaders) = graphics.shared_shaders.read() else {
             anyhow::bail!("Failed to lock shared shaders for reading");
@@ -117,7 +117,7 @@ impl<D, S> Canvas<D, S> {
         )?;
 
         let pipeline_final = graphics.create_pipeline(
-            vert.clone(),
+            vert,
             shaders.get("frag_srgb").unwrap().clone(), // want panic
             SWAPCHAIN_FORMAT,
             Some(BLEND_ALPHA),
@@ -127,7 +127,7 @@ impl<D, S> Canvas<D, S> {
         let rows = height / RES_DIVIDER;
 
         Ok(Self {
-            canvas: CanvasData {
+            data: CanvasData {
                 data,
                 width,
                 height,
@@ -145,12 +145,12 @@ impl<D, S> Canvas<D, S> {
             interact_stride: stride,
             interact_rows: rows,
             pipeline_final,
-            view_fg,
-            view_bg,
+            view_fore,
+            view_back,
             format,
-            bg_dirty: false,
-            hl_dirty: false,
-            fg_dirty: false,
+            back_dirty: false,
+            high_dirty: false,
+            fore_dirty: false,
         })
     }
 
@@ -170,27 +170,27 @@ impl<D, S> Canvas<D, S> {
     }
 
     fn interactive_get_idx(&self, uv: Vec2) -> Option<usize> {
-        let x = (uv.x * self.canvas.width as f32) as usize;
-        let y = (uv.y * self.canvas.height as f32) as usize;
+        let x = (uv.x * self.data.width as f32) as usize;
+        let y = (uv.y * self.data.height as f32) as usize;
         let x = (x / RES_DIVIDER).max(0).min(self.interact_stride - 1);
         let y = (y / RES_DIVIDER).max(0).min(self.interact_rows - 1);
         self.interact_map[y * self.interact_stride + x].map(|x| x as usize)
     }
 
-    pub fn data_mut(&mut self) -> &mut D {
-        &mut self.canvas.data
+    pub const fn data_mut(&mut self) -> &mut D {
+        &mut self.data.data
     }
 }
 
 impl<D, S> InteractionHandler for Canvas<D, S> {
     fn on_left(&mut self, _app: &mut AppState, pointer: usize) {
-        self.hl_dirty = true;
+        self.high_dirty = true;
 
         self.hover_controls[pointer] = None;
     }
     fn on_hover(&mut self, _app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
         // render on every frame if we are being hovered
-        self.hl_dirty = true;
+        self.high_dirty = true;
 
         let old = self.hover_controls[hit.pointer];
         if let Some(i) = self.interactive_get_idx(hit.uv) {
@@ -198,14 +198,14 @@ impl<D, S> InteractionHandler for Canvas<D, S> {
         } else {
             self.hover_controls[hit.pointer] = None;
         }
-        if old != self.hover_controls[hit.pointer] {
+        if old == self.hover_controls[hit.pointer] {
+            None
+        } else {
             Some(Haptics {
                 intensity: 0.1,
                 duration: 0.01,
                 frequency: 5.0,
             })
-        } else {
-            None
         }
     }
     fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool) {
@@ -220,11 +220,11 @@ impl<D, S> InteractionHandler for Canvas<D, S> {
             if pressed {
                 if let Some(ref mut f) = c.on_press {
                     self.pressed_controls[hit.pointer] = Some(idx);
-                    f(c, &mut self.canvas.data, app, hit.mode);
+                    f(c, &mut self.data.data, app, hit.mode);
                 }
             } else if let Some(ref mut f) = c.on_release {
                 self.pressed_controls[hit.pointer] = None;
-                f(c, &mut self.canvas.data, app);
+                f(c, &mut self.data.data, app);
             }
         }
     }
@@ -234,7 +234,7 @@ impl<D, S> InteractionHandler for Canvas<D, S> {
         if let Some(idx) = idx {
             let c = &mut self.controls[idx];
             if let Some(ref mut f) = c.on_scroll {
-                f(c, &mut self.canvas.data, app, delta_y, delta_x);
+                f(c, &mut self.data.data, app, delta_y, delta_x);
             }
         }
     }
@@ -251,21 +251,21 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
         Ok(())
     }
     fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
-        for c in self.controls.iter_mut() {
+        for c in &mut self.controls {
             if let Some(fun) = c.on_update {
-                fun(c, &mut self.canvas.data, app);
+                fun(c, &mut self.data.data, app);
             }
             if c.fg_dirty {
-                self.fg_dirty = true;
+                self.fore_dirty = true;
                 c.fg_dirty = false;
             }
             if c.bg_dirty {
-                self.bg_dirty = true;
+                self.back_dirty = true;
                 c.bg_dirty = false;
             }
         }
 
-        if self.bg_dirty || self.fg_dirty || self.hl_dirty {
+        if self.back_dirty || self.fore_dirty || self.high_dirty {
             Ok(ShouldRender::Should)
         } else {
             Ok(ShouldRender::Can)
@@ -278,68 +278,68 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
         buf: &mut CommandBuffers,
         alpha: f32,
     ) -> anyhow::Result<bool> {
-        self.hl_dirty = false;
+        self.high_dirty = false;
 
         let mut cmd_buffer = self
-            .canvas
+            .data
             .graphics
             .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
 
-        if self.bg_dirty {
-            cmd_buffer.begin_rendering(self.view_bg.clone())?;
-            for c in self.controls.iter_mut() {
+        if self.back_dirty {
+            cmd_buffer.begin_rendering(self.view_back.clone())?;
+            for c in &mut self.controls {
                 if let Some(fun) = c.on_render_bg {
-                    fun(c, &self.canvas, app, &mut cmd_buffer)?;
+                    fun(c, &self.data, app, &mut cmd_buffer)?;
                 }
             }
             cmd_buffer.end_rendering()?;
-            self.bg_dirty = false;
+            self.back_dirty = false;
         }
-        if self.fg_dirty {
-            cmd_buffer.begin_rendering(self.view_fg.clone())?;
-            for c in self.controls.iter_mut() {
+        if self.fore_dirty {
+            cmd_buffer.begin_rendering(self.view_fore.clone())?;
+            for c in &mut self.controls {
                 if let Some(fun) = c.on_render_fg {
-                    fun(c, &self.canvas, app, &mut cmd_buffer)?;
+                    fun(c, &self.data, app, &mut cmd_buffer)?;
                 }
             }
             cmd_buffer.end_rendering()?;
-            self.fg_dirty = false;
+            self.fore_dirty = false;
         }
 
         let set0_fg = self.pipeline_final.uniform_sampler(
             0,
-            self.view_fg.clone(),
+            self.view_fore.clone(),
             app.graphics.texture_filtering,
         )?;
         let set0_bg = self.pipeline_final.uniform_sampler(
             0,
-            self.view_bg.clone(),
+            self.view_back.clone(),
             app.graphics.texture_filtering,
         )?;
         let set1 = self.pipeline_final.uniform_buffer(1, vec![alpha])?;
 
-        let pass_fg = self
+        let pass_fore = self
             .pipeline_final
             .create_pass_for_target(tgt.clone(), vec![set0_fg, set1.clone()])?;
 
-        let pass_bg = self
+        let pass_back = self
             .pipeline_final
             .create_pass_for_target(tgt.clone(), vec![set0_bg, set1])?;
 
-        cmd_buffer.begin_rendering(tgt.clone())?;
-        cmd_buffer.run_ref(&pass_bg)?;
+        cmd_buffer.begin_rendering(tgt)?;
+        cmd_buffer.run_ref(&pass_back)?;
 
         for (i, c) in self.controls.iter_mut().enumerate() {
             if let Some(render) = c.on_render_hl {
                 if let Some(test) = c.test_highlight {
-                    if let Some(hl_color) = test(c, &mut self.canvas.data, app) {
-                        render(c, &self.canvas, app, &mut cmd_buffer, hl_color)?;
+                    if let Some(hl_color) = test(c, &mut self.data.data, app) {
+                        render(c, &self.data, app, &mut cmd_buffer, hl_color)?;
                     }
                 }
                 if self.hover_controls.contains(&Some(i)) {
                     render(
                         c,
-                        &self.canvas,
+                        &self.data,
                         app,
                         &mut cmd_buffer,
                         Vec4::new(1., 1., 1., 0.3),
@@ -349,7 +349,7 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
         }
 
         // mostly static text
-        cmd_buffer.run_ref(&pass_fg)?;
+        cmd_buffer.run_ref(&pass_fore)?;
 
         cmd_buffer.end_rendering()?;
         buf.push(cmd_buffer.build()?);
@@ -358,7 +358,7 @@ impl<D, S> OverlayRenderer for Canvas<D, S> {
 
     fn frame_meta(&mut self) -> Option<FrameMeta> {
         Some(FrameMeta {
-            extent: [self.canvas.width as _, self.canvas.height as _, 1],
+            extent: [self.data.width as _, self.data.height as _, 1],
             format: self.format,
             ..Default::default()
         })

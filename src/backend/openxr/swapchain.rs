@@ -20,9 +20,9 @@ pub(super) struct SwapchainOpts {
 
 impl SwapchainOpts {
     pub fn new() -> Self {
-        Default::default()
+        Self::default()
     }
-    pub fn immutable(mut self) -> Self {
+    pub const fn immutable(mut self) -> Self {
         self.immutable = true;
         self
     }

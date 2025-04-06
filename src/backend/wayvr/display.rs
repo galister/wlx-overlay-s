@@ -122,8 +122,8 @@ impl Display {
         let tex_id = params.renderer.with_context(|gl| {
             smithay_wrapper::create_framebuffer_texture(
                 gl,
-                params.width as u32,
-                params.height as u32,
+                u32::from(params.width),
+                u32::from(params.height),
                 tex_format,
                 internal_format,
             )
@@ -139,7 +139,7 @@ impl Display {
         };
 
         let opaque = false;
-        let size = (params.width as i32, params.height as i32).into();
+        let size = (i32::from(params.width), i32::from(params.height)).into();
         let gles_texture = unsafe {
             GlesTexture::from_raw(params.renderer, Some(tex_format), opaque, tex_id, size)
         };
@@ -202,7 +202,7 @@ impl Display {
         match &self.layout {
             packet_server::WvrDisplayWindowLayout::Tiling => {
                 let mut i = 0;
-                for win in self.displayed_windows.iter_mut() {
+                for win in &mut self.displayed_windows {
                     if let Some(window) = self.wm.borrow_mut().windows.get_mut(&win.window_handle) {
                         if !window.visible {
                             continue;
@@ -210,21 +210,21 @@ impl Display {
                         let d_cur = i as f32 / window_count as f32;
                         let d_next = (i + 1) as f32 / window_count as f32;
 
-                        let left = (d_cur * self.width as f32) as i32;
-                        let right = (d_next * self.width as f32) as i32;
+                        let left = (d_cur * f32::from(self.width)) as i32;
+                        let right = (d_next * f32::from(self.width)) as i32;
 
                         window.set_pos(left, 0);
-                        window.set_size((right - left) as u32, self.height as u32);
+                        window.set_size((right - left) as u32, u32::from(self.height));
                         i += 1;
                     }
                 }
             }
             packet_server::WvrDisplayWindowLayout::Stacking(opts) => {
                 let do_margins = |margins: &packet_server::Margins, window: &mut window::Window| {
-                    let top = margins.top as i32;
-                    let bottom = self.height as i32 - margins.bottom as i32;
-                    let left = margins.left as i32;
-                    let right = self.width as i32 - margins.right as i32;
+                    let top = i32::from(margins.top);
+                    let bottom = i32::from(self.height) - i32::from(margins.bottom);
+                    let left = i32::from(margins.left);
+                    let right = i32::from(self.width) - i32::from(margins.right);
                     let width = right - left;
                     let height = bottom - top;
                     if width < 0 || height < 0 {
@@ -236,7 +236,7 @@ impl Display {
                 };
 
                 let mut i = 0;
-                for win in self.displayed_windows.iter_mut() {
+                for win in &mut self.displayed_windows {
                     if let Some(window) = self.wm.borrow_mut().windows.get_mut(&win.window_handle) {
                         if !window.visible {
                             continue;
@@ -267,7 +267,7 @@ impl Display {
                 self.no_windows_since = None;
             } else if let Some(auto_hide_delay) = config.auto_hide_delay {
                 if let Some(s) = self.no_windows_since {
-                    if s + (auto_hide_delay as u64) < get_millis() {
+                    if s + u64::from(auto_hide_delay) < get_millis() {
                         // Auto-hide after specific time
                         signals.send(WayVRSignal::DisplayVisibility(*handle, false));
                     }
@@ -303,7 +303,7 @@ impl Display {
     pub fn tick_render(&mut self, renderer: &mut GlesRenderer, time_ms: u64) -> anyhow::Result<()> {
         renderer.bind(self.gles_texture.clone())?;
 
-        let size = Size::from((self.width as i32, self.height as i32));
+        let size = Size::from((i32::from(self.width), i32::from(self.height)));
         let damage: Rectangle<i32, smithay::utils::Physical> = Rectangle::from_size(size);
 
         let elements: Vec<WaylandSurfaceRenderElement<GlesRenderer>> = self
@@ -358,8 +358,8 @@ impl Display {
                 gl.ReadPixels(
                     0,
                     0,
-                    self.width as i32,
-                    self.height as i32,
+                    i32::from(self.width),
+                    i32::from(self.height),
                     ffi::RGBA,
                     ffi::UNSIGNED_BYTE,
                     data.as_mut_ptr().cast(),
@@ -401,7 +401,7 @@ impl Display {
         None
     }
 
-    pub fn trigger_rerender(&mut self) {
+    pub const fn trigger_rerender(&mut self) {
         self.wants_redraw = true;
     }
 
@@ -435,7 +435,7 @@ impl Display {
         y: u32,
     ) {
         let current_ms = time::get_millis();
-        if self.last_pressed_time_ms + config.click_freeze_time_ms as u64 > current_ms {
+        if self.last_pressed_time_ms + u64::from(config.click_freeze_time_ms) > current_ms {
             return;
         }
 
@@ -444,8 +444,8 @@ impl Display {
             if let Some(window) = wm.windows.get(&window_handle) {
                 let surf = window.toplevel.wl_surface().clone();
                 let point = Point::<f64, Logical>::from((
-                    (x as i32 - window.pos_x) as f64,
-                    (y as i32 - window.pos_y) as f64,
+                    f64::from(x as i32 - window.pos_x),
+                    f64::from(y as i32 - window.pos_y),
                 ));
 
                 manager.seat_pointer.motion(
@@ -463,7 +463,7 @@ impl Display {
         }
     }
 
-    fn get_mouse_index_number(index: super::MouseIndex) -> u32 {
+    const fn get_mouse_index_number(index: super::MouseIndex) -> u32 {
         match index {
             super::MouseIndex::Left => 0x110,   /* BTN_LEFT */
             super::MouseIndex::Center => 0x112, /* BTN_MIDDLE */
@@ -505,7 +505,7 @@ impl Display {
         manager.seat_pointer.frame(&mut manager.state);
     }
 
-    pub fn send_mouse_up(&self, manager: &mut WayVRCompositor, index: super::MouseIndex) {
+    pub fn send_mouse_up(manager: &mut WayVRCompositor, index: super::MouseIndex) {
         manager.seat_pointer.button(
             &mut manager.state,
             &input::pointer::ButtonEvent {
@@ -519,7 +519,7 @@ impl Display {
         manager.seat_pointer.frame(&mut manager.state);
     }
 
-    pub fn send_mouse_scroll(&self, manager: &mut WayVRCompositor, delta_y: f32, delta_x: f32) {
+    pub fn send_mouse_scroll(manager: &mut WayVRCompositor, delta_y: f32, delta_x: f32) {
         manager.seat_pointer.axis(
             &mut manager.state,
             input::pointer::AxisFrame {
@@ -529,7 +529,7 @@ impl Display {
                     smithay::backend::input::AxisRelativeDirection::Identical,
                 ),
                 time: 0,
-                axis: (delta_x as f64, -delta_y as f64),
+                axis: (f64::from(delta_x), f64::from(-delta_y)),
                 v120: Some((0, (delta_y * -120.0) as i32)),
                 stop: (false, false),
             },
@@ -549,7 +549,7 @@ impl Display {
         args: &[&str],
         env: &[(&str, &str)],
     ) -> anyhow::Result<SpawnProcessResult> {
-        log::info!("Spawning subprocess with exec path \"{}\"", exec_path);
+        log::info!("Spawning subprocess with exec path \"{exec_path}\"");
 
         let auth_key = generate_auth_key();
 
@@ -577,14 +577,14 @@ impl Display {
 gen_id!(DisplayVec, Display, DisplayCell, DisplayHandle);
 
 impl DisplayHandle {
-    pub fn from_packet(handle: packet_server::WvrDisplayHandle) -> Self {
+    pub const fn from_packet(handle: packet_server::WvrDisplayHandle) -> Self {
         Self {
             generation: handle.generation,
             idx: handle.idx,
         }
     }
 
-    pub fn as_packet(&self) -> packet_server::WvrDisplayHandle {
+    pub const fn as_packet(&self) -> packet_server::WvrDisplayHandle {
         packet_server::WvrDisplayHandle {
             idx: self.idx,
             generation: self.generation,

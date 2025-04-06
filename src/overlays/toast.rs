@@ -46,8 +46,8 @@ pub struct Toast {
 
 #[allow(dead_code)]
 impl Toast {
-    pub fn new(topic: ToastTopic, title: Arc<str>, body: Arc<str>) -> Self {
-        Toast {
+    pub const fn new(topic: ToastTopic, title: Arc<str>, body: Arc<str>) -> Self {
+        Self {
             title,
             body,
             opacity: 1.0,
@@ -56,15 +56,15 @@ impl Toast {
             topic,
         }
     }
-    pub fn with_timeout(mut self, timeout: f32) -> Self {
+    pub const fn with_timeout(mut self, timeout: f32) -> Self {
         self.timeout = timeout;
         self
     }
-    pub fn with_opacity(mut self, opacity: f32) -> Self {
+    pub const fn with_opacity(mut self, opacity: f32) -> Self {
         self.opacity = opacity;
         self
     }
-    pub fn with_sound(mut self, sound: bool) -> Self {
+    pub const fn with_sound(mut self, sound: bool) -> Self {
         self.sound = sound;
         self
     }
@@ -93,7 +93,7 @@ impl Toast {
         // frame, only the first one gets created
         app.tasks.enqueue_at(
             TaskType::CreateOverlay(
-                selector.clone(),
+                selector,
                 Box::new(move |app| {
                     let mut maybe_toast = new_toast(self, app);
                     if let Some((state, _)) = maybe_toast.as_mut() {
@@ -139,13 +139,19 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
         }
     };
 
-    let title = if !toast.title.is_empty() {
-        toast.title
-    } else {
+    let title = if toast.title.is_empty() {
         "Notification".into()
+    } else {
+        toast.title
     };
 
-    let mut size = if !toast.body.is_empty() {
+    let mut size = if toast.body.is_empty() {
+        let (w, h) = app
+            .fc
+            .get_text_size(&title, FONT_SIZE, app.graphics.clone())
+            .ok()?;
+        (w, h + 20.)
+    } else {
         let (w0, _) = app
             .fc
             .get_text_size(&title, FONT_SIZE, app.graphics.clone())
@@ -155,12 +161,6 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
             .get_text_size(&toast.body, FONT_SIZE, app.graphics.clone())
             .ok()?;
         (w0.max(w1), h1 + 50.)
-    } else {
-        let (w, h) = app
-            .fc
-            .get_text_size(&title, FONT_SIZE, app.graphics.clone())
-            .ok()?;
-        (w, h + 20.)
     };
 
     let og_width = size.0;
@@ -180,15 +180,15 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
     canvas.bg_color = color_parse("#1e2030").unwrap(); // want panic
     canvas.panel(0., 0., size.0, size.1, 16.);
 
-    if !toast.body.is_empty() {
+    if toast.body.is_empty() {
+        canvas.label_centered(PADDING.0, 0., og_width, size.1, 16., title);
+    } else {
         canvas.label(PADDING.0, 54., og_width, size.1 - 54., 3., toast.body);
 
         canvas.fg_color = color_parse("#b8c0e0").unwrap(); // want panic
         canvas.bg_color = color_parse("#24273a").unwrap(); // want panic
         canvas.panel(0., 0., size.0, 30., 16.);
         canvas.label_centered(PADDING.0, 16., og_width, FONT_SIZE as f32 + 2., 16., title);
-    } else {
-        canvas.label_centered(PADDING.0, 0., og_width, size.1, 16., title);
     }
 
     let state = OverlayState {
@@ -218,13 +218,13 @@ pub fn error_toast<ErrorType>(app: &mut AppState, title: &str, err: ErrorType)
 where
     ErrorType: std::fmt::Display + std::fmt::Debug,
 {
-    log::error!("{}: {:?}", title, err); // More detailed version (use Debug)
+    log::error!("{title}: {err:?}"); // More detailed version (use Debug)
 
     // Brief version (use Display)
-    msg_err(app, &format!("{}: {}", title, err));
+    msg_err(app, &format!("{title}: {err}"));
 }
 
 pub fn error_toast_str(app: &mut AppState, message: &str) {
-    log::error!("{}", message);
+    log::error!("{message}");
     msg_err(app, message);
 }

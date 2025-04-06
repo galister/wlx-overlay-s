@@ -11,7 +11,7 @@ mod smithay_wrapper;
 mod time;
 mod window;
 use comp::Application;
-use display::{DisplayInitParams, DisplayVec};
+use display::{Display, DisplayInitParams, DisplayVec};
 use event_queue::SyncEventQueue;
 use process::ProcessVec;
 use server_ipc::WayVRServer;
@@ -21,7 +21,7 @@ use smithay::{
         egl,
         renderer::{gles::GlesRenderer, ImportDma},
     },
-    input::SeatState,
+    input::{keyboard::XkbConfig, SeatState},
     output::{Mode, Output},
     reexports::wayland_server::{self, backend::ClientId},
     wayland::{
@@ -43,7 +43,6 @@ use wayvr_ipc::{packet_client, packet_server};
 use crate::{hid::MODS_TO_KEYS, state::AppState};
 
 const STR_INVALID_HANDLE_DISP: &str = "Invalid display handle";
-const STR_INVALID_HANDLE_PROCESS: &str = "Invalid process handle";
 
 #[derive(Debug, Clone)]
 pub struct WaylandEnv {
@@ -96,10 +95,10 @@ pub enum BlitMethod {
 }
 
 impl BlitMethod {
-    pub fn from_string(str: &str) -> Option<BlitMethod> {
+    pub fn from_string(str: &str) -> Option<Self> {
         match str {
-            "dmabuf" => Some(BlitMethod::Dmabuf),
-            "software" => Some(BlitMethod::Software),
+            "dmabuf" => Some(Self::Dmabuf),
+            "software" => Some(Self::Software),
             _ => None,
         }
     }
@@ -150,6 +149,7 @@ pub enum TickTask {
 }
 
 impl WayVR {
+    #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
     pub fn new(config: Config) -> anyhow::Result<Self> {
         log::info!("Initializing WayVR");
         let display: wayland_server::Display<Application> = wayland_server::Display::new()?;
@@ -208,28 +208,32 @@ impl WayVR {
                 None
             }
             Err(err) => {
-                log::warn!("dmabuf: Failed to get egl device for display: {}", err);
+                log::warn!("dmabuf: Failed to get egl device for display: {err}");
                 None
             }
         };
 
-        let dmabuf_state = if let Some(default_feedback) = dmabuf_default_feedback {
-            let mut dmabuf_state = DmabufState::new();
-            let dmabuf_global = dmabuf_state.create_global_with_default_feedback::<Application>(
-                &display.handle(),
-                &default_feedback,
-            );
-            (dmabuf_state, dmabuf_global, Some(default_feedback))
-        } else {
-            let dmabuf_formats = gles_renderer.dmabuf_formats();
-            let mut dmabuf_state = DmabufState::new();
-            let dmabuf_global =
-                dmabuf_state.create_global::<Application>(&display.handle(), dmabuf_formats);
-            (dmabuf_state, dmabuf_global, None)
-        };
+        let dmabuf_state = dmabuf_default_feedback.map_or_else(
+            || {
+                let dmabuf_formats = gles_renderer.dmabuf_formats();
+                let mut dmabuf_state = DmabufState::new();
+                let dmabuf_global =
+                    dmabuf_state.create_global::<Application>(&display.handle(), dmabuf_formats);
+                (dmabuf_state, dmabuf_global, None)
+            },
+            |default_feedback| {
+                let mut dmabuf_state = DmabufState::new();
+                let dmabuf_global = dmabuf_state
+                    .create_global_with_default_feedback::<Application>(
+                        &display.handle(),
+                        &default_feedback,
+                    );
+                (dmabuf_state, dmabuf_global, Some(default_feedback))
+            },
+        );
 
         let seat_keyboard = seat.add_keyboard(
-            Default::default(),
+            XkbConfig::default(),
             config.keyboard_repeat_delay_ms as i32,
             config.keyboard_repeat_rate as i32,
         )?;
@@ -278,7 +282,7 @@ impl WayVR {
             .state
             .displays
             .get_mut(&display)
-            .ok_or(anyhow::anyhow!(STR_INVALID_HANDLE_DISP))?;
+            .ok_or_else(|| anyhow::anyhow!(STR_INVALID_HANDLE_DISP))?;
 
         if !display.wants_redraw {
             // Nothing changed, do not render
@@ -298,6 +302,7 @@ impl WayVR {
         Ok(true)
     }
 
+    #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
     pub fn tick_events(&mut self, app: &AppState) -> anyhow::Result<Vec<TickTask>> {
         let mut tasks: Vec<TickTask> = Vec::new();
 
@@ -305,7 +310,7 @@ impl WayVR {
             state: &mut self.state,
             tasks: &mut tasks,
             app,
-        })?;
+        });
 
         // Check for redraw events
         self.state.displays.iter_mut(&mut |_, disp| {
@@ -458,6 +463,7 @@ impl WayVR {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn get_primary_display(displays: &DisplayVec) -> Option<display::DisplayHandle> {
         for (idx, cell) in displays.vec.iter().enumerate() {
             if let Some(cell) = cell {
@@ -503,21 +509,12 @@ impl WayVRState {
         }
     }
 
-    pub fn send_mouse_up(&mut self, display: display::DisplayHandle, index: MouseIndex) {
-        if let Some(display) = self.displays.get(&display) {
-            display.send_mouse_up(&mut self.manager, index);
-        }
+    pub fn send_mouse_up(&mut self, index: MouseIndex) {
+        Display::send_mouse_up(&mut self.manager, index);
     }
 
-    pub fn send_mouse_scroll(
-        &mut self,
-        display: display::DisplayHandle,
-        delta_y: f32,
-        delta_x: f32,
-    ) {
-        if let Some(display) = self.displays.get(&display) {
-            display.send_mouse_scroll(&mut self.manager, delta_y, delta_x);
-        }
+    pub fn send_mouse_scroll(&mut self, delta_y: f32, delta_x: f32) {
+        Display::send_mouse_scroll(&mut self.manager, delta_y, delta_x);
     }
 
     pub fn send_key(&mut self, virtual_key: u32, down: bool) {
@@ -617,7 +614,7 @@ impl WayVRState {
 
         self.manager.cleanup_clients();
 
-        for client in self.manager.clients.iter() {
+        for client in &self.manager.clients {
             if client.display_handle == handle {
                 // This shouldn't happen, but make sure we are all set to destroy this display
                 anyhow::bail!("Wayland client still exists");
@@ -684,8 +681,8 @@ impl WayVRState {
     ) -> process::ProcessHandle {
         self.processes
             .add(process::Process::External(process::ExternalProcess {
-                display_handle,
                 pid,
+                display_handle,
             }))
     }
 
@@ -700,7 +697,7 @@ impl WayVRState {
         let display = self
             .displays
             .get_mut(&display_handle)
-            .ok_or(anyhow::anyhow!(STR_INVALID_HANDLE_DISP))?;
+            .ok_or_else(|| anyhow::anyhow!(STR_INVALID_HANDLE_DISP))?;
 
         let res = display.spawn_process(exec_path, args, env)?;
 

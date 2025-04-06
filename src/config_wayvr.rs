@@ -33,23 +33,23 @@ pub enum AttachTo {
 }
 
 impl AttachTo {
-    pub fn get_relative_to(&self) -> RelativeTo {
+    pub const fn get_relative_to(&self) -> RelativeTo {
         match self {
-            AttachTo::None => RelativeTo::None,
-            AttachTo::HandLeft => RelativeTo::Hand(0),
-            AttachTo::HandRight => RelativeTo::Hand(1),
-            AttachTo::Stage => RelativeTo::Stage,
-            AttachTo::Head => RelativeTo::Head,
+            Self::None => RelativeTo::None,
+            Self::HandLeft => RelativeTo::Hand(0),
+            Self::HandRight => RelativeTo::Hand(1),
+            Self::Stage => RelativeTo::Stage,
+            Self::Head => RelativeTo::Head,
         }
     }
 
-    pub fn from_packet(input: &wayvr_ipc::packet_client::AttachTo) -> AttachTo {
+    pub const fn from_packet(input: &wayvr_ipc::packet_client::AttachTo) -> Self {
         match input {
-            wayvr_ipc::packet_client::AttachTo::None => AttachTo::None,
-            wayvr_ipc::packet_client::AttachTo::HandLeft => AttachTo::HandLeft,
-            wayvr_ipc::packet_client::AttachTo::HandRight => AttachTo::HandRight,
-            wayvr_ipc::packet_client::AttachTo::Head => AttachTo::Head,
-            wayvr_ipc::packet_client::AttachTo::Stage => AttachTo::Stage,
+            wayvr_ipc::packet_client::AttachTo::None => Self::None,
+            wayvr_ipc::packet_client::AttachTo::HandLeft => Self::HandLeft,
+            wayvr_ipc::packet_client::AttachTo::HandRight => Self::HandRight,
+            wayvr_ipc::packet_client::AttachTo::Head => Self::Head,
+            wayvr_ipc::packet_client::AttachTo::Stage => Self::Stage,
         }
     }
 }
@@ -92,23 +92,23 @@ impl WayVRCatalog {
     }
 }
 
-fn def_false() -> bool {
+const fn def_false() -> bool {
     false
 }
 
-fn def_true() -> bool {
+const fn def_true() -> bool {
     true
 }
 
-fn def_autohide_delay() -> u32 {
+const fn def_autohide_delay() -> u32 {
     750
 }
 
-fn def_keyboard_repeat_delay() -> u32 {
+const fn def_keyboard_repeat_delay() -> u32 {
     200
 }
 
-fn def_keyboard_repeat_rate() -> u32 {
+const fn def_keyboard_repeat_rate() -> u32 {
     50
 }
 
@@ -173,14 +173,14 @@ impl WayVRConfig {
 
     pub fn get_wayvr_config(
         config_general: &crate::config::GeneralConfig,
-        config_wayvr: &crate::config_wayvr::WayVRConfig,
+        config_wayvr: &Self,
     ) -> anyhow::Result<wayvr::Config> {
         Ok(wayvr::Config {
             click_freeze_time_ms: config_general.click_freeze_time_ms,
             keyboard_repeat_delay_ms: config_wayvr.keyboard_repeat_delay,
             keyboard_repeat_rate: config_wayvr.keyboard_repeat_rate,
             blit_method: wayvr::BlitMethod::from_string(&config_wayvr.blit_method)
-                .ok_or(anyhow::anyhow!("Unknown blit method"))?,
+                .ok_or_else(|| anyhow::anyhow!("Unknown blit method"))?,
             auto_hide_delay: if config_wayvr.auto_hide {
                 Some(config_wayvr.auto_hide_delay)
             } else {
@@ -235,7 +235,7 @@ impl WayVRConfig {
 
 pub fn load_wayvr() -> WayVRConfig {
     let config_root_path = config_io::ConfigRoot::WayVR.ensure_dir();
-    log::info!("WayVR Config root path: {:?}", config_root_path);
+    log::info!("WayVR Config root path: {config_root_path:?}");
     log::info!(
         "WayVR conf.d path: {:?}",
         config_io::ConfigRoot::WayVR.get_conf_d_path()

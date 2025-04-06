@@ -46,11 +46,9 @@ pub fn get_keymap_wl() -> anyhow::Result<XkbKeymap> {
     // this gets us the wl_keyboard
     let _ = queue.blocking_dispatch(&mut me);
 
-    if let Some(keymap) = me.keymap.take() {
-        Ok(keymap)
-    } else {
-        Err(anyhow::anyhow!("Could not load keymap"))
-    }
+    me.keymap
+        .take()
+        .ok_or_else(|| anyhow::anyhow!("Could not load keymap"))
 }
 
 impl Dispatch<WlRegistry, GlobalListContents> for WlKeymapHandler {
@@ -84,7 +82,7 @@ impl Dispatch<WlSeat, ()> for WlKeymapHandler {
                 }
             }
             wl_seat::Event::Name { name } => {
-                log::debug!("Using WlSeat: {}", name);
+                log::debug!("Using WlSeat: {name}");
             }
             _ => {}
         }
@@ -127,14 +125,14 @@ impl Dispatch<WlKeyboard, ()> for WlKeymapHandler {
                             log::error!("Default layout will be used.");
                         }
                         Err(err) => {
-                            log::error!("Could not load keymap: {}", err);
+                            log::error!("Could not load keymap: {err}");
                             log::error!("Default layout will be used.");
                         }
                     }
                 }
             }
             wl_keyboard::Event::RepeatInfo { rate, delay } => {
-                log::debug!("WlKeyboard RepeatInfo rate: {}, delay: {}", rate, delay);
+                log::debug!("WlKeyboard RepeatInfo rate: {rate}, delay: {delay}");
             }
             _ => {}
         }

@@ -44,11 +44,11 @@ fn read_check(expected_size: u32, res: std::io::Result<usize>) -> bool {
             if count == 0 {
                 return false;
             }
-            if count as u32 != expected_size {
-                log::error!("count {} is not {}", count, expected_size);
-                false
-            } else {
+            if count as u32 == expected_size {
                 true // read succeeded
+            } else {
+                log::error!("count {count} is not {expected_size}");
+                false
             }
         }
         Err(_e) => {
@@ -63,10 +63,10 @@ type Payload = SmallVec<[u8; 64]>;
 fn read_payload(conn: &mut local_socket::Stream, size: u32) -> Option<Payload> {
     let mut payload = Payload::new();
     payload.resize(size as usize, 0);
-    if !read_check(size, conn.read(&mut payload)) {
-        None
-    } else {
+    if read_check(size, conn.read(&mut payload)) {
         Some(payload)
+    } else {
+        None
     }
 }
 
@@ -89,7 +89,7 @@ pub fn gen_env_vec(input: &[String]) -> Vec<(&str, &str)> {
 }
 
 impl Connection {
-    fn new(conn: local_socket::Stream) -> Self {
+    const fn new(conn: local_socket::Stream) -> Self {
         Self {
             conn,
             alive: true,
@@ -222,10 +222,9 @@ impl Connection {
             false,
         )?;
 
-        params.tasks.push(TickTask::NewDisplay(
-            packet_params.clone(),
-            Some(display_handle),
-        ));
+        params
+            .tasks
+            .push(TickTask::NewDisplay(packet_params, Some(display_handle)));
 
         send_packet(
             &mut self.conn,
@@ -246,7 +245,7 @@ impl Connection {
         let res = params
             .state
             .destroy_display(display::DisplayHandle::from_packet(handle))
-            .map_err(|e| format!("{:?}", e));
+            .map_err(|e| format!("{e:?}"));
 
         send_packet(
             &mut self.conn,
@@ -256,29 +255,25 @@ impl Connection {
     }
 
     fn handle_wvr_display_set_visible(
-        &mut self,
         params: &mut TickParams,
         handle: packet_server::WvrDisplayHandle,
         visible: bool,
-    ) -> anyhow::Result<()> {
+    ) {
         params.state.signals.send(WayVRSignal::DisplayVisibility(
             display::DisplayHandle::from_packet(handle),
             visible,
         ));
-        Ok(())
     }
 
     fn handle_wvr_display_set_window_layout(
-        &mut self,
         params: &mut TickParams,
         handle: packet_server::WvrDisplayHandle,
         layout: packet_server::WvrDisplayWindowLayout,
-    ) -> anyhow::Result<()> {
+    ) {
         params.state.signals.send(WayVRSignal::DisplayWindowLayout(
             display::DisplayHandle::from_packet(handle),
             layout,
         ));
-        Ok(())
     }
 
     fn handle_wvr_display_window_list(
@@ -331,11 +326,10 @@ impl Connection {
     }
 
     fn handle_wvr_window_set_visible(
-        &mut self,
         params: &mut TickParams,
         handle: packet_server::WvrWindowHandle,
         visible: bool,
-    ) -> anyhow::Result<()> {
+    ) {
         let mut to_resize = None;
 
         if let Some(window) = params
@@ -355,8 +349,6 @@ impl Connection {
                 display.trigger_rerender();
             }
         }
-
-        Ok(())
     }
 
     fn handle_wvr_process_launch(
@@ -392,7 +384,7 @@ impl Connection {
         serial: ipc::Serial,
         display_handle: packet_server::WvrDisplayHandle,
     ) -> anyhow::Result<()> {
-        let native_handle = &display::DisplayHandle::from_packet(display_handle.clone());
+        let native_handle = &display::DisplayHandle::from_packet(display_handle);
         let disp = params
             .state
             .displays
@@ -440,20 +432,17 @@ impl Connection {
 
     // This request doesn't return anything to the client
     fn handle_wvr_process_terminate(
-        &mut self,
         params: &mut TickParams,
         process_handle: packet_server::WvrProcessHandle,
-    ) -> anyhow::Result<()> {
-        let native_handle = &process::ProcessHandle::from_packet(process_handle.clone());
+    ) {
+        let native_handle = &process::ProcessHandle::from_packet(process_handle);
         let process = params.state.processes.get_mut(native_handle);
 
         let Some(process) = process else {
-            return Ok(());
+            return;
         };
 
         process.terminate();
-
-        Ok(())
     }
 
     fn handle_wvr_process_get(
@@ -462,7 +451,7 @@ impl Connection {
         serial: ipc::Serial,
         process_handle: packet_server::WvrProcessHandle,
     ) -> anyhow::Result<()> {
-        let native_handle = &process::ProcessHandle::from_packet(process_handle.clone());
+        let native_handle = &process::ProcessHandle::from_packet(process_handle);
         let process = params
             .state
             .processes
@@ -478,10 +467,9 @@ impl Connection {
     }
 
     fn handle_wlx_haptics(
-        &mut self,
         params: &mut TickParams,
         haptics_params: packet_client::WlxHapticsParams,
-    ) -> anyhow::Result<()> {
+    ) {
         params
             .state
             .tasks
@@ -490,7 +478,6 @@ impl Connection {
                 frequency: haptics_params.frequency,
                 intensity: haptics_params.intensity,
             }));
-        Ok(())
     }
 
     fn process_payload(&mut self, params: &mut TickParams, payload: Payload) -> anyhow::Result<()> {
@@ -516,16 +503,16 @@ impl Connection {
                 self.handle_wvr_display_remove(params, serial, display_handle)?;
             }
             PacketClient::WvrDisplaySetVisible(display_handle, visible) => {
-                self.handle_wvr_display_set_visible(params, display_handle, visible)?;
+                Self::handle_wvr_display_set_visible(params, display_handle, visible);
             }
             PacketClient::WvrDisplaySetWindowLayout(display_handle, layout) => {
-                self.handle_wvr_display_set_window_layout(params, display_handle, layout)?;
+                Self::handle_wvr_display_set_window_layout(params, display_handle, layout);
             }
             PacketClient::WvrDisplayWindowList(serial, display_handle) => {
                 self.handle_wvr_display_window_list(params, serial, display_handle)?;
             }
             PacketClient::WvrWindowSetVisible(window_handle, visible) => {
-                self.handle_wvr_window_set_visible(params, window_handle, visible)?;
+                Self::handle_wvr_window_set_visible(params, window_handle, visible);
             }
             PacketClient::WvrProcessGet(serial, process_handle) => {
                 self.handle_wvr_process_get(params, serial, process_handle)?;
@@ -540,10 +527,10 @@ impl Connection {
                 self.handle_wvr_display_create(params, serial, packet_params)?;
             }
             PacketClient::WvrProcessTerminate(process_handle) => {
-                self.handle_wvr_process_terminate(params, process_handle)?;
+                Self::handle_wvr_process_terminate(params, process_handle);
             }
             PacketClient::WlxHaptics(haptics_params) => {
-                self.handle_wlx_haptics(params, haptics_params)?;
+                Self::handle_wlx_haptics(params, haptics_params);
             }
         }
 
@@ -554,9 +541,9 @@ impl Connection {
         log::debug!("payload size {}", payload.len());
 
         if let Err(e) = self.process_payload(params, payload) {
-            log::error!("Invalid payload from the client, closing connection: {}", e);
+            log::error!("Invalid payload from the client, closing connection: {e}");
             // send also error message directly to the client before disconnecting
-            self.kill(format!("{}", e).as_str());
+            self.kill(format!("{e}").as_str());
             false
         } else {
             true
@@ -589,8 +576,7 @@ impl Connection {
         if payload_size > size_limit {
             // over 128 KiB?
             log::error!(
-                "Client sent a packet header with the size over {} bytes, closing connection.",
-                size_limit
+                "Client sent a packet header with the size over {size_limit} bytes, closing connection."
             );
             self.kill("Too big packet received (over 128 KiB)");
             return false;
@@ -637,7 +623,7 @@ impl WayVRServer {
             Err(e) => anyhow::bail!("Failed to start WayVRServer IPC listener. Reason: {}", e),
         };
 
-        log::info!("WayVRServer IPC running at {}", printname);
+        log::info!("WayVRServer IPC running at {printname}");
 
         Ok(Self {
             listener,
@@ -662,16 +648,15 @@ impl WayVRServer {
         self.connections.retain(|c| c.alive);
     }
 
-    pub fn tick(&mut self, params: &mut TickParams) -> anyhow::Result<()> {
+    pub fn tick(&mut self, params: &mut TickParams) {
         self.accept_connections();
         self.tick_connections(params);
-        Ok(())
     }
 
     pub fn broadcast(&mut self, packet: packet_server::PacketServer) {
         for connection in &mut self.connections {
             if let Err(e) = send_packet(&mut connection.conn, &ipc::data_encode(&packet)) {
-                log::error!("failed to broadcast packet: {:?}", e);
+                log::error!("failed to broadcast packet: {e:?}");
             }
         }
     }

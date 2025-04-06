@@ -18,8 +18,7 @@ static CONFIG_ROOT_PATH: Lazy<PathBuf> = Lazy::new(|| {
     }
     //Return fallback config path
     error!(
-        "Err: Failed to find config path, using {}",
-        FALLBACK_CONFIG_PATH
+        "Err: Failed to find config path, using {FALLBACK_CONFIG_PATH}"
     );
     PathBuf::from(FALLBACK_CONFIG_PATH)
 });
@@ -31,8 +30,8 @@ pub fn get_config_root() -> PathBuf {
 impl ConfigRoot {
     pub fn get_conf_d_path(&self) -> PathBuf {
         get_config_root().join(match self {
-            ConfigRoot::Generic => "conf.d",
-            ConfigRoot::WayVR => "wayvr.conf.d",
+            Self::Generic => "conf.d",
+            Self::WayVR => "wayvr.conf.d",
         })
     }
 

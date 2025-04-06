@@ -69,79 +69,76 @@ impl AStrSetExt for AStrSet {
 
     fn arc_rm(&mut self, value: &str) -> bool {
         let index = self.iter().position(|v| v.as_ref().eq(value));
-        index
-            .map(|i| {
-                self.remove(i);
-                true
-            })
-            .unwrap_or(false)
+        index.is_some_and(|i| {
+            self.remove(i);
+            true
+        })
     }
 }
 
 pub type PwTokenMap = AStrMap<String>;
 
-pub fn def_watch_pos() -> Vec3A {
+pub const fn def_watch_pos() -> Vec3A {
     vec3a(-0.03, -0.01, 0.125)
 }
 
-pub fn def_watch_rot() -> Quat {
-    Quat::from_xyzw(-0.7071066, 0.0007963618, 0.7071066, 0.0)
+pub const fn def_watch_rot() -> Quat {
+    Quat::from_xyzw(-0.707_106_6, 0.000_796_361_8, 0.707_106_6, 0.0)
 }
 
-pub fn def_left() -> LeftRight {
+pub const fn def_left() -> LeftRight {
     LeftRight::Left
 }
 
-pub fn def_pw_tokens() -> PwTokenMap {
+pub const fn def_pw_tokens() -> PwTokenMap {
     AStrMap::new()
 }
 
-fn def_mouse_move_interval_ms() -> u32 {
+const fn def_mouse_move_interval_ms() -> u32 {
     10 // 100fps
 }
 
-fn def_click_freeze_time_ms() -> u32 {
+const fn def_click_freeze_time_ms() -> u32 {
     300
 }
 
-pub fn def_true() -> bool {
+pub const fn def_true() -> bool {
     true
 }
 
-fn def_false() -> bool {
+const fn def_false() -> bool {
     false
 }
 
-fn def_one() -> f32 {
+const fn def_one() -> f32 {
     1.0
 }
 
-pub fn def_half() -> f32 {
+pub const fn def_half() -> f32 {
     0.5
 }
 
-pub fn def_point7() -> f32 {
+pub const fn def_point7() -> f32 {
     0.7
 }
 
-pub fn def_point3() -> f32 {
+pub const fn def_point3() -> f32 {
     0.3
 }
 
-fn def_osc_port() -> u16 {
+const fn def_osc_port() -> u16 {
     9000
 }
 
-fn def_empty_vec_string() -> Vec<String> {
+const fn def_empty_vec_string() -> Vec<String> {
     Vec::new()
 }
 
 fn def_timezones() -> Vec<String> {
-    let offset = chrono::Local::now().offset().fix();
-
     const EMEA: i32 = -60 * 60; // UTC-1
     const APAC: i32 = 5 * 60 * 60; // UTC+5
 
+    let offset = chrono::Local::now().offset().fix();
     match offset.local_minus_utc() {
         i32::MIN..EMEA => vec!["Europe/Paris".into(), "Asia/Tokyo".into()],
         EMEA..APAC => vec!["America/New_York".into(), "Asia/Tokyo".into()],
@@ -149,15 +146,15 @@ fn def_timezones() -> Vec<String> {
     }
 }
 
-fn def_screens() -> AStrSet {
+const fn def_screens() -> AStrSet {
     AStrSet::new()
 }
 
-fn def_curve_values() -> AStrMap<f32> {
+const fn def_curve_values() -> AStrMap<f32> {
     AStrMap::new()
 }
 
-fn def_transforms() -> AStrMap<Affine3A> {
+const fn def_transforms() -> AStrMap<Affine3A> {
     AStrMap::new()
 }
 
@@ -177,7 +174,7 @@ fn def_font() -> Arc<str> {
     "LiberationSans:style=Bold".into()
 }
 
-fn def_max_height() -> u16 {
+const fn def_max_height() -> u16 {
     1440
 }
 
@@ -294,7 +291,7 @@ pub struct GeneralConfig {
     #[serde(default = "def_max_height")]
     pub screen_max_height: u16,
 
-    #[serde(default = "def_true")]
+    #[serde(default = "def_false")]
     pub screen_render_down: bool,
 
     #[serde(default = "def_point3")]
@@ -315,23 +312,21 @@ pub struct GeneralConfig {
 
 impl GeneralConfig {
     fn sanitize_range(name: &str, val: f32, from: f32, to: f32) {
-        if !val.is_normal() || val < from || val > to {
-            panic!(
-                "GeneralConfig: {} needs to be between {} and {}",
-                name, from, to
-            );
-        }
+        assert!(
+            !(!val.is_normal() || val < from || val > to),
+            "GeneralConfig: {name} needs to be between {from} and {to}"
+        );
     }
 
-    pub fn load_from_disk() -> GeneralConfig {
+    pub fn load_from_disk() -> Self {
         let config = load_general();
         config.post_load();
         config
     }
 
     fn post_load(&self) {
-        GeneralConfig::sanitize_range("keyboard_scale", self.keyboard_scale, 0.05, 5.0);
-        GeneralConfig::sanitize_range("desktop_view_scale", self.desktop_view_scale, 0.05, 5.0);
+        Self::sanitize_range("keyboard_scale", self.keyboard_scale, 0.05, 5.0);
+        Self::sanitize_range("desktop_view_scale", self.desktop_view_scale, 0.05, 5.0);
     }
 }
 
@@ -374,8 +369,8 @@ where
         match serde_yaml::from_str::<T>(yaml) {
             Ok(d) => return d,
             Err(e) => {
-                error!("Failed to parse {}, falling back to defaults.", file_name);
-                error!("{}", e);
+                error!("Failed to parse {file_name}, falling back to defaults.");
+                error!("{e}");
             }
         }
     }
@@ -384,7 +379,7 @@ where
 }
 
 pub fn load_custom_ui(name: &str) -> anyhow::Result<ModularUiConfig> {
-    let filename = format!("{}.yaml", name);
+    let filename = format!("{name}.yaml");
     let Some(yaml_data) = config_io::load(&filename) else {
         bail!("Could not read file at {}", &filename);
     };
@@ -416,13 +411,13 @@ where
             .filter_map(|r| match r {
                 Ok(entry) => Some(entry),
                 Err(e) => {
-                    error!("Failed to read conf.d directory: {}", e);
+                    error!("Failed to read conf.d directory: {e}");
                     None
                 }
             })
             .collect();
         // Sort paths alphabetically
-        paths.sort_by_key(|dir| dir.path());
+        paths.sort_by_key(std::fs::DirEntry::path);
         for path in paths {
             log::info!("Loading config file: {}", path.path().to_string_lossy());
             settings_builder = settings_builder.add_source(File::from(path.path()));
@@ -433,11 +428,11 @@ where
         Ok(settings) => match settings.try_deserialize::<ConfigData>() {
             Ok(config) => config,
             Err(e) => {
-                panic!("Failed to deserialize settings: {}", e);
+                panic!("Failed to deserialize settings: {e}");
             }
         },
         Err(e) => {
-            panic!("Failed to build settings: {}", e);
+            panic!("Failed to build settings: {e}");
         }
     }
 }

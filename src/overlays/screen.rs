@@ -9,6 +9,7 @@ use std::{
 };
 use vulkano::{
     command_buffer::CommandBufferUsage,
+    format::Format,
     image::{sampler::Filter, view::ImageView, Image},
     pipeline::graphics::color_blend::AttachmentBlend,
 };
@@ -26,7 +27,7 @@ use wlx_capture::{
 use {
     crate::config_io,
     std::error::Error,
-    std::{ops::Deref, path::PathBuf, task},
+    std::{path::PathBuf, task},
     wlx_capture::pipewire::PipewireCapture,
     wlx_capture::pipewire::PipewireSelectScreenResult,
 };
@@ -64,7 +65,7 @@ use crate::{
 };
 
 #[cfg(feature = "wayland")]
-pub(crate) type WlxClientAlias = wlx_capture::wayland::WlxClient;
+pub type WlxClientAlias = wlx_capture::wayland::WlxClient;
 
 #[cfg(not(feature = "wayland"))]
 pub(crate) type WlxClientAlias = ();
@@ -91,7 +92,7 @@ pub struct ScreenInteractionHandler {
     mouse_transform: Affine2,
 }
 impl ScreenInteractionHandler {
-    fn new(pos: Vec2, size: Vec2, transform: Transform) -> ScreenInteractionHandler {
+    fn new(pos: Vec2, size: Vec2, transform: Transform) -> Self {
         let transform = match transform {
             Transform::_90 | Transform::Flipped90 => Affine2::from_cols(
                 vec2(0., size.y),
@@ -111,7 +112,7 @@ impl ScreenInteractionHandler {
             _ => Affine2::from_cols(vec2(size.x, 0.), vec2(0., size.y), pos),
         };
 
-        ScreenInteractionHandler {
+        Self {
             mouse_transform: transform,
         }
     }
@@ -127,7 +128,7 @@ impl InteractionHandler for ScreenInteractionHandler {
         {
             let pos = self.mouse_transform.transform_point2(hit.uv);
             app.hid_provider.mouse_move(pos);
-            set_next_move(app.session.config.mouse_move_interval_ms as u64);
+            set_next_move(u64::from(app.session.config.mouse_move_interval_ms));
         }
         None
     }
@@ -139,7 +140,7 @@ impl InteractionHandler for ScreenInteractionHandler {
         };
 
         if pressed {
-            set_next_move(app.session.config.click_freeze_time_ms as u64);
+            set_next_move(u64::from(app.session.config.click_freeze_time_ms));
         }
 
         app.hid_provider.send_button(btn, pressed);
@@ -152,7 +153,7 @@ impl InteractionHandler for ScreenInteractionHandler {
     }
     fn on_scroll(&mut self, app: &mut AppState, _hit: &PointerHit, delta_y: f32, delta_x: f32) {
         app.hid_provider
-            .wheel((delta_y * 64.) as i32, (delta_x * 64.) as i32)
+            .wheel((delta_y * 64.) as i32, (delta_x * 64.) as i32);
     }
     fn on_left(&mut self, _app: &mut AppState, _hand: usize) {}
 }
@@ -165,7 +166,7 @@ struct ScreenPipeline {
 }
 
 impl ScreenPipeline {
-    fn new(extent: &[u32; 3], app: &mut AppState) -> anyhow::Result<ScreenPipeline> {
+    fn new(extent: &[u32; 3], app: &mut AppState) -> anyhow::Result<Self> {
         let Ok(shaders) = app.graphics.shared_shaders.read() else {
             return Err(anyhow::anyhow!("Could not lock shared shaders for reading"));
         };
@@ -179,7 +180,7 @@ impl ScreenPipeline {
 
         let extentf = [extent[0] as f32, extent[1] as f32];
 
-        Ok(ScreenPipeline {
+        Ok(Self {
             mouse: None,
             pipeline,
             extentf,
@@ -236,15 +237,15 @@ impl ScreenPipeline {
             let vertex_buffer = app.graphics.upload_verts(
                 self.extentf[0],
                 self.extentf[1],
-                mouse.x * self.extentf[0] - half_size,
-                mouse.y * self.extentf[1] - half_size,
+                mouse.x.mul_add(self.extentf[0], -half_size),
+                mouse.y.mul_add(self.extentf[1], -half_size),
                 size,
                 size,
             )?;
 
             let set0 = self
                 .pipeline
-                .uniform_sampler(0, mouse_view.clone(), Filter::Nearest)?;
+                .uniform_sampler(0, mouse_view, Filter::Nearest)?;
 
             let pass = self.pipeline.create_pass(
                 self.extentf,
@@ -275,8 +276,8 @@ impl ScreenRenderer {
     pub fn new_raw(
         name: Arc<str>,
         capture: Box<dyn WlxCapture<WlxCaptureIn, WlxCaptureOut>>,
-    ) -> ScreenRenderer {
-        ScreenRenderer {
+    ) -> Self {
+        Self {
             name,
             capture,
             pipeline: None,
@@ -286,11 +287,11 @@ impl ScreenRenderer {
     }
 
     #[cfg(feature = "wayland")]
-    pub fn new_wlr_dmabuf(output: &WlxOutput) -> Option<ScreenRenderer> {
+    pub fn new_wlr_dmabuf(output: &WlxOutput) -> Option<Self> {
         let client = WlxClient::new()?;
         let capture = WlrDmabufCapture::new(client, output.id);
 
-        Some(ScreenRenderer {
+        Some(Self {
             name: output.name.clone(),
             capture: Box::new(capture),
             pipeline: None,
@@ -300,11 +301,11 @@ impl ScreenRenderer {
     }
 
     #[cfg(feature = "wayland")]
-    pub fn new_wlr_screencopy(output: &WlxOutput) -> Option<ScreenRenderer> {
+    pub fn new_wlr_screencopy(output: &WlxOutput) -> Option<Self> {
         let client = WlxClient::new()?;
         let capture = WlrScreencopyCapture::new(client, output.id);
 
-        Some(ScreenRenderer {
+        Some(Self {
             name: output.name.clone(),
             capture: Box::new(capture),
             pipeline: None,
@@ -318,10 +319,7 @@ impl ScreenRenderer {
         output: &WlxOutput,
         token: Option<&str>,
         session: &AppSession,
-    ) -> anyhow::Result<(
-        ScreenRenderer,
-        Option<String>, /* pipewire restore token */
-    )> {
+    ) -> anyhow::Result<(Self, Option<String> /* pipewire restore token */)> {
         let name = output.name.clone();
         let embed_mouse = !session.config.double_cursor_fix;
 
@@ -346,7 +344,7 @@ impl ScreenRenderer {
         let capture = PipewireCapture::new(name, node_id);
 
         Ok((
-            ScreenRenderer {
+            Self {
                 name: output.name.clone(),
                 capture: Box::new(capture),
                 pipeline: None,
@@ -358,10 +356,10 @@ impl ScreenRenderer {
     }
 
     #[cfg(feature = "x11")]
-    pub fn new_xshm(screen: Arc<XshmScreen>) -> ScreenRenderer {
+    pub fn new_xshm(screen: Arc<XshmScreen>) -> Self {
         let capture = XshmCapture::new(screen.clone());
 
-        ScreenRenderer {
+        Self {
             name: screen.name.clone(),
             capture: Box::new(capture),
             pipeline: None,
@@ -384,6 +382,39 @@ pub struct WlxCaptureOut {
     mouse: Option<MouseMeta>,
 }
 
+fn upload_image(
+    me: &WlxCaptureIn,
+    width: u32,
+    height: u32,
+    format: Format,
+    data: &[u8],
+) -> Option<Arc<Image>> {
+    let mut upload = match me
+        .graphics
+        .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
+    {
+        Ok(x) => x,
+        Err(e) => {
+            log::error!("{}: Could not create vkCommandBuffer: {:?}", me.name, e);
+            return None;
+        }
+    };
+    let image = match upload.texture2d_raw(width, height, format, data) {
+        Ok(x) => x,
+        Err(e) => {
+            log::error!("{}: Could not create vkImage: {:?}", me.name, e);
+            return None;
+        }
+    };
+
+    if let Err(e) = upload.build_and_execute_now() {
+        log::error!("{}: Could not execute upload: {:?}", me.name, e);
+        return None;
+    }
+
+    Some(image)
+}
+
 fn receive_callback(me: &WlxCaptureIn, frame: wlx_frame::WlxFrame) -> Option<WlxCaptureOut> {
     match frame {
         WlxFrame::Dmabuf(frame) => {
@@ -400,11 +431,7 @@ fn receive_callback(me: &WlxCaptureIn, frame: wlx_frame::WlxFrame) -> Option<Wlx
                     mouse: None,
                 }),
                 Err(e) => {
-                    log::error!(
-                        "{}: Failed to create DMA-buf vkImage: {}",
-                        me.name,
-                        e.to_string()
-                    );
+                    log::error!("{}: Failed to create DMA-buf vkImage: {}", me.name, e);
                     None
                 }
             }
@@ -424,7 +451,7 @@ fn receive_callback(me: &WlxCaptureIn, frame: wlx_frame::WlxFrame) -> Option<Wlx
             };
 
             let len = frame.plane.stride as usize * frame.format.height as usize;
-            let offset = frame.plane.offset as i64;
+            let offset = i64::from(frame.plane.offset);
 
             let map = unsafe {
                 libc::mmap(
@@ -437,35 +464,15 @@ fn receive_callback(me: &WlxCaptureIn, frame: wlx_frame::WlxFrame) -> Option<Wlx
                 )
             } as *const u8;
 
-            let pixels = unsafe { slice::from_raw_parts(map, len) };
+            let data = unsafe { slice::from_raw_parts(map, len) };
 
-            let mut upload = match me
-                .graphics
-                .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
-            {
-                Ok(x) => x,
-                Err(e) => {
-                    log::error!("{}: Could not create vkCommandBuffer: {:?}", me.name, e);
-                    return None;
-                }
-            };
+            let image = {
+                let maybe_image =
+                    upload_image(me, frame.format.width, frame.format.height, format, data);
 
-            let image =
-                match upload.texture2d_raw(frame.format.width, frame.format.height, format, pixels)
-                {
-                    Ok(x) => x,
-                    Err(e) => {
-                        log::error!("{}: Could not create vkImage: {:?}", me.name, e);
-                        return None;
-                    }
-                };
-
-            if let Err(e) = upload.build_and_execute_now() {
-                log::error!("{}: Could not execute upload: {:?}", me.name, e);
-                return None;
-            }
-
-            unsafe { libc::munmap(map as *mut _, len) };
+                unsafe { libc::munmap(map as *mut _, len) };
+                maybe_image
+            }?;
 
             Some(WlxCaptureOut {
                 image,
@@ -484,33 +491,8 @@ fn receive_callback(me: &WlxCaptureIn, frame: wlx_frame::WlxFrame) -> Option<Wlx
                 }
             };
 
-            let mut upload = match me
-                .graphics
-                .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
-            {
-                Ok(x) => x,
-                Err(e) => {
-                    log::error!("{}: Could not create vkCommandBuffer: {:?}", me.name, e);
-                    return None;
-                }
-            };
-
-            let pixels = unsafe { slice::from_raw_parts(frame.ptr as *const u8, frame.size) };
-
-            let image =
-                match upload.texture2d_raw(frame.format.width, frame.format.height, format, pixels)
-                {
-                    Ok(x) => x,
-                    Err(e) => {
-                        log::error!("{}: Could not create vkImage: {:?}", me.name, e);
-                        return None;
-                    }
-                };
-
-            if let Err(e) = upload.build_and_execute_now() {
-                log::error!("{}: Could not execute upload: {:?}", me.name, e);
-                return None;
-            }
+            let data = unsafe { slice::from_raw_parts(frame.ptr as *const u8, frame.size) };
+            let image = upload_image(me, frame.format.width, frame.format.height, format, data)?;
 
             Some(WlxCaptureOut {
                 image,
@@ -547,7 +529,7 @@ impl OverlayRenderer for ScreenRenderer {
                         return vec![];
                     }
                     if !allow_dmabuf {
-                        log::info!("Not using DMA-buf capture due to {}", capture_method);
+                        log::info!("Not using DMA-buf capture due to {capture_method}");
                         return vec![];
                     }
                     log::warn!("Using DMA-buf capture. If screens are blank for you, switch to SHM using:");
@@ -604,7 +586,7 @@ impl OverlayRenderer for ScreenRenderer {
             return Ok(ShouldRender::Unable);
         }
 
-        for frame in self.capture.receive().into_iter() {
+        if let Some(frame) = self.capture.receive() {
             self.cur_frame = Some(frame);
         }
 
@@ -623,7 +605,7 @@ impl OverlayRenderer for ScreenRenderer {
                 upload.build_and_execute_now()?;
                 pipeline
             });
-        };
+        }
 
         if self.cur_frame.is_some() {
             Ok(ShouldRender::Should)
@@ -669,6 +651,7 @@ impl OverlayRenderer for ScreenRenderer {
 }
 
 #[cfg(feature = "wayland")]
+#[allow(clippy::useless_let_if_seq)]
 pub fn create_screen_renderer_wl(
     output: &WlxOutput,
     has_wlr_dmabuf: bool,
@@ -690,17 +673,15 @@ pub fn create_screen_renderer_wl(
     if capture.is_none() {
         log::info!("{}: Using Pipewire capture", &output.name);
 
-        let display_name = output.name.deref();
+        let display_name = &*output.name;
 
         // Find existing token by display
-        let token = pw_token_store.arc_get(display_name).map(|s| s.as_str());
+        let token = pw_token_store
+            .arc_get(display_name)
+            .map(std::string::String::as_str);
 
         if let Some(t) = token {
-            log::info!(
-                "Found existing Pipewire token for display {}: {}",
-                display_name,
-                t
-            );
+            log::info!("Found existing Pipewire token for display {display_name}: {t}");
         }
 
         match ScreenRenderer::new_pw(output, token, session) {
@@ -709,7 +690,7 @@ pub fn create_screen_renderer_wl(
 
                 if let Some(token) = restore_token {
                     if pw_token_store.arc_set(display_name.into(), token.clone()) {
-                        log::info!("Adding Pipewire token {}", token);
+                        log::info!("Adding Pipewire token {token}");
                     }
                 }
             }
@@ -773,7 +754,7 @@ fn create_screen_state(
     };
 
     OverlayState {
-        name: name.clone(),
+        name,
         keyboard_focus: Some(KeyboardFocus::PhysicalScreen),
         grabbable: true,
         recenter: true,
@@ -816,23 +797,19 @@ pub fn load_pw_token_config() -> Result<PwTokenMap, Box<dyn Error>> {
     Ok(conf.pw_tokens)
 }
 
-pub(crate) struct ScreenCreateData {
+pub struct ScreenCreateData {
     pub screens: Vec<(ScreenMeta, OverlayState, Box<SplitOverlayBackend>)>,
 }
 
 #[cfg(not(feature = "wayland"))]
-pub fn create_screens_wayland(
-    _wl: &mut WlxClientAlias,
-    _app: &AppState,
-) -> anyhow::Result<ScreenCreateData> {
-    anyhow::bail!("Wayland support not enabled")
+pub fn create_screens_wayland(_wl: &mut WlxClientAlias, _app: &AppState) -> ScreenCreateData {
+    ScreenCreateData {
+        screens: Vec::default(),
+    }
 }
 
 #[cfg(feature = "wayland")]
-pub fn create_screens_wayland(
-    wl: &mut WlxClientAlias,
-    app: &mut AppState,
-) -> anyhow::Result<ScreenCreateData> {
+pub fn create_screens_wayland(wl: &mut WlxClientAlias, app: &mut AppState) -> ScreenCreateData {
     let mut screens = vec![];
 
     // Load existing Pipewire tokens from file
@@ -842,7 +819,7 @@ pub fn create_screens_wayland(
     let has_wlr_dmabuf = wl.maybe_wlr_dmabuf_mgr.is_some();
     let has_wlr_screencopy = wl.maybe_wlr_screencopy_mgr.is_some();
 
-    for (id, output) in wl.outputs.iter() {
+    for (id, output) in &wl.outputs {
         if app.screens.iter().any(|s| s.name == output.name) {
             continue;
         }
@@ -886,7 +863,7 @@ pub fn create_screens_wayland(
     if pw_tokens_copy != pw_tokens {
         // Token list changed, re-create token config file
         if let Err(err) = save_pw_token_config(pw_tokens) {
-            log::error!("Failed to save Pipewire token config: {}", err);
+            log::error!("Failed to save Pipewire token config: {err}");
         }
     }
 
@@ -898,7 +875,7 @@ pub fn create_screens_wayland(
     app.hid_provider
         .set_desktop_origin(vec2(origin.0 as f32, origin.1 as f32));
 
-    Ok(ScreenCreateData { screens })
+    ScreenCreateData { screens }
 }
 
 #[cfg(not(feature = "x11"))]
@@ -918,7 +895,7 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
     // Load existing Pipewire tokens from file
     let mut pw_tokens: PwTokenMap = load_pw_token_config().unwrap_or_default();
     let pw_tokens_copy = pw_tokens.clone();
-    let token = pw_tokens.arc_get("x11").map(|s| s.as_str());
+    let token = pw_tokens.arc_get("x11").map(std::string::String::as_str);
     let embed_mouse = !app.session.config.double_cursor_fix;
 
     let select_screen_result = select_pw_screen(
@@ -932,13 +909,13 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
 
     if let Some(restore_token) = select_screen_result.restore_token {
         if pw_tokens.arc_set("x11".into(), restore_token.clone()) {
-            log::info!("Adding Pipewire token {}", restore_token);
+            log::info!("Adding Pipewire token {restore_token}");
         }
     }
     if pw_tokens_copy != pw_tokens {
         // Token list changed, re-create token config file
         if let Err(err) = save_pw_token_config(pw_tokens) {
-            log::error!("Failed to save Pipewire token config: {}", err);
+            log::error!("Failed to save Pipewire token config: {err}");
         }
     }
 
@@ -1064,6 +1041,7 @@ pub enum Transform {
     _90,
     _180,
     _270,
+    Flipped,
     Flipped90,
     Flipped180,
     Flipped270,
@@ -1071,17 +1049,16 @@ pub enum Transform {
 
 #[cfg(feature = "wayland")]
 impl From<wl_output::Transform> for Transform {
-    fn from(t: wl_output::Transform) -> Transform {
+    fn from(t: wl_output::Transform) -> Self {
         match t {
-            wl_output::Transform::Normal => Transform::Normal,
-            wl_output::Transform::_90 => Transform::_90,
-            wl_output::Transform::_180 => Transform::_180,
-            wl_output::Transform::_270 => Transform::_270,
-            wl_output::Transform::Flipped => Transform::Flipped180,
-            wl_output::Transform::Flipped90 => Transform::Flipped90,
-            wl_output::Transform::Flipped180 => Transform::Flipped180,
-            wl_output::Transform::Flipped270 => Transform::Flipped270,
-            _ => Transform::Normal,
+            wl_output::Transform::_90 => Self::_90,
+            wl_output::Transform::_180 => Self::_180,
+            wl_output::Transform::_270 => Self::_270,
+            wl_output::Transform::Flipped => Self::Flipped,
+            wl_output::Transform::Flipped90 => Self::Flipped90,
+            wl_output::Transform::Flipped180 => Self::Flipped180,
+            wl_output::Transform::Flipped270 => Self::Flipped270,
+            _ => Self::Normal,
         }
     }
 }
@@ -1093,7 +1070,7 @@ fn extent_from_format(fmt: FrameFormat, config: &GeneralConfig) -> [u32; 3] {
 fn extent_from_res(width: u32, height: u32, config: &GeneralConfig) -> [u32; 3] {
     // screens above a certain resolution will have severe aliasing
     let height_limit = if config.screen_render_down {
-        config.screen_max_height.min(2560) as u32
+        u32::from(config.screen_max_height.min(2560))
     } else {
         2560
     };
@@ -1111,7 +1088,6 @@ fn affine_from_format(format: &FrameFormat) -> Affine3A {
     };
 
     match format.transform {
-        wlx_frame::Transform::Normal => Affine3A::IDENTITY,
         wlx_frame::Transform::Rotated90 => Affine3A::from_rotation_z(-PI / 2.0),
         wlx_frame::Transform::Rotated180 => Affine3A::from_rotation_z(PI),
         wlx_frame::Transform::Rotated270 => Affine3A::from_rotation_z(PI / 2.0),
@@ -1125,7 +1101,7 @@ fn affine_from_format(format: &FrameFormat) -> Affine3A {
         wlx_frame::Transform::Flipped270 => {
             Affine3A::from_scale(FLIP_X) * Affine3A::from_rotation_z(PI / 2.0)
         }
-        wlx_frame::Transform::Undefined => Affine3A::IDENTITY,
+        _ => Affine3A::IDENTITY,
     }
 }
 
@@ -1141,9 +1117,9 @@ fn best_match<'a>(
         return best;
     };
 
-    let mut best_dist = best
-        .map(|b| (b.monitor.x() - position.0).abs() + (b.monitor.y() - position.1).abs())
-        .unwrap_or(i32::MAX);
+    let mut best_dist = best.map_or(i32::MAX, |b| {
+        (b.monitor.x() - position.0).abs() + (b.monitor.y() - position.1).abs()
+    });
     for stream in streams {
         log::debug!("checking: {:?}", stream.monitor);
         let dist =
@@ -1158,6 +1134,7 @@ fn best_match<'a>(
 }
 
 #[cfg(feature = "pipewire")]
+#[allow(clippy::fn_params_excessive_bools)]
 fn select_pw_screen(
     instructions: &str,
     token: Option<&str>,
@@ -1181,7 +1158,7 @@ fn select_pw_screen(
                 task::Poll::Ready(result) => return result,
                 task::Poll::Pending => {
                     if Instant::now() >= print_at {
-                        log::info!("{}", instructions);
+                        log::info!("{instructions}");
                         if let Ok(sender) = DbusNotificationSender::new() {
                             if let Ok(id) = sender.notify_send(instructions, "", 2, 0, 0, true) {
                                 notify = Some((sender, id));
@@ -1193,7 +1170,6 @@ fn select_pw_screen(
                         std::thread::sleep(Duration::from_millis(10));
                     })
                     .await;
-                    continue;
                 }
             }
         }

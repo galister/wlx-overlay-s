@@ -7,6 +7,7 @@ use crate::gen_id;
 use super::display;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct WayVRProcess {
     pub auth_key: String,
     pub child: std::process::Child,
@@ -32,45 +33,45 @@ pub enum Process {
 }
 
 impl Process {
-    pub fn display_handle(&self) -> display::DisplayHandle {
+    pub const fn display_handle(&self) -> display::DisplayHandle {
         match self {
-            Process::Managed(p) => p.display_handle,
-            Process::External(p) => p.display_handle,
+            Self::Managed(p) => p.display_handle,
+            Self::External(p) => p.display_handle,
         }
     }
 
     pub fn is_running(&mut self) -> bool {
         match self {
-            Process::Managed(p) => p.is_running(),
-            Process::External(p) => p.is_running(),
+            Self::Managed(p) => p.is_running(),
+            Self::External(p) => p.is_running(),
         }
     }
 
     pub fn terminate(&mut self) {
         match self {
-            Process::Managed(p) => p.terminate(),
-            Process::External(p) => p.terminate(),
+            Self::Managed(p) => p.terminate(),
+            Self::External(p) => p.terminate(),
         }
     }
 
     pub fn get_name(&self) -> String {
         match self {
-            Process::Managed(p) => p.get_name().unwrap_or(String::from("unknown")),
-            Process::External(p) => p.get_name().unwrap_or(String::from("unknown")),
+            Self::Managed(p) => p.get_name().unwrap_or_else(|| String::from("unknown")),
+            Self::External(p) => p.get_name().unwrap_or_else(|| String::from("unknown")),
         }
     }
 
     pub fn to_packet(&self, handle: ProcessHandle) -> packet_server::WvrProcess {
         match self {
-            Process::Managed(p) => packet_server::WvrProcess {
-                name: p.get_name().unwrap_or(String::from("unknown")),
+            Self::Managed(p) => packet_server::WvrProcess {
+                name: p.get_name().unwrap_or_else(|| String::from("unknown")),
                 userdata: p.userdata.clone(),
                 display_handle: p.display_handle.as_packet(),
                 handle: handle.as_packet(),
             },
-            Process::External(p) => packet_server::WvrProcess {
-                name: p.get_name().unwrap_or(String::from("unknown")),
-                userdata: Default::default(),
+            Self::External(p) => packet_server::WvrProcess {
+                name: p.get_name().unwrap_or_else(|| String::from("unknown")),
+                userdata: HashMap::default(),
                 display_handle: p.display_handle.as_packet(),
                 handle: handle.as_packet(),
             },
@@ -89,7 +90,7 @@ impl Drop for WayVRProcess {
 }
 
 fn get_process_env_value(pid: i32, key: &str) -> anyhow::Result<Option<String>> {
-    let path = format!("/proc/{}/environ", pid);
+    let path = format!("/proc/{pid}/environ");
     let mut env_data = String::new();
     std::fs::File::open(path)?.read_to_string(&mut env_data)?;
     let lines: Vec<&str> = env_data.split('\0').filter(|s| !s.is_empty()).collect();
@@ -112,7 +113,7 @@ impl WayVRProcess {
             Ok(None) => true,
             Err(e) => {
                 // this shouldn't happen
-                log::error!("Child::try_wait failed: {}", e);
+                log::error!("Child::try_wait failed: {e}");
                 false
             }
         }
@@ -131,7 +132,7 @@ impl WayVRProcess {
 }
 
 fn get_exec_name_from_pid(pid: u32) -> Option<String> {
-    let path = format!("/proc/{}/exe", pid);
+    let path = format!("/proc/{pid}/exe");
     match std::fs::read_link(&path) {
         Ok(buf) => {
             if let Some(process_name) = buf.file_name().and_then(|s| s.to_str()) {
@@ -170,7 +171,7 @@ impl ExternalProcess {
 gen_id!(ProcessVec, Process, ProcessCell, ProcessHandle);
 
 pub fn find_by_pid(processes: &ProcessVec, pid: u32) -> Option<ProcessHandle> {
-    log::debug!("Finding process with PID {}", pid);
+    log::debug!("Finding process with PID {pid}");
 
     for (idx, cell) in processes.vec.iter().enumerate() {
         let Some(cell) = cell else {
@@ -205,19 +206,19 @@ pub fn find_by_pid(processes: &ProcessVec, pid: u32) -> Option<ProcessHandle> {
         }
     }
 
-    log::debug!("Process find with PID {} failed", pid);
+    log::debug!("Process find with PID {pid} failed");
     None
 }
 
 impl ProcessHandle {
-    pub fn from_packet(handle: packet_server::WvrProcessHandle) -> Self {
+    pub const fn from_packet(handle: packet_server::WvrProcessHandle) -> Self {
         Self {
             generation: handle.generation,
             idx: handle.idx,
         }
     }
 
-    pub fn as_packet(&self) -> packet_server::WvrProcessHandle {
+    pub const fn as_packet(&self) -> packet_server::WvrProcessHandle {
         packet_server::WvrProcessHandle {
             idx: self.idx,
             generation: self.generation,
