@@ -1,6 +1,5 @@
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
-use once_cell::sync::Lazy;
 #[cfg(feature = "openxr")]
 use openxr as xr;
 
@@ -319,8 +318,8 @@ where
             .any(|o| o.state.show_hide && o.state.want_visible);
 
         if !any_shown {
-            static ANCHOR_LOCAL: Lazy<Affine3A> =
-                Lazy::new(|| Affine3A::from_translation(Vec3::NEG_Z));
+            static ANCHOR_LOCAL: LazyLock<Affine3A> =
+                LazyLock::new(|| Affine3A::from_translation(Vec3::NEG_Z));
             let hmd = snap_upright(app.input_state.hmd, Vec3A::Y);
             app.anchor = hmd * *ANCHOR_LOCAL;
         }

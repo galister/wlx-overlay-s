@@ -1,8 +1,12 @@
-use std::{f32::consts::PI, ops::Add, sync::Arc, time::Instant};
+use std::{
+    f32::consts::PI,
+    ops::Add,
+    sync::{Arc, LazyLock},
+    time::Instant,
+};
 
 use glam::{vec3a, Quat};
 use idmap_derive::IntegerId;
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -18,7 +22,7 @@ use crate::{
 const FONT_SIZE: isize = 16;
 const PADDING: (f32, f32) = (25., 7.);
 const PIXELS_TO_METERS: f32 = 1. / 2000.;
-static TOAST_NAME: Lazy<Arc<str>> = Lazy::new(|| "toast".into());
+static TOAST_NAME: LazyLock<Arc<str>> = LazyLock::new(|| "toast".into());
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum DisplayMethod {

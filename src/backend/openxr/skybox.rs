@@ -1,7 +1,10 @@
-use std::{f32::consts::PI, fs::File, sync::Arc};
+use std::{
+    f32::consts::PI,
+    fs::File,
+    sync::{Arc, LazyLock},
+};
 
 use glam::{Quat, Vec3A};
-use once_cell::sync::Lazy;
 use openxr::{self as xr, CompositionLayerFlags};
 use vulkano::{
     command_buffer::CommandBufferUsage, image::view::ImageView,
@@ -186,7 +189,7 @@ impl Skybox {
         const HI_VERT_ANGLE: f32 = 0.5 * PI;
         const LO_VERT_ANGLE: f32 = -0.5 * PI;
 
-        static GRID_POSE: Lazy<xr::Posef> = Lazy::new(|| {
+        static GRID_POSE: LazyLock<xr::Posef> = LazyLock::new(|| {
             translation_rotation_to_posef(Vec3A::ZERO, Quat::from_rotation_x(PI * -0.5))
         });
 

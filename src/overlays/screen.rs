@@ -1,10 +1,9 @@
 use core::slice;
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::{
     f32::consts::PI,
     ptr,
-    sync::{atomic::AtomicU64, Arc},
+    sync::{atomic::AtomicU64, Arc, LazyLock},
     time::{Duration, Instant},
 };
 use vulkano::{
@@ -16,10 +15,7 @@ use vulkano::{
 use wlx_capture::frame as wlx_frame;
 
 use wlx_capture::{
-    frame::{
-        DrmFormat, FrameFormat, MouseMeta, WlxFrame, DRM_FORMAT_ABGR2101010, DRM_FORMAT_ABGR8888,
-        DRM_FORMAT_ARGB8888, DRM_FORMAT_XBGR2101010, DRM_FORMAT_XBGR8888, DRM_FORMAT_XRGB8888,
-    },
+    frame::{FrameFormat, MouseMeta, WlxFrame},
     WlxCapture,
 };
 
@@ -57,8 +53,7 @@ use crate::{
     },
     config::{def_pw_tokens, GeneralConfig, PwTokenMap},
     graphics::{
-        fourcc_to_vk, CommandBuffers, WlxCommandBuffer, WlxGraphics, WlxPipeline,
-        DRM_FORMAT_MOD_INVALID, SWAPCHAIN_FORMAT,
+        fourcc_to_vk, CommandBuffers, WlxCommandBuffer, WlxGraphics, WlxPipeline, SWAPCHAIN_FORMAT,
     },
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState, KeyboardFocus, ScreenMeta},
@@ -72,7 +67,7 @@ pub(crate) type WlxClientAlias = ();
 
 const CURSOR_SIZE: f32 = 16. / 1440.;
 
-static START: Lazy<Instant> = Lazy::new(Instant::now);
+static START: LazyLock<Instant> = LazyLock::new(Instant::now);
 static NEXT_MOVE: AtomicU64 = AtomicU64::new(0);
 
 fn can_move() -> bool {
