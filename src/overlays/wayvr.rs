@@ -41,14 +41,11 @@ pub struct WayVRContext {
 }
 
 impl WayVRContext {
-    pub fn new(
-        wvr: Rc<RefCell<WayVRData>>,
-        display: wayvr::display::DisplayHandle,
-    ) -> anyhow::Result<Self> {
-        Ok(Self {
-            wayvr: wvr.clone(),
+    pub const fn new(wvr: Rc<RefCell<WayVRData>>, display: wayvr::display::DisplayHandle) -> Self {
+        Self {
+            wayvr: wvr,
             display,
-        })
+        }
     }
 }
 
@@ -67,7 +64,7 @@ pub struct WayVRData {
 impl WayVRData {
     pub fn new(config: wayvr::Config) -> anyhow::Result<Self> {
         Ok(Self {
-            display_handle_map: Default::default(),
+            display_handle_map: HashMap::default(),
             data: WayVR::new(config)?,
             overlays_to_create: Vec::new(),
             dashboard_executed: false,
@@ -87,7 +84,7 @@ impl WayVRData {
             .any(|d| d.obj.name == candidate)
         {
             if num > 0 {
-                candidate = format!("{} ({})", candidate, num);
+                candidate = format!("{candidate} ({num})");
             }
             num += 1;
         }
@@ -102,7 +99,7 @@ pub struct WayVRInteractionHandler {
 }
 
 impl WayVRInteractionHandler {
-    pub fn new(context: Rc<RefCell<WayVRContext>>, mouse_transform: Affine2) -> Self {
+    pub const fn new(context: Rc<RefCell<WayVRContext>>, mouse_transform: Affine2) -> Self {
         Self {
             context,
             mouse_transform,
@@ -122,8 +119,8 @@ impl InteractionHandler for WayVRInteractionHandler {
 
         if let Some(disp) = wayvr.state.displays.get(&ctx.display) {
             let pos = self.mouse_transform.transform_point2(hit.uv);
-            let x = ((pos.x * disp.width as f32) as i32).max(0);
-            let y = ((pos.y * disp.height as f32) as i32).max(0);
+            let x = ((pos.x * f32::from(disp.width)) as i32).max(0);
+            let y = ((pos.y * f32::from(disp.height)) as i32).max(0);
 
             let ctx = self.context.borrow();
             wayvr.state.send_mouse_move(ctx.display, x as u32, y as u32);
@@ -151,7 +148,7 @@ impl InteractionHandler for WayVRInteractionHandler {
             if pressed {
                 wayvr.state.send_mouse_down(ctx.display, index);
             } else {
-                wayvr.state.send_mouse_up(ctx.display, index);
+                wayvr.state.send_mouse_up(index);
             }
         }
     }
@@ -168,7 +165,7 @@ impl InteractionHandler for WayVRInteractionHandler {
             .borrow_mut()
             .data
             .state
-            .send_mouse_scroll(ctx.display, delta_y, delta_x);
+            .send_mouse_scroll(delta_y, delta_x);
     }
 }
 
@@ -199,7 +196,7 @@ impl WayVRRenderer {
 
         Ok(Self {
             pipeline,
-            context: Rc::new(RefCell::new(WayVRContext::new(wvr, display)?)),
+            context: Rc::new(RefCell::new(WayVRContext::new(wvr, display))),
             vk_image: None,
             vk_image_view: None,
             graphics: app.graphics.clone(),
@@ -220,10 +217,7 @@ fn get_or_create_display_by_name(
                 .session
                 .wayvr_config
                 .get_display(disp_name)
-                .ok_or(anyhow::anyhow!(
-                    "Cannot find display named \"{}\"",
-                    disp_name
-                ))?
+                .ok_or_else(|| anyhow::anyhow!("Cannot find display named \"{}\"", disp_name))?
                 .clone();
 
             let disp_handle = wayvr.data.state.create_display(
@@ -302,6 +296,7 @@ where
             },
         )?;
 
+        overlay.state.curvature = Some(0.15);
         overlay.state.want_visible = true;
         overlay.state.spawn_scale = 2.0;
         overlay.state.spawn_point = vec3a(0.0, -0.35, -1.75);
@@ -312,25 +307,17 @@ where
             unreachable!(); /* safe, not possible to trigger */
         };
 
-        // FIXME: overlay curvature needs to be dispatched for some unknown reason, this value is not set otherwise
-        app.tasks.enqueue(TaskType::Overlay(
-            OverlaySelector::Id(overlay.state.id),
-            Box::new(move |_app, o| {
-                o.curvature = Some(0.15);
-            }),
-        ));
-
         overlays.add(overlay);
 
-        let args_vec = match &conf_dash.args {
-            Some(args) => gen_args_vec(args),
-            None => vec![],
-        };
+        let args_vec = &conf_dash
+            .args
+            .as_ref()
+            .map_or_else(Vec::new, |args| gen_args_vec(args.as_str()));
 
-        let env_vec = match &conf_dash.env {
-            Some(env) => gen_env_vec(env),
-            None => vec![],
-        };
+        let env_vec = &conf_dash
+            .env
+            .as_ref()
+            .map_or_else(Vec::new, |env| gen_env_vec(env));
 
         let mut userdata = HashMap::new();
         userdata.insert(String::from("type"), String::from("dashboard"));
@@ -339,8 +326,8 @@ where
         let _process_handle_unused = wayvr.data.state.spawn_process(
             disp_handle,
             &conf_dash.exec,
-            &args_vec,
-            &env_vec,
+            args_vec,
+            env_vec,
             userdata,
         )?;
 
@@ -446,6 +433,7 @@ where
     Ok(())
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn tick_events<O>(app: &mut AppState, overlays: &mut OverlayContainer<O>) -> anyhow::Result<()>
 where
     O: Default,
@@ -490,36 +478,42 @@ where
 
     for result in res {
         match result {
-            wayvr::TickTask::NewExternalProcess(req) => {
+            wayvr::TickTask::NewExternalProcess(request) => {
                 let config = &app.session.wayvr_config;
 
-                let disp_name = if let Some(display_name) = req.env.display_name {
-                    config
-                        .get_display(display_name.as_str())
-                        .map(|_| display_name)
-                } else {
-                    config
-                        .get_default_display()
-                        .map(|(display_name, _)| display_name)
-                };
+                let disp_name = request.env.display_name.map_or_else(
+                    || {
+                        config
+                            .get_default_display()
+                            .map(|(display_name, _)| display_name)
+                    },
+                    |display_name| {
+                        config
+                            .get_display(display_name.as_str())
+                            .map(|_| display_name)
+                    },
+                );
 
                 if let Some(disp_name) = disp_name {
                     let mut wayvr = r_wayvr.borrow_mut();
 
-                    log::info!("Registering external process with PID {}", req.pid);
+                    log::info!("Registering external process with PID {}", request.pid);
 
                     let disp_handle = get_or_create_display_by_name(app, &mut wayvr, &disp_name)?;
 
-                    wayvr.data.state.add_external_process(disp_handle, req.pid);
+                    wayvr
+                        .data
+                        .state
+                        .add_external_process(disp_handle, request.pid);
 
                     wayvr
                         .data
                         .state
                         .manager
                         .add_client(wayvr::client::WayVRClient {
-                            client: req.client,
+                            client: request.client,
                             display_handle: disp_handle,
-                            pid: req.pid,
+                            pid: request.pid,
                         });
                 }
             }
@@ -576,8 +570,8 @@ impl WayVRRenderer {
             .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
 
         let tex = upload.texture2d_raw(
-            data.width as u32,
-            data.height as u32,
+            u32::from(data.width),
+            u32::from(data.height),
             vulkano::format::Format::R8G8B8A8_UNORM,
             &data.data,
         )?;
@@ -615,8 +609,8 @@ impl WayVRRenderer {
 
         let frame = DmabufFrame {
             format: FrameFormat {
-                width: disp.width as u32,
-                height: disp.height as u32,
+                width: u32::from(disp.width),
+                height: u32::from(disp.height),
                 fourcc: FourCC {
                     value: data.mod_info.fourcc,
                 },
@@ -674,7 +668,7 @@ impl OverlayRenderer for WayVRRenderer {
         let redrawn = match wayvr.data.tick_display(ctx.display) {
             Ok(r) => r,
             Err(e) => {
-                log::error!("tick_display failed: {}", e);
+                log::error!("tick_display failed: {e}");
                 return Ok(ShouldRender::Unable);
             }
         };
@@ -699,7 +693,7 @@ impl OverlayRenderer for WayVRRenderer {
             .data
             .state
             .get_render_data(ctx.display)
-            .ok_or(anyhow::anyhow!("Failed to fetch render data"))?
+            .ok_or_else(|| anyhow::anyhow!("Failed to fetch render data"))?
             .clone();
 
         drop(wayvr);
@@ -712,7 +706,7 @@ impl OverlayRenderer for WayVRRenderer {
             }
             wayvr::egl_data::RenderData::Software(data) => {
                 if let Some(new_frame) = &data {
-                    self.ensure_software_data(new_frame)?
+                    self.ensure_software_data(new_frame)?;
                 }
             }
         }
@@ -762,10 +756,10 @@ pub fn create_wayvr_display_overlay<O>(
 where
     O: Default,
 {
-    let transform = ui_transform(&[display_width as u32, display_height as u32]);
+    let transform = ui_transform([u32::from(display_width), u32::from(display_height)]);
 
     let state = OverlayState {
-        name: format!("WayVR - {}", name).into(),
+        name: format!("WayVR - {name}").into(),
         keyboard_focus: Some(KeyboardFocus::WayVR),
         want_visible: true,
         interactable: true,
@@ -817,16 +811,13 @@ fn action_app_click<O>(
 where
     O: Default,
 {
-    let wayvr = app.get_wayvr()?.clone();
+    let wayvr = app.get_wayvr()?;
 
     let catalog = app
         .session
         .wayvr_config
         .get_catalog(catalog_name)
-        .ok_or(anyhow::anyhow!(
-            "Failed to get catalog \"{}\"",
-            catalog_name
-        ))?
+        .ok_or_else(|| anyhow::anyhow!("Failed to get catalog \"{}\"", catalog_name))?
         .clone();
 
     if let Some(app_entry) = catalog.get_app(app_name) {
@@ -838,22 +829,22 @@ where
             &app_entry.target_display.to_lowercase(),
         )?;
 
-        let args_vec = match &app_entry.args {
-            Some(args) => gen_args_vec(args),
-            None => vec![],
-        };
+        let args_vec = &app_entry
+            .args
+            .as_ref()
+            .map_or_else(Vec::new, |args| gen_args_vec(args.as_str()));
 
-        let env_vec = match &app_entry.env {
-            Some(env) => gen_env_vec(env),
-            None => vec![],
-        };
+        let env_vec = &app_entry
+            .env
+            .as_ref()
+            .map_or_else(Vec::new, |env| gen_env_vec(env));
 
         // Terminate existing process if required
         if let Some(process_handle) =
             wayvr
                 .data
                 .state
-                .process_query(disp_handle, &app_entry.exec, &args_vec, &env_vec)
+                .process_query(disp_handle, &app_entry.exec, args_vec, env_vec)
         {
             // Terminate process
             wayvr.data.terminate_process(process_handle);
@@ -862,9 +853,9 @@ where
             wayvr.data.state.spawn_process(
                 disp_handle,
                 &app_entry.exec,
-                &args_vec,
-                &env_vec,
-                Default::default(),
+                args_vec,
+                env_vec,
+                HashMap::default(),
             )?;
 
             show_display::<O>(&mut wayvr, overlays, app_entry.target_display.as_str());

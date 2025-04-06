@@ -6,6 +6,12 @@ debug = true
 name = "wlx-overlay-s"
 version = "25.4.0"
 edition = "2021"
+license = "GPL-3.0-only"
+authors = ["galister"]
+description = "Access your Wayland/X11 desktop from Monado/WiVRn/SteamVR. Now with Vulkan!"
+repository = "https://github.com/galister/wlx-overlay-s"
+keywords = ["linux", "openvr", "openxr", "x11", "wayland", "openvr-overlay", "openxr-overlay"]
+categories = ["games"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -39,7 +45,7 @@ ovr_overlay = { features = [
   "ovr_input",
   "ovr_system",
 ], git = "https://github.com/galister/ovr_overlay_oyasumi", optional = true }
-regex = "1.10.4"
+regex = "1.11.1"
 rodio = { version = "0.20.1", default-features = false, features = [
   "wav",
   "hound",
@@ -91,7 +97,7 @@ wayvr_ipc = { git = "https://github.com/olekolek1000/wayvr-ipc.git", rev = "a725
 ################################
 
 [build-dependencies]
-regex = { version = "*" }
+regex = { version = "1.11.1" }
 
 [features]
 default = ["openvr", "openxr", "osc", "x11", "wayland", "wayvr"]

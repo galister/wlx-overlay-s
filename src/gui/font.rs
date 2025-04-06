@@ -39,7 +39,7 @@ impl FontCache {
         let ft = Library::init()?;
         let fc = FontConfig::default();
 
-        Ok(FontCache {
+        Ok(Self {
             primary_font,
             fc,
             ft,
@@ -55,7 +55,7 @@ impl FontCache {
     ) -> anyhow::Result<(f32, f32)> {
         let sizef = size as f32;
 
-        let height = sizef + ((text.lines().count() as f32) - 1f32) * (sizef * 1.5);
+        let height = ((text.lines().count() as f32) - 1f32).mul_add(sizef * 1.5, sizef);
         let mut cmd_buffer = None;
 
         let mut max_w = sizef * 0.33;
@@ -143,26 +143,26 @@ impl FontCache {
 
         if let Some(path) = pattern.filename() {
             let name = pattern.name().unwrap_or(path);
-            log::debug!("Loading font: {} {}pt", name, size);
+            log::debug!("Loading font: {name} {size}pt");
 
             let font_idx = pattern.face_index().unwrap_or(0);
 
             let face = match self.ft.new_face(path, font_idx as _) {
                 Ok(face) => face,
                 Err(e) => {
-                    log::warn!("Failed to load font at {}: {:?}", path, e);
+                    log::warn!("Failed to load font at {path}: {e:?}");
                     coll.cp_map.insert(cp, 0);
                     return 0;
                 }
             };
             match face.set_char_size(size << 6, size << 6, 96, 96) {
-                Ok(_) => {}
+                Ok(()) => {}
                 Err(e) => {
-                    log::warn!("Failed to set font size: {:?}", e);
+                    log::warn!("Failed to set font size: {e:?}");
                     coll.cp_map.insert(cp, 0);
                     return 0;
                 }
-            };
+            }
 
             let idx = coll.fonts.len();
             for (cp, _) in face.chars() {

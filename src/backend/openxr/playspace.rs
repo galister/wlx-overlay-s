@@ -8,13 +8,6 @@ use crate::{
 
 use super::overlay::OpenXrOverlayData;
 
-#[repr(C)]
-#[derive(Default, Debug)]
-struct XrtPose {
-    orientation: [f32; 4],
-    position: [f32; 3],
-}
-
 struct MoverData<T> {
     pose: Affine3A,
     hand: usize,
@@ -55,7 +48,7 @@ impl PlayspaceMover {
         state: &AppState,
         monado: &mut Monado,
     ) {
-        for pointer in state.input_state.pointers.iter() {
+        for pointer in &state.input_state.pointers {
             if pointer.now.space_reset {
                 if !pointer.before.space_reset {
                     log::info!("Space reset");
@@ -81,8 +74,8 @@ impl PlayspaceMover {
                 Affine3A::from_quat(dq)
             } else {
                 let rel_y = f32::atan2(
-                    2.0 * (dq.y * dq.w + dq.x * dq.z),
-                    (2.0 * (dq.w * dq.w + dq.x * dq.x)) - 1.0,
+                    2.0 * dq.y.mul_add(dq.w, dq.x * dq.z),
+                    2.0f32.mul_add(dq.w.mul_add(dq.w, dq.x * dq.x), -1.0),
                 );
 
                 Affine3A::from_rotation_y(rel_y)
@@ -96,7 +89,7 @@ impl PlayspaceMover {
             data.pose *= space_transform;
             data.hand_pose = new_hand;
 
-            self.apply_offset(data.pose, monado);
+            apply_offset(data.pose, monado);
             self.rotate = Some(data);
         } else {
             for (i, pointer) in state.input_state.pointers.iter().enumerate() {
@@ -145,7 +138,7 @@ impl PlayspaceMover {
             data.pose.translation += relative_pos;
             data.hand_pose = new_hand;
 
-            self.apply_offset(data.pose, monado);
+            apply_offset(data.pose, monado);
             self.drag = Some(data);
         } else {
             for (i, pointer) in state.input_state.pointers.iter().enumerate() {
@@ -176,7 +169,7 @@ impl PlayspaceMover {
         }
 
         self.last_transform = Affine3A::IDENTITY;
-        self.apply_offset(self.last_transform, monado);
+        apply_offset(self.last_transform, monado);
     }
 
     pub fn fix_floor(&mut self, input: &InputState, monado: &mut Monado) {
@@ -193,14 +186,14 @@ impl PlayspaceMover {
         let y2 = input.pointers[1].raw_pose.translation.y;
         let delta = y1.min(y2) - 0.03;
         self.last_transform.translation.y += delta;
-        self.apply_offset(self.last_transform, monado);
+        apply_offset(self.last_transform, monado);
     }
+}
 
-    fn apply_offset(&self, transform: Affine3A, monado: &mut Monado) {
-        let pose = Pose {
-            position: transform.translation.into(),
-            orientation: Quat::from_affine3(&transform).into(),
-        };
-        let _ = monado.set_reference_space_offset(ReferenceSpaceType::Stage, pose);
-    }
+fn apply_offset(transform: Affine3A, monado: &mut Monado) {
+    let pose = Pose {
+        position: transform.translation.into(),
+        orientation: Quat::from_affine3(&transform).into(),
+    };
+    let _ = monado.set_reference_space_offset(ReferenceSpaceType::Stage, pose);
 }

@@ -1,6 +1,6 @@
 use anyhow::{bail, ensure};
 use glam::{Affine3A, Quat, Vec3, Vec3A};
-use openxr as xr;
+use openxr::{self as xr, SessionCreateFlags};
 use xr::OverlaySessionCreateFlagsEXTX;
 
 pub(super) fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
@@ -110,7 +110,7 @@ pub(super) unsafe fn create_overlay_session(
     };
     let binding = xr::sys::GraphicsBindingVulkanKHR {
         ty: xr::sys::GraphicsBindingVulkanKHR::TYPE,
-        next: &overlay as *const _ as *const _,
+        next: (&raw const overlay).cast(),
         instance: info.instance,
         physical_device: info.physical_device,
         device: info.device,
@@ -119,8 +119,8 @@ pub(super) unsafe fn create_overlay_session(
     };
     let info = xr::sys::SessionCreateInfo {
         ty: xr::sys::SessionCreateInfo::TYPE,
-        next: &binding as *const _ as *const _,
-        create_flags: Default::default(),
+        next: (&raw const binding).cast(),
+        create_flags: SessionCreateFlags::default(),
         system_id: system,
     };
     let mut out = xr::sys::Session::NULL;

@@ -21,7 +21,7 @@ pub(super) fn install_manifest(app_mgr: &mut ApplicationsManager) -> anyhow::Res
             .ok_or_else(|| anyhow::anyhow!("Invalid executable path"))?,
     };
 
-    if let Ok(true) = app_mgr.is_application_installed(APP_KEY) {
+    if app_mgr.is_application_installed(APP_KEY) == Ok(true) {
         if let Ok(mut file) = File::open(&manifest_path) {
             let mut buf = String::new();
             if file.read_to_string(&mut buf).is_ok() {
@@ -62,15 +62,15 @@ pub(super) fn install_manifest(app_mgr: &mut ApplicationsManager) -> anyhow::Res
             manifest_path,
             e
         );
-    };
+    }
 
     if let Err(e) = app_mgr.add_application_manifest(&manifest_path, false) {
         bail!("Failed to add manifest to OpenVR: {}", e.description());
-    };
+    }
 
     if let Err(e) = app_mgr.set_application_auto_launch(APP_KEY, true) {
         bail!("Failed to set auto launch: {}", e.description());
-    };
+    }
 
     Ok(())
 }
@@ -78,10 +78,10 @@ pub(super) fn install_manifest(app_mgr: &mut ApplicationsManager) -> anyhow::Res
 pub(super) fn uninstall_manifest(app_mgr: &mut ApplicationsManager) -> anyhow::Result<()> {
     let manifest_path = config_io::get_config_root().join("wlx-overlay-s.vrmanifest");
 
-    if let Ok(true) = app_mgr.is_application_installed(APP_KEY) {
+    if app_mgr.is_application_installed(APP_KEY) == Ok(true) {
         if let Err(e) = app_mgr.remove_application_manifest(&manifest_path) {
             bail!("Failed to remove manifest from OpenVR: {}", e.description());
-        };
+        }
         log::info!("Uninstalled manifest");
     }
     Ok(())

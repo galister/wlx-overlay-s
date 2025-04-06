@@ -9,11 +9,7 @@ use ovr_overlay::{
 };
 use vulkano::{image::view::ImageView, Handle, VulkanObject};
 
-use crate::{
-    backend::overlay::{OverlayData, RelativeTo},
-    graphics::WlxGraphics,
-    state::AppState,
-};
+use crate::{backend::overlay::OverlayData, graphics::WlxGraphics, state::AppState};
 
 use super::helpers::Affine3AConvert;
 
@@ -24,7 +20,6 @@ pub(super) struct OpenVrOverlayData {
     pub(super) color: Vec4,
     pub(crate) width: f32,
     pub(super) override_width: bool,
-    pub(super) relative_to: RelativeTo,
     pub(super) image_view: Option<Arc<ImageView>>,
     pub(super) image_dirty: bool,
 }
@@ -40,7 +35,7 @@ impl OverlayData<OpenVrOverlayData> {
         let handle = match overlay.create_overlay(&key, &key) {
             Ok(handle) => handle,
             Err(e) => {
-                panic!("Failed to create overlay: {}", e);
+                panic!("Failed to create overlay: {e}");
             }
         };
         log::debug!("{}: initialize", self.state.name);

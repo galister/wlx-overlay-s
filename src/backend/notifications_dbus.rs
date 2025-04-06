@@ -36,7 +36,7 @@ impl arg::AppendAll for OrgFreedesktopDBusPropertiesPropertiesChanged {
 
 impl arg::ReadAll for OrgFreedesktopDBusPropertiesPropertiesChanged {
     fn read(i: &mut arg::Iter) -> Result<Self, arg::TypeMismatchError> {
-        Ok(OrgFreedesktopDBusPropertiesPropertiesChanged {
+        Ok(Self {
             interface_name: i.read()?,
             changed_properties: i.read()?,
             invalidated_properties: i.read()?,
@@ -158,7 +158,7 @@ impl arg::AppendAll for OrgFreedesktopNotificationsOnDndToggle {
 
 impl arg::ReadAll for OrgFreedesktopNotificationsOnDndToggle {
     fn read(i: &mut arg::Iter) -> Result<Self, arg::TypeMismatchError> {
-        Ok(OrgFreedesktopNotificationsOnDndToggle { dnd: i.read()? })
+        Ok(Self { dnd: i.read()? })
     }
 }
 
@@ -182,7 +182,7 @@ impl arg::AppendAll for OrgFreedesktopNotificationsNotificationClosed {
 
 impl arg::ReadAll for OrgFreedesktopNotificationsNotificationClosed {
     fn read(i: &mut arg::Iter) -> Result<Self, arg::TypeMismatchError> {
-        Ok(OrgFreedesktopNotificationsNotificationClosed {
+        Ok(Self {
             id: i.read()?,
             reason: i.read()?,
         })
@@ -209,7 +209,7 @@ impl arg::AppendAll for OrgFreedesktopNotificationsActionInvoked {
 
 impl arg::ReadAll for OrgFreedesktopNotificationsActionInvoked {
     fn read(i: &mut arg::Iter) -> Result<Self, arg::TypeMismatchError> {
-        Ok(OrgFreedesktopNotificationsActionInvoked {
+        Ok(Self {
             id: i.read()?,
             action_key: i.read()?,
         })
@@ -236,7 +236,7 @@ impl arg::AppendAll for OrgFreedesktopNotificationsNotificationReplied {
 
 impl arg::ReadAll for OrgFreedesktopNotificationsNotificationReplied {
     fn read(i: &mut arg::Iter) -> Result<Self, arg::TypeMismatchError> {
-        Ok(OrgFreedesktopNotificationsNotificationReplied {
+        Ok(Self {
             id: i.read()?,
             text: i.read()?,
         })

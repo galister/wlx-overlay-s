@@ -50,8 +50,7 @@ impl OverlayRenderer for MirrorRenderer {
     fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
         self.renderer
             .as_mut()
-            .map(|r| r.should_render(app))
-            .unwrap_or(Ok(ShouldRender::Unable))
+            .map_or(Ok(ShouldRender::Unable), |r| r.should_render(app))
     }
     fn render(
         &mut self,
@@ -90,7 +89,7 @@ impl OverlayRenderer for MirrorRenderer {
                     ));
                 }
                 Err(e) => {
-                    log::warn!("Failed to create mirror due to PipeWire error: {:?}", e);
+                    log::warn!("Failed to create mirror due to PipeWire error: {e:?}");
                     self.renderer = None;
                     // drop self
                     app.tasks
@@ -112,7 +111,7 @@ impl OverlayRenderer for MirrorRenderer {
                     app.tasks.enqueue(TaskType::Overlay(
                         OverlaySelector::Name(self.name.clone()),
                         Box::new(move |_app, o| {
-                            o.interaction_transform = ui_transform(&[extent[0], extent[1]]);
+                            o.interaction_transform = ui_transform([extent[0], extent[1]]);
                         }),
                     ));
                 }
@@ -146,7 +145,7 @@ pub fn new_mirror(
     name: Arc<str>,
     show_hide: bool,
     session: &AppSession,
-) -> Option<(OverlayState, Box<dyn OverlayBackend>)> {
+) -> (OverlayState, Box<dyn OverlayBackend>) {
     let state = OverlayState {
         name: name.clone(),
         show_hide,
@@ -159,5 +158,5 @@ pub fn new_mirror(
         ..Default::default()
     });
 
-    Some((state, backend))
+    (state, backend)
 }

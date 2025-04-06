@@ -122,15 +122,13 @@ pub struct ClientState {
 
 impl ClientData for ClientState {
     fn initialized(&self, client_id: ClientId) {
-        log::debug!("Client ID {:?} connected", client_id);
+        log::debug!("Client ID {client_id:?} connected");
     }
 
     fn disconnected(&self, client_id: ClientId, reason: DisconnectReason) {
         *self.disconnected.lock().unwrap() = true;
         log::debug!(
-            "Client ID {:?} disconnected. Reason: {:?}",
-            client_id,
-            reason
+            "Client ID {client_id:?} disconnected. Reason: {reason:?}"
         );
     }
 }
@@ -202,7 +200,7 @@ impl DmabufHandler for Application {
         notifier: ImportNotifier,
     ) {
         if self.gles_renderer.import_dmabuf(&dmabuf, None).is_ok() {
-            let _ = notifier.successful::<Application>();
+            let _ = notifier.successful::<Self>();
         } else {
             notifier.failed();
         }

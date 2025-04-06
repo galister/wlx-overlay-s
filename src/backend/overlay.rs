@@ -56,14 +56,13 @@ pub struct OverlayState {
     pub saved_transform: Option<Affine3A>,
     pub relative_to: RelativeTo,
     pub curvature: Option<f32>,
-    pub primary_pointer: Option<usize>,
     pub interaction_transform: Affine2,
     pub birthframe: usize,
 }
 
 impl Default for OverlayState {
     fn default() -> Self {
-        OverlayState {
+        Self {
             id: OverlayID(OVERLAY_AUTO_INCREMENT.fetch_add(1, Ordering::Relaxed)),
             name: Arc::from(""),
             want_visible: false,
@@ -83,7 +82,6 @@ impl Default for OverlayState {
             spawn_rotation: Quat::IDENTITY,
             saved_transform: None,
             transform: Affine3A::IDENTITY,
-            primary_pointer: None,
             interaction_transform: Affine2::IDENTITY,
             birthframe: 0,
         }
@@ -105,8 +103,8 @@ where
     T: Default,
 {
     fn default() -> Self {
-        OverlayData {
-            state: Default::default(),
+        Self {
+            state: OverlayState::default(),
             backend: Box::<SplitOverlayBackend>::default(),
             primary_pointer: None,
             data: Default::default(),
@@ -115,7 +113,7 @@ where
 }
 
 impl OverlayState {
-    pub fn parent_transform(&self, app: &AppState) -> Option<Affine3A> {
+    pub const fn parent_transform(&self, app: &AppState) -> Option<Affine3A> {
         match self.relative_to {
             RelativeTo::Head => Some(app.input_state.hmd),
             RelativeTo::Hand(idx) => Some(app.input_state.pointers[idx].pose),
@@ -123,7 +121,7 @@ impl OverlayState {
         }
     }
 
-    fn get_anchor(&self, app: &AppState) -> Affine3A {
+    const fn get_anchor(&self, app: &AppState) -> Affine3A {
         if self.anchored {
             app.anchor
         } else {
@@ -211,12 +209,14 @@ where
     T: Default,
 {
     pub fn init(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        self.state.curvature = app
-            .session
-            .config
-            .curve_values
-            .arc_get(self.state.name.as_ref())
-            .copied();
+        if self.state.curvature.is_none() {
+            self.state.curvature = app
+                .session
+                .config
+                .curve_values
+                .arc_get(self.state.name.as_ref())
+                .copied();
+        }
 
         if matches!(self.state.relative_to, RelativeTo::None) {
             let hard_reset;
@@ -249,18 +249,6 @@ where
     }
     pub fn frame_meta(&mut self) -> Option<FrameMeta> {
         self.backend.frame_meta()
-    }
-    pub fn set_visible(&mut self, app: &mut AppState, visible: bool) -> anyhow::Result<()> {
-        let old_visible = self.state.want_visible;
-        self.state.want_visible = visible;
-        if visible != old_visible {
-            if visible {
-                self.backend.resume(app)?;
-            } else {
-                self.backend.pause(app)?;
-            }
-        }
-        Ok(())
     }
 }
 
@@ -351,8 +339,8 @@ pub struct SplitOverlayBackend {
 }
 
 impl Default for SplitOverlayBackend {
-    fn default() -> SplitOverlayBackend {
-        SplitOverlayBackend {
+    fn default() -> Self {
+        Self {
             renderer: Box::new(FallbackRenderer),
             interaction: Box::new(DummyInteractionHandler),
         }
@@ -409,7 +397,7 @@ impl InteractionHandler for SplitOverlayBackend {
     }
 }
 
-pub fn ui_transform(extent: &[u32; 2]) -> Affine2 {
+pub fn ui_transform(extent: [u32; 2]) -> Affine2 {
     let aspect = extent[0] as f32 / extent[1] as f32;
     let scale = if aspect < 1.0 {
         Vec2 {

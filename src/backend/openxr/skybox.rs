@@ -56,7 +56,7 @@ impl Skybox {
                         "Could not use custom skybox texture at: {}",
                         app.session.config.skybox_texture
                     );
-                    log::warn!("{:?}", e);
+                    log::warn!("{e:?}");
                 }
             }
         }
@@ -181,6 +181,11 @@ impl Skybox {
         xr: &'a XrState,
         app: &AppState,
     ) -> anyhow::Result<Vec<CompositionLayer<'a>>> {
+        // cover the entire sphere
+        const HORIZ_ANGLE: f32 = 2.0 * PI;
+        const HI_VERT_ANGLE: f32 = 0.5 * PI;
+        const LO_VERT_ANGLE: f32 = -0.5 * PI;
+
         static GRID_POSE: Lazy<xr::Posef> = Lazy::new(|| {
             translation_rotation_to_posef(Vec3A::ZERO, Quat::from_rotation_x(PI * -0.5))
         });
@@ -193,11 +198,6 @@ impl Skybox {
                 z: app.input_state.hmd.translation.z,
             },
         };
-
-        // cover the entire sphere
-        const HORIZ_ANGLE: f32 = 2.0 * PI;
-        const HI_VERT_ANGLE: f32 = 0.5 * PI;
-        const LO_VERT_ANGLE: f32 = -0.5 * PI;
 
         self.sky.as_mut().unwrap().ensure_image_released()?;
 

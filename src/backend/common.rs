@@ -69,17 +69,17 @@ where
         app.screens.clear();
         let data = if let Some(wl) = wl.as_mut() {
             keymap = get_keymap_wl()
-                .map_err(|f| log::warn!("Could not load keyboard layout: {}", f))
+                .map_err(|f| log::warn!("Could not load keyboard layout: {f}"))
                 .ok();
-            crate::overlays::screen::create_screens_wayland(wl, app)?
+            crate::overlays::screen::create_screens_wayland(wl, app)
         } else {
             keymap = get_keymap_x11()
-                .map_err(|f| log::warn!("Could not load keyboard layout: {}", f))
+                .map_err(|f| log::warn!("Could not load keyboard layout: {f}"))
                 .ok();
             match crate::overlays::screen::create_screens_x11pw(app) {
                 Ok(data) => data,
                 Err(e) => {
-                    log::info!("Will not use PipeWire capture: {:?}", e);
+                    log::info!("Will not use PipeWire capture: {e:?}");
                     crate::overlays::screen::create_screens_xshm(app)?
                 }
             }
@@ -127,6 +127,8 @@ where
         Ok(vec![])
     }
     #[cfg(feature = "wayland")]
+    #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
+    #[allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
     pub fn update(&mut self, app: &mut AppState) -> anyhow::Result<Vec<OverlayData<T>>> {
         use crate::overlays::{
             screen::{create_screen_interaction, create_screen_renderer_wl, load_pw_token_config},
@@ -154,7 +156,7 @@ where
                     if create_ran {
                         continue;
                     }
-                    let data = crate::overlays::screen::create_screens_wayland(wl, app)?;
+                    let data = crate::overlays::screen::create_screens_wayland(wl, app);
                     create_ran = true;
                     for (meta, state, backend) in data.screens {
                         self.overlays.insert(
@@ -337,7 +339,7 @@ where
             if !any_shown && *o.state.name == *WATCH_NAME {
                 o.state.reset(app, true);
             }
-        })
+        });
     }
 }
 

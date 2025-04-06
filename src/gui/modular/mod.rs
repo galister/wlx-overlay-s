@@ -149,8 +149,9 @@ pub enum ModularData {
     Button(Box<ButtonData>),
 }
 
+#[allow(clippy::too_many_lines, clippy::many_single_char_names)]
 pub fn modular_canvas(
-    size: &[u32; 2],
+    size: [u32; 2],
     elements: &[ModularElement],
     state: &mut AppState,
 ) -> anyhow::Result<Canvas<(), ModularData>> {
@@ -162,7 +163,7 @@ pub fn modular_canvas(
         (),
     )?;
     let empty_str: Arc<str> = Arc::from("");
-    for elem in elements.iter() {
+    for elem in elements {
         match elem {
             ModularElement::Panel {
                 rect: [x, y, w, h],
@@ -226,7 +227,7 @@ pub fn modular_canvas(
                     sprite.set_sprite_st(st);
                 }
                 Err(e) => {
-                    log::warn!("Could not load custom UI sprite: {:?}", e);
+                    log::warn!("Could not load custom UI sprite: {e:?}");
                 }
             },
             ModularElement::Button {
@@ -326,7 +327,7 @@ pub fn modular_canvas(
                 canvas.fg_color = color_parse(fg_color).unwrap_or(*FALLBACK_COLOR);
                 canvas.font_size = *font_size;
 
-                for screen in state.screens.iter() {
+                for screen in &state.screens {
                     let button = canvas.button(
                         button_x + 2.,
                         button_y + 2.,
@@ -465,7 +466,7 @@ pub fn modular_canvas(
                             button_x += button_w;
                         }
                     } else {
-                        log::error!("WayVR catalog \"{}\" not found", catalog_name);
+                        log::error!("WayVR catalog \"{catalog_name}\" not found");
                     }
                 }
                 #[cfg(not(feature = "wayvr"))]
@@ -535,7 +536,7 @@ pub fn modular_canvas(
 
 pub fn color_parse_or_default(color: &str) -> GuiColor {
     color_parse(color).unwrap_or_else(|e| {
-        log::error!("Failed to parse color '{}': {}", color, e);
+        log::error!("Failed to parse color '{color}': {e}");
         *FALLBACK_COLOR
     })
 }

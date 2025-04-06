@@ -107,7 +107,8 @@ impl OpenVrInputSource {
             haptics_hnd: haptics_hnd[i],
         });
 
-        Ok(OpenVrInputSource {
+        Ok(Self {
+            hands,
             set_hnd,
             click_hnd,
             grab_hnd,
@@ -120,14 +121,13 @@ impl OpenVrInputSource {
             click_modifier_right_hnd,
             click_modifier_middle_hnd,
             move_mouse_hnd,
-            hands,
         })
     }
 
     pub fn haptics(&mut self, input: &mut InputManager, hand: usize, haptics: &Haptics) {
-        let hnd = self.hands[hand].haptics_hnd;
+        let action_handle = self.hands[hand].haptics_hnd;
         let _ = input.trigger_haptic_vibration_action(
-            hnd,
+            action_handle,
             0.0,
             Duration::from_secs_f32(haptics.duration),
             haptics.frequency,
@@ -277,8 +277,8 @@ impl OpenVrInputSource {
         }
 
         app.input_state.devices.sort_by(|a, b| {
-            (a.soc.is_none() as u8)
-                .cmp(&(b.soc.is_none() as u8))
+            u8::from(a.soc.is_none())
+                .cmp(&u8::from(b.soc.is_none()))
                 .then((a.role as u8).cmp(&(b.role as u8)))
                 .then(a.soc.unwrap_or(999.).total_cmp(&b.soc.unwrap_or(999.)))
         });
@@ -332,7 +332,7 @@ pub fn set_action_manifest(input: &mut InputManager) -> anyhow::Result<()> {
     if let Err(e) = File::create(&action_path)
         .and_then(|mut f| f.write_all(include_bytes!("../../res/actions.json")))
     {
-        log::warn!("Could not write action manifest: {}", e);
+        log::warn!("Could not write action manifest: {e}");
     }
 
     let binding_path = config_io::get_config_root().join("actions_binding_knuckles.json");

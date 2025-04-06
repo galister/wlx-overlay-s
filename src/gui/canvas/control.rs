@@ -20,7 +20,7 @@ pub type ControlRendererHl<D, S> = fn(
 ) -> anyhow::Result<()>;
 
 #[allow(clippy::type_complexity)]
-pub(crate) struct Control<D, S> {
+pub struct Control<D, S> {
     pub state: Option<S>,
     pub rect: Rect,
     pub corner_radius: f32,
@@ -74,7 +74,6 @@ impl<D, S> Control<D, S> {
         }
     }
 
-    #[inline(always)]
     pub fn set_text(&mut self, text: &str) {
         if *self.text == *text {
             return;
@@ -83,13 +82,11 @@ impl<D, S> Control<D, S> {
         self.fg_dirty = true;
     }
 
-    #[inline(always)]
     pub fn set_sprite(&mut self, sprite: Arc<ImageView>) {
         self.sprite.replace(sprite);
         self.bg_dirty = true;
     }
 
-    #[inline(always)]
     pub fn set_sprite_st(&mut self, sprite_st: Vec4) {
         if self.sprite_st == sprite_st {
             return;
@@ -98,7 +95,6 @@ impl<D, S> Control<D, S> {
         self.bg_dirty = true;
     }
 
-    #[inline(always)]
     pub fn set_fg_color(&mut self, color: GuiColor) {
         if self.fg_color == color {
             return;
@@ -190,7 +186,7 @@ impl<D, S> Control<D, S> {
 
         let pass = canvas.pipeline_hl_color.create_pass(
             [canvas.width as _, canvas.height as _],
-            vertex_buffer.clone(),
+            vertex_buffer,
             canvas.graphics.quad_indices.clone(),
             vec![set0],
         )?;
@@ -253,9 +249,10 @@ impl<D, S> Control<D, S> {
             .fc
             .get_text_size(&self.text, self.size, canvas.graphics.clone())?;
 
-        let mut cur_y = self.rect.y + (self.rect.h) - (h * 0.5) - (self.size as f32 * 0.25);
+        let mut cur_y =
+            (self.size as f32).mul_add(-0.25, h.mul_add(-0.5, self.rect.y + (self.rect.h)));
         for line in self.text.lines() {
-            let mut cur_x = self.rect.x + (self.rect.w * 0.5) - (w * 0.5);
+            let mut cur_x = w.mul_add(-0.5, self.rect.w.mul_add(0.5, self.rect.x));
             for glyph in app
                 .fc
                 .get_glyphs(line, self.size, canvas.graphics.clone())?

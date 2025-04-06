@@ -47,25 +47,25 @@ pub enum RenderData {
 
 impl EGLData {
     pub fn load_func(&self, func_name: &str) -> anyhow::Result<extern "system" fn()> {
-        let raw_fn = self.egl.get_proc_address(func_name).ok_or(anyhow::anyhow!(
-            "Required EGL function {} not found",
-            func_name
-        ))?;
+        let raw_fn = self
+            .egl
+            .get_proc_address(func_name)
+            .ok_or_else(|| anyhow::anyhow!("Required EGL function {} not found", func_name))?;
         Ok(raw_fn)
     }
 
-    pub fn new() -> anyhow::Result<EGLData> {
+    pub fn new() -> anyhow::Result<Self> {
         unsafe {
             let egl = khronos_egl::Instance::new(khronos_egl::Static);
 
             let display = egl
                 .get_display(khronos_egl::DEFAULT_DISPLAY)
-                .ok_or(anyhow!(
+                .ok_or_else(|| anyhow!(
                     "eglGetDisplay failed. This shouldn't happen unless you don't have any display manager running. Cannot continue, check your EGL installation."
                 ))?;
 
             let (major, minor) = egl.initialize(display)?;
-            log::debug!("EGL version: {}.{}", major, minor);
+            log::debug!("EGL version: {major}.{minor}");
 
             let attrib_list = [
                 khronos_egl::RED_SIZE,
@@ -83,7 +83,7 @@ impl EGLData {
 
             let config = egl
                 .choose_first_config(display, &attrib_list)?
-                .ok_or(anyhow!("Failed to get EGL config"))?;
+                .ok_or_else(|| anyhow!("Failed to get EGL config"))?;
 
             egl.bind_api(khronos_egl::OPENGL_ES_API)?;
 
@@ -104,7 +104,7 @@ impl EGLData {
 
             egl.make_current(display, None, None, Some(context))?;
 
-            Ok(EGLData {
+            Ok(Self {
                 egl,
                 display,
                 config,
@@ -114,7 +114,7 @@ impl EGLData {
     }
 
     fn query_dmabuf_mod_info(&self) -> anyhow::Result<DMAbufModifierInfo> {
-        let target_fourcc = 0x34324258; //XB24
+        let target_fourcc = 0x3432_4258; //XB24
 
         unsafe {
             use egl_ex::PFNEGLQUERYDMABUFFORMATSEXTPROC;
@@ -187,13 +187,13 @@ impl EGLData {
                 &mut num_mods,
             );
 
-            if mods[0] == 0xFFFFFFFFFFFFFFFF {
+            if mods[0] == 0xFFFF_FFFF_FFFF_FFFF {
                 anyhow::bail!("modifier is -1")
             }
 
             log::trace!("Modifier list:");
             for modifier in &mods {
-                log::trace!("{:#x}", modifier);
+                log::trace!("{modifier:#x}");
             }
 
             // We should not change these modifier values. Passing all of them to the Vulkan dmabuf
@@ -203,13 +203,13 @@ impl EGLData {
             // If not, the full list of modifiers will be passed. Further testing is required.
             // For now, it looks like only NAVI32-based gpus have this problem.
             let mod_whitelist: [u64; 2] = [
-                0x20000002086bf04, /* AMD RX 7800 XT, Navi32 */
-                0x20000001866bf04, /* AMD RX 7600 XT, Navi33 */
+                0x200_0000_2086_bf04, /* AMD RX 7800 XT, Navi32 */
+                0x200_0000_1866_bf04, /* AMD RX 7600 XT, Navi33 */
             ];
 
             for modifier in &mod_whitelist {
                 if mods.contains(modifier) {
-                    log::warn!("Using whitelisted dmabuf tiling modifier: {:#x}", modifier);
+                    log::warn!("Using whitelisted dmabuf tiling modifier: {modifier:#x}");
                     mods = vec![*modifier, 0x0 /* also important (???) */];
                     break;
                 }

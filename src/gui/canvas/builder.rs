@@ -196,7 +196,7 @@ impl<D, S> CanvasBuilder<D, S> {
                     h,
                 };
                 let rect1 = Rect {
-                    x: x + w * 0.5 + 12.,
+                    x: w.mul_add(0.5, x) + 12.,
                     y: y + h - (self.font_size as f32) + 8.,
                     w,
                     h,
@@ -213,7 +213,7 @@ impl<D, S> CanvasBuilder<D, S> {
                 };
                 let rect1 = Rect {
                     x,
-                    y: y + h * 0.5 + 2.0,
+                    y: h.mul_add(0.5, y) + 2.0,
                     w,
                     h: h * 0.5,
                 };
@@ -234,7 +234,7 @@ impl<D, S> CanvasBuilder<D, S> {
                     h,
                 };
                 let rect2 = Rect {
-                    x: x + w * 0.5 + 8.,
+                    x: w.mul_add(0.5, x) + 8.,
                     y: y + h - (self.font_size as f32) + 4.,
                     w,
                     h,

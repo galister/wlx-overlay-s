@@ -379,7 +379,7 @@ fn modular_button_highlight(
 
 fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppState) {
     match action {
-        ButtonAction::Exec { command, toast } => run_exec(command, toast, press, app),
+        ButtonAction::Exec { command, toast } => run_exec(command, toast.clone(), press, app),
         ButtonAction::Watch { action } => run_watch(action, app),
         ButtonAction::Overlay { target, action } => run_overlay(target, action, app),
         ButtonAction::Window { target, action } => run_window(target, action, app),
@@ -439,7 +439,7 @@ fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppStat
 
                 let _ = sender.send_single_param(parameter.to_string(), converted);
                 audio_thump(app); // play sound for feedback
-            };
+            }
 
             #[cfg(not(feature = "osc"))]
             {
@@ -453,6 +453,7 @@ fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppStat
 
 const ENABLED_DISABLED: [&str; 2] = ["enabled", "disabled"];
 
+#[allow(clippy::too_many_lines)]
 fn run_system(action: &SystemAction, app: &mut AppState) {
     match action {
         SystemAction::ToggleAllowSliding => {
@@ -461,7 +462,7 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
                 ToastTopic::System,
                 format!(
                     "Sliding is {}.",
-                    ENABLED_DISABLED[app.session.config.allow_sliding as usize]
+                    ENABLED_DISABLED[usize::from(app.session.config.allow_sliding)]
                 )
                 .into(),
                 "".into(),
@@ -474,7 +475,7 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
                 ToastTopic::System,
                 format!(
                     "Auto realign is {}.",
-                    ENABLED_DISABLED[app.session.config.realign_on_showhide as usize]
+                    ENABLED_DISABLED[usize::from(app.session.config.realign_on_showhide)]
                 )
                 .into(),
                 "".into(),
@@ -487,7 +488,7 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
                 ToastTopic::System,
                 format!(
                     "Space rotate axis lock now {}.",
-                    ENABLED_DISABLED[!app.session.config.space_rotate_unlocked as usize]
+                    ENABLED_DISABLED[usize::from(!app.session.config.space_rotate_unlocked)]
                 )
                 .into(),
                 "".into(),
@@ -506,7 +507,7 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
                 let display = 5 - i;
                 Toast::new(
                     ToastTopic::System,
-                    format!("Fixing floor in {}", display).into(),
+                    format!("Fixing floor in {display}").into(),
                     "Place either controller on the floor.".into(),
                 )
                 .with_timeout(1.0)
@@ -524,7 +525,7 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
                 ToastTopic::System,
                 format!(
                     "Notifications are {}.",
-                    ENABLED_DISABLED[app.session.config.notifications_enabled as usize]
+                    ENABLED_DISABLED[usize::from(app.session.config.notifications_enabled)]
                 )
                 .into(),
                 "".into(),
@@ -538,7 +539,7 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
                 ToastTopic::System,
                 format!(
                     "Notification sounds are {}.",
-                    ENABLED_DISABLED[app.session.config.notifications_sound_enabled as usize]
+                    ENABLED_DISABLED[usize::from(app.session.config.notifications_sound_enabled)]
                 )
                 .into(),
                 "".into(),
@@ -558,7 +559,7 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
     }
 }
 
-fn run_exec(args: &ExecArgs, toast: &Option<Arc<str>>, press: &mut PressData, app: &mut AppState) {
+fn run_exec(args: &ExecArgs, toast: Option<Arc<str>>, press: &mut PressData, app: &mut AppState) {
     if let Some(proc) = press.child.as_mut() {
         match proc.try_wait() {
             Ok(Some(code)) => {
@@ -577,7 +578,10 @@ fn run_exec(args: &ExecArgs, toast: &Option<Arc<str>>, press: &mut PressData, ap
             }
         }
     }
-    let args = args.iter().map(|s| s.as_ref()).collect::<Vec<&str>>();
+    let args = args
+        .iter()
+        .map(std::convert::AsRef::as_ref)
+        .collect::<Vec<&str>>();
     match process::Command::new(args[0]).args(&args[1..]).spawn() {
         Ok(proc) => {
             press.child = Some(proc);
@@ -586,11 +590,12 @@ fn run_exec(args: &ExecArgs, toast: &Option<Arc<str>>, press: &mut PressData, ap
             }
         }
         Err(e) => {
-            error_toast(app, &format!("Failed to spawn process {:?}", args), e);
+            error_toast(app, &format!("Failed to spawn process {args:?}"), e);
         }
-    };
+    }
 }
 
+#[allow(clippy::too_many_lines)]
 fn run_watch(data: &WatchAction, app: &mut AppState) {
     match data {
         WatchAction::Hide => {
@@ -621,7 +626,7 @@ fn run_watch(data: &WatchAction, app: &mut AppState) {
             app.tasks.enqueue(TaskType::Overlay(
                 OverlaySelector::Name(WATCH_NAME.into()),
                 Box::new(|app, o| {
-                    if let RelativeTo::Hand(0) = o.relative_to {
+                    if matches!(o.relative_to, RelativeTo::Hand(0)) {
                         o.relative_to = RelativeTo::Hand(1);
                         o.spawn_rotation = app.session.config.watch_rot
                             * Quat::from_rotation_x(PI)
@@ -701,6 +706,7 @@ fn run_watch(data: &WatchAction, app: &mut AppState) {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn run_overlay(overlay: &OverlaySelector, action: &OverlayAction, app: &mut AppState) {
     match action {
         OverlayAction::Reset => {
@@ -736,7 +742,7 @@ fn run_overlay(overlay: &OverlaySelector, action: &OverlayAction, app: &mut AppS
 
                     if state_dirty {
                         match save_layout(&app.session.config) {
-                            Ok(_) => log::debug!("Saved state"),
+                            Ok(()) => log::debug!("Saved state"),
                             Err(e) => {
                                 error_toast(app, "Failed to save state", e);
                             }
@@ -752,17 +758,17 @@ fn run_overlay(overlay: &OverlaySelector, action: &OverlayAction, app: &mut AppS
                     o.recenter = !o.recenter;
                     o.grabbable = o.recenter;
                     o.show_hide = o.recenter;
-                    if !o.recenter {
+                    if o.recenter {
                         Toast::new(
                             ToastTopic::System,
-                            format!("{} is now locked in place!", o.name).into(),
+                            format!("{} is now unlocked!", o.name).into(),
                             "".into(),
                         )
                         .submit(app);
                     } else {
                         Toast::new(
                             ToastTopic::System,
-                            format!("{} is now unlocked!", o.name).into(),
+                            format!("{} is now locked in place!", o.name).into(),
                             "".into(),
                         )
                         .submit(app);
@@ -776,17 +782,17 @@ fn run_overlay(overlay: &OverlaySelector, action: &OverlayAction, app: &mut AppS
                 overlay.clone(),
                 Box::new(|app, o| {
                     o.interactable = !o.interactable;
-                    if !o.interactable {
+                    if o.interactable {
                         Toast::new(
                             ToastTopic::System,
-                            format!("{} is now non-interactable!", o.name).into(),
+                            format!("{} is now interactable!", o.name).into(),
                             "".into(),
                         )
                         .submit(app);
                     } else {
                         Toast::new(
                             ToastTopic::System,
-                            format!("{} is now interactable!", o.name).into(),
+                            format!("{} is now non-interactable!", o.name).into(),
                             "".into(),
                         )
                         .submit(app);
@@ -827,7 +833,11 @@ fn run_window(window: &Arc<str>, action: &WindowAction, app: &mut AppState) {
                         )
                         .with_sound(true)
                         .submit(app);
-                        crate::overlays::mirror::new_mirror(name.clone(), false, &app.session)
+                        Some(crate::overlays::mirror::new_mirror(
+                            name,
+                            false,
+                            &app.session,
+                        ))
                     }
                 }),
             ));

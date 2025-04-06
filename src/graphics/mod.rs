@@ -1,4 +1,4 @@
-pub(crate) mod dds;
+pub mod dds;
 
 use std::{
     collections::HashMap,
@@ -128,7 +128,7 @@ pub struct WlxGraphics {
     pub shared_shaders: RwLock<HashMap<&'static str, Arc<ShaderModule>>>,
 }
 
-fn get_dmabuf_extensions() -> DeviceExtensions {
+const fn get_dmabuf_extensions() -> DeviceExtensions {
     DeviceExtensions {
         khr_external_memory: true,
         khr_external_memory_fd: true,
@@ -155,14 +155,17 @@ unsafe extern "system" fn get_instance_proc_addr(
 
 impl WlxGraphics {
     #[cfg(feature = "openxr")]
+    #[allow(clippy::too_many_lines)]
     pub fn new_openxr(
         xr_instance: openxr::Instance,
         system: openxr::SystemId,
     ) -> anyhow::Result<Arc<Self>> {
-        use std::ffi::{self, c_char, CString};
+        use std::ffi::{self, CString};
 
         use ash::vk::PhysicalDeviceDynamicRenderingFeatures;
-        use vulkano::{Handle, Version};
+        use vulkano::{
+            descriptor_set::allocator::StandardDescriptorSetAllocatorCreateInfo, Handle, Version,
+        };
 
         let instance_extensions = InstanceExtensions {
             khr_get_physical_device_properties2: true,
@@ -173,7 +176,7 @@ impl WlxGraphics {
             .into_iter()
             .filter_map(|(name, enabled)| {
                 if enabled {
-                    Some(ffi::CString::new(name).unwrap().into_raw() as *const c_char)
+                    Some(ffi::CString::new(name).unwrap().into_raw().cast_const())
                 // want panic
                 } else {
                     None
@@ -195,10 +198,12 @@ impl WlxGraphics {
                 .create_vulkan_instance(
                     system,
                     get_instance_proc_addr,
-                    &vk::InstanceCreateInfo::builder()
-                        .application_info(&vk_app_info_raw)
-                        .enabled_extension_names(&instance_extensions_raw)
-                        as *const _ as *const _,
+                    std::ptr::from_ref(
+                        &vk::InstanceCreateInfo::builder()
+                            .application_info(&vk_app_info_raw)
+                            .enabled_extension_names(&instance_extensions_raw),
+                    )
+                    .cast(),
                 )
                 .expect("XR error creating Vulkan instance")
                 .map_err(vk::Result::from_raw)
@@ -228,12 +233,10 @@ impl WlxGraphics {
         }?;
 
         let vk_device_properties = physical_device.properties();
-        if vk_device_properties.api_version < target_version {
-            panic!(
-                "Vulkan physical device doesn't support Vulkan {}",
-                target_version
-            );
-        }
+        assert!(
+            (vk_device_properties.api_version >= target_version),
+            "Vulkan physical device doesn't support Vulkan {target_version}"
+        );
 
         log::info!(
             "Using vkPhysicalDevice: {}",
@@ -268,7 +271,7 @@ impl WlxGraphics {
             .into_iter()
             .filter_map(|(name, enabled)| {
                 if enabled {
-                    Some(ffi::CString::new(name).unwrap().into_raw() as *const c_char)
+                    Some(ffi::CString::new(name).unwrap().into_raw().cast_const())
                 // want panic
                 } else {
                     None
@@ -296,8 +299,8 @@ impl WlxGraphics {
         let mut dynamic_rendering =
             PhysicalDeviceDynamicRenderingFeatures::builder().dynamic_rendering(true);
 
-        dynamic_rendering.p_next = device_create_info.p_next as _;
-        device_create_info.p_next = (&mut dynamic_rendering) as *const _ as *const c_void;
+        dynamic_rendering.p_next = device_create_info.p_next.cast_mut();
+        device_create_info.p_next = &raw mut dynamic_rendering as *const c_void;
 
         let texture_filtering = if physical_device.supported_extensions().ext_filter_cubic {
             Filter::Cubic
@@ -311,7 +314,7 @@ impl WlxGraphics {
                     system,
                     get_instance_proc_addr,
                     physical_device.handle().as_raw() as _,
-                    (&device_create_info) as *const _ as *const _,
+                    (&raw const device_create_info).cast(),
                 )
                 .expect("XR error creating Vulkan device")
                 .map_err(vk::Result::from_raw)
@@ -346,7 +349,7 @@ impl WlxGraphics {
         device_extensions_raw
             .into_iter()
             .for_each(|c_string| unsafe {
-                let _ = CString::from_raw(c_string as _);
+                let _ = CString::from_raw(c_string.cast_mut());
             });
 
         let queue = queues
@@ -363,7 +366,7 @@ impl WlxGraphics {
         ));
         let descriptor_set_allocator = Arc::new(StandardDescriptorSetAllocator::new(
             device.clone(),
-            Default::default(),
+            StandardDescriptorSetAllocatorCreateInfo::default(),
         ));
 
         let (quad_verts, quad_indices) = Self::default_quad(memory_allocator.clone())?;
@@ -385,6 +388,7 @@ impl WlxGraphics {
         Ok(Arc::new(me))
     }
 
+    #[allow(clippy::too_many_lines)]
     #[cfg(feature = "openvr")]
     pub fn new_openvr(
         mut vk_instance_extensions: InstanceExtensions,
@@ -393,6 +397,8 @@ impl WlxGraphics {
         //#[cfg(debug_assertions)]
         //let layers = vec!["VK_LAYER_KHRONOS_validation".to_owned()];
         //#[cfg(not(debug_assertions))]
+
+        use vulkano::descriptor_set::allocator::StandardDescriptorSetAllocatorCreateInfo;
 
         let layers = vec![];
 
@@ -424,7 +430,7 @@ impl WlxGraphics {
                     );
                     for (ext, missing) in p.supported_extensions().difference(&my_extensions) {
                         if missing {
-                            log::debug!("  {}", ext);
+                            log::debug!("  {ext}");
                         }
                     }
                     return None;
@@ -514,7 +520,7 @@ impl WlxGraphics {
         ));
         let descriptor_set_allocator = Arc::new(StandardDescriptorSetAllocator::new(
             device.clone(),
-            Default::default(),
+            StandardDescriptorSetAllocatorCreateInfo::default(),
         ));
 
         let (quad_verts, quad_indices) = Self::default_quad(memory_allocator.clone())?;
@@ -536,8 +542,8 @@ impl WlxGraphics {
         Ok(Arc::new(me))
     }
 
-    #[allow(clippy::type_complexity)]
     #[cfg(feature = "uidev")]
+    #[allow(clippy::type_complexity, clippy::too_many_lines)]
     pub fn new_window() -> anyhow::Result<(
         Arc<Self>,
         winit::event_loop::EventLoop<()>,
@@ -545,7 +551,10 @@ impl WlxGraphics {
         Arc<vulkano::swapchain::Surface>,
     )> {
         use vulkano::{
-            device::physical::PhysicalDeviceType, instance::InstanceCreateFlags, swapchain::Surface,
+            descriptor_set::allocator::StandardDescriptorSetAllocatorCreateInfo,
+            device::physical::PhysicalDeviceType,
+            instance::InstanceCreateFlags,
+            swapchain::{Surface, SurfaceInfo},
         };
         use winit::{event_loop::EventLoop, window::Window};
 
@@ -588,7 +597,7 @@ impl WlxGraphics {
                     );
                     for (ext, missing) in p.supported_extensions().difference(&device_extensions) {
                         if missing {
-                            log::debug!("  {}", ext);
+                            log::debug!("  {ext}");
                         }
                     }
                     None
@@ -635,10 +644,10 @@ impl WlxGraphics {
 
         let native_format = device
             .physical_device()
-            .surface_formats(&surface, Default::default())
+            .surface_formats(&surface, SurfaceInfo::default())
             .unwrap()[0] // want panic
             .0;
-        log::info!("Using surface format: {:?}", native_format);
+        log::info!("Using surface format: {native_format:?}");
 
         let queue = queues
             .next()
@@ -654,7 +663,7 @@ impl WlxGraphics {
         ));
         let descriptor_set_allocator = Arc::new(StandardDescriptorSetAllocator::new(
             device.clone(),
-            Default::default(),
+            StandardDescriptorSetAllocatorCreateInfo::default(),
         ));
 
         let (quad_verts, quad_indices) = Self::default_quad(memory_allocator.clone())?;
@@ -721,7 +730,7 @@ impl WlxGraphics {
                     | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
                 ..Default::default()
             },
-            INDICES.iter().cloned(),
+            INDICES.iter().copied(),
         )?;
 
         Ok((quad_verts, quad_indices))
@@ -874,7 +883,7 @@ impl WlxGraphics {
             (0..frame.num_planes).for_each(|i| {
                 let plane = &frame.planes[i];
                 layouts.push(SubresourceLayout {
-                    offset: plane.offset as _,
+                    offset: plane.offset.into(),
                     size: 0,
                     row_pitch: plane.stride as _,
                     array_pitch: None,
@@ -883,7 +892,7 @@ impl WlxGraphics {
                 modifiers.push(frame.format.modifier);
             });
             tiling = ImageTiling::DrmFormatModifier;
-        };
+        }
 
         self.dmabuf_texture_ex(frame, tiling, layouts, &modifiers)
     }
@@ -1023,7 +1032,7 @@ impl WlxCommandBuffer {
                 load_op: AttachmentLoadOp::Clear,
                 store_op: AttachmentStoreOp::Store,
                 clear_value: Some([0.0, 0.0, 0.0, 0.0].into()),
-                ..RenderingAttachmentInfo::image_view(render_target.clone())
+                ..RenderingAttachmentInfo::image_view(render_target)
             })],
             ..Default::default()
         })?;
@@ -1157,7 +1166,7 @@ impl WlxPipeline {
                     }],
                     ..Default::default()
                 }),
-                dynamic_state: [DynamicState::Viewport].into_iter().collect(),
+                dynamic_state: std::iter::once(DynamicState::Viewport).collect(),
                 subpass: Some(subpass.into()),
                 ..GraphicsPipelineCreateInfo::layout(layout)
             },
@@ -1279,7 +1288,7 @@ impl WlxPass {
             extent: dimensions,
             depth_range: 0.0..=1.0,
         };
-        let pipeline_inner = pipeline.inner().clone();
+        let pipeline_inner = pipeline.inner();
         let mut command_buffer = RecordingCommandBuffer::new(
             pipeline.graphics.command_buffer_allocator.clone(),
             pipeline.graphics.queue.queue_family_index(),
@@ -1307,9 +1316,9 @@ impl WlxPass {
                     PipelineBindPoint::Graphics,
                     pipeline.inner().layout().clone(),
                     0,
-                    descriptor_sets.clone(),
+                    descriptor_sets,
                 )?
-                .bind_vertex_buffers(0, vertex_buffer.clone())?
+                .bind_vertex_buffers(0, vertex_buffer)?
                 .bind_index_buffer(index_buffer.clone())?
                 .draw_indexed(index_buffer.len() as u32, 1, 0, 0, 0)?
         };
@@ -1335,7 +1344,7 @@ impl CommandBuffers {
             return Ok(None);
         };
 
-        let future = first.execute(queue.clone())?;
+        let future = first.execute(queue)?;
         let mut future: Box<dyn GpuFuture> = Box::new(future);
 
         for buf in buffers {
@@ -1368,12 +1377,9 @@ impl CommandBuffers {
 
 pub fn fourcc_to_vk(fourcc: FourCC) -> anyhow::Result<Format> {
     match fourcc.value {
-        DRM_FORMAT_ABGR8888 => Ok(Format::R8G8B8A8_UNORM),
-        DRM_FORMAT_XBGR8888 => Ok(Format::R8G8B8A8_UNORM),
-        DRM_FORMAT_ARGB8888 => Ok(Format::B8G8R8A8_UNORM),
-        DRM_FORMAT_XRGB8888 => Ok(Format::B8G8R8A8_UNORM),
-        DRM_FORMAT_ABGR2101010 => Ok(Format::A2B10G10R10_UNORM_PACK32),
-        DRM_FORMAT_XBGR2101010 => Ok(Format::A2B10G10R10_UNORM_PACK32),
+        DRM_FORMAT_ABGR8888 | DRM_FORMAT_XBGR8888 => Ok(Format::R8G8B8A8_UNORM),
+        DRM_FORMAT_ARGB8888 | DRM_FORMAT_XRGB8888 => Ok(Format::B8G8R8A8_UNORM),
+        DRM_FORMAT_ABGR2101010 | DRM_FORMAT_XBGR2101010 => Ok(Format::A2B10G10R10_UNORM_PACK32),
         _ => bail!("Unsupported format {}", fourcc),
     }
 }

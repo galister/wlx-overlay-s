@@ -21,28 +21,28 @@ pub fn create_custom(
         match load_custom_ui(&name) {
             Ok(config) => config,
             Err(e) => {
-                log::error!("Failed to load custom UI config for {}: {:?}", name, e);
+                log::error!("Failed to load custom UI config for {name}: {e:?}");
                 return None;
             }
         }
     };
 
-    let canvas = match modular_canvas(&config.size, &config.elements, state) {
+    let canvas = match modular_canvas(config.size, &config.elements, state) {
         Ok(canvas) => canvas,
         Err(e) => {
-            log::error!("Failed to create canvas for {}: {:?}", name, e);
+            log::error!("Failed to create canvas for {name}: {e:?}");
             return None;
         }
     };
 
     let state = OverlayState {
-        name: name.clone(),
+        name,
         want_visible: true,
         interactable: true,
         grabbable: true,
         spawn_scale: config.width,
         spawn_point: Vec3A::from_array(config.spawn_pos.unwrap_or([0., 0., -0.5])),
-        interaction_transform: ui_transform(&config.size),
+        interaction_transform: ui_transform(config.size),
         ..Default::default()
     };
     let backend = Box::new(canvas);

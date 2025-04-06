@@ -30,27 +30,27 @@ macro_rules! gen_id {
 
         #[allow(dead_code)]
         impl $handle_name {
-            pub fn reset(&mut self) {
+            pub const fn reset(&mut self) {
                 self.generation = 0;
             }
 
-            pub fn is_set(&self) -> bool {
+            pub const fn is_set(&self) -> bool {
                 self.generation > 0
             }
 
-            pub fn id(&self) -> u32 {
+            pub const fn id(&self) -> u32 {
                 self.idx
             }
 
-            pub fn new(idx: u32, generation: u64) -> Self {
+            pub const fn new(idx: u32, generation: u64) -> Self {
                 Self { idx, generation }
             }
         }
 
         //ThingVec
-        #[allow(dead_code)]
+        #[allow(dead_code, clippy::iter_not_returning_iterator)]
         impl $container_name {
-            pub fn new() -> Self {
+            pub const fn new() -> Self {
                 Self {
                     vec: Vec::new(),
                     cur_generation: 0,
@@ -78,7 +78,7 @@ macro_rules! gen_id {
                 }
             }
 
-            pub fn get_handle(cell: &$cell_name, idx: usize) -> $handle_name {
+            pub const fn get_handle(cell: &$cell_name, idx: usize) -> $handle_name {
                 $handle_name {
                     idx: idx as u32,
                     generation: cell.generation,

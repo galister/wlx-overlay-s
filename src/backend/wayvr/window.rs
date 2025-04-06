@@ -29,7 +29,7 @@ impl Window {
         }
     }
 
-    pub fn set_pos(&mut self, pos_x: i32, pos_y: i32) {
+    pub const fn set_pos(&mut self, pos_x: i32, pos_y: i32) {
         self.pos_x = pos_x;
         self.pos_y = pos_y;
     }
@@ -52,7 +52,7 @@ pub struct WindowManager {
 }
 
 impl WindowManager {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             windows: WindowVec::new(),
         }
@@ -86,14 +86,14 @@ impl WindowManager {
 gen_id!(WindowVec, Window, WindowCell, WindowHandle);
 
 impl WindowHandle {
-    pub fn from_packet(handle: packet_server::WvrWindowHandle) -> Self {
+    pub const fn from_packet(handle: packet_server::WvrWindowHandle) -> Self {
         Self {
             generation: handle.generation,
             idx: handle.idx,
         }
     }
 
-    pub fn as_packet(&self) -> packet_server::WvrWindowHandle {
+    pub const fn as_packet(&self) -> packet_server::WvrWindowHandle {
         packet_server::WvrWindowHandle {
             idx: self.idx,
             generation: self.generation,

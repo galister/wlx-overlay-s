@@ -3,7 +3,8 @@ use std::sync::Arc;
 use vulkano::{
     image::{view::ImageView, ImageUsage},
     swapchain::{
-        acquire_next_image, Surface, Swapchain, SwapchainCreateInfo, SwapchainPresentInfo,
+        acquire_next_image, Surface, SurfaceInfo, Swapchain, SwapchainCreateInfo,
+        SwapchainPresentInfo,
     },
     sync::GpuFuture,
     Validated, VulkanError,
@@ -67,13 +68,12 @@ impl PreviewState {
 
         let inner_size = window.inner_size();
         let swapchain_size = [inner_size.width, inner_size.height];
-        let (swapchain, images) =
-            create_swapchain(&state.graphics, surface.clone(), swapchain_size)?;
+        let (swapchain, images) = create_swapchain(&state.graphics, surface, swapchain_size)?;
 
-        let mut canvas = modular_canvas(&config.size, &config.elements, state)?;
+        let mut canvas = modular_canvas(config.size, &config.elements, state)?;
         canvas.init(state)?;
 
-        Ok(PreviewState {
+        Ok(Self {
             canvas,
             swapchain,
             images,
@@ -99,7 +99,7 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
         panel_name,
     )?);
 
-    let watch_path = config_io::get_config_root().join(format!("{}.yaml", panel_name));
+    let watch_path = config_io::get_config_root().join(format!("{panel_name}.yaml"));
     let mut path_last_modified = watch_path.metadata()?.modified()?;
     let mut recreate = false;
     let mut last_draw = std::time::Instant::now();
@@ -164,7 +164,7 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
                     {
                         log::error!("failed to render canvas: {e}");
                         window.request_redraw();
-                    };
+                    }
 
                     last_draw = std::time::Instant::now();
 
@@ -204,12 +204,12 @@ fn create_swapchain(
     let surface_capabilities = graphics
         .device
         .physical_device()
-        .surface_capabilities(&surface, Default::default())
+        .surface_capabilities(&surface, SurfaceInfo::default())
         .unwrap(); // want panic
 
     let (swapchain, images) = Swapchain::new(
         graphics.device.clone(),
-        surface.clone(),
+        surface,
         SwapchainCreateInfo {
             min_image_count: surface_capabilities.min_image_count.max(2),
             image_format: graphics.native_format,

@@ -57,8 +57,7 @@ impl NotificationManager {
             Ok(c) => c,
             Err(e) => {
                 log::error!(
-                    "Failed to connect to dbus. Desktop notifications will not work. Cause: {:?}",
-                    e
+                    "Failed to connect to dbus. Desktop notifications will not work. Cause: {e:?}"
                 );
                 return;
             }
@@ -81,54 +80,49 @@ impl NotificationManager {
             (vec![rule.match_str()], 0u32),
         );
 
-        match result {
-            Ok(_) => {
-                let sender = self.tx_toast.clone();
-                c.start_receive(
-                    rule,
-                    Box::new(move |msg, _| {
-                        if let Ok(toast) = parse_dbus(&msg) {
-                            match sender.try_send(toast) {
-                                Ok(_) => {}
-                                Err(e) => {
-                                    log::error!("Failed to send notification: {:?}", e);
-                                }
-                            }
-                        }
-                        true
-                    }),
-                );
-                log::info!("Listening to DBus notifications via BecomeMonitor.");
-            }
-            Err(_) => {
-                let rule_with_eavesdrop = {
-                    let mut rule = rule.clone();
-                    rule.eavesdrop = true;
-                    rule
-                };
-
-                let sender2 = self.tx_toast.clone();
-                let result = c.add_match(rule_with_eavesdrop, move |_: (), _, msg| {
-                    if let Ok(toast) = parse_dbus(msg) {
-                        match sender2.try_send(toast) {
-                            Ok(_) => {}
+        if matches!(result, Ok(())) {
+            let sender = self.tx_toast.clone();
+            c.start_receive(
+                rule,
+                Box::new(move |msg, _| {
+                    if let Ok(toast) = parse_dbus(&msg) {
+                        match sender.try_send(toast) {
+                            Ok(()) => {}
                             Err(e) => {
-                                log::error!("Failed to send notification: {:?}", e);
+                                log::error!("Failed to send notification: {e:?}");
                             }
                         }
                     }
                     true
-                });
+                }),
+            );
+            log::info!("Listening to DBus notifications via BecomeMonitor.");
+        } else {
+            let rule_with_eavesdrop = {
+                let mut rule = rule.clone();
+                rule.eavesdrop = true;
+                rule
+            };
 
-                match result {
-                    Ok(_) => {
-                        log::info!("Listening to DBus notifications via eavesdrop.");
+            let sender2 = self.tx_toast.clone();
+            let result = c.add_match(rule_with_eavesdrop, move |(): (), _, msg| {
+                if let Ok(toast) = parse_dbus(msg) {
+                    match sender2.try_send(toast) {
+                        Ok(()) => {}
+                        Err(e) => {
+                            log::error!("Failed to send notification: {e:?}");
+                        }
                     }
-                    Err(_) => {
-                        log::error!(
-                            "Failed to add DBus match. Desktop notifications will not work.",
-                        );
-                    }
+                }
+                true
+            });
+
+            match result {
+                Ok(_) => {
+                    log::info!("Listening to DBus notifications via eavesdrop.");
+                }
+                Err(_) => {
+                    log::error!("Failed to add DBus match. Desktop notifications will not work.",);
                 }
             }
         }
@@ -144,12 +138,12 @@ impl NotificationManager {
             let socket = match std::net::UdpSocket::bind(addr) {
                 Ok(s) => s,
                 Err(e) => {
-                    log::error!("Failed to bind notification socket @ {}: {:?}", addr, e);
+                    log::error!("Failed to bind notification socket @ {addr}: {e:?}");
                     return;
                 }
             };
             if let Err(err) = socket.set_read_timeout(Some(Duration::from_millis(200))) {
-                log::error!("Failed to set read timeout: {:?}", err);
+                log::error!("Failed to set read timeout: {err:?}");
             }
 
             let mut buf = [0u8; 1024 * 16]; // vrcx embeds icons as b64
@@ -159,14 +153,14 @@ impl NotificationManager {
                     let json_str = match std::str::from_utf8(&buf[..num_bytes]) {
                         Ok(s) => s,
                         Err(e) => {
-                            log::error!("Failed to receive notification message: {:?}", e);
+                            log::error!("Failed to receive notification message: {e:?}");
                             continue;
                         }
                     };
                     let msg = match serde_json::from_str::<XsoMessage>(json_str) {
                         Ok(m) => m,
                         Err(e) => {
-                            log::error!("Failed to parse notification message: {:?}", e);
+                            log::error!("Failed to parse notification message: {e:?}");
                             continue;
                         }
                     };
@@ -184,9 +178,9 @@ impl NotificationManager {
                     .with_sound(msg.volume.unwrap_or(-1.) >= 0.); // XSOverlay still plays at 0,
 
                     match sender.try_send(toast) {
-                        Ok(_) => {}
+                        Ok(()) => {}
                         Err(e) => {
-                            log::error!("Failed to send notification: {:?}", e);
+                            log::error!("Failed to send notification: {e:?}");
                         }
                     }
                 }
@@ -278,6 +272,7 @@ fn parse_dbus(msg: &dbus::Message) -> anyhow::Result<Toast> {
     // leave the audio part to the desktop env
 }
 
+#[allow(dead_code)]
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize)]
 struct XsoMessage {

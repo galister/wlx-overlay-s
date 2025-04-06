@@ -27,7 +27,7 @@ where
             relative_to: RelativeTo::Stage,
             ..Default::default()
         },
-        backend: Box::new(modular_canvas(&config.size, &config.elements, state)?),
+        backend: Box::new(modular_canvas(config.size, &config.elements, state)?),
         ..Default::default()
     })
 }

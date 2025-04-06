@@ -48,7 +48,7 @@ impl LinePool {
 
         let view = ImageView::new_default(texture)?;
 
-        Ok(LinePool {
+        Ok(Self {
             lines: IdMap::new(),
             view,
             colors: [
@@ -66,7 +66,7 @@ impl LinePool {
 
         let mut data = OverlayData::<OpenVrOverlayData> {
             state: OverlayState {
-                name: Arc::from(format!("wlx-line{}", id)),
+                name: Arc::from(format!("wlx-line{id}")),
                 show_hide: true,
                 ..Default::default()
             },
@@ -132,15 +132,7 @@ impl LinePool {
             data.state.transform = transform;
             data.data.color = color;
         } else {
-            log::warn!("Line {} does not exist", id);
-        }
-    }
-
-    pub fn hide(&mut self, id: usize) {
-        if let Some(data) = self.lines.get_mut(id) {
-            data.state.want_visible = false;
-        } else {
-            log::warn!("Line {} does not exist", id);
+            log::warn!("Line {id} does not exist");
         }
     }
 

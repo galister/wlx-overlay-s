@@ -118,12 +118,12 @@ impl AppState {
         #[cfg(feature = "osc")]
         let osc_sender = crate::backend::osc::OscSender::new(session.config.osc_out_port).ok();
 
-        let toast_sound_wav = AppState::try_load_bytes(
+        let toast_sound_wav = Self::try_load_bytes(
             &session.config.notification_sound,
             include_bytes!("res/557297.wav"),
         );
 
-        Ok(AppState {
+        Ok(Self {
             fc: FontCache::new(session.config.primary_font.clone())?,
             session,
             tasks,
@@ -167,16 +167,16 @@ impl AppState {
         let real_path = config_io::get_config_root().join(path);
 
         if std::fs::File::open(real_path.clone()).is_err() {
-            log::warn!("Could not open file at: {}", path);
+            log::warn!("Could not open file at: {path}");
             return fallback_data;
-        };
+        }
 
-        match std::fs::read(real_path.clone()) {
+        match std::fs::read(real_path) {
             // Box is used here to work around `f`'s limited lifetime
             Ok(f) => Box::leak(Box::new(f)).as_slice(),
             Err(e) => {
-                log::warn!("Failed to read file at: {}", path);
-                log::warn!("{:?}", e);
+                log::warn!("Failed to read file at: {path}");
+                log::warn!("{e:?}");
                 fallback_data
             }
         }
@@ -195,7 +195,7 @@ pub struct AppSession {
 impl AppSession {
     pub fn load() -> Self {
         let config_root_path = config_io::ConfigRoot::Generic.ensure_dir();
-        log::info!("Config root path: {:?}", config_root_path);
+        log::info!("Config root path: {config_root_path:?}");
         let config = GeneralConfig::load_from_disk();
 
         let mut toast_topics = IdMap::new();
@@ -210,11 +210,11 @@ impl AppSession {
         #[cfg(feature = "wayvr")]
         let wayvr_config = config_wayvr::load_wayvr();
 
-        AppSession {
+        Self {
             config,
-            toast_topics,
             #[cfg(feature = "wayvr")]
             wayvr_config,
+            toast_topics,
         }
     }
 }
@@ -225,8 +225,8 @@ pub struct AudioOutput {
 }
 
 impl AudioOutput {
-    pub fn new() -> Self {
-        AudioOutput {
+    pub const fn new() -> Self {
+        Self {
             audio_stream: None,
             first_try: true,
         }
@@ -253,7 +253,7 @@ impl AudioOutput {
         let source = match Decoder::new_wav(cursor) {
             Ok(source) => source,
             Err(e) => {
-                log::error!("Failed to play sound: {:?}", e);
+                log::error!("Failed to play sound: {e:?}");
                 return;
             }
         };
