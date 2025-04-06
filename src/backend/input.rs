@@ -429,7 +429,7 @@ where
             .is_some_and(|x| x.grabbed_id == hit.overlay)
         {
             let can_curve = hovered
-                .frame_transform()
+                .frame_meta()
                 .is_some_and(|e| e.extent[0] >= e.extent[1]);
 
             if can_curve {

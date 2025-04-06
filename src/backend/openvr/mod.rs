@@ -31,10 +31,10 @@ use crate::{
             manifest::{install_manifest, uninstall_manifest},
             overlay::OpenVrOverlayData,
         },
-        overlay::OverlayData,
+        overlay::{OverlayData, ShouldRender},
         task::{SystemTask, TaskType},
     },
-    graphics::WlxGraphics,
+    graphics::{CommandBuffers, WlxGraphics},
     overlays::{
         toast::{Toast, ToastTopic},
         watch::{watch_fade, WATCH_NAME},
@@ -321,6 +321,7 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         }
 
         state.hid_provider.commit();
+        let mut buffers = CommandBuffers::default();
 
         lines.update(universe.clone(), &mut overlay_mgr, &mut state)?;
 
@@ -344,11 +345,29 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
 
         for o in overlays.iter_mut() {
             if o.state.want_visible {
-                o.render(&mut state)?;
+                let ShouldRender::Should = o.should_render(&mut state)? else {
+                    continue;
+                };
+                if !o.ensure_image_allocated(&mut state)? {
+                    continue;
+                }
+                o.data.image_dirty = o.render(
+                    &mut state,
+                    o.data.image_view.as_ref().unwrap().clone(),
+                    &mut buffers,
+                    1.0, // alpha is instead set using OVR API
+                )?;
             }
         }
 
         log::trace!("Rendering overlays");
+
+        if let Some(mut future) = buffers.execute_now(state.graphics.queue.clone())? {
+            if let Err(e) = future.flush() {
+                return Err(BackendError::Fatal(e.into()));
+            };
+            future.cleanup_finished();
+        }
 
         overlays
             .iter_mut()

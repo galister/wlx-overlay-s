@@ -26,8 +26,8 @@ use crate::{
     hid::HidProvider,
     overlays::toast::{DisplayMethod, ToastTopic},
     shaders::{
-        frag_color, frag_glyph, frag_grid, frag_screen, frag_sprite, frag_sprite2, frag_sprite2_hl,
-        frag_swapchain, vert_common,
+        frag_color, frag_glyph, frag_grid, frag_line, frag_screen, frag_sprite, frag_sprite2,
+        frag_sprite2_hl, frag_srgb, frag_swapchain, vert_common,
     },
 };
 
@@ -74,6 +74,12 @@ impl AppState {
             let shader = frag_color::load(graphics.device.clone())?;
             shaders.insert("frag_color", shader);
 
+            let shader = frag_line::load(graphics.device.clone())?;
+            shaders.insert("frag_line", shader);
+
+            let shader = frag_srgb::load(graphics.device.clone())?;
+            shaders.insert("frag_srgb", shader);
+
             let shader = frag_glyph::load(graphics.device.clone())?;
             shaders.insert("frag_glyph", shader);
 
@@ -114,7 +120,7 @@ impl AppState {
 
         let toast_sound_wav = AppState::try_load_bytes(
             &session.config.notification_sound,
-            include_bytes!("res/557297.wav")
+            include_bytes!("res/557297.wav"),
         );
 
         Ok(AppState {
@@ -153,39 +159,28 @@ impl AppState {
         }
     }
 
-    pub fn try_load_bytes(path: &str, fallback_data: &'static [u8]) -> &'static [u8]
-    {
+    pub fn try_load_bytes(path: &str, fallback_data: &'static [u8]) -> &'static [u8] {
         if path.is_empty() {
             return fallback_data;
         }
 
-        let real_path = config_io::get_config_root().join(&*path);
+        let real_path = config_io::get_config_root().join(path);
 
         if std::fs::File::open(real_path.clone()).is_err() {
-            log::warn!(
-                "Could not open file at: {}",
-                path
-            );
+            log::warn!("Could not open file at: {}", path);
             return fallback_data;
         };
 
-        return match std::fs::read(real_path.clone()){
+        match std::fs::read(real_path.clone()) {
             // Box is used here to work around `f`'s limited lifetime
-            Ok(f) => {
-                Box::leak(Box::new(f)).as_slice()
-            },
+            Ok(f) => Box::leak(Box::new(f)).as_slice(),
             Err(e) => {
-                log::warn!(
-                    "Failed to read file at: {}",
-                    path
-                );
+                log::warn!("Failed to read file at: {}", path);
                 log::warn!("{:?}", e);
                 fallback_data
             }
-        };
-
+        }
     }
-
 }
 
 pub struct AppSession {

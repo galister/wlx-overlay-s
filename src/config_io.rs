@@ -55,9 +55,5 @@ pub fn load(filename: &str) -> Option<String> {
     let path = get_config_file_path(filename);
     log::info!("Loading config: {}", path.to_string_lossy());
 
-    if let Ok(data) = std::fs::read_to_string(path) {
-        Some(data)
-    } else {
-        None
-    }
+    std::fs::read_to_string(path).ok()
 }

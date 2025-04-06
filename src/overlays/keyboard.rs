@@ -2,14 +2,18 @@ use std::{
     collections::HashMap,
     process::{Child, Command},
     str::FromStr,
+    sync::Arc,
 };
 
 use crate::{
     backend::{
         input::{InteractionHandler, PointerMode},
-        overlay::{FrameTransform, OverlayBackend, OverlayData, OverlayRenderer, OverlayState},
+        overlay::{
+            FrameMeta, OverlayBackend, OverlayData, OverlayRenderer, OverlayState, ShouldRender,
+        },
     },
     config::{self, ConfigType},
+    graphics::CommandBuffers,
     gui::{
         canvas::{builder::CanvasBuilder, control::Control, Canvas},
         color_parse, KeyCapType,
@@ -24,6 +28,7 @@ use glam::{vec2, vec3a, Affine2, Vec4};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use vulkano::image::view::ImageView;
 
 const PIXELS_PER_UNIT: f32 = 80.;
 const BUTTON_PADDING: f32 = 4.;
@@ -543,14 +548,20 @@ impl OverlayRenderer for KeyboardBackend {
     fn init(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         self.canvas.init(app)
     }
-    fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        self.canvas.render(app)
+    fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
+        self.canvas.should_render(app)
     }
-    fn frame_transform(&mut self) -> Option<FrameTransform> {
-        self.canvas.frame_transform()
+    fn render(
+        &mut self,
+        app: &mut AppState,
+        tgt: Arc<ImageView>,
+        buf: &mut CommandBuffers,
+        alpha: f32,
+    ) -> anyhow::Result<bool> {
+        self.canvas.render(app, tgt, buf, alpha)
     }
-    fn view(&mut self) -> Option<std::sync::Arc<vulkano::image::view::ImageView>> {
-        self.canvas.view()
+    fn frame_meta(&mut self) -> Option<FrameMeta> {
+        self.canvas.frame_meta()
     }
     fn pause(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         self.canvas.data_mut().modifiers = 0;

@@ -52,11 +52,12 @@ use glam::{vec2, vec3a, Affine2, Affine3A, Quat, Vec2, Vec3};
 use crate::{
     backend::{
         input::{Haptics, InteractionHandler, PointerHit, PointerMode},
-        overlay::{FrameTransform, OverlayRenderer, OverlayState, SplitOverlayBackend},
+        overlay::{FrameMeta, OverlayRenderer, OverlayState, ShouldRender, SplitOverlayBackend},
     },
     config::{def_pw_tokens, GeneralConfig, PwTokenMap},
     graphics::{
-        fourcc_to_vk, WlxCommandBuffer, WlxPipeline, WlxPipelineLegacy, DRM_FORMAT_MOD_INVALID,
+        fourcc_to_vk, CommandBuffers, WlxCommandBuffer, WlxGraphics, WlxPipeline,
+        DRM_FORMAT_MOD_INVALID, SWAPCHAIN_FORMAT,
     },
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState, KeyboardFocus, ScreenMeta},
@@ -158,36 +159,27 @@ impl InteractionHandler for ScreenInteractionHandler {
 
 #[derive(Clone)]
 struct ScreenPipeline {
-    view: Arc<ImageView>,
     mouse: Option<Arc<ImageView>>,
-    pipeline: Arc<WlxPipeline<WlxPipelineLegacy>>,
+    pipeline: Arc<WlxPipeline>,
     extentf: [f32; 2],
 }
 
 impl ScreenPipeline {
     fn new(extent: &[u32; 3], app: &mut AppState) -> anyhow::Result<ScreenPipeline> {
-        let texture =
-            app.graphics
-                .render_texture(extent[0], extent[1], app.graphics.native_format)?;
-
-        let view = ImageView::new_default(texture)?;
-
         let Ok(shaders) = app.graphics.shared_shaders.read() else {
             return Err(anyhow::anyhow!("Could not lock shared shaders for reading"));
         };
 
         let pipeline = app.graphics.create_pipeline(
-            view.clone(),
             shaders.get("vert_common").unwrap().clone(), // want panic
             shaders.get("frag_screen").unwrap().clone(), // want panic
-            app.graphics.native_format,
+            SWAPCHAIN_FORMAT,
             Some(AttachmentBlend::default()),
         )?;
 
         let extentf = [extent[0] as f32, extent[1] as f32];
 
         Ok(ScreenPipeline {
-            view,
             mouse: None,
             pipeline,
             extentf,
@@ -216,25 +208,25 @@ impl ScreenPipeline {
     fn render(
         &mut self,
         image: Arc<Image>,
-        mouse: Option<&MouseMeta>,
+        mouse: Option<MouseMeta>,
         app: &mut AppState,
+        tgt: Arc<ImageView>,
+        buf: &mut CommandBuffers,
+        alpha: f32,
     ) -> anyhow::Result<()> {
-        let mut cmd = app
-            .graphics
-            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
         let view = ImageView::new_default(image)?;
         let set0 = self
             .pipeline
             .uniform_sampler(0, view, app.graphics.texture_filtering)?;
+        let set1 = self.pipeline.uniform_buffer(1, vec![alpha])?;
+        let pass = self
+            .pipeline
+            .create_pass_for_target(tgt.clone(), vec![set0, set1])?;
 
-        let pass = self.pipeline.create_pass(
-            self.extentf,
-            app.graphics.quad_verts.clone(),
-            app.graphics.quad_indices.clone(),
-            vec![set0],
-        )?;
-
-        cmd.begin_render_pass(&self.pipeline)?;
+        let mut cmd = app
+            .graphics
+            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+        cmd.begin_rendering(tgt)?;
         cmd.run_ref(&pass)?;
 
         if let (Some(mouse), Some(mouse_view)) = (mouse, self.mouse.clone()) {
@@ -264,30 +256,32 @@ impl ScreenPipeline {
             cmd.run_ref(&pass)?;
         }
 
-        cmd.end_render_pass()?;
-        cmd.build_and_execute_now()
+        cmd.end_rendering()?;
+        buf.push(cmd.build()?);
+        Ok(())
     }
 }
 
 pub struct ScreenRenderer {
     name: Arc<str>,
-    capture: Box<dyn WlxCapture>,
+    capture: Box<dyn WlxCapture<WlxCaptureIn, WlxCaptureOut>>,
     pipeline: Option<ScreenPipeline>,
-    last_view: Option<Arc<ImageView>>,
-    transform: Affine3A,
-    extent: Option<[u32; 3]>,
+    cur_frame: Option<WlxCaptureOut>,
+    meta: Option<FrameMeta>,
 }
 
 impl ScreenRenderer {
     #[cfg(feature = "wayland")]
-    pub fn new_raw(name: Arc<str>, capture: Box<dyn WlxCapture>) -> ScreenRenderer {
+    pub fn new_raw(
+        name: Arc<str>,
+        capture: Box<dyn WlxCapture<WlxCaptureIn, WlxCaptureOut>>,
+    ) -> ScreenRenderer {
         ScreenRenderer {
             name,
             capture,
             pipeline: None,
-            last_view: None,
-            transform: Affine3A::IDENTITY,
-            extent: None,
+            cur_frame: None,
+            meta: None,
         }
     }
 
@@ -300,9 +294,8 @@ impl ScreenRenderer {
             name: output.name.clone(),
             capture: Box::new(capture),
             pipeline: None,
-            last_view: None,
-            transform: Affine3A::IDENTITY,
-            extent: None,
+            cur_frame: None,
+            meta: None,
         })
     }
 
@@ -315,9 +308,8 @@ impl ScreenRenderer {
             name: output.name.clone(),
             capture: Box::new(capture),
             pipeline: None,
-            last_view: None,
-            transform: Affine3A::IDENTITY,
-            extent: None,
+            cur_frame: None,
+            meta: None,
         })
     }
 
@@ -358,9 +350,8 @@ impl ScreenRenderer {
                 name: output.name.clone(),
                 capture: Box::new(capture),
                 pipeline: None,
-                last_view: None,
-                transform: Affine3A::IDENTITY,
-                extent: None,
+                cur_frame: None,
+                meta: None,
             },
             select_screen_result.restore_token,
         ))
@@ -374,9 +365,158 @@ impl ScreenRenderer {
             name: screen.name.clone(),
             capture: Box::new(capture),
             pipeline: None,
-            last_view: None,
-            transform: Affine3A::IDENTITY,
-            extent: None,
+            cur_frame: None,
+            meta: None,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct WlxCaptureIn {
+    name: Arc<str>,
+    graphics: Arc<WlxGraphics>,
+}
+
+#[derive(Clone)]
+pub struct WlxCaptureOut {
+    image: Arc<Image>,
+    format: FrameFormat,
+    mouse: Option<MouseMeta>,
+}
+
+fn receive_callback(me: &WlxCaptureIn, frame: wlx_frame::WlxFrame) -> Option<WlxCaptureOut> {
+    match frame {
+        WlxFrame::Dmabuf(frame) => {
+            if !frame.is_valid() {
+                log::error!("{}: Invalid frame", me.name);
+                return None;
+            }
+            log::trace!("{}: New DMA-buf frame", me.name);
+            let format = frame.format;
+            match me.graphics.dmabuf_texture(frame) {
+                Ok(image) => Some(WlxCaptureOut {
+                    image,
+                    format,
+                    mouse: None,
+                }),
+                Err(e) => {
+                    log::error!(
+                        "{}: Failed to create DMA-buf vkImage: {}",
+                        me.name,
+                        e.to_string()
+                    );
+                    None
+                }
+            }
+        }
+        WlxFrame::MemFd(frame) => {
+            let Some(fd) = frame.plane.fd else {
+                log::error!("{}: No fd in MemFd frame", me.name);
+                return None;
+            };
+
+            let format = match fourcc_to_vk(frame.format.fourcc) {
+                Ok(x) => x,
+                Err(e) => {
+                    log::error!("{}: {}", me.name, e);
+                    return None;
+                }
+            };
+
+            let len = frame.plane.stride as usize * frame.format.height as usize;
+            let offset = frame.plane.offset as i64;
+
+            let map = unsafe {
+                libc::mmap(
+                    ptr::null_mut(),
+                    len,
+                    libc::PROT_READ,
+                    libc::MAP_SHARED,
+                    fd,
+                    offset,
+                )
+            } as *const u8;
+
+            let pixels = unsafe { slice::from_raw_parts(map, len) };
+
+            let mut upload = match me
+                .graphics
+                .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
+            {
+                Ok(x) => x,
+                Err(e) => {
+                    log::error!("{}: Could not create vkCommandBuffer: {:?}", me.name, e);
+                    return None;
+                }
+            };
+
+            let image =
+                match upload.texture2d_raw(frame.format.width, frame.format.height, format, pixels)
+                {
+                    Ok(x) => x,
+                    Err(e) => {
+                        log::error!("{}: Could not create vkImage: {:?}", me.name, e);
+                        return None;
+                    }
+                };
+
+            if let Err(e) = upload.build_and_execute_now() {
+                log::error!("{}: Could not execute upload: {:?}", me.name, e);
+                return None;
+            }
+
+            unsafe { libc::munmap(map as *mut _, len) };
+
+            Some(WlxCaptureOut {
+                image,
+                format: frame.format,
+                mouse: None,
+            })
+        }
+        WlxFrame::MemPtr(frame) => {
+            log::trace!("{}: New MemPtr frame", me.name);
+
+            let format = match fourcc_to_vk(frame.format.fourcc) {
+                Ok(x) => x,
+                Err(e) => {
+                    log::error!("{}: {}", me.name, e);
+                    return None;
+                }
+            };
+
+            let mut upload = match me
+                .graphics
+                .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
+            {
+                Ok(x) => x,
+                Err(e) => {
+                    log::error!("{}: Could not create vkCommandBuffer: {:?}", me.name, e);
+                    return None;
+                }
+            };
+
+            let pixels = unsafe { slice::from_raw_parts(frame.ptr as *const u8, frame.size) };
+
+            let image =
+                match upload.texture2d_raw(frame.format.width, frame.format.height, format, pixels)
+                {
+                    Ok(x) => x,
+                    Err(e) => {
+                        log::error!("{}: Could not create vkImage: {:?}", me.name, e);
+                        return None;
+                    }
+                };
+
+            if let Err(e) = upload.build_and_execute_now() {
+                log::error!("{}: Could not execute upload: {:?}", me.name, e);
+                return None;
+            }
+
+            Some(WlxCaptureOut {
+                image,
+                format: frame.format,
+                mouse: frame.mouse,
+            })
         }
     }
 }
@@ -385,7 +525,7 @@ impl OverlayRenderer for ScreenRenderer {
     fn init(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
         Ok(())
     }
-    fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
+    fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
         if !self.capture.is_ready() {
             let supports_dmabuf = app
                 .graphics
@@ -399,7 +539,7 @@ impl OverlayRenderer for ScreenRenderer {
 
             let capture_method = app.session.config.capture_method.clone();
 
-            let drm_formats = DRM_FORMATS.get_or_init({
+            let dmabuf_formats = DRM_FORMATS.get_or_init({
                 let graphics = app.graphics.clone();
                 move || {
                     if !supports_dmabuf {
@@ -453,144 +593,67 @@ impl OverlayRenderer for ScreenRenderer {
                 }
             });
 
-            self.capture.init(drm_formats);
+            let user_data = WlxCaptureIn {
+                name: self.name.clone(),
+                graphics: app.graphics.clone(),
+            };
+
+            self.capture
+                .init(dmabuf_formats, user_data, receive_callback);
             self.capture.request_new_frame();
-        };
+            return Ok(ShouldRender::Unable);
+        }
 
         for frame in self.capture.receive().into_iter() {
-            match frame {
-                WlxFrame::Dmabuf(frame) => {
-                    if !frame.is_valid() {
-                        log::error!("Invalid frame");
-                        continue;
-                    }
-                    self.extent.get_or_insert_with(|| {
-                        extent_from_format(frame.format, &app.session.config)
-                    });
-                    if let Some(new_transform) = affine_from_format(&frame.format) {
-                        self.transform = new_transform;
-                    }
-                    match app.graphics.dmabuf_texture(frame) {
-                        Ok(new) => {
-                            let pipeline = match self.pipeline {
-                                Some(ref mut p) => Some(p),
-                                None if app.session.config.screen_render_down => {
-                                    log::info!("{}: Using render-down pass.", self.name);
-                                    let pipeline = ScreenPipeline::new(&self.extent.unwrap(), app)?; // safe
-                                    self.last_view = Some(pipeline.view.clone());
-                                    self.pipeline = Some(pipeline);
-                                    self.pipeline.as_mut()
-                                }
-                                None => None,
-                            };
-                            if let Some(pipeline) = pipeline {
-                                pipeline.render(new.clone(), None, app)?;
-                            } else {
-                                let view = ImageView::new_default(new.clone())?;
-                                self.last_view = Some(view);
-                            }
-                        }
-                        Err(e) => {
-                            log::error!(
-                                "{}: Failed to create DMA-buf texture: {}",
-                                self.name,
-                                e.to_string()
-                            );
-                        }
-                    }
-                    self.capture.request_new_frame();
-                }
-                WlxFrame::MemFd(frame) => {
-                    let mut upload = app
-                        .graphics
-                        .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
-
-                    let Some(fd) = frame.plane.fd else {
-                        log::error!("No fd");
-                        continue;
-                    };
-                    self.extent.get_or_insert_with(|| {
-                        extent_from_format(frame.format, &app.session.config)
-                    });
-                    if let Some(new_transform) = affine_from_format(&frame.format) {
-                        self.transform = new_transform;
-                    }
-                    log::debug!("{}: New MemFd frame", self.name);
-                    let format = fourcc_to_vk(frame.format.fourcc)?;
-
-                    let len = frame.plane.stride as usize * frame.format.height as usize;
-                    let offset = frame.plane.offset as i64;
-
-                    let map = unsafe {
-                        libc::mmap(
-                            ptr::null_mut(),
-                            len,
-                            libc::PROT_READ,
-                            libc::MAP_SHARED,
-                            fd,
-                            offset,
-                        )
-                    } as *const u8;
-
-                    let data = unsafe { slice::from_raw_parts(map, len) };
-
-                    let image = upload.texture2d_raw(
-                        frame.format.width,
-                        frame.format.height,
-                        format,
-                        data,
-                    )?;
-                    upload.build_and_execute_now()?;
-
-                    unsafe { libc::munmap(map as *mut _, len) };
-
-                    self.last_view = Some(ImageView::new_default(image)?);
-                    self.capture.request_new_frame();
-                }
-                WlxFrame::MemPtr(frame) => {
-                    log::debug!("{}: New MemPtr frame", self.name);
-                    let mut upload = app
-                        .graphics
-                        .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
-
-                    let format = fourcc_to_vk(frame.format.fourcc)?;
-
-                    let data = unsafe { slice::from_raw_parts(frame.ptr as *const u8, frame.size) };
-
-                    let image = upload.texture2d_raw(
-                        frame.format.width,
-                        frame.format.height,
-                        format,
-                        data,
-                    )?;
-
-                    let pipeline = Some(match self.pipeline {
-                        Some(ref mut p) => p,
-                        _ => {
-                            log::info!("{}: Using render-down pass.", self.name);
-                            let extent = extent_from_format(frame.format, &app.session.config);
-                            let mut pipeline = ScreenPipeline::new(&extent, app)?;
-                            self.last_view = Some(pipeline.view.clone());
-                            pipeline.ensure_mouse_initialized(&mut upload)?;
-                            self.pipeline = Some(pipeline);
-                            self.extent = Some(extent);
-                            self.pipeline.as_mut().unwrap() // safe
-                        }
-                    });
-
-                    upload.build_and_execute_now()?;
-
-                    if let Some(pipeline) = pipeline {
-                        pipeline.render(image, frame.mouse.as_ref(), app)?;
-                    } else {
-                        let view = ImageView::new_default(image)?;
-                        self.last_view = Some(view);
-                    }
-                    self.capture.request_new_frame();
-                }
-            };
+            self.cur_frame = Some(frame);
         }
-        Ok(())
+
+        if let (Some(capture), None) = (self.cur_frame.as_ref(), self.meta.as_ref()) {
+            self.meta = Some(FrameMeta {
+                extent: extent_from_format(capture.format, &app.session.config),
+                transform: affine_from_format(&capture.format),
+                format: capture.image.format(),
+            });
+            self.pipeline = Some({
+                let mut pipeline = ScreenPipeline::new(&capture.image.extent(), app)?;
+                let mut upload = app
+                    .graphics
+                    .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+                pipeline.ensure_mouse_initialized(&mut upload)?;
+                upload.build_and_execute_now()?;
+                pipeline
+            });
+        };
+
+        if self.cur_frame.is_some() {
+            Ok(ShouldRender::Should)
+        } else {
+            Ok(ShouldRender::Unable)
+        }
+    }
+    fn render(
+        &mut self,
+        app: &mut AppState,
+        tgt: Arc<ImageView>,
+        buf: &mut CommandBuffers,
+        alpha: f32,
+    ) -> anyhow::Result<bool> {
+        let Some(capture) = self.cur_frame.take() else {
+            return Ok(false);
+        };
+
+        // want panic; must be Some if cur_frame is also Some
+        self.pipeline.as_mut().unwrap().render(
+            capture.image,
+            capture.mouse,
+            app,
+            tgt,
+            buf,
+            alpha,
+        )?;
+
+        self.capture.request_new_frame();
+        Ok(true)
     }
     fn pause(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
         self.capture.pause();
@@ -600,14 +663,8 @@ impl OverlayRenderer for ScreenRenderer {
         self.capture.resume();
         Ok(())
     }
-    fn view(&mut self) -> Option<Arc<ImageView>> {
-        self.last_view.clone()
-    }
-    fn frame_transform(&mut self) -> Option<FrameTransform> {
-        self.extent.map(|extent| FrameTransform {
-            extent,
-            transform: self.transform,
-        })
+    fn frame_meta(&mut self) -> Option<FrameMeta> {
+        self.meta
     }
 }
 
@@ -856,7 +913,7 @@ pub fn create_screens_x11pw(_app: &mut AppState) -> anyhow::Result<ScreenCreateD
 
 #[cfg(all(feature = "x11", feature = "pipewire"))]
 pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateData> {
-    use anyhow::bail;
+    use wlx_capture::xshm::xshm_get_monitors;
 
     // Load existing Pipewire tokens from file
     let mut pw_tokens: PwTokenMap = load_pw_token_config().unwrap_or_default();
@@ -885,10 +942,10 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
         }
     }
 
-    let monitors = match XshmCapture::get_monitors() {
+    let monitors = match xshm_get_monitors() {
         Ok(m) => m,
         Err(e) => {
-            bail!(e.to_string());
+            anyhow::bail!(e.to_string());
         }
     };
     log::info!("Got {} monitors", monitors.len());
@@ -924,13 +981,8 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
                 name: m.name.clone(),
                 capture: Box::new(PipewireCapture::new(m.name.clone(), s.node_id)),
                 pipeline: None,
-                last_view: None,
-                transform: Affine3A::IDENTITY,
-                extent: Some(extent_from_res(
-                    size.0 as _,
-                    size.1 as _,
-                    &app.session.config,
-                )),
+                cur_frame: None,
+                meta: None,
             };
 
             let backend = Box::new(SplitOverlayBackend {
@@ -949,14 +1001,14 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
 
 #[cfg(feature = "x11")]
 pub fn create_screens_xshm(app: &mut AppState) -> anyhow::Result<ScreenCreateData> {
-    use anyhow::bail;
+    use wlx_capture::xshm::xshm_get_monitors;
 
     let mut extent = vec2(0., 0.);
 
-    let monitors = match XshmCapture::get_monitors() {
+    let monitors = match xshm_get_monitors() {
         Ok(m) => m,
         Err(e) => {
-            bail!(e.to_string());
+            anyhow::bail!(e.to_string());
         }
     };
 
@@ -1040,19 +1092,25 @@ fn extent_from_format(fmt: FrameFormat, config: &GeneralConfig) -> [u32; 3] {
 
 fn extent_from_res(width: u32, height: u32, config: &GeneralConfig) -> [u32; 3] {
     // screens above a certain resolution will have severe aliasing
-    let h = height.min(config.screen_max_height as u32);
+    let height_limit = if config.screen_render_down {
+        config.screen_max_height.min(2560) as u32
+    } else {
+        2560
+    };
+
+    let h = height.min(height_limit);
     let w = (width as f32 / height as f32 * h as f32) as u32;
     [w, h, 1]
 }
 
-fn affine_from_format(format: &FrameFormat) -> Option<Affine3A> {
+fn affine_from_format(format: &FrameFormat) -> Affine3A {
     const FLIP_X: Vec3 = Vec3 {
         x: -1.0,
         y: 1.0,
         z: 1.0,
     };
 
-    Some(match format.transform {
+    match format.transform {
         wlx_frame::Transform::Normal => Affine3A::IDENTITY,
         wlx_frame::Transform::Rotated90 => Affine3A::from_rotation_z(-PI / 2.0),
         wlx_frame::Transform::Rotated180 => Affine3A::from_rotation_z(PI),
@@ -1067,8 +1125,8 @@ fn affine_from_format(format: &FrameFormat) -> Option<Affine3A> {
         wlx_frame::Transform::Flipped270 => {
             Affine3A::from_scale(FLIP_X) * Affine3A::from_rotation_z(PI / 2.0)
         }
-        wlx_frame::Transform::Undefined => return None,
-    })
+        wlx_frame::Transform::Undefined => Affine3A::IDENTITY,
+    }
 }
 
 #[cfg(all(feature = "pipewire", feature = "x11"))]

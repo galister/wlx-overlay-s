@@ -12,8 +12,8 @@ use crate::{
         common::{OverlayContainer, OverlaySelector},
         input::{self, InteractionHandler},
         overlay::{
-            ui_transform, FrameTransform, OverlayData, OverlayID, OverlayRenderer, OverlayState,
-            SplitOverlayBackend, Z_ORDER_DASHBOARD,
+            ui_transform, FrameMeta, OverlayData, OverlayID, OverlayRenderer, OverlayState,
+            ShouldRender, SplitOverlayBackend, Z_ORDER_DASHBOARD,
         },
         task::TaskType,
         wayvr::{
@@ -23,7 +23,7 @@ use crate::{
         },
     },
     config_wayvr,
-    graphics::WlxGraphics,
+    graphics::{CommandBuffers, WlxGraphics, WlxPipeline, SWAPCHAIN_FORMAT},
     gui::modular::button::{WayVRAction, WayVRDisplayClickAction},
     state::{self, AppState, KeyboardFocus},
 };
@@ -173,6 +173,7 @@ impl InteractionHandler for WayVRInteractionHandler {
 }
 
 pub struct WayVRRenderer {
+    pipeline: Arc<WlxPipeline>,
     vk_image: Option<Arc<vulkano::image::Image>>,
     vk_image_view: Option<Arc<vulkano::image::view::ImageView>>,
     context: Rc<RefCell<WayVRContext>>,
@@ -185,7 +186,19 @@ impl WayVRRenderer {
         wvr: Rc<RefCell<WayVRData>>,
         display: wayvr::display::DisplayHandle,
     ) -> anyhow::Result<Self> {
+        let Ok(shaders) = app.graphics.shared_shaders.read() else {
+            anyhow::bail!("Failed to lock shared shaders for reading");
+        };
+
+        let pipeline = app.graphics.create_pipeline(
+            shaders.get("vert_common").unwrap().clone(), // want panic
+            shaders.get("frag_srgb").unwrap().clone(),   // want panic
+            SWAPCHAIN_FORMAT,
+            None,
+        )?;
+
         Ok(Self {
+            pipeline,
             context: Rc::new(RefCell::new(WayVRContext::new(wvr, display)?)),
             vk_image: None,
             vk_image_view: None,
@@ -569,7 +582,10 @@ impl WayVRRenderer {
             &data.data,
         )?;
 
+        // FIXME: can we use _buffers_ here?
         upload.build_and_execute_now()?;
+
+        //buffers.push(upload.build()?);
 
         self.vk_image = Some(tex.clone());
         self.vk_image_view = Some(ImageView::new_default(tex).unwrap());
@@ -652,22 +668,32 @@ impl OverlayRenderer for WayVRRenderer {
         wayvr.state.set_display_visible(ctx.display, true);
         Ok(())
     }
-
-    fn render(&mut self, _app: &mut state::AppState) -> anyhow::Result<()> {
+    fn should_render(&mut self, _app: &mut AppState) -> anyhow::Result<ShouldRender> {
         let ctx = self.context.borrow();
         let mut wayvr = ctx.wayvr.borrow_mut();
-
         let redrawn = match wayvr.data.tick_display(ctx.display) {
             Ok(r) => r,
             Err(e) => {
                 log::error!("tick_display failed: {}", e);
-                return Ok(()); // do not proceed further
+                return Ok(ShouldRender::Unable);
             }
         };
 
-        if !redrawn {
-            return Ok(());
+        if redrawn {
+            Ok(ShouldRender::Should)
+        } else {
+            Ok(ShouldRender::Can)
         }
+    }
+    fn render(
+        &mut self,
+        app: &mut state::AppState,
+        tgt: Arc<ImageView>,
+        buf: &mut CommandBuffers,
+        alpha: f32,
+    ) -> anyhow::Result<bool> {
+        let ctx = self.context.borrow();
+        let wayvr = ctx.wayvr.borrow_mut();
 
         let data = wayvr
             .data
@@ -680,25 +706,44 @@ impl OverlayRenderer for WayVRRenderer {
         drop(ctx);
 
         match data {
+            //TODO: render to _tgt_
             wayvr::egl_data::RenderData::Dmabuf(data) => {
                 self.ensure_dmabuf_data(&data)?;
             }
             wayvr::egl_data::RenderData::Software(data) => {
                 if let Some(new_frame) = &data {
-                    self.ensure_software_data(new_frame)?;
+                    self.ensure_software_data(new_frame)?
                 }
             }
         }
 
-        Ok(())
+        let Some(view) = self.vk_image_view.as_ref() else {
+            return Ok(false);
+        };
+
+        let set0 =
+            self.pipeline
+                .uniform_sampler(0, view.clone(), app.graphics.texture_filtering)?;
+
+        let set1 = self.pipeline.uniform_buffer(1, vec![alpha])?;
+
+        let pass = self
+            .pipeline
+            .create_pass_for_target(tgt.clone(), vec![set0, set1])?;
+
+        let mut cmd_buffer = app
+            .graphics
+            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+        cmd_buffer.begin_rendering(tgt)?;
+        cmd_buffer.run_ref(&pass)?;
+        cmd_buffer.end_rendering()?;
+        buf.push(cmd_buffer.build()?);
+
+        Ok(true)
     }
 
-    fn view(&mut self) -> Option<Arc<vulkano::image::view::ImageView>> {
-        self.vk_image_view.clone()
-    }
-
-    fn frame_transform(&mut self) -> Option<FrameTransform> {
-        self.vk_image_view.as_ref().map(|view| FrameTransform {
+    fn frame_meta(&mut self) -> Option<FrameMeta> {
+        self.vk_image_view.as_ref().map(|view| FrameMeta {
             extent: view.image().extent(),
             ..Default::default()
         })

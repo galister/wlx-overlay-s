@@ -12,7 +12,7 @@ use glam::{Affine3A, Vec3};
 use libmonado::Monado;
 use openxr as xr;
 use skybox::create_skybox;
-use vulkano::{command_buffer::CommandBufferUsage, Handle, VulkanObject};
+use vulkano::{Handle, VulkanObject};
 
 use crate::{
     backend::{
@@ -20,10 +20,10 @@ use crate::{
         input::interact,
         notifications::NotificationManager,
         openxr::{lines::LinePool, overlay::OpenXrOverlayData},
-        overlay::OverlayData,
+        overlay::{OverlayData, ShouldRender},
         task::{SystemTask, TaskType},
     },
-    graphics::WlxGraphics,
+    graphics::{CommandBuffers, WlxGraphics},
     overlays::{
         toast::{Toast, ToastTopic},
         watch::{watch_fade, WATCH_NAME},
@@ -364,23 +364,6 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
             });
         }
 
-        let mut layers = vec![];
-        let mut command_buffer = app_state
-            .graphics
-            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
-
-        if !main_session_visible {
-            if let Some(skybox) = skybox.as_mut() {
-                for (idx, layer) in skybox
-                    .present_xr(&xr_state, app_state.input_state.hmd, &mut command_buffer)?
-                    .into_iter()
-                    .enumerate()
-                {
-                    layers.push((200.0 - 50.0 * (idx as f32), layer));
-                }
-            }
-        }
-
         #[cfg(feature = "wayvr")]
         if let Err(e) =
             crate::overlays::wayvr::tick_events::<OpenXrOverlayData>(&mut app_state, &mut overlays)
@@ -388,7 +371,17 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
             log::error!("WayVR tick_events failed: {:?}", e);
         }
 
+        // Begin rendering
+        let mut buffers = CommandBuffers::default();
+
+        if !main_session_visible {
+            if let Some(skybox) = skybox.as_mut() {
+                skybox.render(&xr_state, &app_state, &mut buffers)?;
+            }
+        }
+
         for o in overlays.iter_mut() {
+            o.data.cur_visible = false;
             if !o.state.want_visible {
                 continue;
             }
@@ -398,37 +391,85 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                 o.data.init = true;
             }
 
-            o.render(&mut app_state)?;
+            let should_render = match o.should_render(&mut app_state)? {
+                ShouldRender::Should => true,
+                ShouldRender::Can => o.data.last_alpha != o.state.alpha,
+                ShouldRender::Unable => false, //try show old image if exists
+            };
 
+            if should_render {
+                if !o.ensure_swapchain(&app_state, &xr_state)? {
+                    continue;
+                }
+                let tgt = o.data.swapchain.as_mut().unwrap().acquire_wait_image()?; // want
+                if !o.render(&mut app_state, tgt, &mut buffers, o.state.alpha)? {
+                    o.data.swapchain.as_mut().unwrap().ensure_image_released()?; // want
+                    continue;
+                }
+                o.data.last_alpha = o.state.alpha;
+            } else if o.data.swapchain.is_none() {
+                continue;
+            }
+            o.data.cur_visible = true;
+        }
+
+        lines.render(app_state.graphics.clone(), &mut buffers)?;
+
+        let future = buffers.execute_now(app_state.graphics.queue.clone())?;
+        if let Some(mut future) = future {
+            if let Err(e) = future.flush() {
+                return Err(BackendError::Fatal(e.into()));
+            };
+            future.cleanup_finished();
+        }
+        // End rendering
+
+        // Layer composition
+        let mut layers = vec![];
+        if !main_session_visible {
+            if let Some(skybox) = skybox.as_mut() {
+                for (idx, layer) in skybox
+                    .present(&xr_state, &app_state)?
+                    .into_iter()
+                    .enumerate()
+                {
+                    layers.push((200.0 - 50.0 * (idx as f32), layer));
+                }
+            }
+        }
+
+        for o in overlays.iter_mut() {
+            if !o.data.cur_visible {
+                continue;
+            }
             let dist_sq = (app_state.input_state.hmd.translation - o.state.transform.translation)
                 .length_squared()
                 + (100f32 - o.state.z_order as f32);
-
             if !dist_sq.is_normal() {
+                o.data.swapchain.as_mut().unwrap().ensure_image_released()?;
                 continue;
             }
-
-            let maybe_layer = o.present_xr(&xr_state, &mut command_buffer)?;
+            let maybe_layer = o.present(&xr_state)?;
             if let CompositionLayer::None = maybe_layer {
                 continue;
             }
             layers.push((dist_sq, maybe_layer));
         }
 
-        for maybe_layer in lines.present_xr(&xr_state, &mut command_buffer)? {
+        for maybe_layer in lines.present(&xr_state)? {
             if let CompositionLayer::None = maybe_layer {
                 continue;
             }
             layers.push((0.0, maybe_layer));
         }
+        // End layer composition
 
         #[cfg(feature = "wayvr")]
         if let Some(wayvr) = &app_state.wayvr {
             wayvr.borrow_mut().data.tick_finish()?;
         }
 
-        command_buffer.build_and_execute_now()?;
-
+        // Begin layer submit
         layers.sort_by(|a, b| b.0.total_cmp(&a.0));
 
         let frame_ref = layers
@@ -446,6 +487,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
             environment_blend_mode,
             &frame_ref,
         )?;
+        // End layer submit
 
         let removed_overlays = overlays.update(&mut app_state)?;
         for o in removed_overlays {
