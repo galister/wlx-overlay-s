@@ -552,9 +552,10 @@ fn sprite_from_path(path: Arc<str>, app: &mut AppState) -> anyhow::Result<Arc<Im
         anyhow::bail!("Could not open custom sprite at: {}", path);
     };
 
-    let mut command_buffer = app
-        .graphics
-        .create_uploads_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+    let mut command_buffer = app.graphics.create_uploads_command_buffer(
+        app.graphics.transfer_queue.clone(),
+        CommandBufferUsage::OneTimeSubmit,
+    )?;
 
     match command_buffer.texture2d_dds(f) {
         Ok(image) => {

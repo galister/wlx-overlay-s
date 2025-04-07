@@ -31,9 +31,10 @@ pub(super) struct Skybox {
 
 impl Skybox {
     pub fn new(app: &AppState) -> anyhow::Result<Self> {
-        let mut command_buffer = app
-            .graphics
-            .create_uploads_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+        let mut command_buffer = app.graphics.create_uploads_command_buffer(
+            app.graphics.transfer_queue.clone(),
+            CommandBufferUsage::OneTimeSubmit,
+        )?;
 
         let mut maybe_image = None;
 

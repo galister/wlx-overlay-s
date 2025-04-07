@@ -30,8 +30,10 @@ pub(super) struct LinePool {
 
 impl LinePool {
     pub fn new(graphics: Arc<WlxGraphics>) -> anyhow::Result<Self> {
-        let mut command_buffer =
-            graphics.create_uploads_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+        let mut command_buffer = graphics.create_uploads_command_buffer(
+            graphics.transfer_queue.clone(),
+            CommandBufferUsage::OneTimeSubmit,
+        )?;
 
         let buf = vec![255; 16];
 

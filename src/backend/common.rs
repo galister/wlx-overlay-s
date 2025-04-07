@@ -229,7 +229,7 @@ where
                         has_wlr_dmabuf,
                         has_wlr_screencopy,
                         pw_token_store,
-                        &app.session,
+                        &app,
                     ) {
                         overlay.backend.set_renderer(Box::new(renderer));
                     }

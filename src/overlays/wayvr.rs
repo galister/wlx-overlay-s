@@ -565,9 +565,10 @@ impl WayVRRenderer {
         &mut self,
         data: &wayvr::egl_data::RenderSoftwarePixelsData,
     ) -> anyhow::Result<()> {
-        let mut upload = self
-            .graphics
-            .create_uploads_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+        let mut upload = self.graphics.create_uploads_command_buffer(
+            self.graphics.transfer_queue.clone(),
+            CommandBufferUsage::OneTimeSubmit,
+        )?;
 
         let tex = upload.texture2d_raw(
             u32::from(data.width),
@@ -702,7 +703,6 @@ impl OverlayRenderer for WayVRRenderer {
         drop(ctx);
 
         match data {
-            //TODO: render to _tgt_
             wayvr::egl_data::RenderData::Dmabuf(data) => {
                 self.ensure_dmabuf_data(&data)?;
             }
