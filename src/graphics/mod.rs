@@ -117,7 +117,7 @@ pub struct WlxGraphics {
     pub device: Arc<Device>,
     pub graphics_queue: Arc<Queue>,
     pub transfer_queue: Arc<Queue>,
-    pub capture_queue: Arc<Queue>,
+    pub capture_queue: Option<Arc<Queue>>,
 
     pub native_format: Format,
     pub texture_filtering: Filter,
@@ -247,21 +247,8 @@ impl WlxGraphics {
             physical_device.properties().device_name,
         );
 
-        let queue_family_index_gfx = physical_device
-            .queue_family_properties()
-            .iter()
-            .enumerate()
-            .position(|(_, q)| q.queue_flags.intersects(QueueFlags::GRAPHICS))
-            .expect("Vulkan device has no graphics queue")
-            as u32;
-
-        let queue_family_index_xfer = physical_device
-            .queue_family_properties()
-            .iter()
-            .enumerate()
-            .position(|(_, q)| q.queue_flags.intersects(QueueFlags::TRANSFER))
-            .expect("Vulkan device has no transfer queue")
-            as u32;
+        let queue_families = try_all_queue_families(physical_device.as_ref())
+            .expect("vkPhysicalDevice does not have a GRAPHICS / TRANSFER queue.");
 
         let mut device_extensions = DeviceExtensions::empty();
         let dmabuf_extensions = get_dmabuf_extensions();
@@ -276,9 +263,12 @@ impl WlxGraphics {
                 .ext_image_drm_format_modifier;
         }
 
-        if physical_device.supported_extensions().ext_filter_cubic {
+        let texture_filtering = if physical_device.supported_extensions().ext_filter_cubic {
             device_extensions.ext_filter_cubic = true;
-        }
+            Filter::Cubic
+        } else {
+            Filter::Linear
+        };
 
         let device_extensions_raw = device_extensions
             .into_iter()
@@ -297,19 +287,14 @@ impl WlxGraphics {
             ..Default::default()
         };
 
-        let queue_priorities = vec![1.0];
-
-        let queue_create_infos = [
-            vk::DeviceQueueCreateInfo::default()
-                .queue_family_index(queue_family_index_gfx)
-                .queue_priorities(&queue_priorities),
-            vk::DeviceQueueCreateInfo::default()
-                .queue_family_index(queue_family_index_xfer)
-                .queue_priorities(&queue_priorities),
-            vk::DeviceQueueCreateInfo::default()
-                .queue_family_index(queue_family_index_xfer)
-                .queue_priorities(&queue_priorities),
-        ];
+        let queue_create_infos = queue_families
+            .iter()
+            .map(|fam| {
+                vk::DeviceQueueCreateInfo::default()
+                    .queue_family_index(fam.queue_family_index)
+                    .queue_priorities(&fam.priorities)
+            })
+            .collect::<Vec<_>>();
 
         let mut device_create_info = vk::DeviceCreateInfo::default()
             .queue_create_infos(&queue_create_infos)
@@ -321,13 +306,7 @@ impl WlxGraphics {
         dynamic_rendering.p_next = device_create_info.p_next.cast_mut();
         device_create_info.p_next = &raw mut dynamic_rendering as *const c_void;
 
-        let texture_filtering = if physical_device.supported_extensions().ext_filter_cubic {
-            Filter::Cubic
-        } else {
-            Filter::Linear
-        };
-
-        let (device, mut queues) = unsafe {
+        let (device, queues) = unsafe {
             let vk_device = xr_instance
                 .create_vulkan_device(
                     system,
@@ -343,23 +322,14 @@ impl WlxGraphics {
                 physical_device,
                 vk::Device::from_raw(vk_device as _),
                 DeviceCreateInfo {
-                    queue_create_infos: vec![
-                        QueueCreateInfo {
-                            queue_family_index: queue_family_index_gfx,
-                            queues: queue_priorities.clone(),
+                    queue_create_infos: queue_families
+                        .iter()
+                        .map(|fam| QueueCreateInfo {
+                            queue_family_index: fam.queue_family_index,
+                            queues: fam.priorities.clone(),
                             ..Default::default()
-                        },
-                        QueueCreateInfo {
-                            queue_family_index: queue_family_index_xfer,
-                            queues: queue_priorities.clone(),
-                            ..Default::default()
-                        },
-                        QueueCreateInfo {
-                            queue_family_index: queue_family_index_xfer,
-                            queues: queue_priorities,
-                            ..Default::default()
-                        },
-                    ],
+                        })
+                        .collect::<Vec<_>>(),
                     enabled_extensions: device_extensions,
                     enabled_features: features,
                     ..Default::default()
@@ -383,15 +353,7 @@ impl WlxGraphics {
                 let _ = CString::from_raw(c_string.cast_mut());
             });
 
-        let graphics_queue = queues
-            .next()
-            .ok_or_else(|| anyhow::anyhow!("no graphics queues available"))?;
-        let transfer_queue = queues
-            .next()
-            .ok_or_else(|| anyhow::anyhow!("no transfer queues available"))?;
-        let capture_queue = queues
-            .next()
-            .ok_or_else(|| anyhow::anyhow!("not enough transfer queues available"))?;
+        let (graphics_queue, transfer_queue, capture_queue) = unwrap_queues(queues.collect());
 
         let memory_allocator = memory_allocator(device.clone());
         let command_buffer_allocator = Arc::new(StandardCommandBufferAllocator::new(
@@ -459,65 +421,48 @@ impl WlxGraphics {
 
         let dmabuf_extensions = get_dmabuf_extensions();
 
-        let (physical_device, my_extensions, queue_family_index_gfx, queue_family_index_xfer) =
-            instance
-                .enumerate_physical_devices()?
-                .filter_map(|p| {
-                    let mut my_extensions = vk_device_extensions_fn(&p);
+        let (physical_device, my_extensions, queue_families) = instance
+            .enumerate_physical_devices()?
+            .filter_map(|p| {
+                let mut my_extensions = vk_device_extensions_fn(&p);
 
-                    if !p.supported_extensions().contains(&my_extensions) {
-                        log::debug!(
-                            "Not using {} due to missing extensions:",
-                            p.properties().device_name,
-                        );
-                        for (ext, missing) in p.supported_extensions().difference(&my_extensions) {
-                            if missing {
-                                log::debug!("  {ext}");
-                            }
-                        }
-                        return None;
-                    }
-
-                    if p.supported_extensions().contains(&dmabuf_extensions) {
-                        my_extensions = my_extensions.union(&dmabuf_extensions);
-                        my_extensions.ext_image_drm_format_modifier =
-                            p.supported_extensions().ext_image_drm_format_modifier;
-                    }
-
-                    if p.supported_extensions().ext_filter_cubic {
-                        my_extensions.ext_filter_cubic = true;
-                    }
-
+                if !p.supported_extensions().contains(&my_extensions) {
                     log::debug!(
-                        "Device exts for {}: {:?}",
+                        "Not using {} due to missing extensions:",
                         p.properties().device_name,
-                        &my_extensions
                     );
-                    Some((p, my_extensions))
-                })
-                .filter_map(|(p, my_extensions)| {
-                    p.queue_family_properties()
-                        .iter()
-                        .enumerate()
-                        .position(|(_, q)| q.queue_flags.intersects(QueueFlags::GRAPHICS))
-                        .map(|i| (p, my_extensions, i as u32))
-                })
-                .filter_map(|(p, my_extensions, queue_family_index)| {
-                    p.queue_family_properties()
-                        .iter()
-                        .enumerate()
-                        .position(|(_, q)| q.queue_flags.intersects(QueueFlags::TRANSFER))
-                        .map(|i| (p, my_extensions, queue_family_index, i as u32))
-                })
-                .min_by_key(|(p, _, _, _)| match p.properties().device_type {
-                    PhysicalDeviceType::DiscreteGpu => 0,
-                    PhysicalDeviceType::IntegratedGpu => 1,
-                    PhysicalDeviceType::VirtualGpu => 2,
-                    PhysicalDeviceType::Cpu => 3,
-                    PhysicalDeviceType::Other => 4,
-                    _ => 5,
-                })
-                .expect("no suitable physical device found");
+                    for (ext, missing) in p.supported_extensions().difference(&my_extensions) {
+                        if missing {
+                            log::debug!("  {ext}");
+                        }
+                    }
+                    return None;
+                }
+
+                if p.supported_extensions().contains(&dmabuf_extensions) {
+                    my_extensions = my_extensions.union(&dmabuf_extensions);
+                    my_extensions.ext_image_drm_format_modifier =
+                        p.supported_extensions().ext_image_drm_format_modifier;
+                }
+
+                if p.supported_extensions().ext_filter_cubic {
+                    my_extensions.ext_filter_cubic = true;
+                }
+
+                log::debug!(
+                    "Device exts for {}: {:?}",
+                    p.properties().device_name,
+                    &my_extensions
+                );
+                Some((p, my_extensions))
+            })
+            .filter_map(|(p, my_extensions)| {
+                try_all_queue_families(p.as_ref()).map(|families| (p, my_extensions, families))
+            })
+            .min_by_key(|(p, _, families)| {
+                prio_from_device_type(p) * 10 + prio_from_families(families)
+            })
+            .expect("no suitable physical device found");
 
         log::info!(
             "Using vkPhysicalDevice: {}",
@@ -530,7 +475,7 @@ impl WlxGraphics {
             Filter::Linear
         };
 
-        let (device, mut queues) = Device::new(
+        let (device, queues) = Device::new(
             physical_device,
             DeviceCreateInfo {
                 enabled_extensions: my_extensions,
@@ -538,23 +483,14 @@ impl WlxGraphics {
                     dynamic_rendering: true,
                     ..DeviceFeatures::empty()
                 },
-                queue_create_infos: vec![
-                    QueueCreateInfo {
-                        queue_family_index: queue_family_index_gfx,
-                        queues: vec![1.0],
+                queue_create_infos: queue_families
+                    .iter()
+                    .map(|fam| QueueCreateInfo {
+                        queue_family_index: fam.queue_family_index,
+                        queues: fam.priorities.clone(),
                         ..Default::default()
-                    },
-                    QueueCreateInfo {
-                        queue_family_index: queue_family_index_xfer,
-                        queues: vec![1.0],
-                        ..Default::default()
-                    },
-                    QueueCreateInfo {
-                        queue_family_index: queue_family_index_xfer,
-                        queues: vec![1.0],
-                        ..Default::default()
-                    },
-                ],
+                    })
+                    .collect::<Vec<_>>(),
                 ..Default::default()
             },
         )?;
@@ -568,15 +504,7 @@ impl WlxGraphics {
             device.enabled_extensions().ext_image_drm_format_modifier
         );
 
-        let graphics_queue = queues
-            .next()
-            .ok_or_else(|| anyhow::anyhow!("no graphics queues available"))?;
-        let transfer_queue = queues
-            .next()
-            .ok_or_else(|| anyhow::anyhow!("no transfer queues available"))?;
-        let capture_queue = queues
-            .next()
-            .ok_or_else(|| anyhow::anyhow!("no transfer queues available"))?;
+        let (graphics_queue, transfer_queue, capture_queue) = unwrap_queues(queues.collect());
 
         let memory_allocator = memory_allocator(device.clone());
         let command_buffer_allocator = Arc::new(StandardCommandBufferAllocator::new(
@@ -624,7 +552,6 @@ impl WlxGraphics {
     )> {
         use vulkano::{
             descriptor_set::allocator::StandardDescriptorSetAllocatorCreateInfo,
-            device::physical::PhysicalDeviceType,
             instance::InstanceCreateFlags,
             swapchain::{Surface, SurfaceInfo},
         };
@@ -657,7 +584,7 @@ impl WlxGraphics {
 
         log::debug!("Device exts for app: {:?}", &device_extensions);
 
-        let (physical_device, my_extensions, queue_family_index) = instance
+        let (physical_device, my_extensions, queue_families) = instance
             .enumerate_physical_devices()?
             .filter_map(|p| {
                 if p.supported_extensions().contains(&device_extensions) {
@@ -675,22 +602,11 @@ impl WlxGraphics {
                     None
                 }
             })
-            .filter_map(|(p, my_extensions)| {
-                p.queue_family_properties()
-                    .iter()
-                    .enumerate()
-                    .position(|(i, q)| q.queue_flags.intersects(QueueFlags::GRAPHICS)
-                    && p.surface_support(i as u32, &surface).unwrap_or(false))
-                    .map(|i| (p, my_extensions, i as u32))
-            })
-            .min_by_key(|(p, _, _)| match p.properties().device_type {
-                PhysicalDeviceType::DiscreteGpu => 0,
-                PhysicalDeviceType::IntegratedGpu => 1,
-                PhysicalDeviceType::VirtualGpu => 2,
-                PhysicalDeviceType::Cpu => 3,
-                PhysicalDeviceType::Other => 4,
-                _ => 5,
-            })
+            .filter_map(|(p, my_extensions)| 
+                try_all_queue_families(p.as_ref()).map(|families| (p, my_extensions, families))
+            )
+            .min_by_key(|(p, _, _)| prio_from_device_type(p)
+            )
             .expect("no suitable physical device found");
 
         log::info!(
@@ -698,7 +614,7 @@ impl WlxGraphics {
             physical_device.properties().device_name,
         );
 
-        let (device, mut queues) = Device::new(
+        let (device, queues) = Device::new(
             physical_device,
             DeviceCreateInfo {
                 enabled_extensions: my_extensions,
@@ -706,13 +622,19 @@ impl WlxGraphics {
                     dynamic_rendering: true,
                     ..DeviceFeatures::empty()
                 },
-                queue_create_infos: vec![QueueCreateInfo {
-                    queue_family_index,
-                    ..Default::default()
-                }],
+                queue_create_infos: queue_families
+                    .iter()
+                    .map(|fam| QueueCreateInfo {
+                        queue_family_index: fam.queue_family_index,
+                        queues: fam.priorities.clone(),
+                        ..Default::default()
+                    })
+                    .collect::<Vec<_>>(),
                 ..Default::default()
             },
         )?;
+
+        let (graphics_queue, transfer_queue, capture_queue) = unwrap_queues(queues.collect());
 
         let native_format = device
             .physical_device()
@@ -720,10 +642,6 @@ impl WlxGraphics {
             .unwrap()[0] // want panic
             .0;
         log::info!("Using surface format: {native_format:?}");
-
-        let queue = queues
-            .next()
-            .ok_or_else(|| anyhow::anyhow!("no GPU queues available"))?;
 
         let memory_allocator = memory_allocator(device.clone());
         let command_buffer_allocator = Arc::new(StandardCommandBufferAllocator::new(
@@ -744,9 +662,9 @@ impl WlxGraphics {
         let me = Self {
             instance,
             device,
-            graphics_queue: queue.clone(),
-            transfer_queue: queue.clone(), // what could go wrong!
-            capture_queue: queue,
+            graphics_queue,
+            transfer_queue,
+            capture_queue,
             memory_allocator,
             native_format,
             texture_filtering: Filter::Linear,
@@ -1076,34 +994,17 @@ impl WlxGraphics {
     /// Creates a CommandBuffer to be used for texture uploads on the main thread.
     pub fn create_uploads_command_buffer(
         self: &Arc<Self>,
+        queue: Arc<Queue>,
         usage: CommandBufferUsage,
     ) -> anyhow::Result<WlxUploadsBuffer> {
         let command_buffer = AutoCommandBufferBuilder::primary(
             self.command_buffer_allocator.clone(),
-            self.transfer_queue.queue_family_index(),
+            queue.queue_family_index(),
             usage,
         )?;
         Ok(WlxUploadsBuffer {
             graphics: self.clone(),
-            queue: self.transfer_queue.clone(),
-            command_buffer,
-            dummy: None,
-        })
-    }
-
-    /// Creates a CommandBuffer to be used for texture uploads on the capture thread.
-    pub fn create_capture_command_buffer(
-        self: &Arc<Self>,
-        usage: CommandBufferUsage,
-    ) -> anyhow::Result<WlxUploadsBuffer> {
-        let command_buffer = AutoCommandBufferBuilder::primary(
-            self.command_buffer_allocator.clone(),
-            self.capture_queue.queue_family_index(),
-            usage,
-        )?;
-        Ok(WlxUploadsBuffer {
-            graphics: self.clone(),
-            queue: self.capture_queue.clone(),
+            queue,
             command_buffer,
             dummy: None,
         })
@@ -1576,4 +1477,104 @@ fn memory_allocator(device: Arc<Device>) -> Arc<StandardMemoryAllocator> {
     };
 
     Arc::new(StandardMemoryAllocator::new(device, create_info))
+}
+
+#[derive(Debug)]
+struct QueueFamilyLayout {
+    queue_family_index: u32,
+    priorities: Vec<f32>,
+}
+
+fn prio_from_device_type(physical_device: &PhysicalDevice) -> u32 {
+    match physical_device.properties().device_type {
+        PhysicalDeviceType::DiscreteGpu => 0,
+        PhysicalDeviceType::IntegratedGpu => 1,
+        PhysicalDeviceType::VirtualGpu => 2,
+        PhysicalDeviceType::Cpu => 3,
+        _ => 4,
+    }
+}
+
+const fn prio_from_families(families: &[QueueFamilyLayout]) -> u32 {
+    match families.len() {
+        2 | 3 => 0,
+        _ => 1,
+    }
+}
+
+fn unwrap_queues(queues: Vec<Arc<Queue>>) -> (Arc<Queue>, Arc<Queue>, Option<Arc<Queue>>) {
+    match queues[..] {
+        [ref g, ref t, ref c] => (g.clone(), t.clone(), Some(c.clone())),
+        [ref gt, ref c] => (gt.clone(), gt.clone(), Some(c.clone())),
+        [ref gt] => (gt.clone(), gt.clone(), None),
+        _ => unreachable!(),
+    }
+}
+
+fn try_all_queue_families(physical_device: &PhysicalDevice) -> Option<Vec<QueueFamilyLayout>> {
+    queue_families_priorities(
+        physical_device,
+        vec![
+            // main-thread graphics + uploads
+            QueueFlags::GRAPHICS | QueueFlags::TRANSFER,
+            // capture-thread uploads
+            QueueFlags::TRANSFER,
+        ],
+    )
+    .or_else(|| {
+        queue_families_priorities(
+            physical_device,
+            vec![
+                // main thread graphics
+                QueueFlags::GRAPHICS,
+                // main thread uploads
+                QueueFlags::TRANSFER,
+                // capture thread uploads
+                QueueFlags::TRANSFER,
+            ],
+        )
+    })
+    .or_else(|| {
+        queue_families_priorities(
+            physical_device,
+            // main thread-only. software capture not supported.
+            vec![QueueFlags::GRAPHICS | QueueFlags::TRANSFER],
+        )
+    })
+}
+
+fn queue_families_priorities(
+    physical_device: &PhysicalDevice,
+    mut requested_queues: Vec<QueueFlags>,
+) -> Option<Vec<QueueFamilyLayout>> {
+    let mut result = Vec::with_capacity(3);
+
+    for (idx, props) in physical_device.queue_family_properties().iter().enumerate() {
+        let mut remaining = props.queue_count;
+        let mut want = 0usize;
+
+        requested_queues.retain(|requested| {
+            if props.queue_flags.intersects(*requested) && remaining > 0 {
+                remaining -= 1;
+                want += 1;
+                false
+            } else {
+                true
+            }
+        });
+
+        if want > 0 {
+            result.push(QueueFamilyLayout {
+                queue_family_index: idx as u32,
+                priorities: std::iter::repeat_n(1.0, want).collect(),
+            });
+        }
+    }
+
+    if requested_queues.is_empty() {
+        log::debug!("Selected GPU queue families: {result:?}");
+        Some(result)
+    } else {
+        None
+    }
 }

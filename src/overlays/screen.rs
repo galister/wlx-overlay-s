@@ -8,6 +8,7 @@ use std::{
 };
 use vulkano::{
     command_buffer::CommandBufferUsage,
+    device::Queue,
     format::Format,
     image::{sampler::Filter, view::ImageView, Image},
     pipeline::graphics::color_blend::AttachmentBlend,
@@ -258,6 +259,16 @@ impl ScreenPipeline {
     }
 }
 
+macro_rules! new_wlx_capture {
+    ($capture_queue:expr, $capture:expr) => {
+        if $capture_queue.is_none() {
+            Box::new(MainThreadWlxCapture::new($capture)) as Box<dyn WlxCapture<_, _>>
+        } else {
+            Box::new($capture) as Box<dyn WlxCapture<_, _>>
+        }
+    };
+}
+
 pub struct ScreenRenderer {
     name: Arc<str>,
     capture: Box<dyn WlxCapture<WlxCaptureIn, WlxCaptureOut>>,
@@ -282,41 +293,33 @@ impl ScreenRenderer {
     }
 
     #[cfg(feature = "wayland")]
-    pub fn new_wlr_dmabuf(output: &WlxOutput) -> Option<Self> {
+    pub fn new_wlr_dmabuf(output: &WlxOutput, app: &AppState) -> Option<Self> {
         let client = WlxClient::new()?;
-        let capture = WlrDmabufCapture::new(client, output.id);
-
-        Some(Self {
-            name: output.name.clone(),
-            capture: Box::new(capture),
-            pipeline: None,
-            cur_frame: None,
-            meta: None,
-        })
+        let capture = new_wlx_capture!(
+            app.graphics.capture_queue,
+            WlrDmabufCapture::new(client, output.id)
+        );
+        Some(Self::new_raw(output.name.clone(), capture))
     }
 
     #[cfg(feature = "wayland")]
-    pub fn new_wlr_screencopy(output: &WlxOutput) -> Option<Self> {
+    pub fn new_wlr_screencopy(output: &WlxOutput, app: &AppState) -> Option<Self> {
         let client = WlxClient::new()?;
-        let capture = WlrScreencopyCapture::new(client, output.id);
-
-        Some(Self {
-            name: output.name.clone(),
-            capture: Box::new(capture),
-            pipeline: None,
-            cur_frame: None,
-            meta: None,
-        })
+        let capture = new_wlx_capture!(
+            app.graphics.capture_queue,
+            WlrScreencopyCapture::new(client, output.id)
+        );
+        Some(Self::new_raw(output.name.clone(), capture))
     }
 
     #[cfg(feature = "wayland")]
     pub fn new_pw(
         output: &WlxOutput,
         token: Option<&str>,
-        session: &AppSession,
+        app: &AppState,
     ) -> anyhow::Result<(Self, Option<String> /* pipewire restore token */)> {
         let name = output.name.clone();
-        let embed_mouse = !session.config.double_cursor_fix;
+        let embed_mouse = !app.session.config.double_cursor_fix;
 
         let select_screen_result = select_pw_screen(
             &format!(
@@ -336,31 +339,21 @@ impl ScreenRenderer {
 
         let node_id = select_screen_result.streams.first().unwrap().node_id; // streams guaranteed to have at least one element
 
-        let capture = PipewireCapture::new(name, node_id);
-
+        let capture = new_wlx_capture!(
+            app.graphics.capture_queue,
+            PipewireCapture::new(name, node_id)
+        );
         Ok((
-            Self {
-                name: output.name.clone(),
-                capture: Box::new(capture),
-                pipeline: None,
-                cur_frame: None,
-                meta: None,
-            },
+            Self::new_raw(output.name.clone(), capture),
             select_screen_result.restore_token,
         ))
     }
 
     #[cfg(feature = "x11")]
-    pub fn new_xshm(screen: Arc<XshmScreen>) -> Self {
-        let capture = XshmCapture::new(screen.clone());
-
-        Self {
-            name: screen.name.clone(),
-            capture: Box::new(capture),
-            pipeline: None,
-            cur_frame: None,
-            meta: None,
-        }
+    pub fn new_xshm(screen: Arc<XshmScreen>, app: &AppState) -> Self {
+        let capture =
+            new_wlx_capture!(app.graphics.capture_queue, XshmCapture::new(screen.clone()));
+        Self::new_raw(screen.name.clone(), capture)
     }
 }
 
@@ -368,6 +361,7 @@ impl ScreenRenderer {
 pub struct WlxCaptureIn {
     name: Arc<str>,
     graphics: Arc<WlxGraphics>,
+    queue: Arc<Queue>,
 }
 
 #[derive(Clone)]
@@ -386,7 +380,7 @@ fn upload_image(
 ) -> Option<Arc<Image>> {
     let mut upload = match me
         .graphics
-        .create_capture_command_buffer(CommandBufferUsage::OneTimeSubmit)
+        .create_uploads_command_buffer(me.queue.clone(), CommandBufferUsage::OneTimeSubmit)
     {
         Ok(x) => x,
         Err(e) => {
@@ -518,9 +512,15 @@ impl OverlayRenderer for ScreenRenderer {
 
             let dmabuf_formats = if !supports_dmabuf {
                 log::info!("Capture method does not support DMA-buf");
+                if app.graphics.capture_queue.is_none() {
+                    log::warn!("Current GPU does not support multiple queues. Software capture will take place on the main thread. Expect degraded performance.");
+                }
                 &Vec::new()
             } else if !allow_dmabuf {
                 log::info!("Not using DMA-buf capture due to {capture_method}");
+                if app.graphics.capture_queue.is_none() {
+                    log::warn!("Current GPU does not support multiple queues. Software capture will take place on the main thread. Expect degraded performance.");
+                }
                 &Vec::new()
             } else {
                 log::warn!(
@@ -534,6 +534,12 @@ impl OverlayRenderer for ScreenRenderer {
             let user_data = WlxCaptureIn {
                 name: self.name.clone(),
                 graphics: app.graphics.clone(),
+                queue: app
+                    .graphics
+                    .capture_queue
+                    .as_ref()
+                    .unwrap_or_else(|| &app.graphics.transfer_queue)
+                    .clone(),
             };
 
             self.capture
@@ -554,9 +560,10 @@ impl OverlayRenderer for ScreenRenderer {
             });
             self.pipeline = Some({
                 let mut pipeline = ScreenPipeline::new(&capture.image.extent(), app)?;
-                let mut upload = app
-                    .graphics
-                    .create_uploads_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+                let mut upload = app.graphics.create_uploads_command_buffer(
+                    app.graphics.transfer_queue.clone(),
+                    CommandBufferUsage::OneTimeSubmit,
+                )?;
                 pipeline.ensure_mouse_initialized(&mut upload)?;
                 upload.build_and_execute_now()?;
                 pipeline
@@ -613,17 +620,17 @@ pub fn create_screen_renderer_wl(
     has_wlr_dmabuf: bool,
     has_wlr_screencopy: bool,
     pw_token_store: &mut PwTokenMap,
-    session: &AppSession,
+    app: &AppState,
 ) -> Option<ScreenRenderer> {
     let mut capture: Option<ScreenRenderer> = None;
-    if (&*session.config.capture_method == "wlr-dmabuf") && has_wlr_dmabuf {
+    if (&*app.session.config.capture_method == "wlr-dmabuf") && has_wlr_dmabuf {
         log::info!("{}: Using Wlr DMA-Buf", &output.name);
-        capture = ScreenRenderer::new_wlr_dmabuf(output);
+        capture = ScreenRenderer::new_wlr_dmabuf(output, app);
     }
 
-    if &*session.config.capture_method == "screencopy" && has_wlr_screencopy {
+    if &*app.session.config.capture_method == "screencopy" && has_wlr_screencopy {
         log::info!("{}: Using Wlr Screencopy Wl-SHM", &output.name);
-        capture = ScreenRenderer::new_wlr_screencopy(output);
+        capture = ScreenRenderer::new_wlr_screencopy(output, app);
     }
 
     if capture.is_none() {
@@ -640,7 +647,7 @@ pub fn create_screen_renderer_wl(
             log::info!("Found existing Pipewire token for display {display_name}: {t}");
         }
 
-        match ScreenRenderer::new_pw(output, token, session) {
+        match ScreenRenderer::new_pw(output, token, app) {
             Ok((renderer, restore_token)) => {
                 capture = Some(renderer);
 
@@ -793,7 +800,7 @@ pub fn create_screens_wayland(wl: &mut WlxClientAlias, app: &mut AppState) -> Sc
             has_wlr_dmabuf,
             has_wlr_screencopy,
             &mut pw_tokens,
-            &app.session,
+            app,
         ) {
             let logical_pos = vec2(output.logical_pos.0 as f32, output.logical_pos.1 as f32);
             let logical_size = vec2(output.logical_size.0 as f32, output.logical_size.1 as f32);
@@ -910,13 +917,13 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
                 native_handle: 0,
             };
 
-            let renderer = ScreenRenderer {
-                name: m.name.clone(),
-                capture: Box::new(PipewireCapture::new(m.name.clone(), s.node_id)),
-                pipeline: None,
-                cur_frame: None,
-                meta: None,
-            };
+            let renderer = ScreenRenderer::new_raw(
+                m.name.clone(),
+                new_wlx_capture!(
+                    app.graphics.capture_queue,
+                    PipewireCapture::new(m.name.clone(), s.node_id)
+                ),
+            );
 
             let backend = Box::new(SplitOverlayBackend {
                 renderer: Box::new(renderer),
@@ -953,7 +960,7 @@ pub fn create_screens_xshm(app: &mut AppState) -> anyhow::Result<ScreenCreateDat
 
             let size = (s.monitor.width(), s.monitor.height());
             let pos = (s.monitor.x(), s.monitor.y());
-            let renderer = ScreenRenderer::new_xshm(s.clone());
+            let renderer = ScreenRenderer::new_xshm(s.clone(), app);
 
             log::info!(
                 "{}: Init X11 screen of res {:?} at {:?}",
@@ -1138,4 +1145,63 @@ fn select_pw_screen(
     };
 
     futures::executor::block_on(future)
+}
+
+// Used when a separate GPU queue is not available
+// In this case, receive_callback needs to run on the main thread
+struct MainThreadWlxCapture<T>
+where
+    T: WlxCapture<(), WlxFrame>,
+{
+    inner: T,
+    data: Option<WlxCaptureIn>,
+}
+
+impl<T> MainThreadWlxCapture<T>
+where
+    T: WlxCapture<(), WlxFrame>,
+{
+    pub const fn new(inner: T) -> Self {
+        Self { inner, data: None }
+    }
+}
+
+impl<T> WlxCapture<WlxCaptureIn, WlxCaptureOut> for MainThreadWlxCapture<T>
+where
+    T: WlxCapture<(), WlxFrame>,
+{
+    fn init(
+        &mut self,
+        dmabuf_formats: &[wlx_frame::DrmFormat],
+        user_data: WlxCaptureIn,
+        _: fn(&WlxCaptureIn, WlxFrame) -> Option<WlxCaptureOut>,
+    ) {
+        self.data = Some(user_data);
+        self.inner.init(dmabuf_formats, (), receive_callback_dummy);
+    }
+    fn is_ready(&self) -> bool {
+        self.inner.is_ready()
+    }
+    fn request_new_frame(&mut self) {
+        self.inner.request_new_frame();
+    }
+    fn pause(&mut self) {
+        self.inner.pause();
+    }
+    fn resume(&mut self) {
+        self.inner.resume();
+    }
+    fn receive(&mut self) -> Option<WlxCaptureOut> {
+        self.inner
+            .receive()
+            .and_then(|frame| receive_callback(self.data.as_ref().unwrap(), frame))
+    }
+    fn supports_dmbuf(&self) -> bool {
+        self.inner.supports_dmbuf()
+    }
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref, clippy::unnecessary_wraps)]
+const fn receive_callback_dummy(_: &(), frame: wlx_frame::WlxFrame) -> Option<wlx_frame::WlxFrame> {
+    Some(frame)
 }

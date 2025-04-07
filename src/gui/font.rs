@@ -240,8 +240,10 @@ impl FontCache {
         };
 
         if cmd_buffer.is_none() {
-            *cmd_buffer =
-                Some(graphics.create_uploads_command_buffer(CommandBufferUsage::OneTimeSubmit)?);
+            *cmd_buffer = Some(graphics.create_uploads_command_buffer(
+                graphics.transfer_queue.clone(),
+                CommandBufferUsage::OneTimeSubmit,
+            )?);
         }
 
         let texture = cmd_buffer.as_mut().unwrap().texture2d_raw(
