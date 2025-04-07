@@ -273,6 +273,12 @@ pub struct GeneralConfig {
     #[serde(default = "def_false")]
     pub focus_follows_mouse_mode: bool,
 
+    #[serde(default = "def_false")]
+    pub block_game_input: bool,
+
+    #[serde(default = "def_true")]
+    pub block_game_input_ignore_watch: bool,
+
     #[serde(default = "def_font")]
     pub primary_font: Arc<str>,
 
