@@ -14,7 +14,7 @@ use dmabuf::create_dmabuf_image;
 use smallvec::smallvec;
 
 #[cfg(feature = "openvr")]
-use vulkano::{device::physical::PhysicalDeviceType, instance::InstanceCreateFlags};
+use vulkano::instance::InstanceCreateFlags;
 
 #[cfg(feature = "openxr")]
 use {ash::vk, std::os::raw::c_void};
@@ -37,7 +37,7 @@ use vulkano::{
         allocator::StandardDescriptorSetAllocator, DescriptorSet, WriteDescriptorSet,
     },
     device::{
-        physical::PhysicalDevice, Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures,
+        physical::{PhysicalDevice, PhysicalDeviceType}, Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures,
         Queue, QueueCreateInfo, QueueFlags,
     },
     format::Format,

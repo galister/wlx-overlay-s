@@ -4,7 +4,7 @@ use std::{
     f32::consts::PI,
     ptr,
     sync::{atomic::AtomicU64, Arc, LazyLock},
-    time::{Duration, Instant},
+    time::Instant,
 };
 use vulkano::{
     command_buffer::CommandBufferUsage,
@@ -278,7 +278,6 @@ pub struct ScreenRenderer {
 }
 
 impl ScreenRenderer {
-    #[cfg(feature = "wayland")]
     pub fn new_raw(
         name: Arc<str>,
         capture: Box<dyn WlxCapture<WlxCaptureIn, WlxCaptureOut>>,
@@ -1107,6 +1106,7 @@ fn select_pw_screen(
     multiple: bool,
 ) -> Result<PipewireSelectScreenResult, wlx_capture::pipewire::AshpdError> {
     use crate::backend::notifications::DbusNotificationSender;
+    use std::time::Duration;
     use wlx_capture::pipewire::pipewire_select_screen;
 
     let future = async move {
