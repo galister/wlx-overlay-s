@@ -12,9 +12,10 @@ use vulkano::image::view::ImageView;
 use vulkano::image::ImageLayout;
 
 use crate::backend::overlay::{
-    FrameTransform, OverlayData, OverlayRenderer, OverlayState, SplitOverlayBackend, Z_ORDER_LINES,
+    FrameMeta, OverlayData, OverlayRenderer, OverlayState, ShouldRender, SplitOverlayBackend,
+    Z_ORDER_LINES,
 };
-use crate::graphics::WlxGraphics;
+use crate::graphics::{CommandBuffers, WlxGraphics};
 use crate::state::AppState;
 
 use super::overlay::OpenVrOverlayData;
@@ -29,8 +30,10 @@ pub(super) struct LinePool {
 
 impl LinePool {
     pub fn new(graphics: Arc<WlxGraphics>) -> anyhow::Result<Self> {
-        let mut command_buffer =
-            graphics.create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+        let mut command_buffer = graphics.create_uploads_command_buffer(
+            graphics.transfer_queue.clone(),
+            CommandBufferUsage::OneTimeSubmit,
+        )?;
 
         let buf = vec![255; 16];
 
@@ -47,7 +50,7 @@ impl LinePool {
 
         let view = ImageView::new_default(texture)?;
 
-        Ok(LinePool {
+        Ok(Self {
             lines: IdMap::new(),
             view,
             colors: [
@@ -65,7 +68,7 @@ impl LinePool {
 
         let mut data = OverlayData::<OpenVrOverlayData> {
             state: OverlayState {
-                name: Arc::from(format!("wlx-line{}", id)),
+                name: Arc::from(format!("wlx-line{id}")),
                 show_hide: true,
                 ..Default::default()
             },
@@ -131,15 +134,7 @@ impl LinePool {
             data.state.transform = transform;
             data.data.color = color;
         } else {
-            log::warn!("Line {} does not exist", id);
-        }
-    }
-
-    pub fn hide(&mut self, id: usize) {
-        if let Some(data) = self.lines.get_mut(id) {
-            data.state.want_visible = false;
-        } else {
-            log::warn!("Line {} does not exist", id);
+            log::warn!("Line {id} does not exist");
         }
     }
 
@@ -185,14 +180,20 @@ impl OverlayRenderer for StaticRenderer {
     fn resume(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
         Ok(())
     }
-    fn render(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
-        Ok(())
+    fn should_render(&mut self, _app: &mut AppState) -> anyhow::Result<ShouldRender> {
+        Ok(ShouldRender::Unable)
     }
-    fn view(&mut self) -> Option<Arc<ImageView>> {
-        Some(self.view.clone())
+    fn render(
+        &mut self,
+        _app: &mut AppState,
+        _tgt: Arc<ImageView>,
+        _buf: &mut CommandBuffers,
+        _alpha: f32,
+    ) -> anyhow::Result<bool> {
+        Ok(false)
     }
-    fn frame_transform(&mut self) -> Option<FrameTransform> {
-        Some(FrameTransform {
+    fn frame_meta(&mut self) -> Option<FrameMeta> {
+        Some(FrameMeta {
             extent: self.view.image().extent(),
             ..Default::default()
         })

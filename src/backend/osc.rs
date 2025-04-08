@@ -26,7 +26,7 @@ impl OscSender {
             bail!("Failed to bind UDP socket - OSC will not function.");
         };
 
-        let Ok(_) = upstream.connect(SocketAddr::new(ip, send_port)) else {
+        let Ok(()) = upstream.connect(SocketAddr::new(ip, send_port)) else {
             bail!("Failed to connect UDP socket - OSC will not function.");
         };
 
@@ -75,7 +75,7 @@ impl OscSender {
                     KEYBOARD_NAME => has_keyboard = true,
                     _ => {
                         if o.state.interactable {
-                            num_overlays += 1
+                            num_overlays += 1;
                         }
                     }
                 }
@@ -159,12 +159,12 @@ impl OscSender {
             self.send_message(
                 String::from("/avatar/parameters/averageControllerBattery"),
                 vec![OscType::Float(
-                    controller_total_bat / controller_count as f32,
+                    controller_total_bat / f32::from(controller_count),
                 )],
             )?;
             self.send_message(
                 String::from("/avatar/parameters/averageTrackerBattery"),
-                vec![OscType::Float(tracker_total_bat / tracker_count as f32)],
+                vec![OscType::Float(tracker_total_bat / f32::from(tracker_count))],
             )?;
         }
 

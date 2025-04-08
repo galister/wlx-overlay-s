@@ -1,74 +1,72 @@
 use glam::Vec3A;
 use openxr::{self as xr, CompositionLayerFlags};
-use std::{f32::consts::PI, sync::Arc};
+use std::f32::consts::PI;
 use xr::EyeVisibility;
 
-use super::{helpers, swapchain::SwapchainRenderData, CompositionLayer, XrState};
+use super::{helpers, swapchain::WlxSwapchain, CompositionLayer, XrState};
 use crate::{
     backend::{
-        openxr::swapchain::{create_swapchain_render_data, SwapchainOpts},
+        openxr::swapchain::{create_swapchain, SwapchainOpts},
         overlay::OverlayData,
     },
-    graphics::WlxCommandBuffer,
     state::AppState,
 };
-use vulkano::image::view::ImageView;
 
 #[derive(Default)]
 pub struct OpenXrOverlayData {
-    last_view: Option<Arc<ImageView>>,
     last_visible: bool,
-    pub(super) swapchain: Option<SwapchainRenderData>,
+    pub(super) swapchain: Option<WlxSwapchain>,
     pub(super) init: bool,
+    pub(super) cur_visible: bool,
+    pub(super) last_alpha: f32,
 }
 
 impl OverlayData<OpenXrOverlayData> {
-    pub(super) fn present_xr<'a>(
+    pub(super) fn ensure_swapchain<'a>(
         &'a mut self,
+        app: &AppState,
         xr: &'a XrState,
-        command_buffer: &mut WlxCommandBuffer,
-    ) -> anyhow::Result<CompositionLayer<'a>> {
-        if let Some(new_view) = self.view() {
-            self.data.last_view = Some(new_view);
+    ) -> anyhow::Result<bool> {
+        if self.data.swapchain.is_some() {
+            return Ok(true);
         }
 
-        let my_view = if let Some(view) = self.data.last_view.as_ref() {
-            view.clone()
-        } else {
-            log::warn!("{}: Will not show - image not ready", self.state.name);
+        let Some(meta) = self.frame_meta() else {
+            log::warn!(
+                "{}: swapchain cannot be created due to missing metadata",
+                self.state.name
+            );
+            return Ok(false);
+        };
+
+        let extent = meta.extent;
+        self.data.swapchain = Some(create_swapchain(
+            xr,
+            app.graphics.clone(),
+            extent,
+            SwapchainOpts::new(),
+        )?);
+        Ok(true)
+    }
+
+    pub(super) fn present<'a>(
+        &'a mut self,
+        xr: &'a XrState,
+    ) -> anyhow::Result<CompositionLayer<'a>> {
+        let Some(swapchain) = self.data.swapchain.as_mut() else {
+            log::warn!("{}: swapchain not ready", self.state.name);
             return Ok(CompositionLayer::None);
         };
+        if !swapchain.ever_acquired {
+            log::warn!("{}: swapchain not rendered", self.state.name);
+            return Ok(CompositionLayer::None);
+        }
+        swapchain.ensure_image_released()?;
 
-        let frame_transform = self.frame_transform().unwrap(); // want panic
-        let extent = frame_transform.extent;
+        let sub_image = swapchain.get_subimage();
+        let transform = self.state.transform * self.backend.frame_meta().unwrap().transform; // contract
 
-        let data = match self.data.swapchain {
-            Some(ref mut data) => data,
-            None => {
-                let srd = create_swapchain_render_data(
-                    xr,
-                    command_buffer.graphics.clone(),
-                    extent,
-                    SwapchainOpts::new(),
-                )?;
-                log::debug!(
-                    "{}: Created swapchain {}x{}, {} images, {} MB",
-                    self.state.name,
-                    extent[0],
-                    extent[1],
-                    srd.images.len(),
-                    extent[0] * extent[1] * 4 * srd.images.len() as u32 / 1024 / 1024
-                );
-                self.data.swapchain = Some(srd);
-                self.data.swapchain.as_mut().unwrap() //safe
-            }
-        };
-
-        let sub_image = data.acquire_present_release(command_buffer, my_view, self.state.alpha)?;
-
-        let transform = self.state.transform * frame_transform.transform;
-
-        let aspect_ratio = extent[1] as f32 / extent[0] as f32;
+        let aspect_ratio = swapchain.extent[1] as f32 / swapchain.extent[0] as f32;
         let (scale_x, scale_y) = if aspect_ratio < 1.0 {
             let major = transform.matrix3.col(0).length();
             (major, major * aspect_ratio)

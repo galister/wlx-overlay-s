@@ -20,7 +20,7 @@ pub type ControlRendererHl<D, S> = fn(
 ) -> anyhow::Result<()>;
 
 #[allow(clippy::type_complexity)]
-pub(crate) struct Control<D, S> {
+pub struct Control<D, S> {
     pub state: Option<S>,
     pub rect: Rect,
     pub corner_radius: f32,
@@ -30,7 +30,8 @@ pub(crate) struct Control<D, S> {
     pub size: isize,
     pub sprite: Option<Arc<ImageView>>,
     pub sprite_st: Vec4,
-    pub(super) dirty: bool,
+    pub(super) bg_dirty: bool,
+    pub(super) fg_dirty: bool,
 
     pub on_update: Option<fn(&mut Self, &mut D, &mut AppState)>,
     pub on_press: Option<fn(&mut Self, &mut D, &mut AppState, PointerMode)>,
@@ -58,7 +59,8 @@ impl<D, S> Control<D, S> {
             text: Arc::from(""),
             sprite: None,
             sprite_st: Vec4::new(1., 1., 0., 0.),
-            dirty: true,
+            bg_dirty: true,
+            fg_dirty: true,
             size: 24,
             state: None,
             on_update: None,
@@ -72,37 +74,33 @@ impl<D, S> Control<D, S> {
         }
     }
 
-    #[inline(always)]
     pub fn set_text(&mut self, text: &str) {
         if *self.text == *text {
             return;
         }
         self.text = text.into();
-        self.dirty = true;
+        self.fg_dirty = true;
     }
 
-    #[inline(always)]
     pub fn set_sprite(&mut self, sprite: Arc<ImageView>) {
         self.sprite.replace(sprite);
-        self.dirty = true;
+        self.bg_dirty = true;
     }
 
-    #[inline(always)]
     pub fn set_sprite_st(&mut self, sprite_st: Vec4) {
         if self.sprite_st == sprite_st {
             return;
         }
         self.sprite_st = sprite_st;
-        self.dirty = true;
+        self.bg_dirty = true;
     }
 
-    #[inline(always)]
     pub fn set_fg_color(&mut self, color: GuiColor) {
         if self.fg_color == color {
             return;
         }
         self.fg_color = color;
-        self.dirty = true;
+        self.fg_dirty = true;
     }
 
     pub fn render_rounded_rect(
@@ -174,7 +172,7 @@ impl<D, S> Control<D, S> {
 
         let skew_radius = [clamped_radius / self.rect.w, clamped_radius / self.rect.h];
 
-        let set0 = canvas.pipeline_bg_color.uniform_buffer(
+        let set0 = canvas.pipeline_hl_color.uniform_buffer(
             0,
             vec![
                 color.x,
@@ -186,9 +184,9 @@ impl<D, S> Control<D, S> {
             ],
         )?;
 
-        let pass = canvas.pipeline_bg_color.create_pass(
+        let pass = canvas.pipeline_hl_color.create_pass(
             [canvas.width as _, canvas.height as _],
-            vertex_buffer.clone(),
+            vertex_buffer,
             canvas.graphics.quad_indices.clone(),
             vec![set0],
         )?;
@@ -251,9 +249,10 @@ impl<D, S> Control<D, S> {
             .fc
             .get_text_size(&self.text, self.size, canvas.graphics.clone())?;
 
-        let mut cur_y = self.rect.y + (self.rect.h) - (h * 0.5) - (self.size as f32 * 0.25);
+        let mut cur_y =
+            (self.size as f32).mul_add(-0.25, h.mul_add(-0.5, self.rect.y + (self.rect.h)));
         for line in self.text.lines() {
-            let mut cur_x = self.rect.x + (self.rect.w * 0.5) - (w * 0.5);
+            let mut cur_x = w.mul_add(-0.5, self.rect.w.mul_add(0.5, self.rect.x));
             for glyph in app
                 .fc
                 .get_glyphs(line, self.size, canvas.graphics.clone())?

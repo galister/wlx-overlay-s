@@ -9,10 +9,11 @@ use std::{
 use anyhow::Ok;
 use glam::{Affine2, Affine3A, Mat3A, Quat, Vec2, Vec3, Vec3A};
 use serde::Deserialize;
-use vulkano::image::view::ImageView;
+use vulkano::{format::Format, image::view::ImageView};
 
 use crate::{
     config::AStrMapExt,
+    graphics::CommandBuffers,
     state::{AppState, KeyboardFocus},
 };
 
@@ -56,14 +57,13 @@ pub struct OverlayState {
     pub saved_transform: Option<Affine3A>,
     pub relative_to: RelativeTo,
     pub curvature: Option<f32>,
-    pub primary_pointer: Option<usize>,
     pub interaction_transform: Affine2,
     pub birthframe: usize,
 }
 
 impl Default for OverlayState {
     fn default() -> Self {
-        OverlayState {
+        Self {
             id: OverlayID(OVERLAY_AUTO_INCREMENT.fetch_add(1, Ordering::Relaxed)),
             name: Arc::from(""),
             want_visible: false,
@@ -84,7 +84,6 @@ impl Default for OverlayState {
             saved_transform: None,
             transform: Affine3A::IDENTITY,
             offset: Affine3A::IDENTITY,
-            primary_pointer: None,
             interaction_transform: Affine2::IDENTITY,
             birthframe: 0,
         }
@@ -106,8 +105,8 @@ where
     T: Default,
 {
     fn default() -> Self {
-        OverlayData {
-            state: Default::default(),
+        Self {
+            state: OverlayState::default(),
             backend: Box::<SplitOverlayBackend>::default(),
             primary_pointer: None,
             data: Default::default(),
@@ -116,7 +115,7 @@ where
 }
 
 impl OverlayState {
-    pub fn parent_transform(&self, app: &AppState) -> Option<Affine3A> {
+    pub const fn parent_transform(&self, app: &AppState) -> Option<Affine3A> {
         match self.relative_to {
             RelativeTo::Head => Some(app.input_state.hmd),
             RelativeTo::Hand(idx) => Some(app.input_state.pointers[idx].pose),
@@ -124,7 +123,7 @@ impl OverlayState {
         }
     }
 
-    fn get_anchor(&self, app: &AppState) -> Affine3A {
+    const fn get_anchor(&self, app: &AppState) -> Affine3A {
         if self.anchored {
             app.anchor
         } else {
@@ -213,12 +212,14 @@ where
     T: Default,
 {
     pub fn init(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        self.state.curvature = app
-            .session
-            .config
-            .curve_values
-            .arc_get(self.state.name.as_ref())
-            .copied();
+        if self.state.curvature.is_none() {
+            self.state.curvature = app
+                .session
+                .config
+                .curve_values
+                .arc_get(self.state.name.as_ref())
+                .copied();
+        }
 
         if matches!(self.state.relative_to, RelativeTo::None) {
             let hard_reset;
@@ -237,33 +238,34 @@ where
         }
         self.backend.init(app)
     }
-    pub fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        self.backend.render(app)
+    pub fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
+        self.backend.should_render(app)
     }
-    pub fn view(&mut self) -> Option<Arc<ImageView>> {
-        self.backend.view()
+    pub fn render(
+        &mut self,
+        app: &mut AppState,
+        tgt: Arc<ImageView>,
+        buf: &mut CommandBuffers,
+        alpha: f32,
+    ) -> anyhow::Result<bool> {
+        self.backend.render(app, tgt, buf, alpha)
     }
-    pub fn frame_transform(&mut self) -> Option<FrameTransform> {
-        self.backend.frame_transform()
-    }
-    pub fn set_visible(&mut self, app: &mut AppState, visible: bool) -> anyhow::Result<()> {
-        let old_visible = self.state.want_visible;
-        self.state.want_visible = visible;
-        if visible != old_visible {
-            if visible {
-                self.backend.resume(app)?;
-            } else {
-                self.backend.pause(app)?;
-            }
-        }
-        Ok(())
+    pub fn frame_meta(&mut self) -> Option<FrameMeta> {
+        self.backend.frame_meta()
     }
 }
 
-#[derive(Default)]
-pub struct FrameTransform {
+#[derive(Default, Clone, Copy)]
+pub struct FrameMeta {
     pub extent: [u32; 3],
     pub transform: Affine3A,
+    pub format: Format,
+}
+
+pub enum ShouldRender {
+    Should,
+    Can,
+    Unable,
 }
 
 pub trait OverlayRenderer {
@@ -271,15 +273,24 @@ pub trait OverlayRenderer {
     fn init(&mut self, app: &mut AppState) -> anyhow::Result<()>;
     fn pause(&mut self, app: &mut AppState) -> anyhow::Result<()>;
     fn resume(&mut self, app: &mut AppState) -> anyhow::Result<()>;
+
     /// Called when the presentation layer is ready to present a new frame
-    fn render(&mut self, app: &mut AppState) -> anyhow::Result<()>;
-    /// Called to retrieve the current image to be displayed
-    fn view(&mut self) -> Option<Arc<ImageView>>;
+    fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender>;
+
+    /// Called when the contents need to be rendered to the swapchain
+    fn render(
+        &mut self,
+        app: &mut AppState,
+        tgt: Arc<ImageView>,
+        buf: &mut CommandBuffers,
+        alpha: f32,
+    ) -> anyhow::Result<bool>;
+
     /// Called to retrieve the effective extent of the image
     /// Used for creating swapchains.
     ///
-    /// Muse not be None if view() is also not None
-    fn frame_transform(&mut self) -> Option<FrameTransform>;
+    /// Must be true if should_render was also true on the same frame.
+    fn frame_meta(&mut self) -> Option<FrameMeta>;
 }
 
 pub struct FallbackRenderer;
@@ -294,13 +305,19 @@ impl OverlayRenderer for FallbackRenderer {
     fn resume(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
         Ok(())
     }
-    fn render(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
-        Ok(())
+    fn should_render(&mut self, _app: &mut AppState) -> anyhow::Result<ShouldRender> {
+        Ok(ShouldRender::Unable)
     }
-    fn view(&mut self) -> Option<Arc<ImageView>> {
-        None
+    fn render(
+        &mut self,
+        _app: &mut AppState,
+        _tgt: Arc<ImageView>,
+        _buf: &mut CommandBuffers,
+        _alpha: f32,
+    ) -> anyhow::Result<bool> {
+        Ok(false)
     }
-    fn frame_transform(&mut self) -> Option<FrameTransform> {
+    fn frame_meta(&mut self) -> Option<FrameMeta> {
         None
     }
 }
@@ -325,8 +342,8 @@ pub struct SplitOverlayBackend {
 }
 
 impl Default for SplitOverlayBackend {
-    fn default() -> SplitOverlayBackend {
-        SplitOverlayBackend {
+    fn default() -> Self {
+        Self {
             renderer: Box::new(FallbackRenderer),
             interaction: Box::new(DummyInteractionHandler),
         }
@@ -351,16 +368,23 @@ impl OverlayRenderer for SplitOverlayBackend {
     fn resume(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         self.renderer.resume(app)
     }
-    fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        self.renderer.render(app)
+    fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
+        self.renderer.should_render(app)
     }
-    fn view(&mut self) -> Option<Arc<ImageView>> {
-        self.renderer.view()
+    fn render(
+        &mut self,
+        app: &mut AppState,
+        tgt: Arc<ImageView>,
+        buf: &mut CommandBuffers,
+        alpha: f32,
+    ) -> anyhow::Result<bool> {
+        self.renderer.render(app, tgt, buf, alpha)
     }
-    fn frame_transform(&mut self) -> Option<FrameTransform> {
-        self.renderer.frame_transform()
+    fn frame_meta(&mut self) -> Option<FrameMeta> {
+        self.renderer.frame_meta()
     }
 }
+
 impl InteractionHandler for SplitOverlayBackend {
     fn on_left(&mut self, app: &mut AppState, pointer: usize) {
         self.interaction.on_left(app, pointer);
@@ -376,7 +400,7 @@ impl InteractionHandler for SplitOverlayBackend {
     }
 }
 
-pub fn ui_transform(extent: &[u32; 2]) -> Affine2 {
+pub fn ui_transform(extent: [u32; 2]) -> Affine2 {
     let aspect = extent[0] as f32 / extent[1] as f32;
     let scale = if aspect < 1.0 {
         Vec2 {

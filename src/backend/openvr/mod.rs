@@ -13,11 +13,7 @@ use ovr_overlay::{
     sys::{ETrackedDeviceProperty, EVRApplicationType, EVREventType},
     TrackedDeviceIndex,
 };
-use vulkano::{
-    device::{physical::PhysicalDevice, DeviceExtensions},
-    instance::InstanceExtensions,
-    Handle, VulkanObject,
-};
+use vulkano::{device::physical::PhysicalDevice, Handle, VulkanObject};
 
 use crate::{
     backend::{
@@ -31,10 +27,10 @@ use crate::{
             manifest::{install_manifest, uninstall_manifest},
             overlay::OpenVrOverlayData,
         },
-        overlay::OverlayData,
+        overlay::{OverlayData, ShouldRender},
         task::{SystemTask, TaskType},
     },
-    graphics::WlxGraphics,
+    graphics::{CommandBuffers, WlxGraphics},
     overlays::{
         toast::{Toast, ToastTopic},
         watch::{watch_fade, WATCH_NAME},
@@ -65,6 +61,7 @@ pub fn openvr_uninstall() {
     let _ = uninstall_manifest(&mut app_mgr);
 }
 
+#[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
 pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(), BackendError> {
     let app_type = EVRApplicationType::VRApplication_Overlay;
     let Ok(context) = ovr_overlay::Context::init(app_type) else {
@@ -84,14 +81,13 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
 
     let device_extensions_fn = |device: &PhysicalDevice| {
         let names = compositor_mgr.get_vulkan_device_extensions_required(device.handle().as_raw());
-        let ext = DeviceExtensions::from_iter(names.iter().map(|s| s.as_str()));
-        ext
+        names.iter().map(std::string::String::as_str).collect()
     };
 
-    let mut compositor_mngr = context.compositor_mngr();
+    let mut compositor_mgr = context.compositor_mngr();
     let instance_extensions = {
-        let names = compositor_mngr.get_vulkan_instance_extensions_required();
-        InstanceExtensions::from_iter(names.iter().map(|s| s.as_str()))
+        let names = compositor_mgr.get_vulkan_instance_extensions_required();
+        names.iter().map(std::string::String::as_str).collect()
     };
 
     let mut state = {
@@ -103,7 +99,7 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         state.tasks.enqueue_at(
             TaskType::System(SystemTask::ShowHide),
             Instant::now().add(Duration::from_secs(1)),
-        )
+        );
     }
 
     if let Ok(ipd) = system_mgr.get_tracked_device_property::<f32>(
@@ -137,7 +133,7 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         )));
     };
 
-    log::info!("HMD running @ {} Hz", refresh_rate);
+    log::info!("HMD running @ {refresh_rate} Hz");
 
     let watch_id = overlays.get_by_name(WATCH_NAME).unwrap().state.id; // want panic
 
@@ -188,7 +184,7 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                             Toast::new(
                                 ToastTopic::IpdChange,
                                 "IPD".into(),
-                                format!("{:.1} mm", ipd).into(),
+                                format!("{ipd:.1} mm").into(),
                             )
                             .submit(&mut state);
                         }
@@ -209,18 +205,17 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         state.tasks.retrieve_due(&mut due_tasks);
 
         let mut removed_overlays = overlays.update(&mut state)?;
-        for o in removed_overlays.iter_mut() {
+        for o in &mut removed_overlays {
             o.destroy(&mut overlay_mgr);
         }
 
         while let Some(task) = due_tasks.pop_front() {
             match task {
-                TaskType::Global(f) => f(&mut state),
                 TaskType::Overlay(sel, f) => {
                     if let Some(o) = overlays.mut_by_selector(&sel) {
                         f(&mut state, &mut o.state);
                     } else {
-                        log::warn!("Overlay not found for task: {:?}", sel);
+                        log::warn!("Overlay not found for task: {sel:?}");
                     }
                 }
                 TaskType::CreateOverlay(sel, f) => {
@@ -316,11 +311,12 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                 &state.input_state.hmd,
             );
             if let Some(haptics) = haptics {
-                input_source.haptics(&mut input_mgr, idx, haptics)
+                input_source.haptics(&mut input_mgr, idx, haptics);
             }
         }
 
         state.hid_provider.commit();
+        let mut buffers = CommandBuffers::default();
 
         lines.update(universe.clone(), &mut overlay_mgr, &mut state)?;
 
@@ -331,24 +327,42 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         #[cfg(feature = "osc")]
         if let Some(ref mut sender) = state.osc_sender {
             let _ = sender.send_params(&overlays, &state.input_state.devices);
-        };
+        }
 
         #[cfg(feature = "wayvr")]
         if let Err(e) =
             crate::overlays::wayvr::tick_events::<OpenVrOverlayData>(&mut state, &mut overlays)
         {
-            log::error!("WayVR tick_events failed: {:?}", e);
+            log::error!("WayVR tick_events failed: {e:?}");
         }
 
         log::trace!("Rendering frame");
 
         for o in overlays.iter_mut() {
             if o.state.want_visible {
-                o.render(&mut state)?;
+                let ShouldRender::Should = o.should_render(&mut state)? else {
+                    continue;
+                };
+                if !o.ensure_image_allocated(&mut state)? {
+                    continue;
+                }
+                o.data.image_dirty = o.render(
+                    &mut state,
+                    o.data.image_view.as_ref().unwrap().clone(),
+                    &mut buffers,
+                    1.0, // alpha is instead set using OVR API
+                )?;
             }
         }
 
         log::trace!("Rendering overlays");
+
+        if let Some(mut future) = buffers.execute_now(state.graphics.graphics_queue.clone())? {
+            if let Err(e) = future.flush() {
+                return Err(BackendError::Fatal(e.into()));
+            }
+            future.cleanup_finished();
+        }
 
         overlays
             .iter_mut()

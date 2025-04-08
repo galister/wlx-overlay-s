@@ -1,6 +1,5 @@
 use log::error;
-use once_cell::sync::Lazy;
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::LazyLock};
 
 pub enum ConfigRoot {
     Generic,
@@ -10,17 +9,14 @@ pub enum ConfigRoot {
 
 const FALLBACK_CONFIG_PATH: &str = "/tmp/wlxoverlay";
 
-static CONFIG_ROOT_PATH: Lazy<PathBuf> = Lazy::new(|| {
+static CONFIG_ROOT_PATH: LazyLock<PathBuf> = LazyLock::new(|| {
     if let Ok(xdg_dirs) = xdg::BaseDirectories::new() {
         let mut dir = xdg_dirs.get_config_home();
         dir.push("wlxoverlay");
         return dir;
     }
     //Return fallback config path
-    error!(
-        "Err: Failed to find config path, using {}",
-        FALLBACK_CONFIG_PATH
-    );
+    error!("Err: Failed to find config path, using {FALLBACK_CONFIG_PATH}");
     PathBuf::from(FALLBACK_CONFIG_PATH)
 });
 
@@ -31,8 +27,8 @@ pub fn get_config_root() -> PathBuf {
 impl ConfigRoot {
     pub fn get_conf_d_path(&self) -> PathBuf {
         get_config_root().join(match self {
-            ConfigRoot::Generic => "conf.d",
-            ConfigRoot::WayVR => "wayvr.conf.d",
+            Self::Generic => "conf.d",
+            Self::WayVR => "wayvr.conf.d",
         })
     }
 
@@ -55,9 +51,5 @@ pub fn load(filename: &str) -> Option<String> {
     let path = get_config_file_path(filename);
     log::info!("Loading config: {}", path.to_string_lossy());
 
-    if let Ok(data) = std::fs::read_to_string(path) {
-        Some(data)
-    } else {
-        None
-    }
+    std::fs::read_to_string(path).ok()
 }

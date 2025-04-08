@@ -5,7 +5,7 @@ use freetype::{bitmap::PixelMode, face::LoadFlag, Face, Library};
 use idmap::IdMap;
 use vulkano::{command_buffer::CommandBufferUsage, format::Format, image::Image};
 
-use crate::graphics::WlxGraphics;
+use crate::graphics::{WlxGraphics, WlxUploadsBuffer};
 
 pub struct FontCache {
     primary_font: Arc<str>,
@@ -39,7 +39,7 @@ impl FontCache {
         let ft = Library::init()?;
         let fc = FontConfig::default();
 
-        Ok(FontCache {
+        Ok(Self {
             primary_font,
             fc,
             ft,
@@ -55,14 +55,15 @@ impl FontCache {
     ) -> anyhow::Result<(f32, f32)> {
         let sizef = size as f32;
 
-        let height = sizef + ((text.lines().count() as f32) - 1f32) * (sizef * 1.5);
+        let height = ((text.lines().count() as f32) - 1f32).mul_add(sizef * 1.5, sizef);
+        let mut cmd_buffer = None;
 
         let mut max_w = sizef * 0.33;
         for line in text.lines() {
             let w: f32 = line
                 .chars()
                 .filter_map(|c| {
-                    self.get_glyph_for_cp(c as usize, size, graphics.clone())
+                    self.get_glyph_for_cp(c as usize, size, graphics.clone(), &mut cmd_buffer)
                         .map(|glyph| glyph.advance)
                         .ok()
                 })
@@ -72,6 +73,11 @@ impl FontCache {
                 max_w = w;
             }
         }
+
+        if let Some(cmd_buffer) = cmd_buffer {
+            cmd_buffer.build_and_execute_now()?;
+        }
+
         Ok((max_w, height))
     }
 
@@ -82,11 +88,23 @@ impl FontCache {
         graphics: Arc<WlxGraphics>,
     ) -> anyhow::Result<Vec<Rc<Glyph>>> {
         let mut glyphs = Vec::new();
+        let mut cmd_buffer = None;
+
         for line in text.lines() {
             for c in line.chars() {
-                glyphs.push(self.get_glyph_for_cp(c as usize, size, graphics.clone())?);
+                glyphs.push(self.get_glyph_for_cp(
+                    c as usize,
+                    size,
+                    graphics.clone(),
+                    &mut cmd_buffer,
+                )?);
             }
         }
+
+        if let Some(cmd_buffer) = cmd_buffer {
+            cmd_buffer.build_and_execute_now()?;
+        }
+
         Ok(glyphs)
     }
 
@@ -125,26 +143,26 @@ impl FontCache {
 
         if let Some(path) = pattern.filename() {
             let name = pattern.name().unwrap_or(path);
-            log::debug!("Loading font: {} {}pt", name, size);
+            log::debug!("Loading font: {name} {size}pt");
 
             let font_idx = pattern.face_index().unwrap_or(0);
 
             let face = match self.ft.new_face(path, font_idx as _) {
                 Ok(face) => face,
                 Err(e) => {
-                    log::warn!("Failed to load font at {}: {:?}", path, e);
+                    log::warn!("Failed to load font at {path}: {e:?}");
                     coll.cp_map.insert(cp, 0);
                     return 0;
                 }
             };
             match face.set_char_size(size << 6, size << 6, 96, 96) {
-                Ok(_) => {}
+                Ok(()) => {}
                 Err(e) => {
-                    log::warn!("Failed to set font size: {:?}", e);
+                    log::warn!("Failed to set font size: {e:?}");
                     coll.cp_map.insert(cp, 0);
                     return 0;
                 }
-            };
+            }
 
             let idx = coll.fonts.len();
             for (cp, _) in face.chars() {
@@ -184,6 +202,7 @@ impl FontCache {
         cp: usize,
         size: isize,
         graphics: Arc<WlxGraphics>,
+        cmd_buffer: &mut Option<WlxUploadsBuffer>,
     ) -> anyhow::Result<Rc<Glyph>> {
         let key = self.get_font_for_cp(cp, size);
 
@@ -220,9 +239,19 @@ impl FontCache {
             _ => return Ok(self.collections[size].zero_glyph.clone()),
         };
 
-        let mut cmd_buffer = graphics.create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
-        let texture = cmd_buffer.texture2d_raw(bmp.width() as _, bmp.rows() as _, format, &buf)?;
-        cmd_buffer.build_and_execute_now()?;
+        if cmd_buffer.is_none() {
+            *cmd_buffer = Some(graphics.create_uploads_command_buffer(
+                graphics.transfer_queue.clone(),
+                CommandBufferUsage::OneTimeSubmit,
+            )?);
+        }
+
+        let texture = cmd_buffer.as_mut().unwrap().texture2d_raw(
+            bmp.width() as _,
+            bmp.rows() as _,
+            format,
+            &buf,
+        )?;
 
         let g = Glyph {
             tex: Some(texture),

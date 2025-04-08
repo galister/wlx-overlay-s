@@ -1,12 +1,13 @@
+use std::sync::LazyLock;
+
 use glam::Vec4;
-use once_cell::sync::Lazy;
 
 pub mod canvas;
 pub mod font;
 pub mod modular;
 
 pub type GuiColor = Vec4;
-pub(super) static FALLBACK_COLOR: Lazy<GuiColor> = Lazy::new(|| Vec4::new(1., 0., 1., 1.));
+pub static FALLBACK_COLOR: LazyLock<GuiColor> = LazyLock::new(|| Vec4::new(1., 0., 1., 1.));
 
 // Parses a color from a HTML hex string
 pub fn color_parse(html_hex: &str) -> anyhow::Result<GuiColor> {
@@ -17,9 +18,9 @@ pub fn color_parse(html_hex: &str) -> anyhow::Result<GuiColor> {
             u8::from_str_radix(&html_hex[5..7], 16),
         ) {
             return Ok(Vec4::new(
-                r as f32 / 255.,
-                g as f32 / 255.,
-                b as f32 / 255.,
+                f32::from(r) / 255.,
+                f32::from(g) / 255.,
+                f32::from(b) / 255.,
                 1.,
             ));
         }
@@ -31,10 +32,10 @@ pub fn color_parse(html_hex: &str) -> anyhow::Result<GuiColor> {
             u8::from_str_radix(&html_hex[7..9], 16),
         ) {
             return Ok(Vec4::new(
-                r as f32 / 255.,
-                g as f32 / 255.,
-                b as f32 / 255.,
-                a as f32 / 255.,
+                f32::from(r) / 255.,
+                f32::from(g) / 255.,
+                f32::from(b) / 255.,
+                f32::from(a) / 255.,
             ));
         }
     }

@@ -2,14 +2,18 @@ use std::{
     collections::HashMap,
     process::{Child, Command},
     str::FromStr,
+    sync::{Arc, LazyLock},
 };
 
 use crate::{
     backend::{
         input::{InteractionHandler, PointerMode},
-        overlay::{FrameTransform, OverlayBackend, OverlayData, OverlayRenderer, OverlayState},
+        overlay::{
+            FrameMeta, OverlayBackend, OverlayData, OverlayRenderer, OverlayState, ShouldRender,
+        },
     },
     config::{self, ConfigType},
+    graphics::CommandBuffers,
     gui::{
         canvas::{builder::CanvasBuilder, control::Control, Canvas},
         color_parse, KeyCapType,
@@ -21,9 +25,9 @@ use crate::{
     state::{AppState, KeyboardFocus},
 };
 use glam::{vec2, vec3a, Affine2, Vec4};
-use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use vulkano::image::view::ImageView;
 
 const PIXELS_PER_UNIT: f32 = 80.;
 const BUTTON_PADDING: f32 = 4.;
@@ -61,6 +65,7 @@ fn set_modifiers(app: &mut AppState, mods: u8) {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn create_keyboard<O>(
     app: &AppState,
     mut keymap: Option<XkbKeymap>,
@@ -101,23 +106,25 @@ where
     canvas.fg_color = color_parse("#cad3f5").unwrap(); //safe
     canvas.bg_color = color_parse("#1e2030").unwrap(); //safe
 
-    let has_altgr = keymap.as_ref().is_some_and(|k| k.has_altgr());
+    let has_altgr = keymap
+        .as_ref()
+        .is_some_and(super::super::hid::XkbKeymap::has_altgr);
 
     if !LAYOUT.auto_labels.unwrap_or(true) {
         keymap = None;
     }
 
     let unit_size = size.x / LAYOUT.row_size;
-    let h = unit_size - 2. * BUTTON_PADDING;
+    let h = 2.0f32.mul_add(-BUTTON_PADDING, unit_size);
 
     for row in 0..LAYOUT.key_sizes.len() {
-        let y = unit_size * (row as f32) + BUTTON_PADDING;
+        let y = unit_size.mul_add(row as f32, BUTTON_PADDING);
         let mut sum_size = 0f32;
 
         for col in 0..LAYOUT.key_sizes[row].len() {
             let my_size = LAYOUT.key_sizes[row][col];
-            let x = unit_size * sum_size + BUTTON_PADDING;
-            let w = unit_size * my_size - 2. * BUTTON_PADDING;
+            let x = unit_size.mul_add(sum_size, BUTTON_PADDING);
+            let w = unit_size.mul_add(my_size, -(2. * BUTTON_PADDING));
 
             if let Some(key) = LAYOUT.main_layout[row][col].as_ref() {
                 let mut label = Vec::with_capacity(2);
@@ -131,7 +138,7 @@ where
                                 let label0 = keymap.label_for_key(vk, 0);
                                 let label1 = keymap.label_for_key(vk, SHIFT);
 
-                                if label0.chars().next().is_some_and(|f| f.is_alphabetic()) {
+                                if label0.chars().next().is_some_and(char::is_alphabetic) {
                                     label.push(label1);
                                     if has_altgr {
                                         cap_type = KeyCapType::RegularAltGr;
@@ -171,7 +178,7 @@ where
                     });
                 } else if let Some(exec_args) = LAYOUT.exec_commands.get(key) {
                     if exec_args.is_empty() {
-                        log::error!("Keyboard: EXEC args empty for {}", key);
+                        log::error!("Keyboard: EXEC args empty for {key}");
                         continue;
                     }
                     let mut iter = exec_args.iter().cloned();
@@ -181,10 +188,10 @@ where
                             args: iter.by_ref().take_while(|arg| arg[..] != *"null").collect(),
                             release_program: iter.next(),
                             release_args: iter.collect(),
-                        })
-                    };
+                        });
+                    }
                 } else {
-                    log::error!("Unknown key: {}", key);
+                    log::error!("Unknown key: {key}");
                 }
 
                 if let Some(state) = maybe_state {
@@ -235,7 +242,7 @@ fn key_press(
 ) {
     match control.state.as_mut() {
         Some(KeyButtonData::Key { vk, pressed }) => {
-            data.key_click(app);
+            key_click(app);
 
             data.modifiers |= match mode {
                 PointerMode::Right => SHIFT,
@@ -251,11 +258,11 @@ fn key_press(
         Some(KeyButtonData::Modifier { modifier, sticky }) => {
             *sticky = data.modifiers & *modifier == 0;
             data.modifiers |= *modifier;
-            data.key_click(app);
+            key_click(app);
             set_modifiers(app, data.modifiers);
         }
         Some(KeyButtonData::Macro { verbs }) => {
-            data.key_click(app);
+            key_click(app);
             for (vk, press) in verbs {
                 send_key(app, *vk, *press);
             }
@@ -265,7 +272,7 @@ fn key_press(
             data.processes
                 .retain_mut(|child| !matches!(child.try_wait(), Ok(Some(_))));
 
-            data.key_click(app);
+            key_click(app);
             if let Ok(child) = Command::new(program).args(args).spawn() {
                 data.processes.push(child);
             }
@@ -284,7 +291,7 @@ fn key_release(
             send_key(app, *vk, false);
             *pressed = false;
 
-            for m in AUTO_RELEASE_MODS.iter() {
+            for m in &AUTO_RELEASE_MODS {
                 if data.modifiers & *m != 0 {
                     data.modifiers &= !*m;
                     set_modifiers(app, data.modifiers);
@@ -344,11 +351,9 @@ struct KeyboardData {
 
 const KEY_AUDIO_WAV: &[u8] = include_bytes!("../res/421581.wav");
 
-impl KeyboardData {
-    fn key_click(&mut self, app: &mut AppState) {
-        if app.session.config.keyboard_sound_enabled {
-            app.audio.play(KEY_AUDIO_WAV);
-        }
+fn key_click(app: &mut AppState) {
+    if app.session.config.keyboard_sound_enabled {
+        app.audio.play(KEY_AUDIO_WAV);
     }
 }
 
@@ -372,10 +377,10 @@ enum KeyButtonData {
     },
 }
 
-static LAYOUT: Lazy<Layout> = Lazy::new(Layout::load_from_disk);
+static LAYOUT: LazyLock<Layout> = LazyLock::new(Layout::load_from_disk);
 
-static MACRO_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^([A-Za-z0-9_-]+)(?: +(UP|DOWN))?$").unwrap()); // want panic
+static MACRO_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^([A-Za-z0-9_-]+)(?: +(UP|DOWN))?$").unwrap()); // want panic
 
 #[derive(Debug, Default, Clone, Copy, Deserialize, Serialize)]
 #[repr(usize)]
@@ -390,6 +395,7 @@ pub enum AltModifier {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(clippy::struct_field_names)]
 pub struct Layout {
     name: String,
     row_size: f32,
@@ -403,8 +409,8 @@ pub struct Layout {
 }
 
 impl Layout {
-    fn load_from_disk() -> Layout {
-        let mut layout = config::load_known_yaml::<Layout>(ConfigType::Keyboard);
+    fn load_from_disk() -> Self {
+        let mut layout = config::load_known_yaml::<Self>(ConfigType::Keyboard);
         layout.post_load();
         layout
     }
@@ -413,25 +419,25 @@ impl Layout {
         for i in 0..self.key_sizes.len() {
             let row = &self.key_sizes[i];
             let width: f32 = row.iter().sum();
-            if (width - self.row_size).abs() > 0.001 {
-                panic!(
-                    "Row {} has a width of {}, but the row size is {}",
-                    i, width, self.row_size
-                );
-            }
+            assert!(
+                (width - self.row_size).abs() < 0.001,
+                "Row {} has a width of {}, but the row size is {}",
+                i,
+                width,
+                self.row_size
+            );
         }
 
         for i in 0..self.main_layout.len() {
             let row = &self.main_layout[i];
             let width = row.len();
-            if width != self.key_sizes[i].len() {
-                panic!(
-                    "Row {} has {} keys, needs to have {} according to key_sizes",
-                    i,
-                    width,
-                    self.key_sizes[i].len()
-                );
-            }
+            assert!(
+                (width == self.key_sizes[i].len()),
+                "Row {} has {} keys, needs to have {} according to key_sizes",
+                i,
+                width,
+                self.key_sizes[i].len()
+            );
         }
     }
 
@@ -451,10 +457,7 @@ impl Layout {
         }
         if key.contains('_') {
             key = key.split('_').next().unwrap_or_else(|| {
-                log::error!(
-                    "keyboard.yaml: Key '{}' must not start or end with '_'!",
-                    key
-                );
+                log::error!("keyboard.yaml: Key '{key}' must not start or end with '_'!");
                 "???"
             });
         }
@@ -502,10 +505,10 @@ struct KeyboardBackend {
 
 impl OverlayBackend for KeyboardBackend {
     fn set_interaction(&mut self, interaction: Box<dyn crate::backend::input::InteractionHandler>) {
-        self.canvas.set_interaction(interaction)
+        self.canvas.set_interaction(interaction);
     }
     fn set_renderer(&mut self, renderer: Box<dyn crate::backend::overlay::OverlayRenderer>) {
-        self.canvas.set_renderer(renderer)
+        self.canvas.set_renderer(renderer);
     }
 }
 
@@ -516,7 +519,7 @@ impl InteractionHandler for KeyboardBackend {
         hit: &crate::backend::input::PointerHit,
         pressed: bool,
     ) {
-        self.canvas.on_pointer(app, hit, pressed)
+        self.canvas.on_pointer(app, hit, pressed);
     }
     fn on_scroll(
         &mut self,
@@ -525,10 +528,10 @@ impl InteractionHandler for KeyboardBackend {
         delta_y: f32,
         delta_x: f32,
     ) {
-        self.canvas.on_scroll(app, hit, delta_y, delta_x)
+        self.canvas.on_scroll(app, hit, delta_y, delta_x);
     }
     fn on_left(&mut self, app: &mut AppState, pointer: usize) {
-        self.canvas.on_left(app, pointer)
+        self.canvas.on_left(app, pointer);
     }
     fn on_hover(
         &mut self,
@@ -543,14 +546,20 @@ impl OverlayRenderer for KeyboardBackend {
     fn init(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         self.canvas.init(app)
     }
-    fn render(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        self.canvas.render(app)
+    fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
+        self.canvas.should_render(app)
     }
-    fn frame_transform(&mut self) -> Option<FrameTransform> {
-        self.canvas.frame_transform()
+    fn render(
+        &mut self,
+        app: &mut AppState,
+        tgt: Arc<ImageView>,
+        buf: &mut CommandBuffers,
+        alpha: f32,
+    ) -> anyhow::Result<bool> {
+        self.canvas.render(app, tgt, buf, alpha)
     }
-    fn view(&mut self) -> Option<std::sync::Arc<vulkano::image::view::ImageView>> {
-        self.canvas.view()
+    fn frame_meta(&mut self) -> Option<FrameMeta> {
+        self.canvas.frame_meta()
     }
     fn pause(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         self.canvas.data_mut().modifiers = 0;

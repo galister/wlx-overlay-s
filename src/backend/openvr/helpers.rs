@@ -13,7 +13,7 @@ pub trait Affine3AConvert {
 
 impl Affine3AConvert for Matrix3x4 {
     fn from_affine(affine: &Affine3A) -> Self {
-        Matrix3x4([
+        Self([
             [
                 affine.matrix3.x_axis.x,
                 affine.matrix3.y_axis.x,
@@ -47,7 +47,7 @@ impl Affine3AConvert for Matrix3x4 {
 
 impl Affine3AConvert for HmdMatrix34_t {
     fn from_affine(affine: &Affine3A) -> Self {
-        HmdMatrix34_t {
+        Self {
             m: [
                 [
                     affine.matrix3.x_axis.x,
@@ -89,22 +89,21 @@ pub(super) enum OVRError {
 
 impl From<ovr_overlay::errors::EVRInputError> for OVRError {
     fn from(e: ovr_overlay::errors::EVRInputError) -> Self {
-        OVRError::InputError(e.description())
+        Self::InputError(e.description())
     }
 }
 
 impl From<OVRError> for BackendError {
     fn from(e: OVRError) -> Self {
-        BackendError::Fatal(anyhow::Error::new(e))
+        Self::Fatal(anyhow::Error::new(e))
     }
 }
 
-use cstr::cstr;
-const STEAMVR_SECTION: &CStr = cstr!("steamvr");
+const STEAMVR_SECTION: &CStr = c"steamvr";
 const COLOR_GAIN_CSTR: [&CStr; 3] = [
-    cstr!("hmdDisplayColorGainR"),
-    cstr!("hmdDisplayColorGainG"),
-    cstr!("hmdDisplayColorGainB"),
+    c"hmdDisplayColorGainR",
+    c"hmdDisplayColorGainG",
+    c"hmdDisplayColorGainB",
 ];
 
 pub(super) fn adjust_gain(

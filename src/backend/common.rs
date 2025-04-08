@@ -1,6 +1,5 @@
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
-use once_cell::sync::Lazy;
 #[cfg(feature = "openxr")]
 use openxr as xr;
 
@@ -69,17 +68,17 @@ where
         app.screens.clear();
         let data = if let Some(wl) = wl.as_mut() {
             keymap = get_keymap_wl()
-                .map_err(|f| log::warn!("Could not load keyboard layout: {}", f))
+                .map_err(|f| log::warn!("Could not load keyboard layout: {f}"))
                 .ok();
-            crate::overlays::screen::create_screens_wayland(wl, app)?
+            crate::overlays::screen::create_screens_wayland(wl, app)
         } else {
             keymap = get_keymap_x11()
-                .map_err(|f| log::warn!("Could not load keyboard layout: {}", f))
+                .map_err(|f| log::warn!("Could not load keyboard layout: {f}"))
                 .ok();
             match crate::overlays::screen::create_screens_x11pw(app) {
                 Ok(data) => data,
                 Err(e) => {
-                    log::info!("Will not use PipeWire capture: {:?}", e);
+                    log::info!("Will not use PipeWire capture: {e:?}");
                     crate::overlays::screen::create_screens_xshm(app)?
                 }
             }
@@ -127,6 +126,8 @@ where
         Ok(vec![])
     }
     #[cfg(feature = "wayland")]
+    #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
+    #[allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
     pub fn update(&mut self, app: &mut AppState) -> anyhow::Result<Vec<OverlayData<T>>> {
         use crate::overlays::{
             screen::{create_screen_interaction, create_screen_renderer_wl, load_pw_token_config},
@@ -154,7 +155,7 @@ where
                     if create_ran {
                         continue;
                     }
-                    let data = crate::overlays::screen::create_screens_wayland(wl, app)?;
+                    let data = crate::overlays::screen::create_screens_wayland(wl, app);
                     create_ran = true;
                     for (meta, state, backend) in data.screens {
                         self.overlays.insert(
@@ -228,7 +229,7 @@ where
                         has_wlr_dmabuf,
                         has_wlr_screencopy,
                         pw_token_store,
-                        &app.session,
+                        &app,
                     ) {
                         overlay.backend.set_renderer(Box::new(renderer));
                     }
@@ -317,8 +318,8 @@ where
             .any(|o| o.state.show_hide && o.state.want_visible);
 
         if !any_shown {
-            static ANCHOR_LOCAL: Lazy<Affine3A> =
-                Lazy::new(|| Affine3A::from_translation(Vec3::NEG_Z));
+            static ANCHOR_LOCAL: LazyLock<Affine3A> =
+                LazyLock::new(|| Affine3A::from_translation(Vec3::NEG_Z));
             let hmd = snap_upright(app.input_state.hmd, Vec3A::Y);
             app.anchor = hmd * *ANCHOR_LOCAL;
         }
@@ -337,7 +338,7 @@ where
             if !any_shown && *o.state.name == *WATCH_NAME {
                 o.state.reset(app, true);
             }
-        })
+        });
     }
 }
 

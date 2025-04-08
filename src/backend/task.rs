@@ -25,12 +25,12 @@ struct AppTask {
     pub task: TaskType,
 }
 
-impl PartialEq<AppTask> for AppTask {
+impl PartialEq<Self> for AppTask {
     fn eq(&self, other: &Self) -> bool {
         self.cmp(other) == cmp::Ordering::Equal
     }
 }
-impl PartialOrd<AppTask> for AppTask {
+impl PartialOrd<Self> for AppTask {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
     }
@@ -57,7 +57,6 @@ pub type CreateOverlayTask =
     dyn FnOnce(&mut AppState) -> Option<(OverlayState, Box<dyn OverlayBackend>)> + Send;
 
 pub enum TaskType {
-    Global(Box<dyn FnOnce(&mut AppState) + Send>),
     Overlay(OverlaySelector, Box<OverlayTask>),
     CreateOverlay(OverlaySelector, Box<CreateOverlayTask>),
     DropOverlay(OverlaySelector),
@@ -79,7 +78,7 @@ pub struct TaskContainer {
 }
 
 impl TaskContainer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             tasks: BinaryHeap::new(),
         }

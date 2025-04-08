@@ -24,7 +24,7 @@ pub(super) struct PlayspaceMover {
 }
 
 impl PlayspaceMover {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             universe: ETrackingUniverseOrigin::TrackingUniverseRawAndUncalibrated,
             drag: None,
@@ -32,6 +32,7 @@ impl PlayspaceMover {
         }
     }
 
+    #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
     pub fn update(
         &mut self,
         chaperone_mgr: &mut ChaperoneSetupManager,
@@ -53,8 +54,8 @@ impl PlayspaceMover {
 
             let dq = new_hand * data.hand_pose.conjugate();
             let rel_y = f32::atan2(
-                2.0 * (dq.y * dq.w + dq.x * dq.z),
-                (2.0 * (dq.w * dq.w + dq.x * dq.x)) - 1.0,
+                2.0 * dq.y.mul_add(dq.w, dq.x * dq.z),
+                2.0f32.mul_add(dq.w.mul_add(dq.w, dq.x * dq.x), -1.0),
             );
 
             let mut space_transform = Affine3A::from_rotation_y(rel_y);
@@ -230,7 +231,7 @@ impl PlayspaceMover {
     }
 }
 
-fn universe_str(universe: &ETrackingUniverseOrigin) -> &'static str {
+const fn universe_str(universe: &ETrackingUniverseOrigin) -> &'static str {
     match universe {
         ETrackingUniverseOrigin::TrackingUniverseSeated => "Seated",
         ETrackingUniverseOrigin::TrackingUniverseStanding => "Standing",
@@ -259,7 +260,7 @@ fn set_working_copy(
     let mat = HmdMatrix34_t::from_affine(mat);
     match universe {
         ETrackingUniverseOrigin::TrackingUniverseStanding => {
-            chaperone_mgr.set_working_standing_zero_pose_to_raw_tracking_pose(&mat)
+            chaperone_mgr.set_working_standing_zero_pose_to_raw_tracking_pose(&mat);
         }
         _ => chaperone_mgr.set_working_seated_zero_pose_to_raw_tracking_pose(&mat),
     };

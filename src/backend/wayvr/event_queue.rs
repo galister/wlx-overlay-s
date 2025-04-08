@@ -16,7 +16,7 @@ impl<DataType> SyncEventQueue<DataType> {
     pub fn new() -> Self {
         Self {
             data: Rc::new(RefCell::new(Data {
-                queue: Default::default(),
+                queue: VecDeque::default(),
             })),
         }
     }

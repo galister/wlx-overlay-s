@@ -50,7 +50,7 @@ impl InputState {
         }
     }
 
-    pub fn pre_update(&mut self) {
+    pub const fn pre_update(&mut self) {
         self.pointers[0].before = self.pointers[0].now;
         self.pointers[1].before = self.pointers[1].now;
     }
@@ -58,50 +58,7 @@ impl InputState {
     pub fn post_update(&mut self, session: &AppSession) {
         for hand in &mut self.pointers {
             #[cfg(debug_assertions)]
-            {
-                if hand.now.click != hand.before.click {
-                    log::debug!("Hand {}: click {}", hand.idx, hand.now.click);
-                }
-                if hand.now.grab != hand.before.grab {
-                    log::debug!("Hand {}: grab {}", hand.idx, hand.now.grab);
-                }
-                if hand.now.alt_click != hand.before.alt_click {
-                    log::debug!("Hand {}: alt_click {}", hand.idx, hand.now.alt_click);
-                }
-                if hand.now.show_hide != hand.before.show_hide {
-                    log::debug!("Hand {}: show_hide {}", hand.idx, hand.now.show_hide);
-                }
-                if hand.now.toggle_dashboard != hand.before.toggle_dashboard {
-                    log::debug!(
-                        "Hand {}: toggle_dashboard {}",
-                        hand.idx,
-                        hand.now.toggle_dashboard
-                    );
-                }
-                if hand.now.space_drag != hand.before.space_drag {
-                    log::debug!("Hand {}: space_drag {}", hand.idx, hand.now.space_drag);
-                }
-                if hand.now.space_rotate != hand.before.space_rotate {
-                    log::debug!("Hand {}: space_rotate {}", hand.idx, hand.now.space_rotate);
-                }
-                if hand.now.space_reset != hand.before.space_reset {
-                    log::debug!("Hand {}: space_reset {}", hand.idx, hand.now.space_reset);
-                }
-                if hand.now.click_modifier_right != hand.before.click_modifier_right {
-                    log::debug!(
-                        "Hand {}: click_modifier_right {}",
-                        hand.idx,
-                        hand.now.click_modifier_right
-                    );
-                }
-                if hand.now.click_modifier_middle != hand.before.click_modifier_middle {
-                    log::debug!(
-                        "Hand {}: click_modifier_middle {}",
-                        hand.idx,
-                        hand.now.click_modifier_middle
-                    );
-                }
-            }
+            debug_print_hand(hand);
 
             if hand.now.click {
                 hand.last_click = Instant::now();
@@ -118,8 +75,8 @@ impl InputState {
             }
 
             let hmd_up = self.hmd.transform_vector3a(Vec3A::Y);
-            let dot =
-                hmd_up.dot(hand.pose.transform_vector3a(Vec3A::X)) * (1.0 - 2.0 * hand.idx as f32);
+            let dot = hmd_up.dot(hand.pose.transform_vector3a(Vec3A::X))
+                * 2.0f32.mul_add(-(hand.idx as f32), 1.0);
 
             hand.interaction.mode = if dot < -0.85 {
                 PointerMode::Right
@@ -143,7 +100,7 @@ impl InputState {
                     }
                 }
                 _ => {}
-            };
+            }
 
             if hand.now.alt_click != hand.before.alt_click {
                 // Reap previous processes
@@ -162,6 +119,54 @@ impl InputState {
                     }
                 }
             }
+        }
+    }
+}
+
+#[cfg(debug_assertions)]
+fn debug_print_hand(hand: &Pointer) {
+    {
+        if hand.now.click != hand.before.click {
+            log::debug!("Hand {}: click {}", hand.idx, hand.now.click);
+        }
+        if hand.now.grab != hand.before.grab {
+            log::debug!("Hand {}: grab {}", hand.idx, hand.now.grab);
+        }
+        if hand.now.alt_click != hand.before.alt_click {
+            log::debug!("Hand {}: alt_click {}", hand.idx, hand.now.alt_click);
+        }
+        if hand.now.show_hide != hand.before.show_hide {
+            log::debug!("Hand {}: show_hide {}", hand.idx, hand.now.show_hide);
+        }
+        if hand.now.toggle_dashboard != hand.before.toggle_dashboard {
+            log::debug!(
+                "Hand {}: toggle_dashboard {}",
+                hand.idx,
+                hand.now.toggle_dashboard
+            );
+        }
+        if hand.now.space_drag != hand.before.space_drag {
+            log::debug!("Hand {}: space_drag {}", hand.idx, hand.now.space_drag);
+        }
+        if hand.now.space_rotate != hand.before.space_rotate {
+            log::debug!("Hand {}: space_rotate {}", hand.idx, hand.now.space_rotate);
+        }
+        if hand.now.space_reset != hand.before.space_reset {
+            log::debug!("Hand {}: space_reset {}", hand.idx, hand.now.space_reset);
+        }
+        if hand.now.click_modifier_right != hand.before.click_modifier_right {
+            log::debug!(
+                "Hand {}: click_modifier_right {}",
+                hand.idx,
+                hand.now.click_modifier_right
+            );
+        }
+        if hand.now.click_modifier_middle != hand.before.click_modifier_middle {
+            log::debug!(
+                "Hand {}: click_modifier_middle {}",
+                hand.idx,
+                hand.now.click_modifier_middle
+            );
         }
     }
 }
@@ -207,10 +212,10 @@ impl Pointer {
             idx,
             pose: Affine3A::IDENTITY,
             raw_pose: Affine3A::IDENTITY,
-            now: Default::default(),
-            before: Default::default(),
+            now: PointerState::default(),
+            before: PointerState::default(),
             last_click: Instant::now(),
-            interaction: Default::default(),
+            interaction: InteractionState::default(),
         }
     }
 }
@@ -320,6 +325,7 @@ where
     }
 }
 
+#[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
 fn interact_hand<O>(
     idx: usize,
     overlays: &mut OverlayContainer<O>,
@@ -429,12 +435,12 @@ where
             .is_some_and(|x| x.grabbed_id == hit.overlay)
         {
             let can_curve = hovered
-                .frame_transform()
+                .frame_meta()
                 .is_some_and(|e| e.extent[0] >= e.extent[1]);
 
             if can_curve {
                 let cur = hovered.state.curvature.unwrap_or(0.0);
-                let new = (cur - scroll_y * 0.01).min(0.5);
+                let new = scroll_y.mul_add(-0.01, cur).min(0.5);
                 if new <= f32::EPSILON {
                     hovered.state.curvature = None;
                 } else {
@@ -481,7 +487,7 @@ impl Pointer {
                 overlay.state.id,
                 &overlay.state.transform,
                 &overlay.state.offset,
-                &overlay.state.curvature,
+                overlay.state.curvature.as_ref(),
             ) {
                 if hit.dist.is_infinite() || hit.dist.is_nan() {
                     continue;
@@ -492,7 +498,7 @@ impl Pointer {
 
         hits.sort_by(|a, b| a.dist.total_cmp(&b.dist));
 
-        for hit in hits.iter() {
+        for hit in &hits {
             let overlay = overlays.get_by_id(hit.overlay).unwrap(); // safe because we just got the id from the overlay
 
             let uv = overlay
@@ -574,7 +580,7 @@ impl Pointer {
                         .state
                         .transform
                         .matrix3
-                        .mul_scalar(1.0 - 0.025 * self.now.scroll_y);
+                        .mul_scalar(0.025f32.mul_add(-self.now.scroll_y, 1.0));
                 } else if config.allow_sliding && self.now.scroll_y.is_finite() {
                     grab_data.offset.z -= self.now.scroll_y * 0.05;
                 }
@@ -622,15 +628,22 @@ impl Pointer {
         overlay: OverlayID,
         transform: &Affine3A,
         offset: &Affine3A,
-        curvature: &Option<f32>,
+        curvature: Option<&f32>,
     ) -> Option<RayHit> {
         let mut effective = transform.clone();
         effective.translation = offset.transform_point3a(effective.translation);
 
-        let (dist, local_pos) = match curvature {
-            Some(curvature) => raycast_cylinder(&self.pose, Vec3A::NEG_Z, &effective, *curvature),
-            _ => raycast_plane(&self.pose, Vec3A::NEG_Z, &effective, Vec3A::NEG_Z),
-        }?;
+        let (dist, local_pos) = curvature.map_or_else(
+            || {
+                Some(raycast_plane(
+                    &self.pose,
+                    Vec3A::NEG_Z,
+                    &effective,
+                    Vec3A::NEG_Z,
+                ))
+            },
+            |curvature| raycast_cylinder(&self.pose, Vec3A::NEG_Z, &effective, *curvature),
+        )?;
 
         if dist < 0.0 {
             // hit is behind us
@@ -651,7 +664,7 @@ fn raycast_plane(
     source_fwd: Vec3A,
     plane: &Affine3A,
     plane_norm: Vec3A,
-) -> Option<(f32, Vec2)> {
+) -> (f32, Vec2) {
     let plane_normal = plane.transform_vector3a(plane_norm);
     let ray_dir = source.transform_vector3a(source_fwd);
 
@@ -663,7 +676,7 @@ fn raycast_plane(
         .transform_point3a(source.translation + ray_dir * dist)
         .xy();
 
-    Some((dist, hit_local))
+    (dist, hit_local)
 }
 
 fn raycast_cylinder(
@@ -680,27 +693,27 @@ fn raycast_cylinder(
     }
     .inverse();
 
-    let r = size / (2.0 * PI * curvature);
+    let radius = size / (2.0 * PI * curvature);
 
     let ray_dir = to_local.transform_vector3a(source.transform_vector3a(source_fwd));
-    let ray_origin = to_local.transform_point3a(source.translation) + Vec3A::NEG_Z * r;
+    let ray_origin = to_local.transform_point3a(source.translation) + Vec3A::NEG_Z * radius;
 
-    let d = ray_dir.xz();
-    let s = ray_origin.xz();
+    let v_dir = ray_dir.xz();
+    let v_pos = ray_origin.xz();
 
-    let a = d.dot(d);
-    let b = d.dot(s);
-    let c = s.dot(s) - r * r;
+    let l_dir = v_dir.dot(v_dir);
+    let l_pos = v_dir.dot(v_pos);
+    let c = radius.mul_add(-radius, v_pos.dot(v_pos));
 
-    let d = (b * b) - (a * c);
+    let d = l_pos.mul_add(l_pos, -(l_dir * c));
     if d < f32::EPSILON {
         return None;
     }
 
     let sqrt_d = d.sqrt();
 
-    let t1 = (-b - sqrt_d) / a;
-    let t2 = (-b + sqrt_d) / a;
+    let t1 = (-l_pos - sqrt_d) / l_dir;
+    let t2 = (-l_pos + sqrt_d) / l_dir;
 
     let t = t1.max(t2);
 
@@ -714,8 +727,8 @@ fn raycast_cylinder(
         return None;
     }
 
-    let max_angle = 2.0 * (size / (2.0 * r));
-    let x_angle = (hit_local.x / r).asin();
+    let max_angle = 2.0 * (size / (2.0 * radius));
+    let x_angle = (hit_local.x / radius).asin();
 
     hit_local.x = x_angle / max_angle;
     hit_local.y /= size;

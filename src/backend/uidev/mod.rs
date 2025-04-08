@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use vulkano::{
-    command_buffer::CommandBufferUsage,
     image::{view::ImageView, ImageUsage},
     swapchain::{
-        acquire_next_image, Surface, Swapchain, SwapchainCreateInfo, SwapchainPresentInfo,
+        acquire_next_image, Surface, SurfaceInfo, Swapchain, SwapchainCreateInfo,
+        SwapchainPresentInfo,
     },
     sync::GpuFuture,
     Validated, VulkanError,
@@ -19,7 +19,7 @@ use winit::{
 use crate::{
     config::load_custom_ui,
     config_io,
-    graphics::{DynamicPass, DynamicPipeline, WlxGraphics, BLEND_ALPHA},
+    graphics::{CommandBuffers, WlxGraphics},
     gui::{
         canvas::Canvas,
         modular::{modular_canvas, ModularData},
@@ -37,8 +37,6 @@ static LAST_SIZE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::n
 
 struct PreviewState {
     canvas: Canvas<(), ModularData>,
-    pipeline: Arc<DynamicPipeline>,
-    pass: DynamicPass,
     swapchain: Arc<Swapchain>,
     images: Vec<Arc<ImageView>>,
 }
@@ -63,52 +61,27 @@ impl PreviewState {
             window.set_min_inner_size(Some(logical_size));
             window.set_max_inner_size(Some(logical_size));
             LAST_SIZE.store(
-                (config.size[1] as u64) << 32 | config.size[0] as u64,
+                ((config.size[1] as u64) << 32) | config.size[0] as u64,
                 std::sync::atomic::Ordering::Relaxed,
             );
         }
 
         let inner_size = window.inner_size();
         let swapchain_size = [inner_size.width, inner_size.height];
-        let (swapchain, images) =
-            create_swapchain(&state.graphics, surface.clone(), swapchain_size)?;
+        let (swapchain, images) = create_swapchain(&state.graphics, surface, swapchain_size)?;
 
-        let mut canvas = modular_canvas(&config.size, &config.elements, state)?;
+        let mut canvas = modular_canvas(config.size, &config.elements, state)?;
         canvas.init(state)?;
-        let view = canvas.view().unwrap();
 
-        let pipeline = {
-            let shaders = state.graphics.shared_shaders.read().unwrap();
-            state.graphics.create_pipeline_dynamic(
-                shaders.get("vert_common").unwrap().clone(), // want panic
-                shaders.get("frag_sprite").unwrap().clone(), // want panic
-                state.graphics.native_format,
-                Some(BLEND_ALPHA),
-            )
-        }?;
-        let set0 = pipeline
-            .uniform_sampler(0, view.clone(), pipeline.graphics.texture_filtering)
-            .unwrap();
-
-        let pass = pipeline
-            .create_pass(
-                [swapchain_size[0] as f32, swapchain_size[1] as f32],
-                state.graphics.quad_verts.clone(),
-                state.graphics.quad_indices.clone(),
-                vec![set0],
-            )
-            .unwrap();
-
-        Ok(PreviewState {
+        Ok(Self {
             canvas,
-            pipeline,
-            pass,
             swapchain,
             images,
         })
     }
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
     let (graphics, event_loop, window, surface) = WlxGraphics::new_window()?;
     window.set_resizable(false);
@@ -127,11 +100,12 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
         panel_name,
     )?);
 
-    let watch_path = config_io::get_config_root().join(format!("{}.yaml", panel_name));
+    let watch_path = config_io::get_config_root().join(format!("{panel_name}.yaml"));
     let mut path_last_modified = watch_path.metadata()?.modified()?;
     let mut recreate = false;
     let mut last_draw = std::time::Instant::now();
 
+    #[allow(deprecated)]
     event_loop.run(move |event, elwt| {
         elwt.set_control_flow(ControlFlow::Poll);
 
@@ -182,29 +156,27 @@ pub fn uidev_run(panel_name: &str) -> anyhow::Result<()> {
                             Err(e) => panic!("failed to acquire next image: {e}"),
                         };
 
-                    if let Err(e) = preview.canvas.render(&mut state) {
+                    let mut canvas_cmd_buf = CommandBuffers::default();
+                    let tgt = preview.images[image_index as usize].clone();
+
+                    if let Err(e) = preview
+                        .canvas
+                        .render(&mut state, tgt, &mut canvas_cmd_buf, 1.0)
+                    {
                         log::error!("failed to render canvas: {e}");
                         window.request_redraw();
-                    };
+                    }
 
-                    let target = preview.images[image_index as usize].clone();
-
-                    let mut cmd_buf = state
-                        .graphics
-                        .create_command_buffer(CommandBufferUsage::OneTimeSubmit)
-                        .unwrap();
-                    cmd_buf.begin_rendering(target).unwrap();
-                    cmd_buf.run_ref(&preview.pass).unwrap();
-                    cmd_buf.end_rendering().unwrap();
                     last_draw = std::time::Instant::now();
 
-                    let command_buffer = cmd_buf.build().unwrap();
-                    vulkano::sync::now(graphics.device.clone())
-                        .join(acquire_future)
-                        .then_execute(graphics.queue.clone(), command_buffer)
+                    canvas_cmd_buf
+                        .execute_after(
+                            state.graphics.graphics_queue.clone(),
+                            Box::new(acquire_future),
+                        )
                         .unwrap()
                         .then_swapchain_present(
-                            graphics.queue.clone(),
+                            graphics.graphics_queue.clone(),
                             SwapchainPresentInfo::swapchain_image_index(
                                 preview.swapchain.clone(),
                                 image_index,
@@ -236,12 +208,12 @@ fn create_swapchain(
     let surface_capabilities = graphics
         .device
         .physical_device()
-        .surface_capabilities(&surface, Default::default())
+        .surface_capabilities(&surface, SurfaceInfo::default())
         .unwrap(); // want panic
 
     let (swapchain, images) = Swapchain::new(
         graphics.device.clone(),
-        surface.clone(),
+        surface,
         SwapchainCreateInfo {
             min_image_count: surface_capabilities.min_image_count.max(2),
             image_format: graphics.native_format,

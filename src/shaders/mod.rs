@@ -46,6 +46,7 @@ pub mod frag_color {
         ",
     }
 }
+
 //layout (location = 1) in float corner_radius;
 //out_color = in_color;
 // Some equation that determines whether to keep the pixel
@@ -176,17 +177,14 @@ pub mod frag_screen {
             layout (location = 0) out vec4 out_color;
 
             layout (set = 0, binding = 0) uniform sampler2D in_texture;
+            layout (set = 1, binding = 0) uniform AlphaBlock {
+                uniform float alpha;
+            };
 
             void main()
             {
                 out_color = texture(in_texture, in_uv);
-
-                // linear to srgb
-                bvec4 cutoff = lessThan(out_color, vec4(0.0031308));
-                vec4 higher = (pow(out_color, vec4(0.4166667)) * vec4(1.055)) - vec4(0.055);
-                vec4 lower = out_color*vec4(12.92);
-                out_color = mix(higher, lower, cutoff);
-                out_color.a = 1.0;
+                out_color.a = alpha;
             }
         ",
     }
@@ -216,7 +214,7 @@ pub mod frag_srgb {
                 vec4 lower = out_color/vec4(12.92);
 
                 out_color = mix(higher, lower, cutoff);
-                out_color.a = alpha;
+                out_color.a *= alpha;
             }
         ",
     }
@@ -240,6 +238,28 @@ pub mod frag_swapchain {
             {
                 out_color = texture(in_texture, in_uv);
                 out_color.a *= alpha;
+            }
+        ",
+    }
+}
+
+pub mod frag_line {
+    vulkano_shaders::shader! {
+        ty: "fragment",
+        src: r"#version 310 es
+            precision highp float;
+
+            layout (location = 0) in vec2 in_uv;
+            layout (location = 0) out vec4 out_color;
+
+            layout (set = 0, binding = 0) uniform ColorBlock {
+                uniform vec4 in_color;
+                uniform vec2 unused;
+            };
+
+            void main()
+            {
+                out_color = in_color;
             }
         ",
     }

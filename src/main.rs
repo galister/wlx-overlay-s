@@ -1,4 +1,18 @@
-#[allow(dead_code)]
+#![warn(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
+#![allow(
+    dead_code,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::cast_lossless,
+    clippy::match_wildcard_for_single_variants,
+    clippy::doc_markdown,
+    clippy::struct_excessive_bools,
+    clippy::needless_pass_by_value,
+    clippy::needless_pass_by_ref_mut,
+    clippy::multiple_crate_versions
+)]
 mod backend;
 mod config;
 mod config_io;
@@ -65,6 +79,7 @@ struct Args {
     uidev: Option<String>,
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = if std::env::args().skip(1).any(|a| !a.is_empty()) {
         Args::parse()
@@ -78,7 +93,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    logging_init(&mut args)?;
+    logging_init(&mut args);
 
     log::info!(
         "Welcome to {} version {}!",
@@ -122,23 +137,23 @@ fn auto_run(running: Arc<AtomicBool>, args: Args) {
             Ok(()) => return,
             Err(BackendError::NotSupported) => (),
             Err(e) => {
-                log::error!("{}", e.to_string());
+                log::error!("{e}");
                 return;
             }
-        };
+        }
     }
 
     #[cfg(feature = "openvr")]
     if !args_get_openxr(&args) {
         use crate::backend::openvr::openvr_run;
-        match openvr_run(running.clone(), args.show) {
+        match openvr_run(running, args.show) {
             Ok(()) => return,
             Err(BackendError::NotSupported) => (),
             Err(e) => {
-                log::error!("{}", e.to_string());
+                log::error!("{e}");
                 return;
             }
-        };
+        }
     }
 
     log::error!("No more backends to try");
@@ -150,10 +165,10 @@ fn auto_run(running: Arc<AtomicBool>, args: Args) {
     compile_error!("No desktop support! Enable either wayland or x11 features!");
 }
 
-#[allow(dead_code)]
-fn args_get_openvr(_args: &Args) -> bool {
+#[allow(dead_code, unused_variables)]
+const fn args_get_openvr(args: &Args) -> bool {
     #[cfg(feature = "openvr")]
-    let ret = _args.openvr;
+    let ret = args.openvr;
 
     #[cfg(not(feature = "openvr"))]
     let ret = false;
@@ -161,10 +176,10 @@ fn args_get_openvr(_args: &Args) -> bool {
     ret
 }
 
-#[allow(dead_code)]
-fn args_get_openxr(_args: &Args) -> bool {
+#[allow(dead_code, unused_variables)]
+const fn args_get_openxr(args: &Args) -> bool {
     #[cfg(feature = "openxr")]
-    let ret = _args.openxr;
+    let ret = args.openxr;
 
     #[cfg(not(feature = "openxr"))]
     let ret = false;
@@ -172,12 +187,12 @@ fn args_get_openxr(_args: &Args) -> bool {
     ret
 }
 
-fn logging_init(args: &mut Args) -> anyhow::Result<()> {
+fn logging_init(args: &mut Args) {
     let log_file_path = args
         .log_to
         .take()
         .or_else(|| std::env::var("WLX_LOGFILE").ok())
-        .unwrap_or(String::from("/tmp/wlx.log"));
+        .unwrap_or_else(|| String::from("/tmp/wlx.log"));
 
     let file_writer = match std::fs::OpenOptions::new()
         .write(true)
@@ -189,7 +204,7 @@ fn logging_init(args: &mut Args) -> anyhow::Result<()> {
             Some(file)
         }
         Err(e) => {
-            println!("Failed to open log file (path: {:?}): {}", e, log_file_path);
+            println!("Failed to open log file (path: {e:?}): {log_file_path}");
             None
         }
     };
@@ -225,13 +240,11 @@ fn logging_init(args: &mut Args) -> anyhow::Result<()> {
     }
 
     log_panics::init();
-    Ok(())
 }
 
 fn ensure_single_instance(replace: bool) -> bool {
-    let mut path = std::env::var("XDG_RUNTIME_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/tmp"));
+    let mut path =
+        std::env::var("XDG_RUNTIME_DIR").map_or_else(|_| PathBuf::from("/tmp"), PathBuf::from);
     path.push("wlx-overlay-s.pid");
 
     if path.exists() {

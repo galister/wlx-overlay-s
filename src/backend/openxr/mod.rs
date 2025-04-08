@@ -9,10 +9,11 @@ use std::{
 };
 
 use glam::{Affine3A, Vec3};
+use input::OpenXrInputSource;
 use libmonado::Monado;
 use openxr as xr;
 use skybox::create_skybox;
-use vulkano::{command_buffer::CommandBufferUsage, Handle, VulkanObject};
+use vulkano::{Handle, VulkanObject};
 
 use crate::{
     backend::{
@@ -20,10 +21,10 @@ use crate::{
         input::interact,
         notifications::NotificationManager,
         openxr::{lines::LinePool, overlay::OpenXrOverlayData},
-        overlay::OverlayData,
+        overlay::{OverlayData, ShouldRender},
         task::{SystemTask, TaskType},
     },
-    graphics::WlxGraphics,
+    graphics::{CommandBuffers, WlxGraphics},
     overlays::{
         toast::{Toast, ToastTopic},
         watch::{watch_fade, WATCH_NAME},
@@ -43,30 +44,28 @@ mod skybox;
 mod swapchain;
 
 const VIEW_TYPE: xr::ViewConfigurationType = xr::ViewConfigurationType::PRIMARY_STEREO;
-const VIEW_COUNT: u32 = 2;
 static FRAME_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 struct XrState {
     instance: xr::Instance,
-    system: xr::SystemId,
     session: xr::Session<xr::Vulkan>,
     predicted_display_time: xr::Time,
     fps: f32,
     stage: Arc<xr::Space>,
     view: Arc<xr::Space>,
-    stage_offset: Affine3A,
 }
 
+#[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
 pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(), BackendError> {
     let (xr_instance, system) = match helpers::init_xr() {
         Ok((xr_instance, system)) => (xr_instance, system),
         Err(e) => {
-            log::warn!("Will not use OpenXR: {}", e);
+            log::warn!("Will not use OpenXR: {e}");
             return Err(BackendError::NotSupported);
         }
     };
 
-    let mut app_state = {
+    let mut app = {
         let graphics = WlxGraphics::new_openxr(xr_instance.clone(), system)?;
         AppState::from_graphics(graphics)?
     };
@@ -74,24 +73,24 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
     let environment_blend_mode = {
         let modes = xr_instance.enumerate_environment_blend_modes(system, VIEW_TYPE)?;
         if modes.contains(&xr::EnvironmentBlendMode::ALPHA_BLEND)
-            && app_state.session.config.use_passthrough
+            && app.session.config.use_passthrough
         {
             xr::EnvironmentBlendMode::ALPHA_BLEND
         } else {
             modes[0]
         }
     };
-    log::info!("Using environment blend mode: {:?}", environment_blend_mode);
+    log::info!("Using environment blend mode: {environment_blend_mode:?}");
 
     if show_by_default {
-        app_state.tasks.enqueue_at(
+        app.tasks.enqueue_at(
             TaskType::System(SystemTask::ShowHide),
             Instant::now().add(Duration::from_secs(1)),
-        )
+        );
     }
 
-    let mut overlays = OverlayContainer::<OpenXrOverlayData>::new(&mut app_state)?;
-    let mut lines = LinePool::new(app_state.graphics.clone())?;
+    let mut overlays = OverlayContainer::<OpenXrOverlayData>::new(&mut app)?;
+    let mut lines = LinePool::new(app.graphics.clone())?;
 
     let mut notifications = NotificationManager::new();
     notifications.run_dbus();
@@ -100,12 +99,12 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
     let mut delete_queue = vec![];
 
     let mut monado = Monado::auto_connect()
-        .map_err(|e| log::warn!("Will not use libmonado: {}", e))
+        .map_err(|e| log::warn!("Will not use libmonado: {e}"))
         .ok();
 
     let mut playspace = monado.as_mut().and_then(|m| {
         playspace::PlayspaceMover::new(m)
-            .map_err(|e| log::warn!("Will not use Monado playspace mover: {}", e))
+            .map_err(|e| log::warn!("Will not use Monado playspace mover: {e}"))
             .ok()
     });
 
@@ -114,15 +113,10 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
             &xr_instance,
             system,
             &xr::vulkan::SessionCreateInfo {
-                instance: app_state.graphics.instance.handle().as_raw() as _,
-                physical_device: app_state
-                    .graphics
-                    .device
-                    .physical_device()
-                    .handle()
-                    .as_raw() as _,
-                device: app_state.graphics.device.handle().as_raw() as _,
-                queue_family_index: app_state.graphics.queue.queue_family_index(),
+                instance: app.graphics.instance.handle().as_raw() as _,
+                physical_device: app.graphics.device.physical_device().handle().as_raw() as _,
+                device: app.graphics.device.handle().as_raw() as _,
+                queue_family_index: app.graphics.graphics_queue.queue_family_index(),
                 queue_index: 0,
             },
         )?;
@@ -136,24 +130,22 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
 
     let mut xr_state = XrState {
         instance: xr_instance,
-        system,
         session,
         predicted_display_time: xr::Time::from_nanos(0),
         fps: 30.0,
         stage: Arc::new(stage),
         view: Arc::new(view),
-        stage_offset: Affine3A::IDENTITY,
     };
 
     let mut skybox = if environment_blend_mode == xr::EnvironmentBlendMode::OPAQUE {
-        create_skybox(&xr_state, &app_state)
+        create_skybox(&xr_state, &app)
     } else {
         None
     };
 
     let pointer_lines = [
-        lines.allocate(&xr_state, app_state.graphics.clone())?,
-        lines.allocate(&xr_state, app_state.graphics.clone())?,
+        lines.allocate(&xr_state, app.graphics.clone())?,
+        lines.allocate(&xr_state, app.graphics.clone())?,
     ];
 
     let watch_id = overlays.get_by_name(WATCH_NAME).unwrap().state.id; // want panic
@@ -176,19 +168,18 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         if !running.load(Ordering::Relaxed) {
             log::warn!("Received shutdown signal.");
             match xr_state.session.request_exit() {
-                Ok(_) => log::info!("OpenXR session exit requested."),
+                Ok(()) => log::info!("OpenXR session exit requested."),
                 Err(xr::sys::Result::ERROR_SESSION_NOT_RUNNING) => break 'main_loop,
                 Err(e) => {
-                    log::error!("Failed to request OpenXR session exit: {}", e);
+                    log::error!("Failed to request OpenXR session exit: {e}");
                     break 'main_loop;
                 }
             }
         }
 
         while let Some(event) = xr_state.instance.poll_event(&mut event_storage)? {
-            use xr::Event::*;
             match event {
-                SessionStateChanged(e) => {
+                xr::Event::SessionStateChanged(e) => {
                     // Session state change is where we can begin and end sessions, as well as
                     // find quit messages!
                     log::info!("entered state {:?}", e.state());
@@ -207,22 +198,22 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                         _ => {}
                     }
                 }
-                InstanceLossPending(_) => {
+                xr::Event::InstanceLossPending(_) => {
                     break 'main_loop;
                 }
-                EventsLost(e) => {
+                xr::Event::EventsLost(e) => {
                     log::warn!("lost {} events", e.lost_event_count());
                 }
-                MainSessionVisibilityChangedEXTX(e) => {
+                xr::Event::MainSessionVisibilityChangedEXTX(e) => {
                     if main_session_visible != e.visible() {
                         main_session_visible = e.visible();
-                        log::info!("Main session visible: {}", main_session_visible);
+                        log::info!("Main session visible: {main_session_visible}");
                         if main_session_visible {
                             log::debug!("Destroying skybox.");
                             skybox = None;
                         } else if environment_blend_mode == xr::EnvironmentBlendMode::OPAQUE {
                             log::debug!("Allocating skybox.");
-                            skybox = create_skybox(&xr_state, &app_state);
+                            skybox = create_skybox(&xr_state, &app);
                         }
                     }
                 }
@@ -232,7 +223,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
 
         if next_device_update <= Instant::now() {
             if let Some(monado) = &mut monado {
-                input_source.update_devices(&mut app_state, monado);
+                OpenXrInputSource::update_devices(&mut app, monado);
                 next_device_update = Instant::now() + Duration::from_secs(30);
             }
         }
@@ -259,8 +250,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
 
             let total_elapsed = fps_counter
                 .front()
-                .map(|time| time.elapsed().as_secs_f32())
-                .unwrap_or(0f32);
+                .map_or(0f32, |time| time.elapsed().as_secs_f32());
 
             fps_counter.len() as f32 / total_elapsed
         };
@@ -274,46 +264,46 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
             continue 'main_loop;
         }
 
-        app_state.input_state.pre_update();
-        input_source.update(&xr_state, &mut app_state)?;
-        app_state.input_state.post_update(&app_state.session);
+        app.input_state.pre_update();
+        input_source.update(&xr_state, &mut app)?;
+        app.input_state.post_update(&app.session);
 
-        if app_state
+        if app
             .input_state
             .pointers
             .iter()
             .any(|p| p.now.show_hide && !p.before.show_hide)
         {
-            overlays.show_hide(&mut app_state);
+            overlays.show_hide(&mut app);
         }
 
         #[cfg(feature = "wayvr")]
-        if app_state
+        if app
             .input_state
             .pointers
             .iter()
             .any(|p| p.now.toggle_dashboard && !p.before.toggle_dashboard)
         {
-            wayvr_action(&mut app_state, &mut overlays, &WayVRAction::ToggleDashboard);
+            wayvr_action(&mut app, &mut overlays, &WayVRAction::ToggleDashboard);
         }
 
-        watch_fade(&mut app_state, overlays.mut_by_id(watch_id).unwrap()); // want panic
+        watch_fade(&mut app, overlays.mut_by_id(watch_id).unwrap()); // want panic
         if let Some(ref mut space_mover) = playspace {
             space_mover.update(
                 &mut overlays,
-                &app_state,
+                &app,
                 monado.as_mut().unwrap(), // safe
             );
         }
 
         for o in overlays.iter_mut() {
-            o.after_input(&mut app_state)?;
+            o.after_input(&mut app)?;
         }
 
         #[cfg(feature = "osc")]
-        if let Some(ref mut sender) = app_state.osc_sender {
-            let _ = sender.send_params(&overlays, &app_state.input_state.devices);
-        };
+        if let Some(ref mut sender) = app.osc_sender {
+            let _ = sender.send_params(&overlays, &app.input_state.devices);
+        }
 
         let (_, views) = xr_state.session.locate_views(
             VIEW_TYPE,
@@ -322,36 +312,36 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         )?;
 
         let ipd = helpers::ipd_from_views(&views);
-        if (app_state.input_state.ipd - ipd).abs() > 0.01 {
-            log::info!("IPD changed: {} -> {}", app_state.input_state.ipd, ipd);
-            app_state.input_state.ipd = ipd;
+        if (app.input_state.ipd - ipd).abs() > 0.01 {
+            log::info!("IPD changed: {} -> {}", app.input_state.ipd, ipd);
+            app.input_state.ipd = ipd;
             Toast::new(
                 ToastTopic::IpdChange,
                 "IPD".into(),
-                format!("{:.1} mm", ipd).into(),
+                format!("{ipd:.1} mm").into(),
             )
-            .submit(&mut app_state);
+            .submit(&mut app);
         }
 
         overlays
             .iter_mut()
-            .for_each(|o| o.state.auto_movement(&mut app_state));
+            .for_each(|o| o.state.auto_movement(&mut app));
 
-        let lengths_haptics = interact(&mut overlays, &mut app_state);
+        let lengths_haptics = interact(&mut overlays, &mut app);
         for (idx, (len, haptics)) in lengths_haptics.iter().enumerate() {
             lines.draw_from(
                 pointer_lines[idx],
-                app_state.input_state.pointers[idx].pose,
+                app.input_state.pointers[idx].pose,
                 *len,
-                app_state.input_state.pointers[idx].interaction.mode as usize + 1,
-                &app_state.input_state.hmd,
+                app.input_state.pointers[idx].interaction.mode as usize + 1,
+                &app.input_state.hmd,
             );
             if let Some(haptics) = haptics {
                 input_source.haptics(&xr_state, idx, haptics);
             }
         }
 
-        app_state.hid_provider.commit();
+        app.hid_provider.commit();
 
         let watch = overlays.mut_by_id(watch_id).unwrap(); // want panic
         let watch_transform = watch.state.transform;
@@ -364,71 +354,108 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
             });
         }
 
-        let mut layers = vec![];
-        let mut command_buffer = app_state
-            .graphics
-            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+        #[cfg(feature = "wayvr")]
+        if let Err(e) =
+            crate::overlays::wayvr::tick_events::<OpenXrOverlayData>(&mut app, &mut overlays)
+        {
+            log::error!("WayVR tick_events failed: {e:?}");
+        }
+
+        // Begin rendering
+        let mut buffers = CommandBuffers::default();
 
         if !main_session_visible {
             if let Some(skybox) = skybox.as_mut() {
-                for (idx, layer) in skybox
-                    .present_xr(&xr_state, app_state.input_state.hmd, &mut command_buffer)?
-                    .into_iter()
-                    .enumerate()
-                {
-                    layers.push((200.0 - 50.0 * (idx as f32), layer));
-                }
+                skybox.render(&xr_state, &app, &mut buffers)?;
             }
         }
 
-        #[cfg(feature = "wayvr")]
-        if let Err(e) =
-            crate::overlays::wayvr::tick_events::<OpenXrOverlayData>(&mut app_state, &mut overlays)
-        {
-            log::error!("WayVR tick_events failed: {:?}", e);
-        }
-
         for o in overlays.iter_mut() {
+            o.data.cur_visible = false;
             if !o.state.want_visible {
                 continue;
             }
 
             if !o.data.init {
-                o.init(&mut app_state)?;
+                o.init(&mut app)?;
                 o.data.init = true;
             }
 
-            o.render(&mut app_state)?;
+            let should_render = match o.should_render(&mut app)? {
+                ShouldRender::Should => true,
+                ShouldRender::Can => (o.data.last_alpha - o.state.alpha).abs() > f32::EPSILON,
+                ShouldRender::Unable => false, //try show old image if exists
+            };
 
-            let dist_sq = (app_state.input_state.hmd.translation - o.state.transform.translation)
-                .length_squared()
-                + (100f32 - o.state.z_order as f32);
-
-            if !dist_sq.is_normal() {
+            if should_render {
+                if !o.ensure_swapchain(&app, &xr_state)? {
+                    continue;
+                }
+                let tgt = o.data.swapchain.as_mut().unwrap().acquire_wait_image()?; // want
+                if !o.render(&mut app, tgt, &mut buffers, o.state.alpha)? {
+                    o.data.swapchain.as_mut().unwrap().ensure_image_released()?; // want
+                    continue;
+                }
+                o.data.last_alpha = o.state.alpha;
+            } else if o.data.swapchain.is_none() {
                 continue;
             }
+            o.data.cur_visible = true;
+        }
 
-            let maybe_layer = o.present_xr(&xr_state, &mut command_buffer)?;
-            if let CompositionLayer::None = maybe_layer {
+        lines.render(app.graphics.clone(), &mut buffers)?;
+
+        let future = buffers.execute_now(app.graphics.graphics_queue.clone())?;
+        if let Some(mut future) = future {
+            if let Err(e) = future.flush() {
+                return Err(BackendError::Fatal(e.into()));
+            }
+            future.cleanup_finished();
+        }
+        // End rendering
+
+        // Layer composition
+        let mut layers = vec![];
+        if !main_session_visible {
+            if let Some(skybox) = skybox.as_mut() {
+                for (idx, layer) in skybox.present(&xr_state, &app)?.into_iter().enumerate() {
+                    layers.push(((idx as f32).mul_add(-50.0, 200.0), layer));
+                }
+            }
+        }
+
+        for o in overlays.iter_mut() {
+            if !o.data.cur_visible {
+                continue;
+            }
+            let dist_sq = (app.input_state.hmd.translation - o.state.transform.translation)
+                .length_squared()
+                + (100f32 - o.state.z_order as f32);
+            if !dist_sq.is_normal() {
+                o.data.swapchain.as_mut().unwrap().ensure_image_released()?;
+                continue;
+            }
+            let maybe_layer = o.present(&xr_state)?;
+            if matches!(maybe_layer, CompositionLayer::None) {
                 continue;
             }
             layers.push((dist_sq, maybe_layer));
         }
 
-        for maybe_layer in lines.present_xr(&xr_state, &mut command_buffer)? {
-            if let CompositionLayer::None = maybe_layer {
+        for maybe_layer in lines.present(&xr_state)? {
+            if matches!(maybe_layer, CompositionLayer::None) {
                 continue;
             }
             layers.push((0.0, maybe_layer));
         }
+        // End layer composition
 
         #[cfg(feature = "wayvr")]
-        if let Some(wayvr) = &app_state.wayvr {
+        if let Some(wayvr) = &app.wayvr {
             wayvr.borrow_mut().data.tick_finish()?;
         }
 
-        command_buffer.build_and_execute_now()?;
-
+        // Begin layer submit
         layers.sort_by(|a, b| b.0.total_cmp(&a.0));
 
         let frame_ref = layers
@@ -446,23 +473,23 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
             environment_blend_mode,
             &frame_ref,
         )?;
+        // End layer submit
 
-        let removed_overlays = overlays.update(&mut app_state)?;
+        let removed_overlays = overlays.update(&mut app)?;
         for o in removed_overlays {
             delete_queue.push((o, cur_frame + 5));
         }
 
-        notifications.submit_pending(&mut app_state);
+        notifications.submit_pending(&mut app);
 
-        app_state.tasks.retrieve_due(&mut due_tasks);
+        app.tasks.retrieve_due(&mut due_tasks);
         while let Some(task) = due_tasks.pop_front() {
             match task {
-                TaskType::Global(f) => f(&mut app_state),
                 TaskType::Overlay(sel, f) => {
                     if let Some(o) = overlays.mut_by_selector(&sel) {
-                        f(&mut app_state, &mut o.state);
+                        f(&mut app, &mut o.state);
                     } else {
-                        log::warn!("Overlay not found for task: {:?}", sel);
+                        log::warn!("Overlay not found for task: {sel:?}");
                     }
                 }
                 TaskType::CreateOverlay(sel, f) => {
@@ -470,14 +497,14 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                         continue;
                     };
 
-                    let Some((mut state, backend)) = f(&mut app_state) else {
+                    let Some((mut overlay_state, overlay_backend)) = f(&mut app) else {
                         continue;
                     };
-                    state.birthframe = cur_frame;
+                    overlay_state.birthframe = cur_frame;
 
                     overlays.add(OverlayData {
-                        state,
-                        backend,
+                        state: overlay_state,
+                        backend: overlay_backend,
                         ..Default::default()
                     });
                 }
@@ -496,7 +523,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                     SystemTask::FixFloor => {
                         if let Some(ref mut playspace) = playspace {
                             playspace.fix_floor(
-                                &app_state.input_state,
+                                &app.input_state,
                                 monado.as_mut().unwrap(), // safe
                             );
                         }
@@ -507,13 +534,13 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
                         }
                     }
                     SystemTask::ShowHide => {
-                        overlays.show_hide(&mut app_state);
+                        overlays.show_hide(&mut app);
                     }
                     _ => {}
                 },
                 #[cfg(feature = "wayvr")]
                 TaskType::WayVR(action) => {
-                    wayvr_action(&mut app_state, &mut overlays, &action);
+                    wayvr_action(&mut app, &mut overlays, &action);
                 }
             }
         }

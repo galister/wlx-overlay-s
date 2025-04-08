@@ -36,7 +36,7 @@ pub struct WayVRCompositor {
 }
 
 fn get_wayvr_env_from_pid(pid: i32) -> anyhow::Result<ProcessWayVREnv> {
-    let path = format!("/proc/{}/environ", pid);
+    let path = format!("/proc/{pid}/environ");
     let mut env_data = String::new();
     std::fs::File::open(path)?.read_to_string(&mut env_data)?;
 
@@ -162,7 +162,7 @@ impl WayVRCompositor {
     ) -> anyhow::Result<()> {
         if let Some(stream) = self.listener.accept()? {
             if let Err(e) = self.accept_connection(stream, displays, processes) {
-                log::error!("Failed to accept connection: {}", e);
+                log::error!("Failed to accept connection: {e}");
             }
         }
 
@@ -175,7 +175,7 @@ impl WayVRCompositor {
         processes: &mut process::ProcessVec,
     ) -> anyhow::Result<()> {
         if let Err(e) = self.accept_connections(displays, processes) {
-            log::error!("accept_connections failed: {}", e);
+            log::error!("accept_connections failed: {e}");
         }
 
         self.display.dispatch_clients(&mut self.state)?;
@@ -184,7 +184,7 @@ impl WayVRCompositor {
         let surf_count = self.state.xdg_shell.toplevel_surfaces().len() as u32;
         if surf_count != self.toplevel_surf_count {
             self.toplevel_surf_count = surf_count;
-            log::info!("Toplevel surface count changed: {}", surf_count);
+            log::info!("Toplevel surface count changed: {surf_count}");
         }
 
         Ok(())
@@ -211,11 +211,9 @@ impl WayVRCompositor {
 const STARTING_WAYLAND_ADDR_IDX: u32 = 20;
 
 fn export_display_number(display_num: u32) -> anyhow::Result<()> {
-    let mut path = std::env::var("XDG_RUNTIME_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/tmp"));
+    let mut path = std::env::var("XDG_RUNTIME_DIR").map_or_else(|_| PathBuf::from("/tmp"), PathBuf::from);
     path.push("wayvr.disp");
-    std::fs::write(path, format!("{}\n", display_num))?;
+    std::fs::write(path, format!("{display_num}\n"))?;
     Ok(())
 }
 
@@ -227,17 +225,15 @@ fn create_wayland_listener() -> anyhow::Result<(super::WaylandEnv, wayland_serve
 
     let listener = loop {
         let display_str = env.display_num_string();
-        log::debug!("Trying to open socket \"{}\"", display_str);
+        log::debug!("Trying to open socket \"{display_str}\"");
         match wayland_server::ListeningSocket::bind(display_str.as_str()) {
             Ok(listener) => {
-                log::debug!("Listening to {}", display_str);
+                log::debug!("Listening to {display_str}");
                 break listener;
             }
             Err(e) => {
                 log::debug!(
-                    "Failed to open socket \"{}\" (reason: {}), trying next...",
-                    display_str,
-                    e
+                    "Failed to open socket \"{display_str}\" (reason: {e}), trying next..."
                 );
 
                 env.display_num += 1;

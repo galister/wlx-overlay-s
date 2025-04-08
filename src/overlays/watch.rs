@@ -29,7 +29,7 @@ where
             spawn_scale: config.width,
             spawn_point: state.session.config.watch_pos,
             spawn_rotation: state.session.config.watch_rot,
-            interaction_transform: ui_transform(&config.size),
+            interaction_transform: ui_transform(config.size),
             relative_to,
             ..Default::default()
         },
@@ -44,7 +44,7 @@ pub fn create_watch_canvas(
 ) -> anyhow::Result<Canvas<(), ModularData>> {
     let config = config.unwrap_or_else(|| load_known_yaml::<ModularUiConfig>(ConfigType::Watch));
 
-    modular_canvas(&config.size, &config.elements, state)
+    modular_canvas(config.size, &config.elements, state)
 }
 
 pub fn watch_fade<D>(app: &mut AppState, watch: &mut OverlayData<D>)

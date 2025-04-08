@@ -100,15 +100,14 @@ pub fn modular_label_init(label: &mut ModularControl, content: &LabelContent, ap
         }),
         LabelContent::Clock { format, timezone } => {
             let tz_str = match timezone {
-                Some(TimezoneDef::Idx(idx)) => {
-                    if let Some(tz) = app.session.config.timezones.get(*idx) {
-                        Some(tz.as_str())
-                    } else {
-                        log::error!("Timezone index out of range '{}'", idx);
+                Some(TimezoneDef::Idx(idx)) => app.session.config.timezones.get(*idx).map_or_else(
+                    || {
+                        log::error!("Timezone index out of range '{idx}'");
                         label.set_fg_color(*FALLBACK_COLOR);
                         None
-                    }
-                }
+                    },
+                    |tz| Some(tz.as_str()),
+                ),
                 Some(TimezoneDef::Str(tz_str)) => Some(tz_str.as_ref()),
                 None => None,
             };
@@ -127,14 +126,13 @@ pub fn modular_label_init(label: &mut ModularControl, content: &LabelContent, ap
         }
         LabelContent::Timezone { timezone } => {
             if let Some(tz) = app.session.config.timezones.get(*timezone) {
-                let pretty_tz = tz.split('/').last().map(|x| x.replace("_", " "));
+                let pretty_tz = tz.split('/').next_back().map(|x| x.replace('_', " "));
 
                 if let Some(pretty_tz) = pretty_tz {
                     label.set_text(&pretty_tz);
                     return;
-                } else {
-                    log::error!("Timezone name not valid '{}'", &tz);
                 }
+                log::error!("Timezone name not valid '{}'", &tz);
             } else {
                 log::error!("Timezone index out of range '{}'", &timezone);
             }
@@ -166,6 +164,7 @@ pub fn modular_label_init(label: &mut ModularControl, content: &LabelContent, ap
     }
 }
 
+#[allow(clippy::too_many_lines)]
 pub(super) fn label_update(control: &mut ModularControl, _: &mut (), app: &mut AppState) {
     // want panic
     let ModularData::Label(data) = control.state.as_mut().unwrap() else {
@@ -184,9 +183,9 @@ pub(super) fn label_update(control: &mut ModularControl, _: &mut (), app: &mut A
             let tags = ["", "H", "L", "R", "T"];
 
             if let Some(device) = device {
-                let (text, color) = device
-                    .soc
-                    .map(|soc| {
+                let (text, color) = device.soc.map_or_else(
+                    || (String::new(), Vec4::ZERO),
+                    |soc| {
                         let text = format!(
                             "{}{}",
                             tags[device.role as usize],
@@ -200,8 +199,8 @@ pub(super) fn label_update(control: &mut ModularControl, _: &mut (), app: &mut A
                             *normal_color
                         };
                         (text, color)
-                    })
-                    .unwrap_or_else(|| ("".into(), Vec4::ZERO));
+                    },
+                );
 
                 control.set_text(&text);
                 control.set_fg_color(color);
@@ -212,11 +211,11 @@ pub(super) fn label_update(control: &mut ModularControl, _: &mut (), app: &mut A
         LabelData::Clock { format, timezone } => {
             let format = format.clone();
             if let Some(tz) = timezone {
-                let date = Local::now().with_timezone(tz);
-                control.set_text(&format!("{}", &date.format(&format)));
+                let date_time = Local::now().with_timezone(tz);
+                control.set_text(&format!("{}", &date_time.format(&format)));
             } else {
-                let date = Local::now();
-                control.set_text(&format!("{}", &date.format(&format)));
+                let date_time = Local::now();
+                control.set_text(&format!("{}", &date_time.format(&format)));
             }
         }
         LabelData::Timer { format, start } => {
@@ -236,13 +235,7 @@ pub(super) fn label_update(control: &mut ModularControl, _: &mut (), app: &mut A
             if let Some(mut proc) = child.take() {
                 match proc.try_wait() {
                     Ok(Some(code)) => {
-                        if !code.success() {
-                            error_toast(
-                                app,
-                                "LabelData::Exec: Child process exited with code",
-                                code,
-                            );
-                        } else {
+                        if code.success() {
                             if let Some(mut stdout) = proc.stdout.take() {
                                 let mut buf = String::new();
                                 if stdout.read_to_string(&mut buf).is_ok() {
@@ -259,6 +252,7 @@ pub(super) fn label_update(control: &mut ModularControl, _: &mut (), app: &mut A
                             log::error!("No stdout for child process");
                             return;
                         }
+                        error_toast(app, "LabelData::Exec: Child process exited with code", code);
                     }
                     Ok(None) => {
                         *child = Some(proc);
@@ -281,7 +275,7 @@ pub(super) fn label_update(control: &mut ModularControl, _: &mut (), app: &mut A
                 *last_exec = Instant::now();
                 let args = command
                     .iter()
-                    .map(|s| s.as_ref())
+                    .map(std::convert::AsRef::as_ref)
                     .collect::<SmallVec<[&str; 8]>>();
 
                 match process::Command::new(args[0])
@@ -293,9 +287,9 @@ pub(super) fn label_update(control: &mut ModularControl, _: &mut (), app: &mut A
                         *child = Some(proc);
                     }
                     Err(e) => {
-                        error_toast(app, &format!("Failed to spawn process {:?}", args), e);
+                        error_toast(app, &format!("Failed to spawn process {args:?}"), e);
                     }
-                };
+                }
             }
         }
         LabelData::Ipd { last_ipd } => {
