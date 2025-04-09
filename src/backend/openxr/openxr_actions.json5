@@ -158,10 +158,6 @@
       left: "/user/hand/left/input/trackpad/force",
       double_click: true,
     },
-    space_reset: {
-      double_click: true,
-      left: "/user/hand/left/input/trackpad/force",
-    },
     click_modifier_right: {
       left: "/user/hand/left/input/b/touch",
       right: "/user/hand/right/input/b/touch"
@@ -210,7 +206,6 @@
       double_click: true,
       right: "/user/hand/right/input/menu/click",
     },
-    space_reset: {
     haptic: {
       left: "/user/hand/left/output/haptic",
       right: "/user/hand/right/output/haptic"
