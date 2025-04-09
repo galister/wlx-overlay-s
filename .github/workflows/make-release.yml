@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.9
       - name: Prepare Environment
         run: |
           sudo add-apt-repository -syn universe
@@ -35,7 +35,7 @@ jobs:
       - name: Cargo Build
         run: |
           cargo build --release
-          mv target/release/wlx-overlay-s ${APPDIR}/usr/bin
+          cp target/release/wlx-overlay-s ${APPDIR}/usr/bin
           chmod +x ${APPDIR}/usr/bin/wlx-overlay-s
 
       - name: Package AppImage
@@ -61,6 +61,16 @@ jobs:
           release_name: WlxOverlay-S ${{ github.ref_name }}
           draft: true
           prerelease: false
+
+      - name: Upload ELF
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_KEY }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: target/release/wlx-overlay-s
+          asset_name: wlx-overlay-s
+          asset_content_type: application/octet-stream
 
       - name: Upload AppImage
         uses: actions/upload-release-asset@v1
