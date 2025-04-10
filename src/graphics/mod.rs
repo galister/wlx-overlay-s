@@ -527,7 +527,7 @@ impl WlxGraphics {
             transfer_queue,
             capture_queue,
             memory_allocator,
-            native_format: Format::R8G8B8A8_UNORM,
+            native_format: Format::R8G8B8A8_SRGB,
             texture_filtering,
             command_buffer_allocator,
             descriptor_set_allocator,
