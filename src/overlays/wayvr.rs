@@ -620,6 +620,7 @@ impl WayVRRenderer {
             },
             num_planes: 1,
             planes,
+            ..Default::default()
         };
 
         drop(wayvr);

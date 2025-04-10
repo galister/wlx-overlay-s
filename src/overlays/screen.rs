@@ -805,8 +805,12 @@ pub fn create_screens_wayland(wl: &mut WlxClientAlias, app: &mut AppState) -> Sc
             let logical_size = vec2(output.logical_size.0 as f32, output.logical_size.1 as f32);
             let transform = output.transform.into();
             let interaction = create_screen_interaction(logical_pos, logical_size, transform);
-            let state =
-                create_screen_state(output.name.clone(), output.size, transform, &app.session);
+            let state = create_screen_state(
+                output.name.clone(),
+                output.logical_size,
+                transform,
+                &app.session,
+            );
 
             let meta = ScreenMeta {
                 name: wl.outputs[id].name.clone(),
