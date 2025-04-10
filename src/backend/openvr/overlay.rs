@@ -65,9 +65,11 @@ impl OverlayData<OpenVrOverlayData> {
         let Some(meta) = self.backend.frame_meta() else {
             return Ok(false);
         };
-        let image = app
-            .graphics
-            .render_texture(meta.extent[0], meta.extent[1], meta.format)?;
+        let image = app.graphics.render_texture(
+            meta.extent[0],
+            meta.extent[1],
+            app.graphics.native_format,
+        )?;
         self.data.image_view = Some(ImageView::new_default(image)?);
         Ok(true)
     }
