@@ -32,11 +32,15 @@ keyboard_repeat_rate: 50
 
 # WayVR-compatible dashboard.
 # For now, there is only one kind of dashboard with WayVR IPC support (WayVR Dashboard).
+#
 # Build instructions: https://github.com/olekolek1000/wayvr-dashboard
-# exec: Executable path, for example /home/USER/wayvr_dashboard/src-tauri/target/release/wayvr_dashboard
-# GDK_BACKEND=wayland: Force-use Wayland for GTK apps
+#
+# exec: Executable path, for example "/home/USER/wayvr-dashboard/src-tauri/target/release/wayvr-dashboard"
+# or just "wayvr-dashboard" if you have it installed from your package manager.
+#
+# GDK_BACKEND=wayland: Force-use Wayland for GTK apps.
 dashboard:
-  exec: "wayvr_dashboard"
+  exec: "wayvr-dashboard"
   args: ""
   env: ["GDK_BACKEND=wayland"]
 
