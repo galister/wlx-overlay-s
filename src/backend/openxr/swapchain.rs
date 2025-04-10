@@ -9,7 +9,7 @@ use vulkano::{
     Handle,
 };
 
-use crate::graphics::{WlxGraphics, SWAPCHAIN_FORMAT};
+use crate::graphics::WlxGraphics;
 
 use super::XrState;
 
@@ -43,7 +43,7 @@ pub(super) fn create_swapchain(
     let swapchain = xr.session.create_swapchain(&xr::SwapchainCreateInfo {
         create_flags,
         usage_flags: xr::SwapchainUsageFlags::COLOR_ATTACHMENT | xr::SwapchainUsageFlags::SAMPLED,
-        format: SWAPCHAIN_FORMAT as _,
+        format: graphics.native_format as _,
         sample_count: 1,
         width: extent[0],
         height: extent[1],
@@ -63,7 +63,7 @@ pub(super) fn create_swapchain(
                     graphics.device.clone(),
                     vk_image,
                     ImageCreateInfo {
-                        format: SWAPCHAIN_FORMAT as _,
+                        format: graphics.native_format as _,
                         extent,
                         usage: ImageUsage::COLOR_ATTACHMENT,
                         ..Default::default()
