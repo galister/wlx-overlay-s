@@ -99,8 +99,6 @@ pub struct Vert2Uv {
     pub in_uv: [f32; 2],
 }
 
-pub const SWAPCHAIN_FORMAT: Format = Format::R8G8B8A8_SRGB;
-
 pub const INDICES: [u16; 6] = [2, 1, 0, 1, 2, 3];
 
 pub const BLEND_ALPHA: AttachmentBlend = AttachmentBlend {
@@ -377,7 +375,7 @@ impl WlxGraphics {
             graphics_queue,
             transfer_queue,
             capture_queue,
-            native_format: Format::R8G8B8A8_UNORM,
+            native_format: Format::R8G8B8A8_SRGB,
             texture_filtering,
             memory_allocator,
             command_buffer_allocator,

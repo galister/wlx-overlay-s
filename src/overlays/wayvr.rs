@@ -23,7 +23,7 @@ use crate::{
         },
     },
     config_wayvr,
-    graphics::{CommandBuffers, WlxGraphics, WlxPipeline, SWAPCHAIN_FORMAT},
+    graphics::{CommandBuffers, WlxGraphics, WlxPipeline},
     gui::modular::button::{WayVRAction, WayVRDisplayClickAction},
     state::{self, AppState, KeyboardFocus},
 };
@@ -190,7 +190,7 @@ impl WayVRRenderer {
         let pipeline = app.graphics.create_pipeline(
             shaders.get("vert_common").unwrap().clone(), // want panic
             shaders.get("frag_srgb").unwrap().clone(),   // want panic
-            SWAPCHAIN_FORMAT,
+            app.graphics.native_format,
             None,
         )?;
 
@@ -620,6 +620,7 @@ impl WayVRRenderer {
             },
             num_planes: 1,
             planes,
+            ..Default::default()
         };
 
         drop(wayvr);

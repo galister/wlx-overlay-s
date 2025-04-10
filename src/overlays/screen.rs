@@ -53,9 +53,7 @@ use crate::{
         overlay::{FrameMeta, OverlayRenderer, OverlayState, ShouldRender, SplitOverlayBackend},
     },
     config::{def_pw_tokens, GeneralConfig, PwTokenMap},
-    graphics::{
-        fourcc_to_vk, CommandBuffers, WlxGraphics, WlxPipeline, WlxUploadsBuffer, SWAPCHAIN_FORMAT,
-    },
+    graphics::{fourcc_to_vk, CommandBuffers, WlxGraphics, WlxPipeline, WlxUploadsBuffer},
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState, KeyboardFocus, ScreenMeta},
 };
@@ -168,7 +166,7 @@ impl ScreenPipeline {
         let pipeline = app.graphics.create_pipeline(
             shaders.get("vert_common").unwrap().clone(), // want panic
             shaders.get("frag_screen").unwrap().clone(), // want panic
-            SWAPCHAIN_FORMAT,
+            app.graphics.native_format,
             Some(AttachmentBlend::default()),
         )?;
 
@@ -805,8 +803,12 @@ pub fn create_screens_wayland(wl: &mut WlxClientAlias, app: &mut AppState) -> Sc
             let logical_size = vec2(output.logical_size.0 as f32, output.logical_size.1 as f32);
             let transform = output.transform.into();
             let interaction = create_screen_interaction(logical_pos, logical_size, transform);
-            let state =
-                create_screen_state(output.name.clone(), output.size, transform, &app.session);
+            let state = create_screen_state(
+                output.name.clone(),
+                output.logical_size,
+                transform,
+                &app.session,
+            );
 
             let meta = ScreenMeta {
                 name: wl.outputs[id].name.clone(),

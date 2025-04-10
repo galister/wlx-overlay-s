@@ -5270,21 +5270,19 @@ dependencies = [
 
 [[package]]
 name = "wlx-capture"
-version = "0.5.0"
-source = "git+https://github.com/galister/wlx-capture?tag=v0.5.0#fc77da75dcf8c9d59cdeea384da21bdab685d18b"
+version = "0.5.2"
+source = "git+https://github.com/galister/wlx-capture?tag=v0.5.2#c68c66d487ef0f57bab23b5c780472a31a01ecab"
 dependencies = [
  "ashpd",
  "drm-fourcc",
  "idmap",
  "libc",
  "log",
- "once_cell",
  "pipewire",
  "rxscreen",
  "smithay-client-toolkit",
  "wayland-client",
  "wayland-protocols",
- "xcb",
 ]
 
 [[package]]

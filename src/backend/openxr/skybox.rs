@@ -14,7 +14,7 @@ use vulkano::{
 use crate::{
     backend::openxr::{helpers::translation_rotation_to_posef, swapchain::SwapchainOpts},
     config_io,
-    graphics::{dds::WlxCommandBufferDds, CommandBuffers, SWAPCHAIN_FORMAT},
+    graphics::{dds::WlxCommandBufferDds, CommandBuffers},
     state::AppState,
 };
 
@@ -102,7 +102,7 @@ impl Skybox {
         let pipeline = app.graphics.create_pipeline(
             shaders.get("vert_common").unwrap().clone(), // want panic
             shaders.get("frag_srgb").unwrap().clone(),   // want panic
-            SWAPCHAIN_FORMAT,
+            app.graphics.native_format,
             None,
         )?;
 
@@ -149,7 +149,7 @@ impl Skybox {
         let pipeline = app.graphics.create_pipeline(
             shaders.get("vert_common").unwrap().clone(), // want panic
             shaders.get("frag_grid").unwrap().clone(),   // want panic
-            SWAPCHAIN_FORMAT,
+            app.graphics.native_format,
             Some(AttachmentBlend::alpha()),
         )?;
 
