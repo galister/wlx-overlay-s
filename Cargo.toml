@@ -58,7 +58,7 @@ sysinfo = { version = "0.34.2" }
 thiserror = "2.0.3"
 vulkano = { version = "0.35.1" }
 vulkano-shaders = { version = "0.35.0" }
-wlx-capture = { git = "https://github.com/galister/wlx-capture", tag = "v0.5.0", default-features = false }
+wlx-capture = { git = "https://github.com/galister/wlx-capture", tag = "v0.5.1", default-features = false }
 libmonado = { git = "https://github.com/technobaboo/libmonado-rs", rev = "256895b18c8f9368174fad8a6232ff07764eeacb", optional = true }
 winit = { version = "0.30.0", optional = true }
 xdg = "2.5.2"
