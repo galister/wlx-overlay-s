@@ -53,9 +53,7 @@ use crate::{
         overlay::{FrameMeta, OverlayRenderer, OverlayState, ShouldRender, SplitOverlayBackend},
     },
     config::{def_pw_tokens, GeneralConfig, PwTokenMap},
-    graphics::{
-        fourcc_to_vk, CommandBuffers, WlxGraphics, WlxPipeline, WlxUploadsBuffer, SWAPCHAIN_FORMAT,
-    },
+    graphics::{fourcc_to_vk, CommandBuffers, WlxGraphics, WlxPipeline, WlxUploadsBuffer},
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState, KeyboardFocus, ScreenMeta},
 };
@@ -168,7 +166,7 @@ impl ScreenPipeline {
         let pipeline = app.graphics.create_pipeline(
             shaders.get("vert_common").unwrap().clone(), // want panic
             shaders.get("frag_screen").unwrap().clone(), // want panic
-            SWAPCHAIN_FORMAT,
+            app.graphics.native_format,
             Some(AttachmentBlend::default()),
         )?;
 

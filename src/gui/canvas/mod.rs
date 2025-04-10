@@ -11,7 +11,7 @@ use crate::{
         input::{Haptics, InteractionHandler, PointerHit},
         overlay::{FrameMeta, OverlayBackend, OverlayRenderer, ShouldRender},
     },
-    graphics::{CommandBuffers, WlxGraphics, WlxPipeline, BLEND_ALPHA, SWAPCHAIN_FORMAT},
+    graphics::{CommandBuffers, WlxGraphics, WlxPipeline, BLEND_ALPHA},
     state::AppState,
 };
 
@@ -105,21 +105,21 @@ impl<D, S> Canvas<D, S> {
         let pipeline_hl_color = graphics.create_pipeline(
             vert.clone(),
             shaders.get("frag_color").unwrap().clone(), // want panic
-            SWAPCHAIN_FORMAT,
+            graphics.native_format,
             Some(BLEND_ALPHA),
         )?;
 
         let pipeline_hl_sprite = graphics.create_pipeline(
             vert.clone(),
             shaders.get("frag_sprite2_hl").unwrap().clone(), // want panic
-            SWAPCHAIN_FORMAT,
+            graphics.native_format,
             Some(BLEND_ALPHA),
         )?;
 
         let pipeline_final = graphics.create_pipeline(
             vert,
             shaders.get("frag_srgb").unwrap().clone(), // want panic
-            SWAPCHAIN_FORMAT,
+            graphics.native_format,
             Some(BLEND_ALPHA),
         )?;
 
