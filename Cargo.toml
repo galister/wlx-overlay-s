@@ -4,7 +4,7 @@ debug = true
 
 [package]
 name = "wlx-overlay-s"
-version = "25.4.1"
+version = "25.4.2"
 edition = "2021"
 license = "GPL-3.0-only"
 authors = ["galister"]
