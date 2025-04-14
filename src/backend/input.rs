@@ -486,7 +486,6 @@ impl Pointer {
             if let Some(hit) = self.ray_test(
                 overlay.state.id,
                 &overlay.state.transform,
-                &overlay.state.offset,
                 overlay.state.curvature.as_ref(),
             ) {
                 if hit.dist.is_infinite() || hit.dist.is_nan() {
@@ -627,22 +626,18 @@ impl Pointer {
         &self,
         overlay: OverlayID,
         transform: &Affine3A,
-        offset: &Affine3A,
         curvature: Option<&f32>,
     ) -> Option<RayHit> {
-        let mut effective = transform.clone();
-        effective.translation = offset.transform_point3a(effective.translation);
-
         let (dist, local_pos) = curvature.map_or_else(
             || {
                 Some(raycast_plane(
                     &self.pose,
                     Vec3A::NEG_Z,
-                    &effective,
+                    transform,
                     Vec3A::NEG_Z,
                 ))
             },
-            |curvature| raycast_cylinder(&self.pose, Vec3A::NEG_Z, &effective, *curvature),
+            |curvature| raycast_cylinder(&self.pose, Vec3A::NEG_Z, transform, *curvature),
         )?;
 
         if dist < 0.0 {

@@ -22,6 +22,7 @@ pub(super) struct OpenVrOverlayData {
     pub(super) override_width: bool,
     pub(super) image_view: Option<Arc<ImageView>>,
     pub(super) image_dirty: bool,
+    pub(super) offset: Affine3A,
 }
 
 impl OverlayData<OpenVrOverlayData> {
@@ -210,15 +211,12 @@ impl OverlayData<OpenVrOverlayData> {
             return;
         };
 
-        let mut effective = self.state.transform
+        let effective = self.state.transform
             * self
                 .backend
                 .frame_meta()
                 .map(|f| f.transform)
                 .unwrap_or_default();
-
-        // combine self.state.transform with self.state.offset
-        effective.translation = self.state.offset.transform_point3a(effective.translation);
 
         let transform = Matrix3x4::from_affine(&effective);
 

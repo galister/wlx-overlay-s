@@ -50,7 +50,6 @@ pub struct OverlayState {
     pub alpha: f32,
     pub z_order: u32,
     pub transform: Affine3A,
-    pub offset: Affine3A,
     pub spawn_scale: f32, // aka width
     pub spawn_point: Vec3A,
     pub spawn_rotation: Quat,
@@ -83,7 +82,6 @@ impl Default for OverlayState {
             spawn_rotation: Quat::IDENTITY,
             saved_transform: None,
             transform: Affine3A::IDENTITY,
-            offset: Affine3A::IDENTITY,
             interaction_transform: Affine2::IDENTITY,
             birthframe: 0,
         }
@@ -152,7 +150,6 @@ impl OverlayState {
     pub fn reset(&mut self, app: &mut AppState, hard_reset: bool) {
         if hard_reset {
             self.saved_transform = None;
-            self.offset = Affine3A::IDENTITY;
         }
 
         self.transform = self

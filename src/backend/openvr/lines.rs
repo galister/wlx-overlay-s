@@ -81,6 +81,9 @@ impl LinePool {
             data: OpenVrOverlayData {
                 width: 0.002,
                 override_width: true,
+                image_view: Some(self.view.clone()),
+                image_dirty: true,
+                offset: Affine3A::IDENTITY,
                 ..Default::default()
             },
             ..Default::default()
