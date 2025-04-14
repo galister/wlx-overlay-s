@@ -5,11 +5,11 @@ use ovr_overlay::{
     sys::{EChaperoneConfigFile, ETrackingUniverseOrigin, HmdMatrix34_t},
 };
 
+use super::{helpers::Affine3AConvert, overlay::OpenVrOverlayData};
 use crate::{
     backend::{common::OverlayContainer, input::InputState},
     state::AppState,
 };
-use super::{helpers::Affine3AConvert, overlay::OpenVrOverlayData};
 
 struct MoverData<T> {
     pose: Affine3A,
@@ -70,6 +70,8 @@ impl PlayspaceMover {
             overlays.iter_mut().for_each(|overlay| {
                 if overlay.state.grabbable {
                     overlay.state.dirty = true;
+                    overlay.state.transform.translation =
+                        overlay_transform.transform_point3a(overlay.state.transform.translation);
                     overlay.state.offset.translation =
                         overlay_transform.transform_point3a(overlay.state.transform.translation);
                 }
@@ -123,6 +125,7 @@ impl PlayspaceMover {
             overlays.iter_mut().for_each(|overlay| {
                 if overlay.state.grabbable {
                     overlay.state.dirty = true;
+                    overlay.state.transform.translation += overlay_offset;
                     overlay.state.offset.translation += overlay_offset;
                 }
             });
@@ -139,7 +142,7 @@ impl PlayspaceMover {
                         self.reset_offset(chaperone_mgr, overlays);
                     }
                     return;
-                }else if pointer.now.space_drag {
+                } else if pointer.now.space_drag {
                     let Some(mat) = get_working_copy(&universe, chaperone_mgr) else {
                         log::warn!("Can't space drag - failed to get zero pose");
                         return;
@@ -158,12 +161,17 @@ impl PlayspaceMover {
         }
     }
 
-    pub fn reset_offset(&mut self, chaperone_mgr: &mut ChaperoneSetupManager, overlays: &mut OverlayContainer<OpenVrOverlayData>) {
+    pub fn reset_offset(
+        &mut self,
+        chaperone_mgr: &mut ChaperoneSetupManager,
+        overlays: &mut OverlayContainer<OpenVrOverlayData>,
+    ) {
         chaperone_mgr.revert_working_copy();
         chaperone_mgr.hide_working_set_preview();
-        
+
         overlays.iter_mut().for_each(|overlay| {
             overlay.state.dirty = true;
+            overlay.state.transform.translation -= overlay.state.offset.translation;
             overlay.state.offset = Affine3A::IDENTITY;
         });
 
