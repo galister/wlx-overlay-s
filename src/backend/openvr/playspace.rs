@@ -72,7 +72,7 @@ impl PlayspaceMover {
                     overlay.state.dirty = true;
                     overlay.state.transform.translation =
                         overlay_transform.transform_point3a(overlay.state.transform.translation);
-                    overlay.offset.translation =
+                    overlay.data.offset.translation =
                         overlay_transform.transform_point3a(overlay.state.transform.translation);
                 }
             });
@@ -126,7 +126,7 @@ impl PlayspaceMover {
                 if overlay.state.grabbable {
                     overlay.state.dirty = true;
                     overlay.state.transform.translation += overlay_offset;
-                    overlay.offset.translation += overlay_offset;
+                    overlay.data.offset.translation += overlay_offset;
                 }
             });
 
@@ -171,8 +171,8 @@ impl PlayspaceMover {
 
         overlays.iter_mut().for_each(|overlay| {
             overlay.state.dirty = true;
-            overlay.state.transform.translation -= overlay.offset.translation;
-            overlay.offset = Affine3A::IDENTITY;
+            overlay.state.transform.translation -= overlay.data.offset.translation;
+            overlay.data.offset = Affine3A::IDENTITY;
         });
 
         if self.drag.is_some() {
