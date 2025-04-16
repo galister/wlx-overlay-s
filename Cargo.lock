@@ -2333,8 +2333,9 @@ dependencies = [
 
 [[package]]
 name = "libmonado"
-version = "1.3.1"
-source = "git+https://github.com/technobaboo/libmonado-rs?rev=256895b18c8f9368174fad8a6232ff07764eeacb#256895b18c8f9368174fad8a6232ff07764eeacb"
+version = "1.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f56d8582a273a05076c57d5478faa51c39958744760938f2da770e890b43c62d"
 dependencies = [
  "bindgen 0.69.5",
  "cmake",
