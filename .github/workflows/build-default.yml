@@ -2,7 +2,7 @@ name: Check Default
 
 on:
   pull_request:
-    branches: [ "!main" ]
+    #branches: [ "!main" ]
 
 env:
   CARGO_TERM_COLOR: always
