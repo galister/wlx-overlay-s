@@ -132,9 +132,13 @@ impl Display {
         let egl_image = params.egl_data.create_egl_image(tex_id)?;
 
         let render_data = match params.config.blit_method {
-            BlitMethod::Dmabuf => {
-                egl_data::RenderData::Dmabuf(params.egl_data.create_dmabuf_data(&egl_image)?)
-            }
+            BlitMethod::Dmabuf => match params.egl_data.create_dmabuf_data(&egl_image) {
+                Ok(dmabuf_data) => egl_data::RenderData::Dmabuf(dmabuf_data),
+                Err(e) => {
+                    log::error!("create_dmabuf_data failed: {e:?}. Using software blitting (This will be slow!)");
+                    egl_data::RenderData::Software(None)
+                }
+            },
             BlitMethod::Software => egl_data::RenderData::Software(None),
         };
 
