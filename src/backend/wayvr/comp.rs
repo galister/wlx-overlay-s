@@ -127,9 +127,7 @@ impl ClientData for ClientState {
 
     fn disconnected(&self, client_id: ClientId, reason: DisconnectReason) {
         *self.disconnected.lock().unwrap() = true;
-        log::debug!(
-            "Client ID {client_id:?} disconnected. Reason: {reason:?}"
-        );
+        log::debug!("Client ID {client_id:?} disconnected. Reason: {reason:?}");
     }
 }
 

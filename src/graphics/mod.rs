@@ -37,8 +37,9 @@ use vulkano::{
         allocator::StandardDescriptorSetAllocator, DescriptorSet, WriteDescriptorSet,
     },
     device::{
-        physical::{PhysicalDevice, PhysicalDeviceType}, Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures,
-        Queue, QueueCreateInfo, QueueFlags,
+        physical::{PhysicalDevice, PhysicalDeviceType},
+        Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures, Queue, QueueCreateInfo,
+        QueueFlags,
     },
     format::Format,
     image::{
@@ -600,7 +601,7 @@ impl WlxGraphics {
                     None
                 }
             })
-            .filter_map(|(p, my_extensions)| 
+            .filter_map(|(p, my_extensions)|
                 try_all_queue_families(p.as_ref()).map(|families| (p, my_extensions, families))
             )
             .min_by_key(|(p, _, _)| prio_from_device_type(p)
