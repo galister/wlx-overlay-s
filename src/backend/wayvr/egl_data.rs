@@ -235,21 +235,34 @@ impl EGLData {
             let mut strides: [i32; 3] = [0; 3];
             let mut offsets: [i32; 3] = [0; 3];
 
-            if egl_export_dmabuf_image_mesa(
+            let ret = egl_export_dmabuf_image_mesa(
                 self.display.as_ptr(),
                 egl_image.as_ptr(),
                 fds.as_mut_ptr(),
                 strides.as_mut_ptr(),
                 offsets.as_mut_ptr(),
-            ) != khronos_egl::TRUE
-            {
-                anyhow::bail!("eglExportDMABUFImageMESA failed");
+            );
+
+            if ret != khronos_egl::TRUE {
+                anyhow::bail!("eglExportDMABUFImageMESA failed with return code {ret}");
+            }
+
+            if fds[0] <= 0 {
+                anyhow::bail!("fd is <=0 (got {})", fds[0]);
             }
 
             // many planes in RGB data?
-            debug_assert!(fds[1] == 0);
-            debug_assert!(strides[1] == 0);
-            debug_assert!(offsets[1] == 0);
+            if fds[1] != 0 || strides[1] != 0 || offsets[1] != 0 {
+                anyhow::bail!("multi-planar data received, packed RGB expected");
+            }
+
+            if strides[0] < 0 {
+                anyhow::bail!("strides is < 0");
+            }
+
+            if offsets[0] < 0 {
+                anyhow::bail!("offsets is < 0");
+            }
 
             let mod_info = self.query_dmabuf_mod_info()?;
 
