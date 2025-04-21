@@ -133,10 +133,7 @@ impl OverlayRenderer for MirrorRenderer {
     }
 
     fn frame_meta(&mut self) -> Option<FrameMeta> {
-        Some(FrameMeta {
-            extent: self.last_extent,
-            ..Default::default()
-        })
+        self.renderer.as_mut().and_then(ScreenRenderer::frame_meta)
     }
 }
 

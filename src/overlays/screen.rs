@@ -546,15 +546,15 @@ impl OverlayRenderer for ScreenRenderer {
         }
 
         if let Some(frame) = self.capture.receive() {
+            self.meta = Some(FrameMeta {
+                extent: extent_from_format(frame.format, &app.session.config),
+                transform: affine_from_format(&frame.format),
+                format: frame.image.format(),
+            });
             self.cur_frame = Some(frame);
         }
 
-        if let (Some(capture), None) = (self.cur_frame.as_ref(), self.meta.as_ref()) {
-            self.meta = Some(FrameMeta {
-                extent: extent_from_format(capture.format, &app.session.config),
-                transform: affine_from_format(&capture.format),
-                format: capture.image.format(),
-            });
+        if let (Some(capture), None) = (self.cur_frame.as_ref(), self.pipeline.as_ref()) {
             self.pipeline = Some({
                 let mut pipeline = ScreenPipeline::new(&capture.image.extent(), app)?;
                 let mut upload = app.graphics.create_uploads_command_buffer(
@@ -1028,10 +1028,6 @@ impl From<wl_output::Transform> for Transform {
 }
 
 fn extent_from_format(fmt: FrameFormat, config: &GeneralConfig) -> [u32; 3] {
-    extent_from_res(fmt.width, fmt.height, config)
-}
-
-fn extent_from_res(width: u32, height: u32, config: &GeneralConfig) -> [u32; 3] {
     // screens above a certain resolution will have severe aliasing
     let height_limit = if config.screen_render_down {
         u32::from(config.screen_max_height.min(2560))
@@ -1039,8 +1035,8 @@ fn extent_from_res(width: u32, height: u32, config: &GeneralConfig) -> [u32; 3] 
         2560
     };
 
-    let h = height.min(height_limit);
-    let w = (width as f32 / height as f32 * h as f32) as u32;
+    let h = fmt.height.min(height_limit);
+    let w = (fmt.width as f32 / fmt.height as f32 * h as f32) as u32;
     [w, h, 1]
 }
 
