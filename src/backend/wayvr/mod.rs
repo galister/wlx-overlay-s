@@ -74,9 +74,7 @@ pub enum WayVRTask {
     NewToplevel(ClientId, ToplevelSurface),
     DropToplevel(ClientId, ToplevelSurface),
     NewExternalProcess(ExternalProcessRequest),
-    DropOverlay(super::overlay::OverlayID),
     ProcessTerminationRequest(process::ProcessHandle),
-    Haptics(super::input::Haptics),
 }
 
 #[derive(Clone)]
@@ -87,6 +85,8 @@ pub enum WayVRSignal {
         packet_server::WvrDisplayWindowLayout,
     ),
     BroadcastStateChanged(packet_server::WvrStateChanged),
+    DropOverlay(super::overlay::OverlayID),
+    Haptics(super::input::Haptics),
 }
 
 pub enum BlitMethod {
@@ -124,7 +124,6 @@ pub struct WayVRState {
     pub tasks: SyncEventQueue<WayVRTask>,
     pub signals: SyncEventQueue<WayVRSignal>,
     ticks: u64,
-    pub pending_haptic: Option<super::input::Haptics>,
     cur_modifiers: u8,
 }
 
@@ -145,7 +144,6 @@ pub enum TickTask {
         packet_client::WvrDisplayCreateParams,
         Option<display::DisplayHandle>, /* existing handle? */
     ),
-    DropOverlay(super::overlay::OverlayID),
 }
 
 impl WayVR {
@@ -268,7 +266,6 @@ impl WayVR {
             dashboard_display: None,
             ticks: 0,
             tasks,
-            pending_haptic: None,
             signals: SyncEventQueue::new(),
             cur_modifiers: 0,
         };
@@ -276,15 +273,15 @@ impl WayVR {
         Ok(Self { state, ipc_server })
     }
 
-    pub fn tick_display(&mut self, display: display::DisplayHandle) -> anyhow::Result<bool> {
-        // millis since the start of wayvr
+    pub fn render_display(&mut self, display: display::DisplayHandle) -> anyhow::Result<bool> {
         let display = self
             .state
             .displays
             .get_mut(&display)
             .ok_or_else(|| anyhow::anyhow!(STR_INVALID_HANDLE_DISP))?;
 
-        if !display.wants_redraw {
+        /* Buffer warm-up is required, always two first calls of this function are always rendered */
+        if !display.wants_redraw && display.rendered_frame_count >= 2 {
             // Nothing changed, do not render
             return Ok(false);
         }
@@ -294,6 +291,7 @@ impl WayVR {
             return Ok(false);
         }
 
+        // millis since the start of wayvr
         let time_ms = get_millis() - self.state.time_start;
 
         display.tick_render(&mut self.state.manager.state.gles_renderer, time_ms)?;
@@ -362,9 +360,6 @@ impl WayVR {
                 WayVRTask::NewExternalProcess(req) => {
                     tasks.push(TickTask::NewExternalProcess(req));
                 }
-                WayVRTask::DropOverlay(overlay_id) => {
-                    tasks.push(TickTask::DropOverlay(overlay_id));
-                }
                 WayVRTask::NewToplevel(client_id, toplevel) => {
                     // Attach newly created toplevel surfaces to displays
                     for client in &self.state.manager.clients {
@@ -431,9 +426,6 @@ impl WayVR {
                     if let Some(process) = self.state.processes.get_mut(&process_handle) {
                         process.terminate();
                     }
-                }
-                WayVRTask::Haptics(haptics) => {
-                    self.state.pending_haptic = Some(haptics);
                 }
             }
         }
@@ -592,7 +584,7 @@ impl WayVRState {
         };
 
         if let Some(overlay_id) = display.overlay_id {
-            self.tasks.send(WayVRTask::DropOverlay(overlay_id));
+            self.signals.send(WayVRSignal::DropOverlay(overlay_id));
         } else {
             log::warn!("Destroying display without OverlayID set"); // This shouldn't happen, but log it anyways.
         }

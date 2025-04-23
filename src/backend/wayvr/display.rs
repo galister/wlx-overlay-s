@@ -60,6 +60,7 @@ pub struct Display {
     pub layout: packet_server::WvrDisplayWindowLayout,
     pub overlay_id: Option<OverlayID>,
     pub wants_redraw: bool,
+    pub rendered_frame_count: u32,
     pub primary: bool,
     pub wm: Rc<RefCell<window::WindowManager>>,
     pub displayed_windows: Vec<DisplayWindow>,
@@ -166,6 +167,7 @@ impl Display {
             tasks: SyncEventQueue::new(),
             visible: true,
             wants_redraw: true,
+            rendered_frame_count: 0,
             layout: packet_server::WvrDisplayWindowLayout::Tiling,
         })
     }
@@ -380,6 +382,8 @@ impl Display {
                     height: self.height,
                 }));
         }
+
+        self.rendered_frame_count += 1;
 
         Ok(())
     }
