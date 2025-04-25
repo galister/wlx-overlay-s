@@ -195,6 +195,7 @@ fn logging_init(args: &mut Args) {
         .unwrap_or_else(|| String::from("/tmp/wlx.log"));
 
     let file_writer = match std::fs::OpenOptions::new()
+        .create(true)
         .write(true)
         .truncate(true)
         .open(&log_file_path)
