@@ -250,7 +250,7 @@ fn key_press(
                 _ => 0,
             };
 
-            app.hid_provider.set_modifiers(data.modifiers);
+            set_modifiers(app, data.modifiers);
 
             send_key(app, *vk, true);
             *pressed = true;
