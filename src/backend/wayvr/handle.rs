@@ -48,7 +48,6 @@ macro_rules! gen_id {
         }
 
         //ThingVec
-        #[allow(dead_code, clippy::iter_not_returning_iterator)]
         impl $container_name {
             pub const fn new() -> Self {
                 Self {
@@ -57,25 +56,27 @@ macro_rules! gen_id {
                 }
             }
 
-            pub fn iter(&self, callback: &dyn Fn($handle_name, &$instance_name)) {
-                for (idx, opt_cell) in self.vec.iter().enumerate() {
-                    if let Some(cell) = opt_cell {
+            pub fn iter(&self) -> impl Iterator<Item = ($handle_name, &$instance_name)> {
+                self.vec.iter().enumerate().filter_map(|(idx, opt_cell)| {
+                    opt_cell.as_ref().map(|cell| {
                         let handle = $container_name::get_handle(&cell, idx);
-                        callback(handle, &cell.obj);
-                    }
-                }
+                        (handle, &cell.obj)
+                    })
+                })
             }
 
             pub fn iter_mut(
                 &mut self,
-                callback: &mut dyn FnMut($handle_name, &mut $instance_name),
-            ) {
-                for (idx, opt_cell) in self.vec.iter_mut().enumerate() {
-                    if let Some(cell) = opt_cell {
-                        let handle = $container_name::get_handle(&cell, idx);
-                        callback(handle, &mut cell.obj);
-                    }
-                }
+            ) -> impl Iterator<Item = ($handle_name, &mut $instance_name)> {
+                self.vec
+                    .iter_mut()
+                    .enumerate()
+                    .filter_map(|(idx, opt_cell)| {
+                        opt_cell.as_mut().map(|cell| {
+                            let handle = $container_name::get_handle(&cell, idx);
+                            (handle, &mut cell.obj)
+                        })
+                    })
             }
 
             pub const fn get_handle(cell: &$cell_name, idx: usize) -> $handle_name {
