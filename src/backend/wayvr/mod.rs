@@ -311,7 +311,7 @@ impl WayVR {
         });
 
         // Check for redraw events
-        self.state.displays.iter_mut(&mut |_, disp| {
+        for (_, disp) in self.state.displays.iter_mut() {
             for disp_window in &disp.displayed_windows {
                 if self
                     .state
@@ -322,17 +322,17 @@ impl WayVR {
                     disp.wants_redraw = true;
                 }
             }
-        });
+        }
 
         // Tick all child processes
         let mut to_remove: SmallVec<[(process::ProcessHandle, display::DisplayHandle); 2]> =
             SmallVec::new();
 
-        self.state.processes.iter_mut(&mut |handle, process| {
+        for (handle, process) in self.state.processes.iter_mut() {
             if !process.is_running() {
                 to_remove.push((handle, process.display_handle()));
             }
-        });
+        }
 
         for (p_handle, disp_handle) in &to_remove {
             self.state.processes.remove(p_handle);
@@ -345,9 +345,9 @@ impl WayVR {
             }
         }
 
-        self.state.displays.iter_mut(&mut |handle, display| {
+        for (handle, display) in self.state.displays.iter_mut() {
             display.tick(&self.state.config, &handle, &mut self.state.signals);
-        });
+        }
 
         if !to_remove.is_empty() {
             self.state.signals.send(WayVRSignal::BroadcastStateChanged(
@@ -591,11 +591,11 @@ impl WayVRState {
 
         let mut process_names = Vec::<String>::new();
 
-        self.processes.iter_mut(&mut |_, process| {
+        for (_, process) in self.processes.iter_mut() {
             if process.display_handle() == handle {
                 process_names.push(process.get_name());
             }
-        });
+        }
 
         if !display.displayed_windows.is_empty() || !process_names.is_empty() {
             anyhow::bail!(
