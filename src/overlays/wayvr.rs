@@ -953,7 +953,14 @@ where
             }
         }
         WayVRAction::ToggleDashboard => {
-            let wayvr = app.get_wayvr().unwrap(); /* safe */
+            let wayvr = match app.get_wayvr() {
+                Ok(wayvr) => wayvr,
+                Err(e) => {
+                    log::error!("WayVR Error: {e:?}");
+                    return;
+                }
+            };
+
             let mut wayvr = wayvr.borrow_mut();
 
             if let Err(e) = toggle_dashboard::<O>(app, overlays, &mut wayvr) {
