@@ -339,7 +339,7 @@ impl Display {
         let mut frame = renderer.render(size, Transform::Normal)?;
 
         let clear_color = if self.displayed_windows.is_empty() {
-            Color32F::new(1.0, 1.0, 1.0, 0.5)
+            Color32F::new(0.5, 0.5, 0.5, 0.5)
         } else {
             Color32F::new(0.0, 0.0, 0.0, 0.0)
         };
