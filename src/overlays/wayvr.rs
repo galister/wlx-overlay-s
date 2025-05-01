@@ -402,7 +402,7 @@ where
         .insert(disp_handle, overlay.state.id);
 
     if let Some(attach_to) = &conf_display.attach_to {
-        overlay.state.relative_to = attach_to.get_relative_to();
+        overlay.state.positioning = attach_to.get_positioning();
     }
 
     if let Some(rot) = &conf_display.rotation {

@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     backend::{
-        overlay::RelativeTo,
+        overlay::Positioning,
         task::{TaskContainer, TaskType},
         wayvr,
     },
@@ -33,13 +33,14 @@ pub enum AttachTo {
 }
 
 impl AttachTo {
-    pub const fn get_relative_to(&self) -> RelativeTo {
+    // TODO: adjustable lerp factor
+    pub const fn get_positioning(&self) -> Positioning {
         match self {
-            Self::None => RelativeTo::None,
-            Self::HandLeft => RelativeTo::Hand(0),
-            Self::HandRight => RelativeTo::Hand(1),
-            Self::Stage => RelativeTo::Stage,
-            Self::Head => RelativeTo::Head,
+            Self::None => Positioning::Floating,
+            Self::HandLeft => Positioning::FollowHand { hand: 0, lerp: 1.0 },
+            Self::HandRight => Positioning::FollowHand { hand: 1, lerp: 1.0 },
+            Self::Stage => Positioning::Static,
+            Self::Head => Positioning::FollowHead { lerp: 1.0 },
         }
     }
 

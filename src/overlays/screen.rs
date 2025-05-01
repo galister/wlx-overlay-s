@@ -50,7 +50,10 @@ use glam::{vec2, vec3a, Affine2, Affine3A, Quat, Vec2, Vec3};
 use crate::{
     backend::{
         input::{Haptics, InteractionHandler, PointerHit, PointerMode},
-        overlay::{FrameMeta, OverlayRenderer, OverlayState, ShouldRender, SplitOverlayBackend},
+        overlay::{
+            FrameMeta, OverlayRenderer, OverlayState, Positioning, ShouldRender,
+            SplitOverlayBackend,
+        },
     },
     config::{def_pw_tokens, GeneralConfig, PwTokenMap},
     graphics::{fourcc_to_vk, CommandBuffers, WlxGraphics, WlxPipeline, WlxUploadsBuffer},
@@ -718,7 +721,7 @@ fn create_screen_state(
         keyboard_focus: Some(KeyboardFocus::PhysicalScreen),
         grabbable: true,
         recenter: true,
-        anchored: true,
+        positioning: Positioning::Anchored,
         interactable: true,
         spawn_scale: 1.5 * session.config.desktop_view_scale,
         spawn_point: vec3a(0., 0.5, 0.),

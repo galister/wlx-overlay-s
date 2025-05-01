@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     backend::{
         common::OverlaySelector,
-        overlay::{OverlayBackend, OverlayState, RelativeTo, Z_ORDER_TOAST},
+        overlay::{OverlayBackend, OverlayState, Positioning, Z_ORDER_TOAST},
         task::TaskType,
     },
     gui::{canvas::builder::CanvasBuilder, color_parse},
@@ -125,18 +125,22 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
         .copied()
         .unwrap_or(DisplayMethod::Hide);
 
-    let (spawn_point, spawn_rotation, relative_to) = match current_method {
+    let (spawn_point, spawn_rotation, positioning) = match current_method {
         DisplayMethod::Hide => return None,
-        DisplayMethod::Center => (vec3a(0., -0.2, -0.5), Quat::IDENTITY, RelativeTo::Head),
+        DisplayMethod::Center => (
+            vec3a(0., -0.2, -0.5),
+            Quat::IDENTITY,
+            Positioning::FollowHead { lerp: 0.1 },
+        ),
         DisplayMethod::Watch => {
             let mut watch_pos = app.session.config.watch_pos + vec3a(-0.005, -0.05, 0.02);
             let mut watch_rot = app.session.config.watch_rot;
             let relative_to = match app.session.config.watch_hand {
-                LeftRight::Left => RelativeTo::Hand(0),
+                LeftRight::Left => Positioning::FollowHand { hand: 0, lerp: 1.0 },
                 LeftRight::Right => {
                     watch_pos.x = -watch_pos.x;
                     watch_rot = watch_rot * Quat::from_rotation_x(PI) * Quat::from_rotation_z(PI);
-                    RelativeTo::Hand(1)
+                    Positioning::FollowHand { hand: 1, lerp: 1.0 }
                 }
             };
             (watch_pos, watch_rot, relative_to)
@@ -202,7 +206,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
         spawn_rotation,
         spawn_point,
         z_order: Z_ORDER_TOAST,
-        relative_to,
+        positioning,
         ..Default::default()
     };
     let backend = Box::new(canvas.build());

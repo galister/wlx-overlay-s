@@ -1,7 +1,7 @@
 use glam::Vec3A;
 
 use crate::{
-    backend::overlay::{ui_transform, OverlayData, OverlayState, RelativeTo, Z_ORDER_WATCH},
+    backend::overlay::{ui_transform, OverlayData, OverlayState, Positioning, Z_ORDER_WATCH},
     config::{load_known_yaml, ConfigType},
     gui::{
         canvas::Canvas,
@@ -18,7 +18,10 @@ where
 {
     let config = load_known_yaml::<ModularUiConfig>(ConfigType::Watch);
 
-    let relative_to = RelativeTo::Hand(state.session.config.watch_hand as usize);
+    let positioning = Positioning::FollowHand {
+        hand: state.session.config.watch_hand as _,
+        lerp: 1.0,
+    };
 
     Ok(OverlayData {
         state: OverlayState {
@@ -30,7 +33,7 @@ where
             spawn_point: state.session.config.watch_pos,
             spawn_rotation: state.session.config.watch_rot,
             interaction_transform: ui_transform(config.size),
-            relative_to,
+            positioning,
             ..Default::default()
         },
         backend: Box::new(create_watch_canvas(Some(config), state)?),
