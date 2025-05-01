@@ -195,7 +195,7 @@ pub struct AppSession {
 impl AppSession {
     pub fn load() -> Self {
         let config_root_path = config_io::ConfigRoot::Generic.ensure_dir();
-        log::info!("Config root path: {config_root_path:?}");
+        log::info!("Config root path: {}", config_root_path.display());
         let config = GeneralConfig::load_from_disk();
 
         let mut toast_topics = IdMap::new();
