@@ -10,7 +10,7 @@ pub fn get_egl_context(
     display: &smithay_egl::EGLDisplay,
 ) -> anyhow::Result<smithay_egl::EGLContext> {
     let display_ptr = display.get_display_handle().handle;
-    debug_assert!(display_ptr == data.display.as_ptr());
+    debug_assert!(std::ptr::eq(display_ptr, data.display.as_ptr()));
     let config_ptr = data.config.as_ptr();
     let context_ptr = data.context.as_ptr();
     Ok(unsafe { smithay_egl::EGLContext::from_raw(display_ptr, config_ptr, context_ptr)? })

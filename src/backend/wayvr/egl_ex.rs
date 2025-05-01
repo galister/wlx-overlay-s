@@ -1,6 +1,19 @@
 #![allow(clippy::all)]
 
-//eglExportDMABUFImageMESA
+pub const EGL_PLATFORM_WAYLAND_EXT: khronos_egl::Enum = 0x31D8;
+
+// eglGetPlatformDisplayEXT
+// https://registry.khronos.org/EGL/extensions/EXT/EGL_EXT_platform_base.txt
+pub type PFNEGLGETPLATFORMDISPLAYEXTPROC = Option<
+    unsafe extern "C" fn(
+        platform: khronos_egl::Enum,
+        native_display: *mut std::ffi::c_void,
+        attrib_list: *mut khronos_egl::Enum,
+    ) -> khronos_egl::EGLDisplay,
+>;
+
+// eglExportDMABUFImageMESA
+// https://registry.khronos.org/EGL/extensions/MESA/EGL_MESA_image_dma_buf_export.txt
 pub type PFNEGLEXPORTDMABUFIMAGEMESAPROC = Option<
     unsafe extern "C" fn(
         dpy: khronos_egl::EGLDisplay,
@@ -11,7 +24,8 @@ pub type PFNEGLEXPORTDMABUFIMAGEMESAPROC = Option<
     ) -> khronos_egl::Boolean,
 >;
 
-//eglQueryDmaBufModifiersEXT
+// eglQueryDmaBufModifiersEXT
+// https://registry.khronos.org/EGL/extensions/EXT/EGL_EXT_image_dma_buf_import_modifiers.txt
 pub type PFNEGLQUERYDMABUFMODIFIERSEXTPROC = Option<
     unsafe extern "C" fn(
         dpy: khronos_egl::EGLDisplay,
@@ -23,7 +37,8 @@ pub type PFNEGLQUERYDMABUFMODIFIERSEXTPROC = Option<
     ) -> khronos_egl::Boolean,
 >;
 
-//eglQueryDmaBufFormatsEXT
+// eglQueryDmaBufFormatsEXT
+// https://registry.khronos.org/EGL/extensions/EXT/EGL_EXT_image_dma_buf_import_modifiers.txt
 pub type PFNEGLQUERYDMABUFFORMATSEXTPROC = Option<
     unsafe extern "C" fn(
         dpy: khronos_egl::EGLDisplay,

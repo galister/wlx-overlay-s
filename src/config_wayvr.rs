@@ -236,10 +236,10 @@ impl WayVRConfig {
 
 pub fn load_wayvr() -> WayVRConfig {
     let config_root_path = config_io::ConfigRoot::WayVR.ensure_dir();
-    log::info!("WayVR Config root path: {config_root_path:?}");
+    log::info!("WayVR Config root path: {}", config_root_path.display());
     log::info!(
-        "WayVR conf.d path: {:?}",
-        config_io::ConfigRoot::WayVR.get_conf_d_path()
+        "WayVR conf.d path: {}",
+        config_io::ConfigRoot::WayVR.get_conf_d_path().display()
     );
 
     load_config_with_conf_d::<WayVRConfig>("wayvr.yaml", config_io::ConfigRoot::WayVR)

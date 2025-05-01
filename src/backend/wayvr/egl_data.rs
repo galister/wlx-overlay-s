@@ -1,5 +1,10 @@
 use std::sync::Arc;
 
+use crate::backend::wayvr::egl_ex::{
+    PFNEGLGETPLATFORMDISPLAYEXTPROC, PFNEGLQUERYDMABUFFORMATSEXTPROC,
+    PFNEGLQUERYDMABUFMODIFIERSEXTPROC,
+};
+
 use super::egl_ex;
 use anyhow::anyhow;
 
@@ -45,84 +50,105 @@ pub enum RenderData {
     Software(Option<RenderSoftwarePixelsData>), // will be set if the next image data is available
 }
 
-impl EGLData {
-    pub fn load_func(&self, func_name: &str) -> anyhow::Result<extern "system" fn()> {
-        let raw_fn = self
-            .egl
-            .get_proc_address(func_name)
-            .ok_or_else(|| anyhow::anyhow!("Required EGL function {} not found", func_name))?;
-        Ok(raw_fn)
-    }
+fn load_egl_func(
+    egl: &khronos_egl::Instance<khronos_egl::Static>,
+    func_name: &str,
+) -> anyhow::Result<extern "system" fn()> {
+    let raw_fn = egl
+        .get_proc_address(func_name)
+        .ok_or_else(|| anyhow::anyhow!("Required EGL function {} not found", func_name))?;
+    Ok(raw_fn)
+}
 
-    pub fn new() -> anyhow::Result<Self> {
-        unsafe {
-            let egl = khronos_egl::Instance::new(khronos_egl::Static);
+fn get_disp(
+    egl: &khronos_egl::Instance<khronos_egl::Static>,
+) -> anyhow::Result<khronos_egl::Display> {
+    unsafe {
+        if let Ok(func) = load_egl_func(egl, "eglGetPlatformDisplayEXT") {
+            let egl_get_platform_display_ext =
+                bind_egl_function!(PFNEGLGETPLATFORMDISPLAYEXTPROC, &func);
 
-            let display = egl
-                .get_display(khronos_egl::DEFAULT_DISPLAY)
-                .ok_or_else(|| anyhow!(
-                    "eglGetDisplay failed. This shouldn't happen unless you don't have any display manager running. Cannot continue, check your EGL installation."
-                ))?;
+            let display_ext = egl_get_platform_display_ext(
+                egl_ex::EGL_PLATFORM_WAYLAND_EXT, // platform
+                std::ptr::null_mut(),             // void *native_display
+                std::ptr::null_mut(),             // EGLint *attrib_list
+            );
 
-            let (major, minor) = egl.initialize(display)?;
-            log::debug!("EGL version: {major}.{minor}");
-
-            let attrib_list = [
-                khronos_egl::RED_SIZE,
-                8,
-                khronos_egl::GREEN_SIZE,
-                8,
-                khronos_egl::BLUE_SIZE,
-                8,
-                khronos_egl::SURFACE_TYPE,
-                khronos_egl::WINDOW_BIT,
-                khronos_egl::RENDERABLE_TYPE,
-                khronos_egl::OPENGL_BIT,
-                khronos_egl::NONE,
-            ];
-
-            let config = egl
-                .choose_first_config(display, &attrib_list)?
-                .ok_or_else(|| anyhow!("Failed to get EGL config"))?;
-
-            egl.bind_api(khronos_egl::OPENGL_ES_API)?;
-
-            log::debug!("eglCreateContext");
-
-            // Require OpenGL ES 3.0
-            let context_attrib_list = [
-                khronos_egl::CONTEXT_MAJOR_VERSION,
-                3,
-                khronos_egl::CONTEXT_MINOR_VERSION,
-                0,
-                khronos_egl::NONE,
-            ];
-
-            let context = egl.create_context(display, config, None, &context_attrib_list)?;
-
-            log::debug!("eglMakeCurrent");
-
-            egl.make_current(display, None, None, Some(context))?;
-
-            Ok(Self {
-                egl,
-                display,
-                config,
-                context,
-            })
+            if display_ext.is_null() {
+                log::warn!("eglGetPlatformDisplayEXT failed, using eglGetDisplay instead");
+            } else {
+                return Ok(khronos_egl::Display::from_ptr(display_ext));
+            }
         }
+
+        egl
+            .get_display(khronos_egl::DEFAULT_DISPLAY)
+            .ok_or_else(|| anyhow!(
+                "Both eglGetPlatformDisplayEXT and eglGetDisplay failed. This shouldn't happen unless you don't have any display manager running. Cannot continue, check your EGL installation."
+            ))
+    }
+}
+
+impl EGLData {
+    pub fn new() -> anyhow::Result<Self> {
+        let egl = khronos_egl::Instance::new(khronos_egl::Static);
+        let display = get_disp(&egl)?;
+
+        let (major, minor) = egl.initialize(display)?;
+        log::debug!("EGL version: {major}.{minor}");
+
+        let attrib_list = [
+            khronos_egl::RED_SIZE,
+            8,
+            khronos_egl::GREEN_SIZE,
+            8,
+            khronos_egl::BLUE_SIZE,
+            8,
+            khronos_egl::SURFACE_TYPE,
+            khronos_egl::WINDOW_BIT,
+            khronos_egl::RENDERABLE_TYPE,
+            khronos_egl::OPENGL_BIT,
+            khronos_egl::NONE,
+        ];
+
+        let config = egl
+            .choose_first_config(display, &attrib_list)?
+            .ok_or_else(|| anyhow!("Failed to get EGL config"))?;
+
+        egl.bind_api(khronos_egl::OPENGL_ES_API)?;
+
+        log::debug!("eglCreateContext");
+
+        // Require OpenGL ES 3.0
+        let context_attrib_list = [
+            khronos_egl::CONTEXT_MAJOR_VERSION,
+            3,
+            khronos_egl::CONTEXT_MINOR_VERSION,
+            0,
+            khronos_egl::NONE,
+        ];
+
+        let context = egl.create_context(display, config, None, &context_attrib_list)?;
+
+        log::debug!("eglMakeCurrent");
+
+        egl.make_current(display, None, None, Some(context))?;
+
+        Ok(Self {
+            egl,
+            display,
+            config,
+            context,
+        })
     }
 
     fn query_dmabuf_mod_info(&self) -> anyhow::Result<DMAbufModifierInfo> {
         let target_fourcc = 0x3432_4258; //XB24
 
         unsafe {
-            use egl_ex::PFNEGLQUERYDMABUFFORMATSEXTPROC;
-            use egl_ex::PFNEGLQUERYDMABUFMODIFIERSEXTPROC;
-
             let egl_query_dmabuf_formats_ext = bind_egl_function!(
                 PFNEGLQUERYDMABUFFORMATSEXTPROC,
-                &self.load_func("eglQueryDmaBufFormatsEXT")?
+                &load_egl_func(&self.egl, "eglQueryDmaBufFormatsEXT")?
             );
 
             // Query format count
@@ -158,7 +184,7 @@ impl EGLData {
 
             let egl_query_dmabuf_modifiers_ext = bind_egl_function!(
                 PFNEGLQUERYDMABUFMODIFIERSEXTPROC,
-                &self.load_func("eglQueryDmaBufModifiersEXT")?
+                &load_egl_func(&self.egl, "eglQueryDmaBufModifiersEXT")?
             );
 
             let mut num_mods: khronos_egl::Int = 0;
@@ -229,7 +255,7 @@ impl EGLData {
         use egl_ex::PFNEGLEXPORTDMABUFIMAGEMESAPROC as FUNC;
         unsafe {
             let egl_export_dmabuf_image_mesa =
-                bind_egl_function!(FUNC, &self.load_func("eglExportDMABUFImageMESA")?);
+                bind_egl_function!(FUNC, &load_egl_func(&self.egl, "eglExportDMABUFImageMESA")?);
 
             let mut fds: [i32; 3] = [0; 3];
             let mut strides: [i32; 3] = [0; 3];

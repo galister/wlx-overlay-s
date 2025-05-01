@@ -49,8 +49,8 @@ impl dbus::message::SignalArgs for OrgFreedesktopDBusPropertiesPropertiesChanged
     const INTERFACE: &'static str = "org.freedesktop.DBus.Properties";
 }
 
-impl<'a, T: blocking::BlockingSender, C: ::std::ops::Deref<Target = T>> OrgFreedesktopDBusProperties
-    for blocking::Proxy<'a, C>
+impl<T: blocking::BlockingSender, C: ::std::ops::Deref<Target = T>> OrgFreedesktopDBusProperties
+    for blocking::Proxy<'_, C>
 {
     fn get<R0: for<'b> arg::Get<'b> + 'static>(
         &self,
@@ -92,8 +92,8 @@ pub trait OrgFreedesktopDBusIntrospectable {
     fn introspect(&self) -> Result<String, dbus::Error>;
 }
 
-impl<'a, T: blocking::BlockingSender, C: ::std::ops::Deref<Target = T>>
-    OrgFreedesktopDBusIntrospectable for blocking::Proxy<'a, C>
+impl<T: blocking::BlockingSender, C: ::std::ops::Deref<Target = T>> OrgFreedesktopDBusIntrospectable
+    for blocking::Proxy<'_, C>
 {
     fn introspect(&self) -> Result<String, dbus::Error> {
         self.method_call("org.freedesktop.DBus.Introspectable", "Introspect", ())
@@ -106,8 +106,8 @@ pub trait OrgFreedesktopDBusPeer {
     fn get_machine_id(&self) -> Result<String, dbus::Error>;
 }
 
-impl<'a, T: blocking::BlockingSender, C: ::std::ops::Deref<Target = T>> OrgFreedesktopDBusPeer
-    for blocking::Proxy<'a, C>
+impl<T: blocking::BlockingSender, C: ::std::ops::Deref<Target = T>> OrgFreedesktopDBusPeer
+    for blocking::Proxy<'_, C>
 {
     fn ping(&self) -> Result<(), dbus::Error> {
         self.method_call("org.freedesktop.DBus.Peer", "Ping", ())
@@ -248,8 +248,8 @@ impl dbus::message::SignalArgs for OrgFreedesktopNotificationsNotificationReplie
     const INTERFACE: &'static str = "org.freedesktop.Notifications";
 }
 
-impl<'a, T: blocking::BlockingSender, C: ::std::ops::Deref<Target = T>> OrgFreedesktopNotifications
-    for blocking::Proxy<'a, C>
+impl<T: blocking::BlockingSender, C: ::std::ops::Deref<Target = T>> OrgFreedesktopNotifications
+    for blocking::Proxy<'_, C>
 {
     fn set_noti_window_visibility(&self, value: bool) -> Result<(), dbus::Error> {
         self.method_call(
