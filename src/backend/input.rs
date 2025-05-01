@@ -6,8 +6,9 @@ use glam::{Affine3A, Vec2, Vec3, Vec3A, Vec3Swizzles};
 
 use smallvec::{smallvec, SmallVec};
 
-use crate::backend::common::{snap_upright, OverlaySelector};
-use crate::config::{AStrMapExt, GeneralConfig};
+use crate::backend::common::OverlaySelector;
+use crate::backend::overlay::Positioning;
+use crate::config::AStrMapExt;
 use crate::overlays::anchor::ANCHOR_NAME;
 use crate::state::{AppSession, AppState, KeyboardFocus};
 
@@ -334,17 +335,10 @@ fn interact_hand<O>(
 where
     O: Default,
 {
-    let hmd = app.input_state.hmd;
     let mut pointer = &mut app.input_state.pointers[idx];
     if let Some(grab_data) = pointer.interaction.grabbed {
         if let Some(grabbed) = overlays.mut_by_id(grab_data.grabbed_id) {
-            pointer.handle_grabbed(
-                grabbed,
-                &hmd,
-                &app.anchor,
-                &mut app.tasks,
-                &mut app.session.config,
-            );
+            Pointer::handle_grabbed(idx, grabbed, app);
         } else {
             log::warn!("Grabbed overlay {} does not exist", grab_data.grabbed_id.0);
             pointer.interaction.grabbed = None;
@@ -537,6 +531,13 @@ impl Pointer {
             old_curvature: overlay.state.curvature,
             grab_all: matches!(self.interaction.mode, PointerMode::Right),
         });
+        overlay.state.positioning = match overlay.state.positioning {
+            Positioning::FollowHand { hand, lerp } => Positioning::FollowHandPaused { hand, lerp },
+            Positioning::FollowHead { lerp } => Positioning::FollowHeadPaused { lerp },
+            x => x,
+        };
+
+        // Show anchor
         tasks.enqueue(TaskType::Overlay(
             OverlaySelector::Name(ANCHOR_NAME.clone()),
             Box::new(|app, o| {
@@ -553,25 +554,20 @@ impl Pointer {
         log::info!("Hand {}: grabbed {}", self.idx, overlay.state.name);
     }
 
-    fn handle_grabbed<O>(
-        &mut self,
-        overlay: &mut OverlayData<O>,
-        hmd: &Affine3A,
-        anchor: &Affine3A,
-        tasks: &mut TaskContainer,
-        config: &mut GeneralConfig,
-    ) where
+    fn handle_grabbed<O>(idx: usize, overlay: &mut OverlayData<O>, app: &mut AppState)
+    where
         O: Default,
     {
-        if self.now.grab {
-            if let Some(grab_data) = self.interaction.grabbed.as_mut() {
-                if self.now.click {
-                    self.interaction.mode = PointerMode::Special;
+        let mut pointer = &mut app.input_state.pointers[idx];
+        if pointer.now.grab {
+            if let Some(grab_data) = pointer.interaction.grabbed.as_mut() {
+                if pointer.now.click {
+                    pointer.interaction.mode = PointerMode::Special;
                     let cur_scale = overlay.state.transform.x_axis.length();
-                    if cur_scale < 0.1 && self.now.scroll_y > 0.0 {
+                    if cur_scale < 0.1 && pointer.now.scroll_y > 0.0 {
                         return;
                     }
-                    if cur_scale > 20. && self.now.scroll_y < 0.0 {
+                    if cur_scale > 20. && pointer.now.scroll_y < 0.0 {
                         return;
                     }
 
@@ -579,46 +575,62 @@ impl Pointer {
                         .state
                         .transform
                         .matrix3
-                        .mul_scalar(0.025f32.mul_add(-self.now.scroll_y, 1.0));
-                } else if config.allow_sliding && self.now.scroll_y.is_finite() {
-                    grab_data.offset.z -= self.now.scroll_y * 0.05;
+                        .mul_scalar(0.025f32.mul_add(-pointer.now.scroll_y, 1.0));
+                } else if app.session.config.allow_sliding && pointer.now.scroll_y.is_finite() {
+                    grab_data.offset.z -= pointer.now.scroll_y * 0.05;
                 }
-                overlay.state.transform.translation = self.pose.transform_point3a(grab_data.offset);
-                overlay.state.realign(hmd);
+                overlay.state.transform.translation =
+                    pointer.pose.transform_point3a(grab_data.offset);
+                overlay.state.realign(&app.input_state.hmd);
                 overlay.state.dirty = true;
             } else {
                 log::error!("Grabbed overlay {} does not exist", overlay.state.id.0);
-                self.interaction.grabbed = None;
+                pointer.interaction.grabbed = None;
             }
         } else {
-            if overlay.state.anchored {
-                overlay.state.saved_transform =
-                    Some(snap_upright(*anchor, Vec3A::Y).inverse() * overlay.state.transform);
+            overlay.state.positioning = match overlay.state.positioning {
+                Positioning::FollowHandPaused { hand, lerp } => {
+                    Positioning::FollowHand { hand, lerp }
+                }
+                Positioning::FollowHeadPaused { lerp } => Positioning::FollowHead { lerp },
+                x => x,
+            };
 
-                if let Some(grab_data) = self.interaction.grabbed.as_ref() {
+            let save_success = overlay.state.save_transform(app);
+
+            // re-borrow
+            pointer = &mut app.input_state.pointers[idx];
+
+            if save_success {
+                if let Some(grab_data) = pointer.interaction.grabbed.as_ref() {
                     if overlay.state.curvature != grab_data.old_curvature {
                         if let Some(val) = overlay.state.curvature {
-                            config.curve_values.arc_set(overlay.state.name.clone(), val);
+                            app.session
+                                .config
+                                .curve_values
+                                .arc_set(overlay.state.name.clone(), val);
                         } else {
                             let ref_name = overlay.state.name.as_ref();
-                            config.curve_values.arc_rm(ref_name);
+                            app.session.config.curve_values.arc_rm(ref_name);
                         }
                     }
                 }
-                config.transform_values.arc_set(
+                app.session.config.transform_values.arc_set(
                     overlay.state.name.clone(),
                     overlay.state.saved_transform.unwrap(), // safe
                 );
             }
 
-            self.interaction.grabbed = None;
-            tasks.enqueue(TaskType::Overlay(
+            pointer.interaction.grabbed = None;
+
+            // Hide anchor
+            app.tasks.enqueue(TaskType::Overlay(
                 OverlaySelector::Name(ANCHOR_NAME.clone()),
                 Box::new(|_app, o| {
                     o.want_visible = false;
                 }),
             ));
-            log::info!("Hand {}: dropped {}", self.idx, overlay.state.name);
+            log::info!("Hand {}: dropped {}", idx, overlay.state.name);
         }
     }
 

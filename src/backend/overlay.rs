@@ -17,7 +17,10 @@ use crate::{
     state::{AppState, KeyboardFocus},
 };
 
-use super::input::{DummyInteractionHandler, Haptics, InteractionHandler, PointerHit};
+use super::{
+    common::snap_upright,
+    input::{DummyInteractionHandler, Haptics, InteractionHandler, PointerHit},
+};
 
 static OVERLAY_AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(0);
 
@@ -44,7 +47,6 @@ pub struct OverlayState {
     pub grabbable: bool,
     pub interactable: bool,
     pub recenter: bool,
-    pub anchored: bool,
     pub keyboard_focus: Option<KeyboardFocus>,
     pub dirty: bool,
     pub alpha: f32,
@@ -54,7 +56,7 @@ pub struct OverlayState {
     pub spawn_point: Vec3A,
     pub spawn_rotation: Quat,
     pub saved_transform: Option<Affine3A>,
-    pub relative_to: RelativeTo,
+    pub positioning: Positioning,
     pub curvature: Option<f32>,
     pub interaction_transform: Affine2,
     pub birthframe: usize,
@@ -70,12 +72,11 @@ impl Default for OverlayState {
             grabbable: false,
             recenter: false,
             interactable: false,
-            anchored: false,
             keyboard_focus: None,
             dirty: true,
             alpha: 1.0,
             z_order: Z_ORDER_DEFAULT,
-            relative_to: RelativeTo::None,
+            positioning: Positioning::Floating,
             curvature: None,
             spawn_scale: 1.0,
             spawn_point: Vec3A::NEG_Z,
@@ -113,23 +114,6 @@ where
 }
 
 impl OverlayState {
-    pub const fn parent_transform(&self, app: &AppState) -> Option<Affine3A> {
-        match self.relative_to {
-            RelativeTo::Head => Some(app.input_state.hmd),
-            RelativeTo::Hand(idx) => Some(app.input_state.pointers[idx].pose),
-            _ => None,
-        }
-    }
-
-    const fn get_anchor(&self, app: &AppState) -> Affine3A {
-        if self.anchored {
-            app.anchor
-        } else {
-            // fake anchor that's always in front of HMD
-            app.input_state.hmd
-        }
-    }
-
     fn get_transform(&self) -> Affine3A {
         self.saved_transform.unwrap_or_else(|| {
             Affine3A::from_scale_rotation_translation(
@@ -141,26 +125,80 @@ impl OverlayState {
     }
 
     pub fn auto_movement(&mut self, app: &mut AppState) {
-        if let Some(parent) = self.parent_transform(app) {
-            self.transform = parent * self.get_transform();
-            self.dirty = true;
-        }
+        let (target_transform, lerp) = match self.positioning {
+            Positioning::FollowHead { lerp } => (app.input_state.hmd * self.get_transform(), lerp),
+            Positioning::FollowHand { hand, lerp } => (
+                app.input_state.pointers[hand].pose * self.get_transform(),
+                lerp,
+            ),
+            _ => return,
+        };
+
+        self.transform = match lerp {
+            1.0 => target_transform,
+            lerp => {
+                let scale = target_transform.matrix3.x_axis.length();
+
+                let rot_from = Quat::from_mat3a(&self.transform.matrix3.div_scalar(scale));
+                let rot_to = Quat::from_mat3a(&target_transform.matrix3.div_scalar(scale));
+
+                let rotation = rot_from.slerp(rot_to, lerp);
+                let translation = self
+                    .transform
+                    .translation
+                    .slerp(target_transform.translation, lerp);
+
+                Affine3A::from_scale_rotation_translation(
+                    Vec3::ONE * scale,
+                    rotation,
+                    translation.into(),
+                )
+            }
+        };
+
+        self.dirty = true;
     }
 
     pub fn reset(&mut self, app: &mut AppState, hard_reset: bool) {
+        let parent_transform = match self.positioning {
+            Positioning::Floating
+            | Positioning::FollowHead { .. }
+            | Positioning::FollowHeadPaused { .. } => app.input_state.hmd,
+            Positioning::FollowHand { hand, .. } | Positioning::FollowHandPaused { hand, .. } => {
+                app.input_state.pointers[hand].pose
+            }
+            Positioning::Anchored => app.anchor,
+            Positioning::Static => return,
+        };
+
         if hard_reset {
             self.saved_transform = None;
         }
 
-        self.transform = self
-            .parent_transform(app)
-            .unwrap_or_else(|| self.get_anchor(app))
-            * self.get_transform();
+        self.transform = parent_transform * self.get_transform();
 
         if self.grabbable && hard_reset {
             self.realign(&app.input_state.hmd);
         }
         self.dirty = true;
+    }
+
+    pub fn save_transform(&mut self, app: &mut AppState) -> bool {
+        let parent_transform = match self.positioning {
+            Positioning::Floating => snap_upright(app.input_state.hmd, Vec3A::Y),
+            Positioning::FollowHead { .. } | Positioning::FollowHeadPaused { .. } => {
+                app.input_state.hmd
+            }
+            Positioning::FollowHand { hand, .. } | Positioning::FollowHandPaused { hand, .. } => {
+                app.input_state.pointers[hand].pose
+            }
+            Positioning::Anchored => snap_upright(app.anchor, Vec3A::Y),
+            Positioning::Static => return false,
+        };
+
+        self.saved_transform = Some(parent_transform.inverse() * self.transform);
+
+        true
     }
 
     pub fn realign(&mut self, hmd: &Affine3A) {
@@ -218,7 +256,10 @@ where
                 .copied();
         }
 
-        if matches!(self.state.relative_to, RelativeTo::None) {
+        if matches!(
+            self.state.positioning,
+            Positioning::Floating | Positioning::Anchored
+        ) {
             let hard_reset;
             if let Some(transform) = app
                 .session
@@ -321,16 +362,22 @@ impl OverlayRenderer for FallbackRenderer {
 // Boilerplate and dummies
 
 #[derive(Clone, Copy, Debug, Default)]
-pub enum RelativeTo {
-    /// Stays in place unless rencentered
+pub enum Positioning {
+    /// Stays in place unless recentered, recenters relative to HMD
     #[default]
-    None,
-    /// Stays in position relative to HMD
-    Head,
-    /// Stays in position relative to hand
-    Hand(usize),
+    Floating,
+    /// Stays in place unless recentered, recenters relative to anchor
+    Anchored,
+    /// Following HMD
+    FollowHead { lerp: f32 },
+    /// Normally follows HMD, but paused due to interaction
+    FollowHeadPaused { lerp: f32 },
+    /// Following hand
+    FollowHand { hand: usize, lerp: f32 },
+    /// Normally follows hand, but paused due to interaction
+    FollowHandPaused { hand: usize, lerp: f32 },
     /// Stays in place, no recentering
-    Stage,
+    Static,
 }
 
 pub struct SplitOverlayBackend {

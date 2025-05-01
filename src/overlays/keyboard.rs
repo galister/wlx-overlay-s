@@ -9,7 +9,8 @@ use crate::{
     backend::{
         input::{InteractionHandler, PointerMode},
         overlay::{
-            FrameMeta, OverlayBackend, OverlayData, OverlayRenderer, OverlayState, ShouldRender,
+            FrameMeta, OverlayBackend, OverlayData, OverlayRenderer, OverlayState, Positioning,
+            ShouldRender,
         },
     },
     config::{self, ConfigType},
@@ -222,7 +223,7 @@ where
             name: KEYBOARD_NAME.into(),
             grabbable: true,
             recenter: true,
-            anchored: true,
+            positioning: Positioning::Anchored,
             interactable: true,
             spawn_scale: width,
             spawn_point: vec3a(0., -0.5, 0.),
