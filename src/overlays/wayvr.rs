@@ -270,11 +270,14 @@ fn toggle_dashboard<O>(
 where
     O: Default,
 {
-    let conf_dash = &app.session.wayvr_config.dashboard;
-
-    let Some(conf_dash) = &conf_dash else {
-        anyhow::bail!("Dashboard is not configured");
-    };
+    let conf_dash = app.session.wayvr_config.dashboard.clone().map_or_else(
+        || config_wayvr::WayVRDashboard {
+            exec: String::from("wayvr-dashboard"),
+            args: None,
+            env: None,
+        },
+        |conf| conf,
+    );
 
     if !wayvr.dashboard_executed && !executable_exists_in_path(&conf_dash.exec) {
         anyhow::bail!("Executable \"{}\" not found", &conf_dash.exec);
