@@ -249,7 +249,7 @@ fn get_or_create_display_by_name(
     Ok(disp_handle)
 }
 
-fn executable_exists_in_path(command: &str) -> bool {
+pub fn executable_exists_in_path(command: &str) -> bool {
     let Ok(path) = std::env::var("PATH") else {
         return false; // very unlikely to happen
     };
@@ -270,14 +270,9 @@ fn toggle_dashboard<O>(
 where
     O: Default,
 {
-    let conf_dash = app.session.wayvr_config.dashboard.clone().map_or_else(
-        || config_wayvr::WayVRDashboard {
-            exec: String::from("wayvr-dashboard"),
-            args: None,
-            env: None,
-        },
-        |conf| conf,
-    );
+    let Some(conf_dash) = app.session.wayvr_config.dashboard.clone() else {
+        anyhow::bail!("Dashboard is not configured");
+    };
 
     if !wayvr.dashboard_executed && !executable_exists_in_path(&conf_dash.exec) {
         anyhow::bail!("Executable \"{}\" not found", &conf_dash.exec);
@@ -317,10 +312,6 @@ where
         overlay.state.z_order = Z_ORDER_DASHBOARD;
         overlay.state.reset(app, true);
 
-        let Some(conf_dash) = &app.session.wayvr_config.dashboard else {
-            unreachable!(); /* safe, not possible to trigger */
-        };
-
         overlays.add(overlay);
 
         let args_vec = &conf_dash
@@ -342,6 +333,7 @@ where
             &conf_dash.exec,
             args_vec,
             env_vec,
+            conf_dash.working_dir.as_deref(),
             userdata,
         )?;
 
@@ -879,6 +871,7 @@ where
                 &app_entry.exec,
                 args_vec,
                 env_vec,
+                None,
                 HashMap::default(),
             )?;
 
