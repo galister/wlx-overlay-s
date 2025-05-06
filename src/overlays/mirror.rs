@@ -48,17 +48,6 @@ impl OverlayRenderer for MirrorRenderer {
         Ok(())
     }
     fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
-        self.renderer
-            .as_mut()
-            .map_or(Ok(ShouldRender::Unable), |r| r.should_render(app))
-    }
-    fn render(
-        &mut self,
-        app: &mut AppState,
-        tgt: Arc<ImageView>,
-        buf: &mut CommandBuffers,
-        alpha: f32,
-    ) -> anyhow::Result<bool> {
         if let Some(mut selector) = self.selector.take() {
             let maybe_pw_result = match selector
                 .poll_unpin(&mut Context::from_waker(futures::task::noop_waker_ref()))
@@ -66,7 +55,7 @@ impl OverlayRenderer for MirrorRenderer {
                 Poll::Ready(result) => result,
                 Poll::Pending => {
                     self.selector = Some(selector);
-                    return Ok(false);
+                    return Ok(ShouldRender::Unable);
                 }
             };
 
@@ -99,7 +88,17 @@ impl OverlayRenderer for MirrorRenderer {
                 }
             }
         }
-
+        self.renderer
+            .as_mut()
+            .map_or(Ok(ShouldRender::Unable), |r| r.should_render(app))
+    }
+    fn render(
+        &mut self,
+        app: &mut AppState,
+        tgt: Arc<ImageView>,
+        buf: &mut CommandBuffers,
+        alpha: f32,
+    ) -> anyhow::Result<bool> {
         let mut result = false;
         if let Some(renderer) = self.renderer.as_mut() {
             result = renderer.render(app, tgt, buf, alpha)?;
@@ -134,10 +133,7 @@ impl OverlayRenderer for MirrorRenderer {
     }
 
     fn frame_meta(&mut self) -> Option<FrameMeta> {
-        Some(FrameMeta {
-            extent: self.last_extent,
-            ..Default::default()
-        })
+        self.renderer.as_mut().and_then(ScreenRenderer::frame_meta)
     }
 }
 

@@ -14,7 +14,7 @@ use dmabuf::create_dmabuf_image;
 use smallvec::smallvec;
 
 #[cfg(feature = "openvr")]
-use vulkano::{device::physical::PhysicalDeviceType, instance::InstanceCreateFlags};
+use vulkano::instance::InstanceCreateFlags;
 
 #[cfg(feature = "openxr")]
 use {ash::vk, std::os::raw::c_void};
@@ -37,8 +37,9 @@ use vulkano::{
         allocator::StandardDescriptorSetAllocator, DescriptorSet, WriteDescriptorSet,
     },
     device::{
-        physical::PhysicalDevice, Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures,
-        Queue, QueueCreateInfo, QueueFlags,
+        physical::{PhysicalDevice, PhysicalDeviceType},
+        Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures, Queue, QueueCreateInfo,
+        QueueFlags,
     },
     format::Format,
     image::{
@@ -98,8 +99,6 @@ pub struct Vert2Uv {
     #[format(R32G32_SFLOAT)]
     pub in_uv: [f32; 2],
 }
-
-pub const SWAPCHAIN_FORMAT: Format = Format::R8G8B8A8_SRGB;
 
 pub const INDICES: [u16; 6] = [2, 1, 0, 1, 2, 3];
 
@@ -377,7 +376,7 @@ impl WlxGraphics {
             graphics_queue,
             transfer_queue,
             capture_queue,
-            native_format: Format::R8G8B8A8_UNORM,
+            native_format: Format::R8G8B8A8_SRGB,
             texture_filtering,
             memory_allocator,
             command_buffer_allocator,
@@ -529,7 +528,7 @@ impl WlxGraphics {
             transfer_queue,
             capture_queue,
             memory_allocator,
-            native_format: Format::R8G8B8A8_UNORM,
+            native_format: Format::R8G8B8A8_SRGB,
             texture_filtering,
             command_buffer_allocator,
             descriptor_set_allocator,
@@ -602,7 +601,7 @@ impl WlxGraphics {
                     None
                 }
             })
-            .filter_map(|(p, my_extensions)| 
+            .filter_map(|(p, my_extensions)|
                 try_all_queue_families(p.as_ref()).map(|families| (p, my_extensions, families))
             )
             .min_by_key(|(p, _, _)| prio_from_device_type(p)

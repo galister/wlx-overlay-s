@@ -35,6 +35,7 @@ use crate::{
 #[cfg(feature = "wayvr")]
 use crate::{gui::modular::button::WayVRAction, overlays::wayvr::wayvr_action};
 
+mod blocker;
 mod helpers;
 mod input;
 mod lines;
@@ -107,6 +108,8 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
             .map_err(|e| log::warn!("Will not use Monado playspace mover: {e}"))
             .ok()
     });
+
+    let mut blocker = monado.is_some().then(blocker::InputBlocker::new);
 
     let (session, mut frame_wait, mut frame_stream) = unsafe {
         let raw_session = helpers::create_overlay_session(
@@ -267,6 +270,14 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         app.input_state.pre_update();
         input_source.update(&xr_state, &mut app)?;
         app.input_state.post_update(&app.session);
+
+        if let Some(ref mut blocker) = blocker {
+            blocker.update(
+                &app,
+                watch_id,
+                monado.as_mut().unwrap(), // safe
+            );
+        }
 
         if app
             .input_state

@@ -23,7 +23,7 @@ use crate::{
         },
     },
     config_wayvr,
-    graphics::{CommandBuffers, WlxGraphics, WlxPipeline, SWAPCHAIN_FORMAT},
+    graphics::{CommandBuffers, WlxGraphics, WlxPipeline},
     gui::modular::button::{WayVRAction, WayVRDisplayClickAction},
     state::{self, AppState, KeyboardFocus},
 };
@@ -59,6 +59,7 @@ pub struct WayVRData {
     overlays_to_create: Vec<OverlayToCreate>,
     dashboard_executed: bool,
     pub data: WayVR,
+    pending_haptics: Option<input::Haptics>,
 }
 
 impl WayVRData {
@@ -68,6 +69,7 @@ impl WayVRData {
             data: WayVR::new(config)?,
             overlays_to_create: Vec::new(),
             dashboard_executed: false,
+            pending_haptics: None,
         })
     }
 
@@ -115,18 +117,21 @@ impl InteractionHandler for WayVRInteractionHandler {
     ) -> Option<input::Haptics> {
         let ctx = self.context.borrow();
 
-        let wayvr = &mut ctx.wayvr.borrow_mut().data;
+        let wayvr = &mut ctx.wayvr.borrow_mut();
 
-        if let Some(disp) = wayvr.state.displays.get(&ctx.display) {
+        if let Some(disp) = wayvr.data.state.displays.get(&ctx.display) {
             let pos = self.mouse_transform.transform_point2(hit.uv);
             let x = ((pos.x * f32::from(disp.width)) as i32).max(0);
             let y = ((pos.y * f32::from(disp.height)) as i32).max(0);
 
             let ctx = self.context.borrow();
-            wayvr.state.send_mouse_move(ctx.display, x as u32, y as u32);
+            wayvr
+                .data
+                .state
+                .send_mouse_move(ctx.display, x as u32, y as u32);
         }
 
-        wayvr.state.pending_haptic.take()
+        wayvr.pending_haptics.take()
     }
 
     fn on_left(&mut self, _app: &mut state::AppState, _pointer: usize) {
@@ -169,12 +174,17 @@ impl InteractionHandler for WayVRInteractionHandler {
     }
 }
 
+struct ImageData {
+    vk_image: Arc<vulkano::image::Image>,
+    vk_image_view: Arc<vulkano::image::view::ImageView>,
+}
+
 pub struct WayVRRenderer {
     pipeline: Arc<WlxPipeline>,
-    vk_image: Option<Arc<vulkano::image::Image>>,
-    vk_image_view: Option<Arc<vulkano::image::view::ImageView>>,
+    image: Option<ImageData>,
     context: Rc<RefCell<WayVRContext>>,
     graphics: Arc<WlxGraphics>,
+    resolution: [u16; 2],
 }
 
 impl WayVRRenderer {
@@ -182,6 +192,7 @@ impl WayVRRenderer {
         app: &state::AppState,
         wvr: Rc<RefCell<WayVRData>>,
         display: wayvr::display::DisplayHandle,
+        resolution: [u16; 2],
     ) -> anyhow::Result<Self> {
         let Ok(shaders) = app.graphics.shared_shaders.read() else {
             anyhow::bail!("Failed to lock shared shaders for reading");
@@ -190,16 +201,16 @@ impl WayVRRenderer {
         let pipeline = app.graphics.create_pipeline(
             shaders.get("vert_common").unwrap().clone(), // want panic
             shaders.get("frag_srgb").unwrap().clone(),   // want panic
-            SWAPCHAIN_FORMAT,
+            app.graphics.native_format,
             None,
         )?;
 
         Ok(Self {
             pipeline,
             context: Rc::new(RefCell::new(WayVRContext::new(wvr, display))),
-            vk_image: None,
-            vk_image_view: None,
             graphics: app.graphics.clone(),
+            image: None,
+            resolution,
         })
     }
 }
@@ -259,11 +270,14 @@ fn toggle_dashboard<O>(
 where
     O: Default,
 {
-    let conf_dash = &app.session.wayvr_config.dashboard;
-
-    let Some(conf_dash) = &conf_dash else {
-        anyhow::bail!("Dashboard is not configured");
-    };
+    let conf_dash = app.session.wayvr_config.dashboard.clone().map_or_else(
+        || config_wayvr::WayVRDashboard {
+            exec: String::from("wayvr-dashboard"),
+            args: None,
+            env: None,
+        },
+        |conf| conf,
+    );
 
     if !wayvr.dashboard_executed && !executable_exists_in_path(&conf_dash.exec) {
         anyhow::bail!("Executable \"{}\" not found", &conf_dash.exec);
@@ -391,7 +405,7 @@ where
         .insert(disp_handle, overlay.state.id);
 
     if let Some(attach_to) = &conf_display.attach_to {
-        overlay.state.relative_to = attach_to.get_relative_to();
+        overlay.state.positioning = attach_to.get_positioning();
     }
 
     if let Some(rot) = &conf_display.rotation {
@@ -470,6 +484,13 @@ where
                     .ipc_server
                     .broadcast(packet_server::PacketServer::WvrStateChanged(packet));
             }
+            wayvr::WayVRSignal::DropOverlay(overlay_id) => {
+                app.tasks
+                    .enqueue(TaskType::DropOverlay(OverlaySelector::Id(overlay_id)));
+            }
+            wayvr::WayVRSignal::Haptics(haptics) => {
+                wayvr.pending_haptics = Some(haptics);
+            }
         }
     }
 
@@ -547,10 +568,6 @@ where
                     },
                 });
             }
-            wayvr::TickTask::DropOverlay(overlay_id) => {
-                app.tasks
-                    .enqueue(TaskType::DropOverlay(OverlaySelector::Id(overlay_id)));
-            }
         }
     }
 
@@ -581,10 +598,10 @@ impl WayVRRenderer {
         upload.build_and_execute_now()?;
 
         //buffers.push(upload.build()?);
-
-        self.vk_image = Some(tex.clone());
-        self.vk_image_view = Some(ImageView::new_default(tex).unwrap());
-
+        self.image = Some(ImageData {
+            vk_image: tex.clone(),
+            vk_image_view: ImageView::new_default(tex).unwrap(),
+        });
         Ok(())
     }
 
@@ -592,7 +609,7 @@ impl WayVRRenderer {
         &mut self,
         data: &wayvr::egl_data::RenderDMAbufData,
     ) -> anyhow::Result<()> {
-        if self.vk_image.is_some() {
+        if self.image.is_some() {
             return Ok(()); // already initialized and automatically updated due to direct zero-copy textue access
         }
 
@@ -620,6 +637,7 @@ impl WayVRRenderer {
             },
             num_planes: 1,
             planes,
+            ..Default::default()
         };
 
         drop(wayvr);
@@ -639,8 +657,10 @@ impl WayVRRenderer {
             &data.mod_info.modifiers,
         )?;
 
-        self.vk_image = Some(tex.clone());
-        self.vk_image_view = Some(vulkano::image::view::ImageView::new_default(tex).unwrap());
+        self.image = Some(ImageData {
+            vk_image: tex.clone(),
+            vk_image_view: ImageView::new_default(tex).unwrap(),
+        });
         Ok(())
     }
 }
@@ -667,10 +687,10 @@ impl OverlayRenderer for WayVRRenderer {
     fn should_render(&mut self, _app: &mut AppState) -> anyhow::Result<ShouldRender> {
         let ctx = self.context.borrow();
         let mut wayvr = ctx.wayvr.borrow_mut();
-        let redrawn = match wayvr.data.tick_display(ctx.display) {
+        let redrawn = match wayvr.data.render_display(ctx.display) {
             Ok(r) => r,
             Err(e) => {
-                log::error!("tick_display failed: {e}");
+                log::error!("render_display failed: {e}");
                 return Ok(ShouldRender::Unable);
             }
         };
@@ -713,13 +733,15 @@ impl OverlayRenderer for WayVRRenderer {
             }
         }
 
-        let Some(view) = self.vk_image_view.as_ref() else {
+        let Some(image) = self.image.as_ref() else {
             return Ok(false);
         };
 
-        let set0 =
-            self.pipeline
-                .uniform_sampler(0, view.clone(), app.graphics.texture_filtering)?;
+        let set0 = self.pipeline.uniform_sampler(
+            0,
+            image.vk_image_view.clone(),
+            app.graphics.texture_filtering,
+        )?;
 
         let set1 = self.pipeline.uniform_buffer(1, vec![alpha])?;
 
@@ -739,17 +761,10 @@ impl OverlayRenderer for WayVRRenderer {
     }
 
     fn frame_meta(&mut self) -> Option<FrameMeta> {
-        let ctx = self.context.borrow();
-        let wayvr = ctx.wayvr.borrow_mut();
-        wayvr
-            .data
-            .state
-            .displays
-            .get(&ctx.display)
-            .map(|disp| FrameMeta {
-                extent: [disp.width as _, disp.height as _, 1],
-                ..Default::default()
-            })
+        Some(FrameMeta {
+            extent: [self.resolution[0] as u32, self.resolution[1] as u32, 1],
+            ..Default::default()
+        })
     }
 }
 
@@ -781,7 +796,7 @@ where
 
     let wayvr = app.get_wayvr()?;
 
-    let renderer = WayVRRenderer::new(app, wayvr, display_handle)?;
+    let renderer = WayVRRenderer::new(app, wayvr, display_handle, [display_width, display_height])?;
     let context = renderer.context.clone();
 
     let backend = Box::new(SplitOverlayBackend {
@@ -941,7 +956,14 @@ where
             }
         }
         WayVRAction::ToggleDashboard => {
-            let wayvr = app.get_wayvr().unwrap(); /* safe */
+            let wayvr = match app.get_wayvr() {
+                Ok(wayvr) => wayvr,
+                Err(e) => {
+                    log::error!("WayVR Error: {e:?}");
+                    return;
+                }
+            };
+
             let mut wayvr = wayvr.borrow_mut();
 
             if let Err(e) = toggle_dashboard::<O>(app, overlays, &mut wayvr) {

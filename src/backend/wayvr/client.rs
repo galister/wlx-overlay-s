@@ -211,7 +211,8 @@ impl WayVRCompositor {
 const STARTING_WAYLAND_ADDR_IDX: u32 = 20;
 
 fn export_display_number(display_num: u32) -> anyhow::Result<()> {
-    let mut path = std::env::var("XDG_RUNTIME_DIR").map_or_else(|_| PathBuf::from("/tmp"), PathBuf::from);
+    let mut path =
+        std::env::var("XDG_RUNTIME_DIR").map_or_else(|_| PathBuf::from("/tmp"), PathBuf::from);
     path.push("wayvr.disp");
     std::fs::write(path, format!("{display_num}\n"))?;
     Ok(())

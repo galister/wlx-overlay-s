@@ -13,7 +13,7 @@ use vulkano::command_buffer::CommandBufferUsage;
 
 use crate::{
     backend::openxr::helpers,
-    graphics::{CommandBuffers, WlxGraphics, WlxPipeline, SWAPCHAIN_FORMAT},
+    graphics::{CommandBuffers, WlxGraphics, WlxPipeline},
 };
 
 use super::{
@@ -49,7 +49,7 @@ impl LinePool {
         let pipeline = graphics.create_pipeline(
             shaders.get("vert_common").unwrap().clone(), // want panic
             shaders.get("frag_color").unwrap().clone(),  // want panic
-            SWAPCHAIN_FORMAT,
+            graphics.native_format,
             None,
         )?;
 

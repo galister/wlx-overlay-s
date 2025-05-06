@@ -92,6 +92,10 @@
     space_drag: {
       left: "/user/hand/left/input/menu/click",
     },
+    space_reset: {
+      double_click: true,
+      left: "/user/hand/left/input/menu/click",
+    },
     click_modifier_right: {
       left: "/user/hand/left/input/y/touch",
       right: "/user/hand/right/input/b/touch"
@@ -138,10 +142,10 @@
       left: "/user/hand/left/input/thumbstick/x",
       right: "/user/hand/right/input/thumbstick/x"
     },
-		toggle_dashboard: {
-			double_click: false,
-			right: "/user/hand/right/input/system/click",
-		},
+    toggle_dashboard: {
+      double_click: false,
+      right: "/user/hand/right/input/system/click",
+    },
     show_hide: {
       double_click: true,
       left: "/user/hand/left/input/b/click",
@@ -151,8 +155,8 @@
       // right trackpad is alt_click
     },
     space_reset: {
-      double_click: true,
       left: "/user/hand/left/input/trackpad/force",
+      double_click: true,
     },
     click_modifier_right: {
       left: "/user/hand/left/input/b/touch",
@@ -198,6 +202,10 @@
     space_drag: {
       right: "/user/hand/right/input/menu/click",
     },
+    space_reset: {
+      double_click: true,
+      right: "/user/hand/right/input/menu/click",
+    },
     haptic: {
       left: "/user/hand/left/output/haptic",
       right: "/user/hand/right/output/haptic"
@@ -237,6 +245,10 @@
     space_drag: {
       right: "/user/hand/right/input/menu/click",
     },
+    space_reset: {
+      double_click: true,
+      right: "/user/hand/right/input/menu/click",
+    },
   },
 
   // HP Reverb G2 controller
@@ -270,6 +282,10 @@
       left: "/user/hand/left/input/menu/click",
     },
     space_drag: {
+      right: "/user/hand/right/input/menu/click",
+    },
+    space_reset: {
+      double_click: true,
       right: "/user/hand/right/input/menu/click",
     },
   },
