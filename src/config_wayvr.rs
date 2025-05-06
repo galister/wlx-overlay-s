@@ -117,7 +117,7 @@ fn def_blit_method() -> String {
     String::from("dmabuf")
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct WayVRDashboard {
     pub exec: String,
     pub args: Option<String>,
