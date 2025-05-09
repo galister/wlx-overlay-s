@@ -1,4 +1,4 @@
-name: Build AppImage
+name: Build AppImage (with WayVR Dashboard)
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
       - 'staging'
 
 env:
-  APPDIR: WlxOverlay-S.AppDir
+  APPDIR: WlxOverlay-S-Full.AppDir
   CARGO_TERM_COLOR: always
   SCCACHE_GHA_ENABLED: "true"
   RUSTC_WRAPPER: "sccache"
@@ -25,11 +25,14 @@ jobs:
       - name: Cargo Build
         run: |
           .github/workflows/scripts/appimage_build_wlx.sh
+      - name: Build WayVR Dashboard
+        run: |
+          .github/workflows/scripts/appimage_build_wayvr_dashboard.sh
       - name: Package AppImage
         run: |
-          .github/workflows/scripts/appimage_package.sh
+          .github/workflows/scripts/appimage_package_full.sh
       - name: Upload AppImage
         uses: actions/upload-artifact@v4
         with:
-          name: WlxOverlay-S-${{ github.ref_name }}-x86_64.AppImage
-          path: ./WlxOverlay-S-x86_64.AppImage
+          name: WlxOverlay-S-Full-${{ github.ref_name }}-x86_64.AppImage
+          path: ./WlxOverlay-S-Full-x86_64.AppImage
