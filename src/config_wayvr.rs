@@ -19,7 +19,7 @@ use crate::{
     config::load_config_with_conf_d,
     config_io,
     gui::modular::button::WayVRAction,
-    overlays::wayvr::WayVRData,
+    overlays::wayvr::{executable_exists_in_path, WayVRData},
 };
 
 // Flat version of RelativeTo
@@ -120,6 +120,7 @@ fn def_blit_method() -> String {
 #[derive(Clone, Deserialize, Serialize)]
 pub struct WayVRDashboard {
     pub exec: String,
+    pub working_dir: Option<String>,
     pub args: Option<String>,
     pub env: Option<Vec<String>>,
 }
@@ -234,6 +235,21 @@ impl WayVRConfig {
     }
 }
 
+fn get_default_dashboard_exec() -> (
+    String,         /* exec path */
+    Option<String>, /* working directory */
+) {
+    if let Ok(appdir) = std::env::var("APPDIR") {
+        // Running in AppImage
+        let embedded_path = format!("{appdir}/usr/bin/wayvr-dashboard");
+        if executable_exists_in_path(&embedded_path) {
+            log::info!("Using WayVR Dashboard from AppDir: {embedded_path}");
+            return (embedded_path, Some(format!("{appdir}/usr")));
+        }
+    }
+    (String::from("wayvr-dashboard"), None)
+}
+
 pub fn load_wayvr() -> WayVRConfig {
     let config_root_path = config_io::ConfigRoot::WayVR.ensure_dir();
     log::info!("WayVR Config root path: {}", config_root_path.display());
@@ -242,5 +258,19 @@ pub fn load_wayvr() -> WayVRConfig {
         config_io::ConfigRoot::WayVR.get_conf_d_path().display()
     );
 
-    load_config_with_conf_d::<WayVRConfig>("wayvr.yaml", config_io::ConfigRoot::WayVR)
+    let mut conf =
+        load_config_with_conf_d::<WayVRConfig>("wayvr.yaml", config_io::ConfigRoot::WayVR);
+
+    if conf.dashboard.is_none() {
+        let (exec, working_dir) = get_default_dashboard_exec();
+
+        conf.dashboard = Some(WayVRDashboard {
+            args: None,
+            env: None,
+            exec,
+            working_dir,
+        });
+    }
+
+    conf
 }

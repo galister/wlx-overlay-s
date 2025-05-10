@@ -556,6 +556,7 @@ impl Display {
         exec_path: &str,
         args: &[&str],
         env: &[(&str, &str)],
+        working_dir: Option<&str>,
     ) -> anyhow::Result<SpawnProcessResult> {
         log::info!("Spawning subprocess with exec path \"{exec_path}\"");
 
@@ -564,6 +565,9 @@ impl Display {
         let mut cmd = std::process::Command::new(exec_path);
         self.configure_env(&mut cmd, auth_key.as_str());
         cmd.args(args);
+        if let Some(working_dir) = working_dir {
+            cmd.current_dir(working_dir);
+        }
 
         for e in env {
             cmd.env(e.0, e.1);

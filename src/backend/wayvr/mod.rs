@@ -684,6 +684,7 @@ impl WayVRState {
         exec_path: &str,
         args: &[&str],
         env: &[(&str, &str)],
+        working_dir: Option<&str>,
         userdata: HashMap<String, String>,
     ) -> anyhow::Result<process::ProcessHandle> {
         let display = self
@@ -691,7 +692,7 @@ impl WayVRState {
             .get_mut(&display_handle)
             .ok_or_else(|| anyhow::anyhow!(STR_INVALID_HANDLE_DISP))?;
 
-        let res = display.spawn_process(exec_path, args, env)?;
+        let res = display.spawn_process(exec_path, args, env, working_dir)?;
 
         let handle = self
             .processes
@@ -702,6 +703,7 @@ impl WayVRState {
                 exec_path: String::from(exec_path),
                 userdata,
                 args: args.iter().map(|x| String::from(*x)).collect(),
+                working_dir: working_dir.map(String::from),
                 env: env
                     .iter()
                     .map(|(a, b)| (String::from(*a), String::from(*b)))
