@@ -137,7 +137,7 @@ fn auto_run(running: Arc<AtomicBool>, args: Args) {
             Ok(()) => return,
             Err(BackendError::NotSupported) => (),
             Err(e) => {
-                log::error!("{e}");
+                log::error!("{e:?}");
                 return;
             }
         }
@@ -150,7 +150,7 @@ fn auto_run(running: Arc<AtomicBool>, args: Args) {
             Ok(()) => return,
             Err(BackendError::NotSupported) => (),
             Err(e) => {
-                log::error!("{e}");
+                log::error!("{e:?}");
                 return;
             }
         }
