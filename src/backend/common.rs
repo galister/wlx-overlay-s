@@ -67,18 +67,20 @@ where
 
         app.screens.clear();
         let data = if let Some(wl) = wl.as_mut() {
+            log::info!("Wayland detected.");
             keymap = get_keymap_wl()
                 .map_err(|f| log::warn!("Could not load keyboard layout: {f}"))
                 .ok();
             crate::overlays::screen::create_screens_wayland(wl, app)
         } else {
+            log::info!("Wayland not detected, assuming X11.");
             keymap = get_keymap_x11()
                 .map_err(|f| log::warn!("Could not load keyboard layout: {f}"))
                 .ok();
             match crate::overlays::screen::create_screens_x11pw(app) {
                 Ok(data) => data,
                 Err(e) => {
-                    log::info!("Will not use PipeWire capture: {e:?}");
+                    log::info!("Will not use X11 PipeWire capture: {e:?}");
                     crate::overlays::screen::create_screens_xshm(app)?
                 }
             }
