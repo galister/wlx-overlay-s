@@ -1,6 +1,6 @@
 use anyhow::{bail, ensure};
 use glam::{Affine3A, Quat, Vec3, Vec3A};
-use openxr::{self as xr, SessionCreateFlags};
+use openxr::{self as xr, SessionCreateFlags, Version};
 use xr::OverlaySessionCreateFlagsEXTX;
 
 pub(super) fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
@@ -54,6 +54,7 @@ pub(super) fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
 
     let Ok(xr_instance) = entry.create_instance(
         &xr::ApplicationInfo {
+            api_version: Version::new(1, 1, 37),
             application_name: "wlx-overlay-s",
             application_version: 0,
             engine_name: "wlx-overlay-s",
