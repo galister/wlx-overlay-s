@@ -299,10 +299,9 @@ impl OpenXrInputSource {
 
 impl OpenXrHand {
     pub(super) fn new(xr: &XrState, source: OpenXrHandSource) -> Result<Self, xr::sys::Result> {
-        let space =
-            source
-                .pose
-                .create_space(xr.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)?;
+        let space = source
+            .pose
+            .create_space(&xr.session, xr::Path::NULL, xr::Posef::IDENTITY)?;
 
         Ok(Self { source, space })
     }
