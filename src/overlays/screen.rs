@@ -42,10 +42,10 @@ use {
     },
 };
 
-#[cfg(feature = "x11")]
-use wlx_capture::xshm::{XshmCapture, XshmScreen};
 #[cfg(feature = "nvfbc")]
 use wlx_capture::nvfbc::NVFBCCapture;
+#[cfg(feature = "x11")]
+use wlx_capture::xshm::{XshmCapture, XshmScreen};
 
 use glam::{vec2, vec3a, Affine2, Affine3A, Quat, Vec2, Vec3};
 
@@ -368,6 +368,11 @@ impl ScreenRenderer {
             new_wlx_capture!(app.graphics.capture_queue, XshmCapture::new(screen.clone()));
         Self::new_raw(screen.name.clone(), capture)
     }
+    #[cfg(feature = "nvfbc")]
+    pub fn new_nvfbc(screen: Arc<XshmScreen>, app: &AppState) -> Self {
+        let capture = new_wlx_capture!(app.graphics.capture_queue, NVFBCCapture::new()); // TODO: Filter by screen
+        Self::new_raw(screen.name.clone(), capture)
+    }
 }
 
 #[derive(Clone)]
@@ -501,20 +506,6 @@ fn receive_callback(me: &WlxCaptureIn, frame: wlx_frame::WlxFrame) -> Option<Wlx
                 format: frame.format,
                 mouse: frame.mouse,
             })
-        }
-    }
-    
-    #[cfg(feature = "nvfbc")]
-    pub fn new_nvfbc(screen: Arc<XshmScreen>) -> ScreenRenderer {
-        let capture = NVFBCCapture::new(); // TODO: Filter by screen
-
-        ScreenRenderer {
-            name: screen.name.clone(),
-            capture: Box::new(capture),
-            pipeline: None,
-            last_view: None,
-            transform: Affine3A::IDENTITY,
-            extent: None,
         }
     }
 }
@@ -884,7 +875,6 @@ pub fn create_screens_nvfbc(_app: &mut AppState) -> anyhow::Result<ScreenCreateD
     anyhow::bail!("NVFBC support not enabled")
 }
 
-
 #[cfg(all(feature = "x11", feature = "pipewire"))]
 pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateData> {
     use wlx_capture::xshm::xshm_get_monitors;
@@ -1033,14 +1023,14 @@ pub fn create_screens_xshm(app: &mut AppState) -> anyhow::Result<ScreenCreateDat
 
 #[cfg(all(feature = "x11", feature = "nvfbc"))]
 pub fn create_screens_nvfbc(app: &mut AppState) -> anyhow::Result<ScreenCreateData> {
-    use anyhow::bail;
+    use wlx_capture::xshm::xshm_get_monitors;
 
     let mut extent = vec2(0., 0.);
 
-    let monitors = match XshmCapture::get_monitors() {
+    let monitors = match xshm_get_monitors() {
         Ok(m) => m,
         Err(e) => {
-            bail!(e.to_string());
+            anyhow::bail!(e.to_string());
         }
     };
 
@@ -1052,7 +1042,7 @@ pub fn create_screens_nvfbc(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
 
             let size = (s.monitor.width(), s.monitor.height());
             let pos = (s.monitor.x(), s.monitor.y());
-            let renderer = ScreenRenderer::new_nvfbc(s.clone());
+            let renderer = ScreenRenderer::new_nvfbc(s.clone(), app);
 
             log::info!(
                 "{}: Init NVFBC screen of res {:?} at {:?}",
@@ -1088,7 +1078,6 @@ pub fn create_screens_nvfbc(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
 
     Ok(ScreenCreateData { screens })
 }
-
 
 #[allow(unused)]
 #[derive(Clone, Copy)]
