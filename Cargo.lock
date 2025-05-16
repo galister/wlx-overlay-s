@@ -3010,7 +3010,7 @@ checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 [[package]]
 name = "openxr"
 version = "0.19.0"
-source = "git+https://github.com/Ralith/openxrs?rev=6c7747aee678048642dc16aad8bab3d6961dce03#6c7747aee678048642dc16aad8bab3d6961dce03"
+source = "git+https://github.com/Ralith/openxrs?rev=d0afdd3365bc1e14de28f6a3a21f457e788a702e#d0afdd3365bc1e14de28f6a3a21f457e788a702e"
 dependencies = [
  "libc",
  "libloading",
@@ -3021,7 +3021,7 @@ dependencies = [
 [[package]]
 name = "openxr-sys"
 version = "0.11.0"
-source = "git+https://github.com/Ralith/openxrs?rev=6c7747aee678048642dc16aad8bab3d6961dce03#6c7747aee678048642dc16aad8bab3d6961dce03"
+source = "git+https://github.com/Ralith/openxrs?rev=d0afdd3365bc1e14de28f6a3a21f457e788a702e#d0afdd3365bc1e14de28f6a3a21f457e788a702e"
 dependencies = [
  "cmake",
  "libc",
