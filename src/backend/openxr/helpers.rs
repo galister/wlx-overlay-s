@@ -37,11 +37,18 @@ pub(super) fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
     } else {
         log::warn!("Missing EXT_composition_layer_cylinder extension.");
     }
-
     if available_extensions.khr_composition_layer_equirect2 {
         enabled_extensions.khr_composition_layer_equirect2 = true;
     } else {
         log::warn!("Missing EXT_composition_layer_equirect2 extension.");
+    }
+    if available_extensions
+        .other
+        .contains(&"XR_MNDX_system_buttons".to_owned())
+    {
+        enabled_extensions
+            .other
+            .push("XR_MNDX_system_buttons".to_owned());
     }
 
     //#[cfg(not(debug_assertions))]
