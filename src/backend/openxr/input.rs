@@ -453,7 +453,7 @@ fn is_bool(maybe_type_str: Option<&String>) -> bool {
         .unwrap() // want panic
         .split('/')
         .next_back()
-        .is_some_and(|last| matches!(last, "click" | "touch"))
+        .is_some_and(|last| matches!(last, "click" | "touch") || last.starts_with("dpad_"))
 }
 
 macro_rules! add_custom {

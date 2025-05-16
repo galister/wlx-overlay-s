@@ -249,6 +249,14 @@
       double_click: true,
       right: "/user/hand/right/input/menu/click",
     },
+    click_modifier_right: {
+      left: "/user/hand/left/input/trackpad/dpad_up",
+      right: "/user/hand/right/input/trackpad/dpad_up"
+    },
+    click_modifier_middle: {
+      left: "/user/hand/left/input/trackpad/dpad_down",
+      right: "/user/hand/right/input/trackpad/dpad_down"
+    },
   },
 
   // HP Reverb G2 controller
