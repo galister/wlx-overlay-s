@@ -143,6 +143,9 @@
                "inputs" : {
                   "scroll" : {
                      "output" : "/actions/default/in/scroll"
+                  },
+                  "click" : {
+                    "output" : "/actions/default/in/spacereset"
                   }
                },
                "mode" : "scroll",
