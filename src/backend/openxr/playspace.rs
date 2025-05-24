@@ -16,6 +16,7 @@ struct MoverData<T> {
 
 pub(super) struct PlayspaceMover {
     last_transform: Affine3A,
+    floor_offset: f32,
     drag: Option<MoverData<Vec3A>>,
     rotate: Option<MoverData<Quat>>,
 }
@@ -36,6 +37,7 @@ impl PlayspaceMover {
 
         Ok(Self {
             last_transform,
+            floor_offset: 0.0,
 
             drag: None,
             rotate: None,
@@ -89,7 +91,7 @@ impl PlayspaceMover {
             data.pose *= space_transform;
             data.hand_pose = new_hand;
 
-            apply_offset(data.pose, monado);
+            self.apply_offset(data.pose, monado);
             self.rotate = Some(data);
         } else {
             for (i, pointer) in state.input_state.pointers.iter().enumerate() {
@@ -138,7 +140,7 @@ impl PlayspaceMover {
             data.pose.translation += relative_pos;
             data.hand_pose = new_hand;
 
-            apply_offset(data.pose, monado);
+            self.apply_offset(data.pose, monado);
             self.drag = Some(data);
         } else {
             for (i, pointer) in state.input_state.pointers.iter().enumerate() {
@@ -169,7 +171,7 @@ impl PlayspaceMover {
         }
 
         self.last_transform = Affine3A::IDENTITY;
-        apply_offset(self.last_transform, monado);
+        self.apply_offset(self.last_transform, monado);
     }
 
     pub fn fix_floor(&mut self, input: &InputState, monado: &mut Monado) {
@@ -185,15 +187,15 @@ impl PlayspaceMover {
         let y1 = input.pointers[0].raw_pose.translation.y;
         let y2 = input.pointers[1].raw_pose.translation.y;
         let delta = y1.min(y2) - 0.03;
-        self.last_transform.translation.y += delta;
-        apply_offset(self.last_transform, monado);
+        self.floor_offset = delta;
+        self.apply_offset(self.last_transform, monado);
     }
-}
 
-fn apply_offset(transform: Affine3A, monado: &mut Monado) {
-    let pose = Pose {
-        position: transform.translation.into(),
-        orientation: Quat::from_affine3(&transform).into(),
-    };
-    let _ = monado.set_reference_space_offset(ReferenceSpaceType::Stage, pose);
+    fn apply_offset(&self, transform: Affine3A, monado: &mut Monado) {
+        let pose = Pose {
+            position: (transform.translation + Vec3A::new(0.0, self.floor_offset, 0.0)).into(),
+            orientation: Quat::from_affine3(&transform).into(),
+        };
+        let _ = monado.set_reference_space_offset(ReferenceSpaceType::Stage, pose);
+    }
 }
