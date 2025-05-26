@@ -1,6 +1,6 @@
 use anyhow::{bail, ensure};
 use glam::{Affine3A, Quat, Vec3, Vec3A};
-use openxr::{self as xr, SessionCreateFlags};
+use openxr::{self as xr, SessionCreateFlags, Version};
 use xr::OverlaySessionCreateFlagsEXTX;
 
 pub(super) fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
@@ -37,11 +37,18 @@ pub(super) fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
     } else {
         log::warn!("Missing EXT_composition_layer_cylinder extension.");
     }
-
     if available_extensions.khr_composition_layer_equirect2 {
         enabled_extensions.khr_composition_layer_equirect2 = true;
     } else {
         log::warn!("Missing EXT_composition_layer_equirect2 extension.");
+    }
+    if available_extensions
+        .other
+        .contains(&"XR_MNDX_system_buttons".to_owned())
+    {
+        enabled_extensions
+            .other
+            .push("XR_MNDX_system_buttons".to_owned());
     }
 
     //#[cfg(not(debug_assertions))]
@@ -54,6 +61,7 @@ pub(super) fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
 
     let Ok(xr_instance) = entry.create_instance(
         &xr::ApplicationInfo {
+            api_version: Version::new(1, 1, 37),
             application_name: "wlx-overlay-s",
             application_version: 0,
             engine_name: "wlx-overlay-s",

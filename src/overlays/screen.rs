@@ -50,7 +50,10 @@ use glam::{vec2, vec3a, Affine2, Affine3A, Quat, Vec2, Vec3};
 use crate::{
     backend::{
         input::{Haptics, InteractionHandler, PointerHit, PointerMode},
-        overlay::{FrameMeta, OverlayRenderer, OverlayState, ShouldRender, SplitOverlayBackend},
+        overlay::{
+            FrameMeta, OverlayRenderer, OverlayState, Positioning, ShouldRender,
+            SplitOverlayBackend,
+        },
     },
     config::{def_pw_tokens, GeneralConfig, PwTokenMap},
     graphics::{fourcc_to_vk, CommandBuffers, WlxGraphics, WlxPipeline, WlxUploadsBuffer},
@@ -546,15 +549,15 @@ impl OverlayRenderer for ScreenRenderer {
         }
 
         if let Some(frame) = self.capture.receive() {
+            self.meta = Some(FrameMeta {
+                extent: extent_from_format(frame.format, &app.session.config),
+                transform: affine_from_format(&frame.format),
+                format: frame.image.format(),
+            });
             self.cur_frame = Some(frame);
         }
 
-        if let (Some(capture), None) = (self.cur_frame.as_ref(), self.meta.as_ref()) {
-            self.meta = Some(FrameMeta {
-                extent: extent_from_format(capture.format, &app.session.config),
-                transform: affine_from_format(&capture.format),
-                format: capture.image.format(),
-            });
+        if let (Some(capture), None) = (self.cur_frame.as_ref(), self.pipeline.as_ref()) {
             self.pipeline = Some({
                 let mut pipeline = ScreenPipeline::new(&capture.image.extent(), app)?;
                 let mut upload = app.graphics.create_uploads_command_buffer(
@@ -718,7 +721,7 @@ fn create_screen_state(
         keyboard_focus: Some(KeyboardFocus::PhysicalScreen),
         grabbable: true,
         recenter: true,
-        anchored: true,
+        positioning: Positioning::Anchored,
         interactable: true,
         spawn_scale: 1.5 * session.config.desktop_view_scale,
         spawn_point: vec3a(0., 0.5, 0.),
@@ -803,9 +806,16 @@ pub fn create_screens_wayland(wl: &mut WlxClientAlias, app: &mut AppState) -> Sc
             let logical_size = vec2(output.logical_size.0 as f32, output.logical_size.1 as f32);
             let transform = output.transform.into();
             let interaction = create_screen_interaction(logical_pos, logical_size, transform);
+
+            let logical_size_landscape = if output.size.0 > output.size.1 {
+                output.logical_size
+            } else {
+                (output.logical_size.1, output.logical_size.0)
+            };
+
             let state = create_screen_state(
                 output.name.clone(),
-                output.logical_size,
+                logical_size_landscape,
                 transform,
                 &app.session,
             );
@@ -1028,10 +1038,6 @@ impl From<wl_output::Transform> for Transform {
 }
 
 fn extent_from_format(fmt: FrameFormat, config: &GeneralConfig) -> [u32; 3] {
-    extent_from_res(fmt.width, fmt.height, config)
-}
-
-fn extent_from_res(width: u32, height: u32, config: &GeneralConfig) -> [u32; 3] {
     // screens above a certain resolution will have severe aliasing
     let height_limit = if config.screen_render_down {
         u32::from(config.screen_max_height.min(2560))
@@ -1039,8 +1045,8 @@ fn extent_from_res(width: u32, height: u32, config: &GeneralConfig) -> [u32; 3] 
         2560
     };
 
-    let h = height.min(height_limit);
-    let w = (width as f32 / height as f32 * h as f32) as u32;
+    let h = fmt.height.min(height_limit);
+    let w = (fmt.width as f32 / fmt.height as f32 * h as f32) as u32;
     [w, h, 1]
 }
 

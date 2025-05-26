@@ -3009,8 +3009,8 @@ checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 
 [[package]]
 name = "openxr"
-version = "0.18.0"
-source = "git+https://github.com/galister/openxrs?rev=af4a55d#af4a55df60125491c80c61464c824219c6019b76"
+version = "0.19.0"
+source = "git+https://github.com/Ralith/openxrs?rev=d0afdd3365bc1e14de28f6a3a21f457e788a702e#d0afdd3365bc1e14de28f6a3a21f457e788a702e"
 dependencies = [
  "libc",
  "libloading",
@@ -3020,9 +3020,10 @@ dependencies = [
 
 [[package]]
 name = "openxr-sys"
-version = "0.10.0"
-source = "git+https://github.com/galister/openxrs?rev=af4a55d#af4a55df60125491c80c61464c824219c6019b76"
+version = "0.11.0"
+source = "git+https://github.com/Ralith/openxrs?rev=d0afdd3365bc1e14de28f6a3a21f457e788a702e#d0afdd3365bc1e14de28f6a3a21f457e788a702e"
 dependencies = [
+ "cmake",
  "libc",
  "mint",
 ]
@@ -5271,8 +5272,8 @@ dependencies = [
 
 [[package]]
 name = "wlx-capture"
-version = "0.5.2"
-source = "git+https://github.com/galister/wlx-capture?tag=v0.5.2#c68c66d487ef0f57bab23b5c780472a31a01ecab"
+version = "0.5.3"
+source = "git+https://github.com/galister/wlx-capture?tag=v0.5.3#4479bd4bdd2b570aec9692e55b513ec7c0a17e7f"
 dependencies = [
  "ashpd",
  "drm-fourcc",

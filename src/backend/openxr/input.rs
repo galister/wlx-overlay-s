@@ -299,10 +299,9 @@ impl OpenXrInputSource {
 
 impl OpenXrHand {
     pub(super) fn new(xr: &XrState, source: OpenXrHandSource) -> Result<Self, xr::sys::Result> {
-        let space =
-            source
-                .pose
-                .create_space(xr.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)?;
+        let space = source
+            .pose
+            .create_space(&xr.session, xr::Path::NULL, xr::Posef::IDENTITY)?;
 
         Ok(Self { source, space })
     }
@@ -453,7 +452,7 @@ fn is_bool(maybe_type_str: Option<&String>) -> bool {
         .unwrap() // want panic
         .split('/')
         .next_back()
-        .is_some_and(|last| matches!(last, "click" | "touch"))
+        .is_some_and(|last| matches!(last, "click" | "touch") || last.starts_with("dpad_"))
 }
 
 macro_rules! add_custom {

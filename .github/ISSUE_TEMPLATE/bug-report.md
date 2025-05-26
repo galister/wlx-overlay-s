@@ -15,6 +15,7 @@ If this is a regression, please mention which version was working previously.
 ## System Info
 **Linux Distribution**: 
 
+<!-- Paste output of `echo $XDG_CURRENT_DESKTOP`, optionally add version -->
 **Desktop Environment**: 
 
 <!-- Paste output of `uname -r` -->

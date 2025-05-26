@@ -21,6 +21,7 @@ pub(super) struct PlayspaceMover {
     universe: ETrackingUniverseOrigin,
     drag: Option<MoverData<Vec3A>>,
     rotate: Option<MoverData<Quat>>,
+    floor_offset: f32,
 }
 
 impl PlayspaceMover {
@@ -29,6 +30,7 @@ impl PlayspaceMover {
             universe: ETrackingUniverseOrigin::TrackingUniverseRawAndUncalibrated,
             drag: None,
             rotate: None,
+            floor_offset: 0.0,
         }
     }
 
@@ -80,7 +82,7 @@ impl PlayspaceMover {
             data.pose *= space_transform;
             data.hand_pose = new_hand;
 
-            set_working_copy(&universe, chaperone_mgr, &data.pose);
+            set_working_copy(&universe, chaperone_mgr, &data.pose, self.floor_offset);
         } else {
             for (i, pointer) in state.input_state.pointers.iter().enumerate() {
                 if pointer.now.space_rotate {
@@ -133,7 +135,7 @@ impl PlayspaceMover {
             data.pose.translation += relative_pos;
             data.hand_pose = new_hand;
 
-            set_working_copy(&universe, chaperone_mgr, &data.pose);
+            set_working_copy(&universe, chaperone_mgr, &data.pose, self.floor_offset);
         } else {
             for (i, pointer) in state.input_state.pointers.iter().enumerate() {
                 if pointer.now.space_reset {
@@ -188,16 +190,15 @@ impl PlayspaceMover {
     pub fn fix_floor(&mut self, chaperone_mgr: &mut ChaperoneSetupManager, input: &InputState) {
         let y1 = input.pointers[0].pose.translation.y;
         let y2 = input.pointers[1].pose.translation.y;
-        let Some(mut mat) = get_working_copy(&self.universe, chaperone_mgr) else {
+        let Some(mat) = get_working_copy(&self.universe, chaperone_mgr) else {
             log::warn!("Can't fix floor - failed to get zero pose");
             return;
         };
         let offset = y1.min(y2) - 0.03;
-        mat.translation.y += offset;
+        self.floor_offset = offset;
 
         chaperone_mgr.revert_working_copy();
-        set_working_copy(&self.universe, chaperone_mgr, &mat);
-        chaperone_mgr.commit_working_copy(EChaperoneConfigFile::EChaperoneConfigFile_Live);
+        set_working_copy(&self.universe, chaperone_mgr, &mat, self.floor_offset);
 
         if self.drag.is_some() {
             log::info!("Space drag interrupted by fix floor");
@@ -264,13 +265,16 @@ fn set_working_copy(
     universe: &ETrackingUniverseOrigin,
     chaperone_mgr: &mut ChaperoneSetupManager,
     mat: &Affine3A,
+    floor_offset: f32,
 ) {
-    let mat = HmdMatrix34_t::from_affine(mat);
+    let mut mat = *mat;
+    mat.translation.y += floor_offset;
+    let ovr_mat = HmdMatrix34_t::from_affine(&mat);
     match universe {
         ETrackingUniverseOrigin::TrackingUniverseStanding => {
-            chaperone_mgr.set_working_standing_zero_pose_to_raw_tracking_pose(&mat);
+            chaperone_mgr.set_working_standing_zero_pose_to_raw_tracking_pose(&ovr_mat);
         }
-        _ => chaperone_mgr.set_working_seated_zero_pose_to_raw_tracking_pose(&mat),
+        _ => chaperone_mgr.set_working_seated_zero_pose_to_raw_tracking_pose(&ovr_mat),
     };
     chaperone_mgr.show_working_set_preview();
 }

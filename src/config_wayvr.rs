@@ -12,14 +12,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     backend::{
-        overlay::RelativeTo,
+        overlay::Positioning,
         task::{TaskContainer, TaskType},
         wayvr,
     },
     config::load_config_with_conf_d,
     config_io,
     gui::modular::button::WayVRAction,
-    overlays::wayvr::WayVRData,
+    overlays::wayvr::{executable_exists_in_path, WayVRData},
 };
 
 // Flat version of RelativeTo
@@ -33,13 +33,14 @@ pub enum AttachTo {
 }
 
 impl AttachTo {
-    pub const fn get_relative_to(&self) -> RelativeTo {
+    // TODO: adjustable lerp factor
+    pub const fn get_positioning(&self) -> Positioning {
         match self {
-            Self::None => RelativeTo::None,
-            Self::HandLeft => RelativeTo::Hand(0),
-            Self::HandRight => RelativeTo::Hand(1),
-            Self::Stage => RelativeTo::Stage,
-            Self::Head => RelativeTo::Head,
+            Self::None => Positioning::Floating,
+            Self::HandLeft => Positioning::FollowHand { hand: 0, lerp: 1.0 },
+            Self::HandRight => Positioning::FollowHand { hand: 1, lerp: 1.0 },
+            Self::Stage => Positioning::Static,
+            Self::Head => Positioning::FollowHead { lerp: 1.0 },
         }
     }
 
@@ -116,9 +117,10 @@ fn def_blit_method() -> String {
     String::from("dmabuf")
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct WayVRDashboard {
     pub exec: String,
+    pub working_dir: Option<String>,
     pub args: Option<String>,
     pub env: Option<Vec<String>>,
 }
@@ -233,13 +235,42 @@ impl WayVRConfig {
     }
 }
 
+fn get_default_dashboard_exec() -> (
+    String,         /* exec path */
+    Option<String>, /* working directory */
+) {
+    if let Ok(appdir) = std::env::var("APPDIR") {
+        // Running in AppImage
+        let embedded_path = format!("{appdir}/usr/bin/wayvr-dashboard");
+        if executable_exists_in_path(&embedded_path) {
+            log::info!("Using WayVR Dashboard from AppDir: {embedded_path}");
+            return (embedded_path, Some(format!("{appdir}/usr")));
+        }
+    }
+    (String::from("wayvr-dashboard"), None)
+}
+
 pub fn load_wayvr() -> WayVRConfig {
     let config_root_path = config_io::ConfigRoot::WayVR.ensure_dir();
-    log::info!("WayVR Config root path: {config_root_path:?}");
+    log::info!("WayVR Config root path: {}", config_root_path.display());
     log::info!(
-        "WayVR conf.d path: {:?}",
-        config_io::ConfigRoot::WayVR.get_conf_d_path()
+        "WayVR conf.d path: {}",
+        config_io::ConfigRoot::WayVR.get_conf_d_path().display()
     );
 
-    load_config_with_conf_d::<WayVRConfig>("wayvr.yaml", config_io::ConfigRoot::WayVR)
+    let mut conf =
+        load_config_with_conf_d::<WayVRConfig>("wayvr.yaml", config_io::ConfigRoot::WayVR);
+
+    if conf.dashboard.is_none() {
+        let (exec, working_dir) = get_default_dashboard_exec();
+
+        conf.dashboard = Some(WayVRDashboard {
+            args: None,
+            env: None,
+            exec,
+            working_dir,
+        });
+    }
+
+    conf
 }

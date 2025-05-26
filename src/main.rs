@@ -34,6 +34,7 @@ use std::{
     },
 };
 
+use backend::notifications::DbusNotificationSender;
 use clap::Parser;
 use sysinfo::Pid;
 use tracing::level_filters::LevelFilter;
@@ -127,17 +128,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+#[allow(unused_mut)]
 fn auto_run(running: Arc<AtomicBool>, args: Args) {
     use backend::common::BackendError;
+
+    let mut tried_xr = false;
+    let mut tried_vr = false;
 
     #[cfg(feature = "openxr")]
     if !args_get_openvr(&args) {
         use crate::backend::openxr::openxr_run;
+        tried_xr = true;
         match openxr_run(running.clone(), args.show) {
             Ok(()) => return,
             Err(BackendError::NotSupported) => (),
             Err(e) => {
-                log::error!("{e}");
+                log::error!("{e:?}");
                 return;
             }
         }
@@ -146,17 +152,30 @@ fn auto_run(running: Arc<AtomicBool>, args: Args) {
     #[cfg(feature = "openvr")]
     if !args_get_openxr(&args) {
         use crate::backend::openvr::openvr_run;
+        tried_vr = true;
         match openvr_run(running, args.show) {
             Ok(()) => return,
             Err(BackendError::NotSupported) => (),
             Err(e) => {
-                log::error!("{e}");
+                log::error!("{e:?}");
                 return;
             }
         }
     }
 
     log::error!("No more backends to try");
+
+    let instructions = match (tried_xr, tried_vr) {
+        (true, true) => "Make sure that Monado, WiVRn or SteamVR is running.",
+        (false, true) => "Make sure that SteamVR is running.",
+        (true, false) => "Make sure that Monado or WiVRn is running.",
+        _ => "Check your launch arguments.",
+    };
+
+    let instructions = format!("Could not connect to runtime.\n{instructions}");
+
+    let _ = DbusNotificationSender::new()
+        .and_then(|s| s.notify_send("WlxOverlay-S", &instructions, 1, 0, 0, false));
 
     #[cfg(not(any(feature = "openvr", feature = "openxr")))]
     compile_error!("No VR support! Enable either openvr or openxr features!");
@@ -195,6 +214,7 @@ fn logging_init(args: &mut Args) {
         .unwrap_or_else(|| String::from("/tmp/wlx.log"));
 
     let file_writer = match std::fs::OpenOptions::new()
+        .create(true)
         .write(true)
         .truncate(true)
         .open(&log_file_path)

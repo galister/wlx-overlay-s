@@ -1,7 +1,7 @@
 use glam::Vec3A;
 use std::sync::{Arc, LazyLock};
 
-use crate::backend::overlay::{OverlayData, OverlayState, RelativeTo, Z_ORDER_ANCHOR};
+use crate::backend::overlay::{OverlayData, OverlayState, Positioning, Z_ORDER_ANCHOR};
 use crate::config::{load_known_yaml, ConfigType};
 use crate::gui::modular::{modular_canvas, ModularUiConfig};
 use crate::state::AppState;
@@ -23,7 +23,7 @@ where
             z_order: Z_ORDER_ANCHOR,
             spawn_scale: config.width,
             spawn_point: Vec3A::NEG_Z * 0.5,
-            relative_to: RelativeTo::Stage,
+            positioning: Positioning::Static,
             ..Default::default()
         },
         backend: Box::new(modular_canvas(config.size, &config.elements, state)?),

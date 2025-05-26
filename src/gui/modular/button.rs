@@ -13,7 +13,7 @@ use crate::{
     backend::{
         common::OverlaySelector,
         input::PointerMode,
-        overlay::RelativeTo,
+        overlay::Positioning,
         task::{ColorChannel, SystemTask, TaskType},
     },
     config::{save_layout, save_settings, AStrSetExt},
@@ -626,15 +626,15 @@ fn run_watch(data: &WatchAction, app: &mut AppState) {
             app.tasks.enqueue(TaskType::Overlay(
                 OverlaySelector::Name(WATCH_NAME.into()),
                 Box::new(|app, o| {
-                    if matches!(o.relative_to, RelativeTo::Hand(0)) {
-                        o.relative_to = RelativeTo::Hand(1);
+                    if matches!(o.positioning, Positioning::FollowHand { hand: 0, .. }) {
+                        o.positioning = Positioning::FollowHand { hand: 1, lerp: 1.0 };
                         o.spawn_rotation = app.session.config.watch_rot
                             * Quat::from_rotation_x(PI)
                             * Quat::from_rotation_z(PI);
                         o.spawn_point = app.session.config.watch_pos;
                         o.spawn_point.x *= -1.;
                     } else {
-                        o.relative_to = RelativeTo::Hand(0);
+                        o.positioning = Positioning::FollowHand { hand: 0, lerp: 1.0 };
                         o.spawn_rotation = app.session.config.watch_rot;
                         o.spawn_point = app.session.config.watch_pos;
                     }

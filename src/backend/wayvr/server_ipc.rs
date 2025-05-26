@@ -365,6 +365,7 @@ impl Connection {
             &packet_params.exec,
             &args_vec,
             &env_vec,
+            None,
             packet_params.userdata,
         );
 
@@ -470,14 +471,13 @@ impl Connection {
         params: &mut TickParams,
         haptics_params: packet_client::WlxHapticsParams,
     ) {
-        params
-            .state
-            .tasks
-            .send(super::WayVRTask::Haptics(crate::backend::input::Haptics {
+        params.state.signals.send(super::WayVRSignal::Haptics(
+            crate::backend::input::Haptics {
                 duration: haptics_params.duration,
                 frequency: haptics_params.frequency,
                 intensity: haptics_params.intensity,
-            }));
+            },
+        ));
     }
 
     fn process_payload(&mut self, params: &mut TickParams, payload: Payload) -> anyhow::Result<()> {
