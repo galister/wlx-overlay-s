@@ -86,9 +86,19 @@ impl OscSender {
                 vec![OscType::Bool(num_overlays > 0)],
             )?;
             self.send_message(
+                "/avatar/parameters/ToggleWindows".into(),
+                vec![OscType::Bool(num_overlays > 0)],
+            )?;
+        
+            self.send_message(
                 "/avatar/parameters/isKeyboardOpen".into(),
                 vec![OscType::Bool(has_keyboard)],
             )?;
+            self.send_message(
+                "/avatar/parameters/ToggleKeyboard".into(),
+                vec![OscType::Bool(has_keyboard)],
+            )?;
+        
             self.send_message(
                 "/avatar/parameters/isWristVisible".into(),
                 vec![OscType::Bool(has_wrist)],
@@ -107,6 +117,8 @@ impl OscSender {
             let mut controller_count: i8 = 0;
             let mut tracker_total_bat = 0.0;
             let mut controller_total_bat = 0.0;
+
+            let mut lowestBattery = 10000.0;
 
             for device in devices {
                 let tracker_param;
@@ -144,6 +156,10 @@ impl OscSender {
                     }
                 };
 
+                if (level < lowestBattery) {
+                    lowestBattery = level;
+                }
+
                 // send device battery parameters
                 self.send_message(
                     format!("/avatar/parameters/{parameter}Battery"),
@@ -165,6 +181,10 @@ impl OscSender {
             self.send_message(
                 String::from("/avatar/parameters/averageTrackerBattery"),
                 vec![OscType::Float(tracker_total_bat / f32::from(tracker_count))],
+            )?;
+            self.send_message(
+                String::from("/avatar/parameters/LowestBattery"),
+                vec![OscType::Float(lowestBattery)],
             )?;
         }
 
