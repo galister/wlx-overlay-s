@@ -118,7 +118,7 @@ impl OscSender {
             let mut tracker_total_bat = 0.0;
             let mut controller_total_bat = 0.0;
 
-            let mut lowestBattery = 10000.0;
+            let mut lowestBattery = 1.0;
 
             for device in devices {
                 let tracker_param;
