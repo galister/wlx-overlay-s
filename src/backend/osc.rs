@@ -118,7 +118,7 @@ impl OscSender {
             let mut tracker_total_bat = 0.0;
             let mut controller_total_bat = 0.0;
 
-            let mut lowestBattery = 1.0;
+            let mut lowest_battery = 1f32;
 
             for device in devices {
                 let tracker_param;
@@ -156,7 +156,7 @@ impl OscSender {
                     }
                 };
 
-                lowestBattery = lowestBattery.min(level);
+                lowest_battery = lowest_battery.min(level);
 
                 // send device battery parameters
                 self.send_message(
@@ -182,7 +182,7 @@ impl OscSender {
             )?;
             self.send_message(
                 String::from("/avatar/parameters/LowestBattery"),
-                vec![OscType::Float(lowestBattery)],
+                vec![OscType::Float(lowest_battery)],
             )?;
         }
 
