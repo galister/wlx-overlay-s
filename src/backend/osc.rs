@@ -89,7 +89,7 @@ impl OscSender {
                 "/avatar/parameters/ToggleWindows".into(),
                 vec![OscType::Bool(num_overlays > 0)],
             )?;
-        
+
             self.send_message(
                 "/avatar/parameters/isKeyboardOpen".into(),
                 vec![OscType::Bool(has_keyboard)],
@@ -98,7 +98,7 @@ impl OscSender {
                 "/avatar/parameters/ToggleKeyboard".into(),
                 vec![OscType::Bool(has_keyboard)],
             )?;
-        
+
             self.send_message(
                 "/avatar/parameters/isWristVisible".into(),
                 vec![OscType::Bool(has_wrist)],
@@ -156,9 +156,7 @@ impl OscSender {
                     }
                 };
 
-                if (level < lowestBattery) {
-                    lowestBattery = level;
-                }
+                lowestBattery = lowestBattery.min(level);
 
                 // send device battery parameters
                 self.send_message(
