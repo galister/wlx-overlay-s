@@ -62,14 +62,15 @@ where
     pub fn new(app: &mut AppState, headless: bool) -> anyhow::Result<Self> {
         let mut overlays = IdMap::new();
         let mut show_screens = app.session.config.show_screens.clone();
-        let keymap = None;
+        let mut wl = None;
+        let mut keymap = None;
 
         app.screens.clear();
 
         if headless {
             log::info!("Running in headless mode; keyboard will be en-US");
         } else {
-            let mut wl = create_wl_client();
+            wl = create_wl_client();
 
             let data = if let Some(wl) = wl.as_mut() {
                 log::info!("Wayland detected.");
