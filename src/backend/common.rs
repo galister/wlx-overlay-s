@@ -80,8 +80,14 @@ where
             match crate::overlays::screen::create_screens_x11pw(app) {
                 Ok(data) => data,
                 Err(e) => {
-                    log::info!("Will not use X11 PipeWire capture: {e:?}");
-                    crate::overlays::screen::create_screens_xshm(app)?
+                    log::info!("Will not use X11 PipeWire capture: {:?}", e);
+                    match crate::overlays::screen::create_screens_nvfbc(app) {
+                        Ok(data) => data,
+                        Err(e) => {
+                            log::info!("Will not use NvFBC capture: {:?}", e);
+                            crate::overlays::screen::create_screens_xshm(app)?
+                        }
+                    }
                 }
             }
         };
