@@ -62,7 +62,11 @@ pub fn openvr_uninstall() {
 }
 
 #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
-pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(), BackendError> {
+pub fn openvr_run(
+    running: Arc<AtomicBool>,
+    show_by_default: bool,
+    headless: bool,
+) -> Result<(), BackendError> {
     let app_type = EVRApplicationType::VRApplication_Overlay;
     let Ok(context) = ovr_overlay::Context::init(app_type) else {
         log::warn!("Will not use OpenVR: Context init failed");
@@ -112,7 +116,7 @@ pub fn openvr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
 
     let _ = install_manifest(&mut app_mgr);
 
-    let mut overlays = OverlayContainer::<OpenVrOverlayData>::new(&mut state)?;
+    let mut overlays = OverlayContainer::<OpenVrOverlayData>::new(&mut state, headless)?;
     let mut notifications = NotificationManager::new();
     notifications.run_dbus();
     notifications.run_udp();

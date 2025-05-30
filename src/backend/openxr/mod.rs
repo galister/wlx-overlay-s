@@ -57,7 +57,11 @@ struct XrState {
 }
 
 #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
-pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(), BackendError> {
+pub fn openxr_run(
+    running: Arc<AtomicBool>,
+    show_by_default: bool,
+    headless: bool,
+) -> Result<(), BackendError> {
     let (xr_instance, system) = match helpers::init_xr() {
         Ok((xr_instance, system)) => (xr_instance, system),
         Err(e) => {
@@ -90,7 +94,7 @@ pub fn openxr_run(running: Arc<AtomicBool>, show_by_default: bool) -> Result<(),
         );
     }
 
-    let mut overlays = OverlayContainer::<OpenXrOverlayData>::new(&mut app)?;
+    let mut overlays = OverlayContainer::<OpenXrOverlayData>::new(&mut app, headless)?;
     let mut lines = LinePool::new(app.graphics.clone())?;
 
     let mut notifications = NotificationManager::new();
