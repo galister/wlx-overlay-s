@@ -3023,7 +3023,6 @@ name = "openxr-sys"
 version = "0.11.0"
 source = "git+https://github.com/Ralith/openxrs?rev=d0afdd3365bc1e14de28f6a3a21f457e788a702e#d0afdd3365bc1e14de28f6a3a21f457e788a702e"
 dependencies = [
- "cmake",
  "libc",
  "mint",
 ]

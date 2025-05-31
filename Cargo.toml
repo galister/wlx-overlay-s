@@ -36,7 +36,7 @@ json5 = "0.4.1"
 libc = "0.2.155"
 log = "0.4.21"
 openxr = { git = "https://github.com/Ralith/openxrs", rev = "d0afdd3365bc1e14de28f6a3a21f457e788a702e", features = [
-  "static",
+  "linked",
   "mint",
 ], optional = true }
 ovr_overlay = { features = [
