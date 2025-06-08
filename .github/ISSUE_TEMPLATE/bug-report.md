@@ -36,8 +36,11 @@ If this is a regression, please mention which version was working previously.
 If your issue is graphical or crash or freeze, also add:
   VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation
 
+Next, create the empty log file: echo > /tmp/wlx.log
+
 Be sure to go and reproduce the issue once more, after these have been set.
 
 Upload the log file from: /tmp/wlx.log
+
 -->
 
