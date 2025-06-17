@@ -5,16 +5,17 @@ use std::{
 };
 
 use glam::{Quat, Vec3A};
-use openxr::{self as xr, CompositionLayerFlags};
+use openxr as xr;
 use vulkano::{
-    command_buffer::CommandBufferUsage, image::view::ImageView,
-    pipeline::graphics::color_blend::AttachmentBlend,
+    command_buffer::CommandBufferUsage,
+    image::view::ImageView,
+    pipeline::graphics::{color_blend::AttachmentBlend, input_assembly::PrimitiveTopology},
 };
 
 use crate::{
     backend::openxr::{helpers::translation_rotation_to_posef, swapchain::SwapchainOpts},
     config_io,
-    graphics::{dds::WlxCommandBufferDds, CommandBuffers},
+    graphics::{dds::WlxCommandBufferDds, CommandBuffers, ExtentExt},
     state::AppState,
 };
 
@@ -31,10 +32,9 @@ pub(super) struct Skybox {
 
 impl Skybox {
     pub fn new(app: &AppState) -> anyhow::Result<Self> {
-        let mut command_buffer = app.graphics.create_uploads_command_buffer(
-            app.graphics.transfer_queue.clone(),
-            CommandBufferUsage::OneTimeSubmit,
-        )?;
+        let mut command_buffer = app
+            .gfx
+            .create_xfer_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
 
         let mut maybe_image = None;
 
@@ -51,7 +51,7 @@ impl Skybox {
                 );
                 break 'custom_tex;
             };
-            match command_buffer.texture2d_dds(f) {
+            match command_buffer.upload_image_dds(f) {
                 Ok(image) => {
                     maybe_image = Some(image);
                 }
@@ -67,7 +67,7 @@ impl Skybox {
 
         if maybe_image.is_none() {
             let p = include_bytes!("../../res/table_mountain_2.dds");
-            maybe_image = Some(command_buffer.texture2d_dds(p.as_slice())?);
+            maybe_image = Some(command_buffer.upload_image_dds(p.as_slice())?);
         }
 
         command_buffer.build_and_execute_now()?;
@@ -92,30 +92,31 @@ impl Skybox {
         }
         let opts = SwapchainOpts::new().immutable();
 
-        let Ok(shaders) = app.graphics.shared_shaders.read() else {
-            anyhow::bail!("Failed to lock shared shaders for reading");
-        };
-
         let extent = self.view.image().extent();
-        let mut swapchain = create_swapchain(xr, app.graphics.clone(), extent, opts)?;
+        let mut swapchain = create_swapchain(xr, app.gfx.clone(), extent, opts)?;
         let tgt = swapchain.acquire_wait_image()?;
-        let pipeline = app.graphics.create_pipeline(
-            shaders.get("vert_common").unwrap().clone(), // want panic
-            shaders.get("frag_srgb").unwrap().clone(),   // want panic
-            app.graphics.native_format,
+        let pipeline = app.gfx.create_pipeline(
+            app.gfx_extras.shaders.get("vert_quad").unwrap().clone(), // want panic
+            app.gfx_extras.shaders.get("frag_srgb").unwrap().clone(), // want panic
+            app.gfx.surface_format,
             None,
+            PrimitiveTopology::TriangleStrip,
+            false,
         )?;
 
-        let set0 =
-            pipeline.uniform_sampler(0, self.view.clone(), app.graphics.texture_filtering)?;
-
-        let set1 = pipeline.uniform_buffer(1, vec![1f32])?;
-
-        let pass = pipeline.create_pass_for_target(tgt.clone(), vec![set0, set1])?;
+        let set0 = pipeline.uniform_sampler(0, self.view.clone(), app.gfx.texture_filter)?;
+        let set1 = pipeline.uniform_buffer_upload(1, vec![1f32])?;
+        let pass = pipeline.create_pass(
+            tgt.extent_f32(),
+            app.gfx_extras.quad_verts.clone(),
+            0..4,
+            0..1,
+            vec![set0, set1],
+        )?;
 
         let mut cmd_buffer = app
-            .graphics
-            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+            .gfx
+            .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
         cmd_buffer.begin_rendering(tgt)?;
         cmd_buffer.run_ref(&pass)?;
         cmd_buffer.end_rendering()?;
@@ -135,30 +136,35 @@ impl Skybox {
         if self.grid.is_some() {
             return Ok(());
         }
-        let Ok(shaders) = app.graphics.shared_shaders.read() else {
-            anyhow::bail!("Failed to lock shared shaders for reading");
-        };
 
         let extent = [1024, 1024, 1];
         let mut swapchain = create_swapchain(
             xr,
-            app.graphics.clone(),
+            app.gfx.clone(),
             extent,
             SwapchainOpts::new().immutable(),
         )?;
-        let pipeline = app.graphics.create_pipeline(
-            shaders.get("vert_common").unwrap().clone(), // want panic
-            shaders.get("frag_grid").unwrap().clone(),   // want panic
-            app.graphics.native_format,
+        let pipeline = app.gfx.create_pipeline(
+            app.gfx_extras.shaders.get("vert_quad").unwrap().clone(), // want panic
+            app.gfx_extras.shaders.get("frag_grid").unwrap().clone(), // want panic
+            app.gfx.surface_format,
             Some(AttachmentBlend::alpha()),
+            PrimitiveTopology::TriangleStrip,
+            false,
         )?;
 
         let tgt = swapchain.acquire_wait_image()?;
-        let pass = pipeline.create_pass_for_target(tgt.clone(), vec![])?;
+        let pass = pipeline.create_pass(
+            tgt.extent_f32(),
+            app.gfx_extras.quad_verts.clone(),
+            0..4,
+            0..1,
+            vec![],
+        )?;
 
         let mut cmd_buffer = app
-            .graphics
-            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+            .gfx
+            .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
         cmd_buffer.begin_rendering(tgt)?;
         cmd_buffer.run_ref(&pass)?;
         cmd_buffer.end_rendering()?;
@@ -206,7 +212,7 @@ impl Skybox {
         self.sky.as_mut().unwrap().ensure_image_released()?;
 
         let sky = xr::CompositionLayerEquirect2KHR::new()
-            .layer_flags(CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA)
+            .layer_flags(xr::CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA)
             .pose(pose)
             .radius(10.0)
             .sub_image(self.sky.as_ref().unwrap().get_subimage())
@@ -218,7 +224,7 @@ impl Skybox {
 
         self.grid.as_mut().unwrap().ensure_image_released()?;
         let grid = xr::CompositionLayerQuad::new()
-            .layer_flags(CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA)
+            .layer_flags(xr::CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA)
             .pose(*GRID_POSE)
             .size(xr::Extent2Df {
                 width: 10.0,

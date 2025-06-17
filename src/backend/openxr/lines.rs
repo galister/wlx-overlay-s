@@ -9,11 +9,15 @@ use std::{
     },
 };
 
-use vulkano::command_buffer::CommandBufferUsage;
+use wgui::gfx::{pipeline::WGfxPipeline, WGfx};
 
 use crate::{
     backend::openxr::helpers,
-    graphics::{CommandBuffers, WlxGraphics, WlxPipeline},
+    graphics::{CommandBuffers, ExtentExt, Vert2Uv},
+    state::AppState,
+};
+use vulkano::{
+    command_buffer::CommandBufferUsage, pipeline::graphics::input_assembly::PrimitiveTopology,
 };
 
 use super::{
@@ -37,20 +41,18 @@ static COLORS: [[f32; 6]; 5] = {
 
 pub(super) struct LinePool {
     lines: IdMap<usize, LineContainer>,
-    pipeline: Arc<WlxPipeline>,
+    pipeline: Arc<WGfxPipeline<Vert2Uv>>,
 }
 
 impl LinePool {
-    pub(super) fn new(graphics: Arc<WlxGraphics>) -> anyhow::Result<Self> {
-        let Ok(shaders) = graphics.shared_shaders.read() else {
-            anyhow::bail!("Failed to lock shared shaders for reading");
-        };
-
-        let pipeline = graphics.create_pipeline(
-            shaders.get("vert_common").unwrap().clone(), // want panic
-            shaders.get("frag_color").unwrap().clone(),  // want panic
-            graphics.native_format,
+    pub(super) fn new(app: &AppState) -> anyhow::Result<Self> {
+        let pipeline = app.gfx.create_pipeline(
+            app.gfx_extras.shaders.get("vert_quad").unwrap().clone(), // want panic
+            app.gfx_extras.shaders.get("frag_color").unwrap().clone(), // want panic
+            app.gfx.surface_format,
             None,
+            PrimitiveTopology::TriangleStrip,
+            false,
         )?;
 
         Ok(Self {
@@ -59,14 +61,10 @@ impl LinePool {
         })
     }
 
-    pub(super) fn allocate(
-        &mut self,
-        xr: &XrState,
-        graphics: Arc<WlxGraphics>,
-    ) -> anyhow::Result<usize> {
+    pub(super) fn allocate(&mut self, xr: &XrState, gfx: Arc<WGfx>) -> anyhow::Result<usize> {
         let id = LINE_AUTO_INCREMENT.fetch_add(1, Ordering::Relaxed);
 
-        let srd = create_swapchain(xr, graphics, [1, 1, 1], SwapchainOpts::new())?;
+        let srd = create_swapchain(xr, gfx, [1, 1, 1], SwapchainOpts::new())?;
         self.lines.insert(
             id,
             LineContainer {
@@ -130,7 +128,7 @@ impl LinePool {
 
     pub(super) fn render(
         &mut self,
-        graphics: Arc<WlxGraphics>,
+        app: &AppState,
         buf: &mut CommandBuffers,
     ) -> anyhow::Result<()> {
         for line in self.lines.values_mut() {
@@ -139,14 +137,19 @@ impl LinePool {
 
                 let set0 = self
                     .pipeline
-                    .uniform_buffer(0, COLORS[inner.color].to_vec())?;
+                    .uniform_buffer_upload(0, COLORS[inner.color].to_vec())?;
 
-                let pass = self
-                    .pipeline
-                    .create_pass_for_target(tgt.clone(), vec![set0])?;
+                let pass = self.pipeline.create_pass(
+                    tgt.extent_f32(),
+                    app.gfx_extras.quad_verts.clone(),
+                    0..4,
+                    0..1,
+                    vec![set0],
+                )?;
 
-                let mut cmd_buffer =
-                    graphics.create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+                let mut cmd_buffer = app
+                    .gfx
+                    .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
                 cmd_buffer.begin_rendering(tgt)?;
                 cmd_buffer.run_ref(&pass)?;
                 cmd_buffer.end_rendering()?;

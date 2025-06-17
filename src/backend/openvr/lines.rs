@@ -2,20 +2,31 @@ use std::f32::consts::PI;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
+use ash::vk::SubmitInfo;
 use glam::{Affine3A, Vec3, Vec3A, Vec4};
 use idmap::IdMap;
 use ovr_overlay::overlay::OverlayManager;
 use ovr_overlay::sys::ETrackingUniverseOrigin;
-use vulkano::command_buffer::CommandBufferUsage;
-use vulkano::format::Format;
-use vulkano::image::view::ImageView;
-use vulkano::image::ImageLayout;
+use vulkano::{
+    command_buffer::{
+        CommandBufferBeginInfo, CommandBufferLevel, CommandBufferUsage, RecordingCommandBuffer,
+    },
+    format::Format,
+    image::view::ImageView,
+    image::{Image, ImageLayout},
+    sync::{
+        fence::{Fence, FenceCreateInfo},
+        AccessFlags, DependencyInfo, ImageMemoryBarrier, PipelineStages,
+    },
+    VulkanObject,
+};
+use wgui::gfx::WGfx;
 
 use crate::backend::overlay::{
     FrameMeta, OverlayData, OverlayRenderer, OverlayState, ShouldRender, SplitOverlayBackend,
     Z_ORDER_LINES,
 };
-use crate::graphics::{CommandBuffers, WlxGraphics};
+use crate::graphics::CommandBuffers;
 use crate::state::AppState;
 
 use super::overlay::OpenVrOverlayData;
@@ -29,24 +40,22 @@ pub(super) struct LinePool {
 }
 
 impl LinePool {
-    pub fn new(graphics: Arc<WlxGraphics>) -> anyhow::Result<Self> {
-        let mut command_buffer = graphics.create_uploads_command_buffer(
-            graphics.transfer_queue.clone(),
-            CommandBufferUsage::OneTimeSubmit,
-        )?;
+    pub fn new(graphics: Arc<WGfx>) -> anyhow::Result<Self> {
+        let mut command_buffer =
+            graphics.create_xfer_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
 
         let buf = vec![255; 16];
 
-        let texture = command_buffer.texture2d_raw(2, 2, Format::R8G8B8A8_UNORM, &buf)?;
+        let texture = command_buffer.upload_image(2, 2, Format::R8G8B8A8_UNORM, &buf)?;
         command_buffer.build_and_execute_now()?;
 
-        graphics
-            .transition_layout(
-                texture.clone(),
-                ImageLayout::ShaderReadOnlyOptimal,
-                ImageLayout::TransferSrcOptimal,
-            )?
-            .wait(None)?;
+        transition_layout(
+            &graphics,
+            texture.clone(),
+            ImageLayout::ShaderReadOnlyOptimal,
+            ImageLayout::TransferSrcOptimal,
+        )?
+        .wait(None)?;
 
         let view = ImageView::new_default(texture)?;
 
@@ -150,7 +159,7 @@ impl LinePool {
             data.after_input(overlay, app)?;
             if data.state.want_visible {
                 if data.state.dirty {
-                    data.upload_texture(overlay, &app.graphics);
+                    data.upload_texture(overlay, &app.gfx);
                     data.state.dirty = false;
                 }
 
@@ -200,4 +209,56 @@ impl OverlayRenderer for StaticRenderer {
             ..Default::default()
         })
     }
+}
+
+pub fn transition_layout(
+    gfx: &WGfx,
+    image: Arc<Image>,
+    old_layout: ImageLayout,
+    new_layout: ImageLayout,
+) -> anyhow::Result<Fence> {
+    let barrier = ImageMemoryBarrier {
+        src_stages: PipelineStages::ALL_TRANSFER,
+        src_access: AccessFlags::TRANSFER_WRITE,
+        dst_stages: PipelineStages::ALL_TRANSFER,
+        dst_access: AccessFlags::TRANSFER_READ,
+        old_layout,
+        new_layout,
+        subresource_range: image.subresource_range(),
+        ..ImageMemoryBarrier::image(image)
+    };
+
+    let command_buffer = unsafe {
+        let mut builder = RecordingCommandBuffer::new(
+            gfx.command_buffer_allocator.clone(),
+            gfx.queue_gfx.queue_family_index(),
+            CommandBufferLevel::Primary,
+            CommandBufferBeginInfo {
+                usage: CommandBufferUsage::OneTimeSubmit,
+                inheritance_info: None,
+                ..Default::default()
+            },
+        )?;
+
+        builder.pipeline_barrier(&DependencyInfo {
+            image_memory_barriers: smallvec::smallvec![barrier],
+            ..Default::default()
+        })?;
+        builder.end()?
+    };
+
+    let fence = Fence::new(gfx.device.clone(), FenceCreateInfo::default())?;
+
+    let fns = gfx.device.fns();
+    unsafe {
+        (fns.v1_0.queue_submit)(
+            gfx.queue_gfx.handle(),
+            1,
+            [SubmitInfo::default().command_buffers(&[command_buffer.handle()])].as_ptr(),
+            fence.handle(),
+        )
+    }
+    .result()?;
+
+    Ok(fence)
 }

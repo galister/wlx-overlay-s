@@ -8,8 +8,7 @@ use vulkano::{
     image::{sys::RawImage, view::ImageView, ImageCreateInfo, ImageUsage},
     Handle,
 };
-
-use crate::graphics::WlxGraphics;
+use wgui::gfx::WGfx;
 
 use super::XrState;
 
@@ -30,7 +29,7 @@ impl SwapchainOpts {
 
 pub(super) fn create_swapchain(
     xr: &XrState,
-    graphics: Arc<WlxGraphics>,
+    gfx: Arc<WGfx>,
     extent: [u32; 3],
     opts: SwapchainOpts,
 ) -> anyhow::Result<WlxSwapchain> {
@@ -43,7 +42,7 @@ pub(super) fn create_swapchain(
     let swapchain = xr.session.create_swapchain(&xr::SwapchainCreateInfo {
         create_flags,
         usage_flags: xr::SwapchainUsageFlags::COLOR_ATTACHMENT | xr::SwapchainUsageFlags::SAMPLED,
-        format: graphics.native_format as _,
+        format: gfx.surface_format as _,
         sample_count: 1,
         width: extent[0],
         height: extent[1],
@@ -60,10 +59,10 @@ pub(super) fn create_swapchain(
             // thanks @yshui
             let raw_image = unsafe {
                 RawImage::from_handle_borrowed(
-                    graphics.device.clone(),
+                    gfx.device.clone(),
                     vk_image,
                     ImageCreateInfo {
-                        format: graphics.native_format as _,
+                        format: gfx.surface_format as _,
                         extent,
                         usage: ImageUsage::COLOR_ATTACHMENT,
                         ..Default::default()

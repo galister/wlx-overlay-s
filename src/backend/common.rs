@@ -137,9 +137,8 @@ where
     #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
     #[allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
     pub fn update(&mut self, app: &mut AppState) -> anyhow::Result<Vec<OverlayData<T>>> {
-        use crate::overlays::{
-            screen::{create_screen_interaction, create_screen_renderer_wl, load_pw_token_config},
-            watch::create_watch_canvas,
+        use crate::overlays::screen::{
+            create_screen_interaction, create_screen_renderer_wl, load_pw_token_config,
         };
         use glam::vec2;
         use wlx_capture::wayland::OutputChangeEvent;
@@ -256,15 +255,8 @@ where
         }
 
         if watch_dirty {
-            let watch = self.mut_by_name(WATCH_NAME).unwrap(); // want panic
-            match create_watch_canvas(None, app) {
-                Ok(canvas) => {
-                    watch.backend = Box::new(canvas);
-                }
-                Err(e) => {
-                    log::error!("Failed to create watch canvas: {}", e);
-                }
-            }
+            let _watch = self.mut_by_name(WATCH_NAME).unwrap(); // want panic
+            todo!();
         }
 
         Ok(removed_overlays)

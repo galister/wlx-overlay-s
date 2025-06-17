@@ -301,8 +301,11 @@ pub struct FrameMeta {
 }
 
 pub enum ShouldRender {
+    /// The overlay is dirty and needs to be rendered.
     Should,
+    /// The overlay is not dirty but is ready to be rendered.
     Can,
+    /// The overlay is not ready to be rendered.
     Unable,
 }
 

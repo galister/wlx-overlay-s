@@ -10,8 +10,7 @@ pub enum ConfigRoot {
 const FALLBACK_CONFIG_PATH: &str = "/tmp/wlxoverlay";
 
 static CONFIG_ROOT_PATH: LazyLock<PathBuf> = LazyLock::new(|| {
-    if let Ok(xdg_dirs) = xdg::BaseDirectories::new() {
-        let mut dir = xdg_dirs.get_config_home();
+    if let Some(mut dir) = xdg::BaseDirectories::new().get_config_home() {
         dir.push("wlxoverlay");
         return dir;
     }

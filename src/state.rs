@@ -1,4 +1,3 @@
-use anyhow::bail;
 use glam::Affine3A;
 use idmap::IdMap;
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Source};
@@ -6,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use smallvec::{smallvec, SmallVec};
 use std::{io::Cursor, sync::Arc};
 use vulkano::image::view::ImageView;
+use wgui::gfx::WGfx;
 
 #[cfg(feature = "wayvr")]
 use {
@@ -21,14 +21,9 @@ use crate::{
     backend::{input::InputState, overlay::OverlayID, task::TaskContainer},
     config::{AStrMap, GeneralConfig},
     config_io,
-    graphics::WlxGraphics,
-    gui::font::FontCache,
+    graphics::WGfxExtras,
     hid::HidProvider,
     overlays::toast::{DisplayMethod, ToastTopic},
-    shaders::{
-        frag_color, frag_glyph, frag_grid, frag_line, frag_screen, frag_sprite, frag_sprite2,
-        frag_sprite2_hl, frag_srgb, frag_swapchain, vert_common,
-    },
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -40,10 +35,12 @@ pub enum KeyboardFocus {
 }
 
 pub struct AppState {
-    pub fc: FontCache,
     pub session: AppSession,
     pub tasks: TaskContainer,
-    pub graphics: Arc<WlxGraphics>,
+
+    pub gfx: Arc<WGfx>,
+    pub gfx_extras: WGfxExtras,
+
     pub input_state: InputState,
     pub hid_provider: Box<dyn HidProvider>,
     pub audio: AudioOutput,
@@ -61,47 +58,8 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn from_graphics(graphics: Arc<WlxGraphics>) -> anyhow::Result<Self> {
+    pub fn from_graphics(gfx: Arc<WGfx>, gfx_extras: WGfxExtras) -> anyhow::Result<Self> {
         // insert shared resources
-        {
-            let Ok(mut shaders) = graphics.shared_shaders.write() else {
-                bail!("Failed to lock shared shaders");
-            };
-
-            let shader = vert_common::load(graphics.device.clone())?;
-            shaders.insert("vert_common", shader);
-
-            let shader = frag_color::load(graphics.device.clone())?;
-            shaders.insert("frag_color", shader);
-
-            let shader = frag_line::load(graphics.device.clone())?;
-            shaders.insert("frag_line", shader);
-
-            let shader = frag_srgb::load(graphics.device.clone())?;
-            shaders.insert("frag_srgb", shader);
-
-            let shader = frag_glyph::load(graphics.device.clone())?;
-            shaders.insert("frag_glyph", shader);
-
-            let shader = frag_grid::load(graphics.device.clone())?;
-            shaders.insert("frag_grid", shader);
-
-            let shader = frag_sprite::load(graphics.device.clone())?;
-            shaders.insert("frag_sprite", shader);
-
-            let shader = frag_sprite2::load(graphics.device.clone())?;
-            shaders.insert("frag_sprite2", shader);
-
-            let shader = frag_sprite2_hl::load(graphics.device.clone())?;
-            shaders.insert("frag_sprite2_hl", shader);
-
-            let shader = frag_screen::load(graphics.device.clone())?;
-            shaders.insert("frag_screen", shader);
-
-            let shader = frag_swapchain::load(graphics.device.clone())?;
-            shaders.insert("frag_swapchain", shader);
-        }
-
         #[cfg(feature = "wayvr")]
         let mut tasks = TaskContainer::new();
 
@@ -124,10 +82,10 @@ impl AppState {
         );
 
         Ok(Self {
-            fc: FontCache::new(session.config.primary_font.clone())?,
             session,
             tasks,
-            graphics,
+            gfx,
+            gfx_extras,
             input_state: InputState::new(),
             hid_provider: crate::hid::initialize(),
             audio: AudioOutput::new(),

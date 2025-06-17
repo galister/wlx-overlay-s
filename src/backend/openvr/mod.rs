@@ -30,7 +30,7 @@ use crate::{
         overlay::{OverlayData, ShouldRender},
         task::{SystemTask, TaskType},
     },
-    graphics::{CommandBuffers, WlxGraphics},
+    graphics::{init_openvr_graphics, CommandBuffers},
     overlays::{
         toast::{Toast, ToastTopic},
         watch::{watch_fade, WATCH_NAME},
@@ -39,7 +39,7 @@ use crate::{
 };
 
 #[cfg(feature = "wayvr")]
-use crate::{gui::modular::button::WayVRAction, overlays::wayvr::wayvr_action};
+use crate::{backend::wayvr::WayVRAction, overlays::wayvr::wayvr_action};
 
 pub mod helpers;
 pub mod input;
@@ -95,8 +95,8 @@ pub fn openvr_run(
     };
 
     let mut state = {
-        let graphics = WlxGraphics::new_openvr(instance_extensions, device_extensions_fn)?;
-        AppState::from_graphics(graphics)?
+        let (gfx, gfx_extras) = init_openvr_graphics(instance_extensions, device_extensions_fn)?;
+        AppState::from_graphics(gfx, gfx_extras)?
     };
 
     if show_by_default {
@@ -147,7 +147,7 @@ pub fn openvr_run(
     let mut next_device_update = Instant::now();
     let mut due_tasks = VecDeque::with_capacity(4);
 
-    let mut lines = LinePool::new(state.graphics.clone())?;
+    let mut lines = LinePool::new(state.gfx.clone())?;
     let pointer_lines = [lines.allocate(), lines.allocate()];
 
     'main_loop: loop {
@@ -361,7 +361,7 @@ pub fn openvr_run(
 
         log::trace!("Rendering overlays");
 
-        if let Some(mut future) = buffers.execute_now(state.graphics.graphics_queue.clone())? {
+        if let Some(mut future) = buffers.execute_now(state.gfx.queue_gfx.clone())? {
             if let Err(e) = future.flush() {
                 return Err(BackendError::Fatal(e.into()));
             }
@@ -370,7 +370,7 @@ pub fn openvr_run(
 
         overlays
             .iter_mut()
-            .for_each(|o| o.after_render(universe.clone(), &mut overlay_mgr, &state.graphics));
+            .for_each(|o| o.after_render(universe.clone(), &mut overlay_mgr, &state.gfx));
 
         #[cfg(feature = "wayvr")]
         if let Some(wayvr) = &state.wayvr {

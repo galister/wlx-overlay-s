@@ -1,25 +1,54 @@
 use glam::Vec3A;
+use wgui::{
+    parser::parse_color_hex,
+    taffy::{
+        self,
+        prelude::{length, percent},
+    },
+    widget::{
+        rectangle::{Rectangle, RectangleParams},
+        util::WLength,
+    },
+};
 
 use crate::{
     backend::overlay::{ui_transform, OverlayData, OverlayState, Positioning, Z_ORDER_WATCH},
-    config::{load_known_yaml, ConfigType},
-    gui::{
-        canvas::Canvas,
-        modular::{modular_canvas, ModularData, ModularUiConfig},
-    },
+    gui::panel::GuiPanel,
     state::AppState,
 };
 
 pub const WATCH_NAME: &str = "watch";
 
-pub fn create_watch<O>(state: &mut AppState) -> anyhow::Result<OverlayData<O>>
+pub fn create_watch<O>(app: &mut AppState) -> anyhow::Result<OverlayData<O>>
 where
     O: Default,
 {
-    let config = load_known_yaml::<ModularUiConfig>(ConfigType::Watch);
+    let mut panel = GuiPanel::new_blank(app, 400, 200)?;
+
+    let (_, _) = panel.layout.add_child(
+        panel.layout.root_widget,
+        Rectangle::create(RectangleParams {
+            color: wgui::drawing::Color::new(0., 0., 0., 0.5),
+            border_color: parse_color_hex("#00ffff").unwrap(),
+            border: 2.0,
+            round: WLength::Units(4.0),
+            ..Default::default()
+        })
+        .unwrap(),
+        taffy::Style {
+            size: taffy::Size {
+                width: percent(1.0),
+                height: percent(1.0),
+            },
+            align_items: Some(taffy::AlignItems::Center),
+            justify_content: Some(taffy::JustifyContent::Center),
+            padding: length(4.0),
+            ..Default::default()
+        },
+    )?;
 
     let positioning = Positioning::FollowHand {
-        hand: state.session.config.watch_hand as _,
+        hand: app.session.config.watch_hand as _,
         lerp: 1.0,
     };
 
@@ -29,25 +58,16 @@ where
             want_visible: true,
             interactable: true,
             z_order: Z_ORDER_WATCH,
-            spawn_scale: config.width,
-            spawn_point: state.session.config.watch_pos,
-            spawn_rotation: state.session.config.watch_rot,
-            interaction_transform: ui_transform(config.size),
+            spawn_scale: 0.115, //TODO:configurable
+            spawn_point: app.session.config.watch_pos,
+            spawn_rotation: app.session.config.watch_rot,
+            interaction_transform: ui_transform([400, 200]),
             positioning,
             ..Default::default()
         },
-        backend: Box::new(create_watch_canvas(Some(config), state)?),
+        backend: Box::new(panel),
         ..Default::default()
     })
-}
-
-pub fn create_watch_canvas(
-    config: Option<ModularUiConfig>,
-    state: &mut AppState,
-) -> anyhow::Result<Canvas<(), ModularData>> {
-    let config = config.unwrap_or_else(|| load_known_yaml::<ModularUiConfig>(ConfigType::Watch));
-
-    modular_canvas(config.size, &config.elements, state)
 }
 
 pub fn watch_fade<D>(app: &mut AppState, watch: &mut OverlayData<D>)

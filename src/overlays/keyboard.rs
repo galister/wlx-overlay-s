@@ -15,20 +15,26 @@ use crate::{
     },
     config::{self, ConfigType},
     graphics::CommandBuffers,
-    gui::{
-        canvas::{builder::CanvasBuilder, control::Control, Canvas},
-        color_parse, KeyCapType,
-    },
+    gui::panel::GuiPanel,
     hid::{
         get_key_type, KeyModifier, KeyType, VirtualKey, XkbKeymap, ALT, CTRL, KEYS_TO_MODS, META,
         NUM_LOCK, SHIFT, SUPER,
     },
     state::{AppState, KeyboardFocus},
 };
-use glam::{vec2, vec3a, Affine2, Vec4};
+use glam::{vec2, vec3a, Affine2, Vec2Swizzles, Vec4};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use vulkano::image::view::ImageView;
+use wgui::{
+    parser::parse_color_hex,
+    taffy::{self, prelude::length},
+    widget::{
+        div::Div,
+        rectangle::{Rectangle, RectangleParams},
+        util::WLength,
+    },
+};
 
 const PIXELS_PER_UNIT: f32 = 80.;
 const BUTTON_PADDING: f32 = 4.;
@@ -92,20 +98,28 @@ where
         processes: vec![],
     };
 
-    let mut canvas = CanvasBuilder::new(
-        size.x as _,
-        size.y as _,
-        app.graphics.clone(),
-        app.graphics.native_format,
-        data,
+    let padding = 4f32;
+
+    let mut panel = GuiPanel::new_blank(
+        app,
+        padding.mul_add(2.0, size.x) as u32,
+        padding.mul_add(2.0, size.y) as u32,
     )?;
 
-    canvas.bg_color = color_parse("#181926").unwrap(); //safe
-    canvas.panel(0., 0., size.x, size.y, 12.);
-
-    canvas.font_size = 18;
-    canvas.fg_color = color_parse("#cad3f5").unwrap(); //safe
-    canvas.bg_color = color_parse("#1e2030").unwrap(); //safe
+    let (background, _) = panel.layout.add_child(
+        panel.layout.root_widget,
+        Rectangle::create(RectangleParams {
+            color: wgui::drawing::Color::new(0., 0., 0., 0.6),
+            round: WLength::Units(4.0),
+            ..Default::default()
+        })
+        .unwrap(),
+        taffy::Style {
+            flex_direction: taffy::FlexDirection::Column,
+            padding: length(padding),
+            ..Default::default()
+        },
+    )?;
 
     let has_altgr = keymap
         .as_ref()
@@ -115,17 +129,22 @@ where
         keymap = None;
     }
 
-    let unit_size = size.x / LAYOUT.row_size;
-    let h = 2.0f32.mul_add(-BUTTON_PADDING, unit_size);
-
     for row in 0..LAYOUT.key_sizes.len() {
-        let y = unit_size.mul_add(row as f32, BUTTON_PADDING);
-        let mut sum_size = 0f32;
+        let (div, _) = panel.layout.add_child(
+            background,
+            Div::create().unwrap(),
+            taffy::Style {
+                flex_direction: taffy::FlexDirection::Row,
+                ..Default::default()
+            },
+        )?;
 
         for col in 0..LAYOUT.key_sizes[row].len() {
             let my_size = LAYOUT.key_sizes[row][col];
-            let x = unit_size.mul_add(sum_size, BUTTON_PADDING);
-            let w = unit_size.mul_add(my_size, -(2. * BUTTON_PADDING));
+            let my_size = taffy::Size {
+                width: length(PIXELS_PER_UNIT * my_size),
+                height: length(PIXELS_PER_UNIT),
+            };
 
             if let Some(key) = LAYOUT.main_layout[row][col].as_ref() {
                 let mut label = Vec::with_capacity(2);
@@ -180,16 +199,16 @@ where
                 } else if let Some(exec_args) = LAYOUT.exec_commands.get(key) {
                     if exec_args.is_empty() {
                         log::error!("Keyboard: EXEC args empty for {key}");
-                        continue;
-                    }
-                    let mut iter = exec_args.iter().cloned();
-                    if let Some(program) = iter.next() {
-                        maybe_state = Some(KeyButtonData::Exec {
-                            program,
-                            args: iter.by_ref().take_while(|arg| arg[..] != *"null").collect(),
-                            release_program: iter.next(),
-                            release_args: iter.collect(),
-                        });
+                    } else {
+                        let mut iter = exec_args.iter().cloned();
+                        if let Some(program) = iter.next() {
+                            maybe_state = Some(KeyButtonData::Exec {
+                                program,
+                                args: iter.by_ref().take_while(|arg| arg[..] != *"null").collect(),
+                                release_program: iter.next(),
+                                release_args: iter.collect(),
+                            });
+                        }
                     }
                 } else {
                     log::error!("Unknown key: {key}");
@@ -199,19 +218,37 @@ where
                     if label.is_empty() {
                         label = LAYOUT.label_for_key(key);
                     }
-                    let button = canvas.key_button(x, y, w, h, 12., cap_type, &label);
-                    button.state = Some(state);
-                    button.on_press = Some(key_press);
-                    button.on_release = Some(key_release);
-                    button.test_highlight = Some(test_highlight);
+                    let _ = panel.layout.add_child(
+                        div,
+                        Rectangle::create(RectangleParams {
+                            border_color: parse_color_hex("#dddddd").unwrap(),
+                            border: 2.0,
+                            round: WLength::Units(4.0),
+                            ..Default::default()
+                        })
+                        .unwrap(),
+                        taffy::Style {
+                            size: my_size,
+                            min_size: my_size,
+                            max_size: my_size,
+                            ..Default::default()
+                        },
+                    )?;
+                } else {
+                    let _ = panel.layout.add_child(
+                        div,
+                        Div::create().unwrap(),
+                        taffy::Style {
+                            size: my_size,
+                            min_size: my_size,
+                            max_size: my_size,
+                            ..Default::default()
+                        },
+                    )?;
                 }
             }
-
-            sum_size += my_size;
         }
     }
-
-    let canvas = canvas.build();
 
     let interaction_transform = Affine2::from_translation(vec2(0.5, 0.5))
         * Affine2::from_scale(vec2(1., -size.x as f32 / size.y as f32));
@@ -230,118 +267,9 @@ where
             interaction_transform,
             ..Default::default()
         },
-        backend: Box::new(KeyboardBackend { canvas }),
+        backend: Box::new(KeyboardBackend { panel }),
         ..Default::default()
     })
-}
-
-fn key_press(
-    control: &mut Control<KeyboardData, KeyButtonData>,
-    data: &mut KeyboardData,
-    app: &mut AppState,
-    mode: PointerMode,
-) {
-    match control.state.as_mut() {
-        Some(KeyButtonData::Key { vk, pressed }) => {
-            key_click(app);
-
-            data.modifiers |= match mode {
-                PointerMode::Right => SHIFT,
-                PointerMode::Middle => data.alt_modifier,
-                _ => 0,
-            };
-
-            set_modifiers(app, data.modifiers);
-
-            send_key(app, *vk, true);
-            *pressed = true;
-        }
-        Some(KeyButtonData::Modifier { modifier, sticky }) => {
-            *sticky = data.modifiers & *modifier == 0;
-            data.modifiers |= *modifier;
-            key_click(app);
-            set_modifiers(app, data.modifiers);
-        }
-        Some(KeyButtonData::Macro { verbs }) => {
-            key_click(app);
-            for (vk, press) in verbs {
-                send_key(app, *vk, *press);
-            }
-        }
-        Some(KeyButtonData::Exec { program, args, .. }) => {
-            // Reap previous processes
-            data.processes
-                .retain_mut(|child| !matches!(child.try_wait(), Ok(Some(_))));
-
-            key_click(app);
-            if let Ok(child) = Command::new(program).args(args).spawn() {
-                data.processes.push(child);
-            }
-        }
-        None => {}
-    }
-}
-
-fn key_release(
-    control: &mut Control<KeyboardData, KeyButtonData>,
-    data: &mut KeyboardData,
-    app: &mut AppState,
-) {
-    match control.state.as_mut() {
-        Some(KeyButtonData::Key { vk, pressed }) => {
-            send_key(app, *vk, false);
-            *pressed = false;
-
-            for m in &AUTO_RELEASE_MODS {
-                if data.modifiers & *m != 0 {
-                    data.modifiers &= !*m;
-                    set_modifiers(app, data.modifiers);
-                }
-            }
-        }
-        Some(KeyButtonData::Modifier { modifier, sticky }) => {
-            if !*sticky {
-                data.modifiers &= !*modifier;
-                set_modifiers(app, data.modifiers);
-            }
-        }
-        Some(KeyButtonData::Exec {
-            release_program,
-            release_args,
-            ..
-        }) => {
-            // Reap previous processes
-            data.processes
-                .retain_mut(|child| !matches!(child.try_wait(), Ok(Some(_))));
-
-            if let Some(program) = release_program {
-                if let Ok(child) = Command::new(program).args(release_args).spawn() {
-                    data.processes.push(child);
-                }
-            }
-        }
-        _ => {}
-    }
-}
-
-static PRESS_COLOR: Vec4 = Vec4::new(198. / 255., 160. / 255., 246. / 255., 0.5);
-
-fn test_highlight(
-    control: &Control<KeyboardData, KeyButtonData>,
-    data: &mut KeyboardData,
-    _app: &mut AppState,
-) -> Option<Vec4> {
-    let pressed = match control.state.as_ref() {
-        Some(KeyButtonData::Key { pressed, .. }) => *pressed,
-        Some(KeyButtonData::Modifier { modifier, .. }) => data.modifiers & *modifier != 0,
-        _ => false,
-    };
-
-    if pressed {
-        Some(PRESS_COLOR)
-    } else {
-        None
-    }
 }
 
 struct KeyboardData {
@@ -501,15 +429,15 @@ fn key_events_for_macro(macro_verbs: &Vec<String>) -> Vec<(VirtualKey, bool)> {
 }
 
 struct KeyboardBackend {
-    canvas: Canvas<KeyboardData, KeyButtonData>,
+    panel: GuiPanel,
 }
 
 impl OverlayBackend for KeyboardBackend {
     fn set_interaction(&mut self, interaction: Box<dyn crate::backend::input::InteractionHandler>) {
-        self.canvas.set_interaction(interaction);
+        self.panel.set_interaction(interaction);
     }
     fn set_renderer(&mut self, renderer: Box<dyn crate::backend::overlay::OverlayRenderer>) {
-        self.canvas.set_renderer(renderer);
+        self.panel.set_renderer(renderer);
     }
 }
 
@@ -520,7 +448,7 @@ impl InteractionHandler for KeyboardBackend {
         hit: &crate::backend::input::PointerHit,
         pressed: bool,
     ) {
-        self.canvas.on_pointer(app, hit, pressed);
+        self.panel.on_pointer(app, hit, pressed);
     }
     fn on_scroll(
         &mut self,
@@ -529,26 +457,26 @@ impl InteractionHandler for KeyboardBackend {
         delta_y: f32,
         delta_x: f32,
     ) {
-        self.canvas.on_scroll(app, hit, delta_y, delta_x);
+        self.panel.on_scroll(app, hit, delta_y, delta_x);
     }
     fn on_left(&mut self, app: &mut AppState, pointer: usize) {
-        self.canvas.on_left(app, pointer);
+        self.panel.on_left(app, pointer);
     }
     fn on_hover(
         &mut self,
         app: &mut AppState,
         hit: &crate::backend::input::PointerHit,
     ) -> Option<crate::backend::input::Haptics> {
-        self.canvas.on_hover(app, hit)
+        self.panel.on_hover(app, hit)
     }
 }
 
 impl OverlayRenderer for KeyboardBackend {
     fn init(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        self.canvas.init(app)
+        self.panel.init(app)
     }
     fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
-        self.canvas.should_render(app)
+        self.panel.should_render(app)
     }
     fn render(
         &mut self,
@@ -557,17 +485,31 @@ impl OverlayRenderer for KeyboardBackend {
         buf: &mut CommandBuffers,
         alpha: f32,
     ) -> anyhow::Result<bool> {
-        self.canvas.render(app, tgt, buf, alpha)
+        self.panel.render(app, tgt, buf, alpha)
     }
     fn frame_meta(&mut self) -> Option<FrameMeta> {
-        self.canvas.frame_meta()
+        self.panel.frame_meta()
     }
     fn pause(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        self.canvas.data_mut().modifiers = 0;
         set_modifiers(app, 0);
-        self.canvas.pause(app)
+        self.panel.pause(app)
     }
     fn resume(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        self.canvas.resume(app)
+        self.panel.resume(app)
     }
+}
+
+pub enum KeyCapType {
+    /// Label is in center of keycap
+    Regular,
+    /// Label on the top
+    /// AltGr symbol on bottom
+    RegularAltGr,
+    /// Primary symbol on bottom
+    /// Shift symbol on top
+    Reversed,
+    /// Primary symbol on bottom-left
+    /// Shift symbol on top-left
+    /// AltGr symbol on bottom-right
+    ReversedAltGr,
 }

@@ -10,7 +10,7 @@ use serde::Deserialize;
 use crate::state::AppState;
 
 #[cfg(feature = "wayvr")]
-use crate::gui::modular::button::WayVRAction;
+use crate::backend::wayvr::WayVRAction;
 
 use super::{
     common::OverlaySelector,

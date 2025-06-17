@@ -113,12 +113,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    #[cfg(feature = "uidev")]
-    if let Some(panel_name) = args.uidev.as_ref() {
-        crate::backend::uidev::uidev_run(panel_name.as_str())?;
-        return Ok(());
-    }
-
     let running = Arc::new(AtomicBool::new(true));
     let _ = ctrlc::set_handler({
         let running = running.clone();

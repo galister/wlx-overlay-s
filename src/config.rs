@@ -2,11 +2,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::config_io;
-use crate::gui::modular::ModularUiConfig;
 use crate::overlays::toast::DisplayMethod;
 use crate::overlays::toast::ToastTopic;
 use crate::state::LeftRight;
-use anyhow::bail;
 use chrono::Offset;
 use config::Config;
 use config::File;
@@ -382,14 +380,6 @@ where
     }
     // can only get here if internal fallback is broken
     panic!("No usable config found.");
-}
-
-pub fn load_custom_ui(name: &str) -> anyhow::Result<ModularUiConfig> {
-    let filename = format!("{name}.yaml");
-    let Some(yaml_data) = config_io::load(&filename) else {
-        bail!("Could not read file at {}", &filename);
-    };
-    Ok(serde_yaml::from_str(&yaml_data)?)
 }
 
 pub fn load_config_with_conf_d<ConfigData>(

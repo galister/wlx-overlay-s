@@ -8,6 +8,19 @@ use std::{
 use glam::{vec3a, Quat};
 use idmap_derive::IntegerId;
 use serde::{Deserialize, Serialize};
+use wgui::{
+    parser::parse_color_hex,
+    renderer_vk::text::{FontWeight, TextStyle},
+    taffy::{
+        self,
+        prelude::{auto, length, percent},
+    },
+    widget::{
+        rectangle::{Rectangle, RectangleParams},
+        text::{TextLabel, TextParams},
+        util::WLength,
+    },
+};
 
 use crate::{
     backend::{
@@ -15,7 +28,7 @@ use crate::{
         overlay::{OverlayBackend, OverlayState, Positioning, Z_ORDER_TOAST},
         task::TaskType,
     },
-    gui::{canvas::builder::CanvasBuilder, color_parse},
+    gui::panel::GuiPanel,
     state::{AppState, LeftRight},
 };
 
@@ -40,8 +53,8 @@ pub enum ToastTopic {
 }
 
 pub struct Toast {
-    pub title: Arc<str>,
-    pub body: Arc<str>,
+    pub title: String,
+    pub body: String,
     pub opacity: f32,
     pub timeout: f32,
     pub sound: bool,
@@ -50,7 +63,7 @@ pub struct Toast {
 
 #[allow(dead_code)]
 impl Toast {
-    pub const fn new(topic: ToastTopic, title: Arc<str>, body: Arc<str>) -> Self {
+    pub const fn new(topic: ToastTopic, title: String, body: String) -> Self {
         Self {
             title,
             body,
@@ -117,6 +130,7 @@ impl Toast {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn OverlayBackend>)> {
     let current_method = app
         .session
@@ -153,63 +167,79 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
         toast.title
     };
 
-    let mut size = if toast.body.is_empty() {
-        let (w, h) = app
-            .fc
-            .get_text_size(&title, FONT_SIZE, app.graphics.clone())
-            .ok()?;
-        (w, h + 20.)
-    } else {
-        let (w0, _) = app
-            .fc
-            .get_text_size(&title, FONT_SIZE, app.graphics.clone())
-            .ok()?;
-        let (w1, h1) = app
-            .fc
-            .get_text_size(&toast.body, FONT_SIZE, app.graphics.clone())
-            .ok()?;
-        (w0.max(w1), h1 + 50.)
-    };
+    let mut panel = GuiPanel::new_blank(app, 600, 200).ok()?;
 
-    let og_width = size.0;
-    size.0 += PADDING.0 * 2.;
+    let (rect, _) = panel
+        .layout
+        .add_child(
+            panel.layout.root_widget,
+            Rectangle::create(RectangleParams {
+                color: parse_color_hex("#1e2030").unwrap(),
+                border_color: parse_color_hex("#5e7090").unwrap(),
+                border: 1.0,
+                round: WLength::Units(4.0),
+                ..Default::default()
+            })
+            .unwrap(),
+            taffy::Style {
+                align_items: Some(taffy::AlignItems::Center),
+                justify_content: Some(taffy::JustifyContent::Center),
+                padding: length(1.0),
+                ..Default::default()
+            },
+        )
+        .ok()?;
 
-    let mut canvas = CanvasBuilder::<(), ()>::new(
-        size.0 as _,
-        size.1 as _,
-        app.graphics.clone(),
-        app.graphics.native_format,
-        (),
-    )
-    .ok()?;
+    let _ = panel.layout.add_child(
+        rect,
+        TextLabel::create(TextParams {
+            content: title,
+            style: TextStyle {
+                color: parse_color_hex("#ffffff"),
+                ..Default::default()
+            },
+        })
+        .unwrap(),
+        taffy::Style {
+            size: taffy::Size {
+                width: percent(1.0),
+                height: auto(),
+            },
+            ..Default::default()
+        },
+    );
 
-    canvas.font_size = FONT_SIZE;
-    canvas.fg_color = color_parse("#cad3f5").unwrap(); // want panic
-    canvas.bg_color = color_parse("#1e2030").unwrap(); // want panic
-    canvas.panel(0., 0., size.0, size.1, 16.);
-
-    if toast.body.is_empty() {
-        canvas.label_centered(PADDING.0, 0., og_width, size.1, 16., title);
-    } else {
-        canvas.label(PADDING.0, 54., og_width, size.1 - 54., 3., toast.body);
-
-        canvas.fg_color = color_parse("#b8c0e0").unwrap(); // want panic
-        canvas.bg_color = color_parse("#24273a").unwrap(); // want panic
-        canvas.panel(0., 0., size.0, 30., 16.);
-        canvas.label_centered(PADDING.0, 16., og_width, FONT_SIZE as f32 + 2., 16., title);
-    }
+    let _ = panel.layout.add_child(
+        rect,
+        TextLabel::create(TextParams {
+            content: toast.body,
+            style: TextStyle {
+                weight: Some(FontWeight::Bold),
+                color: parse_color_hex("#eeeeee"),
+                ..Default::default()
+            },
+        })
+        .unwrap(),
+        taffy::Style {
+            size: taffy::Size {
+                width: percent(1.0),
+                height: auto(),
+            },
+            ..Default::default()
+        },
+    );
 
     let state = OverlayState {
         name: TOAST_NAME.clone(),
         want_visible: true,
-        spawn_scale: size.0 * PIXELS_TO_METERS,
+        spawn_scale: (panel.width as f32) * PIXELS_TO_METERS,
         spawn_rotation,
         spawn_point,
         z_order: Z_ORDER_TOAST,
         positioning,
         ..Default::default()
     };
-    let backend = Box::new(canvas.build());
+    let backend = Box::new(panel);
 
     Some((state, backend))
 }

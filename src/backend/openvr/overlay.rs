@@ -7,9 +7,13 @@ use ovr_overlay::{
     pose::Matrix3x4,
     sys::{ETrackingUniverseOrigin, VRVulkanTextureData_t},
 };
-use vulkano::{image::view::ImageView, Handle, VulkanObject};
+use vulkano::{
+    image::{view::ImageView, ImageUsage},
+    Handle, VulkanObject,
+};
+use wgui::gfx::WGfx;
 
-use crate::{backend::overlay::OverlayData, graphics::WlxGraphics, state::AppState};
+use crate::{backend::overlay::OverlayData, state::AppState};
 
 use super::helpers::Affine3AConvert;
 
@@ -65,10 +69,11 @@ impl OverlayData<OpenVrOverlayData> {
         let Some(meta) = self.backend.frame_meta() else {
             return Ok(false);
         };
-        let image = app.graphics.render_texture(
+        let image = app.gfx.new_image(
             meta.extent[0],
             meta.extent[1],
-            app.graphics.native_format,
+            app.gfx.surface_format,
+            ImageUsage::TRANSFER_SRC | ImageUsage::COLOR_ATTACHMENT | ImageUsage::SAMPLED,
         )?;
         self.data.image_view = Some(ImageView::new_default(image)?);
         Ok(true)
@@ -91,7 +96,7 @@ impl OverlayData<OpenVrOverlayData> {
         &mut self,
         universe: ETrackingUniverseOrigin,
         overlay: &mut OverlayManager,
-        graphics: &WlxGraphics,
+        graphics: &WGfx,
     ) {
         if self.data.visible {
             if self.state.dirty {
@@ -228,7 +233,7 @@ impl OverlayData<OpenVrOverlayData> {
         }
     }
 
-    pub(super) fn upload_texture(&mut self, overlay: &mut OverlayManager, graphics: &WlxGraphics) {
+    pub(super) fn upload_texture(&mut self, overlay: &mut OverlayManager, graphics: &WGfx) {
         let Some(handle) = self.data.handle else {
             log::debug!("{}: No overlay handle", self.state.name);
             return;
@@ -267,8 +272,8 @@ impl OverlayData<OpenVrOverlayData> {
             m_pDevice: graphics.device.handle().as_raw() as *mut _,
             m_pPhysicalDevice: graphics.device.physical_device().handle().as_raw() as *mut _,
             m_pInstance: graphics.instance.handle().as_raw() as *mut _,
-            m_pQueue: graphics.graphics_queue.handle().as_raw() as *mut _,
-            m_nQueueFamilyIndex: graphics.graphics_queue.queue_family_index(),
+            m_pQueue: graphics.queue_gfx.handle().as_raw() as *mut _,
+            m_nQueueFamilyIndex: graphics.queue_gfx.queue_family_index(),
         };
         log::trace!(
             "{}: UploadTex {:?}, {}x{}, {:?}",

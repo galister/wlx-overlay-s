@@ -42,7 +42,7 @@ impl OverlayData<OpenXrOverlayData> {
         let extent = meta.extent;
         self.data.swapchain = Some(create_swapchain(
             xr,
-            app.graphics.clone(),
+            app.gfx.clone(),
             extent,
             SwapchainOpts::new(),
         )?);

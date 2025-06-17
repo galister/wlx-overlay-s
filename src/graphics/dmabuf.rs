@@ -1,12 +1,142 @@
-use std::{mem::MaybeUninit, sync::Arc};
+use std::{
+    mem::MaybeUninit,
+    os::fd::{FromRawFd, IntoRawFd},
+    sync::Arc,
+};
 
 use smallvec::SmallVec;
 use vulkano::{
     device::Device,
-    image::{sys::RawImage, ImageCreateInfo, SubresourceLayout},
+    format::Format,
+    image::{sys::RawImage, Image, ImageCreateInfo, ImageTiling, ImageUsage, SubresourceLayout},
+    memory::{
+        allocator::{MemoryAllocator, MemoryTypeFilter},
+        DedicatedAllocation, DeviceMemory, ExternalMemoryHandleType, ExternalMemoryHandleTypes,
+        MemoryAllocateInfo, MemoryImportInfo, MemoryPropertyFlags, ResourceMemory,
+    },
     sync::Sharing,
     VulkanError, VulkanObject,
 };
+use wgui::gfx::WGfx;
+use wlx_capture::frame::{
+    DmabufFrame, DrmFormat, FourCC, DRM_FORMAT_ABGR2101010, DRM_FORMAT_ABGR8888,
+    DRM_FORMAT_ARGB8888, DRM_FORMAT_XBGR2101010, DRM_FORMAT_XBGR8888, DRM_FORMAT_XRGB8888,
+};
+
+pub const DRM_FORMAT_MOD_INVALID: u64 = 0xff_ffff_ffff_ffff;
+
+pub trait WGfxDmabuf {
+    fn dmabuf_texture_ex(
+        &self,
+        frame: DmabufFrame,
+        tiling: ImageTiling,
+        layouts: Vec<SubresourceLayout>,
+        modifiers: &[u64],
+    ) -> anyhow::Result<Arc<Image>>;
+
+    fn dmabuf_texture(&self, frame: DmabufFrame) -> anyhow::Result<Arc<Image>>;
+}
+
+impl WGfxDmabuf for WGfx {
+    fn dmabuf_texture_ex(
+        &self,
+        frame: DmabufFrame,
+        tiling: ImageTiling,
+        layouts: Vec<SubresourceLayout>,
+        modifiers: &[u64],
+    ) -> anyhow::Result<Arc<Image>> {
+        let extent = [frame.format.width, frame.format.height, 1];
+        let format = fourcc_to_vk(frame.format.fourcc)?;
+
+        let image = unsafe {
+            create_dmabuf_image(
+                self.device.clone(),
+                ImageCreateInfo {
+                    format,
+                    extent,
+                    usage: ImageUsage::SAMPLED,
+                    external_memory_handle_types: ExternalMemoryHandleTypes::DMA_BUF,
+                    tiling,
+                    drm_format_modifiers: modifiers.to_owned(),
+                    drm_format_modifier_plane_layouts: layouts,
+                    ..Default::default()
+                },
+            )?
+        };
+
+        let requirements = image.memory_requirements()[0];
+        let memory_type_index = self
+            .memory_allocator
+            .find_memory_type_index(
+                requirements.memory_type_bits,
+                MemoryTypeFilter {
+                    required_flags: MemoryPropertyFlags::DEVICE_LOCAL,
+                    ..Default::default()
+                },
+            )
+            .ok_or_else(|| anyhow::anyhow!("failed to get memory type index"))?;
+
+        debug_assert!(self.device.enabled_extensions().khr_external_memory_fd);
+        debug_assert!(self.device.enabled_extensions().khr_external_memory);
+        debug_assert!(self.device.enabled_extensions().ext_external_memory_dma_buf);
+
+        // only do the 1st
+        unsafe {
+            let Some(fd) = frame.planes[0].fd else {
+                anyhow::bail!("DMA-buf plane has no FD");
+            };
+
+            let file = std::fs::File::from_raw_fd(fd);
+            let new_file = file.try_clone()?;
+            let _ = file.into_raw_fd();
+
+            let memory = DeviceMemory::allocate_unchecked(
+                self.device.clone(),
+                MemoryAllocateInfo {
+                    allocation_size: requirements.layout.size(),
+                    memory_type_index,
+                    dedicated_allocation: Some(DedicatedAllocation::Image(&image)),
+                    ..Default::default()
+                },
+                Some(MemoryImportInfo::Fd {
+                    file: new_file,
+                    handle_type: ExternalMemoryHandleType::DmaBuf,
+                }),
+            )?;
+
+            let mem_alloc = ResourceMemory::new_dedicated(memory);
+            match image.bind_memory_unchecked([mem_alloc]) {
+                Ok(image) => Ok(Arc::new(image)),
+                Err(e) => {
+                    anyhow::bail!("Failed to bind memory to image: {}", e.0);
+                }
+            }
+        }
+    }
+
+    fn dmabuf_texture(&self, frame: DmabufFrame) -> anyhow::Result<Arc<Image>> {
+        let mut modifiers: Vec<u64> = vec![];
+        let mut tiling: ImageTiling = ImageTiling::Optimal;
+        let mut layouts: Vec<SubresourceLayout> = vec![];
+
+        if frame.format.modifier != DRM_FORMAT_MOD_INVALID {
+            (0..frame.num_planes).for_each(|i| {
+                let plane = &frame.planes[i];
+                layouts.push(SubresourceLayout {
+                    offset: plane.offset.into(),
+                    size: 0,
+                    row_pitch: plane.stride as _,
+                    array_pitch: None,
+                    depth_pitch: None,
+                });
+                modifiers.push(frame.format.modifier);
+            });
+            tiling = ImageTiling::DrmFormatModifier;
+        }
+
+        self.dmabuf_texture_ex(frame, tiling, layouts, &modifiers)
+    }
+}
 
 #[allow(clippy::all, clippy::pedantic)]
 pub(super) unsafe fn create_dmabuf_image(
@@ -169,4 +299,52 @@ pub(super) unsafe fn create_dmabuf_image(
     };
 
     RawImage::from_handle(device, handle, create_info)
+}
+
+pub fn get_drm_formats(device: Arc<Device>) -> Vec<DrmFormat> {
+    let possible_formats = [
+        DRM_FORMAT_ABGR8888.into(),
+        DRM_FORMAT_XBGR8888.into(),
+        DRM_FORMAT_ARGB8888.into(),
+        DRM_FORMAT_XRGB8888.into(),
+        DRM_FORMAT_ABGR2101010.into(),
+        DRM_FORMAT_XBGR2101010.into(),
+    ];
+
+    let mut final_formats = vec![];
+
+    for &f in &possible_formats {
+        let Ok(vk_fmt) = fourcc_to_vk(f) else {
+            continue;
+        };
+        let Ok(props) = device.physical_device().format_properties(vk_fmt) else {
+            continue;
+        };
+        let mut fmt = DrmFormat {
+            fourcc: f,
+            modifiers: props
+                .drm_format_modifier_properties
+                .iter()
+                // important bit: only allow single-plane
+                .filter(|m| m.drm_format_modifier_plane_count == 1)
+                .map(|m| m.drm_format_modifier)
+                .collect(),
+        };
+        fmt.modifiers.push(DRM_FORMAT_MOD_INVALID); // implicit modifiers support
+        final_formats.push(fmt);
+    }
+    log::debug!("Supported DRM formats:");
+    for f in &final_formats {
+        log::debug!("  {} {:?}", f.fourcc, f.modifiers);
+    }
+    final_formats
+}
+
+pub fn fourcc_to_vk(fourcc: FourCC) -> anyhow::Result<Format> {
+    match fourcc.value {
+        DRM_FORMAT_ABGR8888 | DRM_FORMAT_XBGR8888 => Ok(Format::R8G8B8A8_UNORM),
+        DRM_FORMAT_ARGB8888 | DRM_FORMAT_XRGB8888 => Ok(Format::B8G8R8A8_UNORM),
+        DRM_FORMAT_ABGR2101010 | DRM_FORMAT_XBGR2101010 => Ok(Format::A2B10G10R10_UNORM_PACK32),
+        _ => anyhow::bail!("Unsupported format {}", fourcc),
+    }
 }

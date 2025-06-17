@@ -2,9 +2,12 @@ use glam::{vec3a, Affine2, Vec3, Vec3A};
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 use vulkano::{
     command_buffer::CommandBufferUsage,
-    image::{view::ImageView, SubresourceLayout},
+    format::Format,
+    image::{view::ImageView, Image, ImageTiling, SubresourceLayout},
+    pipeline::graphics::input_assembly::PrimitiveTopology,
 };
 use wayvr_ipc::packet_server::{self, PacketServer, WvrStateChanged};
+use wgui::gfx::{pipeline::WGfxPipeline, WGfx};
 use wlx_capture::frame::{DmabufFrame, FourCC, FrameFormat, FramePlane};
 
 use crate::{
@@ -19,12 +22,11 @@ use crate::{
         wayvr::{
             self, display,
             server_ipc::{gen_args_vec, gen_env_vec},
-            WayVR,
+            WayVR, WayVRAction, WayVRDisplayClickAction,
         },
     },
     config_wayvr,
-    graphics::{CommandBuffers, WlxGraphics, WlxPipeline},
-    gui::modular::button::{WayVRAction, WayVRDisplayClickAction},
+    graphics::{dmabuf::WGfxDmabuf, CommandBuffers, ExtentExt, Vert2Uv},
     state::{self, AppState, KeyboardFocus},
 };
 
@@ -175,15 +177,15 @@ impl InteractionHandler for WayVRInteractionHandler {
 }
 
 struct ImageData {
-    vk_image: Arc<vulkano::image::Image>,
-    vk_image_view: Arc<vulkano::image::view::ImageView>,
+    vk_image: Arc<Image>,
+    vk_image_view: Arc<ImageView>,
 }
 
 pub struct WayVRRenderer {
-    pipeline: Arc<WlxPipeline>,
+    pipeline: Arc<WGfxPipeline<Vert2Uv>>,
     image: Option<ImageData>,
     context: Rc<RefCell<WayVRContext>>,
-    graphics: Arc<WlxGraphics>,
+    graphics: Arc<WGfx>,
     resolution: [u16; 2],
 }
 
@@ -194,21 +196,19 @@ impl WayVRRenderer {
         display: wayvr::display::DisplayHandle,
         resolution: [u16; 2],
     ) -> anyhow::Result<Self> {
-        let Ok(shaders) = app.graphics.shared_shaders.read() else {
-            anyhow::bail!("Failed to lock shared shaders for reading");
-        };
-
-        let pipeline = app.graphics.create_pipeline(
-            shaders.get("vert_common").unwrap().clone(), // want panic
-            shaders.get("frag_srgb").unwrap().clone(),   // want panic
-            app.graphics.native_format,
+        let pipeline = app.gfx.create_pipeline(
+            app.gfx_extras.shaders.get("vert_quad").unwrap().clone(), // want panic
+            app.gfx_extras.shaders.get("frag_srgb").unwrap().clone(), // want panic
+            app.gfx.surface_format,
             None,
+            PrimitiveTopology::TriangleStrip,
+            false,
         )?;
 
         Ok(Self {
             pipeline,
             context: Rc::new(RefCell::new(WayVRContext::new(wvr, display))),
-            graphics: app.graphics.clone(),
+            graphics: app.gfx.clone(),
             image: None,
             resolution,
         })
@@ -574,15 +574,14 @@ impl WayVRRenderer {
         &mut self,
         data: &wayvr::egl_data::RenderSoftwarePixelsData,
     ) -> anyhow::Result<()> {
-        let mut upload = self.graphics.create_uploads_command_buffer(
-            self.graphics.transfer_queue.clone(),
-            CommandBufferUsage::OneTimeSubmit,
-        )?;
+        let mut upload = self
+            .graphics
+            .create_xfer_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
 
-        let tex = upload.texture2d_raw(
+        let tex = upload.upload_image(
             u32::from(data.width),
             u32::from(data.height),
-            vulkano::format::Format::R8G8B8A8_UNORM,
+            Format::R8G8B8A8_UNORM,
             &data.data,
         )?;
 
@@ -644,7 +643,7 @@ impl WayVRRenderer {
 
         let tex = self.graphics.dmabuf_texture_ex(
             frame,
-            vulkano::image::ImageTiling::DrmFormatModifier,
+            ImageTiling::DrmFormatModifier,
             layouts,
             &data.mod_info.modifiers,
         )?;
@@ -732,18 +731,22 @@ impl OverlayRenderer for WayVRRenderer {
         let set0 = self.pipeline.uniform_sampler(
             0,
             image.vk_image_view.clone(),
-            app.graphics.texture_filtering,
+            app.gfx.texture_filter,
         )?;
 
-        let set1 = self.pipeline.uniform_buffer(1, vec![alpha])?;
+        let set1 = self.pipeline.uniform_buffer_upload(1, vec![alpha])?;
 
-        let pass = self
-            .pipeline
-            .create_pass_for_target(tgt.clone(), vec![set0, set1])?;
+        let pass = self.pipeline.create_pass(
+            tgt.extent_f32(),
+            app.gfx_extras.quad_verts.clone(),
+            0..4,
+            0..1,
+            vec![set0, set1],
+        )?;
 
         let mut cmd_buffer = app
-            .graphics
-            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+            .gfx
+            .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
         cmd_buffer.begin_rendering(tgt)?;
         cmd_buffer.run_ref(&pass)?;
         cmd_buffer.end_rendering()?;

@@ -14,11 +14,10 @@ use crate::{
     backend::{
         overlay::Positioning,
         task::{TaskContainer, TaskType},
-        wayvr,
+        wayvr::{self, WayVRAction},
     },
     config::load_config_with_conf_d,
     config_io,
-    gui::modular::button::WayVRAction,
     overlays::wayvr::{executable_exists_in_path, WayVRData},
 };
 

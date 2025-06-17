@@ -8,17 +8,16 @@ use vulkano::{
     memory::allocator::{AllocationCreateInfo, MemoryTypeFilter},
     DeviceSize,
 };
-
-use super::WlxUploadsBuffer;
+use wgui::gfx::cmd::XferCommandBuffer;
 
 pub trait WlxCommandBufferDds {
-    fn texture2d_dds<R>(&mut self, r: R) -> anyhow::Result<Arc<Image>>
+    fn upload_image_dds<R>(&mut self, r: R) -> anyhow::Result<Arc<Image>>
     where
         R: Read;
 }
 
-impl WlxCommandBufferDds for WlxUploadsBuffer {
-    fn texture2d_dds<R>(&mut self, r: R) -> anyhow::Result<Arc<Image>>
+impl WlxCommandBufferDds for XferCommandBuffer {
+    fn upload_image_dds<R>(&mut self, r: R) -> anyhow::Result<Arc<Image>>
     where
         R: Read,
     {

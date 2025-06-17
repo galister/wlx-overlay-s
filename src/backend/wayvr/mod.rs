@@ -14,6 +14,7 @@ use comp::Application;
 use display::{Display, DisplayInitParams, DisplayVec};
 use event_queue::SyncEventQueue;
 use process::ProcessVec;
+use serde::Deserialize;
 use server_ipc::WayVRServer;
 use smallvec::SmallVec;
 use smithay::{
@@ -36,6 +37,7 @@ use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
     rc::Rc,
+    sync::Arc,
 };
 use time::get_millis;
 use wayvr_ipc::{packet_client, packet_server};
@@ -716,4 +718,23 @@ impl WayVRState {
 
         Ok(handle)
     }
+}
+
+#[derive(Deserialize, Clone)]
+pub enum WayVRDisplayClickAction {
+    ToggleVisibility,
+    Reset,
+}
+
+#[derive(Deserialize, Clone)]
+pub enum WayVRAction {
+    AppClick {
+        catalog_name: Arc<str>,
+        app_name: Arc<str>,
+    },
+    DisplayClick {
+        display_name: Arc<str>,
+        action: WayVRDisplayClickAction,
+    },
+    ToggleDashboard,
 }

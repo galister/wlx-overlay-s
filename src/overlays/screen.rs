@@ -7,12 +7,14 @@ use std::{
     time::Instant,
 };
 use vulkano::{
+    buffer::{BufferUsage, Subbuffer},
     command_buffer::CommandBufferUsage,
     device::Queue,
     format::Format,
     image::{sampler::Filter, view::ImageView, Image},
-    pipeline::graphics::color_blend::AttachmentBlend,
+    pipeline::graphics::{color_blend::AttachmentBlend, input_assembly::PrimitiveTopology},
 };
+use wgui::gfx::{cmd::XferCommandBuffer, pass::WGfxPass, pipeline::WGfxPipeline, WGfx};
 use wlx_capture::frame as wlx_frame;
 
 use wlx_capture::{
@@ -56,7 +58,10 @@ use crate::{
         },
     },
     config::{def_pw_tokens, GeneralConfig, PwTokenMap},
-    graphics::{fourcc_to_vk, CommandBuffers, WlxGraphics, WlxPipeline, WlxUploadsBuffer},
+    graphics::{
+        dmabuf::{fourcc_to_vk, WGfxDmabuf},
+        upload_quad_vertices, CommandBuffers, ExtentExt, Vert2Uv,
+    },
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState, KeyboardFocus, ScreenMeta},
 };
@@ -153,36 +158,44 @@ impl InteractionHandler for ScreenInteractionHandler {
     fn on_left(&mut self, _app: &mut AppState, _hand: usize) {}
 }
 
-#[derive(Clone)]
+struct MousePass {
+    pass: WGfxPass<Vert2Uv>,
+    buf_vert: Subbuffer<[Vert2Uv]>,
+}
+
 struct ScreenPipeline {
-    mouse: Option<Arc<ImageView>>,
-    pipeline: Arc<WlxPipeline>,
+    mouse: Option<MousePass>,
+    pipeline: Arc<WGfxPipeline<Vert2Uv>>,
+    buf_alpha: Subbuffer<[f32]>,
     extentf: [f32; 2],
 }
 
 impl ScreenPipeline {
     fn new(extent: &[u32; 3], app: &mut AppState) -> anyhow::Result<Self> {
-        let Ok(shaders) = app.graphics.shared_shaders.read() else {
-            return Err(anyhow::anyhow!("Could not lock shared shaders for reading"));
-        };
-
-        let pipeline = app.graphics.create_pipeline(
-            shaders.get("vert_common").unwrap().clone(), // want panic
-            shaders.get("frag_screen").unwrap().clone(), // want panic
-            app.graphics.native_format,
+        let pipeline = app.gfx.create_pipeline(
+            app.gfx_extras.shaders.get("vert_quad").unwrap().clone(), // want panic
+            app.gfx_extras.shaders.get("frag_screen").unwrap().clone(), // want panic
+            app.gfx.surface_format,
             Some(AttachmentBlend::default()),
+            PrimitiveTopology::TriangleStrip,
+            false,
         )?;
+
+        let buf_alpha = app
+            .gfx
+            .empty_buffer(BufferUsage::TRANSFER_DST | BufferUsage::UNIFORM_BUFFER, 1)?;
 
         let extentf = [extent[0] as f32, extent[1] as f32];
 
         Ok(Self {
             mouse: None,
             pipeline,
+            buf_alpha,
             extentf,
         })
     }
 
-    fn ensure_mouse_initialized(&mut self, uploads: &mut WlxUploadsBuffer) -> anyhow::Result<()> {
+    fn ensure_mouse_initialized(&mut self, cmd_xfer: &mut XferCommandBuffer) -> anyhow::Result<()> {
         if self.mouse.is_some() {
             return Ok(());
         }
@@ -195,9 +208,28 @@ impl ScreenPipeline {
             0x00, 0x00, 0x00, 0xff,  0x00, 0x00, 0x00, 0xff,  0x00, 0x00, 0x00, 0xff,  0x00, 0x00, 0x00, 0xff,
         ];
 
-        let mouse_tex =
-            uploads.texture2d_raw(4, 4, vulkano::format::Format::R8G8B8A8_UNORM, &mouse_bytes)?;
-        self.mouse = Some(ImageView::new_default(mouse_tex)?);
+        let image =
+            cmd_xfer.upload_image(4, 4, vulkano::format::Format::R8G8B8A8_UNORM, &mouse_bytes)?;
+
+        let view = ImageView::new_default(image)?;
+
+        let buf_vert = cmd_xfer
+            .graphics
+            .empty_buffer(BufferUsage::TRANSFER_DST | BufferUsage::VERTEX_BUFFER, 4)?;
+
+        let set0 = self.pipeline.uniform_sampler(0, view, Filter::Nearest)?;
+
+        let set1 = self.pipeline.buffer(1, self.buf_alpha.clone())?;
+
+        let pass = self.pipeline.create_pass(
+            self.extentf,
+            buf_vert.clone(),
+            0..4,
+            0..1,
+            vec![set0, set1],
+        )?;
+
+        self.mouse = Some(MousePass { pass, buf_vert });
         Ok(())
     }
 
@@ -213,23 +245,31 @@ impl ScreenPipeline {
         let view = ImageView::new_default(image)?;
         let set0 = self
             .pipeline
-            .uniform_sampler(0, view, app.graphics.texture_filtering)?;
-        let set1 = self.pipeline.uniform_buffer(1, vec![alpha])?;
-        let pass = self
-            .pipeline
-            .create_pass_for_target(tgt.clone(), vec![set0, set1])?;
+            .uniform_sampler(0, view, app.gfx.texture_filter)?;
+
+        self.buf_alpha.write()?[0] = alpha;
+
+        let set1 = self.pipeline.buffer(1, self.buf_alpha.clone())?;
+        let pass = self.pipeline.create_pass(
+            tgt.extent_f32(),
+            app.gfx_extras.quad_verts.clone(),
+            0..4,
+            0..1,
+            vec![set0, set1],
+        )?;
 
         let mut cmd = app
-            .graphics
-            .create_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+            .gfx
+            .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
         cmd.begin_rendering(tgt)?;
         cmd.run_ref(&pass)?;
 
-        if let (Some(mouse), Some(mouse_view)) = (mouse, self.mouse.clone()) {
+        if let (Some(mouse), Some(pass)) = (mouse, self.mouse.as_mut()) {
             let size = CURSOR_SIZE * self.extentf[1];
             let half_size = size * 0.5;
 
-            let vertex_buffer = app.graphics.upload_verts(
+            upload_quad_vertices(
+                &mut pass.buf_vert,
                 self.extentf[0],
                 self.extentf[1],
                 mouse.x.mul_add(self.extentf[0], -half_size),
@@ -238,20 +278,7 @@ impl ScreenPipeline {
                 size,
             )?;
 
-            let set0 = self
-                .pipeline
-                .uniform_sampler(0, mouse_view, Filter::Nearest)?;
-
-            let set1 = self.pipeline.uniform_buffer(1, vec![alpha])?;
-
-            let pass = self.pipeline.create_pass(
-                self.extentf,
-                vertex_buffer,
-                app.graphics.quad_indices.clone(),
-                vec![set0, set1],
-            )?;
-
-            cmd.run_ref(&pass)?;
+            cmd.run_ref(&pass.pass)?;
         }
 
         cmd.end_rendering()?;
@@ -296,7 +323,7 @@ impl ScreenRenderer {
     pub fn new_wlr_dmabuf(output: &WlxOutput, app: &AppState) -> Option<Self> {
         let client = WlxClient::new()?;
         let capture = new_wlx_capture!(
-            app.graphics.capture_queue,
+            app.gfx_extras.queue_capture,
             WlrDmabufCapture::new(client, output.id)
         );
         Some(Self::new_raw(output.name.clone(), capture))
@@ -306,7 +333,7 @@ impl ScreenRenderer {
     pub fn new_wlr_screencopy(output: &WlxOutput, app: &AppState) -> Option<Self> {
         let client = WlxClient::new()?;
         let capture = new_wlx_capture!(
-            app.graphics.capture_queue,
+            app.gfx_extras.queue_capture,
             WlrScreencopyCapture::new(client, output.id)
         );
         Some(Self::new_raw(output.name.clone(), capture))
@@ -340,7 +367,7 @@ impl ScreenRenderer {
         let node_id = select_screen_result.streams.first().unwrap().node_id; // streams guaranteed to have at least one element
 
         let capture = new_wlx_capture!(
-            app.graphics.capture_queue,
+            app.gfx_extras.queue_capture,
             PipewireCapture::new(name, node_id)
         );
         Ok((
@@ -351,8 +378,10 @@ impl ScreenRenderer {
 
     #[cfg(feature = "x11")]
     pub fn new_xshm(screen: Arc<XshmScreen>, app: &AppState) -> Self {
-        let capture =
-            new_wlx_capture!(app.graphics.capture_queue, XshmCapture::new(screen.clone()));
+        let capture = new_wlx_capture!(
+            app.gfx_extras.queue_capture,
+            XshmCapture::new(screen.clone())
+        );
         Self::new_raw(screen.name.clone(), capture)
     }
 }
@@ -360,7 +389,7 @@ impl ScreenRenderer {
 #[derive(Clone)]
 pub struct WlxCaptureIn {
     name: Arc<str>,
-    graphics: Arc<WlxGraphics>,
+    gfx: Arc<WGfx>,
     queue: Arc<Queue>,
 }
 
@@ -378,9 +407,9 @@ fn upload_image(
     format: Format,
     data: &[u8],
 ) -> Option<Arc<Image>> {
-    let mut upload = match me
-        .graphics
-        .create_uploads_command_buffer(me.queue.clone(), CommandBufferUsage::OneTimeSubmit)
+    let mut cmd_xfer = match me
+        .gfx
+        .create_xfer_command_buffer_with_queue(me.queue.clone(), CommandBufferUsage::OneTimeSubmit)
     {
         Ok(x) => x,
         Err(e) => {
@@ -388,7 +417,7 @@ fn upload_image(
             return None;
         }
     };
-    let image = match upload.texture2d_raw(width, height, format, data) {
+    let image = match cmd_xfer.upload_image(width, height, format, data) {
         Ok(x) => x,
         Err(e) => {
             log::error!("{}: Could not create vkImage: {:?}", me.name, e);
@@ -396,7 +425,7 @@ fn upload_image(
         }
     };
 
-    if let Err(e) = upload.build_and_execute_now() {
+    if let Err(e) = cmd_xfer.build_and_execute_now() {
         log::error!("{}: Could not execute upload: {:?}", me.name, e);
         return None;
     }
@@ -413,7 +442,7 @@ fn receive_callback(me: &WlxCaptureIn, frame: wlx_frame::WlxFrame) -> Option<Wlx
             }
             log::trace!("{}: New DMA-buf frame", me.name);
             let format = frame.format;
-            match me.graphics.dmabuf_texture(frame) {
+            match me.gfx.dmabuf_texture(frame) {
                 Ok(image) => Some(WlxCaptureOut {
                     image,
                     format,
@@ -499,7 +528,7 @@ impl OverlayRenderer for ScreenRenderer {
     fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
         if !self.capture.is_ready() {
             let supports_dmabuf = app
-                .graphics
+                .gfx
                 .device
                 .enabled_extensions()
                 .ext_external_memory_dma_buf
@@ -512,13 +541,13 @@ impl OverlayRenderer for ScreenRenderer {
 
             let dmabuf_formats = if !supports_dmabuf {
                 log::info!("Capture method does not support DMA-buf");
-                if app.graphics.capture_queue.is_none() {
+                if app.gfx_extras.queue_capture.is_none() {
                     log::warn!("Current GPU does not support multiple queues. Software capture will take place on the main thread. Expect degraded performance.");
                 }
                 &Vec::new()
             } else if !allow_dmabuf {
                 log::info!("Not using DMA-buf capture due to {capture_method}");
-                if app.graphics.capture_queue.is_none() {
+                if app.gfx_extras.queue_capture.is_none() {
                     log::warn!("Current GPU does not support multiple queues. Software capture will take place on the main thread. Expect degraded performance.");
                 }
                 &Vec::new()
@@ -528,17 +557,17 @@ impl OverlayRenderer for ScreenRenderer {
                 );
                 log::warn!("echo 'capture_method: pw_fallback' > ~/.config/wlxoverlay/conf.d/pw_fallback.yaml");
 
-                &app.graphics.drm_formats
+                &app.gfx_extras.drm_formats
             };
 
             let user_data = WlxCaptureIn {
                 name: self.name.clone(),
-                graphics: app.graphics.clone(),
+                gfx: app.gfx.clone(),
                 queue: app
-                    .graphics
-                    .capture_queue
+                    .gfx_extras
+                    .queue_capture
                     .as_ref()
-                    .unwrap_or_else(|| &app.graphics.transfer_queue)
+                    .unwrap_or_else(|| &app.gfx.queue_xfer)
                     .clone(),
             };
 
@@ -560,10 +589,9 @@ impl OverlayRenderer for ScreenRenderer {
         if let (Some(capture), None) = (self.cur_frame.as_ref(), self.pipeline.as_ref()) {
             self.pipeline = Some({
                 let mut pipeline = ScreenPipeline::new(&capture.image.extent(), app)?;
-                let mut upload = app.graphics.create_uploads_command_buffer(
-                    app.graphics.transfer_queue.clone(),
-                    CommandBufferUsage::OneTimeSubmit,
-                )?;
+                let mut upload = app
+                    .gfx
+                    .create_xfer_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
                 pipeline.ensure_mouse_initialized(&mut upload)?;
                 upload.build_and_execute_now()?;
                 pipeline
@@ -931,7 +959,7 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
             let renderer = ScreenRenderer::new_raw(
                 m.name.clone(),
                 new_wlx_capture!(
-                    app.graphics.capture_queue,
+                    app.gfx_extras.queue_capture,
                     PipewireCapture::new(m.name.clone(), s.node_id)
                 ),
             );

@@ -24,7 +24,7 @@ use crate::{
         overlay::{OverlayData, ShouldRender},
         task::{SystemTask, TaskType},
     },
-    graphics::{CommandBuffers, WlxGraphics},
+    graphics::{init_openxr_graphics, CommandBuffers},
     overlays::{
         toast::{Toast, ToastTopic},
         watch::{watch_fade, WATCH_NAME},
@@ -33,7 +33,7 @@ use crate::{
 };
 
 #[cfg(feature = "wayvr")]
-use crate::{gui::modular::button::WayVRAction, overlays::wayvr::wayvr_action};
+use crate::{backend::wayvr::WayVRAction, overlays::wayvr::wayvr_action};
 
 mod blocker;
 mod helpers;
@@ -71,8 +71,8 @@ pub fn openxr_run(
     };
 
     let mut app = {
-        let graphics = WlxGraphics::new_openxr(xr_instance.clone(), system)?;
-        AppState::from_graphics(graphics)?
+        let (gfx, gfx_extras) = init_openxr_graphics(xr_instance.clone(), system)?;
+        AppState::from_graphics(gfx, gfx_extras)?
     };
 
     let environment_blend_mode = {
@@ -95,7 +95,7 @@ pub fn openxr_run(
     }
 
     let mut overlays = OverlayContainer::<OpenXrOverlayData>::new(&mut app, headless)?;
-    let mut lines = LinePool::new(app.graphics.clone())?;
+    let mut lines = LinePool::new(&app)?;
 
     let mut notifications = NotificationManager::new();
     notifications.run_dbus();
@@ -120,10 +120,10 @@ pub fn openxr_run(
             &xr_instance,
             system,
             &xr::vulkan::SessionCreateInfo {
-                instance: app.graphics.instance.handle().as_raw() as _,
-                physical_device: app.graphics.device.physical_device().handle().as_raw() as _,
-                device: app.graphics.device.handle().as_raw() as _,
-                queue_family_index: app.graphics.graphics_queue.queue_family_index(),
+                instance: app.gfx.instance.handle().as_raw() as _,
+                physical_device: app.gfx.device.physical_device().handle().as_raw() as _,
+                device: app.gfx.device.handle().as_raw() as _,
+                queue_family_index: app.gfx.queue_gfx.queue_family_index(),
                 queue_index: 0,
             },
         )?;
@@ -151,8 +151,8 @@ pub fn openxr_run(
     };
 
     let pointer_lines = [
-        lines.allocate(&xr_state, app.graphics.clone())?,
-        lines.allocate(&xr_state, app.graphics.clone())?,
+        lines.allocate(&xr_state, app.gfx.clone())?,
+        lines.allocate(&xr_state, app.gfx.clone())?,
     ];
 
     let watch_id = overlays.get_by_name(WATCH_NAME).unwrap().state.id; // want panic
@@ -418,9 +418,9 @@ pub fn openxr_run(
             o.data.cur_visible = true;
         }
 
-        lines.render(app.graphics.clone(), &mut buffers)?;
+        lines.render(&app, &mut buffers)?;
 
-        let future = buffers.execute_now(app.graphics.graphics_queue.clone())?;
+        let future = buffers.execute_now(app.gfx.queue_gfx.clone())?;
         if let Some(mut future) = future {
             if let Err(e) = future.flush() {
                 return Err(BackendError::Fatal(e.into()));
