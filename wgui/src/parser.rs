@@ -5,6 +5,7 @@ use std::{
 	rc::Rc,
 };
 
+use ouroboros::self_referencing;
 use taffy::{
 	AlignContent, AlignItems, AlignSelf, BoxSizing, Display, FlexDirection, FlexWrap, JustifyContent,
 	JustifySelf, Overflow,
@@ -29,8 +30,17 @@ use crate::{
 
 type VarMap = HashMap<Rc<str>, Rc<str>>;
 
+#[self_referencing]
+struct XmlDocument {
+	xml: String,
+
+	#[borrows(xml)]
+	#[covariant]
+	doc: roxmltree::Document<'this>,
+}
+
 struct Template {
-	doc: Rc<roxmltree::Document<'static>>,
+	doc: Rc<XmlDocument>,
 	node: roxmltree::NodeId,
 	parameters: HashMap<Rc<str>, Rc<str>>,
 }
@@ -58,8 +68,7 @@ struct ParserContext<'a> {
 
 struct ParserFile<'a> {
 	path: PathBuf,
-	_xml: Rc<Box<str>>,
-	document: Rc<roxmltree::Document<'static>>,
+	document: Rc<XmlDocument>,
 	ctx: Rc<RefCell<ParserContext<'a>>>,
 }
 
@@ -806,7 +815,6 @@ fn parse_children<'a>(
 				};
 
 				let file = ParserFile {
-					_xml: file._xml.clone(),
 					ctx: file.ctx.clone(),
 					document: template.doc.clone(),
 					path: file.path.clone(),
@@ -815,6 +823,7 @@ fn parse_children<'a>(
 				let doc = template.doc.clone();
 
 				let template_node = doc
+					.borrow_doc()
 					.get_node(template.node)
 					.ok_or(anyhow::anyhow!("template node invalid"))?;
 
@@ -849,12 +858,9 @@ pub fn parse_from_assets(
 	Ok(result)
 }
 
-fn assets_path_to_xml(
-	assets: &mut Box<dyn AssetProvider>,
-	path: &Path,
-) -> anyhow::Result<Rc<String>> {
+fn assets_path_to_xml(assets: &mut Box<dyn AssetProvider>, path: &Path) -> anyhow::Result<String> {
 	let data = assets.load_from_path(&path.to_string_lossy())?;
-	Ok(Rc::from(String::from_utf8(data)?))
+	Ok(String::from_utf8(data)?)
 }
 
 fn get_doc_from_path<'a>(
@@ -862,24 +868,19 @@ fn get_doc_from_path<'a>(
 	ctx: &mut ParserContext,
 	path: &Path,
 ) -> anyhow::Result<ParserFile<'a>> {
-	let opt = roxmltree::ParsingOptions {
-		allow_dtd: true,
-		..Default::default()
-	};
-
-	let xml_string = assets_path_to_xml(&mut ctx.layout.assets, path)?;
-
-	let xml = Rc::new(<std::string::String as Clone>::clone(&xml_string).into_boxed_str());
-
-	let xml_ref: &'static str = Box::leak(Box::new(Rc::clone(&xml)));
-
-	let document = Rc::new(roxmltree::Document::parse_with_options(xml_ref, opt)?);
+	let xml = assets_path_to_xml(&mut ctx.layout.assets, path)?;
+	let document = XmlDocument::new(xml, |xml| {
+		let opt = roxmltree::ParsingOptions {
+			allow_dtd: true,
+			..Default::default()
+		};
+		roxmltree::Document::parse_with_options(xml, opt).unwrap()
+	});
 
 	let file = ParserFile {
 		ctx: ctx_rc.clone(),
 		path: PathBuf::from(path),
-		document,
-		_xml: xml,
+		document: Rc::new(document),
 	};
 
 	Ok(file)
@@ -890,7 +891,7 @@ fn parse_document_root(
 	ctx: &mut ParserContext,
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
-	let root = file.document.root();
+	let root = file.document.borrow_doc().root();
 	let tag_layout = require_tag_by_name(&root, "layout")?;
 
 	for child_node in tag_layout.children() {

@@ -17,6 +17,7 @@ image = { version = "0.25.6", default-features = false, features = [
 ] }
 log = { workspace = true }
 lru = "0.14.0"
+ouroboros = "0.18.5"
 resvg = { version = "0.45.1", default-features = false }
 roxmltree = "0.20.0"
 rustc-hash = "2.1.1"
