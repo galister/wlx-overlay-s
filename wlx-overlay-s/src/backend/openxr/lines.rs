@@ -4,12 +4,12 @@ use openxr as xr;
 use std::{
     f32::consts::PI,
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc,
+        atomic::{AtomicUsize, Ordering},
     },
 };
 
-use wgui::gfx::{pipeline::WGfxPipeline, WGfx};
+use wgui::gfx::{WGfx, pass::WGfxPass, pipeline::WGfxPipeline};
 
 use crate::{
     backend::openxr::helpers,
@@ -17,12 +17,14 @@ use crate::{
     state::AppState,
 };
 use vulkano::{
-    command_buffer::CommandBufferUsage, pipeline::graphics::input_assembly::PrimitiveTopology,
+    buffer::{BufferUsage, Subbuffer},
+    command_buffer::CommandBufferUsage,
+    pipeline::graphics::input_assembly::PrimitiveTopology,
 };
 
 use super::{
-    swapchain::{create_swapchain, SwapchainOpts, WlxSwapchain},
     CompositionLayer, XrState,
+    swapchain::{SwapchainOpts, WlxSwapchain, create_swapchain},
 };
 
 static LINE_AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(1);
@@ -42,6 +44,8 @@ static COLORS: [[f32; 6]; 5] = {
 pub(super) struct LinePool {
     lines: IdMap<usize, LineContainer>,
     pipeline: Arc<WGfxPipeline<Vert2Uv>>,
+    pass: WGfxPass<Vert2Uv>,
+    buf_color: Subbuffer<[f32]>,
 }
 
 impl LinePool {
@@ -55,9 +59,25 @@ impl LinePool {
             false,
         )?;
 
+        let buf_color = app
+            .gfx
+            .empty_buffer(BufferUsage::TRANSFER_DST | BufferUsage::UNIFORM_BUFFER, 6)?;
+
+        let set0 = pipeline.buffer(0, buf_color.clone())?;
+
+        let pass = pipeline.create_pass(
+            [1.0, 1.0],
+            app.gfx_extras.quad_verts.clone(),
+            0..4,
+            0..1,
+            vec![set0],
+        )?;
+
         Ok(Self {
             lines: IdMap::new(),
             pipeline,
+            pass,
+            buf_color,
         })
     }
 
@@ -135,23 +155,13 @@ impl LinePool {
             if let Some(inner) = line.maybe_line.as_mut() {
                 let tgt = line.swapchain.acquire_wait_image()?;
 
-                let set0 = self
-                    .pipeline
-                    .uniform_buffer_upload(0, COLORS[inner.color].to_vec())?;
-
-                let pass = self.pipeline.create_pass(
-                    tgt.extent_f32(),
-                    app.gfx_extras.quad_verts.clone(),
-                    0..4,
-                    0..1,
-                    vec![set0],
-                )?;
+                self.buf_color.write()?[0..6].copy_from_slice(&COLORS[inner.color]);
 
                 let mut cmd_buffer = app
                     .gfx
                     .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
                 cmd_buffer.begin_rendering(tgt)?;
-                cmd_buffer.run_ref(&pass)?;
+                cmd_buffer.run_ref(&self.pass)?;
                 cmd_buffer.end_rendering()?;
 
                 buf.push(cmd_buffer.build()?);
