@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     f32::consts::PI,
     ptr,
-    sync::{atomic::AtomicU64, Arc, LazyLock},
+    sync::{Arc, LazyLock, atomic::AtomicU64},
     time::Instant,
 };
 use vulkano::{
@@ -11,15 +11,15 @@ use vulkano::{
     command_buffer::CommandBufferUsage,
     device::Queue,
     format::Format,
-    image::{sampler::Filter, view::ImageView, Image},
+    image::{Image, sampler::Filter, view::ImageView},
     pipeline::graphics::{color_blend::AttachmentBlend, input_assembly::PrimitiveTopology},
 };
-use wgui::gfx::{cmd::XferCommandBuffer, pass::WGfxPass, pipeline::WGfxPipeline, WGfx};
+use wgui::gfx::{WGfx, cmd::XferCommandBuffer, pass::WGfxPass, pipeline::WGfxPipeline};
 use wlx_capture::frame as wlx_frame;
 
 use wlx_capture::{
-    frame::{FrameFormat, MouseMeta, WlxFrame},
     WlxCapture,
+    frame::{FrameFormat, MouseMeta, WlxFrame},
 };
 
 #[cfg(feature = "pipewire")]
@@ -38,7 +38,7 @@ use wlx_capture::pipewire::PipewireStream;
 use {
     crate::config::AStrMapExt,
     wlx_capture::{
-        wayland::{wayland_client::protocol::wl_output, WlxClient, WlxOutput},
+        wayland::{WlxClient, WlxOutput, wayland_client::protocol::wl_output},
         wlr_dmabuf::WlrDmabufCapture,
         wlr_screencopy::WlrScreencopyCapture,
     },
@@ -47,7 +47,7 @@ use {
 #[cfg(feature = "x11")]
 use wlx_capture::xshm::{XshmCapture, XshmScreen};
 
-use glam::{vec2, vec3a, Affine2, Affine3A, Quat, Vec2, Vec3};
+use glam::{Affine2, Affine3A, Quat, Vec2, Vec3, vec2, vec3a};
 
 use crate::{
     backend::{
@@ -57,10 +57,11 @@ use crate::{
             SplitOverlayBackend,
         },
     },
-    config::{def_pw_tokens, GeneralConfig, PwTokenMap},
+    config::{GeneralConfig, PwTokenMap, def_pw_tokens},
     graphics::{
-        dmabuf::{fourcc_to_vk, WGfxDmabuf},
-        upload_quad_vertices, CommandBuffers, ExtentExt, Vert2Uv,
+        CommandBuffers, Vert2Uv,
+        dmabuf::{WGfxDmabuf, fourcc_to_vk},
+        upload_quad_vertices,
     },
     hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     state::{AppSession, AppState, KeyboardFocus, ScreenMeta},
@@ -166,12 +167,15 @@ struct MousePass {
 struct ScreenPipeline {
     mouse: Option<MousePass>,
     pipeline: Arc<WGfxPipeline<Vert2Uv>>,
+    pass: WGfxPass<Vert2Uv>,
     buf_alpha: Subbuffer<[f32]>,
     extentf: [f32; 2],
 }
 
 impl ScreenPipeline {
     fn new(extent: &[u32; 3], app: &mut AppState) -> anyhow::Result<Self> {
+        let extentf = [extent[0] as f32, extent[1] as f32];
+
         let pipeline = app.gfx.create_pipeline(
             app.gfx_extras.shaders.get("vert_quad").unwrap().clone(), // want panic
             app.gfx_extras.shaders.get("frag_screen").unwrap().clone(), // want panic
@@ -185,11 +189,25 @@ impl ScreenPipeline {
             .gfx
             .empty_buffer(BufferUsage::TRANSFER_DST | BufferUsage::UNIFORM_BUFFER, 1)?;
 
-        let extentf = [extent[0] as f32, extent[1] as f32];
+        let set0 = pipeline.uniform_sampler(
+            0,
+            app.gfx_extras.fallback_image.clone(),
+            app.gfx.texture_filter,
+        )?;
+        let set1 = pipeline.buffer(1, buf_alpha.clone())?;
+
+        let pass = pipeline.create_pass(
+            extentf,
+            app.gfx_extras.quad_verts.clone(),
+            0..4,
+            0..1,
+            vec![set0.clone(), set1],
+        )?;
 
         Ok(Self {
             mouse: None,
             pipeline,
+            pass,
             buf_alpha,
             extentf,
         })
@@ -243,26 +261,15 @@ impl ScreenPipeline {
         alpha: f32,
     ) -> anyhow::Result<()> {
         let view = ImageView::new_default(image)?;
-        let set0 = self
-            .pipeline
-            .uniform_sampler(0, view, app.gfx.texture_filter)?;
 
+        self.pass.update_sampler(0, view, app.gfx.texture_filter)?;
         self.buf_alpha.write()?[0] = alpha;
-
-        let set1 = self.pipeline.buffer(1, self.buf_alpha.clone())?;
-        let pass = self.pipeline.create_pass(
-            tgt.extent_f32(),
-            app.gfx_extras.quad_verts.clone(),
-            0..4,
-            0..1,
-            vec![set0, set1],
-        )?;
 
         let mut cmd = app
             .gfx
             .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
         cmd.begin_rendering(tgt)?;
-        cmd.run_ref(&pass)?;
+        cmd.run_ref(&self.pass)?;
 
         if let (Some(mouse), Some(pass)) = (mouse, self.mouse.as_mut()) {
             let size = CURSOR_SIZE * self.extentf[1];
@@ -542,20 +549,26 @@ impl OverlayRenderer for ScreenRenderer {
             let dmabuf_formats = if !supports_dmabuf {
                 log::info!("Capture method does not support DMA-buf");
                 if app.gfx_extras.queue_capture.is_none() {
-                    log::warn!("Current GPU does not support multiple queues. Software capture will take place on the main thread. Expect degraded performance.");
+                    log::warn!(
+                        "Current GPU does not support multiple queues. Software capture will take place on the main thread. Expect degraded performance."
+                    );
                 }
                 &Vec::new()
             } else if !allow_dmabuf {
                 log::info!("Not using DMA-buf capture due to {capture_method}");
                 if app.gfx_extras.queue_capture.is_none() {
-                    log::warn!("Current GPU does not support multiple queues. Software capture will take place on the main thread. Expect degraded performance.");
+                    log::warn!(
+                        "Current GPU does not support multiple queues. Software capture will take place on the main thread. Expect degraded performance."
+                    );
                 }
                 &Vec::new()
             } else {
                 log::warn!(
                     "Using DMA-buf capture. If screens are blank for you, switch to SHM using:"
                 );
-                log::warn!("echo 'capture_method: pw_fallback' > ~/.config/wlxoverlay/conf.d/pw_fallback.yaml");
+                log::warn!(
+                    "echo 'capture_method: pw_fallback' > ~/.config/wlxoverlay/conf.d/pw_fallback.yaml"
+                );
 
                 &app.gfx_extras.drm_formats
             };

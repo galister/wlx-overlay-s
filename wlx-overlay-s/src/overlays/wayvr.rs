@@ -1,13 +1,14 @@
-use glam::{vec3a, Affine2, Vec3, Vec3A};
+use glam::{Affine2, Vec3, Vec3A, vec3a};
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 use vulkano::{
+    buffer::{BufferUsage, Subbuffer},
     command_buffer::CommandBufferUsage,
     format::Format,
-    image::{view::ImageView, Image, ImageTiling, SubresourceLayout},
+    image::{Image, ImageTiling, SubresourceLayout, view::ImageView},
     pipeline::graphics::input_assembly::PrimitiveTopology,
 };
 use wayvr_ipc::packet_server::{self, PacketServer, WvrStateChanged};
-use wgui::gfx::{pipeline::WGfxPipeline, WGfx};
+use wgui::gfx::{WGfx, pass::WGfxPass, pipeline::WGfxPipeline};
 use wlx_capture::frame::{DmabufFrame, FourCC, FrameFormat, FramePlane};
 
 use crate::{
@@ -15,18 +16,17 @@ use crate::{
         common::{OverlayContainer, OverlaySelector},
         input::{self, InteractionHandler},
         overlay::{
-            ui_transform, FrameMeta, OverlayData, OverlayID, OverlayRenderer, OverlayState,
-            ShouldRender, SplitOverlayBackend, Z_ORDER_DASHBOARD,
+            FrameMeta, OverlayData, OverlayID, OverlayRenderer, OverlayState, ShouldRender,
+            SplitOverlayBackend, Z_ORDER_DASHBOARD, ui_transform,
         },
         task::TaskType,
         wayvr::{
-            self, display,
+            self, WayVR, WayVRAction, WayVRDisplayClickAction, display,
             server_ipc::{gen_args_vec, gen_env_vec},
-            WayVR, WayVRAction, WayVRDisplayClickAction,
         },
     },
     config_wayvr,
-    graphics::{dmabuf::WGfxDmabuf, CommandBuffers, ExtentExt, Vert2Uv},
+    graphics::{CommandBuffers, Vert2Uv, dmabuf::WGfxDmabuf},
     state::{self, AppState, KeyboardFocus},
 };
 
@@ -183,6 +183,8 @@ struct ImageData {
 
 pub struct WayVRRenderer {
     pipeline: Arc<WGfxPipeline<Vert2Uv>>,
+    pass: WGfxPass<Vert2Uv>,
+    buf_alpha: Subbuffer<[f32]>,
     image: Option<ImageData>,
     context: Rc<RefCell<WayVRContext>>,
     graphics: Arc<WGfx>,
@@ -205,8 +207,28 @@ impl WayVRRenderer {
             false,
         )?;
 
+        let buf_alpha = app
+            .gfx
+            .empty_buffer(BufferUsage::TRANSFER_DST | BufferUsage::UNIFORM_BUFFER, 1)?;
+
+        let set0 = pipeline.uniform_sampler(
+            0,
+            app.gfx_extras.fallback_image.clone(),
+            app.gfx.texture_filter,
+        )?;
+        let set1 = pipeline.buffer(1, buf_alpha.clone())?;
+        let pass = pipeline.create_pass(
+            [resolution[0] as _, resolution[1] as _],
+            app.gfx_extras.quad_verts.clone(),
+            0..4,
+            0..1,
+            vec![set0, set1],
+        )?;
+
         Ok(Self {
             pipeline,
+            pass,
+            buf_alpha,
             context: Rc::new(RefCell::new(WayVRContext::new(wvr, display))),
             graphics: app.gfx.clone(),
             image: None,
@@ -728,27 +750,15 @@ impl OverlayRenderer for WayVRRenderer {
             return Ok(false);
         };
 
-        let set0 = self.pipeline.uniform_sampler(
-            0,
-            image.vk_image_view.clone(),
-            app.gfx.texture_filter,
-        )?;
-
-        let set1 = self.pipeline.uniform_buffer_upload(1, vec![alpha])?;
-
-        let pass = self.pipeline.create_pass(
-            tgt.extent_f32(),
-            app.gfx_extras.quad_verts.clone(),
-            0..4,
-            0..1,
-            vec![set0, set1],
-        )?;
+        self.pass
+            .update_sampler(0, image.vk_image_view.clone(), self.graphics.texture_filter)?;
+        self.buf_alpha.write()?[0] = alpha;
 
         let mut cmd_buffer = app
             .gfx
             .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
         cmd_buffer.begin_rendering(tgt)?;
-        cmd_buffer.run_ref(&pass)?;
+        cmd_buffer.run_ref(&self.pass)?;
         cmd_buffer.end_rendering()?;
         buf.push(cmd_buffer.build()?);
 

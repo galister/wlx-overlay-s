@@ -3,7 +3,7 @@ use std::{marker::PhantomData, ops::Range, sync::Arc};
 use smallvec::smallvec;
 use vulkano::{
 	buffer::{
-		BufferContents, BufferUsage, IndexBuffer, Subbuffer,
+		BufferContents, BufferUsage, Subbuffer,
 		allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo},
 	},
 	descriptor_set::{DescriptorSet, WriteDescriptorSet},
@@ -177,46 +177,6 @@ where
 	}
 }
 
-impl WGfxPipeline<()> {
-	pub(super) fn new_procedural(
-		graphics: Arc<WGfx>,
-		vert: Arc<ShaderModule>,
-		frag: Arc<ShaderModule>,
-		format: Format,
-		blend: Option<AttachmentBlend>,
-		topology: PrimitiveTopology,
-	) -> anyhow::Result<Self> {
-		let vert_entry_point = vert.entry_point("main").unwrap(); // want panic
-		let frag_entry_point = frag.entry_point("main").unwrap(); // want panic
-
-		WGfxPipeline::new_from_stages(
-			graphics,
-			format,
-			blend,
-			topology,
-			vert_entry_point,
-			frag_entry_point,
-			None,
-		)
-	}
-
-	pub fn create_pass_procedural(
-		self: &Arc<Self>,
-		dimensions: [f32; 2],
-		vertices: Range<u32>,
-		instances: Range<u32>,
-		descriptor_sets: Vec<Arc<DescriptorSet>>,
-	) -> anyhow::Result<WGfxPass<()>> {
-		WGfxPass::new_procedural(
-			self.clone(),
-			dimensions,
-			vertices,
-			instances,
-			descriptor_sets,
-		)
-	}
-}
-
 impl<V> WGfxPipeline<V>
 where
 	V: BufferContents + Vertex,
@@ -258,28 +218,12 @@ where
 		instances: Range<u32>,
 		descriptor_sets: Vec<Arc<DescriptorSet>>,
 	) -> anyhow::Result<WGfxPass<V>> {
-		WGfxPass::new_instanced(
+		WGfxPass::new(
 			self.clone(),
 			dimensions,
 			vertex_buffer,
 			vertices,
 			instances,
-			descriptor_sets,
-		)
-	}
-
-	pub fn create_pass_indexed(
-		self: &Arc<Self>,
-		dimensions: [f32; 2],
-		vertex_buffer: Subbuffer<[V]>,
-		index_buffer: IndexBuffer,
-		descriptor_sets: Vec<Arc<DescriptorSet>>,
-	) -> anyhow::Result<WGfxPass<V>> {
-		WGfxPass::new_indexed(
-			self.clone(),
-			dimensions,
-			vertex_buffer,
-			index_buffer,
 			descriptor_sets,
 		)
 	}

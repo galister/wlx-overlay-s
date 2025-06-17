@@ -13,7 +13,7 @@ use wgui::gfx::{WGfx, pass::WGfxPass, pipeline::WGfxPipeline};
 
 use crate::{
     backend::openxr::helpers,
-    graphics::{CommandBuffers, ExtentExt, Vert2Uv},
+    graphics::{CommandBuffers, Vert2Uv},
     state::AppState,
 };
 use vulkano::{

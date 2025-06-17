@@ -9,7 +9,7 @@ use std::{
 use glam::{Vec2, vec2};
 use vulkano::{
     buffer::{BufferCreateInfo, BufferUsage},
-    command_buffer::{PrimaryAutoCommandBuffer, PrimaryCommandBufferAbstract},
+    command_buffer::{CommandBufferUsage, PrimaryAutoCommandBuffer, PrimaryCommandBufferAbstract},
     image::view::ImageView,
     memory::allocator::{AllocationCreateInfo, MemoryTypeFilter},
     sync::GpuFuture,
@@ -72,10 +72,11 @@ pub struct WGfxExtras {
     pub drm_formats: Vec<DrmFormat>,
     pub queue_capture: Option<Arc<Queue>>,
     pub quad_verts: Vert2Buf,
+    pub fallback_image: Arc<ImageView>,
 }
 
 impl WGfxExtras {
-    pub fn new(gfx: &WGfx, queue_capture: Option<Arc<Queue>>) -> anyhow::Result<Self> {
+    pub fn new(gfx: Arc<WGfx>, queue_capture: Option<Arc<Queue>>) -> anyhow::Result<Self> {
         let mut shaders = HashMap::new();
 
         let shader = vert_quad::load(gfx.device.clone())?;
@@ -127,11 +128,19 @@ impl WGfxExtras {
             vertices.into_iter(),
         )?;
 
+        let mut cmd_xfer = gfx.create_xfer_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+        let fallback_image =
+            cmd_xfer.upload_image(1, 1, Format::R8G8B8A8_SRGB, &[255, 0, 255, 255])?;
+        cmd_xfer.build_and_execute_now()?;
+
+        let fallback_image = ImageView::new_default(fallback_image)?;
+
         Ok(Self {
             shaders,
             drm_formats,
             queue_capture,
             quad_verts,
+            fallback_image,
         })
     }
 }
@@ -354,7 +363,7 @@ pub fn init_openxr_graphics(
         queue_xfer,
         Format::R8G8B8A8_SRGB,
     );
-    let extras = WGfxExtras::new(&gfx, queue_capture)?;
+    let extras = WGfxExtras::new(gfx.clone(), queue_capture)?;
 
     Ok((gfx, extras))
 }
@@ -471,7 +480,7 @@ pub fn init_openvr_graphics(
         queue_xfer,
         Format::R8G8B8A8_SRGB,
     );
-    let extras = WGfxExtras::new(&gfx, queue_capture)?;
+    let extras = WGfxExtras::new(gfx.clone(), queue_capture)?;
 
     Ok((gfx, extras))
 }
