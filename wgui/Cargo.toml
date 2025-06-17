@@ -1,0 +1,34 @@
+[package]
+name = "wgui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = { workspace = true }
+cosmic-text = "0.14.2"
+etagere = "0.2.15"
+glam = { workspace = true }
+image = { version = "0.25.6", default-features = false, features = [
+  "gif",
+  "jpeg",
+  "png",
+  "rayon",
+  "webp",
+] }
+log = { workspace = true }
+lru = "0.14.0"
+resvg = { version = "0.45.1", default-features = false }
+roxmltree = "0.20.0"
+rustc-hash = "2.1.1"
+slotmap = "1.0.7"
+smallvec = "1.15.0"
+taffy = "0.8.1"
+vulkano = { workspace = true }
+vulkano-shaders = { workspace = true }
+
+[profile.dev]
+opt-level = 0
+debug = true
+strip = "none"
+debug-assertions = true
+incremental = true

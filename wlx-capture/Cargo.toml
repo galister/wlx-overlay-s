@@ -1,0 +1,51 @@
+[package]
+name = "wlx-capture"
+version = "0.5.3"
+edition = "2021"
+authors = ["galister"]
+description = "Screen capture library for Wayland and X11"
+repository = "https://github.com/galister/wlx-capture"
+keywords = ["desktop", "capture", "pipewire", "wayland", "x11"]
+categories = ["computer-vision", "multimedia::images"]
+documentation = "https://docs.rs/wlx-capture"
+license = "GPL-3.0"
+
+[features]
+default = ["wayland", "pipewire"]
+egl = []
+wlr = ["wayland"]
+pipewire = ["wayland", "dep:ashpd", "dep:pipewire"]
+wayland = [
+  "dep:smithay-client-toolkit",
+  "dep:wayland-client",
+  "dep:wayland-protocols",
+]
+xshm = ["dep:rxscreen"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ashpd = { version = "0.11.0", default_features = false, features = [
+  "async-std",
+], optional = true }
+drm-fourcc = "2.2.0"
+idmap = "0.2.21"
+libc = "0.2.171"
+log = "0.4.27"
+pipewire = { git = "https://gitlab.freedesktop.org/galister/pipewire-rs.git", ref = "ba32202c3c391004c3bb533b58fa75a50e47ff57", features = [
+  "v0_3_33",
+], optional = true }
+#pipewire = { version = "0.8.0", features = ["v0_3_33"], optional = true }
+rxscreen = { version = "0.1.7", features = [
+  "shm",
+  "xrandr",
+  "mouse",
+], optional = true }
+smithay-client-toolkit = { version = "0.19.2", optional = true }
+wayland-client = { version = "0.31.8", optional = true }
+wayland-protocols = { version = "0.32.6", features = [
+  "wayland-client",
+  "client",
+  "staging",
+  "unstable",
+], optional = true }

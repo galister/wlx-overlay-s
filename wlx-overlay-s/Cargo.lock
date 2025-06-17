@@ -216,6 +216,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "approx"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cab112f0a86d568ea0e627cc1d6be74a1e9cd55214684db5561995f6dad897c6"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "aquamarine"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -870,7 +879,7 @@ version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a98d30140e3296250832bbaaff83b27dcd6fa3cc70fb6f1f3e5c9c0023b5317"
 dependencies = [
- "approx",
+ "approx 0.4.0",
  "num-traits",
 ]
 
@@ -1029,6 +1038,12 @@ dependencies = [
  "winnow",
  "yaml-rust2",
 ]
+
+[[package]]
+name = "const-cstr"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed3d0b5ff30645a68f35ece8cea4556ca14ef8a1651455f789a099a0513532a6"
 
 [[package]]
 name = "const-random"
@@ -1785,6 +1800,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "fontconfig-rs"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb4baadad5111c6820e97fc8bde5077258e6f272b5b38538db4b42e1812f29f3"
+dependencies = [
+ "const-cstr",
+ "once_cell",
+ "thiserror 1.0.69",
+ "yeslogic-fontconfig-sys",
+]
+
+[[package]]
 name = "fontdb"
 version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1832,6 +1859,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e13624c2627564efccf4934284bdd98cbaa14e79b0b5a141218e507b3a823456"
 dependencies = [
  "percent-encoding",
+]
+
+[[package]]
+name = "freetype-rs"
+version = "0.36.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5442dee36ca09604133580dc0553780e867936bb3cbef3275859e889026d2b17"
+dependencies = [
+ "bitflags 2.9.1",
+ "freetype-sys",
+ "libc",
+]
+
+[[package]]
+name = "freetype-sys"
+version = "0.20.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e7edc5b9669349acfda99533e9e0bcf26a51862ab43b08ee7745c55d28eb134"
+dependencies = [
+ "cc",
+ "libc",
+ "pkg-config",
 ]
 
 [[package]]
@@ -2012,6 +2061,7 @@ version = "0.30.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "50a99dbe56b72736564cfa4b85bf9a33079f16ae8b74983ab06af3b1a3696b11"
 dependencies = [
+ "approx 0.5.1",
  "mint",
  "serde",
 ]
@@ -4145,40 +4195,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c20b6793b5c2fa6553b250154b78d6d0db37e72700ae35fad9387a46f487c97"
 
 [[package]]
-name = "rust-embed"
-version = "8.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "025908b8682a26ba8d12f6f2d66b987584a4a87bc024abc5bbc12553a8cd178a"
-dependencies = [
- "rust-embed-impl",
- "rust-embed-utils",
- "walkdir",
-]
-
-[[package]]
-name = "rust-embed-impl"
-version = "8.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6065f1a4392b71819ec1ea1df1120673418bf386f50de1d6f54204d836d4349c"
-dependencies = [
- "proc-macro2",
- "quote",
- "rust-embed-utils",
- "syn 2.0.103",
- "walkdir",
-]
-
-[[package]]
-name = "rust-embed-utils"
-version = "8.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6cc0c81648b20b70c491ff8cce00c1c3b223bb8ed2b5d41f0e54c6c4c0a3594"
-dependencies = [
- "sha2",
- "walkdir",
-]
-
-[[package]]
 name = "rust-ini"
 version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5074,21 +5090,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "uidev-vk"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "glam",
- "log",
- "rust-embed",
- "tracing-subscriber",
- "vulkano",
- "vulkano-shaders",
- "wgui",
- "winit",
-]
-
-[[package]]
 name = "unicode-bidi"
 version = "0.3.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5592,6 +5593,7 @@ checksum = "a751b3277700db47d3e574514de2eced5e54dc8a5436a3bf7a0b248b2cee16f3"
 [[package]]
 name = "wgui"
 version = "0.1.0"
+source = "git+https://github.com/wlx-team/wgui.git?branch=wip#455fabb31931b888f9b976c6a914c6f4f73b7beb"
 dependencies = [
  "anyhow",
  "cosmic-text",
@@ -6141,22 +6143,6 @@ dependencies = [
 [[package]]
 name = "wlx-capture"
 version = "0.5.3"
-dependencies = [
- "ashpd",
- "drm-fourcc",
- "idmap",
- "libc",
- "log",
- "pipewire",
- "rxscreen",
- "smithay-client-toolkit",
- "wayland-client",
- "wayland-protocols",
-]
-
-[[package]]
-name = "wlx-capture"
-version = "0.5.3"
 source = "git+https://github.com/galister/wlx-capture?tag=v0.5.3#4479bd4bdd2b570aec9692e55b513ec7c0a17e7f"
 dependencies = [
  "ashpd",
@@ -6184,6 +6170,8 @@ dependencies = [
  "config",
  "ctrlc",
  "dbus",
+ "fontconfig-rs",
+ "freetype-rs",
  "futures",
  "glam",
  "idmap",
@@ -6204,7 +6192,6 @@ dependencies = [
  "regex",
  "rodio",
  "rosc",
- "rust-embed",
  "serde",
  "serde_json",
  "serde_json5",
@@ -6217,14 +6204,12 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
- "vulkano",
- "vulkano-shaders",
  "wayland-client",
  "wayland-egl",
  "wayvr_ipc",
  "wgui",
  "winit",
- "wlx-capture 0.5.3 (git+https://github.com/galister/wlx-capture?tag=v0.5.3)",
+ "wlx-capture",
  "xcb",
  "xdg 3.0.0",
  "xkbcommon 0.8.0",
@@ -6386,6 +6371,18 @@ name = "yazi"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e01738255b5a16e78bbb83e7fbba0a1e7dd506905cfc53f4622d89015a03fbb5"
+
+[[package]]
+name = "yeslogic-fontconfig-sys"
+version = "3.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2bbd69036d397ebbff671b1b8e4d918610c181c5a16073b96f984a38d08c386"
+dependencies = [
+ "const-cstr",
+ "dlib",
+ "once_cell",
+ "pkg-config",
+]
 
 [[package]]
 name = "yoke"
