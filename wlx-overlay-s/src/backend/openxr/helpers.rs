@@ -132,12 +132,8 @@ pub(super) unsafe fn create_overlay_session(
         system_id: system,
     };
     let mut out = xr::sys::Session::NULL;
-    let x = (instance.fp().create_session)(instance.as_raw(), &info, &mut out);
-    if x.into_raw() >= 0 {
-        Ok(out)
-    } else {
-        Err(x)
-    }
+    let x = unsafe { (instance.fp().create_session)(instance.as_raw(), &info, &mut out) };
+    if x.into_raw() >= 0 { Ok(out) } else { Err(x) }
 }
 
 type Vec3M = mint::Vector3<f32>;

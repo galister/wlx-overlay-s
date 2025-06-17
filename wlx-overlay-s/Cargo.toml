@@ -5,12 +5,20 @@ debug = true
 [package]
 name = "wlx-overlay-s"
 version = "25.4.2"
-edition = "2021"
+edition = "2024"
 license = "GPL-3.0-only"
 authors = ["galister"]
 description = "Access your Wayland/X11 desktop from Monado/WiVRn/SteamVR. Now with Vulkan!"
 repository = "https://github.com/galister/wlx-overlay-s"
-keywords = ["linux", "openvr", "openxr", "x11", "wayland", "openvr-overlay", "openxr-overlay"]
+keywords = [
+  "linux",
+  "openvr",
+  "openxr",
+  "x11",
+  "wayland",
+  "openvr-overlay",
+  "openxr-overlay",
+]
 categories = ["games"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

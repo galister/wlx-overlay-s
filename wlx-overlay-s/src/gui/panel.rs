@@ -136,7 +136,7 @@ impl OverlayRenderer for GuiPanel {
         _alpha: f32,
     ) -> anyhow::Result<bool> {
         self.context.update_viewport(tgt.extent_u32arr(), 1.0)?;
-        self.layout.update(tgt.extent_vec2(), self.timestep.alpha);
+        self.layout.update(tgt.extent_vec2(), self.timestep.alpha)?;
 
         let mut cmd_buf = app
             .gfx

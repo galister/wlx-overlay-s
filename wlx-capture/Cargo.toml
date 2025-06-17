@@ -1,7 +1,7 @@
 [package]
 name = "wlx-capture"
 version = "0.5.3"
-edition = "2021"
+edition = "2024"
 authors = ["galister"]
 description = "Screen capture library for Wayland and X11"
 repository = "https://github.com/galister/wlx-capture"
@@ -25,7 +25,7 @@ xshm = ["dep:rxscreen"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ashpd = { version = "0.11.0", default_features = false, features = [
+ashpd = { version = "0.11.0", default-features = false, features = [
   "async-std",
 ], optional = true }
 drm-fourcc = "2.2.0"

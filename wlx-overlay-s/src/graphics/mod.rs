@@ -6,7 +6,7 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use glam::{vec2, Vec2};
+use glam::{Vec2, vec2};
 use vulkano::{
     buffer::{BufferCreateInfo, BufferUsage},
     command_buffer::{PrimaryAutoCommandBuffer, PrimaryCommandBufferAbstract},
@@ -26,12 +26,12 @@ use crate::shaders::{frag_color, frag_grid, frag_screen, frag_srgb, vert_quad};
 use {ash::vk, std::os::raw::c_void};
 
 use vulkano::{
-    self,
+    self, VulkanObject,
     buffer::{Buffer, BufferContents, IndexBuffer, Subbuffer},
     device::{
-        physical::{PhysicalDevice, PhysicalDeviceType},
         Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures, Queue, QueueCreateInfo,
         QueueFlags,
+        physical::{PhysicalDevice, PhysicalDeviceType},
     },
     format::Format,
     instance::{Instance, InstanceCreateInfo, InstanceExtensions},
@@ -40,7 +40,6 @@ use vulkano::{
         vertex_input::Vertex,
     },
     shader::ShaderModule,
-    VulkanObject,
 };
 
 use dmabuf::get_drm_formats;
@@ -159,7 +158,7 @@ unsafe extern "system" fn get_instance_proc_addr(
     use vulkano::Handle;
     let instance = ash::vk::Instance::from_raw(instance as _);
     let library = get_vulkan_library();
-    library.get_instance_proc_addr(instance, name)
+    unsafe { library.get_instance_proc_addr(instance, name) }
 }
 
 #[cfg(feature = "openxr")]

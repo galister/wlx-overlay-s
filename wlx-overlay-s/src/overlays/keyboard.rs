@@ -1,13 +1,13 @@
 use std::{
     collections::HashMap,
-    process::{Child, Command},
+    process::Child,
     str::FromStr,
     sync::{Arc, LazyLock},
 };
 
 use crate::{
     backend::{
-        input::{InteractionHandler, PointerMode},
+        input::InteractionHandler,
         overlay::{
             FrameMeta, OverlayBackend, OverlayData, OverlayRenderer, OverlayState, Positioning,
             ShouldRender,
@@ -17,12 +17,12 @@ use crate::{
     graphics::CommandBuffers,
     gui::panel::GuiPanel,
     hid::{
-        get_key_type, KeyModifier, KeyType, VirtualKey, XkbKeymap, ALT, CTRL, KEYS_TO_MODS, META,
-        NUM_LOCK, SHIFT, SUPER,
+        ALT, CTRL, KEYS_TO_MODS, KeyModifier, KeyType, META, NUM_LOCK, SHIFT, SUPER, VirtualKey,
+        XkbKeymap, get_key_type,
     },
     state::{AppState, KeyboardFocus},
 };
-use glam::{vec2, vec3a, Affine2, Vec2Swizzles, Vec4};
+use glam::{Affine2, vec2, vec3a};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use vulkano::image::view::ImageView;

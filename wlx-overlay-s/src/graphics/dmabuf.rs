@@ -6,21 +6,21 @@ use std::{
 
 use smallvec::SmallVec;
 use vulkano::{
+    VulkanError, VulkanObject,
     device::Device,
     format::Format,
-    image::{sys::RawImage, Image, ImageCreateInfo, ImageTiling, ImageUsage, SubresourceLayout},
+    image::{Image, ImageCreateInfo, ImageTiling, ImageUsage, SubresourceLayout, sys::RawImage},
     memory::{
-        allocator::{MemoryAllocator, MemoryTypeFilter},
         DedicatedAllocation, DeviceMemory, ExternalMemoryHandleType, ExternalMemoryHandleTypes,
         MemoryAllocateInfo, MemoryImportInfo, MemoryPropertyFlags, ResourceMemory,
+        allocator::{MemoryAllocator, MemoryTypeFilter},
     },
     sync::Sharing,
-    VulkanError, VulkanObject,
 };
 use wgui::gfx::WGfx;
 use wlx_capture::frame::{
-    DmabufFrame, DrmFormat, FourCC, DRM_FORMAT_ABGR2101010, DRM_FORMAT_ABGR8888,
-    DRM_FORMAT_ARGB8888, DRM_FORMAT_XBGR2101010, DRM_FORMAT_XBGR8888, DRM_FORMAT_XRGB8888,
+    DRM_FORMAT_ABGR8888, DRM_FORMAT_ABGR2101010, DRM_FORMAT_ARGB8888, DRM_FORMAT_XBGR8888,
+    DRM_FORMAT_XBGR2101010, DRM_FORMAT_XRGB8888, DmabufFrame, DrmFormat, FourCC,
 };
 
 pub const DRM_FORMAT_MOD_INVALID: u64 = 0xff_ffff_ffff_ffff;
@@ -284,21 +284,23 @@ pub(super) unsafe fn create_dmabuf_image(
         create_info_vk.p_next = next as *const _ as *const _;
     }
 
-    let handle = {
-        let fns = device.fns();
-        let mut output = MaybeUninit::uninit();
-        (fns.v1_0.create_image)(
-            device.handle(),
-            &create_info_vk,
-            std::ptr::null(),
-            output.as_mut_ptr(),
-        )
-        .result()
-        .map_err(VulkanError::from)?;
-        output.assume_init()
-    };
+    unsafe {
+        let handle = {
+            let fns = device.fns();
+            let mut output = MaybeUninit::uninit();
+            (fns.v1_0.create_image)(
+                device.handle(),
+                &create_info_vk,
+                std::ptr::null(),
+                output.as_mut_ptr(),
+            )
+            .result()
+            .map_err(VulkanError::from)?;
+            output.assume_init()
+        };
 
-    RawImage::from_handle(device, handle, create_info)
+        RawImage::from_handle(device, handle, create_info)
+    }
 }
 
 pub fn get_drm_formats(device: Arc<Device>) -> Vec<DrmFormat> {
