@@ -1,5 +1,6 @@
 [workspace]
 members = ["wgui", "wgui/uidev-vk", "wlx-overlay-s", "wlx-capture"]
+resolver = "3"
 
 [workspace.dependencies]
 anyhow = "1.0.98"
@@ -9,4 +10,3 @@ vulkano = { version = "0.35.1", default-features = false, features = [
   "macros",
 ] }
 vulkano-shaders = "0.35.0"
-

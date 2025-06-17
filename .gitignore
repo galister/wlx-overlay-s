@@ -1,2 +1,4 @@
 /target
 .gdb_history
+.vscode
+.cargo
