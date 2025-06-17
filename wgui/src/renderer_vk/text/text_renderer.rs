@@ -1,5 +1,5 @@
 use crate::{
-	gfx::cmd::GfxCommandBuffer,
+	gfx::{cmd::GfxCommandBuffer, pass::WGfxPass},
 	renderer_vk::{model_buffer::ModelBuffer, viewport::Viewport},
 };
 
@@ -15,6 +15,11 @@ use vulkano::{
 	command_buffer::CommandBufferUsage,
 };
 
+struct CachedPass {
+	pass: WGfxPass<GlyphVertex>,
+	res: [u32; 2],
+}
+
 /// A text renderer that uses cached glyphs to render text into an existing render pass.
 pub struct TextRenderer {
 	pipeline: TextPipeline,
@@ -22,6 +27,7 @@ pub struct TextRenderer {
 	vertex_buffer_capacity: usize,
 	glyph_vertices: Vec<GlyphVertex>,
 	model_buffer: ModelBuffer,
+	pass: Option<CachedPass>,
 }
 
 impl TextRenderer {
@@ -41,6 +47,7 @@ impl TextRenderer {
 			vertex_buffer,
 			vertex_buffer_capacity: INITIAL_CAPACITY,
 			glyph_vertices: Vec::new(),
+			pass: None,
 		})
 	}
 
@@ -250,26 +257,33 @@ impl TextRenderer {
 			return Ok(());
 		}
 
+		let res = viewport.resolution();
 		self.model_buffer.upload(&atlas.common.gfx)?;
 
-		let descriptor_sets = vec![
-			atlas.color_atlas.image_descriptor.clone(),
-			atlas.mask_atlas.image_descriptor.clone(),
-			viewport.get_text_descriptor(&self.pipeline),
-			self.model_buffer.get_text_descriptor(&self.pipeline),
-		];
+		let cache = match self.pass.take() {
+			Some(p) if p.res == res => p,
+			_ => {
+				let descriptor_sets = vec![
+					atlas.color_atlas.image_descriptor.clone(),
+					atlas.mask_atlas.image_descriptor.clone(),
+					viewport.get_text_descriptor(&self.pipeline),
+					self.model_buffer.get_text_descriptor(&self.pipeline),
+				];
 
-		let res = viewport.resolution();
+				let pass = self.pipeline.inner.create_pass(
+					[res[0] as _, res[1] as _],
+					self.vertex_buffer.clone(),
+					0..4,
+					0..self.glyph_vertices.len() as u32,
+					descriptor_sets,
+				)?;
+				CachedPass { pass, res }
+			}
+		};
 
-		let pass = self.pipeline.inner.create_pass(
-			[res[0] as _, res[1] as _],
-			self.vertex_buffer.clone(),
-			0..4,
-			0..self.glyph_vertices.len() as u32,
-			descriptor_sets,
-		)?;
-
-		cmd_buf.run_ref(&pass)
+		cmd_buf.run_ref(&cache.pass)?;
+		self.pass = Some(cache);
+		Ok(())
 	}
 }
 

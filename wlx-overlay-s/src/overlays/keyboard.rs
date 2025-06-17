@@ -237,7 +237,14 @@ where
                 } else {
                     let _ = panel.layout.add_child(
                         div,
-                        Div::create().unwrap(),
+                        Rectangle::create(RectangleParams {
+                            border_color: wgui::drawing::Color::new(0., 0., 0., 0.),
+                            color: wgui::drawing::Color::new(0., 0., 0., 0.),
+                            border: 2.0,
+                            round: WLength::Units(4.0),
+                            ..Default::default()
+                        })
+                        .unwrap(),
                         taffy::Style {
                             size: my_size,
                             min_size: my_size,
