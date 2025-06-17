@@ -48,7 +48,7 @@ where
 		let mut command_buffer = AutoCommandBufferBuilder::secondary(
 			pipeline.graphics.command_buffer_allocator.clone(),
 			pipeline.graphics.queue_gfx.queue_family_index(),
-			CommandBufferUsage::MultipleSubmit,
+			CommandBufferUsage::SimultaneousUse,
 			CommandBufferInheritanceInfo {
 				render_pass: Some(CommandBufferInheritanceRenderPassType::BeginRendering(
 					CommandBufferInheritanceRenderingInfo {
