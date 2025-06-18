@@ -3,111 +3,75 @@
   <!-- Key cap with a single label. -->
   <!-- Used for letter keys on layouts without AltGr. -->
   <template name="KeyLetter">
-    <rectangle
-      border_color="#0044CC"
-      border="2"
-      round="8"
-      color="#000A1C"
-      color2="#000002"
-      gradient="vertical"
-      width="${width}"
-      height="${height}"
-      min_width="${width}"
-      min_height="${height}"
-      max_width="${width}"
-      max_height="${height}"
-      margin="4"
-      align_items="center"
-      justify_content="center">
-      <label color="#FFFFFF" text="${text}" size="24" />
-    </rectangle>
+    <div width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
+      <rectangle
+        margin="4" width="100%" overflow="hidden" box_sizing="border_box"
+        border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
+        align_items="center"
+        justify_content="center">
+        <label color="#FFFFFF" text="${text}" size="24" />
+      </rectangle>
+    </div>
   </template>
 
   <!-- Key cap with a primary label on top and an AltGr label on bottom. -->
   <!-- Used for letter keys on layouts with AltGr. -->
   <template name="KeyLetterAltGr">
-    <rectangle
-      border_color="#0044CC"
-      border="2"
-      round="8"
-      color="#000A1C"
-      color2="#000002"
-      gradient="vertical"
-      width="${width}"
-      height="${height}"
-      min_width="${width}"
-      min_height="${height}"
-      max_width="${width}"
-      max_height="${height}"
-      margin="4"
-      gap="4"
-      flex_direction="column"
-      align_items="center"
-      justify_content="center">
-      <label color="#FFFFFF" text="${text}" size="24" />
-      <label color="#FFFFFF70" text="${text_altgr}" size="24" />
-    </rectangle>
+    <div width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
+      <rectangle
+        margin="4" width="100%" overflow="hidden" box_sizing="border_box"
+        border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
+        gap="4"
+        flex_direction="column"
+        align_items="center"
+        justify_content="center">
+        <label color="#FFFFFF" text="${text}" size="24" />
+        <label color="#FFFFFF70" text="${text_altgr}" size="24" />
+      </rectangle>
+    </div>
   </template>
 
   <!-- Key cap with a primary label on bottom and a Shift label on top. -->
   <!-- Used for number & symbol keys on layouts without AltGr. -->
   <template name="KeySymbol">
-    <rectangle
-      border_color="#0044CC"
-      border="2"
-      round="8"
-      color="#000A1C"
-      color2="#000002"
-      gradient="vertical"
-      width="${width}"
-      height="${height}"
-      min_width="${width}"
-      min_height="${height}"
-      max_width="${width}"
-      max_height="${height}"
-      margin="4"
-      gap="4"
-      flex_direction="column"
-      align_items="center"
-      justify_content="center">
-      <label color="#FFFFFF70" text="${text_shift}" size="24" />
-      <label color="#FFFFFF" text="${text}" size="24" />
-    </rectangle>
+    <div width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
+      <rectangle
+        margin="4" width="100%" overflow="hidden" box_sizing="border_box"
+        border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
+        gap="4"
+        flex_direction="column"
+        align_items="center"
+        justify_content="center"
+      >
+        <label color="#FFFFFF70" text="${text_shift}" size="24" />
+        <label color="#FFFFFF" text="${text}" size="24" />
+      </rectangle>
+    </div>
   </template>
 
   <!-- Key cap with a primary label on bottom-left, an AltGr label on bottom-right, Shift label on top-left. -->
   <!-- Used for number & symbol keys on layouts with AltGr. -->
   <template name="KeySymbolAltGr">
-    <rectangle
-      border_color="#0044CC"
-      border="2"
-      round="8"
-      color="#000A1C"
-      color2="#000002"
-      gradient="vertical"
-      width="${width}"
-      height="${height}"
-      min_width="${width}"
-      min_height="${height}"
-      max_width="${width}"
-      max_height="${height}"
-      flex_direction="row"
-      flex_wrap="wrap"
-      align_items="center"
-      margin="4"
-      padding="8"
-      justify_content="center">
-      <div width="50%" height="50%" align_items="center" justify_content="center">
-        <label color="#FFFFFF70" text="${text_shift}" size="24" />
-      </div>
-      <div width="50%" height="50%" align_items="center" justify_content="center"/>
-      <div width="50%" height="50%" align_items="center" justify_content="center">
-        <label color="#FFFFFF" text="${text}" size="24" />
-      </div>
-      <div width="50%" height="50%" align_items="center" justify_content="center">
-        <label color="#FFFFFF70" text="${text_altgr}" size="24" />
-      </div>
-    </rectangle>
+    <div width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
+      <rectangle
+        margin="4" width="100%" overflow="hidden" box_sizing="border_box"
+        border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
+        flex_direction="row"
+        flex_wrap="wrap"
+        align_items="center"
+        justify_content="center">
+        <div width="50%" height="50%" align_items="center" justify_content="center">
+          <label color="#FFFFFF70" text="${text_shift}" size="24" />
+        </div>
+        <div width="50%" height="50%" align_items="center" justify_content="center" />
+        <div width="50%" height="50%" align_items="center" justify_content="center">
+          <label color="#FFFFFF" text="${text}" size="24" />
+        </div>
+        <div width="50%" height="50%" align_items="center" justify_content="center">
+          <label color="#FFFFFF70" text="${text_altgr}" size="24" />
+        </div>
+      </rectangle>
+    </div>
   </template>
 
 </layout>

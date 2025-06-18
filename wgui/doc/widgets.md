@@ -28,7 +28,7 @@
 
 `padding`, `padding_left`, `padding_right`, `padding_top`, `padding_bottom`: units (42) or percent (42%)
 
-`overflow_x`, `overflow_y`: hidden | visible | clip | scroll
+`overflow`, `overflow_x`, `overflow_y`: hidden | visible | clip | scroll
 
 `min_width`, `min_height`: units (42) or percent (42%)
 

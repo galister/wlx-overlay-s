@@ -84,6 +84,27 @@ pub fn style_from_node<'a>(
 					style.padding.bottom = dim;
 				}
 			}
+			"overflow" => match &*value {
+				"hidden" => {
+					style.overflow.x = Overflow::Hidden;
+					style.overflow.y = Overflow::Hidden;
+				}
+				"visible" => {
+					style.overflow.x = Overflow::Visible;
+					style.overflow.y = Overflow::Visible;
+				}
+				"clip" => {
+					style.overflow.x = Overflow::Clip;
+					style.overflow.y = Overflow::Clip;
+				}
+				"scroll" => {
+					style.overflow.x = Overflow::Scroll;
+					style.overflow.y = Overflow::Scroll;
+				}
+				_ => {
+					print_invalid_attrib(&key, &value);
+				}
+			},
 			"overflow_x" => match &*value {
 				"hidden" => style.overflow.x = Overflow::Hidden,
 				"visible" => style.overflow.x = Overflow::Visible,

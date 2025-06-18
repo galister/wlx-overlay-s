@@ -37,7 +37,6 @@ use wgui::{
 };
 
 const PIXELS_PER_UNIT: f32 = 80.;
-const BUTTON_PADDING: f32 = 4.;
 const AUTO_RELEASE_MODS: [KeyModifier; 5] = [SHIFT, CTRL, ALT, SUPER, META];
 
 pub const KEYBOARD_NAME: &str = "kbd";
