@@ -31,7 +31,7 @@ ashpd = { version = "0.11.0", default-features = false, features = [
 drm-fourcc = "2.2.0"
 idmap = "0.2.21"
 libc = "0.2.171"
-log = "0.4.27"
+log = { workspace = true }
 pipewire = { git = "https://gitlab.freedesktop.org/galister/pipewire-rs.git", ref = "ba32202c3c391004c3bb533b58fa75a50e47ff57", features = [
   "v0_3_33",
 ], optional = true }
@@ -42,7 +42,7 @@ rxscreen = { version = "0.1.7", features = [
   "mouse",
 ], optional = true }
 smithay-client-toolkit = { version = "0.19.2", optional = true }
-wayland-client = { version = "0.31.8", optional = true }
+wayland-client = { workspace = true, optional = true }
 wayland-protocols = { version = "0.32.6", features = [
   "wayland-client",
   "client",
