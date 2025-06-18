@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     process::Child,
+    rc::Rc,
     str::FromStr,
     sync::{Arc, LazyLock},
 };
@@ -125,7 +126,7 @@ where
         keymap = None;
     }
 
-    let (key_layout, _state) =
+    let (_gui_layout_key, gui_state_key) =
         wgui::parser::new_layout_from_assets(Box::new(gui::asset::GuiAsset {}), "key.xml")?;
 
     for row in 0..LAYOUT.key_sizes.len() {
@@ -139,9 +140,13 @@ where
         )?;
 
         for col in 0..LAYOUT.key_sizes[row].len() {
-            let my_size = LAYOUT.key_sizes[row][col];
-            let my_size = taffy::Size {
-                width: length(PIXELS_PER_UNIT * my_size),
+            let my_size_f32 = LAYOUT.key_sizes[row][col];
+
+            let key_width = PIXELS_PER_UNIT * my_size_f32;
+            let key_height = PIXELS_PER_UNIT;
+
+            let taffy_size = taffy::Size {
+                width: length(key_width),
                 height: length(PIXELS_PER_UNIT),
             };
 
@@ -220,22 +225,17 @@ where
                 if label.is_empty() {
                     label = LAYOUT.label_for_key(key);
                 }
-                let _ = panel.layout.add_child(
-                    div,
-                    Rectangle::create(RectangleParams {
-                        border_color: parse_color_hex("#dddddd").unwrap(),
-                        border: 2.0,
-                        round: WLength::Units(4.0),
-                        ..Default::default()
-                    })
-                    .unwrap(),
-                    taffy::Style {
-                        size: my_size,
-                        min_size: my_size,
-                        max_size: my_size,
-                        ..Default::default()
-                    },
-                )?;
+
+                // todo: make this easier to maintain somehow
+                let mut params = HashMap::new();
+                params.insert(Rc::from("width"), Rc::from(key_width.to_string()));
+                params.insert(Rc::from("height"), Rc::from(key_height.to_string()));
+
+                if let Some(first) = label.first() {
+                    params.insert(Rc::from("text"), Rc::from(first.as_str()));
+                }
+
+                gui_state_key.process_template("Key", &mut panel.layout, div, params)?;
             } else {
                 let _ = panel.layout.add_child(
                     div,
@@ -248,9 +248,9 @@ where
                     })
                     .unwrap(),
                     taffy::Style {
-                        size: my_size,
-                        min_size: my_size,
-                        max_size: my_size,
+                        size: taffy_size,
+                        min_size: taffy_size,
+                        max_size: taffy_size,
                         ..Default::default()
                     },
                 )?;

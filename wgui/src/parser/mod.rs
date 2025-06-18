@@ -15,7 +15,6 @@ use crate::{
 };
 use ouroboros::self_referencing;
 use std::{
-	cell::RefCell,
 	collections::HashMap,
 	path::{Path, PathBuf},
 	rc::Rc,
@@ -32,20 +31,21 @@ struct XmlDocument {
 	doc: roxmltree::Document<'this>,
 }
 
-struct Template {
+pub struct Template {
 	node_document: Rc<XmlDocument>,
 	node: roxmltree::NodeId, // belongs to node_document which could be included in another file
 }
 
-struct ParserFile<'a> {
+struct ParserFile {
 	path: PathBuf,
 	document: Rc<XmlDocument>,
-	ctx: Rc<RefCell<ParserContext<'a>>>,
 	template_parameters: HashMap<Rc<str>, Rc<str>>,
 }
 
 pub struct ParserResult {
-	ids: HashMap<Rc<str>, WidgetID>,
+	pub ids: HashMap<Rc<str>, WidgetID>,
+	pub templates: HashMap<Rc<str>, Rc<Template>>,
+	pub path: PathBuf,
 }
 
 impl ParserResult {
@@ -54,6 +54,43 @@ impl ParserResult {
 			Some(id) => Ok(*id),
 			None => anyhow::bail!("Widget by ID \"{}\" doesn't exist", id),
 		}
+	}
+
+	pub fn process_template(
+		&self,
+		template_name: &str,
+		layout: &mut Layout,
+		widget_id: WidgetID,
+		template_parameters: HashMap<Rc<str>, Rc<str>>,
+	) -> anyhow::Result<()> {
+		let Some(template) = self.templates.get(template_name) else {
+			anyhow::bail!("no template named \"{}\" found", template_name);
+		};
+
+		let mut ctx = create_default_context(layout);
+
+		let file = ParserFile {
+			document: template.node_document.clone(),
+			path: self.path.clone(),
+			template_parameters: template_parameters.clone(), // FIXME: prevent copying
+		};
+
+		let node = template
+			.node_document
+			.borrow_doc()
+			.get_node(template.node)
+			.unwrap();
+
+		parse_widget_other_internal(
+			template.clone(),
+			template_parameters,
+			&file,
+			&mut ctx,
+			node,
+			widget_id,
+		)?;
+
+		Ok(())
 	}
 }
 
@@ -166,22 +203,15 @@ where
 	}
 }
 
-fn parse_widget_other<'a>(
-	xml_tag_name: &str,
+fn parse_widget_other_internal<'a>(
+	template: Rc<Template>,
+	template_parameters: HashMap<Rc<str>, Rc<str>>,
 	file: &'a ParserFile,
 	ctx: &mut ParserContext,
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
-	let Some(template) = ctx.templates.get(xml_tag_name) else {
-		log::error!("Undefined tag named \"{}\"", xml_tag_name);
-		return Ok(()); // not critical
-	};
-
-	let template_parameters: HashMap<Rc<str>, Rc<str>> = iter_attribs(file, ctx, &node).collect();
-
 	let template_file = ParserFile {
-		ctx: file.ctx.clone(),
 		document: template.node_document.clone(),
 		path: file.path.clone(),
 		template_parameters,
@@ -199,6 +229,30 @@ fn parse_widget_other<'a>(
 	Ok(())
 }
 
+fn parse_widget_other<'a>(
+	xml_tag_name: &str,
+	file: &'a ParserFile,
+	ctx: &mut ParserContext,
+	node: roxmltree::Node<'a, 'a>,
+	parent_id: WidgetID,
+) -> anyhow::Result<()> {
+	let Some(template) = ctx.templates.get(xml_tag_name) else {
+		log::error!("Undefined tag named \"{}\"", xml_tag_name);
+		return Ok(()); // not critical
+	};
+
+	let template_parameters: HashMap<Rc<str>, Rc<str>> = iter_attribs(file, ctx, &node).collect();
+
+	parse_widget_other_internal(
+		template.clone(),
+		template_parameters,
+		file,
+		ctx,
+		node,
+		parent_id,
+	)
+}
+
 fn parse_tag_include<'a>(
 	file: &ParserFile,
 	ctx: &mut ParserContext,
@@ -214,7 +268,7 @@ fn parse_tag_include<'a>(
 				let mut new_path = file.path.parent().unwrap_or(Path::new("/")).to_path_buf();
 				new_path.push(value);
 
-				let (new_file, node_layout) = get_doc_from_path(file.ctx.clone(), ctx, &new_path)?;
+				let (new_file, node_layout) = get_doc_from_path(ctx, &new_path)?;
 				parse_document_root(new_file, ctx, parent_id, node_layout)?;
 
 				return Ok(());
@@ -421,6 +475,15 @@ fn parse_children<'a>(
 	Ok(())
 }
 
+fn create_default_context(layout: &mut Layout) -> ParserContext<'_> {
+	ParserContext {
+		layout,
+		ids: Default::default(),
+		var_map: Default::default(),
+		templates: Default::default(),
+	}
+}
+
 pub fn parse_from_assets(
 	layout: &mut Layout,
 	parent_id: WidgetID,
@@ -428,21 +491,16 @@ pub fn parse_from_assets(
 ) -> anyhow::Result<ParserResult> {
 	let path = PathBuf::from(path);
 
-	let ctx_rc = Rc::new(RefCell::new(ParserContext {
-		layout,
-		ids: Default::default(),
-		var_map: Default::default(),
-		templates: Default::default(),
-	}));
+	let mut ctx = create_default_context(layout);
 
-	let mut ctx = ctx_rc.borrow_mut();
-
-	let (file, node_layout) = get_doc_from_path(ctx_rc.clone(), &mut ctx, &path)?;
+	let (file, node_layout) = get_doc_from_path(&mut ctx, &path)?;
 	parse_document_root(file, &mut ctx, parent_id, node_layout)?;
 
 	// move everything essential to the result
 	let result = ParserResult {
 		ids: std::mem::take(&mut ctx.ids),
+		templates: std::mem::take(&mut ctx.templates),
+		path,
 	};
 
 	drop(ctx);
@@ -465,11 +523,10 @@ fn assets_path_to_xml(assets: &mut Box<dyn AssetProvider>, path: &Path) -> anyho
 	Ok(String::from_utf8(data)?)
 }
 
-fn get_doc_from_path<'a>(
-	ctx_rc: Rc<RefCell<ParserContext<'a>>>,
+fn get_doc_from_path(
 	ctx: &mut ParserContext,
 	path: &Path,
-) -> anyhow::Result<(ParserFile<'a>, roxmltree::NodeId)> {
+) -> anyhow::Result<(ParserFile, roxmltree::NodeId)> {
 	let xml = assets_path_to_xml(&mut ctx.layout.assets, path)?;
 	let document = Rc::new(XmlDocument::new(xml, |xml| {
 		let opt = roxmltree::ParsingOptions {
@@ -483,7 +540,6 @@ fn get_doc_from_path<'a>(
 	let tag_layout = require_tag_by_name(&root, "layout")?;
 
 	let file = ParserFile {
-		ctx: ctx_rc.clone(),
 		path: PathBuf::from(path),
 		document: document.clone(),
 		template_parameters: Default::default(),

@@ -65,15 +65,20 @@ fn add_child_internal(
 }
 
 impl Layout {
+	pub fn get_node(&self, widget_id: WidgetID) -> anyhow::Result<taffy::NodeId> {
+		let Some(node) = self.widget_node_map.get(&widget_id).cloned() else {
+			anyhow::bail!("invalid parent widget");
+		};
+		Ok(node)
+	}
+
 	pub fn add_child(
 		&mut self,
 		parent_widget_id: WidgetID,
 		widget: WidgetState,
 		style: taffy::Style,
 	) -> anyhow::Result<(WidgetID, taffy::NodeId)> {
-		let Some(parent_node) = self.widget_node_map.get(&parent_widget_id).cloned() else {
-			anyhow::bail!("invalid parent widget");
-		};
+		let parent_node = self.get_node(parent_widget_id)?;
 
 		self.needs_redraw = true;
 
