@@ -1,38 +1,22 @@
 <layout>
-  <theme>
-    <var key="bg_color" value="#24273a" />
-    <var key="bg_color_active" value="#44475a" />
-    <var key="device_color" value="#666666" />
-    <var key="text_color" value="#dddddd" />
-    <var key="slider_bg_color" value="#666666" />
-    <var key="slider_fg_color" value="#ffffff" />
-    <var key="slider_text_color" value="#000000" />
-  </theme>
+  <include src="wlx_theme.xml" />
+
+  <template name="TopButton">
+    <rectangle color="~bg_color" padding="8" round="50%">
+      <sprite color="~device_color" width="48" height="48" src="${src}" />
+    </rectangle>
+  </template>
 
   <elements>
     <div box_sizing="content_box" flex_direction="column" justify_content="center" align_content="center">
       <rectangle padding="10" gap="8" round="100%" color="~bg_color" justify_content="center" align_content="center">
-        <rectangle color="~bg_color" padding="8" round="50%">
-          <sprite color="~device_color" width="48" height="48" src="bar/lock_open.svg" />
-        </rectangle>
-        <rectangle color="~bg_color" padding="8" round="50%">
-          <sprite color="~device_color" width="48" height="48" src="bar/mouse.svg" />
-        </rectangle>
-        <rectangle color="~bg_color_active" padding="8" round="50%">
-          <sprite color="~device_color" width="48" height="48" src="bar/fade.svg" />
-        </rectangle>
-        <rectangle color="~bg_color" padding="8" round="50%">
-          <sprite color="~device_color" width="48" height="48" src="bar/move-all.svg" />
-        </rectangle>
-        <rectangle color="~bg_color" padding="8" round="50%">
-          <sprite color="~device_color" width="48" height="48" src="bar/resize.svg" />
-        </rectangle>
-        <rectangle color="~bg_color" padding="8" round="50%">
-          <sprite color="~device_color" width="48" height="48" src="bar/inout.svg" />
-        </rectangle>
-        <rectangle color="~bg_color" padding="8" round="50%">
-          <sprite color="~device_color" width="48" height="48" src="bar/delete.svg" />
-        </rectangle>
+        <TopButton src="bar/lock_open.svg" />
+        <TopButton src="bar/mouse.svg" />
+        <TopButton src="bar/fade.svg" />
+        <TopButton src="bar/move-all.svg" />
+        <TopButton src="bar/resize.svg" />
+        <TopButton src="bar/inout.svg" />
+        <TopButton src="bar/delete.svg" />
       </rectangle>
       <rectangle padding="8" gap="8" round="100%" color="~bg_color_active" justify_content="center" align_content="center">
         <label size="18" text="Opacity" color="~text_color" />

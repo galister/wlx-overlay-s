@@ -1,11 +1,11 @@
 <layout>
+  <include src="wlx_theme.xml" />
+
   <theme>
     <var key="border" value="2" />
-    <var key="bg_color" value="#24273a" />
     <var key="kbd_color" value="#a6da95" />
-    <var key="set_color" value="#cad3f5" />
     <var key="set_color" value="#dddddd" />
-    <var key="device_color" value="#666666" />
+
     <var key="clock0_color" value="#cad3f5" />
     <var key="clock0_size" value="46" />
     <var key="clock0_date_size" value="14" />
@@ -16,31 +16,35 @@
     <var key="clock_alt_tz_size" value="14" />
   </theme>
 
+  <template name="Device">
+    <sprite color="~device_color" width="48" height="48" src="${src}" />
+  </template>
+
   <elements>
     <div width="400" height="200">
       <rectangle width="100%" height="100%" padding="4" box_sizing="content_box" flex_wrap="wrap" gap="16" color="~bg_color">
         <div width="100%" flex_direction="row">
-          <sprite color="~device_color" width="48" height="48" src="watch/hmd.svg" />
-          <sprite color="~device_color" width="48" height="48" src="watch/controller.svg" />
-          <sprite color="~device_color" width="48" height="48" src="watch/controller.svg" />
-          <sprite color="~device_color" width="48" height="48" src="watch/track3.svg" />
-          <sprite color="~device_color" width="48" height="48" src="watch/track3.svg" />
-          <sprite color="~device_color" width="48" height="48" src="watch/track3.svg" />
+          <Device src="watch/hmd.svg" />
+          <Device src="watch/controller.svg" />
+          <Device src="watch/controller.svg" />
+          <Device src="watch/track3.svg" />
+          <Device src="watch/track3.svg" />
+          <Device src="watch/track3.svg" />
         </div>
         <div flex_direction="row">
           <div id="clock_main" flex_direction="column" padding="4">
             <label text="23:59" id="clock0" color="~clock0_color" size="~clock0_size" weight="bold" />
             <label text="22/2/2022" id="clock0_date" color="~clock0_color" size="~clock0_date_size" weight="bold" />
-            <div width="100%" padding="2"/>
+            <div width="100%" padding="2" />
             <label text="Friday" id="clock0_dow" color="~clock0_color" size="~clock0_dow_size" weight="bold" />
           </div>
           <div width="10" height="100%" />
           <div id="clock_alt" flex_direction="column" padding="4">
             <label text="Paris" id="clock1_tz" color="~clock_alt1_color" size="~clock_alt_tz_size" weight="bold" />
-            <div width="100%" padding="2"/>
+            <div width="100%" padding="2" />
             <label text="23:59" id="clock1_time" color="~clock_alt1_color" size="~clock_alt_size" weight="bold" />
             <label text="Chicago" id="clock2_tz" color="~clock_alt2_color" size="~clock_alt_tz_size" weight="bold" />
-            <div width="100%" padding="2"/>
+            <div width="100%" padding="2" />
             <label text="23:59" id="clock2_time" color="~clock_alt2_color" size="~clock_alt_size" weight="bold" />
           </div>
         </div>
