@@ -3,10 +3,10 @@ use openxr::{self as xr, CompositionLayerFlags};
 use std::f32::consts::PI;
 use xr::EyeVisibility;
 
-use super::{helpers, swapchain::WlxSwapchain, CompositionLayer, XrState};
+use super::{CompositionLayer, XrState, helpers, swapchain::WlxSwapchain};
 use crate::{
     backend::{
-        openxr::swapchain::{create_swapchain, SwapchainOpts},
+        openxr::swapchain::{SwapchainOpts, create_swapchain},
         overlay::OverlayData,
     },
     state::AppState,
@@ -27,10 +27,6 @@ impl OverlayData<OpenXrOverlayData> {
         app: &AppState,
         xr: &'a XrState,
     ) -> anyhow::Result<bool> {
-        if self.data.swapchain.is_some() {
-            return Ok(true);
-        }
-
         let Some(meta) = self.frame_meta() else {
             log::warn!(
                 "{}: swapchain cannot be created due to missing metadata",
@@ -39,11 +35,25 @@ impl OverlayData<OpenXrOverlayData> {
             return Ok(false);
         };
 
-        let extent = meta.extent;
+        if self
+            .data
+            .swapchain
+            .as_ref()
+            .is_some_and(|s| s.extent == meta.extent)
+        {
+            return Ok(true);
+        }
+
+        log::debug!(
+            "{}: recreating swapchain at {}x{}",
+            self.state.name,
+            meta.extent[0],
+            meta.extent[1],
+        );
         self.data.swapchain = Some(create_swapchain(
             xr,
             app.gfx.clone(),
-            extent,
+            meta.extent,
             SwapchainOpts::new(),
         )?);
         Ok(true)
