@@ -12,7 +12,7 @@ use wgui::{
 };
 
 use crate::{
-    backend::overlay::{ui_transform, OverlayData, OverlayState, Positioning, Z_ORDER_WATCH},
+    backend::overlay::{OverlayData, OverlayState, Positioning, Z_ORDER_WATCH, ui_transform},
     gui::panel::GuiPanel,
     state::AppState,
 };
@@ -23,7 +23,7 @@ pub fn create_watch<O>(app: &mut AppState) -> anyhow::Result<OverlayData<O>>
 where
     O: Default,
 {
-    let mut panel = GuiPanel::new_blank(app, 400, 200)?;
+    let mut panel = GuiPanel::new_blank(app, 2048)?;
 
     let (_, _) = panel.layout.add_child(
         panel.layout.root_widget,

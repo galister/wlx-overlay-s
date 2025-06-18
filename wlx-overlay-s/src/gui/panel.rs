@@ -23,18 +23,12 @@ pub struct GuiPanel {
     pub layout: Layout,
     context: WguiContext,
     timestep: Timestep,
-    pub max_width: u32,
-    pub max_height: u32,
+    pub max_size: u32,
 }
 
 impl GuiPanel {
-    pub fn new_from_template(
-        app: &AppState,
-        max_width: u32,
-        max_height: u32,
-        path: &str,
-    ) -> anyhow::Result<Self> {
-        let mut me = Self::new_blank(app, max_width, max_height)?;
+    pub fn new_from_template(app: &AppState, max_size: u32, path: &str) -> anyhow::Result<Self> {
+        let mut me = Self::new_blank(app, max_size)?;
 
         let parent = me.layout.root_widget;
         let _res = wgui::parser::parse_from_assets(&mut me.layout, parent, path)?;
@@ -42,7 +36,7 @@ impl GuiPanel {
         Ok(me)
     }
 
-    pub fn new_blank(app: &AppState, max_width: u32, max_height: u32) -> anyhow::Result<Self> {
+    pub fn new_blank(app: &AppState, max_size: u32) -> anyhow::Result<Self> {
         let layout = Layout::new(Box::new(GuiAsset {}))?;
         let context = WguiContext::new(app.gfx.clone(), app.gfx.surface_format, 1.0)?;
         let mut timestep = Timestep::new();
@@ -52,8 +46,7 @@ impl GuiPanel {
             layout,
             context,
             timestep,
-            max_width,
-            max_height,
+            max_size,
         })
     }
 }
@@ -154,7 +147,11 @@ impl OverlayRenderer for GuiPanel {
 
     fn frame_meta(&mut self) -> Option<FrameMeta> {
         Some(FrameMeta {
-            extent: [self.max_width, self.max_height, 1],
+            extent: [
+                self.max_size.max(self.layout.prev_size.x as _),
+                self.max_size.max(self.layout.prev_size.y as _),
+                1,
+            ],
             ..Default::default()
         })
     }

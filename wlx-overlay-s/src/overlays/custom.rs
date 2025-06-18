@@ -18,7 +18,7 @@ pub fn create_custom(
 
     unreachable!();
 
-    let panel = GuiPanel::new_blank(&app, 200, 200).ok()?;
+    let panel = GuiPanel::new_blank(app, 2048).ok()?;
 
     let state = OverlayState {
         name,

@@ -100,11 +100,7 @@ where
 
     let padding = 4f32;
 
-    let mut panel = GuiPanel::new_blank(
-        app,
-        padding.mul_add(2.0, size.x) as u32,
-        padding.mul_add(2.0, size.y) as u32,
-    )?;
+    let mut panel = GuiPanel::new_blank(app, 2048)?;
 
     let (background, _) = panel.layout.add_child(
         panel.layout.root_widget,

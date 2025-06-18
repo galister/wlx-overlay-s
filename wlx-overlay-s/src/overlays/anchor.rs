@@ -18,7 +18,7 @@ pub fn create_anchor<O>(app: &mut AppState) -> anyhow::Result<OverlayData<O>>
 where
     O: Default,
 {
-    let mut panel = GuiPanel::new_blank(app, 200, 200)?;
+    let mut panel = GuiPanel::new_blank(app, 200)?;
 
     let (rect, _) = panel.layout.add_child(
         panel.layout.root_widget,
