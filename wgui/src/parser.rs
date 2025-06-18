@@ -40,9 +40,16 @@ struct XmlDocument {
 }
 
 struct Template {
-	doc: Rc<XmlDocument>,
-	node: roxmltree::NodeId,
-	parameters: HashMap<Rc<str>, Rc<str>>,
+	node_document: Rc<XmlDocument>,
+	node: roxmltree::NodeId, // belongs to node_document which could be included in another file
+}
+
+struct ParserFile<'a> {
+	path: PathBuf,
+	document: Rc<XmlDocument>,
+	ctx: Rc<RefCell<ParserContext<'a>>>,
+	current_template: Rc<Template>,
+	template_parameters: HashMap<Rc<str>, Rc<str>>,
 }
 
 #[derive(Default)]
@@ -62,14 +69,8 @@ impl ParserState {
 struct ParserContext<'a> {
 	layout: &'a mut Layout,
 	var_map: VarMap,
-	templates: HashMap<Rc<str>, Template>,
+	templates: HashMap<Rc<str>, Rc<Template>>,
 	state: &'a mut ParserState,
-}
-
-struct ParserFile<'a> {
-	path: PathBuf,
-	document: Rc<XmlDocument>,
-	ctx: Rc<RefCell<ParserContext<'a>>>,
 }
 
 // Parses a color from a HTML hex string
@@ -174,12 +175,16 @@ where
 	}
 }
 
-fn style_from_node<'a>(ctx: &ParserContext, node: roxmltree::Node<'a, 'a>) -> taffy::Style {
+fn style_from_node<'a>(
+	file: &'a ParserFile,
+	ctx: &ParserContext,
+	node: roxmltree::Node<'a, 'a>,
+) -> taffy::Style {
 	let mut style = taffy::Style {
 		..Default::default()
 	};
 
-	let attribs: Vec<_> = iter_attribs(&ctx.var_map, &node).collect();
+	let attribs: Vec<_> = iter_attribs(file, ctx, &node).collect();
 
 	for (key, value) in attribs {
 		match &*key {
@@ -420,11 +425,11 @@ fn parse_widget_div<'a>(
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
-	let style = style_from_node(ctx, node);
+	let style = style_from_node(file, ctx, node);
 
 	let (new_id, _) = ctx.layout.add_child(parent_id, Div::create()?, style)?;
 
-	parse_universal(ctx, node, new_id)?;
+	parse_universal(file, ctx, node, new_id)?;
 	parse_children(file, ctx, node, new_id)?;
 
 	Ok(())
@@ -437,7 +442,7 @@ fn parse_widget_rectangle<'a>(
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
 	let mut params = RectangleParams::default();
-	let attribs: Vec<_> = iter_attribs(&ctx.var_map, &node).collect();
+	let attribs: Vec<_> = iter_attribs(file, ctx, &node).collect();
 
 	for (key, value) in attribs {
 		match &*key {
@@ -497,13 +502,13 @@ fn parse_widget_rectangle<'a>(
 		}
 	}
 
-	let style = style_from_node(ctx, node);
+	let style = style_from_node(file, ctx, node);
 
 	let (new_id, _) = ctx
 		.layout
 		.add_child(parent_id, Rectangle::create(params)?, style)?;
 
-	parse_universal(ctx, node, new_id)?;
+	parse_universal(file, ctx, node, new_id)?;
 	parse_children(file, ctx, node, new_id)?;
 
 	Ok(())
@@ -516,7 +521,7 @@ fn parse_widget_sprite<'a>(
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
 	let mut params = SpriteBoxParams::default();
-	let attribs: Vec<_> = iter_attribs(&ctx.var_map, &node).collect();
+	let attribs: Vec<_> = iter_attribs(file, ctx, &node).collect();
 
 	let mut glyph = None;
 	for (key, value) in attribs {
@@ -545,13 +550,13 @@ fn parse_widget_sprite<'a>(
 		log::warn!("No source for sprite node!");
 	};
 
-	let style = style_from_node(ctx, node);
+	let style = style_from_node(file, ctx, node);
 
 	let (new_id, _) = ctx
 		.layout
 		.add_child(parent_id, SpriteBox::create(params)?, style)?;
 
-	parse_universal(ctx, node, new_id)?;
+	parse_universal(file, ctx, node, new_id)?;
 	parse_children(file, ctx, node, new_id)?;
 
 	Ok(())
@@ -564,7 +569,7 @@ fn parse_widget_label<'a>(
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
 	let mut params = TextParams::default();
-	let attribs: Vec<_> = iter_attribs(&ctx.var_map, &node).collect();
+	let attribs: Vec<_> = iter_attribs(file, ctx, &node).collect();
 	for (key, value) in attribs {
 		match &*key {
 			"text" => {
@@ -603,13 +608,13 @@ fn parse_widget_label<'a>(
 		}
 	}
 
-	let style = style_from_node(ctx, node);
+	let style = style_from_node(file, ctx, node);
 
 	let (new_id, _) = ctx
 		.layout
 		.add_child(parent_id, TextLabel::create(params)?, style)?;
 
-	parse_universal(ctx, node, new_id)?;
+	parse_universal(file, ctx, node, new_id)?;
 	parse_children(file, ctx, node, new_id)?;
 
 	Ok(())
@@ -630,8 +635,8 @@ fn parse_tag_include<'a>(
 				let mut new_path = file.path.parent().unwrap_or(Path::new("/")).to_path_buf();
 				new_path.push(value);
 
-				let new_file = get_doc_from_path(file.ctx.clone(), ctx, &new_path)?;
-				parse_document_root(new_file, ctx, parent_id)?;
+				let (new_file, node_layout) = get_doc_from_path(file.ctx.clone(), ctx, &new_path)?;
+				parse_document_root(new_file, ctx, parent_id, node_layout)?;
 
 				return Ok(());
 			}
@@ -679,9 +684,29 @@ fn parse_tag_var<'a>(ctx: &mut ParserContext, node: roxmltree::Node<'a, 'a>) -> 
 	Ok(())
 }
 
+pub fn replace_vars(input: &str, vars: &HashMap<Rc<str>, Rc<str>>) -> Rc<str> {
+	let re = regex::Regex::new(r"\$\{([^}]*)\}").unwrap();
+
+	/*if !vars.is_empty() {
+		log::error!("template parameters {:?}", vars);
+	}*/
+
+	let out = re.replace_all(input, |captures: &regex::Captures| {
+		let input_var = &captures[1];
+
+		match vars.get(input_var) {
+			Some(replacement) => replacement.clone(),
+			None => Rc::from(""),
+		}
+	});
+
+	Rc::from(out)
+}
+
 #[allow(clippy::manual_strip)]
-pub fn iter_attribs<'a>(
-	var_map: &'a VarMap,
+fn iter_attribs<'a>(
+	file: &'a ParserFile,
+	ctx: &'a ParserContext,
 	node: &roxmltree::Node<'a, 'a>,
 ) -> impl Iterator<Item = (/*key*/ Rc<str>, /*value*/ Rc<str>)> + 'a {
 	node.attributes().map(|attrib| {
@@ -690,16 +715,19 @@ pub fn iter_attribs<'a>(
 		if value.starts_with("~") {
 			let name = &value[1..];
 
-			return (
+			(
 				Rc::from(key),
-				match var_map.get(name) {
+				match ctx.var_map.get(name) {
 					Some(name) => name.clone(),
 					None => Rc::from("undefined"),
 				},
-			);
+			)
+		} else {
+			(
+				Rc::from(key),
+				replace_vars(value, &file.template_parameters),
+			)
 		}
-
-		(Rc::from(key), Rc::from(value))
 	})
 }
 
@@ -713,6 +741,7 @@ fn parse_tag_theme<'a>(
 			"var" => {
 				parse_tag_var(ctx, child_node)?;
 			}
+			"" => { /* ignore */ }
 			_ => {
 				print_invalid_value(child_name);
 			}
@@ -729,10 +758,7 @@ fn parse_tag_template(
 ) -> anyhow::Result<()> {
 	let mut template_name: Option<Rc<str>> = None;
 
-	// these parameters will be passed to the children
-	let mut template_parameters = HashMap::<Rc<str>, Rc<str>>::new();
-
-	let attribs: Vec<_> = iter_attribs(&ctx.var_map, &node).collect();
+	let attribs: Vec<_> = iter_attribs(file, ctx, &node).collect();
 
 	for (key, value) in attribs {
 		match key.as_ref() {
@@ -740,7 +766,7 @@ fn parse_tag_template(
 				template_name = Some(value);
 			}
 			_ => {
-				template_parameters.insert(key, value);
+				print_invalid_attrib(&key, &value);
 			}
 		}
 	}
@@ -752,22 +778,22 @@ fn parse_tag_template(
 
 	ctx.templates.insert(
 		name,
-		Template {
+		Rc::new(Template {
 			node: node.id(),
-			parameters: template_parameters,
-			doc: file.document.clone(),
-		},
+			node_document: file.document.clone(),
+		}),
 	);
 
 	Ok(())
 }
 
 fn parse_universal<'a>(
+	file: &'a ParserFile,
 	ctx: &mut ParserContext,
 	node: roxmltree::Node<'a, 'a>,
 	widget_id: WidgetID,
 ) -> anyhow::Result<()> {
-	let attribs: Vec<_> = iter_attribs(&ctx.var_map, &node).collect();
+	let attribs: Vec<_> = iter_attribs(file, ctx, &node).collect();
 
 	for (key, value) in attribs {
 		#[allow(clippy::single_match)]
@@ -814,20 +840,25 @@ fn parse_children<'a>(
 					continue;
 				};
 
-				let file = ParserFile {
+				let template_parameters: HashMap<Rc<str>, Rc<str>> =
+					iter_attribs(file, ctx, &child_node).collect();
+
+				let template_file = ParserFile {
 					ctx: file.ctx.clone(),
-					document: template.doc.clone(),
+					document: template.node_document.clone(),
 					path: file.path.clone(),
+					template_parameters,
+					current_template: template.clone(),
 				};
 
-				let doc = template.doc.clone();
+				let doc = template_file.document.clone();
 
 				let template_node = doc
 					.borrow_doc()
 					.get_node(template.node)
 					.ok_or(anyhow::anyhow!("template node invalid"))?;
 
-				parse_children(&file, ctx, template_node, parent_id)?;
+				parse_children(&template_file, ctx, template_node, parent_id)?;
 			}
 		}
 	}
@@ -851,8 +882,8 @@ pub fn parse_from_assets(
 
 	let mut ctx = ctx_rc.borrow_mut();
 
-	let file = get_doc_from_path(ctx_rc.clone(), &mut ctx, &path)?;
-	parse_document_root(file, &mut ctx, parent_id)?;
+	let (file, node_layout) = get_doc_from_path(ctx_rc.clone(), &mut ctx, &path)?;
+	parse_document_root(file, &mut ctx, parent_id, node_layout)?;
 	drop(ctx);
 
 	Ok(result)
@@ -867,34 +898,48 @@ fn get_doc_from_path<'a>(
 	ctx_rc: Rc<RefCell<ParserContext<'a>>>,
 	ctx: &mut ParserContext,
 	path: &Path,
-) -> anyhow::Result<ParserFile<'a>> {
+) -> anyhow::Result<(ParserFile<'a>, roxmltree::NodeId)> {
 	let xml = assets_path_to_xml(&mut ctx.layout.assets, path)?;
-	let document = XmlDocument::new(xml, |xml| {
+	let document = Rc::new(XmlDocument::new(xml, |xml| {
 		let opt = roxmltree::ParsingOptions {
 			allow_dtd: true,
 			..Default::default()
 		};
 		roxmltree::Document::parse_with_options(xml, opt).unwrap()
-	});
+	}));
+
+	let root = document.borrow_doc().root();
+	let tag_layout = require_tag_by_name(&root, "layout")?;
+
+	let template = Template {
+		node: root.id(),
+		node_document: document.clone(),
+	};
 
 	let file = ParserFile {
 		ctx: ctx_rc.clone(),
 		path: PathBuf::from(path),
-		document: Rc::new(document),
+		document: document.clone(),
+		current_template: Rc::new(template),
+		template_parameters: Default::default(), // todo
 	};
 
-	Ok(file)
+	Ok((file, tag_layout.id()))
 }
 
 fn parse_document_root(
 	file: ParserFile,
 	ctx: &mut ParserContext,
 	parent_id: WidgetID,
+	node_layout: roxmltree::NodeId,
 ) -> anyhow::Result<()> {
-	let root = file.document.borrow_doc().root();
-	let tag_layout = require_tag_by_name(&root, "layout")?;
+	let node_layout = file
+		.document
+		.borrow_doc()
+		.get_node(node_layout)
+		.ok_or(anyhow::anyhow!("layout node not found"))?;
 
-	for child_node in tag_layout.children() {
+	for child_node in node_layout.children() {
 		#[allow(clippy::single_match)]
 		match child_node.tag_name().name() {
 			/*  topmost include directly in <layout>  */
@@ -905,7 +950,7 @@ fn parse_document_root(
 		}
 	}
 
-	if let Some(tag_elements) = get_tag_by_name(&tag_layout, "elements") {
+	if let Some(tag_elements) = get_tag_by_name(&node_layout, "elements") {
 		parse_children(&file, ctx, tag_elements, parent_id)?;
 	}
 

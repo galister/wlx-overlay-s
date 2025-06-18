@@ -5644,6 +5644,7 @@ dependencies = [
  "log",
  "lru",
  "ouroboros",
+ "regex",
  "resvg",
  "roxmltree 0.20.0",
  "rustc-hash 2.1.1",

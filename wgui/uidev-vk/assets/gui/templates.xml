@@ -12,8 +12,8 @@
       flex_direction="column"
       gap="8"
     >
-      <sprite src="dashboard/apps.svg" width="32" height="32" />
-      <label weight="bold" color="#FFFFFF" size="18" text="I'M A TEMPLATE" />
+      <sprite src="${icon}" width="32" height="32" />
+      <label weight="bold" color="#FFFFFF" size="18" text="${text}" />
     </rectangle>
   </template>
 </layout>
