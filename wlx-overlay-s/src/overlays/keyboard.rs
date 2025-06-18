@@ -38,6 +38,21 @@ use wgui::{
 
 const PIXELS_PER_UNIT: f32 = 80.;
 const AUTO_RELEASE_MODS: [KeyModifier; 5] = [SHIFT, CTRL, ALT, SUPER, META];
+const SPECIAL_KEYS: [VirtualKey; 13] = [
+    VirtualKey::BackSpace,
+    VirtualKey::Down,
+    VirtualKey::Left,
+    VirtualKey::Menu,
+    VirtualKey::Return,
+    VirtualKey::KP_Enter,
+    VirtualKey::Right,
+    VirtualKey::LShift,
+    VirtualKey::RShift,
+    VirtualKey::LSuper,
+    VirtualKey::RSuper,
+    VirtualKey::Tab,
+    VirtualKey::Up,
+];
 
 pub const KEYBOARD_NAME: &str = "kbd";
 
@@ -195,7 +210,23 @@ where
                         KeyType::NumPad => {
                             label.push(keymap.label_for_key(vk, NUM_LOCK));
                         }
-                        KeyType::Other => {}
+                        KeyType::Other => {
+                            if SPECIAL_KEYS.contains(&vk) {
+                                cap_type = KeyCapType::Special;
+                                match vk {
+                                    VirtualKey::RShift | VirtualKey::LShift => {
+                                        label.push("shift".into());
+                                    }
+                                    VirtualKey::RSuper | VirtualKey::LSuper => {
+                                        label.push("super".into());
+                                    }
+                                    VirtualKey::KP_Enter => {
+                                        label.push("return".into());
+                                    }
+                                    _ => label.push(format!("{vk:?}").to_lowercase()),
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -534,6 +565,8 @@ impl OverlayRenderer for KeyboardBackend {
 
 #[derive(Debug)]
 pub enum KeyCapType {
+    /// Label an SVG
+    Special,
     /// Label is in center of keycap
     Letter,
     /// Label on the top

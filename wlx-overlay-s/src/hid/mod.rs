@@ -1,5 +1,5 @@
 use glam::{IVec2, Vec2};
-use idmap::{idmap, IdMap};
+use idmap::{IdMap, idmap};
 use idmap_derive::IntegerId;
 use input_linux::{
     AbsoluteAxis, AbsoluteInfo, AbsoluteInfoSetup, EventKind, InputId, Key, RelativeAxis,
@@ -10,7 +10,7 @@ use serde::Deserialize;
 use std::mem::transmute;
 use std::sync::LazyLock;
 use std::{fs::File, sync::atomic::AtomicBool};
-use strum::{EnumIter, EnumString, IntoEnumIterator};
+use strum::{AsRefStr, EnumIter, EnumString, IntoEnumIterator};
 use xkbcommon::xkb;
 
 #[cfg(feature = "wayland")]
