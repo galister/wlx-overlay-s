@@ -1,6 +1,6 @@
 use glam::{Vec2, vec2};
 use std::sync::Arc;
-use testbed::Testbed;
+use testbed::{Testbed, testbed_any::TestbedAny};
 use timestep::Timestep;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::filter::LevelFilter;
@@ -56,7 +56,8 @@ fn load_testbed() -> anyhow::Result<Box<dyn Testbed>> {
 	let name = std::env::var("TESTBED").unwrap_or_default();
 	Ok(match name.as_str() {
 		"dashboard" => Box::new(TestbedDashboard::new()?),
-		_ => Box::new(TestbedGeneric::new()?),
+		"" => Box::new(TestbedGeneric::new()?),
+		_ => Box::new(TestbedAny::new(&name)?),
 	})
 }
 

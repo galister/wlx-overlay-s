@@ -1,5 +1,6 @@
 use wgui::layout::Layout;
 
+pub mod testbed_any;
 pub mod testbed_dashboard;
 pub mod testbed_generic;
 
