@@ -28,7 +28,6 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use vulkano::image::view::ImageView;
 use wgui::{
-    parser::parse_color_hex,
     taffy::{self, prelude::length},
     widget::{
         div::Div,
@@ -127,7 +126,7 @@ where
     }
 
     let (_gui_layout_key, gui_state_key) =
-        wgui::parser::new_layout_from_assets(Box::new(gui::asset::GuiAsset {}), "key.xml")?;
+        wgui::parser::new_layout_from_assets(Box::new(gui::asset::GuiAsset {}), "keyboard.xml")?;
 
     for row in 0..LAYOUT.key_sizes.len() {
         let (div, _) = panel.layout.add_child(
@@ -151,12 +150,22 @@ where
             };
 
             let Some(key) = LAYOUT.main_layout[row][col].as_ref() else {
+                let _ = panel.layout.add_child(
+                    div,
+                    Div::create()?,
+                    taffy::Style {
+                        size: taffy_size,
+                        min_size: taffy_size,
+                        max_size: taffy_size,
+                        ..Default::default()
+                    },
+                )?;
                 continue;
             };
 
-            let mut label = Vec::with_capacity(2);
+            let mut label = Vec::with_capacity(3);
             let mut maybe_state: Option<KeyButtonData> = None;
-            let mut cap_type = KeyCapType::Regular;
+            let mut cap_type = KeyCapType::Letter;
 
             if let Ok(vk) = VirtualKey::from_str(key) {
                 if let Some(keymap) = keymap.as_ref() {
@@ -168,19 +177,19 @@ where
                             if label0.chars().next().is_some_and(char::is_alphabetic) {
                                 label.push(label1);
                                 if has_altgr {
-                                    cap_type = KeyCapType::RegularAltGr;
+                                    cap_type = KeyCapType::LetterAltGr;
                                     label.push(keymap.label_for_key(vk, META));
                                 } else {
-                                    cap_type = KeyCapType::Regular;
+                                    cap_type = KeyCapType::Letter;
                                 }
                             } else {
                                 label.push(label0);
                                 label.push(label1);
                                 if has_altgr {
                                     label.push(keymap.label_for_key(vk, META));
-                                    cap_type = KeyCapType::ReversedAltGr;
+                                    cap_type = KeyCapType::SymbolAltGr;
                                 } else {
-                                    cap_type = KeyCapType::Reversed;
+                                    cap_type = KeyCapType::Symbol;
                                 }
                             }
                         }
@@ -227,26 +236,43 @@ where
                 }
 
                 // todo: make this easier to maintain somehow
-                let mut params = HashMap::new();
+                let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
                 params.insert(Rc::from("width"), Rc::from(key_width.to_string()));
                 params.insert(Rc::from("height"), Rc::from(key_height.to_string()));
 
-                if let Some(first) = label.first() {
-                    params.insert(Rc::from("text"), Rc::from(first.as_str()));
+                let mut label = label.into_iter();
+                label
+                    .next()
+                    .and_then(|s| params.insert("text".into(), s.into()));
+
+                match cap_type {
+                    KeyCapType::LetterAltGr => {
+                        label
+                            .next()
+                            .and_then(|s| params.insert("text_altgr".into(), s.into()));
+                    }
+                    KeyCapType::Symbol => {
+                        label
+                            .next()
+                            .and_then(|s| params.insert("text_shift".into(), s.into()));
+                    }
+                    KeyCapType::SymbolAltGr => {
+                        label
+                            .next()
+                            .and_then(|s| params.insert("text_shift".into(), s.into()));
+                        label
+                            .next()
+                            .and_then(|s| params.insert("text_altgr".into(), s.into()));
+                    }
+                    _ => {}
                 }
 
-                gui_state_key.process_template("Key", &mut panel.layout, div, params)?;
+                let template_key = format!("Key{cap_type:?}");
+                gui_state_key.process_template(&template_key, &mut panel.layout, div, params)?;
             } else {
                 let _ = panel.layout.add_child(
                     div,
-                    Rectangle::create(RectangleParams {
-                        border_color: wgui::drawing::Color::new(0., 0., 0., 0.),
-                        color: wgui::drawing::Color::new(0., 0., 0., 0.),
-                        border: 2.0,
-                        round: WLength::Units(4.0),
-                        ..Default::default()
-                    })
-                    .unwrap(),
+                    Div::create()?,
                     taffy::Style {
                         size: taffy_size,
                         min_size: taffy_size,
@@ -507,17 +533,18 @@ impl OverlayRenderer for KeyboardBackend {
     }
 }
 
+#[derive(Debug)]
 pub enum KeyCapType {
     /// Label is in center of keycap
-    Regular,
+    Letter,
     /// Label on the top
     /// AltGr symbol on bottom
-    RegularAltGr,
+    LetterAltGr,
     /// Primary symbol on bottom
     /// Shift symbol on top
-    Reversed,
+    Symbol,
     /// Primary symbol on bottom-left
     /// Shift symbol on top-left
     /// AltGr symbol on bottom-right
-    ReversedAltGr,
+    SymbolAltGr,
 }
