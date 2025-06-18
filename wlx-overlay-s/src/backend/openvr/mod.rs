@@ -2,18 +2,18 @@ use std::{
     collections::VecDeque,
     ops::Add,
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
+        atomic::{AtomicBool, AtomicUsize, Ordering},
     },
     time::{Duration, Instant},
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use ovr_overlay::{
-    sys::{ETrackedDeviceProperty, EVRApplicationType, EVREventType},
     TrackedDeviceIndex,
+    sys::{ETrackedDeviceProperty, EVRApplicationType, EVREventType},
 };
-use vulkano::{device::physical::PhysicalDevice, Handle, VulkanObject};
+use vulkano::{Handle, VulkanObject, device::physical::PhysicalDevice};
 
 use crate::{
     backend::{
@@ -22,7 +22,7 @@ use crate::{
         notifications::NotificationManager,
         openvr::{
             helpers::adjust_gain,
-            input::{set_action_manifest, OpenVrInputSource},
+            input::{OpenVrInputSource, set_action_manifest},
             lines::LinePool,
             manifest::{install_manifest, uninstall_manifest},
             overlay::OpenVrOverlayData,
@@ -30,10 +30,10 @@ use crate::{
         overlay::{OverlayData, ShouldRender},
         task::{SystemTask, TaskType},
     },
-    graphics::{init_openvr_graphics, CommandBuffers},
+    graphics::{CommandBuffers, init_openvr_graphics},
     overlays::{
         toast::{Toast, ToastTopic},
-        watch::{watch_fade, WATCH_NAME},
+        watch::{WATCH_NAME, watch_fade},
     },
     state::AppState,
 };
@@ -185,12 +185,8 @@ pub fn openvr_run(
                         let ipd = (ipd * 10000.0).round() * 0.1;
                         if (ipd - state.input_state.ipd).abs() > 0.05 {
                             log::info!("IPD: {:.1} mm -> {:.1} mm", state.input_state.ipd, ipd);
-                            Toast::new(
-                                ToastTopic::IpdChange,
-                                "IPD".into(),
-                                format!("{ipd:.1} mm").into(),
-                            )
-                            .submit(&mut state);
+                            Toast::new(ToastTopic::IpdChange, "IPD".into(), format!("{ipd:.1} mm"))
+                                .submit(&mut state);
                         }
                         state.input_state.ipd = ipd;
                     }

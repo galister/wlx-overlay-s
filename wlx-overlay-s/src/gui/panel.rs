@@ -23,18 +23,18 @@ pub struct GuiPanel {
     pub layout: Layout,
     context: WguiContext,
     timestep: Timestep,
-    pub width: u32,
-    pub height: u32,
+    pub max_width: u32,
+    pub max_height: u32,
 }
 
 impl GuiPanel {
     pub fn new_from_template(
         app: &AppState,
-        width: u32,
-        height: u32,
+        max_width: u32,
+        max_height: u32,
         path: &str,
     ) -> anyhow::Result<Self> {
-        let mut me = Self::new_blank(app, width, height)?;
+        let mut me = Self::new_blank(app, max_width, max_height)?;
 
         let parent = me.layout.root_widget;
         let _res = wgui::parser::parse_from_assets(&mut me.layout, parent, path)?;
@@ -42,7 +42,7 @@ impl GuiPanel {
         Ok(me)
     }
 
-    pub fn new_blank(app: &AppState, width: u32, height: u32) -> anyhow::Result<Self> {
+    pub fn new_blank(app: &AppState, max_width: u32, max_height: u32) -> anyhow::Result<Self> {
         let layout = Layout::new(Box::new(GuiAsset {}))?;
         let context = WguiContext::new(app.gfx.clone(), app.gfx.surface_format, 1.0)?;
         let mut timestep = Timestep::new();
@@ -52,8 +52,8 @@ impl GuiPanel {
             layout,
             context,
             timestep,
-            width,
-            height,
+            max_width,
+            max_height,
         })
     }
 }
@@ -74,7 +74,7 @@ impl InteractionHandler for GuiPanel {
                 shift: vec2(delta_x, delta_y),
                 pos: hit.uv,
             }))
-            .unwrap()
+            .unwrap();
     }
 
     fn on_hover(&mut self, _app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
@@ -154,7 +154,7 @@ impl OverlayRenderer for GuiPanel {
 
     fn frame_meta(&mut self) -> Option<FrameMeta> {
         Some(FrameMeta {
-            extent: [self.width, self.height, 1],
+            extent: [self.max_width, self.max_height, 1],
             ..Default::default()
         })
     }

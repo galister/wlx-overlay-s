@@ -7,8 +7,9 @@ use dbus::{
 use serde::Deserialize;
 use std::{
     sync::{
+        Arc,
         atomic::{AtomicBool, Ordering},
-        mpsc, Arc,
+        mpsc,
     },
     time::Duration,
 };
@@ -172,7 +173,7 @@ impl NotificationManager {
                     let toast = Toast::new(
                         ToastTopic::XSNotification,
                         msg.title,
-                        msg.content.unwrap_or_else(|| "".into()),
+                        msg.content.unwrap_or(String::new()),
                     )
                     .with_timeout(msg.timeout.unwrap_or(5.))
                     .with_sound(msg.volume.unwrap_or(-1.) >= 0.); // XSOverlay still plays at 0,
@@ -264,11 +265,9 @@ fn parse_dbus(msg: &dbus::Message) -> anyhow::Result<Toast> {
         summary
     };
 
-    Ok(
-        Toast::new(ToastTopic::DesktopNotification, title.into(), body.into())
-            .with_timeout(5.0)
-            .with_opacity(1.0),
-    )
+    Ok(Toast::new(ToastTopic::DesktopNotification, title, body)
+        .with_timeout(5.0)
+        .with_opacity(1.0))
     // leave the audio part to the desktop env
 }
 

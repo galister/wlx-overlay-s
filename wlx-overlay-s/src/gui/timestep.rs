@@ -18,8 +18,8 @@ pub struct Timestep {
 }
 
 impl Timestep {
-    pub fn new() -> Timestep {
-        let mut timestep = Timestep {
+    pub fn new() -> Self {
+        let mut timestep = Self {
             speed: 1.0,
             ..Default::default()
         };

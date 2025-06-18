@@ -256,7 +256,7 @@ impl Layout {
 
 		if self.tree.dirty(self.root_node)? || self.prev_size != size {
 			self.needs_redraw = true;
-			println!("re-computing layout, size {}x{}", size.x, size.y);
+			log::debug!("re-computing layout, size {}x{}", size.x, size.y);
 			self.prev_size = size;
 			self.tree.compute_layout_with_measure(
 				self.root_node,

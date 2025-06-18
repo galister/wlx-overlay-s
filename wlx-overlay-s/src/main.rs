@@ -29,8 +29,8 @@ mod config_wayvr;
 use std::{
     path::PathBuf,
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc,
+        atomic::{AtomicBool, Ordering},
     },
 };
 
@@ -38,7 +38,7 @@ use backend::notifications::DbusNotificationSender;
 use clap::Parser;
 use sysinfo::Pid;
 use tracing::level_filters::LevelFilter;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 /// The lightweight desktop overlay for OpenVR and OpenXR
 #[derive(Default, Parser, Debug)]
@@ -126,7 +126,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-#[allow(unused_mut)]
+#[allow(unused_mut, clippy::similar_names)]
 fn auto_run(running: Arc<AtomicBool>, args: Args) {
     use backend::common::BackendError;
 

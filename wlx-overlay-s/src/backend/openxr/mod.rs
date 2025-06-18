@@ -330,12 +330,8 @@ pub fn openxr_run(
         if (app.input_state.ipd - ipd).abs() > 0.01 {
             log::info!("IPD changed: {} -> {}", app.input_state.ipd, ipd);
             app.input_state.ipd = ipd;
-            Toast::new(
-                ToastTopic::IpdChange,
-                "IPD".into(),
-                format!("{ipd:.1} mm").into(),
-            )
-            .submit(&mut app);
+            Toast::new(ToastTopic::IpdChange, "IPD".into(), format!("{ipd:.1} mm"))
+                .submit(&mut app);
         }
 
         overlays

@@ -1,9 +1,9 @@
 use crate::state::AppState;
 
-use super::{display, process, window, TickTask, WayVRSignal};
+use super::{TickTask, WayVRSignal, display, process, window};
 use bytes::BufMut;
 use glam::Vec3A;
-use interprocess::local_socket::{self, traits::Listener, ToNsName};
+use interprocess::local_socket::{self, ToNsName, traits::Listener};
 use smallvec::SmallVec;
 use std::io::{Read, Write};
 use wayvr_ipc::{
@@ -81,11 +81,10 @@ pub fn gen_args_vec(input: &str) -> Vec<&str> {
 }
 
 pub fn gen_env_vec(input: &[String]) -> Vec<(&str, &str)> {
-    let res = input
+    input
         .iter()
         .filter_map(|e| e.as_str().split_once('='))
-        .collect();
-    res
+        .collect()
 }
 
 impl Connection {

@@ -5,7 +5,7 @@ use std::{
     time::Instant,
 };
 
-use glam::{vec3a, Quat};
+use glam::{Quat, vec3a};
 use idmap_derive::IntegerId;
 use serde::{Deserialize, Serialize};
 use wgui::{
@@ -232,7 +232,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
     let state = OverlayState {
         name: TOAST_NAME.clone(),
         want_visible: true,
-        spawn_scale: (panel.width as f32) * PIXELS_TO_METERS,
+        spawn_scale: (panel.max_width as f32) * PIXELS_TO_METERS,
         spawn_rotation,
         spawn_point,
         z_order: Z_ORDER_TOAST,
