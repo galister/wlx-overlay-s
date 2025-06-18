@@ -1,0 +1,7 @@
+<layout>
+  <template name="Key">
+    <rectangle color="#FF0000" width="32" height="32" margin="4">
+
+    </rectangle>
+  </template>
+</layout>

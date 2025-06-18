@@ -9,12 +9,7 @@ pub struct TestbedAny {
 impl TestbedAny {
 	pub fn new(name: &str) -> anyhow::Result<Self> {
 		let path = format!("gui/{name}.xml");
-		let mut layout = Layout::new(Box::new(assets::Asset {}))?;
-
-		let parent = layout.root_widget;
-
-		let _res = wgui::parser::parse_from_assets(&mut layout, parent, &path)?;
-
+		let (layout, _state) = wgui::parser::new_layout_from_assets(Box::new(assets::Asset {}), &path)?;
 		Ok(Self { layout })
 	}
 }

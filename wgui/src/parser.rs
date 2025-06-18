@@ -48,16 +48,14 @@ struct ParserFile<'a> {
 	path: PathBuf,
 	document: Rc<XmlDocument>,
 	ctx: Rc<RefCell<ParserContext<'a>>>,
-	current_template: Rc<Template>,
 	template_parameters: HashMap<Rc<str>, Rc<str>>,
 }
 
-#[derive(Default)]
-pub struct ParserState {
-	pub ids: HashMap<Rc<str>, WidgetID>,
+pub struct ParserResult {
+	ids: HashMap<Rc<str>, WidgetID>,
 }
 
-impl ParserState {
+impl ParserResult {
 	pub fn require_by_id(&self, id: &str) -> anyhow::Result<WidgetID> {
 		match self.ids.get(id) {
 			Some(id) => Ok(*id),
@@ -70,7 +68,7 @@ struct ParserContext<'a> {
 	layout: &'a mut Layout,
 	var_map: VarMap,
 	templates: HashMap<Rc<str>, Rc<Template>>,
-	state: &'a mut ParserState,
+	ids: HashMap<Rc<str>, WidgetID>,
 }
 
 // Parses a color from a HTML hex string
@@ -562,6 +560,39 @@ fn parse_widget_sprite<'a>(
 	Ok(())
 }
 
+fn parse_widget_other<'a>(
+	xml_tag_name: &str,
+	file: &'a ParserFile,
+	ctx: &mut ParserContext,
+	node: roxmltree::Node<'a, 'a>,
+	parent_id: WidgetID,
+) -> anyhow::Result<()> {
+	let Some(template) = ctx.templates.get(xml_tag_name) else {
+		log::error!("Undefined tag named \"{}\"", xml_tag_name);
+		return Ok(()); // not critical
+	};
+
+	let template_parameters: HashMap<Rc<str>, Rc<str>> = iter_attribs(file, ctx, &node).collect();
+
+	let template_file = ParserFile {
+		ctx: file.ctx.clone(),
+		document: template.node_document.clone(),
+		path: file.path.clone(),
+		template_parameters,
+	};
+
+	let doc = template_file.document.clone();
+
+	let template_node = doc
+		.borrow_doc()
+		.get_node(template.node)
+		.ok_or(anyhow::anyhow!("template node invalid"))?;
+
+	parse_children(&template_file, ctx, template_node, parent_id)?;
+
+	Ok(())
+}
+
 fn parse_widget_label<'a>(
 	file: &'a ParserFile,
 	ctx: &mut ParserContext,
@@ -800,7 +831,7 @@ fn parse_universal<'a>(
 		match key.as_ref() {
 			"id" => {
 				// Attach a specific widget to name-ID map (just like getElementById)
-				if ctx.state.ids.insert(value.clone(), widget_id).is_some() {
+				if ctx.ids.insert(value.clone(), widget_id).is_some() {
 					log::warn!("duplicate ID \"{}\" in the same layout file!", value);
 				}
 			}
@@ -835,30 +866,7 @@ fn parse_children<'a>(
 			}
 			"" => { /* ignore */ }
 			other_tag_name => {
-				let Some(template) = ctx.templates.get(other_tag_name) else {
-					log::error!("Undefined tag named \"{}\"", other_tag_name);
-					continue;
-				};
-
-				let template_parameters: HashMap<Rc<str>, Rc<str>> =
-					iter_attribs(file, ctx, &child_node).collect();
-
-				let template_file = ParserFile {
-					ctx: file.ctx.clone(),
-					document: template.node_document.clone(),
-					path: file.path.clone(),
-					template_parameters,
-					current_template: template.clone(),
-				};
-
-				let doc = template_file.document.clone();
-
-				let template_node = doc
-					.borrow_doc()
-					.get_node(template.node)
-					.ok_or(anyhow::anyhow!("template node invalid"))?;
-
-				parse_children(&template_file, ctx, template_node, parent_id)?;
+				parse_widget_other(other_tag_name, file, ctx, child_node, parent_id)?;
 			}
 		}
 	}
@@ -869,13 +877,12 @@ pub fn parse_from_assets(
 	layout: &mut Layout,
 	parent_id: WidgetID,
 	path: &str,
-) -> anyhow::Result<ParserState> {
+) -> anyhow::Result<ParserResult> {
 	let path = PathBuf::from(path);
-	let mut result = ParserState::default();
 
 	let ctx_rc = Rc::new(RefCell::new(ParserContext {
 		layout,
-		state: &mut result,
+		ids: Default::default(),
 		var_map: Default::default(),
 		templates: Default::default(),
 	}));
@@ -884,9 +891,25 @@ pub fn parse_from_assets(
 
 	let (file, node_layout) = get_doc_from_path(ctx_rc.clone(), &mut ctx, &path)?;
 	parse_document_root(file, &mut ctx, parent_id, node_layout)?;
+
+	// move everything essential to the result
+	let result = ParserResult {
+		ids: std::mem::take(&mut ctx.ids),
+	};
+
 	drop(ctx);
 
 	Ok(result)
+}
+
+pub fn new_layout_from_assets(
+	assets: Box<dyn AssetProvider>,
+	path: &str,
+) -> anyhow::Result<(Layout, ParserResult)> {
+	let mut layout = Layout::new(assets)?;
+	let widget = layout.root_widget;
+	let state = parse_from_assets(&mut layout, widget, path)?;
+	Ok((layout, state))
 }
 
 fn assets_path_to_xml(assets: &mut Box<dyn AssetProvider>, path: &Path) -> anyhow::Result<String> {
@@ -911,17 +934,11 @@ fn get_doc_from_path<'a>(
 	let root = document.borrow_doc().root();
 	let tag_layout = require_tag_by_name(&root, "layout")?;
 
-	let template = Template {
-		node: root.id(),
-		node_document: document.clone(),
-	};
-
 	let file = ParserFile {
 		ctx: ctx_rc.clone(),
 		path: PathBuf::from(path),
 		document: document.clone(),
-		current_template: Rc::new(template),
-		template_parameters: Default::default(), // todo
+		template_parameters: Default::default(),
 	};
 
 	Ok((file, tag_layout.id()))

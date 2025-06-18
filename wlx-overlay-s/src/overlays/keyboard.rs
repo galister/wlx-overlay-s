@@ -15,7 +15,7 @@ use crate::{
     },
     config::{self, ConfigType},
     graphics::CommandBuffers,
-    gui::panel::GuiPanel,
+    gui::{self, panel::GuiPanel},
     hid::{
         ALT, CTRL, KEYS_TO_MODS, KeyModifier, KeyType, META, NUM_LOCK, SHIFT, SUPER, VirtualKey,
         XkbKeymap, get_key_type,
@@ -125,6 +125,9 @@ where
         keymap = None;
     }
 
+    let (key_layout, _state) =
+        wgui::parser::new_layout_from_assets(Box::new(gui::asset::GuiAsset {}), "key.xml")?;
+
     for row in 0..LAYOUT.key_sizes.len() {
         let (div, _) = panel.layout.add_child(
             background,
@@ -142,113 +145,115 @@ where
                 height: length(PIXELS_PER_UNIT),
             };
 
-            if let Some(key) = LAYOUT.main_layout[row][col].as_ref() {
-                let mut label = Vec::with_capacity(2);
-                let mut maybe_state: Option<KeyButtonData> = None;
-                let mut cap_type = KeyCapType::Regular;
+            let Some(key) = LAYOUT.main_layout[row][col].as_ref() else {
+                continue;
+            };
 
-                if let Ok(vk) = VirtualKey::from_str(key) {
-                    if let Some(keymap) = keymap.as_ref() {
-                        match get_key_type(vk) {
-                            KeyType::Symbol => {
-                                let label0 = keymap.label_for_key(vk, 0);
-                                let label1 = keymap.label_for_key(vk, SHIFT);
+            let mut label = Vec::with_capacity(2);
+            let mut maybe_state: Option<KeyButtonData> = None;
+            let mut cap_type = KeyCapType::Regular;
 
-                                if label0.chars().next().is_some_and(char::is_alphabetic) {
-                                    label.push(label1);
-                                    if has_altgr {
-                                        cap_type = KeyCapType::RegularAltGr;
-                                        label.push(keymap.label_for_key(vk, META));
-                                    } else {
-                                        cap_type = KeyCapType::Regular;
-                                    }
+            if let Ok(vk) = VirtualKey::from_str(key) {
+                if let Some(keymap) = keymap.as_ref() {
+                    match get_key_type(vk) {
+                        KeyType::Symbol => {
+                            let label0 = keymap.label_for_key(vk, 0);
+                            let label1 = keymap.label_for_key(vk, SHIFT);
+
+                            if label0.chars().next().is_some_and(char::is_alphabetic) {
+                                label.push(label1);
+                                if has_altgr {
+                                    cap_type = KeyCapType::RegularAltGr;
+                                    label.push(keymap.label_for_key(vk, META));
                                 } else {
-                                    label.push(label0);
-                                    label.push(label1);
-                                    if has_altgr {
-                                        label.push(keymap.label_for_key(vk, META));
-                                        cap_type = KeyCapType::ReversedAltGr;
-                                    } else {
-                                        cap_type = KeyCapType::Reversed;
-                                    }
+                                    cap_type = KeyCapType::Regular;
+                                }
+                            } else {
+                                label.push(label0);
+                                label.push(label1);
+                                if has_altgr {
+                                    label.push(keymap.label_for_key(vk, META));
+                                    cap_type = KeyCapType::ReversedAltGr;
+                                } else {
+                                    cap_type = KeyCapType::Reversed;
                                 }
                             }
-                            KeyType::NumPad => {
-                                label.push(keymap.label_for_key(vk, NUM_LOCK));
-                            }
-                            KeyType::Other => {}
                         }
+                        KeyType::NumPad => {
+                            label.push(keymap.label_for_key(vk, NUM_LOCK));
+                        }
+                        KeyType::Other => {}
                     }
+                }
 
-                    if let Some(mods) = KEYS_TO_MODS.get(vk) {
-                        maybe_state = Some(KeyButtonData::Modifier {
-                            modifier: *mods,
-                            sticky: false,
-                        });
-                    } else {
-                        maybe_state = Some(KeyButtonData::Key { vk, pressed: false });
-                    }
-                } else if let Some(macro_verbs) = LAYOUT.macros.get(key) {
-                    maybe_state = Some(KeyButtonData::Macro {
-                        verbs: key_events_for_macro(macro_verbs),
+                if let Some(mods) = KEYS_TO_MODS.get(vk) {
+                    maybe_state = Some(KeyButtonData::Modifier {
+                        modifier: *mods,
+                        sticky: false,
                     });
-                } else if let Some(exec_args) = LAYOUT.exec_commands.get(key) {
-                    if exec_args.is_empty() {
-                        log::error!("Keyboard: EXEC args empty for {key}");
-                    } else {
-                        let mut iter = exec_args.iter().cloned();
-                        if let Some(program) = iter.next() {
-                            maybe_state = Some(KeyButtonData::Exec {
-                                program,
-                                args: iter.by_ref().take_while(|arg| arg[..] != *"null").collect(),
-                                release_program: iter.next(),
-                                release_args: iter.collect(),
-                            });
-                        }
-                    }
                 } else {
-                    log::error!("Unknown key: {key}");
+                    maybe_state = Some(KeyButtonData::Key { vk, pressed: false });
                 }
+            } else if let Some(macro_verbs) = LAYOUT.macros.get(key) {
+                maybe_state = Some(KeyButtonData::Macro {
+                    verbs: key_events_for_macro(macro_verbs),
+                });
+            } else if let Some(exec_args) = LAYOUT.exec_commands.get(key) {
+                if exec_args.is_empty() {
+                    log::error!("Keyboard: EXEC args empty for {key}");
+                } else {
+                    let mut iter = exec_args.iter().cloned();
+                    if let Some(program) = iter.next() {
+                        maybe_state = Some(KeyButtonData::Exec {
+                            program,
+                            args: iter.by_ref().take_while(|arg| arg[..] != *"null").collect(),
+                            release_program: iter.next(),
+                            release_args: iter.collect(),
+                        });
+                    }
+                }
+            } else {
+                log::error!("Unknown key: {key}");
+            }
 
-                if let Some(state) = maybe_state {
-                    if label.is_empty() {
-                        label = LAYOUT.label_for_key(key);
-                    }
-                    let _ = panel.layout.add_child(
-                        div,
-                        Rectangle::create(RectangleParams {
-                            border_color: parse_color_hex("#dddddd").unwrap(),
-                            border: 2.0,
-                            round: WLength::Units(4.0),
-                            ..Default::default()
-                        })
-                        .unwrap(),
-                        taffy::Style {
-                            size: my_size,
-                            min_size: my_size,
-                            max_size: my_size,
-                            ..Default::default()
-                        },
-                    )?;
-                } else {
-                    let _ = panel.layout.add_child(
-                        div,
-                        Rectangle::create(RectangleParams {
-                            border_color: wgui::drawing::Color::new(0., 0., 0., 0.),
-                            color: wgui::drawing::Color::new(0., 0., 0., 0.),
-                            border: 2.0,
-                            round: WLength::Units(4.0),
-                            ..Default::default()
-                        })
-                        .unwrap(),
-                        taffy::Style {
-                            size: my_size,
-                            min_size: my_size,
-                            max_size: my_size,
-                            ..Default::default()
-                        },
-                    )?;
+            if let Some(state) = maybe_state {
+                if label.is_empty() {
+                    label = LAYOUT.label_for_key(key);
                 }
+                let _ = panel.layout.add_child(
+                    div,
+                    Rectangle::create(RectangleParams {
+                        border_color: parse_color_hex("#dddddd").unwrap(),
+                        border: 2.0,
+                        round: WLength::Units(4.0),
+                        ..Default::default()
+                    })
+                    .unwrap(),
+                    taffy::Style {
+                        size: my_size,
+                        min_size: my_size,
+                        max_size: my_size,
+                        ..Default::default()
+                    },
+                )?;
+            } else {
+                let _ = panel.layout.add_child(
+                    div,
+                    Rectangle::create(RectangleParams {
+                        border_color: wgui::drawing::Color::new(0., 0., 0., 0.),
+                        color: wgui::drawing::Color::new(0., 0., 0., 0.),
+                        border: 2.0,
+                        round: WLength::Units(4.0),
+                        ..Default::default()
+                    })
+                    .unwrap(),
+                    taffy::Style {
+                        size: my_size,
+                        min_size: my_size,
+                        max_size: my_size,
+                        ..Default::default()
+                    },
+                )?;
             }
         }
     }

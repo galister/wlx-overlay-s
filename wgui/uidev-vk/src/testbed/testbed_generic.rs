@@ -20,13 +20,8 @@ impl TestbedGeneric {
 	pub fn new() -> anyhow::Result<Self> {
 		const XML_PATH: &str = "gui/testbed.xml";
 
-		let mut layout = Layout::new(Box::new(assets::Asset {}))?;
-
-		layout.assets.load_from_path(XML_PATH)?;
-
-		let parent = layout.root_widget;
-
-		let res = wgui::parser::parse_from_assets(&mut layout, parent, XML_PATH)?;
+		let (mut layout, res) =
+			wgui::parser::new_layout_from_assets(Box::new(assets::Asset {}), XML_PATH)?;
 
 		use wgui::components::button;
 		let my_div_parent = res.require_by_id("my_div_parent")?;
