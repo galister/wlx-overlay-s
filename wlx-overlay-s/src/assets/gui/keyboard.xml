@@ -1,15 +1,20 @@
 <layout>
+  <macro name="keycap_rect"
+    margin="2" width="100%" overflow="hidden" box_sizing="border_box"
+    border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
+    align_items="center" justify_content="center" />
+
+  <macro name="keycap_div"
+    width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}"
+  />
+
   <!-- The keyboard is build from the xkb keymap. This file is for customizing the keycaps. -->
 
   <!-- Key cap with a single label. -->
   <!-- Used for special keys. -->
   <template name="KeySpecial">
-    <div width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
-      <rectangle id="${id}"
-        margin="2" width="100%" overflow="hidden" box_sizing="border_box"
-        border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
-        align_items="center"
-        justify_content="center">
+    <div macro="keycap_div">
+      <rectangle id="${id}" macro="keycap_rect">
         <sprite color="#FFFFFF" width="32" height="32" src="keyboard/${text}.svg" />
       </rectangle>
     </div>
@@ -18,12 +23,8 @@
   <!-- Key cap with a single label. -->
   <!-- Used for letter keys on layouts without AltGr. -->
   <template name="KeyLetter">
-    <div width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
-      <rectangle id="${id}"
-        margin="2" width="100%" overflow="hidden" box_sizing="border_box"
-        border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
-        align_items="center"
-        justify_content="center">
+    <div macro="keycap_div">
+      <rectangle id="${id}" macro="keycap_rect">
         <label color="#FFFFFF" text="${text}" size="24" />
       </rectangle>
     </div>
@@ -32,14 +33,8 @@
   <!-- Key cap with a primary label on top and an AltGr label on bottom. -->
   <!-- Used for letter keys on layouts with AltGr. -->
   <template name="KeyLetterAltGr">
-    <div width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
-      <rectangle id="${id}"
-        margin="2" width="100%" overflow="hidden" box_sizing="border_box"
-        border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
-        gap="4"
-        flex_direction="column"
-        align_items="center"
-        justify_content="center">
+    <div macro="keycap_div">
+      <rectangle id="${id}" macro="keycap_rect" gap="4">
         <label color="#FFFFFF" text="${text}" size="24" />
         <label color="#FFFFFF70" text="${text_altgr}" size="24" />
       </rectangle>
@@ -49,15 +44,8 @@
   <!-- Key cap with a primary label on bottom and a Shift label on top. -->
   <!-- Used for number & symbol keys on layouts without AltGr. -->
   <template name="KeySymbol">
-    <div width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
-      <rectangle id="${id}"
-        margin="2" width="100%" overflow="hidden" box_sizing="border_box"
-        border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
-        gap="4"
-        flex_direction="column"
-        align_items="center"
-        justify_content="center"
-      >
+    <div macro="keycap_div">
+      <rectangle id="${id}" macro="keycap_rect" gap="4">
         <label color="#FFFFFF70" text="${text_shift}" size="24" />
         <label color="#FFFFFF" text="${text}" size="24" />
       </rectangle>
@@ -67,14 +55,8 @@
   <!-- Key cap with a primary label on bottom-left, an AltGr label on bottom-right, Shift label on top-left. -->
   <!-- Used for number & symbol keys on layouts with AltGr. -->
   <template name="KeySymbolAltGr">
-    <div width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
-      <rectangle id="${id}"
-        margin="2" width="100%" overflow="hidden" box_sizing="border_box"
-        border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
-        flex_direction="row"
-        flex_wrap="wrap"
-        align_items="center"
-        justify_content="center">
+    <div macro="keycap_div">
+      <rectangle id="${id}" macro="keycap_rect" flex_direction="row" flex_wrap="wrap">
         <div width="50%" height="50%" align_items="center" justify_content="center">
           <label color="#FFFFFF70" text="${text_shift}" size="24" />
         </div>

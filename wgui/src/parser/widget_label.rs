@@ -15,7 +15,7 @@ pub fn parse_widget_label<'a>(
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
 	let mut params = TextParams::default();
-	let attribs: Vec<_> = iter_attribs(file, ctx, &node).collect();
+	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
 	for (key, value) in attribs {
 		match &*key {
 			"text" => {

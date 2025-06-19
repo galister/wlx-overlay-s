@@ -20,8 +20,6 @@ use std::{
 	rc::Rc,
 };
 
-type VarMap = HashMap<Rc<str>, Rc<str>>;
-
 #[self_referencing]
 struct XmlDocument {
 	xml: String,
@@ -44,6 +42,8 @@ struct ParserFile {
 
 pub struct ParserResult {
 	pub ids: HashMap<Rc<str>, WidgetID>,
+	macro_attribs: HashMap<Rc<str>, MacroAttribs>,
+	var_map: HashMap<Rc<str>, Rc<str>>,
 	pub templates: HashMap<Rc<str>, Rc<Template>>,
 	pub path: PathBuf,
 }
@@ -67,7 +67,13 @@ impl ParserResult {
 			anyhow::bail!("no template named \"{}\" found", template_name);
 		};
 
-		let mut ctx = create_default_context(layout);
+		let mut ctx = ParserContext {
+			layout,
+			ids: Default::default(),
+			macro_attribs: self.macro_attribs.clone(), // FIXME: prevent copying
+			var_map: self.var_map.clone(),             // FIXME: prevent copying
+			templates: Default::default(),
+		};
 
 		let file = ParserFile {
 			document: template.node_document.clone(),
@@ -75,21 +81,15 @@ impl ParserResult {
 			template_parameters: template_parameters.clone(), // FIXME: prevent copying
 		};
 
-		let node = template
-			.node_document
-			.borrow_doc()
-			.get_node(template.node)
-			.unwrap();
-
 		parse_widget_other_internal(
 			template.clone(),
 			template_parameters,
 			&file,
 			&mut ctx,
-			node,
 			widget_id,
 		)?;
 
+		// FIXME?
 		ctx.ids.into_iter().for_each(|(id, key)| {
 			self.ids.insert(id, key);
 		});
@@ -98,11 +98,17 @@ impl ParserResult {
 	}
 }
 
+#[derive(Debug, Clone)]
+struct MacroAttribs {
+	attribs: HashMap<Rc<str>, Rc<str>>,
+}
+
 struct ParserContext<'a> {
 	layout: &'a mut Layout,
-	var_map: VarMap,
-	templates: HashMap<Rc<str>, Rc<Template>>,
+	var_map: HashMap<Rc<str>, Rc<str>>,
+	macro_attribs: HashMap<Rc<str>, MacroAttribs>,
 	ids: HashMap<Rc<str>, WidgetID>,
+	templates: HashMap<Rc<str>, Rc<Template>>,
 }
 
 // Parses a color from a HTML hex string
@@ -207,12 +213,11 @@ where
 	}
 }
 
-fn parse_widget_other_internal<'a>(
+fn parse_widget_other_internal(
 	template: Rc<Template>,
 	template_parameters: HashMap<Rc<str>, Rc<str>>,
-	file: &'a ParserFile,
+	file: &ParserFile,
 	ctx: &mut ParserContext,
-	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
 	let template_file = ParserFile {
@@ -245,16 +250,10 @@ fn parse_widget_other<'a>(
 		return Ok(()); // not critical
 	};
 
-	let template_parameters: HashMap<Rc<str>, Rc<str>> = iter_attribs(file, ctx, &node).collect();
+	let template_parameters: HashMap<Rc<str>, Rc<str>> =
+		iter_attribs(file, ctx, &node, false).collect();
 
-	parse_widget_other_internal(
-		template.clone(),
-		template_parameters,
-		file,
-		ctx,
-		node,
-		parent_id,
-	)
+	parse_widget_other_internal(template.clone(), template_parameters, file, ctx, parent_id)
 }
 
 fn parse_tag_include<'a>(
@@ -333,7 +332,10 @@ pub fn replace_vars(input: &str, vars: &HashMap<Rc<str>, Rc<str>>) -> Rc<str> {
 
 		match vars.get(input_var) {
 			Some(replacement) => replacement.clone(),
-			None => Rc::from(""),
+			None => {
+				log::warn!("failed to replace var named \"{}\" (not found)", input_var);
+				Rc::from("")
+			}
 		}
 	});
 
@@ -341,31 +343,64 @@ pub fn replace_vars(input: &str, vars: &HashMap<Rc<str>, Rc<str>>) -> Rc<str> {
 }
 
 #[allow(clippy::manual_strip)]
+fn process_attrib<'a>(
+	file: &'a ParserFile,
+	ctx: &'a ParserContext,
+	key: &str,
+	value: &str,
+) -> (Rc<str>, Rc<str>) {
+	if value.starts_with("~") {
+		let name = &value[1..];
+
+		(
+			Rc::from(key),
+			match ctx.var_map.get(name) {
+				Some(name) => name.clone(),
+				None => Rc::from("undefined"),
+			},
+		)
+	} else {
+		(
+			Rc::from(key),
+			replace_vars(value, &file.template_parameters),
+		)
+	}
+}
+
 fn iter_attribs<'a>(
 	file: &'a ParserFile,
 	ctx: &'a ParserContext,
-	node: &roxmltree::Node<'a, 'a>,
+	node: &'a roxmltree::Node<'a, 'a>,
+	is_tag_macro: bool,
 ) -> impl Iterator<Item = (/*key*/ Rc<str>, /*value*/ Rc<str>)> + 'a {
-	node.attributes().map(|attrib| {
+	let mut res = Vec::<(Rc<str>, Rc<str>)>::new();
+
+	if is_tag_macro {
+		// return as-is, no attrib post-processing
+		for attrib in node.attributes() {
+			let (key, value) = (attrib.name(), attrib.value());
+			res.push((Rc::from(key), Rc::from(value)));
+		}
+		return res.into_iter();
+	}
+
+	for attrib in node.attributes() {
 		let (key, value) = (attrib.name(), attrib.value());
 
-		if value.starts_with("~") {
-			let name = &value[1..];
-
-			(
-				Rc::from(key),
-				match ctx.var_map.get(name) {
-					Some(name) => name.clone(),
-					None => Rc::from("undefined"),
-				},
-			)
+		if key == "macro" {
+			if let Some(macro_attrib) = ctx.macro_attribs.get(value) {
+				for (macro_key, macro_value) in macro_attrib.attribs.iter() {
+					res.push(process_attrib(file, ctx, macro_key, macro_value));
+				}
+			} else {
+				log::warn!("requested macro named \"{}\" not found!", value);
+			}
 		} else {
-			(
-				Rc::from(key),
-				replace_vars(value, &file.template_parameters),
-			)
+			res.push(process_attrib(file, ctx, key, value));
 		}
-	})
+	}
+
+	res.into_iter()
 }
 
 fn parse_tag_theme<'a>(
@@ -395,7 +430,7 @@ fn parse_tag_template(
 ) -> anyhow::Result<()> {
 	let mut template_name: Option<Rc<str>> = None;
 
-	let attribs: Vec<_> = iter_attribs(file, ctx, &node).collect();
+	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
 
 	for (key, value) in attribs {
 		match key.as_ref() {
@@ -424,13 +459,51 @@ fn parse_tag_template(
 	Ok(())
 }
 
+fn parse_tag_macro(
+	file: &ParserFile,
+	ctx: &mut ParserContext,
+	node: roxmltree::Node<'_, '_>,
+) -> anyhow::Result<()> {
+	let mut macro_name: Option<Rc<str>> = None;
+
+	let attribs: Vec<_> = iter_attribs(file, ctx, &node, true).collect();
+	let mut macro_attribs = HashMap::<Rc<str>, Rc<str>>::new();
+
+	for (key, value) in attribs {
+		match key.as_ref() {
+			"name" => {
+				macro_name = Some(value);
+			}
+			_ => {
+				if macro_attribs.insert(key.clone(), value).is_some() {
+					log::warn!("macro attrib \"{}\" already defined!", key);
+				}
+			}
+		}
+	}
+
+	let Some(name) = macro_name else {
+		log::error!("Template name not specified, ignoring");
+		return Ok(());
+	};
+
+	ctx.macro_attribs.insert(
+		name.clone(),
+		MacroAttribs {
+			attribs: macro_attribs,
+		},
+	);
+
+	Ok(())
+}
+
 fn parse_universal<'a>(
 	file: &'a ParserFile,
 	ctx: &mut ParserContext,
 	node: roxmltree::Node<'a, 'a>,
 	widget_id: WidgetID,
 ) -> anyhow::Result<()> {
-	let attribs: Vec<_> = iter_attribs(file, ctx, &node).collect();
+	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
 
 	for (key, value) in attribs {
 		#[allow(clippy::single_match)]
@@ -485,6 +558,7 @@ fn create_default_context(layout: &mut Layout) -> ParserContext<'_> {
 		ids: Default::default(),
 		var_map: Default::default(),
 		templates: Default::default(),
+		macro_attribs: Default::default(),
 	}
 }
 
@@ -504,6 +578,8 @@ pub fn parse_from_assets(
 	let result = ParserResult {
 		ids: std::mem::take(&mut ctx.ids),
 		templates: std::mem::take(&mut ctx.templates),
+		macro_attribs: std::mem::take(&mut ctx.macro_attribs),
+		var_map: std::mem::take(&mut ctx.var_map),
 		path,
 	};
 
@@ -571,6 +647,7 @@ fn parse_document_root(
 			"include" => parse_tag_include(&file, ctx, child_node, parent_id)?,
 			"theme" => parse_tag_theme(ctx, child_node)?,
 			"template" => parse_tag_template(&file, ctx, child_node)?,
+			"macro" => parse_tag_macro(&file, ctx, child_node)?,
 			_ => {}
 		}
 	}

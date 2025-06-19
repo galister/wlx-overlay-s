@@ -16,7 +16,7 @@ pub fn parse_widget_rectangle<'a>(
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
 	let mut params = RectangleParams::default();
-	let attribs: Vec<_> = iter_attribs(file, ctx, &node).collect();
+	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
 
 	for (key, value) in attribs {
 		match &*key {

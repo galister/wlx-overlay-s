@@ -16,7 +16,7 @@ pub fn style_from_node<'a>(
 		..Default::default()
 	};
 
-	let attribs: Vec<_> = iter_attribs(file, ctx, &node).collect();
+	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
 
 	for (key, value) in attribs {
 		match &*key {

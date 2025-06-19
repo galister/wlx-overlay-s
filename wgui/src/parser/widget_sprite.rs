@@ -15,7 +15,7 @@ pub fn parse_widget_sprite<'a>(
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
 	let mut params = SpriteBoxParams::default();
-	let attribs: Vec<_> = iter_attribs(file, ctx, &node).collect();
+	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
 
 	let mut glyph = None;
 	for (key, value) in attribs {
