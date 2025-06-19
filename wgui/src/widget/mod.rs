@@ -297,15 +297,18 @@ impl WidgetState {
 	) -> EventResult {
 		let hovered = event.test_mouse_within_transform(params.transform_stack.get());
 
+		// buttons don't need to be tracked separately as long as we stick to VR use.
 		let mut pressed_changed_button = None;
 		let mut hovered_changed = false;
 
 		match &event {
 			Event::MouseDown(e) => {
-				pressed_changed_button = self
-					.data
-					.set_device_pressed(e.device, true)
-					.then_some(e.button);
+				if hovered {
+					pressed_changed_button = self
+						.data
+						.set_device_pressed(e.device, true)
+						.then_some(e.button);
+				}
 			}
 			Event::MouseUp(e) => {
 				pressed_changed_button = self
@@ -314,7 +317,7 @@ impl WidgetState {
 					.then_some(e.button);
 			}
 			Event::MouseWheel(e) => {
-				if self.process_wheel(params, e) {
+				if hovered && self.process_wheel(params, e) {
 					return EventResult::Consumed;
 				}
 			}

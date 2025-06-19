@@ -51,6 +51,10 @@ impl InteractionHandler for KeyboardBackend {
         pressed: bool,
     ) {
         self.panel.on_pointer(app, hit, pressed);
+        let _ = self
+            .panel
+            .layout
+            .push_event(&wgui::event::Event::InternalStateChange);
     }
     fn on_scroll(
         &mut self,
@@ -98,7 +102,10 @@ impl OverlayRenderer for KeyboardBackend {
         self.panel.pause(app)
     }
     fn resume(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        self.panel.resume(app)
+        self.panel.resume(app)?;
+        self.panel
+            .layout
+            .push_event(&wgui::event::Event::InternalStateChange)
     }
 }
 
@@ -117,6 +124,7 @@ struct KeyState {
     color: drawing::Color,
     color2: drawing::Color,
     border_color: drawing::Color,
+    drawn_state: Cell<bool>,
 }
 
 enum KeyButtonData {
@@ -194,7 +202,11 @@ fn handle_press(key: Rc<KeyState>, keyboard: Rc<RefCell<KeyboardState>>, button:
     }
 }
 
-fn handle_release(key: Rc<KeyState>, keyboard: Rc<RefCell<KeyboardState>>, _button: MouseButton) {
+fn handle_release(
+    key: Rc<KeyState>,
+    keyboard: Rc<RefCell<KeyboardState>>,
+    _button: MouseButton,
+) -> bool {
     let mut keyboard = keyboard.borrow_mut();
     match &key.button_state {
         KeyButtonData::Key { vk, pressed } => {
@@ -208,6 +220,7 @@ fn handle_release(key: Rc<KeyState>, keyboard: Rc<RefCell<KeyboardState>>, _butt
             let mut hid = keyboard.hid.borrow_mut();
             hid.send_key_routed(*vk, false);
             hid.set_modifiers_routed(keyboard.modifiers);
+            true
         }
         KeyButtonData::Modifier { modifier, sticky } => {
             if !sticky.get() {
@@ -216,7 +229,9 @@ fn handle_release(key: Rc<KeyState>, keyboard: Rc<RefCell<KeyboardState>>, _butt
                     .hid
                     .borrow_mut()
                     .set_modifiers_routed(keyboard.modifiers);
+                return true;
             }
+            false
         }
         KeyButtonData::Exec {
             release_program,
@@ -233,7 +248,8 @@ fn handle_release(key: Rc<KeyState>, keyboard: Rc<RefCell<KeyboardState>>, _butt
                     keyboard.processes.push(child);
                 }
             }
+            true
         }
-        _ => {}
+        _ => true,
     }
 }

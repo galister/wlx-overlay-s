@@ -80,7 +80,7 @@ impl InteractionHandler for GuiPanel {
         self.layout
             .push_event(&WguiEvent::MouseWheel(MouseWheelEvent {
                 shift: vec2(delta_x, delta_y),
-                pos: hit.uv,
+                pos: hit.uv * self.layout.content_size,
                 device: hit.pointer,
             }))
             .unwrap();
@@ -89,7 +89,7 @@ impl InteractionHandler for GuiPanel {
     fn on_hover(&mut self, _app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
         self.layout
             .push_event(&WguiEvent::MouseMotion(MouseMotionEvent {
-                pos: hit.uv,
+                pos: hit.uv * self.layout.content_size,
                 device: hit.pointer,
             }))
             .unwrap();
@@ -114,7 +114,7 @@ impl InteractionHandler for GuiPanel {
         if pressed {
             self.layout
                 .push_event(&WguiEvent::MouseDown(MouseDownEvent {
-                    pos: hit.uv,
+                    pos: hit.uv * self.layout.content_size,
                     button,
                     device: hit.pointer,
                 }))
@@ -122,7 +122,7 @@ impl InteractionHandler for GuiPanel {
         } else {
             self.layout
                 .push_event(&WguiEvent::MouseUp(MouseUpEvent {
-                    pos: hit.uv,
+                    pos: hit.uv * self.layout.content_size,
                     button,
                     device: hit.pointer,
                 }))

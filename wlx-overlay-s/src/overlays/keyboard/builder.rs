@@ -3,6 +3,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use glam::{Affine2, vec2, vec3a};
 use wgui::{
     animation::{Animation, AnimationEasing},
+    drawing::Color,
     event::{self, EventListener},
     taffy::{self, prelude::length},
     widget::{
@@ -20,7 +21,8 @@ use crate::{
 };
 
 use super::{
-    KEYBOARD_NAME, KeyState, KeyboardBackend, KeyboardState, handle_press, handle_release,
+    KEYBOARD_NAME, KeyButtonData, KeyState, KeyboardBackend, KeyboardState, handle_press,
+    handle_release,
     layout::{self, AltModifier, KeyCapType},
 };
 
@@ -74,8 +76,10 @@ where
         keymap = None;
     }
 
-    let (_, mut gui_state_key) =
-        wgui::parser::new_layout_from_assets(Box::new(gui::asset::GuiAsset {}), "keyboard.xml")?;
+    let (_, mut gui_state_key) = wgui::parser::new_layout_from_assets(
+        Box::new(gui::asset::GuiAsset {}),
+        "gui/keyboard.xml",
+    )?;
 
     for row in 0..layout.key_sizes.len() {
         let (div, _) = panel.layout.add_child(
@@ -113,6 +117,11 @@ where
             };
 
             let my_id: Rc<str> = Rc::from(format!("key-{row}-{col}"));
+
+            let my_modifier = match key.button_state {
+                KeyButtonData::Modifier { modifier, .. } => Some(modifier),
+                _ => None,
+            };
 
             // todo: make this easier to maintain somehow
             let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
@@ -167,6 +176,7 @@ where
                         color: rect.params.color,
                         color2: rect.params.color2,
                         border_color: rect.params.border_color,
+                        drawn_state: false.into(),
                     })
                 };
 
@@ -193,8 +203,8 @@ where
                     EventListener::MousePress(Box::new({
                         let (k, kb) = (key_state.clone(), state.clone());
                         move |data, button| {
-                            on_press_anim(k.clone(), data);
                             handle_press(k.clone(), kb.clone(), button);
+                            on_press_anim(k.clone(), data);
                         }
                     })),
                 );
@@ -203,11 +213,34 @@ where
                     EventListener::MouseRelease(Box::new({
                         let (k, kb) = (key_state.clone(), state.clone());
                         move |data, button| {
-                            on_release_anim(k.clone(), data);
-                            handle_release(k.clone(), kb.clone(), button);
+                            if handle_release(k.clone(), kb.clone(), button) {
+                                on_release_anim(k.clone(), data);
+                            }
                         }
                     })),
                 );
+
+                if let Some(modifier) = my_modifier {
+                    panel.layout.add_event_listener(
+                        *widget_id,
+                        EventListener::InternalStateChange(Box::new({
+                            let (k, kb) = (key_state.clone(), state.clone());
+                            move |data| {
+                                if (kb.borrow().modifiers & modifier) != 0 {
+                                    if !k.drawn_state.get() {
+                                        on_press_anim(k.clone(), data);
+                                        k.drawn_state.set(true);
+                                    }
+                                } else if k.drawn_state.get() {
+                                    on_release_anim(k.clone(), data);
+                                    k.drawn_state.set(false);
+                                }
+                            }
+                        })),
+                    );
+                }
+            } else {
+                log::warn!("No ID for key at ({row}, {col})");
             }
         }
     }
@@ -279,9 +312,9 @@ fn on_leave_anim(
     ));
 }
 
-fn on_press_anim(key_state: Rc<KeyState>, data: &mut event::CallbackData) {
+fn on_press_anim(_: Rc<KeyState>, data: &mut event::CallbackData) {
     let rect = data.obj.get_as_mut::<Rectangle>();
-    rect.params.border_color = key_state.border_color;
+    rect.params.border_color = Color::new(1.0, 1.0, 1.0, 1.0);
     data.needs_redraw = true;
 }
 

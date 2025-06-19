@@ -296,8 +296,14 @@ impl Layout {
 				},
 			)?;
 			let root_size = self.tree.layout(self.root_node).unwrap().size;
+			log::debug!(
+				"content size {:.0}x{:.0} → {:.0}x{:.0}",
+				self.content_size.x,
+				self.content_size.y,
+				root_size.width,
+				root_size.height
+			);
 			self.content_size = vec2(root_size.width, root_size.height);
-			log::error!("ContentSize: {:?}", self.content_size);
 		}
 		Ok(())
 	}

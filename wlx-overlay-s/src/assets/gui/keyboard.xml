@@ -1,11 +1,12 @@
 <layout>
+  <!-- The keyboard is build from the xkb keymap. This file is for customizing the keycaps. -->
 
   <!-- Key cap with a single label. -->
   <!-- Used for special keys. -->
   <template name="KeySpecial">
     <div width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
       <rectangle id="${id}"
-        margin="4" width="100%" overflow="hidden" box_sizing="border_box"
+        margin="2" width="100%" overflow="hidden" box_sizing="border_box"
         border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
         align_items="center"
         justify_content="center">
@@ -17,9 +18,9 @@
   <!-- Key cap with a single label. -->
   <!-- Used for letter keys on layouts without AltGr. -->
   <template name="KeyLetter">
-    <div id="${id}" width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
+    <div width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
       <rectangle id="${id}"
-        margin="4" width="100%" overflow="hidden" box_sizing="border_box"
+        margin="2" width="100%" overflow="hidden" box_sizing="border_box"
         border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
         align_items="center"
         justify_content="center">
@@ -33,7 +34,7 @@
   <template name="KeyLetterAltGr">
     <div width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
       <rectangle id="${id}"
-        margin="4" width="100%" overflow="hidden" box_sizing="border_box"
+        margin="2" width="100%" overflow="hidden" box_sizing="border_box"
         border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
         gap="4"
         flex_direction="column"
@@ -50,7 +51,7 @@
   <template name="KeySymbol">
     <div width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
       <rectangle id="${id}"
-        margin="4" width="100%" overflow="hidden" box_sizing="border_box"
+        margin="2" width="100%" overflow="hidden" box_sizing="border_box"
         border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
         gap="4"
         flex_direction="column"
@@ -68,7 +69,7 @@
   <template name="KeySymbolAltGr">
     <div width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
       <rectangle id="${id}"
-        margin="4" width="100%" overflow="hidden" box_sizing="border_box"
+        margin="2" width="100%" overflow="hidden" box_sizing="border_box"
         border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
         flex_direction="row"
         flex_wrap="wrap"
