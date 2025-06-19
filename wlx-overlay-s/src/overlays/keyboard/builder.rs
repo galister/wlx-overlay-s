@@ -51,7 +51,7 @@ where
         processes: vec![],
     }));
 
-    let mut panel = GuiPanel::new_blank(app, 2048)?;
+    let mut panel = GuiPanel::new_blank(app)?;
 
     let (background, _) = panel.layout.add_child(
         panel.layout.root_widget,

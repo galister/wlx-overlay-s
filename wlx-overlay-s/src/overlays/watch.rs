@@ -23,7 +23,7 @@ pub fn create_watch<O>(app: &mut AppState) -> anyhow::Result<OverlayData<O>>
 where
     O: Default,
 {
-    let mut panel = GuiPanel::new_blank(app, 2048)?;
+    let mut panel = GuiPanel::new_blank(app)?;
 
     let (_, _) = panel.layout.add_child(
         panel.layout.root_widget,
@@ -52,7 +52,7 @@ where
         lerp: 1.0,
     };
 
-    panel.layout.update(vec2(2048., 2048.), 0.0)?;
+    panel.update_layout()?;
 
     Ok(OverlayData {
         state: OverlayState {

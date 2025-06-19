@@ -17,29 +17,38 @@ use crate::{
         overlay::{FrameMeta, OverlayBackend, OverlayRenderer, ShouldRender},
     },
     graphics::{CommandBuffers, ExtentExt},
+    gui,
     state::AppState,
 };
 
 use super::{asset::GuiAsset, timestep::Timestep};
 
+const MAX_SIZE: u32 = 2048;
+const MAX_SIZE_VEC2: Vec2 = vec2(MAX_SIZE as _, MAX_SIZE as _);
+
 pub struct GuiPanel {
     pub layout: Layout,
     context: WguiContext,
     timestep: Timestep,
-    pub max_size: u32,
 }
 
 impl GuiPanel {
-    pub fn new_from_template(app: &AppState, max_size: u32, path: &str) -> anyhow::Result<Self> {
-        let mut me = Self::new_blank(app, max_size)?;
+    pub fn new_from_template(app: &AppState, path: &str) -> anyhow::Result<Self> {
+        let (layout, _state) =
+            wgui::parser::new_layout_from_assets(Box::new(gui::asset::GuiAsset {}), path)?;
 
-        let parent = me.layout.root_widget;
-        let _res = wgui::parser::parse_from_assets(&mut me.layout, parent, path)?;
+        let context = WguiContext::new(app.gfx.clone(), app.gfx.surface_format, 1.0)?;
+        let mut timestep = Timestep::new();
+        timestep.set_tps(60.0);
 
-        Ok(me)
+        Ok(Self {
+            layout,
+            context,
+            timestep,
+        })
     }
 
-    pub fn new_blank(app: &AppState, max_size: u32) -> anyhow::Result<Self> {
+    pub fn new_blank(app: &AppState) -> anyhow::Result<Self> {
         let layout = Layout::new(Box::new(GuiAsset {}))?;
         let context = WguiContext::new(app.gfx.clone(), app.gfx.surface_format, 1.0)?;
         let mut timestep = Timestep::new();
@@ -49,8 +58,11 @@ impl GuiPanel {
             layout,
             context,
             timestep,
-            max_size,
         })
+    }
+
+    pub fn update_layout(&mut self) -> anyhow::Result<()> {
+        self.layout.update(MAX_SIZE_VEC2, 0.0)
     }
 }
 
@@ -121,6 +133,9 @@ impl InteractionHandler for GuiPanel {
 
 impl OverlayRenderer for GuiPanel {
     fn init(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+        if self.layout.content_size.x * self.layout.content_size.y == 0.0 {
+            self.update_layout()?;
+        }
         Ok(())
     }
 
@@ -138,7 +153,7 @@ impl OverlayRenderer for GuiPanel {
             self.layout.tick()?;
         }
 
-        if self.layout.content_size == vec2(0., 0.) {
+        if self.layout.content_size.x * self.layout.content_size.y == 0.0 {
             return Ok(ShouldRender::Unable);
         }
 
@@ -157,7 +172,7 @@ impl OverlayRenderer for GuiPanel {
         _alpha: f32,
     ) -> anyhow::Result<bool> {
         self.context.update_viewport(tgt.extent_u32arr(), 1.0)?;
-        self.layout.update(tgt.extent_vec2(), self.timestep.alpha)?;
+        self.layout.update(MAX_SIZE_VEC2, self.timestep.alpha)?;
 
         let mut cmd_buf = app
             .gfx
@@ -176,8 +191,8 @@ impl OverlayRenderer for GuiPanel {
     fn frame_meta(&mut self) -> Option<FrameMeta> {
         Some(FrameMeta {
             extent: [
-                self.max_size.min(self.layout.content_size.x as _),
-                self.max_size.min(self.layout.content_size.y as _),
+                MAX_SIZE.min(self.layout.content_size.x as _),
+                MAX_SIZE.min(self.layout.content_size.y as _),
                 1,
             ],
             ..Default::default()

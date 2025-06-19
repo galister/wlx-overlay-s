@@ -169,7 +169,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
         toast.title
     };
 
-    let mut panel = GuiPanel::new_blank(app, 2048).ok()?;
+    let mut panel = GuiPanel::new_blank(app).ok()?;
 
     let (rect, _) = panel
         .layout
@@ -231,10 +231,12 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
         },
     );
 
+    panel.update_layout().ok()?;
+
     let state = OverlayState {
         name: TOAST_NAME.clone(),
         want_visible: true,
-        spawn_scale: (panel.max_size as f32) * PIXELS_TO_METERS,
+        spawn_scale: panel.layout.content_size.x * PIXELS_TO_METERS,
         spawn_rotation,
         spawn_point,
         z_order: Z_ORDER_TOAST,
