@@ -239,6 +239,7 @@ fn logging_init(args: &mut Args) {
                 .with_default_directive(LevelFilter::INFO.into())
                 .from_env_lossy()
                 .add_directive("zbus=warn".parse().unwrap())
+                .add_directive("cosmic_text=warn".parse().unwrap())
                 .add_directive("wlx_capture::wayland=info".parse().unwrap())
                 .add_directive("smithay=debug".parse().unwrap()), /* GLES render spam */
         );

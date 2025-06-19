@@ -1,4 +1,4 @@
-use glam::Vec3A;
+use glam::{Vec3A, vec2};
 use wgui::{
     parser::parse_color_hex,
     taffy::{
@@ -51,6 +51,8 @@ where
         hand: app.session.config.watch_hand as _,
         lerp: 1.0,
     };
+
+    panel.layout.update(vec2(2048., 2048.), 0.0)?;
 
     Ok(OverlayData {
         state: OverlayState {

@@ -1,4 +1,4 @@
-use glam::Vec3A;
+use glam::{Vec3A, vec2};
 use std::sync::{Arc, LazyLock};
 use wgui::parser::parse_color_hex;
 use wgui::renderer_vk::text::{FontWeight, TextStyle};
@@ -56,6 +56,8 @@ where
         .unwrap(),
         taffy::style::Style::DEFAULT,
     );
+
+    panel.layout.update(vec2(2048., 2048.), 0.0)?;
 
     Ok(OverlayData {
         state: OverlayState {

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use glam::vec2;
+use glam::{Vec2, vec2};
 use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 use wgui::{
     event::{
@@ -138,6 +138,10 @@ impl OverlayRenderer for GuiPanel {
             self.layout.tick()?;
         }
 
+        if self.layout.content_size == vec2(0., 0.) {
+            return Ok(ShouldRender::Unable);
+        }
+
         Ok(if self.layout.check_toggle_needs_redraw() {
             ShouldRender::Should
         } else {
@@ -172,8 +176,8 @@ impl OverlayRenderer for GuiPanel {
     fn frame_meta(&mut self) -> Option<FrameMeta> {
         Some(FrameMeta {
             extent: [
-                self.max_size.max(self.layout.content_size.x as _),
-                self.max_size.max(self.layout.content_size.y as _),
+                self.max_size.min(self.layout.content_size.x as _),
+                self.max_size.min(self.layout.content_size.y as _),
                 1,
             ],
             ..Default::default()
