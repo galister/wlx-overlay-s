@@ -3,14 +3,17 @@ use std::sync::Arc;
 use glam::vec2;
 use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 use wgui::{
-    event::{Event as WguiEvent, MouseDownEvent, MouseMotionEvent, MouseUpEvent, MouseWheelEvent},
+    event::{
+        Event as WguiEvent, MouseButton, MouseDownEvent, MouseLeaveEvent, MouseMotionEvent,
+        MouseUpEvent, MouseWheelEvent,
+    },
     layout::Layout,
     renderer_vk::context::Context as WguiContext,
 };
 
 use crate::{
     backend::{
-        input::{Haptics, InteractionHandler, PointerHit},
+        input::{Haptics, InteractionHandler, PointerHit, PointerMode},
         overlay::{FrameMeta, OverlayBackend, OverlayRenderer, ShouldRender},
     },
     graphics::{CommandBuffers, ExtentExt},
@@ -66,30 +69,51 @@ impl InteractionHandler for GuiPanel {
             .push_event(&WguiEvent::MouseWheel(MouseWheelEvent {
                 shift: vec2(delta_x, delta_y),
                 pos: hit.uv,
+                device: hit.pointer,
             }))
             .unwrap();
     }
 
     fn on_hover(&mut self, _app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
         self.layout
-            .push_event(&WguiEvent::MouseMotion(MouseMotionEvent { pos: hit.uv }))
+            .push_event(&WguiEvent::MouseMotion(MouseMotionEvent {
+                pos: hit.uv,
+                device: hit.pointer,
+            }))
             .unwrap();
 
         None
     }
 
-    fn on_left(&mut self, _app: &mut AppState, _pointer: usize) {
-        //TODO: is this needed?
+    fn on_left(&mut self, _app: &mut AppState, pointer: usize) {
+        self.layout
+            .push_event(&WguiEvent::MouseLeave(MouseLeaveEvent { device: pointer }))
+            .unwrap();
     }
 
     fn on_pointer(&mut self, _app: &mut AppState, hit: &PointerHit, pressed: bool) {
+        let button = match hit.mode {
+            PointerMode::Left => MouseButton::Left,
+            PointerMode::Right => MouseButton::Right,
+            PointerMode::Middle => MouseButton::Middle,
+            _ => return,
+        };
+
         if pressed {
             self.layout
-                .push_event(&WguiEvent::MouseDown(MouseDownEvent { pos: hit.uv }))
+                .push_event(&WguiEvent::MouseDown(MouseDownEvent {
+                    pos: hit.uv,
+                    button,
+                    device: hit.pointer,
+                }))
                 .unwrap();
         } else {
             self.layout
-                .push_event(&WguiEvent::MouseUp(MouseUpEvent { pos: hit.uv }))
+                .push_event(&WguiEvent::MouseUp(MouseUpEvent {
+                    pos: hit.uv,
+                    button,
+                    device: hit.pointer,
+                }))
                 .unwrap();
         }
     }

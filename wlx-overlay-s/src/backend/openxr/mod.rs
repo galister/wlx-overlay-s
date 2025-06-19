@@ -19,7 +19,6 @@ use crate::{
     backend::{
         common::{BackendError, OverlayContainer},
         input::interact,
-        notifications::NotificationManager,
         openxr::{lines::LinePool, overlay::OpenXrOverlayData},
         overlay::{OverlayData, ShouldRender},
         task::{SystemTask, TaskType},
@@ -30,6 +29,7 @@ use crate::{
         watch::{WATCH_NAME, watch_fade},
     },
     state::AppState,
+    subsystem::notifications::NotificationManager,
 };
 
 #[cfg(feature = "wayvr")]
@@ -352,7 +352,7 @@ pub fn openxr_run(
             }
         }
 
-        app.hid_provider.commit();
+        app.hid_provider.borrow_mut().inner.commit();
 
         let watch = overlays.mut_by_id(watch_id).unwrap(); // want panic
         let watch_transform = watch.state.transform;

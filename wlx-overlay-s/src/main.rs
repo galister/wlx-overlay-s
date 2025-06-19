@@ -18,10 +18,10 @@ mod config;
 mod config_io;
 mod graphics;
 mod gui;
-mod hid;
 mod overlays;
 mod shaders;
 mod state;
+mod subsystem;
 
 #[cfg(feature = "wayvr")]
 mod config_wayvr;
@@ -34,8 +34,8 @@ use std::{
     },
 };
 
-use backend::notifications::DbusNotificationSender;
 use clap::Parser;
+use subsystem::notifications::DbusNotificationSender;
 use sysinfo::Pid;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};

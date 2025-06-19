@@ -18,7 +18,7 @@ use vulkano::{
 	sync::GpuFuture,
 };
 use wgui::{
-	event::{MouseDownEvent, MouseMotionEvent, MouseUpEvent, MouseWheelEvent},
+	event::{MouseButton, MouseDownEvent, MouseMotionEvent, MouseUpEvent, MouseWheelEvent},
 	gfx::WGfx,
 	renderer_vk::{self},
 };
@@ -121,6 +121,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 					.push_event(&wgui::event::Event::MouseWheel(MouseWheelEvent {
 						shift: Vec2::new(x, y),
 						pos: mouse / scale,
+						device: 0,
 					}))
 					.unwrap(),
 				MouseScrollDelta::PixelDelta(pos) => testbed
@@ -128,6 +129,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 					.push_event(&wgui::event::Event::MouseWheel(MouseWheelEvent {
 						shift: Vec2::new(pos.x as f32 / 5.0, pos.y as f32 / 5.0),
 						pos: mouse / scale,
+						device: 0,
 					}))
 					.unwrap(),
 			},
@@ -141,6 +143,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 							.layout()
 							.push_event(&wgui::event::Event::MouseDown(MouseDownEvent {
 								pos: mouse / scale,
+								button: MouseButton::Left,
+								device: 0,
 							}))
 							.unwrap();
 					} else {
@@ -148,6 +152,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 							.layout()
 							.push_event(&wgui::event::Event::MouseUp(MouseUpEvent {
 								pos: mouse / scale,
+								button: MouseButton::Left,
+								device: 0,
 							}))
 							.unwrap();
 					}
@@ -162,6 +168,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 					.layout()
 					.push_event(&wgui::event::Event::MouseMotion(MouseMotionEvent {
 						pos: mouse / scale,
+						device: 0,
 					}))
 					.unwrap();
 			}

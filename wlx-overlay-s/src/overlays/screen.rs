@@ -63,8 +63,11 @@ use crate::{
         dmabuf::{WGfxDmabuf, fourcc_to_vk},
         upload_quad_vertices,
     },
-    hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
-    state::{AppSession, AppState, KeyboardFocus, ScreenMeta},
+    state::{AppSession, AppState, ScreenMeta},
+    subsystem::{
+        hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
+        input::KeyboardFocus,
+    },
 };
 
 #[cfg(feature = "wayland")]
@@ -128,7 +131,7 @@ impl InteractionHandler for ScreenInteractionHandler {
                 || app.input_state.pointers[hit.pointer].now.move_mouse)
         {
             let pos = self.mouse_transform.transform_point2(hit.uv);
-            app.hid_provider.mouse_move(pos);
+            app.hid_provider.borrow_mut().inner.mouse_move(pos);
             set_next_move(u64::from(app.session.config.mouse_move_interval_ms));
         }
         None
@@ -144,16 +147,20 @@ impl InteractionHandler for ScreenInteractionHandler {
             set_next_move(u64::from(app.session.config.click_freeze_time_ms));
         }
 
-        app.hid_provider.send_button(btn, pressed);
+        let mut hid_provider = app.hid_provider.borrow_mut();
+
+        hid_provider.inner.send_button(btn, pressed);
 
         if !pressed {
             return;
         }
         let pos = self.mouse_transform.transform_point2(hit.uv);
-        app.hid_provider.mouse_move(pos);
+        hid_provider.inner.mouse_move(pos);
     }
     fn on_scroll(&mut self, app: &mut AppState, _hit: &PointerHit, delta_y: f32, delta_x: f32) {
         app.hid_provider
+            .borrow_mut()
+            .inner
             .wheel((delta_y * 64.) as i32, (delta_x * 64.) as i32);
     }
     fn on_left(&mut self, _app: &mut AppState, _hand: usize) {}
@@ -201,7 +208,7 @@ impl ScreenPipeline {
             app.gfx_extras.quad_verts.clone(),
             0..4,
             0..1,
-            vec![set0.clone(), set1],
+            vec![set0, set1],
         )?;
 
         Ok(Self {
@@ -885,9 +892,12 @@ pub fn create_screens_wayland(wl: &mut WlxClientAlias, app: &mut AppState) -> Sc
     let extent = wl.get_desktop_extent();
     let origin = wl.get_desktop_origin();
 
-    app.hid_provider
+    let mut hid_provider = app.hid_provider.borrow_mut();
+    hid_provider
+        .inner
         .set_desktop_extent(vec2(extent.0 as f32, extent.1 as f32));
-    app.hid_provider
+    hid_provider
+        .inner
         .set_desktop_origin(vec2(origin.0 as f32, origin.1 as f32));
 
     ScreenCreateData { screens }
@@ -985,8 +995,9 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
         })
         .collect();
 
-    app.hid_provider.set_desktop_extent(extent);
-    app.hid_provider.set_desktop_origin(vec2(0.0, 0.0));
+    let mut hid_provider = app.hid_provider.borrow_mut();
+    hid_provider.inner.set_desktop_extent(extent);
+    hid_provider.inner.set_desktop_origin(vec2(0.0, 0.0));
 
     Ok(ScreenCreateData { screens })
 }
@@ -1043,8 +1054,9 @@ pub fn create_screens_xshm(app: &mut AppState) -> anyhow::Result<ScreenCreateDat
         })
         .collect();
 
-    app.hid_provider.set_desktop_extent(extent);
-    app.hid_provider.set_desktop_origin(vec2(0.0, 0.0));
+    let mut hid_provider = app.hid_provider.borrow_mut();
+    hid_provider.inner.set_desktop_extent(extent);
+    hid_provider.inner.set_desktop_origin(vec2(0.0, 0.0));
 
     Ok(ScreenCreateData { screens })
 }
@@ -1154,7 +1166,7 @@ fn select_pw_screen(
     persist: bool,
     multiple: bool,
 ) -> Result<PipewireSelectScreenResult, wlx_capture::pipewire::AshpdError> {
-    use crate::backend::notifications::DbusNotificationSender;
+    use crate::subsystem::notifications::DbusNotificationSender;
     use std::time::Duration;
     use wlx_capture::pipewire::pipewire_select_screen;
 

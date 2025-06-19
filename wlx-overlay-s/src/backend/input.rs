@@ -4,13 +4,14 @@ use std::{collections::VecDeque, time::Instant};
 
 use glam::{Affine3A, Vec2, Vec3, Vec3A, Vec3Swizzles};
 
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 
 use crate::backend::common::OverlaySelector;
 use crate::backend::overlay::Positioning;
 use crate::config::AStrMapExt;
 use crate::overlays::anchor::ANCHOR_NAME;
-use crate::state::{AppSession, AppState, KeyboardFocus};
+use crate::state::{AppSession, AppState};
+use crate::subsystem::input::KeyboardFocus;
 
 use super::overlay::{OverlayID, OverlayState};
 use super::task::{TaskContainer, TaskType};
@@ -402,7 +403,10 @@ where
     log::trace!("Hit: {} {:?}", hovered.state.name, hit);
 
     if pointer.now.grab && !pointer.before.grab && hovered.state.grabbable {
-        update_focus(&mut app.keyboard_focus, &hovered.state);
+        {
+            let mut hid_provider = app.hid_provider.borrow_mut();
+            update_focus(&mut hid_provider.keyboard_focus, &hovered.state);
+        }
         pointer.start_grab(hovered, &mut app.tasks);
         return (
             hit.dist,
@@ -451,7 +455,10 @@ where
 
     if pointer.now.click && !pointer.before.click {
         pointer.interaction.clicked_id = Some(hit.overlay);
-        update_focus(&mut app.keyboard_focus, &hovered.state);
+        {
+            let mut hid_provider = app.hid_provider.borrow_mut();
+            update_focus(&mut hid_provider.keyboard_focus, &hovered.state);
+        }
         hovered.backend.on_pointer(app, &hit, true);
     } else if !pointer.now.click && pointer.before.click {
         if let Some(clicked_id) = pointer.interaction.clicked_id.take() {

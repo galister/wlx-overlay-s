@@ -1,9 +1,8 @@
 use glam::Affine3A;
 use idmap::IdMap;
-use rodio::{Decoder, OutputStream, OutputStreamHandle, Source};
 use serde::{Deserialize, Serialize};
-use smallvec::{smallvec, SmallVec};
-use std::{io::Cursor, sync::Arc};
+use smallvec::{SmallVec, smallvec};
+use std::sync::Arc;
 use vulkano::image::view::ImageView;
 use wgui::gfx::WGfx;
 
@@ -15,24 +14,16 @@ use {
 };
 
 #[cfg(feature = "osc")]
-use crate::backend::osc::OscSender;
+use crate::subsystem::osc::OscSender;
 
 use crate::{
     backend::{input::InputState, overlay::OverlayID, task::TaskContainer},
     config::{AStrMap, GeneralConfig},
     config_io,
     graphics::WGfxExtras,
-    hid::HidProvider,
     overlays::toast::{DisplayMethod, ToastTopic},
+    subsystem::{audio::AudioOutput, input::HidWrapper},
 };
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum KeyboardFocus {
-    PhysicalScreen,
-
-    #[allow(dead_code)] // Not available if "wayvr" feature is disabled
-    WayVR, // (for now without wayland window id data, it's handled internally),
-}
 
 pub struct AppState {
     pub session: AppSession,
@@ -40,14 +31,13 @@ pub struct AppState {
 
     pub gfx: Arc<WGfx>,
     pub gfx_extras: WGfxExtras,
+    pub hid_provider: Rc<RefCell<HidWrapper>>,
+    pub audio_provider: Rc<RefCell<AudioOutput>>,
 
     pub input_state: InputState,
-    pub hid_provider: Box<dyn HidProvider>,
-    pub audio: AudioOutput,
     pub screens: SmallVec<[ScreenMeta; 8]>,
     pub anchor: Affine3A,
     pub sprites: AStrMap<Arc<ImageView>>,
-    pub keyboard_focus: KeyboardFocus,
     pub toast_sound: &'static [u8],
 
     #[cfg(feature = "osc")]
@@ -74,25 +64,26 @@ impl AppState {
             .post_load(&session.config, &mut tasks)?;
 
         #[cfg(feature = "osc")]
-        let osc_sender = crate::backend::osc::OscSender::new(session.config.osc_out_port).ok();
+        let osc_sender = crate::subsystem::osc::OscSender::new(session.config.osc_out_port).ok();
 
         let toast_sound_wav = Self::try_load_bytes(
             &session.config.notification_sound,
             include_bytes!("res/557297.wav"),
         );
 
+        let audio_provider = AudioOutput::new(&session.config);
+
         Ok(Self {
             session,
             tasks,
             gfx,
             gfx_extras,
+            hid_provider: Rc::new(RefCell::new(HidWrapper::new())),
+            audio_provider: Rc::new(RefCell::new(audio_provider)),
             input_state: InputState::new(),
-            hid_provider: crate::hid::initialize(),
-            audio: AudioOutput::new(),
             screens: smallvec![],
             anchor: Affine3A::IDENTITY,
             sprites: AStrMap::new(),
-            keyboard_focus: KeyboardFocus::PhysicalScreen,
             toast_sound: toast_sound_wav,
 
             #[cfg(feature = "osc")]
@@ -174,48 +165,6 @@ impl AppSession {
             wayvr_config,
             toast_topics,
         }
-    }
-}
-
-pub struct AudioOutput {
-    audio_stream: Option<(OutputStream, OutputStreamHandle)>,
-    first_try: bool,
-}
-
-impl AudioOutput {
-    pub const fn new() -> Self {
-        Self {
-            audio_stream: None,
-            first_try: true,
-        }
-    }
-
-    fn get_handle(&mut self) -> Option<&OutputStreamHandle> {
-        if self.audio_stream.is_none() && self.first_try {
-            self.first_try = false;
-            if let Ok((stream, handle)) = OutputStream::try_default() {
-                self.audio_stream = Some((stream, handle));
-            } else {
-                log::error!("Failed to open audio stream. Audio will not work.");
-                return None;
-            }
-        }
-        self.audio_stream.as_ref().map(|(_, h)| h)
-    }
-
-    pub fn play(&mut self, wav_bytes: &'static [u8]) {
-        let Some(handle) = self.get_handle() else {
-            return;
-        };
-        let cursor = Cursor::new(wav_bytes);
-        let source = match Decoder::new_wav(cursor) {
-            Ok(source) => source,
-            Err(e) => {
-                log::error!("Failed to play sound: {e:?}");
-                return;
-            }
-        };
-        let _ = handle.play_raw(source.convert_samples());
     }
 }
 

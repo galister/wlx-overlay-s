@@ -1,7 +1,3 @@
-[profile.release-with-debug]
-inherits = "release"
-debug = true
-
 [package]
 name = "wlx-overlay-s"
 version = "25.4.2"

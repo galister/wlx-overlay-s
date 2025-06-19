@@ -27,7 +27,8 @@ use crate::{
     },
     config_wayvr,
     graphics::{CommandBuffers, Vert2Uv, dmabuf::WGfxDmabuf},
-    state::{self, AppState, KeyboardFocus},
+    state::{self, AppState},
+    subsystem::input::KeyboardFocus,
 };
 
 use super::toast::error_toast;

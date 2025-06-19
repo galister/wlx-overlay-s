@@ -7,26 +7,44 @@ use crate::{
 	widget::{WidgetData, WidgetObj},
 };
 
-// TODO: mouse index
+#[derive(Debug, Clone, Copy)]
+pub enum MouseButton {
+	Left,
+	Right,
+	Middle,
+}
+
 pub struct MouseDownEvent {
 	pub pos: Vec2,
+	pub button: MouseButton,
+	pub device: usize,
+}
+
+pub struct MouseLeaveEvent {
+	pub device: usize,
 }
 
 pub struct MouseMotionEvent {
 	pub pos: Vec2,
+	pub device: usize,
 }
 
 pub struct MouseUpEvent {
 	pub pos: Vec2,
+	pub button: MouseButton,
+	pub device: usize,
 }
 
 pub struct MouseWheelEvent {
 	pub pos: Vec2,
 	pub shift: Vec2,
+	pub device: usize,
 }
 
 pub enum Event {
+	InternalStateChange,
 	MouseDown(MouseDownEvent),
+	MouseLeave(MouseLeaveEvent),
 	MouseMotion(MouseMotionEvent),
 	MouseUp(MouseUpEvent),
 	MouseWheel(MouseWheelEvent),
@@ -46,6 +64,7 @@ impl Event {
 			Event::MouseMotion(evt) => self.test_transform_pos(transform, &evt.pos),
 			Event::MouseUp(evt) => self.test_transform_pos(transform, &evt.pos),
 			Event::MouseWheel(evt) => self.test_transform_pos(transform, &evt.pos),
+			_ => false,
 		}
 	}
 }
@@ -99,10 +118,14 @@ impl<'a> WidgetCallback<'a> for CallbackData<'a> {
 
 pub type MouseEnterCallback = Box<dyn Fn(&mut CallbackData)>;
 pub type MouseLeaveCallback = Box<dyn Fn(&mut CallbackData)>;
-pub type MouseClickCallback = Box<dyn Fn(&mut CallbackData)>;
+pub type MousePressCallback = Box<dyn Fn(&mut CallbackData, MouseButton)>;
+pub type MouseReleaseCallback = Box<dyn Fn(&mut CallbackData, MouseButton)>;
+pub type InternalStateChangeCallback = Box<dyn Fn(&mut CallbackData)>;
 
 pub enum EventListener {
 	MouseEnter(MouseEnterCallback),
 	MouseLeave(MouseLeaveCallback),
-	MouseClick(MouseClickCallback),
+	MousePress(MousePressCallback),
+	MouseRelease(MouseReleaseCallback),
+	InternalStateChange(InternalStateChangeCallback),
 }

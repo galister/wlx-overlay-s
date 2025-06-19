@@ -1,3 +1,14 @@
+[profile.dev]
+opt-level = 0
+debug = true
+strip = "none"
+debug-assertions = true
+incremental = true
+
+[profile.release-with-debug]
+inherits = "release"
+debug = true
+
 [workspace]
 members = ["wgui", "wgui/uidev-vk", "wlx-overlay-s", "wlx-capture"]
 resolver = "3"

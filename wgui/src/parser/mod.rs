@@ -57,7 +57,7 @@ impl ParserResult {
 	}
 
 	pub fn process_template(
-		&self,
+		&mut self,
 		template_name: &str,
 		layout: &mut Layout,
 		widget_id: WidgetID,
@@ -89,6 +89,10 @@ impl ParserResult {
 			node,
 			widget_id,
 		)?;
+
+		ctx.ids.into_iter().for_each(|(id, key)| {
+			self.ids.insert(id, key);
+		});
 
 		Ok(())
 	}

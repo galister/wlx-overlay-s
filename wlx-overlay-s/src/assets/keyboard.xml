@@ -4,7 +4,7 @@
   <!-- Used for special keys. -->
   <template name="KeySpecial">
     <div width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
-      <rectangle
+      <rectangle id="${id}"
         margin="4" width="100%" overflow="hidden" box_sizing="border_box"
         border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
         align_items="center"
@@ -17,8 +17,8 @@
   <!-- Key cap with a single label. -->
   <!-- Used for letter keys on layouts without AltGr. -->
   <template name="KeyLetter">
-    <div width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
-      <rectangle
+    <div id="${id}" width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
+      <rectangle id="${id}"
         margin="4" width="100%" overflow="hidden" box_sizing="border_box"
         border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
         align_items="center"
@@ -32,7 +32,7 @@
   <!-- Used for letter keys on layouts with AltGr. -->
   <template name="KeyLetterAltGr">
     <div width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
-      <rectangle
+      <rectangle id="${id}"
         margin="4" width="100%" overflow="hidden" box_sizing="border_box"
         border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
         gap="4"
@@ -49,7 +49,7 @@
   <!-- Used for number & symbol keys on layouts without AltGr. -->
   <template name="KeySymbol">
     <div width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
-      <rectangle
+      <rectangle id="${id}"
         margin="4" width="100%" overflow="hidden" box_sizing="border_box"
         border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
         gap="4"
@@ -67,7 +67,7 @@
   <!-- Used for number & symbol keys on layouts with AltGr. -->
   <template name="KeySymbolAltGr">
     <div width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}">
-      <rectangle
+      <rectangle id="${id}"
         margin="4" width="100%" overflow="hidden" box_sizing="border_box"
         border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
         flex_direction="row"

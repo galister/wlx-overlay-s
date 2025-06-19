@@ -10,14 +10,14 @@ use thiserror::Error;
 
 use crate::{
     config::AStrSetExt,
-    hid::{get_keymap_wl, get_keymap_x11},
     overlays::{
         anchor::create_anchor,
-        keyboard::{create_keyboard, KEYBOARD_NAME},
+        keyboard::{KEYBOARD_NAME, builder::create_keyboard},
         screen::WlxClientAlias,
-        watch::{create_watch, WATCH_NAME},
+        watch::{WATCH_NAME, create_watch},
     },
     state::AppState,
+    subsystem::hid::{get_keymap_wl, get_keymap_x11},
 };
 
 use super::overlay::{OverlayData, OverlayID};
@@ -248,9 +248,12 @@ where
         if extent_dirty && !create_ran {
             let extent = wl.get_desktop_extent();
             let origin = wl.get_desktop_origin();
-            app.hid_provider
+            let mut hid_provider = app.hid_provider.borrow_mut();
+            hid_provider
+                .inner
                 .set_desktop_extent(vec2(extent.0 as f32, extent.1 as f32));
-            app.hid_provider
+            hid_provider
+                .inner
                 .set_desktop_origin(vec2(origin.0 as f32, origin.1 as f32));
         }
 

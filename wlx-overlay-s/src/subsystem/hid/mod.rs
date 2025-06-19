@@ -10,7 +10,7 @@ use serde::Deserialize;
 use std::mem::transmute;
 use std::sync::LazyLock;
 use std::{fs::File, sync::atomic::AtomicBool};
-use strum::{AsRefStr, EnumIter, EnumString, IntoEnumIterator};
+use strum::{EnumIter, EnumString, IntoEnumIterator};
 use xkbcommon::xkb;
 
 #[cfg(feature = "wayland")]
@@ -21,7 +21,7 @@ mod x11;
 
 pub static USE_UINPUT: AtomicBool = AtomicBool::new(true);
 
-pub fn initialize() -> Box<dyn HidProvider> {
+pub(super) fn initialize() -> Box<dyn HidProvider> {
     if !USE_UINPUT.load(std::sync::atomic::Ordering::Relaxed) {
         log::info!("Uinput disabled by user.");
         return Box::new(DummyProvider {});
@@ -40,7 +40,7 @@ pub fn initialize() -> Box<dyn HidProvider> {
     Box::new(DummyProvider {})
 }
 
-pub trait HidProvider {
+pub trait HidProvider: Sync + Send {
     fn mouse_move(&mut self, pos: Vec2);
     fn send_button(&mut self, button: u16, down: bool);
     fn wheel(&mut self, delta_y: i32, delta_x: i32);
@@ -506,6 +506,7 @@ pub static MODS_TO_KEYS: LazyLock<IdMap<KeyModifier, Vec<VirtualKey>>> = LazyLoc
 pub enum KeyType {
     Symbol,
     NumPad,
+    Special,
     Other,
 }
 
@@ -534,6 +535,23 @@ pub const fn get_key_type(key: VirtualKey) -> KeyType {
         && !key_is!(key, VirtualKey::KP_Add)
     {
         KeyType::NumPad
+    } else if matches!(
+        key,
+        VirtualKey::BackSpace
+            | VirtualKey::Down
+            | VirtualKey::Left
+            | VirtualKey::Menu
+            | VirtualKey::Return
+            | VirtualKey::KP_Enter
+            | VirtualKey::Right
+            | VirtualKey::LShift
+            | VirtualKey::RShift
+            | VirtualKey::LSuper
+            | VirtualKey::RSuper
+            | VirtualKey::Tab
+            | VirtualKey::Up
+    ) {
+        KeyType::Special
     } else {
         KeyType::Other
     }

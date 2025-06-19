@@ -1,8 +1,8 @@
 use std::{
     f32::consts::PI,
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc,
+        atomic::{AtomicUsize, Ordering},
     },
 };
 
@@ -12,9 +12,7 @@ use serde::Deserialize;
 use vulkano::{format::Format, image::view::ImageView};
 
 use crate::{
-    config::AStrMapExt,
-    graphics::CommandBuffers,
-    state::{AppState, KeyboardFocus},
+    config::AStrMapExt, graphics::CommandBuffers, state::AppState, subsystem::input::KeyboardFocus,
 };
 
 use super::{

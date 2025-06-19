@@ -58,7 +58,7 @@ impl TestbedGeneric {
 		let wid = widget_id.clone();
 		layout.add_event_listener(
 			button.body,
-			EventListener::MouseClick(Box::new(move |data| {
+			EventListener::MouseRelease(Box::new(move |data, _| {
 				button.set_text(data, "Congratulations!");
 				*wid.borrow_mut() = Some(data.widget_id);
 			})),

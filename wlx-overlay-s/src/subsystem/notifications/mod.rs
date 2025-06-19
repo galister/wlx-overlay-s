@@ -1,9 +1,13 @@
+#[allow(clippy::all)]
+mod notifications_dbus;
+
 use dbus::{
     arg::{PropMap, Variant},
     blocking::Connection,
     channel::MatchingReceiver,
     message::MatchRule,
 };
+use notifications_dbus::OrgFreedesktopNotifications;
 use serde::Deserialize;
 use std::{
     sync::{
@@ -15,7 +19,6 @@ use std::{
 };
 
 use crate::{
-    backend::notifications_dbus::OrgFreedesktopNotifications,
     overlays::toast::{Toast, ToastTopic},
     state::AppState,
 };

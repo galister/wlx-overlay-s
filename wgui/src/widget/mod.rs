@@ -17,11 +17,56 @@ pub mod text;
 pub mod util;
 
 pub struct WidgetData {
-	pub hovered: bool,
-	pub pressed: bool,
+	hovered: usize,
+	pressed: usize,
 	pub scrolling: Vec2, // normalized, 0.0-1.0. Not used in case if overflow != scroll
 	pub transform: glam::Mat4,
 }
+
+impl WidgetData {
+	pub fn set_device_pressed(&mut self, device: usize, pressed: bool) -> bool {
+		let bit = 1 << device;
+		let state_changed;
+		if pressed {
+			state_changed = self.pressed == 0;
+			self.pressed |= bit;
+		} else {
+			state_changed = self.pressed == bit;
+			self.pressed &= !bit;
+		}
+		state_changed
+	}
+
+	pub fn set_device_hovered(&mut self, device: usize, hovered: bool) -> bool {
+		let bit = 1 << device;
+		let state_changed;
+		if hovered {
+			state_changed = self.hovered == 0;
+			self.hovered |= bit;
+		} else {
+			state_changed = self.hovered == bit;
+			self.hovered &= !bit;
+		}
+		state_changed
+	}
+
+	pub fn get_pressed(&self, device: usize) -> bool {
+		self.pressed & (1 << device) != 0
+	}
+
+	pub fn get_hovered(&self, device: usize) -> bool {
+		self.hovered & (1 << device) != 0
+	}
+
+	pub fn is_pressed(&self) -> bool {
+		self.pressed != 0
+	}
+
+	pub fn is_hovered(&self) -> bool {
+		self.hovered != 0
+	}
+}
+
 pub struct WidgetState {
 	pub data: WidgetData,
 	pub obj: Box<dyn WidgetObj>,
@@ -32,8 +77,8 @@ impl WidgetState {
 	fn new(obj: Box<dyn WidgetObj>) -> anyhow::Result<WidgetState> {
 		Ok(Self {
 			data: WidgetData {
-				hovered: false,
-				pressed: false,
+				hovered: 0,
+				pressed: 0,
 				scrolling: Vec2::default(),
 				transform: glam::Mat4::IDENTITY,
 			},
@@ -252,32 +297,40 @@ impl WidgetState {
 	) -> EventResult {
 		let hovered = event.test_mouse_within_transform(params.transform_stack.get());
 
-		let mut just_clicked = false;
+		let mut pressed_changed_button = None;
+		let mut hovered_changed = false;
+
 		match &event {
-			Event::MouseDown(_) => {
-				if self.data.hovered {
-					self.data.pressed = true;
-				}
+			Event::MouseDown(e) => {
+				pressed_changed_button = self
+					.data
+					.set_device_pressed(e.device, true)
+					.then_some(e.button);
 			}
-			Event::MouseUp(_) => {
-				if self.data.pressed {
-					self.data.pressed = false;
-					just_clicked = self.data.hovered;
-				}
+			Event::MouseUp(e) => {
+				pressed_changed_button = self
+					.data
+					.set_device_pressed(e.device, false)
+					.then_some(e.button);
 			}
 			Event::MouseWheel(e) => {
 				if self.process_wheel(params, e) {
 					return EventResult::Consumed;
 				}
 			}
+			Event::MouseMotion(e) => {
+				hovered_changed |= self.data.set_device_hovered(e.device, hovered);
+			}
+			Event::MouseLeave(e) => {
+				hovered_changed |= self.data.set_device_hovered(e.device, false);
+			}
 			_ => {}
 		}
 
-		// TODO: simplify this behemoth, I gave up arguing with the compiler
 		for listener in &self.event_listeners {
 			match listener {
 				EventListener::MouseEnter(callback) => {
-					if hovered && !self.data.hovered {
+					if hovered_changed && self.data.is_hovered() {
 						let mut data = CallbackData {
 							obj: self.obj.as_mut(),
 							widget_data: &mut self.data,
@@ -295,7 +348,7 @@ impl WidgetState {
 					}
 				}
 				EventListener::MouseLeave(callback) => {
-					if !hovered && self.data.hovered {
+					if hovered_changed && !self.data.is_hovered() {
 						let mut data = CallbackData {
 							obj: self.obj.as_mut(),
 							widget_data: &mut self.data,
@@ -312,8 +365,8 @@ impl WidgetState {
 						}
 					}
 				}
-				EventListener::MouseClick(callback) => {
-					if just_clicked {
+				EventListener::MousePress(callback) => {
+					if let Some(button) = pressed_changed_button.filter(|_| self.data.is_pressed()) {
 						let mut data = CallbackData {
 							obj: self.obj.as_mut(),
 							widget_data: &mut self.data,
@@ -324,17 +377,47 @@ impl WidgetState {
 							node_id,
 							needs_redraw: false,
 						};
-						callback(&mut data);
+						callback(&mut data, button);
 						if data.needs_redraw {
 							*params.needs_redraw = true;
 						}
+					}
+				}
+				EventListener::MouseRelease(callback) => {
+					if let Some(button) = pressed_changed_button.filter(|_| !self.data.is_pressed()) {
+						let mut data = CallbackData {
+							obj: self.obj.as_mut(),
+							widget_data: &mut self.data,
+							widgets: params.widgets,
+							animations: params.animations,
+							dirty_nodes: params.dirty_nodes,
+							widget_id,
+							node_id,
+							needs_redraw: false,
+						};
+						callback(&mut data, button);
+						if data.needs_redraw {
+							*params.needs_redraw = true;
+						}
+					}
+				}
+				EventListener::InternalStateChange(callback) => {
+					let mut data = CallbackData {
+						obj: self.obj.as_mut(),
+						widget_data: &mut self.data,
+						widgets: params.widgets,
+						animations: params.animations,
+						dirty_nodes: params.dirty_nodes,
+						widget_id,
+						node_id,
+						needs_redraw: false,
+					};
+					callback(&mut data);
+					if data.needs_redraw {
+						*params.needs_redraw = true;
 					}
 				}
 			}
-		}
-
-		if self.data.hovered != hovered {
-			self.data.hovered = hovered;
 		}
 
 		EventResult::Pass

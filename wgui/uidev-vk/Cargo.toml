@@ -13,10 +13,3 @@ wgui = { path = "../" }
 winit = "0.30.10"
 vulkano = { workspace = true }
 vulkano-shaders = { workspace = true }
-
-[profile.dev]
-opt-level = 0
-debug = true
-strip = "none"
-debug-assertions = true
-incremental = true

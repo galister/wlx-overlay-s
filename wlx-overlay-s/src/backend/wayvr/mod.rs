@@ -20,9 +20,9 @@ use smallvec::SmallVec;
 use smithay::{
     backend::{
         egl,
-        renderer::{gles::GlesRenderer, ImportDma},
+        renderer::{ImportDma, gles::GlesRenderer},
     },
-    input::{keyboard::XkbConfig, SeatState},
+    input::{SeatState, keyboard::XkbConfig},
     output::{Mode, Output},
     reexports::wayland_server::{self, backend::ClientId},
     wayland::{
@@ -42,7 +42,7 @@ use std::{
 use time::get_millis;
 use wayvr_ipc::{packet_client, packet_server};
 
-use crate::{hid::MODS_TO_KEYS, state::AppState};
+use crate::{state::AppState, subsystem::hid::MODS_TO_KEYS};
 
 const STR_INVALID_HANDLE_DISP: &str = "Invalid display handle";
 
@@ -373,9 +373,9 @@ impl WayVR {
                             process::find_by_pid(&self.state.processes, client.pid)
                         else {
                             log::error!(
-                                    "WayVR window creation failed: Unexpected process ID {}. It wasn't registered before.",
-                                    client.pid
-                                );
+                                "WayVR window creation failed: Unexpected process ID {}. It wasn't registered before.",
+                                client.pid
+                            );
                             continue;
                         };
 

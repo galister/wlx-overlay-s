@@ -19,7 +19,6 @@ use crate::{
     backend::{
         common::{BackendError, OverlayContainer},
         input::interact,
-        notifications::NotificationManager,
         openvr::{
             helpers::adjust_gain,
             input::{OpenVrInputSource, set_action_manifest},
@@ -36,6 +35,7 @@ use crate::{
         watch::{WATCH_NAME, watch_fade},
     },
     state::AppState,
+    subsystem::notifications::NotificationManager,
 };
 
 #[cfg(feature = "wayvr")]
@@ -315,7 +315,7 @@ pub fn openvr_run(
             }
         }
 
-        state.hid_provider.commit();
+        state.hid_provider.borrow_mut().inner.commit();
         let mut buffers = CommandBuffers::default();
 
         lines.update(universe.clone(), &mut overlay_mgr, &mut state)?;

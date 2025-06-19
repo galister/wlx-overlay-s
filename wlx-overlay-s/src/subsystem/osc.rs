@@ -6,11 +6,12 @@ use std::{
 use anyhow::bail;
 use rosc::{OscMessage, OscPacket, OscType};
 
-use crate::overlays::{keyboard::KEYBOARD_NAME, watch::WATCH_NAME};
+use crate::{
+    backend::{common::OverlayContainer, input::TrackedDevice},
+    overlays::{keyboard::KEYBOARD_NAME, watch::WATCH_NAME},
+};
 
 use crate::backend::input::TrackedDeviceRole;
-
-use super::{common::OverlayContainer, input::TrackedDevice};
 
 pub struct OscSender {
     last_sent_overlay: Instant,
