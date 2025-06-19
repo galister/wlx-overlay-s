@@ -11,7 +11,7 @@ use crate::{
 	widget::{self, EventParams, WidgetState, div::Div},
 };
 
-use glam::Vec2;
+use glam::{Vec2, vec2};
 use slotmap::HopSlotMap;
 use taffy::{TaffyTree, TraversePartialTree};
 
@@ -37,6 +37,7 @@ pub struct Layout {
 	pub root_node: taffy::NodeId,
 
 	pub prev_size: Vec2,
+	pub content_size: Vec2,
 
 	pub needs_redraw: bool,
 
@@ -227,7 +228,7 @@ impl Layout {
 			None, // no parent
 			Div::create()?,
 			taffy::Style {
-				size: taffy::Size::percent(1.0),
+				size: taffy::Size::auto(),
 				..Default::default()
 			},
 		)?;
@@ -235,6 +236,7 @@ impl Layout {
 		Ok(Self {
 			tree,
 			prev_size: Vec2::default(),
+			content_size: Vec2::default(),
 			root_node,
 			root_widget,
 			widget_node_map,
@@ -293,6 +295,9 @@ impl Layout {
 					}
 				},
 			)?;
+			let root_size = self.tree.layout(self.root_node).unwrap().size;
+			self.content_size = vec2(root_size.width, root_size.height);
+			log::error!("ContentSize: {:?}", self.content_size);
 		}
 		Ok(())
 	}

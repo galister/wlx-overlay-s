@@ -172,8 +172,8 @@ impl OverlayRenderer for GuiPanel {
     fn frame_meta(&mut self) -> Option<FrameMeta> {
         Some(FrameMeta {
             extent: [
-                self.max_size.max(self.layout.prev_size.x as _),
-                self.max_size.max(self.layout.prev_size.y as _),
+                self.max_size.max(self.layout.content_size.x as _),
+                self.max_size.max(self.layout.content_size.y as _),
                 1,
             ],
             ..Default::default()

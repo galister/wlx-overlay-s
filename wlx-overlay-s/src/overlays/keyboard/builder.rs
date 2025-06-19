@@ -51,11 +51,6 @@ where
         processes: vec![],
     }));
 
-    let size = vec2(
-        layout.row_size * PIXELS_PER_UNIT,
-        (layout.main_layout.len() as f32) * PIXELS_PER_UNIT,
-    );
-
     let mut panel = GuiPanel::new_blank(app, 2048)?;
 
     let (background, _) = panel.layout.add_child(
@@ -217,8 +212,13 @@ where
         }
     }
 
+    panel.layout.update(vec2(2048., 2048.), 0.0)?;
+
     let interaction_transform = Affine2::from_translation(vec2(0.5, 0.5))
-        * Affine2::from_scale(vec2(1., -size.x as f32 / size.y as f32));
+        * Affine2::from_scale(vec2(
+            1.,
+            -panel.layout.content_size.x / panel.layout.content_size.y,
+        ));
 
     let width = layout.row_size * 0.05 * app.session.config.keyboard_scale;
 
