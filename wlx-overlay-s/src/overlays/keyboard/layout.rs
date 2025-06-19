@@ -194,7 +194,7 @@ impl Layout {
     }
 }
 
-pub(super) fn key_events_for_macro(macro_verbs: &Vec<String>) -> Vec<(VirtualKey, bool)> {
+fn key_events_for_macro(macro_verbs: &Vec<String>) -> Vec<(VirtualKey, bool)> {
     let mut key_events = vec![];
     for verb in macro_verbs {
         if let Some(caps) = MACRO_REGEX.captures(verb) {
