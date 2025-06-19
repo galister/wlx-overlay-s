@@ -1,10 +1,7 @@
-use glam::{Vec3A, vec2};
+use glam::Vec3A;
 use wgui::{
     parser::parse_color_hex,
-    taffy::{
-        self,
-        prelude::{length, percent},
-    },
+    taffy::{self, prelude::length},
     widget::{
         rectangle::{Rectangle, RectangleParams},
         util::WLength,
@@ -37,8 +34,8 @@ where
         .unwrap(),
         taffy::Style {
             size: taffy::Size {
-                width: percent(1.0),
-                height: percent(1.0),
+                width: length(100.),
+                height: length(50.),
             },
             align_items: Some(taffy::AlignItems::Center),
             justify_content: Some(taffy::JustifyContent::Center),
