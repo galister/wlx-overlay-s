@@ -61,6 +61,7 @@ impl InteractionHandler for KeyboardBackend {
             .panel
             .layout
             .push_event(&wgui::event::Event::InternalStateChange);
+        self.handle_invoke(app);
     }
     fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32) {
         self.panel.on_scroll(app, hit, delta_y, delta_x);
