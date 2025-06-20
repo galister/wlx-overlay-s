@@ -74,6 +74,12 @@ pub struct WidgetState {
 }
 
 impl WidgetState {
+	pub fn get_data_obj_mut(&mut self) -> (&mut WidgetData, &mut dyn WidgetObj) {
+		let data = &mut self.data;
+		let obj = self.obj.as_mut();
+		(data, obj)
+	}
+
 	fn new(obj: Box<dyn WidgetObj>) -> anyhow::Result<WidgetState> {
 		Ok(Self {
 			data: WidgetData {

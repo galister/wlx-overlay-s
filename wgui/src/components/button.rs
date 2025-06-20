@@ -135,7 +135,7 @@ pub fn construct(
 		},
 	)?;
 
-	let mut widget = layout.widget_states.get(rect_id).unwrap().lock().unwrap();
+	let mut widget = layout.widget_map.get(rect_id).unwrap().lock().unwrap();
 
 	let button = Arc::new(Button {
 		body: rect_id,

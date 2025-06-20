@@ -156,7 +156,7 @@ fn draw_children(
 			continue;
 		};
 
-		let Some(widget) = layout.widget_states.get(widget_id) else {
+		let Some(widget) = layout.widget_map.get(widget_id) else {
 			debug_assert!(false);
 			continue;
 		};
@@ -172,7 +172,7 @@ pub fn draw(layout: &Layout) -> anyhow::Result<Vec<RenderPrimitive>> {
 	let mut transform_stack = TransformStack::new();
 	let model = glam::Mat4::IDENTITY;
 
-	let Some(root_widget) = layout.widget_states.get(layout.root_widget) else {
+	let Some(root_widget) = layout.widget_map.get(layout.root_widget) else {
 		panic!();
 	};
 

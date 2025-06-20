@@ -18,6 +18,18 @@ use taffy::{TaffyTree, TraversePartialTree};
 pub type WidgetID = slotmap::DefaultKey;
 pub type BoxWidget = Arc<Mutex<WidgetState>>;
 pub type WidgetMap = HopSlotMap<slotmap::DefaultKey, BoxWidget>;
+#[derive(Default)]
+pub struct WidgetNodeMap(pub HashMap<WidgetID, taffy::NodeId>);
+
+impl WidgetNodeMap {
+	pub fn get(&self, widget_id: WidgetID) -> taffy::NodeId {
+		let Some(node) = self.0.get(&widget_id).cloned() else {
+			// this shouldn't happen!
+			panic!("node_map is corrupted");
+		};
+		node
+	}
+}
 
 struct PushEventState<'a> {
 	pub animations: &'a mut Vec<animation::Animation>,
@@ -31,8 +43,8 @@ pub struct Layout {
 
 	pub assets: Box<dyn AssetProvider>,
 
-	pub widget_states: WidgetMap,
-	pub widget_node_map: HashMap<WidgetID, taffy::NodeId>,
+	pub widget_map: WidgetMap,
+	pub widget_node_map: WidgetNodeMap,
 
 	pub root_widget: WidgetID,
 	pub root_node: taffy::NodeId,
@@ -48,47 +60,40 @@ pub struct Layout {
 
 fn add_child_internal(
 	tree: &mut taffy::TaffyTree<WidgetID>,
-	widget_node_map: &mut HashMap<WidgetID, taffy::NodeId>,
-	vec: &mut WidgetMap,
+	widget_map: &mut WidgetMap,
+	widget_node_map: &mut WidgetNodeMap,
 	parent_node: Option<taffy::NodeId>,
 	widget: WidgetState,
 	style: taffy::Style,
 ) -> anyhow::Result<(WidgetID, taffy::NodeId)> {
 	#[allow(clippy::arc_with_non_send_sync)]
-	let child_id = vec.insert(Arc::new(Mutex::new(widget)));
+	let child_id = widget_map.insert(Arc::new(Mutex::new(widget)));
 	let child_node = tree.new_leaf_with_context(style, child_id)?;
 
 	if let Some(parent_node) = parent_node {
 		tree.add_child(parent_node, child_node)?;
 	}
 
-	widget_node_map.insert(child_id, child_node);
+	widget_node_map.0.insert(child_id, child_node);
 
 	Ok((child_id, child_node))
 }
 
 impl Layout {
-	pub fn get_node(&self, widget_id: WidgetID) -> anyhow::Result<taffy::NodeId> {
-		let Some(node) = self.widget_node_map.get(&widget_id).cloned() else {
-			anyhow::bail!("invalid parent widget");
-		};
-		Ok(node)
-	}
-
 	pub fn add_child(
 		&mut self,
 		parent_widget_id: WidgetID,
 		widget: WidgetState,
 		style: taffy::Style,
 	) -> anyhow::Result<(WidgetID, taffy::NodeId)> {
-		let parent_node = self.get_node(parent_widget_id)?;
+		let parent_node = self.widget_node_map.get(parent_widget_id);
 
 		self.needs_redraw = true;
 
 		add_child_internal(
 			&mut self.tree,
+			&mut self.widget_map,
 			&mut self.widget_node_map,
-			&mut self.widget_states,
 			Some(parent_node),
 			widget,
 			style,
@@ -123,7 +128,7 @@ impl Layout {
 
 		let style = self.tree.style(node_id)?;
 
-		let Some(widget) = self.widget_states.get(widget_id) else {
+		let Some(widget) = self.widget_map.get(widget_id) else {
 			debug_assert!(false);
 			anyhow::bail!("invalid widget");
 		};
@@ -146,7 +151,7 @@ impl Layout {
 			event,
 			&mut EventParams {
 				transform_stack: state.transform_stack,
-				widgets: &self.widget_states,
+				widgets: &self.widget_map,
 				tree: &self.tree,
 				animations: state.animations,
 				needs_redraw: &mut state.needs_redraw,
@@ -235,13 +240,13 @@ impl Layout {
 
 	pub fn new(assets: Box<dyn AssetProvider>) -> anyhow::Result<Self> {
 		let mut tree = TaffyTree::new();
-		let mut widget_node_map = HashMap::new();
-		let mut widget_states = HopSlotMap::new();
+		let mut widget_node_map = WidgetNodeMap::default();
+		let mut widget_map = HopSlotMap::new();
 
 		let (root_widget, root_node) = add_child_internal(
 			&mut tree,
+			&mut widget_map,
 			&mut widget_node_map,
-			&mut widget_states,
 			None, // no parent
 			Div::create()?,
 			taffy::Style {
@@ -257,7 +262,7 @@ impl Layout {
 			root_node,
 			root_widget,
 			widget_node_map,
-			widget_states,
+			widget_map,
 			needs_redraw: true,
 			haptics_triggered: false,
 			animations: Animations::default(),
@@ -269,7 +274,9 @@ impl Layout {
 		let mut dirty_nodes = Vec::new();
 
 		self.animations.process(
-			&self.widget_states,
+			&self.widget_map,
+			&self.widget_node_map,
+			&self.tree,
 			&mut dirty_nodes,
 			timestep_alpha,
 			&mut self.needs_redraw,
@@ -301,7 +308,7 @@ impl Layout {
 					match node_context {
 						None => taffy::Size::ZERO,
 						Some(h) => {
-							if let Some(w) = self.widget_states.get(*h) {
+							if let Some(w) = self.widget_map.get(*h) {
 								w.lock()
 									.unwrap()
 									.obj
@@ -330,7 +337,9 @@ impl Layout {
 		let mut dirty_nodes = Vec::new();
 
 		self.animations.tick(
-			&self.widget_states,
+			&self.widget_map,
+			&self.widget_node_map,
+			&self.tree,
 			&mut dirty_nodes,
 			&mut self.needs_redraw,
 		);
@@ -344,7 +353,7 @@ impl Layout {
 
 	// helper function
 	pub fn add_event_listener(&self, widget_id: WidgetID, listener: EventListener) {
-		let Some(widget) = self.widget_states.get(widget_id) else {
+		let Some(widget) = self.widget_map.get(widget_id) else {
 			debug_assert!(false);
 			return;
 		};

@@ -1,10 +1,11 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use glam::{Affine2, vec2, vec3a};
+use glam::{Affine2, Mat4, Vec2, Vec3, vec2, vec3a};
 use wgui::{
     animation::{Animation, AnimationEasing},
     drawing::Color,
     event::{self, EventListener},
+    renderer_vk::util,
     taffy::{self, prelude::length},
     widget::{
         div::Div,
@@ -161,7 +162,7 @@ where
                 let key_state = {
                     let widget = panel
                         .layout
-                        .widget_states
+                        .widget_map
                         .get(*widget_id)
                         .unwrap() // want panic
                         .lock()
@@ -277,6 +278,28 @@ where
     })
 }
 
+const BUTTON_HOVER_SCALE: f32 = 0.1;
+
+fn get_anim_transform(pos: f32, widget_size: Vec2) -> Mat4 {
+    util::centered_matrix(
+        widget_size,
+        &Mat4::from_scale(Vec3::splat(BUTTON_HOVER_SCALE.mul_add(pos, 1.0))),
+    )
+}
+
+fn set_anim_color(key_state: &KeyState, rect: &mut Rectangle, pos: f32) {
+    let br1 = pos * 0.25;
+    let br2 = pos * 0.15;
+
+    rect.params.color.r = key_state.color.r + br1;
+    rect.params.color.g = key_state.color.g + br1;
+    rect.params.color.b = key_state.color.b + br1;
+
+    rect.params.color2.r = key_state.color2.r + br2;
+    rect.params.color2.g = key_state.color2.g + br2;
+    rect.params.color2.b = key_state.color2.b + br2;
+}
+
 fn on_enter_anim(
     key_state: Rc<KeyState>,
     _keyboard_state: Rc<RefCell<KeyboardState>>,
@@ -284,14 +307,12 @@ fn on_enter_anim(
 ) {
     data.animations.push(Animation::new(
         data.widget_id,
-        5,
-        AnimationEasing::OutQuad,
+        10,
+        AnimationEasing::OutBack,
         Box::new(move |data| {
             let rect = data.obj.get_as_mut::<Rectangle>();
-            let brightness = data.pos * 0.5;
-            rect.params.color.r = key_state.color.r + brightness;
-            rect.params.color.g = key_state.color.g + brightness;
-            rect.params.color.b = key_state.color.b + brightness;
+            set_anim_color(&key_state, rect, data.pos);
+            data.data.transform = get_anim_transform(data.pos, data.widget_size);
             data.needs_redraw = true;
         }),
     ));
@@ -304,14 +325,12 @@ fn on_leave_anim(
 ) {
     data.animations.push(Animation::new(
         data.widget_id,
-        5,
+        15,
         AnimationEasing::OutQuad,
         Box::new(move |data| {
             let rect = data.obj.get_as_mut::<Rectangle>();
-            let brightness = (1.0 - data.pos) * 0.5;
-            rect.params.color.r = key_state.color.r + brightness;
-            rect.params.color.g = key_state.color.g + brightness;
-            rect.params.color.b = key_state.color.b + brightness;
+            set_anim_color(&key_state, rect, 1.0 - data.pos);
+            data.data.transform = get_anim_transform(1.0 - data.pos, data.widget_size);
             data.needs_redraw = true;
         }),
     ));

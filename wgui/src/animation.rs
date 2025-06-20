@@ -1,9 +1,9 @@
-use glam::FloatExt;
+use glam::{FloatExt, Vec2};
 
 use crate::{
 	event::WidgetCallback,
-	layout::{WidgetID, WidgetMap},
-	widget::WidgetObj,
+	layout::{WidgetID, WidgetMap, WidgetNodeMap},
+	widget::{WidgetData, WidgetObj},
 };
 
 pub enum AnimationEasing {
@@ -36,8 +36,10 @@ impl AnimationEasing {
 
 pub struct CallbackData<'a> {
 	pub obj: &'a mut dyn WidgetObj,
+	pub data: &'a mut WidgetData,
 	pub widgets: &'a WidgetMap,
 	pub widget_id: WidgetID,
+	pub widget_size: Vec2,
 	pub pos: f32, // 0.0 (start of animation) - 1.0 (end of animation)
 	pub needs_redraw: bool,
 	pub dirty_nodes: &'a mut Vec<taffy::NodeId>,
@@ -110,29 +112,40 @@ impl Animation {
 
 	fn call(
 		&self,
-		widgets: &WidgetMap,
+		widget_map: &WidgetMap,
+		widget_node_map: &WidgetNodeMap,
+		tree: &taffy::tree::TaffyTree<WidgetID>,
 		dirty_nodes: &mut Vec<taffy::NodeId>,
 		pos: f32,
 	) -> CallResult {
 		let mut res = CallResult::default();
 
-		if let Some(widget) = widgets.get(self.target_widget).cloned() {
-			let mut widget = widget.lock().unwrap();
+		let Some(widget) = widget_map.get(self.target_widget).cloned() else {
+			return res; // failed
+		};
 
-			let data = &mut CallbackData {
-				widget_id: self.target_widget,
-				dirty_nodes,
-				widgets,
-				obj: widget.obj.as_mut(),
-				pos,
-				needs_redraw: false,
-			};
+		let widget_node = widget_node_map.get(self.target_widget);
+		let layout = tree.layout(widget_node).unwrap(); // should always succeed
 
-			(self.callback)(data);
+		let mut widget = widget.lock().unwrap();
 
-			if data.needs_redraw {
-				res.needs_redraw = true;
-			}
+		let (data, obj) = widget.get_data_obj_mut();
+
+		let data = &mut CallbackData {
+			widget_id: self.target_widget,
+			dirty_nodes,
+			widgets: widget_map,
+			widget_size: Vec2::new(layout.size.width, layout.size.height),
+			obj,
+			data,
+			pos,
+			needs_redraw: false,
+		};
+
+		(self.callback)(data);
+
+		if data.needs_redraw {
+			res.needs_redraw = true;
 		}
 
 		res
@@ -147,7 +160,9 @@ pub struct Animations {
 impl Animations {
 	pub fn tick(
 		&mut self,
-		widgets: &WidgetMap,
+		widget_map: &WidgetMap,
+		widget_node_map: &WidgetNodeMap,
+		tree: &taffy::tree::TaffyTree<WidgetID>,
 		dirty_nodes: &mut Vec<taffy::NodeId>,
 		needs_redraw: &mut bool,
 	) {
@@ -163,7 +178,7 @@ impl Animations {
 			anim.pos_prev = anim.pos;
 			anim.pos = pos;
 
-			let res = anim.call(widgets, dirty_nodes, 1.0);
+			let res = anim.call(widget_map, widget_node_map, tree, dirty_nodes, 1.0);
 
 			if anim.last_tick || res.needs_redraw {
 				*needs_redraw = true;
@@ -179,14 +194,16 @@ impl Animations {
 
 	pub fn process(
 		&mut self,
-		widgets: &WidgetMap,
+		widget_map: &WidgetMap,
+		widget_node_map: &WidgetNodeMap,
+		tree: &taffy::tree::TaffyTree<WidgetID>,
 		dirty_nodes: &mut Vec<taffy::NodeId>,
 		alpha: f32,
 		needs_redraw: &mut bool,
 	) {
 		for anim in &mut self.running_animations {
 			let pos = anim.pos_prev.lerp(anim.pos, alpha);
-			let res = anim.call(widgets, dirty_nodes, pos);
+			let res = anim.call(widget_map, widget_node_map, tree, dirty_nodes, pos);
 
 			if res.needs_redraw {
 				*needs_redraw = true;
