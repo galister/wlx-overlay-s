@@ -315,7 +315,7 @@ pub fn openvr_run(
             }
         }
 
-        state.hid_provider.borrow_mut().inner.commit();
+        state.hid_provider.inner.commit();
         let mut buffers = CommandBuffers::default();
 
         lines.update(universe.clone(), &mut overlay_mgr, &mut state)?;

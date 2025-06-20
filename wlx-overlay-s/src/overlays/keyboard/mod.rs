@@ -10,17 +10,13 @@ use wgui::{drawing, event::MouseButton};
 
 use crate::{
     backend::{
-        input::InteractionHandler,
+        input::{Haptics, InteractionHandler, PointerHit},
         overlay::{FrameMeta, OverlayBackend, OverlayRenderer, ShouldRender},
     },
     graphics::CommandBuffers,
     gui::panel::GuiPanel,
     state::AppState,
-    subsystem::{
-        audio::{AudioOutput, AudioRole},
-        hid::{ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey},
-        input::HidWrapper,
-    },
+    subsystem::hid::{ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey},
 };
 
 pub mod builder;
@@ -34,6 +30,21 @@ struct KeyboardBackend {
     state: Rc<RefCell<KeyboardState>>,
 }
 
+impl KeyboardBackend {
+    fn handle_invoke(&mut self, app: &mut AppState) {
+        let mut keyboard = self.state.borrow_mut();
+        let Some(action) = keyboard.invoke_action.take() else {
+            return;
+        };
+
+        if action.pressed {
+            handle_press(app, &action.key, &mut keyboard, action.button);
+        } else {
+            handle_release(app, &action.key, &mut keyboard);
+        }
+    }
+}
+
 impl OverlayBackend for KeyboardBackend {
     fn set_interaction(&mut self, interaction: Box<dyn crate::backend::input::InteractionHandler>) {
         self.panel.set_interaction(interaction);
@@ -44,35 +55,20 @@ impl OverlayBackend for KeyboardBackend {
 }
 
 impl InteractionHandler for KeyboardBackend {
-    fn on_pointer(
-        &mut self,
-        app: &mut AppState,
-        hit: &crate::backend::input::PointerHit,
-        pressed: bool,
-    ) {
+    fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool) {
         self.panel.on_pointer(app, hit, pressed);
         let _ = self
             .panel
             .layout
             .push_event(&wgui::event::Event::InternalStateChange);
     }
-    fn on_scroll(
-        &mut self,
-        app: &mut AppState,
-        hit: &crate::backend::input::PointerHit,
-        delta_y: f32,
-        delta_x: f32,
-    ) {
+    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32) {
         self.panel.on_scroll(app, hit, delta_y, delta_x);
     }
     fn on_left(&mut self, app: &mut AppState, pointer: usize) {
         self.panel.on_left(app, pointer);
     }
-    fn on_hover(
-        &mut self,
-        app: &mut AppState,
-        hit: &crate::backend::input::PointerHit,
-    ) -> Option<crate::backend::input::Haptics> {
+    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
         self.panel.on_hover(app, hit)
     }
 }
@@ -98,26 +94,36 @@ impl OverlayRenderer for KeyboardBackend {
     }
     fn pause(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         self.state.borrow_mut().modifiers = 0;
-        app.hid_provider.borrow_mut().set_modifiers_routed(0);
+        app.hid_provider.set_modifiers_routed(0);
         self.panel.pause(app)
     }
     fn resume(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         self.panel.resume(app)?;
         self.panel
             .layout
-            .push_event(&wgui::event::Event::InternalStateChange)
+            .push_event(&wgui::event::Event::InternalStateChange)?;
+        Ok(())
     }
 }
 
+struct InvokeAction {
+    key: Rc<KeyState>,
+    button: MouseButton,
+    pressed: bool,
+}
+
 struct KeyboardState {
-    hid: Rc<RefCell<HidWrapper>>,
-    audio: Rc<RefCell<AudioOutput>>,
+    invoke_action: Option<InvokeAction>,
     modifiers: KeyModifier,
     alt_modifier: KeyModifier,
     processes: Vec<Child>,
 }
 
 const KEY_AUDIO_WAV: &[u8] = include_bytes!("../../res/421581.wav");
+
+fn play_key_click(app: &mut AppState) {
+    app.audio_provider.play(KEY_AUDIO_WAV);
+}
 
 struct KeyState {
     button_state: KeyButtonData,
@@ -127,6 +133,7 @@ struct KeyState {
     drawn_state: Cell<bool>,
 }
 
+#[derive(Debug)]
 enum KeyButtonData {
     Key {
         vk: VirtualKey,
@@ -147,15 +154,12 @@ enum KeyButtonData {
     },
 }
 
-fn play_key_click(keyboard: &KeyboardState) {
-    keyboard
-        .audio
-        .borrow_mut()
-        .play(AudioRole::Keyboard, KEY_AUDIO_WAV);
-}
-
-fn handle_press(key: Rc<KeyState>, keyboard: Rc<RefCell<KeyboardState>>, button: MouseButton) {
-    let mut keyboard = keyboard.borrow_mut();
+fn handle_press(
+    app: &mut AppState,
+    key: &KeyState,
+    keyboard: &mut KeyboardState,
+    button: MouseButton,
+) {
     match &key.button_state {
         KeyButtonData::Key { vk, pressed } => {
             keyboard.modifiers |= match button {
@@ -164,29 +168,22 @@ fn handle_press(key: Rc<KeyState>, keyboard: Rc<RefCell<KeyboardState>>, button:
                 _ => 0,
             };
 
-            {
-                let mut hid = keyboard.hid.borrow_mut();
-                hid.set_modifiers_routed(keyboard.modifiers);
-                hid.send_key_routed(*vk, true);
-            }
+            app.hid_provider.set_modifiers_routed(keyboard.modifiers);
+            app.hid_provider.send_key_routed(*vk, true);
             pressed.set(true);
-            play_key_click(&keyboard);
+            play_key_click(app);
         }
         KeyButtonData::Modifier { modifier, sticky } => {
             sticky.set(keyboard.modifiers & *modifier == 0);
             keyboard.modifiers |= *modifier;
-            keyboard
-                .hid
-                .borrow_mut()
-                .set_modifiers_routed(keyboard.modifiers);
-            play_key_click(&keyboard);
+            app.hid_provider.set_modifiers_routed(keyboard.modifiers);
+            play_key_click(app);
         }
         KeyButtonData::Macro { verbs } => {
-            let hid = keyboard.hid.borrow_mut();
             for (vk, press) in verbs {
-                hid.send_key_routed(*vk, *press);
+                app.hid_provider.send_key_routed(*vk, *press);
             }
-            play_key_click(&keyboard);
+            play_key_click(app);
         }
         KeyButtonData::Exec { program, args, .. } => {
             // Reap previous processes
@@ -197,17 +194,12 @@ fn handle_press(key: Rc<KeyState>, keyboard: Rc<RefCell<KeyboardState>>, button:
             if let Ok(child) = Command::new(program).args(args).spawn() {
                 keyboard.processes.push(child);
             }
-            play_key_click(&keyboard);
+            play_key_click(app);
         }
     }
 }
 
-fn handle_release(
-    key: Rc<KeyState>,
-    keyboard: Rc<RefCell<KeyboardState>>,
-    _button: MouseButton,
-) -> bool {
-    let mut keyboard = keyboard.borrow_mut();
+fn handle_release(app: &mut AppState, key: &KeyState, keyboard: &mut KeyboardState) {
     match &key.button_state {
         KeyButtonData::Key { vk, pressed } => {
             pressed.set(false);
@@ -217,21 +209,14 @@ fn handle_release(
                     keyboard.modifiers &= !*m;
                 }
             }
-            let mut hid = keyboard.hid.borrow_mut();
-            hid.send_key_routed(*vk, false);
-            hid.set_modifiers_routed(keyboard.modifiers);
-            true
+            app.hid_provider.send_key_routed(*vk, false);
+            app.hid_provider.set_modifiers_routed(keyboard.modifiers);
         }
         KeyButtonData::Modifier { modifier, sticky } => {
             if !sticky.get() {
                 keyboard.modifiers &= !*modifier;
-                keyboard
-                    .hid
-                    .borrow_mut()
-                    .set_modifiers_routed(keyboard.modifiers);
-                return true;
+                app.hid_provider.set_modifiers_routed(keyboard.modifiers);
             }
-            false
         }
         KeyButtonData::Exec {
             release_program,
@@ -248,8 +233,7 @@ fn handle_release(
                     keyboard.processes.push(child);
                 }
             }
-            true
         }
-        _ => true,
+        _ => {}
     }
 }

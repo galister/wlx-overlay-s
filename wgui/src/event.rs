@@ -100,6 +100,7 @@ pub struct CallbackData<'a> {
 	pub node_id: taffy::NodeId,
 	pub dirty_nodes: &'a mut Vec<taffy::NodeId>,
 	pub needs_redraw: bool,
+	pub trigger_haptics: bool,
 }
 
 impl<'a> WidgetCallback<'a> for CallbackData<'a> {

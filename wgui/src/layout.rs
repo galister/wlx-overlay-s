@@ -20,9 +20,10 @@ pub type BoxWidget = Arc<Mutex<WidgetState>>;
 pub type WidgetMap = HopSlotMap<slotmap::DefaultKey, BoxWidget>;
 
 struct PushEventState<'a> {
-	pub needs_redraw: bool,
 	pub animations: &'a mut Vec<animation::Animation>,
 	pub transform_stack: &'a mut TransformStack,
+	pub needs_redraw: bool,
+	pub trigger_haptics: bool,
 }
 
 pub struct Layout {
@@ -40,6 +41,7 @@ pub struct Layout {
 	pub content_size: Vec2,
 
 	pub needs_redraw: bool,
+	pub haptics_triggered: bool,
 
 	pub animations: Animations,
 }
@@ -148,6 +150,7 @@ impl Layout {
 				tree: &self.tree,
 				animations: state.animations,
 				needs_redraw: &mut state.needs_redraw,
+				trigger_haptics: &mut state.trigger_haptics,
 				node_id,
 				style,
 				taffy_layout: l,
@@ -185,21 +188,35 @@ impl Layout {
 		}
 	}
 
+	pub fn check_toggle_haptics_triggered(&mut self) -> bool {
+		if self.haptics_triggered {
+			self.haptics_triggered = false;
+			true
+		} else {
+			false
+		}
+	}
+
 	pub fn push_event(&mut self, event: &event::Event) -> anyhow::Result<()> {
 		let mut transform_stack = TransformStack::new();
 		let mut animations_to_add = Vec::<animation::Animation>::new();
 		let mut dirty_nodes = Vec::new();
 
 		let mut state = PushEventState {
-			needs_redraw: false,
 			transform_stack: &mut transform_stack,
 			animations: &mut animations_to_add,
+			needs_redraw: false,
+			trigger_haptics: false,
 		};
 
 		self.push_event_widget(&mut state, self.root_node, event, &mut dirty_nodes)?;
 
 		for node in dirty_nodes {
 			self.tree.mark_dirty(node)?;
+		}
+
+		if state.trigger_haptics {
+			self.haptics_triggered = true;
 		}
 
 		if state.needs_redraw {
@@ -242,6 +259,7 @@ impl Layout {
 			widget_node_map,
 			widget_states,
 			needs_redraw: true,
+			haptics_triggered: false,
 			animations: Animations::default(),
 			assets,
 		})

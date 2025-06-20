@@ -248,11 +248,10 @@ where
         if extent_dirty && !create_ran {
             let extent = wl.get_desktop_extent();
             let origin = wl.get_desktop_origin();
-            let mut hid_provider = app.hid_provider.borrow_mut();
-            hid_provider
+            app.hid_provider
                 .inner
                 .set_desktop_extent(vec2(extent.0 as f32, extent.1 as f32));
-            hid_provider
+            app.hid_provider
                 .inner
                 .set_desktop_origin(vec2(origin.0 as f32, origin.1 as f32));
         }

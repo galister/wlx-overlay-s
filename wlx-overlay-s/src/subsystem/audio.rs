@@ -1,31 +1,15 @@
 use std::io::Cursor;
 
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Source};
-use strum::EnumCount;
-
-use crate::config::GeneralConfig;
-
-#[derive(Debug, Clone, Copy, EnumCount)]
-#[repr(usize)]
-pub enum AudioRole {
-    Notification,
-    Keyboard,
-}
 
 pub struct AudioOutput {
-    muted_roles: [bool; AudioRole::COUNT],
     audio_stream: Option<(OutputStream, OutputStreamHandle)>,
     first_try: bool,
 }
 
 impl AudioOutput {
-    pub const fn new(config: &GeneralConfig) -> Self {
+    pub const fn new() -> Self {
         Self {
-            muted_roles: [
-                //TODO: improve this
-                !config.keyboard_sound_enabled,
-                !config.notifications_sound_enabled,
-            ],
             audio_stream: None,
             first_try: true,
         }
@@ -44,10 +28,7 @@ impl AudioOutput {
         self.audio_stream.as_ref().map(|(_, h)| h)
     }
 
-    pub fn play(&mut self, role: AudioRole, wav_bytes: &'static [u8]) {
-        if self.muted_roles[role as usize] {
-            return;
-        }
+    pub fn play(&mut self, wav_bytes: &'static [u8]) {
         let Some(handle) = self.get_handle() else {
             return;
         };

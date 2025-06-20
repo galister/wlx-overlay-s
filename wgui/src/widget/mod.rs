@@ -123,6 +123,7 @@ pub struct EventParams<'a> {
 	pub transform_stack: &'a TransformStack,
 	pub animations: &'a mut Vec<animation::Animation>,
 	pub needs_redraw: &'a mut bool,
+	pub trigger_haptics: &'a mut bool,
 	pub dirty_nodes: &'a mut Vec<taffy::NodeId>,
 }
 
@@ -343,8 +344,12 @@ impl WidgetState {
 							widget_id,
 							node_id,
 							needs_redraw: false,
+							trigger_haptics: false,
 						};
 						callback(&mut data);
+						if data.trigger_haptics {
+							*params.trigger_haptics = true;
+						}
 						if data.needs_redraw {
 							*params.needs_redraw = true;
 						}
@@ -361,8 +366,12 @@ impl WidgetState {
 							widget_id,
 							node_id,
 							needs_redraw: false,
+							trigger_haptics: false,
 						};
 						callback(&mut data);
+						if data.trigger_haptics {
+							*params.trigger_haptics = true;
+						}
 						if data.needs_redraw {
 							*params.needs_redraw = true;
 						}
@@ -379,8 +388,12 @@ impl WidgetState {
 							widget_id,
 							node_id,
 							needs_redraw: false,
+							trigger_haptics: false,
 						};
 						callback(&mut data, button);
+						if data.trigger_haptics {
+							*params.trigger_haptics = true;
+						}
 						if data.needs_redraw {
 							*params.needs_redraw = true;
 						}
@@ -397,8 +410,12 @@ impl WidgetState {
 							widget_id,
 							node_id,
 							needs_redraw: false,
+							trigger_haptics: false,
 						};
 						callback(&mut data, button);
+						if data.trigger_haptics {
+							*params.trigger_haptics = true;
+						}
 						if data.needs_redraw {
 							*params.needs_redraw = true;
 						}
@@ -414,8 +431,12 @@ impl WidgetState {
 						widget_id,
 						node_id,
 						needs_redraw: false,
+						trigger_haptics: false,
 					};
 					callback(&mut data);
+					if data.trigger_haptics {
+						*params.trigger_haptics = true;
+					}
 					if data.needs_redraw {
 						*params.needs_redraw = true;
 					}

@@ -83,7 +83,7 @@ impl InteractionHandler for GuiPanel {
                 pos: hit.uv * self.layout.content_size,
                 device: hit.pointer,
             }))
-            .unwrap();
+            .unwrap(); // want panic
     }
 
     fn on_hover(&mut self, _app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
@@ -92,15 +92,21 @@ impl InteractionHandler for GuiPanel {
                 pos: hit.uv * self.layout.content_size,
                 device: hit.pointer,
             }))
-            .unwrap();
+            .unwrap(); // want panic
 
-        None
+        self.layout
+            .check_toggle_haptics_triggered()
+            .then_some(Haptics {
+                intensity: 0.1,
+                duration: 0.01,
+                frequency: 5.0,
+            })
     }
 
     fn on_left(&mut self, _app: &mut AppState, pointer: usize) {
         self.layout
             .push_event(&WguiEvent::MouseLeave(MouseLeaveEvent { device: pointer }))
-            .unwrap();
+            .unwrap(); // want panic
     }
 
     fn on_pointer(&mut self, _app: &mut AppState, hit: &PointerHit, pressed: bool) {
@@ -118,7 +124,7 @@ impl InteractionHandler for GuiPanel {
                     button,
                     device: hit.pointer,
                 }))
-                .unwrap();
+                .unwrap(); // want panic
         } else {
             self.layout
                 .push_event(&WguiEvent::MouseUp(MouseUpEvent {
@@ -126,7 +132,7 @@ impl InteractionHandler for GuiPanel {
                     button,
                     device: hit.pointer,
                 }))
-                .unwrap();
+                .unwrap(); // want panic
         }
     }
 }
@@ -177,7 +183,7 @@ impl OverlayRenderer for GuiPanel {
         let mut cmd_buf = app
             .gfx
             .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)
-            .unwrap();
+            .unwrap(); // want panic
 
         cmd_buf.begin_rendering(tgt)?;
         let primitives = wgui::drawing::draw(&self.layout)?;

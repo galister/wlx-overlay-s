@@ -30,7 +30,6 @@ use crate::{
     },
     gui::panel::GuiPanel,
     state::{AppState, LeftRight},
-    subsystem::audio::AudioRole,
 };
 
 const FONT_SIZE: isize = 16;
@@ -94,10 +93,8 @@ impl Toast {
 
         let destroy_at = instant.add(std::time::Duration::from_secs_f32(self.timeout));
 
-        if self.sound {
-            app.audio_provider
-                .borrow_mut()
-                .play(AudioRole::Notification, app.toast_sound);
+        if self.sound && app.session.config.notifications_sound_enabled {
+            app.audio_provider.play(app.toast_sound);
         }
 
         // drop any toast that was created before us.

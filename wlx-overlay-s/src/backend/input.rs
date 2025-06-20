@@ -249,7 +249,7 @@ pub struct PointerHit {
     pub dist: f32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Haptics {
     pub intensity: f32,
     pub duration: f32,
@@ -403,10 +403,7 @@ where
     log::trace!("Hit: {} {:?}", hovered.state.name, hit);
 
     if pointer.now.grab && !pointer.before.grab && hovered.state.grabbable {
-        {
-            let mut hid_provider = app.hid_provider.borrow_mut();
-            update_focus(&mut hid_provider.keyboard_focus, &hovered.state);
-        }
+        update_focus(&mut app.hid_provider.keyboard_focus, &hovered.state);
         pointer.start_grab(hovered, &mut app.tasks);
         return (
             hit.dist,
@@ -455,10 +452,7 @@ where
 
     if pointer.now.click && !pointer.before.click {
         pointer.interaction.clicked_id = Some(hit.overlay);
-        {
-            let mut hid_provider = app.hid_provider.borrow_mut();
-            update_focus(&mut hid_provider.keyboard_focus, &hovered.state);
-        }
+        update_focus(&mut app.hid_provider.keyboard_focus, &hovered.state);
         hovered.backend.on_pointer(app, &hit, true);
     } else if !pointer.now.click && pointer.before.click {
         if let Some(clicked_id) = pointer.interaction.clicked_id.take() {

@@ -131,7 +131,7 @@ impl InteractionHandler for ScreenInteractionHandler {
                 || app.input_state.pointers[hit.pointer].now.move_mouse)
         {
             let pos = self.mouse_transform.transform_point2(hit.uv);
-            app.hid_provider.borrow_mut().inner.mouse_move(pos);
+            app.hid_provider.inner.mouse_move(pos);
             set_next_move(u64::from(app.session.config.mouse_move_interval_ms));
         }
         None
@@ -147,19 +147,16 @@ impl InteractionHandler for ScreenInteractionHandler {
             set_next_move(u64::from(app.session.config.click_freeze_time_ms));
         }
 
-        let mut hid_provider = app.hid_provider.borrow_mut();
-
-        hid_provider.inner.send_button(btn, pressed);
+        app.hid_provider.inner.send_button(btn, pressed);
 
         if !pressed {
             return;
         }
         let pos = self.mouse_transform.transform_point2(hit.uv);
-        hid_provider.inner.mouse_move(pos);
+        app.hid_provider.inner.mouse_move(pos);
     }
     fn on_scroll(&mut self, app: &mut AppState, _hit: &PointerHit, delta_y: f32, delta_x: f32) {
         app.hid_provider
-            .borrow_mut()
             .inner
             .wheel((delta_y * 64.) as i32, (delta_x * 64.) as i32);
     }
@@ -892,11 +889,10 @@ pub fn create_screens_wayland(wl: &mut WlxClientAlias, app: &mut AppState) -> Sc
     let extent = wl.get_desktop_extent();
     let origin = wl.get_desktop_origin();
 
-    let mut hid_provider = app.hid_provider.borrow_mut();
-    hid_provider
+    app.hid_provider
         .inner
         .set_desktop_extent(vec2(extent.0 as f32, extent.1 as f32));
-    hid_provider
+    app.hid_provider
         .inner
         .set_desktop_origin(vec2(origin.0 as f32, origin.1 as f32));
 
@@ -995,9 +991,8 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
         })
         .collect();
 
-    let mut hid_provider = app.hid_provider.borrow_mut();
-    hid_provider.inner.set_desktop_extent(extent);
-    hid_provider.inner.set_desktop_origin(vec2(0.0, 0.0));
+    app.hid_provider.inner.set_desktop_extent(extent);
+    app.hid_provider.inner.set_desktop_origin(vec2(0.0, 0.0));
 
     Ok(ScreenCreateData { screens })
 }
@@ -1054,9 +1049,8 @@ pub fn create_screens_xshm(app: &mut AppState) -> anyhow::Result<ScreenCreateDat
         })
         .collect();
 
-    let mut hid_provider = app.hid_provider.borrow_mut();
-    hid_provider.inner.set_desktop_extent(extent);
-    hid_provider.inner.set_desktop_origin(vec2(0.0, 0.0));
+    app.hid_provider.inner.set_desktop_extent(extent);
+    app.hid_provider.inner.set_desktop_origin(vec2(0.0, 0.0));
 
     Ok(ScreenCreateData { screens })
 }

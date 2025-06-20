@@ -21,8 +21,7 @@ use crate::{
 };
 
 use super::{
-    KEYBOARD_NAME, KeyButtonData, KeyState, KeyboardBackend, KeyboardState, handle_press,
-    handle_release,
+    KEYBOARD_NAME, KeyButtonData, KeyState, KeyboardBackend, KeyboardState,
     layout::{self, AltModifier, KeyCapType},
 };
 
@@ -39,8 +38,7 @@ where
 {
     let layout = layout::Layout::load_from_disk();
     let state = Rc::new(RefCell::new(KeyboardState {
-        hid: app.hid_provider.clone(),
-        audio: app.audio_provider.clone(),
+        invoke_action: None,
         modifiers: 0,
         alt_modifier: match layout.alt_modifier {
             AltModifier::Shift => SHIFT,
@@ -185,6 +183,7 @@ where
                     EventListener::MouseEnter(Box::new({
                         let (k, kb) = (key_state.clone(), state.clone());
                         move |data| {
+                            data.trigger_haptics = true;
                             on_enter_anim(k.clone(), kb.clone(), data);
                         }
                     })),
@@ -194,6 +193,7 @@ where
                     EventListener::MouseLeave(Box::new({
                         let (k, kb) = (key_state.clone(), state.clone());
                         move |data| {
+                            data.trigger_haptics = true;
                             on_leave_anim(k.clone(), kb.clone(), data);
                         }
                     })),
@@ -203,7 +203,11 @@ where
                     EventListener::MousePress(Box::new({
                         let (k, kb) = (key_state.clone(), state.clone());
                         move |data, button| {
-                            handle_press(k.clone(), kb.clone(), button);
+                            kb.borrow_mut().invoke_action = Some(super::InvokeAction {
+                                key: k.clone(),
+                                button,
+                                pressed: true,
+                            });
                             on_press_anim(k.clone(), data);
                         }
                     })),
@@ -213,7 +217,12 @@ where
                     EventListener::MouseRelease(Box::new({
                         let (k, kb) = (key_state.clone(), state.clone());
                         move |data, button| {
-                            if handle_release(k.clone(), kb.clone(), button) {
+                            kb.borrow_mut().invoke_action = Some(super::InvokeAction {
+                                key: k.clone(),
+                                button,
+                                pressed: false,
+                            });
+                            if !matches!(&k.button_state, KeyButtonData::Modifier { sticky, .. } if sticky.get()) {
                                 on_release_anim(k.clone(), data);
                             }
                         }
@@ -227,13 +236,9 @@ where
                             let (k, kb) = (key_state.clone(), state.clone());
                             move |data| {
                                 if (kb.borrow().modifiers & modifier) != 0 {
-                                    if !k.drawn_state.get() {
-                                        on_press_anim(k.clone(), data);
-                                        k.drawn_state.set(true);
-                                    }
-                                } else if k.drawn_state.get() {
+                                    on_press_anim(k.clone(), data);
+                                } else {
                                     on_release_anim(k.clone(), data);
-                                    k.drawn_state.set(false);
                                 }
                             }
                         })),
@@ -312,14 +317,22 @@ fn on_leave_anim(
     ));
 }
 
-fn on_press_anim(_: Rc<KeyState>, data: &mut event::CallbackData) {
+fn on_press_anim(key_state: Rc<KeyState>, data: &mut event::CallbackData) {
+    if key_state.drawn_state.get() {
+        return;
+    }
     let rect = data.obj.get_as_mut::<Rectangle>();
     rect.params.border_color = Color::new(1.0, 1.0, 1.0, 1.0);
     data.needs_redraw = true;
+    key_state.drawn_state.set(true);
 }
 
 fn on_release_anim(key_state: Rc<KeyState>, data: &mut event::CallbackData) {
+    if !key_state.drawn_state.get() {
+        return;
+    }
     let rect = data.obj.get_as_mut::<Rectangle>();
     rect.params.border_color = key_state.border_color;
     data.needs_redraw = true;
+    key_state.drawn_state.set(false);
 }

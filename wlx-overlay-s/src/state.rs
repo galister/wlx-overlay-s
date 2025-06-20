@@ -31,8 +31,8 @@ pub struct AppState {
 
     pub gfx: Arc<WGfx>,
     pub gfx_extras: WGfxExtras,
-    pub hid_provider: Rc<RefCell<HidWrapper>>,
-    pub audio_provider: Rc<RefCell<AudioOutput>>,
+    pub hid_provider: HidWrapper,
+    pub audio_provider: AudioOutput,
 
     pub input_state: InputState,
     pub screens: SmallVec<[ScreenMeta; 8]>,
@@ -71,15 +71,13 @@ impl AppState {
             include_bytes!("res/557297.wav"),
         );
 
-        let audio_provider = AudioOutput::new(&session.config);
-
         Ok(Self {
             session,
             tasks,
             gfx,
             gfx_extras,
-            hid_provider: Rc::new(RefCell::new(HidWrapper::new())),
-            audio_provider: Rc::new(RefCell::new(audio_provider)),
+            hid_provider: HidWrapper::new(),
+            audio_provider: AudioOutput::new(),
             input_state: InputState::new(),
             screens: smallvec![],
             anchor: Affine3A::IDENTITY,
