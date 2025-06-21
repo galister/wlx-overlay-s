@@ -5117,7 +5117,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "uidev-vk"
+name = "uidev"
 version = "0.1.0"
 dependencies = [
  "anyhow",

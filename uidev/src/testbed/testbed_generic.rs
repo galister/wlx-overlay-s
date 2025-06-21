@@ -77,7 +77,7 @@ impl Testbed for TestbedGeneric {
 		if let Some(widget_id) = *self.widget_id.borrow() {
 			self.rot += 0.01;
 
-			let a = self.layout.widget_states.get(widget_id).unwrap();
+			let a = self.layout.widget_map.get(widget_id).unwrap();
 			let mut widget = a.lock().unwrap();
 			widget.data.transform = Mat4::IDENTITY
 				* Mat4::from_rotation_y(-self.rot)
