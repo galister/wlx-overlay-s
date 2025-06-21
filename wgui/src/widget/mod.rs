@@ -181,6 +181,33 @@ impl dyn WidgetObj {
 	}
 }
 
+macro_rules! call_event {
+	($self:ident, $widget_id:ident, $node_id:ident, $params:ident, $ev:ident, $cb_arg:expr) => {
+		for listener in &$self.event_listeners {
+			if let EventListener::$ev(callback) = listener {
+				let mut data = CallbackData {
+					obj: $self.obj.as_mut(),
+					widget_data: &mut $self.data,
+					widgets: $params.widgets,
+					animations: $params.animations,
+					dirty_nodes: $params.dirty_nodes,
+					$widget_id,
+					$node_id,
+					needs_redraw: false,
+					trigger_haptics: false,
+				};
+				callback(&mut data, $cb_arg);
+				if data.trigger_haptics {
+					*$params.trigger_haptics = true;
+				}
+				if data.needs_redraw {
+					*$params.needs_redraw = true;
+				}
+			}
+		}
+	};
+}
+
 impl WidgetState {
 	pub fn add_event_listener(&mut self, listener: EventListener) {
 		self.event_listeners.push(listener);
@@ -304,24 +331,16 @@ impl WidgetState {
 	) -> EventResult {
 		let hovered = event.test_mouse_within_transform(params.transform_stack.get());
 
-		// buttons don't need to be tracked separately as long as we stick to VR use.
-		let mut pressed_changed_button = None;
-		let mut hovered_changed = false;
-
 		match &event {
 			Event::MouseDown(e) => {
-				if hovered {
-					pressed_changed_button = self
-						.data
-						.set_device_pressed(e.device, true)
-						.then_some(e.button);
+				if hovered && self.data.set_device_pressed(e.device, true) {
+					call_event!(self, widget_id, node_id, params, MousePress, e.button);
 				}
 			}
 			Event::MouseUp(e) => {
-				pressed_changed_button = self
-					.data
-					.set_device_pressed(e.device, false)
-					.then_some(e.button);
+				if self.data.set_device_pressed(e.device, false) {
+					call_event!(self, widget_id, node_id, params, MouseRelease, e.button);
+				}
 			}
 			Event::MouseWheel(e) => {
 				if hovered && self.process_wheel(params, e) {
@@ -329,127 +348,30 @@ impl WidgetState {
 				}
 			}
 			Event::MouseMotion(e) => {
-				hovered_changed |= self.data.set_device_hovered(e.device, hovered);
+				if self.data.set_device_hovered(e.device, hovered) {
+					if self.data.is_hovered() {
+						call_event!(self, widget_id, node_id, params, MouseEnter, ());
+					} else {
+						call_event!(self, widget_id, node_id, params, MouseLeave, ());
+					}
+				}
 			}
 			Event::MouseLeave(e) => {
-				hovered_changed |= self.data.set_device_hovered(e.device, false);
-			}
-			_ => {}
-		}
-
-		for listener in &self.event_listeners {
-			match listener {
-				EventListener::MouseEnter(callback) => {
-					if hovered_changed && self.data.is_hovered() {
-						let mut data = CallbackData {
-							obj: self.obj.as_mut(),
-							widget_data: &mut self.data,
-							widgets: params.widgets,
-							animations: params.animations,
-							dirty_nodes: params.dirty_nodes,
-							widget_id,
-							node_id,
-							needs_redraw: false,
-							trigger_haptics: false,
-						};
-						callback(&mut data);
-						if data.trigger_haptics {
-							*params.trigger_haptics = true;
-						}
-						if data.needs_redraw {
-							*params.needs_redraw = true;
-						}
-					}
-				}
-				EventListener::MouseLeave(callback) => {
-					if hovered_changed && !self.data.is_hovered() {
-						let mut data = CallbackData {
-							obj: self.obj.as_mut(),
-							widget_data: &mut self.data,
-							widgets: params.widgets,
-							animations: params.animations,
-							dirty_nodes: params.dirty_nodes,
-							widget_id,
-							node_id,
-							needs_redraw: false,
-							trigger_haptics: false,
-						};
-						callback(&mut data);
-						if data.trigger_haptics {
-							*params.trigger_haptics = true;
-						}
-						if data.needs_redraw {
-							*params.needs_redraw = true;
-						}
-					}
-				}
-				EventListener::MousePress(callback) => {
-					if let Some(button) = pressed_changed_button.filter(|_| self.data.is_pressed()) {
-						let mut data = CallbackData {
-							obj: self.obj.as_mut(),
-							widget_data: &mut self.data,
-							widgets: params.widgets,
-							animations: params.animations,
-							dirty_nodes: params.dirty_nodes,
-							widget_id,
-							node_id,
-							needs_redraw: false,
-							trigger_haptics: false,
-						};
-						callback(&mut data, button);
-						if data.trigger_haptics {
-							*params.trigger_haptics = true;
-						}
-						if data.needs_redraw {
-							*params.needs_redraw = true;
-						}
-					}
-				}
-				EventListener::MouseRelease(callback) => {
-					if let Some(button) = pressed_changed_button.filter(|_| !self.data.is_pressed()) {
-						let mut data = CallbackData {
-							obj: self.obj.as_mut(),
-							widget_data: &mut self.data,
-							widgets: params.widgets,
-							animations: params.animations,
-							dirty_nodes: params.dirty_nodes,
-							widget_id,
-							node_id,
-							needs_redraw: false,
-							trigger_haptics: false,
-						};
-						callback(&mut data, button);
-						if data.trigger_haptics {
-							*params.trigger_haptics = true;
-						}
-						if data.needs_redraw {
-							*params.needs_redraw = true;
-						}
-					}
-				}
-				EventListener::InternalStateChange(callback) => {
-					let mut data = CallbackData {
-						obj: self.obj.as_mut(),
-						widget_data: &mut self.data,
-						widgets: params.widgets,
-						animations: params.animations,
-						dirty_nodes: params.dirty_nodes,
-						widget_id,
-						node_id,
-						needs_redraw: false,
-						trigger_haptics: false,
-					};
-					callback(&mut data);
-					if data.trigger_haptics {
-						*params.trigger_haptics = true;
-					}
-					if data.needs_redraw {
-						*params.needs_redraw = true;
-					}
+				if self.data.set_device_hovered(e.device, false) {
+					call_event!(self, widget_id, node_id, params, MouseLeave, ());
 				}
 			}
+			Event::InternalStateChange(e) => {
+				call_event!(
+					self,
+					widget_id,
+					node_id,
+					params,
+					InternalStateChange,
+					e.metadata
+				);
+			}
 		}
-
 		EventResult::Pass
 	}
 }

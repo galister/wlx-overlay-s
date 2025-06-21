@@ -6,7 +6,10 @@ use std::{
 };
 
 use vulkano::image::view::ImageView;
-use wgui::{drawing, event::MouseButton};
+use wgui::{
+    drawing,
+    event::{InternalStateChangeEvent, MouseButton},
+};
 
 use crate::{
     backend::{
@@ -57,11 +60,13 @@ impl OverlayBackend for KeyboardBackend {
 impl InteractionHandler for KeyboardBackend {
     fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool) {
         self.panel.on_pointer(app, hit, pressed);
+        self.handle_invoke(app);
         let _ = self
             .panel
             .layout
-            .push_event(&wgui::event::Event::InternalStateChange);
-        self.handle_invoke(app);
+            .push_event(&wgui::event::Event::InternalStateChange(
+                InternalStateChangeEvent { metadata: 0 },
+            ));
     }
     fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32) {
         self.panel.on_scroll(app, hit, delta_y, delta_x);
@@ -102,7 +107,9 @@ impl OverlayRenderer for KeyboardBackend {
         self.panel.resume(app)?;
         self.panel
             .layout
-            .push_event(&wgui::event::Event::InternalStateChange)?;
+            .push_event(&wgui::event::Event::InternalStateChange(
+                InternalStateChangeEvent { metadata: 0 },
+            ))?;
         Ok(())
     }
 }

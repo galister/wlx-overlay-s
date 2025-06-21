@@ -147,7 +147,7 @@ pub fn construct(
 	// Highlight background on mouse enter
 	{
 		let button = button.clone();
-		widget.add_event_listener(EventListener::MouseEnter(Box::new(move |data| {
+		widget.add_event_listener(EventListener::MouseEnter(Box::new(move |data, _| {
 			data
 				.animations
 				.push(anim_hover_in(button.clone(), data.widget_id));
@@ -157,7 +157,7 @@ pub fn construct(
 	// Bring back old color on mouse leave
 	{
 		let button = button.clone();
-		widget.add_event_listener(EventListener::MouseLeave(Box::new(move |data| {
+		widget.add_event_listener(EventListener::MouseLeave(Box::new(move |data, _| {
 			data
 				.animations
 				.push(anim_hover_out(button.clone(), data.widget_id));

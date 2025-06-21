@@ -41,8 +41,12 @@ pub struct MouseWheelEvent {
 	pub device: usize,
 }
 
+pub struct InternalStateChangeEvent {
+	pub metadata: usize,
+}
+
 pub enum Event {
-	InternalStateChange,
+	InternalStateChange(InternalStateChangeEvent),
 	MouseDown(MouseDownEvent),
 	MouseLeave(MouseLeaveEvent),
 	MouseMotion(MouseMotionEvent),
@@ -117,11 +121,11 @@ impl<'a> WidgetCallback<'a> for CallbackData<'a> {
 	}
 }
 
-pub type MouseEnterCallback = Box<dyn Fn(&mut CallbackData)>;
-pub type MouseLeaveCallback = Box<dyn Fn(&mut CallbackData)>;
+pub type MouseEnterCallback = Box<dyn Fn(&mut CallbackData, ())>;
+pub type MouseLeaveCallback = Box<dyn Fn(&mut CallbackData, ())>;
 pub type MousePressCallback = Box<dyn Fn(&mut CallbackData, MouseButton)>;
 pub type MouseReleaseCallback = Box<dyn Fn(&mut CallbackData, MouseButton)>;
-pub type InternalStateChangeCallback = Box<dyn Fn(&mut CallbackData)>;
+pub type InternalStateChangeCallback = Box<dyn Fn(&mut CallbackData, usize)>;
 
 pub enum EventListener {
 	MouseEnter(MouseEnterCallback),

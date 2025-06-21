@@ -17,19 +17,19 @@
   </theme>
 
   <template name="Device">
-    <sprite color="~device_color" width="48" height="48" src="${src}" />
+    <sprite color="~device_color" width="${size}" height="${size}" src="${src}" />
   </template>
 
   <elements>
     <div width="400" height="200">
       <rectangle width="100%" height="100%" padding="4" box_sizing="content_box" flex_wrap="wrap" gap="16" color="~bg_color">
         <div width="100%" flex_direction="row">
-          <Device src="watch/hmd.svg" />
-          <Device src="watch/controller.svg" />
-          <Device src="watch/controller.svg" />
-          <Device src="watch/track3.svg" />
-          <Device src="watch/track3.svg" />
-          <Device src="watch/track3.svg" />
+          <Device src="watch/hmd.svg" size="40" />
+          <Device src="watch/controller_l.svg" size="36" />
+          <Device src="watch/controller_r.svg" size="36" />
+          <Device src="watch/track3.svg" size="40" />
+          <Device src="watch/track3.svg" size="40" />
+          <Device src="watch/track3.svg" size="40" />
         </div>
         <div flex_direction="row">
           <div id="clock_main" flex_direction="column" padding="4">

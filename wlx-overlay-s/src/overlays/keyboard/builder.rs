@@ -183,7 +183,7 @@ where
                     *widget_id,
                     EventListener::MouseEnter(Box::new({
                         let (k, kb) = (key_state.clone(), state.clone());
-                        move |data| {
+                        move |data, ()| {
                             data.trigger_haptics = true;
                             on_enter_anim(k.clone(), kb.clone(), data);
                         }
@@ -193,7 +193,7 @@ where
                     *widget_id,
                     EventListener::MouseLeave(Box::new({
                         let (k, kb) = (key_state.clone(), state.clone());
-                        move |data| {
+                        move |data, ()| {
                             data.trigger_haptics = true;
                             on_leave_anim(k.clone(), kb.clone(), data);
                         }
@@ -235,7 +235,7 @@ where
                         *widget_id,
                         EventListener::InternalStateChange(Box::new({
                             let (k, kb) = (key_state.clone(), state.clone());
-                            move |data| {
+                            move |data, _| {
                                 if (kb.borrow().modifiers & modifier) != 0 {
                                     on_press_anim(k.clone(), data);
                                 } else {
