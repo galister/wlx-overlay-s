@@ -2,6 +2,7 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use cosmic_text::Buffer;
 use glam::{Mat4, Vec2, Vec3};
+use slotmap::{SlotMap, new_key_type};
 
 use crate::{
 	drawing,
@@ -70,48 +71,81 @@ impl RendererPass<'_> {
 	}
 }
 
-pub struct Context {
-	viewport: Viewport,
-	text_atlas: TextAtlas,
+new_key_type! {
+	struct SharedContextKey;
+}
+
+pub struct SharedContext {
+	gfx: Arc<WGfx>,
+	atlas_map: SlotMap<SharedContextKey, SharedAtlas>,
 	rect_pipeline: RectPipeline,
 	text_pipeline: TextPipeline,
+}
+
+impl SharedContext {
+	pub fn new(gfx: Arc<WGfx>) -> anyhow::Result<Self> {
+		let rect_pipeline = RectPipeline::new(gfx.clone(), gfx.surface_format)?;
+		let text_pipeline = TextPipeline::new(gfx.clone(), gfx.surface_format)?;
+
+		Ok(Self {
+			gfx,
+			atlas_map: SlotMap::with_key(),
+			rect_pipeline,
+			text_pipeline,
+		})
+	}
+
+	fn atlas_for_pixel_scale(&mut self, pixel_scale: f32) -> anyhow::Result<SharedContextKey> {
+		for (key, atlas) in self.atlas_map.iter() {
+			if (atlas.pixel_scale - pixel_scale).abs() < f32::EPSILON {
+				return Ok(key);
+			}
+		}
+		log::debug!("Initializing SharedAtlas for pixel scale {pixel_scale:.1}");
+		let text_atlas = TextAtlas::new(self.text_pipeline.clone())?;
+		Ok(self.atlas_map.insert(SharedAtlas {
+			text_atlas,
+			pixel_scale,
+		}))
+	}
+}
+
+pub struct SharedAtlas {
+	text_atlas: TextAtlas,
 	pixel_scale: f32,
+}
+
+pub struct Context {
+	viewport: Viewport,
+	shared_ctx_key: SharedContextKey,
 	pub dirty: bool,
+	pixel_scale: f32,
 	empty_text: Rc<RefCell<Buffer>>,
 }
 
 impl Context {
-	pub fn new(
-		gfx: Arc<WGfx>,
-		native_format: vulkano::format::Format,
-		pixel_scale: f32,
-	) -> anyhow::Result<Self> {
-		let rect_pipeline = RectPipeline::new(gfx.clone(), native_format)?;
-		let text_pipeline = TextPipeline::new(gfx.clone(), native_format)?;
-		let viewport = Viewport::new(gfx.clone())?;
-		let text_atlas = TextAtlas::new(text_pipeline.clone())?;
+	pub fn new(shared: &mut SharedContext, pixel_scale: f32) -> anyhow::Result<Self> {
+		let viewport = Viewport::new(shared.gfx.clone())?;
+		let shared_ctx_key = shared.atlas_for_pixel_scale(pixel_scale)?;
 
 		Ok(Self {
 			viewport,
-			text_atlas,
-			rect_pipeline,
-			text_pipeline,
+			shared_ctx_key,
 			pixel_scale,
 			dirty: true,
 			empty_text: Rc::new(RefCell::new(Buffer::new_empty(DEFAULT_METRICS))),
 		})
 	}
 
-	pub fn regen(&mut self) -> anyhow::Result<()> {
-		self.text_atlas = TextAtlas::new(self.text_pipeline.clone())?;
-		self.dirty = true;
-		Ok(())
-	}
-
-	pub fn update_viewport(&mut self, resolution: [u32; 2], pixel_scale: f32) -> anyhow::Result<()> {
-		if self.pixel_scale != pixel_scale {
+	pub fn update_viewport(
+		&mut self,
+		shared: &mut SharedContext,
+		resolution: [u32; 2],
+		pixel_scale: f32,
+	) -> anyhow::Result<()> {
+		if (self.pixel_scale - pixel_scale).abs() < f32::EPSILON {
 			self.pixel_scale = pixel_scale;
-			self.regen()?;
+			self.shared_ctx_key = shared.atlas_for_pixel_scale(pixel_scale)?;
 		}
 
 		if self.viewport.resolution() != resolution {
@@ -143,34 +177,20 @@ impl Context {
 		Ok(())
 	}
 
-	fn new_pass(&mut self, passes: &mut Vec<RendererPass>) -> anyhow::Result<()> {
-		passes.push(RendererPass::new(
-			&mut self.text_atlas,
-			self.rect_pipeline.clone(),
-		)?);
-
-		Ok(())
-	}
-
-	fn submit_pass(
-		&mut self,
-		gfx: &Arc<WGfx>,
-		cmd_buf: &mut GfxCommandBuffer,
-		pass: &mut RendererPass,
-	) -> anyhow::Result<()> {
-		pass.submit(gfx, &mut self.viewport, cmd_buf, &mut self.text_atlas)?;
-		Ok(())
-	}
-
 	pub fn draw(
 		&mut self,
-		gfx: &Arc<WGfx>,
+		shared: &mut SharedContext,
 		cmd_buf: &mut GfxCommandBuffer,
 		primitives: &[drawing::RenderPrimitive],
 	) -> anyhow::Result<()> {
 		self.dirty = false;
-		let mut passes = Vec::<RendererPass>::new();
-		self.new_pass(&mut passes)?;
+
+		let atlas = shared.atlas_map.get_mut(self.shared_ctx_key).unwrap();
+
+		let mut passes = vec![RendererPass::new(
+			&mut atlas.text_atlas,
+			shared.rect_pipeline.clone(),
+		)?];
 
 		for primitive in primitives.iter() {
 			let pass = passes.last_mut().unwrap(); // always safe
@@ -214,7 +234,12 @@ impl Context {
 		}
 
 		let pass = passes.last_mut().unwrap();
-		self.submit_pass(gfx, cmd_buf, pass)?;
+		pass.submit(
+			&shared.gfx,
+			&mut self.viewport,
+			cmd_buf,
+			&mut atlas.text_atlas,
+		)?;
 
 		Ok(())
 	}

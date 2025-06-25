@@ -33,11 +33,11 @@ pub struct GuiPanel {
 }
 
 impl GuiPanel {
-    pub fn new_from_template(app: &AppState, path: &str) -> anyhow::Result<Self> {
+    pub fn new_from_template(app: &mut AppState, path: &str) -> anyhow::Result<Self> {
         let (layout, _state) =
             wgui::parser::new_layout_from_assets(Box::new(gui::asset::GuiAsset {}), path)?;
 
-        let context = WguiContext::new(app.gfx.clone(), app.gfx.surface_format, 1.0)?;
+        let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
         let mut timestep = Timestep::new();
         timestep.set_tps(60.0);
 
@@ -48,9 +48,9 @@ impl GuiPanel {
         })
     }
 
-    pub fn new_blank(app: &AppState) -> anyhow::Result<Self> {
+    pub fn new_blank(app: &mut AppState) -> anyhow::Result<Self> {
         let layout = Layout::new(Box::new(GuiAsset {}))?;
-        let context = WguiContext::new(app.gfx.clone(), app.gfx.surface_format, 1.0)?;
+        let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
         let mut timestep = Timestep::new();
         timestep.set_tps(60.0);
 
@@ -177,7 +177,8 @@ impl OverlayRenderer for GuiPanel {
         buf: &mut CommandBuffers,
         _alpha: f32,
     ) -> anyhow::Result<bool> {
-        self.context.update_viewport(tgt.extent_u32arr(), 1.0)?;
+        self.context
+            .update_viewport(&mut app.wgui_shared, tgt.extent_u32arr(), 1.0)?;
         self.layout.update(MAX_SIZE_VEC2, self.timestep.alpha)?;
 
         let mut cmd_buf = app
@@ -187,7 +188,8 @@ impl OverlayRenderer for GuiPanel {
 
         cmd_buf.begin_rendering(tgt)?;
         let primitives = wgui::drawing::draw(&self.layout)?;
-        self.context.draw(&app.gfx, &mut cmd_buf, &primitives)?;
+        self.context
+            .draw(&mut app.wgui_shared, &mut cmd_buf, &primitives)?;
         cmd_buf.end_rendering()?;
         buf.push(cmd_buf.build()?);
 

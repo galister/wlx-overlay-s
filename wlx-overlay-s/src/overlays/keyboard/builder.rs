@@ -31,7 +31,7 @@ const PIXELS_PER_UNIT: f32 = 80.;
 
 #[allow(clippy::too_many_lines, clippy::significant_drop_tightening)]
 pub fn create_keyboard<O>(
-    app: &AppState,
+    app: &mut AppState,
     mut keymap: Option<XkbKeymap>,
 ) -> anyhow::Result<OverlayData<O>>
 where

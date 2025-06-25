@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use smallvec::{SmallVec, smallvec};
 use std::sync::Arc;
 use vulkano::image::view::ImageView;
-use wgui::gfx::WGfx;
+use wgui::{gfx::WGfx, renderer_vk::context::SharedContext as WSharedContext};
 
 #[cfg(feature = "wayvr")]
 use {
@@ -33,6 +33,8 @@ pub struct AppState {
     pub gfx_extras: WGfxExtras,
     pub hid_provider: HidWrapper,
     pub audio_provider: AudioOutput,
+
+    pub wgui_shared: WSharedContext,
 
     pub input_state: InputState,
     pub screens: SmallVec<[ScreenMeta; 8]>,
@@ -71,6 +73,8 @@ impl AppState {
             include_bytes!("res/557297.wav"),
         );
 
+        let wgui_shared = WSharedContext::new(gfx.clone())?;
+
         Ok(Self {
             session,
             tasks,
@@ -78,6 +82,7 @@ impl AppState {
             gfx_extras,
             hid_provider: HidWrapper::new(),
             audio_provider: AudioOutput::new(),
+            wgui_shared,
             input_state: InputState::new(),
             screens: smallvec![],
             anchor: Affine3A::IDENTITY,
