@@ -1,7 +1,4 @@
-use std::{
-	collections::HashMap,
-	sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 use crate::{
 	animation::{self, Animations},
@@ -12,24 +9,16 @@ use crate::{
 };
 
 use glam::{Vec2, vec2};
-use slotmap::HopSlotMap;
+use slotmap::{HopSlotMap, SecondaryMap, new_key_type};
 use taffy::{TaffyTree, TraversePartialTree};
 
-pub type WidgetID = slotmap::DefaultKey;
-pub type BoxWidget = Arc<Mutex<WidgetState>>;
-pub type WidgetMap = HopSlotMap<slotmap::DefaultKey, BoxWidget>;
-#[derive(Default)]
-pub struct WidgetNodeMap(pub HashMap<WidgetID, taffy::NodeId>);
-
-impl WidgetNodeMap {
-	pub fn get(&self, widget_id: WidgetID) -> taffy::NodeId {
-		let Some(node) = self.0.get(&widget_id).cloned() else {
-			// this shouldn't happen!
-			panic!("node_map is corrupted");
-		};
-		node
-	}
+new_key_type! {
+	pub struct WidgetID;
 }
+
+pub type BoxWidget = Arc<Mutex<WidgetState>>;
+pub type WidgetMap = HopSlotMap<WidgetID, BoxWidget>;
+pub type WidgetNodeMap = SecondaryMap<WidgetID, taffy::NodeId>;
 
 struct PushEventState<'a> {
 	pub animations: &'a mut Vec<animation::Animation>,
@@ -74,7 +63,7 @@ fn add_child_internal(
 		tree.add_child(parent_node, child_node)?;
 	}
 
-	widget_node_map.0.insert(child_id, child_node);
+	widget_node_map.insert(child_id, child_node);
 
 	Ok((child_id, child_node))
 }
@@ -86,7 +75,7 @@ impl Layout {
 		widget: WidgetState,
 		style: taffy::Style,
 	) -> anyhow::Result<(WidgetID, taffy::NodeId)> {
-		let parent_node = self.widget_node_map.get(parent_widget_id);
+		let parent_node = *self.widget_node_map.get(parent_widget_id).unwrap();
 
 		self.needs_redraw = true;
 
@@ -241,7 +230,7 @@ impl Layout {
 	pub fn new(assets: Box<dyn AssetProvider>) -> anyhow::Result<Self> {
 		let mut tree = TaffyTree::new();
 		let mut widget_node_map = WidgetNodeMap::default();
-		let mut widget_map = HopSlotMap::new();
+		let mut widget_map = HopSlotMap::with_key();
 
 		let (root_widget, root_node) = add_child_internal(
 			&mut tree,

@@ -124,7 +124,7 @@ impl Animation {
 			return res; // failed
 		};
 
-		let widget_node = widget_node_map.get(self.target_widget);
+		let widget_node = *widget_node_map.get(self.target_widget).unwrap();
 		let layout = tree.layout(widget_node).unwrap(); // should always succeed
 
 		let mut widget = widget.lock().unwrap();
