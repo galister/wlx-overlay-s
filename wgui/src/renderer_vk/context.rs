@@ -101,7 +101,7 @@ impl SharedContext {
 				return Ok(key);
 			}
 		}
-		log::debug!("Initializing SharedAtlas for pixel scale {pixel_scale:.1}");
+		log::debug!("Initializing SharedAtlas for pixel scale {pixel_scale:.2}");
 		let text_atlas = TextAtlas::new(self.text_pipeline.clone())?;
 		Ok(self.atlas_map.insert(SharedAtlas {
 			text_atlas,
@@ -143,7 +143,7 @@ impl Context {
 		resolution: [u32; 2],
 		pixel_scale: f32,
 	) -> anyhow::Result<()> {
-		if (self.pixel_scale - pixel_scale).abs() < f32::EPSILON {
+		if (self.pixel_scale - pixel_scale).abs() > f32::EPSILON {
 			self.pixel_scale = pixel_scale;
 			self.shared_ctx_key = shared.atlas_for_pixel_scale(pixel_scale)?;
 		}

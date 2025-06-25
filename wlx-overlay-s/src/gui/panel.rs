@@ -8,6 +8,7 @@ use wgui::{
         MouseUpEvent, MouseWheelEvent,
     },
     layout::Layout,
+    parser::ParserResult,
     renderer_vk::context::Context as WguiContext,
 };
 
@@ -33,19 +34,25 @@ pub struct GuiPanel {
 }
 
 impl GuiPanel {
-    pub fn new_from_template(app: &mut AppState, path: &str) -> anyhow::Result<Self> {
-        let (layout, _state) =
+    pub fn new_from_template(
+        app: &mut AppState,
+        path: &str,
+    ) -> anyhow::Result<(Self, ParserResult)> {
+        let (layout, parser_result) =
             wgui::parser::new_layout_from_assets(Box::new(gui::asset::GuiAsset {}), path)?;
 
         let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
         let mut timestep = Timestep::new();
         timestep.set_tps(60.0);
 
-        Ok(Self {
-            layout,
-            context,
-            timestep,
-        })
+        Ok((
+            Self {
+                layout,
+                context,
+                timestep,
+            },
+            parser_result,
+        ))
     }
 
     pub fn new_blank(app: &mut AppState) -> anyhow::Result<Self> {

@@ -20,7 +20,13 @@ pub fn create_watch<O>(app: &mut AppState) -> anyhow::Result<OverlayData<O>>
 where
     O: Default,
 {
-    let mut panel = GuiPanel::new_blank(app)?;
+    let (mut panel, parser) = GuiPanel::new_from_template(app, "gui/watch.xml")?;
+
+    for (id, widget) in parser.ids.iter() {
+        if id.starts_with("clock") {}
+    }
+
+    if let Ok(clock) = parser.require_by_id("clock0") {}
 
     let (_, _) = panel.layout.add_child(
         panel.layout.root_widget,

@@ -80,7 +80,7 @@ impl WidgetState {
 		(data, obj)
 	}
 
-	fn new(obj: Box<dyn WidgetObj>) -> anyhow::Result<WidgetState> {
+	fn new(obj: Box<dyn WidgetObj>) -> anyhow::Result<Self> {
 		Ok(Self {
 			data: WidgetData {
 				hovered: 0,

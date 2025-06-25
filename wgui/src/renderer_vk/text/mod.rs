@@ -38,7 +38,7 @@ pub(crate) const DEFAULT_METRICS: Metrics = Metrics::new(
 pub struct TextStyle {
 	pub size: Option<f32>,
 	pub line_height: Option<f32>,
-	pub color: Option<drawing::Color>, // TODO: should this be hex?
+	pub color: Option<drawing::Color>,
 	pub style: Option<FontStyle>,
 	pub weight: Option<FontWeight>,
 	pub align: Option<HorizontalAlign>,
