@@ -110,7 +110,7 @@ impl SharedContext {
 	}
 }
 
-pub struct SharedAtlas {
+struct SharedAtlas {
 	text_atlas: TextAtlas,
 	pixel_scale: f32,
 }
