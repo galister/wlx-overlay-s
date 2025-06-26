@@ -8,10 +8,10 @@ use crate::state::LeftRight;
 use chrono::Offset;
 use config::Config;
 use config::File;
-use glam::vec3a;
 use glam::Affine3A;
 use glam::Quat;
 use glam::Vec3A;
+use glam::vec3a;
 use idmap::IdMap;
 use log::error;
 use serde::Deserialize;
@@ -312,6 +312,9 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_timezones")]
     pub timezones: Vec<String>,
+
+    #[serde(default = "def_false")]
+    pub clock_12h: bool,
 }
 
 impl GeneralConfig {

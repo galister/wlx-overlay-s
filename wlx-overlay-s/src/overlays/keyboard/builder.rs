@@ -1,10 +1,10 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{collections::HashMap, rc::Rc};
 
 use glam::{Affine2, Mat4, Vec2, Vec3, vec2, vec3a};
 use wgui::{
     animation::{Animation, AnimationEasing},
     drawing::Color,
-    event::{self, EventListener},
+    event::{self, CallbackMetadata, EventListenerKind},
     renderer_vk::util,
     taffy::{self, prelude::length},
     widget::{
@@ -22,7 +22,8 @@ use crate::{
 };
 
 use super::{
-    KEYBOARD_NAME, KeyButtonData, KeyState, KeyboardBackend, KeyboardState,
+    KEYBOARD_NAME, KeyButtonData, KeyState, KeyboardBackend, KeyboardState, handle_press,
+    handle_release,
     layout::{self, AltModifier, KeyCapType},
 };
 
@@ -38,8 +39,7 @@ where
     O: Default,
 {
     let layout = layout::Layout::load_from_disk();
-    let state = Rc::new(RefCell::new(KeyboardState {
-        invoke_action: None,
+    let state = KeyboardState {
         modifiers: 0,
         alt_modifier: match layout.alt_modifier {
             AltModifier::Shift => SHIFT,
@@ -50,9 +50,9 @@ where
             _ => 0,
         },
         processes: vec![],
-    }));
+    };
 
-    let mut panel = GuiPanel::new_blank(app)?;
+    let mut panel = GuiPanel::new_blank(app, state)?;
 
     let (background, _) = panel.layout.add_child(
         panel.layout.root_widget,
@@ -179,70 +179,70 @@ where
                     })
                 };
 
-                panel.layout.add_event_listener(
+                panel.listeners.add(
                     *widget_id,
-                    EventListener::MouseEnter(Box::new({
-                        let (k, kb) = (key_state.clone(), state.clone());
-                        move |data, ()| {
+                    EventListenerKind::MouseEnter,
+                    Box::new({
+                        let k = key_state.clone();
+                        move |data, _app, _state| {
                             data.trigger_haptics = true;
-                            on_enter_anim(k.clone(), kb.clone(), data);
+                            on_enter_anim(k.clone(), data);
                         }
-                    })),
+                    }),
                 );
-                panel.layout.add_event_listener(
+                panel.listeners.add(
                     *widget_id,
-                    EventListener::MouseLeave(Box::new({
-                        let (k, kb) = (key_state.clone(), state.clone());
-                        move |data, ()| {
+                    EventListenerKind::MouseLeave,
+                    Box::new({
+                        let k = key_state.clone();
+                        move |data, _app, _state| {
                             data.trigger_haptics = true;
-                            on_leave_anim(k.clone(), kb.clone(), data);
+                            on_leave_anim(k.clone(), data);
                         }
-                    })),
+                    }),
                 );
-                panel.layout.add_event_listener(
+                panel.listeners.add(
                     *widget_id,
-                    EventListener::MousePress(Box::new({
-                        let (k, kb) = (key_state.clone(), state.clone());
-                        move |data, button| {
-                            kb.borrow_mut().invoke_action = Some(super::InvokeAction {
-                                key: k.clone(),
-                                button,
-                                pressed: true,
-                            });
+                    EventListenerKind::MousePress,
+                    Box::new({
+                        let k = key_state.clone();
+                        move |data, app, state| {
+                            let CallbackMetadata::MouseButton(button) = data.metadata else {
+                                panic!("CallbackMetadata should contain MouseButton!");
+                            };
+
+                            handle_press(app, &k, state, button);
                             on_press_anim(k.clone(), data);
                         }
-                    })),
+                    }),
                 );
-                panel.layout.add_event_listener(
+                panel.listeners.add(
                     *widget_id,
-                    EventListener::MouseRelease(Box::new({
-                        let (k, kb) = (key_state.clone(), state.clone());
-                        move |data, button| {
-                            kb.borrow_mut().invoke_action = Some(super::InvokeAction {
-                                key: k.clone(),
-                                button,
-                                pressed: false,
-                            });
-                            if !matches!(&k.button_state, KeyButtonData::Modifier { sticky, .. } if sticky.get()) {
+                    EventListenerKind::MouseRelease,
+                    Box::new({
+                        let k = key_state.clone();
+                        move |data, app, state| {
+                            if handle_release(app, &k, state) {
                                 on_release_anim(k.clone(), data);
                             }
                         }
-                    })),
+                    }),
                 );
 
                 if let Some(modifier) = my_modifier {
-                    panel.layout.add_event_listener(
+                    panel.listeners.add(
                         *widget_id,
-                        EventListener::InternalStateChange(Box::new({
-                            let (k, kb) = (key_state.clone(), state.clone());
-                            move |data, _| {
-                                if (kb.borrow().modifiers & modifier) != 0 {
+                        EventListenerKind::InternalStateChange,
+                        Box::new({
+                            let k = key_state.clone();
+                            move |data, _app, state| {
+                                if (state.modifiers & modifier) != 0 {
                                     on_press_anim(k.clone(), data);
                                 } else {
                                     on_release_anim(k.clone(), data);
                                 }
                             }
-                        })),
+                        }),
                     );
                 }
             } else {
@@ -273,7 +273,7 @@ where
             interaction_transform,
             ..Default::default()
         },
-        backend: Box::new(KeyboardBackend { panel, state }),
+        backend: Box::new(KeyboardBackend { panel }),
         ..Default::default()
     })
 }
@@ -300,11 +300,7 @@ fn set_anim_color(key_state: &KeyState, rect: &mut Rectangle, pos: f32) {
     rect.params.color2.b = key_state.color2.b + br2;
 }
 
-fn on_enter_anim(
-    key_state: Rc<KeyState>,
-    _keyboard_state: Rc<RefCell<KeyboardState>>,
-    data: &mut event::CallbackData,
-) {
+fn on_enter_anim(key_state: Rc<KeyState>, data: &mut event::CallbackData) {
     data.animations.push(Animation::new(
         data.widget_id,
         10,
@@ -318,11 +314,7 @@ fn on_enter_anim(
     ));
 }
 
-fn on_leave_anim(
-    key_state: Rc<KeyState>,
-    _keyboard_state: Rc<RefCell<KeyboardState>>,
-    data: &mut event::CallbackData,
-) {
+fn on_leave_anim(key_state: Rc<KeyState>, data: &mut event::CallbackData) {
     data.animations.push(Animation::new(
         data.widget_id,
         15,

@@ -1,4 +1,5 @@
 use glam::Vec2;
+use slotmap::SecondaryMap;
 
 use crate::{
 	animation,
@@ -105,6 +106,7 @@ pub struct CallbackData<'a> {
 	pub dirty_nodes: &'a mut Vec<taffy::NodeId>,
 	pub needs_redraw: bool,
 	pub trigger_haptics: bool,
+	pub metadata: CallbackMetadata,
 }
 
 impl<'a> WidgetCallback<'a> for CallbackData<'a> {
@@ -121,16 +123,70 @@ impl<'a> WidgetCallback<'a> for CallbackData<'a> {
 	}
 }
 
-pub type MouseEnterCallback = Box<dyn Fn(&mut CallbackData, ())>;
-pub type MouseLeaveCallback = Box<dyn Fn(&mut CallbackData, ())>;
-pub type MousePressCallback = Box<dyn Fn(&mut CallbackData, MouseButton)>;
-pub type MouseReleaseCallback = Box<dyn Fn(&mut CallbackData, MouseButton)>;
-pub type InternalStateChangeCallback = Box<dyn Fn(&mut CallbackData, usize)>;
+pub enum CallbackMetadata {
+	None,
+	MouseButton(MouseButton),
+	Custom(usize),
+}
 
-pub enum EventListener {
-	MouseEnter(MouseEnterCallback),
-	MouseLeave(MouseLeaveCallback),
-	MousePress(MousePressCallback),
-	MouseRelease(MouseReleaseCallback),
-	InternalStateChange(InternalStateChangeCallback),
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum EventListenerKind {
+	MousePress,
+	MouseRelease,
+	MouseEnter,
+	MouseLeave,
+	InternalStateChange,
+}
+
+pub type EventCallback<U1, U2> = Box<dyn Fn(&mut CallbackData, &mut U1, &mut U2)>;
+
+pub struct EventListener<U1, U2> {
+	pub kind: EventListenerKind,
+	pub callback: EventCallback<U1, U2>,
+}
+
+impl<U1, U2> EventListener<U1, U2> {
+	pub fn callback_for_kind(
+		&self,
+		kind: EventListenerKind,
+	) -> Option<&impl Fn(&mut CallbackData, &mut U1, &mut U2)> {
+		if self.kind == kind {
+			Some(&self.callback)
+		} else {
+			None
+		}
+	}
+}
+
+pub struct EventListenerCollection<U1, U2> {
+	map: SecondaryMap<WidgetID, Vec<EventListener<U1, U2>>>,
+}
+
+// derive only works if generics also implement Default
+impl<U1, U2> Default for EventListenerCollection<U1, U2> {
+	fn default() -> Self {
+		Self {
+			map: SecondaryMap::default(),
+		}
+	}
+}
+
+impl<U1, U2> EventListenerCollection<U1, U2> {
+	pub fn add(
+		&mut self,
+		widget_id: WidgetID,
+		kind: EventListenerKind,
+		callback: EventCallback<U1, U2>,
+	) {
+		let new_item = EventListener { kind, callback };
+		if let Some(vec) = self.map.get_mut(widget_id) {
+			vec.push(new_item);
+		} else {
+			self.map.insert(widget_id, vec![new_item]);
+		}
+	}
+
+	pub fn get(&self, widget_id: WidgetID) -> Option<&[EventListener<U1, U2>]> {
+		self.map.get(widget_id).map(|v| v.as_slice())
+	}
 }

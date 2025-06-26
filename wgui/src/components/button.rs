@@ -6,7 +6,7 @@ use taffy::{AlignItems, JustifyContent, prelude::length};
 use crate::{
 	animation::{Animation, AnimationEasing},
 	drawing::{self, Color},
-	event::{EventListener, WidgetCallback},
+	event::WidgetCallback,
 	layout::{Layout, WidgetID},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
@@ -135,8 +135,6 @@ pub fn construct(
 		},
 	)?;
 
-	let mut widget = layout.widget_map.get(rect_id).unwrap().lock().unwrap();
-
 	let button = Arc::new(Button {
 		body: rect_id,
 		color: params.color,
@@ -144,25 +142,9 @@ pub fn construct(
 		text_node,
 	});
 
-	// Highlight background on mouse enter
-	{
-		let button = button.clone();
-		widget.add_event_listener(EventListener::MouseEnter(Box::new(move |data, _| {
-			data
-				.animations
-				.push(anim_hover_in(button.clone(), data.widget_id));
-		})));
-	}
+	//TODO: Highlight background on mouse enter
 
-	// Bring back old color on mouse leave
-	{
-		let button = button.clone();
-		widget.add_event_listener(EventListener::MouseLeave(Box::new(move |data, _| {
-			data
-				.animations
-				.push(anim_hover_out(button.clone(), data.widget_id));
-		})));
-	}
+	//TODO: Bring back old color on mouse leave
 
 	Ok(button)
 }

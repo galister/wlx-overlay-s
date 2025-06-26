@@ -19,7 +19,10 @@ use vulkano::{
     sync::GpuFuture,
 };
 use wgui::{
-    event::{MouseButton, MouseDownEvent, MouseMotionEvent, MouseUpEvent, MouseWheelEvent},
+    event::{
+        EventListenerCollection, MouseButton, MouseDownEvent, MouseMotionEvent, MouseUpEvent,
+        MouseWheelEvent,
+    },
     gfx::WGfx,
     renderer_vk::{self},
 };
@@ -29,7 +32,7 @@ use winit::{
     keyboard::{KeyCode, PhysicalKey},
 };
 
-use crate::testbed::{testbed_dashboard::TestbedDashboard, testbed_generic::TestbedGeneric};
+use crate::testbed::testbed_generic::TestbedGeneric;
 
 mod assets;
 mod profiler;
@@ -53,11 +56,12 @@ fn init_logging() {
         .init();
 }
 
-fn load_testbed() -> anyhow::Result<Box<dyn Testbed>> {
+fn load_testbed(
+    listeners: &mut EventListenerCollection<(), ()>,
+) -> anyhow::Result<Box<dyn Testbed>> {
     let name = std::env::var("TESTBED").unwrap_or_default();
     Ok(match name.as_str() {
-        "dashboard" => Box::new(TestbedDashboard::new()?),
-        "" => Box::new(TestbedGeneric::new()?),
+        "" => Box::new(TestbedGeneric::new(listeners)?),
         _ => Box::new(TestbedAny::new(&name)?),
     })
 }
@@ -92,7 +96,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut scale = window.scale_factor() as f32;
 
-    let mut testbed = load_testbed()?;
+    let mut listeners = EventListenerCollection::default();
+
+    let mut testbed = load_testbed(&mut listeners)?;
 
     let mut mouse = Vec2::ZERO;
 
@@ -119,19 +125,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             } => match delta {
                 MouseScrollDelta::LineDelta(x, y) => testbed
                     .layout()
-                    .push_event(&wgui::event::Event::MouseWheel(MouseWheelEvent {
-                        shift: Vec2::new(x, y),
-                        pos: mouse / scale,
-                        device: 0,
-                    }))
+                    .push_event(
+                        &listeners,
+                        &wgui::event::Event::MouseWheel(MouseWheelEvent {
+                            shift: Vec2::new(x, y),
+                            pos: mouse / scale,
+                            device: 0,
+                        }),
+                        (&mut (), &mut ()),
+                    )
                     .unwrap(),
                 MouseScrollDelta::PixelDelta(pos) => testbed
                     .layout()
-                    .push_event(&wgui::event::Event::MouseWheel(MouseWheelEvent {
-                        shift: Vec2::new(pos.x as f32 / 5.0, pos.y as f32 / 5.0),
-                        pos: mouse / scale,
-                        device: 0,
-                    }))
+                    .push_event(
+                        &listeners,
+                        &wgui::event::Event::MouseWheel(MouseWheelEvent {
+                            shift: Vec2::new(pos.x as f32 / 5.0, pos.y as f32 / 5.0),
+                            pos: mouse / scale,
+                            device: 0,
+                        }),
+                        (&mut (), &mut ()),
+                    )
                     .unwrap(),
             },
             Event::WindowEvent {
@@ -142,20 +156,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if matches!(state, winit::event::ElementState::Pressed) {
                         testbed
                             .layout()
-                            .push_event(&wgui::event::Event::MouseDown(MouseDownEvent {
-                                pos: mouse / scale,
-                                button: MouseButton::Left,
-                                device: 0,
-                            }))
+                            .push_event(
+                                &listeners,
+                                &wgui::event::Event::MouseDown(MouseDownEvent {
+                                    pos: mouse / scale,
+                                    button: MouseButton::Left,
+                                    device: 0,
+                                }),
+                                (&mut (), &mut ()),
+                            )
                             .unwrap();
                     } else {
                         testbed
                             .layout()
-                            .push_event(&wgui::event::Event::MouseUp(MouseUpEvent {
-                                pos: mouse / scale,
-                                button: MouseButton::Left,
-                                device: 0,
-                            }))
+                            .push_event(
+                                &listeners,
+                                &wgui::event::Event::MouseUp(MouseUpEvent {
+                                    pos: mouse / scale,
+                                    button: MouseButton::Left,
+                                    device: 0,
+                                }),
+                                (&mut (), &mut ()),
+                            )
                             .unwrap();
                     }
                 }
@@ -167,10 +189,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 mouse = vec2(position.x as _, position.y as _);
                 testbed
                     .layout()
-                    .push_event(&wgui::event::Event::MouseMotion(MouseMotionEvent {
-                        pos: mouse / scale,
-                        device: 0,
-                    }))
+                    .push_event(
+                        &listeners,
+                        &wgui::event::Event::MouseMotion(MouseMotionEvent {
+                            pos: mouse / scale,
+                            device: 0,
+                        }),
+                        (&mut (), &mut ()),
+                    )
                     .unwrap();
             }
             Event::WindowEvent {

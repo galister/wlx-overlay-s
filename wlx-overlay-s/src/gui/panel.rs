@@ -4,8 +4,8 @@ use glam::{Vec2, vec2};
 use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 use wgui::{
     event::{
-        Event as WguiEvent, MouseButton, MouseDownEvent, MouseLeaveEvent, MouseMotionEvent,
-        MouseUpEvent, MouseWheelEvent,
+        Event as WguiEvent, EventListenerCollection, InternalStateChangeEvent, MouseButton,
+        MouseDownEvent, MouseLeaveEvent, MouseMotionEvent, MouseUpEvent, MouseWheelEvent,
     },
     layout::Layout,
     parser::ParserResult,
@@ -22,21 +22,25 @@ use crate::{
     state::AppState,
 };
 
-use super::{asset::GuiAsset, timestep::Timestep};
+use super::{asset::GuiAsset, timer::GuiTimer, timestep::Timestep};
 
 const MAX_SIZE: u32 = 2048;
 const MAX_SIZE_VEC2: Vec2 = vec2(MAX_SIZE as _, MAX_SIZE as _);
 
-pub struct GuiPanel {
+pub struct GuiPanel<S> {
     pub layout: Layout,
+    pub state: S,
+    pub timers: Vec<GuiTimer>,
+    pub listeners: EventListenerCollection<AppState, S>,
     context: WguiContext,
     timestep: Timestep,
 }
 
-impl GuiPanel {
+impl<S> GuiPanel<S> {
     pub fn new_from_template(
         app: &mut AppState,
         path: &str,
+        state: S,
     ) -> anyhow::Result<(Self, ParserResult)> {
         let (layout, parser_result) =
             wgui::parser::new_layout_from_assets(Box::new(gui::asset::GuiAsset {}), path)?;
@@ -50,12 +54,15 @@ impl GuiPanel {
                 layout,
                 context,
                 timestep,
+                state,
+                timers: vec![],
+                listeners: EventListenerCollection::default(),
             },
             parser_result,
         ))
     }
 
-    pub fn new_blank(app: &mut AppState) -> anyhow::Result<Self> {
+    pub fn new_blank(app: &mut AppState, state: S) -> anyhow::Result<Self> {
         let layout = Layout::new(Box::new(GuiAsset {}))?;
         let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
         let mut timestep = Timestep::new();
@@ -65,15 +72,27 @@ impl GuiPanel {
             layout,
             context,
             timestep,
+            state,
+            timers: vec![],
+            listeners: EventListenerCollection::default(),
         })
     }
 
     pub fn update_layout(&mut self) -> anyhow::Result<()> {
         self.layout.update(MAX_SIZE_VEC2, 0.0)
     }
+
+    pub fn push_event(&mut self, app: &mut AppState, event: &WguiEvent) {
+        if let Err(e) = self
+            .layout
+            .push_event(&self.listeners, event, (app, &mut self.state))
+        {
+            log::error!("Failed to push event: {e:?}");
+        }
+    }
 }
 
-impl OverlayBackend for GuiPanel {
+impl<S> OverlayBackend for GuiPanel<S> {
     fn set_renderer(&mut self, _: Box<dyn OverlayRenderer>) {
         log::debug!("Attempted to replace renderer on GuiPanel!");
     }
@@ -82,24 +101,29 @@ impl OverlayBackend for GuiPanel {
     }
 }
 
-impl InteractionHandler for GuiPanel {
-    fn on_scroll(&mut self, _app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32) {
+impl<S> InteractionHandler for GuiPanel<S> {
+    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32) {
         self.layout
-            .push_event(&WguiEvent::MouseWheel(MouseWheelEvent {
-                shift: vec2(delta_x, delta_y),
-                pos: hit.uv * self.layout.content_size,
-                device: hit.pointer,
-            }))
+            .push_event(
+                &self.listeners,
+                &WguiEvent::MouseWheel(MouseWheelEvent {
+                    shift: vec2(delta_x, delta_y),
+                    pos: hit.uv * self.layout.content_size,
+                    device: hit.pointer,
+                }),
+                (app, &mut self.state),
+            )
             .unwrap(); // want panic
     }
 
-    fn on_hover(&mut self, _app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
-        self.layout
-            .push_event(&WguiEvent::MouseMotion(MouseMotionEvent {
+    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
+        self.push_event(
+            app,
+            &WguiEvent::MouseMotion(MouseMotionEvent {
                 pos: hit.uv * self.layout.content_size,
                 device: hit.pointer,
-            }))
-            .unwrap(); // want panic
+            }),
+        );
 
         self.layout
             .check_toggle_haptics_triggered()
@@ -110,13 +134,14 @@ impl InteractionHandler for GuiPanel {
             })
     }
 
-    fn on_left(&mut self, _app: &mut AppState, pointer: usize) {
-        self.layout
-            .push_event(&WguiEvent::MouseLeave(MouseLeaveEvent { device: pointer }))
-            .unwrap(); // want panic
+    fn on_left(&mut self, app: &mut AppState, pointer: usize) {
+        self.push_event(
+            app,
+            &WguiEvent::MouseLeave(MouseLeaveEvent { device: pointer }),
+        );
     }
 
-    fn on_pointer(&mut self, _app: &mut AppState, hit: &PointerHit, pressed: bool) {
+    fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool) {
         let button = match hit.mode {
             PointerMode::Left => MouseButton::Left,
             PointerMode::Right => MouseButton::Right,
@@ -125,26 +150,28 @@ impl InteractionHandler for GuiPanel {
         };
 
         if pressed {
-            self.layout
-                .push_event(&WguiEvent::MouseDown(MouseDownEvent {
+            self.push_event(
+                app,
+                &WguiEvent::MouseDown(MouseDownEvent {
                     pos: hit.uv * self.layout.content_size,
                     button,
                     device: hit.pointer,
-                }))
-                .unwrap(); // want panic
+                }),
+            );
         } else {
-            self.layout
-                .push_event(&WguiEvent::MouseUp(MouseUpEvent {
+            self.push_event(
+                app,
+                &WguiEvent::MouseUp(MouseUpEvent {
                     pos: hit.uv * self.layout.content_size,
                     button,
                     device: hit.pointer,
-                }))
-                .unwrap(); // want panic
+                }),
+            );
         }
     }
 }
 
-impl OverlayRenderer for GuiPanel {
+impl<S> OverlayRenderer for GuiPanel<S> {
     fn init(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
         if self.layout.content_size.x * self.layout.content_size.y == 0.0 {
             self.update_layout()?;
@@ -161,7 +188,15 @@ impl OverlayRenderer for GuiPanel {
         Ok(())
     }
 
-    fn should_render(&mut self, _app: &mut AppState) -> anyhow::Result<ShouldRender> {
+    fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
+        //TODO: this only executes one timer event per frame
+        if let Some(signal) = self.timers.iter_mut().find_map(GuiTimer::check_tick) {
+            self.push_event(
+                app,
+                &WguiEvent::InternalStateChange(InternalStateChangeEvent { metadata: signal }),
+            );
+        }
+
         while self.timestep.on_tick() {
             self.layout.tick()?;
         }

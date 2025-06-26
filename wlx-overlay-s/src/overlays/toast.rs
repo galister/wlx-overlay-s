@@ -166,7 +166,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
         toast.title
     };
 
-    let mut panel = GuiPanel::new_blank(app).ok()?;
+    let mut panel = GuiPanel::new_blank(app, ()).ok()?;
 
     let (rect, _) = panel
         .layout

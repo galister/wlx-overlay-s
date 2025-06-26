@@ -5,7 +5,9 @@ use crate::{
 	animation,
 	any::AnyTrait,
 	drawing,
-	event::{CallbackData, Event, EventListener, MouseWheelEvent},
+	event::{
+		CallbackData, CallbackMetadata, Event, EventListener, EventListenerKind, MouseWheelEvent,
+	},
 	layout::{Layout, WidgetID, WidgetMap},
 	transform_stack::TransformStack,
 };
@@ -70,7 +72,6 @@ impl WidgetData {
 pub struct WidgetState {
 	pub data: WidgetData,
 	pub obj: Box<dyn WidgetObj>,
-	pub event_listeners: Vec<EventListener>,
 }
 
 impl WidgetState {
@@ -88,7 +89,6 @@ impl WidgetState {
 				scrolling: Vec2::default(),
 				transform: glam::Mat4::IDENTITY,
 			},
-			event_listeners: Vec::new(),
 			obj,
 		})
 	}
@@ -182,9 +182,9 @@ impl dyn WidgetObj {
 }
 
 macro_rules! call_event {
-	($self:ident, $widget_id:ident, $node_id:ident, $params:ident, $ev:ident, $cb_arg:expr) => {
-		for listener in &$self.event_listeners {
-			if let EventListener::$ev(callback) = listener {
+	($self:ident, $listeners:ident, $widget_id:ident, $node_id:ident, $params:ident, $kind:ident, $user_data:expr, $metadata:expr) => {
+		for listener in $listeners {
+			if let Some(callback) = listener.callback_for_kind(EventListenerKind::$kind) {
 				let mut data = CallbackData {
 					obj: $self.obj.as_mut(),
 					widget_data: &mut $self.data,
@@ -195,8 +195,9 @@ macro_rules! call_event {
 					$node_id,
 					needs_redraw: false,
 					trigger_haptics: false,
+					metadata: $metadata,
 				};
-				callback(&mut data, $cb_arg);
+				callback(&mut data, $user_data.0, $user_data.1);
 				if data.trigger_haptics {
 					*$params.trigger_haptics = true;
 				}
@@ -209,10 +210,6 @@ macro_rules! call_event {
 }
 
 impl WidgetState {
-	pub fn add_event_listener(&mut self, listener: EventListener) {
-		self.event_listeners.push(listener);
-	}
-
 	pub fn get_scroll_shift(&self, info: &ScrollbarInfo, l: &taffy::Layout) -> Vec2 {
 		Vec2::new(
 			(info.content_size.x - l.content_box_width()) * self.data.scrolling.x,
@@ -322,11 +319,13 @@ impl WidgetState {
 		true
 	}
 
-	pub fn process_event(
+	pub fn process_event<U1, U2>(
 		&mut self,
 		widget_id: WidgetID,
+		listeners: &[EventListener<U1, U2>],
 		node_id: taffy::NodeId,
 		event: &Event,
+		user_data: &mut (&mut U1, &mut U2),
 		params: &mut EventParams,
 	) -> EventResult {
 		let hovered = event.test_mouse_within_transform(params.transform_stack.get());
@@ -334,12 +333,30 @@ impl WidgetState {
 		match &event {
 			Event::MouseDown(e) => {
 				if hovered && self.data.set_device_pressed(e.device, true) {
-					call_event!(self, widget_id, node_id, params, MousePress, e.button);
+					call_event!(
+						self,
+						listeners,
+						widget_id,
+						node_id,
+						params,
+						MousePress,
+						user_data,
+						CallbackMetadata::MouseButton(e.button)
+					);
 				}
 			}
 			Event::MouseUp(e) => {
 				if self.data.set_device_pressed(e.device, false) {
-					call_event!(self, widget_id, node_id, params, MouseRelease, e.button);
+					call_event!(
+						self,
+						listeners,
+						widget_id,
+						node_id,
+						params,
+						MouseRelease,
+						user_data,
+						CallbackMetadata::MouseButton(e.button)
+					);
 				}
 			}
 			Event::MouseWheel(e) => {
@@ -350,25 +367,54 @@ impl WidgetState {
 			Event::MouseMotion(e) => {
 				if self.data.set_device_hovered(e.device, hovered) {
 					if self.data.is_hovered() {
-						call_event!(self, widget_id, node_id, params, MouseEnter, ());
+						call_event!(
+							self,
+							listeners,
+							widget_id,
+							node_id,
+							params,
+							MouseEnter,
+							user_data,
+							CallbackMetadata::None
+						);
 					} else {
-						call_event!(self, widget_id, node_id, params, MouseLeave, ());
+						call_event!(
+							self,
+							listeners,
+							widget_id,
+							node_id,
+							params,
+							MouseLeave,
+							user_data,
+							CallbackMetadata::None
+						);
 					}
 				}
 			}
 			Event::MouseLeave(e) => {
 				if self.data.set_device_hovered(e.device, false) {
-					call_event!(self, widget_id, node_id, params, MouseLeave, ());
+					call_event!(
+						self,
+						listeners,
+						widget_id,
+						node_id,
+						params,
+						MouseLeave,
+						user_data,
+						CallbackMetadata::None
+					);
 				}
 			}
 			Event::InternalStateChange(e) => {
 				call_event!(
 					self,
+					listeners,
 					widget_id,
 					node_id,
 					params,
 					InternalStateChange,
-					e.metadata
+					user_data,
+					CallbackMetadata::Custom(e.metadata)
 				);
 			}
 		}

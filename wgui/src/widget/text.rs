@@ -50,6 +50,10 @@ impl TextLabel {
 	}
 
 	pub fn set_text(&mut self, text: &str) {
+		if self.params.content.as_str() == text {
+			return;
+		}
+
 		self.params.content = String::from(text);
 		let attrs = Attrs::from(&self.params.style);
 		let mut font_system = FONT_SYSTEM.lock().unwrap(); // safe unwrap
@@ -62,6 +66,10 @@ impl TextLabel {
 			Shaping::Advanced,
 			self.params.style.align.map(|a| a.into()),
 		);
+	}
+
+	pub fn get_text(&self) -> &str {
+		&self.params.content
 	}
 }
 

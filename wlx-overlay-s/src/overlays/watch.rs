@@ -1,54 +1,101 @@
+use std::{rc::Rc, time::Duration};
+
+use chrono::Local;
+use chrono_tz::Tz;
 use glam::Vec3A;
+use regex::Regex;
 use wgui::{
-    parser::parse_color_hex,
-    taffy::{self, prelude::length},
-    widget::{
-        rectangle::{Rectangle, RectangleParams},
-        util::WLength,
-    },
+    event::{self, EventListenerKind},
+    widget::text::TextLabel,
 };
 
 use crate::{
     backend::overlay::{OverlayData, OverlayState, Positioning, Z_ORDER_WATCH, ui_transform},
-    gui::panel::GuiPanel,
+    gui::{panel::GuiPanel, timer::GuiTimer},
     state::AppState,
 };
 
 pub const WATCH_NAME: &str = "watch";
 
+struct WatchState {}
+
+#[allow(clippy::significant_drop_tightening)]
 pub fn create_watch<O>(app: &mut AppState) -> anyhow::Result<OverlayData<O>>
 where
     O: Default,
 {
-    let (mut panel, parser) = GuiPanel::new_from_template(app, "gui/watch.xml")?;
+    let state = WatchState {};
+    let (mut panel, parser) = GuiPanel::new_from_template(app, "gui/watch.xml", state)?;
 
-    for (id, widget) in parser.ids.iter() {
-        if id.starts_with("clock") {}
+    panel
+        .timers
+        .push(GuiTimer::new(Duration::from_millis(100), 0));
+
+    let clock_regex = Regex::new(r"^clock([0-9])_([a-z]+)$").unwrap();
+
+    for (id, widget_id) in parser.ids {
+        if let Some(cap) = clock_regex.captures(&id) {
+            let tz_idx: usize = cap.get(1).unwrap().as_str().parse().unwrap(); // safe due to regex
+            let tz_str = (tz_idx > 0)
+                .then(|| app.session.config.timezones.get(tz_idx - 1))
+                .flatten();
+            let role = cap.get(2).unwrap().as_str();
+
+            let mut widget = panel
+                .layout
+                .widget_map
+                .get_mut(widget_id)
+                .unwrap() // want panic
+                .lock()
+                .unwrap(); // want panic
+
+            let label = widget.obj.get_as_mut::<TextLabel>();
+
+            let format = match role {
+                "tz" => {
+                    if let Some(s) =
+                        tz_str.and_then(|tz| tz.split('/').next_back().map(|x| x.replace('_', " ")))
+                    {
+                        label.set_text(&s);
+                    } else {
+                        label.set_text("Local");
+                    }
+
+                    continue;
+                }
+                "date" => "%x",
+                "dow" => "%A",
+                "time" => {
+                    if app.session.config.clock_12h {
+                        "%I:%M %p"
+                    } else {
+                        "%H:%M"
+                    }
+                }
+                _ => {
+                    label.set_text("ERR");
+                    continue;
+                }
+            };
+
+            let clock = ClockState {
+                timezone: tz_str.and_then(|tz| {
+                    tz.parse()
+                        .inspect_err(|e| log::warn!("Invalid timezone: {e:?}"))
+                        .ok()
+                }),
+                format: format.into(),
+            };
+
+            panel.listeners.add(
+                widget_id,
+                EventListenerKind::InternalStateChange,
+                Box::new(move |data, _, _| {
+                    clock_on_tick(&clock, data);
+                }),
+            );
+        }
     }
-
-    if let Ok(clock) = parser.require_by_id("clock0") {}
-
-    let (_, _) = panel.layout.add_child(
-        panel.layout.root_widget,
-        Rectangle::create(RectangleParams {
-            color: wgui::drawing::Color::new(0., 0., 0., 0.5),
-            border_color: parse_color_hex("#00ffff").unwrap(),
-            border: 2.0,
-            round: WLength::Units(4.0),
-            ..Default::default()
-        })
-        .unwrap(),
-        taffy::Style {
-            size: taffy::Size {
-                width: length(100.),
-                height: length(50.),
-            },
-            align_items: Some(taffy::AlignItems::Center),
-            justify_content: Some(taffy::JustifyContent::Center),
-            padding: length(4.0),
-            ..Default::default()
-        },
-    )?;
 
     let positioning = Positioning::FollowHand {
         hand: app.session.config.watch_hand as _,
@@ -102,4 +149,19 @@ where
         watch.state.alpha += 0.1;
         watch.state.alpha = watch.state.alpha.clamp(0., 1.);
     }
+}
+
+struct ClockState {
+    timezone: Option<Tz>,
+    format: Rc<str>,
+}
+
+fn clock_on_tick(clock: &ClockState, data: &mut event::CallbackData) {
+    let date_time = clock.timezone.as_ref().map_or_else(
+        || format!("{}", Local::now().format(&clock.format)),
+        |tz| format!("{}", Local::now().with_timezone(tz).format(&clock.format)),
+    );
+
+    let label = data.obj.get_as_mut::<TextLabel>();
+    label.set_text(&date_time);
 }

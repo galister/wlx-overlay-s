@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use crate::{
 	animation::{self, Animations},
 	assets::AssetProvider,
-	event::{self, EventListener},
+	event::{self, EventListenerCollection},
 	transform_stack::{Transform, TransformStack},
 	widget::{self, EventParams, WidgetState, div::Div},
 };
@@ -89,26 +89,30 @@ impl Layout {
 		)
 	}
 
-	fn push_event_children(
+	fn push_event_children<U1, U2>(
 		&self,
+		listeners: &EventListenerCollection<U1, U2>,
 		parent_node_id: taffy::NodeId,
 		state: &mut PushEventState,
 		event: &event::Event,
 		dirty_nodes: &mut Vec<taffy::NodeId>,
+		user_data: &mut (&mut U1, &mut U2),
 	) -> anyhow::Result<()> {
 		for child_id in self.tree.child_ids(parent_node_id) {
-			self.push_event_widget(state, child_id, event, dirty_nodes)?;
+			self.push_event_widget(listeners, state, child_id, event, dirty_nodes, user_data)?;
 		}
 
 		Ok(())
 	}
 
-	fn push_event_widget(
+	fn push_event_widget<U1, U2>(
 		&self,
+		listeners: &EventListenerCollection<U1, U2>,
 		state: &mut PushEventState,
 		node_id: taffy::NodeId,
 		event: &event::Event,
 		dirty_nodes: &mut Vec<taffy::NodeId>,
+		user_data: &mut (&mut U1, &mut U2),
 	) -> anyhow::Result<()> {
 		let l = self.tree.layout(node_id)?;
 		let Some(widget_id) = self.tree.get_node_context(node_id).cloned() else {
@@ -134,38 +138,42 @@ impl Layout {
 
 		let mut iter_children = true;
 
-		match widget.process_event(
-			widget_id,
-			node_id,
-			event,
-			&mut EventParams {
-				transform_stack: state.transform_stack,
-				widgets: &self.widget_map,
-				tree: &self.tree,
-				animations: state.animations,
-				needs_redraw: &mut state.needs_redraw,
-				trigger_haptics: &mut state.trigger_haptics,
+		if let Some(listeners) = listeners.get(widget_id) {
+			match widget.process_event(
+				widget_id,
+				listeners,
 				node_id,
-				style,
-				taffy_layout: l,
-				dirty_nodes,
-			},
-		) {
-			widget::EventResult::Pass => {
-				// go on
-			}
-			widget::EventResult::Consumed => {
-				iter_children = false;
-			}
-			widget::EventResult::Outside => {
-				iter_children = false;
+				event,
+				user_data,
+				&mut EventParams {
+					transform_stack: state.transform_stack,
+					widgets: &self.widget_map,
+					tree: &self.tree,
+					animations: state.animations,
+					needs_redraw: &mut state.needs_redraw,
+					trigger_haptics: &mut state.trigger_haptics,
+					node_id,
+					style,
+					taffy_layout: l,
+					dirty_nodes,
+				},
+			) {
+				widget::EventResult::Pass => {
+					// go on
+				}
+				widget::EventResult::Consumed => {
+					iter_children = false;
+				}
+				widget::EventResult::Outside => {
+					iter_children = false;
+				}
 			}
 		}
 
 		drop(widget); // free mutex
 
 		if iter_children {
-			self.push_event_children(node_id, state, event, dirty_nodes)?;
+			self.push_event_children(listeners, node_id, state, event, dirty_nodes, user_data)?;
 		}
 
 		state.transform_stack.pop();
@@ -191,7 +199,12 @@ impl Layout {
 		}
 	}
 
-	pub fn push_event(&mut self, event: &event::Event) -> anyhow::Result<()> {
+	pub fn push_event<U1, U2>(
+		&mut self,
+		listeners: &EventListenerCollection<U1, U2>,
+		event: &event::Event,
+		mut user_data: (&mut U1, &mut U2),
+	) -> anyhow::Result<()> {
 		let mut transform_stack = TransformStack::new();
 		let mut animations_to_add = Vec::<animation::Animation>::new();
 		let mut dirty_nodes = Vec::new();
@@ -203,7 +216,14 @@ impl Layout {
 			trigger_haptics: false,
 		};
 
-		self.push_event_widget(&mut state, self.root_node, event, &mut dirty_nodes)?;
+		self.push_event_widget(
+			listeners,
+			&mut state,
+			self.root_node,
+			event,
+			&mut dirty_nodes,
+			&mut user_data,
+		)?;
 
 		for node in dirty_nodes {
 			self.tree.mark_dirty(node)?;
@@ -338,14 +358,5 @@ impl Layout {
 		}
 
 		Ok(())
-	}
-
-	// helper function
-	pub fn add_event_listener(&self, widget_id: WidgetID, listener: EventListener) {
-		let Some(widget) = self.widget_map.get(widget_id) else {
-			debug_assert!(false);
-			return;
-		};
-		widget.lock().unwrap().add_event_listener(listener);
 	}
 }

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use glam::{Vec3A, vec2};
+use glam::Vec3A;
 
 use crate::{
     backend::overlay::{OverlayBackend, OverlayState},
@@ -18,7 +18,7 @@ pub fn create_custom(
 
     unreachable!();
 
-    let panel = GuiPanel::new_blank(app).ok()?;
+    let panel = GuiPanel::new_blank(app, ()).ok()?;
     panel.update_layout().ok()?;
 
     let state = OverlayState {

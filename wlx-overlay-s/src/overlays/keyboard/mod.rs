@@ -1,7 +1,6 @@
 use std::{
-    cell::{Cell, RefCell},
+    cell::Cell,
     process::{Child, Command},
-    rc::Rc,
     sync::Arc,
 };
 
@@ -29,23 +28,7 @@ pub const KEYBOARD_NAME: &str = "kbd";
 const AUTO_RELEASE_MODS: [KeyModifier; 5] = [SHIFT, CTRL, ALT, SUPER, META];
 
 struct KeyboardBackend {
-    panel: GuiPanel,
-    state: Rc<RefCell<KeyboardState>>,
-}
-
-impl KeyboardBackend {
-    fn handle_invoke(&mut self, app: &mut AppState) {
-        let mut keyboard = self.state.borrow_mut();
-        let Some(action) = keyboard.invoke_action.take() else {
-            return;
-        };
-
-        if action.pressed {
-            handle_press(app, &action.key, &mut keyboard, action.button);
-        } else {
-            handle_release(app, &action.key, &mut keyboard);
-        }
-    }
+    panel: GuiPanel<KeyboardState>,
 }
 
 impl OverlayBackend for KeyboardBackend {
@@ -60,13 +43,10 @@ impl OverlayBackend for KeyboardBackend {
 impl InteractionHandler for KeyboardBackend {
     fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool) {
         self.panel.on_pointer(app, hit, pressed);
-        self.handle_invoke(app);
-        let _ = self
-            .panel
-            .layout
-            .push_event(&wgui::event::Event::InternalStateChange(
-                InternalStateChangeEvent { metadata: 0 },
-            ));
+        self.panel.push_event(
+            app,
+            &wgui::event::Event::InternalStateChange(InternalStateChangeEvent { metadata: 0 }),
+        );
     }
     fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32) {
         self.panel.on_scroll(app, hit, delta_y, delta_x);
@@ -99,29 +79,21 @@ impl OverlayRenderer for KeyboardBackend {
         self.panel.frame_meta()
     }
     fn pause(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        self.state.borrow_mut().modifiers = 0;
+        self.panel.state.modifiers = 0;
         app.hid_provider.set_modifiers_routed(0);
         self.panel.pause(app)
     }
     fn resume(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         self.panel.resume(app)?;
-        self.panel
-            .layout
-            .push_event(&wgui::event::Event::InternalStateChange(
-                InternalStateChangeEvent { metadata: 0 },
-            ))?;
+        self.panel.push_event(
+            app,
+            &wgui::event::Event::InternalStateChange(InternalStateChangeEvent { metadata: 0 }),
+        );
         Ok(())
     }
 }
 
-struct InvokeAction {
-    key: Rc<KeyState>,
-    button: MouseButton,
-    pressed: bool,
-}
-
 struct KeyboardState {
-    invoke_action: Option<InvokeAction>,
     modifiers: KeyModifier,
     alt_modifier: KeyModifier,
     processes: Vec<Child>,
@@ -207,7 +179,7 @@ fn handle_press(
     }
 }
 
-fn handle_release(app: &mut AppState, key: &KeyState, keyboard: &mut KeyboardState) {
+fn handle_release(app: &mut AppState, key: &KeyState, keyboard: &mut KeyboardState) -> bool {
     match &key.button_state {
         KeyButtonData::Key { vk, pressed } => {
             pressed.set(false);
@@ -219,11 +191,15 @@ fn handle_release(app: &mut AppState, key: &KeyState, keyboard: &mut KeyboardSta
             }
             app.hid_provider.send_key_routed(*vk, false);
             app.hid_provider.set_modifiers_routed(keyboard.modifiers);
+            true
         }
         KeyButtonData::Modifier { modifier, sticky } => {
-            if !sticky.get() {
+            if sticky.get() {
+                false
+            } else {
                 keyboard.modifiers &= !*modifier;
                 app.hid_provider.set_modifiers_routed(keyboard.modifiers);
+                true
             }
         }
         KeyButtonData::Exec {
@@ -241,7 +217,8 @@ fn handle_release(app: &mut AppState, key: &KeyState, keyboard: &mut KeyboardSta
                     keyboard.processes.push(child);
                 }
             }
+            true
         }
-        _ => {}
+        _ => true,
     }
 }

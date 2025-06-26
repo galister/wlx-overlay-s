@@ -11,7 +11,7 @@ pub fn create_anchor<O>(app: &mut AppState) -> anyhow::Result<OverlayData<O>>
 where
     O: Default,
 {
-    let (panel, _) = GuiPanel::new_from_template(app, "gui/anchor.xml")?;
+    let (panel, _) = GuiPanel::new_from_template(app, "gui/anchor.xml", ())?;
 
     Ok(OverlayData {
         state: OverlayState {

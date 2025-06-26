@@ -1,6 +1,4 @@
 <layout>
-  <include src="wlx_theme.xml" />
-
   <theme>
     <var key="border" value="2" />
     <var key="kbd_color" value="#a6da95" />
@@ -33,7 +31,7 @@
         </div>
         <div flex_direction="row">
           <div id="clock_main" flex_direction="column" padding="4">
-            <label text="23:59" id="clock0" color="~clock0_color" size="~clock0_size" weight="bold" />
+            <label text="23:59" id="clock0_time" color="~clock0_color" size="~clock0_size" weight="bold" />
             <label text="22/2/2022" id="clock0_date" color="~clock0_color" size="~clock0_date_size" weight="bold" />
             <div width="100%" padding="2" />
             <label text="Friday" id="clock0_dow" color="~clock0_color" size="~clock0_dow_size" weight="bold" />
