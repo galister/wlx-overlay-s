@@ -1,3 +1,4 @@
+mod component_button;
 mod style;
 mod widget_div;
 mod widget_label;
@@ -9,8 +10,9 @@ use crate::{
 	drawing::{self},
 	layout::{Layout, WidgetID},
 	parser::{
-		widget_div::parse_widget_div, widget_label::parse_widget_label,
-		widget_rectangle::parse_widget_rectangle, widget_sprite::parse_widget_sprite,
+		component_button::parse_component_button, widget_div::parse_widget_div,
+		widget_label::parse_widget_label, widget_rectangle::parse_widget_rectangle,
+		widget_sprite::parse_widget_sprite,
 	},
 };
 use ouroboros::self_referencing;
@@ -542,6 +544,9 @@ fn parse_children<'a>(
 			}
 			"sprite" => {
 				parse_widget_sprite(file, ctx, child_node, parent_id)?;
+			}
+			"button" => {
+				parse_component_button(file, ctx, child_node, parent_id)?;
 			}
 			"" => { /* ignore */ }
 			other_tag_name => {

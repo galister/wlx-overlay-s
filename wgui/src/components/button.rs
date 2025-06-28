@@ -1,10 +1,9 @@
 use std::sync::Arc;
-
-use glam::Vec2;
 use taffy::{AlignItems, JustifyContent, prelude::length};
 
 use crate::{
 	animation::{Animation, AnimationEasing},
+	components::Component,
 	drawing::{self, Color},
 	event::WidgetCallback,
 	layout::{Layout, WidgetID},
@@ -19,7 +18,9 @@ use crate::{
 pub struct Params<'a> {
 	pub text: &'a str,
 	pub color: drawing::Color,
-	pub size: Vec2,
+	pub border_color: drawing::Color,
+	pub round: WLength,
+	pub style: taffy::Style,
 	pub text_style: TextStyle,
 }
 
@@ -28,18 +29,22 @@ impl Default for Params<'_> {
 		Self {
 			text: "Text",
 			color: drawing::Color::new(1.0, 1.0, 1.0, 1.0),
-			size: Vec2::new(128.0, 32.0),
+			border_color: drawing::Color::new(0.0, 0.0, 0.0, 1.0),
+			round: WLength::Units(4.0),
+			style: Default::default(),
 			text_style: TextStyle::default(),
 		}
 	}
 }
 
 pub struct Button {
-	color: drawing::Color,
+	pub color: drawing::Color,
 	pub body: WidgetID,    // Rectangle
 	pub text_id: WidgetID, // Text
 	text_node: taffy::NodeId,
 }
+
+impl Component for Button {}
 
 impl Button {
 	pub fn set_text<'a, C>(&self, callback_data: &mut C, text: &str)
@@ -95,23 +100,23 @@ pub fn construct(
 	parent: WidgetID,
 	params: Params,
 ) -> anyhow::Result<Arc<Button>> {
+	let mut style = params.style;
+
+	// force-override style
+	style.align_items = Some(AlignItems::Center);
+	style.justify_content = Some(JustifyContent::Center);
+	style.padding = length(1.0);
+
 	let (rect_id, _) = layout.add_child(
 		parent,
 		Rectangle::create(RectangleParams {
 			color: params.color,
-			round: WLength::Units(4.0),
+			round: params.round,
+			border_color: params.border_color,
+			border: 2.0,
 			..Default::default()
 		})?,
-		taffy::Style {
-			size: taffy::Size {
-				width: length(params.size.x),
-				height: length(params.size.y),
-			},
-			align_items: Some(AlignItems::Center),
-			justify_content: Some(JustifyContent::Center),
-			padding: length(1.0),
-			..Default::default()
-		},
+		style,
 	)?;
 
 	let light_text = (params.color.r + params.color.g + params.color.b) < 1.5;

@@ -1,5 +1,5 @@
 [profile.dev]
-opt-level = 0
+opt-level = 1
 debug = true
 strip = "none"
 debug-assertions = true

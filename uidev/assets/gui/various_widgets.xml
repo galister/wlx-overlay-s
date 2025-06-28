@@ -1,0 +1,14 @@
+<layout>
+  <elements>
+    <rectangle
+      color="#AAAAAA"
+      width="500" height="500" min_width="500" min_height="500"
+      gap="4" flex_direction="column">
+      <label text="aaa" color="#FFFFFF" />
+
+      <button text="Red button" width="128" height="32" color="#FF0000" />
+      <button text="Aqua button" width="128" height="32" color="#00FFFF" />
+      <button text="Yellow button" width="128" height="32" color="#FFFF00" />
+    </rectangle>
+  </elements>
+</layout>

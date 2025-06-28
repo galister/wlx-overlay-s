@@ -2,11 +2,10 @@ use crate::{
 	drawing::GradientMode,
 	layout::WidgetID,
 	parser::{
-		ParserContext, ParserFile, is_percent, iter_attribs, parse_children, parse_color_hex,
-		parse_f32, parse_percent, parse_universal, print_invalid_attrib, print_invalid_value,
-		style::style_from_node,
+		ParserContext, ParserFile, iter_attribs, parse_children, parse_universal, print_invalid_attrib,
+		style::{parse_color, parse_round, parse_style},
 	},
-	widget::{self, rectangle::RectangleParams, util::WLength},
+	widget::{self, rectangle::RectangleParams},
 };
 
 pub fn parse_widget_rectangle<'a>(
@@ -17,22 +16,15 @@ pub fn parse_widget_rectangle<'a>(
 ) -> anyhow::Result<()> {
 	let mut params = RectangleParams::default();
 	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
+	let style = parse_style(&attribs);
 
 	for (key, value) in attribs {
 		match &*key {
 			"color" => {
-				if let Some(color) = parse_color_hex(&value) {
-					params.color = color;
-				} else {
-					print_invalid_attrib(&key, &value);
-				}
+				parse_color(&value, &mut params.color);
 			}
 			"color2" => {
-				if let Some(color) = parse_color_hex(&value) {
-					params.color2 = color;
-				} else {
-					print_invalid_attrib(&key, &value);
-				}
+				parse_color(&value, &mut params.color2);
 			}
 			"gradient" => {
 				params.gradient = match &*value {
@@ -47,17 +39,7 @@ pub fn parse_widget_rectangle<'a>(
 				}
 			}
 			"round" => {
-				if is_percent(&value) {
-					if let Some(val) = parse_percent(&value) {
-						params.round = WLength::Percent(val);
-					} else {
-						print_invalid_value(&value);
-					}
-				} else if let Some(val) = parse_f32(&value) {
-					params.round = WLength::Units(val);
-				} else {
-					print_invalid_value(&value);
-				}
+				parse_round(&value, &mut params.round);
 			}
 			"border" => {
 				params.border = value.parse().unwrap_or_else(|_| {
@@ -66,17 +48,11 @@ pub fn parse_widget_rectangle<'a>(
 				});
 			}
 			"border_color" => {
-				if let Some(color) = parse_color_hex(&value) {
-					params.border_color = color;
-				} else {
-					print_invalid_attrib(&key, &value);
-				}
+				parse_color(&value, &mut params.border_color);
 			}
 			_ => {}
 		}
 	}
-
-	let style = style_from_node(file, ctx, node);
 
 	let (new_id, _) = ctx.layout.add_child(
 		parent_id,

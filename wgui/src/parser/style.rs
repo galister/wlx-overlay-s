@@ -1,75 +1,140 @@
+use std::rc::Rc;
+
 use taffy::{
 	AlignContent, AlignItems, AlignSelf, BoxSizing, Display, FlexDirection, FlexWrap, JustifyContent,
 	JustifySelf, Overflow,
 };
 
-use crate::parser::{
-	ParserContext, ParserFile, iter_attribs, parse_size_unit, parse_val, print_invalid_attrib,
+use crate::{
+	drawing,
+	parser::{
+		is_percent, parse_color_hex, parse_f32, parse_percent, parse_size_unit, parse_val,
+		print_invalid_attrib, print_invalid_value,
+	},
+	renderer_vk::text::{FontWeight, HorizontalAlign, TextStyle},
+	widget::util::WLength,
 };
 
-pub fn style_from_node<'a>(
-	file: &'a ParserFile,
-	ctx: &ParserContext,
-	node: roxmltree::Node<'a, 'a>,
-) -> taffy::Style {
+pub fn parse_round(value: &str, round: &mut WLength) {
+	if is_percent(value) {
+		if let Some(val) = parse_percent(value) {
+			*round = WLength::Percent(val);
+		} else {
+			print_invalid_value(value);
+		}
+	} else if let Some(val) = parse_f32(value) {
+		*round = WLength::Units(val);
+	} else {
+		print_invalid_value(value);
+	}
+}
+
+pub fn parse_color(value: &str, color: &mut drawing::Color) {
+	if let Some(res_color) = parse_color_hex(value) {
+		*color = res_color;
+	} else {
+		print_invalid_value(value);
+	}
+}
+
+pub fn parse_text_style(attribs: &[(Rc<str>, Rc<str>)]) -> TextStyle {
+	let mut style = TextStyle::default();
+
+	for (key, value) in attribs {
+		match key.as_ref() {
+			"color" => {
+				if let Some(color) = parse_color_hex(value) {
+					style.color = Some(color);
+				}
+			}
+			"align" => match value.as_ref() {
+				"left" => style.align = Some(HorizontalAlign::Left),
+				"right" => style.align = Some(HorizontalAlign::Right),
+				"center" => style.align = Some(HorizontalAlign::Center),
+				"justified" => style.align = Some(HorizontalAlign::Justified),
+				"end" => style.align = Some(HorizontalAlign::End),
+				_ => {
+					print_invalid_attrib(key, value);
+				}
+			},
+			"weight" => match value.as_ref() {
+				"normal" => style.weight = Some(FontWeight::Normal),
+				"bold" => style.weight = Some(FontWeight::Bold),
+				_ => {
+					print_invalid_attrib(key, value);
+				}
+			},
+			"size" => {
+				if let Ok(size) = value.parse::<f32>() {
+					style.size = Some(size);
+				} else {
+					print_invalid_attrib(key, value);
+				}
+			}
+			_ => {}
+		}
+	}
+
+	style
+}
+
+pub fn parse_style(attribs: &[(Rc<str>, Rc<str>)]) -> taffy::Style {
 	let mut style = taffy::Style {
 		..Default::default()
 	};
 
-	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
-
 	for (key, value) in attribs {
-		match &*key {
-			"display" => match &*value {
+		match key.as_ref() {
+			"display" => match value.as_ref() {
 				"flex" => style.display = Display::Flex,
 				"block" => style.display = Display::Block,
 				"grid" => style.display = Display::Grid,
 				_ => {
-					print_invalid_attrib(&key, &value);
+					print_invalid_attrib(key, value);
 				}
 			},
 			"margin_left" => {
-				if let Some(dim) = parse_size_unit(&value) {
+				if let Some(dim) = parse_size_unit(value) {
 					style.margin.left = dim;
 				}
 			}
 			"margin_right" => {
-				if let Some(dim) = parse_size_unit(&value) {
+				if let Some(dim) = parse_size_unit(value) {
 					style.margin.right = dim;
 				}
 			}
 			"margin_top" => {
-				if let Some(dim) = parse_size_unit(&value) {
+				if let Some(dim) = parse_size_unit(value) {
 					style.margin.top = dim;
 				}
 			}
 			"margin_bottom" => {
-				if let Some(dim) = parse_size_unit(&value) {
+				if let Some(dim) = parse_size_unit(value) {
 					style.margin.bottom = dim;
 				}
 			}
 			"padding_left" => {
-				if let Some(dim) = parse_size_unit(&value) {
+				if let Some(dim) = parse_size_unit(value) {
 					style.padding.left = dim;
 				}
 			}
 			"padding_right" => {
-				if let Some(dim) = parse_size_unit(&value) {
+				if let Some(dim) = parse_size_unit(value) {
 					style.padding.right = dim;
 				}
 			}
 			"padding_top" => {
-				if let Some(dim) = parse_size_unit(&value) {
+				if let Some(dim) = parse_size_unit(value) {
 					style.padding.top = dim;
 				}
 			}
 			"padding_bottom" => {
-				if let Some(dim) = parse_size_unit(&value) {
+				if let Some(dim) = parse_size_unit(value) {
 					style.padding.bottom = dim;
 				}
 			}
 			"margin" => {
-				if let Some(dim) = parse_size_unit(&value) {
+				if let Some(dim) = parse_size_unit(value) {
 					style.margin.left = dim;
 					style.margin.right = dim;
 					style.margin.top = dim;
@@ -77,14 +142,14 @@ pub fn style_from_node<'a>(
 				}
 			}
 			"padding" => {
-				if let Some(dim) = parse_size_unit(&value) {
+				if let Some(dim) = parse_size_unit(value) {
 					style.padding.left = dim;
 					style.padding.right = dim;
 					style.padding.top = dim;
 					style.padding.bottom = dim;
 				}
 			}
-			"overflow" => match &*value {
+			"overflow" => match value.as_ref() {
 				"hidden" => {
 					style.overflow.x = Overflow::Hidden;
 					style.overflow.y = Overflow::Hidden;
@@ -102,92 +167,92 @@ pub fn style_from_node<'a>(
 					style.overflow.y = Overflow::Scroll;
 				}
 				_ => {
-					print_invalid_attrib(&key, &value);
+					print_invalid_attrib(key, value);
 				}
 			},
-			"overflow_x" => match &*value {
+			"overflow_x" => match value.as_ref() {
 				"hidden" => style.overflow.x = Overflow::Hidden,
 				"visible" => style.overflow.x = Overflow::Visible,
 				"clip" => style.overflow.x = Overflow::Clip,
 				"scroll" => style.overflow.x = Overflow::Scroll,
 				_ => {
-					print_invalid_attrib(&key, &value);
+					print_invalid_attrib(key, value);
 				}
 			},
-			"overflow_y" => match &*value {
+			"overflow_y" => match value.as_ref() {
 				"hidden" => style.overflow.y = Overflow::Hidden,
 				"visible" => style.overflow.y = Overflow::Visible,
 				"clip" => style.overflow.y = Overflow::Clip,
 				"scroll" => style.overflow.y = Overflow::Scroll,
 				_ => {
-					print_invalid_attrib(&key, &value);
+					print_invalid_attrib(key, value);
 				}
 			},
 			"min_width" => {
-				if let Some(dim) = parse_size_unit(&value) {
+				if let Some(dim) = parse_size_unit(value) {
 					style.min_size.width = dim;
 				}
 			}
 			"min_height" => {
-				if let Some(dim) = parse_size_unit(&value) {
+				if let Some(dim) = parse_size_unit(value) {
 					style.min_size.height = dim;
 				}
 			}
 			"max_width" => {
-				if let Some(dim) = parse_size_unit(&value) {
+				if let Some(dim) = parse_size_unit(value) {
 					style.max_size.width = dim;
 				}
 			}
 			"max_height" => {
-				if let Some(dim) = parse_size_unit(&value) {
+				if let Some(dim) = parse_size_unit(value) {
 					style.max_size.height = dim;
 				}
 			}
 			"width" => {
-				if let Some(dim) = parse_size_unit(&value) {
+				if let Some(dim) = parse_size_unit(value) {
 					style.size.width = dim;
 				}
 			}
 			"height" => {
-				if let Some(dim) = parse_size_unit(&value) {
+				if let Some(dim) = parse_size_unit(value) {
 					style.size.height = dim;
 				}
 			}
 			"gap" => {
-				if let Some(val) = parse_size_unit(&value) {
+				if let Some(val) = parse_size_unit(value) {
 					style.gap = val;
 				}
 			}
 			"flex_basis" => {
-				if let Some(val) = parse_size_unit(&value) {
+				if let Some(val) = parse_size_unit(value) {
 					style.flex_basis = val;
 				}
 			}
 			"flex_grow" => {
-				if let Some(val) = parse_val(&value) {
+				if let Some(val) = parse_val(value) {
 					style.flex_grow = val;
 				}
 			}
 			"flex_shrink" => {
-				if let Some(val) = parse_val(&value) {
+				if let Some(val) = parse_val(value) {
 					style.flex_shrink = val;
 				}
 			}
-			"position" => match &*value {
+			"position" => match value.as_ref() {
 				"absolute" => style.position = taffy::Position::Absolute,
 				"relative" => style.position = taffy::Position::Relative,
 				_ => {
-					print_invalid_attrib(&key, &value);
+					print_invalid_attrib(key, value);
 				}
 			},
-			"box_sizing" => match &*value {
+			"box_sizing" => match value.as_ref() {
 				"border_box" => style.box_sizing = BoxSizing::BorderBox,
 				"content_box" => style.box_sizing = BoxSizing::ContentBox,
 				_ => {
-					print_invalid_attrib(&key, &value);
+					print_invalid_attrib(key, value);
 				}
 			},
-			"align_self" => match &*value {
+			"align_self" => match value.as_ref() {
 				"baseline" => style.align_self = Some(AlignSelf::Baseline),
 				"center" => style.align_self = Some(AlignSelf::Center),
 				"end" => style.align_self = Some(AlignSelf::End),
@@ -196,10 +261,10 @@ pub fn style_from_node<'a>(
 				"start" => style.align_self = Some(AlignSelf::Start),
 				"stretch" => style.align_self = Some(AlignSelf::Stretch),
 				_ => {
-					print_invalid_attrib(&key, &value);
+					print_invalid_attrib(key, value);
 				}
 			},
-			"justify_self" => match &*value {
+			"justify_self" => match value.as_ref() {
 				"center" => style.justify_self = Some(JustifySelf::Center),
 				"end" => style.justify_self = Some(JustifySelf::End),
 				"flex_end" => style.justify_self = Some(JustifySelf::FlexEnd),
@@ -207,10 +272,10 @@ pub fn style_from_node<'a>(
 				"start" => style.justify_self = Some(JustifySelf::Start),
 				"stretch" => style.justify_self = Some(JustifySelf::Stretch),
 				_ => {
-					print_invalid_attrib(&key, &value);
+					print_invalid_attrib(key, value);
 				}
 			},
-			"align_items" => match &*value {
+			"align_items" => match value.as_ref() {
 				"baseline" => style.align_items = Some(AlignItems::Baseline),
 				"center" => style.align_items = Some(AlignItems::Center),
 				"end" => style.align_items = Some(AlignItems::End),
@@ -219,10 +284,10 @@ pub fn style_from_node<'a>(
 				"start" => style.align_items = Some(AlignItems::Start),
 				"stretch" => style.align_items = Some(AlignItems::Stretch),
 				_ => {
-					print_invalid_attrib(&key, &value);
+					print_invalid_attrib(key, value);
 				}
 			},
-			"align_content" => match &*value {
+			"align_content" => match value.as_ref() {
 				"center" => style.align_content = Some(AlignContent::Center),
 				"end" => style.align_content = Some(AlignContent::End),
 				"flex_end" => style.align_content = Some(AlignContent::FlexEnd),
@@ -233,10 +298,10 @@ pub fn style_from_node<'a>(
 				"start" => style.align_content = Some(AlignContent::Start),
 				"stretch" => style.align_content = Some(AlignContent::Stretch),
 				_ => {
-					print_invalid_attrib(&key, &value);
+					print_invalid_attrib(key, value);
 				}
 			},
-			"justify_content" => match &*value {
+			"justify_content" => match value.as_ref() {
 				"center" => style.justify_content = Some(JustifyContent::Center),
 				"end" => style.justify_content = Some(JustifyContent::End),
 				"flex_end" => style.justify_content = Some(JustifyContent::FlexEnd),
@@ -247,22 +312,22 @@ pub fn style_from_node<'a>(
 				"start" => style.justify_content = Some(JustifyContent::Start),
 				"stretch" => style.justify_content = Some(JustifyContent::Stretch),
 				_ => {
-					print_invalid_attrib(&key, &value);
+					print_invalid_attrib(key, value);
 				}
 			},
-			"flex_wrap" => match &*value {
+			"flex_wrap" => match value.as_ref() {
 				"wrap" => style.flex_wrap = FlexWrap::Wrap,
 				"no_wrap" => style.flex_wrap = FlexWrap::NoWrap,
 				"wrap_reverse" => style.flex_wrap = FlexWrap::WrapReverse,
 				_ => {}
 			},
-			"flex_direction" => match &*value {
+			"flex_direction" => match value.as_ref() {
 				"column_reverse" => style.flex_direction = FlexDirection::ColumnReverse,
 				"column" => style.flex_direction = FlexDirection::Column,
 				"row_reverse" => style.flex_direction = FlexDirection::RowReverse,
 				"row" => style.flex_direction = FlexDirection::Row,
 				_ => {
-					print_invalid_attrib(&key, &value);
+					print_invalid_attrib(key, value);
 				}
 			},
 			_ => {}

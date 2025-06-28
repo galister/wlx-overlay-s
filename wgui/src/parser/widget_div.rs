@@ -1,6 +1,8 @@
 use crate::{
 	layout::WidgetID,
-	parser::{ParserContext, ParserFile, parse_children, parse_universal, style::style_from_node},
+	parser::{
+		ParserContext, ParserFile, iter_attribs, parse_children, parse_universal, style::parse_style,
+	},
 	widget,
 };
 
@@ -10,7 +12,8 @@ pub fn parse_widget_div<'a>(
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
-	let style = style_from_node(file, ctx, node);
+	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
+	let style = parse_style(&attribs);
 
 	let (new_id, _) = ctx
 		.layout

@@ -1,8 +1,7 @@
 use crate::{
 	layout::WidgetID,
 	parser::{
-		ParserContext, ParserFile, iter_attribs, parse_children, parse_universal,
-		style::style_from_node,
+		ParserContext, ParserFile, iter_attribs, parse_children, parse_universal, style::parse_style,
 	},
 	renderer_vk::text::custom_glyph::{CustomGlyphContent, CustomGlyphData},
 	widget::sprite::{SpriteBox, SpriteBoxParams},
@@ -18,6 +17,7 @@ pub fn parse_widget_sprite<'a>(
 ) -> anyhow::Result<()> {
 	let mut params = SpriteBoxParams::default();
 	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
+	let style = parse_style(&attribs);
 
 	let mut glyph = None;
 	for (key, value) in attribs {
@@ -52,8 +52,6 @@ pub fn parse_widget_sprite<'a>(
 	} else {
 		log::warn!("No source for sprite node!");
 	};
-
-	let style = style_from_node(file, ctx, node);
 
 	let (new_id, _) = ctx
 		.layout
