@@ -134,6 +134,7 @@ pub enum EventListenerKind {
 	MousePress,
 	MouseRelease,
 	MouseEnter,
+	MouseMotion,
 	MouseLeave,
 	InternalStateChange,
 }

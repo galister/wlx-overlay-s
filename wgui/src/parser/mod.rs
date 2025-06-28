@@ -1,4 +1,5 @@
 mod component_button;
+mod component_slider;
 mod style;
 mod widget_div;
 mod widget_label;
@@ -11,9 +12,9 @@ use crate::{
 	event::EventListenerCollection,
 	layout::{Layout, WidgetID},
 	parser::{
-		component_button::parse_component_button, widget_div::parse_widget_div,
-		widget_label::parse_widget_label, widget_rectangle::parse_widget_rectangle,
-		widget_sprite::parse_widget_sprite,
+		component_button::parse_component_button, component_slider::parse_component_slider,
+		widget_div::parse_widget_div, widget_label::parse_widget_label,
+		widget_rectangle::parse_widget_rectangle, widget_sprite::parse_widget_sprite,
 	},
 };
 use ouroboros::self_referencing;
@@ -59,11 +60,11 @@ impl ParserResult {
 		}
 	}
 
-	pub fn process_template(
+	pub fn process_template<U1, U2>(
 		&mut self,
 		template_name: &str,
 		layout: &mut Layout,
-		listeners: &mut EventListenerCollection<(), ()>,
+		listeners: &mut EventListenerCollection<U1, U2>,
 		widget_id: WidgetID,
 		template_parameters: HashMap<Rc<str>, Rc<str>>,
 	) -> anyhow::Result<()> {
@@ -108,9 +109,9 @@ struct MacroAttribs {
 	attribs: HashMap<Rc<str>, Rc<str>>,
 }
 
-struct ParserContext<'a> {
+struct ParserContext<'a, U1, U2> {
 	layout: &'a mut Layout,
-	listeners: &'a mut EventListenerCollection<(), ()>,
+	listeners: &'a mut EventListenerCollection<U1, U2>,
 	var_map: HashMap<Rc<str>, Rc<str>>,
 	macro_attribs: HashMap<Rc<str>, MacroAttribs>,
 	ids: HashMap<Rc<str>, WidgetID>,
@@ -208,6 +209,16 @@ fn parse_f32(value: &str) -> Option<f32> {
 	value.parse::<f32>().ok()
 }
 
+fn parse_check_f32(value: &str, num: &mut f32) -> bool {
+	if let Some(value) = parse_f32(value) {
+		*num = value;
+		true
+	} else {
+		print_invalid_value(value);
+		false
+	}
+}
+
 fn parse_size_unit<T>(value: &str) -> Option<T>
 where
 	T: taffy::prelude::FromPercent + taffy::prelude::FromLength,
@@ -219,11 +230,11 @@ where
 	}
 }
 
-fn parse_widget_other_internal(
+fn parse_widget_other_internal<U1, U2>(
 	template: Rc<Template>,
 	template_parameters: HashMap<Rc<str>, Rc<str>>,
 	file: &ParserFile,
-	ctx: &mut ParserContext,
+	ctx: &mut ParserContext<U1, U2>,
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
 	let template_file = ParserFile {
@@ -244,10 +255,10 @@ fn parse_widget_other_internal(
 	Ok(())
 }
 
-fn parse_widget_other<'a>(
+fn parse_widget_other<'a, U1, U2>(
 	xml_tag_name: &str,
 	file: &'a ParserFile,
-	ctx: &mut ParserContext,
+	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
@@ -262,9 +273,9 @@ fn parse_widget_other<'a>(
 	parse_widget_other_internal(template.clone(), template_parameters, file, ctx, parent_id)
 }
 
-fn parse_tag_include<'a>(
+fn parse_tag_include<'a, U1, U2>(
 	file: &ParserFile,
-	ctx: &mut ParserContext,
+	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
@@ -291,7 +302,10 @@ fn parse_tag_include<'a>(
 	Ok(())
 }
 
-fn parse_tag_var<'a>(ctx: &mut ParserContext, node: roxmltree::Node<'a, 'a>) -> anyhow::Result<()> {
+fn parse_tag_var<'a, U1, U2>(
+	ctx: &mut ParserContext<U1, U2>,
+	node: roxmltree::Node<'a, 'a>,
+) -> anyhow::Result<()> {
 	let mut out_key: Option<&str> = None;
 	let mut out_value: Option<&str> = None;
 
@@ -349,9 +363,9 @@ pub fn replace_vars(input: &str, vars: &HashMap<Rc<str>, Rc<str>>) -> Rc<str> {
 }
 
 #[allow(clippy::manual_strip)]
-fn process_attrib<'a>(
+fn process_attrib<'a, U1, U2>(
 	file: &'a ParserFile,
-	ctx: &'a ParserContext,
+	ctx: &'a ParserContext<U1, U2>,
 	key: &str,
 	value: &str,
 ) -> (Rc<str>, Rc<str>) {
@@ -373,9 +387,9 @@ fn process_attrib<'a>(
 	}
 }
 
-fn iter_attribs<'a>(
+fn iter_attribs<'a, U1, U2>(
 	file: &'a ParserFile,
-	ctx: &'a ParserContext,
+	ctx: &'a ParserContext<U1, U2>,
 	node: &'a roxmltree::Node<'a, 'a>,
 	is_tag_macro: bool,
 ) -> impl Iterator<Item = (/*key*/ Rc<str>, /*value*/ Rc<str>)> + 'a {
@@ -409,8 +423,8 @@ fn iter_attribs<'a>(
 	res.into_iter()
 }
 
-fn parse_tag_theme<'a>(
-	ctx: &mut ParserContext,
+fn parse_tag_theme<'a, U1, U2>(
+	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'a, 'a>,
 ) -> anyhow::Result<()> {
 	for child_node in node.children() {
@@ -429,9 +443,9 @@ fn parse_tag_theme<'a>(
 	Ok(())
 }
 
-fn parse_tag_template(
+fn parse_tag_template<U1, U2>(
 	file: &ParserFile,
-	ctx: &mut ParserContext,
+	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'_, '_>,
 ) -> anyhow::Result<()> {
 	let mut template_name: Option<Rc<str>> = None;
@@ -465,9 +479,9 @@ fn parse_tag_template(
 	Ok(())
 }
 
-fn parse_tag_macro(
+fn parse_tag_macro<U1, U2>(
 	file: &ParserFile,
-	ctx: &mut ParserContext,
+	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'_, '_>,
 ) -> anyhow::Result<()> {
 	let mut macro_name: Option<Rc<str>> = None;
@@ -503,9 +517,9 @@ fn parse_tag_macro(
 	Ok(())
 }
 
-fn parse_universal<'a>(
+fn parse_universal<'a, U1, U2>(
 	file: &'a ParserFile,
-	ctx: &mut ParserContext,
+	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'a, 'a>,
 	widget_id: WidgetID,
 ) -> anyhow::Result<()> {
@@ -526,9 +540,9 @@ fn parse_universal<'a>(
 	Ok(())
 }
 
-fn parse_children<'a>(
+fn parse_children<'a, U1, U2>(
 	file: &ParserFile,
-	ctx: &mut ParserContext,
+	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
@@ -552,6 +566,9 @@ fn parse_children<'a>(
 			"button" => {
 				parse_component_button(file, ctx, child_node, parent_id)?;
 			}
+			"slider" => {
+				parse_component_slider(file, ctx, child_node, parent_id)?;
+			}
 			"" => { /* ignore */ }
 			other_tag_name => {
 				parse_widget_other(other_tag_name, file, ctx, child_node, parent_id)?;
@@ -561,10 +578,10 @@ fn parse_children<'a>(
 	Ok(())
 }
 
-fn create_default_context<'a>(
+fn create_default_context<'a, U1, U2>(
 	layout: &'a mut Layout,
-	listeners: &'a mut EventListenerCollection<(), ()>,
-) -> ParserContext<'a> {
+	listeners: &'a mut EventListenerCollection<U1, U2>,
+) -> ParserContext<'a, U1, U2> {
 	ParserContext {
 		layout,
 		listeners,
@@ -575,9 +592,9 @@ fn create_default_context<'a>(
 	}
 }
 
-pub fn parse_from_assets(
+pub fn parse_from_assets<U1, U2>(
 	layout: &mut Layout,
-	listeners: &mut EventListenerCollection<(), ()>,
+	listeners: &mut EventListenerCollection<U1, U2>,
 	parent_id: WidgetID,
 	path: &str,
 ) -> anyhow::Result<ParserResult> {
@@ -602,9 +619,9 @@ pub fn parse_from_assets(
 	Ok(result)
 }
 
-pub fn new_layout_from_assets(
+pub fn new_layout_from_assets<U1, U2>(
 	assets: Box<dyn AssetProvider>,
-	listeners: &mut EventListenerCollection<(), ()>,
+	listeners: &mut EventListenerCollection<U1, U2>,
 	path: &str,
 ) -> anyhow::Result<(Layout, ParserResult)> {
 	let mut layout = Layout::new(assets)?;
@@ -618,8 +635,8 @@ fn assets_path_to_xml(assets: &mut Box<dyn AssetProvider>, path: &Path) -> anyho
 	Ok(String::from_utf8(data)?)
 }
 
-fn get_doc_from_path(
-	ctx: &mut ParserContext,
+fn get_doc_from_path<U1, U2>(
+	ctx: &mut ParserContext<U1, U2>,
 	path: &Path,
 ) -> anyhow::Result<(ParserFile, roxmltree::NodeId)> {
 	let xml = assets_path_to_xml(&mut ctx.layout.assets, path)?;
@@ -643,9 +660,9 @@ fn get_doc_from_path(
 	Ok((file, tag_layout.id()))
 }
 
-fn parse_document_root(
+fn parse_document_root<U1, U2>(
 	file: ParserFile,
-	ctx: &mut ParserContext,
+	ctx: &mut ParserContext<U1, U2>,
 	parent_id: WidgetID,
 	node_layout: roxmltree::NodeId,
 ) -> anyhow::Result<()> {

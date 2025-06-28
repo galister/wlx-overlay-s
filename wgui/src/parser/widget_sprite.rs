@@ -9,9 +9,9 @@ use crate::{
 
 use super::{parse_color_hex, print_invalid_attrib};
 
-pub fn parse_widget_sprite<'a>(
+pub fn parse_widget_sprite<'a, U1, U2>(
 	file: &'a ParserFile,
-	ctx: &mut ParserContext,
+	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {

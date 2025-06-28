@@ -9,9 +9,9 @@ use crate::{
 	widget::util::WLength,
 };
 
-pub fn parse_component_button<'a>(
+pub fn parse_component_button<'a, U1, U2>(
 	file: &'a ParserFile,
-	ctx: &mut ParserContext,
+	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
@@ -43,7 +43,7 @@ pub fn parse_component_button<'a>(
 		}
 	}
 
-	let button = button::construct(
+	let _button = button::construct(
 		ctx.layout,
 		ctx.listeners,
 		parent_id,

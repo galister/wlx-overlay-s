@@ -42,8 +42,13 @@ impl<S> GuiPanel<S> {
         path: &str,
         state: S,
     ) -> anyhow::Result<(Self, ParserResult)> {
-        let (layout, parser_result) =
-            wgui::parser::new_layout_from_assets(Box::new(gui::asset::GuiAsset {}), path)?;
+        let mut listeners = EventListenerCollection::<AppState, S>::default();
+
+        let (layout, parser_result) = wgui::parser::new_layout_from_assets(
+            Box::new(gui::asset::GuiAsset {}),
+            &mut listeners,
+            path,
+        )?;
 
         let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
         let mut timestep = Timestep::new();
@@ -56,7 +61,7 @@ impl<S> GuiPanel<S> {
                 timestep,
                 state,
                 timers: vec![],
-                listeners: EventListenerCollection::default(),
+                listeners,
             },
             parser_result,
         ))

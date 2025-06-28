@@ -77,6 +77,7 @@ where
 
     let (_, mut gui_state_key) = wgui::parser::new_layout_from_assets(
         Box::new(gui::asset::GuiAsset {}),
+        &mut panel.listeners,
         "gui/keyboard.xml",
     )?;
 
@@ -156,7 +157,13 @@ where
             }
 
             let template_key = format!("Key{:?}", key.cap_type);
-            gui_state_key.process_template(&template_key, &mut panel.layout, div, params)?;
+            gui_state_key.process_template(
+                &template_key,
+                &mut panel.layout,
+                &mut panel.listeners,
+                div,
+                params,
+            )?;
 
             if let Some(widget_id) = gui_state_key.ids.get(&*my_id) {
                 let key_state = {

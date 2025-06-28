@@ -390,6 +390,17 @@ impl WidgetState {
 						);
 					}
 				}
+
+				call_event!(
+					self,
+					listeners,
+					widget_id,
+					node_id,
+					params,
+					MouseMotion,
+					user_data,
+					CallbackMetadata::None
+				);
 			}
 			Event::MouseLeave(e) => {
 				if self.data.set_device_hovered(e.device, false) {

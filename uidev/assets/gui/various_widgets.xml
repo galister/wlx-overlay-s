@@ -2,13 +2,61 @@
   <elements>
     <rectangle
       color="#AAAAAA"
-      width="500" height="500" min_width="500" min_height="500"
-      gap="4" flex_direction="column">
+      width="1000" height="500" min_width="1000" min_height="500"
+      gap="4" flex_direction="column"
+      overflow_y="scroll">
       <label text="aaa" color="#FFFFFF" />
 
       <button text="Red button" width="128" height="32" color="#FF0000" />
       <button text="Aqua button" width="128" height="32" color="#00FFFF" />
       <button text="Yellow button" width="128" height="32" color="#FFFF00" />
+
+      <div flex_direction="row" gap="16">
+        <div flex_direction="column" gap="8">
+          <rectangle width="128" height="2" />
+          <label text="height 16" />
+          <rectangle width="128" height="2" />
+
+          <label text="range 0-100 value 25" />
+          <slider width="200" height="16" min_value="0" max_value="100" value="25" />
+
+          <label text="range 10-20 value 15" />
+          <slider width="200" height="16" min_value="10" max_value="20" value="15" />
+
+          <label text="range -10-42 value 0" />
+          <slider width="200" height="16" min_value="-10" max_value="42" value="0" />
+        </div>
+
+        <div flex_direction="column" gap="8">
+          <rectangle width="128" height="2" />
+          <label text="height 24" />
+          <rectangle width="128" height="2" />
+
+          <label text="range 0-100 value 25" />
+          <slider width="200" height="24" min_value="0" max_value="100" value="25" />
+
+          <label text="range 10-20 value 15" />
+          <slider width="200" height="24" min_value="10" max_value="20" value="15" />
+
+          <label text="range -10-42 value 0" />
+          <slider width="200" height="24" min_value="-10" max_value="42" value="0" />
+        </div>
+
+        <div flex_direction="column" gap="8">
+          <rectangle width="128" height="2" />
+          <label text="height 32" />
+          <rectangle width="128" height="2" />
+
+          <label text="range 0-100 value 25" />
+          <slider width="200" height="32" min_value="0" max_value="100" value="25" />
+
+          <label text="range 10-20 value 15" />
+          <slider width="200" height="32" min_value="10" max_value="20" value="15" />
+
+          <label text="range -10-42 value 0" />
+          <slider width="200" height="32" min_value="-10" max_value="42" value="0" />
+        </div>
+      </div>
     </rectangle>
   </elements>
 </layout>

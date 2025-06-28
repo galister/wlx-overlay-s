@@ -2,7 +2,7 @@ use std::sync::Arc;
 use taffy::{AlignItems, JustifyContent, prelude::length};
 
 use crate::{
-	animation::{self, Animation, AnimationEasing},
+	animation::{Animation, AnimationEasing},
 	components::Component,
 	drawing::{self, Color},
 	event::{EventListenerCollection, EventListenerKind, WidgetCallback},
@@ -98,9 +98,9 @@ fn anim_hover_out(button: Arc<Button>, widget_id: WidgetID) -> Animation {
 	)
 }
 
-pub fn construct(
+pub fn construct<U1, U2>(
 	layout: &mut Layout,
-	listeners: &mut EventListenerCollection<(), ()>,
+	listeners: &mut EventListenerCollection<U1, U2>,
 	parent: WidgetID,
 	params: Params,
 ) -> anyhow::Result<Arc<Button>> {

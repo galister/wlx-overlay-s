@@ -6,9 +6,9 @@ use crate::{
 	widget,
 };
 
-pub fn parse_widget_div<'a>(
+pub fn parse_widget_div<'a, U1, U2>(
 	file: &ParserFile,
-	ctx: &mut ParserContext,
+	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
