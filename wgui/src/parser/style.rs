@@ -37,6 +37,14 @@ pub fn parse_color(value: &str, color: &mut drawing::Color) {
 	}
 }
 
+pub fn parse_color_opt(value: &str, color: &mut Option<drawing::Color>) {
+	if let Some(res_color) = parse_color_hex(value) {
+		*color = Some(res_color);
+	} else {
+		print_invalid_value(value);
+	}
+}
+
 pub fn parse_text_style(attribs: &[(Rc<str>, Rc<str>)]) -> TextStyle {
 	let mut style = TextStyle::default();
 

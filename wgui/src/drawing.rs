@@ -47,8 +47,17 @@ pub struct Color {
 }
 
 impl Color {
-	pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
+	pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
 		Self { r, g, b, a }
+	}
+
+	pub fn lerp(&self, other: &Color, n: f32) -> Color {
+		Color {
+			r: self.r * (1.0 - n) + other.r * n,
+			g: self.g * (1.0 - n) + other.g * n,
+			b: self.b * (1.0 - n) + other.b * n,
+			a: self.a * (1.0 - n) + other.a * n,
+		}
 	}
 }
 

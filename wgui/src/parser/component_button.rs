@@ -4,7 +4,7 @@ use crate::{
 	layout::WidgetID,
 	parser::{
 		ParserContext, ParserFile, iter_attribs,
-		style::{parse_color, parse_round, parse_style, parse_text_style},
+		style::{parse_color, parse_color_opt, parse_round, parse_style, parse_text_style},
 	},
 	widget::util::WLength,
 };
@@ -16,7 +16,7 @@ pub fn parse_component_button<'a, U1, U2>(
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
 	let mut color = Color::new(1.0, 1.0, 1.0, 1.0);
-	let mut border_color = Color::new(0.0, 0.0, 0.0, 1.0);
+	let mut border_color: Option<Color> = None;
 	let mut round = WLength::Units(4.0);
 
 	let mut text = String::default();
@@ -37,10 +37,19 @@ pub fn parse_component_button<'a, U1, U2>(
 				parse_color(&value, &mut color);
 			}
 			"border_color" => {
-				parse_color(&value, &mut border_color);
+				parse_color_opt(&value, &mut border_color);
 			}
 			_ => {}
 		}
+	}
+
+	// slight border outlines by default
+	if border_color.is_none() {
+		border_color = Some(Color::lerp(
+			&color,
+			&Color::new(0.0, 0.0, 0.0, color.a),
+			0.3,
+		));
 	}
 
 	let _button = button::construct(
@@ -49,7 +58,7 @@ pub fn parse_component_button<'a, U1, U2>(
 		parent_id,
 		button::Params {
 			color,
-			border_color,
+			border_color: border_color.unwrap(),
 			text: &text,
 			style,
 			text_style,

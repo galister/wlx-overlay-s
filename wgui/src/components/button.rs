@@ -115,10 +115,13 @@ pub fn construct<U1, U2>(
 		parent,
 		Rectangle::create(RectangleParams {
 			color: params.color,
+			color2: params
+				.color
+				.lerp(&Color::new(0.0, 0.0, 0.0, params.color.a), 0.3),
+			gradient: drawing::GradientMode::Vertical,
 			round: params.round,
 			border_color: params.border_color,
 			border: 2.0,
-			..Default::default()
 		})?,
 		style,
 	)?;
