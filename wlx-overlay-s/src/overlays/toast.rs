@@ -183,7 +183,8 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
             taffy::Style {
                 align_items: Some(taffy::AlignItems::Center),
                 justify_content: Some(taffy::JustifyContent::Center),
-                padding: length(1.0),
+                flex_direction: taffy::FlexDirection::Column,
+                padding: length(4.0),
                 ..Default::default()
             },
         )
@@ -204,6 +205,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
                 width: percent(1.0),
                 height: auto(),
             },
+            padding: length(8.0),
             ..Default::default()
         },
     );
@@ -224,6 +226,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
                 width: percent(1.0),
                 height: auto(),
             },
+            padding: length(8.0),
             ..Default::default()
         },
     );
