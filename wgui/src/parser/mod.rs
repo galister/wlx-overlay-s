@@ -8,6 +8,7 @@ mod widget_sprite;
 use crate::{
 	assets::AssetProvider,
 	drawing::{self},
+	event::EventListenerCollection,
 	layout::{Layout, WidgetID},
 	parser::{
 		component_button::parse_component_button, widget_div::parse_widget_div,
@@ -62,6 +63,7 @@ impl ParserResult {
 		&mut self,
 		template_name: &str,
 		layout: &mut Layout,
+		listeners: &mut EventListenerCollection<(), ()>,
 		widget_id: WidgetID,
 		template_parameters: HashMap<Rc<str>, Rc<str>>,
 	) -> anyhow::Result<()> {
@@ -71,6 +73,7 @@ impl ParserResult {
 
 		let mut ctx = ParserContext {
 			layout,
+			listeners,
 			ids: Default::default(),
 			macro_attribs: self.macro_attribs.clone(), // FIXME: prevent copying
 			var_map: self.var_map.clone(),             // FIXME: prevent copying
@@ -107,6 +110,7 @@ struct MacroAttribs {
 
 struct ParserContext<'a> {
 	layout: &'a mut Layout,
+	listeners: &'a mut EventListenerCollection<(), ()>,
 	var_map: HashMap<Rc<str>, Rc<str>>,
 	macro_attribs: HashMap<Rc<str>, MacroAttribs>,
 	ids: HashMap<Rc<str>, WidgetID>,
@@ -557,9 +561,13 @@ fn parse_children<'a>(
 	Ok(())
 }
 
-fn create_default_context(layout: &mut Layout) -> ParserContext<'_> {
+fn create_default_context<'a>(
+	layout: &'a mut Layout,
+	listeners: &'a mut EventListenerCollection<(), ()>,
+) -> ParserContext<'a> {
 	ParserContext {
 		layout,
+		listeners,
 		ids: Default::default(),
 		var_map: Default::default(),
 		templates: Default::default(),
@@ -569,12 +577,13 @@ fn create_default_context(layout: &mut Layout) -> ParserContext<'_> {
 
 pub fn parse_from_assets(
 	layout: &mut Layout,
+	listeners: &mut EventListenerCollection<(), ()>,
 	parent_id: WidgetID,
 	path: &str,
 ) -> anyhow::Result<ParserResult> {
 	let path = PathBuf::from(path);
 
-	let mut ctx = create_default_context(layout);
+	let mut ctx = create_default_context(layout, listeners);
 
 	let (file, node_layout) = get_doc_from_path(&mut ctx, &path)?;
 	parse_document_root(file, &mut ctx, parent_id, node_layout)?;
@@ -595,11 +604,12 @@ pub fn parse_from_assets(
 
 pub fn new_layout_from_assets(
 	assets: Box<dyn AssetProvider>,
+	listeners: &mut EventListenerCollection<(), ()>,
 	path: &str,
 ) -> anyhow::Result<(Layout, ParserResult)> {
 	let mut layout = Layout::new(assets)?;
 	let widget = layout.root_widget;
-	let state = parse_from_assets(&mut layout, widget, path)?;
+	let state = parse_from_assets(&mut layout, listeners, widget, path)?;
 	Ok((layout, state))
 }
 

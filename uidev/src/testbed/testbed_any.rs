@@ -1,16 +1,19 @@
 use crate::{assets, testbed::Testbed};
 use glam::Vec2;
-use wgui::layout::Layout;
+use wgui::{event::EventListenerCollection, layout::Layout};
 
 pub struct TestbedAny {
     pub layout: Layout,
 }
 
 impl TestbedAny {
-    pub fn new(name: &str) -> anyhow::Result<Self> {
+    pub fn new(
+        name: &str,
+        listeners: &mut EventListenerCollection<(), ()>,
+    ) -> anyhow::Result<Self> {
         let path = format!("gui/{name}.xml");
         let (layout, _state) =
-            wgui::parser::new_layout_from_assets(Box::new(assets::Asset {}), &path)?;
+            wgui::parser::new_layout_from_assets(Box::new(assets::Asset {}), listeners, &path)?;
         Ok(Self { layout })
     }
 }

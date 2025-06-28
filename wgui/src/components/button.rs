@@ -2,10 +2,10 @@ use std::sync::Arc;
 use taffy::{AlignItems, JustifyContent, prelude::length};
 
 use crate::{
-	animation::{Animation, AnimationEasing},
+	animation::{self, Animation, AnimationEasing},
 	components::Component,
 	drawing::{self, Color},
-	event::WidgetCallback,
+	event::{EventListenerCollection, EventListenerKind, WidgetCallback},
 	layout::{Layout, WidgetID},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
@@ -38,7 +38,8 @@ impl Default for Params<'_> {
 }
 
 pub struct Button {
-	pub color: drawing::Color,
+	initial_color: drawing::Color,
+	initial_border_color: drawing::Color,
 	pub body: WidgetID,    // Rectangle
 	pub text_id: WidgetID, // Text
 	text_node: taffy::NodeId,
@@ -59,6 +60,18 @@ impl Button {
 	}
 }
 
+fn anim_hover(rect: &mut Rectangle, button: &Button, pos: f32) {
+	let brightness = pos * 0.5;
+	let border_brightness = pos;
+	rect.params.color.r = button.initial_color.r + brightness;
+	rect.params.color.g = button.initial_color.g + brightness;
+	rect.params.color.b = button.initial_color.b + brightness;
+	rect.params.border_color.r = button.initial_border_color.r + border_brightness;
+	rect.params.border_color.g = button.initial_border_color.g + border_brightness;
+	rect.params.border_color.b = button.initial_border_color.b + border_brightness;
+	rect.params.border = 3.0;
+}
+
 fn anim_hover_in(button: Arc<Button>, widget_id: WidgetID) -> Animation {
 	Animation::new(
 		widget_id,
@@ -66,12 +79,7 @@ fn anim_hover_in(button: Arc<Button>, widget_id: WidgetID) -> Animation {
 		AnimationEasing::OutQuad,
 		Box::new(move |data| {
 			let rect = data.obj.get_as_mut::<Rectangle>();
-			let brightness = data.pos * 0.5;
-			rect.params.color.r = button.color.r + brightness;
-			rect.params.color.g = button.color.g + brightness;
-			rect.params.color.b = button.color.b + brightness;
-			rect.params.border_color = Color::new(1.0, 1.0, 1.0, 1.0);
-			rect.params.border = 1.0 + data.pos;
+			anim_hover(rect, &button, data.pos);
 			data.needs_redraw = true;
 		}),
 	)
@@ -84,12 +92,7 @@ fn anim_hover_out(button: Arc<Button>, widget_id: WidgetID) -> Animation {
 		AnimationEasing::OutQuad,
 		Box::new(move |data| {
 			let rect = data.obj.get_as_mut::<Rectangle>();
-			let brightness = (1.0 - data.pos) * 0.5;
-			rect.params.color.r = button.color.r + brightness;
-			rect.params.color.g = button.color.g + brightness;
-			rect.params.color.b = button.color.b + brightness;
-			rect.params.border_color = Color::new(1.0, 1.0, 1.0, 1.0);
-			rect.params.border = 1.0 + (1.0 - data.pos) * 2.0;
+			anim_hover(rect, &button, 1.0 - data.pos);
 			data.needs_redraw = true;
 		}),
 	)
@@ -97,6 +100,7 @@ fn anim_hover_out(button: Arc<Button>, widget_id: WidgetID) -> Animation {
 
 pub fn construct(
 	layout: &mut Layout,
+	listeners: &mut EventListenerCollection<(), ()>,
 	parent: WidgetID,
 	params: Params,
 ) -> anyhow::Result<Arc<Button>> {
@@ -142,14 +146,35 @@ pub fn construct(
 
 	let button = Arc::new(Button {
 		body: rect_id,
-		color: params.color,
 		text_id,
 		text_node,
+		initial_color: params.color,
+		initial_border_color: params.border_color,
 	});
 
-	//TODO: Highlight background on mouse enter
+	//let mut widget = layout.widget_map.get(rect_id).unwrap().lock().unwrap();
 
-	//TODO: Bring back old color on mouse leave
+	let _button = button.clone();
+	listeners.add(
+		rect_id,
+		EventListenerKind::MouseEnter,
+		Box::new(move |data, _, _| {
+			data
+				.animations
+				.push(anim_hover_in(_button.clone(), data.widget_id));
+		}),
+	);
+
+	let _button = button.clone();
+	listeners.add(
+		rect_id,
+		EventListenerKind::MouseLeave,
+		Box::new(move |data, _, _| {
+			data
+				.animations
+				.push(anim_hover_out(_button.clone(), data.widget_id));
+		}),
+	);
 
 	Ok(button)
 }

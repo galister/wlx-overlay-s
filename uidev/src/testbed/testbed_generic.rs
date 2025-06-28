@@ -11,7 +11,7 @@ impl TestbedGeneric {
         const XML_PATH: &str = "gui/testbed.xml";
 
         let (layout, _res) =
-            wgui::parser::new_layout_from_assets(Box::new(assets::Asset {}), XML_PATH)?;
+            wgui::parser::new_layout_from_assets(Box::new(assets::Asset {}), listeners, XML_PATH)?;
 
         Ok(Self { layout })
     }

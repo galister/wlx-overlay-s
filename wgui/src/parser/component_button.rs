@@ -45,6 +45,7 @@ pub fn parse_component_button<'a>(
 
 	let button = button::construct(
 		ctx.layout,
+		ctx.listeners,
 		parent_id,
 		button::Params {
 			color,

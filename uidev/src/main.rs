@@ -62,7 +62,7 @@ fn load_testbed(
     let name = std::env::var("TESTBED").unwrap_or_default();
     Ok(match name.as_str() {
         "" => Box::new(TestbedGeneric::new(listeners)?),
-        _ => Box::new(TestbedAny::new(&name)?),
+        _ => Box::new(TestbedAny::new(&name, listeners)?),
     })
 }
 
