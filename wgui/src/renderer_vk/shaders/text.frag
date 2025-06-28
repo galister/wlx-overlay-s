@@ -14,7 +14,7 @@ layout(set = 1, binding = 0) uniform sampler2D mask_atlas;
 
 void main() {
   if (in_content_type == 0u) {
-    out_color = texture(color_atlas, in_uv);
+    out_color = texture(color_atlas, in_uv) * in_color;
   } else {
     out_color.rgb = in_color.rgb;
     out_color.a = in_color.a * texture(mask_atlas, in_uv).r;

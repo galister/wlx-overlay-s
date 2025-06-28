@@ -8,6 +8,8 @@ use crate::{
 	widget::sprite::{SpriteBox, SpriteBoxParams},
 };
 
+use super::{parse_color_hex, print_invalid_attrib};
+
 pub fn parse_widget_sprite<'a>(
 	file: &'a ParserFile,
 	ctx: &mut ParserContext,
@@ -32,6 +34,13 @@ pub fn parse_widget_sprite<'a>(
 			"src_ext" => {
 				if std::fs::exists(value.as_ref()).unwrap_or(false) {
 					glyph = CustomGlyphContent::from_file(&value).ok();
+				}
+			}
+			"color" => {
+				if let Some(color) = parse_color_hex(&value) {
+					params.color = Some(color);
+				} else {
+					print_invalid_attrib(&key, &value);
 				}
 			}
 			_ => {}

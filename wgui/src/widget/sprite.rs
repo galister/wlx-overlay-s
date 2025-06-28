@@ -15,6 +15,7 @@ use super::{WidgetObj, WidgetState};
 #[derive(Default)]
 pub struct SpriteBoxParams {
 	pub glyph_data: Option<CustomGlyphData>,
+	pub color: Option<drawing::Color>,
 }
 
 #[derive(Default)]
@@ -39,7 +40,13 @@ impl WidgetObj for SpriteBox {
 				top: 0.0,
 				width: boundary.size.x,
 				height: boundary.size.y,
-				color: Some(cosmic_text::Color::rgb(255, 255, 255)),
+				color: Some(
+					self
+						.params
+						.color
+						.map(|c| c.into())
+						.unwrap_or(cosmic_text::Color::rgb(255, 255, 255)),
+				),
 				snap_to_physical_pixel: true,
 			};
 
