@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use crate::{
 	animation::{self, Animations},
 	assets::AssetProvider,
-	event::{self, EventListenerCollection},
+	event::{self, EventAlterables, EventListenerCollection, EventRefs},
 	transform_stack::{Transform, TransformStack},
 	widget::{self, EventParams, WidgetState, div::Div},
 };
@@ -19,13 +19,6 @@ new_key_type! {
 pub type BoxWidget = Arc<Mutex<WidgetState>>;
 pub type WidgetMap = HopSlotMap<WidgetID, BoxWidget>;
 pub type WidgetNodeMap = SecondaryMap<WidgetID, taffy::NodeId>;
-
-struct PushEventState<'a> {
-	pub animations: &'a mut Vec<animation::Animation>,
-	pub transform_stack: &'a mut TransformStack,
-	pub needs_redraw: bool,
-	pub trigger_haptics: bool,
-}
 
 pub struct Layout {
 	pub tree: TaffyTree<WidgetID>,
@@ -93,13 +86,12 @@ impl Layout {
 		&self,
 		listeners: &EventListenerCollection<U1, U2>,
 		parent_node_id: taffy::NodeId,
-		state: &mut PushEventState,
 		event: &event::Event,
-		dirty_nodes: &mut Vec<taffy::NodeId>,
+		alterables: &mut EventAlterables,
 		user_data: &mut (&mut U1, &mut U2),
 	) -> anyhow::Result<()> {
 		for child_id in self.tree.child_ids(parent_node_id) {
-			self.push_event_widget(listeners, state, child_id, event, dirty_nodes, user_data)?;
+			self.push_event_widget(listeners, child_id, event, alterables, user_data)?;
 		}
 
 		Ok(())
@@ -108,10 +100,9 @@ impl Layout {
 	fn push_event_widget<U1, U2>(
 		&self,
 		listeners: &EventListenerCollection<U1, U2>,
-		state: &mut PushEventState,
 		node_id: taffy::NodeId,
 		event: &event::Event,
-		dirty_nodes: &mut Vec<taffy::NodeId>,
+		alterables: &mut EventAlterables,
 		user_data: &mut (&mut U1, &mut U2),
 	) -> anyhow::Result<()> {
 		let l = self.tree.layout(node_id)?;
@@ -134,30 +125,24 @@ impl Layout {
 			transform: glam::Mat4::IDENTITY, // TODO: event transformations? Not needed for now
 		};
 
-		state.transform_stack.push(transform);
+		alterables.transform_stack.push(transform);
 
 		let mut iter_children = true;
 
+		let mut params = EventParams {
+			refs: &EventRefs {
+				tree: &self.tree,
+				widget_map: &self.widget_map,
+				widget_node_map: &self.widget_node_map,
+			},
+			layout: l,
+			alterables,
+			node_id,
+			style,
+		};
+
 		if let Some(listeners) = listeners.get(widget_id) {
-			match widget.process_event(
-				widget_id,
-				listeners,
-				node_id,
-				event,
-				user_data,
-				&mut EventParams {
-					transform_stack: state.transform_stack,
-					widgets: &self.widget_map,
-					tree: &self.tree,
-					animations: state.animations,
-					needs_redraw: &mut state.needs_redraw,
-					trigger_haptics: &mut state.trigger_haptics,
-					node_id,
-					style,
-					taffy_layout: l,
-					dirty_nodes,
-				},
-			) {
+			match widget.process_event(widget_id, listeners, node_id, event, user_data, &mut params) {
 				widget::EventResult::Pass => {
 					// go on
 				}
@@ -173,10 +158,10 @@ impl Layout {
 		drop(widget); // free mutex
 
 		if iter_children {
-			self.push_event_children(listeners, node_id, state, event, dirty_nodes, user_data)?;
+			self.push_event_children(listeners, node_id, event, alterables, user_data)?;
 		}
 
-		state.transform_stack.pop();
+		alterables.transform_stack.pop();
 
 		Ok(())
 	}
@@ -205,44 +190,17 @@ impl Layout {
 		event: &event::Event,
 		mut user_data: (&mut U1, &mut U2),
 	) -> anyhow::Result<()> {
-		let mut transform_stack = TransformStack::new();
-		let mut animations_to_add = Vec::<animation::Animation>::new();
-		let mut dirty_nodes = Vec::new();
-
-		let mut state = PushEventState {
-			transform_stack: &mut transform_stack,
-			animations: &mut animations_to_add,
-			needs_redraw: false,
-			trigger_haptics: false,
-		};
+		let mut alterables = EventAlterables::default();
 
 		self.push_event_widget(
 			listeners,
-			&mut state,
 			self.root_node,
 			event,
-			&mut dirty_nodes,
+			&mut alterables,
 			&mut user_data,
 		)?;
 
-		for node in dirty_nodes {
-			self.tree.mark_dirty(node)?;
-		}
-
-		if state.trigger_haptics {
-			self.haptics_triggered = true;
-		}
-
-		if state.needs_redraw {
-			self.needs_redraw = true;
-		}
-
-		if !animations_to_add.is_empty() {
-			self.needs_redraw = true;
-			for anim in animations_to_add {
-				self.animations.add(anim);
-			}
-		}
+		self.process_alterables(alterables)?;
 
 		Ok(())
 	}
@@ -280,20 +238,19 @@ impl Layout {
 	}
 
 	pub fn update(&mut self, size: Vec2, timestep_alpha: f32) -> anyhow::Result<()> {
-		let mut dirty_nodes = Vec::new();
+		let mut alterables = EventAlterables::default();
 
-		self.animations.process(
-			&self.widget_map,
-			&self.widget_node_map,
-			&self.tree,
-			&mut dirty_nodes,
-			timestep_alpha,
-			&mut self.needs_redraw,
-		);
+		let refs = EventRefs {
+			tree: &self.tree,
+			widget_map: &self.widget_map,
+			widget_node_map: &self.widget_node_map,
+		};
 
-		for node in dirty_nodes {
-			self.tree.mark_dirty(node)?;
-		}
+		self
+			.animations
+			.process(&refs, &mut alterables, timestep_alpha);
+
+		self.process_alterables(alterables)?;
 
 		if self.tree.dirty(self.root_node)? || self.prev_size != size {
 			self.needs_redraw = true;
@@ -343,18 +300,48 @@ impl Layout {
 	}
 
 	pub fn tick(&mut self) -> anyhow::Result<()> {
-		let mut dirty_nodes = Vec::new();
+		let mut alterables = EventAlterables::default();
 
-		self.animations.tick(
-			&self.widget_map,
-			&self.widget_node_map,
-			&self.tree,
-			&mut dirty_nodes,
-			&mut self.needs_redraw,
-		);
+		let refs = EventRefs {
+			tree: &self.tree,
+			widget_map: &self.widget_map,
+			widget_node_map: &self.widget_node_map,
+		};
 
-		for node in dirty_nodes {
+		self.animations.tick(&refs, &mut alterables);
+		self.process_alterables(alterables)?;
+
+		Ok(())
+	}
+
+	fn process_alterables(&mut self, alterables: EventAlterables) -> anyhow::Result<()> {
+		for node in alterables.dirty_nodes {
 			self.tree.mark_dirty(node)?;
+		}
+
+		if alterables.needs_redraw {
+			self.needs_redraw = true;
+		}
+
+		if alterables.trigger_haptics {
+			self.haptics_triggered = true;
+		}
+
+		if !alterables.animations.is_empty() {
+			self.needs_redraw = true;
+			for anim in alterables.animations {
+				self.animations.add(anim);
+			}
+		}
+
+		for request in alterables.style_set_requests {
+			if let Err(e) = self.tree.set_style(request.0, request.1) {
+				log::error!(
+					"failed to set style for taffy widget ID {:?}: {:?}",
+					request.0,
+					e
+				);
+			}
 		}
 
 		Ok(())

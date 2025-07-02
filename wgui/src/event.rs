@@ -2,9 +2,9 @@ use glam::Vec2;
 use slotmap::SecondaryMap;
 
 use crate::{
-	animation,
-	layout::{WidgetID, WidgetMap},
-	transform_stack::Transform,
+	animation::{self, Animation},
+	layout::{WidgetID, WidgetMap, WidgetNodeMap},
+	transform_stack::{Transform, TransformStack},
 	widget::{WidgetData, WidgetObj},
 };
 
@@ -74,21 +74,34 @@ impl Event {
 	}
 }
 
-pub struct CallbackDataCommon<'a> {
-	pub widgets: &'a WidgetMap,
-	pub taffy_layout: &'a taffy::Layout,
-	pub dirty_nodes: &'a mut Vec<taffy::NodeId>,
+pub struct EventRefs<'a> {
+	pub widget_map: &'a WidgetMap,
+	pub widget_node_map: &'a WidgetNodeMap,
+	pub tree: &'a taffy::tree::TaffyTree<WidgetID>,
+}
+
+#[derive(Default)]
+pub struct EventAlterables {
+	pub dirty_nodes: Vec<taffy::NodeId>,
+	pub style_set_requests: Vec<(taffy::NodeId, taffy::Style)>,
+	pub animations: Vec<animation::Animation>,
+	pub transform_stack: TransformStack,
 	pub needs_redraw: bool,
 	pub trigger_haptics: bool,
 }
 
-impl<'a> CallbackDataCommon<'a> {
+pub struct CallbackDataCommon<'a> {
+	pub refs: &'a EventRefs<'a>,
+	pub alterables: &'a mut EventAlterables,
+}
+
+impl CallbackDataCommon<'_> {
 	pub fn call_on_widget<WIDGET, FUNC>(&self, widget_id: WidgetID, func: FUNC)
 	where
 		WIDGET: WidgetObj,
 		FUNC: FnOnce(&mut WIDGET),
 	{
-		let Some(widget) = self.widgets.get(widget_id) else {
+		let Some(widget) = self.refs.widget_map.get(widget_id) else {
 			debug_assert!(false);
 			return;
 		};
@@ -100,26 +113,33 @@ impl<'a> CallbackDataCommon<'a> {
 	}
 
 	pub fn mark_redraw(&mut self) {
-		self.needs_redraw = true;
+		self.alterables.needs_redraw = true;
+	}
+
+	pub fn set_style(&mut self, node_id: taffy::NodeId, style: taffy::Style) {
+		self.alterables.style_set_requests.push((node_id, style));
 	}
 
 	pub fn mark_dirty(&mut self, node_id: taffy::NodeId) {
-		self.dirty_nodes.push(node_id);
+		self.alterables.dirty_nodes.push(node_id);
 	}
 
 	pub fn trigger_haptics(&mut self) {
-		self.trigger_haptics = true;
+		self.alterables.trigger_haptics = true;
 	}
 
-	pub fn get_taffy_layout(&self) -> &taffy::Layout {
-		self.taffy_layout
+	pub fn get_tree(&self) -> &taffy::TaffyTree<WidgetID> {
+		self.refs.tree
+	}
+
+	pub fn animate(&mut self, animation: Animation) {
+		self.alterables.animations.push(animation);
 	}
 }
 
 pub struct CallbackData<'a> {
 	pub obj: &'a mut dyn WidgetObj,
 	pub widget_data: &'a mut WidgetData,
-	pub animations: &'a mut Vec<animation::Animation>,
 	pub widget_id: WidgetID,
 	pub node_id: taffy::NodeId,
 	pub metadata: CallbackMetadata,

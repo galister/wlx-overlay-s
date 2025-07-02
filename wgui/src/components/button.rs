@@ -159,9 +159,7 @@ pub fn construct<U1, U2>(
 		rect_id,
 		EventListenerKind::MouseEnter,
 		Box::new(move |common, data, _, _| {
-			data
-				.animations
-				.push(anim_hover_in(button.clone(), data.widget_id));
+			common.animate(anim_hover_in(button.clone(), data.widget_id));
 		}),
 	);
 
@@ -170,9 +168,7 @@ pub fn construct<U1, U2>(
 		rect_id,
 		EventListenerKind::MouseLeave,
 		Box::new(move |common, data, _, _| {
-			data
-				.animations
-				.push(anim_hover_out(button.clone(), data.widget_id));
+			common.animate(anim_hover_out(button.clone(), data.widget_id));
 		}),
 	);
 

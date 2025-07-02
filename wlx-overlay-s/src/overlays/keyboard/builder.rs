@@ -193,7 +193,7 @@ where
                         let k = key_state.clone();
                         move |common, data, _app, _state| {
                             common.trigger_haptics();
-                            on_enter_anim(k.clone(), data);
+                            on_enter_anim(k.clone(), common, data);
                         }
                     }),
                 );
@@ -204,7 +204,7 @@ where
                         let k = key_state.clone();
                         move |common, data, _app, _state| {
                             common.trigger_haptics();
-                            on_leave_anim(k.clone(), data);
+                            on_leave_anim(k.clone(), common, data);
                         }
                     }),
                 );
@@ -299,8 +299,12 @@ fn set_anim_color(key_state: &KeyState, rect: &mut Rectangle, pos: f32) {
     rect.params.color2.b = key_state.color2.b + br2;
 }
 
-fn on_enter_anim(key_state: Rc<KeyState>, data: &mut event::CallbackData) {
-    data.animations.push(Animation::new(
+fn on_enter_anim(
+    key_state: Rc<KeyState>,
+    common: &mut event::CallbackDataCommon,
+    data: &event::CallbackData,
+) {
+    common.animate(Animation::new(
         data.widget_id,
         10,
         AnimationEasing::OutBack,
@@ -313,8 +317,12 @@ fn on_enter_anim(key_state: Rc<KeyState>, data: &mut event::CallbackData) {
     ));
 }
 
-fn on_leave_anim(key_state: Rc<KeyState>, data: &mut event::CallbackData) {
-    data.animations.push(Animation::new(
+fn on_leave_anim(
+    key_state: Rc<KeyState>,
+    common: &mut event::CallbackDataCommon,
+    data: &event::CallbackData,
+) {
+    common.animate(Animation::new(
         data.widget_id,
         15,
         AnimationEasing::OutQuad,

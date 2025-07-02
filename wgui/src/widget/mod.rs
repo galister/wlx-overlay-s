@@ -2,14 +2,13 @@ use glam::Vec2;
 
 use super::drawing::RenderPrimitive;
 use crate::{
-	animation,
 	any::AnyTrait,
 	drawing,
 	event::{
-		CallbackData, CallbackDataCommon, CallbackMetadata, Event, EventListener, EventListenerKind,
-		MouseWheelEvent,
+		CallbackData, CallbackDataCommon, CallbackMetadata, Event, EventAlterables, EventListener,
+		EventListenerKind, EventRefs, MouseWheelEvent,
 	},
-	layout::{Layout, WidgetID, WidgetMap},
+	layout::{Layout, WidgetID},
 	transform_stack::TransformStack,
 };
 
@@ -124,14 +123,15 @@ pub trait WidgetObj: AnyTrait {
 pub struct EventParams<'a> {
 	pub node_id: taffy::NodeId,
 	pub style: &'a taffy::Style,
-	pub taffy_layout: &'a taffy::Layout,
-	pub widgets: &'a WidgetMap,
-	pub tree: &'a taffy::TaffyTree<WidgetID>,
-	pub transform_stack: &'a TransformStack,
-	pub animations: &'a mut Vec<animation::Animation>,
-	pub needs_redraw: &'a mut bool,
-	pub trigger_haptics: &'a mut bool,
-	pub dirty_nodes: &'a mut Vec<taffy::NodeId>,
+	pub refs: &'a EventRefs<'a>,
+	pub alterables: &'a mut EventAlterables,
+	pub layout: &'a taffy::Layout,
+}
+
+impl EventParams<'_> {
+	pub fn mark_redraw(&mut self) {
+		self.alterables.needs_redraw = true;
+	}
 }
 
 pub enum EventResult {
@@ -189,27 +189,17 @@ macro_rules! call_event {
 				let mut data = CallbackData {
 					obj: $self.obj.as_mut(),
 					widget_data: &mut $self.data,
-					animations: $params.animations,
 					$widget_id,
 					$node_id,
 					metadata: $metadata,
 				};
 
 				let mut common = CallbackDataCommon {
-					widgets: $params.widgets,
-					needs_redraw: false,
-					trigger_haptics: false,
-					dirty_nodes: $params.dirty_nodes,
-					taffy_layout: $params.taffy_layout,
+					refs: $params.refs,
+					alterables: $params.alterables,
 				};
 
 				callback(&mut common, &mut data, $user_data.0, $user_data.1);
-				if common.trigger_haptics {
-					*$params.trigger_haptics = true;
-				}
-				if common.needs_redraw {
-					*$params.needs_redraw = true;
-				}
 			}
 		}
 	};
@@ -290,13 +280,13 @@ impl WidgetState {
 			return false;
 		}
 
-		let l = params.taffy_layout;
+		let l = params.layout;
 		let overflow = Vec2::new(l.scroll_width(), l.scroll_height());
 		if overflow.x == 0.0 && overflow.y == 0.0 {
 			return false; // not overflowing
 		}
 
-		let Some(info) = get_scrollbar_info(params.taffy_layout) else {
+		let Some(info) = get_scrollbar_info(params.layout) else {
 			return false;
 		};
 
@@ -308,7 +298,7 @@ impl WidgetState {
 			let new_scroll = (self.data.scrolling.x + wheel.shift.x * mult).clamp(0.0, 1.0);
 			if self.data.scrolling.x != new_scroll {
 				self.data.scrolling.x = new_scroll;
-				*params.needs_redraw = true;
+				params.mark_redraw();
 			}
 		}
 
@@ -318,23 +308,23 @@ impl WidgetState {
 			let new_scroll = (self.data.scrolling.y + wheel.shift.y * mult).clamp(0.0, 1.0);
 			if self.data.scrolling.y != new_scroll {
 				self.data.scrolling.y = new_scroll;
-				*params.needs_redraw = true;
+				params.mark_redraw();
 			}
 		}
 
 		true
 	}
 
-	pub fn process_event<U1, U2>(
+	pub fn process_event<'a, U1, U2>(
 		&mut self,
 		widget_id: WidgetID,
 		listeners: &[EventListener<U1, U2>],
 		node_id: taffy::NodeId,
 		event: &Event,
 		user_data: &mut (&mut U1, &mut U2),
-		params: &mut EventParams,
+		params: &'a mut EventParams<'a>,
 	) -> EventResult {
-		let hovered = event.test_mouse_within_transform(params.transform_stack.get());
+		let hovered = event.test_mouse_within_transform(params.alterables.transform_stack.get());
 
 		match &event {
 			Event::MouseDown(e) => {

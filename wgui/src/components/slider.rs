@@ -93,8 +93,8 @@ fn anim_rect(rect: &mut Rectangle, pos: f32) {
 		drawing::Color::lerp(&HANDLE_BORDER_COLOR, &HANDLE_BORDER_COLOR_HOVERED, pos);
 }
 
-fn on_enter_anim(data: &mut event::CallbackData, handle_id: WidgetID) {
-	data.animations.push(Animation::new(
+fn on_enter_anim(common: &mut event::CallbackDataCommon, handle_id: WidgetID) {
+	common.animate(Animation::new(
 		handle_id,
 		5,
 		AnimationEasing::OutQuad,
@@ -107,8 +107,8 @@ fn on_enter_anim(data: &mut event::CallbackData, handle_id: WidgetID) {
 	));
 }
 
-fn on_leave_anim(data: &mut event::CallbackData, handle_id: WidgetID) {
-	data.animations.push(Animation::new(
+fn on_leave_anim(common: &mut event::CallbackDataCommon, handle_id: WidgetID) {
+	common.animate(Animation::new(
 		handle_id,
 		10,
 		AnimationEasing::OutQuad,
@@ -130,10 +130,10 @@ fn register_event_mouse_enter<U1, U2>(
 	listeners.add(
 		slider.body,
 		EventListenerKind::MouseEnter,
-		Box::new(move |common, data, _, _| {
+		Box::new(move |common, _data, _, _| {
 			common.trigger_haptics();
 			slider.get_state().hovered = true;
-			on_enter_anim(data, slider.slider_handle_rect_id);
+			on_enter_anim(common, slider.slider_handle_rect_id);
 		}),
 	);
 }
@@ -145,10 +145,10 @@ fn register_event_mouse_leave<U1, U2>(
 	listeners.add(
 		slider.body,
 		EventListenerKind::MouseLeave,
-		Box::new(move |common, data, _, _| {
+		Box::new(move |common, _data, _, _| {
 			common.trigger_haptics();
 			slider.get_state().hovered = false;
-			on_leave_anim(data, slider.slider_handle_rect_id);
+			on_leave_anim(common, slider.slider_handle_rect_id);
 		}),
 	);
 }

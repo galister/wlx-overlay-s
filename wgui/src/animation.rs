@@ -1,7 +1,7 @@
 use glam::{FloatExt, Vec2};
 
 use crate::{
-	event::CallbackDataCommon,
+	event::{CallbackDataCommon, EventAlterables, EventRefs},
 	layout::{WidgetID, WidgetMap, WidgetNodeMap},
 	widget::{WidgetData, WidgetObj},
 };
@@ -59,11 +59,6 @@ pub struct Animation {
 	callback: AnimationCallback,
 }
 
-#[derive(Default)]
-struct CallResult {
-	needs_redraw: bool,
-}
-
 impl Animation {
 	pub fn new(
 		target_widget: WidgetID,
@@ -94,22 +89,13 @@ impl Animation {
 		}
 	}
 
-	fn call(
-		&self,
-		widget_map: &WidgetMap,
-		widget_node_map: &WidgetNodeMap,
-		tree: &taffy::tree::TaffyTree<WidgetID>,
-		dirty_nodes: &mut Vec<taffy::NodeId>,
-		pos: f32,
-	) -> CallResult {
-		let mut res = CallResult::default();
-
-		let Some(widget) = widget_map.get(self.target_widget).cloned() else {
-			return res; // failed
+	fn call(&self, refs: &EventRefs, alterables: &mut EventAlterables, pos: f32) {
+		let Some(widget) = refs.widget_map.get(self.target_widget).cloned() else {
+			return; // failed
 		};
 
-		let widget_node = *widget_node_map.get(self.target_widget).unwrap();
-		let layout = tree.layout(widget_node).unwrap(); // should always succeed
+		let widget_node = *refs.widget_node_map.get(self.target_widget).unwrap();
+		let layout = refs.tree.layout(widget_node).unwrap(); // should always succeed
 
 		let mut widget = widget.lock().unwrap();
 
@@ -123,21 +109,9 @@ impl Animation {
 			pos,
 		};
 
-		let common = &mut CallbackDataCommon {
-			dirty_nodes,
-			needs_redraw: false,
-			trigger_haptics: false,
-			widgets: widget_map,
-			taffy_layout: layout,
-		};
+		let common = &mut CallbackDataCommon { refs, alterables };
 
 		(self.callback)(common, data);
-
-		if common.needs_redraw {
-			res.needs_redraw = true;
-		}
-
-		res
 	}
 }
 
@@ -147,14 +121,7 @@ pub struct Animations {
 }
 
 impl Animations {
-	pub fn tick(
-		&mut self,
-		widget_map: &WidgetMap,
-		widget_node_map: &WidgetNodeMap,
-		tree: &taffy::tree::TaffyTree<WidgetID>,
-		dirty_nodes: &mut Vec<taffy::NodeId>,
-		needs_redraw: &mut bool,
-	) {
+	pub fn tick(&mut self, refs: &EventRefs, alterables: &mut EventAlterables) {
 		for anim in &mut self.running_animations {
 			let x = 1.0 - (anim.ticks_remaining as f32 / anim.ticks_duration as f32);
 			let pos = if anim.ticks_remaining > 0 {
@@ -166,11 +133,10 @@ impl Animations {
 
 			anim.pos_prev = anim.pos;
 			anim.pos = pos;
+			anim.call(refs, alterables, 1.0);
 
-			let res = anim.call(widget_map, widget_node_map, tree, dirty_nodes, 1.0);
-
-			if anim.last_tick || res.needs_redraw {
-				*needs_redraw = true;
+			if anim.last_tick {
+				alterables.needs_redraw = true;
 			}
 
 			anim.ticks_remaining -= 1;
@@ -181,22 +147,10 @@ impl Animations {
 			.retain(|anim| anim.ticks_remaining > 0);
 	}
 
-	pub fn process(
-		&mut self,
-		widget_map: &WidgetMap,
-		widget_node_map: &WidgetNodeMap,
-		tree: &taffy::tree::TaffyTree<WidgetID>,
-		dirty_nodes: &mut Vec<taffy::NodeId>,
-		alpha: f32,
-		needs_redraw: &mut bool,
-	) {
+	pub fn process(&mut self, refs: &EventRefs, alterables: &mut EventAlterables, alpha: f32) {
 		for anim in &mut self.running_animations {
 			let pos = anim.pos_prev.lerp(anim.pos, alpha);
-			let res = anim.call(widget_map, widget_node_map, tree, dirty_nodes, pos);
-
-			if res.needs_redraw {
-				*needs_redraw = true;
-			}
+			anim.call(refs, alterables, pos);
 		}
 	}
 
