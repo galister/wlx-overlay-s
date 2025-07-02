@@ -90,7 +90,7 @@ where
             panel.listeners.add(
                 widget_id,
                 EventListenerKind::InternalStateChange,
-                Box::new(move |data, _, _| {
+                Box::new(move |_common, data, _, _| {
                     clock_on_tick(&clock, data);
                 }),
             );

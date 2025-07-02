@@ -74,13 +74,21 @@ impl Event {
 	}
 }
 
-pub trait WidgetCallback<'a> {
-	fn call_on_widget<WIDGET, FUNC>(&self, widget_id: WidgetID, func: FUNC)
+pub struct CallbackDataCommon<'a> {
+	pub widgets: &'a WidgetMap,
+	pub taffy_layout: &'a taffy::Layout,
+	pub dirty_nodes: &'a mut Vec<taffy::NodeId>,
+	pub needs_redraw: bool,
+	pub trigger_haptics: bool,
+}
+
+impl<'a> CallbackDataCommon<'a> {
+	pub fn call_on_widget<WIDGET, FUNC>(&self, widget_id: WidgetID, func: FUNC)
 	where
 		WIDGET: WidgetObj,
 		FUNC: FnOnce(&mut WIDGET),
 	{
-		let Some(widget) = self.get_widgets().get(widget_id) else {
+		let Some(widget) = self.widgets.get(widget_id) else {
 			debug_assert!(false);
 			return;
 		};
@@ -91,36 +99,30 @@ pub trait WidgetCallback<'a> {
 		func(m);
 	}
 
-	fn get_widgets(&self) -> &'a WidgetMap;
-	fn mark_redraw(&mut self);
-	fn mark_dirty(&mut self, node_id: taffy::NodeId);
+	pub fn mark_redraw(&mut self) {
+		self.needs_redraw = true;
+	}
+
+	pub fn mark_dirty(&mut self, node_id: taffy::NodeId) {
+		self.dirty_nodes.push(node_id);
+	}
+
+	pub fn trigger_haptics(&mut self) {
+		self.trigger_haptics = true;
+	}
+
+	pub fn get_taffy_layout(&self) -> &taffy::Layout {
+		self.taffy_layout
+	}
 }
 
 pub struct CallbackData<'a> {
 	pub obj: &'a mut dyn WidgetObj,
 	pub widget_data: &'a mut WidgetData,
 	pub animations: &'a mut Vec<animation::Animation>,
-	pub widgets: &'a WidgetMap,
 	pub widget_id: WidgetID,
 	pub node_id: taffy::NodeId,
-	pub dirty_nodes: &'a mut Vec<taffy::NodeId>,
-	pub needs_redraw: bool,
-	pub trigger_haptics: bool,
 	pub metadata: CallbackMetadata,
-}
-
-impl<'a> WidgetCallback<'a> for CallbackData<'a> {
-	fn get_widgets(&self) -> &'a WidgetMap {
-		self.widgets
-	}
-
-	fn mark_redraw(&mut self) {
-		self.needs_redraw = true;
-	}
-
-	fn mark_dirty(&mut self, node_id: taffy::NodeId) {
-		self.dirty_nodes.push(node_id);
-	}
 }
 
 pub enum CallbackMetadata {
@@ -139,7 +141,8 @@ pub enum EventListenerKind {
 	InternalStateChange,
 }
 
-pub type EventCallback<U1, U2> = Box<dyn Fn(&mut CallbackData, &mut U1, &mut U2)>;
+pub type EventCallback<U1, U2> =
+	Box<dyn Fn(&mut CallbackDataCommon, &mut CallbackData, &mut U1, &mut U2)>;
 
 pub struct EventListener<U1, U2> {
 	pub kind: EventListenerKind,
@@ -150,7 +153,7 @@ impl<U1, U2> EventListener<U1, U2> {
 	pub fn callback_for_kind(
 		&self,
 		kind: EventListenerKind,
-	) -> Option<&impl Fn(&mut CallbackData, &mut U1, &mut U2)> {
+	) -> Option<&impl Fn(&mut CallbackDataCommon, &mut CallbackData, &mut U1, &mut U2)> {
 		if self.kind == kind {
 			Some(&self.callback)
 		} else {

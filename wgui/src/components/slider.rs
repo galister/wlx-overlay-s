@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::{
+	cell::{RefCell, RefMut},
+	rc::Rc,
+};
 
 use glam::{Mat4, Vec2, Vec3};
 use taffy::prelude::{length, percent};
@@ -7,7 +10,7 @@ use crate::{
 	animation::{Animation, AnimationEasing},
 	components::Component,
 	drawing::{self},
-	event::{self, EventListenerCollection, EventListenerKind, WidgetCallback},
+	event::{self, CallbackDataCommon, EventListenerCollection, EventListenerKind},
 	layout::{Layout, WidgetID},
 	renderer_vk::util,
 	widget::{
@@ -35,26 +38,37 @@ impl Default for Params {
 	}
 }
 
+pub struct SliderState {
+	dragging: bool,
+	hovered: bool,
+	value: f32,
+	min_value: f32,
+	max_value: f32,
+}
+
 pub struct Slider {
-	pub body: WidgetID,             // Outer rectangle
-	pub slider_handle_id: WidgetID, // Inner rectangle
-	pub slider_handle_node: taffy::NodeId,
+	body: WidgetID,                  // Div
+	slider_handle_id: WidgetID,      // Div
+	slider_handle_rect_id: WidgetID, // Rectangle
+	slider_handle_node: taffy::NodeId,
+	state: Rc<RefCell<SliderState>>,
 }
 
 impl Component for Slider {}
 
 impl Slider {
-	pub fn set_value<'a, C>(&self, callback_data: &mut C, _value: f32)
-	where
-		C: WidgetCallback<'a>,
-	{
-		callback_data.mark_redraw();
-		callback_data.mark_dirty(self.slider_handle_node);
-		callback_data.call_on_widget(self.slider_handle_id, |_rect: &mut Rectangle| {
-			// todo
-		});
-		callback_data.mark_redraw();
-		callback_data.mark_dirty(self.slider_handle_node);
+	fn get_state(&self) -> RefMut<'_, SliderState> {
+		self.state.borrow_mut()
+	}
+
+	pub fn set_value(&self, state: &mut SliderState, common: &mut CallbackDataCommon, value: f32) {
+		state.value = value;
+
+		common.mark_dirty(self.slider_handle_node);
+
+		common.call_on_widget(self.slider_handle_id, |div: &mut Div| {});
+		common.mark_redraw();
+		common.mark_dirty(self.slider_handle_node);
 	}
 }
 
@@ -84,11 +98,11 @@ fn on_enter_anim(data: &mut event::CallbackData, handle_id: WidgetID) {
 		handle_id,
 		5,
 		AnimationEasing::OutQuad,
-		Box::new(move |data| {
+		Box::new(move |common, data| {
 			let rect = data.obj.get_as_mut::<Rectangle>();
 			data.data.transform = get_anim_transform(data.pos, data.widget_size);
 			anim_rect(rect, data.pos);
-			data.needs_redraw = true;
+			common.mark_redraw();
 		}),
 	));
 }
@@ -98,23 +112,102 @@ fn on_leave_anim(data: &mut event::CallbackData, handle_id: WidgetID) {
 		handle_id,
 		10,
 		AnimationEasing::OutQuad,
-		Box::new(move |data| {
+		Box::new(move |common, data| {
 			let rect = data.obj.get_as_mut::<Rectangle>();
 			data.data.transform = get_anim_transform(1.0 - data.pos, data.widget_size);
 			anim_rect(rect, 1.0 - data.pos);
-			data.needs_redraw = true;
+			common.mark_redraw();
 		}),
 	));
 }
 
 const PAD_PERCENT: f32 = 0.75;
 
+fn register_event_mouse_enter<U1, U2>(
+	slider: Rc<Slider>,
+	listeners: &mut EventListenerCollection<U1, U2>,
+) {
+	listeners.add(
+		slider.body,
+		EventListenerKind::MouseEnter,
+		Box::new(move |common, data, _, _| {
+			common.trigger_haptics();
+			slider.get_state().hovered = true;
+			on_enter_anim(data, slider.slider_handle_rect_id);
+		}),
+	);
+}
+
+fn register_event_mouse_leave<U1, U2>(
+	slider: Rc<Slider>,
+	listeners: &mut EventListenerCollection<U1, U2>,
+) {
+	listeners.add(
+		slider.body,
+		EventListenerKind::MouseLeave,
+		Box::new(move |common, data, _, _| {
+			common.trigger_haptics();
+			slider.get_state().hovered = false;
+			on_leave_anim(data, slider.slider_handle_rect_id);
+		}),
+	);
+}
+
+fn register_event_mouse_motion<U1, U2>(
+	slider: Rc<Slider>,
+	listeners: &mut EventListenerCollection<U1, U2>,
+) {
+	listeners.add(
+		slider.body,
+		EventListenerKind::MouseMotion,
+		Box::new(move |_common, _data, _, _| {}),
+	);
+}
+
+fn register_event_mouse_press<U1, U2>(
+	slider: Rc<Slider>,
+	listeners: &mut EventListenerCollection<U1, U2>,
+) {
+	listeners.add(
+		slider.body,
+		EventListenerKind::MousePress,
+		Box::new(move |common, _data, _, _| {
+			common.trigger_haptics();
+
+			let mut state = slider.get_state();
+			if state.hovered {
+				state.dragging = true;
+				let val = state.min_value;
+				slider.set_value(&mut state, common, val);
+			}
+		}),
+	);
+}
+
+fn register_event_mouse_release<U1, U2>(
+	slider: Rc<Slider>,
+	listeners: &mut EventListenerCollection<U1, U2>,
+) {
+	listeners.add(
+		slider.body,
+		EventListenerKind::MouseRelease,
+		Box::new(move |common, _data, _, _| {
+			common.trigger_haptics();
+
+			let mut state = slider.get_state();
+			if state.dragging {
+				state.dragging = false;
+			}
+		}),
+	);
+}
+
 pub fn construct<U1, U2>(
 	layout: &mut Layout,
 	listeners: &mut EventListenerCollection<U1, U2>,
 	parent: WidgetID,
 	params: Params,
-) -> anyhow::Result<Arc<Slider>> {
+) -> anyhow::Result<Rc<Slider>> {
 	let mut style = params.style;
 	style.position = taffy::Position::Relative;
 	style.min_size = style.size;
@@ -172,37 +265,26 @@ pub fn construct<U1, U2>(
 		},
 	)?;
 
-	let slider = Arc::new(Slider {
+	let slider = Rc::new(Slider {
 		body: body_id,
 		slider_handle_node,
+		slider_handle_rect_id,
 		slider_handle_id,
+		state: Rc::new(RefCell::new(SliderState {
+			dragging: false,
+			hovered: false,
+			max_value: params.max_value,
+			value: params.initial_value,
+			min_value: params.min_value,
+		})),
 	});
 
-	//let mut widget = layout.widget_map.get(rect_id).unwrap().lock().unwrap();
-
-	listeners.add(
-		body_id,
-		EventListenerKind::MouseEnter,
-		Box::new(move |data, _, _| {
-			data.trigger_haptics = true;
-			on_enter_anim(data, slider_handle_rect_id);
-		}),
-	);
-
-	listeners.add(
-		body_id,
-		EventListenerKind::MouseMotion,
-		Box::new(move |_data, _, _| {}),
-	);
-
-	listeners.add(
-		body_id,
-		EventListenerKind::MouseLeave,
-		Box::new(move |data, _, _| {
-			data.trigger_haptics = true;
-			on_leave_anim(data, slider_handle_rect_id);
-		}),
-	);
+	register_event_mouse_enter(slider.clone(), listeners);
+	register_event_mouse_leave(slider.clone(), listeners);
+	register_event_mouse_motion(slider.clone(), listeners);
+	register_event_mouse_press(slider.clone(), listeners);
+	register_event_mouse_leave(slider.clone(), listeners);
+	register_event_mouse_release(slider.clone(), listeners);
 
 	Ok(slider)
 }

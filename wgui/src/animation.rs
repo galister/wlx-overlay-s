@@ -1,7 +1,7 @@
 use glam::{FloatExt, Vec2};
 
 use crate::{
-	event::WidgetCallback,
+	event::CallbackDataCommon,
 	layout::{WidgetID, WidgetMap, WidgetNodeMap},
 	widget::{WidgetData, WidgetObj},
 };
@@ -37,28 +37,12 @@ impl AnimationEasing {
 pub struct CallbackData<'a> {
 	pub obj: &'a mut dyn WidgetObj,
 	pub data: &'a mut WidgetData,
-	pub widgets: &'a WidgetMap,
 	pub widget_id: WidgetID,
 	pub widget_size: Vec2,
 	pub pos: f32, // 0.0 (start of animation) - 1.0 (end of animation)
-	pub needs_redraw: bool,
-	pub dirty_nodes: &'a mut Vec<taffy::NodeId>,
 }
 
-impl<'a> WidgetCallback<'a> for CallbackData<'a> {
-	fn get_widgets(&self) -> &'a WidgetMap {
-		self.widgets
-	}
-
-	fn mark_redraw(&mut self) {
-		self.needs_redraw = true;
-	}
-
-	fn mark_dirty(&mut self, node_id: taffy::NodeId) {
-		self.dirty_nodes.push(node_id);
-	}
-}
-
+pub type AnimationCallback = Box<dyn Fn(&mut CallbackDataCommon, &mut CallbackData)>;
 pub struct Animation {
 	target_widget: WidgetID,
 
@@ -72,7 +56,7 @@ pub struct Animation {
 	pos_prev: f32,
 	last_tick: bool,
 
-	callback: Box<dyn Fn(&mut CallbackData)>,
+	callback: AnimationCallback,
 }
 
 #[derive(Default)]
@@ -85,7 +69,7 @@ impl Animation {
 		target_widget: WidgetID,
 		ticks: u32,
 		easing: AnimationEasing,
-		callback: Box<dyn Fn(&mut CallbackData)>,
+		callback: AnimationCallback,
 	) -> Self {
 		Animation::new_ex(target_widget, 0, ticks, easing, callback)
 	}
@@ -95,7 +79,7 @@ impl Animation {
 		animation_id: u32,
 		ticks: u32,
 		easing: AnimationEasing,
-		callback: Box<dyn Fn(&mut CallbackData)>,
+		callback: AnimationCallback,
 	) -> Self {
 		Self {
 			target_widget,
@@ -133,18 +117,23 @@ impl Animation {
 
 		let data = &mut CallbackData {
 			widget_id: self.target_widget,
-			dirty_nodes,
-			widgets: widget_map,
 			widget_size: Vec2::new(layout.size.width, layout.size.height),
 			obj,
 			data,
 			pos,
-			needs_redraw: false,
 		};
 
-		(self.callback)(data);
+		let common = &mut CallbackDataCommon {
+			dirty_nodes,
+			needs_redraw: false,
+			trigger_haptics: false,
+			widgets: widget_map,
+			taffy_layout: layout,
+		};
 
-		if data.needs_redraw {
+		(self.callback)(common, data);
+
+		if common.needs_redraw {
 			res.needs_redraw = true;
 		}
 

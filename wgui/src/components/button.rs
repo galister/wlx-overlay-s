@@ -1,11 +1,11 @@
-use std::sync::Arc;
+use std::rc::Rc;
 use taffy::{AlignItems, JustifyContent, prelude::length};
 
 use crate::{
 	animation::{Animation, AnimationEasing},
 	components::Component,
 	drawing::{self, Color},
-	event::{EventListenerCollection, EventListenerKind, WidgetCallback},
+	event::{CallbackDataCommon, EventListenerCollection, EventListenerKind},
 	layout::{Layout, WidgetID},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
@@ -48,10 +48,7 @@ pub struct Button {
 impl Component for Button {}
 
 impl Button {
-	pub fn set_text<'a, C>(&self, callback_data: &mut C, text: &str)
-	where
-		C: WidgetCallback<'a>,
-	{
+	pub fn set_text<'a, 'b, C>(&self, callback_data: &mut CallbackDataCommon, text: &str) {
 		callback_data.call_on_widget(self.text_id, |label: &mut TextLabel| {
 			label.set_text(text);
 		});
@@ -72,28 +69,28 @@ fn anim_hover(rect: &mut Rectangle, button: &Button, pos: f32) {
 	rect.params.border = 3.0;
 }
 
-fn anim_hover_in(button: Arc<Button>, widget_id: WidgetID) -> Animation {
+fn anim_hover_in(button: Rc<Button>, widget_id: WidgetID) -> Animation {
 	Animation::new(
 		widget_id,
 		10,
 		AnimationEasing::OutQuad,
-		Box::new(move |data| {
+		Box::new(move |common, data| {
 			let rect = data.obj.get_as_mut::<Rectangle>();
 			anim_hover(rect, &button, data.pos);
-			data.needs_redraw = true;
+			common.mark_redraw();
 		}),
 	)
 }
 
-fn anim_hover_out(button: Arc<Button>, widget_id: WidgetID) -> Animation {
+fn anim_hover_out(button: Rc<Button>, widget_id: WidgetID) -> Animation {
 	Animation::new(
 		widget_id,
 		15,
 		AnimationEasing::OutQuad,
-		Box::new(move |data| {
+		Box::new(move |common, data| {
 			let rect = data.obj.get_as_mut::<Rectangle>();
 			anim_hover(rect, &button, 1.0 - data.pos);
-			data.needs_redraw = true;
+			common.mark_redraw();
 		}),
 	)
 }
@@ -103,7 +100,7 @@ pub fn construct<U1, U2>(
 	listeners: &mut EventListenerCollection<U1, U2>,
 	parent: WidgetID,
 	params: Params,
-) -> anyhow::Result<Arc<Button>> {
+) -> anyhow::Result<Rc<Button>> {
 	let mut style = params.style;
 
 	// force-override style
@@ -147,7 +144,7 @@ pub fn construct<U1, U2>(
 		},
 	)?;
 
-	let button = Arc::new(Button {
+	let _button = Rc::new(Button {
 		body: rect_id,
 		text_id,
 		text_node,
@@ -157,27 +154,27 @@ pub fn construct<U1, U2>(
 
 	//let mut widget = layout.widget_map.get(rect_id).unwrap().lock().unwrap();
 
-	let _button = button.clone();
+	let button = _button.clone();
 	listeners.add(
 		rect_id,
 		EventListenerKind::MouseEnter,
-		Box::new(move |data, _, _| {
+		Box::new(move |common, data, _, _| {
 			data
 				.animations
-				.push(anim_hover_in(_button.clone(), data.widget_id));
+				.push(anim_hover_in(button.clone(), data.widget_id));
 		}),
 	);
 
-	let _button = button.clone();
+	let button = _button.clone();
 	listeners.add(
 		rect_id,
 		EventListenerKind::MouseLeave,
-		Box::new(move |data, _, _| {
+		Box::new(move |common, data, _, _| {
 			data
 				.animations
-				.push(anim_hover_out(_button.clone(), data.widget_id));
+				.push(anim_hover_out(button.clone(), data.widget_id));
 		}),
 	);
 
-	Ok(button)
+	Ok(_button)
 }

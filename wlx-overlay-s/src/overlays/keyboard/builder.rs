@@ -191,8 +191,8 @@ where
                     EventListenerKind::MouseEnter,
                     Box::new({
                         let k = key_state.clone();
-                        move |data, _app, _state| {
-                            data.trigger_haptics = true;
+                        move |common, data, _app, _state| {
+                            common.trigger_haptics();
                             on_enter_anim(k.clone(), data);
                         }
                     }),
@@ -202,8 +202,8 @@ where
                     EventListenerKind::MouseLeave,
                     Box::new({
                         let k = key_state.clone();
-                        move |data, _app, _state| {
-                            data.trigger_haptics = true;
+                        move |common, data, _app, _state| {
+                            common.trigger_haptics();
                             on_leave_anim(k.clone(), data);
                         }
                     }),
@@ -213,13 +213,13 @@ where
                     EventListenerKind::MousePress,
                     Box::new({
                         let k = key_state.clone();
-                        move |data, app, state| {
+                        move |common, data, app, state| {
                             let CallbackMetadata::MouseButton(button) = data.metadata else {
                                 panic!("CallbackMetadata should contain MouseButton!");
                             };
 
                             handle_press(app, &k, state, button);
-                            on_press_anim(k.clone(), data);
+                            on_press_anim(k.clone(), common, data);
                         }
                     }),
                 );
@@ -228,9 +228,9 @@ where
                     EventListenerKind::MouseRelease,
                     Box::new({
                         let k = key_state.clone();
-                        move |data, app, state| {
+                        move |common, data, app, state| {
                             if handle_release(app, &k, state) {
-                                on_release_anim(k.clone(), data);
+                                on_release_anim(k.clone(), common, data);
                             }
                         }
                     }),
@@ -242,11 +242,11 @@ where
                         EventListenerKind::InternalStateChange,
                         Box::new({
                             let k = key_state.clone();
-                            move |data, _app, state| {
+                            move |common, data, _app, state| {
                                 if (state.modifiers & modifier) != 0 {
-                                    on_press_anim(k.clone(), data);
+                                    on_press_anim(k.clone(), common, data);
                                 } else {
-                                    on_release_anim(k.clone(), data);
+                                    on_release_anim(k.clone(), common, data);
                                 }
                             }
                         }),
@@ -304,11 +304,11 @@ fn on_enter_anim(key_state: Rc<KeyState>, data: &mut event::CallbackData) {
         data.widget_id,
         10,
         AnimationEasing::OutBack,
-        Box::new(move |data| {
+        Box::new(move |common, data| {
             let rect = data.obj.get_as_mut::<Rectangle>();
             set_anim_color(&key_state, rect, data.pos);
             data.data.transform = get_anim_transform(data.pos, data.widget_size);
-            data.needs_redraw = true;
+            common.mark_redraw();
         }),
     ));
 }
@@ -318,31 +318,39 @@ fn on_leave_anim(key_state: Rc<KeyState>, data: &mut event::CallbackData) {
         data.widget_id,
         15,
         AnimationEasing::OutQuad,
-        Box::new(move |data| {
+        Box::new(move |common, data| {
             let rect = data.obj.get_as_mut::<Rectangle>();
             set_anim_color(&key_state, rect, 1.0 - data.pos);
             data.data.transform = get_anim_transform(1.0 - data.pos, data.widget_size);
-            data.needs_redraw = true;
+            common.mark_redraw();
         }),
     ));
 }
 
-fn on_press_anim(key_state: Rc<KeyState>, data: &mut event::CallbackData) {
+fn on_press_anim(
+    key_state: Rc<KeyState>,
+    common: &mut event::CallbackDataCommon,
+    data: &mut event::CallbackData,
+) {
     if key_state.drawn_state.get() {
         return;
     }
     let rect = data.obj.get_as_mut::<Rectangle>();
     rect.params.border_color = Color::new(1.0, 1.0, 1.0, 1.0);
-    data.needs_redraw = true;
+    common.mark_redraw();
     key_state.drawn_state.set(true);
 }
 
-fn on_release_anim(key_state: Rc<KeyState>, data: &mut event::CallbackData) {
+fn on_release_anim(
+    key_state: Rc<KeyState>,
+    common: &mut event::CallbackDataCommon,
+    data: &mut event::CallbackData,
+) {
     if !key_state.drawn_state.get() {
         return;
     }
     let rect = data.obj.get_as_mut::<Rectangle>();
     rect.params.border_color = key_state.border_color;
-    data.needs_redraw = true;
+    common.mark_redraw();
     key_state.drawn_state.set(false);
 }

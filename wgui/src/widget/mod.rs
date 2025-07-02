@@ -6,7 +6,8 @@ use crate::{
 	any::AnyTrait,
 	drawing,
 	event::{
-		CallbackData, CallbackMetadata, Event, EventListener, EventListenerKind, MouseWheelEvent,
+		CallbackData, CallbackDataCommon, CallbackMetadata, Event, EventListener, EventListenerKind,
+		MouseWheelEvent,
 	},
 	layout::{Layout, WidgetID, WidgetMap},
 	transform_stack::TransformStack,
@@ -188,20 +189,25 @@ macro_rules! call_event {
 				let mut data = CallbackData {
 					obj: $self.obj.as_mut(),
 					widget_data: &mut $self.data,
-					widgets: $params.widgets,
 					animations: $params.animations,
-					dirty_nodes: $params.dirty_nodes,
 					$widget_id,
 					$node_id,
-					needs_redraw: false,
-					trigger_haptics: false,
 					metadata: $metadata,
 				};
-				callback(&mut data, $user_data.0, $user_data.1);
-				if data.trigger_haptics {
+
+				let mut common = CallbackDataCommon {
+					widgets: $params.widgets,
+					needs_redraw: false,
+					trigger_haptics: false,
+					dirty_nodes: $params.dirty_nodes,
+					taffy_layout: $params.taffy_layout,
+				};
+
+				callback(&mut common, &mut data, $user_data.0, $user_data.1);
+				if common.trigger_haptics {
 					*$params.trigger_haptics = true;
 				}
-				if data.needs_redraw {
+				if common.needs_redraw {
 					*$params.needs_redraw = true;
 				}
 			}
