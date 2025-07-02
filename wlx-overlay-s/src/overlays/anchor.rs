@@ -25,7 +25,6 @@ where
             positioning: Positioning::Static,
             ..Default::default()
         },
-        backend: Box::new(panel),
-        ..Default::default()
+        ..OverlayData::from_backend(Box::new(panel))
     })
 }

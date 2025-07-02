@@ -13,11 +13,10 @@ use crate::{
     overlays::{
         anchor::create_anchor,
         keyboard::{KEYBOARD_NAME, builder::create_keyboard},
-        screen::WlxClientAlias,
+        screen::create_screens,
         watch::{WATCH_NAME, create_watch},
     },
     state::AppState,
-    subsystem::hid::{get_keymap_wl, get_keymap_x11},
 };
 
 use super::overlay::{OverlayData, OverlayID};
@@ -37,22 +36,11 @@ pub enum BackendError {
     Fatal(#[from] anyhow::Error),
 }
 
-#[cfg(feature = "wayland")]
-fn create_wl_client() -> Option<WlxClientAlias> {
-    wlx_capture::wayland::WlxClient::new()
-}
-
-#[cfg(not(feature = "wayland"))]
-fn create_wl_client() -> Option<WlxClientAlias> {
-    None
-}
-
 pub struct OverlayContainer<T>
 where
     T: Default,
 {
     overlays: IdMap<usize, OverlayData<T>>,
-    wl: Option<WlxClientAlias>,
 }
 
 impl<T> OverlayContainer<T>
@@ -62,55 +50,35 @@ where
     pub fn new(app: &mut AppState, headless: bool) -> anyhow::Result<Self> {
         let mut overlays = IdMap::new();
         let mut show_screens = app.session.config.show_screens.clone();
-        let mut wl = None;
-        let mut keymap = None;
-
-        app.screens.clear();
+        let mut maybe_keymap = None;
 
         if headless {
             log::info!("Running in headless mode; keyboard will be en-US");
         } else {
-            wl = create_wl_client();
-
-            let data = if let Some(wl) = wl.as_mut() {
-                log::info!("Wayland detected.");
-                keymap = get_keymap_wl()
-                    .map_err(|f| log::warn!("Could not load keyboard layout: {f}"))
-                    .ok();
-                crate::overlays::screen::create_screens_wayland(wl, app)
-            } else {
-                log::info!("Wayland not detected, assuming X11.");
-                keymap = get_keymap_x11()
-                    .map_err(|f| log::warn!("Could not load keyboard layout: {f}"))
-                    .ok();
-                match crate::overlays::screen::create_screens_x11pw(app) {
-                    Ok(data) => data,
-                    Err(e) => {
-                        log::info!("Will not use X11 PipeWire capture: {e:?}");
-                        crate::overlays::screen::create_screens_xshm(app)?
+            match create_screens(app) {
+                Ok((data, keymap)) => {
+                    if show_screens.is_empty() {
+                        if let Some((_, s, _)) = data.screens.first() {
+                            show_screens.arc_set(s.name.clone());
+                        }
+                        for (meta, mut state, backend) in data.screens {
+                            if show_screens.arc_get(state.name.as_ref()) {
+                                state.show_hide = true;
+                            }
+                            overlays.insert(
+                                state.id.0,
+                                OverlayData::<T> {
+                                    state,
+                                    ..OverlayData::from_backend(backend)
+                                },
+                            );
+                            app.screens.push(meta);
+                        }
                     }
-                }
-            };
 
-            if show_screens.is_empty() {
-                if let Some((_, s, _)) = data.screens.first() {
-                    show_screens.arc_set(s.name.clone());
+                    maybe_keymap = keymap;
                 }
-            }
-
-            for (meta, mut state, backend) in data.screens {
-                if show_screens.arc_get(state.name.as_ref()) {
-                    state.show_hide = true;
-                }
-                overlays.insert(
-                    state.id.0,
-                    OverlayData::<T> {
-                        state,
-                        backend,
-                        ..Default::default()
-                    },
-                );
-                app.screens.push(meta);
+                Err(e) => log::error!("Unable to initialize screens: {e:?}"),
             }
         }
 
@@ -121,147 +89,12 @@ where
         watch.state.want_visible = true;
         overlays.insert(watch.state.id.0, watch);
 
-        let mut keyboard = create_keyboard(app, keymap)?;
+        let mut keyboard = create_keyboard(app, maybe_keymap)?;
         keyboard.state.show_hide = show_screens.arc_get(KEYBOARD_NAME);
         keyboard.state.want_visible = false;
         overlays.insert(keyboard.state.id.0, keyboard);
 
-        Ok(Self { overlays, wl })
-    }
-
-    #[cfg(not(feature = "wayland"))]
-    pub fn update(&mut self, _app: &mut AppState) -> anyhow::Result<Vec<OverlayData<T>>> {
-        Ok(vec![])
-    }
-    #[cfg(feature = "wayland")]
-    #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
-    #[allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
-    pub fn update(&mut self, app: &mut AppState) -> anyhow::Result<Vec<OverlayData<T>>> {
-        use crate::overlays::screen::{
-            create_screen_interaction, create_screen_renderer_wl, load_pw_token_config,
-        };
-        use glam::vec2;
-        use wlx_capture::wayland::OutputChangeEvent;
-
-        let mut removed_overlays = vec![];
-        let Some(wl) = self.wl.as_mut() else {
-            return Ok(removed_overlays);
-        };
-
-        wl.dispatch_pending();
-
-        let mut create_ran = false;
-        let mut extent_dirty = false;
-        let mut watch_dirty = false;
-
-        let mut maybe_token_store = None;
-
-        for ev in wl.iter_events().collect::<Vec<_>>() {
-            match ev {
-                OutputChangeEvent::Create(_) => {
-                    if create_ran {
-                        continue;
-                    }
-                    let data = crate::overlays::screen::create_screens_wayland(wl, app);
-                    create_ran = true;
-                    for (meta, state, backend) in data.screens {
-                        self.overlays.insert(
-                            state.id.0,
-                            OverlayData::<T> {
-                                state,
-                                backend,
-                                ..Default::default()
-                            },
-                        );
-                        app.screens.push(meta);
-                        watch_dirty = true;
-                    }
-                }
-                OutputChangeEvent::Destroy(id) => {
-                    let Some(idx) = app.screens.iter().position(|s| s.native_handle == id) else {
-                        continue;
-                    };
-
-                    let meta = &app.screens[idx];
-                    let removed = self.overlays.remove(meta.id.0).unwrap();
-                    removed_overlays.push(removed);
-                    log::info!("{}: Destroyed", meta.name);
-                    app.screens.remove(idx);
-                    watch_dirty = true;
-                    extent_dirty = true;
-                }
-                OutputChangeEvent::Logical(id) => {
-                    let Some(meta) = app.screens.iter().find(|s| s.native_handle == id) else {
-                        continue;
-                    };
-                    let output = wl.outputs.get(id).unwrap();
-                    let Some(overlay) = self.overlays.get_mut(meta.id.0) else {
-                        continue;
-                    };
-                    let logical_pos =
-                        vec2(output.logical_pos.0 as f32, output.logical_pos.1 as f32);
-                    let logical_size =
-                        vec2(output.logical_size.0 as f32, output.logical_size.1 as f32);
-                    let transform = output.transform.into();
-                    overlay
-                        .backend
-                        .set_interaction(Box::new(create_screen_interaction(
-                            logical_pos,
-                            logical_size,
-                            transform,
-                        )));
-                    extent_dirty = true;
-                }
-                OutputChangeEvent::Physical(id) => {
-                    let Some(meta) = app.screens.iter().find(|s| s.native_handle == id) else {
-                        continue;
-                    };
-                    let output = wl.outputs.get(id).unwrap();
-                    let Some(overlay) = self.overlays.get_mut(meta.id.0) else {
-                        continue;
-                    };
-
-                    let has_wlr_dmabuf = wl.maybe_wlr_dmabuf_mgr.is_some();
-                    let has_wlr_screencopy = wl.maybe_wlr_screencopy_mgr.is_some();
-
-                    let pw_token_store = maybe_token_store.get_or_insert_with(|| {
-                        load_pw_token_config().unwrap_or_else(|e| {
-                            log::warn!("Failed to load PipeWire token config: {:?}", e);
-                            Default::default()
-                        })
-                    });
-
-                    if let Some(renderer) = create_screen_renderer_wl(
-                        output,
-                        has_wlr_dmabuf,
-                        has_wlr_screencopy,
-                        pw_token_store,
-                        &app,
-                    ) {
-                        overlay.backend.set_renderer(Box::new(renderer));
-                    }
-                    extent_dirty = true;
-                }
-            }
-        }
-
-        if extent_dirty && !create_ran {
-            let extent = wl.get_desktop_extent();
-            let origin = wl.get_desktop_origin();
-            app.hid_provider
-                .inner
-                .set_desktop_extent(vec2(extent.0 as f32, extent.1 as f32));
-            app.hid_provider
-                .inner
-                .set_desktop_origin(vec2(origin.0 as f32, origin.1 as f32));
-        }
-
-        if watch_dirty {
-            let _watch = self.mut_by_name(WATCH_NAME).unwrap(); // want panic
-            todo!();
-        }
-
-        Ok(removed_overlays)
+        Ok(Self { overlays })
     }
 
     pub fn mut_by_selector(&mut self, selector: &OverlaySelector) -> Option<&mut OverlayData<T>> {

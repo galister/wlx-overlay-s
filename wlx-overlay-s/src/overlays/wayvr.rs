@@ -14,10 +14,10 @@ use wlx_capture::frame::{DmabufFrame, FourCC, FrameFormat, FramePlane};
 use crate::{
     backend::{
         common::{OverlayContainer, OverlaySelector},
-        input::{self, InteractionHandler},
+        input::{self},
         overlay::{
-            FrameMeta, OverlayData, OverlayID, OverlayRenderer, OverlayState, ShouldRender,
-            SplitOverlayBackend, Z_ORDER_DASHBOARD, ui_transform,
+            FrameMeta, OverlayBackend, OverlayData, OverlayID, OverlayState, ShouldRender,
+            Z_ORDER_DASHBOARD, ui_transform,
         },
         task::TaskType,
         wayvr::{
@@ -98,91 +98,12 @@ impl WayVRData {
     }
 }
 
-pub struct WayVRInteractionHandler {
-    context: Rc<RefCell<WayVRContext>>,
-    mouse_transform: Affine2,
-}
-
-impl WayVRInteractionHandler {
-    pub const fn new(context: Rc<RefCell<WayVRContext>>, mouse_transform: Affine2) -> Self {
-        Self {
-            context,
-            mouse_transform,
-        }
-    }
-}
-
-impl InteractionHandler for WayVRInteractionHandler {
-    fn on_hover(
-        &mut self,
-        _app: &mut state::AppState,
-        hit: &input::PointerHit,
-    ) -> Option<input::Haptics> {
-        let ctx = self.context.borrow();
-
-        let wayvr = &mut ctx.wayvr.borrow_mut();
-
-        if let Some(disp) = wayvr.data.state.displays.get(&ctx.display) {
-            let pos = self.mouse_transform.transform_point2(hit.uv);
-            let x = ((pos.x * f32::from(disp.width)) as i32).max(0);
-            let y = ((pos.y * f32::from(disp.height)) as i32).max(0);
-
-            let ctx = self.context.borrow();
-            wayvr
-                .data
-                .state
-                .send_mouse_move(ctx.display, x as u32, y as u32);
-        }
-
-        wayvr.pending_haptics.take()
-    }
-
-    fn on_left(&mut self, _app: &mut state::AppState, _pointer: usize) {
-        // Ignore event
-    }
-
-    fn on_pointer(&mut self, _app: &mut state::AppState, hit: &input::PointerHit, pressed: bool) {
-        if let Some(index) = match hit.mode {
-            input::PointerMode::Left => Some(wayvr::MouseIndex::Left),
-            input::PointerMode::Middle => Some(wayvr::MouseIndex::Center),
-            input::PointerMode::Right => Some(wayvr::MouseIndex::Right),
-            _ => {
-                // Unknown pointer event, ignore
-                None
-            }
-        } {
-            let ctx = self.context.borrow();
-            let wayvr = &mut ctx.wayvr.borrow_mut().data;
-            if pressed {
-                wayvr.state.send_mouse_down(ctx.display, index);
-            } else {
-                wayvr.state.send_mouse_up(index);
-            }
-        }
-    }
-
-    fn on_scroll(
-        &mut self,
-        _app: &mut state::AppState,
-        _hit: &input::PointerHit,
-        delta_y: f32,
-        delta_x: f32,
-    ) {
-        let ctx = self.context.borrow();
-        ctx.wayvr
-            .borrow_mut()
-            .data
-            .state
-            .send_mouse_scroll(delta_y, delta_x);
-    }
-}
-
 struct ImageData {
     vk_image: Arc<Image>,
     vk_image_view: Arc<ImageView>,
 }
 
-pub struct WayVRRenderer {
+pub struct WayVRBackend {
     pipeline: Arc<WGfxPipeline<Vert2Uv>>,
     pass: WGfxPass<Vert2Uv>,
     buf_alpha: Subbuffer<[f32]>,
@@ -190,9 +111,11 @@ pub struct WayVRRenderer {
     context: Rc<RefCell<WayVRContext>>,
     graphics: Arc<WGfx>,
     resolution: [u16; 2],
+    mouse_transform: Affine2,
+    interaction_transform: Option<Affine2>,
 }
 
-impl WayVRRenderer {
+impl WayVRBackend {
     pub fn new(
         app: &state::AppState,
         wvr: Rc<RefCell<WayVRData>>,
@@ -234,6 +157,8 @@ impl WayVRRenderer {
             graphics: app.gfx.clone(),
             image: None,
             resolution,
+            mouse_transform: Affine2::IDENTITY,
+            interaction_transform: Some(ui_transform([resolution[0] as _, resolution[1] as _])), //TODO:dynamic
         })
     }
 }
@@ -592,7 +517,7 @@ where
     Ok(())
 }
 
-impl WayVRRenderer {
+impl WayVRBackend {
     fn ensure_software_data(
         &mut self,
         data: &wayvr::egl_data::RenderSoftwarePixelsData,
@@ -679,7 +604,7 @@ impl WayVRRenderer {
     }
 }
 
-impl OverlayRenderer for WayVRRenderer {
+impl OverlayBackend for WayVRBackend {
     fn init(&mut self, _app: &mut state::AppState) -> anyhow::Result<()> {
         Ok(())
     }
@@ -772,6 +697,73 @@ impl OverlayRenderer for WayVRRenderer {
             ..Default::default()
         })
     }
+
+    fn on_hover(
+        &mut self,
+        _app: &mut state::AppState,
+        hit: &input::PointerHit,
+    ) -> Option<input::Haptics> {
+        let ctx = self.context.borrow();
+
+        let wayvr = &mut ctx.wayvr.borrow_mut();
+
+        if let Some(disp) = wayvr.data.state.displays.get(&ctx.display) {
+            let pos = self.mouse_transform.transform_point2(hit.uv);
+            let x = ((pos.x * f32::from(disp.width)) as i32).max(0);
+            let y = ((pos.y * f32::from(disp.height)) as i32).max(0);
+
+            let ctx = self.context.borrow();
+            wayvr
+                .data
+                .state
+                .send_mouse_move(ctx.display, x as u32, y as u32);
+        }
+
+        wayvr.pending_haptics.take()
+    }
+
+    fn on_left(&mut self, _app: &mut state::AppState, _pointer: usize) {
+        // Ignore event
+    }
+
+    fn on_pointer(&mut self, _app: &mut state::AppState, hit: &input::PointerHit, pressed: bool) {
+        if let Some(index) = match hit.mode {
+            input::PointerMode::Left => Some(wayvr::MouseIndex::Left),
+            input::PointerMode::Middle => Some(wayvr::MouseIndex::Center),
+            input::PointerMode::Right => Some(wayvr::MouseIndex::Right),
+            _ => {
+                // Unknown pointer event, ignore
+                None
+            }
+        } {
+            let ctx = self.context.borrow();
+            let wayvr = &mut ctx.wayvr.borrow_mut().data;
+            if pressed {
+                wayvr.state.send_mouse_down(ctx.display, index);
+            } else {
+                wayvr.state.send_mouse_up(index);
+            }
+        }
+    }
+
+    fn on_scroll(
+        &mut self,
+        _app: &mut state::AppState,
+        _hit: &input::PointerHit,
+        delta_y: f32,
+        delta_x: f32,
+    ) {
+        let ctx = self.context.borrow();
+        ctx.wayvr
+            .borrow_mut()
+            .data
+            .state
+            .send_mouse_scroll(delta_y, delta_x);
+    }
+
+    fn get_interaction_transform(&mut self) -> Option<Affine2> {
+        self.interaction_transform
+    }
 }
 
 #[allow(dead_code)]
@@ -786,8 +778,6 @@ pub fn create_wayvr_display_overlay<O>(
 where
     O: Default,
 {
-    let transform = ui_transform([u32::from(display_width), u32::from(display_height)]);
-
     let state = OverlayState {
         name: format!("WayVR - {name}").into(),
         keyboard_focus: Some(KeyboardFocus::WayVR),
@@ -796,24 +786,21 @@ where
         grabbable: true,
         spawn_scale: display_scale,
         spawn_point: vec3a(0.0, -0.1, -1.0),
-        interaction_transform: transform,
         ..Default::default()
     };
 
     let wayvr = app.get_wayvr()?;
 
-    let renderer = WayVRRenderer::new(app, wayvr, display_handle, [display_width, display_height])?;
-    let context = renderer.context.clone();
-
-    let backend = Box::new(SplitOverlayBackend {
-        renderer: Box::new(renderer),
-        interaction: Box::new(WayVRInteractionHandler::new(context, Affine2::IDENTITY)),
-    });
+    let backend = Box::new(WayVRBackend::new(
+        app,
+        wayvr,
+        display_handle,
+        [display_width, display_height],
+    )?);
 
     Ok(OverlayData {
         state,
-        backend,
-        ..Default::default()
+        ..OverlayData::from_backend(backend)
     })
 }
 

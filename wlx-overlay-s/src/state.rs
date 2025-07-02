@@ -3,7 +3,6 @@ use idmap::IdMap;
 use serde::{Deserialize, Serialize};
 use smallvec::{SmallVec, smallvec};
 use std::sync::Arc;
-use vulkano::image::view::ImageView;
 use wgui::{gfx::WGfx, renderer_vk::context::SharedContext as WSharedContext};
 
 #[cfg(feature = "wayvr")]
@@ -18,7 +17,7 @@ use crate::subsystem::osc::OscSender;
 
 use crate::{
     backend::{input::InputState, overlay::OverlayID, task::TaskContainer},
-    config::{AStrMap, GeneralConfig},
+    config::GeneralConfig,
     config_io,
     graphics::WGfxExtras,
     overlays::toast::{DisplayMethod, ToastTopic},
@@ -39,7 +38,6 @@ pub struct AppState {
     pub input_state: InputState,
     pub screens: SmallVec<[ScreenMeta; 8]>,
     pub anchor: Affine3A,
-    pub sprites: AStrMap<Arc<ImageView>>,
     pub toast_sound: &'static [u8],
 
     #[cfg(feature = "osc")]
@@ -86,7 +84,6 @@ impl AppState {
             input_state: InputState::new(),
             screens: smallvec![],
             anchor: Affine3A::IDENTITY,
-            sprites: AStrMap::new(),
             toast_sound: toast_sound_wav,
 
             #[cfg(feature = "osc")]

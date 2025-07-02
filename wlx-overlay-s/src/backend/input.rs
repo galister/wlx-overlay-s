@@ -256,24 +256,6 @@ pub struct Haptics {
     pub frequency: f32,
 }
 
-pub trait InteractionHandler {
-    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> Option<Haptics>;
-    fn on_left(&mut self, app: &mut AppState, pointer: usize);
-    fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool);
-    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32);
-}
-
-pub struct DummyInteractionHandler;
-
-impl InteractionHandler for DummyInteractionHandler {
-    fn on_left(&mut self, _app: &mut AppState, _pointer: usize) {}
-    fn on_hover(&mut self, _app: &mut AppState, _hit: &PointerHit) -> Option<Haptics> {
-        None
-    }
-    fn on_pointer(&mut self, _app: &mut AppState, _hit: &PointerHit, _pressed: bool) {}
-    fn on_scroll(&mut self, _app: &mut AppState, _hit: &PointerHit, _delta_y: f32, _delta_x: f32) {}
-}
-
 #[derive(Debug, Clone, Copy, Default)]
 struct RayHit {
     overlay: OverlayID,
@@ -493,12 +475,16 @@ impl Pointer {
         hits.sort_by(|a, b| a.dist.total_cmp(&b.dist));
 
         for hit in &hits {
-            let overlay = overlays.get_by_id(hit.overlay).unwrap(); // safe because we just got the id from the overlay
+            let overlay = overlays.mut_by_id(hit.overlay).unwrap(); // safe because we just got the id from the overlay
 
-            let uv = overlay
-                .state
-                .interaction_transform
-                .transform_point2(hit.local_pos);
+            let Some(uv) = overlay
+                .backend
+                .as_mut()
+                .get_interaction_transform()
+                .map(|a| a.transform_point2(hit.local_pos))
+            else {
+                continue;
+            };
 
             if uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 {
                 continue;

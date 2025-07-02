@@ -12,8 +12,8 @@ use wgui::{
 
 use crate::{
     backend::{
-        input::{Haptics, InteractionHandler, PointerHit},
-        overlay::{FrameMeta, OverlayBackend, OverlayRenderer, ShouldRender},
+        input::{Haptics, PointerHit},
+        overlay::{FrameMeta, OverlayBackend, ShouldRender},
     },
     graphics::CommandBuffers,
     gui::panel::GuiPanel,
@@ -32,34 +32,6 @@ struct KeyboardBackend {
 }
 
 impl OverlayBackend for KeyboardBackend {
-    fn set_interaction(&mut self, interaction: Box<dyn crate::backend::input::InteractionHandler>) {
-        self.panel.set_interaction(interaction);
-    }
-    fn set_renderer(&mut self, renderer: Box<dyn crate::backend::overlay::OverlayRenderer>) {
-        self.panel.set_renderer(renderer);
-    }
-}
-
-impl InteractionHandler for KeyboardBackend {
-    fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool) {
-        self.panel.on_pointer(app, hit, pressed);
-        self.panel.push_event(
-            app,
-            &wgui::event::Event::InternalStateChange(InternalStateChangeEvent { metadata: 0 }),
-        );
-    }
-    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32) {
-        self.panel.on_scroll(app, hit, delta_y, delta_x);
-    }
-    fn on_left(&mut self, app: &mut AppState, pointer: usize) {
-        self.panel.on_left(app, pointer);
-    }
-    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
-        self.panel.on_hover(app, hit)
-    }
-}
-
-impl OverlayRenderer for KeyboardBackend {
     fn init(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         self.panel.init(app)
     }
@@ -90,6 +62,26 @@ impl OverlayRenderer for KeyboardBackend {
             &wgui::event::Event::InternalStateChange(InternalStateChangeEvent { metadata: 0 }),
         );
         Ok(())
+    }
+
+    fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool) {
+        self.panel.on_pointer(app, hit, pressed);
+        self.panel.push_event(
+            app,
+            &wgui::event::Event::InternalStateChange(InternalStateChangeEvent { metadata: 0 }),
+        );
+    }
+    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32) {
+        self.panel.on_scroll(app, hit, delta_y, delta_x);
+    }
+    fn on_left(&mut self, app: &mut AppState, pointer: usize) {
+        self.panel.on_left(app, pointer);
+    }
+    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
+        self.panel.on_hover(app, hit)
+    }
+    fn get_interaction_transform(&mut self) -> Option<glam::Affine2> {
+        self.panel.get_interaction_transform()
     }
 }
 

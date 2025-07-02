@@ -204,11 +204,6 @@ pub fn openvr_run(
 
         state.tasks.retrieve_due(&mut due_tasks);
 
-        let mut removed_overlays = overlays.update(&mut state)?;
-        for o in &mut removed_overlays {
-            o.destroy(&mut overlay_mgr);
-        }
-
         while let Some(task) = due_tasks.pop_front() {
             match task {
                 TaskType::Overlay(sel, f) => {
@@ -230,8 +225,7 @@ pub fn openvr_run(
 
                     overlays.add(OverlayData {
                         state,
-                        backend,
-                        ..Default::default()
+                        ..OverlayData::from_backend(backend)
                     });
                 }
                 TaskType::DropOverlay(sel) => {

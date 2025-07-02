@@ -10,7 +10,7 @@ use wgui::{
 };
 
 use crate::{
-    backend::overlay::{OverlayData, OverlayState, Positioning, Z_ORDER_WATCH, ui_transform},
+    backend::overlay::{OverlayData, OverlayState, Positioning, Z_ORDER_WATCH},
     gui::{panel::GuiPanel, timer::GuiTimer},
     state::AppState,
 };
@@ -113,12 +113,10 @@ where
             spawn_scale: 0.115, //TODO:configurable
             spawn_point: app.session.config.watch_pos,
             spawn_rotation: app.session.config.watch_rot,
-            interaction_transform: ui_transform([400, 200]),
             positioning,
             ..Default::default()
         },
-        backend: Box::new(panel),
-        ..Default::default()
+        ..OverlayData::from_backend(Box::new(panel))
     })
 }
 

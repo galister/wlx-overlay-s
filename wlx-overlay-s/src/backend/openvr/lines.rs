@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use ash::vk::SubmitInfo;
 use glam::{Affine3A, Vec3, Vec3A, Vec4};
@@ -8,6 +8,7 @@ use idmap::IdMap;
 use ovr_overlay::overlay::OverlayManager;
 use ovr_overlay::sys::ETrackingUniverseOrigin;
 use vulkano::{
+    VulkanObject,
     command_buffer::{
         CommandBufferBeginInfo, CommandBufferLevel, CommandBufferUsage, RecordingCommandBuffer,
     },
@@ -15,16 +16,15 @@ use vulkano::{
     image::view::ImageView,
     image::{Image, ImageLayout},
     sync::{
-        fence::{Fence, FenceCreateInfo},
         AccessFlags, DependencyInfo, ImageMemoryBarrier, PipelineStages,
+        fence::{Fence, FenceCreateInfo},
     },
-    VulkanObject,
 };
 use wgui::gfx::WGfx;
 
+use crate::backend::input::{Haptics, PointerHit};
 use crate::backend::overlay::{
-    FrameMeta, OverlayData, OverlayRenderer, OverlayState, ShouldRender, SplitOverlayBackend,
-    Z_ORDER_LINES,
+    FrameMeta, OverlayBackend, OverlayData, OverlayState, ShouldRender, Z_ORDER_LINES,
 };
 use crate::graphics::CommandBuffers;
 use crate::state::AppState;
@@ -81,12 +81,6 @@ impl LinePool {
                 show_hide: true,
                 ..Default::default()
             },
-            backend: Box::new(SplitOverlayBackend {
-                renderer: Box::new(StaticRenderer {
-                    view: self.view.clone(),
-                }),
-                ..Default::default()
-            }),
             data: OpenVrOverlayData {
                 width: 0.002,
                 override_width: true,
@@ -94,7 +88,9 @@ impl LinePool {
                 image_dirty: true,
                 ..Default::default()
             },
-            ..Default::default()
+            ..OverlayData::from_backend(Box::new(LineBackend {
+                view: self.view.clone(),
+            }))
         };
         data.state.z_order = Z_ORDER_LINES;
         data.state.dirty = true;
@@ -177,29 +173,29 @@ impl LinePool {
     }
 }
 
-struct StaticRenderer {
+struct LineBackend {
     view: Arc<ImageView>,
 }
 
-impl OverlayRenderer for StaticRenderer {
-    fn init(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+impl OverlayBackend for LineBackend {
+    fn init(&mut self, _: &mut AppState) -> anyhow::Result<()> {
         Ok(())
     }
-    fn pause(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+    fn pause(&mut self, _: &mut AppState) -> anyhow::Result<()> {
         Ok(())
     }
-    fn resume(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+    fn resume(&mut self, _: &mut AppState) -> anyhow::Result<()> {
         Ok(())
     }
-    fn should_render(&mut self, _app: &mut AppState) -> anyhow::Result<ShouldRender> {
+    fn should_render(&mut self, _: &mut AppState) -> anyhow::Result<ShouldRender> {
         Ok(ShouldRender::Unable)
     }
     fn render(
         &mut self,
-        _app: &mut AppState,
-        _tgt: Arc<ImageView>,
-        _buf: &mut CommandBuffers,
-        _alpha: f32,
+        _: &mut AppState,
+        _: Arc<ImageView>,
+        _: &mut CommandBuffers,
+        _: f32,
     ) -> anyhow::Result<bool> {
         Ok(false)
     }
@@ -208,6 +204,16 @@ impl OverlayRenderer for StaticRenderer {
             extent: self.view.image().extent(),
             ..Default::default()
         })
+    }
+
+    fn on_hover(&mut self, _: &mut AppState, _: &PointerHit) -> Option<Haptics> {
+        None
+    }
+    fn on_left(&mut self, _: &mut AppState, _: usize) {}
+    fn on_pointer(&mut self, _: &mut AppState, _: &PointerHit, _: bool) {}
+    fn on_scroll(&mut self, _: &mut AppState, _: &PointerHit, _: f32, _: f32) {}
+    fn get_interaction_transform(&mut self) -> Option<glam::Affine2> {
+        None
     }
 }
 

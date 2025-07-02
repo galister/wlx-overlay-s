@@ -6,7 +6,6 @@ use std::{
     },
 };
 
-use anyhow::Ok;
 use glam::{Affine2, Affine3A, Mat3A, Quat, Vec2, Vec3, Vec3A};
 use serde::Deserialize;
 use vulkano::{format::Format, image::view::ImageView};
@@ -17,15 +16,10 @@ use crate::{
 
 use super::{
     common::snap_upright,
-    input::{DummyInteractionHandler, Haptics, InteractionHandler, PointerHit},
+    input::{Haptics, PointerHit},
 };
 
 static OVERLAY_AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(0);
-
-pub trait OverlayBackend: OverlayRenderer + InteractionHandler {
-    fn set_renderer(&mut self, renderer: Box<dyn OverlayRenderer>);
-    fn set_interaction(&mut self, interaction: Box<dyn InteractionHandler>);
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Default)]
 pub struct OverlayID(pub usize);
@@ -56,7 +50,6 @@ pub struct OverlayState {
     pub saved_transform: Option<Affine3A>,
     pub positioning: Positioning,
     pub curvature: Option<f32>,
-    pub interaction_transform: Affine2,
     pub birthframe: usize,
 }
 
@@ -81,32 +74,28 @@ impl Default for OverlayState {
             spawn_rotation: Quat::IDENTITY,
             saved_transform: None,
             transform: Affine3A::IDENTITY,
-            interaction_transform: Affine2::IDENTITY,
             birthframe: 0,
         }
     }
 }
 
-pub struct OverlayData<T>
-where
-    T: Default,
-{
+pub struct OverlayData<T> {
     pub state: OverlayState,
     pub backend: Box<dyn OverlayBackend>,
     pub primary_pointer: Option<usize>,
     pub data: T,
 }
 
-impl<T> Default for OverlayData<T>
+impl<T> OverlayData<T>
 where
     T: Default,
 {
-    fn default() -> Self {
+    pub fn from_backend(backend: Box<dyn OverlayBackend>) -> Self {
         Self {
             state: OverlayState::default(),
-            backend: Box::<SplitOverlayBackend>::default(),
+            backend,
             primary_pointer: None,
-            data: Default::default(),
+            data: T::default(),
         }
     }
 }
@@ -166,7 +155,7 @@ impl OverlayState {
                 app.input_state.pointers[hand].pose
             }
             Positioning::Anchored => app.anchor,
-            Positioning::Static => return,
+            Positioning::FollowOverlay { .. } | Positioning::Static => return,
         };
 
         if hard_reset {
@@ -191,7 +180,7 @@ impl OverlayState {
                 app.input_state.pointers[hand].pose
             }
             Positioning::Anchored => snap_upright(app.anchor, Vec3A::Y),
-            Positioning::Static => return false,
+            Positioning::FollowOverlay { .. } | Positioning::Static => return false,
         };
 
         self.saved_transform = Some(parent_transform.inverse() * self.transform);
@@ -307,7 +296,7 @@ pub enum ShouldRender {
     Unable,
 }
 
-pub trait OverlayRenderer {
+pub trait OverlayBackend {
     /// Called once, before the first frame is rendered
     fn init(&mut self, app: &mut AppState) -> anyhow::Result<()>;
     fn pause(&mut self, app: &mut AppState) -> anyhow::Result<()>;
@@ -330,37 +319,13 @@ pub trait OverlayRenderer {
     ///
     /// Must be true if should_render was also true on the same frame.
     fn frame_meta(&mut self) -> Option<FrameMeta>;
-}
 
-pub struct FallbackRenderer;
-
-impl OverlayRenderer for FallbackRenderer {
-    fn init(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
-        Ok(())
-    }
-    fn pause(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
-        Ok(())
-    }
-    fn resume(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
-        Ok(())
-    }
-    fn should_render(&mut self, _app: &mut AppState) -> anyhow::Result<ShouldRender> {
-        Ok(ShouldRender::Unable)
-    }
-    fn render(
-        &mut self,
-        _app: &mut AppState,
-        _tgt: Arc<ImageView>,
-        _buf: &mut CommandBuffers,
-        _alpha: f32,
-    ) -> anyhow::Result<bool> {
-        Ok(false)
-    }
-    fn frame_meta(&mut self) -> Option<FrameMeta> {
-        None
-    }
+    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> Option<Haptics>;
+    fn on_left(&mut self, app: &mut AppState, pointer: usize);
+    fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool);
+    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32);
+    fn get_interaction_transform(&mut self) -> Option<Affine2>;
 }
-// Boilerplate and dummies
 
 #[derive(Clone, Copy, Debug, Default)]
 pub enum Positioning {
@@ -377,72 +342,10 @@ pub enum Positioning {
     FollowHand { hand: usize, lerp: f32 },
     /// Normally follows hand, but paused due to interaction
     FollowHandPaused { hand: usize, lerp: f32 },
+    /// Follow another overlay
+    FollowOverlay { id: usize },
     /// Stays in place, no recentering
     Static,
-}
-
-pub struct SplitOverlayBackend {
-    pub renderer: Box<dyn OverlayRenderer>,
-    pub interaction: Box<dyn InteractionHandler>,
-}
-
-impl Default for SplitOverlayBackend {
-    fn default() -> Self {
-        Self {
-            renderer: Box::new(FallbackRenderer),
-            interaction: Box::new(DummyInteractionHandler),
-        }
-    }
-}
-
-impl OverlayBackend for SplitOverlayBackend {
-    fn set_renderer(&mut self, renderer: Box<dyn OverlayRenderer>) {
-        self.renderer = renderer;
-    }
-    fn set_interaction(&mut self, interaction: Box<dyn InteractionHandler>) {
-        self.interaction = interaction;
-    }
-}
-impl OverlayRenderer for SplitOverlayBackend {
-    fn init(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        self.renderer.init(app)
-    }
-    fn pause(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        self.renderer.pause(app)
-    }
-    fn resume(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        self.renderer.resume(app)
-    }
-    fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
-        self.renderer.should_render(app)
-    }
-    fn render(
-        &mut self,
-        app: &mut AppState,
-        tgt: Arc<ImageView>,
-        buf: &mut CommandBuffers,
-        alpha: f32,
-    ) -> anyhow::Result<bool> {
-        self.renderer.render(app, tgt, buf, alpha)
-    }
-    fn frame_meta(&mut self) -> Option<FrameMeta> {
-        self.renderer.frame_meta()
-    }
-}
-
-impl InteractionHandler for SplitOverlayBackend {
-    fn on_left(&mut self, app: &mut AppState, pointer: usize) {
-        self.interaction.on_left(app, pointer);
-    }
-    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
-        self.interaction.on_hover(app, hit)
-    }
-    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32) {
-        self.interaction.on_scroll(app, hit, delta_y, delta_x);
-    }
-    fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool) {
-        self.interaction.on_pointer(app, hit, pressed);
-    }
 }
 
 pub fn ui_transform(extent: [u32; 2]) -> Affine2 {

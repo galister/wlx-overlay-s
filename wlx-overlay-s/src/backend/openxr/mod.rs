@@ -486,11 +486,6 @@ pub fn openxr_run(
         )?;
         // End layer submit
 
-        let removed_overlays = overlays.update(&mut app)?;
-        for o in removed_overlays {
-            delete_queue.push((o, cur_frame + 5));
-        }
-
         notifications.submit_pending(&mut app);
 
         app.tasks.retrieve_due(&mut due_tasks);
@@ -515,8 +510,7 @@ pub fn openxr_run(
 
                     overlays.add(OverlayData {
                         state: overlay_state,
-                        backend: overlay_backend,
-                        ..Default::default()
+                        ..OverlayData::from_backend(overlay_backend)
                     });
                 }
                 TaskType::DropOverlay(sel) => {

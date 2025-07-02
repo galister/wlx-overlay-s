@@ -1,0 +1,35 @@
+<layout>
+  <include src="wlx_theme.xml" />
+
+  <template name="TopButton">
+    <rectangle id="~id" color="~bg_color" padding="8" round="50%">
+      <sprite color="~device_color" width="48" height="48" src="${src}" />
+    </rectangle>
+  </template>
+
+  <elements>
+    <div box_sizing="content_box" flex_direction="column" justify_content="center" align_content="center">
+      <rectangle padding="10" gap="8" round="100%" color="~bg_color" justify_content="center" align_content="center">
+        <TopButton id="lock" src="bar/lock_open.svg" />
+        <TopButton id="anchor" src="bar/anchor.svg" />
+        <TopButton id="mouse" src="bar/mouse.svg" />
+        <TopButton id="fade" src="bar/fade.svg" />
+        <TopButton id="move" src="bar/move-all.svg" />
+        <TopButton id="resize" src="bar/resize.svg" />
+        <TopButton id="inout" src="bar/inout.svg" />
+        <TopButton id="delete" src="bar/delete.svg" />
+      </rectangle>
+      <rectangle padding="8" gap="8" round="100%" color="~bg_color_active" justify_content="center" align_content="center">
+        <label size="18" text="Opacity" color="~text_color" />
+        <label size="18" text="100%" color="~text_color" weight="bold" />
+        <rectangle width="200" height="20" round="100%" color="~slider_bg_color">
+          <div width="150" />
+          <rectangle width="50" round="100%" color="~slider_fg_color" justify_content="center" align_content="center">
+          </rectangle>
+        </rectangle>
+        <label size="18" text="Additive:" color="~text_color" />
+        <sprite color="~device_color" width="20" height="20" src="bar/checkbox-checked.svg" />
+      </rectangle>
+    </div>
+  </elements>
+</layout>

@@ -4,34 +4,34 @@ use std::{
 };
 
 use futures::{Future, FutureExt};
+use glam::Affine2;
 use vulkano::image::view::ImageView;
-use wlx_capture::pipewire::{pipewire_select_screen, PipewireCapture, PipewireSelectScreenResult};
+use wlx_capture::pipewire::{PipewireCapture, PipewireSelectScreenResult, pipewire_select_screen};
 
 use crate::{
     backend::{
         common::OverlaySelector,
-        overlay::{
-            ui_transform, FrameMeta, OverlayBackend, OverlayRenderer, OverlayState, ShouldRender,
-            SplitOverlayBackend,
-        },
+        input::{Haptics, PointerHit},
+        overlay::{FrameMeta, OverlayBackend, OverlayState, ShouldRender, ui_transform},
         task::TaskType,
     },
     graphics::CommandBuffers,
     state::{AppSession, AppState},
 };
 
-use super::screen::ScreenRenderer;
+use super::screen::backend::ScreenBackend;
 type PinnedSelectorFuture = core::pin::Pin<
     Box<dyn Future<Output = Result<PipewireSelectScreenResult, wlx_capture::pipewire::AshpdError>>>,
 >;
 
-pub struct MirrorRenderer {
+pub struct MirrorBackend {
     name: Arc<str>,
-    renderer: Option<ScreenRenderer>,
+    renderer: Option<ScreenBackend>,
     selector: Option<PinnedSelectorFuture>,
     last_extent: [u32; 3],
+    interaction_transform: Option<Affine2>,
 }
-impl MirrorRenderer {
+impl MirrorBackend {
     pub fn new(name: Arc<str>) -> Self {
         let selector = Box::pin(pipewire_select_screen(None, false, false, false, false));
         Self {
@@ -39,11 +39,12 @@ impl MirrorRenderer {
             renderer: None,
             selector: Some(selector),
             last_extent: [0; 3],
+            interaction_transform: None,
         }
     }
 }
 
-impl OverlayRenderer for MirrorRenderer {
+impl OverlayBackend for MirrorBackend {
     fn init(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
         Ok(())
     }
@@ -64,10 +65,8 @@ impl OverlayRenderer for MirrorRenderer {
                     let node_id = pw_result.streams.first().unwrap().node_id; // streams guaranteed to have at least one element
                     log::info!("{}: PipeWire node selected: {}", self.name.clone(), node_id);
                     let capture = PipewireCapture::new(self.name.clone(), node_id);
-                    self.renderer = Some(ScreenRenderer::new_raw(
-                        self.name.clone(),
-                        Box::new(capture),
-                    ));
+                    self.renderer =
+                        Some(ScreenBackend::new_raw(self.name.clone(), Box::new(capture)));
                     app.tasks.enqueue(TaskType::Overlay(
                         OverlaySelector::Name(self.name.clone()),
                         Box::new(|app, o| {
@@ -106,13 +105,7 @@ impl OverlayRenderer for MirrorRenderer {
                 let extent = meta.extent;
                 if self.last_extent != extent {
                     self.last_extent = extent;
-                    // resized
-                    app.tasks.enqueue(TaskType::Overlay(
-                        OverlaySelector::Name(self.name.clone()),
-                        Box::new(move |_app, o| {
-                            o.interaction_transform = ui_transform([extent[0], extent[1]]);
-                        }),
-                    ));
+                    self.interaction_transform = Some(ui_transform([extent[0], extent[1]]));
                 }
             }
         }
@@ -133,7 +126,17 @@ impl OverlayRenderer for MirrorRenderer {
     }
 
     fn frame_meta(&mut self) -> Option<FrameMeta> {
-        self.renderer.as_mut().and_then(ScreenRenderer::frame_meta)
+        self.renderer.as_mut().and_then(ScreenBackend::frame_meta)
+    }
+
+    fn on_hover(&mut self, _: &mut AppState, _: &PointerHit) -> Option<Haptics> {
+        None
+    }
+    fn on_left(&mut self, _: &mut AppState, _: usize) {}
+    fn on_pointer(&mut self, _: &mut AppState, _: &PointerHit, _: bool) {}
+    fn on_scroll(&mut self, _: &mut AppState, _: &PointerHit, _: f32, _: f32) {}
+    fn get_interaction_transform(&mut self) -> Option<Affine2> {
+        self.interaction_transform
     }
 }
 
@@ -149,10 +152,7 @@ pub fn new_mirror(
         spawn_scale: 0.5 * session.config.desktop_view_scale,
         ..Default::default()
     };
-    let backend = Box::new(SplitOverlayBackend {
-        renderer: Box::new(MirrorRenderer::new(name)),
-        ..Default::default()
-    });
+    let backend = Box::new(MirrorBackend::new(name));
 
     (state, backend)
 }
