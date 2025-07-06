@@ -6,7 +6,7 @@ use crate::{
 	drawing,
 	event::{
 		CallbackData, CallbackDataCommon, CallbackMetadata, Event, EventAlterables, EventListener,
-		EventListenerKind, EventRefs, MouseWheelEvent,
+		EventListenerCollection, EventListenerKind, EventListenerVec, EventRefs, MouseWheelEvent,
 	},
 	layout::{Layout, WidgetID},
 	transform_stack::TransformStack,
@@ -135,9 +135,10 @@ impl EventParams<'_> {
 }
 
 pub enum EventResult {
-	Pass,
-	Consumed,
-	Outside,
+	Pass,     // widget acknowledged it and allows the event to pass to the children
+	Consumed, // widget triggered an action, do not pass to children
+	Outside, // widget acknowledged this event but ignores it due the fact the mouse is not hovered over it
+	Unused,  // widget doesn't have any events attached
 }
 
 fn get_scroll_enabled(style: &taffy::Style) -> (bool, bool) {
@@ -184,7 +185,7 @@ impl dyn WidgetObj {
 
 macro_rules! call_event {
 	($self:ident, $listeners:ident, $widget_id:ident, $node_id:ident, $params:ident, $kind:ident, $user_data:expr, $metadata:expr) => {
-		for listener in $listeners {
+		for listener in $listeners.iter() {
 			if let Some(callback) = listener.callback_for_kind(EventListenerKind::$kind) {
 				let mut data = CallbackData {
 					obj: $self.obj.as_mut(),
@@ -318,7 +319,7 @@ impl WidgetState {
 	pub fn process_event<'a, U1, U2>(
 		&mut self,
 		widget_id: WidgetID,
-		listeners: &[EventListener<U1, U2>],
+		listeners: &EventListenerVec<U1, U2>,
 		node_id: taffy::NodeId,
 		event: &Event,
 		user_data: &mut (&mut U1, &mut U2),

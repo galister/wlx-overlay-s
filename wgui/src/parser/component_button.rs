@@ -52,7 +52,7 @@ pub fn parse_component_button<'a, U1, U2>(
 		));
 	}
 
-	let _button = button::construct(
+	ctx.components.push(button::construct(
 		ctx.layout,
 		ctx.listeners,
 		parent_id,
@@ -64,7 +64,7 @@ pub fn parse_component_button<'a, U1, U2>(
 			text_style,
 			round,
 		},
-	)?;
+	)?);
 
 	Ok(())
 }

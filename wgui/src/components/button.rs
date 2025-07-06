@@ -5,7 +5,7 @@ use crate::{
 	animation::{Animation, AnimationEasing},
 	components::Component,
 	drawing::{self, Color},
-	event::{CallbackDataCommon, EventListenerCollection, EventListenerKind},
+	event::{CallbackDataCommon, EventListenerCollection, EventListenerKind, ListenerHandleVec},
 	layout::{Layout, WidgetID},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
@@ -37,59 +37,64 @@ impl Default for Params<'_> {
 	}
 }
 
-pub struct Button {
+struct Data {
 	initial_color: drawing::Color,
 	initial_border_color: drawing::Color,
-	pub body: WidgetID,    // Rectangle
-	pub text_id: WidgetID, // Text
+	text_id: WidgetID, // Text
 	text_node: taffy::NodeId,
+}
+
+pub struct Button {
+	data: Rc<Data>,
+	#[allow(dead_code)]
+	listener_handles: ListenerHandleVec,
 }
 
 impl Component for Button {}
 
 impl Button {
-	pub fn set_text<'a, 'b, C>(&self, callback_data: &mut CallbackDataCommon, text: &str) {
-		callback_data.call_on_widget(self.text_id, |label: &mut TextLabel| {
+	pub fn set_text<C>(&self, callback_data: &mut CallbackDataCommon, text: &str) {
+		callback_data.call_on_widget(self.data.text_id, |label: &mut TextLabel| {
 			label.set_text(text);
 		});
 		callback_data.mark_redraw();
-		callback_data.mark_dirty(self.text_node);
+		callback_data.mark_dirty(self.data.text_node);
 	}
 }
 
-fn anim_hover(rect: &mut Rectangle, button: &Button, pos: f32) {
+fn anim_hover(rect: &mut Rectangle, data: &Data, pos: f32) {
 	let brightness = pos * 0.5;
 	let border_brightness = pos;
-	rect.params.color.r = button.initial_color.r + brightness;
-	rect.params.color.g = button.initial_color.g + brightness;
-	rect.params.color.b = button.initial_color.b + brightness;
-	rect.params.border_color.r = button.initial_border_color.r + border_brightness;
-	rect.params.border_color.g = button.initial_border_color.g + border_brightness;
-	rect.params.border_color.b = button.initial_border_color.b + border_brightness;
+	rect.params.color.r = data.initial_color.r + brightness;
+	rect.params.color.g = data.initial_color.g + brightness;
+	rect.params.color.b = data.initial_color.b + brightness;
+	rect.params.border_color.r = data.initial_border_color.r + border_brightness;
+	rect.params.border_color.g = data.initial_border_color.g + border_brightness;
+	rect.params.border_color.b = data.initial_border_color.b + border_brightness;
 	rect.params.border = 3.0;
 }
 
-fn anim_hover_in(button: Rc<Button>, widget_id: WidgetID) -> Animation {
+fn anim_hover_in(data: Rc<Data>, widget_id: WidgetID) -> Animation {
 	Animation::new(
 		widget_id,
 		10,
 		AnimationEasing::OutQuad,
-		Box::new(move |common, data| {
-			let rect = data.obj.get_as_mut::<Rectangle>();
-			anim_hover(rect, &button, data.pos);
+		Box::new(move |common, anim_data| {
+			let rect = anim_data.obj.get_as_mut::<Rectangle>();
+			anim_hover(rect, &data, anim_data.pos);
 			common.mark_redraw();
 		}),
 	)
 }
 
-fn anim_hover_out(button: Rc<Button>, widget_id: WidgetID) -> Animation {
+fn anim_hover_out(data: Rc<Data>, widget_id: WidgetID) -> Animation {
 	Animation::new(
 		widget_id,
 		15,
 		AnimationEasing::OutQuad,
-		Box::new(move |common, data| {
-			let rect = data.obj.get_as_mut::<Rectangle>();
-			anim_hover(rect, &button, 1.0 - data.pos);
+		Box::new(move |common, anim_data| {
+			let rect = anim_data.obj.get_as_mut::<Rectangle>();
+			anim_hover(rect, &data, 1.0 - anim_data.pos);
 			common.mark_redraw();
 		}),
 	)
@@ -144,33 +149,37 @@ pub fn construct<U1, U2>(
 		},
 	)?;
 
-	let _button = Rc::new(Button {
-		body: rect_id,
+	let _data = Rc::new(Data {
 		text_id,
 		text_node,
 		initial_color: params.color,
 		initial_border_color: params.border_color,
 	});
 
-	//let mut widget = layout.widget_map.get(rect_id).unwrap().lock().unwrap();
+	let mut listener_handles = ListenerHandleVec::default();
 
-	let button = _button.clone();
-	listeners.add(
+	let data = _data.clone();
+	listeners.register(
+		&mut listener_handles,
 		rect_id,
 		EventListenerKind::MouseEnter,
-		Box::new(move |common, data, _, _| {
-			common.animate(anim_hover_in(button.clone(), data.widget_id));
+		Box::new(move |common, event_data, _, _| {
+			common.animate(anim_hover_in(data.clone(), event_data.widget_id));
 		}),
 	);
 
-	let button = _button.clone();
-	listeners.add(
+	let data = _data.clone();
+	listeners.register(
+		&mut listener_handles,
 		rect_id,
 		EventListenerKind::MouseLeave,
-		Box::new(move |common, data, _, _| {
-			common.animate(anim_hover_out(button.clone(), data.widget_id));
+		Box::new(move |common, event_data, _, _| {
+			common.animate(anim_hover_out(data.clone(), event_data.widget_id));
 		}),
 	);
 
-	Ok(_button)
+	Ok(Rc::new(Button {
+		data: _data.clone(),
+		listener_handles,
+	}))
 }

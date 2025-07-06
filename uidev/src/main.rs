@@ -126,7 +126,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 MouseScrollDelta::LineDelta(x, y) => testbed
                     .layout()
                     .push_event(
-                        &listeners,
+                        &mut listeners,
                         &wgui::event::Event::MouseWheel(MouseWheelEvent {
                             shift: Vec2::new(x, y),
                             pos: mouse / scale,
@@ -138,7 +138,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 MouseScrollDelta::PixelDelta(pos) => testbed
                     .layout()
                     .push_event(
-                        &listeners,
+                        &mut listeners,
                         &wgui::event::Event::MouseWheel(MouseWheelEvent {
                             shift: Vec2::new(pos.x as f32 / 5.0, pos.y as f32 / 5.0),
                             pos: mouse / scale,
@@ -157,7 +157,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         testbed
                             .layout()
                             .push_event(
-                                &listeners,
+                                &mut listeners,
                                 &wgui::event::Event::MouseDown(MouseDownEvent {
                                     pos: mouse / scale,
                                     button: MouseButton::Left,
@@ -170,7 +170,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         testbed
                             .layout()
                             .push_event(
-                                &listeners,
+                                &mut listeners,
                                 &wgui::event::Event::MouseUp(MouseUpEvent {
                                     pos: mouse / scale,
                                     button: MouseButton::Left,
@@ -190,7 +190,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 testbed
                     .layout()
                     .push_event(
-                        &listeners,
+                        &mut listeners,
                         &wgui::event::Event::MouseMotion(MouseMotionEvent {
                             pos: mouse / scale,
                             device: 0,

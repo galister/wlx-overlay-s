@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use glam::Vec2;
 use slotmap::SecondaryMap;
 
@@ -164,9 +166,30 @@ pub enum EventListenerKind {
 pub type EventCallback<U1, U2> =
 	Box<dyn Fn(&mut CallbackDataCommon, &mut CallbackData, &mut U1, &mut U2)>;
 
+//for ref-counting
+pub struct ListenerHandle {
+	needs_gc: Rc<RefCell<bool>>, // this will be set to true on destructor
+}
+
+#[derive(Default)]
+pub struct ListenerHandleVec(Vec<Rc<ListenerHandle>>);
+
+impl ListenerHandleVec {
+	pub fn push(&mut self, handle: Rc<ListenerHandle>) {
+		self.0.push(handle);
+	}
+}
+
+impl Drop for ListenerHandle {
+	fn drop(&mut self) {
+		*self.needs_gc.borrow_mut() = true;
+	}
+}
+
 pub struct EventListener<U1, U2> {
 	pub kind: EventListenerKind,
 	pub callback: EventCallback<U1, U2>,
+	pub handle: std::rc::Weak<ListenerHandle>,
 }
 
 impl<U1, U2> EventListener<U1, U2> {
@@ -182,8 +205,17 @@ impl<U1, U2> EventListener<U1, U2> {
 	}
 }
 
+pub struct EventListenerVec<U1, U2>(Vec<EventListener<U1, U2>>);
+
+impl<U1, U2> EventListenerVec<U1, U2> {
+	pub fn iter(&self) -> impl Iterator<Item = &EventListener<U1, U2>> {
+		self.0.iter().filter(|p| p.handle.strong_count() > 0)
+	}
+}
+
 pub struct EventListenerCollection<U1, U2> {
-	map: SecondaryMap<WidgetID, Vec<EventListener<U1, U2>>>,
+	map: SecondaryMap<WidgetID, EventListenerVec<U1, U2>>,
+	needs_gc: Rc<RefCell<bool>>,
 }
 
 // derive only works if generics also implement Default
@@ -191,26 +223,75 @@ impl<U1, U2> Default for EventListenerCollection<U1, U2> {
 	fn default() -> Self {
 		Self {
 			map: SecondaryMap::default(),
+			needs_gc: Rc::new(RefCell::new(false)),
 		}
 	}
 }
 
 impl<U1, U2> EventListenerCollection<U1, U2> {
-	pub fn add(
+	pub fn register(
 		&mut self,
+		listener_handles: &mut ListenerHandleVec,
 		widget_id: WidgetID,
 		kind: EventListenerKind,
 		callback: EventCallback<U1, U2>,
 	) {
-		let new_item = EventListener { kind, callback };
-		if let Some(vec) = self.map.get_mut(widget_id) {
-			vec.push(new_item);
-		} else {
-			self.map.insert(widget_id, vec![new_item]);
-		}
+		let res = self.add_single(widget_id, kind, callback);
+		listener_handles.push(res);
 	}
 
-	pub fn get(&self, widget_id: WidgetID) -> Option<&[EventListener<U1, U2>]> {
-		self.map.get(widget_id).map(|v| v.as_slice())
+	pub fn add_single(
+		&mut self,
+		widget_id: WidgetID,
+		kind: EventListenerKind,
+		callback: EventCallback<U1, U2>,
+	) -> Rc<ListenerHandle> {
+		let handle = Rc::new(ListenerHandle {
+			needs_gc: self.needs_gc.clone(),
+		});
+
+		let new_item = EventListener {
+			kind,
+			callback,
+			handle: Rc::downgrade(&handle),
+		};
+		if let Some(vec) = self.map.get_mut(widget_id) {
+			vec.0.push(new_item);
+		} else {
+			self.map.insert(widget_id, EventListenerVec(vec![new_item]));
+		}
+
+		handle
+	}
+
+	// clean-up expired events
+	pub fn gc(&mut self) {
+		let mut needs_gc = self.needs_gc.borrow_mut();
+		if !*needs_gc {
+			return;
+		}
+
+		*needs_gc = false;
+
+		let mut count = 0;
+
+		for (_id, vec) in self.map.iter_mut() {
+			vec.0.retain(|listener| {
+				if listener.handle.strong_count() != 0 {
+					true
+				} else {
+					count += 1;
+					false
+				}
+			});
+		}
+
+		self.map.retain(|_k, v| !v.0.is_empty());
+
+		log::debug!("EventListenerCollection: cleaned-up {count} expired events");
+	}
+
+	pub fn get(&self, widget_id: WidgetID) -> Option<&EventListenerVec<U1, U2>> {
+		self.map.get(widget_id)
 	}
 }

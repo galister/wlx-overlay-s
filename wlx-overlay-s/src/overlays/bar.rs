@@ -14,9 +14,9 @@ where
     O: Default,
 {
     let state = BarState {};
-    let (mut panel, parser) = GuiPanel::new_from_template(app, "gui/bar.xml", state)?;
+    let mut panel = GuiPanel::new_from_template(app, "gui/bar.xml", state)?;
 
-    for (id, widget_id) in parser.ids {
+    for (id, _widget_id) in &panel.parser_state.ids {
         match id.as_ref() {
             "lock" => {}
             "anchor" => {}

@@ -25,7 +25,7 @@ where
     O: Default,
 {
     let state = WatchState {};
-    let (mut panel, parser) = GuiPanel::new_from_template(app, "gui/watch.xml", state)?;
+    let mut panel = GuiPanel::new_from_template(app, "gui/watch.xml", state)?;
 
     panel
         .timers
@@ -33,8 +33,8 @@ where
 
     let clock_regex = Regex::new(r"^clock([0-9])_([a-z]+)$").unwrap();
 
-    for (id, widget_id) in parser.ids {
-        if let Some(cap) = clock_regex.captures(&id) {
+    for (id, widget_id) in &panel.parser_state.ids {
+        if let Some(cap) = clock_regex.captures(id) {
             let tz_idx: usize = cap.get(1).unwrap().as_str().parse().unwrap(); // safe due to regex
             let tz_str = (tz_idx > 0)
                 .then(|| app.session.config.timezones.get(tz_idx - 1))
@@ -44,7 +44,7 @@ where
             let mut widget = panel
                 .layout
                 .widget_map
-                .get_mut(widget_id)
+                .get_mut(*widget_id)
                 .unwrap() // want panic
                 .lock()
                 .unwrap(); // want panic
@@ -87,8 +87,9 @@ where
                 format: format.into(),
             };
 
-            panel.listeners.add(
-                widget_id,
+            panel.listeners.register(
+                &mut panel.listener_handles,
+                *widget_id,
                 EventListenerKind::InternalStateChange,
                 Box::new(move |_common, data, _, _| {
                     clock_on_tick(&clock, data);

@@ -32,7 +32,7 @@ pub fn parse_component_slider<'a, U1, U2>(
 		}
 	}
 
-	let slider = slider::construct(
+	ctx.components.push(slider::construct(
 		ctx.layout,
 		ctx.listeners,
 		parent_id,
@@ -42,7 +42,7 @@ pub fn parse_component_slider<'a, U1, U2>(
 			initial_value,
 			style,
 		},
-	)?;
+	)?);
 
 	Ok(())
 }

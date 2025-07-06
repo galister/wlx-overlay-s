@@ -152,6 +152,9 @@ impl Layout {
 				widget::EventResult::Outside => {
 					iter_children = false;
 				}
+				widget::EventResult::Unused => {
+					iter_children = false;
+				}
 			}
 		}
 
@@ -186,7 +189,7 @@ impl Layout {
 
 	pub fn push_event<U1, U2>(
 		&mut self,
-		listeners: &EventListenerCollection<U1, U2>,
+		listeners: &mut EventListenerCollection<U1, U2>,
 		event: &event::Event,
 		mut user_data: (&mut U1, &mut U2),
 	) -> anyhow::Result<()> {
@@ -201,6 +204,8 @@ impl Layout {
 		)?;
 
 		self.process_alterables(alterables)?;
+
+		listeners.gc();
 
 		Ok(())
 	}

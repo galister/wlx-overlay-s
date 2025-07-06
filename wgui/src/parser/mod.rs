@@ -8,6 +8,7 @@ mod widget_sprite;
 
 use crate::{
 	assets::AssetProvider,
+	components::Component,
 	drawing::{self},
 	event::EventListenerCollection,
 	layout::{Layout, WidgetID},
@@ -44,15 +45,21 @@ struct ParserFile {
 	template_parameters: HashMap<Rc<str>, Rc<str>>,
 }
 
-pub struct ParserResult {
+/*
+	WARNING: this struct could contain valid components with already bound listener handles.
+	Make sure to store them somewhere in your code.
+*/
+#[derive(Default)]
+pub struct ParserState {
 	pub ids: HashMap<Rc<str>, WidgetID>,
 	macro_attribs: HashMap<Rc<str>, MacroAttribs>,
-	var_map: HashMap<Rc<str>, Rc<str>>,
+	pub var_map: HashMap<Rc<str>, Rc<str>>,
+	pub components: Vec<Rc<dyn Component>>,
 	pub templates: HashMap<Rc<str>, Rc<Template>>,
 	pub path: PathBuf,
 }
 
-impl ParserResult {
+impl ParserState {
 	pub fn require_by_id(&self, id: &str) -> anyhow::Result<WidgetID> {
 		match self.ids.get(id) {
 			Some(id) => Ok(*id),
@@ -78,6 +85,7 @@ impl ParserResult {
 			ids: Default::default(),
 			macro_attribs: self.macro_attribs.clone(), // FIXME: prevent copying
 			var_map: self.var_map.clone(),             // FIXME: prevent copying
+			components: self.components.clone(),       // FIXME: prevent copying
 			templates: Default::default(),
 		};
 
@@ -116,6 +124,7 @@ struct ParserContext<'a, U1, U2> {
 	macro_attribs: HashMap<Rc<str>, MacroAttribs>,
 	ids: HashMap<Rc<str>, WidgetID>,
 	templates: HashMap<Rc<str>, Rc<Template>>,
+	components: Vec<Rc<dyn Component>>,
 }
 
 // Parses a color from a HTML hex string
@@ -148,7 +157,7 @@ pub fn parse_color_hex(html_hex: &str) -> Option<drawing::Color> {
 			));
 		}
 	}
-	log::warn!("failed to parse color \"{}\"", html_hex);
+	log::warn!("failed to parse color \"{html_hex}\"");
 	None
 }
 
@@ -169,15 +178,15 @@ fn require_tag_by_name<'a>(
 }
 
 fn print_invalid_attrib(key: &str, value: &str) {
-	log::warn!("Invalid value \"{}\" in attribute \"{}\"", value, key);
+	log::warn!("Invalid value \"{value}\" in attribute \"{key}\"");
 }
 
 fn print_missing_attrib(tag_name: &str, attr: &str) {
-	log::warn!("Missing attribute {} in tag <{}>", attr, tag_name);
+	log::warn!("Missing attribute {attr} in tag <{tag_name}>");
 }
 
 fn print_invalid_value(value: &str) {
-	log::warn!("Invalid value \"{}\"", value);
+	log::warn!("Invalid value \"{value}\"");
 }
 
 fn parse_val(value: &Rc<str>) -> Option<f32> {
@@ -263,7 +272,7 @@ fn parse_widget_other<'a, U1, U2>(
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
 	let Some(template) = ctx.templates.get(xml_tag_name) else {
-		log::error!("Undefined tag named \"{}\"", xml_tag_name);
+		log::error!("Undefined tag named \"{xml_tag_name}\"");
 		return Ok(()); // not critical
 	};
 
@@ -353,7 +362,7 @@ pub fn replace_vars(input: &str, vars: &HashMap<Rc<str>, Rc<str>>) -> Rc<str> {
 		match vars.get(input_var) {
 			Some(replacement) => replacement.clone(),
 			None => {
-				log::warn!("failed to replace var named \"{}\" (not found)", input_var);
+				log::warn!("failed to replace var named \"{input_var}\" (not found)");
 				Rc::from("")
 			}
 		}
@@ -413,7 +422,7 @@ fn iter_attribs<'a, U1, U2>(
 					res.push(process_attrib(file, ctx, macro_key, macro_value));
 				}
 			} else {
-				log::warn!("requested macro named \"{}\" not found!", value);
+				log::warn!("requested macro named \"{value}\" not found!");
 			}
 		} else {
 			res.push(process_attrib(file, ctx, key, value));
@@ -496,7 +505,7 @@ fn parse_tag_macro<U1, U2>(
 			}
 			_ => {
 				if macro_attribs.insert(key.clone(), value).is_some() {
-					log::warn!("macro attrib \"{}\" already defined!", key);
+					log::warn!("macro attrib \"{key}\" already defined!");
 				}
 			}
 		}
@@ -531,7 +540,7 @@ fn parse_universal<'a, U1, U2>(
 			"id" => {
 				// Attach a specific widget to name-ID map (just like getElementById)
 				if ctx.ids.insert(value.clone(), widget_id).is_some() {
-					log::warn!("duplicate ID \"{}\" in the same layout file!", value);
+					log::warn!("duplicate ID \"{value}\" in the same layout file!");
 				}
 			}
 			_ => {}
@@ -589,6 +598,7 @@ fn create_default_context<'a, U1, U2>(
 		var_map: Default::default(),
 		templates: Default::default(),
 		macro_attribs: Default::default(),
+		components: Default::default(),
 	}
 }
 
@@ -597,7 +607,7 @@ pub fn parse_from_assets<U1, U2>(
 	listeners: &mut EventListenerCollection<U1, U2>,
 	parent_id: WidgetID,
 	path: &str,
-) -> anyhow::Result<ParserResult> {
+) -> anyhow::Result<ParserState> {
 	let path = PathBuf::from(path);
 
 	let mut ctx = create_default_context(layout, listeners);
@@ -606,11 +616,12 @@ pub fn parse_from_assets<U1, U2>(
 	parse_document_root(file, &mut ctx, parent_id, node_layout)?;
 
 	// move everything essential to the result
-	let result = ParserResult {
+	let result = ParserState {
 		ids: std::mem::take(&mut ctx.ids),
 		templates: std::mem::take(&mut ctx.templates),
 		macro_attribs: std::mem::take(&mut ctx.macro_attribs),
 		var_map: std::mem::take(&mut ctx.var_map),
+		components: std::mem::take(&mut ctx.components),
 		path,
 	};
 
@@ -623,7 +634,7 @@ pub fn new_layout_from_assets<U1, U2>(
 	assets: Box<dyn AssetProvider>,
 	listeners: &mut EventListenerCollection<U1, U2>,
 	path: &str,
-) -> anyhow::Result<(Layout, ParserResult)> {
+) -> anyhow::Result<(Layout, ParserState)> {
 	let mut layout = Layout::new(assets)?;
 	let widget = layout.root_widget;
 	let state = parse_from_assets(&mut layout, listeners, widget, path)?;

@@ -10,7 +10,9 @@ use crate::{
 	animation::{Animation, AnimationEasing},
 	components::Component,
 	drawing::{self},
-	event::{self, CallbackDataCommon, EventListenerCollection, EventListenerKind},
+	event::{
+		self, CallbackDataCommon, EventListenerCollection, EventListenerKind, ListenerHandleVec,
+	},
 	layout::{Layout, WidgetID},
 	renderer_vk::util,
 	widget::{
@@ -46,29 +48,39 @@ pub struct SliderState {
 	max_value: f32,
 }
 
-pub struct Slider {
+struct Data {
 	body: WidgetID,                  // Div
 	slider_handle_id: WidgetID,      // Div
 	slider_handle_rect_id: WidgetID, // Rectangle
 	slider_handle_node: taffy::NodeId,
+}
+
+pub struct Slider {
+	data: Rc<Data>,
 	state: Rc<RefCell<SliderState>>,
+	listener_handles: ListenerHandleVec,
 }
 
 impl Component for Slider {}
 
-impl Slider {
-	fn get_state(&self) -> RefMut<'_, SliderState> {
-		self.state.borrow_mut()
-	}
-
-	pub fn set_value(&self, state: &mut SliderState, common: &mut CallbackDataCommon, value: f32) {
-		state.value = value;
-
-		common.mark_dirty(self.slider_handle_node);
-
-		common.call_on_widget(self.slider_handle_id, |div: &mut Div| {});
+impl SliderState {
+	fn set_value(&mut self, data: &Data, common: &mut CallbackDataCommon, value: f32) {
+		self.value = value;
+		common.mark_dirty(data.slider_handle_node);
+		common.call_on_widget(data.slider_handle_id, |div: &mut Div| {});
 		common.mark_redraw();
-		common.mark_dirty(self.slider_handle_node);
+
+		let mut style = common
+			.refs
+			.tree
+			.style(data.slider_handle_node)
+			.unwrap()
+			.clone();
+
+		// todo
+		style.margin.left = percent(1.0);
+
+		common.set_style(data.slider_handle_node, style);
 	}
 }
 
@@ -123,78 +135,97 @@ fn on_leave_anim(common: &mut event::CallbackDataCommon, handle_id: WidgetID) {
 
 const PAD_PERCENT: f32 = 0.75;
 
+const HANDLE_WIDTH: f32 = 32.0;
+const HANDLE_HEIGHT: f32 = 24.0;
+
 fn register_event_mouse_enter<U1, U2>(
-	slider: Rc<Slider>,
+	data: Rc<Data>,
+	state: Rc<RefCell<SliderState>>,
 	listeners: &mut EventListenerCollection<U1, U2>,
+	listener_handles: &mut ListenerHandleVec,
 ) {
-	listeners.add(
-		slider.body,
+	listeners.register(
+		listener_handles,
+		data.body,
 		EventListenerKind::MouseEnter,
 		Box::new(move |common, _data, _, _| {
 			common.trigger_haptics();
-			slider.get_state().hovered = true;
-			on_enter_anim(common, slider.slider_handle_rect_id);
+			state.borrow_mut().hovered = true;
+			on_enter_anim(common, data.slider_handle_rect_id);
 		}),
 	);
 }
 
 fn register_event_mouse_leave<U1, U2>(
-	slider: Rc<Slider>,
+	data: Rc<Data>,
+	state: Rc<RefCell<SliderState>>,
 	listeners: &mut EventListenerCollection<U1, U2>,
+	listener_handles: &mut ListenerHandleVec,
 ) {
-	listeners.add(
-		slider.body,
+	listeners.register(
+		listener_handles,
+		data.body,
 		EventListenerKind::MouseLeave,
 		Box::new(move |common, _data, _, _| {
 			common.trigger_haptics();
-			slider.get_state().hovered = false;
-			on_leave_anim(common, slider.slider_handle_rect_id);
+			state.borrow_mut().hovered = false;
+			on_leave_anim(common, data.slider_handle_rect_id);
 		}),
 	);
 }
 
 fn register_event_mouse_motion<U1, U2>(
-	slider: Rc<Slider>,
+	data: Rc<Data>,
+	_state: Rc<RefCell<SliderState>>,
 	listeners: &mut EventListenerCollection<U1, U2>,
+	listener_handles: &mut ListenerHandleVec,
 ) {
-	listeners.add(
-		slider.body,
+	listeners.register(
+		listener_handles,
+		data.body,
 		EventListenerKind::MouseMotion,
 		Box::new(move |_common, _data, _, _| {}),
 	);
 }
 
 fn register_event_mouse_press<U1, U2>(
-	slider: Rc<Slider>,
+	data: Rc<Data>,
+	state: Rc<RefCell<SliderState>>,
 	listeners: &mut EventListenerCollection<U1, U2>,
+	listener_handles: &mut ListenerHandleVec,
 ) {
-	listeners.add(
-		slider.body,
+	listeners.register(
+		listener_handles,
+		data.body,
 		EventListenerKind::MousePress,
 		Box::new(move |common, _data, _, _| {
 			common.trigger_haptics();
 
-			let mut state = slider.get_state();
+			let mut state = state.borrow_mut();
+
 			if state.hovered {
 				state.dragging = true;
-				let val = state.min_value;
-				slider.set_value(&mut state, common, val);
+				let val = 1.0;
+				state.set_value(&data, common, val);
 			}
 		}),
 	);
 }
 
 fn register_event_mouse_release<U1, U2>(
-	slider: Rc<Slider>,
+	data: Rc<Data>,
+	state: Rc<RefCell<SliderState>>,
 	listeners: &mut EventListenerCollection<U1, U2>,
+	listener_handles: &mut ListenerHandleVec,
 ) {
-	listeners.add(
-		slider.body,
+	listeners.register(
+		listener_handles,
+		data.body,
 		EventListenerKind::MouseRelease,
 		Box::new(move |common, _data, _, _| {
 			common.trigger_haptics();
 
-			let mut state = slider.get_state();
+			let mut state = state.borrow_mut();
 			if state.dragging {
 				state.dragging = false;
 			}
@@ -212,8 +243,6 @@ pub fn construct<U1, U2>(
 	style.position = taffy::Position::Relative;
 	style.min_size = style.size;
 	style.max_size = style.size;
-	style.align_items = Some(taffy::AlignItems::Center);
-	style.justify_content = Some(taffy::JustifyContent::Center);
 
 	let (body_id, _) = layout.add_child(parent, Div::create()?, style)?;
 
@@ -232,20 +261,27 @@ pub fn construct<U1, U2>(
 				height: percent(PAD_PERCENT),
 			},
 			position: taffy::Position::Absolute,
+			align_self: Some(taffy::AlignItems::Center),
+			justify_self: Some(taffy::JustifySelf::Center),
 			..Default::default()
 		},
 	)?;
 
-	let mut handle_style = taffy::Style::default();
-	handle_style.size.width = length(32.0);
-	handle_style.size.height = percent(1.0);
-	handle_style.position = taffy::Position::Absolute;
-	handle_style.align_items = Some(taffy::AlignItems::Center);
-	handle_style.justify_content = Some(taffy::JustifyContent::Center);
-
 	// invisible outer handle body
-	let (slider_handle_id, slider_handle_node) =
-		layout.add_child(body_id, Div::create()?, handle_style)?;
+	let (slider_handle_id, slider_handle_node) = layout.add_child(
+		body_id,
+		Div::create()?,
+		taffy::Style {
+			size: taffy::Size {
+				width: length(0.0),
+				height: percent(1.0),
+			},
+			position: taffy::Position::Absolute,
+			align_items: Some(taffy::AlignItems::Center),
+			justify_content: Some(taffy::JustifyContent::Center),
+			..Default::default()
+		},
+	)?;
 
 	let (slider_handle_rect_id, _) = layout.add_child(
 		slider_handle_id,
@@ -257,34 +293,44 @@ pub fn construct<U1, U2>(
 			..Default::default()
 		})?,
 		taffy::Style {
+			position: taffy::Position::Absolute,
 			size: taffy::Size {
-				width: percent(PAD_PERCENT),
-				height: percent(PAD_PERCENT),
+				width: length(HANDLE_WIDTH),
+				height: length(HANDLE_HEIGHT),
 			},
 			..Default::default()
 		},
 	)?;
 
-	let slider = Rc::new(Slider {
+	let data = Rc::new(Data {
 		body: body_id,
 		slider_handle_node,
 		slider_handle_rect_id,
 		slider_handle_id,
-		state: Rc::new(RefCell::new(SliderState {
-			dragging: false,
-			hovered: false,
-			max_value: params.max_value,
-			value: params.initial_value,
-			min_value: params.min_value,
-		})),
 	});
 
-	register_event_mouse_enter(slider.clone(), listeners);
-	register_event_mouse_leave(slider.clone(), listeners);
-	register_event_mouse_motion(slider.clone(), listeners);
-	register_event_mouse_press(slider.clone(), listeners);
-	register_event_mouse_leave(slider.clone(), listeners);
-	register_event_mouse_release(slider.clone(), listeners);
+	let state = Rc::new(RefCell::new(SliderState {
+		dragging: false,
+		hovered: false,
+		max_value: params.max_value,
+		value: params.initial_value,
+		min_value: params.min_value,
+	}));
+
+	let mut lhandles = ListenerHandleVec::default();
+
+	register_event_mouse_enter(data.clone(), state.clone(), listeners, &mut lhandles);
+	register_event_mouse_leave(data.clone(), state.clone(), listeners, &mut lhandles);
+	register_event_mouse_motion(data.clone(), state.clone(), listeners, &mut lhandles);
+	register_event_mouse_press(data.clone(), state.clone(), listeners, &mut lhandles);
+	register_event_mouse_leave(data.clone(), state.clone(), listeners, &mut lhandles);
+	register_event_mouse_release(data.clone(), state.clone(), listeners, &mut lhandles);
+
+	let slider = Rc::new(Slider {
+		data,
+		state,
+		listener_handles: lhandles,
+	});
 
 	Ok(slider)
 }

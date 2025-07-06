@@ -186,7 +186,8 @@ where
                     })
                 };
 
-                panel.listeners.add(
+                panel.listeners.register(
+                    &mut panel.listener_handles,
                     *widget_id,
                     EventListenerKind::MouseEnter,
                     Box::new({
@@ -197,7 +198,8 @@ where
                         }
                     }),
                 );
-                panel.listeners.add(
+                panel.listeners.register(
+                    &mut panel.listener_handles,
                     *widget_id,
                     EventListenerKind::MouseLeave,
                     Box::new({
@@ -208,7 +210,8 @@ where
                         }
                     }),
                 );
-                panel.listeners.add(
+                panel.listeners.register(
+                    &mut panel.listener_handles,
                     *widget_id,
                     EventListenerKind::MousePress,
                     Box::new({
@@ -223,7 +226,8 @@ where
                         }
                     }),
                 );
-                panel.listeners.add(
+                panel.listeners.register(
+                    &mut panel.listener_handles,
                     *widget_id,
                     EventListenerKind::MouseRelease,
                     Box::new({
@@ -237,7 +241,8 @@ where
                 );
 
                 if let Some(modifier) = my_modifier {
-                    panel.listeners.add(
+                    panel.listeners.register(
+                        &mut panel.listener_handles,
                         *widget_id,
                         EventListenerKind::InternalStateChange,
                         Box::new({
@@ -259,6 +264,7 @@ where
     }
 
     panel.layout.update(vec2(2048., 2048.), 0.0)?;
+    panel.parser_state = gui_state_key;
 
     let width = layout.row_size * 0.05 * app.session.config.keyboard_scale;
 

@@ -4,11 +4,12 @@ use glam::{Affine2, Vec2, vec2};
 use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 use wgui::{
     event::{
-        Event as WguiEvent, EventListenerCollection, InternalStateChangeEvent, MouseButton,
-        MouseDownEvent, MouseLeaveEvent, MouseMotionEvent, MouseUpEvent, MouseWheelEvent,
+        Event as WguiEvent, EventListenerCollection, InternalStateChangeEvent, ListenerHandleVec,
+        MouseButton, MouseDownEvent, MouseLeaveEvent, MouseMotionEvent, MouseUpEvent,
+        MouseWheelEvent,
     },
     layout::Layout,
-    parser::ParserResult,
+    parser::ParserState,
     renderer_vk::context::Context as WguiContext,
 };
 
@@ -32,20 +33,18 @@ pub struct GuiPanel<S> {
     pub state: S,
     pub timers: Vec<GuiTimer>,
     pub listeners: EventListenerCollection<AppState, S>,
+    pub listener_handles: ListenerHandleVec,
+    pub parser_state: ParserState,
     interaction_transform: Option<Affine2>,
     context: WguiContext,
     timestep: Timestep,
 }
 
 impl<S> GuiPanel<S> {
-    pub fn new_from_template(
-        app: &mut AppState,
-        path: &str,
-        state: S,
-    ) -> anyhow::Result<(Self, ParserResult)> {
+    pub fn new_from_template(app: &mut AppState, path: &str, state: S) -> anyhow::Result<Self> {
         let mut listeners = EventListenerCollection::<AppState, S>::default();
 
-        let (layout, parser_result) = wgui::parser::new_layout_from_assets(
+        let (layout, parser_state) = wgui::parser::new_layout_from_assets(
             Box::new(gui::asset::GuiAsset {}),
             &mut listeners,
             path,
@@ -55,18 +54,17 @@ impl<S> GuiPanel<S> {
         let mut timestep = Timestep::new();
         timestep.set_tps(60.0);
 
-        Ok((
-            Self {
-                layout,
-                context,
-                timestep,
-                state,
-                timers: vec![],
-                listeners,
-                interaction_transform: None,
-            },
-            parser_result,
-        ))
+        Ok(Self {
+            layout,
+            context,
+            timestep,
+            state,
+            listener_handles: ListenerHandleVec::default(),
+            parser_state,
+            timers: vec![],
+            listeners,
+            interaction_transform: None,
+        })
     }
 
     pub fn new_blank(app: &mut AppState, state: S) -> anyhow::Result<Self> {
@@ -80,6 +78,8 @@ impl<S> GuiPanel<S> {
             context,
             timestep,
             state,
+            parser_state: ParserState::default(),
+            listener_handles: ListenerHandleVec::default(),
             timers: vec![],
             listeners: EventListenerCollection::default(),
             interaction_transform: None,
@@ -93,7 +93,7 @@ impl<S> GuiPanel<S> {
     pub fn push_event(&mut self, app: &mut AppState, event: &WguiEvent) {
         if let Err(e) = self
             .layout
-            .push_event(&self.listeners, event, (app, &mut self.state))
+            .push_event(&mut self.listeners, event, (app, &mut self.state))
         {
             log::error!("Failed to push event: {e:?}");
         }
@@ -186,7 +186,7 @@ impl<S> OverlayBackend for GuiPanel<S> {
     fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32) {
         self.layout
             .push_event(
-                &self.listeners,
+                &mut self.listeners,
                 &WguiEvent::MouseWheel(MouseWheelEvent {
                     shift: vec2(delta_x, delta_y),
                     pos: hit.uv * self.layout.content_size,
