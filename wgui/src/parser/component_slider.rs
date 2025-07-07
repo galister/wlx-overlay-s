@@ -37,10 +37,12 @@ pub fn parse_component_slider<'a, U1, U2>(
 		ctx.listeners,
 		parent_id,
 		slider::Params {
-			min_value,
-			max_value,
-			initial_value,
 			style,
+			values: slider::ValuesMinMax {
+				min_value,
+				max_value,
+				value: initial_value,
+			},
 		},
 	)?);
 

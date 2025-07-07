@@ -22,30 +22,33 @@ use crate::{
 	},
 };
 
-pub struct Params {
-	pub style: taffy::Style,
-	pub initial_value: f32,
+#[derive(Default)]
+pub struct ValuesMinMax {
+	pub value: f32,
 	pub min_value: f32,
 	pub max_value: f32,
 }
 
-impl Default for Params {
-	fn default() -> Self {
-		Self {
-			style: Default::default(),
-			initial_value: 0.5,
-			min_value: 0.0,
-			max_value: 1.0,
-		}
+impl ValuesMinMax {
+	fn to_normalized(&self) -> f32 {
+		(self.value - self.min_value) / (self.max_value - self.min_value)
 	}
+
+	fn get_from_normalized(&self, normalized: f32) -> f32 {
+		normalized * (self.max_value - self.min_value) + self.min_value
+	}
+}
+
+#[derive(Default)]
+pub struct Params {
+	pub style: taffy::Style,
+	pub values: ValuesMinMax,
 }
 
 pub struct SliderState {
 	dragging: bool,
 	hovered: bool,
-	value: f32,
-	min_value: f32,
-	max_value: f32,
+	values: ValuesMinMax,
 }
 
 struct Data {
@@ -53,6 +56,7 @@ struct Data {
 	slider_handle_id: WidgetID,      // Div
 	slider_handle_rect_id: WidgetID, // Rectangle
 	slider_handle_node: taffy::NodeId,
+	slider_body_node: taffy::NodeId,
 }
 
 pub struct Slider {
@@ -63,12 +67,58 @@ pub struct Slider {
 
 impl Component for Slider {}
 
+// NOTICE: this can be re-used in the future
+fn map_mouse_x_to_normalized(mouse_x_rel: f32, widget_width: f32) -> f32 {
+	(mouse_x_rel / widget_width).clamp(0.0, 1.0)
+}
+
+fn get_width(slider_body_node: taffy::NodeId, tree: &taffy::tree::TaffyTree<WidgetID>) -> f32 {
+	let layout = tree.layout(slider_body_node).unwrap(); /* shouldn't fail */
+	layout.size.width
+}
+
+fn conf_handle_style(
+	values: &ValuesMinMax,
+	slider_body_node: taffy::NodeId,
+	slider_handle_style: &mut taffy::Style,
+	tree: &taffy::tree::TaffyTree<WidgetID>,
+) {
+	let norm = values.to_normalized();
+
+	// convert normalized value to taffy percentage margin in percent
+	let width = get_width(slider_body_node, tree);
+	let percent_margin = (HANDLE_WIDTH / width) / 2.0;
+	slider_handle_style.margin.left = percent(percent_margin + norm * (1.0 - percent_margin * 2.0));
+}
+
+const PAD_PERCENT: f32 = 0.75;
+const HANDLE_WIDTH: f32 = 32.0;
+const HANDLE_HEIGHT: f32 = 24.0;
+
 impl SliderState {
+	fn update_value_to_mouse(
+		&mut self,
+		event_data: &event::CallbackData<'_>,
+		data: &Data,
+		common: &mut CallbackDataCommon,
+	) {
+		let mouse_pos = event_data
+			.metadata
+			.get_mouse_pos_relative(&common.alterables.transform_stack)
+			.unwrap(); // safe
+
+		let norm = map_mouse_x_to_normalized(
+			mouse_pos.x - HANDLE_WIDTH / 2.0,
+			get_width(data.slider_body_node, common.get_tree()) - HANDLE_WIDTH,
+		);
+		let target_value = self.values.get_from_normalized(norm);
+		let val = target_value;
+		self.set_value(data, common, val);
+	}
+
 	fn set_value(&mut self, data: &Data, common: &mut CallbackDataCommon, value: f32) {
-		self.value = value;
-		common.mark_dirty(data.slider_handle_node);
-		common.call_on_widget(data.slider_handle_id, |div: &mut Div| {});
-		common.mark_redraw();
+		//common.call_on_widget(data.slider_handle_id, |_div: &mut Div| {});
+		self.values.value = value;
 
 		let mut style = common
 			.refs
@@ -77,9 +127,15 @@ impl SliderState {
 			.unwrap()
 			.clone();
 
-		// todo
-		style.margin.left = percent(1.0);
+		conf_handle_style(
+			&self.values,
+			data.slider_body_node,
+			&mut style,
+			common.get_tree(),
+		);
 
+		common.mark_dirty(data.slider_handle_node);
+		common.mark_redraw();
 		common.set_style(data.slider_handle_node, style);
 	}
 }
@@ -133,11 +189,6 @@ fn on_leave_anim(common: &mut event::CallbackDataCommon, handle_id: WidgetID) {
 	));
 }
 
-const PAD_PERCENT: f32 = 0.75;
-
-const HANDLE_WIDTH: f32 = 32.0;
-const HANDLE_HEIGHT: f32 = 24.0;
-
 fn register_event_mouse_enter<U1, U2>(
 	data: Rc<Data>,
 	state: Rc<RefCell<SliderState>>,
@@ -176,7 +227,7 @@ fn register_event_mouse_leave<U1, U2>(
 
 fn register_event_mouse_motion<U1, U2>(
 	data: Rc<Data>,
-	_state: Rc<RefCell<SliderState>>,
+	state: Rc<RefCell<SliderState>>,
 	listeners: &mut EventListenerCollection<U1, U2>,
 	listener_handles: &mut ListenerHandleVec,
 ) {
@@ -184,7 +235,13 @@ fn register_event_mouse_motion<U1, U2>(
 		listener_handles,
 		data.body,
 		EventListenerKind::MouseMotion,
-		Box::new(move |_common, _data, _, _| {}),
+		Box::new(move |common, event_data, _, _| {
+			let mut state = state.borrow_mut();
+
+			if state.dragging {
+				state.update_value_to_mouse(event_data, &data, common);
+			}
+		}),
 	);
 }
 
@@ -198,15 +255,13 @@ fn register_event_mouse_press<U1, U2>(
 		listener_handles,
 		data.body,
 		EventListenerKind::MousePress,
-		Box::new(move |common, _data, _, _| {
+		Box::new(move |common, event_data, _, _| {
 			common.trigger_haptics();
-
 			let mut state = state.borrow_mut();
 
 			if state.hovered {
 				state.dragging = true;
-				let val = 1.0;
-				state.set_value(&data, common, val);
+				state.update_value_to_mouse(event_data, &data, common)
 			}
 		}),
 	);
@@ -244,7 +299,7 @@ pub fn construct<U1, U2>(
 	style.min_size = style.size;
 	style.max_size = style.size;
 
-	let (body_id, _) = layout.add_child(parent, Div::create()?, style)?;
+	let (body_id, slider_body_node) = layout.add_child(parent, Div::create()?, style)?;
 
 	let (_background_id, _) = layout.add_child(
 		body_id,
@@ -267,21 +322,35 @@ pub fn construct<U1, U2>(
 		},
 	)?;
 
-	// invisible outer handle body
-	let (slider_handle_id, slider_handle_node) = layout.add_child(
-		body_id,
-		Div::create()?,
-		taffy::Style {
-			size: taffy::Size {
-				width: length(0.0),
-				height: percent(1.0),
-			},
-			position: taffy::Position::Absolute,
-			align_items: Some(taffy::AlignItems::Center),
-			justify_content: Some(taffy::JustifyContent::Center),
-			..Default::default()
+	let slider_handle_style = taffy::Style {
+		size: taffy::Size {
+			width: length(0.0),
+			height: percent(1.0),
 		},
-	)?;
+		position: taffy::Position::Absolute,
+		align_items: Some(taffy::AlignItems::Center),
+		justify_content: Some(taffy::JustifyContent::Center),
+		margin: taffy::Rect {
+			// FIXME: temporary just for testing
+			left: percent(0.5),
+			bottom: length(0.0),
+			right: length(0.0),
+			top: length(0.0),
+		},
+		..Default::default()
+	};
+
+	// TODO: dispatch style config after this taffy tree did a re-layout
+	/*conf_handle_style(
+		&params.values,
+		slider_body_node,
+		&mut slider_handle_style,
+		&layout.tree,
+	);*/
+
+	// invisible outer handle body
+	let (slider_handle_id, slider_handle_node) =
+		layout.add_child(body_id, Div::create()?, slider_handle_style)?;
 
 	let (slider_handle_rect_id, _) = layout.add_child(
 		slider_handle_id,
@@ -307,14 +376,13 @@ pub fn construct<U1, U2>(
 		slider_handle_node,
 		slider_handle_rect_id,
 		slider_handle_id,
+		slider_body_node,
 	});
 
 	let state = Rc::new(RefCell::new(SliderState {
 		dragging: false,
 		hovered: false,
-		max_value: params.max_value,
-		value: params.initial_value,
-		min_value: params.min_value,
+		values: params.values,
 	}));
 
 	let mut lhandles = ListenerHandleVec::default();

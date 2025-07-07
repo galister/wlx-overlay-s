@@ -7,7 +7,7 @@ use std::{
 use vulkano::image::view::ImageView;
 use wgui::{
     drawing,
-    event::{InternalStateChangeEvent, MouseButton},
+    event::{InternalStateChangeEvent, MouseButton, MouseButtonIndex},
 };
 
 use crate::{
@@ -134,9 +134,9 @@ fn handle_press(
 ) {
     match &key.button_state {
         KeyButtonData::Key { vk, pressed } => {
-            keyboard.modifiers |= match button {
-                MouseButton::Right => SHIFT,
-                MouseButton::Middle => keyboard.alt_modifier,
+            keyboard.modifiers |= match button.index {
+                MouseButtonIndex::Right => SHIFT,
+                MouseButtonIndex::Middle => keyboard.alt_modifier,
                 _ => 0,
             };
 

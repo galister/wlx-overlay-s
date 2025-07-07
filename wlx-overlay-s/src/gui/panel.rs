@@ -5,8 +5,8 @@ use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 use wgui::{
     event::{
         Event as WguiEvent, EventListenerCollection, InternalStateChangeEvent, ListenerHandleVec,
-        MouseButton, MouseDownEvent, MouseLeaveEvent, MouseMotionEvent, MouseUpEvent,
-        MouseWheelEvent,
+        MouseButton, MouseButtonIndex, MouseDownEvent, MouseLeaveEvent, MouseMotionEvent,
+        MouseUpEvent, MouseWheelEvent,
     },
     layout::Layout,
     parser::ParserState,
@@ -223,10 +223,10 @@ impl<S> OverlayBackend for GuiPanel<S> {
     }
 
     fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool) {
-        let button = match hit.mode {
-            PointerMode::Left => MouseButton::Left,
-            PointerMode::Right => MouseButton::Right,
-            PointerMode::Middle => MouseButton::Middle,
+        let index = match hit.mode {
+            PointerMode::Left => MouseButtonIndex::Left,
+            PointerMode::Right => MouseButtonIndex::Right,
+            PointerMode::Middle => MouseButtonIndex::Middle,
             _ => return,
         };
 
@@ -235,7 +235,7 @@ impl<S> OverlayBackend for GuiPanel<S> {
                 app,
                 &WguiEvent::MouseDown(MouseDownEvent {
                     pos: hit.uv * self.layout.content_size,
-                    button,
+                    index,
                     device: hit.pointer,
                 }),
             );
@@ -244,7 +244,7 @@ impl<S> OverlayBackend for GuiPanel<S> {
                 app,
                 &WguiEvent::MouseUp(MouseUpEvent {
                     pos: hit.uv * self.layout.content_size,
-                    button,
+                    index,
                     device: hit.pointer,
                 }),
             );

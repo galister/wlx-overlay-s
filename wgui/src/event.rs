@@ -11,15 +11,26 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy)]
-pub enum MouseButton {
+pub enum MouseButtonIndex {
 	Left,
 	Right,
 	Middle,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct MouseButton {
+	pub index: MouseButtonIndex,
+	pub pos: Vec2,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct MousePosition {
+	pub pos: Vec2,
+}
+
 pub struct MouseDownEvent {
 	pub pos: Vec2,
-	pub button: MouseButton,
+	pub index: MouseButtonIndex,
 	pub device: usize,
 }
 
@@ -34,7 +45,7 @@ pub struct MouseMotionEvent {
 
 pub struct MouseUpEvent {
 	pub pos: Vec2,
-	pub button: MouseButton,
+	pub index: MouseButtonIndex,
 	pub device: usize,
 }
 
@@ -150,7 +161,25 @@ pub struct CallbackData<'a> {
 pub enum CallbackMetadata {
 	None,
 	MouseButton(MouseButton),
+	MousePosition(MousePosition),
 	Custom(usize),
+}
+
+impl CallbackMetadata {
+	// helper function
+	pub fn get_mouse_pos_absolute(&self) -> Option<Vec2> {
+		match *self {
+			CallbackMetadata::None => None,
+			CallbackMetadata::MouseButton(b) => Some(b.pos),
+			CallbackMetadata::MousePosition(b) => Some(b.pos),
+			CallbackMetadata::Custom(_) => None,
+		}
+	}
+
+	pub fn get_mouse_pos_relative(&self, transform_stack: &TransformStack) -> Option<Vec2> {
+		let mouse_pos_abs = self.get_mouse_pos_absolute()?;
+		Some(mouse_pos_abs - transform_stack.get_pos())
+	}
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]

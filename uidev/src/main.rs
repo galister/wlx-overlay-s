@@ -20,7 +20,7 @@ use vulkano::{
 };
 use wgui::{
     event::{
-        EventListenerCollection, MouseButton, MouseDownEvent, MouseMotionEvent, MouseUpEvent,
+        EventListenerCollection, MouseButtonIndex, MouseDownEvent, MouseMotionEvent, MouseUpEvent,
         MouseWheelEvent,
     },
     gfx::WGfx,
@@ -160,7 +160,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 &mut listeners,
                                 &wgui::event::Event::MouseDown(MouseDownEvent {
                                     pos: mouse / scale,
-                                    button: MouseButton::Left,
+                                    index: MouseButtonIndex::Left,
                                     device: 0,
                                 }),
                                 (&mut (), &mut ()),
@@ -173,7 +173,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 &mut listeners,
                                 &wgui::event::Event::MouseUp(MouseUpEvent {
                                     pos: mouse / scale,
-                                    button: MouseButton::Left,
+                                    index: MouseButtonIndex::Left,
                                     device: 0,
                                 }),
                                 (&mut (), &mut ()),
@@ -280,7 +280,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     return;
                 }
 
-                log::trace!("drawing frame {}", frame_index);
+                log::trace!("drawing frame {frame_index}");
                 frame_index += 1;
 
                 profiler.start();

@@ -1,12 +1,13 @@
 use glam::Vec2;
 
 use super::drawing::RenderPrimitive;
+
 use crate::{
 	any::AnyTrait,
 	drawing,
 	event::{
-		CallbackData, CallbackDataCommon, CallbackMetadata, Event, EventAlterables, EventListener,
-		EventListenerCollection, EventListenerKind, EventListenerVec, EventRefs, MouseWheelEvent,
+		self, CallbackData, CallbackDataCommon, CallbackMetadata, Event, EventAlterables,
+		EventListenerKind, EventListenerVec, EventRefs, MouseWheelEvent,
 	},
 	layout::{Layout, WidgetID},
 	transform_stack::TransformStack,
@@ -338,7 +339,10 @@ impl WidgetState {
 						params,
 						MousePress,
 						user_data,
-						CallbackMetadata::MouseButton(e.button)
+						CallbackMetadata::MouseButton(event::MouseButton {
+							index: e.index,
+							pos: e.pos
+						})
 					);
 				}
 			}
@@ -352,13 +356,11 @@ impl WidgetState {
 						params,
 						MouseRelease,
 						user_data,
-						CallbackMetadata::MouseButton(e.button)
+						CallbackMetadata::MouseButton(event::MouseButton {
+							index: e.index,
+							pos: e.pos,
+						})
 					);
-				}
-			}
-			Event::MouseWheel(e) => {
-				if hovered && self.process_wheel(params, e) {
-					return EventResult::Consumed;
 				}
 			}
 			Event::MouseMotion(e) => {
@@ -396,8 +398,13 @@ impl WidgetState {
 					params,
 					MouseMotion,
 					user_data,
-					CallbackMetadata::None
+					CallbackMetadata::MousePosition(event::MousePosition { pos: e.pos })
 				);
+			}
+			Event::MouseWheel(e) => {
+				if hovered && self.process_wheel(params, e) {
+					return EventResult::Consumed;
+				}
 			}
 			Event::MouseLeave(e) => {
 				if self.data.set_device_hovered(e.device, false) {
