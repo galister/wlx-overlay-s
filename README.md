@@ -55,8 +55,8 @@ In case screens were selected in the wrong order:
 
 **SteamVR users**: WlxOverlay-S will register itself for auto-start, so there is no need to start it every time.
 
-**Envision users**: Go to the Plugins menu and select the WlxOverlay-S plugin. This will download and run the appimage version of the overlay.
-If you want to run a standalone installation (for instance from the AUR) you can create a bash script containing `wlx-overlay-s --openxr --show` and then select this bash script as a custom Envision plugin.
+**Envision users**: Go to the Plugins menu and select the WlxOverlay-S plugin. This will download and run the AppImage version of the overlay.
+In order to run a standalone installation (for instance from the AUR), create a bash script containing `wlx-overlay-s --openxr --show` and then select this bash script as a custom Envision plugin.
 
 This will show a home environment with headset passthrough by default or a [customizable background](https://github.com/galister/wlx-overlay-s/wiki/OpenXR-Skybox)!
 
