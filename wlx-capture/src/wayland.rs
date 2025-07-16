@@ -19,15 +19,15 @@ use smithay_client_toolkit::reexports::{
 
 pub use wayland_client;
 use wayland_client::{
+    Connection, Dispatch, EventQueue, Proxy, QueueHandle,
     backend::WaylandError,
-    globals::{registry_queue_init, GlobalList, GlobalListContents},
+    globals::{GlobalList, GlobalListContents, registry_queue_init},
     protocol::{
         wl_output::{self, Transform, WlOutput},
         wl_registry::{self, WlRegistry},
         wl_seat::WlSeat,
         wl_shm::WlShm,
     },
-    Connection, Dispatch, EventQueue, Proxy, QueueHandle,
 };
 
 pub enum OutputChangeEvent {
@@ -291,7 +291,20 @@ impl Dispatch<WlOutput, u32> for WlxClient {
         _qhandle: &QueueHandle<Self>,
     ) {
         match event {
-            wl_output::Event::Mode { width, height, .. } => {
+            wl_output::Event::Mode {
+                width,
+                height,
+                flags,
+                ..
+            } => {
+                if !flags
+                    .into_result()
+                    .is_ok_and(|f| f.intersects(wl_output::Mode::Current))
+                {
+                    // https://github.com/galister/wlx-capture/issues/5
+                    return;
+                }
+
                 if let Some(output) = state.outputs.get_mut(*data) {
                     output.size = (width, height);
                     if output.done {
