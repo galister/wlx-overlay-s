@@ -5644,6 +5644,7 @@ dependencies = [
  "log",
  "lru",
  "ouroboros",
+ "parking_lot",
  "regex",
  "resvg",
  "roxmltree 0.20.0",

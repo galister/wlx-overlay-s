@@ -88,8 +88,8 @@ impl Event {
 }
 
 pub struct EventRefs<'a> {
-	pub widget_map: &'a WidgetMap,
-	pub widget_node_map: &'a WidgetNodeMap,
+	pub widgets: &'a WidgetMap,
+	pub nodes: &'a WidgetNodeMap,
 	pub tree: &'a taffy::tree::TaffyTree<WidgetID>,
 }
 
@@ -103,51 +103,31 @@ pub struct EventAlterables {
 	pub trigger_haptics: bool,
 }
 
-pub struct CallbackDataCommon<'a> {
-	pub refs: &'a EventRefs<'a>,
-	pub alterables: &'a mut EventAlterables,
-}
-
-impl CallbackDataCommon<'_> {
-	pub fn call_on_widget<WIDGET, FUNC>(&self, widget_id: WidgetID, func: FUNC)
-	where
-		WIDGET: WidgetObj,
-		FUNC: FnOnce(&mut WIDGET),
-	{
-		let Some(widget) = self.refs.widget_map.get(widget_id) else {
-			debug_assert!(false);
-			return;
-		};
-
-		let mut lock = widget.lock().unwrap();
-		let m = lock.obj.get_as_mut::<WIDGET>();
-
-		func(m);
-	}
-
+impl EventAlterables {
 	pub fn mark_redraw(&mut self) {
-		self.alterables.needs_redraw = true;
+		self.needs_redraw = true;
 	}
 
 	pub fn set_style(&mut self, node_id: taffy::NodeId, style: taffy::Style) {
-		self.alterables.style_set_requests.push((node_id, style));
+		self.style_set_requests.push((node_id, style));
 	}
 
 	pub fn mark_dirty(&mut self, node_id: taffy::NodeId) {
-		self.alterables.dirty_nodes.push(node_id);
+		self.dirty_nodes.push(node_id);
 	}
 
 	pub fn trigger_haptics(&mut self) {
-		self.alterables.trigger_haptics = true;
-	}
-
-	pub fn get_tree(&self) -> &taffy::TaffyTree<WidgetID> {
-		self.refs.tree
+		self.trigger_haptics = true;
 	}
 
 	pub fn animate(&mut self, animation: Animation) {
-		self.alterables.animations.push(animation);
+		self.animations.push(animation);
 	}
+}
+
+pub struct CallbackDataCommon<'a> {
+	pub refs: &'a EventRefs<'a>,
+	pub alterables: &'a mut EventAlterables,
 }
 
 pub struct CallbackData<'a> {
@@ -234,6 +214,7 @@ impl<U1, U2> EventListener<U1, U2> {
 	}
 }
 
+#[derive(Default)]
 pub struct EventListenerVec<U1, U2>(Vec<EventListener<U1, U2>>);
 
 impl<U1, U2> EventListenerVec<U1, U2> {

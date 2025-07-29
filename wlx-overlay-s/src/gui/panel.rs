@@ -5,8 +5,8 @@ use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 use wgui::{
     event::{
         Event as WguiEvent, EventListenerCollection, InternalStateChangeEvent, ListenerHandleVec,
-        MouseButton, MouseButtonIndex, MouseDownEvent, MouseLeaveEvent, MouseMotionEvent,
-        MouseUpEvent, MouseWheelEvent,
+        MouseButtonIndex, MouseDownEvent, MouseLeaveEvent, MouseMotionEvent, MouseUpEvent,
+        MouseWheelEvent,
     },
     layout::Layout,
     parser::ParserState,

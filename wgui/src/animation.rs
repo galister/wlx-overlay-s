@@ -2,7 +2,7 @@ use glam::{FloatExt, Vec2};
 
 use crate::{
 	event::{CallbackDataCommon, EventAlterables, EventRefs},
-	layout::{WidgetID, WidgetMap, WidgetNodeMap},
+	layout::WidgetID,
 	widget::{WidgetData, WidgetObj},
 };
 
@@ -90,14 +90,14 @@ impl Animation {
 	}
 
 	fn call(&self, refs: &EventRefs, alterables: &mut EventAlterables, pos: f32) {
-		let Some(widget) = refs.widget_map.get(self.target_widget).cloned() else {
+		let Some(widget) = refs.widgets.get(self.target_widget).cloned() else {
 			return; // failed
 		};
 
-		let widget_node = *refs.widget_node_map.get(self.target_widget).unwrap();
+		let widget_node = *refs.nodes.get(self.target_widget).unwrap();
 		let layout = refs.tree.layout(widget_node).unwrap(); // should always succeed
 
-		let mut widget = widget.lock().unwrap();
+		let mut widget = widget.lock();
 
 		let (data, obj) = widget.get_data_obj_mut();
 

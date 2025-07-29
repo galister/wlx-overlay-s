@@ -1,14 +1,16 @@
-use std::sync::{Arc, Mutex};
+use std::{collections::VecDeque, rc::Rc, sync::Arc};
 
 use crate::{
-	animation::{self, Animations},
+	animation::Animations,
 	assets::AssetProvider,
+	components::{Component, InitData},
 	event::{self, EventAlterables, EventListenerCollection, EventRefs},
-	transform_stack::{Transform, TransformStack},
-	widget::{self, EventParams, WidgetState, div::Div},
+	transform_stack::Transform,
+	widget::{self, EventParams, WidgetObj, WidgetState, div::Div},
 };
 
 use glam::{Vec2, vec2};
+use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
 use slotmap::{HopSlotMap, SecondaryMap, new_key_type};
 use taffy::{TaffyTree, TraversePartialTree};
 
@@ -17,13 +19,52 @@ new_key_type! {
 }
 
 pub type BoxWidget = Arc<Mutex<WidgetState>>;
-pub type WidgetMap = HopSlotMap<WidgetID, BoxWidget>;
+
+pub struct WidgetMap(HopSlotMap<WidgetID, BoxWidget>);
 pub type WidgetNodeMap = SecondaryMap<WidgetID, taffy::NodeId>;
+
+impl WidgetMap {
+	fn new() -> Self {
+		Self(HopSlotMap::with_key())
+	}
+
+	pub fn get_as<T: 'static>(&self, handle: WidgetID) -> Option<MappedMutexGuard<T>> {
+		let widget = self.0.get(handle)?;
+		Some(MutexGuard::map(widget.lock(), |w| w.obj.get_as_mut::<T>()))
+	}
+
+	pub fn get(&self, handle: WidgetID) -> Option<&BoxWidget> {
+		self.0.get(handle)
+	}
+
+	pub fn insert(&mut self, obj: BoxWidget) -> WidgetID {
+		self.0.insert(obj)
+	}
+
+	// cast to specific widget type, does nothing if widget ID is expired
+	// panics in case if the widget type is wrong
+	pub fn call<WIDGET, FUNC>(&self, widget_id: WidgetID, func: FUNC)
+	where
+		WIDGET: WidgetObj,
+		FUNC: FnOnce(&mut WIDGET),
+	{
+		let Some(widget) = self.get(widget_id) else {
+			debug_assert!(false);
+			return;
+		};
+
+		let mut lock = widget.lock();
+		let m = lock.obj.get_as_mut::<WIDGET>();
+
+		func(m);
+	}
+}
 
 pub struct Layout {
 	pub tree: TaffyTree<WidgetID>,
 
 	pub assets: Box<dyn AssetProvider>,
+	pub components_to_init: VecDeque<Rc<dyn Component>>,
 
 	pub widget_map: WidgetMap,
 	pub widget_node_map: WidgetNodeMap,
@@ -82,6 +123,26 @@ impl Layout {
 		)
 	}
 
+	fn process_pending_components(&mut self) -> anyhow::Result<()> {
+		let mut alterables = EventAlterables::default();
+
+		while let Some(c) = self.components_to_init.pop_front() {
+			c.init(&mut InitData {
+				widgets: &self.widget_map,
+				alterables: &mut alterables,
+				tree: &self.tree,
+			});
+		}
+
+		self.process_alterables(alterables)?;
+
+		Ok(())
+	}
+
+	pub fn defer_component_init(&mut self, component: Rc<dyn Component>) {
+		self.components_to_init.push_back(component);
+	}
+
 	fn push_event_children<U1, U2>(
 		&self,
 		listeners: &EventListenerCollection<U1, U2>,
@@ -117,7 +178,7 @@ impl Layout {
 			anyhow::bail!("invalid widget");
 		};
 
-		let mut widget = widget.lock().unwrap();
+		let mut widget = widget.lock();
 
 		let transform = Transform {
 			pos: Vec2::new(l.location.x, l.location.y),
@@ -132,8 +193,8 @@ impl Layout {
 		let mut params = EventParams {
 			refs: &EventRefs {
 				tree: &self.tree,
-				widget_map: &self.widget_map,
-				widget_node_map: &self.widget_node_map,
+				widgets: &self.widget_map,
+				nodes: &self.widget_node_map,
 			},
 			layout: l,
 			alterables,
@@ -141,20 +202,27 @@ impl Layout {
 			style,
 		};
 
-		if let Some(listeners) = listeners.get(widget_id) {
-			match widget.process_event(widget_id, listeners, node_id, event, user_data, &mut params) {
-				widget::EventResult::Pass => {
-					// go on
-				}
-				widget::EventResult::Consumed => {
-					iter_children = false;
-				}
-				widget::EventResult::Outside => {
-					iter_children = false;
-				}
-				widget::EventResult::Unused => {
-					iter_children = false;
-				}
+		let listeners_vec = listeners.get(widget_id);
+
+		match widget.process_event(
+			widget_id,
+			listeners_vec,
+			node_id,
+			event,
+			user_data,
+			&mut params,
+		) {
+			widget::EventResult::Pass => {
+				// go on
+			}
+			widget::EventResult::Consumed => {
+				iter_children = false;
+			}
+			widget::EventResult::Outside => {
+				iter_children = false;
+			}
+			widget::EventResult::Unused => {
+				iter_children = false;
 			}
 		}
 
@@ -213,7 +281,7 @@ impl Layout {
 	pub fn new(assets: Box<dyn AssetProvider>) -> anyhow::Result<Self> {
 		let mut tree = TaffyTree::new();
 		let mut widget_node_map = WidgetNodeMap::default();
-		let mut widget_map = HopSlotMap::with_key();
+		let mut widget_map = WidgetMap::new();
 
 		let (root_widget, root_node) = add_child_internal(
 			&mut tree,
@@ -239,6 +307,7 @@ impl Layout {
 			haptics_triggered: false,
 			animations: Animations::default(),
 			assets,
+			components_to_init: VecDeque::new(),
 		})
 	}
 
@@ -247,8 +316,8 @@ impl Layout {
 
 		let refs = EventRefs {
 			tree: &self.tree,
-			widget_map: &self.widget_map,
-			widget_node_map: &self.widget_node_map,
+			widgets: &self.widget_map,
+			nodes: &self.widget_node_map,
 		};
 
 		self
@@ -280,10 +349,7 @@ impl Layout {
 						None => taffy::Size::ZERO,
 						Some(h) => {
 							if let Some(w) = self.widget_map.get(*h) {
-								w.lock()
-									.unwrap()
-									.obj
-									.measure(known_dimensions, available_space)
+								w.lock().obj.measure(known_dimensions, available_space)
 							} else {
 								taffy::Size::ZERO
 							}
@@ -309,12 +375,13 @@ impl Layout {
 
 		let refs = EventRefs {
 			tree: &self.tree,
-			widget_map: &self.widget_map,
-			widget_node_map: &self.widget_node_map,
+			widgets: &self.widget_map,
+			nodes: &self.widget_node_map,
 		};
 
 		self.animations.tick(&refs, &mut alterables);
 		self.process_alterables(alterables)?;
+		self.process_pending_components()?;
 
 		Ok(())
 	}

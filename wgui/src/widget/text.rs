@@ -30,7 +30,7 @@ impl TextLabel {
 
 		let mut buffer = Buffer::new_empty(metrics);
 		{
-			let mut font_system = FONT_SYSTEM.lock().unwrap(); // safe unwrap
+			let mut font_system = FONT_SYSTEM.lock();
 			let mut buffer = buffer.borrow_with(&mut font_system);
 			buffer.set_wrap(wrap);
 
@@ -56,7 +56,7 @@ impl TextLabel {
 
 		self.params.content = String::from(text);
 		let attrs = Attrs::from(&self.params.style);
-		let mut font_system = FONT_SYSTEM.lock().unwrap(); // safe unwrap
+		let mut font_system = FONT_SYSTEM.lock();
 
 		let mut buffer = self.buffer.borrow_mut();
 		buffer.set_rich_text(
@@ -79,7 +79,7 @@ impl WidgetObj for TextLabel {
 
 		if self.last_boundary != boundary {
 			self.last_boundary = boundary;
-			let mut font_system = FONT_SYSTEM.lock().unwrap(); // safe unwrap
+			let mut font_system = FONT_SYSTEM.lock();
 			let mut buffer = self.buffer.borrow_mut();
 			buffer.set_size(
 				&mut font_system,
@@ -108,7 +108,7 @@ impl WidgetObj for TextLabel {
 			AvailableSpace::Definite(width) => Some(width),
 		});
 
-		let mut font_system = FONT_SYSTEM.lock().unwrap(); // safe unwrap
+		let mut font_system = FONT_SYSTEM.lock();
 		let mut buffer = self.buffer.borrow_mut();
 
 		buffer.set_size(&mut font_system, width_constraint, None);

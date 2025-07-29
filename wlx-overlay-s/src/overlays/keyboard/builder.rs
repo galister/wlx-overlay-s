@@ -167,15 +167,11 @@ where
 
             if let Some(widget_id) = gui_state_key.ids.get(&*my_id) {
                 let key_state = {
-                    let widget = panel
+                    let rect = panel
                         .layout
                         .widget_map
-                        .get(*widget_id)
-                        .unwrap() // want panic
-                        .lock()
+                        .get_as::<Rectangle>(*widget_id)
                         .unwrap(); // want panic
-
-                    let rect = widget.obj.get_as::<Rectangle>();
 
                     Rc::new(KeyState {
                         button_state: key.button_state,
@@ -193,7 +189,7 @@ where
                     Box::new({
                         let k = key_state.clone();
                         move |common, data, _app, _state| {
-                            common.trigger_haptics();
+                            common.alterables.trigger_haptics();
                             on_enter_anim(k.clone(), common, data);
                         }
                     }),
@@ -205,7 +201,7 @@ where
                     Box::new({
                         let k = key_state.clone();
                         move |common, data, _app, _state| {
-                            common.trigger_haptics();
+                            common.alterables.trigger_haptics();
                             on_leave_anim(k.clone(), common, data);
                         }
                     }),
@@ -310,7 +306,7 @@ fn on_enter_anim(
     common: &mut event::CallbackDataCommon,
     data: &event::CallbackData,
 ) {
-    common.animate(Animation::new(
+    common.alterables.animate(Animation::new(
         data.widget_id,
         10,
         AnimationEasing::OutBack,
@@ -318,7 +314,7 @@ fn on_enter_anim(
             let rect = data.obj.get_as_mut::<Rectangle>();
             set_anim_color(&key_state, rect, data.pos);
             data.data.transform = get_anim_transform(data.pos, data.widget_size);
-            common.mark_redraw();
+            common.alterables.mark_redraw();
         }),
     ));
 }
@@ -328,7 +324,7 @@ fn on_leave_anim(
     common: &mut event::CallbackDataCommon,
     data: &event::CallbackData,
 ) {
-    common.animate(Animation::new(
+    common.alterables.animate(Animation::new(
         data.widget_id,
         15,
         AnimationEasing::OutQuad,
@@ -336,7 +332,7 @@ fn on_leave_anim(
             let rect = data.obj.get_as_mut::<Rectangle>();
             set_anim_color(&key_state, rect, 1.0 - data.pos);
             data.data.transform = get_anim_transform(1.0 - data.pos, data.widget_size);
-            common.mark_redraw();
+            common.alterables.mark_redraw();
         }),
     ));
 }
@@ -351,7 +347,7 @@ fn on_press_anim(
     }
     let rect = data.obj.get_as_mut::<Rectangle>();
     rect.params.border_color = Color::new(1.0, 1.0, 1.0, 1.0);
-    common.mark_redraw();
+    common.alterables.mark_redraw();
     key_state.drawn_state.set(true);
 }
 
@@ -365,6 +361,6 @@ fn on_release_anim(
     }
     let rect = data.obj.get_as_mut::<Rectangle>();
     rect.params.border_color = key_state.border_color;
-    common.mark_redraw();
+    common.alterables.mark_redraw();
     key_state.drawn_state.set(false);
 }

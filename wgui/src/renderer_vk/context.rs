@@ -53,8 +53,8 @@ impl RendererPass<'_> {
 		self.rect_renderer.render(gfx, viewport, cmd_buf)?;
 
 		{
-			let mut font_system = FONT_SYSTEM.lock().unwrap();
-			let mut swash_cache = SWASH_CACHE.lock().unwrap();
+			let mut font_system = FONT_SYSTEM.lock();
+			let mut swash_cache = SWASH_CACHE.lock();
 
 			self.text_renderer.prepare(
 				&mut font_system,

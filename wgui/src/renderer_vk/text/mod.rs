@@ -3,11 +3,7 @@ mod shaders;
 pub mod text_atlas;
 pub mod text_renderer;
 
-use std::{
-	cell::RefCell,
-	rc::Rc,
-	sync::{LazyLock, Mutex},
-};
+use std::{cell::RefCell, rc::Rc, sync::LazyLock};
 
 use cosmic_text::{
 	Align, Attrs, Buffer, Color, FontSystem, Metrics, Style, SwashCache, Weight, Wrap,
@@ -15,6 +11,7 @@ use cosmic_text::{
 use custom_glyph::{ContentType, CustomGlyph};
 use etagere::AllocId;
 use glam::Mat4;
+use parking_lot::Mutex;
 
 use crate::drawing::{self};
 

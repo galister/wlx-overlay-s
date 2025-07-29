@@ -3,7 +3,7 @@ use taffy::{AlignItems, JustifyContent, prelude::length};
 
 use crate::{
 	animation::{Animation, AnimationEasing},
-	components::Component,
+	components::{Component, InitData},
 	drawing::{self, Color},
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerKind, ListenerHandleVec},
 	layout::{Layout, WidgetID},
@@ -50,15 +50,20 @@ pub struct Button {
 	listener_handles: ListenerHandleVec,
 }
 
-impl Component for Button {}
+impl Component for Button {
+	fn init(&self, _data: &mut InitData) {}
+}
 
 impl Button {
-	pub fn set_text<C>(&self, callback_data: &mut CallbackDataCommon, text: &str) {
-		callback_data.call_on_widget(self.data.text_id, |label: &mut TextLabel| {
-			label.set_text(text);
-		});
-		callback_data.mark_redraw();
-		callback_data.mark_dirty(self.data.text_node);
+	pub fn set_text<C>(&self, common: &mut CallbackDataCommon, text: &str) {
+		common
+			.refs
+			.widgets
+			.call(self.data.text_id, |label: &mut TextLabel| {
+				label.set_text(text);
+			});
+		common.alterables.mark_redraw();
+		common.alterables.mark_dirty(self.data.text_node);
 	}
 }
 
@@ -77,12 +82,12 @@ fn anim_hover(rect: &mut Rectangle, data: &Data, pos: f32) {
 fn anim_hover_in(data: Rc<Data>, widget_id: WidgetID) -> Animation {
 	Animation::new(
 		widget_id,
-		10,
+		5,
 		AnimationEasing::OutQuad,
 		Box::new(move |common, anim_data| {
 			let rect = anim_data.obj.get_as_mut::<Rectangle>();
 			anim_hover(rect, &data, anim_data.pos);
-			common.mark_redraw();
+			common.alterables.mark_redraw();
 		}),
 	)
 }
@@ -90,12 +95,12 @@ fn anim_hover_in(data: Rc<Data>, widget_id: WidgetID) -> Animation {
 fn anim_hover_out(data: Rc<Data>, widget_id: WidgetID) -> Animation {
 	Animation::new(
 		widget_id,
-		15,
+		8,
 		AnimationEasing::OutQuad,
 		Box::new(move |common, anim_data| {
 			let rect = anim_data.obj.get_as_mut::<Rectangle>();
 			anim_hover(rect, &data, 1.0 - anim_data.pos);
-			common.mark_redraw();
+			common.alterables.mark_redraw();
 		}),
 	)
 }
@@ -164,7 +169,9 @@ pub fn construct<U1, U2>(
 		rect_id,
 		EventListenerKind::MouseEnter,
 		Box::new(move |common, event_data, _, _| {
-			common.animate(anim_hover_in(data.clone(), event_data.widget_id));
+			common
+				.alterables
+				.animate(anim_hover_in(data.clone(), event_data.widget_id));
 		}),
 	);
 
@@ -174,12 +181,17 @@ pub fn construct<U1, U2>(
 		rect_id,
 		EventListenerKind::MouseLeave,
 		Box::new(move |common, event_data, _, _| {
-			common.animate(anim_hover_out(data.clone(), event_data.widget_id));
+			common
+				.alterables
+				.animate(anim_hover_out(data.clone(), event_data.widget_id));
 		}),
 	);
 
-	Ok(Rc::new(Button {
+	let button = Rc::new(Button {
 		data: _data.clone(),
 		listener_handles,
-	}))
+	});
+
+	layout.defer_component_init(button.clone());
+	Ok(button)
 }

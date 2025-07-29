@@ -61,7 +61,7 @@ impl WidgetObj for SpriteBox {
 			let mut buffer = Buffer::new_empty(DEFAULT_METRICS);
 
 			{
-				let mut font_system = FONT_SYSTEM.lock().unwrap(); // safe unwrap
+				let mut font_system = FONT_SYSTEM.lock();
 				let mut buffer = buffer.borrow_with(&mut font_system);
 				let attrs = Attrs::new()
 					.color(Color::rgb(255, 0, 255))

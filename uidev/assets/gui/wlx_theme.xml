@@ -4,8 +4,5 @@
     <var key="bg_color_active" value="#44475a" />
     <var key="device_color" value="#666666" />
     <var key="text_color" value="#dddddd" />
-    <var key="slider_bg_color" value="#666666" />
-    <var key="slider_fg_color" value="#ffffff" />
-    <var key="slider_text_color" value="#000000" />
   </theme>
 </layout>

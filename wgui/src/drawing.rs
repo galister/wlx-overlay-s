@@ -116,7 +116,7 @@ fn draw_widget(
 		return;
 	};
 
-	let mut widget_state = widget.lock().unwrap();
+	let mut widget_state = widget.lock();
 
 	let transform = widget_state.data.transform * *parent_transform;
 

@@ -41,15 +41,11 @@ where
                 .flatten();
             let role = cap.get(2).unwrap().as_str();
 
-            let mut widget = panel
+            let mut label = panel
                 .layout
                 .widget_map
-                .get_mut(*widget_id)
-                .unwrap() // want panic
-                .lock()
-                .unwrap(); // want panic
-
-            let label = widget.obj.get_as_mut::<TextLabel>();
+                .get_as::<TextLabel>(*widget_id)
+                .unwrap();
 
             let format = match role {
                 "tz" => {
