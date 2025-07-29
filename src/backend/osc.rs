@@ -116,9 +116,7 @@ impl OscSender {
                 let parameter = match device.role {
                     TrackedDeviceRole::None => continue,
                     TrackedDeviceRole::Hmd => {
-                        // legacy OVR Toolkit style (int)
-                        // as of 20 Nov 2024 OVR Toolkit uses int 0-100, but this may change in a future update.
-                        //TODO: update this once their implementation matches their docs
+                        // as of version 28-07-2025 (UI Update), OVR Toolkit now uses float 0-1
                         self.send_message(
                             "/avatar/parameters/hmdBattery".into(),
                             vec![OscType::Int((level * 100.0f32).round() as i32)],
