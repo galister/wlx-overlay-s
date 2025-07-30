@@ -28,6 +28,17 @@ Questions/issues specific to WlxOverlay-S will be handled in the `wlxoverlay` ch
 
 **Note:** If you are using Monado or WiVRn, no additional setup steps are required for Flatpak Steam compatibility—most people use WlxOverlay-S seamlessly with Monado/WiVRn.
 
+### Packages
+
+Homebrew: [shiloh/atomicxr](https://codeberg.org/shiloh/homebrew-atomicxr)
+
+1. `brew tap shiloh/atomicxr https://codeberg.org/shiloh/homebrew-atomicxr.git`
+2. `brew install wlx-overlay-s`
+
+AUR: [wlx-overlay-s-git](https://aur.archlinux.org/packages/wlx-overlay-s-git)
+
+You may also want to [build from source](https://github.com/galister/wlx-overlay-s/wiki/Building-from-Source).
+
 ### SteamVR via Steam Flatpak
 
 For users specifically running **SteamVR via Steam Flatpak**, follow these steps:
@@ -40,10 +51,6 @@ For users specifically running **SteamVR via Steam Flatpak**, follow these steps
 1. Restart Steam.
 1. Start SteamVR.
 1. `flatpak run --command='/path/to/squashfs-root/AppRun' com.valvesoftware.Steam`
-
-AUR package is [wlx-overlay-s-git](https://aur.archlinux.org/packages/wlx-overlay-s-git).
-
-You may also want to [build from source](https://github.com/galister/wlx-overlay-s/wiki/Building-from-Source).
 
 ## First Start
 
@@ -155,7 +162,7 @@ Other desktops: The screens may have been selected in the wrong order, see [Firs
 
 ### Crashes, blank screens
 
-There are some driver-desktop combinations that don't play nice with DMA-buf capture. 
+There are some driver-desktop combinations that don't play nice with DMA-buf capture.
 
 Disabling DMA-buf capture is a good first step to try when encountering an app crash or gpu driver reset.
 
