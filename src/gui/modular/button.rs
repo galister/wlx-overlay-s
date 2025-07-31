@@ -451,7 +451,7 @@ fn handle_action(action: &ButtonAction, press: &mut PressData, app: &mut AppStat
     }
 }
 
-const ENABLED_DISABLED: [&str; 2] = ["enabled", "disabled"];
+const DISABLED_ENABLED: [&str; 2] = ["Disabled", "Enabled"];
 
 #[allow(clippy::too_many_lines)]
 fn run_system(action: &SystemAction, app: &mut AppState) {
@@ -461,8 +461,8 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
             Toast::new(
                 ToastTopic::System,
                 format!(
-                    "Sliding is {}.",
-                    ENABLED_DISABLED[usize::from(app.session.config.allow_sliding)]
+                    "{} sliding.",
+                    DISABLED_ENABLED[usize::from(app.session.config.allow_sliding)]
                 )
                 .into(),
                 "".into(),
@@ -474,8 +474,8 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
             Toast::new(
                 ToastTopic::System,
                 format!(
-                    "Auto realign is {}.",
-                    ENABLED_DISABLED[usize::from(app.session.config.realign_on_showhide)]
+                    "{} auto realign.",
+                    DISABLED_ENABLED[usize::from(app.session.config.realign_on_showhide)]
                 )
                 .into(),
                 "".into(),
@@ -487,8 +487,8 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
             Toast::new(
                 ToastTopic::System,
                 format!(
-                    "Space rotate axis lock now {}.",
-                    ENABLED_DISABLED[usize::from(!app.session.config.space_rotate_unlocked)]
+                    "{} space rotate axis lock.",
+                    DISABLED_ENABLED[usize::from(!app.session.config.space_rotate_unlocked)]
                 )
                 .into(),
                 "".into(),
@@ -524,8 +524,8 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
             Toast::new(
                 ToastTopic::System,
                 format!(
-                    "Notifications are {}.",
-                    ENABLED_DISABLED[usize::from(app.session.config.notifications_enabled)]
+                    "{} notifications.",
+                    DISABLED_ENABLED[usize::from(app.session.config.notifications_enabled)]
                 )
                 .into(),
                 "".into(),
@@ -538,8 +538,8 @@ fn run_system(action: &SystemAction, app: &mut AppState) {
             Toast::new(
                 ToastTopic::System,
                 format!(
-                    "Notification sounds are {}.",
-                    ENABLED_DISABLED[usize::from(app.session.config.notifications_sound_enabled)]
+                    "{} notification sounds.",
+                    DISABLED_ENABLED[usize::from(app.session.config.notifications_sound_enabled)]
                 )
                 .into(),
                 "".into(),
