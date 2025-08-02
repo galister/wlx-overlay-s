@@ -9,6 +9,7 @@ use glam::{Quat, vec3a};
 use idmap_derive::IntegerId;
 use serde::{Deserialize, Serialize};
 use wgui::{
+    i18n::Translation,
     parser::parse_color_hex,
     renderer_vk::text::{FontWeight, TextStyle},
     taffy::{
@@ -168,6 +169,9 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
 
     let mut panel = GuiPanel::new_blank(app, ()).ok()?;
 
+    let globals = panel.layout.state.globals.clone();
+    let mut i18n = globals.i18n();
+
     let (rect, _) = panel
         .layout
         .add_child(
@@ -192,13 +196,16 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
 
     let _ = panel.layout.add_child(
         rect,
-        TextLabel::create(TextParams {
-            content: title,
-            style: TextStyle {
-                color: parse_color_hex("#ffffff"),
-                ..Default::default()
+        TextLabel::create(
+            &mut i18n,
+            TextParams {
+                content: Translation::from_raw_text(&title),
+                style: TextStyle {
+                    color: parse_color_hex("#ffffff"),
+                    ..Default::default()
+                },
             },
-        })
+        )
         .unwrap(),
         taffy::Style {
             size: taffy::Size {
@@ -212,14 +219,17 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
 
     let _ = panel.layout.add_child(
         rect,
-        TextLabel::create(TextParams {
-            content: toast.body,
-            style: TextStyle {
-                weight: Some(FontWeight::Bold),
-                color: parse_color_hex("#eeeeee"),
-                ..Default::default()
+        TextLabel::create(
+            &mut i18n,
+            TextParams {
+                content: Translation::from_raw_text(&toast.body),
+                style: TextStyle {
+                    weight: Some(FontWeight::Bold),
+                    color: parse_color_hex("#eeeeee"),
+                    ..Default::default()
+                },
             },
-        })
+        )
         .unwrap(),
         taffy::Style {
             size: taffy::Size {

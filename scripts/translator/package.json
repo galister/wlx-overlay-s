@@ -1,0 +1,16 @@
+{
+	"devDependencies": {
+		"@types/bun": "latest",
+		"@types/node": "^22.13.13"
+	},
+	"name": "llm_translator",
+	"module": "index.ts",
+	"type": "module",
+	"private": true,
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"ollama": "^0.5.14"
+	}
+}

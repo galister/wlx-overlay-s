@@ -6,6 +6,7 @@ use glam::Vec3A;
 use regex::Regex;
 use wgui::{
     event::{self, EventListenerKind},
+    i18n::Translation,
     widget::text::TextLabel,
 };
 
@@ -43,18 +44,20 @@ where
 
             let mut label = panel
                 .layout
-                .widget_map
+                .state
+                .widgets
                 .get_as::<TextLabel>(*widget_id)
                 .unwrap();
 
             let format = match role {
                 "tz" => {
+                    let mut i18n = panel.layout.state.globals.i18n();
                     if let Some(s) =
                         tz_str.and_then(|tz| tz.split('/').next_back().map(|x| x.replace('_', " ")))
                     {
-                        label.set_text(&s);
+                        label.set_text(&mut i18n, Translation::from_raw_text(&s));
                     } else {
-                        label.set_text("Local");
+                        label.set_text(&mut i18n, Translation::from_raw_text("Local"));
                     }
 
                     continue;
@@ -69,7 +72,8 @@ where
                     }
                 }
                 _ => {
-                    label.set_text("ERR");
+                    let mut i18n = panel.layout.state.globals.i18n();
+                    label.set_text(&mut i18n, Translation::from_raw_text("ERR"));
                     continue;
                 }
             };
@@ -87,8 +91,8 @@ where
                 &mut panel.listener_handles,
                 *widget_id,
                 EventListenerKind::InternalStateChange,
-                Box::new(move |_common, data, _, _| {
-                    clock_on_tick(&clock, data);
+                Box::new(move |common, data, _, _| {
+                    clock_on_tick(&clock, common, data);
                 }),
             );
         }
@@ -151,12 +155,16 @@ struct ClockState {
     format: Rc<str>,
 }
 
-fn clock_on_tick(clock: &ClockState, data: &mut event::CallbackData) {
+fn clock_on_tick(
+    clock: &ClockState,
+    common: &event::CallbackDataCommon,
+    data: &mut event::CallbackData,
+) {
     let date_time = clock.timezone.as_ref().map_or_else(
         || format!("{}", Local::now().format(&clock.format)),
         |tz| format!("{}", Local::now().with_timezone(tz).format(&clock.format)),
     );
 
     let label = data.obj.get_as_mut::<TextLabel>();
-    label.set_text(&date_time);
+    label.set_text(&mut common.i18n(), Translation::from_raw_text(&date_time));
 }

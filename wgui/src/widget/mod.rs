@@ -7,9 +7,9 @@ use crate::{
 	drawing,
 	event::{
 		self, CallbackData, CallbackDataCommon, CallbackMetadata, Event, EventAlterables,
-		EventListenerKind, EventListenerVec, EventRefs, MouseWheelEvent,
+		EventListenerKind, EventListenerVec, MouseWheelEvent,
 	},
-	layout::{Layout, WidgetID},
+	layout::{Layout, LayoutState, WidgetID},
 	transform_stack::TransformStack,
 };
 
@@ -124,7 +124,7 @@ pub trait WidgetObj: AnyTrait {
 pub struct EventParams<'a> {
 	pub node_id: taffy::NodeId,
 	pub style: &'a taffy::Style,
-	pub refs: &'a EventRefs<'a>,
+	pub state: &'a LayoutState,
 	pub alterables: &'a mut EventAlterables,
 	pub layout: &'a taffy::Layout,
 }
@@ -197,7 +197,7 @@ macro_rules! call_event {
 				};
 
 				let mut common = CallbackDataCommon {
-					refs: $params.refs,
+					state: $params.state,
 					alterables: $params.alterables,
 				};
 

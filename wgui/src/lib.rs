@@ -5,6 +5,8 @@ pub mod components;
 pub mod drawing;
 pub mod event;
 pub mod gfx;
+pub mod globals;
+pub mod i18n;
 pub mod layout;
 pub mod parser;
 pub mod renderer_vk;

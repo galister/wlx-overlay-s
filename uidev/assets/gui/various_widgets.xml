@@ -5,7 +5,8 @@
       width="1000" height="500" min_width="1000" min_height="500"
       gap="4" flex_direction="column"
       overflow_y="scroll">
-      <label text="aaa" color="#FFFFFF" />
+      <label text="Raw text" color="#FFFFFF" />
+      <label translation="TESTBED.HELLO_WORLD" color="#FFFFFF" />
 
       <button text="Red button" width="128" height="32" color="#FF0000" />
       <button text="Aqua button" width="128" height="32" color="#00FFFF" />

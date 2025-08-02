@@ -1,6 +1,8 @@
 use crate::{assets, testbed::Testbed};
 use glam::Vec2;
-use wgui::{event::EventListenerCollection, layout::Layout, parser::ParserState};
+use wgui::{
+    event::EventListenerCollection, globals::WguiGlobals, layout::Layout, parser::ParserState,
+};
 
 pub struct TestbedGeneric {
     pub layout: Layout,
@@ -13,8 +15,9 @@ impl TestbedGeneric {
     pub fn new(listeners: &mut EventListenerCollection<(), ()>) -> anyhow::Result<Self> {
         const XML_PATH: &str = "gui/testbed.xml";
 
-        let (layout, state) =
-            wgui::parser::new_layout_from_assets(Box::new(assets::Asset {}), listeners, XML_PATH)?;
+        let globals = WguiGlobals::new(Box::new(assets::Asset {}))?;
+
+        let (layout, state) = wgui::parser::new_layout_from_assets(globals, listeners, XML_PATH)?;
 
         Ok(Self { layout, state })
     }

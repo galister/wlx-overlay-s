@@ -1,4 +1,5 @@
 use crate::{
+	i18n::Translation,
 	layout::WidgetID,
 	parser::{
 		ParserContext, ParserFile, iter_attribs, parse_children, parse_universal,
@@ -22,15 +23,20 @@ pub fn parse_widget_label<'a, U1, U2>(
 	for (key, value) in attribs {
 		match &*key {
 			"text" => {
-				params.content = String::from(value.as_ref());
+				params.content = Translation::from_raw_text(&value);
 			}
+			"translation" => params.content = Translation::from_translation_key(&value),
 			_ => {}
 		}
 	}
 
-	let (new_id, _) = ctx
-		.layout
-		.add_child(parent_id, TextLabel::create(params)?, style)?;
+	let globals = ctx.layout.state.globals.clone();
+	let mut i18n = globals.i18n();
+
+	let (new_id, _) =
+		ctx
+			.layout
+			.add_child(parent_id, TextLabel::create(&mut i18n, params)?, style)?;
 
 	parse_universal(file, ctx, node, new_id)?;
 	parse_children(file, ctx, node, new_id)?;

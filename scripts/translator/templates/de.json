@@ -1,0 +1,20 @@
+{
+	"full_name": "German",
+	"examples": [
+		{
+			"key": "BAR.OPACITY",
+			"en": "Opacity",
+			"translated": "Undurchsichtigkeit"
+		},
+		{
+			"key": "PANEL.CLOSE",
+			"en": "Close panel",
+			"translated": "Schließen Sie das Panel"
+		},
+		{
+			"key": "SETTINGS.LEFT_HANDED_MODE",
+			"en": "Left-handed mode",
+			"translated": "Linkshändige Modus"
+		}
+	]
+}

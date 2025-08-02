@@ -11,6 +11,7 @@ use crate::{
 	components::Component,
 	drawing::{self},
 	event::EventListenerCollection,
+	globals::WguiGlobals,
 	layout::{Layout, WidgetID},
 	parser::{
 		component_button::parse_component_button, component_slider::parse_component_slider,
@@ -631,11 +632,11 @@ pub fn parse_from_assets<U1, U2>(
 }
 
 pub fn new_layout_from_assets<U1, U2>(
-	assets: Box<dyn AssetProvider>,
+	globals: WguiGlobals,
 	listeners: &mut EventListenerCollection<U1, U2>,
 	path: &str,
 ) -> anyhow::Result<(Layout, ParserState)> {
-	let mut layout = Layout::new(assets)?;
+	let mut layout = Layout::new(globals)?;
 	let widget = layout.root_widget;
 	let state = parse_from_assets(&mut layout, listeners, widget, path)?;
 	Ok((layout, state))
@@ -650,7 +651,7 @@ fn get_doc_from_path<U1, U2>(
 	ctx: &mut ParserContext<U1, U2>,
 	path: &Path,
 ) -> anyhow::Result<(ParserFile, roxmltree::NodeId)> {
-	let xml = assets_path_to_xml(&mut ctx.layout.assets, path)?;
+	let xml = assets_path_to_xml(&mut ctx.layout.state.globals.assets(), path)?;
 	let document = Rc::new(XmlDocument::new(xml, |xml| {
 		let opt = roxmltree::ParsingOptions {
 			allow_dtd: true,

@@ -1,6 +1,7 @@
 use crate::{
 	components::button,
 	drawing::Color,
+	i18n::Translation,
 	layout::WidgetID,
 	parser::{
 		ParserContext, ParserFile, iter_attribs,
@@ -18,8 +19,7 @@ pub fn parse_component_button<'a, U1, U2>(
 	let mut color = Color::new(1.0, 1.0, 1.0, 1.0);
 	let mut border_color: Option<Color> = None;
 	let mut round = WLength::Units(4.0);
-
-	let mut text = String::default();
+	let mut translation = Translation::default();
 
 	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
 	let text_style = parse_text_style(&attribs);
@@ -28,7 +28,10 @@ pub fn parse_component_button<'a, U1, U2>(
 	for (key, value) in attribs {
 		match key.as_ref() {
 			"text" => {
-				text = String::from(value.as_ref());
+				translation = Translation::from_raw_text(&value);
+			}
+			"translation" => {
+				translation = Translation::from_translation_key(&value);
 			}
 			"round" => {
 				parse_round(&value, &mut round);
@@ -59,7 +62,7 @@ pub fn parse_component_button<'a, U1, U2>(
 		button::Params {
 			color,
 			border_color: border_color.unwrap(),
-			text: &text,
+			text: translation,
 			style,
 			text_style,
 			round,

@@ -5,6 +5,7 @@ use taffy::AvailableSpace;
 
 use crate::{
 	drawing::{self, Boundary},
+	i18n::{I18n, Translation},
 	renderer_vk::text::{FONT_SYSTEM, TextStyle},
 };
 
@@ -12,7 +13,7 @@ use super::{WidgetObj, WidgetState};
 
 #[derive(Default)]
 pub struct TextParams {
-	pub content: String,
+	pub content: Translation,
 	pub style: TextStyle,
 }
 
@@ -23,7 +24,7 @@ pub struct TextLabel {
 }
 
 impl TextLabel {
-	pub fn create(params: TextParams) -> anyhow::Result<WidgetState> {
+	pub fn create(i18n: &mut I18n, params: TextParams) -> anyhow::Result<WidgetState> {
 		let metrics = Metrics::from(&params.style);
 		let attrs = Attrs::from(&params.style);
 		let wrap = Wrap::from(&params.style);
@@ -35,7 +36,7 @@ impl TextLabel {
 			buffer.set_wrap(wrap);
 
 			buffer.set_rich_text(
-				[(params.content.as_str(), attrs)],
+				[(params.content.generate(i18n).as_ref(), attrs)],
 				&Attrs::new(),
 				Shaping::Advanced,
 				params.style.align.map(|a| a.into()),
@@ -49,27 +50,23 @@ impl TextLabel {
 		}))
 	}
 
-	pub fn set_text(&mut self, text: &str) {
-		if self.params.content.as_str() == text {
+	pub fn set_text(&mut self, i18n: &mut I18n, translation: Translation) {
+		if self.params.content == translation {
 			return;
 		}
 
-		self.params.content = String::from(text);
+		self.params.content = translation;
 		let attrs = Attrs::from(&self.params.style);
 		let mut font_system = FONT_SYSTEM.lock();
 
 		let mut buffer = self.buffer.borrow_mut();
 		buffer.set_rich_text(
 			&mut font_system,
-			[(self.params.content.as_str(), attrs)],
+			[(self.params.content.generate(i18n).as_ref(), attrs)],
 			&Attrs::new(),
 			Shaping::Advanced,
 			self.params.style.align.map(|a| a.into()),
 		);
-	}
-
-	pub fn get_text(&self) -> &str {
-		&self.params.content
 	}
 }
 

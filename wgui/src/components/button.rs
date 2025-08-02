@@ -6,6 +6,7 @@ use crate::{
 	components::{Component, InitData},
 	drawing::{self, Color},
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerKind, ListenerHandleVec},
+	i18n::Translation,
 	layout::{Layout, WidgetID},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
@@ -15,8 +16,8 @@ use crate::{
 	},
 };
 
-pub struct Params<'a> {
-	pub text: &'a str,
+pub struct Params {
+	pub text: Translation,
 	pub color: drawing::Color,
 	pub border_color: drawing::Color,
 	pub round: WLength,
@@ -24,10 +25,10 @@ pub struct Params<'a> {
 	pub text_style: TextStyle,
 }
 
-impl Default for Params<'_> {
+impl Default for Params {
 	fn default() -> Self {
 		Self {
-			text: "Text",
+			text: Translation::from_raw_text(""),
 			color: drawing::Color::new(1.0, 1.0, 1.0, 1.0),
 			border_color: drawing::Color::new(0.0, 0.0, 0.0, 1.0),
 			round: WLength::Units(4.0),
@@ -55,12 +56,14 @@ impl Component for Button {
 }
 
 impl Button {
-	pub fn set_text<C>(&self, common: &mut CallbackDataCommon, text: &str) {
+	pub fn set_text<C>(&self, common: &mut CallbackDataCommon, text: Translation) {
+		let globals = common.state.globals.clone();
+
 		common
-			.refs
+			.state
 			.widgets
 			.call(self.data.text_id, |label: &mut TextLabel| {
-				label.set_text(text);
+				label.set_text(&mut globals.i18n(), text);
 			});
 		common.alterables.mark_redraw();
 		common.alterables.mark_dirty(self.data.text_node);
@@ -118,6 +121,8 @@ pub fn construct<U1, U2>(
 	style.justify_content = Some(JustifyContent::Center);
 	style.padding = length(1.0);
 
+	let globals = layout.state.globals.clone();
+
 	let (rect_id, _) = layout.add_child(
 		parent,
 		Rectangle::create(RectangleParams {
@@ -137,18 +142,21 @@ pub fn construct<U1, U2>(
 
 	let (text_id, text_node) = layout.add_child(
 		rect_id,
-		TextLabel::create(TextParams {
-			content: String::from(params.text),
-			style: TextStyle {
-				weight: Some(FontWeight::Bold),
-				color: Some(if light_text {
-					Color::new(1.0, 1.0, 1.0, 1.0)
-				} else {
-					Color::new(0.0, 0.0, 0.0, 1.0)
-				}),
-				..params.text_style
+		TextLabel::create(
+			&mut globals.i18n(),
+			TextParams {
+				content: params.text,
+				style: TextStyle {
+					weight: Some(FontWeight::Bold),
+					color: Some(if light_text {
+						Color::new(1.0, 1.0, 1.0, 1.0)
+					} else {
+						Color::new(0.0, 0.0, 0.0, 1.0)
+					}),
+					..params.text_style
+				},
 			},
-		})?,
+		)?,
 		taffy::Style {
 			..Default::default()
 		},

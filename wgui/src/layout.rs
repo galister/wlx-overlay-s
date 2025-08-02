@@ -2,9 +2,9 @@ use std::{collections::VecDeque, rc::Rc, sync::Arc};
 
 use crate::{
 	animation::Animations,
-	assets::AssetProvider,
 	components::{Component, InitData},
-	event::{self, EventAlterables, EventListenerCollection, EventRefs},
+	event::{self, EventAlterables, EventListenerCollection},
+	globals::WguiGlobals,
 	transform_stack::Transform,
 	widget::{self, EventParams, WidgetObj, WidgetState, div::Div},
 };
@@ -60,14 +60,17 @@ impl WidgetMap {
 	}
 }
 
+pub struct LayoutState {
+	pub globals: WguiGlobals,
+	pub widgets: WidgetMap,
+	pub nodes: WidgetNodeMap,
+	pub tree: taffy::tree::TaffyTree<WidgetID>,
+}
+
 pub struct Layout {
-	pub tree: TaffyTree<WidgetID>,
+	pub state: LayoutState,
 
-	pub assets: Box<dyn AssetProvider>,
 	pub components_to_init: VecDeque<Rc<dyn Component>>,
-
-	pub widget_map: WidgetMap,
-	pub widget_node_map: WidgetNodeMap,
 
 	pub root_widget: WidgetID,
 	pub root_node: taffy::NodeId,
@@ -83,21 +86,21 @@ pub struct Layout {
 
 fn add_child_internal(
 	tree: &mut taffy::TaffyTree<WidgetID>,
-	widget_map: &mut WidgetMap,
-	widget_node_map: &mut WidgetNodeMap,
+	widgets: &mut WidgetMap,
+	nodes: &mut WidgetNodeMap,
 	parent_node: Option<taffy::NodeId>,
 	widget: WidgetState,
 	style: taffy::Style,
 ) -> anyhow::Result<(WidgetID, taffy::NodeId)> {
 	#[allow(clippy::arc_with_non_send_sync)]
-	let child_id = widget_map.insert(Arc::new(Mutex::new(widget)));
+	let child_id = widgets.insert(Arc::new(Mutex::new(widget)));
 	let child_node = tree.new_leaf_with_context(style, child_id)?;
 
 	if let Some(parent_node) = parent_node {
 		tree.add_child(parent_node, child_node)?;
 	}
 
-	widget_node_map.insert(child_id, child_node);
+	nodes.insert(child_id, child_node);
 
 	Ok((child_id, child_node))
 }
@@ -109,14 +112,14 @@ impl Layout {
 		widget: WidgetState,
 		style: taffy::Style,
 	) -> anyhow::Result<(WidgetID, taffy::NodeId)> {
-		let parent_node = *self.widget_node_map.get(parent_widget_id).unwrap();
+		let parent_node = *self.state.nodes.get(parent_widget_id).unwrap();
 
 		self.needs_redraw = true;
 
 		add_child_internal(
-			&mut self.tree,
-			&mut self.widget_map,
-			&mut self.widget_node_map,
+			&mut self.state.tree,
+			&mut self.state.widgets,
+			&mut self.state.nodes,
 			Some(parent_node),
 			widget,
 			style,
@@ -128,9 +131,8 @@ impl Layout {
 
 		while let Some(c) = self.components_to_init.pop_front() {
 			c.init(&mut InitData {
-				widgets: &self.widget_map,
+				state: &self.state,
 				alterables: &mut alterables,
-				tree: &self.tree,
 			});
 		}
 
@@ -151,7 +153,7 @@ impl Layout {
 		alterables: &mut EventAlterables,
 		user_data: &mut (&mut U1, &mut U2),
 	) -> anyhow::Result<()> {
-		for child_id in self.tree.child_ids(parent_node_id) {
+		for child_id in self.state.tree.child_ids(parent_node_id) {
 			self.push_event_widget(listeners, child_id, event, alterables, user_data)?;
 		}
 
@@ -166,14 +168,14 @@ impl Layout {
 		alterables: &mut EventAlterables,
 		user_data: &mut (&mut U1, &mut U2),
 	) -> anyhow::Result<()> {
-		let l = self.tree.layout(node_id)?;
-		let Some(widget_id) = self.tree.get_node_context(node_id).cloned() else {
+		let l = self.state.tree.layout(node_id)?;
+		let Some(widget_id) = self.state.tree.get_node_context(node_id).cloned() else {
 			anyhow::bail!("invalid widget ID");
 		};
 
-		let style = self.tree.style(node_id)?;
+		let style = self.state.tree.style(node_id)?;
 
-		let Some(widget) = self.widget_map.get(widget_id) else {
+		let Some(widget) = self.state.widgets.get(widget_id) else {
 			debug_assert!(false);
 			anyhow::bail!("invalid widget");
 		};
@@ -191,11 +193,7 @@ impl Layout {
 		let mut iter_children = true;
 
 		let mut params = EventParams {
-			refs: &EventRefs {
-				tree: &self.tree,
-				widgets: &self.widget_map,
-				nodes: &self.widget_node_map,
-			},
+			state: &self.state,
 			layout: l,
 			alterables,
 			node_id,
@@ -278,15 +276,18 @@ impl Layout {
 		Ok(())
 	}
 
-	pub fn new(assets: Box<dyn AssetProvider>) -> anyhow::Result<Self> {
-		let mut tree = TaffyTree::new();
-		let mut widget_node_map = WidgetNodeMap::default();
-		let mut widget_map = WidgetMap::new();
+	pub fn new(globals: WguiGlobals) -> anyhow::Result<Self> {
+		let mut state = LayoutState {
+			tree: TaffyTree::new(),
+			widgets: WidgetMap::new(),
+			nodes: WidgetNodeMap::default(),
+			globals,
+		};
 
 		let (root_widget, root_node) = add_child_internal(
-			&mut tree,
-			&mut widget_map,
-			&mut widget_node_map,
+			&mut state.tree,
+			&mut state.widgets,
+			&mut state.nodes,
 			None, // no parent
 			Div::create()?,
 			taffy::Style {
@@ -296,17 +297,14 @@ impl Layout {
 		)?;
 
 		Ok(Self {
-			tree,
+			state,
 			prev_size: Vec2::default(),
 			content_size: Vec2::default(),
 			root_node,
 			root_widget,
-			widget_node_map,
-			widget_map,
 			needs_redraw: true,
 			haptics_triggered: false,
 			animations: Animations::default(),
-			assets,
 			components_to_init: VecDeque::new(),
 		})
 	}
@@ -314,23 +312,17 @@ impl Layout {
 	pub fn update(&mut self, size: Vec2, timestep_alpha: f32) -> anyhow::Result<()> {
 		let mut alterables = EventAlterables::default();
 
-		let refs = EventRefs {
-			tree: &self.tree,
-			widgets: &self.widget_map,
-			nodes: &self.widget_node_map,
-		};
-
 		self
 			.animations
-			.process(&refs, &mut alterables, timestep_alpha);
+			.process(&self.state, &mut alterables, timestep_alpha);
 
 		self.process_alterables(alterables)?;
 
-		if self.tree.dirty(self.root_node)? || self.prev_size != size {
+		if self.state.tree.dirty(self.root_node)? || self.prev_size != size {
 			self.needs_redraw = true;
 			log::debug!("re-computing layout, size {}x{}", size.x, size.y);
 			self.prev_size = size;
-			self.tree.compute_layout_with_measure(
+			self.state.tree.compute_layout_with_measure(
 				self.root_node,
 				taffy::Size {
 					width: taffy::AvailableSpace::Definite(size.x),
@@ -348,7 +340,7 @@ impl Layout {
 					match node_context {
 						None => taffy::Size::ZERO,
 						Some(h) => {
-							if let Some(w) = self.widget_map.get(*h) {
+							if let Some(w) = self.state.widgets.get(*h) {
 								w.lock().obj.measure(known_dimensions, available_space)
 							} else {
 								taffy::Size::ZERO
@@ -357,7 +349,7 @@ impl Layout {
 					}
 				},
 			)?;
-			let root_size = self.tree.layout(self.root_node).unwrap().size;
+			let root_size = self.state.tree.layout(self.root_node).unwrap().size;
 			log::debug!(
 				"content size {:.0}x{:.0} → {:.0}x{:.0}",
 				self.content_size.x,
@@ -373,13 +365,7 @@ impl Layout {
 	pub fn tick(&mut self) -> anyhow::Result<()> {
 		let mut alterables = EventAlterables::default();
 
-		let refs = EventRefs {
-			tree: &self.tree,
-			widgets: &self.widget_map,
-			nodes: &self.widget_node_map,
-		};
-
-		self.animations.tick(&refs, &mut alterables);
+		self.animations.tick(&self.state, &mut alterables);
 		self.process_alterables(alterables)?;
 		self.process_pending_components()?;
 
@@ -388,7 +374,7 @@ impl Layout {
 
 	fn process_alterables(&mut self, alterables: EventAlterables) -> anyhow::Result<()> {
 		for node in alterables.dirty_nodes {
-			self.tree.mark_dirty(node)?;
+			self.state.tree.mark_dirty(node)?;
 		}
 
 		if alterables.needs_redraw {
@@ -407,7 +393,7 @@ impl Layout {
 		}
 
 		for request in alterables.style_set_requests {
-			if let Err(e) = self.tree.set_style(request.0, request.1) {
+			if let Err(e) = self.state.tree.set_style(request.0, request.1) {
 				log::error!(
 					"failed to set style for taffy widget ID {:?}: {:?}",
 					request.0,

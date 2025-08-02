@@ -23,13 +23,14 @@ pub fn parse_widget_sprite<'a, U1, U2>(
 	for (key, value) in attribs {
 		match key.as_ref() {
 			"src" => {
-				glyph = match CustomGlyphContent::from_assets(&mut ctx.layout.assets, &value) {
-					Ok(glyph) => Some(glyph),
-					Err(e) => {
-						log::warn!("failed to load {}: {}", value, e);
-						None
+				glyph =
+					match CustomGlyphContent::from_assets(&mut ctx.layout.state.globals.assets(), &value) {
+						Ok(glyph) => Some(glyph),
+						Err(e) => {
+							log::warn!("failed to load {value}: {e}");
+							None
+						}
 					}
-				}
 			}
 			"src_ext" => {
 				if std::fs::exists(value.as_ref()).unwrap_or(false) {

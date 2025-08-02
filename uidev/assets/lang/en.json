@@ -1,0 +1,9 @@
+{
+	"BAR": {
+		"OPACITY": "Opacity",
+		"ADDITIVE": "Additive"
+	},
+	"TESTBED": {
+		"HELLO_WORLD": "Hello, world! This is a translated I18n text."
+	}
+}

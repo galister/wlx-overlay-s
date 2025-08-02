@@ -1,10 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use glam::{Mat4, Vec2, Vec3};
-use taffy::{
-	TaffyTree,
-	prelude::{length, percent},
-};
+use taffy::prelude::{length, percent};
 
 use crate::{
 	animation::{Animation, AnimationEasing},
@@ -14,7 +11,8 @@ use crate::{
 		self, CallbackDataCommon, EventAlterables, EventListenerCollection, EventListenerKind,
 		ListenerHandleVec,
 	},
-	layout::{Layout, WidgetID, WidgetMap},
+	i18n::{I18n, Translation},
+	layout::{Layout, LayoutState, WidgetID},
 	renderer_vk::{
 		text::{FontWeight, HorizontalAlign, TextStyle},
 		util,
@@ -76,13 +74,7 @@ impl Component for Slider {
 	fn init(&self, init_data: &mut InitData) {
 		let mut state = self.state.borrow_mut();
 		let value = state.values.value;
-		state.set_value(
-			&self.data,
-			init_data.alterables,
-			init_data.widgets,
-			init_data.tree,
-			value,
-		);
+		state.set_value(init_data.state, &self.data, init_data.alterables, value);
 	}
 }
 
@@ -128,44 +120,42 @@ impl SliderState {
 
 		let norm = map_mouse_x_to_normalized(
 			mouse_pos.x - HANDLE_WIDTH / 2.0,
-			get_width(data.slider_body_node, common.refs.tree) - HANDLE_WIDTH,
+			get_width(data.slider_body_node, &common.state.tree) - HANDLE_WIDTH,
 		);
 
 		let target_value = self.values.get_from_normalized(norm);
 		let val = target_value;
 
-		self.set_value(
-			data,
-			common.alterables,
-			common.refs.widgets,
-			common.refs.tree,
-			val,
-		);
+		self.set_value(common.state, data, common.alterables, val);
 	}
 
-	fn update_text(&self, text: &mut TextLabel, value: f32) {
+	fn update_text(&self, i18n: &mut I18n, text: &mut TextLabel, value: f32) {
 		// round displayed value, should be sufficient for now
-		text.set_text(&format!("{}", value.round()));
+		text.set_text(
+			i18n,
+			Translation::from_raw_text(&format!("{}", value.round())),
+		);
 	}
 
 	fn set_value(
 		&mut self,
+		state: &LayoutState,
 		data: &Data,
 		alterables: &mut EventAlterables,
-		widgets: &WidgetMap,
-		tree: &TaffyTree<WidgetID>,
 		value: f32,
 	) {
 		//common.call_on_widget(data.slider_handle_id, |_div: &mut Div| {});
 		self.values.value = value;
-		let mut style = tree.style(data.slider_handle_node).unwrap().clone();
-		conf_handle_style(&self.values, data.slider_body_node, &mut style, tree);
+		let mut style = state.tree.style(data.slider_handle_node).unwrap().clone();
+		conf_handle_style(&self.values, data.slider_body_node, &mut style, &state.tree);
 		alterables.mark_dirty(data.slider_handle_node);
 		alterables.mark_redraw();
 		alterables.set_style(data.slider_handle_node, style);
-		widgets.call(data.slider_text_id, |label: &mut TextLabel| {
-			self.update_text(label, value);
-		});
+		state
+			.widgets
+			.call(data.slider_text_id, |label: &mut TextLabel| {
+				self.update_text(&mut state.globals.i18n(), label, value);
+			});
 	}
 }
 
@@ -398,16 +388,22 @@ pub fn construct<U1, U2>(
 		values: params.values,
 	};
 
+	let globals = layout.state.globals.clone();
+	let mut i18n = globals.i18n();
+
 	let (slider_text_id, _) = layout.add_child(
 		slider_handle_id,
-		TextLabel::create(TextParams {
-			content: String::new(),
-			style: TextStyle {
-				weight: Some(FontWeight::Bold),
-				align: Some(HorizontalAlign::Center),
-				..Default::default()
+		TextLabel::create(
+			&mut i18n,
+			TextParams {
+				content: Translation::default(),
+				style: TextStyle {
+					weight: Some(FontWeight::Bold),
+					align: Some(HorizontalAlign::Center),
+					..Default::default()
+				},
 			},
-		})?,
+		)?,
 		Default::default(),
 	)?;
 

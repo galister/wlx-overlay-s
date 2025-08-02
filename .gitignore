@@ -2,3 +2,4 @@
 .gdb_history
 .vscode
 .cargo
+scripts/translator/node_modules

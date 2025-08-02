@@ -1,11 +1,15 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{
+	cell::{RefCell, RefMut},
+	rc::Rc,
+};
 
 use glam::Vec2;
 use slotmap::SecondaryMap;
 
 use crate::{
 	animation::{self, Animation},
-	layout::{WidgetID, WidgetMap, WidgetNodeMap},
+	i18n::I18n,
+	layout::{LayoutState, WidgetID},
 	transform_stack::{Transform, TransformStack},
 	widget::{WidgetData, WidgetObj},
 };
@@ -87,12 +91,6 @@ impl Event {
 	}
 }
 
-pub struct EventRefs<'a> {
-	pub widgets: &'a WidgetMap,
-	pub nodes: &'a WidgetNodeMap,
-	pub tree: &'a taffy::tree::TaffyTree<WidgetID>,
-}
-
 #[derive(Default)]
 pub struct EventAlterables {
 	pub dirty_nodes: Vec<taffy::NodeId>,
@@ -126,8 +124,14 @@ impl EventAlterables {
 }
 
 pub struct CallbackDataCommon<'a> {
-	pub refs: &'a EventRefs<'a>,
+	pub state: &'a LayoutState,
 	pub alterables: &'a mut EventAlterables,
+}
+
+impl<'a> CallbackDataCommon<'a> {
+	pub fn i18n(&self) -> RefMut<I18n> {
+		self.state.globals.i18n()
+	}
 }
 
 pub struct CallbackData<'a> {

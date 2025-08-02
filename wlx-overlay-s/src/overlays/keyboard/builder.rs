@@ -16,7 +16,7 @@ use wgui::{
 
 use crate::{
     backend::overlay::{OverlayData, OverlayState, Positioning},
-    gui::{self, panel::GuiPanel},
+    gui::panel::GuiPanel,
     state::AppState,
     subsystem::hid::{ALT, CTRL, META, SHIFT, SUPER, XkbKeymap},
 };
@@ -76,7 +76,7 @@ where
     }
 
     let (_, mut gui_state_key) = wgui::parser::new_layout_from_assets(
-        Box::new(gui::asset::GuiAsset {}),
+        app.wgui_globals.clone(),
         &mut panel.listeners,
         "gui/keyboard.xml",
     )?;
@@ -169,7 +169,8 @@ where
                 let key_state = {
                     let rect = panel
                         .layout
-                        .widget_map
+                        .state
+                        .widgets
                         .get_as::<Rectangle>(*widget_id)
                         .unwrap(); // want panic
 

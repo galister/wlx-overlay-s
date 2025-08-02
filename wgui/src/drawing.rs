@@ -111,7 +111,7 @@ fn draw_widget(
 	widget: &BoxWidget,
 	parent_transform: &glam::Mat4,
 ) {
-	let Ok(l) = layout.tree.layout(node_id) else {
+	let Ok(l) = layout.state.tree.layout(node_id) else {
 		debug_assert!(false);
 		return;
 	};
@@ -154,18 +154,18 @@ fn draw_children(
 	parent_node_id: taffy::NodeId,
 	model: &glam::Mat4,
 ) {
-	for node_id in layout.tree.child_ids(parent_node_id) {
-		let Some(widget_id) = layout.tree.get_node_context(node_id).cloned() else {
+	for node_id in layout.state.tree.child_ids(parent_node_id) {
+		let Some(widget_id) = layout.state.tree.get_node_context(node_id).cloned() else {
 			debug_assert!(false);
 			continue;
 		};
 
-		let Ok(style) = layout.tree.style(node_id) else {
+		let Ok(style) = layout.state.tree.style(node_id) else {
 			debug_assert!(false);
 			continue;
 		};
 
-		let Some(widget) = layout.widget_map.get(widget_id) else {
+		let Some(widget) = layout.state.widgets.get(widget_id) else {
 			debug_assert!(false);
 			continue;
 		};
@@ -181,11 +181,11 @@ pub fn draw(layout: &Layout) -> anyhow::Result<Vec<RenderPrimitive>> {
 	let mut transform_stack = TransformStack::new();
 	let model = glam::Mat4::IDENTITY;
 
-	let Some(root_widget) = layout.widget_map.get(layout.root_widget) else {
+	let Some(root_widget) = layout.state.widgets.get(layout.root_widget) else {
 		panic!();
 	};
 
-	let Ok(style) = layout.tree.style(layout.root_node) else {
+	let Ok(style) = layout.state.tree.style(layout.root_node) else {
 		panic!();
 	};
 

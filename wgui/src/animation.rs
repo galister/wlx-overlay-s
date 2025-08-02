@@ -1,8 +1,8 @@
 use glam::{FloatExt, Vec2};
 
 use crate::{
-	event::{CallbackDataCommon, EventAlterables, EventRefs},
-	layout::WidgetID,
+	event::{CallbackDataCommon, EventAlterables},
+	layout::{LayoutState, WidgetID},
 	widget::{WidgetData, WidgetObj},
 };
 
@@ -89,13 +89,13 @@ impl Animation {
 		}
 	}
 
-	fn call(&self, refs: &EventRefs, alterables: &mut EventAlterables, pos: f32) {
-		let Some(widget) = refs.widgets.get(self.target_widget).cloned() else {
+	fn call(&self, state: &LayoutState, alterables: &mut EventAlterables, pos: f32) {
+		let Some(widget) = state.widgets.get(self.target_widget).cloned() else {
 			return; // failed
 		};
 
-		let widget_node = *refs.nodes.get(self.target_widget).unwrap();
-		let layout = refs.tree.layout(widget_node).unwrap(); // should always succeed
+		let widget_node = *state.nodes.get(self.target_widget).unwrap();
+		let layout = state.tree.layout(widget_node).unwrap(); // should always succeed
 
 		let mut widget = widget.lock();
 
@@ -109,7 +109,7 @@ impl Animation {
 			pos,
 		};
 
-		let common = &mut CallbackDataCommon { refs, alterables };
+		let common = &mut CallbackDataCommon { state, alterables };
 
 		(self.callback)(common, data);
 	}
@@ -121,7 +121,7 @@ pub struct Animations {
 }
 
 impl Animations {
-	pub fn tick(&mut self, refs: &EventRefs, alterables: &mut EventAlterables) {
+	pub fn tick(&mut self, state: &LayoutState, alterables: &mut EventAlterables) {
 		for anim in &mut self.running_animations {
 			let x = 1.0 - (anim.ticks_remaining as f32 / anim.ticks_duration as f32);
 			let pos = if anim.ticks_remaining > 0 {
@@ -133,7 +133,7 @@ impl Animations {
 
 			anim.pos_prev = anim.pos;
 			anim.pos = pos;
-			anim.call(refs, alterables, 1.0);
+			anim.call(state, alterables, 1.0);
 
 			if anim.last_tick {
 				alterables.needs_redraw = true;
@@ -147,10 +147,10 @@ impl Animations {
 			.retain(|anim| anim.ticks_remaining > 0);
 	}
 
-	pub fn process(&mut self, refs: &EventRefs, alterables: &mut EventAlterables, alpha: f32) {
+	pub fn process(&mut self, state: &LayoutState, alterables: &mut EventAlterables, alpha: f32) {
 		for anim in &mut self.running_animations {
 			let pos = anim.pos_prev.lerp(anim.pos, alpha);
-			anim.call(refs, alterables, pos);
+			anim.call(state, alterables, pos);
 		}
 	}
 

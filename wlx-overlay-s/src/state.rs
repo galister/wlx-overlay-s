@@ -3,7 +3,9 @@ use idmap::IdMap;
 use serde::{Deserialize, Serialize};
 use smallvec::{SmallVec, smallvec};
 use std::sync::Arc;
-use wgui::{gfx::WGfx, renderer_vk::context::SharedContext as WSharedContext};
+use wgui::{
+    gfx::WGfx, globals::WguiGlobals, renderer_vk::context::SharedContext as WSharedContext,
+};
 
 #[cfg(feature = "wayvr")]
 use {
@@ -20,6 +22,7 @@ use crate::{
     config::GeneralConfig,
     config_io,
     graphics::WGfxExtras,
+    gui,
     overlays::toast::{DisplayMethod, ToastTopic},
     subsystem::{audio::AudioOutput, input::HidWrapper},
 };
@@ -39,6 +42,8 @@ pub struct AppState {
     pub screens: SmallVec<[ScreenMeta; 8]>,
     pub anchor: Affine3A,
     pub toast_sound: &'static [u8],
+
+    pub wgui_globals: WguiGlobals,
 
     #[cfg(feature = "osc")]
     pub osc_sender: Option<OscSender>,
@@ -85,6 +90,7 @@ impl AppState {
             screens: smallvec![],
             anchor: Affine3A::IDENTITY,
             toast_sound: toast_sound_wav,
+            wgui_globals: WguiGlobals::new(Box::new(gui::asset::GuiAsset {}))?,
 
             #[cfg(feature = "osc")]
             osc_sender,
