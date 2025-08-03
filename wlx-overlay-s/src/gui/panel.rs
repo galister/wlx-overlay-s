@@ -44,8 +44,12 @@ impl<S> GuiPanel<S> {
     pub fn new_from_template(app: &mut AppState, path: &str, state: S) -> anyhow::Result<Self> {
         let mut listeners = EventListenerCollection::<AppState, S>::default();
 
-        let (layout, parser_state) =
-            wgui::parser::new_layout_from_assets(app.wgui_globals.clone(), &mut listeners, path)?;
+        let (layout, parser_state) = wgui::parser::new_layout_from_assets(
+            app.wgui_globals.clone(),
+            &mut listeners,
+            path,
+            false,
+        )?;
 
         let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
         let mut timestep = Timestep::new();

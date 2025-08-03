@@ -2,7 +2,7 @@
   <theme>
     <var key="border" value="2" />
     <var key="kbd_color" value="#a6da95" />
-    <var key="set_color" value="#dddddd" />
+    <var key="set_color" value="#cad3f5" />
 
     <var key="clock0_color" value="#cad3f5" />
     <var key="clock0_size" value="46" />
@@ -16,6 +16,15 @@
 
   <template name="Device">
     <sprite color="~device_color" width="${size}" height="${size}" src="${src}" />
+  </template>
+
+  <template name="Set">
+    <div align_items="center" justify_content="center" flex_wrap="wrap" align_content="center">
+      <sprite width="40" height="40" color="~set_color" src="watch/set2.svg" />
+      <div position="absolute" margin_top="11" >
+        <label text="${name}" size="24" color="#000000" weight="bold" />
+      </div>
+    </div>
   </template>
 
   <elements>
@@ -38,12 +47,29 @@
           </div>
           <div width="10" height="100%" />
           <div id="clock_alt" flex_direction="column" padding="4">
+            <div width="100%" padding="2" />
             <label text="Paris" id="clock1_tz" color="~clock_alt1_color" size="~clock_alt_tz_size" weight="bold" />
-            <div width="100%" padding="2" />
             <label text="23:59" id="clock1_time" color="~clock_alt1_color" size="~clock_alt_size" weight="bold" />
-            <label text="Chicago" id="clock2_tz" color="~clock_alt2_color" size="~clock_alt_tz_size" weight="bold" />
             <div width="100%" padding="2" />
+            <label text="Chicago" id="clock2_tz" color="~clock_alt2_color" size="~clock_alt_tz_size" weight="bold" />
             <label text="23:59" id="clock2_time" color="~clock_alt2_color" size="~clock_alt_size" weight="bold" />
+          </div>
+        </div>
+        <div width="100%" flex_direction="row">
+          <div id="btn_home">
+            <sprite color="~set_color" width="40" height="40" src="watch/home.svg" />
+          </div>
+          <div id="sets" ignore_in_mode="dev">
+            <!-- Will populate <Set> tags at runtime -->
+          </div>
+          <div ignore_in_mode="live">
+            <!-- Example sets for testing -->
+            <Set name="A" />
+            <Set name="B" />
+            <Set name="C" />
+          </div>
+          <div id="btn_edit">
+            <sprite color="~set_color" width="40" height="40" src="watch/edit.svg" />
           </div>
         </div>
       </rectangle>

@@ -17,7 +17,8 @@ impl TestbedGeneric {
 
         let globals = WguiGlobals::new(Box::new(assets::Asset {}))?;
 
-        let (layout, state) = wgui::parser::new_layout_from_assets(globals, listeners, XML_PATH)?;
+        let (layout, state) =
+            wgui::parser::new_layout_from_assets(globals, listeners, XML_PATH, false)?;
 
         Ok(Self { layout, state })
     }

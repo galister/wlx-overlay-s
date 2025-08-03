@@ -79,6 +79,7 @@ where
         app.wgui_globals.clone(),
         &mut panel.listeners,
         "gui/keyboard.xml",
+        false,
     )?;
 
     for row in 0..layout.key_sizes.len() {
@@ -163,6 +164,7 @@ where
                 &mut panel.listeners,
                 div,
                 params,
+                false,
             )?;
 
             if let Some(widget_id) = gui_state_key.ids.get(&*my_id) {

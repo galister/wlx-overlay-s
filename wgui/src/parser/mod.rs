@@ -75,6 +75,7 @@ impl ParserState {
 		listeners: &mut EventListenerCollection<U1, U2>,
 		widget_id: WidgetID,
 		template_parameters: HashMap<Rc<str>, Rc<str>>,
+		dev_mode: bool,
 	) -> anyhow::Result<()> {
 		let Some(template) = self.templates.get(template_name) else {
 			anyhow::bail!("no template named \"{}\" found", template_name);
@@ -88,6 +89,7 @@ impl ParserState {
 			var_map: self.var_map.clone(),             // FIXME: prevent copying
 			components: self.components.clone(),       // FIXME: prevent copying
 			templates: Default::default(),
+			dev_mode,
 		};
 
 		let file = ParserFile {
@@ -126,6 +128,7 @@ struct ParserContext<'a, U1, U2> {
 	ids: HashMap<Rc<str>, WidgetID>,
 	templates: HashMap<Rc<str>, Rc<Template>>,
 	components: Vec<Rc<dyn Component>>,
+	dev_mode: bool,
 }
 
 // Parses a color from a HTML hex string
@@ -557,6 +560,21 @@ fn parse_children<'a, U1, U2>(
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
 	for child_node in node.children() {
+		match node.attribute("ignore_in_mode") {
+			Some("dev") => {
+				if !ctx.dev_mode {
+					continue;
+				}
+			}
+			Some("live") => {
+				if ctx.dev_mode {
+					continue;
+				}
+			}
+			Some(s) => print_invalid_attrib("ignore_in_mode", s),
+			_ => {}
+		};
+
 		match child_node.tag_name().name() {
 			"include" => {
 				parse_tag_include(file, ctx, child_node, parent_id)?;
@@ -591,6 +609,7 @@ fn parse_children<'a, U1, U2>(
 fn create_default_context<'a, U1, U2>(
 	layout: &'a mut Layout,
 	listeners: &'a mut EventListenerCollection<U1, U2>,
+	dev_mode: bool,
 ) -> ParserContext<'a, U1, U2> {
 	ParserContext {
 		layout,
@@ -600,6 +619,7 @@ fn create_default_context<'a, U1, U2>(
 		templates: Default::default(),
 		macro_attribs: Default::default(),
 		components: Default::default(),
+		dev_mode,
 	}
 }
 
@@ -608,10 +628,11 @@ pub fn parse_from_assets<U1, U2>(
 	listeners: &mut EventListenerCollection<U1, U2>,
 	parent_id: WidgetID,
 	path: &str,
+	dev_mode: bool,
 ) -> anyhow::Result<ParserState> {
 	let path = PathBuf::from(path);
 
-	let mut ctx = create_default_context(layout, listeners);
+	let mut ctx = create_default_context(layout, listeners, dev_mode);
 
 	let (file, node_layout) = get_doc_from_path(&mut ctx, &path)?;
 	parse_document_root(file, &mut ctx, parent_id, node_layout)?;
@@ -635,10 +656,11 @@ pub fn new_layout_from_assets<U1, U2>(
 	globals: WguiGlobals,
 	listeners: &mut EventListenerCollection<U1, U2>,
 	path: &str,
+	dev_mode: bool,
 ) -> anyhow::Result<(Layout, ParserState)> {
 	let mut layout = Layout::new(globals)?;
 	let widget = layout.root_widget;
-	let state = parse_from_assets(&mut layout, listeners, widget, path)?;
+	let state = parse_from_assets(&mut layout, listeners, widget, path, dev_mode)?;
 	Ok((layout, state))
 }
 

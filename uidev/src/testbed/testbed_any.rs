@@ -20,7 +20,8 @@ impl TestbedAny {
 
         let globals = WguiGlobals::new(Box::new(assets::Asset {}))?;
 
-        let (layout, state) = wgui::parser::new_layout_from_assets(globals, listeners, &path)?;
+        let (layout, state) =
+            wgui::parser::new_layout_from_assets(globals, listeners, &path, false)?;
         Ok(Self { layout, state })
     }
 }
