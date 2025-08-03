@@ -43,9 +43,7 @@ impl Translation {
 
 pub struct I18n {
 	json_root_translated: serde_json::Value, // any language
-
-	// TODO
-	json_root_fallback: serde_json::Value, // english
+	json_root_fallback: serde_json::Value,   // english
 }
 
 fn find_translation<'a>(translation: &str, mut val: &'a serde_json::Value) -> Option<&'a str> {
@@ -88,7 +86,7 @@ impl I18n {
 			}
 		}
 
-		let data_english = provider.load_from_path(&format!("lang/{lang}.json"))?;
+		let data_english = provider.load_from_path("lang/en.json")?;
 		let data_translated = provider.load_from_path(&format!("lang/{lang}.json"))?;
 
 		let json_root_fallback = serde_json::from_str(str::from_utf8(&data_english)?)?;
@@ -102,9 +100,15 @@ impl I18n {
 
 	pub fn translate(&mut self, translation_key: &str) -> Rc<str> {
 		if let Some(translated) = find_translation(translation_key, &self.json_root_translated) {
-			Rc::from(translated)
-		} else {
-			Rc::from(translation_key) // show translation key as a fallback
+			return Rc::from(translated);
 		}
+
+		if let Some(translated_fallback) = find_translation(translation_key, &self.json_root_fallback) {
+			log::warn!("missing translation for key \"{translation_key}\", using \"en\" instead");
+			return Rc::from(translated_fallback);
+		}
+
+		log::error!("missing translation for key \"{translation_key}\"");
+		Rc::from(translation_key) // show translation key as a fallback
 	}
 }
