@@ -65,6 +65,7 @@ pub struct LayoutState {
 	pub widgets: WidgetMap,
 	pub nodes: WidgetNodeMap,
 	pub tree: taffy::tree::TaffyTree<WidgetID>,
+	pub alterables: EventAlterables,
 }
 
 pub struct Layout {
@@ -282,6 +283,7 @@ impl Layout {
 			widgets: WidgetMap::new(),
 			nodes: WidgetNodeMap::default(),
 			globals,
+			alterables: EventAlterables::default(),
 		};
 
 		let (root_widget, root_node) = add_child_internal(
@@ -364,10 +366,11 @@ impl Layout {
 
 	pub fn tick(&mut self) -> anyhow::Result<()> {
 		let mut alterables = EventAlterables::default();
-
 		self.animations.tick(&self.state, &mut alterables);
-		self.process_alterables(alterables)?;
 		self.process_pending_components()?;
+		self.process_alterables(alterables)?;
+		let state_alterables = std::mem::take(&mut self.state.alterables);
+		self.process_alterables(state_alterables)?;
 
 		Ok(())
 	}

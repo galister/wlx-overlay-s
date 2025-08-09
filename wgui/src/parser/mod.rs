@@ -7,6 +7,7 @@ mod widget_rectangle;
 mod widget_sprite;
 
 use crate::{
+	any::AnyTrait,
 	assets::AssetProvider,
 	components::Component,
 	drawing::{self},
@@ -56,12 +57,36 @@ pub struct ParserState {
 	macro_attribs: HashMap<Rc<str>, MacroAttribs>,
 	pub var_map: HashMap<Rc<str>, Rc<str>>,
 	pub components: Vec<Rc<dyn Component>>,
+	pub components_id_map: HashMap<Rc<str>, std::rc::Weak<dyn Component>>,
 	pub templates: HashMap<Rc<str>, Rc<Template>>,
 	pub path: PathBuf,
 }
 
 impl ParserState {
-	pub fn require_by_id(&self, id: &str) -> anyhow::Result<WidgetID> {
+	pub fn fetch_component(&self, id: &str) -> anyhow::Result<Rc<dyn Component>> {
+		let Some(weak) = self.components_id_map.get(id) else {
+			anyhow::bail!("Component by ID \"{}\" doesn't exist", id);
+		};
+
+		let Some(component) = weak.upgrade() else {
+			anyhow::bail!("Component by ID \"{}\" doesn't exist", id);
+		};
+
+		Ok(component)
+	}
+
+	pub fn fetch_component_as<T: 'static>(&self, id: &str) -> anyhow::Result<Rc<T>> {
+		let component = self.fetch_component(id)?;
+
+		// FIXME: check T type id
+		log::warn!("fetch_component_as WIP");
+		unsafe {
+			let raw = Rc::into_raw(component);
+			Ok(Rc::from_raw(raw as _))
+		}
+	}
+
+	pub fn fetch_widget(&self, id: &str) -> anyhow::Result<WidgetID> {
 		match self.ids.get(id) {
 			Some(id) => Ok(*id),
 			None => anyhow::bail!("Widget by ID \"{}\" doesn't exist", id),
@@ -88,6 +113,7 @@ impl ParserState {
 			macro_attribs: self.macro_attribs.clone(), // FIXME: prevent copying
 			var_map: self.var_map.clone(),             // FIXME: prevent copying
 			components: self.components.clone(),       // FIXME: prevent copying
+			components_id_map: self.components_id_map.clone(), // FIXME: prevent copying
 			templates: Default::default(),
 			dev_mode,
 		};
@@ -128,6 +154,7 @@ struct ParserContext<'a, U1, U2> {
 	ids: HashMap<Rc<str>, WidgetID>,
 	templates: HashMap<Rc<str>, Rc<Template>>,
 	components: Vec<Rc<dyn Component>>,
+	components_id_map: HashMap<Rc<str>, std::rc::Weak<dyn Component>>,
 	dev_mode: bool,
 }
 
@@ -530,7 +557,35 @@ fn parse_tag_macro<U1, U2>(
 	Ok(())
 }
 
-fn parse_universal<'a, U1, U2>(
+fn process_component<'a, U1, U2>(
+	file: &'a ParserFile,
+	ctx: &mut ParserContext<U1, U2>,
+	node: roxmltree::Node<'a, 'a>,
+	component: Rc<dyn Component>,
+) -> anyhow::Result<()> {
+	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
+
+	for (key, value) in attribs {
+		#[allow(clippy::single_match)]
+		match key.as_ref() {
+			"id" => {
+				if ctx
+					.components_id_map
+					.insert(value.clone(), Rc::downgrade(&component))
+					.is_some()
+				{
+					log::warn!("duplicate component ID \"{value}\" in the same layout file!");
+				}
+			}
+			_ => {}
+		}
+	}
+
+	ctx.components.push(component);
+	Ok(())
+}
+
+fn parse_widget_universal<'a, U1, U2>(
 	file: &'a ParserFile,
 	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'a, 'a>,
@@ -544,7 +599,7 @@ fn parse_universal<'a, U1, U2>(
 			"id" => {
 				// Attach a specific widget to name-ID map (just like getElementById)
 				if ctx.ids.insert(value.clone(), widget_id).is_some() {
-					log::warn!("duplicate ID \"{value}\" in the same layout file!");
+					log::warn!("duplicate widget ID \"{value}\" in the same layout file!");
 				}
 			}
 			_ => {}
@@ -619,6 +674,7 @@ fn create_default_context<'a, U1, U2>(
 		templates: Default::default(),
 		macro_attribs: Default::default(),
 		components: Default::default(),
+		components_id_map: Default::default(),
 		dev_mode,
 	}
 }
@@ -644,6 +700,7 @@ pub fn parse_from_assets<U1, U2>(
 		macro_attribs: std::mem::take(&mut ctx.macro_attribs),
 		var_map: std::mem::take(&mut ctx.var_map),
 		components: std::mem::take(&mut ctx.components),
+		components_id_map: std::mem::take(&mut ctx.components_id_map),
 		path,
 	};
 

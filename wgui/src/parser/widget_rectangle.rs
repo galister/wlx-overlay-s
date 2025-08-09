@@ -2,7 +2,8 @@ use crate::{
 	drawing::GradientMode,
 	layout::WidgetID,
 	parser::{
-		ParserContext, ParserFile, iter_attribs, parse_children, parse_universal, print_invalid_attrib,
+		ParserContext, ParserFile, iter_attribs, parse_children, parse_widget_universal,
+		print_invalid_attrib,
 		style::{parse_color, parse_round, parse_style},
 	},
 	widget::{self, rectangle::RectangleParams},
@@ -60,7 +61,7 @@ pub fn parse_widget_rectangle<'a, U1, U2>(
 		style,
 	)?;
 
-	parse_universal(file, ctx, node, new_id)?;
+	parse_widget_universal(file, ctx, node, new_id)?;
 	parse_children(file, ctx, node, new_id)?;
 
 	Ok(())

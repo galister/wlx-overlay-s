@@ -2,7 +2,7 @@ use crate::{
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		ParserContext, ParserFile, iter_attribs, parse_children, parse_universal,
+		ParserContext, ParserFile, iter_attribs, parse_children, parse_widget_universal,
 		style::{parse_style, parse_text_style},
 	},
 	widget::text::{TextLabel, TextParams},
@@ -38,7 +38,7 @@ pub fn parse_widget_label<'a, U1, U2>(
 			.layout
 			.add_child(parent_id, TextLabel::create(&mut i18n, params)?, style)?;
 
-	parse_universal(file, ctx, node, new_id)?;
+	parse_widget_universal(file, ctx, node, new_id)?;
 	parse_children(file, ctx, node, new_id)?;
 
 	Ok(())

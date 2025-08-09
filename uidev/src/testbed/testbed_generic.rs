@@ -1,7 +1,8 @@
 use crate::{assets, testbed::Testbed};
 use glam::Vec2;
 use wgui::{
-    event::EventListenerCollection, globals::WguiGlobals, layout::Layout, parser::ParserState,
+    components::button::ComponentButton, event::EventListenerCollection, globals::WguiGlobals,
+    i18n::Translation, layout::Layout, parser::ParserState,
 };
 
 pub struct TestbedGeneric {
@@ -13,12 +14,22 @@ pub struct TestbedGeneric {
 
 impl TestbedGeneric {
     pub fn new(listeners: &mut EventListenerCollection<(), ()>) -> anyhow::Result<Self> {
-        const XML_PATH: &str = "gui/testbed.xml";
+        const XML_PATH: &str = "gui/various_widgets.xml";
 
         let globals = WguiGlobals::new(Box::new(assets::Asset {}))?;
 
-        let (layout, state) =
+        let (mut layout, state) =
             wgui::parser::new_layout_from_assets(globals, listeners, XML_PATH, false)?;
+
+        let label_current_option = state.fetch_widget("label_current_option")?;
+        let b1 = state.fetch_component_as::<ComponentButton>("button_red")?;
+        let b2 = state.fetch_component_as::<ComponentButton>("button_aqua")?;
+        let b3 = state.fetch_component_as::<ComponentButton>("button_yellow")?;
+
+        b1.set_text(
+            &mut layout.state,
+            Translation::from_raw_text("hello, world!"),
+        );
 
         Ok(Self { layout, state })
     }

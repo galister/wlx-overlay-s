@@ -4,7 +4,7 @@ use crate::{
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		ParserContext, ParserFile, iter_attribs,
+		ParserContext, ParserFile, iter_attribs, process_component,
 		style::{parse_color, parse_color_opt, parse_round, parse_style, parse_text_style},
 	},
 	widget::util::WLength,
@@ -55,7 +55,7 @@ pub fn parse_component_button<'a, U1, U2>(
 		));
 	}
 
-	ctx.components.push(button::construct(
+	let component = button::construct(
 		ctx.layout,
 		ctx.listeners,
 		parent_id,
@@ -67,7 +67,9 @@ pub fn parse_component_button<'a, U1, U2>(
 			text_style,
 			round,
 		},
-	)?);
+	)?;
+
+	process_component(file, ctx, node, component)?;
 
 	Ok(())
 }

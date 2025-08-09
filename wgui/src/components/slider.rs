@@ -48,7 +48,7 @@ pub struct Params {
 	pub values: ValuesMinMax,
 }
 
-pub struct SliderState {
+struct State {
 	dragging: bool,
 	hovered: bool,
 	values: ValuesMinMax,
@@ -62,15 +62,15 @@ struct Data {
 	slider_body_node: taffy::NodeId,
 }
 
-pub struct Slider {
+pub struct ComponentSlider {
 	data: Rc<Data>,
-	state: Rc<RefCell<SliderState>>,
+	state: Rc<RefCell<State>>,
 
 	#[allow(dead_code)]
 	listener_handles: ListenerHandleVec,
 }
 
-impl Component for Slider {
+impl Component for ComponentSlider {
 	fn init(&self, init_data: &mut InitData) {
 		let mut state = self.state.borrow_mut();
 		let value = state.values.value;
@@ -106,7 +106,7 @@ const PAD_PERCENT: f32 = 0.75;
 const HANDLE_WIDTH: f32 = 32.0;
 const HANDLE_HEIGHT: f32 = 24.0;
 
-impl SliderState {
+impl State {
 	fn update_value_to_mouse(
 		&mut self,
 		event_data: &event::CallbackData<'_>,
@@ -210,7 +210,7 @@ fn on_leave_anim(common: &mut event::CallbackDataCommon, handle_id: WidgetID) {
 
 fn register_event_mouse_enter<U1, U2>(
 	data: Rc<Data>,
-	state: Rc<RefCell<SliderState>>,
+	state: Rc<RefCell<State>>,
 	listeners: &mut EventListenerCollection<U1, U2>,
 	listener_handles: &mut ListenerHandleVec,
 ) {
@@ -228,7 +228,7 @@ fn register_event_mouse_enter<U1, U2>(
 
 fn register_event_mouse_leave<U1, U2>(
 	data: Rc<Data>,
-	state: Rc<RefCell<SliderState>>,
+	state: Rc<RefCell<State>>,
 	listeners: &mut EventListenerCollection<U1, U2>,
 	listener_handles: &mut ListenerHandleVec,
 ) {
@@ -246,7 +246,7 @@ fn register_event_mouse_leave<U1, U2>(
 
 fn register_event_mouse_motion<U1, U2>(
 	data: Rc<Data>,
-	state: Rc<RefCell<SliderState>>,
+	state: Rc<RefCell<State>>,
 	listeners: &mut EventListenerCollection<U1, U2>,
 	listener_handles: &mut ListenerHandleVec,
 ) {
@@ -266,7 +266,7 @@ fn register_event_mouse_motion<U1, U2>(
 
 fn register_event_mouse_press<U1, U2>(
 	data: Rc<Data>,
-	state: Rc<RefCell<SliderState>>,
+	state: Rc<RefCell<State>>,
 	listeners: &mut EventListenerCollection<U1, U2>,
 	listener_handles: &mut ListenerHandleVec,
 ) {
@@ -288,7 +288,7 @@ fn register_event_mouse_press<U1, U2>(
 
 fn register_event_mouse_release<U1, U2>(
 	data: Rc<Data>,
-	state: Rc<RefCell<SliderState>>,
+	state: Rc<RefCell<State>>,
 	listeners: &mut EventListenerCollection<U1, U2>,
 	listener_handles: &mut ListenerHandleVec,
 ) {
@@ -312,7 +312,7 @@ pub fn construct<U1, U2>(
 	listeners: &mut EventListenerCollection<U1, U2>,
 	parent: WidgetID,
 	params: Params,
-) -> anyhow::Result<Rc<Slider>> {
+) -> anyhow::Result<Rc<ComponentSlider>> {
 	let mut style = params.style;
 	style.position = taffy::Position::Relative;
 	style.min_size = style.size;
@@ -382,7 +382,7 @@ pub fn construct<U1, U2>(
 		},
 	)?;
 
-	let state = SliderState {
+	let state = State {
 		dragging: false,
 		hovered: false,
 		values: params.values,
@@ -426,7 +426,7 @@ pub fn construct<U1, U2>(
 	register_event_mouse_leave(data.clone(), state.clone(), listeners, &mut lhandles);
 	register_event_mouse_release(data.clone(), state.clone(), listeners, &mut lhandles);
 
-	let slider = Rc::new(Slider {
+	let slider = Rc::new(ComponentSlider {
 		data,
 		state,
 		listener_handles: lhandles,

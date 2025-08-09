@@ -1,13 +1,13 @@
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 use taffy::{AlignItems, JustifyContent, prelude::length};
 
 use crate::{
 	animation::{Animation, AnimationEasing},
 	components::{Component, InitData},
 	drawing::{self, Color},
-	event::{CallbackDataCommon, EventListenerCollection, EventListenerKind, ListenerHandleVec},
+	event::{EventAlterables, EventListenerCollection, EventListenerKind, ListenerHandleVec},
 	i18n::Translation,
-	layout::{Layout, WidgetID},
+	layout::{Layout, LayoutState, WidgetID},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
 		rectangle::{Rectangle, RectangleParams},
@@ -38,35 +38,44 @@ impl Default for Params {
 	}
 }
 
+struct State {
+	hovered: bool,
+	down: bool,
+}
+
 struct Data {
 	initial_color: drawing::Color,
 	initial_border_color: drawing::Color,
 	text_id: WidgetID, // Text
+	rect_id: WidgetID, // Rectangle
 	text_node: taffy::NodeId,
 }
 
-pub struct Button {
+pub struct ComponentButton {
 	data: Rc<Data>,
+	state: Rc<RefCell<State>>,
+
 	#[allow(dead_code)]
 	listener_handles: ListenerHandleVec,
 }
 
-impl Component for Button {
+impl Component for ComponentButton {
 	fn init(&self, _data: &mut InitData) {}
 }
 
-impl Button {
-	pub fn set_text<C>(&self, common: &mut CallbackDataCommon, text: Translation) {
-		let globals = common.state.globals.clone();
+impl ComponentButton {
+	pub fn set_text(&self, state: &mut LayoutState, text: Translation) {
+		let globals = state.globals.clone();
 
-		common
-			.state
+		state
 			.widgets
 			.call(self.data.text_id, |label: &mut TextLabel| {
 				label.set_text(&mut globals.i18n(), text);
 			});
-		common.alterables.mark_redraw();
-		common.alterables.mark_dirty(self.data.text_node);
+
+		let mut alterables = EventAlterables::default();
+		alterables.mark_redraw();
+		alterables.mark_dirty(self.data.text_node);
 	}
 }
 
@@ -108,12 +117,98 @@ fn anim_hover_out(data: Rc<Data>, widget_id: WidgetID) -> Animation {
 	)
 }
 
+fn register_event_mouse_enter<U1, U2>(
+	data: Rc<Data>,
+	state: Rc<RefCell<State>>,
+	listeners: &mut EventListenerCollection<U1, U2>,
+	listener_handles: &mut ListenerHandleVec,
+) {
+	listeners.register(
+		listener_handles,
+		data.rect_id,
+		EventListenerKind::MouseEnter,
+		Box::new(move |common, event_data, _, _| {
+			common.alterables.trigger_haptics();
+			common
+				.alterables
+				.animate(anim_hover_in(data.clone(), event_data.widget_id));
+			state.borrow_mut().hovered = true;
+		}),
+	);
+}
+
+fn register_event_mouse_leave<U1, U2>(
+	data: Rc<Data>,
+	state: Rc<RefCell<State>>,
+	listeners: &mut EventListenerCollection<U1, U2>,
+	listener_handles: &mut ListenerHandleVec,
+) {
+	listeners.register(
+		listener_handles,
+		data.rect_id,
+		EventListenerKind::MouseLeave,
+		Box::new(move |common, event_data, _, _| {
+			common.alterables.trigger_haptics();
+			common
+				.alterables
+				.animate(anim_hover_out(data.clone(), event_data.widget_id));
+			state.borrow_mut().hovered = false;
+		}),
+	);
+}
+
+fn register_event_mouse_press<U1, U2>(
+	data: Rc<Data>,
+	state: Rc<RefCell<State>>,
+	listeners: &mut EventListenerCollection<U1, U2>,
+	listener_handles: &mut ListenerHandleVec,
+) {
+	listeners.register(
+		listener_handles,
+		data.rect_id,
+		EventListenerKind::MousePress,
+		Box::new(move |common, event_data, _, _| {
+			common.alterables.trigger_haptics();
+			let mut state = state.borrow_mut();
+
+			if state.hovered {
+				state.down = true;
+			}
+		}),
+	);
+}
+
+fn register_event_mouse_release<U1, U2>(
+	data: Rc<Data>,
+	state: Rc<RefCell<State>>,
+	listeners: &mut EventListenerCollection<U1, U2>,
+	listener_handles: &mut ListenerHandleVec,
+) {
+	listeners.register(
+		listener_handles,
+		data.rect_id,
+		EventListenerKind::MouseRelease,
+		Box::new(move |common, _data, _, _| {
+			common.alterables.trigger_haptics();
+
+			let mut state = state.borrow_mut();
+			if state.down {
+				state.down = false;
+
+				if state.hovered {
+					//TODO: click event
+				}
+			}
+		}),
+	);
+}
+
 pub fn construct<U1, U2>(
 	layout: &mut Layout,
 	listeners: &mut EventListenerCollection<U1, U2>,
 	parent: WidgetID,
 	params: Params,
-) -> anyhow::Result<Rc<Button>> {
+) -> anyhow::Result<Rc<ComponentButton>> {
 	let mut style = params.style;
 
 	// force-override style
@@ -162,42 +257,30 @@ pub fn construct<U1, U2>(
 		},
 	)?;
 
-	let _data = Rc::new(Data {
+	let data = Rc::new(Data {
 		text_id,
+		rect_id,
 		text_node,
 		initial_color: params.color,
 		initial_border_color: params.border_color,
 	});
 
-	let mut listener_handles = ListenerHandleVec::default();
+	let state = Rc::new(RefCell::new(State {
+		down: false,
+		hovered: false,
+	}));
 
-	let data = _data.clone();
-	listeners.register(
-		&mut listener_handles,
-		rect_id,
-		EventListenerKind::MouseEnter,
-		Box::new(move |common, event_data, _, _| {
-			common
-				.alterables
-				.animate(anim_hover_in(data.clone(), event_data.widget_id));
-		}),
-	);
+	let mut lhandles = ListenerHandleVec::default();
 
-	let data = _data.clone();
-	listeners.register(
-		&mut listener_handles,
-		rect_id,
-		EventListenerKind::MouseLeave,
-		Box::new(move |common, event_data, _, _| {
-			common
-				.alterables
-				.animate(anim_hover_out(data.clone(), event_data.widget_id));
-		}),
-	);
+	register_event_mouse_enter(data.clone(), state.clone(), listeners, &mut lhandles);
+	register_event_mouse_leave(data.clone(), state.clone(), listeners, &mut lhandles);
+	register_event_mouse_press(data.clone(), state.clone(), listeners, &mut lhandles);
+	register_event_mouse_release(data.clone(), state.clone(), listeners, &mut lhandles);
 
-	let button = Rc::new(Button {
-		data: _data.clone(),
-		listener_handles,
+	let button = Rc::new(ComponentButton {
+		data,
+		state,
+		listener_handles: lhandles,
 	});
 
 	layout.defer_component_init(button.clone());

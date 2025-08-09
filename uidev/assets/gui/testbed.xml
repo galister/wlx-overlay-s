@@ -10,7 +10,6 @@
       <div flex_direction="column" padding="16">
         <label weight="bold" text="Try these environment variables:" />
         <label text="TESTBED=bar" />
-        <label text="TESTBED=various_widgets" />
         <label text="TESTBED=watch" />
         <label text="TESTBED=dashboard" />
       </div>

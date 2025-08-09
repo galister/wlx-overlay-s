@@ -1,7 +1,7 @@
 use crate::{
 	layout::WidgetID,
 	parser::{
-		ParserContext, ParserFile, iter_attribs, parse_children, parse_universal, style::parse_style,
+		ParserContext, ParserFile, iter_attribs, parse_children, parse_widget_universal, style::parse_style,
 	},
 	widget,
 };
@@ -19,7 +19,7 @@ pub fn parse_widget_div<'a, U1, U2>(
 		.layout
 		.add_child(parent_id, widget::div::Div::create()?, style)?;
 
-	parse_universal(file, ctx, node, new_id)?;
+	parse_widget_universal(file, ctx, node, new_id)?;
 	parse_children(file, ctx, node, new_id)?;
 
 	Ok(())
