@@ -5,7 +5,7 @@ use glam::{Mat4, Vec2};
 use taffy::TraversePartialTree;
 
 use crate::{
-	layout::BoxWidget,
+	layout::Widget,
 	renderer_vk::text::custom_glyph::CustomGlyph,
 	transform_stack::{self, TransformStack},
 	widget::{self},
@@ -38,7 +38,7 @@ impl Boundary {
 	}
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Color {
 	pub r: f32,
 	pub g: f32,
@@ -69,7 +69,7 @@ impl Default for Color {
 }
 
 #[repr(u8)]
-#[derive(Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum GradientMode {
 	#[default]
 	None,
@@ -108,7 +108,7 @@ fn draw_widget(
 	state: &mut DrawState,
 	node_id: taffy::NodeId,
 	style: &taffy::Style,
-	widget: &BoxWidget,
+	widget: &Widget,
 	parent_transform: &glam::Mat4,
 ) {
 	let Ok(l) = layout.state.tree.layout(node_id) else {
@@ -116,7 +116,7 @@ fn draw_widget(
 		return;
 	};
 
-	let mut widget_state = widget.lock();
+	let mut widget_state = widget.state();
 
 	let transform = widget_state.data.transform * *parent_transform;
 

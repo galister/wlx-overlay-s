@@ -6,7 +6,7 @@ use crate::{
 use super::{WidgetObj, WidgetState};
 
 #[derive(Default)]
-pub struct RectangleParams {
+pub struct WidgetRectangleParams {
 	pub color: drawing::Color,
 	pub color2: drawing::Color,
 	pub gradient: GradientMode,
@@ -17,17 +17,17 @@ pub struct RectangleParams {
 	pub round: WLength,
 }
 
-pub struct Rectangle {
-	pub params: RectangleParams,
+pub struct WidgetRectangle {
+	pub params: WidgetRectangleParams,
 }
 
-impl Rectangle {
-	pub fn create(params: RectangleParams) -> anyhow::Result<WidgetState> {
-		WidgetState::new(Box::new(Rectangle { params }))
+impl WidgetRectangle {
+	pub fn create(params: WidgetRectangleParams) -> anyhow::Result<WidgetState> {
+		WidgetState::new(Box::new(WidgetRectangle { params }))
 	}
 }
 
-impl WidgetObj for Rectangle {
+impl WidgetObj for WidgetRectangle {
 	fn draw(&mut self, state: &mut super::DrawState, _params: &super::DrawParams) {
 		let boundary = drawing::Boundary::construct(state.transform_stack);
 

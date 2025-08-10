@@ -5,7 +5,7 @@ use taffy::prelude::{length, percent};
 
 use crate::{
 	animation::{Animation, AnimationEasing},
-	components::{Component, InitData},
+	components::{Component, ComponentTrait, InitData},
 	drawing::{self},
 	event::{
 		self, CallbackDataCommon, EventAlterables, EventListenerCollection, EventListenerKind,
@@ -18,9 +18,9 @@ use crate::{
 		util,
 	},
 	widget::{
-		div::Div,
-		rectangle::{Rectangle, RectangleParams},
-		text::{TextLabel, TextParams},
+		div::WidgetDiv,
+		label::{WidgetLabel, WidgetLabelParams},
+		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
 	},
 };
@@ -70,7 +70,7 @@ pub struct ComponentSlider {
 	listener_handles: ListenerHandleVec,
 }
 
-impl Component for ComponentSlider {
+impl ComponentTrait for ComponentSlider {
 	fn init(&self, init_data: &mut InitData) {
 		let mut state = self.state.borrow_mut();
 		let value = state.values.value;
@@ -129,7 +129,7 @@ impl State {
 		self.set_value(common.state, data, common.alterables, val);
 	}
 
-	fn update_text(&self, i18n: &mut I18n, text: &mut TextLabel, value: f32) {
+	fn update_text(&self, i18n: &mut I18n, text: &mut WidgetLabel, value: f32) {
 		// round displayed value, should be sufficient for now
 		text.set_text(
 			i18n,
@@ -153,7 +153,7 @@ impl State {
 		alterables.set_style(data.slider_handle_node, style);
 		state
 			.widgets
-			.call(data.slider_text_id, |label: &mut TextLabel| {
+			.call(data.slider_text_id, |label: &mut WidgetLabel| {
 				self.update_text(&mut state.globals.i18n(), label, value);
 			});
 	}
@@ -174,7 +174,7 @@ fn get_anim_transform(pos: f32, widget_size: Vec2) -> Mat4 {
 	)
 }
 
-fn anim_rect(rect: &mut Rectangle, pos: f32) {
+fn anim_rect(rect: &mut WidgetRectangle, pos: f32) {
 	rect.params.color = drawing::Color::lerp(&HANDLE_COLOR, &HANDLE_COLOR_HOVERED, pos);
 	rect.params.border_color =
 		drawing::Color::lerp(&HANDLE_BORDER_COLOR, &HANDLE_BORDER_COLOR_HOVERED, pos);
@@ -186,7 +186,7 @@ fn on_enter_anim(common: &mut event::CallbackDataCommon, handle_id: WidgetID) {
 		20,
 		AnimationEasing::OutBack,
 		Box::new(move |common, data| {
-			let rect = data.obj.get_as_mut::<Rectangle>();
+			let rect = data.obj.get_as_mut::<WidgetRectangle>();
 			data.data.transform = get_anim_transform(data.pos, data.widget_size);
 			anim_rect(rect, data.pos);
 			common.alterables.mark_redraw();
@@ -200,7 +200,7 @@ fn on_leave_anim(common: &mut event::CallbackDataCommon, handle_id: WidgetID) {
 		10,
 		AnimationEasing::OutQuad,
 		Box::new(move |common, data| {
-			let rect = data.obj.get_as_mut::<Rectangle>();
+			let rect = data.obj.get_as_mut::<WidgetRectangle>();
 			data.data.transform = get_anim_transform(1.0 - data.pos, data.widget_size);
 			anim_rect(rect, 1.0 - data.pos);
 			common.alterables.mark_redraw();
@@ -318,11 +318,11 @@ pub fn construct<U1, U2>(
 	style.min_size = style.size;
 	style.max_size = style.size;
 
-	let (body_id, slider_body_node) = layout.add_child(parent, Div::create()?, style)?;
+	let (body_id, slider_body_node) = layout.add_child(parent, WidgetDiv::create()?, style)?;
 
 	let (_background_id, _) = layout.add_child(
 		body_id,
-		Rectangle::create(RectangleParams {
+		WidgetRectangle::create(WidgetRectangleParams {
 			color: BODY_COLOR,
 			round: WLength::Percent(1.0),
 			border_color: BODY_BORDER_COLOR,
@@ -361,11 +361,11 @@ pub fn construct<U1, U2>(
 
 	// invisible outer handle body
 	let (slider_handle_id, slider_handle_node) =
-		layout.add_child(body_id, Div::create()?, slider_handle_style)?;
+		layout.add_child(body_id, WidgetDiv::create()?, slider_handle_style)?;
 
 	let (slider_handle_rect_id, _) = layout.add_child(
 		slider_handle_id,
-		Rectangle::create(RectangleParams {
+		WidgetRectangle::create(WidgetRectangleParams {
 			color: HANDLE_COLOR,
 			border_color: HANDLE_BORDER_COLOR,
 			border: 2.0,
@@ -393,9 +393,9 @@ pub fn construct<U1, U2>(
 
 	let (slider_text_id, _) = layout.add_child(
 		slider_handle_id,
-		TextLabel::create(
+		WidgetLabel::create(
 			&mut i18n,
-			TextParams {
+			WidgetLabelParams {
 				content: Translation::default(),
 				style: TextStyle {
 					weight: Some(FontWeight::Bold),
@@ -432,6 +432,6 @@ pub fn construct<U1, U2>(
 		listener_handles: lhandles,
 	});
 
-	layout.defer_component_init(slider.clone());
+	layout.defer_component_init(Component(slider.clone()));
 	Ok(slider)
 }

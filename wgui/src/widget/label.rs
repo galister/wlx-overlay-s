@@ -12,19 +12,19 @@ use crate::{
 use super::{WidgetObj, WidgetState};
 
 #[derive(Default)]
-pub struct TextParams {
+pub struct WidgetLabelParams {
 	pub content: Translation,
 	pub style: TextStyle,
 }
 
-pub struct TextLabel {
-	params: TextParams,
+pub struct WidgetLabel {
+	params: WidgetLabelParams,
 	buffer: Rc<RefCell<Buffer>>,
 	last_boundary: Boundary,
 }
 
-impl TextLabel {
-	pub fn create(i18n: &mut I18n, params: TextParams) -> anyhow::Result<WidgetState> {
+impl WidgetLabel {
+	pub fn create(i18n: &mut I18n, params: WidgetLabelParams) -> anyhow::Result<WidgetState> {
 		let metrics = Metrics::from(&params.style);
 		let attrs = Attrs::from(&params.style);
 		let wrap = Wrap::from(&params.style);
@@ -70,7 +70,7 @@ impl TextLabel {
 	}
 }
 
-impl WidgetObj for TextLabel {
+impl WidgetObj for WidgetLabel {
 	fn draw(&mut self, state: &mut super::DrawState, _params: &super::DrawParams) {
 		let boundary = drawing::Boundary::construct(state.transform_stack);
 

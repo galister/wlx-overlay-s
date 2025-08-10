@@ -5,7 +5,7 @@ use crate::{
 		style::parse_style,
 	},
 	renderer_vk::text::custom_glyph::{CustomGlyphContent, CustomGlyphData},
-	widget::sprite::{SpriteBox, SpriteBoxParams},
+	widget::sprite::{WidgetSprite, WidgetSpriteParams},
 };
 
 use super::{parse_color_hex, print_invalid_attrib};
@@ -16,7 +16,7 @@ pub fn parse_widget_sprite<'a, U1, U2>(
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
-	let mut params = SpriteBoxParams::default();
+	let mut params = WidgetSpriteParams::default();
 	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
 	let style = parse_style(&attribs);
 
@@ -57,7 +57,7 @@ pub fn parse_widget_sprite<'a, U1, U2>(
 
 	let (new_id, _) = ctx
 		.layout
-		.add_child(parent_id, SpriteBox::create(params)?, style)?;
+		.add_child(parent_id, WidgetSprite::create(params)?, style)?;
 
 	parse_widget_universal(file, ctx, node, new_id)?;
 	parse_children(file, ctx, node, new_id)?;

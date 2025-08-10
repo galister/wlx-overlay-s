@@ -12,24 +12,24 @@ use crate::{
 
 use super::{WidgetObj, WidgetState};
 
-#[derive(Default)]
-pub struct SpriteBoxParams {
+#[derive(Debug, Default)]
+pub struct WidgetSpriteParams {
 	pub glyph_data: Option<CustomGlyphData>,
 	pub color: Option<drawing::Color>,
 }
 
-#[derive(Default)]
-pub struct SpriteBox {
-	params: SpriteBoxParams,
+#[derive(Debug, Default)]
+pub struct WidgetSprite {
+	params: WidgetSpriteParams,
 }
 
-impl SpriteBox {
-	pub fn create(params: SpriteBoxParams) -> anyhow::Result<WidgetState> {
+impl WidgetSprite {
+	pub fn create(params: WidgetSpriteParams) -> anyhow::Result<WidgetState> {
 		WidgetState::new(Box::new(Self { params }))
 	}
 }
 
-impl WidgetObj for SpriteBox {
+impl WidgetObj for WidgetSprite {
 	fn draw(&mut self, state: &mut super::DrawState, _params: &super::DrawParams) {
 		let boundary = drawing::Boundary::construct(state.transform_stack);
 

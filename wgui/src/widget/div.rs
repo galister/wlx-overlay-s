@@ -1,14 +1,14 @@
 use super::{WidgetObj, WidgetState};
 
-pub struct Div {}
+pub struct WidgetDiv {}
 
-impl Div {
+impl WidgetDiv {
 	pub fn create() -> anyhow::Result<WidgetState> {
 		WidgetState::new(Box::new(Self {}))
 	}
 }
 
-impl WidgetObj for Div {
+impl WidgetObj for WidgetDiv {
 	fn draw(&mut self, _state: &mut super::DrawState, _params: &super::DrawParams) {
 		// no-op
 	}

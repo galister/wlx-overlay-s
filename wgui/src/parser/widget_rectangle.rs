@@ -6,7 +6,7 @@ use crate::{
 		print_invalid_attrib,
 		style::{parse_color, parse_round, parse_style},
 	},
-	widget::{self, rectangle::RectangleParams},
+	widget::{self, rectangle::WidgetRectangleParams},
 };
 
 pub fn parse_widget_rectangle<'a, U1, U2>(
@@ -15,7 +15,7 @@ pub fn parse_widget_rectangle<'a, U1, U2>(
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
-	let mut params = RectangleParams::default();
+	let mut params = WidgetRectangleParams::default();
 	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
 	let style = parse_style(&attribs);
 
@@ -57,7 +57,7 @@ pub fn parse_widget_rectangle<'a, U1, U2>(
 
 	let (new_id, _) = ctx.layout.add_child(
 		parent_id,
-		widget::rectangle::Rectangle::create(params)?,
+		widget::rectangle::WidgetRectangle::create(params)?,
 		style,
 	)?;
 

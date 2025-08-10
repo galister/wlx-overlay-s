@@ -19,11 +19,10 @@ use crate::{
         overlay::{FrameMeta, OverlayBackend, ShouldRender, ui_transform},
     },
     graphics::{CommandBuffers, ExtentExt},
-    gui,
     state::AppState,
 };
 
-use super::{asset::GuiAsset, timer::GuiTimer, timestep::Timestep};
+use super::{timer::GuiTimer, timestep::Timestep};
 
 const MAX_SIZE: u32 = 2048;
 const MAX_SIZE_VEC2: Vec2 = vec2(MAX_SIZE as _, MAX_SIZE as _);

@@ -1,8 +1,18 @@
+use std::rc::Rc;
+
 use crate::{assets, testbed::Testbed};
 use glam::Vec2;
 use wgui::{
-    components::button::ComponentButton, event::EventListenerCollection, globals::WguiGlobals,
-    i18n::Translation, layout::Layout, parser::ParserState,
+    components::{
+        Component,
+        button::{ButtonClickCallback, ComponentButton},
+    },
+    event::EventListenerCollection,
+    globals::WguiGlobals,
+    i18n::Translation,
+    layout::{Layout, Widget},
+    parser::ParserState,
+    widget::label::WidgetLabel,
 };
 
 pub struct TestbedGeneric {
@@ -12,24 +22,63 @@ pub struct TestbedGeneric {
     state: ParserState,
 }
 
+fn button_click_callback(
+    button: Component,
+    label: Widget,
+    text: &'static str,
+) -> ButtonClickCallback {
+    Box::new(move |e| {
+        label.get_as_mut::<WidgetLabel>().set_text(
+            &mut e.state.globals.i18n(),
+            Translation::from_raw_text(text),
+        );
+
+        // FIXME: remove unwrap
+        button.try_cast::<ComponentButton>().unwrap().set_text(
+            e.state,
+            e.alterables,
+            Translation::from_raw_text("this button has been clicked"),
+        );
+    })
+}
+
+fn handle_button_click(button: Rc<ComponentButton>, label: Widget, text: &'static str) {
+    button.on_click(button_click_callback(
+        Component(button.clone()),
+        label,
+        text,
+    ));
+}
+
 impl TestbedGeneric {
     pub fn new(listeners: &mut EventListenerCollection<(), ()>) -> anyhow::Result<Self> {
         const XML_PATH: &str = "gui/various_widgets.xml";
 
         let globals = WguiGlobals::new(Box::new(assets::Asset {}))?;
 
-        let (mut layout, state) =
+        let (layout, state) =
             wgui::parser::new_layout_from_assets(globals, listeners, XML_PATH, false)?;
 
-        let label_current_option = state.fetch_widget("label_current_option")?;
-        let b1 = state.fetch_component_as::<ComponentButton>("button_red")?;
-        let b2 = state.fetch_component_as::<ComponentButton>("button_aqua")?;
-        let b3 = state.fetch_component_as::<ComponentButton>("button_yellow")?;
+        let label_cur_option =
+            state.fetch_widget::<WidgetLabel>(&layout.state, "label_current_option")?;
 
-        b1.set_text(
-            &mut layout.state,
-            Translation::from_raw_text("hello, world!"),
-        );
+        let button_click_me = state.fetch_component_as::<ComponentButton>("button_click_me")?;
+        let button = button_click_me.clone();
+        button_click_me.on_click(Box::new(move |e| {
+            button.set_text(
+                e.state,
+                e.alterables,
+                Translation::from_raw_text("congrats!"),
+            );
+        }));
+
+        let button_red = state.fetch_component_as::<ComponentButton>("button_red")?;
+        let button_aqua = state.fetch_component_as::<ComponentButton>("button_aqua")?;
+        let button_yellow = state.fetch_component_as::<ComponentButton>("button_yellow")?;
+
+        handle_button_click(button_red, label_cur_option.clone(), "Clicked red");
+        handle_button_click(button_aqua, label_cur_option.clone(), "Clicked aqua");
+        handle_button_click(button_yellow, label_cur_option.clone(), "Clicked yellow");
 
         Ok(Self { layout, state })
     }

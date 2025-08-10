@@ -7,7 +7,7 @@ use regex::Regex;
 use wgui::{
     event::{self, EventListenerKind},
     i18n::Translation,
-    widget::text::TextLabel,
+    widget::label::WidgetLabel,
 };
 
 use crate::{
@@ -46,7 +46,7 @@ where
                 .layout
                 .state
                 .widgets
-                .get_as::<TextLabel>(*widget_id)
+                .get_as::<WidgetLabel>(*widget_id)
                 .unwrap();
 
             let format = match role {
@@ -165,6 +165,6 @@ fn clock_on_tick(
         |tz| format!("{}", Local::now().with_timezone(tz).format(&clock.format)),
     );
 
-    let label = data.obj.get_as_mut::<TextLabel>();
+    let label = data.obj.get_as_mut::<WidgetLabel>();
     label.set_text(&mut common.i18n(), Translation::from_raw_text(&date_time));
 }

@@ -8,12 +8,16 @@
       <label text="Raw text" color="#FFFFFF" />
       <label translation="TESTBED.HELLO_WORLD" color="#FFFFFF" />
 
+      <div margin_left="16" gap="8" flex_direction="column">
+        <label id="label_current_option" text="Click any of these buttons" size="20" weight="bold" />
+        <div>
+          <button id="button_red" text="Red button" width="220" height="32" color="#FF0000" />
+          <button id="button_aqua" text="Aqua button" width="220" height="32" color="#00FFFF" />
+          <button id="button_yellow" text="Yellow button" width="220" height="32" color="#FFFF00" />
+        </div>
+        <button id="button_click_me" text="Click me" width="128" height="24" color="#FFFFFF" />
+      </div>
 
-      <label id="label_current_option" />
-
-      <button margin_left="16" id="button_red" text="Red button" width="128" height="32" color="#FF0000" />
-      <button margin_left="16" id="button_aqua" text="Aqua button" width="128" height="32" color="#00FFFF" />
-      <button margin_left="16" id="button_yellow" text="Yellow button" width="128" height="32" color="#FFFF00" />
 
       <div flex_direction="row" gap="16">
         <div flex_direction="column" gap="8">

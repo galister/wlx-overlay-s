@@ -5,7 +5,7 @@ use crate::assets::AssetProvider;
 // a string which optionally has translation key in it
 // it will hopefully support dynamic language changing soon
 // for now it's just a simple string container
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Translation {
 	text: Rc<str>,
 	translated: bool, // if true, `text` is a translation key

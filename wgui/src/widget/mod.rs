@@ -14,9 +14,9 @@ use crate::{
 };
 
 pub mod div;
+pub mod label;
 pub mod rectangle;
 pub mod sprite;
-pub mod text;
 pub mod util;
 
 pub struct WidgetData {
@@ -173,11 +173,15 @@ pub fn get_scrollbar_info(l: &taffy::Layout) -> Option<ScrollbarInfo> {
 }
 
 impl dyn WidgetObj {
+	// panics on failure
+	// TODO: panic-less alternative
 	pub fn get_as<T: 'static>(&self) -> &T {
 		let any = self.as_any();
 		any.downcast_ref::<T>().unwrap()
 	}
 
+	// panics on failure
+	// TODO: panic-less alternative
 	pub fn get_as_mut<T: 'static>(&mut self) -> &mut T {
 		let any = self.as_any_mut();
 		any.downcast_mut::<T>().unwrap()

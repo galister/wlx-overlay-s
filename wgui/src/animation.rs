@@ -97,9 +97,8 @@ impl Animation {
 		let widget_node = *state.nodes.get(self.target_widget).unwrap();
 		let layout = state.tree.layout(widget_node).unwrap(); // should always succeed
 
-		let mut widget = widget.lock();
-
-		let (data, obj) = widget.get_data_obj_mut();
+		let mut widget_state = widget.state();
+		let (data, obj) = widget_state.get_data_obj_mut();
 
 		let data = &mut CallbackData {
 			widget_id: self.target_widget,

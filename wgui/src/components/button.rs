@@ -3,15 +3,15 @@ use taffy::{AlignItems, JustifyContent, prelude::length};
 
 use crate::{
 	animation::{Animation, AnimationEasing},
-	components::{Component, InitData},
+	components::{Component, ComponentTrait, InitData},
 	drawing::{self, Color},
 	event::{EventAlterables, EventListenerCollection, EventListenerKind, ListenerHandleVec},
 	i18n::Translation,
 	layout::{Layout, LayoutState, WidgetID},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
-		rectangle::{Rectangle, RectangleParams},
-		text::{TextLabel, TextParams},
+		label::{WidgetLabel, WidgetLabelParams},
+		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
 	},
 };
@@ -38,9 +38,16 @@ impl Default for Params {
 	}
 }
 
+pub struct ButtonClickEvent<'a> {
+	pub state: &'a LayoutState,
+	pub alterables: &'a mut EventAlterables,
+}
+pub type ButtonClickCallback = Box<dyn Fn(ButtonClickEvent)>;
+
 struct State {
 	hovered: bool,
 	down: bool,
+	on_click: Option<ButtonClickCallback>,
 }
 
 struct Data {
@@ -59,27 +66,30 @@ pub struct ComponentButton {
 	listener_handles: ListenerHandleVec,
 }
 
-impl Component for ComponentButton {
+impl ComponentTrait for ComponentButton {
 	fn init(&self, _data: &mut InitData) {}
 }
 
 impl ComponentButton {
-	pub fn set_text(&self, state: &mut LayoutState, text: Translation) {
+	pub fn set_text(&self, state: &LayoutState, alterables: &mut EventAlterables, text: Translation) {
 		let globals = state.globals.clone();
 
 		state
 			.widgets
-			.call(self.data.text_id, |label: &mut TextLabel| {
+			.call(self.data.text_id, |label: &mut WidgetLabel| {
 				label.set_text(&mut globals.i18n(), text);
 			});
 
-		let mut alterables = EventAlterables::default();
 		alterables.mark_redraw();
 		alterables.mark_dirty(self.data.text_node);
 	}
+
+	pub fn on_click(&self, func: ButtonClickCallback) {
+		self.state.borrow_mut().on_click = Some(func);
+	}
 }
 
-fn anim_hover(rect: &mut Rectangle, data: &Data, pos: f32) {
+fn anim_hover(rect: &mut WidgetRectangle, data: &Data, pos: f32) {
 	let brightness = pos * 0.5;
 	let border_brightness = pos;
 	rect.params.color.r = data.initial_color.r + brightness;
@@ -97,7 +107,7 @@ fn anim_hover_in(data: Rc<Data>, widget_id: WidgetID) -> Animation {
 		5,
 		AnimationEasing::OutQuad,
 		Box::new(move |common, anim_data| {
-			let rect = anim_data.obj.get_as_mut::<Rectangle>();
+			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>();
 			anim_hover(rect, &data, anim_data.pos);
 			common.alterables.mark_redraw();
 		}),
@@ -110,7 +120,7 @@ fn anim_hover_out(data: Rc<Data>, widget_id: WidgetID) -> Animation {
 		8,
 		AnimationEasing::OutQuad,
 		Box::new(move |common, anim_data| {
-			let rect = anim_data.obj.get_as_mut::<Rectangle>();
+			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>();
 			anim_hover(rect, &data, 1.0 - anim_data.pos);
 			common.alterables.mark_redraw();
 		}),
@@ -167,7 +177,7 @@ fn register_event_mouse_press<U1, U2>(
 		listener_handles,
 		data.rect_id,
 		EventListenerKind::MousePress,
-		Box::new(move |common, event_data, _, _| {
+		Box::new(move |common, _event_data, _, _| {
 			common.alterables.trigger_haptics();
 			let mut state = state.borrow_mut();
 
@@ -196,7 +206,12 @@ fn register_event_mouse_release<U1, U2>(
 				state.down = false;
 
 				if state.hovered {
-					//TODO: click event
+					if let Some(on_click) = &state.on_click {
+						on_click(ButtonClickEvent {
+							state: common.state,
+							alterables: &mut common.alterables,
+						});
+					}
 				}
 			}
 		}),
@@ -220,7 +235,7 @@ pub fn construct<U1, U2>(
 
 	let (rect_id, _) = layout.add_child(
 		parent,
-		Rectangle::create(RectangleParams {
+		WidgetRectangle::create(WidgetRectangleParams {
 			color: params.color,
 			color2: params
 				.color
@@ -237,9 +252,9 @@ pub fn construct<U1, U2>(
 
 	let (text_id, text_node) = layout.add_child(
 		rect_id,
-		TextLabel::create(
+		WidgetLabel::create(
 			&mut globals.i18n(),
-			TextParams {
+			WidgetLabelParams {
 				content: params.text,
 				style: TextStyle {
 					weight: Some(FontWeight::Bold),
@@ -268,6 +283,7 @@ pub fn construct<U1, U2>(
 	let state = Rc::new(RefCell::new(State {
 		down: false,
 		hovered: false,
+		on_click: None,
 	}));
 
 	let mut lhandles = ListenerHandleVec::default();
@@ -283,6 +299,6 @@ pub fn construct<U1, U2>(
 		listener_handles: lhandles,
 	});
 
-	layout.defer_component_init(button.clone());
+	layout.defer_component_init(Component(button.clone()));
 	Ok(button)
 }

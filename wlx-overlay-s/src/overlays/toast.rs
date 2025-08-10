@@ -17,8 +17,8 @@ use wgui::{
         prelude::{auto, length, percent},
     },
     widget::{
-        rectangle::{Rectangle, RectangleParams},
-        text::{TextLabel, TextParams},
+        label::{WidgetLabelParams, WidgetLabel},
+        rectangle::{WidgetRectangle, WidgetRectangleParams},
         util::WLength,
     },
 };
@@ -176,7 +176,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
         .layout
         .add_child(
             panel.layout.root_widget,
-            Rectangle::create(RectangleParams {
+            WidgetRectangle::create(WidgetRectangleParams {
                 color: parse_color_hex("#1e2030").unwrap(),
                 border_color: parse_color_hex("#5e7090").unwrap(),
                 border: 1.0,
@@ -196,9 +196,9 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
 
     let _ = panel.layout.add_child(
         rect,
-        TextLabel::create(
+        WidgetLabel::create(
             &mut i18n,
-            TextParams {
+            WidgetLabelParams {
                 content: Translation::from_raw_text(&title),
                 style: TextStyle {
                     color: parse_color_hex("#ffffff"),
@@ -219,9 +219,9 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
 
     let _ = panel.layout.add_child(
         rect,
-        TextLabel::create(
+        WidgetLabel::create(
             &mut i18n,
-            TextParams {
+            WidgetLabelParams {
                 content: Translation::from_raw_text(&toast.body),
                 style: TextStyle {
                     weight: Some(FontWeight::Bold),

@@ -7,13 +7,12 @@ mod widget_rectangle;
 mod widget_sprite;
 
 use crate::{
-	any::AnyTrait,
 	assets::AssetProvider,
-	components::Component,
+	components::{Component, ComponentTrait, ComponentWeak},
 	drawing::{self},
 	event::EventListenerCollection,
 	globals::WguiGlobals,
-	layout::{Layout, WidgetID},
+	layout::{Layout, LayoutState, Widget, WidgetID},
 	parser::{
 		component_button::parse_component_button, component_slider::parse_component_slider,
 		widget_div::parse_widget_div, widget_label::parse_widget_label,
@@ -56,14 +55,14 @@ pub struct ParserState {
 	pub ids: HashMap<Rc<str>, WidgetID>,
 	macro_attribs: HashMap<Rc<str>, MacroAttribs>,
 	pub var_map: HashMap<Rc<str>, Rc<str>>,
-	pub components: Vec<Rc<dyn Component>>,
-	pub components_id_map: HashMap<Rc<str>, std::rc::Weak<dyn Component>>,
+	pub components: Vec<Component>,
+	pub components_id_map: HashMap<Rc<str>, std::rc::Weak<dyn ComponentTrait>>,
 	pub templates: HashMap<Rc<str>, Rc<Template>>,
 	pub path: PathBuf,
 }
 
 impl ParserState {
-	pub fn fetch_component(&self, id: &str) -> anyhow::Result<Rc<dyn Component>> {
+	pub fn fetch_component(&self, id: &str) -> anyhow::Result<Component> {
 		let Some(weak) = self.components_id_map.get(id) else {
 			anyhow::bail!("Component by ID \"{}\" doesn't exist", id);
 		};
@@ -72,25 +71,34 @@ impl ParserState {
 			anyhow::bail!("Component by ID \"{}\" doesn't exist", id);
 		};
 
-		Ok(component)
+		Ok(Component(component))
 	}
 
 	pub fn fetch_component_as<T: 'static>(&self, id: &str) -> anyhow::Result<Rc<T>> {
 		let component = self.fetch_component(id)?;
 
-		// FIXME: check T type id
-		log::warn!("fetch_component_as WIP");
-		unsafe {
-			let raw = Rc::into_raw(component);
-			Ok(Rc::from_raw(raw as _))
+		if !(*component.0).as_any().is::<T>() {
+			anyhow::bail!("fetch_component_as({}): type not matching", id);
 		}
+
+		// safety: we already checked it above, should be safe to directly cast it
+		unsafe { Ok(Rc::from_raw(Rc::into_raw(component.0) as _)) }
 	}
 
-	pub fn fetch_widget(&self, id: &str) -> anyhow::Result<WidgetID> {
+	pub fn get_widget_id(&self, id: &str) -> anyhow::Result<WidgetID> {
 		match self.ids.get(id) {
 			Some(id) => Ok(*id),
 			None => anyhow::bail!("Widget by ID \"{}\" doesn't exist", id),
 		}
+	}
+
+	pub fn fetch_widget<T: 'static>(&self, state: &LayoutState, id: &str) -> anyhow::Result<Widget> {
+		let widget_id = self.get_widget_id(id)?;
+		let widget = state
+			.widgets
+			.get(widget_id)
+			.ok_or_else(|| anyhow::anyhow!("fetch_widget_as({}): widget not found", id))?;
+		Ok(widget.clone())
 	}
 
 	pub fn process_template<U1, U2>(
@@ -153,8 +161,8 @@ struct ParserContext<'a, U1, U2> {
 	macro_attribs: HashMap<Rc<str>, MacroAttribs>,
 	ids: HashMap<Rc<str>, WidgetID>,
 	templates: HashMap<Rc<str>, Rc<Template>>,
-	components: Vec<Rc<dyn Component>>,
-	components_id_map: HashMap<Rc<str>, std::rc::Weak<dyn Component>>,
+	components: Vec<Component>,
+	components_id_map: HashMap<Rc<str>, ComponentWeak>,
 	dev_mode: bool,
 }
 
@@ -561,7 +569,7 @@ fn process_component<'a, U1, U2>(
 	file: &'a ParserFile,
 	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'a, 'a>,
-	component: Rc<dyn Component>,
+	component: Component,
 ) -> anyhow::Result<()> {
 	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
 
@@ -571,7 +579,7 @@ fn process_component<'a, U1, U2>(
 			"id" => {
 				if ctx
 					.components_id_map
-					.insert(value.clone(), Rc::downgrade(&component))
+					.insert(value.clone(), component.weak())
 					.is_some()
 				{
 					log::warn!("duplicate component ID \"{value}\" in the same layout file!");

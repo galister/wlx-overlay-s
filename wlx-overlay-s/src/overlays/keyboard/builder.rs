@@ -8,8 +8,8 @@ use wgui::{
     renderer_vk::util,
     taffy::{self, prelude::length},
     widget::{
-        div::Div,
-        rectangle::{Rectangle, RectangleParams},
+        div::WidgetDiv,
+        rectangle::{WidgetRectangle, WidgetRectangleParams},
         util::WLength,
     },
 };
@@ -56,7 +56,7 @@ where
 
     let (background, _) = panel.layout.add_child(
         panel.layout.root_widget,
-        Rectangle::create(RectangleParams {
+        WidgetRectangle::create(WidgetRectangleParams {
             color: wgui::drawing::Color::new(0., 0., 0., 0.6),
             round: WLength::Units(4.0),
             ..Default::default()
@@ -85,7 +85,7 @@ where
     for row in 0..layout.key_sizes.len() {
         let (div, _) = panel.layout.add_child(
             background,
-            Div::create().unwrap(),
+            WidgetDiv::create().unwrap(),
             taffy::Style {
                 flex_direction: taffy::FlexDirection::Row,
                 ..Default::default()
@@ -106,7 +106,7 @@ where
             let Some(key) = layout.get_key_data(keymap.as_ref(), has_altgr, col, row) else {
                 let _ = panel.layout.add_child(
                     div,
-                    Div::create()?,
+                    WidgetDiv::create()?,
                     taffy::Style {
                         size: taffy_size,
                         min_size: taffy_size,
@@ -173,7 +173,7 @@ where
                         .layout
                         .state
                         .widgets
-                        .get_as::<Rectangle>(*widget_id)
+                        .get_as::<WidgetRectangle>(*widget_id)
                         .unwrap(); // want panic
 
                     Rc::new(KeyState {
@@ -291,7 +291,7 @@ fn get_anim_transform(pos: f32, widget_size: Vec2) -> Mat4 {
     )
 }
 
-fn set_anim_color(key_state: &KeyState, rect: &mut Rectangle, pos: f32) {
+fn set_anim_color(key_state: &KeyState, rect: &mut WidgetRectangle, pos: f32) {
     let br1 = pos * 0.25;
     let br2 = pos * 0.15;
 
@@ -314,7 +314,7 @@ fn on_enter_anim(
         10,
         AnimationEasing::OutBack,
         Box::new(move |common, data| {
-            let rect = data.obj.get_as_mut::<Rectangle>();
+            let rect = data.obj.get_as_mut::<WidgetRectangle>();
             set_anim_color(&key_state, rect, data.pos);
             data.data.transform = get_anim_transform(data.pos, data.widget_size);
             common.alterables.mark_redraw();
@@ -332,7 +332,7 @@ fn on_leave_anim(
         15,
         AnimationEasing::OutQuad,
         Box::new(move |common, data| {
-            let rect = data.obj.get_as_mut::<Rectangle>();
+            let rect = data.obj.get_as_mut::<WidgetRectangle>();
             set_anim_color(&key_state, rect, 1.0 - data.pos);
             data.data.transform = get_anim_transform(1.0 - data.pos, data.widget_size);
             common.alterables.mark_redraw();
@@ -348,7 +348,7 @@ fn on_press_anim(
     if key_state.drawn_state.get() {
         return;
     }
-    let rect = data.obj.get_as_mut::<Rectangle>();
+    let rect = data.obj.get_as_mut::<WidgetRectangle>();
     rect.params.border_color = Color::new(1.0, 1.0, 1.0, 1.0);
     common.alterables.mark_redraw();
     key_state.drawn_state.set(true);
@@ -362,7 +362,7 @@ fn on_release_anim(
     if !key_state.drawn_state.get() {
         return;
     }
-    let rect = data.obj.get_as_mut::<Rectangle>();
+    let rect = data.obj.get_as_mut::<WidgetRectangle>();
     rect.params.border_color = key_state.border_color;
     common.alterables.mark_redraw();
     key_state.drawn_state.set(false);

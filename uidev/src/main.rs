@@ -108,7 +108,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     render_context.update_viewport(&mut shared_context, swapchain_size, scale)?;
     println!("new swapchain_size: {swapchain_size:?}");
 
-    let mut profiler = profiler::Profiler::new(100);
+    let mut profiler = profiler::Profiler::new(1000);
     let mut frame_index: u64 = 0;
 
     let mut timestep = Timestep::new();

@@ -1,4 +1,8 @@
-use std::{collections::VecDeque, rc::Rc, sync::Arc};
+use std::{
+	cell::{RefCell, RefMut},
+	collections::VecDeque,
+	rc::Rc,
+};
 
 use crate::{
 	animation::Animations,
@@ -6,11 +10,10 @@ use crate::{
 	event::{self, EventAlterables, EventListenerCollection},
 	globals::WguiGlobals,
 	transform_stack::Transform,
-	widget::{self, EventParams, WidgetObj, WidgetState, div::Div},
+	widget::{self, EventParams, WidgetObj, WidgetState, div::WidgetDiv},
 };
 
 use glam::{Vec2, vec2};
-use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
 use slotmap::{HopSlotMap, SecondaryMap, new_key_type};
 use taffy::{TaffyTree, TraversePartialTree};
 
@@ -18,9 +21,26 @@ new_key_type! {
 	pub struct WidgetID;
 }
 
-pub type BoxWidget = Arc<Mutex<WidgetState>>;
+#[derive(Clone)]
+pub struct Widget(Rc<RefCell<WidgetState>>);
 
-pub struct WidgetMap(HopSlotMap<WidgetID, BoxWidget>);
+impl Widget {
+	pub fn new(widget_state: WidgetState) -> Self {
+		Self(Rc::new(RefCell::new(widget_state)))
+	}
+
+	// panics on failure
+	// TODO: panic-less alternative
+	pub fn get_as_mut<T: 'static>(&self) -> RefMut<T> {
+		RefMut::map(self.0.borrow_mut(), |w| w.obj.get_as_mut::<T>())
+	}
+
+	pub fn state(&self) -> RefMut<WidgetState> {
+		self.0.borrow_mut()
+	}
+}
+
+pub struct WidgetMap(HopSlotMap<WidgetID, Widget>);
 pub type WidgetNodeMap = SecondaryMap<WidgetID, taffy::NodeId>;
 
 impl WidgetMap {
@@ -28,21 +48,21 @@ impl WidgetMap {
 		Self(HopSlotMap::with_key())
 	}
 
-	pub fn get_as<T: 'static>(&self, handle: WidgetID) -> Option<MappedMutexGuard<T>> {
-		let widget = self.0.get(handle)?;
-		Some(MutexGuard::map(widget.lock(), |w| w.obj.get_as_mut::<T>()))
+	pub fn get_as<T: 'static>(&self, handle: WidgetID) -> Option<RefMut<T>> {
+		Some(self.0.get(handle)?.get_as_mut::<T>())
 	}
 
-	pub fn get(&self, handle: WidgetID) -> Option<&BoxWidget> {
+	pub fn get(&self, handle: WidgetID) -> Option<&Widget> {
 		self.0.get(handle)
 	}
 
-	pub fn insert(&mut self, obj: BoxWidget) -> WidgetID {
+	pub fn insert(&mut self, obj: Widget) -> WidgetID {
 		self.0.insert(obj)
 	}
 
 	// cast to specific widget type, does nothing if widget ID is expired
 	// panics in case if the widget type is wrong
+	// TODO: panic-less alternative
 	pub fn call<WIDGET, FUNC>(&self, widget_id: WidgetID, func: FUNC)
 	where
 		WIDGET: WidgetObj,
@@ -53,10 +73,7 @@ impl WidgetMap {
 			return;
 		};
 
-		let mut lock = widget.lock();
-		let m = lock.obj.get_as_mut::<WIDGET>();
-
-		func(m);
+		func(&mut widget.get_as_mut::<WIDGET>());
 	}
 }
 
@@ -65,13 +82,12 @@ pub struct LayoutState {
 	pub widgets: WidgetMap,
 	pub nodes: WidgetNodeMap,
 	pub tree: taffy::tree::TaffyTree<WidgetID>,
-	pub alterables: EventAlterables,
 }
 
 pub struct Layout {
 	pub state: LayoutState,
 
-	pub components_to_init: VecDeque<Rc<dyn Component>>,
+	pub components_to_init: VecDeque<Component>,
 
 	pub root_widget: WidgetID,
 	pub root_node: taffy::NodeId,
@@ -90,11 +106,11 @@ fn add_child_internal(
 	widgets: &mut WidgetMap,
 	nodes: &mut WidgetNodeMap,
 	parent_node: Option<taffy::NodeId>,
-	widget: WidgetState,
+	widget_state: WidgetState,
 	style: taffy::Style,
 ) -> anyhow::Result<(WidgetID, taffy::NodeId)> {
 	#[allow(clippy::arc_with_non_send_sync)]
-	let child_id = widgets.insert(Arc::new(Mutex::new(widget)));
+	let child_id = widgets.insert(Widget::new(widget_state));
 	let child_node = tree.new_leaf_with_context(style, child_id)?;
 
 	if let Some(parent_node) = parent_node {
@@ -131,7 +147,7 @@ impl Layout {
 		let mut alterables = EventAlterables::default();
 
 		while let Some(c) = self.components_to_init.pop_front() {
-			c.init(&mut InitData {
+			c.0.init(&mut InitData {
 				state: &self.state,
 				alterables: &mut alterables,
 			});
@@ -142,7 +158,7 @@ impl Layout {
 		Ok(())
 	}
 
-	pub fn defer_component_init(&mut self, component: Rc<dyn Component>) {
+	pub fn defer_component_init(&mut self, component: Component) {
 		self.components_to_init.push_back(component);
 	}
 
@@ -181,8 +197,6 @@ impl Layout {
 			anyhow::bail!("invalid widget");
 		};
 
-		let mut widget = widget.lock();
-
 		let transform = Transform {
 			pos: Vec2::new(l.location.x, l.location.y),
 			dim: Vec2::new(l.size.width, l.size.height),
@@ -202,6 +216,8 @@ impl Layout {
 		};
 
 		let listeners_vec = listeners.get(widget_id);
+
+		let mut widget = widget.0.borrow_mut();
 
 		match widget.process_event(
 			widget_id,
@@ -283,7 +299,6 @@ impl Layout {
 			widgets: WidgetMap::new(),
 			nodes: WidgetNodeMap::default(),
 			globals,
-			alterables: EventAlterables::default(),
 		};
 
 		let (root_widget, root_node) = add_child_internal(
@@ -291,7 +306,7 @@ impl Layout {
 			&mut state.widgets,
 			&mut state.nodes,
 			None, // no parent
-			Div::create()?,
+			WidgetDiv::create()?,
 			taffy::Style {
 				size: taffy::Size::auto(),
 				..Default::default()
@@ -343,7 +358,10 @@ impl Layout {
 						None => taffy::Size::ZERO,
 						Some(h) => {
 							if let Some(w) = self.state.widgets.get(*h) {
-								w.lock().obj.measure(known_dimensions, available_space)
+								w.0
+									.borrow_mut()
+									.obj
+									.measure(known_dimensions, available_space)
 							} else {
 								taffy::Size::ZERO
 							}
@@ -352,13 +370,15 @@ impl Layout {
 				},
 			)?;
 			let root_size = self.state.tree.layout(self.root_node).unwrap().size;
-			log::debug!(
-				"content size {:.0}x{:.0} → {:.0}x{:.0}",
-				self.content_size.x,
-				self.content_size.y,
-				root_size.width,
-				root_size.height
-			);
+			if self.content_size.x != root_size.width || self.content_size.y != root_size.height {
+				log::debug!(
+					"content size changed: {:.0}x{:.0} → {:.0}x{:.0}",
+					self.content_size.x,
+					self.content_size.y,
+					root_size.width,
+					root_size.height
+				);
+			}
 			self.content_size = vec2(root_size.width, root_size.height);
 		}
 		Ok(())
@@ -369,8 +389,6 @@ impl Layout {
 		self.animations.tick(&self.state, &mut alterables);
 		self.process_pending_components()?;
 		self.process_alterables(alterables)?;
-		let state_alterables = std::mem::take(&mut self.state.alterables);
-		self.process_alterables(state_alterables)?;
 
 		Ok(())
 	}
