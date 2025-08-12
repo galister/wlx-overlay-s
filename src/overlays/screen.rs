@@ -275,6 +275,7 @@ pub struct ScreenRenderer {
     capture: Box<dyn WlxCapture<WlxCaptureIn, WlxCaptureOut>>,
     pipeline: Option<ScreenPipeline>,
     cur_frame: Option<WlxCaptureOut>,
+    back_frame: Option<WlxCaptureOut>,
     meta: Option<FrameMeta>,
 }
 
@@ -288,6 +289,7 @@ impl ScreenRenderer {
             capture,
             pipeline: None,
             cur_frame: None,
+            back_frame: None,
             meta: None,
         }
     }
@@ -554,7 +556,14 @@ impl OverlayRenderer for ScreenRenderer {
                 transform: affine_from_format(&frame.format),
                 format: frame.image.format(),
             });
-            self.cur_frame = Some(frame);
+            // Store new frame in back buffer instead of directly in cur_frame
+            self.back_frame = Some(frame);
+        }
+
+        // Swap buffers if we have a new frame ready and no current frame
+        // This provides double buffering to prevent race conditions
+        if self.back_frame.is_some() && self.cur_frame.is_none() {
+            self.cur_frame = self.back_frame.take();
         }
 
         if let (Some(capture), None) = (self.cur_frame.as_ref(), self.pipeline.as_ref()) {
@@ -583,19 +592,25 @@ impl OverlayRenderer for ScreenRenderer {
         buf: &mut CommandBuffers,
         alpha: f32,
     ) -> anyhow::Result<bool> {
-        let Some(capture) = self.cur_frame.take() else {
+        // Use current frame without taking it (keep for next render if no new frame)
+        let Some(ref capture) = self.cur_frame else {
             return Ok(false);
         };
 
         // want panic; must be Some if cur_frame is also Some
         self.pipeline.as_mut().unwrap().render(
-            capture.image,
-            capture.mouse,
+            capture.image.clone(),
+            capture.mouse.clone(),
             app,
             tgt,
             buf,
             alpha,
         )?;
+
+        // Swap buffers after successful render if we have a new frame waiting
+        if self.back_frame.is_some() {
+            self.cur_frame = self.back_frame.take();
+        }
 
         self.capture.request_new_frame();
         Ok(true)
