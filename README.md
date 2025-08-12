@@ -41,6 +41,11 @@ For users specifically running **SteamVR via Steam Flatpak**, follow these steps
 1. Start SteamVR.
 1. `flatpak run --command='/path/to/squashfs-root/AppRun' com.valvesoftware.Steam`
 
+### Install via Homebrew
+
+1. Add AtomicXR tap `brew tap matrixfurry.com/atomicxr https://tangled.sh/@matrixfurry.com/homebrew-atomicxr`
+2. Install WlxOverlay-S: `brew install wlx-overlay-s`
+
 AUR package is [wlx-overlay-s-git](https://aur.archlinux.org/packages/wlx-overlay-s-git).
 
 You may also want to [build from source](https://github.com/galister/wlx-overlay-s/wiki/Building-from-Source).
