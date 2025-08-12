@@ -6833,7 +6833,8 @@ checksum = "f17a85883d4e6d00e8a97c586de764dabcc06133f7f1d55dce5cdc070ad7fe59"
 
 [[package]]
 name = "wlx-capture"
-version = "0.5.3"
+version = "0.5.4"
+source = "git+https://github.com/galister/wlx-capture?tag=v0.5.4#1aad584fafd529c63cce3355f0b2e2175ab69c70"
 dependencies = [
  "ashpd",
  "drm-fourcc",
