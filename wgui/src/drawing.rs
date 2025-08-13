@@ -51,6 +51,15 @@ impl Color {
 		Self { r, g, b, a }
 	}
 
+	pub fn add_rgb(&self, n: f32) -> Self {
+		Self {
+			r: self.r + n,
+			g: self.g + n,
+			b: self.b + n,
+			a: self.a,
+		}
+	}
+
 	pub fn lerp(&self, other: &Color, n: f32) -> Color {
 		Color {
 			r: self.r * (1.0 - n) + other.r * n,

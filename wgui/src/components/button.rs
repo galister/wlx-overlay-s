@@ -25,6 +25,10 @@ pub struct Params {
 	pub text_style: TextStyle,
 }
 
+fn get_color2(color: &drawing::Color) -> drawing::Color {
+	color.lerp(&Color::new(0.0, 0.0, 0.0, color.a), 0.2)
+}
+
 impl Default for Params {
 	fn default() -> Self {
 		Self {
@@ -52,6 +56,7 @@ struct State {
 
 struct Data {
 	initial_color: drawing::Color,
+	initial_color2: drawing::Color,
 	initial_border_color: drawing::Color,
 	text_id: WidgetID, // Text
 	rect_id: WidgetID, // Rectangle
@@ -91,39 +96,36 @@ impl ComponentButton {
 	}
 }
 
-fn anim_hover(rect: &mut WidgetRectangle, data: &Data, pos: f32) {
-	let brightness = pos * 0.5;
+fn anim_hover(rect: &mut WidgetRectangle, data: &Data, pos: f32, pressed: bool) {
+	let brightness = pos * if pressed { 0.75 } else { 0.5 };
 	let border_brightness = pos;
-	rect.params.color.r = data.initial_color.r + brightness;
-	rect.params.color.g = data.initial_color.g + brightness;
-	rect.params.color.b = data.initial_color.b + brightness;
-	rect.params.border_color.r = data.initial_border_color.r + border_brightness;
-	rect.params.border_color.g = data.initial_border_color.g + border_brightness;
-	rect.params.border_color.b = data.initial_border_color.b + border_brightness;
-	rect.params.border = 3.0;
+	rect.params.color = data.initial_color.add_rgb(brightness);
+	rect.params.color2 = data.initial_color2.add_rgb(brightness);
+	rect.params.border_color = data.initial_border_color.add_rgb(border_brightness);
+	rect.params.border = 2.0;
 }
 
-fn anim_hover_in(data: Rc<Data>, widget_id: WidgetID) -> Animation {
+fn anim_hover_in(data: Rc<Data>, state: Rc<RefCell<State>>, widget_id: WidgetID) -> Animation {
 	Animation::new(
 		widget_id,
 		5,
 		AnimationEasing::OutQuad,
 		Box::new(move |common, anim_data| {
 			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>();
-			anim_hover(rect, &data, anim_data.pos);
+			anim_hover(rect, &data, anim_data.pos, state.borrow().down);
 			common.alterables.mark_redraw();
 		}),
 	)
 }
 
-fn anim_hover_out(data: Rc<Data>, widget_id: WidgetID) -> Animation {
+fn anim_hover_out(data: Rc<Data>, state: Rc<RefCell<State>>, widget_id: WidgetID) -> Animation {
 	Animation::new(
 		widget_id,
 		8,
 		AnimationEasing::OutQuad,
 		Box::new(move |common, anim_data| {
 			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>();
-			anim_hover(rect, &data, 1.0 - anim_data.pos);
+			anim_hover(rect, &data, 1.0 - anim_data.pos, state.borrow().down);
 			common.alterables.mark_redraw();
 		}),
 	)
@@ -141,9 +143,11 @@ fn register_event_mouse_enter<U1, U2>(
 		EventListenerKind::MouseEnter,
 		Box::new(move |common, event_data, _, _| {
 			common.alterables.trigger_haptics();
-			common
-				.alterables
-				.animate(anim_hover_in(data.clone(), event_data.widget_id));
+			common.alterables.animate(anim_hover_in(
+				data.clone(),
+				state.clone(),
+				event_data.widget_id,
+			));
 			state.borrow_mut().hovered = true;
 			Ok(())
 		}),
@@ -162,9 +166,11 @@ fn register_event_mouse_leave<U1, U2>(
 		EventListenerKind::MouseLeave,
 		Box::new(move |common, event_data, _, _| {
 			common.alterables.trigger_haptics();
-			common
-				.alterables
-				.animate(anim_hover_out(data.clone(), event_data.widget_id));
+			common.alterables.animate(anim_hover_out(
+				data.clone(),
+				state.clone(),
+				event_data.widget_id,
+			));
 			state.borrow_mut().hovered = false;
 			Ok(())
 		}),
@@ -181,13 +187,18 @@ fn register_event_mouse_press<U1, U2>(
 		listener_handles,
 		data.rect_id,
 		EventListenerKind::MousePress,
-		Box::new(move |common, _event_data, _, _| {
-			common.alterables.trigger_haptics();
+		Box::new(move |common, event_data, _, _| {
 			let mut state = state.borrow_mut();
+
+			let rect = event_data.obj.get_as_mut::<WidgetRectangle>();
+			anim_hover(rect, &data, 1.0, true);
 
 			if state.hovered {
 				state.down = true;
 			}
+
+			common.alterables.trigger_haptics();
+			common.alterables.mark_redraw();
 
 			Ok(())
 		}),
@@ -204,8 +215,9 @@ fn register_event_mouse_release<U1, U2>(
 		listener_handles,
 		data.rect_id,
 		EventListenerKind::MouseRelease,
-		Box::new(move |common, _data, _, _| {
-			common.alterables.trigger_haptics();
+		Box::new(move |common, event_data, _, _| {
+			let rect = event_data.obj.get_as_mut::<WidgetRectangle>();
+			anim_hover(rect, &data, 1.0, false);
 
 			let mut state = state.borrow_mut();
 			if state.down {
@@ -220,6 +232,10 @@ fn register_event_mouse_release<U1, U2>(
 					}
 				}
 			}
+
+			common.alterables.trigger_haptics();
+			common.alterables.mark_redraw();
+
 			Ok(())
 		}),
 	);
@@ -244,9 +260,7 @@ pub fn construct<U1, U2>(
 		parent,
 		WidgetRectangle::create(WidgetRectangleParams {
 			color: params.color,
-			color2: params
-				.color
-				.lerp(&Color::new(0.0, 0.0, 0.0, params.color.a), 0.3),
+			color2: get_color2(&params.color),
 			gradient: drawing::GradientMode::Vertical,
 			round: params.round,
 			border_color: params.border_color,
@@ -284,6 +298,7 @@ pub fn construct<U1, U2>(
 		rect_id,
 		text_node,
 		initial_color: params.color,
+		initial_color2: get_color2(&params.color),
 		initial_border_color: params.border_color,
 	});
 
