@@ -3,7 +3,7 @@ use taffy::{AlignItems, JustifyContent, prelude::length};
 
 use crate::{
 	animation::{Animation, AnimationEasing},
-	components::{Component, ComponentTrait, InitData},
+	components::{Component, ComponentBase, ComponentTrait, InitData},
 	drawing::{self, Color},
 	event::{EventAlterables, EventListenerCollection, EventListenerKind, ListenerHandleVec},
 	i18n::Translation,
@@ -42,7 +42,7 @@ pub struct ButtonClickEvent<'a> {
 	pub state: &'a LayoutState,
 	pub alterables: &'a mut EventAlterables,
 }
-pub type ButtonClickCallback = Box<dyn Fn(ButtonClickEvent)>;
+pub type ButtonClickCallback = Box<dyn Fn(ButtonClickEvent) -> anyhow::Result<()>>;
 
 struct State {
 	hovered: bool,
@@ -59,14 +59,16 @@ struct Data {
 }
 
 pub struct ComponentButton {
+	base: ComponentBase,
 	data: Rc<Data>,
 	state: Rc<RefCell<State>>,
-
-	#[allow(dead_code)]
-	listener_handles: ListenerHandleVec,
 }
 
 impl ComponentTrait for ComponentButton {
+	fn base(&mut self) -> &mut ComponentBase {
+		&mut self.base
+	}
+
 	fn init(&self, _data: &mut InitData) {}
 }
 
@@ -143,6 +145,7 @@ fn register_event_mouse_enter<U1, U2>(
 				.alterables
 				.animate(anim_hover_in(data.clone(), event_data.widget_id));
 			state.borrow_mut().hovered = true;
+			Ok(())
 		}),
 	);
 }
@@ -163,6 +166,7 @@ fn register_event_mouse_leave<U1, U2>(
 				.alterables
 				.animate(anim_hover_out(data.clone(), event_data.widget_id));
 			state.borrow_mut().hovered = false;
+			Ok(())
 		}),
 	);
 }
@@ -184,6 +188,8 @@ fn register_event_mouse_press<U1, U2>(
 			if state.hovered {
 				state.down = true;
 			}
+
+			Ok(())
 		}),
 	);
 }
@@ -209,11 +215,12 @@ fn register_event_mouse_release<U1, U2>(
 					if let Some(on_click) = &state.on_click {
 						on_click(ButtonClickEvent {
 							state: common.state,
-							alterables: &mut common.alterables,
-						});
+							alterables: common.alterables,
+						})?;
 					}
 				}
 			}
+			Ok(())
 		}),
 	);
 }
@@ -286,18 +293,14 @@ pub fn construct<U1, U2>(
 		on_click: None,
 	}));
 
-	let mut lhandles = ListenerHandleVec::default();
+	let mut base = ComponentBase::default();
 
-	register_event_mouse_enter(data.clone(), state.clone(), listeners, &mut lhandles);
-	register_event_mouse_leave(data.clone(), state.clone(), listeners, &mut lhandles);
-	register_event_mouse_press(data.clone(), state.clone(), listeners, &mut lhandles);
-	register_event_mouse_release(data.clone(), state.clone(), listeners, &mut lhandles);
+	register_event_mouse_enter(data.clone(), state.clone(), listeners, &mut base.lhandles);
+	register_event_mouse_leave(data.clone(), state.clone(), listeners, &mut base.lhandles);
+	register_event_mouse_press(data.clone(), state.clone(), listeners, &mut base.lhandles);
+	register_event_mouse_release(data.clone(), state.clone(), listeners, &mut base.lhandles);
 
-	let button = Rc::new(ComponentButton {
-		data,
-		state,
-		listener_handles: lhandles,
-	});
+	let button = Rc::new(ComponentButton { base, data, state });
 
 	layout.defer_component_init(Component(button.clone()));
 	Ok(button)

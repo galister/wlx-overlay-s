@@ -33,12 +33,13 @@ fn button_click_callback(
             Translation::from_raw_text(text),
         );
 
-        // FIXME: remove unwrap
-        button.try_cast::<ComponentButton>().unwrap().set_text(
+        button.try_cast::<ComponentButton>()?.set_text(
             e.state,
             e.alterables,
             Translation::from_raw_text("this button has been clicked"),
         );
+
+        Ok(())
     })
 }
 
@@ -70,6 +71,7 @@ impl TestbedGeneric {
                 e.alterables,
                 Translation::from_raw_text("congrats!"),
             );
+            Ok(())
         }));
 
         let button_red = state.fetch_component_as::<ComponentButton>("button_red")?;

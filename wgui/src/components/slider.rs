@@ -5,7 +5,7 @@ use taffy::prelude::{length, percent};
 
 use crate::{
 	animation::{Animation, AnimationEasing},
-	components::{Component, ComponentTrait, InitData},
+	components::{Component, ComponentBase, ComponentTrait, InitData},
 	drawing::{self},
 	event::{
 		self, CallbackDataCommon, EventAlterables, EventListenerCollection, EventListenerKind,
@@ -63,11 +63,9 @@ struct Data {
 }
 
 pub struct ComponentSlider {
+	base: ComponentBase,
 	data: Rc<Data>,
 	state: Rc<RefCell<State>>,
-
-	#[allow(dead_code)]
-	listener_handles: ListenerHandleVec,
 }
 
 impl ComponentTrait for ComponentSlider {
@@ -75,6 +73,10 @@ impl ComponentTrait for ComponentSlider {
 		let mut state = self.state.borrow_mut();
 		let value = state.values.value;
 		state.set_value(init_data.state, &self.data, init_data.alterables, value);
+	}
+
+	fn base(&mut self) -> &mut ComponentBase {
+		&mut self.base
 	}
 }
 
@@ -222,6 +224,7 @@ fn register_event_mouse_enter<U1, U2>(
 			common.alterables.trigger_haptics();
 			state.borrow_mut().hovered = true;
 			on_enter_anim(common, data.slider_handle_rect_id);
+			Ok(())
 		}),
 	);
 }
@@ -240,6 +243,7 @@ fn register_event_mouse_leave<U1, U2>(
 			common.alterables.trigger_haptics();
 			state.borrow_mut().hovered = false;
 			on_leave_anim(common, data.slider_handle_rect_id);
+			Ok(())
 		}),
 	);
 }
@@ -260,6 +264,8 @@ fn register_event_mouse_motion<U1, U2>(
 			if state.dragging {
 				state.update_value_to_mouse(event_data, &data, common);
 			}
+
+			Ok(())
 		}),
 	);
 }
@@ -282,6 +288,8 @@ fn register_event_mouse_press<U1, U2>(
 				state.dragging = true;
 				state.update_value_to_mouse(event_data, &data, common)
 			}
+
+			Ok(())
 		}),
 	);
 }
@@ -303,6 +311,8 @@ fn register_event_mouse_release<U1, U2>(
 			if state.dragging {
 				state.dragging = false;
 			}
+
+			Ok(())
 		}),
 	);
 }
@@ -417,20 +427,16 @@ pub fn construct<U1, U2>(
 
 	let state = Rc::new(RefCell::new(state));
 
-	let mut lhandles = ListenerHandleVec::default();
+	let mut base = ComponentBase::default();
 
-	register_event_mouse_enter(data.clone(), state.clone(), listeners, &mut lhandles);
-	register_event_mouse_leave(data.clone(), state.clone(), listeners, &mut lhandles);
-	register_event_mouse_motion(data.clone(), state.clone(), listeners, &mut lhandles);
-	register_event_mouse_press(data.clone(), state.clone(), listeners, &mut lhandles);
-	register_event_mouse_leave(data.clone(), state.clone(), listeners, &mut lhandles);
-	register_event_mouse_release(data.clone(), state.clone(), listeners, &mut lhandles);
+	register_event_mouse_enter(data.clone(), state.clone(), listeners, &mut base.lhandles);
+	register_event_mouse_leave(data.clone(), state.clone(), listeners, &mut base.lhandles);
+	register_event_mouse_motion(data.clone(), state.clone(), listeners, &mut base.lhandles);
+	register_event_mouse_press(data.clone(), state.clone(), listeners, &mut base.lhandles);
+	register_event_mouse_leave(data.clone(), state.clone(), listeners, &mut base.lhandles);
+	register_event_mouse_release(data.clone(), state.clone(), listeners, &mut base.lhandles);
 
-	let slider = Rc::new(ComponentSlider {
-		data,
-		state,
-		listener_handles: lhandles,
-	});
+	let slider = Rc::new(ComponentSlider { base, data, state });
 
 	layout.defer_component_init(Component(slider.clone()));
 	Ok(slider)

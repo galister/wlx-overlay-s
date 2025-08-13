@@ -27,7 +27,7 @@ impl Display for FourCC {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for i in 0..4 {
             if let Some(c) = char::from_u32((self.value >> (i * 8)) & 0xFF) {
-                write!(f, "{}", c)?
+                write!(f, "{c}")?
             } else {
                 write!(f, "?")?
             }

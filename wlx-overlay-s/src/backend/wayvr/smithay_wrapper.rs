@@ -25,7 +25,7 @@ pub fn create_framebuffer_texture(
 ) -> u32 {
     unsafe {
         let mut tex = 0;
-        gl.GenTextures(1, &mut tex);
+        gl.GenTextures(1, &raw mut tex);
         gl.BindTexture(ffi::TEXTURE_2D, tex);
         gl.TexParameteri(
             ffi::TEXTURE_2D,

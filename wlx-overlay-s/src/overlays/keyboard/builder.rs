@@ -194,6 +194,7 @@ where
                         move |common, data, _app, _state| {
                             common.alterables.trigger_haptics();
                             on_enter_anim(k.clone(), common, data);
+                            Ok(())
                         }
                     }),
                 );
@@ -206,6 +207,7 @@ where
                         move |common, data, _app, _state| {
                             common.alterables.trigger_haptics();
                             on_leave_anim(k.clone(), common, data);
+                            Ok(())
                         }
                     }),
                 );
@@ -222,6 +224,7 @@ where
 
                             handle_press(app, &k, state, button);
                             on_press_anim(k.clone(), common, data);
+                            Ok(())
                         }
                     }),
                 );
@@ -235,6 +238,7 @@ where
                             if handle_release(app, &k, state) {
                                 on_release_anim(k.clone(), common, data);
                             }
+                            Ok(())
                         }
                     }),
                 );
@@ -252,6 +256,7 @@ where
                                 } else {
                                     on_release_anim(k.clone(), common, data);
                                 }
+                                Ok(())
                             }
                         }),
                     );

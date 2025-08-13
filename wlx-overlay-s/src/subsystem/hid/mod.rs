@@ -295,7 +295,7 @@ fn get_time() -> timeval {
         tv_sec: 0,
         tv_usec: 0,
     };
-    unsafe { libc::gettimeofday(&mut time, std::ptr::null_mut()) };
+    unsafe { libc::gettimeofday(&raw mut time, std::ptr::null_mut()) };
     time
 }
 

@@ -1,6 +1,10 @@
 use std::rc::Rc;
 
-use crate::{any::AnyTrait, event::EventAlterables, layout::LayoutState};
+use crate::{
+	any::AnyTrait,
+	event::{self, EventAlterables},
+	layout::LayoutState,
+};
 
 pub mod button;
 pub mod slider;
@@ -10,7 +14,14 @@ pub struct InitData<'a> {
 	pub alterables: &'a mut EventAlterables,
 }
 
+// common component data
+#[derive(Default)]
+pub struct ComponentBase {
+	lhandles: event::ListenerHandleVec,
+}
+
 pub trait ComponentTrait: AnyTrait {
+	fn base(&mut self) -> &mut ComponentBase;
 	fn init(&self, data: &mut InitData);
 }
 

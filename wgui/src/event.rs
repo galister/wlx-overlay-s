@@ -177,7 +177,7 @@ pub enum EventListenerKind {
 }
 
 pub type EventCallback<U1, U2> =
-	Box<dyn Fn(&mut CallbackDataCommon, &mut CallbackData, &mut U1, &mut U2)>;
+	Box<dyn Fn(&mut CallbackDataCommon, &mut CallbackData, &mut U1, &mut U2) -> anyhow::Result<()>>;
 
 //for ref-counting
 pub struct ListenerHandle {
@@ -209,7 +209,9 @@ impl<U1, U2> EventListener<U1, U2> {
 	pub fn callback_for_kind(
 		&self,
 		kind: EventListenerKind,
-	) -> Option<&impl Fn(&mut CallbackDataCommon, &mut CallbackData, &mut U1, &mut U2)> {
+	) -> Option<
+		&impl Fn(&mut CallbackDataCommon, &mut CallbackData, &mut U1, &mut U2) -> anyhow::Result<()>,
+	> {
 		if self.kind == kind {
 			Some(&self.callback)
 		} else {

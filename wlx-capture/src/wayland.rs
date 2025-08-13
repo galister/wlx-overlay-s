@@ -170,10 +170,10 @@ impl WlxClient {
                 match reader.read() {
                     Ok(n) => match queue_mut.dispatch_pending(self) {
                         Ok(n2) => {
-                            log::debug!("Read {}, dispatched {} pending events", n, n2);
+                            log::debug!("Read {n}, dispatched {n2} pending events");
                         }
                         Err(err) => {
-                            log::warn!("Error while dispatching {} pending events: {:?}", n, err);
+                            log::warn!("Error while dispatching {n} pending events: {err:?}");
                         }
                     },
                     Err(err) => {
@@ -182,7 +182,7 @@ impl WlxClient {
                                 return;
                             }
                         }
-                        log::warn!("Error while reading from event queue: {:?}", err);
+                        log::warn!("Error while reading from event queue: {err:?}");
                     }
                 }
             } else {

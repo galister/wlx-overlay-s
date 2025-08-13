@@ -93,6 +93,7 @@ where
                 EventListenerKind::InternalStateChange,
                 Box::new(move |common, data, _, _| {
                     clock_on_tick(&clock, common, data);
+                    Ok(())
                 }),
             );
         }

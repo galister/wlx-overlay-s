@@ -51,6 +51,7 @@ impl OscSender {
         Ok(())
     }
 
+    #[allow(clippy::too_many_lines)]
     pub fn send_params<D>(
         &mut self,
         overlays: &OverlayContainer<D>,

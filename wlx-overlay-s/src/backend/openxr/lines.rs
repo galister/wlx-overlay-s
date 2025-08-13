@@ -121,6 +121,7 @@ impl LinePool {
 
         let to_hmd = hmd.translation - from.translation;
         let sides = [Vec3A::Z, Vec3A::X, Vec3A::NEG_Z, Vec3A::NEG_X];
+        #[allow(clippy::neg_multiply)]
         let rotations = [
             Affine3A::IDENTITY,
             Affine3A::from_axis_angle(Vec3::Y, PI * 0.5),

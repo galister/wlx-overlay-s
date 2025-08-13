@@ -92,7 +92,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let mut recreate = false;
-    let mut last_draw = std::time::Instant::now();
 
     let mut scale = window.scale_factor() as f32;
 
@@ -302,8 +301,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                     let tgt = images[image_index as usize].clone();
 
-                    last_draw = std::time::Instant::now();
-
                     let mut cmd_buf = gfx
                         .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)
                         .unwrap();
@@ -337,9 +334,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 profiler.end();
             }
             Event::AboutToWait => {
-                if last_draw.elapsed().as_millis() > 16 {
-                    window.request_redraw();
-                }
+                // should be limited to vsync
+                window.request_redraw();
             }
             _ => (),
         }

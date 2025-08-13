@@ -2,6 +2,7 @@
 name = "uidev"
 version = "0.1.0"
 edition = "2024"
+description = "wgui library testing using winit backend"
 
 [dependencies]
 anyhow = { workspace = true }

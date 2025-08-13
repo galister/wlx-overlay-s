@@ -205,7 +205,7 @@ macro_rules! call_event {
 					alterables: $params.alterables,
 				};
 
-				callback(&mut common, &mut data, $user_data.0, $user_data.1);
+				callback(&mut common, &mut data, $user_data.0, $user_data.1)?;
 			}
 		}
 	};
@@ -329,7 +329,7 @@ impl WidgetState {
 		event: &Event,
 		user_data: &mut (&mut U1, &mut U2),
 		params: &'a mut EventParams<'a>,
-	) -> EventResult {
+	) -> anyhow::Result<EventResult> {
 		let hovered = event.test_mouse_within_transform(params.alterables.transform_stack.get());
 
 		match &event {
@@ -415,7 +415,7 @@ impl WidgetState {
 			}
 			Event::MouseWheel(e) => {
 				if hovered && self.process_wheel(params, e) {
-					return EventResult::Consumed;
+					return Ok(EventResult::Consumed);
 				}
 			}
 			Event::MouseLeave(e) => {
@@ -449,6 +449,6 @@ impl WidgetState {
 				}
 			}
 		}
-		EventResult::Pass
+		Ok(EventResult::Pass)
 	}
 }

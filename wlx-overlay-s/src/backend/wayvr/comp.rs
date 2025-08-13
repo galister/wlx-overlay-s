@@ -1,12 +1,12 @@
 use smithay::backend::allocator::dmabuf::Dmabuf;
+use smithay::backend::renderer::ImportDma;
 use smithay::backend::renderer::gles::GlesRenderer;
 use smithay::backend::renderer::utils::on_commit_buffer_handler;
-use smithay::backend::renderer::ImportDma;
 use smithay::input::{Seat, SeatHandler, SeatState};
 use smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel;
 use smithay::reexports::wayland_server;
-use smithay::reexports::wayland_server::protocol::{wl_buffer, wl_seat, wl_surface};
 use smithay::reexports::wayland_server::Resource;
+use smithay::reexports::wayland_server::protocol::{wl_buffer, wl_seat, wl_surface};
 use smithay::wayland::buffer::BufferHandler;
 use smithay::wayland::dmabuf::{
     DmabufFeedback, DmabufGlobal, DmabufHandler, DmabufState, ImportNotifier,
@@ -23,22 +23,22 @@ use std::sync::{Arc, Mutex};
 
 use smithay::utils::Serial;
 use smithay::wayland::compositor::{
-    self, with_surface_tree_downward, SurfaceAttributes, TraversalAction,
+    self, SurfaceAttributes, TraversalAction, with_surface_tree_downward,
 };
 
+use smithay::wayland::selection::SelectionHandler;
 use smithay::wayland::selection::data_device::{
     ClientDndGrabHandler, DataDeviceHandler, DataDeviceState, ServerDndGrabHandler,
 };
-use smithay::wayland::selection::SelectionHandler;
 use smithay::wayland::shell::xdg::{
     PopupSurface, PositionerState, ToplevelSurface, XdgShellHandler, XdgShellState,
 };
+use wayland_server::Client;
 use wayland_server::backend::{ClientData, ClientId, DisconnectReason};
 use wayland_server::protocol::wl_surface::WlSurface;
-use wayland_server::Client;
 
-use super::event_queue::SyncEventQueue;
 use super::WayVRTask;
+use super::event_queue::SyncEventQueue;
 
 pub struct Application {
     pub gles_renderer: GlesRenderer,
@@ -220,7 +220,7 @@ pub fn send_frames_surface_tree(surface: &wl_surface::WlSurface, time: u32) {
         |_, _, &()| TraversalAction::DoChildren(()),
         |_surf, states, &()| {
             // the surface may not have any user_data if it is a subsurface and has not
-            // yet been commited
+            // yet been committed
             for callback in states
                 .cached_state
                 .get::<SurfaceAttributes>()

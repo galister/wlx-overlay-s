@@ -157,16 +157,16 @@ impl EGLData {
                 self.display.as_ptr(),
                 0,
                 std::ptr::null_mut(),
-                &mut num_formats,
+                &raw mut num_formats,
             );
 
-            // Retrieve formt list
+            // Retrieve format list
             let mut formats: Vec<i32> = vec![0; num_formats as usize];
             egl_query_dmabuf_formats_ext(
                 self.display.as_ptr(),
                 num_formats,
                 formats.as_mut_ptr(),
-                &mut num_formats,
+                &raw mut num_formats,
             );
 
             /*for (idx, format) in formats.iter().enumerate() {
@@ -196,7 +196,7 @@ impl EGLData {
                 0,
                 std::ptr::null_mut(),
                 std::ptr::null_mut(),
-                &mut num_mods,
+                &raw mut num_mods,
             );
 
             if num_mods == 0 {
@@ -210,7 +210,7 @@ impl EGLData {
                 num_mods,
                 mods.as_mut_ptr(),
                 std::ptr::null_mut(),
-                &mut num_mods,
+                &raw mut num_mods,
             );
 
             if mods[0] == 0xFFFF_FFFF_FFFF_FFFF {

@@ -226,7 +226,7 @@ impl Layout {
 			event,
 			user_data,
 			&mut params,
-		) {
+		)? {
 			widget::EventResult::Pass => {
 				// go on
 			}

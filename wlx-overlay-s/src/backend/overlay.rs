@@ -356,10 +356,7 @@ pub fn ui_transform(extent: [u32; 2]) -> Affine2 {
             y: -1.0,
         }
     } else {
-        Vec2 {
-            x: 1.0,
-            y: -1.0 * aspect,
-        }
+        Vec2 { x: 1.0, y: -aspect }
     };
     let center = Vec2 { x: 0.5, y: 0.5 };
     Affine2::from_scale_angle_translation(scale, 0.0, center)
