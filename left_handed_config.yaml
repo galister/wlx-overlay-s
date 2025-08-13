@@ -1,0 +1,7 @@
+# WlxOverlay-S configuration for left-handed mouse mode
+# Place this file in ~/.config/wlxoverlay/conf.d/left_handed.yaml
+
+# Enable left-handed mouse mode
+# This swaps the left and right mouse buttons to compensate for
+# system-level left-handed mouse configuration in KDE/GNOME/etc.
+left_handed_mouse: true
