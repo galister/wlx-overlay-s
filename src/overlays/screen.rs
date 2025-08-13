@@ -134,6 +134,17 @@ impl InteractionHandler for ScreenInteractionHandler {
             _ => MOUSE_LEFT,
         };
 
+        // Swap left and right buttons if left-handed mode is enabled
+        let btn = if app.session.config.left_handed_mouse {
+            match btn {
+                MOUSE_LEFT => MOUSE_RIGHT,
+                MOUSE_RIGHT => MOUSE_LEFT,
+                other => other,
+            }
+        } else {
+            btn
+        };
+
         if pressed {
             set_next_move(u64::from(app.session.config.click_freeze_time_ms));
         }
