@@ -6,6 +6,7 @@ use wgui::{
     components::{
         Component,
         button::{ButtonClickCallback, ComponentButton},
+        checkbox::ComponentCheckbox,
     },
     event::EventListenerCollection,
     globals::WguiGlobals,
@@ -60,8 +61,7 @@ impl TestbedGeneric {
         let (layout, state) =
             wgui::parser::new_layout_from_assets(globals, listeners, XML_PATH, false)?;
 
-        let label_cur_option =
-            state.fetch_widget::<WidgetLabel>(&layout.state, "label_current_option")?;
+        let label_cur_option = state.fetch_widget(&layout.state, "label_current_option")?;
 
         let button_click_me = state.fetch_component_as::<ComponentButton>("button_click_me")?;
         let button = button_click_me.clone();
@@ -81,6 +81,17 @@ impl TestbedGeneric {
         handle_button_click(button_red, label_cur_option.clone(), "Clicked red");
         handle_button_click(button_aqua, label_cur_option.clone(), "Clicked aqua");
         handle_button_click(button_yellow, label_cur_option.clone(), "Clicked yellow");
+
+        let cb_first = state.fetch_component_as::<ComponentCheckbox>("cb_first")?;
+        let label = label_cur_option.clone();
+        cb_first.on_toggle(Box::new(move |e| {
+            let mut widget = label.get_as_mut::<WidgetLabel>();
+            widget.set_text(
+                &mut e.state.globals.i18n(),
+                Translation::from_raw_text(&format!("checkbox toggle: {}", e.checked)),
+            );
+            Ok(())
+        }));
 
         Ok(Self { layout, state })
     }

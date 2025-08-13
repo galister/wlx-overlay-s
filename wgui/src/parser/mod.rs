@@ -1,4 +1,5 @@
 mod component_button;
+mod component_checkbox;
 mod component_slider;
 mod style;
 mod widget_div;
@@ -14,9 +15,10 @@ use crate::{
 	globals::WguiGlobals,
 	layout::{Layout, LayoutState, Widget, WidgetID},
 	parser::{
-		component_button::parse_component_button, component_slider::parse_component_slider,
-		widget_div::parse_widget_div, widget_label::parse_widget_label,
-		widget_rectangle::parse_widget_rectangle, widget_sprite::parse_widget_sprite,
+		component_button::parse_component_button, component_checkbox::parse_component_checkbox,
+		component_slider::parse_component_slider, widget_div::parse_widget_div,
+		widget_label::parse_widget_label, widget_rectangle::parse_widget_rectangle,
+		widget_sprite::parse_widget_sprite,
 	},
 };
 use ouroboros::self_referencing;
@@ -92,12 +94,12 @@ impl ParserState {
 		}
 	}
 
-	pub fn fetch_widget<T: 'static>(&self, state: &LayoutState, id: &str) -> anyhow::Result<Widget> {
+	pub fn fetch_widget(&self, state: &LayoutState, id: &str) -> anyhow::Result<Widget> {
 		let widget_id = self.get_widget_id(id)?;
 		let widget = state
 			.widgets
 			.get(widget_id)
-			.ok_or_else(|| anyhow::anyhow!("fetch_widget_as({}): widget not found", id))?;
+			.ok_or_else(|| anyhow::anyhow!("fetch_widget({}): widget not found", id))?;
 		Ok(widget.clone())
 	}
 
@@ -253,8 +255,22 @@ fn parse_percent(value: &str) -> Option<f32> {
 	Some(val / 100.0)
 }
 
+fn parse_i32(value: &str) -> Option<i32> {
+	value.parse::<i32>().ok()
+}
+
 fn parse_f32(value: &str) -> Option<f32> {
 	value.parse::<f32>().ok()
+}
+
+fn parse_check_i32(value: &str, num: &mut i32) -> bool {
+	if let Some(value) = parse_i32(value) {
+		*num = value;
+		true
+	} else {
+		print_invalid_value(value);
+		false
+	}
 }
 
 fn parse_check_f32(value: &str, num: &mut f32) -> bool {
@@ -659,6 +675,9 @@ fn parse_children<'a, U1, U2>(
 			}
 			"slider" => {
 				parse_component_slider(file, ctx, child_node, parent_id)?;
+			}
+			"check_box" => {
+				parse_component_checkbox(file, ctx, child_node, parent_id)?;
 			}
 			"" => { /* ignore */ }
 			other_tag_name => {

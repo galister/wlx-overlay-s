@@ -1,13 +1,16 @@
 use std::{cell::RefCell, rc::Rc};
-use taffy::{AlignItems, JustifyContent, prelude::length};
+use taffy::{
+	AlignItems, JustifyContent,
+	prelude::{length, percent},
+};
 
 use crate::{
 	animation::{Animation, AnimationEasing},
 	components::{Component, ComponentBase, ComponentTrait, InitData},
-	drawing::{self, Color},
+	drawing::Color,
 	event::{EventAlterables, EventListenerCollection, EventListenerKind, ListenerHandleVec},
 	i18n::Translation,
-	layout::{Layout, LayoutState, WidgetID},
+	layout::{self, Layout, LayoutState, WidgetID},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
 		label::{WidgetLabel, WidgetLabelParams},
@@ -18,54 +21,53 @@ use crate::{
 
 pub struct Params {
 	pub text: Translation,
-	pub color: drawing::Color,
-	pub border_color: drawing::Color,
-	pub round: WLength,
 	pub style: taffy::Style,
-	pub text_style: TextStyle,
+	pub box_size: f32,
+	pub checked: bool,
 }
 
 impl Default for Params {
 	fn default() -> Self {
 		Self {
 			text: Translation::from_raw_text(""),
-			color: drawing::Color::new(1.0, 1.0, 1.0, 1.0),
-			border_color: drawing::Color::new(0.0, 0.0, 0.0, 1.0),
-			round: WLength::Units(4.0),
 			style: Default::default(),
-			text_style: TextStyle::default(),
+			box_size: 24.0,
+			checked: false,
 		}
 	}
 }
 
-pub struct ButtonClickEvent<'a> {
+pub struct CheckboxToggleEvent<'a> {
 	pub state: &'a LayoutState,
 	pub alterables: &'a mut EventAlterables,
+	pub checked: bool,
 }
-pub type ButtonClickCallback = Box<dyn Fn(ButtonClickEvent) -> anyhow::Result<()>>;
+pub type CheckboxToggleCallback = Box<dyn Fn(CheckboxToggleEvent) -> anyhow::Result<()>>;
 
 struct State {
+	checked: bool,
 	hovered: bool,
 	down: bool,
-	on_click: Option<ButtonClickCallback>,
+	on_toggle: Option<CheckboxToggleCallback>,
 }
 
 struct Data {
-	initial_color: drawing::Color,
-	initial_color2: drawing::Color,
-	initial_border_color: drawing::Color,
-	id_label: WidgetID, // Label
-	id_rect: WidgetID,  // Rectangle
+	id_container: WidgetID, // Rectangle, transparent if not hovered
+
+	//id_outer_box: WidgetID, // Rectangle, parent of container
+	id_inner_box: WidgetID, // Rectangle, parent of outer_box
+	id_label: WidgetID,     // Label, parent of container
+
 	node_label: taffy::NodeId,
 }
 
-pub struct ComponentButton {
+pub struct ComponentCheckbox {
 	base: ComponentBase,
 	data: Rc<Data>,
 	state: Rc<RefCell<State>>,
 }
 
-impl ComponentTrait for ComponentButton {
+impl ComponentTrait for ComponentCheckbox {
 	fn base(&mut self) -> &mut ComponentBase {
 		&mut self.base
 	}
@@ -73,7 +75,20 @@ impl ComponentTrait for ComponentButton {
 	fn init(&self, _data: &mut InitData) {}
 }
 
-impl ComponentButton {
+const COLOR_CHECKED: Color = Color::new(0.1, 0.5, 1.0, 1.0);
+const COLOR_UNCHECKED: Color = Color::new(0.1, 0.5, 1.0, 0.0);
+
+fn set_box_checked(widgets: &layout::WidgetMap, data: &Data, checked: bool) {
+	widgets.call(data.id_inner_box, |rect: &mut WidgetRectangle| {
+		rect.params.color = if checked {
+			COLOR_CHECKED
+		} else {
+			COLOR_UNCHECKED
+		}
+	});
+}
+
+impl ComponentCheckbox {
 	pub fn set_text(&self, state: &LayoutState, alterables: &mut EventAlterables, text: Translation) {
 		let globals = state.globals.clone();
 
@@ -87,45 +102,48 @@ impl ComponentButton {
 		alterables.mark_dirty(self.data.node_label);
 	}
 
-	pub fn on_click(&self, func: ButtonClickCallback) {
-		self.state.borrow_mut().on_click = Some(func);
+	pub fn set_checked(&self, state: &LayoutState, alterables: &mut EventAlterables, checked: bool) {
+		self.state.borrow_mut().checked = checked;
+		set_box_checked(&state.widgets, &self.data, checked);
+		alterables.mark_redraw();
+	}
+
+	pub fn on_toggle(&self, func: CheckboxToggleCallback) {
+		self.state.borrow_mut().on_toggle = Some(func);
 	}
 }
 
-fn get_color2(color: &drawing::Color) -> drawing::Color {
-	color.lerp(&Color::new(0.0, 0.0, 0.0, color.a), 0.2)
-}
-
-fn anim_hover(rect: &mut WidgetRectangle, data: &Data, pos: f32, pressed: bool) {
-	let brightness = pos * if pressed { 0.75 } else { 0.5 };
-	let border_brightness = pos;
-	rect.params.color = data.initial_color.add_rgb(brightness);
-	rect.params.color2 = data.initial_color2.add_rgb(brightness);
-	rect.params.border_color = data.initial_border_color.add_rgb(border_brightness);
+fn anim_hover(rect: &mut WidgetRectangle, pos: f32, pressed: bool) {
+	let brightness = pos * if pressed { 0.6 } else { 0.4 };
 	rect.params.border = 2.0;
+	rect.params.color.a = brightness;
+	rect.params.border_color.a = rect.params.color.a;
+	if pressed {
+		rect.params.border_color.a += 0.4;
+	}
 }
 
-fn anim_hover_in(data: Rc<Data>, state: Rc<RefCell<State>>, widget_id: WidgetID) -> Animation {
+fn anim_hover_in(state: Rc<RefCell<State>>, widget_id: WidgetID) -> Animation {
 	Animation::new(
 		widget_id,
 		5,
 		AnimationEasing::OutQuad,
 		Box::new(move |common, anim_data| {
 			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>();
-			anim_hover(rect, &data, anim_data.pos, state.borrow().down);
+			anim_hover(rect, anim_data.pos, state.borrow().down);
 			common.alterables.mark_redraw();
 		}),
 	)
 }
 
-fn anim_hover_out(data: Rc<Data>, state: Rc<RefCell<State>>, widget_id: WidgetID) -> Animation {
+fn anim_hover_out(state: Rc<RefCell<State>>, widget_id: WidgetID) -> Animation {
 	Animation::new(
 		widget_id,
 		8,
 		AnimationEasing::OutQuad,
 		Box::new(move |common, anim_data| {
 			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>();
-			anim_hover(rect, &data, 1.0 - anim_data.pos, state.borrow().down);
+			anim_hover(rect, 1.0 - anim_data.pos, state.borrow().down);
 			common.alterables.mark_redraw();
 		}),
 	)
@@ -139,15 +157,13 @@ fn register_event_mouse_enter<U1, U2>(
 ) {
 	listeners.register(
 		listener_handles,
-		data.id_rect,
+		data.id_container,
 		EventListenerKind::MouseEnter,
 		Box::new(move |common, event_data, _, _| {
 			common.alterables.trigger_haptics();
-			common.alterables.animate(anim_hover_in(
-				data.clone(),
-				state.clone(),
-				event_data.widget_id,
-			));
+			common
+				.alterables
+				.animate(anim_hover_in(state.clone(), event_data.widget_id));
 			state.borrow_mut().hovered = true;
 			Ok(())
 		}),
@@ -162,15 +178,13 @@ fn register_event_mouse_leave<U1, U2>(
 ) {
 	listeners.register(
 		listener_handles,
-		data.id_rect,
+		data.id_container,
 		EventListenerKind::MouseLeave,
 		Box::new(move |common, event_data, _, _| {
 			common.alterables.trigger_haptics();
-			common.alterables.animate(anim_hover_out(
-				data.clone(),
-				state.clone(),
-				event_data.widget_id,
-			));
+			common
+				.alterables
+				.animate(anim_hover_out(state.clone(), event_data.widget_id));
 			state.borrow_mut().hovered = false;
 			Ok(())
 		}),
@@ -185,13 +199,13 @@ fn register_event_mouse_press<U1, U2>(
 ) {
 	listeners.register(
 		listener_handles,
-		data.id_rect,
+		data.id_container,
 		EventListenerKind::MousePress,
 		Box::new(move |common, event_data, _, _| {
 			let mut state = state.borrow_mut();
 
 			let rect = event_data.obj.get_as_mut::<WidgetRectangle>();
-			anim_hover(rect, &data, 1.0, true);
+			anim_hover(rect, 1.0, true);
 
 			if state.hovered {
 				state.down = true;
@@ -213,21 +227,25 @@ fn register_event_mouse_release<U1, U2>(
 ) {
 	listeners.register(
 		listener_handles,
-		data.id_rect,
+		data.id_container,
 		EventListenerKind::MouseRelease,
 		Box::new(move |common, event_data, _, _| {
 			let rect = event_data.obj.get_as_mut::<WidgetRectangle>();
-			anim_hover(rect, &data, 1.0, false);
+			anim_hover(rect, 1.0, false);
 
 			let mut state = state.borrow_mut();
 			if state.down {
 				state.down = false;
 
+				state.checked = !state.checked;
+				set_box_checked(&common.state.widgets, &data, state.checked);
+
 				if state.hovered {
-					if let Some(on_click) = &state.on_click {
-						on_click(ButtonClickEvent {
+					if let Some(on_toggle) = &state.on_toggle {
+						on_toggle(CheckboxToggleEvent {
 							state: common.state,
 							alterables: common.alterables,
+							checked: state.checked,
 						})?;
 					}
 				}
@@ -246,45 +264,87 @@ pub fn construct<U1, U2>(
 	listeners: &mut EventListenerCollection<U1, U2>,
 	parent: WidgetID,
 	params: Params,
-) -> anyhow::Result<Rc<ComponentButton>> {
+) -> anyhow::Result<Rc<ComponentCheckbox>> {
 	let mut style = params.style;
 
 	// force-override style
+	style.flex_wrap = taffy::FlexWrap::NoWrap;
 	style.align_items = Some(AlignItems::Center);
 	style.justify_content = Some(JustifyContent::Center);
-	style.padding = length(1.0);
+	style.padding = taffy::Rect {
+		left: length(4.0),
+		right: length(8.0),
+		top: length(4.0),
+		bottom: length(4.0),
+	};
+	//style.align_self = Some(taffy::AlignSelf::Start); // do not stretch self to the parent
+	style.gap = length(4.0);
 
 	let globals = layout.state.globals.clone();
 
-	let (id_rect, _) = layout.add_child(
+	let (id_container, _) = layout.add_child(
 		parent,
 		WidgetRectangle::create(WidgetRectangleParams {
-			color: params.color,
-			color2: get_color2(&params.color),
-			gradient: drawing::GradientMode::Vertical,
-			round: params.round,
-			border_color: params.border_color,
-			border: 2.0,
+			color: Color::new(1.0, 1.0, 1.0, 0.0),
+			border_color: Color::new(1.0, 1.0, 1.0, 0.0),
+			round: WLength::Units(5.0),
+			..Default::default()
 		})?,
 		style,
 	)?;
 
-	let light_text = (params.color.r + params.color.g + params.color.b) < 1.5;
+	let box_size = taffy::Size {
+		width: length(params.box_size),
+		height: length(params.box_size),
+	};
+
+	let (id_outer_box, _) = layout.add_child(
+		id_container,
+		WidgetRectangle::create(WidgetRectangleParams {
+			border: 2.0,
+			border_color: Color::new(1.0, 1.0, 1.0, 1.0),
+			round: WLength::Units(8.0),
+			color: Color::new(1.0, 1.0, 1.0, 0.0),
+			..Default::default()
+		})?,
+		taffy::Style {
+			size: box_size,
+			padding: taffy::Rect::length(4.0),
+			min_size: box_size,
+			max_size: box_size,
+			..Default::default()
+		},
+	)?;
+
+	let (id_inner_box, _) = layout.add_child(
+		id_outer_box,
+		WidgetRectangle::create(WidgetRectangleParams {
+			round: WLength::Units(5.0),
+			color: if params.checked {
+				COLOR_CHECKED
+			} else {
+				COLOR_UNCHECKED
+			},
+			..Default::default()
+		})?,
+		taffy::Style {
+			size: taffy::Size {
+				width: percent(1.0),
+				height: percent(1.0),
+			},
+			..Default::default()
+		},
+	)?;
 
 	let (id_label, node_label) = layout.add_child(
-		id_rect,
+		id_container,
 		WidgetLabel::create(
 			&mut globals.i18n(),
 			WidgetLabelParams {
 				content: params.text,
 				style: TextStyle {
 					weight: Some(FontWeight::Bold),
-					color: Some(if light_text {
-						Color::new(1.0, 1.0, 1.0, 1.0)
-					} else {
-						Color::new(0.0, 0.0, 0.0, 1.0)
-					}),
-					..params.text_style
+					..Default::default()
 				},
 			},
 		)?,
@@ -294,18 +354,17 @@ pub fn construct<U1, U2>(
 	)?;
 
 	let data = Rc::new(Data {
-		id_label,
-		id_rect,
 		node_label,
-		initial_color: params.color,
-		initial_color2: get_color2(&params.color),
-		initial_border_color: params.border_color,
+		id_container,
+		id_label,
+		id_inner_box,
 	});
 
 	let state = Rc::new(RefCell::new(State {
+		checked: params.checked,
 		down: false,
 		hovered: false,
-		on_click: None,
+		on_toggle: None,
 	}));
 
 	let mut base = ComponentBase::default();
@@ -315,8 +374,8 @@ pub fn construct<U1, U2>(
 	register_event_mouse_press(data.clone(), state.clone(), listeners, &mut base.lhandles);
 	register_event_mouse_release(data.clone(), state.clone(), listeners, &mut base.lhandles);
 
-	let button = Rc::new(ComponentButton { base, data, state });
+	let checkbox = Rc::new(ComponentCheckbox { base, data, state });
 
-	layout.defer_component_init(Component(button.clone()));
-	Ok(button)
+	layout.defer_component_init(Component(checkbox.clone()));
+	Ok(checkbox)
 }

@@ -10,14 +10,20 @@
 
       <div margin_left="16" gap="8" flex_direction="column">
         <label id="label_current_option" text="Click any of these buttons" size="20" weight="bold" />
-        <div>
+        <div gap="4">
           <button id="button_red" text="Red button" width="220" height="32" color="#FF0000" />
           <button id="button_aqua" text="Aqua button" width="220" height="32" color="#00FFFF" />
           <button id="button_yellow" text="Yellow button" width="220" height="32" color="#FFFF00" />
         </div>
         <button id="button_click_me" text="Click me" width="128" height="24" color="#FFFFFF" />
-      </div>
 
+        <div gap="8" align_items="center">
+          <check_box id="cb_first" text="I'm a checkbox!" />
+          <check_box text="and me too!" />
+          <check_box text="i'm tall" box_size="32" />
+          <check_box text="i'm checked by default" checked="1" />
+        </div>
+      </div>
 
       <div flex_direction="row" gap="16">
         <div flex_direction="column" gap="8">

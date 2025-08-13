@@ -359,13 +359,6 @@ pub fn construct<U1, U2>(
 		position: taffy::Position::Absolute,
 		align_items: Some(taffy::AlignItems::Center),
 		justify_content: Some(taffy::JustifyContent::Center),
-		margin: taffy::Rect {
-			// FIXME: temporary just for testing
-			left: percent(0.5),
-			bottom: length(0.0),
-			right: length(0.0),
-			top: length(0.0),
-		},
 		..Default::default()
 	};
 
