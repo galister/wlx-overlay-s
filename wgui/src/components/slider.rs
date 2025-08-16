@@ -322,13 +322,14 @@ pub fn construct<U1, U2>(
 	listeners: &mut EventListenerCollection<U1, U2>,
 	parent: WidgetID,
 	params: Params,
-) -> anyhow::Result<Rc<ComponentSlider>> {
+) -> anyhow::Result<(WidgetID, Rc<ComponentSlider>)> {
 	let mut style = params.style;
 	style.position = taffy::Position::Relative;
 	style.min_size = style.size;
 	style.max_size = style.size;
 
-	let (body_id, slider_body_node) = layout.add_child(parent, WidgetDiv::create(), style)?;
+	let (root_id, slider_body_node) = layout.add_child(parent, WidgetDiv::create(), style)?;
+	let body_id = root_id;
 
 	let (_background_id, _) = layout.add_child(
 		body_id,
@@ -432,5 +433,5 @@ pub fn construct<U1, U2>(
 	let slider = Rc::new(ComponentSlider { base, data, state });
 
 	layout.defer_component_init(Component(slider.clone()));
-	Ok(slider)
+	Ok((root_id, slider))
 }

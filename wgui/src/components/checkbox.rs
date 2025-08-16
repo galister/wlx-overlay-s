@@ -264,7 +264,7 @@ pub fn construct<U1, U2>(
 	listeners: &mut EventListenerCollection<U1, U2>,
 	parent: WidgetID,
 	params: Params,
-) -> anyhow::Result<Rc<ComponentCheckbox>> {
+) -> anyhow::Result<(WidgetID, Rc<ComponentCheckbox>)> {
 	let mut style = params.style;
 
 	// force-override style
@@ -282,7 +282,7 @@ pub fn construct<U1, U2>(
 
 	let globals = layout.state.globals.clone();
 
-	let (id_container, _) = layout.add_child(
+	let (id_root, _) = layout.add_child(
 		parent,
 		WidgetRectangle::create(WidgetRectangleParams {
 			color: Color::new(1.0, 1.0, 1.0, 0.0),
@@ -292,6 +292,7 @@ pub fn construct<U1, U2>(
 		}),
 		style,
 	)?;
+	let id_container = id_root;
 
 	let box_size = taffy::Size {
 		width: length(params.box_size),
@@ -375,5 +376,5 @@ pub fn construct<U1, U2>(
 	let checkbox = Rc::new(ComponentCheckbox { base, data, state });
 
 	layout.defer_component_init(Component(checkbox.clone()));
-	Ok(checkbox)
+	Ok((id_root, checkbox))
 }

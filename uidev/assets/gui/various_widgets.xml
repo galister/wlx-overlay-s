@@ -23,6 +23,13 @@
           <check_box text="i'm tall" box_size="32" />
           <check_box text="i'm checked by default" checked="1" />
         </div>
+
+        <label text="custom attrib test, you should see three rectangles below, each of them in R, G and B" />
+        <div flex_direction="row" gap="8">
+          <rectangle _my_custom="red" width="16" height="16" />
+          <rectangle _my_custom="green" width="16" height="16" />
+          <rectangle _my_custom="blue" width="16" height="16" />
+        </div>
       </div>
 
       <div flex_direction="row" gap="16">

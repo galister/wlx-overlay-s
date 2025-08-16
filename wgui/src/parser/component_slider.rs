@@ -11,7 +11,7 @@ pub fn parse_component_slider<'a, U1, U2>(
 	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<WidgetID> {
 	let mut min_value = 0.0;
 	let mut max_value = 1.0;
 	let mut initial_value = 0.5;
@@ -34,7 +34,7 @@ pub fn parse_component_slider<'a, U1, U2>(
 		}
 	}
 
-	let component = slider::construct(
+	let (new_id, component) = slider::construct(
 		ctx.layout,
 		ctx.listeners,
 		parent_id,
@@ -50,5 +50,5 @@ pub fn parse_component_slider<'a, U1, U2>(
 
 	process_component(file, ctx, node, Component(component));
 
-	Ok(())
+	Ok(new_id)
 }

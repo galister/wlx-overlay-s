@@ -15,7 +15,7 @@ pub fn parse_component_button<'a, U1, U2>(
 	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<WidgetID> {
 	let mut color = Color::new(1.0, 1.0, 1.0, 1.0);
 	let mut border_color: Option<Color> = None;
 	let mut round = WLength::Units(4.0);
@@ -55,7 +55,7 @@ pub fn parse_component_button<'a, U1, U2>(
 		));
 	}
 
-	let component = button::construct(
+	let (new_id, component) = button::construct(
 		ctx.layout,
 		ctx.listeners,
 		parent_id,
@@ -71,5 +71,5 @@ pub fn parse_component_button<'a, U1, U2>(
 
 	process_component(file, ctx, node, Component(component));
 
-	Ok(())
+	Ok(new_id)
 }

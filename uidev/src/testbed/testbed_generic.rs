@@ -8,12 +8,13 @@ use wgui::{
         button::{ButtonClickCallback, ComponentButton},
         checkbox::ComponentCheckbox,
     },
+    drawing::Color,
     event::EventListenerCollection,
     globals::WguiGlobals,
     i18n::Translation,
     layout::{Layout, Widget},
-    parser::{ParseDocumentParams, ParserState},
-    widget::label::WidgetLabel,
+    parser::{ParseDocumentExtra, ParseDocumentParams, ParserState},
+    widget::{label::WidgetLabel, rectangle::WidgetRectangle},
 };
 
 pub struct TestbedGeneric {
@@ -58,12 +59,27 @@ impl TestbedGeneric {
 
         let globals = WguiGlobals::new(Box::new(assets::Asset {}))?;
 
+        let extra = ParseDocumentExtra {
+            on_custom_attrib: Some(Box::new(move |par| {
+                if par.attrib == "my_custom" {
+                    let mut rect = par.get_widget_as::<WidgetRectangle>().unwrap();
+                    rect.params.color = match par.value {
+                        "red" => Color::new(1.0, 0.0, 0.0, 1.0),
+                        "green" => Color::new(0.0, 1.0, 0.0, 1.0),
+                        "blue" => Color::new(0.0, 0.0, 1.0, 1.0),
+                        _ => Color::new(1.0, 1.0, 1.0, 1.0),
+                    }
+                }
+            })),
+            dev_mode: false,
+        };
+
         let (layout, state) = wgui::parser::new_layout_from_assets(
             listeners,
             &ParseDocumentParams {
                 globals,
                 path: XML_PATH,
-                extra: Default::default(),
+                extra,
             },
         )?;
 

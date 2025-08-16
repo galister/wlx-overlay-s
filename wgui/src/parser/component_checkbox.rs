@@ -13,7 +13,7 @@ pub fn parse_component_checkbox<'a, U1, U2>(
 	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<WidgetID> {
 	let mut box_size = 24.0;
 	let mut translation = Translation::default();
 	let mut checked = 0;
@@ -39,7 +39,7 @@ pub fn parse_component_checkbox<'a, U1, U2>(
 		}
 	}
 
-	let component = checkbox::construct(
+	let (new_id, component) = checkbox::construct(
 		ctx.layout,
 		ctx.listeners,
 		parent_id,
@@ -53,5 +53,5 @@ pub fn parse_component_checkbox<'a, U1, U2>(
 
 	process_component(file, ctx, node, Component(component));
 
-	Ok(())
+	Ok(new_id)
 }

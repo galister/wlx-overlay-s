@@ -15,7 +15,7 @@ pub fn parse_widget_sprite<'a, U1, U2>(
 	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<WidgetID> {
 	let mut params = WidgetSpriteParams::default();
 	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
 	let style = parse_style(&attribs);
@@ -62,5 +62,5 @@ pub fn parse_widget_sprite<'a, U1, U2>(
 	parse_widget_universal(file, ctx, node, new_id);
 	parse_children(file, ctx, node, new_id)?;
 
-	Ok(())
+	Ok(new_id)
 }

@@ -246,7 +246,7 @@ pub fn construct<U1, U2>(
 	listeners: &mut EventListenerCollection<U1, U2>,
 	parent: WidgetID,
 	params: Params,
-) -> anyhow::Result<Rc<ComponentButton>> {
+) -> anyhow::Result<(WidgetID, Rc<ComponentButton>)> {
 	let mut style = params.style;
 
 	// force-override style
@@ -256,7 +256,7 @@ pub fn construct<U1, U2>(
 
 	let globals = layout.state.globals.clone();
 
-	let (id_rect, _) = layout.add_child(
+	let (id_root, _) = layout.add_child(
 		parent,
 		WidgetRectangle::create(WidgetRectangleParams {
 			color: params.color,
@@ -268,6 +268,7 @@ pub fn construct<U1, U2>(
 		}),
 		style,
 	)?;
+	let id_rect = id_root;
 
 	let light_text = (params.color.r + params.color.g + params.color.b) < 1.5;
 
@@ -316,5 +317,5 @@ pub fn construct<U1, U2>(
 	let button = Rc::new(ComponentButton { base, data, state });
 
 	layout.defer_component_init(Component(button.clone()));
-	Ok(button)
+	Ok((id_root, button))
 }

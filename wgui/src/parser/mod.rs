@@ -13,7 +13,7 @@ use crate::{
 	drawing::{self},
 	event::EventListenerCollection,
 	globals::WguiGlobals,
-	layout::{Layout, LayoutState, Widget, WidgetID},
+	layout::{Layout, LayoutState, Widget, WidgetID, WidgetMap},
 	parser::{
 		component_button::parse_component_button, component_checkbox::parse_component_checkbox,
 		component_slider::parse_component_slider, widget_div::parse_widget_div,
@@ -23,6 +23,7 @@ use crate::{
 };
 use ouroboros::self_referencing;
 use std::{
+	cell::RefMut,
 	collections::HashMap,
 	path::{Path, PathBuf},
 	rc::Rc,
@@ -619,59 +620,96 @@ fn parse_widget_universal<'a, U1, U2>(
 	}
 }
 
-fn parse_children<'a, U1, U2>(
+fn parse_child<'a, U1, U2>(
 	file: &ParserFile,
 	ctx: &mut ParserContext<U1, U2>,
-	node: roxmltree::Node<'a, 'a>,
+	parent_node: roxmltree::Node<'a, 'a>,
+	child_node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
-	for child_node in node.children() {
-		match node.attribute("ignore_in_mode") {
-			Some("dev") => {
-				if !ctx.doc_params.extra.dev_mode {
-					continue;
-				}
+	match parent_node.attribute("ignore_in_mode") {
+		Some("dev") => {
+			if !ctx.doc_params.extra.dev_mode {
+				return Ok(()); // do not parse
 			}
-			Some("live") => {
-				if ctx.doc_params.extra.dev_mode {
-					continue;
-				}
-			}
-			Some(s) => print_invalid_attrib("ignore_in_mode", s),
-			_ => {}
 		}
+		Some("live") => {
+			if ctx.doc_params.extra.dev_mode {
+				return Ok(()); // do not parse
+			}
+		}
+		Some(s) => print_invalid_attrib("ignore_in_mode", s),
+		_ => {}
+	}
 
-		match child_node.tag_name().name() {
-			"include" => {
-				parse_tag_include(file, ctx, child_node, parent_id)?;
-			}
-			"div" => {
-				parse_widget_div(file, ctx, child_node, parent_id)?;
-			}
-			"rectangle" => {
-				parse_widget_rectangle(file, ctx, child_node, parent_id)?;
-			}
-			"label" => {
-				parse_widget_label(file, ctx, child_node, parent_id)?;
-			}
-			"sprite" => {
-				parse_widget_sprite(file, ctx, child_node, parent_id)?;
-			}
-			"button" => {
-				parse_component_button(file, ctx, child_node, parent_id)?;
-			}
-			"slider" => {
-				parse_component_slider(file, ctx, child_node, parent_id)?;
-			}
-			"check_box" => {
-				parse_component_checkbox(file, ctx, child_node, parent_id)?;
-			}
-			"" => { /* ignore */ }
-			other_tag_name => {
-				parse_widget_other(other_tag_name, file, ctx, child_node, parent_id)?;
+	let mut new_widget_id: Option<WidgetID> = None;
+
+	match child_node.tag_name().name() {
+		"include" => {
+			parse_tag_include(file, ctx, child_node, parent_id)?;
+		}
+		"div" => {
+			new_widget_id = Some(parse_widget_div(file, ctx, child_node, parent_id)?);
+		}
+		"rectangle" => {
+			new_widget_id = Some(parse_widget_rectangle(file, ctx, child_node, parent_id)?);
+		}
+		"label" => {
+			new_widget_id = Some(parse_widget_label(file, ctx, child_node, parent_id)?);
+		}
+		"sprite" => {
+			new_widget_id = Some(parse_widget_sprite(file, ctx, child_node, parent_id)?);
+		}
+		"button" => {
+			new_widget_id = Some(parse_component_button(file, ctx, child_node, parent_id)?);
+		}
+		"slider" => {
+			new_widget_id = Some(parse_component_slider(file, ctx, child_node, parent_id)?);
+		}
+		"check_box" => {
+			new_widget_id = Some(parse_component_checkbox(file, ctx, child_node, parent_id)?);
+		}
+		"" => { /* ignore */ }
+		other_tag_name => {
+			parse_widget_other(other_tag_name, file, ctx, child_node, parent_id)?;
+		}
+	}
+
+	// check for custom attributes (if the callback is set)
+	if let Some(widget_id) = new_widget_id {
+		if let Some(on_custom_attrib) = &ctx.doc_params.extra.on_custom_attrib {
+			for attrib in child_node.attributes() {
+				let attr_name = attrib.name();
+				if !attr_name.starts_with('_') || attr_name.is_empty() {
+					continue;
+				}
+
+				let attr_without_prefix = &attr_name[1..]; // safe
+
+				on_custom_attrib(CustomAttribInfo {
+					widgets: &ctx.layout.state.widgets,
+					parent_id,
+					widget_id,
+					attrib: attr_without_prefix,
+					value: attrib.value(),
+				});
 			}
 		}
 	}
+
+	Ok(())
+}
+
+fn parse_children<'a, U1, U2>(
+	file: &ParserFile,
+	ctx: &mut ParserContext<U1, U2>,
+	parent_node: roxmltree::Node<'a, 'a>,
+	parent_id: WidgetID,
+) -> anyhow::Result<()> {
+	for child_node in parent_node.children() {
+		parse_child(file, ctx, parent_node, child_node, parent_id)?;
+	}
+
 	Ok(())
 }
 
@@ -693,11 +731,30 @@ fn create_default_context<'a, U1, U2>(
 	}
 }
 
-pub struct UnusedAttribInfo {}
+pub struct CustomAttribInfo<'a> {
+	pub parent_id: WidgetID,
+	pub widget_id: WidgetID,
+	pub widgets: &'a WidgetMap,
+	pub attrib: &'a str, // without _ at the beginning
+	pub value: &'a str,
+}
+
+// helper functions
+impl CustomAttribInfo<'_> {
+	pub fn get_widget(&self) -> Option<&Widget> {
+		self.widgets.get(self.widget_id)
+	}
+
+	pub fn get_widget_as<T: 'static>(&self) -> Option<RefMut<T>> {
+		Some(self.widgets.get(self.widget_id)?.get_as_mut::<T>())
+	}
+}
+
+pub type OnCustomAttribFunc = Box<dyn Fn(CustomAttribInfo)>;
 
 #[derive(Default)]
 pub struct ParseDocumentExtra {
-	//pub on_unused_attrib: Option<Box<dyn Fn(UnusedAttribInfo)>>,
+	pub on_custom_attrib: Option<OnCustomAttribFunc>, // all attributes with '_' character prepended
 	pub dev_mode: bool,
 }
 
