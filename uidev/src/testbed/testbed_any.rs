@@ -1,7 +1,10 @@
 use crate::{assets, testbed::Testbed};
 use glam::Vec2;
 use wgui::{
-    event::EventListenerCollection, globals::WguiGlobals, layout::Layout, parser::ParserState,
+    event::EventListenerCollection,
+    globals::WguiGlobals,
+    layout::Layout,
+    parser::{ParseDocumentParams, ParserState},
 };
 
 pub struct TestbedAny {
@@ -20,8 +23,14 @@ impl TestbedAny {
 
         let globals = WguiGlobals::new(Box::new(assets::Asset {}))?;
 
-        let (layout, state) =
-            wgui::parser::new_layout_from_assets(globals, listeners, &path, false)?;
+        let (layout, state) = wgui::parser::new_layout_from_assets(
+            listeners,
+            &ParseDocumentParams {
+                globals,
+                path: &path,
+                extra: Default::default(),
+            },
+        )?;
         Ok(Self { layout, state })
     }
 }

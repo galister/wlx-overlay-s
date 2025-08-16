@@ -105,12 +105,12 @@ impl ParserState {
 
 	pub fn process_template<U1, U2>(
 		&mut self,
+		doc_params: &ParseDocumentParams,
 		template_name: &str,
 		layout: &mut Layout,
 		listeners: &mut EventListenerCollection<U1, U2>,
 		widget_id: WidgetID,
 		template_parameters: HashMap<Rc<str>, Rc<str>>,
-		dev_mode: bool,
 	) -> anyhow::Result<()> {
 		let Some(template) = self.templates.get(template_name) else {
 			anyhow::bail!("no template named \"{}\" found", template_name);
@@ -125,7 +125,7 @@ impl ParserState {
 			components: self.components.clone(),       // FIXME: prevent copying
 			components_id_map: self.components_id_map.clone(), // FIXME: prevent copying
 			templates: Default::default(),
-			dev_mode,
+			doc_params,
 		};
 
 		let file = ParserFile {
@@ -157,6 +157,7 @@ struct MacroAttribs {
 }
 
 struct ParserContext<'a, U1, U2> {
+	doc_params: &'a ParseDocumentParams<'a>,
 	layout: &'a mut Layout,
 	listeners: &'a mut EventListenerCollection<U1, U2>,
 	var_map: HashMap<Rc<str>, Rc<str>>,
@@ -165,7 +166,6 @@ struct ParserContext<'a, U1, U2> {
 	templates: HashMap<Rc<str>, Rc<Template>>,
 	components: Vec<Component>,
 	components_id_map: HashMap<Rc<str>, ComponentWeak>,
-	dev_mode: bool,
 }
 
 // Parses a color from a HTML hex string
@@ -641,12 +641,12 @@ fn parse_children<'a, U1, U2>(
 	for child_node in node.children() {
 		match node.attribute("ignore_in_mode") {
 			Some("dev") => {
-				if !ctx.dev_mode {
+				if !ctx.doc_params.extra.dev_mode {
 					continue;
 				}
 			}
 			Some("live") => {
-				if ctx.dev_mode {
+				if ctx.doc_params.extra.dev_mode {
 					continue;
 				}
 			}
@@ -689,11 +689,12 @@ fn parse_children<'a, U1, U2>(
 }
 
 fn create_default_context<'a, U1, U2>(
+	doc_params: &'a ParseDocumentParams,
 	layout: &'a mut Layout,
 	listeners: &'a mut EventListenerCollection<U1, U2>,
-	dev_mode: bool,
 ) -> ParserContext<'a, U1, U2> {
 	ParserContext {
+		doc_params,
 		layout,
 		listeners,
 		ids: Default::default(),
@@ -702,20 +703,33 @@ fn create_default_context<'a, U1, U2>(
 		macro_attribs: Default::default(),
 		components: Default::default(),
 		components_id_map: Default::default(),
-		dev_mode,
 	}
 }
 
+pub struct UnusedAttribInfo {}
+
+#[derive(Default)]
+pub struct ParseDocumentExtra {
+	//pub on_unused_attrib: Option<Box<dyn Fn(UnusedAttribInfo)>>,
+	pub dev_mode: bool,
+}
+
+// filled-in by you in `new_layout_from_assets` function
+pub struct ParseDocumentParams<'a> {
+	pub globals: WguiGlobals,      // mandatory field
+	pub path: &'a str,             // mandatory field
+	pub extra: ParseDocumentExtra, // optional field, can be Default-ed
+}
+
 pub fn parse_from_assets<U1, U2>(
+	doc_params: &ParseDocumentParams,
 	layout: &mut Layout,
 	listeners: &mut EventListenerCollection<U1, U2>,
 	parent_id: WidgetID,
-	path: &str,
-	dev_mode: bool,
 ) -> anyhow::Result<ParserState> {
-	let path = PathBuf::from(path);
+	let path = PathBuf::from(doc_params.path);
 
-	let mut ctx = create_default_context(layout, listeners, dev_mode);
+	let mut ctx = create_default_context(doc_params, layout, listeners);
 
 	let (file, node_layout) = get_doc_from_path(&mut ctx, &path)?;
 	parse_document_root(file, &mut ctx, parent_id, node_layout)?;
@@ -737,14 +751,12 @@ pub fn parse_from_assets<U1, U2>(
 }
 
 pub fn new_layout_from_assets<U1, U2>(
-	globals: WguiGlobals,
 	listeners: &mut EventListenerCollection<U1, U2>,
-	path: &str,
-	dev_mode: bool,
+	doc_params: &ParseDocumentParams,
 ) -> anyhow::Result<(Layout, ParserState)> {
-	let mut layout = Layout::new(globals)?;
+	let mut layout = Layout::new(doc_params.globals.clone())?;
 	let widget = layout.root_widget;
-	let state = parse_from_assets(&mut layout, listeners, widget, path, dev_mode)?;
+	let state = parse_from_assets(doc_params, &mut layout, listeners, widget)?;
 	Ok((layout, state))
 }
 

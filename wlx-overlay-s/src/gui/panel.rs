@@ -44,10 +44,12 @@ impl<S> GuiPanel<S> {
         let mut listeners = EventListenerCollection::<AppState, S>::default();
 
         let (layout, parser_state) = wgui::parser::new_layout_from_assets(
-            app.wgui_globals.clone(),
             &mut listeners,
-            path,
-            false,
+            &wgui::parser::ParseDocumentParams {
+                globals: app.wgui_globals.clone(),
+                path,
+                extra: Default::default(),
+            },
         )?;
 
         let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;

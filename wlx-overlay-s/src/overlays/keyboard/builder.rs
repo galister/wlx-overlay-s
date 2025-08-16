@@ -75,12 +75,14 @@ where
         keymap = None;
     }
 
-    let (_, mut gui_state_key) = wgui::parser::new_layout_from_assets(
-        app.wgui_globals.clone(),
-        &mut panel.listeners,
-        "gui/keyboard.xml",
-        false,
-    )?;
+    let parse_doc_params = wgui::parser::ParseDocumentParams {
+        globals: app.wgui_globals.clone(),
+        path: "gui/keyboard.xml",
+        extra: Default::default(),
+    };
+
+    let (_, mut gui_state_key) =
+        wgui::parser::new_layout_from_assets(&mut panel.listeners, &parse_doc_params)?;
 
     for row in 0..layout.key_sizes.len() {
         let (div, _) = panel.layout.add_child(
@@ -159,12 +161,12 @@ where
 
             let template_key = format!("Key{:?}", key.cap_type);
             gui_state_key.process_template(
+                &parse_doc_params,
                 &template_key,
                 &mut panel.layout,
                 &mut panel.listeners,
                 div,
                 params,
-                false,
             )?;
 
             if let Some(widget_id) = gui_state_key.ids.get(&*my_id) {

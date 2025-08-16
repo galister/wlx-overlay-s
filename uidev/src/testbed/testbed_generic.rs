@@ -12,7 +12,7 @@ use wgui::{
     globals::WguiGlobals,
     i18n::Translation,
     layout::{Layout, Widget},
-    parser::ParserState,
+    parser::{ParseDocumentParams, ParserState},
     widget::label::WidgetLabel,
 };
 
@@ -58,8 +58,14 @@ impl TestbedGeneric {
 
         let globals = WguiGlobals::new(Box::new(assets::Asset {}))?;
 
-        let (layout, state) =
-            wgui::parser::new_layout_from_assets(globals, listeners, XML_PATH, false)?;
+        let (layout, state) = wgui::parser::new_layout_from_assets(
+            listeners,
+            &ParseDocumentParams {
+                globals,
+                path: XML_PATH,
+                extra: Default::default(),
+            },
+        )?;
 
         let label_cur_option = state.fetch_widget(&layout.state, "label_current_option")?;
 
