@@ -15,13 +15,13 @@ use vulkano::{
 use crate::{
     backend::openxr::{helpers::translation_rotation_to_posef, swapchain::SwapchainOpts},
     config_io,
-    graphics::{dds::WlxCommandBufferDds, CommandBuffers, ExtentExt},
+    graphics::{CommandBuffers, ExtentExt, dds::WlxCommandBufferDds},
     state::AppState,
 };
 
 use super::{
-    swapchain::{create_swapchain, WlxSwapchain},
     CompositionLayer, XrState,
+    swapchain::{WlxSwapchain, create_swapchain},
 };
 
 pub(super) struct Skybox {
@@ -96,8 +96,8 @@ impl Skybox {
         let mut swapchain = create_swapchain(xr, app.gfx.clone(), extent, opts)?;
         let tgt = swapchain.acquire_wait_image()?;
         let pipeline = app.gfx.create_pipeline(
-            app.gfx_extras.shaders.get("vert_quad").unwrap().clone(), // want panic
-            app.gfx_extras.shaders.get("frag_srgb").unwrap().clone(), // want panic
+            app.gfx_extras.shaders.get("vert_quad").unwrap(), // want panic
+            app.gfx_extras.shaders.get("frag_srgb").unwrap(), // want panic
             app.gfx.surface_format,
             None,
             PrimitiveTopology::TriangleStrip,
@@ -145,8 +145,8 @@ impl Skybox {
             SwapchainOpts::new().immutable(),
         )?;
         let pipeline = app.gfx.create_pipeline(
-            app.gfx_extras.shaders.get("vert_quad").unwrap().clone(), // want panic
-            app.gfx_extras.shaders.get("frag_grid").unwrap().clone(), // want panic
+            app.gfx_extras.shaders.get("vert_quad").unwrap(), // want panic
+            app.gfx_extras.shaders.get("frag_grid").unwrap(), // want panic
             app.gfx.surface_format,
             Some(AttachmentBlend::alpha()),
             PrimitiveTopology::TriangleStrip,

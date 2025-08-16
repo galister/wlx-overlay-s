@@ -105,6 +105,7 @@ where
 		})
 	}
 
+	
 	pub fn inner(&self) -> Arc<GraphicsPipeline> {
 		self.pipeline.clone()
 	}
@@ -149,6 +150,7 @@ where
 		)?)
 	}
 
+	#[allow(clippy::needless_pass_by_value)]
 	pub fn uniform_buffer_upload<T>(
 		&self,
 		set: usize,
@@ -183,8 +185,8 @@ where
 {
 	pub(super) fn new_with_vert_input(
 		graphics: Arc<WGfx>,
-		vert: Arc<ShaderModule>,
-		frag: Arc<ShaderModule>,
+		vert: &Arc<ShaderModule>,
+		frag: &Arc<ShaderModule>,
 		format: Format,
 		blend: Option<AttachmentBlend>,
 		topology: PrimitiveTopology,
@@ -199,7 +201,7 @@ where
 			V::per_vertex().definition(&vert_entry_point)?
 		});
 
-		WGfxPipeline::new_from_stages(
+		Self::new_from_stages(
 			graphics,
 			format,
 			blend,
@@ -219,7 +221,7 @@ where
 		descriptor_sets: Vec<Arc<DescriptorSet>>,
 	) -> anyhow::Result<WGfxPass<V>> {
 		WGfxPass::new(
-			self.clone(),
+			&self.clone(),
 			dimensions,
 			vertex_buffer,
 			vertices,

@@ -7,8 +7,8 @@ use vulkano::buffer::BufferContents;
 pub struct WMat4(pub [f32; 16]);
 
 impl WMat4 {
-	pub fn from_glam(mat: &Mat4) -> WMat4 {
-		WMat4(*mat.as_ref())
+	pub fn from_glam(mat: &Mat4) -> Self {
+		Self(*mat.as_ref())
 	}
 }
 

@@ -22,8 +22,8 @@ pub struct WidgetRectangle {
 }
 
 impl WidgetRectangle {
-	pub fn create(params: WidgetRectangleParams) -> anyhow::Result<WidgetState> {
-		WidgetState::new(Box::new(WidgetRectangle { params }))
+	pub fn create(params: WidgetRectangleParams) -> WidgetState {
+		WidgetState::new(Box::new(Self { params }))
 	}
 }
 

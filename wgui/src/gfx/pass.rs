@@ -32,7 +32,7 @@ where
 	V: BufferContents + Vertex,
 {
 	pub(super) fn new(
-		pipeline: Arc<WGfxPipeline<V>>,
+		pipeline: &Arc<WGfxPipeline<V>>,
 		dimensions: [f32; 2],
 		vertex_buffer: Subbuffer<[V]>,
 		vertices: Range<u32>,

@@ -3,7 +3,7 @@ use super::{WidgetObj, WidgetState};
 pub struct WidgetDiv {}
 
 impl WidgetDiv {
-	pub fn create() -> anyhow::Result<WidgetState> {
+	pub fn create() -> WidgetState {
 		WidgetState::new(Box::new(Self {}))
 	}
 }

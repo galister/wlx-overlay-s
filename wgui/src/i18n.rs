@@ -93,8 +93,8 @@ impl I18n {
 		let json_root_translated = serde_json::from_str(str::from_utf8(&data_translated)?)?;
 
 		Ok(Self {
-			json_root_fallback,
 			json_root_translated,
+			json_root_fallback,
 		})
 	}
 

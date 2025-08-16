@@ -186,7 +186,7 @@ impl Layout {
 		user_data: &mut (&mut U1, &mut U2),
 	) -> anyhow::Result<()> {
 		let l = self.state.tree.layout(node_id)?;
-		let Some(widget_id) = self.state.tree.get_node_context(node_id).cloned() else {
+		let Some(widget_id) = self.state.tree.get_node_context(node_id).copied() else {
 			anyhow::bail!("invalid widget ID");
 		};
 
@@ -230,13 +230,9 @@ impl Layout {
 			widget::EventResult::Pass => {
 				// go on
 			}
-			widget::EventResult::Consumed => {
-				iter_children = false;
-			}
-			widget::EventResult::Outside => {
-				iter_children = false;
-			}
-			widget::EventResult::Unused => {
+			widget::EventResult::Consumed
+			| widget::EventResult::Outside
+			| widget::EventResult::Unused => {
 				iter_children = false;
 			}
 		}
@@ -252,7 +248,7 @@ impl Layout {
 		Ok(())
 	}
 
-	pub fn check_toggle_needs_redraw(&mut self) -> bool {
+	pub const fn check_toggle_needs_redraw(&mut self) -> bool {
 		if self.needs_redraw {
 			self.needs_redraw = false;
 			true
@@ -261,7 +257,7 @@ impl Layout {
 		}
 	}
 
-	pub fn check_toggle_haptics_triggered(&mut self) -> bool {
+	pub const fn check_toggle_haptics_triggered(&mut self) -> bool {
 		if self.haptics_triggered {
 			self.haptics_triggered = false;
 			true
@@ -306,7 +302,7 @@ impl Layout {
 			&mut state.widgets,
 			&mut state.nodes,
 			None, // no parent
-			WidgetDiv::create()?,
+			WidgetDiv::create(),
 			taffy::Style {
 				size: taffy::Size::auto(),
 				..Default::default()

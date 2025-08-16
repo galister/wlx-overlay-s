@@ -60,8 +60,7 @@ where
             color: wgui::drawing::Color::new(0., 0., 0., 0.6),
             round: WLength::Units(4.0),
             ..Default::default()
-        })
-        .unwrap(),
+        }),
         taffy::Style {
             flex_direction: taffy::FlexDirection::Column,
             padding: length(BACKGROUND_PADDING),
@@ -87,7 +86,7 @@ where
     for row in 0..layout.key_sizes.len() {
         let (div, _) = panel.layout.add_child(
             background,
-            WidgetDiv::create().unwrap(),
+            WidgetDiv::create(),
             taffy::Style {
                 flex_direction: taffy::FlexDirection::Row,
                 ..Default::default()
@@ -108,7 +107,7 @@ where
             let Some(key) = layout.get_key_data(keymap.as_ref(), has_altgr, col, row) else {
                 let _ = panel.layout.add_child(
                     div,
-                    WidgetDiv::create()?,
+                    WidgetDiv::create(),
                     taffy::Style {
                         size: taffy_size,
                         min_size: taffy_size,

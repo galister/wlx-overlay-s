@@ -20,7 +20,8 @@ pub struct Viewport {
 
 impl Viewport {
 	/// Creates a new `Viewport` with the given `device` and `cache`.
-	pub fn new(gfx: Arc<WGfx>) -> anyhow::Result<Self> {
+	#[allow(clippy::iter_on_single_items)]
+	pub fn new(gfx: &Arc<WGfx>) -> anyhow::Result<Self> {
 		let params = Params {
 			screen_resolution: [0, 0],
 			pixel_scale: 1.0,
@@ -87,7 +88,7 @@ impl Viewport {
 	}
 
 	/// Returns the current resolution of the `Viewport`.
-	pub fn resolution(&self) -> [u32; 2] {
+	pub const fn resolution(&self) -> [u32; 2] {
 		self.params.screen_resolution
 	}
 }

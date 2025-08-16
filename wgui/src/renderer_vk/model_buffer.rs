@@ -28,7 +28,7 @@ impl ModelBuffer {
 
 		let buffer = gfx.empty_buffer::<f32>(
 			BufferUsage::STORAGE_BUFFER | BufferUsage::TRANSFER_DST,
-			INITIAL_CAPACITY_F32 as _,
+			INITIAL_CAPACITY_F32.into(),
 		)?;
 
 		let mut models = Vec::<glam::Mat4>::new();
@@ -56,7 +56,7 @@ impl ModelBuffer {
 			self.buffer_capacity_f32 = required_capacity_f32;
 			self.buffer = gfx.empty_buffer::<f32>(
 				BufferUsage::STORAGE_BUFFER | BufferUsage::TRANSFER_DST,
-				required_capacity_f32 as _,
+				required_capacity_f32.into(),
 			)?;
 			//log::info!("resized to {}", required_capacity_f32);
 		}
@@ -64,7 +64,7 @@ impl ModelBuffer {
 		//safe
 		let floats = unsafe {
 			std::slice::from_raw_parts(
-				self.models.as_slice().as_ptr() as *const f32,
+				self.models.as_slice().as_ptr().cast::<f32>(),
 				required_capacity_f32 as usize,
 			)
 		};

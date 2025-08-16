@@ -51,7 +51,7 @@ pub fn parse_component_checkbox<'a, U1, U2>(
 		},
 	)?;
 
-	process_component(file, ctx, node, Component(component))?;
+	process_component(file, ctx, node, Component(component));
 
 	Ok(())
 }

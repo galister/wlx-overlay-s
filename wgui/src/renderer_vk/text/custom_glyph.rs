@@ -23,29 +23,31 @@ pub enum CustomGlyphContent {
 impl CustomGlyphContent {
 	pub fn from_bin_svg(data: &[u8]) -> anyhow::Result<Self> {
 		let tree = Tree::from_data(data, &Options::default())?;
-		Ok(CustomGlyphContent::Svg(Box::new(tree)))
+		Ok(Self::Svg(Box::new(tree)))
 	}
 
 	pub fn from_bin_raster(data: &[u8]) -> anyhow::Result<Self> {
 		let image = image::load_from_memory(data)?.into_rgba8();
-		Ok(CustomGlyphContent::Image(image))
+		Ok(Self::Image(image))
 	}
 
+	#[allow(clippy::case_sensitive_file_extension_comparisons)]
 	pub fn from_assets(provider: &mut Box<dyn AssetProvider>, path: &str) -> anyhow::Result<Self> {
 		let data = provider.load_from_path(path)?;
 		if path.ends_with(".svg") || path.ends_with(".svgz") {
-			Ok(CustomGlyphContent::from_bin_svg(&data)?)
+			Ok(Self::from_bin_svg(&data)?)
 		} else {
-			Ok(CustomGlyphContent::from_bin_raster(&data)?)
+			Ok(Self::from_bin_raster(&data)?)
 		}
 	}
 
+	#[allow(clippy::case_sensitive_file_extension_comparisons)]
 	pub fn from_file(path: &str) -> anyhow::Result<Self> {
 		let data = std::fs::read(path)?;
 		if path.ends_with(".svg") || path.ends_with(".svgz") {
-			Ok(CustomGlyphContent::from_bin_svg(&data)?)
+			Ok(Self::from_bin_svg(&data)?)
 		} else {
-			Ok(CustomGlyphContent::from_bin_raster(&data)?)
+			Ok(Self::from_bin_raster(&data)?)
 		}
 	}
 }
@@ -107,7 +109,7 @@ pub struct CustomGlyph {
 }
 
 impl CustomGlyph {
-	pub fn new(data: CustomGlyphData) -> Self {
+	pub const fn new(data: CustomGlyphData) -> Self {
 		Self {
 			data,
 			left: 0.0,
@@ -156,10 +158,10 @@ pub struct RasterizedCustomGlyph {
 }
 
 impl RasterizedCustomGlyph {
-	pub(super) fn try_from(input: &RasterizeCustomGlyphRequest) -> Option<RasterizedCustomGlyph> {
+	pub(super) fn try_from(input: &RasterizeCustomGlyphRequest) -> Option<Self> {
 		match input.data.content.as_ref() {
 			CustomGlyphContent::Svg(tree) => rasterize_svg(tree, input),
-			CustomGlyphContent::Image(data) => rasterize_image(data),
+			CustomGlyphContent::Image(data) => Some(rasterize_image(data)),
 		}
 	}
 
@@ -212,7 +214,7 @@ pub enum ContentType {
 
 impl ContentType {
 	/// The number of bytes per pixel for this content type
-	pub fn bytes_per_pixel(&self) -> usize {
+	pub const fn bytes_per_pixel(&self) -> usize {
 		match self {
 			Self::Color => 4,
 			Self::Mask => 1,
@@ -226,10 +228,10 @@ fn rasterize_svg(
 ) -> Option<RasterizedCustomGlyph> {
 	// Calculate the scale based on the "glyph size".
 	let svg_size = tree.size();
-	let scale_x = input.width as f32 / svg_size.width();
-	let scale_y = input.height as f32 / svg_size.height();
+	let scale_x = f32::from(input.width) / svg_size.width();
+	let scale_y = f32::from(input.height) / svg_size.height();
 
-	let mut pixmap = resvg::tiny_skia::Pixmap::new(input.width as u32, input.height as u32)?;
+	let mut pixmap = resvg::tiny_skia::Pixmap::new(u32::from(input.width), u32::from(input.height))?;
 	let mut transform = resvg::usvg::Transform::from_scale(scale_x, scale_y);
 
 	// Offset the glyph by the subpixel amount.
@@ -249,11 +251,11 @@ fn rasterize_svg(
 	})
 }
 
-fn rasterize_image(image: &RgbaImage) -> Option<RasterizedCustomGlyph> {
-	Some(RasterizedCustomGlyph {
+fn rasterize_image(image: &RgbaImage) -> RasterizedCustomGlyph {
+	RasterizedCustomGlyph {
 		data: image.to_vec(),
 		content_type: ContentType::Color,
 		width: image.width() as _,
 		height: image.height() as _,
-	})
+	}
 }

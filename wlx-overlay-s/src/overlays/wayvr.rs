@@ -123,8 +123,8 @@ impl WayVRBackend {
         resolution: [u16; 2],
     ) -> anyhow::Result<Self> {
         let pipeline = app.gfx.create_pipeline(
-            app.gfx_extras.shaders.get("vert_quad").unwrap().clone(), // want panic
-            app.gfx_extras.shaders.get("frag_srgb").unwrap().clone(), // want panic
+            app.gfx_extras.shaders.get("vert_quad").unwrap(), // want panic
+            app.gfx_extras.shaders.get("frag_srgb").unwrap(), // want panic
             app.gfx.surface_format,
             None,
             PrimitiveTopology::TriangleStrip,

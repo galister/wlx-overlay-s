@@ -27,7 +27,7 @@ pub struct WidgetData {
 }
 
 impl WidgetData {
-	pub fn set_device_pressed(&mut self, device: usize, pressed: bool) -> bool {
+	pub const fn set_device_pressed(&mut self, device: usize, pressed: bool) -> bool {
 		let bit = 1 << device;
 		let state_changed;
 		if pressed {
@@ -40,7 +40,7 @@ impl WidgetData {
 		state_changed
 	}
 
-	pub fn set_device_hovered(&mut self, device: usize, hovered: bool) -> bool {
+	pub const fn set_device_hovered(&mut self, device: usize, hovered: bool) -> bool {
 		let bit = 1 << device;
 		let state_changed;
 		if hovered {
@@ -53,19 +53,19 @@ impl WidgetData {
 		state_changed
 	}
 
-	pub fn get_pressed(&self, device: usize) -> bool {
+	pub const fn get_pressed(&self, device: usize) -> bool {
 		self.pressed & (1 << device) != 0
 	}
 
-	pub fn get_hovered(&self, device: usize) -> bool {
+	pub const fn get_hovered(&self, device: usize) -> bool {
 		self.hovered & (1 << device) != 0
 	}
 
-	pub fn is_pressed(&self) -> bool {
+	pub const fn is_pressed(&self) -> bool {
 		self.pressed != 0
 	}
 
-	pub fn is_hovered(&self) -> bool {
+	pub const fn is_hovered(&self) -> bool {
 		self.hovered != 0
 	}
 }
@@ -82,8 +82,8 @@ impl WidgetState {
 		(data, obj)
 	}
 
-	fn new(obj: Box<dyn WidgetObj>) -> anyhow::Result<Self> {
-		Ok(Self {
+	fn new(obj: Box<dyn WidgetObj>) -> Self {
+		Self {
 			data: WidgetData {
 				hovered: 0,
 				pressed: 0,
@@ -91,7 +91,7 @@ impl WidgetState {
 				transform: glam::Mat4::IDENTITY,
 			},
 			obj,
-		})
+		}
 	}
 }
 
@@ -130,7 +130,7 @@ pub struct EventParams<'a> {
 }
 
 impl EventParams<'_> {
-	pub fn mark_redraw(&mut self) {
+	pub const fn mark_redraw(&mut self) {
 		self.alterables.needs_redraw = true;
 	}
 }
@@ -321,6 +321,8 @@ impl WidgetState {
 		true
 	}
 
+	#[allow(clippy::too_many_lines)]
+	#[allow(clippy::cognitive_complexity)]
 	pub fn process_event<'a, U1, U2>(
 		&mut self,
 		widget_id: WidgetID,

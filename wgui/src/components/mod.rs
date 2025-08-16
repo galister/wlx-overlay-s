@@ -32,6 +32,7 @@ pub struct Component(pub Rc<dyn ComponentTrait>);
 pub type ComponentWeak = std::rc::Weak<dyn ComponentTrait>;
 
 impl Component {
+	
 	pub fn weak(&self) -> ComponentWeak {
 		Rc::downgrade(&self.0)
 	}
@@ -42,6 +43,6 @@ impl Component {
 		}
 
 		// safety: we already checked it above, should be safe to directly cast it
-		unsafe { Ok(Rc::from_raw(Rc::into_raw(self.0.clone()) as _)) }
+		unsafe { Ok(Rc::from_raw(Rc::into_raw(self.0.clone()).cast())) }
 	}
 }

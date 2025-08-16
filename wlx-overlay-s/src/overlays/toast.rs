@@ -17,7 +17,7 @@ use wgui::{
         prelude::{auto, length, percent},
     },
     widget::{
-        label::{WidgetLabelParams, WidgetLabel},
+        label::{WidgetLabel, WidgetLabelParams},
         rectangle::{WidgetRectangle, WidgetRectangleParams},
         util::WLength,
     },
@@ -182,8 +182,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
                 border: 1.0,
                 round: WLength::Units(4.0),
                 ..Default::default()
-            })
-            .unwrap(),
+            }),
             taffy::Style {
                 align_items: Some(taffy::AlignItems::Center),
                 justify_content: Some(taffy::JustifyContent::Center),
@@ -205,8 +204,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
                     ..Default::default()
                 },
             },
-        )
-        .unwrap(),
+        ),
         taffy::Style {
             size: taffy::Size {
                 width: percent(1.0),
@@ -229,8 +227,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
                     ..Default::default()
                 },
             },
-        )
-        .unwrap(),
+        ),
         taffy::Style {
             size: taffy::Size {
                 width: percent(1.0),

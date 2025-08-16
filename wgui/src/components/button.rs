@@ -265,7 +265,7 @@ pub fn construct<U1, U2>(
 			round: params.round,
 			border_color: params.border_color,
 			border: 2.0,
-		})?,
+		}),
 		style,
 	)?;
 
@@ -287,10 +287,8 @@ pub fn construct<U1, U2>(
 					..params.text_style
 				},
 			},
-		)?,
-		taffy::Style {
-			..Default::default()
-		},
+		),
+		Default::default(),
 	)?;
 
 	let data = Rc::new(Data {

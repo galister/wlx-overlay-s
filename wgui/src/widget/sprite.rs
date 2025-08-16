@@ -24,7 +24,7 @@ pub struct WidgetSprite {
 }
 
 impl WidgetSprite {
-	pub fn create(params: WidgetSpriteParams) -> anyhow::Result<WidgetState> {
+	pub fn create(params: WidgetSpriteParams) -> WidgetState {
 		WidgetState::new(Box::new(Self { params }))
 	}
 }
@@ -44,8 +44,7 @@ impl WidgetObj for WidgetSprite {
 					self
 						.params
 						.color
-						.map(|c| c.into())
-						.unwrap_or(cosmic_text::Color::rgb(255, 255, 255)),
+						.map_or(cosmic_text::Color::rgb(255, 255, 255), Into::into),
 				),
 				snap_to_physical_pixel: true,
 			};
@@ -76,7 +75,7 @@ impl WidgetObj for WidgetSprite {
 				payload: drawing::PrimitivePayload::Text(Rc::new(RefCell::new(buffer))),
 				transform: state.transform_stack.get().transform,
 			});
-		};
+		}
 	}
 
 	fn measure(

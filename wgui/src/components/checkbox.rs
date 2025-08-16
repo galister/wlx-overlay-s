@@ -150,7 +150,7 @@ fn anim_hover_out(state: Rc<RefCell<State>>, widget_id: WidgetID) -> Animation {
 }
 
 fn register_event_mouse_enter<U1, U2>(
-	data: Rc<Data>,
+	data: &Rc<Data>,
 	state: Rc<RefCell<State>>,
 	listeners: &mut EventListenerCollection<U1, U2>,
 	listener_handles: &mut ListenerHandleVec,
@@ -171,7 +171,7 @@ fn register_event_mouse_enter<U1, U2>(
 }
 
 fn register_event_mouse_leave<U1, U2>(
-	data: Rc<Data>,
+	data: &Rc<Data>,
 	state: Rc<RefCell<State>>,
 	listeners: &mut EventListenerCollection<U1, U2>,
 	listener_handles: &mut ListenerHandleVec,
@@ -192,7 +192,7 @@ fn register_event_mouse_leave<U1, U2>(
 }
 
 fn register_event_mouse_press<U1, U2>(
-	data: Rc<Data>,
+	data: &Rc<Data>,
 	state: Rc<RefCell<State>>,
 	listeners: &mut EventListenerCollection<U1, U2>,
 	listener_handles: &mut ListenerHandleVec,
@@ -289,7 +289,7 @@ pub fn construct<U1, U2>(
 			border_color: Color::new(1.0, 1.0, 1.0, 0.0),
 			round: WLength::Units(5.0),
 			..Default::default()
-		})?,
+		}),
 		style,
 	)?;
 
@@ -306,7 +306,7 @@ pub fn construct<U1, U2>(
 			round: WLength::Units(8.0),
 			color: Color::new(1.0, 1.0, 1.0, 0.0),
 			..Default::default()
-		})?,
+		}),
 		taffy::Style {
 			size: box_size,
 			padding: taffy::Rect::length(4.0),
@@ -326,7 +326,7 @@ pub fn construct<U1, U2>(
 				COLOR_UNCHECKED
 			},
 			..Default::default()
-		})?,
+		}),
 		taffy::Style {
 			size: taffy::Size {
 				width: percent(1.0),
@@ -347,17 +347,15 @@ pub fn construct<U1, U2>(
 					..Default::default()
 				},
 			},
-		)?,
-		taffy::Style {
-			..Default::default()
-		},
+		),
+		Default::default(),
 	)?;
 
 	let data = Rc::new(Data {
-		node_label,
 		id_container,
-		id_label,
 		id_inner_box,
+		id_label,
+		node_label,
 	});
 
 	let state = Rc::new(RefCell::new(State {
@@ -369,9 +367,9 @@ pub fn construct<U1, U2>(
 
 	let mut base = ComponentBase::default();
 
-	register_event_mouse_enter(data.clone(), state.clone(), listeners, &mut base.lhandles);
-	register_event_mouse_leave(data.clone(), state.clone(), listeners, &mut base.lhandles);
-	register_event_mouse_press(data.clone(), state.clone(), listeners, &mut base.lhandles);
+	register_event_mouse_enter(&data, state.clone(), listeners, &mut base.lhandles);
+	register_event_mouse_leave(&data, state.clone(), listeners, &mut base.lhandles);
+	register_event_mouse_press(&data, state.clone(), listeners, &mut base.lhandles);
 	register_event_mouse_release(data.clone(), state.clone(), listeners, &mut base.lhandles);
 
 	let checkbox = Rc::new(ComponentCheckbox { base, data, state });

@@ -51,8 +51,8 @@ pub(super) struct LinePool {
 impl LinePool {
     pub(super) fn new(app: &AppState) -> anyhow::Result<Self> {
         let pipeline = app.gfx.create_pipeline(
-            app.gfx_extras.shaders.get("vert_quad").unwrap().clone(), // want panic
-            app.gfx_extras.shaders.get("frag_color").unwrap().clone(), // want panic
+            app.gfx_extras.shaders.get("vert_quad").unwrap(), // want panic
+            app.gfx_extras.shaders.get("frag_color").unwrap(), // want panic
             app.gfx.surface_format,
             None,
             PrimitiveTopology::TriangleStrip,

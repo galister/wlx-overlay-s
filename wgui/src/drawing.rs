@@ -24,11 +24,11 @@ pub struct Boundary {
 }
 
 impl Boundary {
-	pub fn from_pos_size(pos: Vec2, size: Vec2) -> Self {
+	pub const fn from_pos_size(pos: Vec2, size: Vec2) -> Self {
 		Self { pos, size }
 	}
 
-	pub fn construct(transform_stack: &TransformStack) -> Self {
+	pub const fn construct(transform_stack: &TransformStack) -> Self {
 		let transform = transform_stack.get();
 
 		Self {
@@ -51,6 +51,7 @@ impl Color {
 		Self { r, g, b, a }
 	}
 
+	#[must_use]
 	pub fn add_rgb(&self, n: f32) -> Self {
 		Self {
 			r: self.r + n,
@@ -60,8 +61,9 @@ impl Color {
 		}
 	}
 
-	pub fn lerp(&self, other: &Color, n: f32) -> Color {
-		Color {
+	#[must_use]
+	pub fn lerp(&self, other: &Self, n: f32) -> Self {
+		Self {
 			r: self.r * (1.0 - n) + other.r * n,
 			g: self.g * (1.0 - n) + other.g * n,
 			b: self.b * (1.0 - n) + other.b * n,
@@ -164,7 +166,7 @@ fn draw_children(
 	model: &glam::Mat4,
 ) {
 	for node_id in layout.state.tree.child_ids(parent_node_id) {
-		let Some(widget_id) = layout.state.tree.get_node_context(node_id).cloned() else {
+		let Some(widget_id) = layout.state.tree.get_node_context(node_id).copied() else {
 			debug_assert!(false);
 			continue;
 		};

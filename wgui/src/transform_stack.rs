@@ -35,11 +35,11 @@ impl TransformStack {
 		self.top -= 1;
 	}
 
-	pub fn get(&self) -> &Transform {
+	pub const fn get(&self) -> &Transform {
 		&self.stack[(self.top - 1) as usize]
 	}
 
-	pub fn get_pos(&self) -> Vec2 {
+	pub const fn get_pos(&self) -> Vec2 {
 		self.stack[(self.top - 1) as usize].pos
 	}
 }

@@ -52,6 +52,7 @@ impl TextRenderer {
 	}
 
 	/// Prepares all of the provided text areas for rendering.
+	#[allow(clippy::too_many_lines)]
 	pub fn prepare<'a>(
 		&mut self,
 		font_system: &mut FontSystem,
@@ -70,7 +71,7 @@ impl TextRenderer {
 			let bounds_max_x = text_area.bounds.right.min(resolution[0] as i32);
 			let bounds_max_y = text_area.bounds.bottom.min(resolution[1] as i32);
 
-			for glyph in text_area.custom_glyphs.iter() {
+			for glyph in text_area.custom_glyphs {
 				let x = text_area.left + (glyph.left * text_area.scale);
 				let y = text_area.top + (glyph.top * text_area.scale);
 				let width = (glyph.width * text_area.scale).round() as u16;
@@ -102,7 +103,7 @@ impl TextRenderer {
 				let color = glyph.color.unwrap_or(text_area.default_color);
 
 				if let Some(glyph_to_render) = prepare_glyph(
-					PrepareGlyphParams {
+					&mut PrepareGlyphParams {
 						label_pos: Vec2::new(text_area.left, text_area.top),
 						x,
 						y,
@@ -114,7 +115,7 @@ impl TextRenderer {
 						font_system,
 						model_buffer: &mut self.model_buffer,
 						scale_factor: text_area.scale,
-						glyph_scale: width as f32 / cached_width as f32,
+						glyph_scale: f32::from(width) / f32::from(cached_width),
 						bounds_min_x,
 						bounds_min_y,
 						bounds_max_x,
@@ -169,7 +170,7 @@ impl TextRenderer {
 				.take_while(is_run_visible);
 
 			for run in layout_runs {
-				for glyph in run.glyphs.iter() {
+				for glyph in run.glyphs {
 					let physical_glyph = glyph.physical((text_area.left, text_area.top), text_area.scale);
 
 					let color = match glyph.color_opt {
@@ -178,7 +179,7 @@ impl TextRenderer {
 					};
 
 					if let Some(glyph_to_render) = prepare_glyph(
-						PrepareGlyphParams {
+						&mut PrepareGlyphParams {
 							label_pos: Vec2::new(text_area.left, text_area.top),
 							x: physical_glyph.x,
 							y: physical_glyph.y,
@@ -323,9 +324,9 @@ struct PrepareGlyphParams<'a> {
 	depth: f32,
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_lines)]
 fn prepare_glyph(
-	par: PrepareGlyphParams,
+	par: &mut PrepareGlyphParams,
 	get_glyph_image: impl FnOnce(&mut SwashCache, &mut FontSystem) -> Option<GetGlyphImageResult>,
 ) -> anyhow::Result<Option<GlyphVertex>> {
 	let gfx = par.atlas.common.gfx.clone();
@@ -347,33 +348,31 @@ fn prepare_glyph(
 
 			// Find a position in the packer
 			let allocation = loop {
-				match inner.try_allocate(image.width as usize, image.height as usize) {
-					Some(a) => break a,
-					None => {
-						if !par
-							.atlas
-							.grow(par.font_system, par.cache, image.content_type)?
-						{
-							anyhow::bail!(
-								"Atlas full. atlas: {:?} cache_key: {:?}",
-								image.content_type,
-								par.cache_key
-							);
-						}
-
-						inner = par.atlas.inner_for_content_mut(image.content_type);
-					}
+				if let Some(a) = inner.try_allocate(image.width as usize, image.height as usize) {
+					break a;
 				}
+				if !par
+					.atlas
+					.grow(par.font_system, par.cache, image.content_type)?
+				{
+					anyhow::bail!(
+						"Atlas full. atlas: {:?} cache_key: {:?}",
+						image.content_type,
+						par.cache_key
+					);
+				}
+
+				inner = par.atlas.inner_for_content_mut(image.content_type);
 			};
 			let atlas_min = allocation.rectangle.min;
 
 			let mut cmd_buf = gfx.create_xfer_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
 
 			cmd_buf.update_image(
-				inner.image_view.image().clone(),
+				inner.image_view.image(),
 				&image.data,
 				[atlas_min.x as _, atlas_min.y as _, 0],
-				Some([image.width as _, image.height as _, 1]),
+				Some([image.width.into(), image.height.into(), 1]),
 			)?;
 
 			cmd_buf.build_and_execute_now()?; //TODO: do not wait for fence here
@@ -406,16 +405,16 @@ fn prepare_glyph(
 			})
 	};
 
-	let mut x = par.x + details.left as i32;
-	let mut y = (par.line_y * par.scale_factor).round() as i32 + par.y - details.top as i32;
+	let mut x = par.x + i32::from(details.left);
+	let mut y = (par.line_y * par.scale_factor).round() as i32 + par.y - i32::from(details.top);
 
 	let (mut atlas_x, mut atlas_y, content_type) = match details.gpu_cache {
 		GpuCacheStatus::InAtlas { x, y, content_type } => (x, y, content_type),
 		GpuCacheStatus::SkipRasterization => return Ok(None),
 	};
 
-	let mut glyph_width = details.width as i32;
-	let mut glyph_height = details.height as i32;
+	let mut glyph_width = i32::from(details.width);
+	let mut glyph_height = i32::from(details.height);
 
 	// Starts beyond right edge or ends beyond left edge
 	let max_x = x + glyph_width;
@@ -429,7 +428,7 @@ fn prepare_glyph(
 		return Ok(None);
 	}
 
-	// Clip left ege
+	// Clip left edge
 	if x < par.bounds_min_x {
 		let right_shift = par.bounds_min_x - x;
 

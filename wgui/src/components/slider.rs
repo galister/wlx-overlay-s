@@ -131,7 +131,7 @@ impl State {
 		self.set_value(common.state, data, common.alterables, val);
 	}
 
-	fn update_text(&self, i18n: &mut I18n, text: &mut WidgetLabel, value: f32) {
+	fn update_text(i18n: &mut I18n, text: &mut WidgetLabel, value: f32) {
 		// round displayed value, should be sufficient for now
 		text.set_text(
 			i18n,
@@ -156,7 +156,7 @@ impl State {
 		state
 			.widgets
 			.call(data.slider_text_id, |label: &mut WidgetLabel| {
-				self.update_text(&mut state.globals.i18n(), label, value);
+				Self::update_text(&mut state.globals.i18n(), label, value);
 			});
 	}
 }
@@ -286,7 +286,7 @@ fn register_event_mouse_press<U1, U2>(
 
 			if state.hovered {
 				state.dragging = true;
-				state.update_value_to_mouse(event_data, &data, common)
+				state.update_value_to_mouse(event_data, &data, common);
 			}
 
 			Ok(())
@@ -295,7 +295,7 @@ fn register_event_mouse_press<U1, U2>(
 }
 
 fn register_event_mouse_release<U1, U2>(
-	data: Rc<Data>,
+	data: &Rc<Data>,
 	state: Rc<RefCell<State>>,
 	listeners: &mut EventListenerCollection<U1, U2>,
 	listener_handles: &mut ListenerHandleVec,
@@ -328,7 +328,7 @@ pub fn construct<U1, U2>(
 	style.min_size = style.size;
 	style.max_size = style.size;
 
-	let (body_id, slider_body_node) = layout.add_child(parent, WidgetDiv::create()?, style)?;
+	let (body_id, slider_body_node) = layout.add_child(parent, WidgetDiv::create(), style)?;
 
 	let (_background_id, _) = layout.add_child(
 		body_id,
@@ -338,7 +338,7 @@ pub fn construct<U1, U2>(
 			border_color: BODY_BORDER_COLOR,
 			border: 2.0,
 			..Default::default()
-		})?,
+		}),
 		taffy::Style {
 			size: taffy::Size {
 				width: percent(1.0),
@@ -364,7 +364,7 @@ pub fn construct<U1, U2>(
 
 	// invisible outer handle body
 	let (slider_handle_id, slider_handle_node) =
-		layout.add_child(body_id, WidgetDiv::create()?, slider_handle_style)?;
+		layout.add_child(body_id, WidgetDiv::create(), slider_handle_style)?;
 
 	let (slider_handle_rect_id, _) = layout.add_child(
 		slider_handle_id,
@@ -374,7 +374,7 @@ pub fn construct<U1, U2>(
 			border: 2.0,
 			round: WLength::Percent(1.0),
 			..Default::default()
-		})?,
+		}),
 		taffy::Style {
 			position: taffy::Position::Absolute,
 			size: taffy::Size {
@@ -406,7 +406,7 @@ pub fn construct<U1, U2>(
 					..Default::default()
 				},
 			},
-		)?,
+		),
 		Default::default(),
 	)?;
 
@@ -427,7 +427,7 @@ pub fn construct<U1, U2>(
 	register_event_mouse_motion(data.clone(), state.clone(), listeners, &mut base.lhandles);
 	register_event_mouse_press(data.clone(), state.clone(), listeners, &mut base.lhandles);
 	register_event_mouse_leave(data.clone(), state.clone(), listeners, &mut base.lhandles);
-	register_event_mouse_release(data.clone(), state.clone(), listeners, &mut base.lhandles);
+	register_event_mouse_release(&data, state.clone(), listeners, &mut base.lhandles);
 
 	let slider = Rc::new(ComponentSlider { base, data, state });
 

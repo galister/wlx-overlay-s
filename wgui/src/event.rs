@@ -73,19 +73,20 @@ pub enum Event {
 }
 
 impl Event {
-	fn test_transform_pos(&self, transform: &Transform, pos: &Vec2) -> bool {
+	fn test_transform_pos(transform: &Transform, pos: Vec2) -> bool {
 		pos.x >= transform.pos.x
 			&& pos.x < transform.pos.x + transform.dim.x
 			&& pos.y >= transform.pos.y
 			&& pos.y < transform.pos.y + transform.dim.y
 	}
 
+	
 	pub fn test_mouse_within_transform(&self, transform: &Transform) -> bool {
 		match self {
-			Event::MouseDown(evt) => self.test_transform_pos(transform, &evt.pos),
-			Event::MouseMotion(evt) => self.test_transform_pos(transform, &evt.pos),
-			Event::MouseUp(evt) => self.test_transform_pos(transform, &evt.pos),
-			Event::MouseWheel(evt) => self.test_transform_pos(transform, &evt.pos),
+			Self::MouseDown(evt) => Self::test_transform_pos(transform, evt.pos),
+			Self::MouseMotion(evt) => Self::test_transform_pos(transform, evt.pos),
+			Self::MouseUp(evt) => Self::test_transform_pos(transform, evt.pos),
+			Self::MouseWheel(evt) => Self::test_transform_pos(transform, evt.pos),
 			_ => false,
 		}
 	}
@@ -102,7 +103,7 @@ pub struct EventAlterables {
 }
 
 impl EventAlterables {
-	pub fn mark_redraw(&mut self) {
+	pub const fn mark_redraw(&mut self) {
 		self.needs_redraw = true;
 	}
 
@@ -114,7 +115,7 @@ impl EventAlterables {
 		self.dirty_nodes.push(node_id);
 	}
 
-	pub fn trigger_haptics(&mut self) {
+	pub const fn trigger_haptics(&mut self) {
 		self.trigger_haptics = true;
 	}
 
@@ -128,7 +129,8 @@ pub struct CallbackDataCommon<'a> {
 	pub alterables: &'a mut EventAlterables,
 }
 
-impl<'a> CallbackDataCommon<'a> {
+impl CallbackDataCommon<'_> {
+	
 	pub fn i18n(&self) -> RefMut<I18n> {
 		self.state.globals.i18n()
 	}
@@ -151,15 +153,16 @@ pub enum CallbackMetadata {
 
 impl CallbackMetadata {
 	// helper function
-	pub fn get_mouse_pos_absolute(&self) -> Option<Vec2> {
+	
+	pub const fn get_mouse_pos_absolute(&self) -> Option<Vec2> {
 		match *self {
-			CallbackMetadata::None => None,
-			CallbackMetadata::MouseButton(b) => Some(b.pos),
-			CallbackMetadata::MousePosition(b) => Some(b.pos),
-			CallbackMetadata::Custom(_) => None,
+			Self::MouseButton(b) => Some(b.pos),
+			Self::MousePosition(b) => Some(b.pos),
+			Self::Custom(_) | Self::None => None,
 		}
 	}
 
+	
 	pub fn get_mouse_pos_relative(&self, transform_stack: &TransformStack) -> Option<Vec2> {
 		let mouse_pos_abs = self.get_mouse_pos_absolute()?;
 		Some(mouse_pos_abs - transform_stack.get_pos())
@@ -206,6 +209,7 @@ pub struct EventListener<U1, U2> {
 }
 
 impl<U1, U2> EventListener<U1, U2> {
+	
 	pub fn callback_for_kind(
 		&self,
 		kind: EventListenerKind,
@@ -291,7 +295,7 @@ impl<U1, U2> EventListenerCollection<U1, U2> {
 
 		let mut count = 0;
 
-		for (_id, vec) in self.map.iter_mut() {
+		for (_id, vec) in &mut self.map {
 			vec.0.retain(|listener| {
 				if listener.handle.strong_count() != 0 {
 					true
@@ -307,6 +311,7 @@ impl<U1, U2> EventListenerCollection<U1, U2> {
 		log::debug!("EventListenerCollection: cleaned-up {count} expired events");
 	}
 
+	
 	pub fn get(&self, widget_id: WidgetID) -> Option<&EventListenerVec<U1, U2>> {
 		self.map.get(widget_id)
 	}

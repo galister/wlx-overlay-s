@@ -124,7 +124,7 @@ impl WCommandBuffer<CmdBufXfer> {
 
 	pub fn update_image(
 		&mut self,
-		image: Arc<Image>,
+		image: &Arc<Image>,
 		data: &[u8],
 		offset: [u32; 3],
 		extent: Option<[u32; 3]>,
@@ -156,9 +156,9 @@ impl WCommandBuffer<CmdBufXfer> {
 
 	pub fn copy_image(
 		&mut self,
-		src: Arc<Image>,
+		src: &Arc<Image>,
 		src_offset: [u32; 3],
-		dst: Arc<Image>,
+		dst: &Arc<Image>,
 		dst_offset: [u32; 3],
 		extent: Option<[u32; 3]>,
 	) -> anyhow::Result<()> {

@@ -46,8 +46,8 @@ impl ScreenPipeline {
         let extentf = [meta.extent[0] as f32, meta.extent[1] as f32];
 
         let pipeline = app.gfx.create_pipeline(
-            app.gfx_extras.shaders.get("vert_quad").unwrap().clone(), // want panic
-            app.gfx_extras.shaders.get("frag_screen").unwrap().clone(), // want panic
+            app.gfx_extras.shaders.get("vert_quad").unwrap(), // want panic
+            app.gfx_extras.shaders.get("frag_screen").unwrap(), // want panic
             app.gfx.surface_format,
             Some(AttachmentBlend::default()),
             PrimitiveTopology::TriangleStrip,

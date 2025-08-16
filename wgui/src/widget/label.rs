@@ -24,7 +24,7 @@ pub struct WidgetLabel {
 }
 
 impl WidgetLabel {
-	pub fn create(i18n: &mut I18n, params: WidgetLabelParams) -> anyhow::Result<WidgetState> {
+	pub fn create(i18n: &mut I18n, params: WidgetLabelParams) -> WidgetState {
 		let metrics = Metrics::from(&params.style);
 		let attrs = Attrs::from(&params.style);
 		let wrap = Wrap::from(&params.style);
@@ -39,7 +39,7 @@ impl WidgetLabel {
 				[(params.content.generate(i18n).as_ref(), attrs)],
 				&Attrs::new(),
 				Shaping::Advanced,
-				params.style.align.map(|a| a.into()),
+				params.style.align.map(Into::into),
 			);
 		}
 
@@ -65,7 +65,7 @@ impl WidgetLabel {
 			[(self.params.content.generate(i18n).as_ref(), attrs)],
 			&Attrs::new(),
 			Shaping::Advanced,
-			self.params.style.align.map(|a| a.into()),
+			self.params.style.align.map(Into::into),
 		);
 	}
 }

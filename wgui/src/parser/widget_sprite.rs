@@ -53,13 +53,13 @@ pub fn parse_widget_sprite<'a, U1, U2>(
 		params.glyph_data = Some(CustomGlyphData::new(glyph));
 	} else {
 		log::warn!("No source for sprite node!");
-	};
+	}
 
 	let (new_id, _) = ctx
 		.layout
-		.add_child(parent_id, WidgetSprite::create(params)?, style)?;
+		.add_child(parent_id, WidgetSprite::create(params), style)?;
 
-	parse_widget_universal(file, ctx, node, new_id)?;
+	parse_widget_universal(file, ctx, node, new_id);
 	parse_children(file, ctx, node, new_id)?;
 
 	Ok(())

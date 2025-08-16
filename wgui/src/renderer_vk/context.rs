@@ -96,7 +96,7 @@ impl SharedContext {
 	}
 
 	fn atlas_for_pixel_scale(&mut self, pixel_scale: f32) -> anyhow::Result<SharedContextKey> {
-		for (key, atlas) in self.atlas_map.iter() {
+		for (key, atlas) in &self.atlas_map {
 			if (atlas.pixel_scale - pixel_scale).abs() < f32::EPSILON {
 				return Ok(key);
 			}
@@ -125,7 +125,7 @@ pub struct Context {
 
 impl Context {
 	pub fn new(shared: &mut SharedContext, pixel_scale: f32) -> anyhow::Result<Self> {
-		let viewport = Viewport::new(shared.gfx.clone())?;
+		let viewport = Viewport::new(&shared.gfx)?;
 		let shared_ctx_key = shared.atlas_for_pixel_scale(pixel_scale)?;
 
 		Ok(Self {
@@ -159,7 +159,7 @@ impl Context {
 
 		let fov = 0.4;
 		let aspect_ratio = size.x / size.y;
-		let projection = Mat4::perspective_rh(fov, aspect_ratio, 1.0, 100000.0);
+		let projection = Mat4::perspective_rh(fov, aspect_ratio, 1.0, 100_000.0);
 
 		let b = size.y / 2.0;
 		let angle_half = fov / 2.0;
@@ -192,7 +192,7 @@ impl Context {
 			shared.rect_pipeline.clone(),
 		)?];
 
-		for primitive in primitives.iter() {
+		for primitive in primitives {
 			let pass = passes.last_mut().unwrap(); // always safe
 
 			match &primitive.payload {

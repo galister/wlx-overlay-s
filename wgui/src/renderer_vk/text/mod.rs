@@ -20,10 +20,10 @@ pub static FONT_SYSTEM: LazyLock<Mutex<FontSystem>> =
 pub static SWASH_CACHE: LazyLock<Mutex<SwashCache>> =
 	LazyLock::new(|| Mutex::new(SwashCache::new()));
 
-/// Used in case no font_size is defined
+/// Used in case no `font_size` is defined
 const DEFAULT_FONT_SIZE: f32 = 14.;
 
-/// In case no line_height is defined, use font_size * DEFAULT_LINE_HEIGHT_RATIO
+/// In case no `line_height` is defined, use `font_size` * `DEFAULT_LINE_HEIGHT_RATIO`
 const DEFAULT_LINE_HEIGHT_RATIO: f32 = 1.43;
 
 pub(crate) const DEFAULT_METRICS: Metrics = Metrics::new(
@@ -55,7 +55,7 @@ impl From<&TextStyle> for Metrics {
 	fn from(style: &TextStyle) -> Self {
 		let font_size = style.size.unwrap_or(DEFAULT_FONT_SIZE);
 
-		Metrics {
+		Self {
 			font_size,
 			line_height: style
 				.size
@@ -67,9 +67,9 @@ impl From<&TextStyle> for Metrics {
 impl From<&TextStyle> for Wrap {
 	fn from(value: &TextStyle) -> Self {
 		if value.wrap {
-			Wrap::WordOrGlyph
+			Self::WordOrGlyph
 		} else {
-			Wrap::None
+			Self::None
 		}
 	}
 }
@@ -84,10 +84,10 @@ pub enum FontStyle {
 }
 
 impl From<FontStyle> for Style {
-	fn from(value: FontStyle) -> Style {
+	fn from(value: FontStyle) -> Self {
 		match value {
-			FontStyle::Normal => Style::Normal,
-			FontStyle::Italic => Style::Italic,
+			FontStyle::Normal => Self::Normal,
+			FontStyle::Italic => Self::Italic,
 		}
 	}
 }
@@ -100,10 +100,10 @@ pub enum FontWeight {
 }
 
 impl From<FontWeight> for Weight {
-	fn from(value: FontWeight) -> Weight {
+	fn from(value: FontWeight) -> Self {
 		match value {
-			FontWeight::Normal => Weight::NORMAL,
-			FontWeight::Bold => Weight::BOLD,
+			FontWeight::Normal => Self::NORMAL,
+			FontWeight::Bold => Self::BOLD,
 		}
 	}
 }
@@ -119,20 +119,20 @@ pub enum HorizontalAlign {
 }
 
 impl From<HorizontalAlign> for Align {
-	fn from(value: HorizontalAlign) -> Align {
+	fn from(value: HorizontalAlign) -> Self {
 		match value {
-			HorizontalAlign::Left => Align::Left,
-			HorizontalAlign::Right => Align::Right,
-			HorizontalAlign::Center => Align::Center,
-			HorizontalAlign::Justified => Align::Justified,
-			HorizontalAlign::End => Align::End,
+			HorizontalAlign::Left => Self::Left,
+			HorizontalAlign::Right => Self::Right,
+			HorizontalAlign::Center => Self::Center,
+			HorizontalAlign::Justified => Self::Justified,
+			HorizontalAlign::End => Self::End,
 		}
 	}
 }
 
 impl From<drawing::Color> for cosmic_text::Color {
-	fn from(value: drawing::Color) -> cosmic_text::Color {
-		cosmic_text::Color::rgba(
+	fn from(value: drawing::Color) -> Self {
+		Self::rgba(
 			(value.r * 255.999) as _,
 			(value.g * 255.999) as _,
 			(value.b * 255.999) as _,
@@ -142,12 +142,12 @@ impl From<drawing::Color> for cosmic_text::Color {
 }
 
 impl From<cosmic_text::Color> for drawing::Color {
-	fn from(value: cosmic_text::Color) -> drawing::Color {
-		drawing::Color::new(
-			value.r() as f32 / 255.999,
-			value.g() as f32 / 255.999,
-			value.b() as f32 / 255.999,
-			value.a() as f32 / 255.999,
+	fn from(value: cosmic_text::Color) -> Self {
+		Self::new(
+			f32::from(value.r()) / 255.999,
+			f32::from(value.g()) / 255.999,
+			f32::from(value.b()) / 255.999,
+			f32::from(value.a()) / 255.999,
 		)
 	}
 }

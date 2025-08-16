@@ -6,7 +6,7 @@ use crate::{
 		print_invalid_attrib,
 		style::{parse_color, parse_round, parse_style},
 	},
-	widget::{self, rectangle::WidgetRectangleParams},
+	widget::rectangle::{WidgetRectangle, WidgetRectangleParams},
 };
 
 pub fn parse_widget_rectangle<'a, U1, U2>(
@@ -55,13 +55,11 @@ pub fn parse_widget_rectangle<'a, U1, U2>(
 		}
 	}
 
-	let (new_id, _) = ctx.layout.add_child(
-		parent_id,
-		widget::rectangle::WidgetRectangle::create(params)?,
-		style,
-	)?;
+	let (new_id, _) = ctx
+		.layout
+		.add_child(parent_id, WidgetRectangle::create(params), style)?;
 
-	parse_widget_universal(file, ctx, node, new_id)?;
+	parse_widget_universal(file, ctx, node, new_id);
 	parse_children(file, ctx, node, new_id)?;
 
 	Ok(())

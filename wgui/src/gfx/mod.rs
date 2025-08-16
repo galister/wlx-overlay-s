@@ -181,8 +181,8 @@ impl WGfx {
 
 	pub fn create_pipeline<V>(
 		self: &Arc<Self>,
-		vert: Arc<ShaderModule>,
-		frag: Arc<ShaderModule>,
+		vert: &Arc<ShaderModule>,
+		frag: &Arc<ShaderModule>,
 		format: Format,
 		blend: Option<AttachmentBlend>,
 		topology: PrimitiveTopology,

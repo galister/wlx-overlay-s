@@ -17,18 +17,18 @@ pub enum AnimationEasing {
 impl AnimationEasing {
 	fn interpolate(&self, x: f32) -> f32 {
 		match self {
-			AnimationEasing::Linear => x,
-			AnimationEasing::InQuad => x * x,
-			AnimationEasing::OutQuad => 1.0 - (1.0 - x) * (1.0 - x),
-			AnimationEasing::OutBack => {
+			Self::Linear => x,
+			Self::InQuad => x * x,
+			Self::OutQuad => 1.0 - (1.0 - x) * (1.0 - x),
+			Self::OutBack => {
 				let a = 1.7;
 				let b = a + 1.0;
-				1.0 + b * (x - 1.0).powf(3.0) + a * (x - 1.0).powf(2.0)
+				1.0 + b * (x - 1.0).powi(3) + a * (x - 1.0).powi(2)
 			}
-			AnimationEasing::InBack => {
+			Self::InBack => {
 				let a = 1.7;
 				let b = a + 1.0;
-				b * x.powf(3.0) - a * x.powf(2.0)
+				b * x.powi(3) - a * x.powi(2)
 			}
 		}
 	}
@@ -46,7 +46,7 @@ pub type AnimationCallback = Box<dyn Fn(&mut CallbackDataCommon, &mut CallbackDa
 pub struct Animation {
 	target_widget: WidgetID,
 
-	animation_id: u32,
+	id: u32,
 	ticks_remaining: u32,
 	ticks_duration: u32,
 
@@ -66,7 +66,7 @@ impl Animation {
 		easing: AnimationEasing,
 		callback: AnimationCallback,
 	) -> Self {
-		Animation::new_ex(target_widget, 0, ticks, easing, callback)
+		Self::new_ex(target_widget, 0, ticks, easing, callback)
 	}
 
 	pub fn new_ex(
@@ -78,7 +78,7 @@ impl Animation {
 	) -> Self {
 		Self {
 			target_widget,
-			animation_id,
+			id: animation_id,
 			callback,
 			easing,
 			ticks_duration: ticks,
@@ -155,15 +155,15 @@ impl Animations {
 
 	pub fn add(&mut self, anim: Animation) {
 		// prevent running two animations at once
-		self.stop_by_widget(anim.target_widget, Some(anim.animation_id));
+		self.stop_by_widget(anim.target_widget, Some(anim.id));
 		self.running_animations.push(anim);
 	}
 
-	pub fn stop_by_widget(&mut self, widget_id: WidgetID, animation_id: Option<u32>) {
+	pub fn stop_by_widget(&mut self, widget_id: WidgetID, opt_animation_id: Option<u32>) {
 		self.running_animations.retain(|anim| {
-			if let Some(animation_id) = &animation_id {
+			if let Some(animation_id) = &opt_animation_id {
 				if anim.target_widget == widget_id {
-					anim.animation_id != *animation_id
+					anim.id != *animation_id
 				} else {
 					true
 				}

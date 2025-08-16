@@ -21,7 +21,7 @@ use super::{
 };
 use crate::gfx::{BLEND_ALPHA, WGfx, pipeline::WGfxPipeline};
 
-/// Pipeline & shaders to be reused between TextRenderer instances
+/// Pipeline & shaders to be reused between `TextRenderer` instances
 #[derive(Clone)]
 pub struct TextPipeline {
 	pub(super) gfx: Arc<WGfx>,
@@ -34,8 +34,8 @@ impl TextPipeline {
 		let frag = frag_atlas::load(gfx.device.clone())?;
 
 		let pipeline = gfx.create_pipeline::<GlyphVertex>(
-			vert,
-			frag,
+			&vert,
+			&frag,
 			format,
 			Some(BLEND_ALPHA),
 			PrimitiveTopology::TriangleStrip,
@@ -133,7 +133,7 @@ impl InnerAtlas {
 		})
 	}
 
-	fn descriptor_set(kind: Kind) -> usize {
+	const fn descriptor_set(kind: Kind) -> usize {
 		match kind {
 			Kind::Color => 0,
 			Kind::Mask => 1,
@@ -176,7 +176,7 @@ impl InnerAtlas {
 	}
 
 	#[allow(dead_code)]
-	pub fn num_channels(&self) -> usize {
+	pub const fn num_channels(&self) -> usize {
 		self.kind.num_channels()
 	}
 
@@ -185,13 +185,14 @@ impl InnerAtlas {
 		font_system: &mut FontSystem,
 		cache: &mut SwashCache,
 	) -> anyhow::Result<bool> {
+		const GROWTH_FACTOR: u32 = 2;
+
 		if self.size >= self.max_texture_dimension_2d {
 			return Ok(false);
 		}
 
 		// Grow each dimension by a factor of 2. The growth factor was chosen to match the growth
 		// factor of `Vec`.`
-		const GROWTH_FACTOR: u32 = 2;
 		let new_size = (self.size * GROWTH_FACTOR).min(self.max_texture_dimension_2d);
 		log::info!("Grow {:?} atlas {} → {new_size}", self.kind, self.size);
 
@@ -230,11 +231,11 @@ impl InnerAtlas {
 				GlyphonCacheKey::Custom(cache_key) => (cache_key.width as usize, cache_key.height as usize),
 			};
 
-			let offset = [x as _, y as _, 0];
+			let offset = [x.into(), y.into(), 0];
 			cmd_buf.copy_image(
-				old_image.clone(),
+				&old_image.clone(),
 				offset,
-				image.clone(),
+				&image.clone(),
 				offset,
 				Some([width as _, height as _, 1]),
 			)?;
@@ -267,17 +268,17 @@ pub(super) enum Kind {
 }
 
 impl Kind {
-	fn num_channels(self) -> usize {
+	const fn num_channels(self) -> usize {
 		match self {
-			Kind::Mask => 1,
-			Kind::Color => 4,
+			Self::Mask => 1,
+			Self::Color => 4,
 		}
 	}
 
-	fn texture_format(self) -> Format {
+	const fn texture_format(self) -> Format {
 		match self {
-			Kind::Mask => Format::R8_UNORM,
-			Kind::Color => Format::R8G8B8A8_UNORM,
+			Self::Mask => Format::R8_UNORM,
+			Self::Color => Format::R8G8B8A8_UNORM,
 		}
 	}
 }
@@ -326,7 +327,10 @@ impl TextAtlas {
 		Ok(did_grow)
 	}
 
-	pub(super) fn inner_for_content_mut(&mut self, content_type: ContentType) -> &mut InnerAtlas {
+	pub(super) const fn inner_for_content_mut(
+		&mut self,
+		content_type: ContentType,
+	) -> &mut InnerAtlas {
 		match content_type {
 			ContentType::Color => &mut self.color_atlas,
 			ContentType::Mask => &mut self.mask_atlas,

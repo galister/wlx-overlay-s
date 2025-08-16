@@ -1,3 +1,22 @@
+#![warn(clippy::all, clippy::pedantic, clippy::nursery)]
+#![allow(
+	clippy::suboptimal_flops,
+	clippy::cast_precision_loss,
+	clippy::missing_errors_doc,
+	clippy::default_trait_access,
+	clippy::missing_panics_doc,
+	clippy::cast_possible_wrap,
+	clippy::cast_possible_truncation,
+	clippy::cast_sign_loss,
+	clippy::items_after_statements,
+	clippy::future_not_send,
+	clippy::must_use_candidate,
+	clippy::implicit_hasher,
+	clippy::option_if_let_else,
+	clippy::significant_drop_tightening,
+	clippy::float_cmp
+)]
+
 pub mod animation;
 pub mod any;
 pub mod assets;

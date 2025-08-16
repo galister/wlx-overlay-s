@@ -86,10 +86,10 @@ pub fn parse_text_style(attribs: &[(Rc<str>, Rc<str>)]) -> TextStyle {
 	style
 }
 
+#[allow(clippy::too_many_lines)]
+#[allow(clippy::cognitive_complexity)]
 pub fn parse_style(attribs: &[(Rc<str>, Rc<str>)]) -> taffy::Style {
-	let mut style = taffy::Style {
-		..Default::default()
-	};
+	let mut style = taffy::Style::default();
 
 	for (key, value) in attribs {
 		match key.as_ref() {

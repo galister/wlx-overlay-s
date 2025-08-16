@@ -84,7 +84,7 @@ impl ParserState {
 		}
 
 		// safety: we already checked it above, should be safe to directly cast it
-		unsafe { Ok(Rc::from_raw(Rc::into_raw(component.0) as _)) }
+		unsafe { Ok(Rc::from_raw(Rc::into_raw(component.0).cast())) }
 	}
 
 	pub fn get_widget_id(&self, id: &str) -> anyhow::Result<WidgetID> {
@@ -135,7 +135,7 @@ impl ParserState {
 		};
 
 		parse_widget_other_internal(
-			template.clone(),
+			&template.clone(),
 			template_parameters,
 			&file,
 			&mut ctx,
@@ -239,11 +239,11 @@ fn parse_val(value: &Rc<str>) -> Option<f32> {
 }
 
 fn is_percent(value: &str) -> bool {
-	value.ends_with("%")
+	value.ends_with('%')
 }
 
 fn parse_percent(value: &str) -> Option<f32> {
-	let Some(val_str) = value.split("%").next() else {
+	let Some(val_str) = value.split('%').next() else {
 		print_invalid_value(value);
 		return None;
 	};
@@ -295,7 +295,7 @@ where
 }
 
 fn parse_widget_other_internal<U1, U2>(
-	template: Rc<Template>,
+	template: &Rc<Template>,
 	template_parameters: HashMap<Rc<str>, Rc<str>>,
 	file: &ParserFile,
 	ctx: &mut ParserContext<U1, U2>,
@@ -312,7 +312,7 @@ fn parse_widget_other_internal<U1, U2>(
 	let template_node = doc
 		.borrow_doc()
 		.get_node(template.node)
-		.ok_or(anyhow::anyhow!("template node invalid"))?;
+		.ok_or_else(|| anyhow::anyhow!("template node invalid"))?;
 
 	parse_children(&template_file, ctx, template_node, parent_id)?;
 
@@ -334,7 +334,7 @@ fn parse_widget_other<'a, U1, U2>(
 	let template_parameters: HashMap<Rc<str>, Rc<str>> =
 		iter_attribs(file, ctx, &node, false).collect();
 
-	parse_widget_other_internal(template.clone(), template_parameters, file, ctx, parent_id)
+	parse_widget_other_internal(&template.clone(), template_parameters, file, ctx, parent_id)
 }
 
 fn parse_tag_include<'a, U1, U2>(
@@ -349,11 +349,15 @@ fn parse_tag_include<'a, U1, U2>(
 		#[allow(clippy::single_match)]
 		match key {
 			"src" => {
-				let mut new_path = file.path.parent().unwrap_or(Path::new("/")).to_path_buf();
+				let mut new_path = file
+					.path
+					.parent()
+					.unwrap_or_else(|| Path::new("/"))
+					.to_path_buf();
 				new_path.push(value);
 
 				let (new_file, node_layout) = get_doc_from_path(ctx, &new_path)?;
-				parse_document_root(new_file, ctx, parent_id, node_layout)?;
+				parse_document_root(&new_file, ctx, parent_id, node_layout)?;
 
 				return Ok(());
 			}
@@ -366,10 +370,7 @@ fn parse_tag_include<'a, U1, U2>(
 	Ok(())
 }
 
-fn parse_tag_var<'a, U1, U2>(
-	ctx: &mut ParserContext<U1, U2>,
-	node: roxmltree::Node<'a, 'a>,
-) -> anyhow::Result<()> {
+fn parse_tag_var<'a, U1, U2>(ctx: &mut ParserContext<U1, U2>, node: roxmltree::Node<'a, 'a>) {
 	let mut out_key: Option<&str> = None;
 	let mut out_value: Option<&str> = None;
 
@@ -391,17 +392,15 @@ fn parse_tag_var<'a, U1, U2>(
 
 	let Some(key) = out_key else {
 		print_missing_attrib("var", "key");
-		return Ok(());
+		return;
 	};
 
 	let Some(value) = out_value else {
 		print_missing_attrib("var", "value");
-		return Ok(());
+		return;
 	};
 
 	ctx.var_map.insert(Rc::from(key), Rc::from(value));
-
-	Ok(())
 }
 
 pub fn replace_vars(input: &str, vars: &HashMap<Rc<str>, Rc<str>>) -> Rc<str> {
@@ -414,12 +413,11 @@ pub fn replace_vars(input: &str, vars: &HashMap<Rc<str>, Rc<str>>) -> Rc<str> {
 	let out = re.replace_all(input, |captures: &regex::Captures| {
 		let input_var = &captures[1];
 
-		match vars.get(input_var) {
-			Some(replacement) => replacement.clone(),
-			None => {
-				log::warn!("failed to replace var named \"{input_var}\" (not found)");
-				Rc::from("")
-			}
+		if let Some(replacement) = vars.get(input_var) {
+			replacement.clone()
+		} else {
+			log::warn!("failed to replace var named \"{input_var}\" (not found)");
+			Rc::from("")
 		}
 	});
 
@@ -433,7 +431,7 @@ fn process_attrib<'a, U1, U2>(
 	key: &str,
 	value: &str,
 ) -> (Rc<str>, Rc<str>) {
-	if value.starts_with("~") {
+	if value.starts_with('~') {
 		let name = &value[1..];
 
 		(
@@ -473,7 +471,7 @@ fn iter_attribs<'a, U1, U2>(
 
 		if key == "macro" {
 			if let Some(macro_attrib) = ctx.macro_attribs.get(value) {
-				for (macro_key, macro_value) in macro_attrib.attribs.iter() {
+				for (macro_key, macro_value) in &macro_attrib.attribs {
 					res.push(process_attrib(file, ctx, macro_key, macro_value));
 				}
 			} else {
@@ -487,15 +485,12 @@ fn iter_attribs<'a, U1, U2>(
 	res.into_iter()
 }
 
-fn parse_tag_theme<'a, U1, U2>(
-	ctx: &mut ParserContext<U1, U2>,
-	node: roxmltree::Node<'a, 'a>,
-) -> anyhow::Result<()> {
+fn parse_tag_theme<'a, U1, U2>(ctx: &mut ParserContext<U1, U2>, node: roxmltree::Node<'a, 'a>) {
 	for child_node in node.children() {
 		let child_name = child_node.tag_name().name();
 		match child_name {
 			"var" => {
-				parse_tag_var(ctx, child_node)?;
+				parse_tag_var(ctx, child_node);
 			}
 			"" => { /* ignore */ }
 			_ => {
@@ -503,15 +498,13 @@ fn parse_tag_theme<'a, U1, U2>(
 			}
 		}
 	}
-
-	Ok(())
 }
 
 fn parse_tag_template<U1, U2>(
 	file: &ParserFile,
 	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'_, '_>,
-) -> anyhow::Result<()> {
+) {
 	let mut template_name: Option<Rc<str>> = None;
 
 	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
@@ -529,7 +522,7 @@ fn parse_tag_template<U1, U2>(
 
 	let Some(name) = template_name else {
 		log::error!("Template name not specified, ignoring");
-		return Ok(());
+		return;
 	};
 
 	ctx.templates.insert(
@@ -539,15 +532,13 @@ fn parse_tag_template<U1, U2>(
 			node_document: file.document.clone(),
 		}),
 	);
-
-	Ok(())
 }
 
 fn parse_tag_macro<U1, U2>(
 	file: &ParserFile,
 	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'_, '_>,
-) -> anyhow::Result<()> {
+) {
 	let mut macro_name: Option<Rc<str>> = None;
 
 	let attribs: Vec<_> = iter_attribs(file, ctx, &node, true).collect();
@@ -568,17 +559,15 @@ fn parse_tag_macro<U1, U2>(
 
 	let Some(name) = macro_name else {
 		log::error!("Template name not specified, ignoring");
-		return Ok(());
+		return;
 	};
 
 	ctx.macro_attribs.insert(
-		name.clone(),
+		name,
 		MacroAttribs {
 			attribs: macro_attribs,
 		},
 	);
-
-	Ok(())
 }
 
 fn process_component<'a, U1, U2>(
@@ -586,7 +575,7 @@ fn process_component<'a, U1, U2>(
 	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'a, 'a>,
 	component: Component,
-) -> anyhow::Result<()> {
+) {
 	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
 
 	for (key, value) in attribs {
@@ -606,7 +595,6 @@ fn process_component<'a, U1, U2>(
 	}
 
 	ctx.components.push(component);
-	Ok(())
 }
 
 fn parse_widget_universal<'a, U1, U2>(
@@ -614,7 +602,7 @@ fn parse_widget_universal<'a, U1, U2>(
 	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'a, 'a>,
 	widget_id: WidgetID,
-) -> anyhow::Result<()> {
+) {
 	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
 
 	for (key, value) in attribs {
@@ -629,7 +617,6 @@ fn parse_widget_universal<'a, U1, U2>(
 			_ => {}
 		}
 	}
-	Ok(())
 }
 
 fn parse_children<'a, U1, U2>(
@@ -652,7 +639,7 @@ fn parse_children<'a, U1, U2>(
 			}
 			Some(s) => print_invalid_attrib("ignore_in_mode", s),
 			_ => {}
-		};
+		}
 
 		match child_node.tag_name().name() {
 			"include" => {
@@ -731,8 +718,8 @@ pub fn parse_from_assets<U1, U2>(
 
 	let mut ctx = create_default_context(doc_params, layout, listeners);
 
-	let (file, node_layout) = get_doc_from_path(&mut ctx, &path)?;
-	parse_document_root(file, &mut ctx, parent_id, node_layout)?;
+	let (file, node_layout) = get_doc_from_path(&ctx, &path)?;
+	parse_document_root(&file, &mut ctx, parent_id, node_layout)?;
 
 	// move everything essential to the result
 	let result = ParserState {
@@ -766,7 +753,7 @@ fn assets_path_to_xml(assets: &mut Box<dyn AssetProvider>, path: &Path) -> anyho
 }
 
 fn get_doc_from_path<U1, U2>(
-	ctx: &mut ParserContext<U1, U2>,
+	ctx: &ParserContext<U1, U2>,
 	path: &Path,
 ) -> anyhow::Result<(ParserFile, roxmltree::NodeId)> {
 	let xml = assets_path_to_xml(&mut ctx.layout.state.globals.assets(), path)?;
@@ -791,7 +778,7 @@ fn get_doc_from_path<U1, U2>(
 }
 
 fn parse_document_root<U1, U2>(
-	file: ParserFile,
+	file: &ParserFile,
 	ctx: &mut ParserContext<U1, U2>,
 	parent_id: WidgetID,
 	node_layout: roxmltree::NodeId,
@@ -800,22 +787,22 @@ fn parse_document_root<U1, U2>(
 		.document
 		.borrow_doc()
 		.get_node(node_layout)
-		.ok_or(anyhow::anyhow!("layout node not found"))?;
+		.ok_or_else(|| anyhow::anyhow!("layout node not found"))?;
 
 	for child_node in node_layout.children() {
 		#[allow(clippy::single_match)]
 		match child_node.tag_name().name() {
 			/*  topmost include directly in <layout>  */
-			"include" => parse_tag_include(&file, ctx, child_node, parent_id)?,
-			"theme" => parse_tag_theme(ctx, child_node)?,
-			"template" => parse_tag_template(&file, ctx, child_node)?,
-			"macro" => parse_tag_macro(&file, ctx, child_node)?,
+			"include" => parse_tag_include(file, ctx, child_node, parent_id)?,
+			"theme" => parse_tag_theme(ctx, child_node),
+			"template" => parse_tag_template(file, ctx, child_node),
+			"macro" => parse_tag_macro(file, ctx, child_node),
 			_ => {}
 		}
 	}
 
 	if let Some(tag_elements) = get_tag_by_name(&node_layout, "elements") {
-		parse_children(&file, ctx, tag_elements, parent_id)?;
+		parse_children(file, ctx, tag_elements, parent_id)?;
 	}
 
 	Ok(())

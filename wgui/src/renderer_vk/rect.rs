@@ -34,7 +34,7 @@ pub struct RectVertex {
 	pub depth: f32,
 }
 
-/// Cloneable pipeline & shaders to be shared between RectRenderer instances.
+/// Cloneable pipeline & shaders to be shared between `RectRenderer` instances.
 #[derive(Clone)]
 pub struct RectPipeline {
 	gfx: Arc<WGfx>,
@@ -47,8 +47,8 @@ impl RectPipeline {
 		let frag = frag_rect::load(gfx.device.clone())?;
 
 		let color_rect = gfx.create_pipeline::<RectVertex>(
-			vert,
-			frag,
+			&vert,
+			&frag,
 			format,
 			Some(BLEND_ALPHA),
 			PrimitiveTopology::TriangleStrip,
