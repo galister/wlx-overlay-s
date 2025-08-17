@@ -660,13 +660,13 @@ fn parse_child<'a, U1, U2>(
 		"sprite" => {
 			new_widget_id = Some(parse_widget_sprite(file, ctx, child_node, parent_id)?);
 		}
-		"button" => {
+		"Button" => {
 			new_widget_id = Some(parse_component_button(file, ctx, child_node, parent_id)?);
 		}
-		"slider" => {
+		"Slider" => {
 			new_widget_id = Some(parse_component_slider(file, ctx, child_node, parent_id)?);
 		}
-		"check_box" => {
+		"CheckBox" => {
 			new_widget_id = Some(parse_component_checkbox(file, ctx, child_node, parent_id)?);
 		}
 		"" => { /* ignore */ }

@@ -21,7 +21,7 @@
       </rectangle>
       <rectangle padding="8" gap="8" round="100%" color="~bg_color_active" justify_content="center" align_items="center">
         <label size="18" translation="BAR.OPACITY" color="~text_color" />
-        <slider width="150" height="24" min_value="0" max_value="100" value="100" />
+        <Slider width="150" height="24" min_value="0" max_value="100" value="100" />
         <label size="18" translation="BAR.ADDITIVE" color="~text_color" />
         <sprite color="~device_color" width="20" height="20" src="bar/checkbox-checked.svg" />
       </rectangle>

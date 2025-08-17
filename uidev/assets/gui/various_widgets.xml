@@ -11,17 +11,17 @@
       <div margin_left="16" gap="8" flex_direction="column">
         <label id="label_current_option" text="Click any of these buttons" size="20" weight="bold" />
         <div gap="4">
-          <button id="button_red" text="Red button" width="220" height="32" color="#FF0000" />
-          <button id="button_aqua" text="Aqua button" width="220" height="32" color="#00FFFF" />
-          <button id="button_yellow" text="Yellow button" width="220" height="32" color="#FFFF00" />
+          <Button id="button_red" text="Red button" width="220" height="32" color="#FF0000" />
+          <Button id="button_aqua" text="Aqua button" width="220" height="32" color="#00FFFF" />
+          <Button id="button_yellow" text="Yellow button" width="220" height="32" color="#FFFF00" />
         </div>
-        <button id="button_click_me" text="Click me" width="128" height="24" color="#FFFFFF" />
+        <Button id="button_click_me" text="Click me" width="128" height="24" color="#FFFFFF" />
 
         <div gap="8" align_items="center">
-          <check_box id="cb_first" text="I'm a checkbox!" />
-          <check_box text="and me too!" />
-          <check_box text="i'm tall" box_size="32" />
-          <check_box text="i'm checked by default" checked="1" />
+          <CheckBox id="cb_first" text="I'm a checkbox!" />
+          <CheckBox text="and me too!" />
+          <CheckBox text="i'm tall" box_size="32" />
+          <CheckBox text="i'm checked by default" checked="1" />
         </div>
 
         <label text="custom attrib test, you should see three rectangles below, each of them in R, G and B" />
@@ -39,13 +39,13 @@
           <rectangle width="128" height="2" />
 
           <label text="range 0-100 value 25" />
-          <slider width="200" height="16" min_value="0" max_value="100" value="25" />
+          <Slider width="200" height="16" min_value="0" max_value="100" value="25" />
 
           <label text="range 10-20 value 15" />
-          <slider width="200" height="16" min_value="10" max_value="20" value="15" />
+          <Slider width="200" height="16" min_value="10" max_value="20" value="15" />
 
           <label text="range -10-42 value 0" />
-          <slider width="200" height="16" min_value="-10" max_value="42" value="0" />
+          <Slider width="200" height="16" min_value="-10" max_value="42" value="0" />
         </div>
 
         <div flex_direction="column" gap="8">
@@ -54,13 +54,13 @@
           <rectangle width="128" height="2" />
 
           <label text="range 0-100 value 25" />
-          <slider width="200" height="24" min_value="0" max_value="100" value="25" />
+          <Slider width="200" height="24" min_value="0" max_value="100" value="25" />
 
           <label text="range 10-20 value 15" />
-          <slider width="200" height="24" min_value="10" max_value="20" value="15" />
+          <Slider width="200" height="24" min_value="10" max_value="20" value="15" />
 
           <label text="range -10-42 value 0" />
-          <slider width="200" height="24" min_value="-10" max_value="42" value="0" />
+          <Slider width="200" height="24" min_value="-10" max_value="42" value="0" />
         </div>
 
         <div flex_direction="column" gap="8">
@@ -69,13 +69,13 @@
           <rectangle width="128" height="2" />
 
           <label text="range 0-100 value 25" />
-          <slider width="200" height="32" min_value="0" max_value="100" value="25" />
+          <Slider width="200" height="32" min_value="0" max_value="100" value="25" />
 
           <label text="range 10-20 value 15" />
-          <slider width="200" height="32" min_value="10" max_value="20" value="15" />
+          <Slider width="200" height="32" min_value="10" max_value="20" value="15" />
 
           <label text="range -10-42 value 0" />
-          <slider width="200" height="32" min_value="-10" max_value="42" value="0" />
+          <Slider width="200" height="32" min_value="-10" max_value="42" value="0" />
         </div>
       </div>
     </rectangle>
