@@ -5391,9 +5391,9 @@ checksum = "ec107c4503ea0b4a98ef47356329af139c0a4f7750e621cf2973cd3385ebcb3d"
 
 [[package]]
 name = "xcb"
-version = "1.5.0"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1e2f212bb1a92cd8caac8051b829a6582ede155ccb60b5d5908b81b100952be"
+checksum = "f07c123b796139bfe0603e654eaf08e132e52387ba95b252c78bad3640ba37ea"
 dependencies = [
  "as-raw-xcb-connection",
  "bitflags 1.3.2",
