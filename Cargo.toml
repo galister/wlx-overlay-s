@@ -65,7 +65,7 @@ xdg = "2.5.2"
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
 serde_json5 = "0.2.1"
 xkbcommon = { version = "0.8.0" }
-xcb = { version = "1.4.0", optional = true, features = [
+xcb = { version = "1.6.0", optional = true, features = [
   "as-raw-xcb-connection",
 ] }
 image_dds = { version = "0.7.2", default-features = false, features = [
