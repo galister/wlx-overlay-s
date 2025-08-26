@@ -334,7 +334,7 @@ pub fn modular_canvas(
                         button_w - 4.,
                         button_h - 4.,
                         corner_radius.unwrap_or_default(),
-                        screen.name.clone(),
+                        state.try_get_screen_name(screen.name.clone()),
                     );
 
                     // cursed

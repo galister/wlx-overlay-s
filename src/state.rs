@@ -19,7 +19,7 @@ use crate::backend::osc::OscSender;
 
 use crate::{
     backend::{input::InputState, overlay::OverlayID, task::TaskContainer},
-    config::{AStrMap, GeneralConfig},
+    config::{AStrMap, AStrMapExt, GeneralConfig},
     config_io,
     graphics::WlxGraphics,
     gui::font::FontCache,
@@ -179,6 +179,14 @@ impl AppState {
                 log::warn!("{e:?}");
                 fallback_data
             }
+        }
+    }
+
+    pub fn try_get_screen_name(&self, screen: Arc<str>) -> Arc<str>
+    {
+        return match self.session.config.screen_names.arc_get(screen.as_ref()) {
+            Some(n) => n.to_owned(),
+            None => screen,
         }
     }
 }

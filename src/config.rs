@@ -178,7 +178,7 @@ const fn def_max_height() -> u16 {
     1440
 }
 
-const fn def_screen_names() -> AStrMap<String> {
+const fn def_screen_names() -> AStrMap<Arc<str>> {
     AStrMap::new()
 }
 
@@ -320,7 +320,7 @@ pub struct GeneralConfig {
     pub timezones: Vec<String>,
 
     #[serde(default = "def_screen_names")]
-    pub screen_names: AStrMap<String>,
+    pub screen_names: AStrMap<Arc<str>>,
 }
 
 impl GeneralConfig {
