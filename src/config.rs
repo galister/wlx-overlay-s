@@ -178,6 +178,10 @@ const fn def_max_height() -> u16 {
     1440
 }
 
+const fn def_screen_names() -> AStrMap<String> {
+    AStrMap::new()
+}
+
 #[derive(Deserialize, Serialize)]
 pub struct GeneralConfig {
     #[serde(default = "def_watch_pos")]
@@ -314,6 +318,9 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_timezones")]
     pub timezones: Vec<String>,
+
+    #[serde(default = "def_screen_names")]
+    pub screen_names: AStrMap<String>,
 }
 
 impl GeneralConfig {
