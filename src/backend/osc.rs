@@ -127,9 +127,7 @@ impl OscSender {
                 let level = device.soc.unwrap_or(-1.0);
                 let parameter = match device.role {
                     TrackedDeviceRole::None => continue,
-                    TrackedDeviceRole::Hmd => {
-                        "hmd"
-                    }
+                    TrackedDeviceRole::Hmd => "hmd",
                     TrackedDeviceRole::LeftHand => {
                         controller_count += 1;
                         controller_total_bat += level;
