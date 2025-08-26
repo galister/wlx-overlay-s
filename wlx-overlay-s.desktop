@@ -4,4 +4,4 @@ Name=WlxOverlay-S
 Exec=wlx-overlay-s
 Icon=wlx-overlay-s
 Terminal=true
-Categories=Utility;
+Categories=Utility;X-WiVRn-VR;
