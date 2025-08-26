@@ -182,12 +182,11 @@ impl AppState {
         }
     }
 
-    pub fn try_get_screen_name(&self, screen: Arc<str>) -> Arc<str>
-    {
+    pub fn try_get_screen_name(&self, screen: Arc<str>) -> Arc<str> {
         return match self.session.config.screen_names.arc_get(screen.as_ref()) {
             Some(n) => n.to_owned(),
             None => screen,
-        }
+        };
     }
 }
 
