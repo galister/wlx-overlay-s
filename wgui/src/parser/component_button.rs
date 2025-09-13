@@ -18,6 +18,8 @@ pub fn parse_component_button<'a, U1, U2>(
 ) -> anyhow::Result<WidgetID> {
 	let mut color = Color::new(1.0, 1.0, 1.0, 1.0);
 	let mut border_color: Option<Color> = None;
+	let mut hover_color: Option<Color> = None;
+	let mut hover_border_color: Option<Color> = None;
 	let mut round = WLength::Units(4.0);
 	let mut translation = Translation::default();
 
@@ -42,6 +44,12 @@ pub fn parse_component_button<'a, U1, U2>(
 			"border_color" => {
 				parse_color_opt(&value, &mut border_color);
 			}
+			"hover_color" => {
+				parse_color_opt(&value, &mut hover_color);
+			}
+			"hover_border_color" => {
+				parse_color_opt(&value, &mut hover_border_color);
+			}
 			_ => {}
 		}
 	}
@@ -55,6 +63,14 @@ pub fn parse_component_button<'a, U1, U2>(
 		));
 	}
 
+	if hover_color.is_none() {
+		hover_color = Some(color.add_rgb(0.5));
+	}
+
+	if hover_border_color.is_none() {
+		hover_border_color = Some(border_color.unwrap().add_rgb(0.75));
+	}
+
 	let (new_id, component) = button::construct(
 		ctx.layout,
 		ctx.listeners,
@@ -62,6 +78,8 @@ pub fn parse_component_button<'a, U1, U2>(
 		button::Params {
 			color,
 			border_color: border_color.unwrap(),
+			hover_border_color: hover_border_color.unwrap(),
+			hover_color: hover_color.unwrap(),
 			text: translation,
 			style,
 			text_style,

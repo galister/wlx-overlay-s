@@ -170,6 +170,10 @@ _Translated by key_
 
 `border_color`: #FFAABB | #FFAABBCC
 
+`hover_color`: #FFAABB | #FFAABBCC
+
+`hover_border_color`: #FFAABB | #FFAABBCC
+
 #### Info
 
 Child widgets are supported and can be added directly in XML.

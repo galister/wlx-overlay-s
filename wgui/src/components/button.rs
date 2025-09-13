@@ -20,6 +20,8 @@ pub struct Params {
 	pub text: Translation,
 	pub color: drawing::Color,
 	pub border_color: drawing::Color,
+	pub hover_border_color: drawing::Color,
+	pub hover_color: drawing::Color,
 	pub round: WLength,
 	pub style: taffy::Style,
 	pub text_style: TextStyle,
@@ -29,8 +31,10 @@ impl Default for Params {
 	fn default() -> Self {
 		Self {
 			text: Translation::from_raw_text(""),
-			color: drawing::Color::new(1.0, 1.0, 1.0, 1.0),
+			color: drawing::Color::new(0.7, 0.7, 0.7, 1.0),
+			hover_color: drawing::Color::new(1.0, 1.0, 1.0, 1.0),
 			border_color: drawing::Color::new(0.0, 0.0, 0.0, 1.0),
+			hover_border_color: drawing::Color::new(0.25, 0.25, 0.25, 1.0),
 			round: WLength::Units(4.0),
 			style: Default::default(),
 			text_style: TextStyle::default(),
@@ -52,8 +56,9 @@ struct State {
 
 struct Data {
 	initial_color: drawing::Color,
-	initial_color2: drawing::Color,
 	initial_border_color: drawing::Color,
+	initial_hover_color: drawing::Color,
+	initial_hover_border_color: drawing::Color,
 	id_label: WidgetID, // Label
 	id_rect: WidgetID,  // Rectangle
 	node_label: taffy::NodeId,
@@ -97,18 +102,21 @@ fn get_color2(color: &drawing::Color) -> drawing::Color {
 }
 
 fn anim_hover(rect: &mut WidgetRectangle, data: &Data, pos: f32, pressed: bool) {
-	let brightness = pos * if pressed { 0.75 } else { 0.5 };
-	let border_brightness = pos;
-	rect.params.color = data.initial_color.add_rgb(brightness);
-	rect.params.color2 = data.initial_color2.add_rgb(brightness);
-	rect.params.border_color = data.initial_border_color.add_rgb(border_brightness);
+	let mult = pos * if pressed { 1.25 } else { 1.0 };
+	let bgcolor = data.initial_color.lerp(&data.initial_hover_color, mult);
+
+	rect.params.color = bgcolor;
+	rect.params.color2 = get_color2(&bgcolor);
+	rect.params.border_color = data
+		.initial_border_color
+		.lerp(&data.initial_hover_border_color, mult);
 	rect.params.border = 2.0;
 }
 
 fn anim_hover_in(data: Rc<Data>, state: Rc<RefCell<State>>, widget_id: WidgetID) -> Animation {
 	Animation::new(
 		widget_id,
-		5,
+		2,
 		AnimationEasing::OutQuad,
 		Box::new(move |common, anim_data| {
 			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>();
@@ -297,8 +305,9 @@ pub fn construct<U1, U2>(
 		id_rect,
 		node_label,
 		initial_color: params.color,
-		initial_color2: get_color2(&params.color),
 		initial_border_color: params.border_color,
+		initial_hover_color: params.hover_color,
+		initial_hover_border_color: params.hover_border_color,
 	});
 
 	let state = Rc::new(RefCell::new(State {

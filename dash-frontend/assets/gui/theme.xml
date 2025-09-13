@@ -1,6 +1,7 @@
 <layout>
   <theme>
     <var key="menu_dark" value="#0A0A0ACC" />
+    <var key="accent" value="#008cff" />
     <var key="background_dark" value="#0d131acc" />
     <var key="background_light" value="#244179aa" />
     <var key="bottom_panel" value="#141e28" />
