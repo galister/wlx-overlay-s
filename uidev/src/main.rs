@@ -32,7 +32,7 @@ use winit::{
     keyboard::{KeyCode, PhysicalKey},
 };
 
-use crate::testbed::testbed_generic::TestbedGeneric;
+use crate::testbed::{testbed_dashboard::TestbedDashboard, testbed_generic::TestbedGeneric};
 
 mod assets;
 mod profiler;
@@ -61,6 +61,7 @@ fn load_testbed(
 ) -> anyhow::Result<Box<dyn Testbed>> {
     let name = std::env::var("TESTBED").unwrap_or_default();
     Ok(match name.as_str() {
+        "dashboard" => Box::new(TestbedDashboard::new(listeners)?),
         "" => Box::new(TestbedGeneric::new(listeners)?),
         _ => Box::new(TestbedAny::new(&name, listeners)?),
     })

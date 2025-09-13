@@ -14,3 +14,4 @@ wgui = { path = "../wgui/" }
 winit = "0.30.10"
 vulkano = { workspace = true }
 vulkano-shaders = { workspace = true }
+dash-frontend = { path = "../dash-frontend/" }

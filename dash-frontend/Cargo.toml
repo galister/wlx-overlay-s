@@ -1,0 +1,10 @@
+[package]
+name = "dash-frontend"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+wgui = { path = "../wgui/" }
+glam = { workspace = true }
+rust-embed = "8.7.2"

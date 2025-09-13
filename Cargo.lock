@@ -1362,6 +1362,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dash-frontend"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "glam",
+ "rust-embed",
+ "wgui",
+]
+
+[[package]]
 name = "dasp_sample"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5121,6 +5131,7 @@ name = "uidev"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "dash-frontend",
  "glam",
  "log",
  "rust-embed",

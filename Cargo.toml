@@ -10,7 +10,7 @@ inherits = "release"
 debug = true
 
 [workspace]
-members = ["uidev", "wgui", "wlx-overlay-s", "wlx-capture"]
+members = ["uidev", "wgui", "wlx-overlay-s", "wlx-capture", "dash-frontend"]
 resolver = "3"
 
 [workspace.dependencies]
