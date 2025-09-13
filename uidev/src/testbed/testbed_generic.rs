@@ -12,7 +12,7 @@ use wgui::{
 	event::EventListenerCollection,
 	globals::WguiGlobals,
 	i18n::Translation,
-	layout::{Layout, Widget},
+	layout::{Layout, LayoutParams, Widget},
 	parser::{ParseDocumentExtra, ParseDocumentParams, ParserState},
 	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
 };
@@ -80,6 +80,9 @@ impl TestbedGeneric {
 				globals,
 				path: XML_PATH,
 				extra,
+			},
+			&LayoutParams {
+				resize_to_parent: true,
 			},
 		)?;
 

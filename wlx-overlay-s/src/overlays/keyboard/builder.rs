@@ -5,6 +5,7 @@ use wgui::{
     animation::{Animation, AnimationEasing},
     drawing::Color,
     event::{self, CallbackMetadata, EventListenerKind},
+    layout::LayoutParams,
     renderer_vk::util,
     taffy::{self, prelude::length},
     widget::{
@@ -80,8 +81,11 @@ where
         extra: Default::default(),
     };
 
-    let (_, mut gui_state_key) =
-        wgui::parser::new_layout_from_assets(&mut panel.listeners, &parse_doc_params)?;
+    let (_, mut gui_state_key) = wgui::parser::new_layout_from_assets(
+        &mut panel.listeners,
+        &parse_doc_params,
+        &LayoutParams::default(),
+    )?;
 
     for row in 0..layout.key_sizes.len() {
         let (div, _) = panel.layout.add_child(

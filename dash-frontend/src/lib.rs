@@ -2,7 +2,7 @@ use glam::Vec2;
 use wgui::{
 	event::EventListenerCollection,
 	globals::WguiGlobals,
-	layout::Layout,
+	layout::{Layout, LayoutParams},
 	parser::{ParseDocumentParams, ParserState},
 };
 
@@ -29,6 +29,9 @@ impl Frontend {
 				globals,
 				path: "gui/dashboard.xml",
 				extra: Default::default(),
+			},
+			&LayoutParams {
+				resize_to_parent: true,
 			},
 		)?;
 

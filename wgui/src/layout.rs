@@ -101,6 +101,11 @@ pub struct Layout {
 	pub animations: Animations,
 }
 
+#[derive(Default)]
+pub struct LayoutParams {
+	pub resize_to_parent: bool,
+}
+
 fn add_child_internal(
 	tree: &mut taffy::TaffyTree<WidgetID>,
 	widgets: &mut WidgetMap,
@@ -289,7 +294,7 @@ impl Layout {
 		Ok(())
 	}
 
-	pub fn new(globals: WguiGlobals) -> anyhow::Result<Self> {
+	pub fn new(globals: WguiGlobals, params: &LayoutParams) -> anyhow::Result<Self> {
 		let mut state = LayoutState {
 			tree: TaffyTree::new(),
 			widgets: WidgetMap::new(),
@@ -304,7 +309,11 @@ impl Layout {
 			None, // no parent
 			WidgetDiv::create(),
 			taffy::Style {
-				size: taffy::Size::auto(),
+				size: if params.resize_to_parent {
+					taffy::Size::percent(1.0)
+				} else {
+					taffy::Size::auto()
+				},
 				..Default::default()
 			},
 		)?;
@@ -322,6 +331,60 @@ impl Layout {
 		})
 	}
 
+	fn try_recompute_layout(&mut self, size: Vec2) -> anyhow::Result<()> {
+		if !self.state.tree.dirty(self.root_node)? && self.prev_size == size {
+			// Nothing to do
+			return Ok(());
+		}
+
+		self.needs_redraw = true;
+		log::debug!("re-computing layout, size {}x{}", size.x, size.y);
+		self.prev_size = size;
+
+		self.state.tree.compute_layout_with_measure(
+			self.root_node,
+			taffy::Size {
+				width: taffy::AvailableSpace::Definite(size.x),
+				height: taffy::AvailableSpace::Definite(size.y),
+			},
+			|known_dimensions, available_space, _node_id, node_context, _style| {
+				if let taffy::Size {
+					width: Some(width),
+					height: Some(height),
+				} = known_dimensions
+				{
+					return taffy::Size { width, height };
+				}
+
+				match node_context {
+					None => taffy::Size::ZERO,
+					Some(h) => {
+						if let Some(w) = self.state.widgets.get(*h) {
+							w.0
+								.borrow_mut()
+								.obj
+								.measure(known_dimensions, available_space)
+						} else {
+							taffy::Size::ZERO
+						}
+					}
+				}
+			},
+		)?;
+		let root_size = self.state.tree.layout(self.root_node).unwrap().size;
+		if self.content_size.x != root_size.width || self.content_size.y != root_size.height {
+			log::debug!(
+				"content size changed: {:.0}x{:.0} → {:.0}x{:.0}",
+				self.content_size.x,
+				self.content_size.y,
+				root_size.width,
+				root_size.height
+			);
+		}
+		self.content_size = vec2(root_size.width, root_size.height);
+		Ok(())
+	}
+
 	pub fn update(&mut self, size: Vec2, timestep_alpha: f32) -> anyhow::Result<()> {
 		let mut alterables = EventAlterables::default();
 
@@ -330,53 +393,7 @@ impl Layout {
 			.process(&self.state, &mut alterables, timestep_alpha);
 
 		self.process_alterables(alterables)?;
-
-		if self.state.tree.dirty(self.root_node)? || self.prev_size != size {
-			self.needs_redraw = true;
-			log::debug!("re-computing layout, size {}x{}", size.x, size.y);
-			self.prev_size = size;
-			self.state.tree.compute_layout_with_measure(
-				self.root_node,
-				taffy::Size {
-					width: taffy::AvailableSpace::Definite(size.x),
-					height: taffy::AvailableSpace::Definite(size.y),
-				},
-				|known_dimensions, available_space, _node_id, node_context, _style| {
-					if let taffy::Size {
-						width: Some(width),
-						height: Some(height),
-					} = known_dimensions
-					{
-						return taffy::Size { width, height };
-					}
-
-					match node_context {
-						None => taffy::Size::ZERO,
-						Some(h) => {
-							if let Some(w) = self.state.widgets.get(*h) {
-								w.0
-									.borrow_mut()
-									.obj
-									.measure(known_dimensions, available_space)
-							} else {
-								taffy::Size::ZERO
-							}
-						}
-					}
-				},
-			)?;
-			let root_size = self.state.tree.layout(self.root_node).unwrap().size;
-			if self.content_size.x != root_size.width || self.content_size.y != root_size.height {
-				log::debug!(
-					"content size changed: {:.0}x{:.0} → {:.0}x{:.0}",
-					self.content_size.x,
-					self.content_size.y,
-					root_size.width,
-					root_size.height
-				);
-			}
-			self.content_size = vec2(root_size.width, root_size.height);
-		}
+		self.try_recompute_layout(size)?;
 		Ok(())
 	}
 

@@ -8,7 +8,7 @@ use wgui::{
         MouseButtonIndex, MouseDownEvent, MouseLeaveEvent, MouseMotionEvent, MouseUpEvent,
         MouseWheelEvent,
     },
-    layout::Layout,
+    layout::{Layout, LayoutParams},
     parser::ParserState,
     renderer_vk::context::Context as WguiContext,
 };
@@ -50,6 +50,7 @@ impl<S> GuiPanel<S> {
                 path,
                 extra: Default::default(),
             },
+            &LayoutParams::default(),
         )?;
 
         let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
@@ -70,7 +71,7 @@ impl<S> GuiPanel<S> {
     }
 
     pub fn new_blank(app: &mut AppState, state: S) -> anyhow::Result<Self> {
-        let layout = Layout::new(app.wgui_globals.clone())?;
+        let layout = Layout::new(app.wgui_globals.clone(), &LayoutParams::default())?;
         let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
         let mut timestep = Timestep::new();
         timestep.set_tps(60.0);

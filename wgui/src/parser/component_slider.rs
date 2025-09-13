@@ -2,7 +2,8 @@ use crate::{
 	components::{Component, slider},
 	layout::WidgetID,
 	parser::{
-		ParserContext, ParserFile, iter_attribs, parse_check_f32, process_component, style::parse_style,
+		ParserContext, ParserFile, iter_attribs, parse_check_f32, parse_children, process_component,
+		style::parse_style,
 	},
 };
 

@@ -4,7 +4,7 @@ use crate::{
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		ParserContext, ParserFile, iter_attribs, process_component,
+		ParserContext, ParserFile, iter_attribs, parse_children, process_component,
 		style::{parse_color, parse_color_opt, parse_round, parse_style, parse_text_style},
 	},
 	widget::util::WLength,
@@ -70,6 +70,7 @@ pub fn parse_component_button<'a, U1, U2>(
 	)?;
 
 	process_component(file, ctx, node, Component(component));
+	parse_children(file, ctx, node, new_id)?;
 
 	Ok(new_id)
 }

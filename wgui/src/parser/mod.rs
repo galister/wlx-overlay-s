@@ -13,7 +13,7 @@ use crate::{
 	drawing::{self},
 	event::EventListenerCollection,
 	globals::WguiGlobals,
-	layout::{Layout, LayoutState, Widget, WidgetID, WidgetMap},
+	layout::{Layout, LayoutParams, LayoutState, Widget, WidgetID, WidgetMap},
 	parser::{
 		component_button::parse_component_button, component_checkbox::parse_component_checkbox,
 		component_slider::parse_component_slider, widget_div::parse_widget_div,
@@ -797,8 +797,9 @@ pub fn parse_from_assets<U1, U2>(
 pub fn new_layout_from_assets<U1, U2>(
 	listeners: &mut EventListenerCollection<U1, U2>,
 	doc_params: &ParseDocumentParams,
+	layout_params: &LayoutParams,
 ) -> anyhow::Result<(Layout, ParserState)> {
-	let mut layout = Layout::new(doc_params.globals.clone())?;
+	let mut layout = Layout::new(doc_params.globals.clone(), layout_params)?;
 	let widget = layout.root_widget;
 	let state = parse_from_assets(doc_params, &mut layout, listeners, widget)?;
 	Ok((layout, state))

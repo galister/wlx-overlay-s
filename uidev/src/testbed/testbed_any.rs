@@ -3,7 +3,7 @@ use glam::Vec2;
 use wgui::{
 	event::EventListenerCollection,
 	globals::WguiGlobals,
-	layout::Layout,
+	layout::{Layout, LayoutParams},
 	parser::{ParseDocumentParams, ParserState},
 };
 
@@ -27,6 +27,7 @@ impl TestbedAny {
 				path: &path,
 				extra: Default::default(),
 			},
+			&LayoutParams::default(),
 		)?;
 		Ok(Self { layout, state })
 	}

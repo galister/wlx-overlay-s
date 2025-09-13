@@ -1,19 +1,18 @@
 <layout>
   <template name="MenuButton">
-    <rectangle
+    <Button
       width="120"
       height="82"
-      round="8"
-      border="2"
-      border_color="#FFFFFF77"
       color="#00000033"
-      align_items="center"
-      justify_content="center"
-      flex_direction="column"
-      gap="8"
-    >
-      <sprite src="${icon}" width="32" height="32" />
-      <label weight="bold" color="#FFFFFF" size="18" text="${text}" />
-    </rectangle>
+      border_color="#FFFFFF77"
+      round="8">
+      <div gap="8"
+        align_items="center"
+        justify_content="center"
+        flex_direction="column">
+        <sprite src="${icon}" width="32" height="32" />
+        <label weight="bold" color="#FFFFFF" size="18" text="${text}" />
+      </div>
+    </Button>
   </template>
 </layout>

@@ -64,7 +64,7 @@
 
 ## div widget
 
-`<div>`
+### `<div>`
 
 ### The most simple element
 
@@ -76,7 +76,7 @@ _None_
 
 ## label widget
 
-`<label>`
+### `<label>`
 
 ### A simple text element
 
@@ -104,7 +104,7 @@ _Text size in pixel units_
 
 ## rectangle widget
 
-`<rectangle>`
+### `<rectangle>`
 
 ### A styled rectangle
 
@@ -130,7 +130,7 @@ _2nd gradient color_
 
 ## sprite widget
 
-`<sprite>`
+### `<sprite>`
 
 ### Image widget, supports raster and svg vector
 
@@ -150,7 +150,7 @@ _External image path_
 
 ## Button component
 
-`<Button>`
+### `<Button>`
 
 ### A clickable, decorated button
 
@@ -170,11 +170,15 @@ _Translated by key_
 
 `border_color`: #FFAABB | #FFAABBCC
 
+#### Info
+
+Child widgets are supported and can be added directly in XML.
+
 ---
 
 ## Slider component
 
-`<Slider>`
+### `<Slider>`
 
 ### A simple slider.
 
@@ -194,7 +198,7 @@ _Initial slider value_
 
 ## Checkbox component
 
-`<CheckBox>`
+### `<CheckBox>`
 
 ### A check-box with label.
 
