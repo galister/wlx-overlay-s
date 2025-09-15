@@ -7,4 +7,5 @@ edition = "2024"
 anyhow.workspace = true
 wgui = { path = "../wgui/" }
 glam = { workspace = true }
+log = { workspace = true }
 rust-embed = "8.7.2"

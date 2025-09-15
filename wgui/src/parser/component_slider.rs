@@ -1,10 +1,7 @@
 use crate::{
 	components::{Component, slider},
 	layout::WidgetID,
-	parser::{
-		ParserContext, ParserFile, iter_attribs, parse_check_f32, parse_children, process_component,
-		style::parse_style,
-	},
+	parser::{ParserContext, ParserFile, iter_attribs, parse_check_f32, process_component, style::parse_style},
 };
 
 pub fn parse_component_slider<'a, U1, U2>(

@@ -1,0 +1,18 @@
+<layout>
+  <include src="../t_menu_button.xml" />
+
+  <elements>
+    <sprite src="dashboard/wayvr_dashboard.svg" min_width="96" min_height="96" />
+    <label text="Hello, user!" size="32" weight="bold" color="#FFFFFF" />
+    <label text="Connected to wlx-overlay-s" size="16" weight="bold" color="#bbffbb" />
+
+    <!-- main button list -->
+    <div flex_direction="row" gap="8" margin_top="32">
+      <MenuButton id="btn_apps" icon="dashboard/apps.svg" text="Apps" />
+      <MenuButton id="btn_games" icon="dashboard/games.svg" text="Games" />
+      <MenuButton id="btn_monado" icon="dashboard/monado.svg" text="Monado" />
+      <MenuButton id="btn_processes" icon="dashboard/window.svg" text="Processes" />
+      <MenuButton id="btn_settings" icon="dashboard/settings.svg" text="Settings" />
+    </div>
+  </elements>
+</layout>

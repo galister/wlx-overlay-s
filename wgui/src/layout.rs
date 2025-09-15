@@ -43,6 +43,11 @@ impl Widget {
 pub struct WidgetMap(HopSlotMap<WidgetID, Widget>);
 pub type WidgetNodeMap = SecondaryMap<WidgetID, taffy::NodeId>;
 
+pub struct WidgetPair {
+	pub id: WidgetID,
+	pub widget: Widget,
+}
+
 impl WidgetMap {
 	fn new() -> Self {
 		Self(HopSlotMap::with_key())
@@ -58,6 +63,10 @@ impl WidgetMap {
 
 	pub fn insert(&mut self, obj: Widget) -> WidgetID {
 		self.0.insert(obj)
+	}
+
+	pub fn remove_single(&mut self, handle: WidgetID) {
+		self.0.remove(handle);
 	}
 
 	// cast to specific widget type, does nothing if widget ID is expired
@@ -101,6 +110,8 @@ pub struct Layout {
 	pub animations: Animations,
 }
 
+pub type RcLayout = Rc<RefCell<Layout>>;
+
 #[derive(Default)]
 pub struct LayoutParams {
 	pub resize_to_parent: bool,
@@ -128,6 +139,10 @@ fn add_child_internal(
 }
 
 impl Layout {
+	pub fn as_rc(self) -> RcLayout {
+		Rc::new(RefCell::new(self))
+	}
+
 	pub fn add_child(
 		&mut self,
 		parent_widget_id: WidgetID,
@@ -146,6 +161,34 @@ impl Layout {
 			widget,
 			style,
 		)
+	}
+
+	fn collect_children_ids_recursive(&self, widget_id: WidgetID, out: &mut Vec<(WidgetID, taffy::NodeId)>) {
+		let Some(node_id) = self.state.nodes.get(widget_id) else {
+			return;
+		};
+
+		for child_id in self.state.tree.child_ids(*node_id) {
+			let child_widget_id = self.state.tree.get_node_context(child_id).unwrap();
+			out.push((*child_widget_id, child_id));
+			self.collect_children_ids_recursive(*child_widget_id, out);
+		}
+	}
+
+	// removes all children of a specific widget
+	pub fn remove_children(&mut self, widget_id: WidgetID) {
+		let mut ids = Vec::new();
+		self.collect_children_ids_recursive(widget_id, &mut ids);
+
+		if !ids.is_empty() {
+			self.needs_redraw = true;
+		}
+
+		for (widget_id, node_id) in ids {
+			self.state.widgets.remove_single(widget_id);
+			self.state.nodes.remove(widget_id);
+			self.state.tree.remove(node_id).unwrap();
+		}
 	}
 
 	fn process_pending_components(&mut self) -> anyhow::Result<()> {
@@ -224,20 +267,11 @@ impl Layout {
 
 		let mut widget = widget.0.borrow_mut();
 
-		match widget.process_event(
-			widget_id,
-			listeners_vec,
-			node_id,
-			event,
-			user_data,
-			&mut params,
-		)? {
+		match widget.process_event(widget_id, listeners_vec, node_id, event, user_data, &mut params)? {
 			widget::EventResult::Pass => {
 				// go on
 			}
-			widget::EventResult::Consumed
-			| widget::EventResult::Outside
-			| widget::EventResult::Unused => {
+			widget::EventResult::Consumed | widget::EventResult::Outside | widget::EventResult::Unused => {
 				iter_children = false;
 			}
 		}
@@ -279,13 +313,7 @@ impl Layout {
 	) -> anyhow::Result<()> {
 		let mut alterables = EventAlterables::default();
 
-		self.push_event_widget(
-			listeners,
-			self.root_node,
-			event,
-			&mut alterables,
-			&mut user_data,
-		)?;
+		self.push_event_widget(listeners, self.root_node, event, &mut alterables, &mut user_data)?;
 
 		self.process_alterables(alterables)?;
 
@@ -360,10 +388,7 @@ impl Layout {
 					None => taffy::Size::ZERO,
 					Some(h) => {
 						if let Some(w) = self.state.widgets.get(*h) {
-							w.0
-								.borrow_mut()
-								.obj
-								.measure(known_dimensions, available_space)
+							w.0.borrow_mut().obj.measure(known_dimensions, available_space)
 						} else {
 							taffy::Size::ZERO
 						}
@@ -388,9 +413,7 @@ impl Layout {
 	pub fn update(&mut self, size: Vec2, timestep_alpha: f32) -> anyhow::Result<()> {
 		let mut alterables = EventAlterables::default();
 
-		self
-			.animations
-			.process(&self.state, &mut alterables, timestep_alpha);
+		self.animations.process(&self.state, &mut alterables, timestep_alpha);
 
 		self.process_alterables(alterables)?;
 		self.try_recompute_layout(size)?;
@@ -428,11 +451,7 @@ impl Layout {
 
 		for request in alterables.style_set_requests {
 			if let Err(e) = self.state.tree.set_style(request.0, request.1) {
-				log::error!(
-					"failed to set style for taffy widget ID {:?}: {:?}",
-					request.0,
-					e
-				);
+				log::error!("failed to set style for taffy widget ID {:?}: {:?}", request.0, e);
 			}
 		}
 

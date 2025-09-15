@@ -1,0 +1,5 @@
+<layout>
+  <elements>
+    <label text="Settings" size="32" weight="bold" color="#FFFFFF" />
+  </elements>
+</layout>

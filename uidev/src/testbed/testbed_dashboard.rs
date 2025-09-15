@@ -1,25 +1,32 @@
-use crate::testbed::Testbed;
-use wgui::{event::EventListenerCollection, layout::Layout};
+use crate::testbed::{Testbed, TestbedUpdateParams};
+use dash_frontend::Frontend;
+use wgui::{event::EventListenerCollection, layout::RcLayout};
 
 pub struct TestbedDashboard {
-	frontend: dash_frontend::Frontend,
+	layout: RcLayout,
+	frontend: dash_frontend::RcFrontend,
 }
 
 impl TestbedDashboard {
 	pub fn new(listeners: &mut EventListenerCollection<(), ()>) -> anyhow::Result<Self> {
-		Ok(Self {
-			frontend: dash_frontend::Frontend::new(dash_frontend::FrontendParams { listeners })?,
-		})
+		let (frontend, layout) =
+			dash_frontend::Frontend::new(dash_frontend::FrontendParams { listeners })?;
+		Ok(Self { frontend, layout })
 	}
 }
 
 impl Testbed for TestbedDashboard {
-	fn update(&mut self, width: f32, height: f32, timestep_alpha: f32) -> anyhow::Result<()> {
-		self.frontend.update(width, height, timestep_alpha)?;
-		Ok(())
+	fn update(&mut self, params: TestbedUpdateParams) -> anyhow::Result<()> {
+		Frontend::update(
+			&self.frontend,
+			params.listeners,
+			params.width,
+			params.height,
+			params.timestep_alpha,
+		)
 	}
 
-	fn layout(&mut self) -> &mut Layout {
-		self.frontend.get_layout()
+	fn layout(&self) -> &RcLayout {
+		&self.layout
 	}
 }

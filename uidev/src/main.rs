@@ -31,7 +31,9 @@ use winit::{
 	keyboard::{KeyCode, PhysicalKey},
 };
 
-use crate::testbed::{testbed_dashboard::TestbedDashboard, testbed_generic::TestbedGeneric};
+use crate::testbed::{
+	TestbedUpdateParams, testbed_dashboard::TestbedDashboard, testbed_generic::TestbedGeneric,
+};
 
 mod assets;
 mod profiler;
@@ -124,6 +126,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 			} => match delta {
 				MouseScrollDelta::LineDelta(x, y) => testbed
 					.layout()
+					.borrow_mut()
 					.push_event(
 						&mut listeners,
 						&wgui::event::Event::MouseWheel(MouseWheelEvent {
@@ -136,6 +139,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 					.unwrap(),
 				MouseScrollDelta::PixelDelta(pos) => testbed
 					.layout()
+					.borrow_mut()
 					.push_event(
 						&mut listeners,
 						&wgui::event::Event::MouseWheel(MouseWheelEvent {
@@ -155,6 +159,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 					if matches!(state, winit::event::ElementState::Pressed) {
 						testbed
 							.layout()
+							.borrow_mut()
 							.push_event(
 								&mut listeners,
 								&wgui::event::Event::MouseDown(MouseDownEvent {
@@ -168,6 +173,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 					} else {
 						testbed
 							.layout()
+							.borrow_mut()
 							.push_event(
 								&mut listeners,
 								&wgui::event::Event::MouseUp(MouseUpEvent {
@@ -188,6 +194,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				mouse = vec2(position.x as _, position.y as _);
 				testbed
 					.layout()
+					.borrow_mut()
 					.push_event(
 						&mut listeners,
 						&wgui::event::Event::MouseMotion(MouseMotionEvent {
@@ -261,18 +268,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				}
 
 				while timestep.on_tick() {
-					testbed.layout().tick().unwrap();
+					testbed.layout().borrow_mut().tick().unwrap();
 				}
 
 				testbed
-					.update(
-						(swapchain_size[0] as f32 / scale) as _,
-						(swapchain_size[1] as f32 / scale) as _,
-						timestep.alpha,
-					)
+					.update(TestbedUpdateParams {
+						listeners: &mut listeners,
+						width: (swapchain_size[0] as f32 / scale) as _,
+						height: (swapchain_size[1] as f32 / scale) as _,
+						timestep_alpha: timestep.alpha,
+					})
 					.unwrap();
 
-				if !render_context.dirty && !testbed.layout().check_toggle_needs_redraw() {
+				if !render_context.dirty && !testbed.layout().borrow_mut().check_toggle_needs_redraw() {
 					// no need to redraw
 					std::thread::sleep(std::time::Duration::from_millis(5)); // dirty fix to prevent cpu burning precious cycles doing a busy loop
 					return;
@@ -301,7 +309,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 						.unwrap();
 					cmd_buf.begin_rendering(tgt).unwrap();
 
-					let primitives = wgui::drawing::draw(testbed.layout()).unwrap();
+					let primitives = wgui::drawing::draw(&testbed.layout().borrow_mut()).unwrap();
 					render_context
 						.draw(&mut shared_context, &mut cmd_buf, &primitives)
 						.unwrap();

@@ -1,6 +1,9 @@
 <layout>
+  <include src="theme.xml" />
+
   <template name="MenuButton">
     <Button
+      id="${id}"
       width="120"
       height="82"
       color="#00000033"

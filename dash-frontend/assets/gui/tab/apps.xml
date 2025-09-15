@@ -1,0 +1,7 @@
+<layout>
+
+  <elements>
+    <label text="Apps" size="64" weight="bold" color="#FFFFFF" />
+    <label text="bottom text" size="16" weight="bold" color="#FFFFFF88" />
+  </elements>
+</layout>

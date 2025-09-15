@@ -13,12 +13,11 @@ use crate::{
 	drawing::{self},
 	event::EventListenerCollection,
 	globals::WguiGlobals,
-	layout::{Layout, LayoutParams, LayoutState, Widget, WidgetID, WidgetMap},
+	layout::{Layout, LayoutParams, LayoutState, Widget, WidgetID, WidgetMap, WidgetPair},
 	parser::{
 		component_button::parse_component_button, component_checkbox::parse_component_checkbox,
-		component_slider::parse_component_slider, widget_div::parse_widget_div,
-		widget_label::parse_widget_label, widget_rectangle::parse_widget_rectangle,
-		widget_sprite::parse_widget_sprite,
+		component_slider::parse_component_slider, widget_div::parse_widget_div, widget_label::parse_widget_label,
+		widget_rectangle::parse_widget_rectangle, widget_sprite::parse_widget_sprite,
 	},
 };
 use ouroboros::self_referencing;
@@ -95,13 +94,16 @@ impl ParserState {
 		}
 	}
 
-	pub fn fetch_widget(&self, state: &LayoutState, id: &str) -> anyhow::Result<Widget> {
+	pub fn fetch_widget(&self, state: &LayoutState, id: &str) -> anyhow::Result<WidgetPair> {
 		let widget_id = self.get_widget_id(id)?;
 		let widget = state
 			.widgets
 			.get(widget_id)
 			.ok_or_else(|| anyhow::anyhow!("fetch_widget({}): widget not found", id))?;
-		Ok(widget.clone())
+		Ok(WidgetPair {
+			id: widget_id,
+			widget: widget.clone(),
+		})
 	}
 
 	pub fn process_template<U1, U2>(
@@ -121,9 +123,9 @@ impl ParserState {
 			layout,
 			listeners,
 			ids: Default::default(),
-			macro_attribs: self.macro_attribs.clone(), // FIXME: prevent copying
-			var_map: self.var_map.clone(),             // FIXME: prevent copying
-			components: self.components.clone(),       // FIXME: prevent copying
+			macro_attribs: self.macro_attribs.clone(),         // FIXME: prevent copying
+			var_map: self.var_map.clone(),                     // FIXME: prevent copying
+			components: self.components.clone(),               // FIXME: prevent copying
 			components_id_map: self.components_id_map.clone(), // FIXME: prevent copying
 			templates: Default::default(),
 			doc_params,
@@ -135,13 +137,7 @@ impl ParserState {
 			template_parameters: template_parameters.clone(), // FIXME: prevent copying
 		};
 
-		parse_widget_other_internal(
-			&template.clone(),
-			template_parameters,
-			&file,
-			&mut ctx,
-			widget_id,
-		)?;
+		parse_widget_other_internal(&template.clone(), template_parameters, &file, &mut ctx, widget_id)?;
 
 		// FIXME?
 		ctx.ids.into_iter().for_each(|(id, key)| {
@@ -203,19 +199,11 @@ pub fn parse_color_hex(html_hex: &str) -> Option<drawing::Color> {
 	None
 }
 
-fn get_tag_by_name<'a>(
-	node: &roxmltree::Node<'a, 'a>,
-	name: &str,
-) -> Option<roxmltree::Node<'a, 'a>> {
-	node
-		.children()
-		.find(|&child| child.tag_name().name() == name)
+fn get_tag_by_name<'a>(node: &roxmltree::Node<'a, 'a>, name: &str) -> Option<roxmltree::Node<'a, 'a>> {
+	node.children().find(|&child| child.tag_name().name() == name)
 }
 
-fn require_tag_by_name<'a>(
-	node: &roxmltree::Node<'a, 'a>,
-	name: &str,
-) -> anyhow::Result<roxmltree::Node<'a, 'a>> {
+fn require_tag_by_name<'a>(node: &roxmltree::Node<'a, 'a>, name: &str) -> anyhow::Result<roxmltree::Node<'a, 'a>> {
 	get_tag_by_name(node, name).ok_or_else(|| anyhow::anyhow!("Tag \"{}\" not found", name))
 }
 
@@ -332,8 +320,7 @@ fn parse_widget_other<'a, U1, U2>(
 		return Ok(()); // not critical
 	};
 
-	let template_parameters: HashMap<Rc<str>, Rc<str>> =
-		iter_attribs(file, ctx, &node, false).collect();
+	let template_parameters: HashMap<Rc<str>, Rc<str>> = iter_attribs(file, ctx, &node, false).collect();
 
 	parse_widget_other_internal(&template.clone(), template_parameters, file, ctx, parent_id)
 }
@@ -350,11 +337,7 @@ fn parse_tag_include<'a, U1, U2>(
 		#[allow(clippy::single_match)]
 		match key {
 			"src" => {
-				let mut new_path = file
-					.path
-					.parent()
-					.unwrap_or_else(|| Path::new("/"))
-					.to_path_buf();
+				let mut new_path = file.path.parent().unwrap_or_else(|| Path::new("/")).to_path_buf();
 				new_path.push(value);
 
 				let (new_file, node_layout) = get_doc_from_path(ctx, &new_path)?;
@@ -443,10 +426,7 @@ fn process_attrib<'a, U1, U2>(
 			},
 		)
 	} else {
-		(
-			Rc::from(key),
-			replace_vars(value, &file.template_parameters),
-		)
+		(Rc::from(key), replace_vars(value, &file.template_parameters))
 	}
 }
 
@@ -501,11 +481,7 @@ fn parse_tag_theme<'a, U1, U2>(ctx: &mut ParserContext<U1, U2>, node: roxmltree:
 	}
 }
 
-fn parse_tag_template<U1, U2>(
-	file: &ParserFile,
-	ctx: &mut ParserContext<U1, U2>,
-	node: roxmltree::Node<'_, '_>,
-) {
+fn parse_tag_template<U1, U2>(file: &ParserFile, ctx: &mut ParserContext<U1, U2>, node: roxmltree::Node<'_, '_>) {
 	let mut template_name: Option<Rc<str>> = None;
 
 	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
@@ -535,11 +511,7 @@ fn parse_tag_template<U1, U2>(
 	);
 }
 
-fn parse_tag_macro<U1, U2>(
-	file: &ParserFile,
-	ctx: &mut ParserContext<U1, U2>,
-	node: roxmltree::Node<'_, '_>,
-) {
+fn parse_tag_macro<U1, U2>(file: &ParserFile, ctx: &mut ParserContext<U1, U2>, node: roxmltree::Node<'_, '_>) {
 	let mut macro_name: Option<Rc<str>> = None;
 
 	let attribs: Vec<_> = iter_attribs(file, ctx, &node, true).collect();
@@ -563,12 +535,7 @@ fn parse_tag_macro<U1, U2>(
 		return;
 	};
 
-	ctx.macro_attribs.insert(
-		name,
-		MacroAttribs {
-			attribs: macro_attribs,
-		},
-	);
+	ctx.macro_attribs.insert(name, MacroAttribs { attribs: macro_attribs });
 }
 
 fn process_component<'a, U1, U2>(
@@ -583,11 +550,7 @@ fn process_component<'a, U1, U2>(
 		#[allow(clippy::single_match)]
 		match key.as_ref() {
 			"id" => {
-				if ctx
-					.components_id_map
-					.insert(value.clone(), component.weak())
-					.is_some()
-				{
+				if ctx.components_id_map.insert(value.clone(), component.weak()).is_some() {
 					log::warn!("duplicate component ID \"{value}\" in the same layout file!");
 				}
 			}

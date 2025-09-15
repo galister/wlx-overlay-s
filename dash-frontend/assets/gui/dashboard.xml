@@ -1,10 +1,24 @@
 <layout>
   <include src="theme.xml" />
-  <include src="templates.xml" />
 
   <theme>
+    <var key="side_size" value="48" />
     <var key="side_sprite_size" value="26" />
+    <var key="side_button_size" value="48" />
   </theme>
+
+  <template name="SideButton">
+    <Button
+      id="${id}"
+      round="100%"
+      width="~side_button_size"
+      height="~side_button_size"
+      color="#44444400"
+      hover_color="#333333ff"
+      hover_border_color="#555555ff">
+      <sprite src="${src}" width="~side_sprite_size" height="~side_sprite_size" />
+    </Button>
+  </template>
 
   <elements>
     <!-- background for testing -->
@@ -13,7 +27,7 @@
     <!-- left/right separator (menu and rest) -->
     <div flex_direction="row" gap="8" width="100%" height="100%">
       <!-- LEFT MENU -->
-      <div id="menu" width="48" min_width="48" max_width="48" height="100%" align_items="center" justify_content="center">
+      <div id="menu" width="~size_size" min_width="~side_size" max_width="~side_size" height="100%" align_items="center" justify_content="center">
         <rectangle
           width="100%"
           round="100%"
@@ -21,17 +35,15 @@
           flex_direction="column"
           justify_content="center"
           align_items="center"
-          gap="24"
-          padding_top="16"
-          padding_bottom="16"
+          gap="4"
         >
-          <sprite src="dashboard/wayvr_dashboard_mono.svg" width="~side_sprite_size" height="~side_sprite_size" />
-          <sprite src="dashboard/apps.svg" width="~side_sprite_size" height="~side_sprite_size" />
-          <sprite src="dashboard/games.svg" width="~side_sprite_size" height="~side_sprite_size" />
-          <sprite src="dashboard/monado.svg" width="~side_sprite_size" height="~side_sprite_size" />
-          <sprite src="dashboard/window.svg" width="~side_sprite_size" height="~side_sprite_size" />
+          <SideButton id="btn_side_home" src="dashboard/wayvr_dashboard_mono.svg" />
+          <SideButton id="btn_side_apps" src="dashboard/apps.svg" />
+          <SideButton id="btn_side_games" src="dashboard/games.svg" />
+          <SideButton id="btn_side_monado" src="dashboard/monado.svg" />
+          <SideButton id="btn_side_processes" src="dashboard/window.svg" />
           <rectangle height="2" color="#FFFFFF33" width="~side_sprite_size" />
-          <sprite src="dashboard/settings.svg" width="~side_sprite_size" height="~side_sprite_size" />
+          <SideButton id="btn_side_settings" src="dashboard/settings.svg" />
         </rectangle>
       </div>
       <!-- REST -->
@@ -52,18 +64,7 @@
             flex_direction="column"
             gap="24"
           >
-            <sprite src="dashboard/wayvr_dashboard.svg" min_width="96" min_height="96" />
-            <label text="Hello, user!" size="32" weight="bold" color="#FFFFFF" />
-            <label text="Connected to wlx-overlay-s" size="16" weight="bold" color="#bbffbb" />
-
-            <!-- main button list -->
-            <div flex_direction="row" gap="8" margin_top="32">
-              <MenuButton icon="dashboard/apps.svg" text="Apps" />
-              <MenuButton icon="dashboard/games.svg" text="Games" />
-              <MenuButton icon="dashboard/monado.svg" text="Monado" />
-              <MenuButton icon="dashboard/window.svg" text="Processes" />
-              <MenuButton icon="dashboard/settings.svg" text="Settings" />
-            </div>
+            <!-- filled-in at runtime -->
           </div>
         </rectangle>
         <!-- BOTTOM PANEL -->

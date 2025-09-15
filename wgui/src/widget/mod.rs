@@ -6,8 +6,8 @@ use crate::{
 	any::AnyTrait,
 	drawing,
 	event::{
-		self, CallbackData, CallbackDataCommon, CallbackMetadata, Event, EventAlterables,
-		EventListenerKind, EventListenerVec, MouseWheelEvent,
+		self, CallbackData, CallbackDataCommon, CallbackMetadata, Event, EventAlterables, EventListenerKind,
+		EventListenerVec, MouseWheelEvent,
 	},
 	layout::{Layout, LayoutState, WidgetID},
 	transform_stack::TransformStack,
@@ -138,8 +138,8 @@ impl EventParams<'_> {
 pub enum EventResult {
 	Pass,     // widget acknowledged it and allows the event to pass to the children
 	Consumed, // widget triggered an action, do not pass to children
-	Outside, // widget acknowledged this event but ignores it due the fact the mouse is not hovered over it
-	Unused,  // widget doesn't have any events attached
+	Outside,  // widget acknowledged this event but ignores it due the fact the mouse is not hovered over it
+	Unused,   // widget doesn't have any events attached
 }
 
 fn get_scroll_enabled(style: &taffy::Style) -> (bool, bool) {
@@ -223,12 +223,7 @@ impl WidgetState {
 		self.obj.draw(state, params);
 	}
 
-	pub fn draw_scrollbars(
-		&mut self,
-		state: &mut DrawState,
-		params: &DrawParams,
-		info: &ScrollbarInfo,
-	) {
+	pub fn draw_scrollbars(&mut self, state: &mut DrawState, params: &DrawParams, info: &ScrollbarInfo) {
 		let (enabled_horiz, enabled_vert) = get_scroll_enabled(params.style);
 		if !enabled_horiz && !enabled_vert {
 			return;

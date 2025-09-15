@@ -1,0 +1,5 @@
+<layout>
+  <elements>
+    <label text="Monado" size="32" weight="bold" color="#FFFFFF" />
+  </elements>
+</layout>

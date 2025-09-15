@@ -1,6 +1,9 @@
 use std::rc::Rc;
 
-use crate::{assets, testbed::Testbed};
+use crate::{
+	assets,
+	testbed::{Testbed, TestbedUpdateParams},
+};
 use glam::Vec2;
 use wgui::{
 	components::{
@@ -12,13 +15,13 @@ use wgui::{
 	event::EventListenerCollection,
 	globals::WguiGlobals,
 	i18n::Translation,
-	layout::{Layout, LayoutParams, Widget},
+	layout::{LayoutParams, RcLayout, Widget},
 	parser::{ParseDocumentExtra, ParseDocumentParams, ParserState},
 	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
 };
 
 pub struct TestbedGeneric {
-	pub layout: Layout,
+	pub layout: RcLayout,
 
 	#[allow(dead_code)]
 	state: ParserState,
@@ -103,12 +106,16 @@ impl TestbedGeneric {
 		let button_aqua = state.fetch_component_as::<ComponentButton>("button_aqua")?;
 		let button_yellow = state.fetch_component_as::<ComponentButton>("button_yellow")?;
 
-		handle_button_click(button_red, label_cur_option.clone(), "Clicked red");
-		handle_button_click(button_aqua, label_cur_option.clone(), "Clicked aqua");
-		handle_button_click(button_yellow, label_cur_option.clone(), "Clicked yellow");
+		handle_button_click(button_red, label_cur_option.widget.clone(), "Clicked red");
+		handle_button_click(button_aqua, label_cur_option.widget.clone(), "Clicked aqua");
+		handle_button_click(
+			button_yellow,
+			label_cur_option.widget.clone(),
+			"Clicked yellow",
+		);
 
 		let cb_first = state.fetch_component_as::<ComponentCheckbox>("cb_first")?;
-		let label = label_cur_option.clone();
+		let label = label_cur_option.widget.clone();
 		cb_first.on_toggle(Box::new(move |e| {
 			let mut widget = label.get_as_mut::<WidgetLabel>();
 			widget.set_text(
@@ -118,19 +125,23 @@ impl TestbedGeneric {
 			Ok(())
 		}));
 
-		Ok(Self { layout, state })
+		Ok(Self {
+			layout: layout.as_rc(),
+			state,
+		})
 	}
 }
 
 impl Testbed for TestbedGeneric {
-	fn update(&mut self, width: f32, height: f32, timestep_alpha: f32) -> anyhow::Result<()> {
-		self
-			.layout
-			.update(Vec2::new(width, height), timestep_alpha)?;
+	fn update(&mut self, params: TestbedUpdateParams) -> anyhow::Result<()> {
+		self.layout.borrow_mut().update(
+			Vec2::new(params.width, params.height),
+			params.timestep_alpha,
+		)?;
 		Ok(())
 	}
 
-	fn layout(&mut self) -> &mut Layout {
-		&mut self.layout
+	fn layout(&self) -> &RcLayout {
+		&self.layout
 	}
 }

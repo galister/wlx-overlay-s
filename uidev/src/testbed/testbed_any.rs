@@ -1,14 +1,17 @@
-use crate::{assets, testbed::Testbed};
+use crate::{
+	assets,
+	testbed::{Testbed, TestbedUpdateParams},
+};
 use glam::Vec2;
 use wgui::{
 	event::EventListenerCollection,
 	globals::WguiGlobals,
-	layout::{Layout, LayoutParams},
+	layout::{LayoutParams, RcLayout},
 	parser::{ParseDocumentParams, ParserState},
 };
 
 pub struct TestbedAny {
-	pub layout: Layout,
+	pub layout: RcLayout,
 
 	#[allow(dead_code)]
 	state: ParserState,
@@ -29,19 +32,23 @@ impl TestbedAny {
 			},
 			&LayoutParams::default(),
 		)?;
-		Ok(Self { layout, state })
+		Ok(Self {
+			layout: layout.as_rc(),
+			state,
+		})
 	}
 }
 
 impl Testbed for TestbedAny {
-	fn update(&mut self, width: f32, height: f32, timestep_alpha: f32) -> anyhow::Result<()> {
-		self
-			.layout
-			.update(Vec2::new(width, height), timestep_alpha)?;
+	fn update(&mut self, params: TestbedUpdateParams) -> anyhow::Result<()> {
+		self.layout.borrow_mut().update(
+			Vec2::new(params.width, params.height),
+			params.timestep_alpha,
+		)?;
 		Ok(())
 	}
 
-	fn layout(&mut self) -> &mut Layout {
-		&mut self.layout
+	fn layout(&self) -> &RcLayout {
+		&self.layout
 	}
 }

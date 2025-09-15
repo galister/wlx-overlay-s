@@ -3,8 +3,7 @@ use crate::{
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		ParserContext, ParserFile, iter_attribs, parse_check_f32, parse_check_i32, parse_children,
-		process_component, style::parse_style,
+		ParserContext, ParserFile, iter_attribs, parse_check_f32, parse_check_i32, process_component, style::parse_style,
 	},
 };
 
