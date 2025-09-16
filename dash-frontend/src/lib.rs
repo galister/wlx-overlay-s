@@ -1,13 +1,16 @@
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
+use chrono::Timelike;
 use glam::Vec2;
 use wgui::{
 	components::button::ComponentButton,
 	drawing,
-	event::EventListenerCollection,
+	event::{CallbackDataCommon, EventAlterables, EventListenerCollection},
 	globals::WguiGlobals,
-	layout::{LayoutParams, RcLayout},
+	i18n::Translation,
+	layout::{LayoutParams, RcLayout, WidgetID},
 	parser::{ParseDocumentParams, ParserState},
+	widget::label::WidgetLabel,
 };
 
 use crate::tab::{
@@ -28,6 +31,10 @@ pub struct Frontend {
 	current_tab: Option<Box<dyn Tab>>,
 
 	tasks: VecDeque<FrontendTask>,
+
+	ticks: u32,
+
+	label_time_id: WidgetID,
 }
 
 pub type RcFrontend = Rc<RefCell<Frontend>>;
@@ -64,38 +71,71 @@ impl Frontend {
 		let mut tasks = VecDeque::<FrontendTask>::new();
 		tasks.push_back(FrontendTask::SetTab(TabType::Home));
 
+		let label_time_id = state.get_widget_id("label_time")?;
+
 		let res = Rc::new(RefCell::new(Self {
 			layout: rc_layout.clone(),
 			state,
 			current_tab: None,
 			globals,
 			tasks,
+			ticks: 0,
+			label_time_id,
 		}));
 
-		Frontend::register_buttons(&res)?;
+		Frontend::register_widgets(&res)?;
 
 		Ok((res, rc_layout))
 	}
 
 	pub fn update(
+		&mut self,
 		rc_this: &RcFrontend,
 		listeners: &mut EventListenerCollection<(), ()>,
 		width: f32,
 		height: f32,
 		timestep_alpha: f32,
 	) -> anyhow::Result<()> {
-		let mut this = rc_this.borrow_mut();
-
-		while let Some(task) = this.tasks.pop_front() {
-			this.process_task(rc_this, task, listeners)?;
+		while let Some(task) = self.tasks.pop_front() {
+			self.process_task(rc_this, task, listeners)?;
 		}
 
-		this
-			.layout
-			.borrow_mut()
-			.update(Vec2::new(width, height), timestep_alpha)?;
+		self.tick(width, height, timestep_alpha)?;
+		self.ticks += 1;
 
 		Ok(())
+	}
+
+	fn tick(&mut self, width: f32, height: f32, timestep_alpha: f32) -> anyhow::Result<()> {
+		let mut layout = self.layout.borrow_mut();
+
+		let mut alterables = EventAlterables::default();
+		let mut common = CallbackDataCommon {
+			alterables: &mut alterables,
+			state: &layout.state,
+		};
+
+		// fixme: timer events instead of this thing
+		if self.ticks % 1000 == 0 {
+			self.update_time(&mut common);
+		}
+
+		layout.update(Vec2::new(width, height), timestep_alpha)?;
+		layout.process_alterables(alterables)?;
+
+		Ok(())
+	}
+
+	fn update_time(&self, common: &mut CallbackDataCommon) {
+		let Some(mut label) = common.state.widgets.get_as::<WidgetLabel>(self.label_time_id) else {
+			return;
+		};
+
+		let now = chrono::Local::now();
+		let hours = now.hour();
+		let minutes = now.minute();
+
+		label.set_text(common, Translation::from_raw_text(&format!("{hours:02}:{minutes:02}")));
 	}
 
 	pub fn get_layout(&self) -> &RcLayout {
@@ -151,7 +191,7 @@ impl Frontend {
 		Ok(())
 	}
 
-	fn register_buttons(rc_this: &RcFrontend) -> anyhow::Result<()> {
+	fn register_widgets(rc_this: &RcFrontend) -> anyhow::Result<()> {
 		let this = rc_this.borrow_mut();
 		let btn_home = this.state.fetch_component_as::<ComponentButton>("btn_side_home")?;
 		let btn_apps = this.state.fetch_component_as::<ComponentButton>("btn_side_apps")?;

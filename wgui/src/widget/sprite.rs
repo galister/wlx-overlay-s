@@ -1,9 +1,11 @@
 use std::{cell::RefCell, rc::Rc};
 
 use cosmic_text::{Attrs, Buffer, Color, Shaping, Weight};
+use slotmap::Key;
 
 use crate::{
 	drawing::{self},
+	layout::WidgetID,
 	renderer_vk::text::{
 		DEFAULT_METRICS, FONT_SYSTEM,
 		custom_glyph::{CustomGlyph, CustomGlyphData},
@@ -21,11 +23,15 @@ pub struct WidgetSpriteParams {
 #[derive(Debug, Default)]
 pub struct WidgetSprite {
 	params: WidgetSpriteParams,
+	id: WidgetID,
 }
 
 impl WidgetSprite {
 	pub fn create(params: WidgetSpriteParams) -> WidgetState {
-		WidgetState::new(Box::new(Self { params }))
+		WidgetState::new(Box::new(Self {
+			params,
+			id: WidgetID::null(),
+		}))
 	}
 }
 
@@ -62,9 +68,7 @@ impl WidgetObj for WidgetSprite {
 			{
 				let mut font_system = FONT_SYSTEM.lock();
 				let mut buffer = buffer.borrow_with(&mut font_system);
-				let attrs = Attrs::new()
-					.color(Color::rgb(255, 0, 255))
-					.weight(Weight::BOLD);
+				let attrs = Attrs::new().color(Color::rgb(255, 0, 255)).weight(Weight::BOLD);
 
 				// set text last in order to avoid expensive re-shaping
 				buffer.set_text("Error", &attrs, Shaping::Basic);
@@ -84,5 +88,13 @@ impl WidgetObj for WidgetSprite {
 		_available_space: taffy::Size<taffy::AvailableSpace>,
 	) -> taffy::Size<f32> {
 		taffy::Size::ZERO
+	}
+
+	fn get_id(&self) -> WidgetID {
+		self.id
+	}
+
+	fn set_id(&mut self, id: WidgetID) {
+		self.id = id;
 	}
 }

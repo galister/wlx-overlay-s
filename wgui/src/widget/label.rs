@@ -1,12 +1,15 @@
 use std::{cell::RefCell, rc::Rc};
 
 use cosmic_text::{Attrs, Buffer, Metrics, Shaping, Wrap};
+use slotmap::Key;
 use taffy::AvailableSpace;
 
 use crate::{
 	drawing::{self, Boundary},
+	event::CallbackDataCommon,
 	globals::Globals,
 	i18n::{I18n, Translation},
+	layout::WidgetID,
 	renderer_vk::text::{FONT_SYSTEM, TextStyle},
 };
 
@@ -19,6 +22,8 @@ pub struct WidgetLabelParams {
 }
 
 pub struct WidgetLabel {
+	id: WidgetID,
+
 	params: WidgetLabelParams,
 	buffer: Rc<RefCell<Buffer>>,
 	last_boundary: Boundary,
@@ -52,12 +57,15 @@ impl WidgetLabel {
 			params,
 			buffer: Rc::new(RefCell::new(buffer)),
 			last_boundary: Boundary::default(),
+			id: WidgetID::null(),
 		}))
 	}
 
-	pub fn set_text(&mut self, i18n: &mut I18n, translation: Translation) {
+	// set text without layout/re-render update.
+	// Not recommended unless the widget wasn't rendered yet (first init).
+	pub fn set_text_simple(&mut self, i18n: &mut I18n, translation: Translation) -> bool {
 		if self.params.content == translation {
-			return;
+			return false;
 		}
 
 		self.params.content = translation;
@@ -72,6 +80,15 @@ impl WidgetLabel {
 			Shaping::Advanced,
 			self.params.style.align.map(Into::into),
 		);
+
+		true
+	}
+
+	// set text and check if it needs to be re-rendered/re-layouted
+	pub fn set_text(&mut self, common: &mut CallbackDataCommon, translation: Translation) {
+		if self.set_text_simple(&mut common.i18n(), translation) {
+			common.mark_widget_dirty(self.id);
+		}
 	}
 }
 
@@ -117,5 +134,13 @@ impl WidgetObj for WidgetLabel {
 		});
 		let height = total_lines as f32 * buffer.metrics().line_height;
 		taffy::Size { width, height }
+	}
+
+	fn get_id(&self) -> WidgetID {
+		self.id
+	}
+
+	fn set_id(&mut self, id: WidgetID) {
+		self.id = id;
 	}
 }

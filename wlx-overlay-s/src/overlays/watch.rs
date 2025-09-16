@@ -55,9 +55,9 @@ where
                     if let Some(s) =
                         tz_str.and_then(|tz| tz.split('/').next_back().map(|x| x.replace('_', " ")))
                     {
-                        label.set_text(&mut i18n, Translation::from_raw_text(&s));
+                        label.set_text_simple(&mut i18n, Translation::from_raw_text(&s));
                     } else {
-                        label.set_text(&mut i18n, Translation::from_raw_text("Local"));
+                        label.set_text_simple(&mut i18n, Translation::from_raw_text("Local"));
                     }
 
                     continue;
@@ -73,7 +73,7 @@ where
                 }
                 _ => {
                     let mut i18n = panel.layout.state.globals.i18n();
-                    label.set_text(&mut i18n, Translation::from_raw_text("ERR"));
+                    label.set_text_simple(&mut i18n, Translation::from_raw_text("ERR"));
                     continue;
                 }
             };
@@ -158,7 +158,7 @@ struct ClockState {
 
 fn clock_on_tick(
     clock: &ClockState,
-    common: &event::CallbackDataCommon,
+    common: &mut event::CallbackDataCommon,
     data: &mut event::CallbackData,
 ) {
     let date_time = clock.timezone.as_ref().map_or_else(
@@ -166,6 +166,6 @@ fn clock_on_tick(
         |tz| format!("{}", Local::now().with_timezone(tz).format(&clock.format)),
     );
 
-    let label = data.obj.get_as_mut::<WidgetLabel>();
-    label.set_text(&mut common.i18n(), Translation::from_raw_text(&date_time));
+    let label = data.obj.get_as_mut::<WidgetLabel>().unwrap();
+    label.set_text(common, Translation::from_raw_text(&date_time));
 }

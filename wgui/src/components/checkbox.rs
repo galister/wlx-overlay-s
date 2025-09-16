@@ -8,7 +8,7 @@ use crate::{
 	animation::{Animation, AnimationEasing},
 	components::{Component, ComponentBase, ComponentTrait, InitData},
 	drawing::Color,
-	event::{EventAlterables, EventListenerCollection, EventListenerKind, ListenerHandleVec},
+	event::{CallbackDataCommon, EventAlterables, EventListenerCollection, EventListenerKind, ListenerHandleVec},
 	i18n::Translation,
 	layout::{self, Layout, LayoutState, WidgetID},
 	renderer_vk::text::{FontWeight, TextStyle},
@@ -42,6 +42,16 @@ pub struct CheckboxToggleEvent<'a> {
 	pub alterables: &'a mut EventAlterables,
 	pub checked: bool,
 }
+
+impl CheckboxToggleEvent<'_> {
+	pub const fn as_common(&mut self) -> CallbackDataCommon {
+		CallbackDataCommon {
+			alterables: self.alterables,
+			state: self.state,
+		}
+	}
+}
+
 pub type CheckboxToggleCallback = Box<dyn Fn(CheckboxToggleEvent) -> anyhow::Result<()>>;
 
 struct State {
@@ -51,14 +61,13 @@ struct State {
 	on_toggle: Option<CheckboxToggleCallback>,
 }
 
+#[allow(clippy::struct_field_names)]
 struct Data {
 	id_container: WidgetID, // Rectangle, transparent if not hovered
 
 	//id_outer_box: WidgetID, // Rectangle, parent of container
 	id_inner_box: WidgetID, // Rectangle, parent of outer_box
 	id_label: WidgetID,     // Label, parent of container
-
-	node_label: taffy::NodeId,
 }
 
 pub struct ComponentCheckbox {
@@ -85,15 +94,12 @@ fn set_box_checked(widgets: &layout::WidgetMap, data: &Data, checked: bool) {
 }
 
 impl ComponentCheckbox {
-	pub fn set_text(&self, state: &LayoutState, alterables: &mut EventAlterables, text: Translation) {
-		let globals = state.globals.clone();
+	pub fn set_text(&self, state: &LayoutState, common: &mut CallbackDataCommon, text: Translation) {
+		let Some(mut label) = state.widgets.get_as::<WidgetLabel>(self.data.id_label) else {
+			return;
+		};
 
-		state.widgets.call(self.data.id_label, |label: &mut WidgetLabel| {
-			label.set_text(&mut globals.i18n(), text);
-		});
-
-		alterables.mark_redraw();
-		alterables.mark_dirty(self.data.node_label);
+		label.set_text(common, text);
 	}
 
 	pub fn set_checked(&self, state: &LayoutState, alterables: &mut EventAlterables, checked: bool) {
@@ -123,7 +129,7 @@ fn anim_hover_in(state: Rc<RefCell<State>>, widget_id: WidgetID) -> Animation {
 		5,
 		AnimationEasing::OutQuad,
 		Box::new(move |common, anim_data| {
-			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>();
+			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
 			anim_hover(rect, anim_data.pos, state.borrow().down);
 			common.alterables.mark_redraw();
 		}),
@@ -136,7 +142,7 @@ fn anim_hover_out(state: Rc<RefCell<State>>, widget_id: WidgetID) -> Animation {
 		8,
 		AnimationEasing::OutQuad,
 		Box::new(move |common, anim_data| {
-			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>();
+			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
 			anim_hover(rect, 1.0 - anim_data.pos, state.borrow().down);
 			common.alterables.mark_redraw();
 		}),
@@ -198,7 +204,7 @@ fn register_event_mouse_press<U1, U2>(
 		Box::new(move |common, event_data, _, _| {
 			let mut state = state.borrow_mut();
 
-			let rect = event_data.obj.get_as_mut::<WidgetRectangle>();
+			let rect = event_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
 			anim_hover(rect, 1.0, true);
 
 			if state.hovered {
@@ -224,7 +230,7 @@ fn register_event_mouse_release<U1, U2>(
 		data.id_container,
 		EventListenerKind::MouseRelease,
 		Box::new(move |common, event_data, _, _| {
-			let rect = event_data.obj.get_as_mut::<WidgetRectangle>();
+			let rect = event_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
 			anim_hover(rect, 1.0, false);
 
 			let mut state = state.borrow_mut();
@@ -327,7 +333,7 @@ pub fn construct<U1, U2>(
 		},
 	)?;
 
-	let (id_label, node_label) = layout.add_child(
+	let (id_label, _node_label) = layout.add_child(
 		id_container,
 		WidgetLabel::create(
 			&mut globals.get(),
@@ -346,7 +352,6 @@ pub fn construct<U1, U2>(
 		id_container,
 		id_inner_box,
 		id_label,
-		node_label,
 	});
 
 	let state = Rc::new(RefCell::new(State {

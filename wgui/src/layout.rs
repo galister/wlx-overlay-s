@@ -29,10 +29,8 @@ impl Widget {
 		Self(Rc::new(RefCell::new(widget_state)))
 	}
 
-	// panics on failure
-	// TODO: panic-less alternative
-	pub fn get_as_mut<T: 'static>(&self) -> RefMut<T> {
-		RefMut::map(self.0.borrow_mut(), |w| w.obj.get_as_mut::<T>())
+	pub fn get_as_mut<T: 'static>(&self) -> Option<RefMut<T>> {
+		RefMut::filter_map(self.0.borrow_mut(), |w| w.obj.get_as_mut::<T>()).ok()
 	}
 
 	pub fn state(&self) -> RefMut<WidgetState> {
@@ -54,7 +52,7 @@ impl WidgetMap {
 	}
 
 	pub fn get_as<T: 'static>(&self, handle: WidgetID) -> Option<RefMut<T>> {
-		Some(self.0.get(handle)?.get_as_mut::<T>())
+		self.0.get(handle)?.get_as_mut::<T>()
 	}
 
 	pub fn get(&self, handle: WidgetID) -> Option<&Widget> {
@@ -62,16 +60,20 @@ impl WidgetMap {
 	}
 
 	pub fn insert(&mut self, obj: Widget) -> WidgetID {
-		self.0.insert(obj)
+		self
+			.0
+			.try_insert_with_key::<_, ()>(|widget_id| {
+				obj.state().obj.set_id(widget_id);
+				Ok(obj)
+			})
+			.unwrap()
 	}
 
 	pub fn remove_single(&mut self, handle: WidgetID) {
 		self.0.remove(handle);
 	}
 
-	// cast to specific widget type, does nothing if widget ID is expired
-	// panics in case if the widget type is wrong
-	// TODO: panic-less alternative
+	// cast to specific widget type, does nothing if widget ID is expired or the type is wrong
 	pub fn call<WIDGET, FUNC>(&self, widget_id: WidgetID, func: FUNC)
 	where
 		WIDGET: WidgetObj,
@@ -82,7 +84,9 @@ impl WidgetMap {
 			return;
 		};
 
-		func(&mut widget.get_as_mut::<WIDGET>());
+		if let Some(mut casted) = widget.get_as_mut::<WIDGET>() {
+			func(&mut casted);
+		}
 	}
 }
 
@@ -151,7 +155,7 @@ impl Layout {
 	) -> anyhow::Result<(WidgetID, taffy::NodeId)> {
 		let parent_node = *self.state.nodes.get(parent_widget_id).unwrap();
 
-		self.needs_redraw = true;
+		self.mark_redraw();
 
 		add_child_internal(
 			&mut self.state.tree,
@@ -181,7 +185,7 @@ impl Layout {
 		self.collect_children_ids_recursive(widget_id, &mut ids);
 
 		if !ids.is_empty() {
-			self.needs_redraw = true;
+			self.mark_redraw();
 		}
 
 		for (widget_id, node_id) in ids {
@@ -189,6 +193,10 @@ impl Layout {
 			self.state.nodes.remove(widget_id);
 			self.state.tree.remove(node_id).unwrap();
 		}
+	}
+
+	pub const fn mark_redraw(&mut self) {
+		self.needs_redraw = true;
 	}
 
 	fn process_pending_components(&mut self) -> anyhow::Result<()> {
@@ -365,7 +373,7 @@ impl Layout {
 			return Ok(());
 		}
 
-		self.needs_redraw = true;
+		self.mark_redraw();
 		log::debug!("re-computing layout, size {}x{}", size.x, size.y);
 		self.prev_size = size;
 
@@ -429,13 +437,13 @@ impl Layout {
 		Ok(())
 	}
 
-	fn process_alterables(&mut self, alterables: EventAlterables) -> anyhow::Result<()> {
+	pub fn process_alterables(&mut self, alterables: EventAlterables) -> anyhow::Result<()> {
 		for node in alterables.dirty_nodes {
 			self.state.tree.mark_dirty(node)?;
 		}
 
 		if alterables.needs_redraw {
-			self.needs_redraw = true;
+			self.mark_redraw();
 		}
 
 		if alterables.trigger_haptics {
@@ -443,7 +451,7 @@ impl Layout {
 		}
 
 		if !alterables.animations.is_empty() {
-			self.needs_redraw = true;
+			self.mark_redraw();
 			for anim in alterables.animations {
 				self.animations.add(anim);
 			}

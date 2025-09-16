@@ -7,9 +7,9 @@ use crate::{
 	animation::{Animation, AnimationEasing},
 	components::{Component, ComponentBase, ComponentTrait, InitData},
 	drawing::{self},
-	event::{self, CallbackDataCommon, EventAlterables, EventListenerCollection, EventListenerKind, ListenerHandleVec},
-	i18n::{I18n, Translation},
-	layout::{Layout, LayoutState, WidgetID},
+	event::{self, CallbackDataCommon, EventListenerCollection, EventListenerKind, ListenerHandleVec},
+	i18n::Translation,
+	layout::{Layout, WidgetID},
 	renderer_vk::{
 		text::{FontWeight, HorizontalAlign, TextStyle},
 		util,
@@ -69,7 +69,7 @@ impl ComponentTrait for ComponentSlider {
 	fn init(&self, init_data: &mut InitData) {
 		let mut state = self.state.borrow_mut();
 		let value = state.values.value;
-		state.set_value(init_data.state, &self.data, init_data.alterables, value);
+		state.set_value(&mut init_data.as_common(), &self.data, value);
 	}
 
 	fn base(&mut self) -> &mut ComponentBase {
@@ -125,25 +125,26 @@ impl State {
 		let target_value = self.values.get_from_normalized(norm);
 		let val = target_value;
 
-		self.set_value(common.state, data, common.alterables, val);
+		self.set_value(common, data, val);
 	}
 
-	fn update_text(i18n: &mut I18n, text: &mut WidgetLabel, value: f32) {
+	fn update_text(common: &mut CallbackDataCommon, text: &mut WidgetLabel, value: f32) {
 		// round displayed value, should be sufficient for now
-		text.set_text(i18n, Translation::from_raw_text(&format!("{}", value.round())));
+		text.set_text(common, Translation::from_raw_text(&format!("{}", value.round())));
 	}
 
-	fn set_value(&mut self, state: &LayoutState, data: &Data, alterables: &mut EventAlterables, value: f32) {
+	fn set_value(&mut self, common: &mut CallbackDataCommon, data: &Data, value: f32) {
 		//common.call_on_widget(data.slider_handle_id, |_div: &mut Div| {});
 		self.values.value = value;
-		let mut style = state.tree.style(data.slider_handle_node).unwrap().clone();
-		conf_handle_style(&self.values, data.slider_body_node, &mut style, &state.tree);
-		alterables.mark_dirty(data.slider_handle_node);
-		alterables.mark_redraw();
-		alterables.set_style(data.slider_handle_node, style);
-		state.widgets.call(data.slider_text_id, |label: &mut WidgetLabel| {
-			Self::update_text(&mut state.globals.i18n(), label, value);
-		});
+		let mut style = common.state.tree.style(data.slider_handle_node).unwrap().clone();
+		conf_handle_style(&self.values, data.slider_body_node, &mut style, &common.state.tree);
+		common.alterables.mark_dirty(data.slider_handle_node);
+		common.alterables.mark_redraw();
+		common.alterables.set_style(data.slider_handle_node, style);
+
+		if let Some(mut label) = common.state.widgets.get_as::<WidgetLabel>(data.slider_text_id) {
+			Self::update_text(common, &mut label, value);
+		}
 	}
 }
 
@@ -173,7 +174,7 @@ fn on_enter_anim(common: &mut event::CallbackDataCommon, handle_id: WidgetID) {
 		20,
 		AnimationEasing::OutBack,
 		Box::new(move |common, data| {
-			let rect = data.obj.get_as_mut::<WidgetRectangle>();
+			let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
 			data.data.transform = get_anim_transform(data.pos, data.widget_size);
 			anim_rect(rect, data.pos);
 			common.alterables.mark_redraw();
@@ -187,7 +188,7 @@ fn on_leave_anim(common: &mut event::CallbackDataCommon, handle_id: WidgetID) {
 		10,
 		AnimationEasing::OutQuad,
 		Box::new(move |common, data| {
-			let rect = data.obj.get_as_mut::<WidgetRectangle>();
+			let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
 			data.data.transform = get_anim_transform(1.0 - data.pos, data.widget_size);
 			anim_rect(rect, 1.0 - data.pos);
 			common.alterables.mark_redraw();

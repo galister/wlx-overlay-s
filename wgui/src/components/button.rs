@@ -5,7 +5,7 @@ use crate::{
 	animation::{Animation, AnimationEasing},
 	components::{Component, ComponentBase, ComponentTrait, InitData},
 	drawing::{self, Color},
-	event::{EventAlterables, EventListenerCollection, EventListenerKind, ListenerHandleVec},
+	event::{CallbackDataCommon, EventAlterables, EventListenerCollection, EventListenerKind, ListenerHandleVec},
 	i18n::Translation,
 	layout::{Layout, LayoutState, WidgetID},
 	renderer_vk::text::{FontWeight, TextStyle},
@@ -46,6 +46,16 @@ pub struct ButtonClickEvent<'a> {
 	pub state: &'a LayoutState,
 	pub alterables: &'a mut EventAlterables,
 }
+
+impl ButtonClickEvent<'_> {
+	pub const fn as_common(&mut self) -> CallbackDataCommon {
+		CallbackDataCommon {
+			alterables: self.alterables,
+			state: self.state,
+		}
+	}
+}
+
 pub type ButtonClickCallback = Box<dyn Fn(ButtonClickEvent) -> anyhow::Result<()>>;
 
 struct State {
@@ -61,7 +71,6 @@ struct Data {
 	initial_hover_border_color: drawing::Color,
 	id_label: WidgetID, // Label
 	id_rect: WidgetID,  // Rectangle
-	node_label: taffy::NodeId,
 }
 
 pub struct ComponentButton {
@@ -79,15 +88,12 @@ impl ComponentTrait for ComponentButton {
 }
 
 impl ComponentButton {
-	pub fn set_text(&self, state: &LayoutState, alterables: &mut EventAlterables, text: Translation) {
-		let globals = state.globals.clone();
+	pub fn set_text(&self, common: &mut CallbackDataCommon, text: Translation) {
+		let Some(mut label) = common.state.widgets.get_as::<WidgetLabel>(self.data.id_label) else {
+			return;
+		};
 
-		state.widgets.call(self.data.id_label, |label: &mut WidgetLabel| {
-			label.set_text(&mut globals.i18n(), text);
-		});
-
-		alterables.mark_redraw();
-		alterables.mark_dirty(self.data.node_label);
+		label.set_text(common, text);
 	}
 
 	pub fn on_click(&self, func: ButtonClickCallback) {
@@ -115,7 +121,7 @@ fn anim_hover_in(data: Rc<Data>, state: Rc<RefCell<State>>, widget_id: WidgetID)
 		2,
 		AnimationEasing::OutQuad,
 		Box::new(move |common, anim_data| {
-			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>();
+			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
 			anim_hover(rect, &data, anim_data.pos, state.borrow().down);
 			common.alterables.mark_redraw();
 		}),
@@ -128,7 +134,7 @@ fn anim_hover_out(data: Rc<Data>, state: Rc<RefCell<State>>, widget_id: WidgetID
 		8,
 		AnimationEasing::OutQuad,
 		Box::new(move |common, anim_data| {
-			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>();
+			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
 			anim_hover(rect, &data, 1.0 - anim_data.pos, state.borrow().down);
 			common.alterables.mark_redraw();
 		}),
@@ -190,7 +196,7 @@ fn register_event_mouse_press<U1, U2>(
 		Box::new(move |common, event_data, _, _| {
 			let mut state = state.borrow_mut();
 
-			let rect = event_data.obj.get_as_mut::<WidgetRectangle>();
+			let rect = event_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
 			anim_hover(rect, &data, 1.0, true);
 
 			if state.hovered {
@@ -216,7 +222,7 @@ fn register_event_mouse_release<U1, U2>(
 		data.id_rect,
 		EventListenerKind::MouseRelease,
 		Box::new(move |common, event_data, _, _| {
-			let rect = event_data.obj.get_as_mut::<WidgetRectangle>();
+			let rect = event_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
 			anim_hover(rect, &data, 1.0, false);
 
 			let mut state = state.borrow_mut();
@@ -272,7 +278,7 @@ pub fn construct<U1, U2>(
 
 	let light_text = (params.color.r + params.color.g + params.color.b) < 1.5;
 
-	let (id_label, node_label) = layout.add_child(
+	let (id_label, _node_label) = layout.add_child(
 		id_rect,
 		WidgetLabel::create(
 			&mut globals.get(),
@@ -295,7 +301,6 @@ pub fn construct<U1, U2>(
 	let data = Rc::new(Data {
 		id_label,
 		id_rect,
-		node_label,
 		initial_color: params.color,
 		initial_border_color: params.border_color,
 		initial_hover_color: params.hover_color,

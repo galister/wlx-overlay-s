@@ -111,6 +111,10 @@ pub struct DrawParams<'a> {
 }
 
 pub trait WidgetObj: AnyTrait {
+	// every widget stores their of id for convenience reasons
+	fn get_id(&self) -> WidgetID;
+	fn set_id(&mut self, id: WidgetID); // always set at insertion
+
 	fn draw(&mut self, state: &mut DrawState, params: &DrawParams);
 	fn measure(
 		&mut self,
@@ -173,18 +177,14 @@ pub fn get_scrollbar_info(l: &taffy::Layout) -> Option<ScrollbarInfo> {
 }
 
 impl dyn WidgetObj {
-	// panics on failure
-	// TODO: panic-less alternative
-	pub fn get_as<T: 'static>(&self) -> &T {
+	pub fn get_as<T: 'static>(&self) -> Option<&T> {
 		let any = self.as_any();
-		any.downcast_ref::<T>().unwrap()
+		any.downcast_ref::<T>()
 	}
 
-	// panics on failure
-	// TODO: panic-less alternative
-	pub fn get_as_mut<T: 'static>(&mut self) -> &mut T {
+	pub fn get_as_mut<T: 'static>(&mut self) -> Option<&mut T> {
 		let any = self.as_any_mut();
-		any.downcast_mut::<T>().unwrap()
+		any.downcast_mut::<T>()
 	}
 }
 

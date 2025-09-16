@@ -1,5 +1,8 @@
+use slotmap::Key;
+
 use crate::{
 	drawing::{self, GradientMode},
+	layout::WidgetID,
 	widget::util::WLength,
 };
 
@@ -19,11 +22,15 @@ pub struct WidgetRectangleParams {
 
 pub struct WidgetRectangle {
 	pub params: WidgetRectangleParams,
+	id: WidgetID,
 }
 
 impl WidgetRectangle {
 	pub fn create(params: WidgetRectangleParams) -> WidgetState {
-		WidgetState::new(Box::new(Self { params }))
+		WidgetState::new(Box::new(Self {
+			params,
+			id: WidgetID::null(),
+		}))
 	}
 }
 
@@ -33,9 +40,7 @@ impl WidgetObj for WidgetRectangle {
 
 		let round_units = match self.params.round {
 			WLength::Units(units) => units as u8,
-			WLength::Percent(percent) => {
-				(f32::min(boundary.size.x, boundary.size.y) * percent / 2.0) as u8
-			}
+			WLength::Percent(percent) => (f32::min(boundary.size.x, boundary.size.y) * percent / 2.0) as u8,
 		};
 
 		state.primitives.push(drawing::RenderPrimitive {
@@ -51,5 +56,13 @@ impl WidgetObj for WidgetRectangle {
 				round_units,
 			}),
 		});
+	}
+
+	fn get_id(&self) -> WidgetID {
+		self.id
+	}
+
+	fn set_id(&mut self, id: WidgetID) {
+		self.id = id;
 	}
 }

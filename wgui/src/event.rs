@@ -80,7 +80,6 @@ impl Event {
 			&& pos.y < transform.pos.y + transform.dim.y
 	}
 
-	
 	pub fn test_mouse_within_transform(&self, transform: &Transform) -> bool {
 		match self {
 			Self::MouseDown(evt) => Self::test_transform_pos(transform, evt.pos),
@@ -130,9 +129,16 @@ pub struct CallbackDataCommon<'a> {
 }
 
 impl CallbackDataCommon<'_> {
-	
 	pub fn i18n(&self) -> RefMut<I18n> {
 		self.state.globals.i18n()
+	}
+
+	// helper function
+	pub fn mark_widget_dirty(&mut self, id: WidgetID) {
+		if let Some(node_id) = self.state.nodes.get(id) {
+			self.alterables.mark_dirty(*node_id);
+		}
+		self.alterables.mark_redraw();
 	}
 }
 
@@ -153,7 +159,7 @@ pub enum CallbackMetadata {
 
 impl CallbackMetadata {
 	// helper function
-	
+
 	pub const fn get_mouse_pos_absolute(&self) -> Option<Vec2> {
 		match *self {
 			Self::MouseButton(b) => Some(b.pos),
@@ -162,7 +168,6 @@ impl CallbackMetadata {
 		}
 	}
 
-	
 	pub fn get_mouse_pos_relative(&self, transform_stack: &TransformStack) -> Option<Vec2> {
 		let mouse_pos_abs = self.get_mouse_pos_absolute()?;
 		Some(mouse_pos_abs - transform_stack.get_pos())
@@ -209,18 +214,11 @@ pub struct EventListener<U1, U2> {
 }
 
 impl<U1, U2> EventListener<U1, U2> {
-	
 	pub fn callback_for_kind(
 		&self,
 		kind: EventListenerKind,
-	) -> Option<
-		&impl Fn(&mut CallbackDataCommon, &mut CallbackData, &mut U1, &mut U2) -> anyhow::Result<()>,
-	> {
-		if self.kind == kind {
-			Some(&self.callback)
-		} else {
-			None
-		}
+	) -> Option<&impl Fn(&mut CallbackDataCommon, &mut CallbackData, &mut U1, &mut U2) -> anyhow::Result<()>> {
+		if self.kind == kind { Some(&self.callback) } else { None }
 	}
 }
 
@@ -311,7 +309,6 @@ impl<U1, U2> EventListenerCollection<U1, U2> {
 		log::debug!("EventListenerCollection: cleaned-up {count} expired events");
 	}
 
-	
 	pub fn get(&self, widget_id: WidgetID) -> Option<&EventListenerVec<U1, U2>> {
 		self.map.get(widget_id)
 	}

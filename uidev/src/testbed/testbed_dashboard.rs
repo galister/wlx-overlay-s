@@ -1,5 +1,4 @@
 use crate::testbed::{Testbed, TestbedUpdateParams};
-use dash_frontend::Frontend;
 use wgui::{event::EventListenerCollection, layout::RcLayout};
 
 pub struct TestbedDashboard {
@@ -17,7 +16,8 @@ impl TestbedDashboard {
 
 impl Testbed for TestbedDashboard {
 	fn update(&mut self, params: TestbedUpdateParams) -> anyhow::Result<()> {
-		Frontend::update(
+		let mut frontend = self.frontend.borrow_mut();
+		frontend.update(
 			&self.frontend,
 			params.listeners,
 			params.width,

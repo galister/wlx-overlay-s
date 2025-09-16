@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::{
 	any::AnyTrait,
-	event::{self, EventAlterables},
+	event::{self, CallbackDataCommon, EventAlterables},
 	layout::LayoutState,
 };
 
@@ -13,6 +13,15 @@ pub mod slider;
 pub struct InitData<'a> {
 	pub state: &'a LayoutState,
 	pub alterables: &'a mut EventAlterables,
+}
+
+impl InitData<'_> {
+	const fn as_common(&mut self) -> CallbackDataCommon {
+		CallbackDataCommon {
+			alterables: self.alterables,
+			state: self.state,
+		}
+	}
 }
 
 // common component data
@@ -32,7 +41,6 @@ pub struct Component(pub Rc<dyn ComponentTrait>);
 pub type ComponentWeak = std::rc::Weak<dyn ComponentTrait>;
 
 impl Component {
-	
 	pub fn weak(&self) -> ComponentWeak {
 		Rc::downgrade(&self.0)
 	}

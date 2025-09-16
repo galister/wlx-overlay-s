@@ -324,7 +324,7 @@ fn on_enter_anim(
         10,
         AnimationEasing::OutBack,
         Box::new(move |common, data| {
-            let rect = data.obj.get_as_mut::<WidgetRectangle>();
+            let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
             set_anim_color(&key_state, rect, data.pos);
             data.data.transform = get_anim_transform(data.pos, data.widget_size);
             common.alterables.mark_redraw();
@@ -342,7 +342,7 @@ fn on_leave_anim(
         15,
         AnimationEasing::OutQuad,
         Box::new(move |common, data| {
-            let rect = data.obj.get_as_mut::<WidgetRectangle>();
+            let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
             set_anim_color(&key_state, rect, 1.0 - data.pos);
             data.data.transform = get_anim_transform(1.0 - data.pos, data.widget_size);
             common.alterables.mark_redraw();
@@ -358,7 +358,7 @@ fn on_press_anim(
     if key_state.drawn_state.get() {
         return;
     }
-    let rect = data.obj.get_as_mut::<WidgetRectangle>();
+    let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
     rect.params.border_color = Color::new(1.0, 1.0, 1.0, 1.0);
     common.alterables.mark_redraw();
     key_state.drawn_state.set(true);
@@ -372,7 +372,7 @@ fn on_release_anim(
     if !key_state.drawn_state.get() {
         return;
     }
-    let rect = data.obj.get_as_mut::<WidgetRectangle>();
+    let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
     rect.params.border_color = key_state.border_color;
     common.alterables.mark_redraw();
     key_state.drawn_state.set(false);

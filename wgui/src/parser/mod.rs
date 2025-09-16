@@ -709,7 +709,7 @@ impl CustomAttribInfo<'_> {
 	}
 
 	pub fn get_widget_as<T: 'static>(&self) -> Option<RefMut<T>> {
-		Some(self.widgets.get(self.widget_id)?.get_as_mut::<T>())
+		self.widgets.get(self.widget_id)?.get_as_mut::<T>()
 	}
 }
 

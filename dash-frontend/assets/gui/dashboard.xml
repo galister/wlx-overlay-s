@@ -101,7 +101,7 @@
 
           <!-- Right bottom side -->
           <div margin_right="16">
-            <label text="12:34" size="16" />
+            <label id="label_time" size="16" />
           </div>
         </rectangle>
       </div>
