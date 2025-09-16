@@ -90,7 +90,12 @@ impl AppState {
             screens: smallvec![],
             anchor: Affine3A::IDENTITY,
             toast_sound: toast_sound_wav,
-            wgui_globals: WguiGlobals::new(Box::new(gui::asset::GuiAsset {}))?,
+            wgui_globals: WguiGlobals::new(
+                Box::new(gui::asset::GuiAsset {}),
+                wgui::globals::Defaults {
+                    text_color: wgui::drawing::Color::new(1.0, 1.0, 1.0, 1.0),
+                },
+            )?,
 
             #[cfg(feature = "osc")]
             osc_sender,

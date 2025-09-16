@@ -3,7 +3,7 @@
 
   <elements>
     <sprite src="dashboard/wayvr_dashboard.svg" min_width="96" min_height="96" />
-    <label text="Hello, user!" size="32" weight="bold" color="#FFFFFF" />
+    <label text="Hello, user!" size="32" weight="bold" />
     <label text="Connected to wlx-overlay-s" size="16" weight="bold" color="#bbffbb" />
 
     <!-- main button list -->

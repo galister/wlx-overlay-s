@@ -80,11 +80,7 @@ const COLOR_UNCHECKED: Color = Color::new(0.1, 0.5, 1.0, 0.0);
 
 fn set_box_checked(widgets: &layout::WidgetMap, data: &Data, checked: bool) {
 	widgets.call(data.id_inner_box, |rect: &mut WidgetRectangle| {
-		rect.params.color = if checked {
-			COLOR_CHECKED
-		} else {
-			COLOR_UNCHECKED
-		}
+		rect.params.color = if checked { COLOR_CHECKED } else { COLOR_UNCHECKED }
 	});
 }
 
@@ -92,11 +88,9 @@ impl ComponentCheckbox {
 	pub fn set_text(&self, state: &LayoutState, alterables: &mut EventAlterables, text: Translation) {
 		let globals = state.globals.clone();
 
-		state
-			.widgets
-			.call(self.data.id_label, |label: &mut WidgetLabel| {
-				label.set_text(&mut globals.i18n(), text);
-			});
+		state.widgets.call(self.data.id_label, |label: &mut WidgetLabel| {
+			label.set_text(&mut globals.i18n(), text);
+		});
 
 		alterables.mark_redraw();
 		alterables.mark_dirty(self.data.node_label);
@@ -321,11 +315,7 @@ pub fn construct<U1, U2>(
 		id_outer_box,
 		WidgetRectangle::create(WidgetRectangleParams {
 			round: WLength::Units(5.0),
-			color: if params.checked {
-				COLOR_CHECKED
-			} else {
-				COLOR_UNCHECKED
-			},
+			color: if params.checked { COLOR_CHECKED } else { COLOR_UNCHECKED },
 			..Default::default()
 		}),
 		taffy::Style {
@@ -340,7 +330,7 @@ pub fn construct<U1, U2>(
 	let (id_label, node_label) = layout.add_child(
 		id_container,
 		WidgetLabel::create(
-			&mut globals.i18n(),
+			&mut globals.get(),
 			WidgetLabelParams {
 				content: params.text,
 				style: TextStyle {

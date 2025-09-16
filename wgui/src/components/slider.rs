@@ -7,10 +7,7 @@ use crate::{
 	animation::{Animation, AnimationEasing},
 	components::{Component, ComponentBase, ComponentTrait, InitData},
 	drawing::{self},
-	event::{
-		self, CallbackDataCommon, EventAlterables, EventListenerCollection, EventListenerKind,
-		ListenerHandleVec,
-	},
+	event::{self, CallbackDataCommon, EventAlterables, EventListenerCollection, EventListenerKind, ListenerHandleVec},
 	i18n::{I18n, Translation},
 	layout::{Layout, LayoutState, WidgetID},
 	renderer_vk::{
@@ -133,19 +130,10 @@ impl State {
 
 	fn update_text(i18n: &mut I18n, text: &mut WidgetLabel, value: f32) {
 		// round displayed value, should be sufficient for now
-		text.set_text(
-			i18n,
-			Translation::from_raw_text(&format!("{}", value.round())),
-		);
+		text.set_text(i18n, Translation::from_raw_text(&format!("{}", value.round())));
 	}
 
-	fn set_value(
-		&mut self,
-		state: &LayoutState,
-		data: &Data,
-		alterables: &mut EventAlterables,
-		value: f32,
-	) {
+	fn set_value(&mut self, state: &LayoutState, data: &Data, alterables: &mut EventAlterables, value: f32) {
 		//common.call_on_widget(data.slider_handle_id, |_div: &mut Div| {});
 		self.values.value = value;
 		let mut style = state.tree.style(data.slider_handle_node).unwrap().clone();
@@ -153,11 +141,9 @@ impl State {
 		alterables.mark_dirty(data.slider_handle_node);
 		alterables.mark_redraw();
 		alterables.set_style(data.slider_handle_node, style);
-		state
-			.widgets
-			.call(data.slider_text_id, |label: &mut WidgetLabel| {
-				Self::update_text(&mut state.globals.i18n(), label, value);
-			});
+		state.widgets.call(data.slider_text_id, |label: &mut WidgetLabel| {
+			Self::update_text(&mut state.globals.i18n(), label, value);
+		});
 	}
 }
 
@@ -178,8 +164,7 @@ fn get_anim_transform(pos: f32, widget_size: Vec2) -> Mat4 {
 
 fn anim_rect(rect: &mut WidgetRectangle, pos: f32) {
 	rect.params.color = drawing::Color::lerp(&HANDLE_COLOR, &HANDLE_COLOR_HOVERED, pos);
-	rect.params.border_color =
-		drawing::Color::lerp(&HANDLE_BORDER_COLOR, &HANDLE_BORDER_COLOR_HOVERED, pos);
+	rect.params.border_color = drawing::Color::lerp(&HANDLE_BORDER_COLOR, &HANDLE_BORDER_COLOR_HOVERED, pos);
 }
 
 fn on_enter_anim(common: &mut event::CallbackDataCommon, handle_id: WidgetID) {
@@ -364,8 +349,7 @@ pub fn construct<U1, U2>(
 	};
 
 	// invisible outer handle body
-	let (slider_handle_id, slider_handle_node) =
-		layout.add_child(body_id, WidgetDiv::create(), slider_handle_style)?;
+	let (slider_handle_id, slider_handle_node) = layout.add_child(body_id, WidgetDiv::create(), slider_handle_style)?;
 
 	let (slider_handle_rect_id, _) = layout.add_child(
 		slider_handle_id,
@@ -393,12 +377,11 @@ pub fn construct<U1, U2>(
 	};
 
 	let globals = layout.state.globals.clone();
-	let mut i18n = globals.i18n();
 
 	let (slider_text_id, _) = layout.add_child(
 		slider_handle_id,
 		WidgetLabel::create(
-			&mut i18n,
+			&mut globals.get(),
 			WidgetLabelParams {
 				content: Translation::default(),
 				style: TextStyle {

@@ -3,6 +3,7 @@ use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 use glam::Vec2;
 use wgui::{
 	components::button::ComponentButton,
+	drawing,
 	event::EventListenerCollection,
 	globals::WguiGlobals,
 	layout::{LayoutParams, RcLayout},
@@ -41,7 +42,12 @@ pub struct FrontendParams<'a> {
 
 impl Frontend {
 	pub fn new(params: FrontendParams) -> anyhow::Result<(RcFrontend, RcLayout)> {
-		let globals = WguiGlobals::new(Box::new(assets::Asset {}))?;
+		let globals = WguiGlobals::new(
+			Box::new(assets::Asset {}),
+			wgui::globals::Defaults {
+				text_color: drawing::Color::new(1.0, 1.0, 1.0, 1.0),
+			},
+		)?;
 
 		let (layout, state) = wgui::parser::new_layout_from_assets(
 			params.listeners,

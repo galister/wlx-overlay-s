@@ -31,12 +31,10 @@ pub fn parse_widget_label<'a, U1, U2>(
 	}
 
 	let globals = ctx.layout.state.globals.clone();
-	let mut i18n = globals.i18n();
 
-	let (new_id, _) =
-		ctx
-			.layout
-			.add_child(parent_id, WidgetLabel::create(&mut i18n, params), style)?;
+	let (new_id, _) = ctx
+		.layout
+		.add_child(parent_id, WidgetLabel::create(&mut globals.get(), params), style)?;
 
 	parse_widget_universal(file, ctx, node, new_id);
 	parse_children(file, ctx, node, new_id)?;

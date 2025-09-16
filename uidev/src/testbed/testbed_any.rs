@@ -21,7 +21,7 @@ impl TestbedAny {
 	pub fn new(name: &str, listeners: &mut EventListenerCollection<(), ()>) -> anyhow::Result<Self> {
 		let path = format!("gui/{name}.xml");
 
-		let globals = WguiGlobals::new(Box::new(assets::Asset {}))?;
+		let globals = WguiGlobals::new(Box::new(assets::Asset {}), Default::default())?;
 
 		let (layout, state) = wgui::parser::new_layout_from_assets(
 			listeners,

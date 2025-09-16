@@ -60,7 +60,7 @@ impl TestbedGeneric {
 	pub fn new(listeners: &mut EventListenerCollection<(), ()>) -> anyhow::Result<Self> {
 		const XML_PATH: &str = "gui/various_widgets.xml";
 
-		let globals = WguiGlobals::new(Box::new(assets::Asset {}))?;
+		let globals = WguiGlobals::new(Box::new(assets::Asset {}), Default::default())?;
 
 		let extra = ParseDocumentExtra {
 			on_custom_attrib: Some(Box::new(move |par| {

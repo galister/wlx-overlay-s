@@ -3,21 +3,34 @@ use std::{
 	rc::Rc,
 };
 
-use crate::{assets::AssetProvider, i18n::I18n};
+use crate::{assets::AssetProvider, drawing, i18n::I18n};
+
+pub struct Defaults {
+	pub text_color: drawing::Color,
+}
+
+impl Default for Defaults {
+	fn default() -> Self {
+		Self {
+			text_color: drawing::Color::new(0.0, 0.0, 0.0, 1.0),
+		}
+	}
+}
 
 pub struct Globals {
 	pub assets: Box<dyn AssetProvider>,
 	pub i18n: I18n,
+	pub defaults: Defaults,
 }
 
 #[derive(Clone)]
 pub struct WguiGlobals(Rc<RefCell<Globals>>);
 
 impl WguiGlobals {
-	pub fn new(mut assets: Box<dyn AssetProvider>) -> anyhow::Result<Self> {
+	pub fn new(mut assets: Box<dyn AssetProvider>, defaults: Defaults) -> anyhow::Result<Self> {
 		let i18n = I18n::new(&mut assets)?;
 
-		Ok(Self(Rc::new(RefCell::new(Globals { assets, i18n }))))
+		Ok(Self(Rc::new(RefCell::new(Globals { assets, i18n, defaults }))))
 	}
 
 	pub fn get(&self) -> RefMut<Globals> {

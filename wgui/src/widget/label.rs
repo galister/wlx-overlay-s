@@ -5,6 +5,7 @@ use taffy::AvailableSpace;
 
 use crate::{
 	drawing::{self, Boundary},
+	globals::Globals,
 	i18n::{I18n, Translation},
 	renderer_vk::text::{FONT_SYSTEM, TextStyle},
 };
@@ -24,7 +25,11 @@ pub struct WidgetLabel {
 }
 
 impl WidgetLabel {
-	pub fn create(i18n: &mut I18n, params: WidgetLabelParams) -> WidgetState {
+	pub fn create(globals: &mut Globals, mut params: WidgetLabelParams) -> WidgetState {
+		if params.style.color.is_none() {
+			params.style.color = Some(globals.defaults.text_color);
+		}
+
 		let metrics = Metrics::from(&params.style);
 		let attrs = Attrs::from(&params.style);
 		let wrap = Wrap::from(&params.style);
@@ -36,7 +41,7 @@ impl WidgetLabel {
 			buffer.set_wrap(wrap);
 
 			buffer.set_rich_text(
-				[(params.content.generate(i18n).as_ref(), attrs)],
+				[(params.content.generate(&mut globals.i18n).as_ref(), attrs)],
 				&Attrs::new(),
 				Shaping::Advanced,
 				params.style.align.map(Into::into),
@@ -78,11 +83,7 @@ impl WidgetObj for WidgetLabel {
 			self.last_boundary = boundary;
 			let mut font_system = FONT_SYSTEM.lock();
 			let mut buffer = self.buffer.borrow_mut();
-			buffer.set_size(
-				&mut font_system,
-				Some(boundary.size.x),
-				Some(boundary.size.y),
-			);
+			buffer.set_size(&mut font_system, Some(boundary.size.x), Some(boundary.size.y));
 		}
 
 		state.primitives.push(drawing::RenderPrimitive {
@@ -111,11 +112,9 @@ impl WidgetObj for WidgetLabel {
 		buffer.set_size(&mut font_system, width_constraint, None);
 
 		// Determine measured size of text
-		let (width, total_lines) = buffer
-			.layout_runs()
-			.fold((0.0, 0usize), |(width, total_lines), run| {
-				(run.line_w.max(width), total_lines + 1)
-			});
+		let (width, total_lines) = buffer.layout_runs().fold((0.0, 0usize), |(width, total_lines), run| {
+			(run.line_w.max(width), total_lines + 1)
+		});
 		let height = total_lines as f32 * buffer.metrics().line_height;
 		taffy::Size { width, height }
 	}

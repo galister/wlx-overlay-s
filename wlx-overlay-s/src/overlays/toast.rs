@@ -170,7 +170,6 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
     let mut panel = GuiPanel::new_blank(app, ()).ok()?;
 
     let globals = panel.layout.state.globals.clone();
-    let mut i18n = globals.i18n();
 
     let (rect, _) = panel
         .layout
@@ -196,7 +195,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
     let _ = panel.layout.add_child(
         rect,
         WidgetLabel::create(
-            &mut i18n,
+            &mut globals.get(),
             WidgetLabelParams {
                 content: Translation::from_raw_text(&title),
                 style: TextStyle {
@@ -218,7 +217,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
     let _ = panel.layout.add_child(
         rect,
         WidgetLabel::create(
-            &mut i18n,
+            &mut globals.get(),
             WidgetLabelParams {
                 content: Translation::from_raw_text(&toast.body),
                 style: TextStyle {

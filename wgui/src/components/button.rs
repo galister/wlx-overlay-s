@@ -82,11 +82,9 @@ impl ComponentButton {
 	pub fn set_text(&self, state: &LayoutState, alterables: &mut EventAlterables, text: Translation) {
 		let globals = state.globals.clone();
 
-		state
-			.widgets
-			.call(self.data.id_label, |label: &mut WidgetLabel| {
-				label.set_text(&mut globals.i18n(), text);
-			});
+		state.widgets.call(self.data.id_label, |label: &mut WidgetLabel| {
+			label.set_text(&mut globals.i18n(), text);
+		});
 
 		alterables.mark_redraw();
 		alterables.mark_dirty(self.data.node_label);
@@ -107,9 +105,7 @@ fn anim_hover(rect: &mut WidgetRectangle, data: &Data, pos: f32, pressed: bool) 
 
 	rect.params.color = bgcolor;
 	rect.params.color2 = get_color2(&bgcolor);
-	rect.params.border_color = data
-		.initial_border_color
-		.lerp(&data.initial_hover_border_color, mult);
+	rect.params.border_color = data.initial_border_color.lerp(&data.initial_hover_border_color, mult);
 	rect.params.border = 2.0;
 }
 
@@ -151,11 +147,9 @@ fn register_event_mouse_enter<U1, U2>(
 		EventListenerKind::MouseEnter,
 		Box::new(move |common, event_data, _, _| {
 			common.alterables.trigger_haptics();
-			common.alterables.animate(anim_hover_in(
-				data.clone(),
-				state.clone(),
-				event_data.widget_id,
-			));
+			common
+				.alterables
+				.animate(anim_hover_in(data.clone(), state.clone(), event_data.widget_id));
 			state.borrow_mut().hovered = true;
 			Ok(())
 		}),
@@ -174,11 +168,9 @@ fn register_event_mouse_leave<U1, U2>(
 		EventListenerKind::MouseLeave,
 		Box::new(move |common, event_data, _, _| {
 			common.alterables.trigger_haptics();
-			common.alterables.animate(anim_hover_out(
-				data.clone(),
-				state.clone(),
-				event_data.widget_id,
-			));
+			common
+				.alterables
+				.animate(anim_hover_out(data.clone(), state.clone(), event_data.widget_id));
 			state.borrow_mut().hovered = false;
 			Ok(())
 		}),
@@ -283,7 +275,7 @@ pub fn construct<U1, U2>(
 	let (id_label, node_label) = layout.add_child(
 		id_rect,
 		WidgetLabel::create(
-			&mut globals.i18n(),
+			&mut globals.get(),
 			WidgetLabelParams {
 				content: params.text,
 				style: TextStyle {
