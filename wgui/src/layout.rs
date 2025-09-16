@@ -7,7 +7,7 @@ use std::{
 use crate::{
 	animation::Animations,
 	components::{Component, InitData},
-	event::{self, EventAlterables, EventListenerCollection},
+	event::{self, CallbackDataCommon, EventAlterables, EventListenerCollection},
 	globals::WguiGlobals,
 	transform_stack::Transform,
 	widget::{self, EventParams, WidgetObj, WidgetState, div::WidgetDiv},
@@ -203,10 +203,12 @@ impl Layout {
 		let mut alterables = EventAlterables::default();
 
 		while let Some(c) = self.components_to_init.pop_front() {
-			c.0.init(&mut InitData {
+			let mut common = CallbackDataCommon {
 				state: &self.state,
 				alterables: &mut alterables,
-			});
+			};
+
+			c.0.init(&mut InitData { common: &mut common });
 		}
 
 		self.process_alterables(alterables)?;

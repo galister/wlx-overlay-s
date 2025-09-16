@@ -69,7 +69,7 @@ impl ComponentTrait for ComponentSlider {
 	fn init(&self, init_data: &mut InitData) {
 		let mut state = self.state.borrow_mut();
 		let value = state.values.value;
-		state.set_value(&mut init_data.as_common(), &self.data, value);
+		state.set_value(init_data.common, &self.data, value);
 	}
 
 	fn base(&mut self) -> &mut ComponentBase {

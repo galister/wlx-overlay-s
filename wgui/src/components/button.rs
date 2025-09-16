@@ -5,9 +5,9 @@ use crate::{
 	animation::{Animation, AnimationEasing},
 	components::{Component, ComponentBase, ComponentTrait, InitData},
 	drawing::{self, Color},
-	event::{CallbackDataCommon, EventAlterables, EventListenerCollection, EventListenerKind, ListenerHandleVec},
+	event::{CallbackDataCommon, EventListenerCollection, EventListenerKind, ListenerHandleVec},
 	i18n::Translation,
-	layout::{Layout, LayoutState, WidgetID},
+	layout::{Layout, WidgetID},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
 		label::{WidgetLabel, WidgetLabelParams},
@@ -42,21 +42,8 @@ impl Default for Params {
 	}
 }
 
-pub struct ButtonClickEvent<'a> {
-	pub state: &'a LayoutState,
-	pub alterables: &'a mut EventAlterables,
-}
-
-impl ButtonClickEvent<'_> {
-	pub const fn as_common(&mut self) -> CallbackDataCommon {
-		CallbackDataCommon {
-			alterables: self.alterables,
-			state: self.state,
-		}
-	}
-}
-
-pub type ButtonClickCallback = Box<dyn Fn(ButtonClickEvent) -> anyhow::Result<()>>;
+pub struct ButtonClickEvent {}
+pub type ButtonClickCallback = Box<dyn Fn(&mut CallbackDataCommon, ButtonClickEvent) -> anyhow::Result<()>>;
 
 struct State {
 	hovered: bool,
@@ -231,10 +218,7 @@ fn register_event_mouse_release<U1, U2>(
 
 				if state.hovered {
 					if let Some(on_click) = &state.on_click {
-						on_click(ButtonClickEvent {
-							state: common.state,
-							alterables: common.alterables,
-						})?;
+						on_click(common, ButtonClickEvent {})?;
 					}
 				}
 			}

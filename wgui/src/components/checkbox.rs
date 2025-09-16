@@ -37,22 +37,11 @@ impl Default for Params {
 	}
 }
 
-pub struct CheckboxToggleEvent<'a> {
-	pub state: &'a LayoutState,
-	pub alterables: &'a mut EventAlterables,
+pub struct CheckboxToggleEvent {
 	pub checked: bool,
 }
 
-impl CheckboxToggleEvent<'_> {
-	pub const fn as_common(&mut self) -> CallbackDataCommon {
-		CallbackDataCommon {
-			alterables: self.alterables,
-			state: self.state,
-		}
-	}
-}
-
-pub type CheckboxToggleCallback = Box<dyn Fn(CheckboxToggleEvent) -> anyhow::Result<()>>;
+pub type CheckboxToggleCallback = Box<dyn Fn(&mut CallbackDataCommon, CheckboxToggleEvent) -> anyhow::Result<()>>;
 
 struct State {
 	checked: bool,
@@ -242,11 +231,7 @@ fn register_event_mouse_release<U1, U2>(
 
 				if state.hovered {
 					if let Some(on_toggle) = &state.on_toggle {
-						on_toggle(CheckboxToggleEvent {
-							state: common.state,
-							alterables: common.alterables,
-							checked: state.checked,
-						})?;
+						on_toggle(common, CheckboxToggleEvent { checked: state.checked })?;
 					}
 				}
 			}

@@ -2,8 +2,7 @@ use std::rc::Rc;
 
 use crate::{
 	any::AnyTrait,
-	event::{self, CallbackDataCommon, EventAlterables},
-	layout::LayoutState,
+	event::{self, CallbackDataCommon},
 };
 
 pub mod button;
@@ -11,17 +10,7 @@ pub mod checkbox;
 pub mod slider;
 
 pub struct InitData<'a> {
-	pub state: &'a LayoutState,
-	pub alterables: &'a mut EventAlterables,
-}
-
-impl InitData<'_> {
-	const fn as_common(&mut self) -> CallbackDataCommon {
-		CallbackDataCommon {
-			alterables: self.alterables,
-			state: self.state,
-		}
-	}
+	pub common: &'a mut CallbackDataCommon<'a>,
 }
 
 // common component data
