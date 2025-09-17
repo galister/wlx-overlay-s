@@ -62,6 +62,16 @@ impl Color {
 	}
 
 	#[must_use]
+	pub fn mult_rgb(&self, n: f32) -> Self {
+		Self {
+			r: self.r * n,
+			g: self.g * n,
+			b: self.b * n,
+			a: self.a,
+		}
+	}
+
+	#[must_use]
 	pub fn lerp(&self, other: &Self, n: f32) -> Self {
 		Self {
 			r: self.r * (1.0 - n) + other.r * n,
@@ -159,12 +169,7 @@ fn draw_widget(
 	}
 }
 
-fn draw_children(
-	layout: &Layout,
-	state: &mut DrawState,
-	parent_node_id: taffy::NodeId,
-	model: &glam::Mat4,
-) {
+fn draw_children(layout: &Layout, state: &mut DrawState, parent_node_id: taffy::NodeId, model: &glam::Mat4) {
 	for node_id in layout.state.tree.child_ids(parent_node_id) {
 		let Some(widget_id) = layout.state.tree.get_node_context(node_id).copied() else {
 			debug_assert!(false);
@@ -207,14 +212,7 @@ pub fn draw(layout: &Layout) -> anyhow::Result<Vec<RenderPrimitive>> {
 		depth: 0.0,
 	};
 
-	draw_widget(
-		layout,
-		&mut params,
-		layout.root_node,
-		style,
-		root_widget,
-		&model,
-	);
+	draw_widget(layout, &mut params, layout.root_node, style, root_widget, &model);
 
 	Ok(primitives)
 }

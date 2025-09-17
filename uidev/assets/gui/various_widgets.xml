@@ -24,11 +24,19 @@
           <CheckBox text="i'm checked by default" checked="1" />
         </div>
 
-        <label text="custom attrib test, you should see three rectangles below, each of them in R, G and B" />
+        <label text="custom attrib test, you should see size rectangles below, each of them in R, G and B (if TESTBED is generic)" />
         <div flex_direction="row" gap="8">
-          <rectangle _my_custom="red" width="16" height="16" />
-          <rectangle _my_custom="green" width="16" height="16" />
-          <rectangle _my_custom="blue" width="16" height="16" />
+          <label text="lighter:" />
+
+          <rectangle _my_custom="red" _mult="1.0" width="16" height="16" />
+          <rectangle _my_custom="green" _mult="1.0" width="16" height="16" />
+          <rectangle _my_custom="blue" _mult="1.0" width="16" height="16" />
+
+          <label text="darker:" />
+
+          <rectangle _my_custom="red" _mult="0.5" width="16" height="16" />
+          <rectangle _my_custom="green" _mult="0.5" width="16" height="16" />
+          <rectangle _my_custom="blue" _mult="0.5" width="16" height="16" />
         </div>
       </div>
 

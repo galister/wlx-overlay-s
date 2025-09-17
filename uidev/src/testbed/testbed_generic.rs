@@ -62,16 +62,28 @@ impl TestbedGeneric {
 		let globals = WguiGlobals::new(Box::new(assets::Asset {}), Default::default())?;
 
 		let extra = ParseDocumentExtra {
-			on_custom_attrib: Some(Box::new(move |par| {
-				if par.attrib == "my_custom" {
-					let mut rect = par.get_widget_as::<WidgetRectangle>().unwrap();
-					rect.params.color = match par.value {
-						"red" => Color::new(1.0, 0.0, 0.0, 1.0),
-						"green" => Color::new(0.0, 1.0, 0.0, 1.0),
-						"blue" => Color::new(0.0, 0.0, 1.0, 1.0),
-						_ => Color::new(1.0, 1.0, 1.0, 1.0),
-					}
-				}
+			on_custom_attribs: Some(Box::new(move |par| {
+				let Some(my_custom_value) = par.get_value("my_custom") else {
+					return;
+				};
+
+				let Some(mult_value) = par.get_value("mult") else {
+					return;
+				};
+
+				let mult_f32 = mult_value.parse::<f32>().unwrap();
+
+				let mut color = match my_custom_value {
+					"red" => Color::new(1.0, 0.0, 0.0, 1.0),
+					"green" => Color::new(0.0, 1.0, 0.0, 1.0),
+					"blue" => Color::new(0.0, 0.0, 1.0, 1.0),
+					_ => Color::new(1.0, 1.0, 1.0, 1.0),
+				};
+
+				color = color.mult_rgb(mult_f32);
+
+				let mut rect = par.get_widget_as::<WidgetRectangle>().unwrap();
+				rect.params.color = color;
 			})),
 			dev_mode: false,
 		};

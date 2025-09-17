@@ -21,6 +21,7 @@ use crate::{
 	},
 };
 use ouroboros::self_referencing;
+use smallvec::SmallVec;
 use std::{
 	cell::RefMut,
 	collections::HashMap,
@@ -640,7 +641,9 @@ fn parse_child<'a, U1, U2>(
 
 	// check for custom attributes (if the callback is set)
 	if let Some(widget_id) = new_widget_id {
-		if let Some(on_custom_attrib) = &ctx.doc_params.extra.on_custom_attrib {
+		if let Some(on_custom_attribs) = &ctx.doc_params.extra.on_custom_attribs {
+			let mut pairs = SmallVec::<[CustomAttribPair; 4]>::new();
+
 			for attrib in child_node.attributes() {
 				let attr_name = attrib.name();
 				if !attr_name.starts_with('_') || attr_name.is_empty() {
@@ -649,12 +652,18 @@ fn parse_child<'a, U1, U2>(
 
 				let attr_without_prefix = &attr_name[1..]; // safe
 
-				on_custom_attrib(CustomAttribInfo {
+				pairs.push(CustomAttribPair {
+					attrib: attr_without_prefix,
+					value: attrib.value(),
+				});
+			}
+
+			if !pairs.is_empty() {
+				on_custom_attribs(CustomAttribsInfo {
 					widgets: &ctx.layout.state.widgets,
 					parent_id,
 					widget_id,
-					attrib: attr_without_prefix,
-					value: attrib.value(),
+					pairs: &pairs,
 				});
 			}
 		}
@@ -694,16 +703,20 @@ fn create_default_context<'a, U1, U2>(
 	}
 }
 
-pub struct CustomAttribInfo<'a> {
-	pub parent_id: WidgetID,
-	pub widget_id: WidgetID,
-	pub widgets: &'a WidgetMap,
+pub struct CustomAttribPair<'a> {
 	pub attrib: &'a str, // without _ at the beginning
 	pub value: &'a str,
 }
 
+pub struct CustomAttribsInfo<'a> {
+	pub parent_id: WidgetID,
+	pub widget_id: WidgetID,
+	pub widgets: &'a WidgetMap,
+	pub pairs: &'a [CustomAttribPair<'a>],
+}
+
 // helper functions
-impl CustomAttribInfo<'_> {
+impl CustomAttribsInfo<'_> {
 	pub fn get_widget(&self) -> Option<&Widget> {
 		self.widgets.get(self.widget_id)
 	}
@@ -711,13 +724,24 @@ impl CustomAttribInfo<'_> {
 	pub fn get_widget_as<T: 'static>(&self) -> Option<RefMut<T>> {
 		self.widgets.get(self.widget_id)?.get_as_mut::<T>()
 	}
+
+	pub fn get_value(&self, attrib_name: &str) -> Option<&str> {
+		// O(n) search, these pairs won't be problematically big anyways
+		for pair in self.pairs {
+			if pair.attrib == attrib_name {
+				return Some(pair.value);
+			}
+		}
+
+		None
+	}
 }
 
-pub type OnCustomAttribFunc = Box<dyn Fn(CustomAttribInfo)>;
+pub type OnCustomAttribsFunc = Box<dyn Fn(CustomAttribsInfo)>;
 
 #[derive(Default)]
 pub struct ParseDocumentExtra {
-	pub on_custom_attrib: Option<OnCustomAttribFunc>, // all attributes with '_' character prepended
+	pub on_custom_attribs: Option<OnCustomAttribsFunc>, // all attributes with '_' character prepended
 	pub dev_mode: bool,
 }
 
