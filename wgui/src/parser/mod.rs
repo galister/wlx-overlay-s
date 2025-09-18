@@ -59,14 +59,15 @@ pub struct ParserState {
 	macro_attribs: HashMap<Rc<str>, MacroAttribs>,
 	pub var_map: HashMap<Rc<str>, Rc<str>>,
 	pub components: Vec<Component>,
-	pub components_id_map: HashMap<Rc<str>, std::rc::Weak<dyn ComponentTrait>>,
+	pub components_by_id: HashMap<Rc<str>, std::rc::Weak<dyn ComponentTrait>>,
+	pub components_by_widget_id: HashMap<WidgetID, std::rc::Weak<dyn ComponentTrait>>,
 	pub templates: HashMap<Rc<str>, Rc<Template>>,
 	pub path: PathBuf,
 }
 
 impl ParserState {
-	pub fn fetch_component(&self, id: &str) -> anyhow::Result<Component> {
-		let Some(weak) = self.components_id_map.get(id) else {
+	pub fn fetch_component_by_id(&self, id: &str) -> anyhow::Result<Component> {
+		let Some(weak) = self.components_by_id.get(id) else {
 			anyhow::bail!("Component by ID \"{}\" doesn't exist", id);
 		};
 
@@ -77,11 +78,34 @@ impl ParserState {
 		Ok(Component(component))
 	}
 
+	pub fn fetch_component_by_widget_id(&self, widget_id: WidgetID) -> anyhow::Result<Component> {
+		let Some(weak) = self.components_by_widget_id.get(&widget_id) else {
+			anyhow::bail!("Component by widget ID \"{:?}\" doesn't exist", widget_id);
+		};
+
+		let Some(component) = weak.upgrade() else {
+			anyhow::bail!("Component by widget ID \"{:?}\" doesn't exist", widget_id);
+		};
+
+		Ok(Component(component))
+	}
+
 	pub fn fetch_component_as<T: 'static>(&self, id: &str) -> anyhow::Result<Rc<T>> {
-		let component = self.fetch_component(id)?;
+		let component = self.fetch_component_by_id(id)?;
 
 		if !(*component.0).as_any().is::<T>() {
 			anyhow::bail!("fetch_component_as({}): type not matching", id);
+		}
+
+		// safety: we already checked it above, should be safe to directly cast it
+		unsafe { Ok(Rc::from_raw(Rc::into_raw(component.0).cast())) }
+	}
+
+	pub fn fetch_component_from_widget_id_as<T: 'static>(&self, widget_id: WidgetID) -> anyhow::Result<Rc<T>> {
+		let component = self.fetch_component_by_widget_id(widget_id)?;
+
+		if !(*component.0).as_any().is::<T>() {
+			anyhow::bail!("fetch_component_by_widget_id({:?}): type not matching", widget_id);
 		}
 
 		// safety: we already checked it above, should be safe to directly cast it
@@ -124,10 +148,11 @@ impl ParserState {
 			layout,
 			listeners,
 			ids: Default::default(),
-			macro_attribs: self.macro_attribs.clone(),         // FIXME: prevent copying
-			var_map: self.var_map.clone(),                     // FIXME: prevent copying
-			components: self.components.clone(),               // FIXME: prevent copying
-			components_id_map: self.components_id_map.clone(), // FIXME: prevent copying
+			macro_attribs: self.macro_attribs.clone(),       // FIXME: prevent copying
+			var_map: self.var_map.clone(),                   // FIXME: prevent copying
+			components: self.components.clone(),             // FIXME: prevent copying
+			components_by_id: self.components_by_id.clone(), // FIXME: prevent copying
+			components_by_widget_id: self.components_by_widget_id.clone(), // FIXME: prevent copying
 			templates: Default::default(),
 			doc_params,
 		};
@@ -162,8 +187,10 @@ struct ParserContext<'a, U1, U2> {
 	macro_attribs: HashMap<Rc<str>, MacroAttribs>,
 	ids: HashMap<Rc<str>, WidgetID>,
 	templates: HashMap<Rc<str>, Rc<Template>>,
+
 	components: Vec<Component>,
-	components_id_map: HashMap<Rc<str>, ComponentWeak>,
+	components_by_id: HashMap<Rc<str>, ComponentWeak>,
+	components_by_widget_id: HashMap<WidgetID, ComponentWeak>,
 }
 
 // Parses a color from a HTML hex string
@@ -544,14 +571,17 @@ fn process_component<'a, U1, U2>(
 	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'a, 'a>,
 	component: Component,
+	widget_id: WidgetID,
 ) {
+	ctx.components_by_widget_id.insert(widget_id, component.weak());
+
 	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
 
 	for (key, value) in attribs {
 		#[allow(clippy::single_match)]
 		match key.as_ref() {
 			"id" => {
-				if ctx.components_id_map.insert(value.clone(), component.weak()).is_some() {
+				if ctx.components_by_id.insert(value.clone(), component.weak()).is_some() {
 					log::warn!("duplicate component ID \"{value}\" in the same layout file!");
 				}
 			}
@@ -699,7 +729,8 @@ fn create_default_context<'a, U1, U2>(
 		templates: Default::default(),
 		macro_attribs: Default::default(),
 		components: Default::default(),
-		components_id_map: Default::default(),
+		components_by_id: Default::default(),
+		components_by_widget_id: Default::default(),
 	}
 }
 
@@ -772,7 +803,8 @@ pub fn parse_from_assets<U1, U2>(
 		macro_attribs: std::mem::take(&mut ctx.macro_attribs),
 		var_map: std::mem::take(&mut ctx.var_map),
 		components: std::mem::take(&mut ctx.components),
-		components_id_map: std::mem::take(&mut ctx.components_id_map),
+		components_by_id: std::mem::take(&mut ctx.components_by_id),
+		components_by_widget_id: std::mem::take(&mut ctx.components_by_widget_id),
 		path,
 	};
 

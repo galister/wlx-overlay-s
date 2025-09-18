@@ -56,11 +56,7 @@ pub fn parse_component_button<'a, U1, U2>(
 
 	// slight border outlines by default
 	if border_color.is_none() {
-		border_color = Some(Color::lerp(
-			&color,
-			&Color::new(0.0, 0.0, 0.0, color.a),
-			0.3,
-		));
+		border_color = Some(Color::lerp(&color, &Color::new(0.0, 0.0, 0.0, color.a), 0.3));
 	}
 
 	if hover_color.is_none() {
@@ -87,7 +83,7 @@ pub fn parse_component_button<'a, U1, U2>(
 		},
 	)?;
 
-	process_component(file, ctx, node, Component(component));
+	process_component(file, ctx, node, Component(component), new_id);
 	parse_children(file, ctx, node, new_id)?;
 
 	Ok(new_id)

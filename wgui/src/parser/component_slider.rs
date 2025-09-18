@@ -46,7 +46,7 @@ pub fn parse_component_slider<'a, U1, U2>(
 		},
 	)?;
 
-	process_component(file, ctx, node, Component(component));
+	process_component(file, ctx, node, Component(component), new_id);
 
 	Ok(new_id)
 }
