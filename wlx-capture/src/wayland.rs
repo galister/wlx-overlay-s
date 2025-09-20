@@ -19,16 +19,18 @@ use smithay_client_toolkit::reexports::{
 
 pub use wayland_client;
 use wayland_client::{
-    Connection, Dispatch, EventQueue, Proxy, QueueHandle,
     backend::WaylandError,
-    globals::{GlobalList, GlobalListContents, registry_queue_init},
+    globals::{registry_queue_init, GlobalList, GlobalListContents},
     protocol::{
         wl_output::{self, Transform, WlOutput},
         wl_registry::{self, WlRegistry},
         wl_seat::WlSeat,
         wl_shm::WlShm,
     },
+    Connection, Dispatch, EventQueue, Proxy, QueueHandle,
 };
+
+use crate::frame;
 
 pub enum OutputChangeEvent {
     /// New output has been created.
@@ -50,7 +52,7 @@ pub struct WlxOutput {
     pub size: (i32, i32),
     pub logical_pos: (i32, i32),
     pub logical_size: (i32, i32),
-    pub transform: Transform,
+    pub transform: frame::Transform,
     done: bool,
 }
 
@@ -125,7 +127,7 @@ impl WlxClient {
             size: (0, 0),
             logical_pos: (0, 0),
             logical_size: (0, 0),
-            transform: Transform::Normal,
+            transform: frame::Transform::Normal,
             done: false,
         };
 
@@ -192,17 +194,17 @@ impl WlxClient {
     }
 }
 
-pub(crate) fn wl_transform_to_frame_transform(transform: Transform) -> crate::frame::Transform {
+fn wl_transform_to_frame_transform(transform: Transform) -> frame::Transform {
     match transform {
-        Transform::Normal => crate::frame::Transform::Normal,
-        Transform::_90 => crate::frame::Transform::Rotated90,
-        Transform::_180 => crate::frame::Transform::Rotated180,
-        Transform::_270 => crate::frame::Transform::Rotated270,
-        Transform::Flipped => crate::frame::Transform::Flipped,
-        Transform::Flipped90 => crate::frame::Transform::Flipped90,
-        Transform::Flipped180 => crate::frame::Transform::Flipped180,
-        Transform::Flipped270 => crate::frame::Transform::Flipped270,
-        _ => crate::frame::Transform::Undefined,
+        Transform::Normal => frame::Transform::Normal,
+        Transform::_90 => frame::Transform::Rotated90,
+        Transform::_180 => frame::Transform::Rotated180,
+        Transform::_270 => frame::Transform::Rotated270,
+        Transform::Flipped => frame::Transform::Flipped,
+        Transform::Flipped90 => frame::Transform::Flipped90,
+        Transform::Flipped180 => frame::Transform::Flipped180,
+        Transform::Flipped270 => frame::Transform::Flipped270,
+        _ => frame::Transform::Undefined,
     }
 }
 
@@ -327,8 +329,8 @@ impl Dispatch<WlOutput, u32> for WlxClient {
                 if let Some(output) = state.outputs.get_mut(*data) {
                     let transform = transform.into_result().unwrap_or(Transform::Normal);
                     let old_transform = output.transform;
-                    output.transform = transform;
-                    if output.done && old_transform != transform {
+                    output.transform = wl_transform_to_frame_transform(transform);
+                    if output.done && old_transform != output.transform {
                         log::info!(
                             "{}: Transform changed {:?} -> {:?}",
                             output.name,

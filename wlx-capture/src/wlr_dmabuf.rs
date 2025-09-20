@@ -11,7 +11,7 @@ use wayland_client::{Connection, QueueHandle, Dispatch, Proxy};
 
 use crate::{
     frame::{DmabufFrame, DrmFormat, FramePlane, WlxFrame},
-    wayland::{wl_transform_to_frame_transform, WlxClient},
+    wayland::WlxClient,
     WlxCapture,
 };
 
@@ -146,7 +146,7 @@ fn request_dmabuf_frame(
         return client;
     };
 
-    let transform = wl_transform_to_frame_transform(output.transform);
+    let transform = output.transform;
 
     let (tx, rx) = mpsc::sync_channel::<zwlr_export_dmabuf_frame_v1::Event>(16);
     let name = output.name.clone();

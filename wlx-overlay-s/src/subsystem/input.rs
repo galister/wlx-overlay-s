@@ -26,6 +26,11 @@ impl HidWrapper {
         }
     }
 
+    #[cfg(feature = "wayvr")]
+    pub fn set_wayvr(&mut self, wayvr: Rc<RefCell<WayVRData>>) {
+        self.wayvr = Some(wayvr);
+    }
+
     pub fn send_key_routed(&self, key: VirtualKey, down: bool) {
         match self.keyboard_focus {
             KeyboardFocus::PhysicalScreen => self.inner.send_key(key, down),

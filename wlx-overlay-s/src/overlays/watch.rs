@@ -1,17 +1,10 @@
-use std::{rc::Rc, time::Duration};
+use std::{collections::HashMap, rc::Rc, time::Duration};
 
-use chrono::Local;
-use chrono_tz::Tz;
 use glam::Vec3A;
-use regex::Regex;
-use wgui::{
-    event::{self, EventListenerKind},
-    i18n::Translation,
-    widget::label::WidgetLabel,
-};
+use smallvec::SmallVec;
 
 use crate::{
-    backend::overlay::{OverlayData, OverlayState, Positioning, Z_ORDER_WATCH},
+    backend::overlay::{OverlayData, OverlayID, OverlayState, Positioning, Z_ORDER_WATCH},
     gui::{panel::GuiPanel, timer::GuiTimer},
     state::AppState,
 };
@@ -25,79 +18,38 @@ pub fn create_watch<O>(app: &mut AppState) -> anyhow::Result<OverlayData<O>>
 where
     O: Default,
 {
+    let screens = app
+        .screens
+        .iter()
+        .map(|s| s.id)
+        .collect::<SmallVec<[OverlayID; 8]>>();
+
     let state = WatchState {};
-    let mut panel = GuiPanel::new_from_template(app, "gui/watch.xml", state)?;
+    let mut panel = GuiPanel::new_from_template(
+        app,
+        "gui/watch.xml",
+        state,
+        Some(Box::new(
+            move |id, widget, doc_params, layout, parser_state, listeners| {
+                if &*id != "sets" {
+                    return Ok(());
+                }
+
+                for (idx, handle) in screens.iter().enumerate() {
+                    let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
+                    params.insert("display".into(), (idx + 1).to_string().into());
+                    params.insert("handle".into(), handle.0.to_string().into());
+                    parser_state
+                        .process_template(doc_params, "Set", layout, listeners, widget, params)?;
+                }
+                Ok(())
+            },
+        )),
+    )?;
 
     panel
         .timers
         .push(GuiTimer::new(Duration::from_millis(100), 0));
-
-    let clock_regex = Regex::new(r"^clock([0-9])_([a-z]+)$").unwrap();
-
-    for (id, widget_id) in &panel.parser_state.ids {
-        if let Some(cap) = clock_regex.captures(id) {
-            let tz_idx: usize = cap.get(1).unwrap().as_str().parse().unwrap(); // safe due to regex
-            let tz_str = (tz_idx > 0)
-                .then(|| app.session.config.timezones.get(tz_idx - 1))
-                .flatten();
-            let role = cap.get(2).unwrap().as_str();
-
-            let mut label = panel
-                .layout
-                .state
-                .widgets
-                .get_as::<WidgetLabel>(*widget_id)
-                .unwrap();
-
-            let format = match role {
-                "tz" => {
-                    let mut i18n = panel.layout.state.globals.i18n();
-                    if let Some(s) =
-                        tz_str.and_then(|tz| tz.split('/').next_back().map(|x| x.replace('_', " ")))
-                    {
-                        label.set_text_simple(&mut i18n, Translation::from_raw_text(&s));
-                    } else {
-                        label.set_text_simple(&mut i18n, Translation::from_raw_text("Local"));
-                    }
-
-                    continue;
-                }
-                "date" => "%x",
-                "dow" => "%A",
-                "time" => {
-                    if app.session.config.clock_12h {
-                        "%I:%M %p"
-                    } else {
-                        "%H:%M"
-                    }
-                }
-                _ => {
-                    let mut i18n = panel.layout.state.globals.i18n();
-                    label.set_text_simple(&mut i18n, Translation::from_raw_text("ERR"));
-                    continue;
-                }
-            };
-
-            let clock = ClockState {
-                timezone: tz_str.and_then(|tz| {
-                    tz.parse()
-                        .inspect_err(|e| log::warn!("Invalid timezone: {e:?}"))
-                        .ok()
-                }),
-                format: format.into(),
-            };
-
-            panel.listeners.register(
-                &mut panel.listener_handles,
-                *widget_id,
-                EventListenerKind::InternalStateChange,
-                Box::new(move |common, data, _, _| {
-                    clock_on_tick(&clock, common, data);
-                    Ok(())
-                }),
-            );
-        }
-    }
 
     let positioning = Positioning::FollowHand {
         hand: app.session.config.watch_hand as _,
@@ -149,23 +101,4 @@ where
         watch.state.alpha += 0.1;
         watch.state.alpha = watch.state.alpha.clamp(0., 1.);
     }
-}
-
-struct ClockState {
-    timezone: Option<Tz>,
-    format: Rc<str>,
-}
-
-fn clock_on_tick(
-    clock: &ClockState,
-    common: &mut event::CallbackDataCommon,
-    data: &mut event::CallbackData,
-) {
-    let date_time = clock.timezone.as_ref().map_or_else(
-        || format!("{}", Local::now().format(&clock.format)),
-        |tz| format!("{}", Local::now().with_timezone(tz).format(&clock.format)),
-    );
-
-    let label = data.obj.get_as_mut::<WidgetLabel>().unwrap();
-    label.set_text(common, Translation::from_raw_text(&date_time));
 }

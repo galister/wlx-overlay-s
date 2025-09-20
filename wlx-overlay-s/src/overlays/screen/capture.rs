@@ -6,22 +6,21 @@ use vulkano::{
     command_buffer::CommandBufferUsage,
     device::Queue,
     format::Format,
-    image::{Image, sampler::Filter, view::ImageView},
+    image::{sampler::Filter, view::ImageView, Image},
     pipeline::graphics::{color_blend::AttachmentBlend, input_assembly::PrimitiveTopology},
 };
-use wgui::gfx::{WGfx, pass::WGfxPass, pipeline::WGfxPipeline};
+use wgui::gfx::{pass::WGfxPass, pipeline::WGfxPipeline, WGfx};
 use wlx_capture::{
+    frame::{self as wlx_frame, DrmFormat, FrameFormat, MouseMeta, Transform, WlxFrame},
     WlxCapture,
-    frame::{self as wlx_frame, DrmFormat, FrameFormat, MouseMeta, WlxFrame},
 };
 
 use crate::{
     backend::overlay::FrameMeta,
     config::GeneralConfig,
     graphics::{
-        CommandBuffers, Vert2Uv,
-        dmabuf::{WGfxDmabuf, fourcc_to_vk},
-        upload_quad_vertices,
+        dmabuf::{fourcc_to_vk, WGfxDmabuf},
+        upload_quad_vertices, CommandBuffers, Vert2Uv,
     },
     state::AppState,
 };
@@ -208,6 +207,10 @@ impl WlxCaptureOut {
             transform: affine_from_format(&self.format),
             format: self.image.format(),
         }
+    }
+
+    pub(super) const fn get_transform(&self) -> Transform {
+        self.format.transform
     }
 }
 

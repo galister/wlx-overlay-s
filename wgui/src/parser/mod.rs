@@ -766,6 +766,45 @@ impl CustomAttribsInfo<'_> {
 
 		None
 	}
+
+	pub fn to_owned(&self) -> CustomAttribsInfoOwned {
+		CustomAttribsInfoOwned {
+			parent_id: self.parent_id,
+			widget_id: self.widget_id,
+			pairs: self
+				.pairs
+				.iter()
+				.map(|p| CustomAttribPairOwned {
+					attrib: p.attrib.to_string(),
+					value: p.value.to_string(),
+				})
+				.collect(),
+		}
+	}
+}
+
+pub struct CustomAttribPairOwned {
+	pub attrib: String, // without _ at the beginning
+	pub value: String,
+}
+
+pub struct CustomAttribsInfoOwned {
+	pub parent_id: WidgetID,
+	pub widget_id: WidgetID,
+	pub pairs: Vec<CustomAttribPairOwned>,
+}
+
+impl CustomAttribsInfoOwned {
+	pub fn get_value(&self, attrib_name: &str) -> Option<&str> {
+		// O(n) search, these pairs won't be problematically big anyways
+		for pair in self.pairs.iter() {
+			if pair.attrib == attrib_name {
+				return Some(pair.value.as_str());
+			}
+		}
+
+		None
+	}
 }
 
 pub type OnCustomAttribsFunc = Box<dyn Fn(CustomAttribsInfo)>;

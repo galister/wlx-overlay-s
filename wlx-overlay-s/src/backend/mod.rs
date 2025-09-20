@@ -11,5 +11,6 @@ pub mod openxr;
 pub mod wayvr;
 
 pub mod overlay;
+pub mod set;
 
 pub mod task;

@@ -1,7 +1,7 @@
 use glam::Affine3A;
 use idmap::IdMap;
 use serde::{Deserialize, Serialize};
-use smallvec::{SmallVec, smallvec};
+use smallvec::{smallvec, SmallVec};
 use std::sync::Arc;
 use wgui::{
     gfx::WGfx, globals::WguiGlobals, renderer_vk::context::SharedContext as WSharedContext,
@@ -52,14 +52,11 @@ pub struct AppState {
     pub wayvr: Option<Rc<RefCell<WayVRData>>>, // Dynamically created if requested
 }
 
+#[allow(unused_mut)]
 impl AppState {
     pub fn from_graphics(gfx: Arc<WGfx>, gfx_extras: WGfxExtras) -> anyhow::Result<Self> {
         // insert shared resources
-        #[cfg(feature = "wayvr")]
         let mut tasks = TaskContainer::new();
-
-        #[cfg(not(feature = "wayvr"))]
-        let tasks = TaskContainer::new();
 
         let session = AppSession::load();
 
@@ -67,6 +64,13 @@ impl AppState {
         let wayvr = session
             .wayvr_config
             .post_load(&session.config, &mut tasks)?;
+
+        let mut hid_provider = HidWrapper::new();
+
+        #[cfg(feature = "wayvr")]
+        if let Some(wayvr) = wayvr.as_ref() {
+            hid_provider.set_wayvr(wayvr.clone());
+        }
 
         #[cfg(feature = "osc")]
         let osc_sender = crate::subsystem::osc::OscSender::new(session.config.osc_out_port).ok();
@@ -83,7 +87,7 @@ impl AppState {
             tasks,
             gfx,
             gfx_extras,
-            hid_provider: HidWrapper::new(),
+            hid_provider,
             audio_provider: AudioOutput::new(),
             wgui_shared,
             input_state: InputState::new(),
@@ -114,6 +118,7 @@ impl AppState {
             let wayvr = Rc::new(RefCell::new(WayVRData::new(
                 WayVRConfig::get_wayvr_config(&self.session.config, &self.session.wayvr_config)?,
             )?));
+            self.hid_provider.set_wayvr(wayvr.clone());
             self.wayvr = Some(wayvr.clone());
             Ok(wayvr)
         }

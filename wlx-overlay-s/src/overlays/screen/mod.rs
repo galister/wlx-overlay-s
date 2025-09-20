@@ -1,10 +1,9 @@
 use std::{f32::consts::PI, sync::Arc};
 
 use backend::ScreenBackend;
-use glam::{Quat, Vec3, vec3a};
-use wayland_client::protocol::wl_output;
+use glam::{vec3a, Quat, Vec3};
 use wl::create_screens_wayland;
-use x11::{create_screens_x11pw, create_screens_xshm};
+use wlx_capture::frame::Transform;
 
 use crate::{
     backend::overlay::{OverlayState, Positioning},
@@ -21,41 +20,12 @@ pub mod wl;
 #[cfg(feature = "x11")]
 pub mod x11;
 
-#[allow(unused)]
-#[derive(Clone, Copy)]
-pub enum Transform {
-    Normal,
-    _90,
-    _180,
-    _270,
-    Flipped,
-    Flipped90,
-    Flipped180,
-    Flipped270,
-}
-
-#[cfg(feature = "wayland")]
-impl From<wl_output::Transform> for Transform {
-    fn from(t: wl_output::Transform) -> Self {
-        match t {
-            wl_output::Transform::_90 => Self::_90,
-            wl_output::Transform::_180 => Self::_180,
-            wl_output::Transform::_270 => Self::_270,
-            wl_output::Transform::Flipped => Self::Flipped,
-            wl_output::Transform::Flipped90 => Self::Flipped90,
-            wl_output::Transform::Flipped180 => Self::Flipped180,
-            wl_output::Transform::Flipped270 => Self::Flipped270,
-            _ => Self::Normal,
-        }
-    }
-}
-
 fn create_screen_state(name: Arc<str>, transform: Transform, session: &AppSession) -> OverlayState {
     let angle = if session.config.upright_screen_fix {
         match transform {
-            Transform::_90 | Transform::Flipped90 => PI / 2.,
-            Transform::_180 | Transform::Flipped180 => PI,
-            Transform::_270 | Transform::Flipped270 => -PI / 2.,
+            Transform::Rotated90 | Transform::Flipped90 => PI / 2.,
+            Transform::Rotated180 | Transform::Flipped180 => PI,
+            Transform::Rotated270 | Transform::Flipped270 => -PI / 2.,
             _ => 0.,
         }
     } else {
@@ -103,12 +73,12 @@ pub fn create_screens(app: &mut AppState) -> anyhow::Result<(ScreenCreateData, O
             .ok();
 
         #[cfg(feature = "pipewire")]
-        match create_screens_x11pw(app) {
+        match x11::create_screens_x11pw(app) {
             Ok(data) => return Ok((data, keymap)),
             Err(e) => log::info!("Will not use X11 PipeWire capture: {e:?}"),
         }
 
-        Ok((create_screens_xshm(app)?, keymap))
+        Ok((x11::create_screens_xshm(app)?, keymap))
     }
     #[cfg(not(feature = "x11"))]
     anyhow::bail!("No backends left to try.")

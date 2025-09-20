@@ -1,22 +1,26 @@
-use std::sync::Arc;
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 
-use glam::{Affine2, Vec2, vec2};
+use button::setup_custom_button;
+use glam::{vec2, Affine2, Vec2};
+use label::setup_custom_label;
 use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 use wgui::{
+    drawing,
     event::{
         Event as WguiEvent, EventListenerCollection, InternalStateChangeEvent, ListenerHandleVec,
         MouseButtonIndex, MouseDownEvent, MouseLeaveEvent, MouseMotionEvent, MouseUpEvent,
         MouseWheelEvent,
     },
-    layout::{Layout, LayoutParams},
+    layout::{Layout, LayoutParams, WidgetID},
     parser::ParserState,
     renderer_vk::context::Context as WguiContext,
+    widget::{label::WidgetLabel, rectangle::WidgetRectangle},
 };
 
 use crate::{
     backend::{
         input::{Haptics, PointerHit, PointerMode},
-        overlay::{FrameMeta, OverlayBackend, ShouldRender, ui_transform},
+        overlay::{ui_transform, FrameMeta, OverlayBackend, ShouldRender},
     },
     graphics::{CommandBuffers, ExtentExt},
     state::AppState,
@@ -24,8 +28,14 @@ use crate::{
 
 use super::{timer::GuiTimer, timestep::Timestep};
 
+mod button;
+mod helper;
+mod label;
+
 const MAX_SIZE: u32 = 2048;
 const MAX_SIZE_VEC2: Vec2 = vec2(MAX_SIZE as _, MAX_SIZE as _);
+
+const COLOR_ERR: drawing::Color = drawing::Color::new(1., 0., 1., 1.);
 
 pub struct GuiPanel<S> {
     pub layout: Layout,
@@ -39,19 +49,87 @@ pub struct GuiPanel<S> {
     timestep: Timestep,
 }
 
-impl<S> GuiPanel<S> {
-    pub fn new_from_template(app: &mut AppState, path: &str, state: S) -> anyhow::Result<Self> {
-        let mut listeners = EventListenerCollection::<AppState, S>::default();
+pub type OnCustomIdFunc<S> = Box<
+    dyn Fn(
+        Rc<str>,
+        WidgetID,
+        &wgui::parser::ParseDocumentParams,
+        &mut Layout,
+        &mut ParserState,
+        &mut EventListenerCollection<AppState, S>,
+    ) -> anyhow::Result<()>,
+>;
 
-        let (layout, parser_state) = wgui::parser::new_layout_from_assets(
-            &mut listeners,
-            &wgui::parser::ParseDocumentParams {
-                globals: app.wgui_globals.clone(),
-                path,
-                extra: Default::default(),
+impl<S> GuiPanel<S> {
+    pub fn new_from_template(
+        app: &mut AppState,
+        path: &str,
+        state: S,
+        on_custom_id: Option<OnCustomIdFunc<S>>,
+    ) -> anyhow::Result<Self> {
+        let mut listeners = EventListenerCollection::<AppState, S>::default();
+        let mut listener_handles = ListenerHandleVec::default();
+
+        let custom_elems = Rc::new(RefCell::new(vec![]));
+
+        let doc_params = wgui::parser::ParseDocumentParams {
+            globals: app.wgui_globals.clone(),
+            path,
+            extra: wgui::parser::ParseDocumentExtra {
+                on_custom_attribs: Some(Box::new({
+                    let custom_elems = custom_elems.clone();
+                    move |attribs| {
+                        custom_elems.borrow_mut().push(attribs.to_owned());
+                    }
+                })),
+                ..Default::default()
             },
+        };
+
+        let (mut layout, mut parser_state) = wgui::parser::new_layout_from_assets(
+            &mut listeners,
+            &doc_params,
             &LayoutParams::default(),
         )?;
+
+        if let Some(on_element_id) = on_custom_id {
+            let ids = parser_state.ids.clone();
+
+            for (id, widget) in ids {
+                on_element_id(
+                    id.clone(),
+                    widget,
+                    &doc_params,
+                    &mut layout,
+                    &mut parser_state,
+                    &mut listeners,
+                )?;
+            }
+        }
+
+        for elem in custom_elems.borrow().iter() {
+            if layout
+                .state
+                .widgets
+                .get_as::<WidgetLabel>(elem.widget_id)
+                .is_some()
+            {
+                setup_custom_label(
+                    &mut layout,
+                    elem,
+                    &mut listeners,
+                    &mut listener_handles,
+                    app,
+                );
+            } else if layout
+                .state
+                .widgets
+                .get_as::<WidgetRectangle>(elem.widget_id)
+                .is_some()
+            {
+                setup_custom_button(elem, &mut listeners, &mut listener_handles, app);
+            }
+        }
 
         let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
         let mut timestep = Timestep::new();
@@ -62,7 +140,7 @@ impl<S> GuiPanel<S> {
             context,
             timestep,
             state,
-            listener_handles: ListenerHandleVec::default(),
+            listener_handles,
             parser_state,
             timers: vec![],
             listeners,
@@ -105,7 +183,7 @@ impl<S> GuiPanel<S> {
 
 impl<S> OverlayBackend for GuiPanel<S> {
     fn init(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
-        if self.layout.content_size.x * self.layout.content_size.y == 0.0 {
+        if self.layout.content_size.x * self.layout.content_size.y != 0.0 {
             self.update_layout()?;
             self.interaction_transform = Some(ui_transform([
                 //TODO: dynamic

@@ -12,9 +12,9 @@ use crate::{
     config::AStrSetExt,
     overlays::{
         anchor::create_anchor,
-        keyboard::{KEYBOARD_NAME, builder::create_keyboard},
+        keyboard::{builder::create_keyboard, KEYBOARD_NAME},
         screen::create_screens,
-        watch::{WATCH_NAME, create_watch},
+        watch::{create_watch, WATCH_NAME},
     },
     state::AppState,
 };
@@ -61,19 +61,19 @@ where
                         if let Some((_, s, _)) = data.screens.first() {
                             show_screens.arc_set(s.name.clone());
                         }
-                        for (meta, mut state, backend) in data.screens {
-                            if show_screens.arc_get(state.name.as_ref()) {
-                                state.show_hide = true;
-                            }
-                            overlays.insert(
-                                state.id.0,
-                                OverlayData::<T> {
-                                    state,
-                                    ..OverlayData::from_backend(backend)
-                                },
-                            );
-                            app.screens.push(meta);
+                    }
+                    for (meta, mut state, backend) in data.screens {
+                        if show_screens.arc_get(state.name.as_ref()) {
+                            state.show_hide = true;
                         }
+                        overlays.insert(
+                            state.id.0,
+                            OverlayData::<T> {
+                                state,
+                                ..OverlayData::from_backend(backend)
+                            },
+                        );
+                        app.screens.push(meta);
                     }
 
                     maybe_keymap = keymap;

@@ -329,10 +329,10 @@ pub trait OverlayBackend {
 
 #[derive(Clone, Copy, Debug, Default)]
 pub enum Positioning {
-    /// Stays in place unless recentered, recenters relative to HMD
+    /// Stays in place, recenters relative to HMD
     #[default]
     Floating,
-    /// Stays in place unless recentered, recenters relative to anchor
+    /// Stays in place, recenters relative to anchor
     Anchored,
     /// Following HMD
     FollowHead { lerp: f32 },

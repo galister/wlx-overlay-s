@@ -59,7 +59,7 @@ pub enum WlxFrame {
     MemPtr(MemPtrFrame),
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum Transform {
     #[default]
     Undefined,

@@ -2,8 +2,8 @@ use std::{
     collections::VecDeque,
     ops::Add,
     sync::{
-        Arc,
         atomic::{AtomicBool, AtomicUsize, Ordering},
+        Arc,
     },
     time::{Duration, Instant},
 };
@@ -23,10 +23,10 @@ use crate::{
         overlay::{OverlayData, ShouldRender},
         task::{SystemTask, TaskType},
     },
-    graphics::{CommandBuffers, init_openxr_graphics},
+    graphics::{init_openxr_graphics, CommandBuffers},
     overlays::{
         toast::{Toast, ToastTopic},
-        watch::{WATCH_NAME, watch_fade},
+        watch::{watch_fade, WATCH_NAME},
     },
     state::AppState,
     subsystem::notifications::NotificationManager,
@@ -327,7 +327,7 @@ pub fn openxr_run(
         )?;
 
         let ipd = helpers::ipd_from_views(&views);
-        if (app.input_state.ipd - ipd).abs() > 0.01 {
+        if (app.input_state.ipd - ipd).abs() > 0.05 {
             log::info!("IPD changed: {} -> {}", app.input_state.ipd, ipd);
             app.input_state.ipd = ipd;
             Toast::new(ToastTopic::IpdChange, "IPD".into(), format!("{ipd:.1} mm"))

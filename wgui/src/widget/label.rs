@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use cosmic_text::{Attrs, Buffer, Metrics, Shaping, Wrap};
+use cosmic_text::{Attrs, AttrsList, Buffer, Metrics, Shaping, Wrap};
 use slotmap::Key;
 use taffy::AvailableSpace;
 
@@ -10,7 +10,7 @@ use crate::{
 	globals::Globals,
 	i18n::{I18n, Translation},
 	layout::WidgetID,
-	renderer_vk::text::{FONT_SYSTEM, TextStyle},
+	renderer_vk::text::{TextStyle, FONT_SYSTEM},
 };
 
 use super::{WidgetObj, WidgetState};
@@ -84,9 +84,24 @@ impl WidgetLabel {
 		true
 	}
 
+	fn update_attrs(&mut self) {
+		let attrs = Attrs::from(&self.params.style);
+		for line in self.buffer.borrow_mut().lines.iter_mut() {
+			line.set_attrs_list(AttrsList::new(&attrs));
+		}
+	}
+
 	// set text and check if it needs to be re-rendered/re-layouted
 	pub fn set_text(&mut self, common: &mut CallbackDataCommon, translation: Translation) {
 		if self.set_text_simple(&mut common.i18n(), translation) {
+			common.mark_widget_dirty(self.id);
+		}
+	}
+
+	pub fn set_color(&mut self, common: &mut CallbackDataCommon, color: drawing::Color, apply_to_existing_text: bool) {
+		self.params.style.color = Some(color);
+		if apply_to_existing_text {
+			self.update_attrs();
 			common.mark_widget_dirty(self.id);
 		}
 	}

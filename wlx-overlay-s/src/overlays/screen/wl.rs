@@ -1,9 +1,9 @@
 use glam::vec2;
 use wlx_capture::{
-    WlxCapture,
     wayland::{WlxClient, WlxOutput},
     wlr_dmabuf::WlrDmabufCapture,
     wlr_screencopy::WlrScreencopyCapture,
+    WlxCapture,
 };
 
 use crate::{
@@ -13,10 +13,10 @@ use crate::{
 };
 
 use super::{
-    ScreenCreateData,
     backend::ScreenBackend,
-    capture::{MainThreadWlxCapture, new_wlx_capture},
+    capture::{new_wlx_capture, MainThreadWlxCapture},
     pw::{load_pw_token_config, save_pw_token_config},
+    ScreenCreateData,
 };
 
 impl ScreenBackend {
@@ -126,7 +126,7 @@ pub fn create_screens_wayland(wl: &mut WlxClient, app: &mut AppState) -> ScreenC
         ) {
             let logical_pos = vec2(output.logical_pos.0 as f32, output.logical_pos.1 as f32);
             let logical_size = vec2(output.logical_size.0 as f32, output.logical_size.1 as f32);
-            let transform = output.transform.into();
+            let transform = output.transform;
 
             backend.set_mouse_transform(logical_pos, logical_size, transform);
 

@@ -21,7 +21,7 @@ use crate::{
         DrmFormat, FourCC, FrameFormat, FramePlane, MemFdFrame, WlxFrame, DRM_FORMAT_ARGB8888,
         DRM_FORMAT_XRGB8888,
     },
-    wayland::{wl_transform_to_frame_transform, WlxClient},
+    wayland::WlxClient,
     WlxCapture,
 };
 
@@ -194,7 +194,7 @@ where
         return client;
     };
 
-    let transform = wl_transform_to_frame_transform(output.transform);
+    let transform = output.transform;
 
     let (tx, rx) = mpsc::sync_channel::<ScreenCopyEvent>(16);
 

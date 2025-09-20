@@ -1,26 +1,23 @@
 use std::{
-    sync::{Arc, LazyLock, atomic::AtomicU64},
+    sync::{atomic::AtomicU64, Arc, LazyLock},
     time::Instant,
 };
 
-use glam::{Affine2, Vec2, vec2};
+use glam::{vec2, Affine2, Vec2};
 use vulkano::image::view::ImageView;
-use wlx_capture::WlxCapture;
+use wlx_capture::{frame::Transform, WlxCapture};
 
 use crate::{
     backend::{
         input::{Haptics, PointerHit, PointerMode},
         overlay::{FrameMeta, OverlayBackend, ShouldRender},
     },
-    graphics::CommandBuffers,
+    graphics::{CommandBuffers, ExtentExt},
     state::AppState,
     subsystem::hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
 };
 
-use super::{
-    Transform,
-    capture::{ScreenPipeline, WlxCaptureIn, WlxCaptureOut, receive_callback},
-};
+use super::capture::{receive_callback, ScreenPipeline, WlxCaptureIn, WlxCaptureOut};
 
 const CURSOR_SIZE: f32 = 16. / 1440.;
 
@@ -66,17 +63,17 @@ impl ScreenBackend {
 
     pub(super) fn set_mouse_transform(&mut self, pos: Vec2, size: Vec2, transform: Transform) {
         self.mouse_transform = match transform {
-            Transform::_90 | Transform::Flipped90 => Affine2::from_cols(
+            Transform::Rotated90 | Transform::Flipped90 => Affine2::from_cols(
                 vec2(0., size.y),
                 vec2(-size.x, 0.),
                 vec2(pos.x + size.x, pos.y),
             ),
-            Transform::_180 | Transform::Flipped180 => Affine2::from_cols(
+            Transform::Rotated180 | Transform::Flipped180 => Affine2::from_cols(
                 vec2(-size.x, 0.),
                 vec2(0., -size.y),
                 vec2(pos.x + size.x, pos.y + size.y),
             ),
-            Transform::_270 | Transform::Flipped270 => Affine2::from_cols(
+            Transform::Rotated270 | Transform::Flipped270 => Affine2::from_cols(
                 vec2(0., -size.y),
                 vec2(size.x, 0.),
                 vec2(pos.x, pos.y + size.y),
@@ -85,16 +82,16 @@ impl ScreenBackend {
         };
     }
 
-    pub(super) fn get_interaction_transform(&mut self, res: Vec2, transform: Transform) {
+    pub(super) fn set_interaction_transform(&mut self, res: Vec2, transform: Transform) {
         let center = Vec2 { x: 0.5, y: 0.5 };
         self.interaction_transform = Some(match transform {
-            Transform::_90 | Transform::Flipped90 => {
+            Transform::Rotated90 | Transform::Flipped90 => {
                 Affine2::from_cols(Vec2::NEG_Y * (res.x / res.y), Vec2::NEG_X, center)
             }
-            Transform::_180 | Transform::Flipped180 => {
+            Transform::Rotated180 | Transform::Flipped180 => {
                 Affine2::from_cols(Vec2::NEG_X, Vec2::NEG_Y * (-res.x / res.y), center)
             }
-            Transform::_270 | Transform::Flipped270 => {
+            Transform::Rotated270 | Transform::Flipped270 => {
                 Affine2::from_cols(Vec2::Y * (res.x / res.y), Vec2::X, center)
             }
             _ if res.y > res.x => {
@@ -164,9 +161,14 @@ impl OverlayBackend for ScreenBackend {
             if let Some(pipeline) = self.pipeline.as_mut() {
                 if self.meta.is_some_and(|old| old.extent != meta.extent) {
                     pipeline.set_extent(app, [meta.extent[0] as _, meta.extent[1] as _])?;
+                    self.set_interaction_transform(
+                        meta.extent.extent_vec2(),
+                        frame.get_transform(),
+                    );
                 }
             } else {
                 self.pipeline = Some(ScreenPipeline::new(&meta, app)?);
+                self.set_interaction_transform(meta.extent.extent_vec2(), frame.get_transform());
             }
 
             self.meta = Some(meta);

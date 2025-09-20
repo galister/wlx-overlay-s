@@ -2,18 +2,18 @@ use std::{
     collections::VecDeque,
     ops::Add,
     sync::{
-        Arc,
         atomic::{AtomicBool, AtomicUsize, Ordering},
+        Arc,
     },
     time::{Duration, Instant},
 };
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use ovr_overlay::{
-    TrackedDeviceIndex,
     sys::{ETrackedDeviceProperty, EVRApplicationType, EVREventType},
+    TrackedDeviceIndex,
 };
-use vulkano::{Handle, VulkanObject, device::physical::PhysicalDevice};
+use vulkano::{device::physical::PhysicalDevice, Handle, VulkanObject};
 
 use crate::{
     backend::{
@@ -21,7 +21,7 @@ use crate::{
         input::interact,
         openvr::{
             helpers::adjust_gain,
-            input::{OpenVrInputSource, set_action_manifest},
+            input::{set_action_manifest, OpenVrInputSource},
             lines::LinePool,
             manifest::{install_manifest, uninstall_manifest},
             overlay::OpenVrOverlayData,
@@ -29,10 +29,10 @@ use crate::{
         overlay::{OverlayData, ShouldRender},
         task::{SystemTask, TaskType},
     },
-    graphics::{CommandBuffers, init_openvr_graphics},
+    graphics::{init_openvr_graphics, CommandBuffers},
     overlays::{
         toast::{Toast, ToastTopic},
-        watch::{WATCH_NAME, watch_fade},
+        watch::{watch_fade, WATCH_NAME},
     },
     state::AppState,
     subsystem::notifications::NotificationManager,
@@ -110,8 +110,8 @@ pub fn openvr_run(
         TrackedDeviceIndex::HMD,
         ETrackedDeviceProperty::Prop_UserIpdMeters_Float,
     ) {
-        state.input_state.ipd = (ipd * 10000.0).round() * 0.1;
-        log::info!("IPD: {:.1} mm", state.input_state.ipd);
+        state.input_state.ipd = (ipd * 1000.0).round();
+        log::info!("IPD: {:.0} mm", state.input_state.ipd);
     }
 
     let _ = install_manifest(&mut app_mgr);
@@ -182,7 +182,7 @@ pub fn openvr_run(
                         TrackedDeviceIndex::HMD,
                         ETrackedDeviceProperty::Prop_UserIpdMeters_Float,
                     ) {
-                        let ipd = (ipd * 10000.0).round() * 0.1;
+                        let ipd = (ipd * 1000.0).round();
                         if (ipd - state.input_state.ipd).abs() > 0.05 {
                             log::info!("IPD: {:.1} mm -> {:.1} mm", state.input_state.ipd, ipd);
                             Toast::new(ToastTopic::IpdChange, "IPD".into(), format!("{ipd:.1} mm"))

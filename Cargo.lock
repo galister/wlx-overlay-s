@@ -659,9 +659,9 @@ dependencies = [
 
 [[package]]
 name = "bindgen"
-version = "0.72.0"
+version = "0.72.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f72209734318d0b619a5e0f5129918b848c416e122a3c4ce054e03cb87b726f"
+checksum = "993776b509cfb49c750f11b8f07a46fa23e0a1386ffc01fb1e7d343efc387895"
 dependencies = [
  "bitflags 2.9.1",
  "cexpr",
@@ -1130,7 +1130,7 @@ version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ceec7a6067e62d6f931a2baf6f3a751f4a892595bcec1461a3c94ef9949864b6"
 dependencies = [
- "bindgen 0.72.0",
+ "bindgen 0.72.1",
 ]
 
 [[package]]
@@ -2740,9 +2740,9 @@ dependencies = [
 
 [[package]]
 name = "mach2"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19b955cdeb2a02b9117f121ce63aa52d08ade45de53e48fe6a38b39c10f6f709"
+checksum = "d640282b302c0bb0a2a8e0233ead9035e3bed871f0b7e81fe4a1ec829765db44"
 dependencies = [
  "libc",
 ]
@@ -6214,23 +6214,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "wlx-capture"
-version = "0.5.3"
-source = "git+https://github.com/galister/wlx-capture?tag=v0.5.3#4479bd4bdd2b570aec9692e55b513ec7c0a17e7f"
-dependencies = [
- "ashpd",
- "drm-fourcc",
- "idmap",
- "libc",
- "log",
- "pipewire",
- "rxscreen",
- "smithay-client-toolkit",
- "wayland-client",
- "wayland-protocols",
-]
-
-[[package]]
 name = "wlx-overlay-s"
 version = "25.4.2"
 dependencies = [
@@ -6283,7 +6266,7 @@ dependencies = [
  "wayvr_ipc",
  "wgui",
  "winit",
- "wlx-capture 0.5.3 (git+https://github.com/galister/wlx-capture?tag=v0.5.3)",
+ "wlx-capture",
  "xcb",
  "xdg 3.0.0",
  "xkbcommon 0.8.0",
