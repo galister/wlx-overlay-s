@@ -18,7 +18,7 @@ use crate::{
     },
     config::load_config_with_conf_d,
     config_io,
-    overlays::wayvr::{executable_exists_in_path, WayVRData},
+    overlays::wayvr::{WayVRData, executable_exists_in_path},
 };
 
 // Flat version of RelativeTo
@@ -211,13 +211,13 @@ impl WayVRConfig {
 
         for (catalog_name, catalog) in &self.catalogs {
             for app in &catalog.apps {
-                if let Some(b) = app.shown_at_start {
-                    if b {
-                        tasks.enqueue(TaskType::WayVR(WayVRAction::AppClick {
-                            catalog_name: Arc::from(catalog_name.as_str()),
-                            app_name: Arc::from(app.name.as_str()),
-                        }));
-                    }
+                if let Some(b) = app.shown_at_start
+                    && b
+                {
+                    tasks.enqueue(TaskType::WayVR(WayVRAction::AppClick {
+                        catalog_name: Arc::from(catalog_name.as_str()),
+                        app_name: Arc::from(app.name.as_str()),
+                    }));
                 }
             }
         }

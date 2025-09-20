@@ -14,7 +14,8 @@
 	clippy::implicit_hasher,
 	clippy::option_if_let_else,
 	clippy::significant_drop_tightening,
-	clippy::float_cmp
+	clippy::float_cmp,
+	clippy::needless_pass_by_ref_mut
 )]
 
 pub mod animation;

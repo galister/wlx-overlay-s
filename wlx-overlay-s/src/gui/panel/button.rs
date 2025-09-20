@@ -11,7 +11,7 @@ use wgui::{
 
 use crate::{
     backend::{common::OverlaySelector, overlay::OverlayID, task::TaskType, wayvr::WayVRAction},
-    config::{save_layout, AStrSetExt},
+    config::{AStrSetExt, save_layout},
     state::AppState,
 };
 
@@ -21,14 +21,14 @@ pub(super) fn setup_custom_button<S>(
     attribs: &CustomAttribsInfoOwned,
     listeners: &mut EventListenerCollection<AppState, S>,
     listener_handles: &mut ListenerHandleVec,
-    app: &AppState,
+    _app: &AppState,
 ) {
     const EVENTS: [(&str, EventListenerKind); 2] = [
         ("press", EventListenerKind::MousePress),
         ("release", EventListenerKind::MouseRelease),
     ];
 
-    for (name, kind) in EVENTS.iter() {
+    for (name, kind) in &EVENTS {
         let Some(action) = attribs.get_value(name) else {
             continue;
         };
@@ -47,14 +47,14 @@ pub(super) fn setup_custom_button<S>(
             }),
             "::OverlayToggle" => {
                 let Some(selector) = args.next() else {
-                    log::warn!("Missing argument for {}", command);
+                    log::warn!("Missing argument for {command}");
                     continue;
                 };
 
-                let selector = selector
-                    .parse::<usize>()
-                    .map(|id| OverlaySelector::Id(OverlayID { 0: id }))
-                    .unwrap_or_else(|_| OverlaySelector::Name(selector.into()));
+                let selector = selector.parse::<usize>().map_or_else(
+                    |_| OverlaySelector::Name(selector.into()),
+                    |id| OverlaySelector::Id(OverlayID(id)),
+                );
 
                 Box::new(move |_common, _data, app, _| {
                     app.tasks.enqueue(TaskType::Overlay(
@@ -90,7 +90,11 @@ pub(super) fn setup_custom_button<S>(
             }
             "::WatchHide" => todo!(),
             "::WatchSwapHand" => todo!(),
+            // TODO
+            #[allow(clippy::match_same_arms)]
             "::EditToggle" => return,
+            // TODO
+            #[allow(clippy::match_same_arms)]
             "::OscSend" => return,
             // shell
             _ => todo!(),
@@ -110,18 +114,20 @@ struct ShellButtonState {
     carry_over: RefCell<Option<String>>,
 }
 
+// TODO
+#[allow(clippy::missing_const_for_fn)]
 fn shell_on_action(
-    state: &ShellButtonState,
-    common: &mut event::CallbackDataCommon,
-    data: &mut event::CallbackData,
+    _state: &ShellButtonState,
+    _common: &mut event::CallbackDataCommon,
+    _data: &mut event::CallbackData,
 ) {
-    let mut mut_state = state.mut_state.borrow_mut();
+    //let mut mut_state = state.mut_state.borrow_mut();
 }
 
 fn shell_on_tick(
     state: &ShellButtonState,
-    common: &mut event::CallbackDataCommon,
-    data: &mut event::CallbackData,
+    _common: &mut event::CallbackDataCommon,
+    _data: &mut event::CallbackData,
 ) {
     let mut mut_state = state.mut_state.borrow_mut();
 
@@ -129,8 +135,8 @@ fn shell_on_tick(
         match child.try_wait() {
             // not exited yet
             Ok(None) => {
-                if let Some(text) = mut_state.reader.as_mut().and_then(|r| {
-                    read_label_from_pipe("child process", r, &mut *state.carry_over.borrow_mut())
+                if let Some(_text) = mut_state.reader.as_mut().and_then(|r| {
+                    read_label_from_pipe("child process", r, &mut state.carry_over.borrow_mut())
                 }) {
                     //TODO update label
                 }
@@ -138,8 +144,8 @@ fn shell_on_tick(
             }
             // exited successfully
             Ok(Some(code)) if code.success() => {
-                if let Some(text) = mut_state.reader.as_mut().and_then(|r| {
-                    read_label_from_pipe("child process", r, &mut *state.carry_over.borrow_mut())
+                if let Some(_text) = mut_state.reader.as_mut().and_then(|r| {
+                    read_label_from_pipe("child process", r, &mut state.carry_over.borrow_mut())
                 }) {
                     //TODO update label
                 }
@@ -148,7 +154,7 @@ fn shell_on_tick(
             // exited with failure
             Ok(Some(code)) => {
                 mut_state.child = None;
-                log::warn!("Label process exited with code {}", code);
+                log::warn!("Label process exited with code {code}");
             }
             // lost
             Err(_) => {

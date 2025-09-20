@@ -809,10 +809,10 @@ where
     O: Default,
 {
     if let Some(display) = WayVR::get_display_by_name(&wayvr.data.state.displays, display_name) {
-        if let Some(overlay_id) = wayvr.display_handle_map.get(&display) {
-            if let Some(overlay) = overlays.mut_by_id(*overlay_id) {
-                overlay.state.want_visible = true;
-            }
+        if let Some(overlay_id) = wayvr.display_handle_map.get(&display)
+            && let Some(overlay) = overlays.mut_by_id(*overlay_id)
+        {
+            overlay.state.want_visible = true;
         }
 
         wayvr.data.state.set_display_visible(display, true);

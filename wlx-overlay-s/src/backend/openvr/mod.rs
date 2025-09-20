@@ -2,18 +2,18 @@ use std::{
     collections::VecDeque,
     ops::Add,
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
+        atomic::{AtomicBool, AtomicUsize, Ordering},
     },
     time::{Duration, Instant},
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use ovr_overlay::{
-    sys::{ETrackedDeviceProperty, EVRApplicationType, EVREventType},
     TrackedDeviceIndex,
+    sys::{ETrackedDeviceProperty, EVRApplicationType, EVREventType},
 };
-use vulkano::{device::physical::PhysicalDevice, Handle, VulkanObject};
+use vulkano::{Handle, VulkanObject, device::physical::PhysicalDevice};
 
 use crate::{
     backend::{
@@ -21,7 +21,7 @@ use crate::{
         input::interact,
         openvr::{
             helpers::adjust_gain,
-            input::{set_action_manifest, OpenVrInputSource},
+            input::{OpenVrInputSource, set_action_manifest},
             lines::LinePool,
             manifest::{install_manifest, uninstall_manifest},
             overlay::OpenVrOverlayData,
@@ -29,10 +29,10 @@ use crate::{
         overlay::{OverlayData, ShouldRender},
         task::{SystemTask, TaskType},
     },
-    graphics::{init_openvr_graphics, CommandBuffers},
+    graphics::{CommandBuffers, init_openvr_graphics},
     overlays::{
         toast::{Toast, ToastTopic},
-        watch::{watch_fade, WATCH_NAME},
+        watch::{WATCH_NAME, watch_fade},
     },
     state::AppState,
     subsystem::notifications::NotificationManager,
@@ -229,11 +229,11 @@ pub fn openvr_run(
                     });
                 }
                 TaskType::DropOverlay(sel) => {
-                    if let Some(o) = overlays.mut_by_selector(&sel) {
-                        if o.state.birthframe < cur_frame {
-                            o.destroy(&mut overlay_mgr);
-                            overlays.remove_by_selector(&sel);
-                        }
+                    if let Some(o) = overlays.mut_by_selector(&sel)
+                        && o.state.birthframe < cur_frame
+                    {
+                        o.destroy(&mut overlay_mgr);
+                        overlays.remove_by_selector(&sel);
                     }
                 }
                 TaskType::System(task) => match task {

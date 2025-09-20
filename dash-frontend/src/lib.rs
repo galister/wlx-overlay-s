@@ -116,7 +116,7 @@ impl Frontend {
 		};
 
 		// fixme: timer events instead of this thing
-		if self.ticks % 1000 == 0 {
+		if self.ticks.is_multiple_of(1000) {
 			self.update_time(&mut common);
 		}
 

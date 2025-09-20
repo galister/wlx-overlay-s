@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use glam::vec2;
 use wlx_capture::{
+    WlxCapture,
     frame::Transform,
     xshm::{XshmCapture, XshmScreen},
-    WlxCapture,
 };
 
 use crate::{
@@ -13,9 +13,9 @@ use crate::{
 };
 
 use super::{
-    backend::ScreenBackend,
-    capture::{new_wlx_capture, MainThreadWlxCapture},
     ScreenCreateData,
+    backend::ScreenBackend,
+    capture::{MainThreadWlxCapture, new_wlx_capture},
 };
 
 #[cfg(feature = "pipewire")]
@@ -62,10 +62,10 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
         true,
     )?;
 
-    if let Some(restore_token) = select_screen_result.restore_token {
-        if pw_tokens.arc_set("x11".into(), restore_token.clone()) {
-            log::info!("Adding Pipewire token {restore_token}");
-        }
+    if let Some(restore_token) = select_screen_result.restore_token
+        && pw_tokens.arc_set("x11".into(), restore_token.clone())
+    {
+        log::info!("Adding Pipewire token {restore_token}");
     }
     if pw_tokens_copy != pw_tokens {
         // Token list changed, re-create token config file

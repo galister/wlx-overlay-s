@@ -21,15 +21,15 @@ pub(super) fn install_manifest(app_mgr: &mut ApplicationsManager) -> anyhow::Res
             .ok_or_else(|| anyhow::anyhow!("Invalid executable path"))?,
     };
 
-    if app_mgr.is_application_installed(APP_KEY) == Ok(true) {
-        if let Ok(mut file) = File::open(&manifest_path) {
-            let mut buf = String::new();
-            if file.read_to_string(&mut buf).is_ok() {
-                let manifest: json::JsonValue = json::parse(&buf)?;
-                if manifest["applications"][0]["binary_path_linux"] == executable_path {
-                    log::info!("Manifest already up to date");
-                    return Ok(());
-                }
+    if app_mgr.is_application_installed(APP_KEY) == Ok(true)
+        && let Ok(mut file) = File::open(&manifest_path)
+    {
+        let mut buf = String::new();
+        if file.read_to_string(&mut buf).is_ok() {
+            let manifest: json::JsonValue = json::parse(&buf)?;
+            if manifest["applications"][0]["binary_path_linux"] == executable_path {
+                log::info!("Manifest already up to date");
+                return Ok(());
             }
         }
     }

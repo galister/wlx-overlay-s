@@ -115,10 +115,10 @@ impl InputState {
                     session.config.alt_click_up.iter()
                 };
 
-                if let Some(program) = args.next() {
-                    if let Ok(child) = Command::new(program).args(args).spawn() {
-                        self.processes.push(child);
-                    }
+                if let Some(program) = args.next()
+                    && let Ok(child) = Command::new(program).args(args).spawn()
+                {
+                    self.processes.push(child);
                 }
             }
         }
@@ -283,11 +283,11 @@ pub enum PointerMode {
 }
 
 fn update_focus(focus: &mut KeyboardFocus, state: &OverlayState) {
-    if let Some(f) = &state.keyboard_focus {
-        if *focus != *f {
-            log::info!("Setting keyboard focus to {:?}", *f);
-            *focus = *f;
-        }
+    if let Some(f) = &state.keyboard_focus
+        && *focus != *f
+    {
+        log::info!("Setting keyboard focus to {:?}", *f);
+        *focus = *f;
     }
 }
 
@@ -337,32 +337,31 @@ where
             pointer = &mut app.input_state.pointers[idx];
             pointer.interaction.hovered_id = None;
         }
-        if !pointer.now.click && pointer.before.click {
-            if let Some(clicked_id) = pointer.interaction.clicked_id.take() {
-                if let Some(clicked) = overlays.mut_by_id(clicked_id) {
-                    let hit = PointerHit {
-                        pointer: pointer.idx,
-                        overlay: clicked_id,
-                        mode: pointer.interaction.mode,
-                        ..Default::default()
-                    };
-                    clicked.backend.on_pointer(app, &hit, false);
-                }
-            }
+        if !pointer.now.click
+            && pointer.before.click
+            && let Some(clicked_id) = pointer.interaction.clicked_id.take()
+            && let Some(clicked) = overlays.mut_by_id(clicked_id)
+        {
+            let hit = PointerHit {
+                pointer: pointer.idx,
+                overlay: clicked_id,
+                mode: pointer.interaction.mode,
+                ..Default::default()
+            };
+            clicked.backend.on_pointer(app, &hit, false);
         }
         return (0.0, None); // no hit
     };
 
-    if let Some(hovered_id) = pointer.interaction.hovered_id {
-        if hovered_id != hit.overlay {
-            if let Some(old_hovered) = overlays.mut_by_id(hovered_id) {
-                if Some(pointer.idx) == old_hovered.primary_pointer {
-                    old_hovered.primary_pointer = None;
-                }
-                old_hovered.backend.on_left(app, idx);
-                pointer = &mut app.input_state.pointers[idx];
-            }
+    if let Some(hovered_id) = pointer.interaction.hovered_id
+        && hovered_id != hit.overlay
+        && let Some(old_hovered) = overlays.mut_by_id(hovered_id)
+    {
+        if Some(pointer.idx) == old_hovered.primary_pointer {
+            old_hovered.primary_pointer = None;
         }
+        old_hovered.backend.on_left(app, idx);
+        pointer = &mut app.input_state.pointers[idx];
     }
     let Some(hovered) = overlays.mut_by_id(hit.overlay) else {
         log::warn!("Hit overlay {} does not exist", hit.overlay.0);
@@ -589,17 +588,17 @@ impl Pointer {
             pointer = &mut app.input_state.pointers[idx];
 
             if save_success {
-                if let Some(grab_data) = pointer.interaction.grabbed.as_ref() {
-                    if overlay.state.curvature != grab_data.old_curvature {
-                        if let Some(val) = overlay.state.curvature {
-                            app.session
-                                .config
-                                .curve_values
-                                .arc_set(overlay.state.name.clone(), val);
-                        } else {
-                            let ref_name = overlay.state.name.as_ref();
-                            app.session.config.curve_values.arc_rm(ref_name);
-                        }
+                if let Some(grab_data) = pointer.interaction.grabbed.as_ref()
+                    && overlay.state.curvature != grab_data.old_curvature
+                {
+                    if let Some(val) = overlay.state.curvature {
+                        app.session
+                            .config
+                            .curve_values
+                            .arc_set(overlay.state.name.clone(), val);
+                    } else {
+                        let ref_name = overlay.state.name.as_ref();
+                        app.session.config.curve_values.arc_rm(ref_name);
                     }
                 }
                 app.session.config.transform_values.arc_set(

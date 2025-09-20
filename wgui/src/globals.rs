@@ -33,15 +33,15 @@ impl WguiGlobals {
 		Ok(Self(Rc::new(RefCell::new(Globals { assets, i18n, defaults }))))
 	}
 
-	pub fn get(&self) -> RefMut<Globals> {
+	pub fn get(&self) -> RefMut<'_, Globals> {
 		self.0.borrow_mut()
 	}
 
-	pub fn i18n(&self) -> RefMut<I18n> {
+	pub fn i18n(&self) -> RefMut<'_, I18n> {
 		RefMut::map(self.0.borrow_mut(), |x| &mut x.i18n)
 	}
 
-	pub fn assets(&self) -> RefMut<Box<dyn AssetProvider>> {
+	pub fn assets(&self) -> RefMut<'_, Box<dyn AssetProvider>> {
 		RefMut::map(self.0.borrow_mut(), |x| &mut x.assets)
 	}
 }

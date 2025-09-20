@@ -10,7 +10,7 @@ use crate::{
 	globals::Globals,
 	i18n::{I18n, Translation},
 	layout::WidgetID,
-	renderer_vk::text::{TextStyle, FONT_SYSTEM},
+	renderer_vk::text::{FONT_SYSTEM, TextStyle},
 };
 
 use super::{WidgetObj, WidgetState};
@@ -86,7 +86,7 @@ impl WidgetLabel {
 
 	fn update_attrs(&mut self) {
 		let attrs = Attrs::from(&self.params.style);
-		for line in self.buffer.borrow_mut().lines.iter_mut() {
+		for line in &mut self.buffer.borrow_mut().lines {
 			line.set_attrs_list(AttrsList::new(&attrs));
 		}
 	}

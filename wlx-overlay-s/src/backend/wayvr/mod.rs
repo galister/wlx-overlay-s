@@ -436,7 +436,7 @@ impl WayVR {
             .manager
             .tick_wayland(&mut self.state.displays, &mut self.state.processes)?;
 
-        if self.state.ticks % 200 == 0 {
+        if self.state.ticks.is_multiple_of(200) {
             self.state.manager.cleanup_clients();
         }
 
@@ -460,10 +460,10 @@ impl WayVR {
     #[allow(dead_code)]
     pub fn get_primary_display(displays: &DisplayVec) -> Option<display::DisplayHandle> {
         for (idx, cell) in displays.vec.iter().enumerate() {
-            if let Some(cell) = cell {
-                if cell.obj.primary {
-                    return Some(DisplayVec::get_handle(cell, idx));
-                }
+            if let Some(cell) = cell
+                && cell.obj.primary
+            {
+                return Some(DisplayVec::get_handle(cell, idx));
             }
         }
         None
@@ -474,10 +474,10 @@ impl WayVR {
         name: &str,
     ) -> Option<display::DisplayHandle> {
         for (idx, cell) in displays.vec.iter().enumerate() {
-            if let Some(cell) = cell {
-                if cell.obj.name == name {
-                    return Some(DisplayVec::get_handle(cell, idx));
-                }
+            if let Some(cell) = cell
+                && cell.obj.name == name
+            {
+                return Some(DisplayVec::get_handle(cell, idx));
             }
         }
         None
@@ -519,10 +519,10 @@ impl WayVRState {
         let changed = self.cur_modifiers ^ modifiers;
         for i in 0..8 {
             let m = 1 << i;
-            if changed & m != 0 {
-                if let Some(vk) = MODS_TO_KEYS.get(m).into_iter().flatten().next() {
-                    self.send_key(*vk as u32, modifiers & m != 0);
-                }
+            if changed & m != 0
+                && let Some(vk) = MODS_TO_KEYS.get(m).into_iter().flatten().next()
+            {
+                self.send_key(*vk as u32, modifiers & m != 0);
             }
         }
         self.cur_modifiers = modifiers;
@@ -652,16 +652,16 @@ impl WayVRState {
         _env: &[(&str, &str)],
     ) -> Option<process::ProcessHandle> {
         for (idx, cell) in self.processes.vec.iter().enumerate() {
-            if let Some(cell) = &cell {
-                if let process::Process::Managed(process) = &cell.obj {
-                    if process.display_handle != display_handle
-                        || process.exec_path != exec_path
-                        || process.args != args
-                    {
-                        continue;
-                    }
-                    return Some(process::ProcessVec::get_handle(cell, idx));
+            if let Some(cell) = &cell
+                && let process::Process::Managed(process) = &cell.obj
+            {
+                if process.display_handle != display_handle
+                    || process.exec_path != exec_path
+                    || process.args != args
+                {
+                    continue;
                 }
+                return Some(process::ProcessVec::get_handle(cell, idx));
             }
         }
 

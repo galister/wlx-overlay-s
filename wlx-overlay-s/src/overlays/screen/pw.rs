@@ -83,10 +83,10 @@ pub(super) fn select_pw_screen(
                 task::Poll::Pending => {
                     if Instant::now() >= print_at {
                         log::info!("{instructions}");
-                        if let Ok(sender) = DbusNotificationSender::new() {
-                            if let Ok(id) = sender.notify_send(instructions, "", 2, 0, 0, true) {
-                                notify = Some((sender, id));
-                            }
+                        if let Ok(sender) = DbusNotificationSender::new()
+                            && let Ok(id) = sender.notify_send(instructions, "", 2, 0, 0, true)
+                        {
+                            notify = Some((sender, id));
                         }
                         break;
                     }

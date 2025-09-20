@@ -218,10 +218,10 @@ impl HidProvider for UInputProvider {
         let changed = self.cur_modifiers ^ modifiers;
         for i in 0..8 {
             let m = 1 << i;
-            if changed & m != 0 {
-                if let Some(vk) = MODS_TO_KEYS.get(m).into_iter().flatten().next() {
-                    self.send_key(*vk, modifiers & m != 0);
-                }
+            if changed & m != 0
+                && let Some(vk) = MODS_TO_KEYS.get(m).into_iter().flatten().next()
+            {
+                self.send_key(*vk, modifiers & m != 0);
             }
         }
         self.cur_modifiers = modifiers;
@@ -564,13 +564,13 @@ pub struct XkbKeymap {
 impl XkbKeymap {
     pub fn label_for_key(&self, key: VirtualKey, modifier: KeyModifier) -> String {
         let mut state = xkb::State::new(&self.keymap);
-        if modifier > 0 {
-            if let Some(mod_key) = MODS_TO_KEYS.get(modifier) {
-                state.update_key(
-                    xkb::Keycode::from(mod_key[0] as u32),
-                    xkb::KeyDirection::Down,
-                );
-            }
+        if modifier > 0
+            && let Some(mod_key) = MODS_TO_KEYS.get(modifier)
+        {
+            state.update_key(
+                xkb::Keycode::from(mod_key[0] as u32),
+                xkb::KeyDirection::Down,
+            );
         }
         state.key_get_utf8(xkb::Keycode::from(key as u32))
     }

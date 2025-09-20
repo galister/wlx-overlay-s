@@ -229,10 +229,10 @@ fn register_event_mouse_release<U1, U2>(
 				state.checked = !state.checked;
 				set_box_checked(&common.state.widgets, &data, state.checked);
 
-				if state.hovered {
-					if let Some(on_toggle) = &state.on_toggle {
-						on_toggle(common, CheckboxToggleEvent { checked: state.checked })?;
-					}
+				if state.hovered
+					&& let Some(on_toggle) = &state.on_toggle
+				{
+					on_toggle(common, CheckboxToggleEvent { checked: state.checked })?;
 				}
 			}
 

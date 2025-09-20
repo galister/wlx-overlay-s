@@ -269,20 +269,20 @@ fn ensure_single_instance(replace: bool) -> bool {
 
     if path.exists() {
         // load contents
-        if let Ok(pid_str) = std::fs::read_to_string(&path) {
-            if let Ok(pid) = pid_str.trim().parse::<u32>() {
-                let mut system = sysinfo::System::new();
-                system.refresh_processes(
-                    sysinfo::ProcessesToUpdate::Some(&[Pid::from_u32(pid)]),
-                    false,
-                );
-                if let Some(proc) = system.process(sysinfo::Pid::from_u32(pid)) {
-                    if replace {
-                        proc.kill_with(sysinfo::Signal::Term);
-                        proc.wait();
-                    } else {
-                        return false;
-                    }
+        if let Ok(pid_str) = std::fs::read_to_string(&path)
+            && let Ok(pid) = pid_str.trim().parse::<u32>()
+        {
+            let mut system = sysinfo::System::new();
+            system.refresh_processes(
+                sysinfo::ProcessesToUpdate::Some(&[Pid::from_u32(pid)]),
+                false,
+            );
+            if let Some(proc) = system.process(sysinfo::Pid::from_u32(pid)) {
+                if replace {
+                    proc.kill_with(sysinfo::Signal::Term);
+                    proc.wait();
+                } else {
+                    return false;
                 }
             }
         }

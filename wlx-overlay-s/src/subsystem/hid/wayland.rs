@@ -1,11 +1,11 @@
 use wlx_capture::wayland::wayland_client::{
-    globals::{registry_queue_init, GlobalListContents},
+    Connection, Dispatch, Proxy, QueueHandle,
+    globals::{GlobalListContents, registry_queue_init},
     protocol::{
         wl_keyboard::{self, WlKeyboard},
         wl_registry::WlRegistry,
         wl_seat::{self, Capability, WlSeat},
     },
-    Connection, Dispatch, Proxy, QueueHandle,
 };
 use xkbcommon::xkb;
 
@@ -32,7 +32,7 @@ pub fn get_keymap_wl() -> anyhow::Result<XkbKeymap> {
     let qh = queue.handle();
     let seat: WlSeat = globals
         .bind(&qh, 4..=9, ())
-        .expect(WlSeat::interface().name);
+        .unwrap_or_else(|_| panic!("{}", WlSeat::interface().name));
 
     let mut me = WlKeymapHandler {
         seat,

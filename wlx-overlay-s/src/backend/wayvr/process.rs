@@ -97,10 +97,10 @@ fn get_process_env_value(pid: i32, key: &str) -> anyhow::Result<Option<String>> 
     let lines: Vec<&str> = env_data.split('\0').filter(|s| !s.is_empty()).collect();
 
     for line in lines {
-        if let Some(cell) = line.split_once('=') {
-            if cell.0 == key {
-                return Ok(Some(String::from(cell.1)));
-            }
+        if let Some(cell) = line.split_once('=')
+            && cell.0 == key
+        {
+            return Ok(Some(String::from(cell.1)));
         }
     }
 
@@ -199,10 +199,10 @@ pub fn find_by_pid(processes: &ProcessVec, pid: u32) -> Option<ProcessHandle> {
             let Some(cell) = cell else {
                 continue;
             };
-            if let Process::Managed(wayvr_process) = &cell.obj {
-                if wayvr_process.auth_key == value {
-                    return Some(ProcessVec::get_handle(cell, idx));
-                }
+            if let Process::Managed(wayvr_process) = &cell.obj
+                && wayvr_process.auth_key == value
+            {
+                return Some(ProcessVec::get_handle(cell, idx));
             }
         }
     }

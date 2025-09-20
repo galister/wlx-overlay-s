@@ -15,7 +15,7 @@ use wgui::{
     event::{self, EventCallback, EventListenerCollection, ListenerHandleVec},
     i18n::Translation,
     layout::Layout,
-    parser::{parse_color_hex, CustomAttribsInfoOwned},
+    parser::{CustomAttribsInfoOwned, parse_color_hex},
     widget::label::WidgetLabel,
 };
 
@@ -23,6 +23,7 @@ use crate::state::AppState;
 
 use super::helper::{expand_env_vars, read_label_from_pipe};
 
+#[allow(clippy::too_many_lines)]
 pub(super) fn setup_custom_label<S>(
     layout: &mut Layout,
     attribs: &CustomAttribsInfoOwned,
@@ -85,15 +86,15 @@ pub(super) fn setup_custom_label<S>(
             let state = BatteryLabelState {
                 low_color: attribs
                     .get_value("low_color")
-                    .and_then(|s| parse_color_hex(s))
+                    .and_then(parse_color_hex)
                     .unwrap_or(BAT_LOW),
                 normal_color: attribs
                     .get_value("normal_color")
-                    .and_then(|s| parse_color_hex(s))
+                    .and_then(parse_color_hex)
                     .unwrap_or(BAT_NORMAL),
                 charging_color: attribs
                     .get_value("charging_color")
-                    .and_then(|s| parse_color_hex(s))
+                    .and_then(parse_color_hex)
                     .unwrap_or(BAT_CHARGING),
                 low_threshold: attribs
                     .get_value("low_threshold")
@@ -122,10 +123,7 @@ pub(super) fn setup_custom_label<S>(
                             tz_name.split('/').next_back().map(|x| x.replace('_', " "))
                         });
 
-                    let pretty_tz = match maybe_pretty_tz.as_ref() {
-                        Some(x) => x.as_str(),
-                        None => "Local",
-                    };
+                    let pretty_tz = maybe_pretty_tz.as_ref().map_or("Local", |x| x.as_str());
 
                     let mut i18n = layout.state.globals.i18n();
                     layout
@@ -133,7 +131,7 @@ pub(super) fn setup_custom_label<S>(
                         .widgets
                         .get_as::<WidgetLabel>(attribs.widget_id)
                         .unwrap()
-                        .set_text_simple(&mut *i18n, Translation::from_raw_text(&pretty_tz));
+                        .set_text_simple(&mut i18n, Translation::from_raw_text(pretty_tz));
 
                     // does not need to be dynamic
                     return;
@@ -202,6 +200,7 @@ struct ShellLabelState {
     carry_over: RefCell<Option<String>>,
 }
 
+#[allow(clippy::redundant_else)]
 fn shell_on_tick(
     state: &ShellLabelState,
     common: &mut event::CallbackDataCommon,
@@ -214,7 +213,7 @@ fn shell_on_tick(
             // not exited yet
             Ok(None) => {
                 if let Some(text) = mut_state.reader.as_mut().and_then(|r| {
-                    read_label_from_pipe("child process", r, &mut *state.carry_over.borrow_mut())
+                    read_label_from_pipe("child process", r, &mut state.carry_over.borrow_mut())
                 }) {
                     let label = data.obj.get_as_mut::<WidgetLabel>().unwrap();
                     label.set_text(common, Translation::from_raw_text(&text));
@@ -225,7 +224,7 @@ fn shell_on_tick(
             // exited successfully
             Ok(Some(code)) if code.success() => {
                 if let Some(text) = mut_state.reader.as_mut().and_then(|r| {
-                    read_label_from_pipe("child process", r, &mut *state.carry_over.borrow_mut())
+                    read_label_from_pipe("child process", r, &mut state.carry_over.borrow_mut())
                 }) {
                     let label = data.obj.get_as_mut::<WidgetLabel>().unwrap();
                     label.set_text(common, Translation::from_raw_text(&text));
@@ -237,7 +236,7 @@ fn shell_on_tick(
             Ok(Some(code)) => {
                 mut_state.child = None;
                 mut_state.next_try = Instant::now() + Duration::from_secs(15);
-                log::warn!("Label process exited with code {}", code);
+                log::warn!("Label process exited with code {code}");
                 return;
             }
             // lost
@@ -248,10 +247,8 @@ fn shell_on_tick(
                 return;
             }
         }
-    } else {
-        if mut_state.next_try > Instant::now() {
-            return;
-        }
+    } else if mut_state.next_try > Instant::now() {
+        return;
     }
 
     match Command::new("sh")
@@ -266,7 +263,7 @@ fn shell_on_tick(
             mut_state.reader = Some(io::BufReader::new(stdout));
         }
         Err(e) => {
-            log::warn!("Failed to run shell script '{}': {e:?}", &state.exec)
+            log::warn!("Failed to run shell script '{}': {e:?}", &state.exec);
         }
     }
 }
@@ -300,7 +297,7 @@ impl FifoLabelState {
 
         if let Err(e) = fs::remove_file(&self.path) {
             anyhow::bail!("Unable to remove existing FIFO at {}: {e:?}", &self.path);
-        };
+        }
 
         Ok(())
     }
@@ -321,39 +318,38 @@ fn pipe_on_tick(
 ) {
     let mut mut_state = state.mut_state.borrow_mut();
 
-    let reader = match mut_state.reader.as_mut() {
-        Some(f) => f,
-        None => {
-            if mut_state.next_try > Instant::now() {
-                return;
-            }
-
-            if let Err(e) = state.try_remove_fifo() {
-                mut_state.next_try = Instant::now() + Duration::from_secs(15);
-                log::warn!("Requested FIFO path is taken: {e:?}");
-                return;
-            }
-
-            if let Err(e) = create_fifo(&state.path, 0o777) {
-                mut_state.next_try = Instant::now() + Duration::from_secs(15);
-                log::warn!("Failed to create FIFO: {e:?}");
-                return;
-            }
-
-            mut_state.reader = fs::File::open(&state.path)
-                .inspect_err(|e| {
-                    log::warn!("Failed to open FIFO: {e:?}");
-                    mut_state.next_try = Instant::now() + Duration::from_secs(15);
-                })
-                .map(|f| io::BufReader::new(f))
-                .ok();
-
-            mut_state.reader.as_mut().unwrap()
+    let reader = if let Some(f) = mut_state.reader.as_mut() {
+        f
+    } else {
+        if mut_state.next_try > Instant::now() {
+            return;
         }
+
+        if let Err(e) = state.try_remove_fifo() {
+            mut_state.next_try = Instant::now() + Duration::from_secs(15);
+            log::warn!("Requested FIFO path is taken: {e:?}");
+            return;
+        }
+
+        if let Err(e) = create_fifo(&state.path, 0o777) {
+            mut_state.next_try = Instant::now() + Duration::from_secs(15);
+            log::warn!("Failed to create FIFO: {e:?}");
+            return;
+        }
+
+        mut_state.reader = fs::File::open(&state.path)
+            .inspect_err(|e| {
+                log::warn!("Failed to open FIFO: {e:?}");
+                mut_state.next_try = Instant::now() + Duration::from_secs(15);
+            })
+            .map(io::BufReader::new)
+            .ok();
+
+        mut_state.reader.as_mut().unwrap()
     };
 
     if let Some(text) =
-        read_label_from_pipe(&state.path, reader, &mut *state.carry_over.borrow_mut())
+        read_label_from_pipe(&state.path, reader, &mut state.carry_over.borrow_mut())
     {
         let label = data.obj.get_as_mut::<WidgetLabel>().unwrap();
         label.set_text(common, Translation::from_raw_text(&text));
@@ -385,21 +381,21 @@ fn battery_on_tick(
 
     let label = data.obj.get_as_mut::<WidgetLabel>().unwrap();
 
-    if let Some(device) = device {
-        if let Some(soc) = device.soc {
-            let soc = (soc * 100.).min(99.) as u32;
-            let text = format!("{}{}", tags[device.role as usize], soc);
-            let color = if device.charging {
-                state.charging_color
-            } else if soc < state.low_threshold {
-                state.low_color
-            } else {
-                state.normal_color
-            };
-            label.set_color(common, color, false);
-            label.set_text(common, Translation::from_raw_text(&text));
-            return;
-        }
+    if let Some(device) = device
+        && let Some(soc) = device.soc
+    {
+        let soc = (soc * 100.).min(99.) as u32;
+        let text = format!("{}{}", tags[device.role as usize], soc);
+        let color = if device.charging {
+            state.charging_color
+        } else if soc < state.low_threshold {
+            state.low_color
+        } else {
+            state.normal_color
+        };
+        label.set_color(common, color, false);
+        label.set_text(common, Translation::from_raw_text(&text));
+        return;
     }
     label.set_text(common, Translation::default());
 }

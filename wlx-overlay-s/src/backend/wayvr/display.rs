@@ -2,13 +2,13 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use smithay::{
     backend::renderer::{
-        element::{
-            surface::{render_elements_from_surface_tree, WaylandSurfaceRenderElement},
-            Kind,
-        },
-        gles::{ffi, GlesRenderer, GlesTexture},
-        utils::draw_render_elements,
         Bind, Color32F, Frame, Renderer,
+        element::{
+            Kind,
+            surface::{WaylandSurfaceRenderElement, render_elements_from_surface_tree},
+        },
+        gles::{GlesRenderer, GlesTexture, ffi},
+        utils::draw_render_elements,
     },
     input,
     utils::{Logical, Point, Rectangle, Size, Transform},
@@ -22,8 +22,8 @@ use crate::{
 };
 
 use super::{
-    client::WayVRCompositor, comp::send_frames_surface_tree, egl_data, event_queue::SyncEventQueue,
-    process, smithay_wrapper, time, window, BlitMethod, WayVRSignal,
+    BlitMethod, WayVRSignal, client::WayVRCompositor, comp::send_frames_surface_tree, egl_data,
+    event_queue::SyncEventQueue, process, smithay_wrapper, time, window,
 };
 
 fn generate_auth_key() -> String {
@@ -136,7 +136,9 @@ impl Display {
             BlitMethod::Dmabuf => match params.egl_data.create_dmabuf_data(&egl_image) {
                 Ok(dmabuf_data) => egl_data::RenderData::Dmabuf(dmabuf_data),
                 Err(e) => {
-                    log::error!("create_dmabuf_data failed: {e:?}. Using software blitting (This will be slow!)");
+                    log::error!(
+                        "create_dmabuf_data failed: {e:?}. Using software blitting (This will be slow!)"
+                    );
                     egl_data::RenderData::Software(None)
                 }
             },
@@ -271,13 +273,12 @@ impl Display {
         if self.visible {
             if !self.displayed_windows.is_empty() {
                 self.no_windows_since = None;
-            } else if let Some(auto_hide_delay) = config.auto_hide_delay {
-                if let Some(s) = self.no_windows_since {
-                    if s + u64::from(auto_hide_delay) < get_millis() {
-                        // Auto-hide after specific time
-                        signals.send(WayVRSignal::DisplayVisibility(*handle, false));
-                    }
-                }
+            } else if let Some(auto_hide_delay) = config.auto_hide_delay
+                && let Some(s) = self.no_windows_since
+                && s + u64::from(auto_hide_delay) < get_millis()
+            {
+                // Auto-hide after specific time
+                signals.send(WayVRSignal::DisplayVisibility(*handle, false));
             }
         }
 
@@ -577,10 +578,10 @@ impl Display {
             Ok(child) => Ok(SpawnProcessResult { auth_key, child }),
             Err(e) => {
                 anyhow::bail!(
-					"Failed to launch process with path \"{}\": {}. Make sure your exec path exists.",
-					exec_path,
-					e
-				);
+                    "Failed to launch process with path \"{}\": {}. Make sure your exec path exists.",
+                    exec_path,
+                    e
+                );
             }
         }
     }

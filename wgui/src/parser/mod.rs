@@ -208,20 +208,19 @@ pub fn parse_color_hex(html_hex: &str) -> Option<drawing::Color> {
 				1.,
 			));
 		}
-	} else if html_hex.len() == 9 {
-		if let (Ok(r), Ok(g), Ok(b), Ok(a)) = (
+	} else if html_hex.len() == 9
+		&& let (Ok(r), Ok(g), Ok(b), Ok(a)) = (
 			u8::from_str_radix(&html_hex[1..3], 16),
 			u8::from_str_radix(&html_hex[3..5], 16),
 			u8::from_str_radix(&html_hex[5..7], 16),
 			u8::from_str_radix(&html_hex[7..9], 16),
 		) {
-			return Some(drawing::Color::new(
-				f32::from(r) / 255.,
-				f32::from(g) / 255.,
-				f32::from(b) / 255.,
-				f32::from(a) / 255.,
-			));
-		}
+		return Some(drawing::Color::new(
+			f32::from(r) / 255.,
+			f32::from(g) / 255.,
+			f32::from(b) / 255.,
+			f32::from(a) / 255.,
+		));
 	}
 	log::warn!("failed to parse color \"{html_hex}\"");
 	None
@@ -670,32 +669,32 @@ fn parse_child<'a, U1, U2>(
 	}
 
 	// check for custom attributes (if the callback is set)
-	if let Some(widget_id) = new_widget_id {
-		if let Some(on_custom_attribs) = &ctx.doc_params.extra.on_custom_attribs {
-			let mut pairs = SmallVec::<[CustomAttribPair; 4]>::new();
+	if let Some(widget_id) = new_widget_id
+		&& let Some(on_custom_attribs) = &ctx.doc_params.extra.on_custom_attribs
+	{
+		let mut pairs = SmallVec::<[CustomAttribPair; 4]>::new();
 
-			for attrib in child_node.attributes() {
-				let attr_name = attrib.name();
-				if !attr_name.starts_with('_') || attr_name.is_empty() {
-					continue;
-				}
-
-				let attr_without_prefix = &attr_name[1..]; // safe
-
-				pairs.push(CustomAttribPair {
-					attrib: attr_without_prefix,
-					value: attrib.value(),
-				});
+		for attrib in child_node.attributes() {
+			let attr_name = attrib.name();
+			if !attr_name.starts_with('_') || attr_name.is_empty() {
+				continue;
 			}
 
-			if !pairs.is_empty() {
-				on_custom_attribs(CustomAttribsInfo {
-					widgets: &ctx.layout.state.widgets,
-					parent_id,
-					widget_id,
-					pairs: &pairs,
-				});
-			}
+			let attr_without_prefix = &attr_name[1..]; // safe
+
+			pairs.push(CustomAttribPair {
+				attrib: attr_without_prefix,
+				value: attrib.value(),
+			});
+		}
+
+		if !pairs.is_empty() {
+			on_custom_attribs(CustomAttribsInfo {
+				widgets: &ctx.layout.state.widgets,
+				parent_id,
+				widget_id,
+				pairs: &pairs,
+			});
 		}
 	}
 
@@ -752,7 +751,7 @@ impl CustomAttribsInfo<'_> {
 		self.widgets.get(self.widget_id)
 	}
 
-	pub fn get_widget_as<T: 'static>(&self) -> Option<RefMut<T>> {
+	pub fn get_widget_as<T: 'static>(&self) -> Option<RefMut<'_, T>> {
 		self.widgets.get(self.widget_id)?.get_as_mut::<T>()
 	}
 
@@ -797,7 +796,7 @@ pub struct CustomAttribsInfoOwned {
 impl CustomAttribsInfoOwned {
 	pub fn get_value(&self, attrib_name: &str) -> Option<&str> {
 		// O(n) search, these pairs won't be problematically big anyways
-		for pair in self.pairs.iter() {
+		for pair in &self.pairs {
 			if pair.attrib == attrib_name {
 				return Some(pair.value.as_str());
 			}

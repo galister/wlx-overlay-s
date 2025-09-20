@@ -10,9 +10,9 @@ use smithay_client_toolkit::reexports::protocols_wlr::export_dmabuf::v1::client:
 use wayland_client::{Connection, QueueHandle, Dispatch, Proxy};
 
 use crate::{
+    WlxCapture,
     frame::{DmabufFrame, DrmFormat, FramePlane, WlxFrame},
     wayland::WlxClient,
-    WlxCapture,
 };
 
 use log::{debug, warn};
@@ -84,20 +84,20 @@ where
         true
     }
     fn receive(&mut self) -> Option<R> {
-        if let Some(data) = self.data.as_ref() {
-            if let Some(WlxFrame::Dmabuf(last)) = data.receiver.try_iter().last() {
-                // this is the only protocol that requires us to manually close the FD
-                while self.fds.len() > 6 * last.num_planes {
-                    // safe unwrap
-                    let _ = unsafe { OwnedFd::from_raw_fd(self.fds.pop_back().unwrap()) };
-                }
-                for p in 0..last.num_planes {
-                    if let Some(fd) = last.planes[p].fd {
-                        self.fds.push_front(fd);
-                    }
-                }
-                return (data.receive_callback)(&data.user_data, WlxFrame::Dmabuf(last));
+        if let Some(data) = self.data.as_ref()
+            && let Some(WlxFrame::Dmabuf(last)) = data.receiver.try_iter().last()
+        {
+            // this is the only protocol that requires us to manually close the FD
+            while self.fds.len() > 6 * last.num_planes {
+                // safe unwrap
+                let _ = unsafe { OwnedFd::from_raw_fd(self.fds.pop_back().unwrap()) };
             }
+            for p in 0..last.num_planes {
+                if let Some(fd) = last.planes[p].fd {
+                    self.fds.push_front(fd);
+                }
+            }
+            return (data.receive_callback)(&data.user_data, WlxFrame::Dmabuf(last));
         }
         None
     }

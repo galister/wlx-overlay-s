@@ -12,9 +12,9 @@ use crate::{
     config::AStrSetExt,
     overlays::{
         anchor::create_anchor,
-        keyboard::{builder::create_keyboard, KEYBOARD_NAME},
+        keyboard::{KEYBOARD_NAME, builder::create_keyboard},
         screen::create_screens,
-        watch::{create_watch, WATCH_NAME},
+        watch::{WATCH_NAME, create_watch},
     },
     state::AppState,
 };
@@ -57,10 +57,10 @@ where
         } else {
             match create_screens(app) {
                 Ok((data, keymap)) => {
-                    if show_screens.is_empty() {
-                        if let Some((_, s, _)) = data.screens.first() {
-                            show_screens.arc_set(s.name.clone());
-                        }
+                    if show_screens.is_empty()
+                        && let Some((_, s, _)) = data.screens.first()
+                    {
+                        show_screens.arc_set(s.name.clone());
                     }
                     for (meta, mut state, backend) in data.screens {
                         if show_screens.arc_get(state.name.as_ref()) {

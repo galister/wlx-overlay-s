@@ -129,7 +129,7 @@ pub struct CallbackDataCommon<'a> {
 }
 
 impl CallbackDataCommon<'_> {
-	pub fn i18n(&self) -> RefMut<I18n> {
+	pub fn i18n(&self) -> RefMut<'_, I18n> {
 		self.state.globals.i18n()
 	}
 

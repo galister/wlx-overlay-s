@@ -204,10 +204,10 @@ fn handle_release(app: &mut AppState, key: &KeyState, keyboard: &mut KeyboardSta
                 .processes
                 .retain_mut(|child| !matches!(child.try_wait(), Ok(Some(_))));
 
-            if let Some(program) = release_program {
-                if let Ok(child) = Command::new(program).args(release_args).spawn() {
-                    keyboard.processes.push(child);
-                }
+            if let Some(program) = release_program
+                && let Ok(child) = Command::new(program).args(release_args).spawn()
+            {
+                keyboard.processes.push(child);
             }
             true
         }

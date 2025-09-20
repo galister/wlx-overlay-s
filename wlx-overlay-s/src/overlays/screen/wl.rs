@@ -1,9 +1,9 @@
 use glam::vec2;
 use wlx_capture::{
+    WlxCapture,
     wayland::{WlxClient, WlxOutput},
     wlr_dmabuf::WlrDmabufCapture,
     wlr_screencopy::WlrScreencopyCapture,
-    WlxCapture,
 };
 
 use crate::{
@@ -13,10 +13,10 @@ use crate::{
 };
 
 use super::{
-    backend::ScreenBackend,
-    capture::{new_wlx_capture, MainThreadWlxCapture},
-    pw::{load_pw_token_config, save_pw_token_config},
     ScreenCreateData,
+    backend::ScreenBackend,
+    capture::{MainThreadWlxCapture, new_wlx_capture},
+    pw::{load_pw_token_config, save_pw_token_config},
 };
 
 impl ScreenBackend {
@@ -76,10 +76,10 @@ pub fn create_screen_renderer_wl(
             Ok((renderer, restore_token)) => {
                 capture = Some(renderer);
 
-                if let Some(token) = restore_token {
-                    if pw_token_store.arc_set(display_name.into(), token.clone()) {
-                        log::info!("Adding Pipewire token {token}");
-                    }
+                if let Some(token) = restore_token
+                    && pw_token_store.arc_set(display_name.into(), token.clone())
+                {
+                    log::info!("Adding Pipewire token {token}");
                 }
             }
             Err(e) => {

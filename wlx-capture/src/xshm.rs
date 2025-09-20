@@ -3,16 +3,16 @@ use std::{
     env,
     error::Error,
     sync::{
-        mpsc::{self},
         Arc,
+        mpsc::{self},
     },
 };
 
 use rxscreen::monitor::Monitor;
 
 use crate::{
-    frame::{DrmFormat, FrameFormat, MemPtrFrame, MouseMeta, WlxFrame, DRM_FORMAT_XRGB8888},
     WlxCapture,
+    frame::{DRM_FORMAT_XRGB8888, DrmFormat, FrameFormat, MemPtrFrame, MouseMeta, WlxFrame},
 };
 
 pub struct XshmScreen {
@@ -169,10 +169,10 @@ where
         self.request_new_frame();
     }
     fn request_new_frame(&mut self) {
-        if let Some(sender) = &self.sender {
-            if let Err(e) = sender.send(()) {
-                log::debug!("Failed to send frame request: {}", e);
-            }
+        if let Some(sender) = &self.sender
+            && let Err(e) = sender.send(())
+        {
+            log::debug!("Failed to send frame request: {}", e);
         }
     }
 }

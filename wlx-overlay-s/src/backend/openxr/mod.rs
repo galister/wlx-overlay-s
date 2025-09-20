@@ -2,8 +2,8 @@ use std::{
     collections::VecDeque,
     ops::Add,
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
+        atomic::{AtomicBool, AtomicUsize, Ordering},
     },
     time::{Duration, Instant},
 };
@@ -23,10 +23,10 @@ use crate::{
         overlay::{OverlayData, ShouldRender},
         task::{SystemTask, TaskType},
     },
-    graphics::{init_openxr_graphics, CommandBuffers},
+    graphics::{CommandBuffers, init_openxr_graphics},
     overlays::{
         toast::{Toast, ToastTopic},
-        watch::{watch_fade, WATCH_NAME},
+        watch::{WATCH_NAME, watch_fade},
     },
     state::AppState,
     subsystem::notifications::NotificationManager,
@@ -228,11 +228,11 @@ pub fn openxr_run(
             }
         }
 
-        if next_device_update <= Instant::now() {
-            if let Some(monado) = &mut monado {
-                OpenXrInputSource::update_devices(&mut app, monado);
-                next_device_update = Instant::now() + Duration::from_secs(30);
-            }
+        if next_device_update <= Instant::now()
+            && let Some(monado) = &mut monado
+        {
+            OpenXrInputSource::update_devices(&mut app, monado);
+            next_device_update = Instant::now() + Duration::from_secs(30);
         }
 
         if !session_running {
@@ -375,10 +375,8 @@ pub fn openxr_run(
         // Begin rendering
         let mut buffers = CommandBuffers::default();
 
-        if !main_session_visible {
-            if let Some(skybox) = skybox.as_mut() {
-                skybox.render(&xr_state, &app, &mut buffers)?;
-            }
+        if !main_session_visible && let Some(skybox) = skybox.as_mut() {
+            skybox.render(&xr_state, &app, &mut buffers)?;
         }
 
         for o in overlays.iter_mut() {
@@ -427,11 +425,9 @@ pub fn openxr_run(
 
         // Layer composition
         let mut layers = vec![];
-        if !main_session_visible {
-            if let Some(skybox) = skybox.as_mut() {
-                for (idx, layer) in skybox.present(&xr_state, &app)?.into_iter().enumerate() {
-                    layers.push(((idx as f32).mul_add(-50.0, 200.0), layer));
-                }
+        if !main_session_visible && let Some(skybox) = skybox.as_mut() {
+            for (idx, layer) in skybox.present(&xr_state, &app)?.into_iter().enumerate() {
+                layers.push(((idx as f32).mul_add(-50.0, 200.0), layer));
             }
         }
 
@@ -514,13 +510,13 @@ pub fn openxr_run(
                     });
                 }
                 TaskType::DropOverlay(sel) => {
-                    if let Some(o) = overlays.mut_by_selector(&sel) {
-                        if o.state.birthframe < cur_frame {
-                            log::debug!("{}: destroy", o.state.name);
-                            if let Some(o) = overlays.remove_by_selector(&sel) {
-                                // set for deletion after all images are done showing
-                                delete_queue.push((o, cur_frame + 5));
-                            }
+                    if let Some(o) = overlays.mut_by_selector(&sel)
+                        && o.state.birthframe < cur_frame
+                    {
+                        log::debug!("{}: destroy", o.state.name);
+                        if let Some(o) = overlays.remove_by_selector(&sel) {
+                            // set for deletion after all images are done showing
+                            delete_queue.push((o, cur_frame + 5));
                         }
                     }
                 }

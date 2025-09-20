@@ -216,10 +216,10 @@ fn register_event_mouse_release<U1, U2>(
 			if state.down {
 				state.down = false;
 
-				if state.hovered {
-					if let Some(on_click) = &state.on_click {
-						on_click(common, ButtonClickEvent {})?;
-					}
+				if state.hovered
+					&& let Some(on_click) = &state.on_click
+				{
+					on_click(common, ButtonClickEvent {})?;
 				}
 			}
 

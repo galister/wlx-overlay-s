@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use glam::{bool, Affine3A, Quat, Vec3};
+use glam::{Affine3A, Quat, Vec3, bool};
 use libmonado as mnd;
 use openxr::{self as xr, Quaternionf, Vector2f, Vector3f};
 use serde::{Deserialize, Serialize};
@@ -15,7 +15,7 @@ use crate::{
     state::{AppSession, AppState},
 };
 
-use super::{helpers::posef_to_transform, XrState};
+use super::{XrState, helpers::posef_to_transform};
 
 static CLICK_TIMES: [Duration; 3] = [
     Duration::ZERO,
@@ -229,21 +229,21 @@ impl OpenXrInputSource {
         role: TrackedDeviceRole,
         app: &mut AppState,
     ) {
-        if let Ok(status) = device.battery_status() {
-            if status.present {
-                app.input_state.devices.push(TrackedDevice {
-                    soc: Some(status.charge),
-                    charging: status.charging,
-                    role,
-                });
-                log::debug!(
-                    "Device {} role {:#?}: {:.0}% (charging {})",
-                    device.index,
-                    role,
-                    status.charge * 100.0f32,
-                    status.charging
-                );
-            }
+        if let Ok(status) = device.battery_status()
+            && status.present
+        {
+            app.input_state.devices.push(TrackedDevice {
+                soc: Some(status.charge),
+                charging: status.charging,
+                role,
+            });
+            log::debug!(
+                "Device {} role {:#?}: {:.0}% (charging {})",
+                device.index,
+                role,
+                status.charge * 100.0f32,
+                status.charging
+            );
         }
     }
 
@@ -268,11 +268,11 @@ impl OpenXrInputSource {
         let mut seen = Vec::<u32>::with_capacity(32);
         for (mnd_role, wlx_role) in roles {
             let device = monado.device_from_role(mnd_role);
-            if let Ok(mut device) = device {
-                if !seen.contains(&device.index) {
-                    seen.push(device.index);
-                    Self::update_device_battery_status(&mut device, wlx_role, app);
-                }
+            if let Ok(mut device) = device
+                && !seen.contains(&device.index)
+            {
+                seen.push(device.index);
+                Self::update_device_battery_status(&mut device, wlx_role, app);
             }
         }
         if let Ok(devices) = monado.devices() {

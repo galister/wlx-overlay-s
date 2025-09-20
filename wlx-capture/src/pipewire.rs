@@ -1,13 +1,13 @@
 use std::any::Any;
+use std::sync::Arc;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 use std::sync::mpsc;
-use std::sync::Arc;
 use std::thread::JoinHandle;
 
 use ashpd::desktop::{
-    screencast::{CursorMode, Screencast, SourceType},
     PersistMode,
+    screencast::{CursorMode, Screencast, SourceType},
 };
 
 pub use ashpd::Error as AshpdError;
@@ -17,35 +17,35 @@ use pw::spa;
 
 use pw::properties::properties;
 use pw::stream::{Stream, StreamFlags};
-use pw::{context::Context, main_loop::MainLoop, Error};
+use pw::{Error, context::Context, main_loop::MainLoop};
 use spa::buffer::DataType;
 use spa::buffer::MetaData;
 use spa::buffer::MetaType;
+use spa::param::ParamType;
 use spa::param::video::VideoFormat;
 use spa::param::video::VideoInfoRaw;
-use spa::param::ParamType;
-use spa::pod::serialize::GenError;
 use spa::pod::ChoiceValue;
 use spa::pod::Pod;
+use spa::pod::serialize::GenError;
 use spa::pod::{Object, Property, PropertyFlags, Value};
 use spa::utils::Choice;
 use spa::utils::ChoiceEnum;
 use spa::utils::ChoiceFlags;
 
+use crate::WlxCapture;
+use crate::frame::DRM_FORMAT_ABGR8888;
+use crate::frame::DRM_FORMAT_ABGR2101010;
+use crate::frame::DRM_FORMAT_ARGB8888;
+use crate::frame::DRM_FORMAT_XBGR8888;
+use crate::frame::DRM_FORMAT_XBGR2101010;
+use crate::frame::DRM_FORMAT_XRGB8888;
 use crate::frame::DrmFormat;
 use crate::frame::FourCC;
 use crate::frame::FrameFormat;
 use crate::frame::MouseMeta;
 use crate::frame::Transform;
 use crate::frame::WlxFrame;
-use crate::frame::DRM_FORMAT_ABGR2101010;
-use crate::frame::DRM_FORMAT_ABGR8888;
-use crate::frame::DRM_FORMAT_ARGB8888;
-use crate::frame::DRM_FORMAT_XBGR2101010;
-use crate::frame::DRM_FORMAT_XBGR8888;
-use crate::frame::DRM_FORMAT_XRGB8888;
 use crate::frame::{DmabufFrame, FramePlane, MemFdFrame, MemPtrFrame};
-use crate::WlxCapture;
 
 pub struct PipewireStream {
     pub node_id: u32,
@@ -76,7 +76,7 @@ pub async fn pipewire_select_screen(
 
         log::debug!("Available cursor modes: {cursor_modes:#x}");
 
-        // propery will be same system-wide, so race condition not a concern
+        // properly will be same system-wide, so race condition not a concern
         CURSOR_MODES.store(cursor_modes, Ordering::Relaxed);
     }
 
@@ -369,13 +369,12 @@ where
                 }
 
                 if let Some(mut buffer) = maybe_buffer {
-                    if let MetaData::Header(header) = buffer.find_meta_data(MetaType::Header) {
-                        if header.flags & spa::sys::SPA_META_HEADER_FLAG_CORRUPTED != 0 {
-                            log::warn!("{}: PipeWire buffer is corrupt.", &name);
-                            return;
-                        }
+                    if let MetaData::Header(header) = buffer.find_meta_data(MetaType::Header)
+                        && header.flags & spa::sys::SPA_META_HEADER_FLAG_CORRUPTED != 0
+                    {
+                        log::warn!("{}: PipeWire buffer is corrupt.", &name);
+                        return;
                     }
-
                     if let MetaData::VideoTransform(transform) =
                         buffer.find_meta_data(MetaType::VideoTransform)
                     {
@@ -497,7 +496,7 @@ where
         .collect();
 
     format_params.push(obj_to_bytes(get_format_params(None)).unwrap()); // safe unwrap: known
-                                                                        // good values
+    // good values
 
     let mut params: Vec<&Pod> = format_params
         .iter()

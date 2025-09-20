@@ -329,9 +329,7 @@ impl Connection {
         handle: packet_server::WvrWindowHandle,
         visible: bool,
     ) {
-        let mut to_resize = None;
-
-        if let Some(window) = params
+        let to_resize = if let Some(window) = params
             .state
             .wm
             .borrow_mut()
@@ -339,14 +337,16 @@ impl Connection {
             .get_mut(&window::WindowHandle::from_packet(handle))
         {
             window.visible = visible;
-            to_resize = Some(window.display_handle);
-        }
+            Some(window.display_handle)
+        } else {
+            None
+        };
 
-        if let Some(to_resize) = to_resize {
-            if let Some(display) = params.state.displays.get_mut(&to_resize) {
-                display.reposition_windows();
-                display.trigger_rerender();
-            }
+        if let Some(to_resize) = to_resize
+            && let Some(display) = params.state.displays.get_mut(&to_resize)
+        {
+            display.reposition_windows();
+            display.trigger_rerender();
         }
     }
 

@@ -61,10 +61,11 @@ fn set_clients_io_active(monado: &mut Monado, active: bool) {
                     }
                 };
 
-                if name != "wlx-overlay-s" && state.contains(ClientState::ClientSessionVisible) {
-                    if let Err(e) = client.set_io_active(active) {
-                        warn!("Failed to set io active for client: {e}");
-                    }
+                if name != "wlx-overlay-s"
+                    && state.contains(ClientState::ClientSessionVisible)
+                    && let Err(e) = client.set_io_active(active)
+                {
+                    warn!("Failed to set io active for client: {e}");
                 }
             }
         }

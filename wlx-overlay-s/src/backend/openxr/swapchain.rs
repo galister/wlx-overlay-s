@@ -5,8 +5,8 @@ use openxr as xr;
 
 use smallvec::SmallVec;
 use vulkano::{
-    image::{sys::RawImage, view::ImageView, ImageCreateInfo, ImageUsage},
     Handle,
+    image::{ImageCreateInfo, ImageUsage, sys::RawImage, view::ImageView},
 };
 use wgui::gfx::WGfx;
 
@@ -109,7 +109,7 @@ impl WlxSwapchain {
         Ok(())
     }
 
-    pub(super) fn get_subimage(&self) -> xr::SwapchainSubImage<xr::Vulkan> {
+    pub(super) fn get_subimage(&self) -> xr::SwapchainSubImage<'_, xr::Vulkan> {
         debug_assert!(self.ever_acquired, "swapchain was never acquired!");
         xr::SwapchainSubImage::new()
             .swapchain(&self.swapchain)

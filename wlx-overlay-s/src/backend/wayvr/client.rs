@@ -10,8 +10,9 @@ use smithay::{
 use crate::backend::wayvr::{ExternalProcessRequest, WayVRTask};
 
 use super::{
+    ProcessWayVREnv,
     comp::{self, ClientState},
-    display, process, ProcessWayVREnv,
+    display, process,
 };
 
 pub struct WayVRClient {
@@ -118,20 +119,20 @@ impl WayVRCompositor {
 
         // Find suitable auth key from the process list
         for p in processes.vec.iter().flatten() {
-            if let process::Process::Managed(process) = &p.obj {
-                if let Some(auth_key) = &process_env.display_auth {
-                    // Find process with matching auth key
-                    if process.auth_key.as_str() == auth_key {
-                        // Check if display handle is valid
-                        if displays.get(&process.display_handle).is_some() {
-                            // Add client
-                            self.add_client(WayVRClient {
-                                client,
-                                display_handle: process.display_handle,
-                                pid: creds.pid as u32,
-                            });
-                            return Ok(());
-                        }
+            if let process::Process::Managed(process) = &p.obj
+                && let Some(auth_key) = &process_env.display_auth
+            {
+                // Find process with matching auth key
+                if process.auth_key.as_str() == auth_key {
+                    // Check if display handle is valid
+                    if displays.get(&process.display_handle).is_some() {
+                        // Add client
+                        self.add_client(WayVRClient {
+                            client,
+                            display_handle: process.display_handle,
+                            pid: creds.pid as u32,
+                        });
+                        return Ok(());
                     }
                 }
             }
@@ -160,10 +161,10 @@ impl WayVRCompositor {
         displays: &mut display::DisplayVec,
         processes: &mut process::ProcessVec,
     ) -> anyhow::Result<()> {
-        if let Some(stream) = self.listener.accept()? {
-            if let Err(e) = self.accept_connection(stream, displays, processes) {
-                log::error!("Failed to accept connection: {e}");
-            }
+        if let Some(stream) = self.listener.accept()?
+            && let Err(e) = self.accept_connection(stream, displays, processes)
+        {
+            log::error!("Failed to accept connection: {e}");
         }
 
         Ok(())

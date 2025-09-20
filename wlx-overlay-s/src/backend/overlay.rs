@@ -247,18 +247,17 @@ where
             self.state.positioning,
             Positioning::Floating | Positioning::Anchored
         ) {
-            let hard_reset;
-            if let Some(transform) = app
+            let hard_reset = if let Some(transform) = app
                 .session
                 .config
                 .transform_values
                 .arc_get(self.state.name.as_ref())
             {
                 self.state.saved_transform = Some(*transform);
-                hard_reset = false;
+                false
             } else {
-                hard_reset = true;
-            }
+                true
+            };
             self.state.reset(app, hard_reset);
         }
         self.backend.init(app)

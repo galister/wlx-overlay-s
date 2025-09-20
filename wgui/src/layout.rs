@@ -29,11 +29,11 @@ impl Widget {
 		Self(Rc::new(RefCell::new(widget_state)))
 	}
 
-	pub fn get_as_mut<T: 'static>(&self) -> Option<RefMut<T>> {
+	pub fn get_as_mut<T: 'static>(&self) -> Option<RefMut<'_, T>> {
 		RefMut::filter_map(self.0.borrow_mut(), |w| w.obj.get_as_mut::<T>()).ok()
 	}
 
-	pub fn state(&self) -> RefMut<WidgetState> {
+	pub fn state(&self) -> RefMut<'_, WidgetState> {
 		self.0.borrow_mut()
 	}
 }
@@ -51,7 +51,7 @@ impl WidgetMap {
 		Self(HopSlotMap::with_key())
 	}
 
-	pub fn get_as<T: 'static>(&self, handle: WidgetID) -> Option<RefMut<T>> {
+	pub fn get_as<T: 'static>(&self, handle: WidgetID) -> Option<RefMut<'_, T>> {
 		self.0.get(handle)?.get_as_mut::<T>()
 	}
 

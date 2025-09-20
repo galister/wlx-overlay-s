@@ -331,41 +331,42 @@ impl WidgetState {
 
 		match &event {
 			Event::MouseDown(e) => {
-				if hovered && self.data.set_device_pressed(e.device, true) {
-					if let Some(listeners) = &listeners {
-						call_event!(
-							self,
-							listeners,
-							widget_id,
-							node_id,
-							params,
-							MousePress,
-							user_data,
-							CallbackMetadata::MouseButton(event::MouseButton {
-								index: e.index,
-								pos: e.pos
-							})
-						);
-					}
+				if hovered
+					&& self.data.set_device_pressed(e.device, true)
+					&& let Some(listeners) = &listeners
+				{
+					call_event!(
+						self,
+						listeners,
+						widget_id,
+						node_id,
+						params,
+						MousePress,
+						user_data,
+						CallbackMetadata::MouseButton(event::MouseButton {
+							index: e.index,
+							pos: e.pos
+						})
+					);
 				}
 			}
 			Event::MouseUp(e) => {
-				if self.data.set_device_pressed(e.device, false) {
-					if let Some(listeners) = listeners {
-						call_event!(
-							self,
-							listeners,
-							widget_id,
-							node_id,
-							params,
-							MouseRelease,
-							user_data,
-							CallbackMetadata::MouseButton(event::MouseButton {
-								index: e.index,
-								pos: e.pos,
-							})
-						);
-					}
+				if self.data.set_device_pressed(e.device, false)
+					&& let Some(listeners) = listeners
+				{
+					call_event!(
+						self,
+						listeners,
+						widget_id,
+						node_id,
+						params,
+						MouseRelease,
+						user_data,
+						CallbackMetadata::MouseButton(event::MouseButton {
+							index: e.index,
+							pos: e.pos,
+						})
+					);
 				}
 			}
 			Event::MouseMotion(e) => {
@@ -416,19 +417,19 @@ impl WidgetState {
 				}
 			}
 			Event::MouseLeave(e) => {
-				if self.data.set_device_hovered(e.device, false) {
-					if let Some(listeners) = &listeners {
-						call_event!(
-							self,
-							listeners,
-							widget_id,
-							node_id,
-							params,
-							MouseLeave,
-							user_data,
-							CallbackMetadata::None
-						);
-					}
+				if self.data.set_device_hovered(e.device, false)
+					&& let Some(listeners) = &listeners
+				{
+					call_event!(
+						self,
+						listeners,
+						widget_id,
+						node_id,
+						params,
+						MouseLeave,
+						user_data,
+						CallbackMetadata::None
+					);
 				}
 			}
 			Event::InternalStateChange(e) => {

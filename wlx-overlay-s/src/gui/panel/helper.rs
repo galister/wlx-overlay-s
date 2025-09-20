@@ -11,7 +11,7 @@ static ENV_VAR_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 pub(super) fn expand_env_vars(template: &str) -> String {
     ENV_VAR_REGEX
         .replace_all(template, |caps: &regex::Captures| {
-            let var_name = caps.get(1).or(caps.get(2)).unwrap().as_str();
+            let var_name = caps.get(1).or_else(|| caps.get(2)).unwrap().as_str();
             std::env::var(var_name)
                 .inspect_err(|e| log::warn!("Unable to substitute env var {var_name}: {e:?}"))
                 .unwrap_or_default()
@@ -45,9 +45,5 @@ where
 
     carry_over.replace(cur);
 
-    if prev.len() > 0 {
-        Some(prev)
-    } else {
-        None
-    }
+    if prev.is_empty() { None } else { Some(prev) }
 }

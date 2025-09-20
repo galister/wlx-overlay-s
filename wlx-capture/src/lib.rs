@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![allow(clippy::expect_fun_call)]
 
 use frame::{DrmFormat, WlxFrame};
 
