@@ -8,8 +8,12 @@ use crate::{
 
 pub enum AnimationEasing {
 	Linear,
-	InQuad,
-	OutQuad,
+	InQuad,   // ^2
+	InCubic,  // ^3
+	InQuint,  // ^5
+	OutQuad,  // ^2
+	OutCubic, // ^3
+	OutQuint, // ^5
 	OutBack,
 	InBack,
 }
@@ -18,8 +22,12 @@ impl AnimationEasing {
 	fn interpolate(&self, x: f32) -> f32 {
 		match self {
 			Self::Linear => x,
-			Self::InQuad => x * x,
-			Self::OutQuad => 1.0 - (1.0 - x) * (1.0 - x),
+			Self::InQuad => x.powi(2),
+			Self::InCubic => x.powi(3),
+			Self::InQuint => x.powi(5),
+			Self::OutQuad => 1.0 - (1.0 - x).powi(2),
+			Self::OutCubic => 1.0 - (1.0 - x).powi(3),
+			Self::OutQuint => 1.0 - (1.0 - x).powi(5),
 			Self::OutBack => {
 				let a = 1.7;
 				let b = a + 1.0;
@@ -60,12 +68,7 @@ pub struct Animation {
 }
 
 impl Animation {
-	pub fn new(
-		target_widget: WidgetID,
-		ticks: u32,
-		easing: AnimationEasing,
-		callback: AnimationCallback,
-	) -> Self {
+	pub fn new(target_widget: WidgetID, ticks: u32, easing: AnimationEasing, callback: AnimationCallback) -> Self {
 		Self::new_ex(target_widget, 0, ticks, easing, callback)
 	}
 
@@ -141,9 +144,7 @@ impl Animations {
 			anim.ticks_remaining -= 1;
 		}
 
-		self
-			.running_animations
-			.retain(|anim| anim.ticks_remaining > 0);
+		self.running_animations.retain(|anim| anim.ticks_remaining > 0);
 	}
 
 	pub fn process(&mut self, state: &LayoutState, alterables: &mut EventAlterables, alpha: f32) {

@@ -102,24 +102,11 @@ fn anim_hover(rect: &mut WidgetRectangle, data: &Data, pos: f32, pressed: bool) 
 	rect.params.border = 2.0;
 }
 
-fn anim_hover_in(data: Rc<Data>, state: Rc<RefCell<State>>, widget_id: WidgetID) -> Animation {
-	Animation::new(
-		widget_id,
-		2,
-		AnimationEasing::OutQuad,
-		Box::new(move |common, anim_data| {
-			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
-			anim_hover(rect, &data, anim_data.pos, state.borrow().down);
-			common.alterables.mark_redraw();
-		}),
-	)
-}
-
 fn anim_hover_out(data: Rc<Data>, state: Rc<RefCell<State>>, widget_id: WidgetID) -> Animation {
 	Animation::new(
 		widget_id,
-		8,
-		AnimationEasing::OutQuad,
+		15,
+		AnimationEasing::OutCubic,
 		Box::new(move |common, anim_data| {
 			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
 			anim_hover(rect, &data, 1.0 - anim_data.pos, state.borrow().down);
@@ -140,10 +127,11 @@ fn register_event_mouse_enter<U1, U2>(
 		EventListenerKind::MouseEnter,
 		Box::new(move |common, event_data, _, _| {
 			common.alterables.trigger_haptics();
-			common
-				.alterables
-				.animate(anim_hover_in(data.clone(), state.clone(), event_data.widget_id));
-			state.borrow_mut().hovered = true;
+			common.alterables.mark_redraw();
+			let rect = event_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
+			let mut state = state.borrow_mut();
+			anim_hover(rect, &data, 1.0, state.down);
+			state.hovered = true;
 			Ok(())
 		}),
 	);
