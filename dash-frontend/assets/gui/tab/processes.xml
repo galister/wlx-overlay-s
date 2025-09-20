@@ -1,5 +1,7 @@
 <layout>
+  <include src="t_tab_title.xml" />
+
   <elements>
-    <label text="Processes" size="32" weight="bold" />
+    <TabTitle translation="PROCESSES" icon="dashboard/window.svg" />
   </elements>
 </layout>

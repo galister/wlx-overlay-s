@@ -1,1 +1,9 @@
-{}
+{
+	"HOME_SCREEN": "Home",
+	"MONADO_RUNTIME": "„Monado” runtime",
+	"APPLICATIONS": "Applications",
+	"GAMES": "Games",
+	"SETTINGS": "Settings",
+	"PROCESSES": "Processes",
+	"HELLO_USER": "Hello, {USER}!"
+}

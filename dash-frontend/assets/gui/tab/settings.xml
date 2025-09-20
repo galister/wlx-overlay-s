@@ -1,5 +1,7 @@
 <layout>
+  <include src="t_tab_title.xml" />
+
   <elements>
-    <label text="Settings" size="32" weight="bold" />
+    <TabTitle translation="SETTINGS" icon="dashboard/settings.svg" />
   </elements>
 </layout>

@@ -1,0 +1,9 @@
+{
+  "HOME_SCREEN": "ホーム",
+  "MONADO_RUNTIME": "「Monado」ランタイム",
+  "APPLICATIONS": "アプリケーション",
+  "GAMES": "ゲーム",
+  "SETTINGS": "設定",
+  "PROCESSES": "プロセス",
+  "HELLO_USER": "こんにちは、{USER}！"
+}

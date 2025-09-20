@@ -1,0 +1,9 @@
+{
+  "HOME_SCREEN": "Startbildschirm",
+  "MONADO_RUNTIME": "„Monado”-Laufzeitumgebung",
+  "APPLICATIONS": "Anwendungen",
+  "GAMES": "Spiele",
+  "SETTINGS": "Einstellungen",
+  "PROCESSES": "Prozesse",
+  "HELLO_USER": "Hallo, {USER}!"
+}

@@ -1,5 +1,7 @@
 <layout>
+  <include src="t_tab_title.xml" />
+
   <elements>
-    <label text="Games" size="32" weight="bold" />
+    <TabTitle translation="GAMES" icon="dashboard/games.svg" />
   </elements>
 </layout>

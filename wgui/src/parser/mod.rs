@@ -68,11 +68,11 @@ pub struct ParserState {
 impl ParserState {
 	pub fn fetch_component_by_id(&self, id: &str) -> anyhow::Result<Component> {
 		let Some(weak) = self.components_by_id.get(id) else {
-			anyhow::bail!("Component by ID \"{}\" doesn't exist", id);
+			anyhow::bail!("Component by ID \"{id}\" doesn't exist");
 		};
 
 		let Some(component) = weak.upgrade() else {
-			anyhow::bail!("Component by ID \"{}\" doesn't exist", id);
+			anyhow::bail!("Component by ID \"{id}\" doesn't exist");
 		};
 
 		Ok(Component(component))
@@ -80,11 +80,11 @@ impl ParserState {
 
 	pub fn fetch_component_by_widget_id(&self, widget_id: WidgetID) -> anyhow::Result<Component> {
 		let Some(weak) = self.components_by_widget_id.get(&widget_id) else {
-			anyhow::bail!("Component by widget ID \"{:?}\" doesn't exist", widget_id);
+			anyhow::bail!("Component by widget ID \"{widget_id:?}\" doesn't exist");
 		};
 
 		let Some(component) = weak.upgrade() else {
-			anyhow::bail!("Component by widget ID \"{:?}\" doesn't exist", widget_id);
+			anyhow::bail!("Component by widget ID \"{widget_id:?}\" doesn't exist");
 		};
 
 		Ok(Component(component))
@@ -94,7 +94,7 @@ impl ParserState {
 		let component = self.fetch_component_by_id(id)?;
 
 		if !(*component.0).as_any().is::<T>() {
-			anyhow::bail!("fetch_component_as({}): type not matching", id);
+			anyhow::bail!("fetch_component_as({id}): type not matching");
 		}
 
 		// safety: we already checked it above, should be safe to directly cast it
@@ -105,7 +105,7 @@ impl ParserState {
 		let component = self.fetch_component_by_widget_id(widget_id)?;
 
 		if !(*component.0).as_any().is::<T>() {
-			anyhow::bail!("fetch_component_by_widget_id({:?}): type not matching", widget_id);
+			anyhow::bail!("fetch_component_by_widget_id({widget_id:?}): type not matching");
 		}
 
 		// safety: we already checked it above, should be safe to directly cast it
@@ -115,20 +115,35 @@ impl ParserState {
 	pub fn get_widget_id(&self, id: &str) -> anyhow::Result<WidgetID> {
 		match self.ids.get(id) {
 			Some(id) => Ok(*id),
-			None => anyhow::bail!("Widget by ID \"{}\" doesn't exist", id),
+			None => anyhow::bail!("Widget by ID \"{id}\" doesn't exist"),
 		}
 	}
 
+	// returns widget and its id at once
 	pub fn fetch_widget(&self, state: &LayoutState, id: &str) -> anyhow::Result<WidgetPair> {
 		let widget_id = self.get_widget_id(id)?;
 		let widget = state
 			.widgets
 			.get(widget_id)
-			.ok_or_else(|| anyhow::anyhow!("fetch_widget({}): widget not found", id))?;
+			.ok_or_else(|| anyhow::anyhow!("fetch_widget({id}): widget not found"))?;
 		Ok(WidgetPair {
 			id: widget_id,
 			widget: widget.clone(),
 		})
+	}
+
+	pub fn fetch_widget_as<'a, T: 'static>(&self, state: &'a LayoutState, id: &str) -> anyhow::Result<RefMut<'a, T>> {
+		let widget_id = self.get_widget_id(id)?;
+		let widget = state
+			.widgets
+			.get(widget_id)
+			.ok_or_else(|| anyhow::anyhow!("fetch_widget_as({id}): widget not found"))?;
+
+		let casted = widget
+			.get_as_mut::<T>()
+			.ok_or_else(|| anyhow::anyhow!("fetch_widget_as({id}): failed to cast"))?;
+
+		Ok(casted)
 	}
 
 	pub fn process_template<U1, U2>(
@@ -141,7 +156,7 @@ impl ParserState {
 		template_parameters: HashMap<Rc<str>, Rc<str>>,
 	) -> anyhow::Result<()> {
 		let Some(template) = self.templates.get(template_name) else {
-			anyhow::bail!("no template named \"{}\" found", template_name);
+			anyhow::bail!("no template named \"{template_name}\" found");
 		};
 
 		let mut ctx = ParserContext {
@@ -231,7 +246,7 @@ fn get_tag_by_name<'a>(node: &roxmltree::Node<'a, 'a>, name: &str) -> Option<rox
 }
 
 fn require_tag_by_name<'a>(node: &roxmltree::Node<'a, 'a>, name: &str) -> anyhow::Result<roxmltree::Node<'a, 'a>> {
-	get_tag_by_name(node, name).ok_or_else(|| anyhow::anyhow!("Tag \"{}\" not found", name))
+	get_tag_by_name(node, name).ok_or_else(|| anyhow::anyhow!("Tag \"{name}\" not found"))
 }
 
 fn print_invalid_attrib(key: &str, value: &str) {

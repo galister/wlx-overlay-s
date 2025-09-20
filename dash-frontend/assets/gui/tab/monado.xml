@@ -1,5 +1,7 @@
 <layout>
+  <include src="t_tab_title.xml" />
+
   <elements>
-    <label text="Monado" size="32" weight="bold" />
+    <TabTitle translation="MONADO_RUNTIME" icon="dashboard/monado.svg" />
   </elements>
 </layout>

@@ -20,6 +20,7 @@ use crate::tab::{
 
 mod assets;
 mod tab;
+mod various;
 
 pub struct Frontend {
 	pub layout: RcLayout,

@@ -1,7 +1,7 @@
 <layout>
+  <include src="t_tab_title.xml" />
 
   <elements>
-    <label text="Apps" size="64" weight="bold" />
-    <label text="bottom text" size="16" weight="bold" color="#FFFFFF88" />
+    <TabTitle translation="APPLICATIONS" icon="dashboard/apps.svg" />
   </elements>
 </layout>

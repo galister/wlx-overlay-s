@@ -77,10 +77,7 @@ impl I18n {
 		match lang.as_str() {
 			"en" | "pl" | "it" | "ja" | "es" => {}
 			_ => {
-				log::warn!(
-					"Unsupported language \"{}\", defaulting to \"en\".",
-					lang.as_str()
-				);
+				log::warn!("Unsupported language \"{}\", defaulting to \"en\".", lang.as_str());
 
 				lang = String::from("en");
 			}
@@ -110,5 +107,10 @@ impl I18n {
 
 		log::error!("missing translation for key \"{translation_key}\"");
 		Rc::from(translation_key) // show translation key as a fallback
+	}
+
+	pub fn translate_and_replace(&mut self, translation_key: &str, to_replace: (&str, &str)) -> String {
+		let translated = self.translate(translation_key);
+		translated.replace(to_replace.0, to_replace.1)
 	}
 }

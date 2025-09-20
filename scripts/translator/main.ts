@@ -19,7 +19,7 @@ if (template_name === undefined) {
 }
 
 if (lang_path === undefined) {
-  console.log("LANG_PATH not set. Try \"LANG_PATH=../../uidev/assets/lang/ ./run.sh\"");
+  console.log("LANG_PATH is not set. Try one of these:\n\nLANG_PATH=../../uidev/assets/lang/ ./run.sh\nLANG_PATH=../../dash-frontend/assets/lang/ ./run.sh\n");
   exit(-1);
 }
 

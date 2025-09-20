@@ -1,9 +1,14 @@
 use wgui::{
 	components::button::ComponentButton,
+	i18n::Translation,
 	parser::{ParseDocumentParams, ParserState},
+	widget::label::WidgetLabel,
 };
 
-use crate::tab::{Tab, TabParams, TabType};
+use crate::{
+	tab::{Tab, TabParams, TabType},
+	various,
+};
 
 pub struct TabHome {
 	#[allow(dead_code)]
@@ -14,6 +19,18 @@ impl Tab for TabHome {
 	fn get_type(&self) -> TabType {
 		TabType::Home
 	}
+}
+
+fn configure_label_hello(label_hello: &mut WidgetLabel, i18n: &mut wgui::i18n::I18n) {
+	let mut username = various::get_username();
+	// first character as uppercase
+	if let Some(first) = username.chars().next() {
+		let first = first.to_uppercase().to_string();
+		username.replace_range(0..1, &first);
+	}
+
+	let translated = i18n.translate_and_replace("HELLO_USER", ("{USER}", &username));
+	label_hello.set_text_simple(i18n, Translation::from_raw_text(&translated));
 }
 
 impl TabHome {
@@ -28,6 +45,9 @@ impl TabHome {
 			params.listeners,
 			params.parent_id,
 		)?;
+
+		let mut label_hello = state.fetch_widget_as::<WidgetLabel>(&params.layout.state, "label_hello")?;
+		configure_label_hello(&mut label_hello, &mut params.globals.i18n());
 
 		let btn_apps = state.fetch_component_as::<ComponentButton>("btn_apps")?;
 		let btn_games = state.fetch_component_as::<ComponentButton>("btn_games")?;

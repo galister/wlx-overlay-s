@@ -1,0 +1,9 @@
+{
+  "HOME_SCREEN": "Ekran główny",
+  "MONADO_RUNTIME": "„Monado” środowisko uruchomieniowe",
+  "APPLICATIONS": "Aplikacje",
+  "GAMES": "Gry",
+  "SETTINGS": "Ustawienia",
+  "PROCESSES": "Procesy",
+  "HELLO_USER": "Witaj, {USER}!"
+}
