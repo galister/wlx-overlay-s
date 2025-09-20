@@ -8,5 +8,5 @@ anyhow.workspace = true
 wgui = { path = "../wgui/" }
 glam = { workspace = true }
 log = { workspace = true }
-rust-embed = "8.7.2"
+rust-embed = { workspace = true }
 chrono = "0.4.42"
