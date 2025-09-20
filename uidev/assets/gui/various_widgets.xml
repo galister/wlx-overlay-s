@@ -1,7 +1,7 @@
 <layout>
   <elements>
     <rectangle
-      color="#AAAAAA"
+      color="#888888"
       width="1000" height="500" min_width="1000" min_height="500"
       gap="4" flex_direction="column"
       overflow_y="scroll">
@@ -24,7 +24,7 @@
           <CheckBox text="i'm checked by default" checked="1" />
         </div>
 
-        <label text="custom attrib test, you should see size rectangles below, each of them in R, G and B (if TESTBED is generic)" />
+        <label text="custom attrib test, you should see size rectangles below, each of them in R, G and B (if TESTBED is not set)" />
         <div flex_direction="row" gap="8">
           <label text="lighter:" />
 

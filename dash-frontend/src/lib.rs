@@ -52,6 +52,7 @@ impl Frontend {
 		let globals = WguiGlobals::new(
 			Box::new(assets::Asset {}),
 			wgui::globals::Defaults {
+				dark_mode: true,
 				text_color: drawing::Color::new(1.0, 1.0, 1.0, 1.0),
 			},
 		)?;

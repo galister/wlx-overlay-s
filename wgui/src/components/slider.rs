@@ -386,6 +386,7 @@ pub fn construct<U1, U2>(
 			WidgetLabelParams {
 				content: Translation::default(),
 				style: TextStyle {
+					color: Some(drawing::Color::new(0.0, 0.0, 0.0, 0.75)), // always black
 					weight: Some(FontWeight::Bold),
 					align: Some(HorizontalAlign::Center),
 					..Default::default()

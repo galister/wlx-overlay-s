@@ -1,7 +1,7 @@
 use glam::Affine3A;
 use idmap::IdMap;
 use serde::{Deserialize, Serialize};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use std::sync::Arc;
 use wgui::{
     gfx::WGfx, globals::WguiGlobals, renderer_vk::context::SharedContext as WSharedContext,
@@ -97,6 +97,7 @@ impl AppState {
             wgui_globals: WguiGlobals::new(
                 Box::new(gui::asset::GuiAsset {}),
                 wgui::globals::Defaults {
+                    dark_mode: true,
                     text_color: wgui::drawing::Color::new(1.0, 1.0, 1.0, 1.0),
                 },
             )?,
