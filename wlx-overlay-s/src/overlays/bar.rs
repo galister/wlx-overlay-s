@@ -18,7 +18,7 @@ where
     let state = BarState {};
     let mut panel = GuiPanel::new_from_template(app, "gui/bar.xml", state, None)?;
 
-    for (id, _widget_id) in &panel.parser_state.ids {
+    for (id, _widget_id) in &panel.parser_state.data.ids {
         match id.as_ref() {
             "lock" => {}
             "anchor" => {}

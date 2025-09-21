@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use button::setup_custom_button;
-use glam::{vec2, Affine2, Vec2};
+use glam::{Affine2, Vec2, vec2};
 use label::setup_custom_label;
 use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 use wgui::{
@@ -20,7 +20,7 @@ use wgui::{
 use crate::{
     backend::{
         input::{Haptics, PointerHit, PointerMode},
-        overlay::{ui_transform, FrameMeta, OverlayBackend, ShouldRender},
+        overlay::{FrameMeta, OverlayBackend, ShouldRender, ui_transform},
     },
     graphics::{CommandBuffers, ExtentExt},
     state::AppState,
@@ -93,7 +93,7 @@ impl<S> GuiPanel<S> {
         )?;
 
         if let Some(on_element_id) = on_custom_id {
-            let ids = parser_state.ids.clone();
+            let ids = parser_state.data.ids.clone(); // FIXME: copying all ids?
 
             for (id, widget) in ids {
                 on_element_id(

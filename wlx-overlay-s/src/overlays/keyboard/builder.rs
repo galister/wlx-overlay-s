@@ -172,13 +172,13 @@ where
                 params,
             )?;
 
-            if let Some(widget_id) = gui_state_key.ids.get(&*my_id) {
+            if let Some(widget_id) = gui_state_key.get_widget_id(&*my_id).ok() {
                 let key_state = {
                     let rect = panel
                         .layout
                         .state
                         .widgets
-                        .get_as::<WidgetRectangle>(*widget_id)
+                        .get_as::<WidgetRectangle>(widget_id)
                         .unwrap(); // want panic
 
                     Rc::new(KeyState {
@@ -192,7 +192,7 @@ where
 
                 panel.listeners.register(
                     &mut panel.listener_handles,
-                    *widget_id,
+                    widget_id,
                     EventListenerKind::MouseEnter,
                     Box::new({
                         let k = key_state.clone();
@@ -205,7 +205,7 @@ where
                 );
                 panel.listeners.register(
                     &mut panel.listener_handles,
-                    *widget_id,
+                    widget_id,
                     EventListenerKind::MouseLeave,
                     Box::new({
                         let k = key_state.clone();
@@ -218,7 +218,7 @@ where
                 );
                 panel.listeners.register(
                     &mut panel.listener_handles,
-                    *widget_id,
+                    widget_id,
                     EventListenerKind::MousePress,
                     Box::new({
                         let k = key_state.clone();
@@ -235,7 +235,7 @@ where
                 );
                 panel.listeners.register(
                     &mut panel.listener_handles,
-                    *widget_id,
+                    widget_id,
                     EventListenerKind::MouseRelease,
                     Box::new({
                         let k = key_state.clone();
@@ -251,7 +251,7 @@ where
                 if let Some(modifier) = my_modifier {
                     panel.listeners.register(
                         &mut panel.listener_handles,
-                        *widget_id,
+                        widget_id,
                         EventListenerKind::InternalStateChange,
                         Box::new({
                             let k = key_state.clone();

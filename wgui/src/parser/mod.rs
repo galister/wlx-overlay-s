@@ -9,7 +9,7 @@ mod widget_sprite;
 
 use crate::{
 	assets::AssetProvider,
-	components::{Component, ComponentTrait, ComponentWeak},
+	components::{Component, ComponentWeak},
 	drawing::{self},
 	event::EventListenerCollection,
 	globals::WguiGlobals,
@@ -49,25 +49,55 @@ struct ParserFile {
 	template_parameters: HashMap<Rc<str>, Rc<str>>,
 }
 
+#[derive(Default, Clone)]
+pub struct ParserData {
+	pub components_by_id: HashMap<Rc<str>, ComponentWeak>,
+	pub components_by_widget_id: HashMap<WidgetID, ComponentWeak>,
+	pub components: Vec<Component>,
+	pub ids: HashMap<Rc<str>, WidgetID>,
+	pub templates: HashMap<Rc<str>, Rc<Template>>,
+	pub var_map: HashMap<Rc<str>, Rc<str>>,
+	macro_attribs: HashMap<Rc<str>, MacroAttribs>,
+}
+
+impl ParserData {
+	fn take_results_from(&mut self, from: &mut Self) {
+		let ids = std::mem::take(&mut from.ids);
+		let components = std::mem::take(&mut from.components);
+		let components_by_id = std::mem::take(&mut from.components_by_id);
+		let components_by_widget_id = std::mem::take(&mut from.components_by_widget_id);
+
+		for (id, key) in ids {
+			self.ids.insert(id, key);
+		}
+
+		for c in components {
+			self.components.push(c);
+		}
+
+		for (k, v) in components_by_id {
+			self.components_by_id.insert(k, v);
+		}
+
+		for (k, v) in components_by_widget_id {
+			self.components_by_widget_id.insert(k, v);
+		}
+	}
+}
+
 /*
 	WARNING: this struct could contain valid components with already bound listener handles.
 	Make sure to store them somewhere in your code.
 */
 #[derive(Default)]
 pub struct ParserState {
-	pub ids: HashMap<Rc<str>, WidgetID>,
-	macro_attribs: HashMap<Rc<str>, MacroAttribs>,
-	pub var_map: HashMap<Rc<str>, Rc<str>>,
-	pub components: Vec<Component>,
-	pub components_by_id: HashMap<Rc<str>, std::rc::Weak<dyn ComponentTrait>>,
-	pub components_by_widget_id: HashMap<WidgetID, std::rc::Weak<dyn ComponentTrait>>,
-	pub templates: HashMap<Rc<str>, Rc<Template>>,
+	pub data: ParserData,
 	pub path: PathBuf,
 }
 
 impl ParserState {
 	pub fn fetch_component_by_id(&self, id: &str) -> anyhow::Result<Component> {
-		let Some(weak) = self.components_by_id.get(id) else {
+		let Some(weak) = self.data.components_by_id.get(id) else {
 			anyhow::bail!("Component by ID \"{id}\" doesn't exist");
 		};
 
@@ -79,7 +109,7 @@ impl ParserState {
 	}
 
 	pub fn fetch_component_by_widget_id(&self, widget_id: WidgetID) -> anyhow::Result<Component> {
-		let Some(weak) = self.components_by_widget_id.get(&widget_id) else {
+		let Some(weak) = self.data.components_by_widget_id.get(&widget_id) else {
 			anyhow::bail!("Component by widget ID \"{widget_id:?}\" doesn't exist");
 		};
 
@@ -113,7 +143,7 @@ impl ParserState {
 	}
 
 	pub fn get_widget_id(&self, id: &str) -> anyhow::Result<WidgetID> {
-		match self.ids.get(id) {
+		match self.data.ids.get(id) {
 			Some(id) => Ok(*id),
 			None => anyhow::bail!("Widget by ID \"{id}\" doesn't exist"),
 		}
@@ -155,20 +185,15 @@ impl ParserState {
 		widget_id: WidgetID,
 		template_parameters: HashMap<Rc<str>, Rc<str>>,
 	) -> anyhow::Result<()> {
-		let Some(template) = self.templates.get(template_name) else {
+		let Some(template) = self.data.templates.get(template_name) else {
 			anyhow::bail!("no template named \"{template_name}\" found");
 		};
 
 		let mut ctx = ParserContext {
 			layout,
 			listeners,
-			ids: Default::default(),
-			macro_attribs: self.macro_attribs.clone(),       // FIXME: prevent copying
-			var_map: self.var_map.clone(),                   // FIXME: prevent copying
-			components: self.components.clone(),             // FIXME: prevent copying
-			components_by_id: self.components_by_id.clone(), // FIXME: prevent copying
-			components_by_widget_id: self.components_by_widget_id.clone(), // FIXME: prevent copying
-			templates: Default::default(),
+			data_global: &self.data,
+			data_local: ParserData::default(),
 			doc_params,
 		};
 
@@ -180,10 +205,7 @@ impl ParserState {
 
 		parse_widget_other_internal(&template.clone(), template_parameters, &file, &mut ctx, widget_id)?;
 
-		// FIXME?
-		ctx.ids.into_iter().for_each(|(id, key)| {
-			self.ids.insert(id, key);
-		});
+		self.data.take_results_from(&mut ctx.data_local);
 
 		Ok(())
 	}
@@ -198,14 +220,89 @@ struct ParserContext<'a, U1, U2> {
 	doc_params: &'a ParseDocumentParams<'a>,
 	layout: &'a mut Layout,
 	listeners: &'a mut EventListenerCollection<U1, U2>,
-	var_map: HashMap<Rc<str>, Rc<str>>,
-	macro_attribs: HashMap<Rc<str>, MacroAttribs>,
-	ids: HashMap<Rc<str>, WidgetID>,
-	templates: HashMap<Rc<str>, Rc<Template>>,
+	data_global: &'a ParserData, // current parser state at a given moment
+	data_local: ParserData,      // newly processed items in a given template
+}
 
-	components: Vec<Component>,
-	components_by_id: HashMap<Rc<str>, ComponentWeak>,
-	components_by_widget_id: HashMap<WidgetID, ComponentWeak>,
+impl<U1, U2> ParserContext<'_, U1, U2> {
+	fn get_template(&self, name: &str) -> Option<Rc<Template>> {
+		// find in local
+		if let Some(template) = self.data_local.templates.get(name) {
+			return Some(template.clone());
+		}
+
+		// find in global
+		if let Some(template) = self.data_global.templates.get(name) {
+			return Some(template.clone());
+		}
+
+		None
+	}
+
+	fn get_var(&self, name: &str) -> Option<Rc<str>> {
+		// find in local
+		if let Some(value) = self.data_local.var_map.get(name) {
+			return Some(value.clone());
+		}
+
+		// find in global
+		if let Some(value) = self.data_global.var_map.get(name) {
+			return Some(value.clone());
+		}
+
+		None
+	}
+
+	fn get_macro_attrib(&self, value: &str) -> Option<&MacroAttribs> {
+		// find in local
+		if let Some(macro_attribs) = self.data_local.macro_attribs.get(value) {
+			return Some(macro_attribs);
+		}
+
+		// find in global
+		if let Some(macro_attribs) = self.data_global.macro_attribs.get(value) {
+			return Some(macro_attribs);
+		}
+
+		None
+	}
+
+	fn insert_template(&mut self, name: Rc<str>, template: Rc<Template>) {
+		self.data_local.templates.insert(name, template);
+	}
+
+	fn insert_var(&mut self, key: &str, value: &str) {
+		self.data_local.var_map.insert(Rc::from(key), Rc::from(value));
+	}
+
+	fn insert_macro_attrib(&mut self, name: Rc<str>, attribs: MacroAttribs) {
+		self.data_local.macro_attribs.insert(name, attribs);
+	}
+
+	fn insert_component(&mut self, widget_id: WidgetID, component: Component, id: Option<Rc<str>>) {
+		self
+			.data_local
+			.components_by_widget_id
+			.insert(widget_id, component.weak());
+
+		if let Some(id) = id
+			&& self
+				.data_local
+				.components_by_id
+				.insert(id.clone(), component.weak())
+				.is_some()
+		{
+			log::warn!("duplicate component ID \"{id}\" in the same layout file!");
+		}
+
+		self.data_local.components.push(component);
+	}
+
+	fn insert_id(&mut self, id: &Rc<str>, widget_id: WidgetID) {
+		if self.data_local.ids.insert(id.clone(), widget_id).is_some() {
+			log::warn!("duplicate widget ID \"{id}\" in the same layout file!");
+		}
+	}
 }
 
 // Parses a color from a HTML hex string
@@ -357,14 +454,14 @@ fn parse_widget_other<'a, U1, U2>(
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
-	let Some(template) = ctx.templates.get(xml_tag_name) else {
+	let Some(template) = ctx.get_template(xml_tag_name) else {
 		log::error!("Undefined tag named \"{xml_tag_name}\"");
 		return Ok(()); // not critical
 	};
 
 	let template_parameters: HashMap<Rc<str>, Rc<str>> = iter_attribs(file, ctx, &node, false).collect();
 
-	parse_widget_other_internal(&template.clone(), template_parameters, file, ctx, parent_id)
+	parse_widget_other_internal(&template, template_parameters, file, ctx, parent_id)
 }
 
 fn parse_tag_include<'a, U1, U2>(
@@ -426,7 +523,7 @@ fn parse_tag_var<'a, U1, U2>(ctx: &mut ParserContext<U1, U2>, node: roxmltree::N
 		return;
 	};
 
-	ctx.var_map.insert(Rc::from(key), Rc::from(value));
+	ctx.insert_var(key, value);
 }
 
 pub fn replace_vars(input: &str, vars: &HashMap<Rc<str>, Rc<str>>) -> Rc<str> {
@@ -462,8 +559,8 @@ fn process_attrib<'a, U1, U2>(
 
 		(
 			Rc::from(key),
-			match ctx.var_map.get(name) {
-				Some(name) => name.clone(),
+			match ctx.get_var(name) {
+				Some(name) => name,
 				None => Rc::from("undefined"),
 			},
 		)
@@ -493,7 +590,7 @@ fn iter_attribs<'a, U1, U2>(
 		let (key, value) = (attrib.name(), attrib.value());
 
 		if key == "macro" {
-			if let Some(macro_attrib) = ctx.macro_attribs.get(value) {
+			if let Some(macro_attrib) = ctx.get_macro_attrib(value) {
 				for (macro_key, macro_value) in &macro_attrib.attribs {
 					res.push(process_attrib(file, ctx, macro_key, macro_value));
 				}
@@ -544,7 +641,7 @@ fn parse_tag_template<U1, U2>(file: &ParserFile, ctx: &mut ParserContext<U1, U2>
 		return;
 	};
 
-	ctx.templates.insert(
+	ctx.insert_template(
 		name,
 		Rc::new(Template {
 			node: node.id(),
@@ -577,7 +674,7 @@ fn parse_tag_macro<U1, U2>(file: &ParserFile, ctx: &mut ParserContext<U1, U2>, n
 		return;
 	};
 
-	ctx.macro_attribs.insert(name, MacroAttribs { attribs: macro_attribs });
+	ctx.insert_macro_attrib(name, MacroAttribs { attribs: macro_attribs });
 }
 
 fn process_component<'a, U1, U2>(
@@ -587,23 +684,21 @@ fn process_component<'a, U1, U2>(
 	component: Component,
 	widget_id: WidgetID,
 ) {
-	ctx.components_by_widget_id.insert(widget_id, component.weak());
-
 	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
+
+	let mut component_id: Option<Rc<str>> = None;
 
 	for (key, value) in attribs {
 		#[allow(clippy::single_match)]
 		match key.as_ref() {
 			"id" => {
-				if ctx.components_by_id.insert(value.clone(), component.weak()).is_some() {
-					log::warn!("duplicate component ID \"{value}\" in the same layout file!");
-				}
+				component_id = Some(value);
 			}
 			_ => {}
 		}
 	}
 
-	ctx.components.push(component);
+	ctx.insert_component(widget_id, component, component_id);
 }
 
 fn parse_widget_universal<'a, U1, U2>(
@@ -619,9 +714,7 @@ fn parse_widget_universal<'a, U1, U2>(
 		match key.as_ref() {
 			"id" => {
 				// Attach a specific widget to name-ID map (just like getElementById)
-				if ctx.ids.insert(value.clone(), widget_id).is_some() {
-					log::warn!("duplicate widget ID \"{value}\" in the same layout file!");
-				}
+				ctx.insert_id(&value, widget_id);
 			}
 			_ => {}
 		}
@@ -733,18 +826,14 @@ fn create_default_context<'a, U1, U2>(
 	doc_params: &'a ParseDocumentParams,
 	layout: &'a mut Layout,
 	listeners: &'a mut EventListenerCollection<U1, U2>,
+	data_global: &'a ParserData,
 ) -> ParserContext<'a, U1, U2> {
 	ParserContext {
 		doc_params,
 		layout,
 		listeners,
-		ids: Default::default(),
-		var_map: Default::default(),
-		templates: Default::default(),
-		macro_attribs: Default::default(),
-		components: Default::default(),
-		components_by_id: Default::default(),
-		components_by_widget_id: Default::default(),
+		data_local: ParserData::default(),
+		data_global,
 	}
 }
 
@@ -844,20 +933,15 @@ pub fn parse_from_assets<U1, U2>(
 ) -> anyhow::Result<ParserState> {
 	let path = PathBuf::from(doc_params.path);
 
-	let mut ctx = create_default_context(doc_params, layout, listeners);
+	let parser_data = ParserData::default();
+	let mut ctx = create_default_context(doc_params, layout, listeners, &parser_data);
 
 	let (file, node_layout) = get_doc_from_path(&ctx, &path)?;
 	parse_document_root(&file, &mut ctx, parent_id, node_layout)?;
 
 	// move everything essential to the result
 	let result = ParserState {
-		ids: std::mem::take(&mut ctx.ids),
-		templates: std::mem::take(&mut ctx.templates),
-		macro_attribs: std::mem::take(&mut ctx.macro_attribs),
-		var_map: std::mem::take(&mut ctx.var_map),
-		components: std::mem::take(&mut ctx.components),
-		components_by_id: std::mem::take(&mut ctx.components_by_id),
-		components_by_widget_id: std::mem::take(&mut ctx.components_by_widget_id),
+		data: std::mem::take(&mut ctx.data_local),
 		path,
 	};
 
