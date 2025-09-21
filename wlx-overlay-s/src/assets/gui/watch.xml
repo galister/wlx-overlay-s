@@ -26,7 +26,7 @@
     <Button macro="button_style" _press="::OverlayToggle ${handle}">
       <sprite width="40" height="40" color="~set_color" src="watch/set2.svg" />
       <div position="absolute" margin_top="11">
-        <label text="${display}" size="24" color="#000000" weight="bold" />
+        <label text="${display}" size="24" color="#000A1C" weight="bold" />
       </div>
     </Button>
   </template>
@@ -64,9 +64,35 @@
           <Button macro="button_style" _press="::DashToggle">
             <sprite color="~set_color" width="40" height="40" src="watch/home.svg" />
           </Button>
-          <div id="sets">
-            <!-- Will populate <Set> tags at runtime -->
+          <div>
+            <Button macro="button_style" _press="::OverlayToggle HDMI-A-1">
+              <sprite width="40" height="40" color="~set_color" src="watch/set2.svg" />
+              <div position="absolute" margin_top="11" >
+                <label text="1" size="24" color="#000A1C" weight="bold" />
+              </div>
+            </Button>
+            <Button macro="button_style" _press="::OverlayToggle HDMI-A-2">
+              <sprite width="40" height="40" color="~set_color" src="watch/set2.svg" />
+              <div position="absolute" margin_top="11" >
+                <label text="2" size="24" color="#000A1C" weight="bold" />
+              </div>
+            </Button>
+            <Button macro="button_style" _press="::OverlayToggle DP-2">
+              <sprite width="40" height="40" color="~set_color" src="watch/set2.svg" />
+              <div position="absolute" margin_top="11" >
+                <label text="3" size="24" color="#000A1C" weight="bold" />
+              </div>
+            </Button>
+            <Button macro="button_style" _press="::OverlayToggle DP-3">
+              <sprite width="40" height="40" color="~set_color" src="watch/set2.svg" />
+              <div position="absolute" margin_top="11" >
+                <label text="4" size="24" color="#000A1C" weight="bold" />
+              </div>
+            </Button>
           </div>
+          <!--div id="ts" -->
+            <!-- Will populate <Set> tags at runtime -->
+          <!--/div -->
           <Button macro="button_style" _press="::EditToggle">
             <sprite color="~set_color" width="40" height="40" src="watch/edit.svg" />
           </Button>
