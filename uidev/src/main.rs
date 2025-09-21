@@ -13,7 +13,8 @@ use vulkano::{
 	format::Format,
 	image::{ImageUsage, view::ImageView},
 	swapchain::{
-		Surface, SurfaceInfo, Swapchain, SwapchainCreateInfo, SwapchainPresentInfo, acquire_next_image,
+		PresentMode, Surface, SurfaceInfo, Swapchain, SwapchainCreateInfo, SwapchainPresentInfo,
+		acquire_next_image,
 	},
 	sync::GpuFuture,
 };
@@ -358,6 +359,7 @@ fn swapchain_create_info(
 
 	SwapchainCreateInfo {
 		min_image_count: surface_capabilities.min_image_count.max(2),
+		present_mode: PresentMode::Mailbox,
 		image_format: format,
 		image_extent: extent,
 		image_usage: ImageUsage::COLOR_ATTACHMENT,
