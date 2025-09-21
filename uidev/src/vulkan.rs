@@ -41,7 +41,7 @@ pub fn init_window() -> anyhow::Result<(
 	#[allow(deprecated)]
 	let window = Arc::new(
 		event_loop
-			.create_window(Window::default_attributes())
+			.create_window(Window::default_attributes().with_transparent(true))
 			.unwrap(), // want panic
 	);
 	let surface = Surface::from_window(instance.clone(), window.clone())?;

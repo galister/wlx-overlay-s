@@ -13,8 +13,8 @@ use vulkano::{
 	format::Format,
 	image::{ImageUsage, view::ImageView},
 	swapchain::{
-		PresentMode, Surface, SurfaceInfo, Swapchain, SwapchainCreateInfo, SwapchainPresentInfo,
-		acquire_next_image,
+		CompositeAlpha, PresentMode, Surface, SurfaceInfo, Swapchain, SwapchainCreateInfo,
+		SwapchainPresentInfo, acquire_next_image,
 	},
 	sync::GpuFuture,
 };
@@ -53,7 +53,8 @@ fn init_logging() {
 			/* read RUST_LOG env var */
 			EnvFilter::builder()
 				.with_default_directive(LevelFilter::DEBUG.into())
-				.from_env_lossy(),
+				.from_env_lossy()
+				.add_directive("cosmic_text=info".parse().unwrap()),
 		)
 		.init();
 }
@@ -108,7 +109,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let mut render_context = renderer_vk::context::Context::new(&mut shared_context, scale)?;
 
 	render_context.update_viewport(&mut shared_context, swapchain_size, scale)?;
-	println!("new swapchain_size: {swapchain_size:?}");
+	log::trace!("new swapchain_size: {swapchain_size:?}");
 
 	let mut profiler = profiler::Profiler::new(1000);
 	let mut frame_index: u64 = 0;
@@ -263,7 +264,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 						.update_viewport(&mut shared_context, swapchain_size, scale)
 						.unwrap();
 
-					println!("new swapchain_size: {swapchain_size:?}");
+					log::trace!("new swapchain_size: {swapchain_size:?}");
 					recreate = false;
 					window.request_redraw();
 				}
@@ -351,11 +352,13 @@ fn swapchain_create_info(
 	surface: Arc<Surface>,
 	extent: [u32; 2],
 ) -> SwapchainCreateInfo {
-	let surface_capabilities = graphics
+	let mut surface_capabilities = graphics
 		.device
 		.physical_device()
 		.surface_capabilities(&surface, SurfaceInfo::default())
 		.unwrap(); // want panic
+
+	surface_capabilities.supported_composite_alpha = CompositeAlpha::PreMultiplied.into();
 
 	SwapchainCreateInfo {
 		min_image_count: surface_capabilities.min_image_count.max(2),

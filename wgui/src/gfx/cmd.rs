@@ -4,9 +4,8 @@ use vulkano::{
 	DeviceSize,
 	buffer::{Buffer, BufferCreateInfo, BufferUsage, Subbuffer},
 	command_buffer::{
-		AutoCommandBufferBuilder, CommandBufferExecFuture, CopyBufferToImageInfo, CopyImageInfo,
-		PrimaryAutoCommandBuffer, PrimaryCommandBufferAbstract, RenderingAttachmentInfo, RenderingInfo,
-		SubpassContents,
+		AutoCommandBufferBuilder, CommandBufferExecFuture, CopyBufferToImageInfo, CopyImageInfo, PrimaryAutoCommandBuffer,
+		PrimaryCommandBufferAbstract, RenderingAttachmentInfo, RenderingInfo, SubpassContents,
 	},
 	device::Queue,
 	format::Format,
@@ -68,9 +67,7 @@ impl WCommandBuffer<CmdBufGfx> {
 	where
 		T: Sized,
 	{
-		self
-			.command_buffer
-			.execute_commands(pass.command_buffer.clone())?;
+		self.command_buffer.execute_commands(pass.command_buffer.clone())?;
 		Ok(())
 	}
 
@@ -81,13 +78,7 @@ impl WCommandBuffer<CmdBufGfx> {
 }
 
 impl WCommandBuffer<CmdBufXfer> {
-	pub fn upload_image(
-		&mut self,
-		width: u32,
-		height: u32,
-		format: Format,
-		data: &[u8],
-	) -> anyhow::Result<Arc<Image>> {
+	pub fn upload_image(&mut self, width: u32, height: u32, format: Format, data: &[u8]) -> anyhow::Result<Arc<Image>> {
 		let image = Image::new(
 			self.graphics.memory_allocator.clone(),
 			ImageCreateInfo {

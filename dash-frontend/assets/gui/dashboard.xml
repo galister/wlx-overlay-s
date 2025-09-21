@@ -22,7 +22,7 @@
 
   <elements>
     <!-- background for testing -->
-    <rectangle position="absolute" color="#333333" width="100%" height="100%" />
+    <!-- <rectangle position="absolute" color="#333333" width="100%" height="100%" /> -->
 
     <!-- left/right separator (menu and rest) -->
     <div flex_direction="row" gap="8" width="100%" height="100%">
