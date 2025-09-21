@@ -5,7 +5,6 @@ use vulkano::{
 		physical::{PhysicalDevice, PhysicalDeviceType},
 	},
 	instance::{Instance, InstanceCreateInfo},
-	swapchain::SurfaceInfo,
 };
 use wgui::gfx::WGfx;
 
@@ -85,12 +84,6 @@ pub fn init_window() -> anyhow::Result<(
 		log::info!("img_filter_cubic!");
 	}
 
-	let surface_format = physical_device
-		.surface_formats(&surface, SurfaceInfo::default())
-		.unwrap()[0] // want panic
-		.0;
-	log::info!("Using surface format: {surface_format:?}");
-
 	let (device, queues) = Device::new(
 		physical_device,
 		DeviceCreateInfo {
@@ -113,7 +106,13 @@ pub fn init_window() -> anyhow::Result<(
 
 	let (queue_gfx, queue_xfer, _) = unwrap_queues(queues.collect());
 
-	let me = WGfx::new_from_raw(instance, device, queue_gfx, queue_xfer, surface_format);
+	let me = WGfx::new_from_raw(
+		instance,
+		device,
+		queue_gfx,
+		queue_xfer,
+		vulkano::format::Format::B8G8R8A8_UNORM,
+	);
 	Ok((me, event_loop, window, surface))
 }
 

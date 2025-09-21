@@ -61,10 +61,7 @@ impl TestbedGeneric {
 
 		let globals = WguiGlobals::new(
 			Box::new(assets::Asset {}),
-			wgui::globals::Defaults {
-				text_color: wgui::drawing::Color::new(1.0, 1.0, 1.0, 1.0),
-				dark_mode: true,
-			},
+			wgui::globals::Defaults::default(),
 		)?;
 
 		let extra = ParseDocumentExtra {

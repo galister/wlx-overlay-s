@@ -23,10 +23,7 @@ impl TestbedAny {
 
 		let globals = WguiGlobals::new(
 			Box::new(assets::Asset {}),
-			wgui::globals::Defaults {
-				dark_mode: true,
-				text_color: wgui::drawing::Color::new(1.0, 1.0, 1.0, 1.0),
-			},
+			wgui::globals::Defaults::default(),
 		)?;
 
 		let (layout, state) = wgui::parser::new_layout_from_assets(

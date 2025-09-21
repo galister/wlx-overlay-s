@@ -3,5 +3,19 @@
 
   <elements>
     <TabTitle translation="APPLICATIONS" icon="dashboard/apps.svg" />
+    <!-- placeholders for now -->
+    <div gap="4" align_items="center">
+      <Button width="48" height="38">
+        <sprite src="dashboard/alphabetical.svg" width="24" height="24" />
+      </Button>
+      <Button width="48" height="38">
+        <sprite src="dashboard/category_search.svg" width="24" height="24" />
+      </Button>
+      <sprite src="dashboard/search.svg" width="24" height="24" />
+      <!-- placeholder editbox -->
+      <rectangle flex_grow="1" height="100%" color="#1d2e51" border_color="#294774" border="2" round="4" align_items="center" padding_left="12">
+        <label text="Search" color="#FFFFFF88" weight="bold" />
+      </rectangle>
+    </div>
   </elements>
 </layout>

@@ -13,19 +13,14 @@ use vulkano::{
 		AutoCommandBufferBuilder, CommandBufferUsage,
 		allocator::{StandardCommandBufferAllocator, StandardCommandBufferAllocatorCreateInfo},
 	},
-	descriptor_set::allocator::{
-		StandardDescriptorSetAllocator, StandardDescriptorSetAllocatorCreateInfo,
-	},
+	descriptor_set::allocator::{StandardDescriptorSetAllocator, StandardDescriptorSetAllocatorCreateInfo},
 	device::{Device, Queue},
 	format::Format,
 	image::{Image, ImageCreateInfo, ImageType, ImageUsage, sampler::Filter},
 	instance::Instance,
 	memory::{
 		MemoryPropertyFlags,
-		allocator::{
-			AllocationCreateInfo, GenericMemoryAllocatorCreateInfo, MemoryTypeFilter,
-			StandardMemoryAllocator,
-		},
+		allocator::{AllocationCreateInfo, GenericMemoryAllocatorCreateInfo, MemoryTypeFilter, StandardMemoryAllocator},
 	},
 	pipeline::graphics::{
 		color_blend::{AttachmentBlend, BlendFactor, BlendOp},
@@ -128,19 +123,14 @@ impl WGfx {
 				..Default::default()
 			},
 			AllocationCreateInfo {
-				memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
-					| MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+				memory_type_filter: MemoryTypeFilter::PREFER_DEVICE | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
 				..Default::default()
 			},
 			capacity,
 		)?)
 	}
 
-	pub fn new_buffer<T>(
-		&self,
-		usage: BufferUsage,
-		contents: Iter<'_, T>,
-	) -> anyhow::Result<Subbuffer<[T]>>
+	pub fn new_buffer<T>(&self, usage: BufferUsage, contents: Iter<'_, T>) -> anyhow::Result<Subbuffer<[T]>>
 	where
 		T: BufferContents + Clone,
 	{
@@ -151,21 +141,14 @@ impl WGfx {
 				..Default::default()
 			},
 			AllocationCreateInfo {
-				memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
-					| MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+				memory_type_filter: MemoryTypeFilter::PREFER_DEVICE | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
 				..Default::default()
 			},
 			contents.cloned(),
 		)?)
 	}
 
-	pub fn new_image(
-		&self,
-		width: u32,
-		height: u32,
-		format: Format,
-		usage: ImageUsage,
-	) -> anyhow::Result<Arc<Image>> {
+	pub fn new_image(&self, width: u32, height: u32, format: Format, usage: ImageUsage) -> anyhow::Result<Arc<Image>> {
 		Ok(Image::new(
 			self.memory_allocator.clone(),
 			ImageCreateInfo {
@@ -202,10 +185,7 @@ impl WGfx {
 		)?))
 	}
 
-	pub fn create_gfx_command_buffer(
-		self: &Arc<Self>,
-		usage: CommandBufferUsage,
-	) -> anyhow::Result<GfxCommandBuffer> {
+	pub fn create_gfx_command_buffer(self: &Arc<Self>, usage: CommandBufferUsage) -> anyhow::Result<GfxCommandBuffer> {
 		self.create_gfx_command_buffer_with_queue(self.queue_gfx.clone(), usage)
 	}
 
@@ -214,11 +194,8 @@ impl WGfx {
 		queue: Arc<Queue>,
 		usage: CommandBufferUsage,
 	) -> anyhow::Result<GfxCommandBuffer> {
-		let command_buffer = AutoCommandBufferBuilder::primary(
-			self.command_buffer_allocator.clone(),
-			queue.queue_family_index(),
-			usage,
-		)?;
+		let command_buffer =
+			AutoCommandBufferBuilder::primary(self.command_buffer_allocator.clone(), queue.queue_family_index(), usage)?;
 		Ok(GfxCommandBuffer {
 			graphics: self.clone(),
 			queue,
@@ -227,10 +204,7 @@ impl WGfx {
 		})
 	}
 
-	pub fn create_xfer_command_buffer(
-		self: &Arc<Self>,
-		usage: CommandBufferUsage,
-	) -> anyhow::Result<XferCommandBuffer> {
+	pub fn create_xfer_command_buffer(self: &Arc<Self>, usage: CommandBufferUsage) -> anyhow::Result<XferCommandBuffer> {
 		self.create_xfer_command_buffer_with_queue(self.queue_gfx.clone(), usage)
 	}
 
@@ -239,11 +213,8 @@ impl WGfx {
 		queue: Arc<Queue>,
 		usage: CommandBufferUsage,
 	) -> anyhow::Result<XferCommandBuffer> {
-		let command_buffer = AutoCommandBufferBuilder::primary(
-			self.command_buffer_allocator.clone(),
-			queue.queue_family_index(),
-			usage,
-		)?;
+		let command_buffer =
+			AutoCommandBufferBuilder::primary(self.command_buffer_allocator.clone(), queue.queue_family_index(), usage)?;
 		Ok(XferCommandBuffer {
 			graphics: self.clone(),
 			queue,

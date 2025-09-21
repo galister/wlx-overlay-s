@@ -6,6 +6,7 @@ use crate::{
 	components::{Component, ComponentBase, ComponentTrait, InitData},
 	drawing::{self, Color},
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerKind, ListenerHandleVec},
+	globals::Globals,
 	i18n::Translation,
 	layout::{Layout, WidgetID},
 	renderer_vk::text::{FontWeight, TextStyle},
@@ -18,10 +19,10 @@ use crate::{
 
 pub struct Params {
 	pub text: Translation,
-	pub color: drawing::Color,
-	pub border_color: drawing::Color,
-	pub hover_border_color: drawing::Color,
-	pub hover_color: drawing::Color,
+	pub color: Option<drawing::Color>,
+	pub border_color: Option<drawing::Color>,
+	pub hover_border_color: Option<drawing::Color>,
+	pub hover_color: Option<drawing::Color>,
 	pub round: WLength,
 	pub style: taffy::Style,
 	pub text_style: TextStyle,
@@ -31,10 +32,10 @@ impl Default for Params {
 	fn default() -> Self {
 		Self {
 			text: Translation::from_raw_text(""),
-			color: drawing::Color::new(0.7, 0.7, 0.7, 1.0),
-			hover_color: drawing::Color::new(1.0, 1.0, 1.0, 1.0),
-			border_color: drawing::Color::new(0.0, 0.0, 0.0, 1.0),
-			hover_border_color: drawing::Color::new(0.25, 0.25, 0.25, 1.0),
+			color: None,
+			hover_color: None,
+			border_color: None,
+			hover_border_color: None,
 			round: WLength::Units(4.0),
 			style: Default::default(),
 			text_style: TextStyle::default(),
@@ -93,7 +94,7 @@ fn get_color2(color: &drawing::Color) -> drawing::Color {
 }
 
 fn anim_hover(rect: &mut WidgetRectangle, data: &Data, pos: f32, pressed: bool) {
-	let mult = pos * if pressed { 1.25 } else { 1.0 };
+	let mult = pos * if pressed { 1.5 } else { 1.0 };
 	let bgcolor = data.initial_color.lerp(&data.initial_hover_color, mult);
 
 	rect.params.color = bgcolor;
@@ -220,6 +221,7 @@ fn register_event_mouse_release<U1, U2>(
 }
 
 pub fn construct<U1, U2>(
+	globals: &mut Globals,
 	layout: &mut Layout,
 	listeners: &mut EventListenerCollection<U1, U2>,
 	parent: WidgetID,
@@ -232,28 +234,51 @@ pub fn construct<U1, U2>(
 	style.justify_content = Some(JustifyContent::Center);
 	style.padding = length(1.0);
 
-	let globals = layout.state.globals.clone();
+	// update colors to default ones if they are not specified
+	let color = if let Some(color) = params.color {
+		color
+	} else {
+		globals.defaults.button_color
+	};
+
+	let border_color = if let Some(border_color) = params.border_color {
+		border_color
+	} else {
+		Color::new(color.r, color.g, color.b, color.a + 0.4)
+	};
+
+	let hover_color = if let Some(hover_color) = params.hover_color {
+		hover_color
+	} else {
+		Color::new(color.r + 0.25, color.g + 0.25, color.g + 0.25, color.a + 0.25)
+	};
+
+	let hover_border_color = if let Some(hover_border_color) = params.hover_border_color {
+		hover_border_color
+	} else {
+		Color::new(color.r + 0.5, color.g + 0.5, color.g + 0.5, color.a + 0.5)
+	};
 
 	let (id_root, _) = layout.add_child(
 		parent,
 		WidgetRectangle::create(WidgetRectangleParams {
-			color: params.color,
-			color2: get_color2(&params.color),
+			color,
+			color2: get_color2(&color),
 			gradient: drawing::GradientMode::Vertical,
 			round: params.round,
-			border_color: params.border_color,
+			border_color,
 			border: 2.0,
 		}),
 		style,
 	)?;
 	let id_rect = id_root;
 
-	let light_text = (params.color.r + params.color.g + params.color.b) < 1.5;
+	let light_text = (color.r + color.g + color.b) < 1.5;
 
 	let (id_label, _node_label) = layout.add_child(
 		id_rect,
 		WidgetLabel::create(
-			&mut globals.get(),
+			globals,
 			WidgetLabelParams {
 				content: params.text,
 				style: TextStyle {
@@ -273,10 +298,10 @@ pub fn construct<U1, U2>(
 	let data = Rc::new(Data {
 		id_label,
 		id_rect,
-		initial_color: params.color,
-		initial_border_color: params.border_color,
-		initial_hover_color: params.hover_color,
-		initial_hover_border_color: params.hover_border_color,
+		initial_color: color,
+		initial_border_color: border_color,
+		initial_hover_color: hover_color,
+		initial_hover_border_color: hover_border_color,
 	});
 
 	let state = Rc::new(RefCell::new(State {

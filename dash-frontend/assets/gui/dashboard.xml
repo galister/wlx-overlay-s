@@ -62,14 +62,18 @@
         overflow_x="scroll">
         <!-- CONTENT -->
         <rectangle
-          color2="#0d131acc"
-          color="#244179aa"
+          color2="#0d131aee"
+          color="#244179dd"
           gradient="vertical"
           round="8"
           flex_grow="1"
           width="100%"
           overflow_y="scroll"
         >
+          <!-- radial gradient -->
+          <rectangle
+            position="absolute" width="100%" height="100%"
+            gradient="radial" color="#44BBFF22" color2="#00000000" />
           <div
             id="content"
             overflow_x="scroll"

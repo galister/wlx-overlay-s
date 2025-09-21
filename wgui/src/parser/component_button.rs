@@ -5,7 +5,7 @@ use crate::{
 	layout::WidgetID,
 	parser::{
 		ParserContext, ParserFile, iter_attribs, parse_children, process_component,
-		style::{parse_color, parse_color_opt, parse_round, parse_style, parse_text_style},
+		style::{parse_color_opt, parse_round, parse_style, parse_text_style},
 	},
 	widget::util::WLength,
 };
@@ -16,7 +16,7 @@ pub fn parse_component_button<'a, U1, U2>(
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 ) -> anyhow::Result<WidgetID> {
-	let mut color = Color::new(1.0, 1.0, 1.0, 1.0);
+	let mut color: Option<Color> = None;
 	let mut border_color: Option<Color> = None;
 	let mut hover_color: Option<Color> = None;
 	let mut hover_border_color: Option<Color> = None;
@@ -39,7 +39,7 @@ pub fn parse_component_button<'a, U1, U2>(
 				parse_round(&value, &mut round);
 			}
 			"color" => {
-				parse_color(&value, &mut color);
+				parse_color_opt(&value, &mut color);
 			}
 			"border_color" => {
 				parse_color_opt(&value, &mut border_color);
@@ -54,28 +54,18 @@ pub fn parse_component_button<'a, U1, U2>(
 		}
 	}
 
-	// slight border outlines by default
-	if border_color.is_none() {
-		border_color = Some(Color::lerp(&color, &Color::new(0.0, 0.0, 0.0, color.a), 0.3));
-	}
-
-	if hover_color.is_none() {
-		hover_color = Some(color.add_rgb(0.5));
-	}
-
-	if hover_border_color.is_none() {
-		hover_border_color = Some(border_color.unwrap().add_rgb(0.75));
-	}
+	let globals = ctx.layout.state.globals.clone();
 
 	let (new_id, component) = button::construct(
+		&mut globals.get(),
 		ctx.layout,
 		ctx.listeners,
 		parent_id,
 		button::Params {
 			color,
-			border_color: border_color.unwrap(),
-			hover_border_color: hover_border_color.unwrap(),
-			hover_color: hover_color.unwrap(),
+			border_color,
+			hover_border_color,
+			hover_color,
 			text: translation,
 			style,
 			text_style,
