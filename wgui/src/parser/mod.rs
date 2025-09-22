@@ -8,7 +8,7 @@ mod widget_rectangle;
 mod widget_sprite;
 
 use crate::{
-	assets::AssetProvider,
+	assets::{self, AssetProvider},
 	components::{Component, ComponentWeak},
 	drawing::{self},
 	event::EventListenerCollection,
@@ -478,6 +478,7 @@ fn parse_tag_include<'a, U1, U2>(
 			"src" => {
 				let mut new_path = file.path.parent().unwrap_or_else(|| Path::new("/")).to_path_buf();
 				new_path.push(value);
+				let new_path = assets::normalize_path(&new_path);
 
 				let (new_file, node_layout) = get_doc_from_path(ctx, &new_path)?;
 				parse_document_root(&new_file, ctx, parent_id, node_layout)?;
