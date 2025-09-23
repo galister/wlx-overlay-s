@@ -1,10 +1,4 @@
-use std::{sync::LazyLock, time::Instant};
-
-static TIME_START: LazyLock<Instant> = LazyLock::new(Instant::now);
-
-pub fn get_micros() -> u64 {
-	TIME_START.elapsed().as_micros() as u64
-}
+use crate::timestep::get_micros;
 
 pub struct Profiler {
 	interval_us: u64,

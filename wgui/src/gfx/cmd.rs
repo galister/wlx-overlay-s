@@ -8,7 +8,7 @@ use vulkano::{
 		PrimaryCommandBufferAbstract, RenderingAttachmentInfo, RenderingInfo, SubpassContents,
 	},
 	device::Queue,
-	format::Format,
+	format::{ClearValue, Format},
 	image::{Image, ImageCreateInfo, ImageType, ImageUsage, view::ImageView},
 	memory::allocator::{AllocationCreateInfo, MemoryTypeFilter},
 	render_pass::{AttachmentLoadOp, AttachmentStoreOp},
@@ -44,14 +44,26 @@ impl<T> WCommandBuffer<T> {
 	}
 }
 
+#[derive(Clone, Copy)]
+pub enum WGfxClearMode {
+	Keep,
+	Clear([f32; 4]),
+}
+
 impl WCommandBuffer<CmdBufGfx> {
-	pub fn begin_rendering(&mut self, render_target: Arc<ImageView>) -> anyhow::Result<()> {
+	pub fn begin_rendering(&mut self, render_target: Arc<ImageView>, clear_mode: WGfxClearMode) -> anyhow::Result<()> {
 		self.command_buffer.begin_rendering(RenderingInfo {
 			contents: SubpassContents::SecondaryCommandBuffers,
 			color_attachments: vec![Some(RenderingAttachmentInfo {
-				load_op: AttachmentLoadOp::Clear,
+				load_op: match &clear_mode {
+					WGfxClearMode::Keep => AttachmentLoadOp::Load,
+					WGfxClearMode::Clear(_) => AttachmentLoadOp::Clear,
+				},
 				store_op: AttachmentStoreOp::Store,
-				clear_value: Some([0.0, 0.0, 0.0, 0.0].into()),
+				clear_value: match &clear_mode {
+					WGfxClearMode::Keep => None,
+					WGfxClearMode::Clear(color) => Some(ClearValue::Float(*color)),
+				},
 				..RenderingAttachmentInfo::image_view(render_target)
 			})],
 			..Default::default()

@@ -75,12 +75,11 @@ pub struct RectRenderer {
 
 impl RectRenderer {
 	pub fn new(pipeline: RectPipeline) -> anyhow::Result<Self> {
-		const BUFFER_SIZE: usize = 128;
+		const BUFFER_SIZE: usize = 32;
 
-		let vert_buffer = pipeline.gfx.empty_buffer(
-			BufferUsage::VERTEX_BUFFER | BufferUsage::TRANSFER_DST,
-			BUFFER_SIZE as _,
-		)?;
+		let vert_buffer = pipeline
+			.gfx
+			.empty_buffer(BufferUsage::VERTEX_BUFFER | BufferUsage::TRANSFER_DST, BUFFER_SIZE as _)?;
 
 		Ok(Self {
 			model_buffer: ModelBuffer::new(&pipeline.gfx)?,
@@ -92,17 +91,15 @@ impl RectRenderer {
 		})
 	}
 
-	pub fn add_rect(
-		&mut self,
-		boundary: Boundary,
-		rectangle: Rectangle,
-		transform: &Mat4,
-		depth: f32,
-	) {
-		let in_model_idx =
-			self
-				.model_buffer
-				.register_pos_size(&boundary.pos, &boundary.size, transform);
+	pub fn begin(&mut self) {
+		self.rect_vertices.clear();
+		self.model_buffer.begin();
+	}
+
+	pub fn add_rect(&mut self, boundary: Boundary, rectangle: Rectangle, transform: &Mat4, depth: f32) {
+		let in_model_idx = self
+			.model_buffer
+			.register_pos_size(&boundary.pos, &boundary.size, transform);
 
 		self.rect_vertices.push(RectVertex {
 			in_model_idx,
@@ -123,10 +120,10 @@ impl RectRenderer {
 	fn upload_verts(&mut self) -> anyhow::Result<()> {
 		if self.vert_buffer_size < self.rect_vertices.len() {
 			let new_size = self.vert_buffer_size * 2;
-			self.vert_buffer = self.pipeline.gfx.empty_buffer(
-				BufferUsage::VERTEX_BUFFER | BufferUsage::TRANSFER_DST,
-				new_size as _,
-			)?;
+			self.vert_buffer = self
+				.pipeline
+				.gfx
+				.empty_buffer(BufferUsage::VERTEX_BUFFER | BufferUsage::TRANSFER_DST, new_size as _)?;
 			self.vert_buffer_size = new_size;
 		}
 

@@ -23,7 +23,7 @@ use wgui::{
 		EventListenerCollection, MouseButtonIndex, MouseDownEvent, MouseMotionEvent, MouseUpEvent,
 		MouseWheelEvent,
 	},
-	gfx::WGfx,
+	gfx::{WGfx, cmd::WGfxClearMode},
 	renderer_vk::{self},
 };
 use winit::{
@@ -32,12 +32,16 @@ use winit::{
 	keyboard::{KeyCode, PhysicalKey},
 };
 
-use crate::testbed::{
-	TestbedUpdateParams, testbed_dashboard::TestbedDashboard, testbed_generic::TestbedGeneric,
+use crate::{
+	rate_limiter::RateLimiter,
+	testbed::{
+		TestbedUpdateParams, testbed_dashboard::TestbedDashboard, testbed_generic::TestbedGeneric,
+	},
 };
 
 mod assets;
 mod profiler;
+mod rate_limiter;
 mod testbed;
 mod timestep;
 mod vulkan;
@@ -116,6 +120,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let mut timestep = Timestep::new();
 	timestep.set_tps(60.0);
+
+	let mut limiter = RateLimiter::new();
 
 	#[allow(deprecated)]
 	event_loop.run(move |event, elwt| {
@@ -291,6 +297,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				log::trace!("drawing frame {frame_index}");
 				frame_index += 1;
 
+				limiter.start(120); // max 120 fps
 				profiler.start();
 
 				{
@@ -301,7 +308,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 								recreate = true;
 								return;
 							}
-							Err(e) => panic!("failed to acquire next image: {e}"),
+							Err(e) => {
+								log::error!("failed to acquire next image: {e}");
+								return;
+							}
 						};
 
 					let tgt = images[image_index as usize].clone();
@@ -309,7 +319,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 					let mut cmd_buf = gfx
 						.create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)
 						.unwrap();
-					cmd_buf.begin_rendering(tgt).unwrap();
+					cmd_buf
+						.begin_rendering(tgt, WGfxClearMode::Clear([0.0, 0.0, 0.0, 0.1]))
+						.unwrap();
 
 					let primitives = wgui::drawing::draw(&testbed.layout().borrow_mut()).unwrap();
 					render_context
@@ -334,6 +346,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				}
 
 				profiler.end();
+				limiter.end();
 			}
 			Event::AboutToWait => {
 				// should be limited to vsync

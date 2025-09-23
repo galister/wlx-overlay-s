@@ -43,8 +43,7 @@ impl ModelBuffer {
 		})
 	}
 
-	pub fn clear(&mut self) {
-		self.models.clear(); // note: capacity is being preserved here
+	pub const fn begin(&mut self) {
 		self.idx = 0;
 	}
 
@@ -83,9 +82,7 @@ impl ModelBuffer {
 		}*/
 
 		if self.idx == self.models.len() as u32 {
-			self
-				.models
-				.resize(self.models.len() * 2, Default::default());
+			self.models.resize((self.models.len() * 2).max(1), Default::default());
 			//log::info!("ModelBuffer: resized to {}", self.models.len());
 		}
 
@@ -96,12 +93,7 @@ impl ModelBuffer {
 		ret
 	}
 
-	pub fn register_pos_size(
-		&mut self,
-		pos: &glam::Vec2,
-		size: &glam::Vec2,
-		transform: &Mat4,
-	) -> u32 {
+	pub fn register_pos_size(&mut self, pos: &glam::Vec2, size: &glam::Vec2, transform: &Mat4) -> u32 {
 		let mut model = glam::Mat4::from_translation(Vec3::new(pos.x, pos.y, 0.0));
 		model *= *transform;
 		model *= glam::Mat4::from_scale(Vec3::new(size.x, size.y, 1.0));

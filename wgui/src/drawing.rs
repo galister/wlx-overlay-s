@@ -111,6 +111,14 @@ pub struct Rectangle {
 	pub round_units: u8,
 }
 
+#[derive(Clone, Copy)]
+pub struct Scissor {
+	pub x: u32,
+	pub y: u32,
+	pub w: u32,
+	pub h: u32,
+}
+
 pub struct RenderPrimitive {
 	pub(super) boundary: Boundary,
 	pub(super) transform: Mat4,
@@ -122,6 +130,7 @@ pub enum PrimitivePayload {
 	Rectangle(Rectangle),
 	Text(Rc<RefCell<Buffer>>),
 	Sprite(Option<CustomGlyph>), //option because we want as_slice
+	Scissor(Scissor),
 }
 
 fn draw_widget(

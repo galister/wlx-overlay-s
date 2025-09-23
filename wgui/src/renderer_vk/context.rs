@@ -3,9 +3,10 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 use cosmic_text::Buffer;
 use glam::{Mat4, Vec2, Vec3};
 use slotmap::{SlotMap, new_key_type};
+use vulkano::{buffer::view, pipeline::graphics::viewport};
 
 use crate::{
-	drawing,
+	drawing::{self, Scissor},
 	gfx::{WGfx, cmd::GfxCommandBuffer},
 };
 
@@ -24,10 +25,11 @@ struct RendererPass<'a> {
 	text_areas: Vec<TextArea<'a>>,
 	text_renderer: TextRenderer,
 	rect_renderer: RectRenderer,
+	scissor: Option<Scissor>,
 }
 
 impl RendererPass<'_> {
-	fn new(text_atlas: &mut TextAtlas, rect_pipeline: RectPipeline) -> anyhow::Result<Self> {
+	fn new(text_atlas: &mut TextAtlas, rect_pipeline: RectPipeline, scissor: Option<Scissor>) -> anyhow::Result<Self> {
 		let text_renderer = TextRenderer::new(text_atlas)?;
 		let rect_renderer = RectRenderer::new(rect_pipeline)?;
 
@@ -36,6 +38,7 @@ impl RendererPass<'_> {
 			text_renderer,
 			rect_renderer,
 			text_areas: Vec::new(),
+			scissor,
 		})
 	}
 
@@ -49,6 +52,19 @@ impl RendererPass<'_> {
 		if self.submitted {
 			return Ok(());
 		}
+
+		let vk_scissor = if let Some(scissor) = self.scissor {
+			viewport::Scissor {
+				offset: [scissor.x, scissor.y],
+				extent: [scissor.w, scissor.h],
+			}
+		} else {
+			viewport::Scissor::default()
+		};
+
+		// TODO?
+		// cmd_buf.command_buffer.set_scissor(0, smallvec::smallvec![vk_scissor])?;
+
 		self.submitted = true;
 		self.rect_renderer.render(gfx, viewport, cmd_buf)?;
 
@@ -152,10 +168,7 @@ impl Context {
 			self.dirty = true;
 		}
 
-		let size = Vec2::new(
-			resolution[0] as f32 / pixel_scale,
-			resolution[1] as f32 / pixel_scale,
-		);
+		let size = Vec2::new(resolution[0] as f32 / pixel_scale, resolution[1] as f32 / pixel_scale);
 
 		let fov = 0.4;
 		let aspect_ratio = size.x / size.y;
@@ -187,22 +200,28 @@ impl Context {
 
 		let atlas = shared.atlas_map.get_mut(self.shared_ctx_key).unwrap();
 
-		let mut passes = vec![RendererPass::new(
-			&mut atlas.text_atlas,
-			shared.rect_pipeline.clone(),
-		)?];
+		let mut passes = Vec::<RendererPass>::new();
+		let mut needs_new_pass = true;
+		let mut next_scissor: Option<Scissor> = None;
 
 		for primitive in primitives {
+			if needs_new_pass {
+				passes.push(RendererPass::new(
+					&mut atlas.text_atlas,
+					shared.rect_pipeline.clone(),
+					next_scissor,
+				)?);
+				next_scissor = None;
+				needs_new_pass = false;
+			}
+
 			let pass = passes.last_mut().unwrap(); // always safe
 
 			match &primitive.payload {
 				drawing::PrimitivePayload::Rectangle(rectangle) => {
-					pass.rect_renderer.add_rect(
-						primitive.boundary,
-						*rectangle,
-						&primitive.transform,
-						primitive.depth,
-					);
+					pass
+						.rect_renderer
+						.add_rect(primitive.boundary, *rectangle, &primitive.transform, primitive.depth);
 				}
 				drawing::PrimitivePayload::Text(text) => {
 					pass.text_areas.push(TextArea {
@@ -230,16 +249,16 @@ impl Context {
 						transform: primitive.transform,
 					});
 				}
+				drawing::PrimitivePayload::Scissor(scissor) => {
+					next_scissor = Some(*scissor);
+					needs_new_pass = true;
+				}
 			}
 		}
 
-		let pass = passes.last_mut().unwrap();
-		pass.submit(
-			&shared.gfx,
-			&mut self.viewport,
-			cmd_buf,
-			&mut atlas.text_atlas,
-		)?;
+		for mut pass in passes {
+			pass.submit(&shared.gfx, &mut self.viewport, cmd_buf, &mut atlas.text_atlas)?
+		}
 
 		Ok(())
 	}
