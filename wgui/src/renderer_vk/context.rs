@@ -3,10 +3,10 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 use cosmic_text::Buffer;
 use glam::{Mat4, Vec2, Vec3};
 use slotmap::{SlotMap, new_key_type};
-use vulkano::{buffer::view, pipeline::graphics::viewport};
+use vulkano::pipeline::graphics::viewport;
 
 use crate::{
-	drawing::{self, Scissor},
+	drawing::{self},
 	gfx::{WGfx, cmd::GfxCommandBuffer},
 };
 
@@ -25,11 +25,17 @@ struct RendererPass<'a> {
 	text_areas: Vec<TextArea<'a>>,
 	text_renderer: TextRenderer,
 	rect_renderer: RectRenderer,
-	scissor: Option<Scissor>,
+	scissor: Option<drawing::Boundary>,
+	pixel_scale: f32,
 }
 
 impl RendererPass<'_> {
-	fn new(text_atlas: &mut TextAtlas, rect_pipeline: RectPipeline, scissor: Option<Scissor>) -> anyhow::Result<Self> {
+	fn new(
+		text_atlas: &mut TextAtlas,
+		rect_pipeline: RectPipeline,
+		scissor: Option<drawing::Boundary>,
+		pixel_scale: f32,
+	) -> anyhow::Result<Self> {
 		let text_renderer = TextRenderer::new(text_atlas)?;
 		let rect_renderer = RectRenderer::new(rect_pipeline)?;
 
@@ -39,6 +45,7 @@ impl RendererPass<'_> {
 			rect_renderer,
 			text_areas: Vec::new(),
 			scissor,
+			pixel_scale,
 		})
 	}
 
@@ -53,20 +60,34 @@ impl RendererPass<'_> {
 			return Ok(());
 		}
 
-		let vk_scissor = if let Some(scissor) = self.scissor {
-			viewport::Scissor {
-				offset: [scissor.x, scissor.y],
-				extent: [scissor.w, scissor.h],
+		let vk_scissor = match self.scissor {
+			Some(scissor) => {
+				let mut x = scissor.pos.x;
+				let mut y = scissor.pos.y;
+				let mut w = scissor.size.x;
+				let mut h = scissor.size.y;
+
+				// handle out-of-bounds scissors (x/y < 0)
+				if x < 0.0 {
+					w += x;
+					x = 0.0;
+				}
+
+				if y < 0.0 {
+					h += y;
+					y = 0.0;
+				}
+
+				viewport::Scissor {
+					offset: [(x * self.pixel_scale) as u32, (y * self.pixel_scale) as u32],
+					extent: [(w * self.pixel_scale) as u32, (h * self.pixel_scale) as u32],
+				}
 			}
-		} else {
-			viewport::Scissor::default()
+			None => viewport::Scissor::default(),
 		};
 
-		// TODO?
-		// cmd_buf.command_buffer.set_scissor(0, smallvec::smallvec![vk_scissor])?;
-
 		self.submitted = true;
-		self.rect_renderer.render(gfx, viewport, cmd_buf)?;
+		self.rect_renderer.render(gfx, viewport, &vk_scissor, cmd_buf)?;
 
 		{
 			let mut font_system = FONT_SYSTEM.lock();
@@ -81,7 +102,7 @@ impl RendererPass<'_> {
 			)?;
 		}
 
-		self.text_renderer.render(text_atlas, viewport, cmd_buf)?;
+		self.text_renderer.render(text_atlas, viewport, &vk_scissor, cmd_buf)?;
 
 		Ok(())
 	}
@@ -202,7 +223,7 @@ impl Context {
 
 		let mut passes = Vec::<RendererPass>::new();
 		let mut needs_new_pass = true;
-		let mut next_scissor: Option<Scissor> = None;
+		let mut next_scissor: Option<drawing::Boundary> = None;
 
 		for primitive in primitives {
 			if needs_new_pass {
@@ -210,54 +231,60 @@ impl Context {
 					&mut atlas.text_atlas,
 					shared.rect_pipeline.clone(),
 					next_scissor,
+					self.pixel_scale,
 				)?);
-				next_scissor = None;
 				needs_new_pass = false;
 			}
 
 			let pass = passes.last_mut().unwrap(); // always safe
 
-			match &primitive.payload {
-				drawing::PrimitivePayload::Rectangle(rectangle) => {
+			match &primitive {
+				drawing::RenderPrimitive::Rectangle(extent, rectangle) => {
 					pass
 						.rect_renderer
-						.add_rect(primitive.boundary, *rectangle, &primitive.transform, primitive.depth);
+						.add_rect(extent.boundary, *rectangle, &extent.transform, extent.depth);
 				}
-				drawing::PrimitivePayload::Text(text) => {
+				drawing::RenderPrimitive::Text(extent, text) => {
 					pass.text_areas.push(TextArea {
 						buffer: text.clone(),
-						left: primitive.boundary.pos.x * self.pixel_scale,
-						top: primitive.boundary.pos.y * self.pixel_scale,
+						left: extent.boundary.pos.x * self.pixel_scale,
+						top: extent.boundary.pos.y * self.pixel_scale,
 						bounds: TextBounds::default(), //FIXME: just using boundary coords here doesn't work
 						scale: self.pixel_scale,
 						default_color: cosmic_text::Color::rgb(0, 0, 0),
 						custom_glyphs: &[],
-						depth: primitive.depth,
-						transform: primitive.transform,
+						depth: extent.depth,
+						transform: extent.transform,
 					});
 				}
-				drawing::PrimitivePayload::Sprite(sprites) => {
+				drawing::RenderPrimitive::Sprite(extent, sprites) => {
 					pass.text_areas.push(TextArea {
 						buffer: self.empty_text.clone(),
-						left: primitive.boundary.pos.x * self.pixel_scale,
-						top: primitive.boundary.pos.y * self.pixel_scale,
+						left: extent.boundary.pos.x * self.pixel_scale,
+						top: extent.boundary.pos.y * self.pixel_scale,
 						bounds: TextBounds::default(),
 						scale: self.pixel_scale,
 						custom_glyphs: sprites.as_slice(),
 						default_color: cosmic_text::Color::rgb(255, 0, 255),
-						depth: primitive.depth,
-						transform: primitive.transform,
+						depth: extent.depth,
+						transform: extent.transform,
 					});
 				}
-				drawing::PrimitivePayload::Scissor(scissor) => {
-					next_scissor = Some(*scissor);
+				drawing::RenderPrimitive::ScissorEnable(boundary) => {
+					next_scissor = Some(*boundary);
+					needs_new_pass = true;
+				}
+				drawing::RenderPrimitive::ScissorDisable => {
+					next_scissor = None;
 					needs_new_pass = true;
 				}
 			}
 		}
 
+		log::info!("count {}", passes.len());
+
 		for mut pass in passes {
-			pass.submit(&shared.gfx, &mut self.viewport, cmd_buf, &mut atlas.text_atlas)?
+			pass.submit(&shared.gfx, &mut self.viewport, cmd_buf, &mut atlas.text_atlas)?;
 		}
 
 		Ok(())

@@ -4,7 +4,7 @@ use super::drawing::RenderPrimitive;
 
 use crate::{
 	any::AnyTrait,
-	drawing,
+	drawing::{self, PrimitiveExtent},
 	event::{
 		self, CallbackData, CallbackDataCommon, CallbackMetadata, Event, EventAlterables, EventListenerKind,
 		EventListenerVec, MouseWheelEvent,
@@ -244,34 +244,38 @@ impl WidgetState {
 
 		// Horizontal handle
 		if enabled_horiz && info.handle_size.x < 1.0 {
-			state.primitives.push(drawing::RenderPrimitive {
-				boundary: drawing::Boundary::from_pos_size(
-					Vec2::new(
-						transform.pos.x + transform.dim.x * (1.0 - info.handle_size.x) * self.data.scrolling.x,
-						transform.pos.y + transform.dim.y - thickness - margin,
+			state.primitives.push(drawing::RenderPrimitive::Rectangle(
+				PrimitiveExtent {
+					boundary: drawing::Boundary::from_pos_size(
+						Vec2::new(
+							transform.pos.x + transform.dim.x * (1.0 - info.handle_size.x) * self.data.scrolling.x,
+							transform.pos.y + transform.dim.y - thickness - margin,
+						),
+						Vec2::new(transform.dim.x * info.handle_size.x, thickness),
 					),
-					Vec2::new(transform.dim.x * info.handle_size.x, thickness),
-				),
-				depth: state.depth,
-				transform: transform.transform,
-				payload: drawing::PrimitivePayload::Rectangle(rect_params),
-			});
+					depth: state.depth,
+					transform: transform.transform,
+				},
+				rect_params,
+			));
 		}
 
 		// Vertical handle
 		if enabled_vert && info.handle_size.y < 1.0 {
-			state.primitives.push(drawing::RenderPrimitive {
-				boundary: drawing::Boundary::from_pos_size(
-					Vec2::new(
-						transform.pos.x + transform.dim.x - thickness - margin,
-						transform.pos.y + transform.dim.y * (1.0 - info.handle_size.y) * self.data.scrolling.y,
+			state.primitives.push(drawing::RenderPrimitive::Rectangle(
+				PrimitiveExtent {
+					boundary: drawing::Boundary::from_pos_size(
+						Vec2::new(
+							transform.pos.x + transform.dim.x - thickness - margin,
+							transform.pos.y + transform.dim.y * (1.0 - info.handle_size.y) * self.data.scrolling.y,
+						),
+						Vec2::new(thickness, transform.dim.y * info.handle_size.y),
 					),
-					Vec2::new(thickness, transform.dim.y * info.handle_size.y),
-				),
-				depth: state.depth,
-				transform: transform.transform,
-				payload: drawing::PrimitivePayload::Rectangle(rect_params),
-			});
+					depth: state.depth,
+					transform: transform.transform,
+				},
+				rect_params,
+			));
 		}
 	}
 

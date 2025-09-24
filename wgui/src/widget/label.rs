@@ -5,7 +5,7 @@ use slotmap::Key;
 use taffy::AvailableSpace;
 
 use crate::{
-	drawing::{self, Boundary},
+	drawing::{self, Boundary, PrimitiveExtent},
 	event::CallbackDataCommon,
 	globals::Globals,
 	i18n::{I18n, Translation},
@@ -118,12 +118,14 @@ impl WidgetObj for WidgetLabel {
 			buffer.set_size(&mut font_system, Some(boundary.size.x), Some(boundary.size.y));
 		}
 
-		state.primitives.push(drawing::RenderPrimitive {
-			boundary,
-			depth: state.depth,
-			payload: drawing::PrimitivePayload::Text(self.buffer.clone()),
-			transform: state.transform_stack.get().transform,
-		});
+		state.primitives.push(drawing::RenderPrimitive::Text(
+			PrimitiveExtent {
+				boundary,
+				depth: state.depth,
+				transform: state.transform_stack.get().transform,
+			},
+			self.buffer.clone(),
+		));
 	}
 
 	fn measure(

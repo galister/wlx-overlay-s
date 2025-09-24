@@ -13,6 +13,7 @@ use glam::{Mat4, Vec2, Vec3};
 use vulkano::{
 	buffer::{BufferUsage, Subbuffer},
 	command_buffer::CommandBufferUsage,
+	pipeline::graphics,
 };
 
 struct CachedPass {
@@ -78,12 +79,7 @@ impl TextRenderer {
 				let height = (glyph.height * text_area.scale).round() as u16;
 
 				let (x, y, x_bin, y_bin) = if glyph.snap_to_physical_pixel {
-					(
-						x.round() as i32,
-						y.round() as i32,
-						SubpixelBin::Zero,
-						SubpixelBin::Zero,
-					)
+					(x.round() as i32, y.round() as i32, SubpixelBin::Zero, SubpixelBin::Zero)
 				} else {
 					let (x, x_bin) = SubpixelBin::new(x);
 					let (y, y_bin) = SubpixelBin::new(y);
@@ -252,6 +248,7 @@ impl TextRenderer {
 		&mut self,
 		atlas: &TextAtlas,
 		viewport: &mut Viewport,
+		vk_scissor: &graphics::viewport::Scissor,
 		cmd_buf: &mut GfxCommandBuffer,
 	) -> anyhow::Result<()> {
 		if self.glyph_vertices.is_empty() {
@@ -277,6 +274,7 @@ impl TextRenderer {
 					0..4,
 					0..self.glyph_vertices.len() as u32,
 					descriptor_sets,
+					vk_scissor,
 				)?;
 				CachedPass { pass, res }
 			}
@@ -351,10 +349,7 @@ fn prepare_glyph(
 				if let Some(a) = inner.try_allocate(image.width as usize, image.height as usize) {
 					break a;
 				}
-				if !par
-					.atlas
-					.grow(par.font_system, par.cache, image.content_type)?
-				{
+				if !par.atlas.grow(par.font_system, par.cache, image.content_type)? {
 					anyhow::bail!(
 						"Atlas full. atlas: {:?} cache_key: {:?}",
 						image.content_type,
@@ -393,16 +388,14 @@ fn prepare_glyph(
 
 		inner.glyphs_in_use.insert(par.cache_key);
 		// Insert the glyph into the cache and return the details reference
-		inner
-			.glyph_cache
-			.get_or_insert(par.cache_key, || GlyphDetails {
-				width: image.width,
-				height: image.height,
-				gpu_cache,
-				atlas_id,
-				top: image.top,
-				left: image.left,
-			})
+		inner.glyph_cache.get_or_insert(par.cache_key, || GlyphDetails {
+			width: image.width,
+			height: image.height,
+			gpu_cache,
+			atlas_id,
+			top: image.top,
+			left: image.left,
+		})
 	};
 
 	let mut x = par.x + i32::from(details.left);

@@ -4,7 +4,7 @@ use cosmic_text::{Attrs, Buffer, Color, Shaping, Weight};
 use slotmap::Key;
 
 use crate::{
-	drawing::{self},
+	drawing::{self, PrimitiveExtent},
 	layout::WidgetID,
 	renderer_vk::text::{
 		DEFAULT_METRICS, FONT_SYSTEM,
@@ -55,12 +55,14 @@ impl WidgetObj for WidgetSprite {
 				snap_to_physical_pixel: true,
 			};
 
-			state.primitives.push(drawing::RenderPrimitive {
-				boundary,
-				depth: state.depth,
-				payload: drawing::PrimitivePayload::Sprite(Some(glyph)),
-				transform: state.transform_stack.get().transform,
-			});
+			state.primitives.push(drawing::RenderPrimitive::Sprite(
+				PrimitiveExtent {
+					boundary,
+					depth: state.depth,
+					transform: state.transform_stack.get().transform,
+				},
+				Some(glyph),
+			));
 		} else {
 			// Source not set or not available, display error text
 			let mut buffer = Buffer::new_empty(DEFAULT_METRICS);
@@ -73,13 +75,16 @@ impl WidgetObj for WidgetSprite {
 				// set text last in order to avoid expensive re-shaping
 				buffer.set_text("Error", &attrs, Shaping::Basic);
 			}
-			state.primitives.push(drawing::RenderPrimitive {
-				boundary,
-				depth: state.depth,
-				payload: drawing::PrimitivePayload::Text(Rc::new(RefCell::new(buffer))),
-				transform: state.transform_stack.get().transform,
-			});
-		}
+
+			state.primitives.push(drawing::RenderPrimitive::Text(
+				PrimitiveExtent {
+					boundary,
+					depth: state.depth,
+					transform: state.transform_stack.get().transform,
+				},
+				Rc::new(RefCell::new(buffer)),
+			))
+		};
 	}
 
 	fn measure(

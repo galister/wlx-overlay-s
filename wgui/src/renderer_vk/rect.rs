@@ -4,7 +4,7 @@ use glam::Mat4;
 use vulkano::{
 	buffer::{BufferContents, BufferUsage, Subbuffer},
 	format::Format,
-	pipeline::graphics::{input_assembly::PrimitiveTopology, vertex_input::Vertex},
+	pipeline::graphics::{self, input_assembly::PrimitiveTopology, vertex_input::Vertex},
 };
 
 use crate::{
@@ -136,6 +136,7 @@ impl RectRenderer {
 		&mut self,
 		gfx: &Arc<WGfx>,
 		viewport: &mut Viewport,
+		vk_scissor: &graphics::viewport::Scissor,
 		cmd_buf: &mut GfxCommandBuffer,
 	) -> anyhow::Result<()> {
 		let res = viewport.resolution();
@@ -154,6 +155,7 @@ impl RectRenderer {
 					0..4,
 					0..self.rect_vertices.len() as _,
 					vec![set0, set1],
+					vk_scissor,
 				)?;
 				CachedPass { pass, res }
 			}

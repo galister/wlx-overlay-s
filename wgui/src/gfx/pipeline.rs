@@ -16,7 +16,7 @@ use vulkano::{
 	pipeline::{
 		DynamicState, GraphicsPipeline, Pipeline, PipelineLayout,
 		graphics::{
-			GraphicsPipelineCreateInfo,
+			self, GraphicsPipelineCreateInfo,
 			color_blend::{AttachmentBlend, ColorBlendAttachmentState, ColorBlendState},
 			input_assembly::{InputAssemblyState, PrimitiveTopology},
 			multisample::MultisampleState,
@@ -91,7 +91,7 @@ where
 					}],
 					..Default::default()
 				}),
-				dynamic_state: std::iter::once(DynamicState::Viewport).collect(),
+				dynamic_state: [DynamicState::Viewport, DynamicState::Scissor].into_iter().collect(),
 				subpass: Some(subpass.into()),
 				..GraphicsPipelineCreateInfo::layout(layout)
 			},
@@ -105,7 +105,6 @@ where
 		})
 	}
 
-	
 	pub fn inner(&self) -> Arc<GraphicsPipeline> {
 		self.pipeline.clone()
 	}
@@ -151,11 +150,7 @@ where
 	}
 
 	#[allow(clippy::needless_pass_by_value)]
-	pub fn uniform_buffer_upload<T>(
-		&self,
-		set: usize,
-		data: Vec<T>,
-	) -> anyhow::Result<Arc<DescriptorSet>>
+	pub fn uniform_buffer_upload<T>(&self, set: usize, data: Vec<T>) -> anyhow::Result<Arc<DescriptorSet>>
 	where
 		T: BufferContents + Copy,
 	{
@@ -163,8 +158,7 @@ where
 			self.graphics.memory_allocator.clone(),
 			SubbufferAllocatorCreateInfo {
 				buffer_usage: BufferUsage::UNIFORM_BUFFER,
-				memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
-					| MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+				memory_type_filter: MemoryTypeFilter::PREFER_DEVICE | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
 				..Default::default()
 			},
 		);
@@ -219,6 +213,7 @@ where
 		vertices: Range<u32>,
 		instances: Range<u32>,
 		descriptor_sets: Vec<Arc<DescriptorSet>>,
+		vk_scissor: &graphics::viewport::Scissor,
 	) -> anyhow::Result<WGfxPass<V>> {
 		WGfxPass::new(
 			&self.clone(),
@@ -227,6 +222,7 @@ where
 			vertices,
 			instances,
 			descriptor_sets,
+			vk_scissor,
 		)
 	}
 }

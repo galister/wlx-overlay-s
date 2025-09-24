@@ -14,7 +14,7 @@ use vulkano::{
 	},
 	pipeline::{
 		Pipeline, PipelineBindPoint,
-		graphics::{vertex_input::Vertex, viewport::Viewport},
+		graphics::{self, vertex_input::Vertex, viewport::Viewport},
 	},
 };
 
@@ -38,6 +38,7 @@ where
 		vertices: Range<u32>,
 		instances: Range<u32>,
 		descriptor_sets: Vec<Arc<DescriptorSet>>,
+		vk_scissor: &graphics::viewport::Scissor,
 	) -> anyhow::Result<Self> {
 		let viewport = Viewport {
 			offset: [0.0, 0.0],
@@ -64,6 +65,7 @@ where
 		unsafe {
 			command_buffer
 				.set_viewport(0, smallvec![viewport])?
+				.set_scissor(0, smallvec![*vk_scissor])?
 				.bind_pipeline_graphics(pipeline_inner)?
 				.bind_descriptor_sets(
 					PipelineBindPoint::Graphics,
@@ -88,12 +90,7 @@ where
 		})
 	}
 
-	pub fn update_sampler(
-		&self,
-		set: usize,
-		texture: Arc<ImageView>,
-		filter: Filter,
-	) -> anyhow::Result<()> {
+	pub fn update_sampler(&self, set: usize, texture: Arc<ImageView>, filter: Filter) -> anyhow::Result<()> {
 		let sampler = Sampler::new(
 			self.graphics.device.clone(),
 			SamplerCreateInfo {
@@ -105,10 +102,7 @@ where
 		)?;
 
 		unsafe {
-			self.descriptor_sets[set].update_by_ref(
-				[WriteDescriptorSet::image_view_sampler(0, texture, sampler)],
-				[],
-			)?;
+			self.descriptor_sets[set].update_by_ref([WriteDescriptorSet::image_view_sampler(0, texture, sampler)], [])?;
 		}
 
 		Ok(())

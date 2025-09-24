@@ -1,7 +1,7 @@
 use slotmap::Key;
 
 use crate::{
-	drawing::{self, GradientMode},
+	drawing::{self, GradientMode, PrimitiveExtent},
 	layout::WidgetID,
 	widget::util::WLength,
 };
@@ -43,19 +43,21 @@ impl WidgetObj for WidgetRectangle {
 			WLength::Percent(percent) => (f32::min(boundary.size.x, boundary.size.y) * percent / 2.0) as u8,
 		};
 
-		state.primitives.push(drawing::RenderPrimitive {
-			boundary,
-			depth: state.depth,
-			transform: state.transform_stack.get().transform,
-			payload: drawing::PrimitivePayload::Rectangle(drawing::Rectangle {
+		state.primitives.push(drawing::RenderPrimitive::Rectangle(
+			PrimitiveExtent {
+				boundary,
+				depth: state.depth,
+				transform: state.transform_stack.get().transform,
+			},
+			drawing::Rectangle {
 				color: self.params.color,
 				color2: self.params.color2,
 				gradient: self.params.gradient,
 				border: self.params.border,
 				border_color: self.params.border_color,
 				round_units,
-			}),
-		});
+			},
+		));
 	}
 
 	fn get_id(&self) -> WidgetID {

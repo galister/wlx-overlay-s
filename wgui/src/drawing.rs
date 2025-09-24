@@ -5,6 +5,7 @@ use glam::{Mat4, Vec2};
 use taffy::TraversePartialTree;
 
 use crate::{
+	drawing,
 	layout::Widget,
 	renderer_vk::text::custom_glyph::CustomGlyph,
 	transform_stack::{self, TransformStack},
@@ -111,26 +112,18 @@ pub struct Rectangle {
 	pub round_units: u8,
 }
 
-#[derive(Clone, Copy)]
-pub struct Scissor {
-	pub x: u32,
-	pub y: u32,
-	pub w: u32,
-	pub h: u32,
-}
-
-pub struct RenderPrimitive {
+pub struct PrimitiveExtent {
 	pub(super) boundary: Boundary,
 	pub(super) transform: Mat4,
-	pub(super) depth: f32,
-	pub(super) payload: PrimitivePayload,
+	pub(super) depth: f32, // FIXME: remove this
 }
 
-pub enum PrimitivePayload {
-	Rectangle(Rectangle),
-	Text(Rc<RefCell<Buffer>>),
-	Sprite(Option<CustomGlyph>), //option because we want as_slice
-	Scissor(Scissor),
+pub enum RenderPrimitive {
+	Rectangle(PrimitiveExtent, Rectangle),
+	Text(PrimitiveExtent, Rc<RefCell<Buffer>>),
+	Sprite(PrimitiveExtent, Option<CustomGlyph>), //option because we want as_slice
+	ScissorEnable(Boundary),
+	ScissorDisable,
 }
 
 fn draw_widget(
@@ -161,6 +154,13 @@ fn draw_widget(
 		dim: Vec2::new(l.size.width, l.size.height),
 	});
 
+	// FIXME: this is temporary
+	// FIXME: implement scissor stack (do not allow growing!)
+	if info.is_some() {
+		let boundary = drawing::Boundary::construct(state.transform_stack);
+		state.primitives.push(drawing::RenderPrimitive::ScissorEnable(boundary));
+	}
+
 	let draw_params = widget::DrawParams {
 		node_id,
 		taffy_layout: l,
@@ -170,6 +170,10 @@ fn draw_widget(
 	widget_state.draw_all(state, &draw_params);
 
 	draw_children(layout, state, node_id, &transform);
+
+	if info.is_some() {
+		state.primitives.push(drawing::RenderPrimitive::ScissorDisable);
+	}
 
 	state.transform_stack.pop();
 
