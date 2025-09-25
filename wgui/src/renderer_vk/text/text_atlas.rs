@@ -42,10 +42,7 @@ impl TextPipeline {
 			true,
 		)?;
 
-		Ok(Self {
-			gfx,
-			inner: pipeline,
-		})
+		Ok(Self { gfx, inner: pipeline })
 	}
 }
 
@@ -62,8 +59,6 @@ pub struct GlyphVertex {
 	pub in_color: u32,
 	#[format(R32_UINT)]
 	pub in_content_type: [u16; 2], // 2 bytes unused! TODO
-	#[format(R32_SFLOAT)]
-	pub depth: f32,
 	#[format(R32_SFLOAT)]
 	pub scale: f32,
 }
@@ -86,12 +81,7 @@ impl InnerAtlas {
 	const INITIAL_SIZE: u32 = 256;
 
 	fn new(common: TextPipeline, kind: Kind) -> anyhow::Result<Self> {
-		let max_texture_dimension_2d = common
-			.gfx
-			.device
-			.physical_device()
-			.properties()
-			.max_image_dimension2_d;
+		let max_texture_dimension_2d = common.gfx.device.physical_device().properties().max_image_dimension2_d;
 		let size = Self::INITIAL_SIZE.min(max_texture_dimension_2d);
 
 		let packer = BucketedAtlasAllocator::new(size2(size as i32, size as i32));
@@ -180,11 +170,7 @@ impl InnerAtlas {
 		self.kind.num_channels()
 	}
 
-	pub(super) fn grow(
-		&mut self,
-		font_system: &mut FontSystem,
-		cache: &mut SwashCache,
-	) -> anyhow::Result<bool> {
+	pub(super) fn grow(&mut self, font_system: &mut FontSystem, cache: &mut SwashCache) -> anyhow::Result<bool> {
 		const GROWTH_FACTOR: u32 = 2;
 
 		if self.size >= self.max_texture_dimension_2d {
@@ -327,10 +313,7 @@ impl TextAtlas {
 		Ok(did_grow)
 	}
 
-	pub(super) const fn inner_for_content_mut(
-		&mut self,
-		content_type: ContentType,
-	) -> &mut InnerAtlas {
+	pub(super) const fn inner_for_content_mut(&mut self, content_type: ContentType) -> &mut InnerAtlas {
 		match content_type {
 			ContentType::Color => &mut self.color_atlas,
 			ContentType::Mask => &mut self.mask_atlas,

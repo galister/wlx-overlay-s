@@ -116,7 +116,6 @@ impl TextRenderer {
 						bounds_min_y,
 						bounds_max_x,
 						bounds_max_y,
-						depth: text_area.depth,
 						transform: &text_area.transform,
 					},
 					|_cache, _font_system| -> Option<GetGlyphImageResult> {
@@ -192,7 +191,6 @@ impl TextRenderer {
 							bounds_min_y,
 							bounds_max_x,
 							bounds_max_y,
-							depth: text_area.depth,
 							transform: &text_area.transform,
 						},
 						|cache, font_system| -> Option<GetGlyphImageResult> {
@@ -319,7 +317,6 @@ struct PrepareGlyphParams<'a> {
 	bounds_min_y: i32,
 	bounds_max_x: i32,
 	bounds_max_y: i32,
-	depth: f32,
 }
 
 #[allow(clippy::too_many_lines)]
@@ -484,7 +481,6 @@ fn prepare_glyph(
 			content_type as u16,
 			0, // unused (TODO!)
 		],
-		depth: par.depth,
 		scale: par.glyph_scale,
 	}))
 }

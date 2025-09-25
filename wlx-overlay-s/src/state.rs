@@ -96,10 +96,7 @@ impl AppState {
             toast_sound: toast_sound_wav,
             wgui_globals: WguiGlobals::new(
                 Box::new(gui::asset::GuiAsset {}),
-                wgui::globals::Defaults {
-                    dark_mode: true,
-                    text_color: wgui::drawing::Color::new(1.0, 1.0, 1.0, 1.0),
-                },
+                wgui::globals::Defaults::default(),
             )?,
 
             #[cfg(feature = "osc")]

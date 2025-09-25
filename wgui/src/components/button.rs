@@ -233,6 +233,8 @@ pub fn construct<U1, U2>(
 	style.align_items = Some(AlignItems::Center);
 	style.justify_content = Some(JustifyContent::Center);
 	style.padding = length(1.0);
+	style.overflow.x = taffy::Overflow::Hidden;
+	style.overflow.y = taffy::Overflow::Hidden;
 
 	// update colors to default ones if they are not specified
 	let color = if let Some(color) = params.color {

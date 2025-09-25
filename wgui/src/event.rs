@@ -10,7 +10,7 @@ use crate::{
 	animation::{self, Animation},
 	i18n::I18n,
 	layout::{LayoutState, WidgetID},
-	transform_stack::{Transform, TransformStack},
+	stack::{Transform, TransformStack},
 	widget::{WidgetData, WidgetObj},
 };
 
@@ -170,7 +170,7 @@ impl CallbackMetadata {
 
 	pub fn get_mouse_pos_relative(&self, transform_stack: &TransformStack) -> Option<Vec2> {
 		let mouse_pos_abs = self.get_mouse_pos_absolute()?;
-		Some(mouse_pos_abs - transform_stack.get_pos())
+		Some(mouse_pos_abs - transform_stack.get().pos)
 	}
 }
 

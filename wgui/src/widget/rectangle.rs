@@ -46,7 +46,6 @@ impl WidgetObj for WidgetRectangle {
 		state.primitives.push(drawing::RenderPrimitive::Rectangle(
 			PrimitiveExtent {
 				boundary,
-				depth: state.depth,
 				transform: state.transform_stack.get().transform,
 			},
 			drawing::Rectangle {

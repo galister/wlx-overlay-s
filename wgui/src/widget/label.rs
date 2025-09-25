@@ -121,7 +121,6 @@ impl WidgetObj for WidgetLabel {
 		state.primitives.push(drawing::RenderPrimitive::Text(
 			PrimitiveExtent {
 				boundary,
-				depth: state.depth,
 				transform: state.transform_stack.get().transform,
 			},
 			self.buffer.clone(),

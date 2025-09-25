@@ -6,21 +6,22 @@ use vulkano::{
     command_buffer::CommandBufferUsage,
     device::Queue,
     format::Format,
-    image::{sampler::Filter, view::ImageView, Image},
+    image::{Image, sampler::Filter, view::ImageView},
     pipeline::graphics::{color_blend::AttachmentBlend, input_assembly::PrimitiveTopology},
 };
-use wgui::gfx::{pass::WGfxPass, pipeline::WGfxPipeline, WGfx};
+use wgui::gfx::{WGfx, cmd::WGfxClearMode, pass::WGfxPass, pipeline::WGfxPipeline};
 use wlx_capture::{
-    frame::{self as wlx_frame, DrmFormat, FrameFormat, MouseMeta, Transform, WlxFrame},
     WlxCapture,
+    frame::{self as wlx_frame, DrmFormat, FrameFormat, MouseMeta, Transform, WlxFrame},
 };
 
 use crate::{
     backend::overlay::FrameMeta,
     config::GeneralConfig,
     graphics::{
-        dmabuf::{fourcc_to_vk, WGfxDmabuf},
-        upload_quad_vertices, CommandBuffers, Vert2Uv,
+        CommandBuffers, Vert2Uv,
+        dmabuf::{WGfxDmabuf, fourcc_to_vk},
+        upload_quad_vertices,
     },
     state::AppState,
 };
@@ -91,6 +92,7 @@ impl ScreenPipeline {
             0..4,
             0..1,
             vec![set0, set1],
+            &Default::default(),
         )
     }
 
@@ -123,7 +125,14 @@ impl ScreenPipeline {
 
         let set0 = pipeline.uniform_sampler(0, view, Filter::Nearest)?;
         let set1 = pipeline.buffer(1, buf_alpha)?;
-        let pass = pipeline.create_pass(extentf, buf_vert.clone(), 0..4, 0..1, vec![set0, set1])?;
+        let pass = pipeline.create_pass(
+            extentf,
+            buf_vert.clone(),
+            0..4,
+            0..1,
+            vec![set0, set1],
+            &Default::default(),
+        )?;
 
         cmd_xfer.build_and_execute_now()?;
         Ok(MousePass { pass, buf_vert })
@@ -145,7 +154,7 @@ impl ScreenPipeline {
         let mut cmd = app
             .gfx
             .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
-        cmd.begin_rendering(tgt)?;
+        cmd.begin_rendering(tgt, WGfxClearMode::DontCare)?;
         cmd.run_ref(&self.pass)?;
 
         if let Some(mouse) = capture.mouse.as_ref() {

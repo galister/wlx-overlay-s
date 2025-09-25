@@ -11,6 +11,7 @@ use vulkano::{
     image::view::ImageView,
     pipeline::graphics::{color_blend::AttachmentBlend, input_assembly::PrimitiveTopology},
 };
+use wgui::gfx::cmd::WGfxClearMode;
 
 use crate::{
     backend::openxr::{helpers::translation_rotation_to_posef, swapchain::SwapchainOpts},
@@ -112,12 +113,13 @@ impl Skybox {
             0..4,
             0..1,
             vec![set0, set1],
+            &Default::default(),
         )?;
 
         let mut cmd_buffer = app
             .gfx
             .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
-        cmd_buffer.begin_rendering(tgt)?;
+        cmd_buffer.begin_rendering(tgt, WGfxClearMode::DontCare)?;
         cmd_buffer.run_ref(&pass)?;
         cmd_buffer.end_rendering()?;
 
@@ -160,12 +162,13 @@ impl Skybox {
             0..4,
             0..1,
             vec![],
+            &Default::default(),
         )?;
 
         let mut cmd_buffer = app
             .gfx
             .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
-        cmd_buffer.begin_rendering(tgt)?;
+        cmd_buffer.begin_rendering(tgt, WGfxClearMode::Clear([0.0, 0.0, 0.0, 0.0]))?;
         cmd_buffer.run_ref(&pass)?;
         cmd_buffer.end_rendering()?;
 

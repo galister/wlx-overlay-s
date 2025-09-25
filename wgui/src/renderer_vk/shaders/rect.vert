@@ -9,7 +9,6 @@ layout(location = 2) in uint in_color;
 layout(location = 3) in uint in_color2;
 layout(location = 4) in uint in_border_color;
 layout(location = 5) in uint round_border_gradient;
-layout(location = 6) in float depth;
 
 layout(location = 0) out vec4 out_color;
 layout(location = 1) out vec4 out_color2;
@@ -41,8 +40,7 @@ void main() {
 
   out_rect_size = rect_size;
 
-  gl_Position =
-      uniforms.projection * model_matrix * vec4(corner_pos, depth, 1.0);
+  gl_Position = uniforms.projection * model_matrix * vec4(corner_pos, 0.0, 1.0);
 
   out_border_color =
       vec4(float((in_border_color & 0x00ff0000u) >> 16u) / 255.0,

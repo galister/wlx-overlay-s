@@ -15,7 +15,9 @@
 	clippy::option_if_let_else,
 	clippy::significant_drop_tightening,
 	clippy::float_cmp,
-	clippy::needless_pass_by_ref_mut
+	clippy::needless_pass_by_ref_mut,
+	clippy::use_self,
+	clippy::match_same_arms
 )]
 
 pub mod animation;
@@ -30,7 +32,7 @@ pub mod i18n;
 pub mod layout;
 pub mod parser;
 pub mod renderer_vk;
-pub mod transform_stack;
+pub mod stack;
 pub mod widget;
 
 // re-exported libs

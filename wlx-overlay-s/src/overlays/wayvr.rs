@@ -147,6 +147,7 @@ impl WayVRBackend {
             0..4,
             0..1,
             vec![set0, set1],
+            &Default::default(),
         )?;
 
         Ok(Self {
@@ -683,7 +684,10 @@ impl OverlayBackend for WayVRBackend {
         let mut cmd_buffer = app
             .gfx
             .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
-        cmd_buffer.begin_rendering(tgt)?;
+        cmd_buffer.begin_rendering(
+            tgt,
+            wgui::gfx::cmd::WGfxClearMode::Clear([0.0, 0.0, 0.0, 1.0]),
+        )?;
         cmd_buffer.run_ref(&self.pass)?;
         cmd_buffer.end_rendering()?;
         buf.push(cmd_buffer.build()?);

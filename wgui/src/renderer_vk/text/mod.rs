@@ -5,9 +5,7 @@ pub mod text_renderer;
 
 use std::{cell::RefCell, rc::Rc, sync::LazyLock};
 
-use cosmic_text::{
-	Align, Attrs, Buffer, Color, FontSystem, Metrics, Style, SwashCache, Weight, Wrap,
-};
+use cosmic_text::{Align, Attrs, Buffer, Color, FontSystem, Metrics, Style, SwashCache, Weight, Wrap};
 use custom_glyph::{ContentType, CustomGlyph};
 use etagere::AllocId;
 use glam::Mat4;
@@ -15,10 +13,8 @@ use parking_lot::Mutex;
 
 use crate::drawing::{self};
 
-pub static FONT_SYSTEM: LazyLock<Mutex<FontSystem>> =
-	LazyLock::new(|| Mutex::new(FontSystem::new()));
-pub static SWASH_CACHE: LazyLock<Mutex<SwashCache>> =
-	LazyLock::new(|| Mutex::new(SwashCache::new()));
+pub static FONT_SYSTEM: LazyLock<Mutex<FontSystem>> = LazyLock::new(|| Mutex::new(FontSystem::new()));
+pub static SWASH_CACHE: LazyLock<Mutex<SwashCache>> = LazyLock::new(|| Mutex::new(SwashCache::new()));
 
 /// Used in case no `font_size` is defined
 const DEFAULT_FONT_SIZE: f32 = 14.;
@@ -26,10 +22,8 @@ const DEFAULT_FONT_SIZE: f32 = 14.;
 /// In case no `line_height` is defined, use `font_size` * `DEFAULT_LINE_HEIGHT_RATIO`
 const DEFAULT_LINE_HEIGHT_RATIO: f32 = 1.43;
 
-pub(crate) const DEFAULT_METRICS: Metrics = Metrics::new(
-	DEFAULT_FONT_SIZE,
-	DEFAULT_FONT_SIZE * DEFAULT_LINE_HEIGHT_RATIO,
-);
+pub(crate) const DEFAULT_METRICS: Metrics =
+	Metrics::new(DEFAULT_FONT_SIZE, DEFAULT_FONT_SIZE * DEFAULT_LINE_HEIGHT_RATIO);
 
 #[derive(Default, Clone)]
 pub struct TextStyle {
@@ -66,11 +60,7 @@ impl From<&TextStyle> for Metrics {
 
 impl From<&TextStyle> for Wrap {
 	fn from(value: &TextStyle) -> Self {
-		if value.wrap {
-			Self::WordOrGlyph
-		} else {
-			Self::None
-		}
+		if value.wrap { Self::WordOrGlyph } else { Self::None }
 	}
 }
 
@@ -155,11 +145,7 @@ impl From<cosmic_text::Color> for drawing::Color {
 // glyphon types below
 
 pub(super) enum GpuCacheStatus {
-	InAtlas {
-		x: u16,
-		y: u16,
-		content_type: ContentType,
-	},
+	InAtlas { x: u16, y: u16, content_type: ContentType },
 	SkipRasterization,
 }
 
@@ -215,8 +201,6 @@ pub struct TextArea<'a> {
 	pub default_color: Color,
 	/// Additional custom glyphs to render.
 	pub custom_glyphs: &'a [CustomGlyph],
-	/// Distance from camera, 0.0..=1.0
-	pub depth: f32,
 	/// Text transformation
 	pub transform: Mat4,
 }

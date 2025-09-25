@@ -9,7 +9,7 @@ use std::{
     },
 };
 
-use wgui::gfx::{WGfx, pass::WGfxPass, pipeline::WGfxPipeline};
+use wgui::gfx::{WGfx, cmd::WGfxClearMode, pass::WGfxPass, pipeline::WGfxPipeline};
 
 use crate::{
     backend::openxr::helpers,
@@ -71,6 +71,7 @@ impl LinePool {
             0..4,
             0..1,
             vec![set0],
+            &Default::default(),
         )?;
 
         Ok(Self {
@@ -161,7 +162,7 @@ impl LinePool {
                 let mut cmd_buffer = app
                     .gfx
                     .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
-                cmd_buffer.begin_rendering(tgt)?;
+                cmd_buffer.begin_rendering(tgt, WGfxClearMode::DontCare)?;
                 cmd_buffer.run_ref(&self.pass)?;
                 cmd_buffer.end_rendering()?;
 

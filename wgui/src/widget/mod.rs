@@ -10,7 +10,7 @@ use crate::{
 		EventListenerVec, MouseWheelEvent,
 	},
 	layout::{Layout, LayoutState, WidgetID},
-	transform_stack::TransformStack,
+	stack::{ScissorStack, TransformStack},
 };
 
 pub mod div;
@@ -100,7 +100,7 @@ pub struct DrawState<'a> {
 	pub layout: &'a Layout,
 	pub primitives: &'a mut Vec<RenderPrimitive>,
 	pub transform_stack: &'a mut TransformStack,
-	pub depth: f32, //TODO: actually use this in shader
+	pub scissor_stack: &'a mut ScissorStack,
 }
 
 // per-widget draw params
@@ -253,7 +253,6 @@ impl WidgetState {
 						),
 						Vec2::new(transform.dim.x * info.handle_size.x, thickness),
 					),
-					depth: state.depth,
 					transform: transform.transform,
 				},
 				rect_params,
@@ -271,7 +270,6 @@ impl WidgetState {
 						),
 						Vec2::new(thickness, transform.dim.y * info.handle_size.y),
 					),
-					depth: state.depth,
 					transform: transform.transform,
 				},
 				rect_params,

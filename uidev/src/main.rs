@@ -77,7 +77,7 @@ fn load_testbed(
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	init_logging();
 
-	let (gfx, event_loop, window, surface) = init_window()?;
+	let (gfx, event_loop, window, surface) = init_window("[-/=]: gui scale, F10: debug draw")?;
 	let inner_size = window.inner_size();
 	let mut swapchain_size = [inner_size.width, inner_size.height];
 
@@ -114,6 +114,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	render_context.update_viewport(&mut shared_context, swapchain_size, scale)?;
 	log::trace!("new swapchain_size: {swapchain_size:?}");
+
+	let mut debug_draw_enabled = false;
 
 	let mut profiler = profiler::Profiler::new(1000);
 	let mut frame_index: u64 = 0;
@@ -218,6 +220,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				..
 			} => {
 				if event.state == ElementState::Pressed {
+					if event.physical_key == PhysicalKey::Code(KeyCode::F10) {
+						debug_draw_enabled = !debug_draw_enabled;
+						testbed.layout().borrow_mut().mark_redraw();
+					}
+
 					if event.physical_key == PhysicalKey::Code(KeyCode::Equal) {
 						scale *= 1.25;
 						render_context
@@ -323,7 +330,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 						.begin_rendering(tgt, WGfxClearMode::Clear([0.0, 0.0, 0.0, 0.1]))
 						.unwrap();
 
-					let primitives = wgui::drawing::draw(&testbed.layout().borrow_mut()).unwrap();
+					let draw_params = wgui::drawing::DrawParams {
+						layout: &testbed.layout().borrow_mut(),
+						debug_draw: debug_draw_enabled,
+					};
+
+					let primitives = wgui::drawing::draw(&draw_params).unwrap();
 					render_context
 						.draw(&mut shared_context, &mut cmd_buf, &primitives)
 						.unwrap();

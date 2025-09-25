@@ -14,7 +14,9 @@ fn get_vulkan_library() -> &'static Arc<vulkano::VulkanLibrary> {
 }
 
 #[allow(clippy::type_complexity)]
-pub fn init_window() -> anyhow::Result<(
+pub fn init_window(
+	title: &str,
+) -> anyhow::Result<(
 	Arc<WGfx>,
 	winit::event_loop::EventLoop<()>,
 	Arc<winit::window::Window>,
@@ -40,7 +42,11 @@ pub fn init_window() -> anyhow::Result<(
 	#[allow(deprecated)]
 	let window = Arc::new(
 		event_loop
-			.create_window(Window::default_attributes().with_transparent(true))
+			.create_window(
+				Window::default_attributes()
+					.with_transparent(true)
+					.with_title(title),
+			)
 			.unwrap(), // want panic
 	);
 	let surface = Surface::from_window(instance.clone(), window.clone())?;

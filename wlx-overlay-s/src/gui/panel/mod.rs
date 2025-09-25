@@ -243,8 +243,15 @@ impl<S> OverlayBackend for GuiPanel<S> {
             .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)
             .unwrap(); // want panic
 
-        cmd_buf.begin_rendering(tgt)?;
-        let primitives = wgui::drawing::draw(&self.layout)?;
+        cmd_buf.begin_rendering(
+            tgt,
+            wgui::gfx::cmd::WGfxClearMode::Clear([0.0, 0.0, 0.0, 0.0]),
+        )?;
+
+        let primitives = wgui::drawing::draw(&wgui::drawing::DrawParams {
+            layout: &self.layout,
+            debug_draw: false,
+        })?;
         self.context
             .draw(&mut app.wgui_shared, &mut cmd_buf, &primitives)?;
         cmd_buf.end_rendering()?;

@@ -58,7 +58,6 @@ impl WidgetObj for WidgetSprite {
 			state.primitives.push(drawing::RenderPrimitive::Sprite(
 				PrimitiveExtent {
 					boundary,
-					depth: state.depth,
 					transform: state.transform_stack.get().transform,
 				},
 				Some(glyph),
@@ -79,12 +78,11 @@ impl WidgetObj for WidgetSprite {
 			state.primitives.push(drawing::RenderPrimitive::Text(
 				PrimitiveExtent {
 					boundary,
-					depth: state.depth,
 					transform: state.transform_stack.get().transform,
 				},
 				Rc::new(RefCell::new(buffer)),
-			))
-		};
+			));
+		}
 	}
 
 	fn measure(

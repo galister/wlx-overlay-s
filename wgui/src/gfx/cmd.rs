@@ -47,6 +47,7 @@ impl<T> WCommandBuffer<T> {
 #[derive(Clone, Copy)]
 pub enum WGfxClearMode {
 	Keep,
+	DontCare,
 	Clear([f32; 4]),
 }
 
@@ -58,10 +59,12 @@ impl WCommandBuffer<CmdBufGfx> {
 				load_op: match &clear_mode {
 					WGfxClearMode::Keep => AttachmentLoadOp::Load,
 					WGfxClearMode::Clear(_) => AttachmentLoadOp::Clear,
+					WGfxClearMode::DontCare => AttachmentLoadOp::DontCare,
 				},
 				store_op: AttachmentStoreOp::Store,
 				clear_value: match &clear_mode {
 					WGfxClearMode::Keep => None,
+					WGfxClearMode::DontCare => None,
 					WGfxClearMode::Clear(color) => Some(ClearValue::Float(*color)),
 				},
 				..RenderingAttachmentInfo::image_view(render_target)

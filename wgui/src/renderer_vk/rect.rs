@@ -30,8 +30,6 @@ pub struct RectVertex {
 	pub in_border_color: u32,
 	#[format(R32_UINT)]
 	pub round_border_gradient: [u8; 4],
-	#[format(R32_SFLOAT)]
-	pub depth: f32,
 }
 
 /// Cloneable pipeline & shaders to be shared between `RectRenderer` instances.
@@ -68,7 +66,7 @@ pub struct RectRenderer {
 	pipeline: RectPipeline,
 	rect_vertices: Vec<RectVertex>,
 	vert_buffer: Subbuffer<[RectVertex]>,
-	vert_buffer_size: usize,
+	vert_buffer_len: usize,
 	model_buffer: ModelBuffer,
 	pass: Option<CachedPass>,
 }
@@ -77,16 +75,17 @@ impl RectRenderer {
 	pub fn new(pipeline: RectPipeline) -> anyhow::Result<Self> {
 		const BUFFER_SIZE: usize = 32;
 
-		let vert_buffer = pipeline
-			.gfx
-			.empty_buffer(BufferUsage::VERTEX_BUFFER | BufferUsage::TRANSFER_DST, BUFFER_SIZE as _)?;
+		let vert_buffer = pipeline.gfx.empty_buffer(
+			BufferUsage::VERTEX_BUFFER | BufferUsage::TRANSFER_DST,
+			(std::mem::size_of::<RectVertex>() * BUFFER_SIZE) as _,
+		)?;
 
 		Ok(Self {
 			model_buffer: ModelBuffer::new(&pipeline.gfx)?,
 			pipeline,
 			rect_vertices: vec![],
 			vert_buffer,
-			vert_buffer_size: BUFFER_SIZE,
+			vert_buffer_len: BUFFER_SIZE,
 			pass: None,
 		})
 	}
@@ -96,7 +95,7 @@ impl RectRenderer {
 		self.model_buffer.begin();
 	}
 
-	pub fn add_rect(&mut self, boundary: Boundary, rectangle: Rectangle, transform: &Mat4, depth: f32) {
+	pub fn add_rect(&mut self, boundary: Boundary, rectangle: Rectangle, transform: &Mat4) {
 		let in_model_idx = self
 			.model_buffer
 			.register_pos_size(&boundary.pos, &boundary.size, transform);
@@ -113,18 +112,17 @@ impl RectRenderer {
 				rectangle.gradient as u8,
 				0, // unused
 			],
-			depth,
 		});
 	}
 
 	fn upload_verts(&mut self) -> anyhow::Result<()> {
-		if self.vert_buffer_size < self.rect_vertices.len() {
-			let new_size = self.vert_buffer_size * 2;
-			self.vert_buffer = self
-				.pipeline
-				.gfx
-				.empty_buffer(BufferUsage::VERTEX_BUFFER | BufferUsage::TRANSFER_DST, new_size as _)?;
-			self.vert_buffer_size = new_size;
+		if self.vert_buffer_len < self.rect_vertices.len() {
+			let new_size = self.vert_buffer_len * 2;
+			self.vert_buffer = self.pipeline.gfx.empty_buffer(
+				BufferUsage::VERTEX_BUFFER | BufferUsage::TRANSFER_DST,
+				(std::mem::size_of::<RectVertex>() * new_size) as _,
+			)?;
+			self.vert_buffer_len = new_size;
 		}
 
 		self.vert_buffer.write()?[0..self.rect_vertices.len()].clone_from_slice(&self.rect_vertices);

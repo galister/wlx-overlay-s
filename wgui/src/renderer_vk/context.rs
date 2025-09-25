@@ -242,7 +242,7 @@ impl Context {
 				drawing::RenderPrimitive::Rectangle(extent, rectangle) => {
 					pass
 						.rect_renderer
-						.add_rect(extent.boundary, *rectangle, &extent.transform, extent.depth);
+						.add_rect(extent.boundary, *rectangle, &extent.transform);
 				}
 				drawing::RenderPrimitive::Text(extent, text) => {
 					pass.text_areas.push(TextArea {
@@ -253,7 +253,6 @@ impl Context {
 						scale: self.pixel_scale,
 						default_color: cosmic_text::Color::rgb(0, 0, 0),
 						custom_glyphs: &[],
-						depth: extent.depth,
 						transform: extent.transform,
 					});
 				}
@@ -266,7 +265,6 @@ impl Context {
 						scale: self.pixel_scale,
 						custom_glyphs: sprites.as_slice(),
 						default_color: cosmic_text::Color::rgb(255, 0, 255),
-						depth: extent.depth,
 						transform: extent.transform,
 					});
 				}
