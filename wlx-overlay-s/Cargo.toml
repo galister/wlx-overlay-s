@@ -30,8 +30,8 @@ ctrlc = { version = "3.5.0", features = ["termination"] }
 dbus = { version = "0.9.9" }
 futures = "0.3.31"
 glam = { workspace = true, features = ["mint", "serde"] }
-idmap = { version = "0.2.22", features = ["serde"] }
-idmap-derive = "0.1.2"
+idmap = { workspace = true, features = ["serde"] }
+idmap-derive = "0.2.2"
 input-linux = "0.7.1"
 json = { version = "0.12.4", optional = true }
 json5 = "0.4.1"
@@ -45,8 +45,9 @@ ovr_overlay = { features = [
   "ovr_input",
   "ovr_system",
 ], git = "https://github.com/galister/ovr_overlay_oyasumi", optional = true }
-regex = "1.11.2"
-rodio = { version = "0.20.1", default-features = false, features = [
+regex = { workspace = true }
+rodio = { version = "0.21.1", default-features = false, features = [
+  "playback",
   "wav",
   "hound",
 ] }
@@ -54,9 +55,10 @@ rosc = { version = "0.11.4", optional = true }
 serde = { version = "1.0.225", features = ["derive", "rc"] }
 serde_json = "1.0.145"
 serde_yaml = "0.9.34"
+slotmap = { workspace = true }
 smallvec = "1.15.1"
 strum = { version = "0.27.2", features = ["derive"] }
-sysinfo = { version = "0.35" }
+sysinfo = { version = "0.37" }
 thiserror = "2.0"
 wlx-capture = { path = "../wlx-capture" }
 libmonado = { version = "1.3.2", optional = true }
@@ -64,7 +66,7 @@ winit = { version = "0.30.12", optional = true }
 xdg = "3.0"
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
 serde_json5 = "0.2.1"
-xkbcommon = { version = "0.8.0" }
+xkbcommon = { version = "0.9.0" }
 xcb = { version = "1.6.0", optional = true, features = [
   "as-raw-xcb-connection",
 ] }
@@ -82,7 +84,7 @@ wgui = { path = "../wgui" }
 #WayVR-only deps
 ################################
 khronos-egl = { version = "6.0.0", features = ["static"], optional = true }
-smithay = { version = "0.5.1", default-features = false, features = [
+smithay = { version = "0.7.0", default-features = false, features = [
   "renderer_gl",
   "backend_egl",
   "backend_drm",

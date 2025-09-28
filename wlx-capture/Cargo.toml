@@ -25,11 +25,11 @@ xshm = ["dep:rxscreen"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ashpd = { version = "0.11.0", default-features = false, features = [
+ashpd = { version = "0.12.0", default-features = false, features = [
   "async-std",
 ], optional = true }
 drm-fourcc = "2.2.0"
-idmap = "0.2.22"
+idmap = { workspace = true }
 libc = "0.2.175"
 log = { workspace = true }
 pipewire = { git = "https://gitlab.freedesktop.org/galister/pipewire-rs.git", ref = "ba32202c3c391004c3bb533b58fa75a50e47ff57", features = [
@@ -41,7 +41,7 @@ rxscreen = { version = "0.1.7", features = [
   "xrandr",
   "mouse",
 ], optional = true }
-smithay-client-toolkit = { version = "0.19.2", optional = true }
+smithay-client-toolkit = { version = "0.20.0", optional = true }
 wayland-client = { workspace = true, optional = true }
 wayland-protocols = { version = "0.32.9", features = [
   "wayland-client",

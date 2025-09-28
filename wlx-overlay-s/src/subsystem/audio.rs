@@ -1,9 +1,9 @@
 use std::io::Cursor;
 
-use rodio::{Decoder, OutputStream, OutputStreamHandle, Source};
+use rodio::{Decoder, OutputStreamBuilder, stream::OutputStream};
 
 pub struct AudioOutput {
-    audio_stream: Option<(OutputStream, OutputStreamHandle)>,
+    audio_stream: Option<OutputStream>,
     first_try: bool,
 }
 
@@ -15,17 +15,17 @@ impl AudioOutput {
         }
     }
 
-    fn get_handle(&mut self) -> Option<&OutputStreamHandle> {
+    fn get_handle(&mut self) -> Option<&OutputStream> {
         if self.audio_stream.is_none() && self.first_try {
             self.first_try = false;
-            if let Ok((stream, handle)) = OutputStream::try_default() {
-                self.audio_stream = Some((stream, handle));
+            if let Ok(stream) = OutputStreamBuilder::open_default_stream() {
+                self.audio_stream = Some(stream);
             } else {
                 log::error!("Failed to open audio stream. Audio will not work.");
                 return None;
             }
         }
-        self.audio_stream.as_ref().map(|(_, h)| h)
+        self.audio_stream.as_ref()
     }
 
     pub fn play(&mut self, wav_bytes: &'static [u8]) {
@@ -40,6 +40,6 @@ impl AudioOutput {
                 return;
             }
         };
-        let _ = handle.play_raw(source.convert_samples());
+        let _ = handle.mixer().add(source);
     }
 }

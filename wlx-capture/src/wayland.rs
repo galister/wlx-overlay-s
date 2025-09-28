@@ -19,15 +19,15 @@ use smithay_client_toolkit::reexports::{
 
 pub use wayland_client;
 use wayland_client::{
-    Connection, Dispatch, EventQueue, Proxy, QueueHandle,
     backend::WaylandError,
-    globals::{GlobalList, GlobalListContents, registry_queue_init},
+    globals::{registry_queue_init, GlobalList, GlobalListContents},
     protocol::{
         wl_output::{self, Transform, WlOutput},
         wl_registry::{self, WlRegistry},
         wl_seat::WlSeat,
         wl_shm::WlShm,
     },
+    Connection, Dispatch, EventQueue, Proxy, QueueHandle,
 };
 
 use crate::frame;
@@ -136,7 +136,7 @@ impl WlxClient {
 
     pub fn get_desktop_origin(&self) -> (i32, i32) {
         let mut origin = (i32::MAX, i32::MAX);
-        for output in self.outputs.values() {
+        for (_, output) in self.outputs.iter() {
             origin.0 = origin.0.min(output.logical_pos.0);
             origin.1 = origin.1.min(output.logical_pos.1);
         }
@@ -146,7 +146,7 @@ impl WlxClient {
     /// Get the logical width and height of the desktop.
     pub fn get_desktop_extent(&self) -> (i32, i32) {
         let mut extent = (0, 0);
-        for output in self.outputs.values() {
+        for (_, output) in self.outputs.iter() {
             extent.0 = extent.0.max(output.logical_pos.0 + output.logical_size.0);
             extent.1 = extent.1.max(output.logical_pos.1 + output.logical_size.1);
         }
