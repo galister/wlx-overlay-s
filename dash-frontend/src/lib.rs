@@ -8,7 +8,7 @@ use wgui::{
 	globals::WguiGlobals,
 	i18n::Translation,
 	layout::{LayoutParams, RcLayout, WidgetID},
-	parser::{ParseDocumentParams, ParserState},
+	parser::{Fetchable, ParseDocumentParams, ParserState},
 	widget::label::WidgetLabel,
 };
 
@@ -19,6 +19,7 @@ use crate::tab::{
 
 mod assets;
 mod tab;
+mod util;
 mod various;
 
 pub struct Frontend {

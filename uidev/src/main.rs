@@ -222,6 +222,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				if event.state == ElementState::Pressed {
 					if event.physical_key == PhysicalKey::Code(KeyCode::F10) {
 						debug_draw_enabled = !debug_draw_enabled;
+						if debug_draw_enabled {
+							log::info!(
+								"Debug draw enabled\n\tAqua: widget boundary\n\tMagenta: Scissoring (separate render pass)"
+							);
+						}
 						testbed.layout().borrow_mut().mark_redraw();
 					}
 
@@ -336,9 +341,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 					};
 
 					let primitives = wgui::drawing::draw(&draw_params).unwrap();
-					render_context
+					let draw_result = render_context
 						.draw(&mut shared_context, &mut cmd_buf, &primitives)
 						.unwrap();
+
+					if debug_draw_enabled {
+						log::debug!("pass count: {}", draw_result.pass_count);
+					}
 
 					cmd_buf.end_rendering().unwrap();
 

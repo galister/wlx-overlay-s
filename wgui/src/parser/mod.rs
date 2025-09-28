@@ -49,6 +49,11 @@ struct ParserFile {
 	template_parameters: HashMap<Rc<str>, Rc<str>>,
 }
 
+/*
+	`components` could contain connected listener handles.
+		Do not drop them unless you don't need to handle any events,
+		including mouse-hover animations.
+*/
 #[derive(Default, Clone)]
 pub struct ParserData {
 	pub components_by_id: HashMap<Rc<str>, ComponentWeak>,
@@ -58,6 +63,29 @@ pub struct ParserData {
 	pub templates: HashMap<Rc<str>, Rc<Template>>,
 	pub var_map: HashMap<Rc<str>, Rc<str>>,
 	macro_attribs: HashMap<Rc<str>, MacroAttribs>,
+}
+
+pub trait Fetchable {
+	/// Return a component by its string ID
+	fn fetch_component_by_id(&self, id: &str) -> anyhow::Result<Component>;
+
+	/// Return a component by the ID of the widget that owns it
+	fn fetch_component_by_widget_id(&self, widget_id: WidgetID) -> anyhow::Result<Component>;
+
+	/// Fetch a component by string ID and down‑cast it to a concrete component type `T` (see `components/mod.rs`)
+	fn fetch_component_as<T: 'static>(&self, id: &str) -> anyhow::Result<Rc<T>>;
+
+	/// Fetch a component by widget ID and down‑cast it to a concrete component type `T` (see `components/mod.rs`)
+	fn fetch_component_from_widget_id_as<T: 'static>(&self, widget_id: WidgetID) -> anyhow::Result<Rc<T>>;
+
+	/// Return a widget by its string ID
+	fn get_widget_id(&self, id: &str) -> anyhow::Result<WidgetID>;
+
+	/// Retrieve the widget associated with a string ID, returning a `WidgetPair` (id and widget itself)
+	fn fetch_widget(&self, state: &LayoutState, id: &str) -> anyhow::Result<WidgetPair>;
+
+	/// Retrieve a widget by string ID and down‑cast its inner value to type `T` (see `widget/mod.rs`)
+	fn fetch_widget_as<'a, T: 'static>(&self, state: &'a LayoutState, id: &str) -> anyhow::Result<RefMut<'a, T>>;
 }
 
 impl ParserData {
@@ -85,19 +113,9 @@ impl ParserData {
 	}
 }
 
-/*
-	WARNING: this struct could contain valid components with already bound listener handles.
-	Make sure to store them somewhere in your code.
-*/
-#[derive(Default)]
-pub struct ParserState {
-	pub data: ParserData,
-	pub path: PathBuf,
-}
-
-impl ParserState {
-	pub fn fetch_component_by_id(&self, id: &str) -> anyhow::Result<Component> {
-		let Some(weak) = self.data.components_by_id.get(id) else {
+impl Fetchable for ParserData {
+	fn fetch_component_by_id(&self, id: &str) -> anyhow::Result<Component> {
+		let Some(weak) = self.components_by_id.get(id) else {
 			anyhow::bail!("Component by ID \"{id}\" doesn't exist");
 		};
 
@@ -108,8 +126,8 @@ impl ParserState {
 		Ok(Component(component))
 	}
 
-	pub fn fetch_component_by_widget_id(&self, widget_id: WidgetID) -> anyhow::Result<Component> {
-		let Some(weak) = self.data.components_by_widget_id.get(&widget_id) else {
+	fn fetch_component_by_widget_id(&self, widget_id: WidgetID) -> anyhow::Result<Component> {
+		let Some(weak) = self.components_by_widget_id.get(&widget_id) else {
 			anyhow::bail!("Component by widget ID \"{widget_id:?}\" doesn't exist");
 		};
 
@@ -120,37 +138,36 @@ impl ParserState {
 		Ok(Component(component))
 	}
 
-	pub fn fetch_component_as<T: 'static>(&self, id: &str) -> anyhow::Result<Rc<T>> {
+	fn fetch_component_as<T: 'static>(&self, id: &str) -> anyhow::Result<Rc<T>> {
 		let component = self.fetch_component_by_id(id)?;
 
 		if !(*component.0).as_any().is::<T>() {
 			anyhow::bail!("fetch_component_as({id}): type not matching");
 		}
 
-		// safety: we already checked it above, should be safe to directly cast it
+		// safety: we just checked the type
 		unsafe { Ok(Rc::from_raw(Rc::into_raw(component.0).cast())) }
 	}
 
-	pub fn fetch_component_from_widget_id_as<T: 'static>(&self, widget_id: WidgetID) -> anyhow::Result<Rc<T>> {
+	fn fetch_component_from_widget_id_as<T: 'static>(&self, widget_id: WidgetID) -> anyhow::Result<Rc<T>> {
 		let component = self.fetch_component_by_widget_id(widget_id)?;
 
 		if !(*component.0).as_any().is::<T>() {
 			anyhow::bail!("fetch_component_by_widget_id({widget_id:?}): type not matching");
 		}
 
-		// safety: we already checked it above, should be safe to directly cast it
+		// safety: we just checked the type
 		unsafe { Ok(Rc::from_raw(Rc::into_raw(component.0).cast())) }
 	}
 
-	pub fn get_widget_id(&self, id: &str) -> anyhow::Result<WidgetID> {
-		match self.data.ids.get(id) {
+	fn get_widget_id(&self, id: &str) -> anyhow::Result<WidgetID> {
+		match self.ids.get(id) {
 			Some(id) => Ok(*id),
 			None => anyhow::bail!("Widget by ID \"{id}\" doesn't exist"),
 		}
 	}
 
-	// returns widget and its id at once
-	pub fn fetch_widget(&self, state: &LayoutState, id: &str) -> anyhow::Result<WidgetPair> {
+	fn fetch_widget(&self, state: &LayoutState, id: &str) -> anyhow::Result<WidgetPair> {
 		let widget_id = self.get_widget_id(id)?;
 		let widget = state
 			.widgets
@@ -162,7 +179,7 @@ impl ParserState {
 		})
 	}
 
-	pub fn fetch_widget_as<'a, T: 'static>(&self, state: &'a LayoutState, id: &str) -> anyhow::Result<RefMut<'a, T>> {
+	fn fetch_widget_as<'a, T: 'static>(&self, state: &'a LayoutState, id: &str) -> anyhow::Result<RefMut<'a, T>> {
 		let widget_id = self.get_widget_id(id)?;
 		let widget = state
 			.widgets
@@ -175,8 +192,23 @@ impl ParserState {
 
 		Ok(casted)
 	}
+}
 
-	pub fn process_template<U1, U2>(
+/*
+	WARNING: this struct could contain valid components with already bound listener handles.
+	Make sure to store them somewhere in your code.
+*/
+#[derive(Default)]
+pub struct ParserState {
+	pub data: ParserData,
+	pub path: PathBuf,
+}
+
+impl ParserState {
+	/// This function is suitable in cases if you don't want to pollute main parser state with dynamic IDs
+	/// Use `instantiate_template` instead unless you want to handle `components` results yourself.
+	/// Make sure not to drop them if you want to have your listener handles valid
+	pub fn parse_template<U1, U2>(
 		&mut self,
 		doc_params: &ParseDocumentParams,
 		template_name: &str,
@@ -184,7 +216,7 @@ impl ParserState {
 		listeners: &mut EventListenerCollection<U1, U2>,
 		widget_id: WidgetID,
 		template_parameters: HashMap<Rc<str>, Rc<str>>,
-	) -> anyhow::Result<()> {
+	) -> anyhow::Result<ParserData> {
 		let Some(template) = self.data.templates.get(template_name) else {
 			anyhow::bail!("no template named \"{template_name}\" found");
 		};
@@ -204,10 +236,61 @@ impl ParserState {
 		};
 
 		parse_widget_other_internal(&template.clone(), template_parameters, &file, &mut ctx, widget_id)?;
+		Ok(ctx.data_local)
+	}
 
-		self.data.take_results_from(&mut ctx.data_local);
+	/// Instantinate template by saving all the results into the main `ParserState`
+	pub fn instantiate_template<U1, U2>(
+		&mut self,
+		doc_params: &ParseDocumentParams,
+		template_name: &str,
+		layout: &mut Layout,
+		listeners: &mut EventListenerCollection<U1, U2>,
+		widget_id: WidgetID,
+		template_parameters: HashMap<Rc<str>, Rc<str>>,
+	) -> anyhow::Result<()> {
+		let mut data_local = self.parse_template(
+			doc_params,
+			template_name,
+			layout,
+			listeners,
+			widget_id,
+			template_parameters,
+		)?;
 
+		self.data.take_results_from(&mut data_local);
 		Ok(())
+	}
+}
+
+// convenience wrapper functions for `data`
+impl Fetchable for ParserState {
+	fn fetch_component_by_id(&self, id: &str) -> anyhow::Result<Component> {
+		self.data.fetch_component_by_id(id)
+	}
+
+	fn fetch_component_by_widget_id(&self, widget_id: WidgetID) -> anyhow::Result<Component> {
+		self.data.fetch_component_by_widget_id(widget_id)
+	}
+
+	fn fetch_component_as<T: 'static>(&self, id: &str) -> anyhow::Result<Rc<T>> {
+		self.data.fetch_component_as(id)
+	}
+
+	fn fetch_component_from_widget_id_as<T: 'static>(&self, widget_id: WidgetID) -> anyhow::Result<Rc<T>> {
+		self.data.fetch_component_from_widget_id_as(widget_id)
+	}
+
+	fn get_widget_id(&self, id: &str) -> anyhow::Result<WidgetID> {
+		self.data.get_widget_id(id)
+	}
+
+	fn fetch_widget(&self, state: &LayoutState, id: &str) -> anyhow::Result<WidgetPair> {
+		self.data.fetch_widget(state, id)
+	}
+
+	fn fetch_widget_as<'a, T: 'static>(&self, state: &'a LayoutState, id: &str) -> anyhow::Result<RefMut<'a, T>> {
+		self.data.fetch_widget_as(state, id)
 	}
 }
 

@@ -1,7 +1,7 @@
 use wgui::{
 	components::button::ComponentButton,
 	i18n::Translation,
-	parser::{ParseDocumentParams, ParserState},
+	parser::{Fetchable, ParseDocumentParams, ParserState},
 	widget::label::WidgetLabel,
 };
 

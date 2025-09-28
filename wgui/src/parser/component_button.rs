@@ -21,7 +21,7 @@ pub fn parse_component_button<'a, U1, U2>(
 	let mut hover_color: Option<Color> = None;
 	let mut hover_border_color: Option<Color> = None;
 	let mut round = WLength::Units(4.0);
-	let mut translation = Translation::default();
+	let mut translation: Option<Translation> = None;
 
 	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
 	let text_style = parse_text_style(&attribs);
@@ -30,10 +30,10 @@ pub fn parse_component_button<'a, U1, U2>(
 	for (key, value) in attribs {
 		match key.as_ref() {
 			"text" => {
-				translation = Translation::from_raw_text(&value);
+				translation = Some(Translation::from_raw_text(&value));
 			}
 			"translation" => {
-				translation = Translation::from_translation_key(&value);
+				translation = Some(Translation::from_translation_key(&value));
 			}
 			"round" => {
 				parse_round(&value, &mut round);

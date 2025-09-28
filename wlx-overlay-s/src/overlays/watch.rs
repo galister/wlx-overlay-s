@@ -39,8 +39,9 @@ where
                     let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
                     params.insert("display".into(), (idx + 1).to_string().into());
                     params.insert("handle".into(), handle.0.to_string().into());
-                    parser_state
-                        .process_template(doc_params, "Set", layout, listeners, widget, params)?;
+                    parser_state.instantiate_template(
+                        doc_params, "Set", layout, listeners, widget, params,
+                    )?;
                 }
                 Ok(())
             },

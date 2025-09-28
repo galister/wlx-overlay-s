@@ -1,9 +1,6 @@
 use crate::{
 	layout::WidgetID,
-	parser::{
-		ParserContext, ParserFile, iter_attribs, parse_children, parse_widget_universal,
-		style::parse_style,
-	},
+	parser::{ParserContext, ParserFile, iter_attribs, parse_children, parse_widget_universal, style::parse_style},
 	renderer_vk::text::custom_glyph::{CustomGlyphContent, CustomGlyphData},
 	widget::sprite::{WidgetSprite, WidgetSpriteParams},
 };
@@ -24,17 +21,18 @@ pub fn parse_widget_sprite<'a, U1, U2>(
 	for (key, value) in attribs {
 		match key.as_ref() {
 			"src" => {
-				glyph =
-					match CustomGlyphContent::from_assets(&mut ctx.layout.state.globals.assets(), &value) {
+				if !value.is_empty() {
+					glyph = match CustomGlyphContent::from_assets(&mut ctx.layout.state.globals.assets(), &value) {
 						Ok(glyph) => Some(glyph),
 						Err(e) => {
 							log::warn!("failed to load {value}: {e}");
 							None
 						}
 					}
+				}
 			}
 			"src_ext" => {
-				if std::fs::exists(value.as_ref()).unwrap_or(false) {
+				if !value.is_empty() && std::fs::exists(value.as_ref()).unwrap_or(false) {
 					glyph = CustomGlyphContent::from_file(&value).ok();
 				}
 			}
@@ -55,9 +53,7 @@ pub fn parse_widget_sprite<'a, U1, U2>(
 		log::warn!("No source for sprite node!");
 	}
 
-	let (new_id, _) = ctx
-		.layout
-		.add_child(parent_id, WidgetSprite::create(params), style)?;
+	let (new_id, _) = ctx.layout.add_child(parent_id, WidgetSprite::create(params), style)?;
 
 	parse_widget_universal(file, ctx, node, new_id);
 	parse_children(file, ctx, node, new_id)?;

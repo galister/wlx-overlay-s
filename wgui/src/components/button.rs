@@ -1,5 +1,5 @@
 use std::{cell::RefCell, rc::Rc};
-use taffy::{AlignItems, JustifyContent, prelude::length};
+use taffy::{AlignItems, JustifyContent};
 
 use crate::{
 	animation::{Animation, AnimationEasing},
@@ -18,7 +18,7 @@ use crate::{
 };
 
 pub struct Params {
-	pub text: Translation,
+	pub text: Option<Translation>, // if unset, label will not be populated
 	pub color: Option<drawing::Color>,
 	pub border_color: Option<drawing::Color>,
 	pub hover_border_color: Option<drawing::Color>,
@@ -31,7 +31,7 @@ pub struct Params {
 impl Default for Params {
 	fn default() -> Self {
 		Self {
-			text: Translation::from_raw_text(""),
+			text: Some(Translation::from_raw_text("")),
 			color: None,
 			hover_color: None,
 			border_color: None,
@@ -232,7 +232,6 @@ pub fn construct<U1, U2>(
 	// force-override style
 	style.align_items = Some(AlignItems::Center);
 	style.justify_content = Some(JustifyContent::Center);
-	style.padding = length(1.0);
 	style.overflow.x = taffy::Overflow::Hidden;
 	style.overflow.y = taffy::Overflow::Hidden;
 
@@ -277,25 +276,30 @@ pub fn construct<U1, U2>(
 
 	let light_text = (color.r + color.g + color.b) < 1.5;
 
-	let (id_label, _node_label) = layout.add_child(
-		id_rect,
-		WidgetLabel::create(
-			globals,
-			WidgetLabelParams {
-				content: params.text,
-				style: TextStyle {
-					weight: Some(FontWeight::Bold),
-					color: Some(if light_text {
-						Color::new(1.0, 1.0, 1.0, 1.0)
-					} else {
-						Color::new(0.0, 0.0, 0.0, 1.0)
-					}),
-					..params.text_style
+	let id_label = if let Some(content) = params.text {
+		let (id_label, _node_label) = layout.add_child(
+			id_rect,
+			WidgetLabel::create(
+				globals,
+				WidgetLabelParams {
+					content,
+					style: TextStyle {
+						weight: Some(FontWeight::Bold),
+						color: Some(if light_text {
+							Color::new(1.0, 1.0, 1.0, 1.0)
+						} else {
+							Color::new(0.0, 0.0, 0.0, 1.0)
+						}),
+						..params.text_style
+					},
 				},
-			},
-		),
-		Default::default(),
-	)?;
+			),
+			Default::default(),
+		)?;
+		id_label
+	} else {
+		WidgetID::default()
+	};
 
 	let data = Rc::new(Data {
 		id_label,

@@ -160,6 +160,10 @@ pub struct Context {
 	empty_text: Rc<RefCell<Buffer>>,
 }
 
+pub struct ContextDrawResult {
+	pub pass_count: u32,
+}
+
 impl Context {
 	pub fn new(shared: &mut SharedContext, pixel_scale: f32) -> anyhow::Result<Self> {
 		let viewport = Viewport::new(&shared.gfx)?;
@@ -216,7 +220,7 @@ impl Context {
 		shared: &mut SharedContext,
 		cmd_buf: &mut GfxCommandBuffer,
 		primitives: &[drawing::RenderPrimitive],
-	) -> anyhow::Result<()> {
+	) -> anyhow::Result<ContextDrawResult> {
 		self.dirty = false;
 
 		let atlas = shared.atlas_map.get_mut(self.shared_ctx_key).unwrap();
@@ -279,12 +283,14 @@ impl Context {
 			}
 		}
 
-		log::info!("count {}", passes.len());
+		let res = ContextDrawResult {
+			pass_count: passes.len() as u32,
+		};
 
 		for mut pass in passes {
 			pass.submit(&shared.gfx, &mut self.viewport, cmd_buf, &mut atlas.text_atlas)?;
 		}
 
-		Ok(())
+		Ok(res)
 	}
 }

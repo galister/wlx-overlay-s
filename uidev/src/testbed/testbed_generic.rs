@@ -16,7 +16,7 @@ use wgui::{
 	globals::WguiGlobals,
 	i18n::Translation,
 	layout::{LayoutParams, RcLayout, Widget},
-	parser::{ParseDocumentExtra, ParseDocumentParams, ParserState},
+	parser::{Fetchable, ParseDocumentExtra, ParseDocumentParams, ParserState},
 	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
 };
 

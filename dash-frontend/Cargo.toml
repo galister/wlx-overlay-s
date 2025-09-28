@@ -10,3 +10,5 @@ glam = { workspace = true }
 log = { workspace = true }
 rust-embed = { workspace = true }
 chrono = "0.4.42"
+gio = "0.21.2"
+gtk = "0.18.2"

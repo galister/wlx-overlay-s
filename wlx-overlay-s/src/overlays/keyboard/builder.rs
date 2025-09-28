@@ -6,6 +6,7 @@ use wgui::{
     drawing::Color,
     event::{self, CallbackMetadata, EventListenerKind},
     layout::LayoutParams,
+    parser::Fetchable,
     renderer_vk::util,
     taffy::{self, prelude::length},
     widget::{
@@ -163,7 +164,7 @@ where
             }
 
             let template_key = format!("Key{:?}", key.cap_type);
-            gui_state_key.process_template(
+            gui_state_key.instantiate_template(
                 &parse_doc_params,
                 &template_key,
                 &mut panel.layout,

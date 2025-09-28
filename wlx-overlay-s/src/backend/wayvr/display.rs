@@ -308,7 +308,7 @@ impl Display {
     }
 
     pub fn tick_render(&mut self, renderer: &mut GlesRenderer, time_ms: u64) -> anyhow::Result<()> {
-        renderer.bind(&mut self.gles_texture)?;
+        renderer.bind(self.gles_texture.clone())?;
 
         let size = Size::from((i32::from(self.width), i32::from(self.height)));
         let damage: Rectangle<i32, smithay::utils::Physical> = Rectangle::from_size(size);
