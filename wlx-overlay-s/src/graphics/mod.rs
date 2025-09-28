@@ -30,8 +30,7 @@ use vulkano::{
     buffer::{Buffer, BufferContents, IndexBuffer, Subbuffer},
     device::{
         physical::{PhysicalDevice, PhysicalDeviceType},
-        Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures, Queue, QueueCreateInfo,
-        QueueFlags,
+        DeviceCreateInfo, DeviceExtensions, DeviceFeatures, Queue, QueueCreateInfo, QueueFlags,
     },
     format::Format,
     instance::{Instance, InstanceCreateInfo, InstanceExtensions},
@@ -284,9 +283,11 @@ pub fn init_openxr_graphics(
         })
         .collect::<Vec<_>>();
 
+    // If adding anything here, also add to the native device_create_info below
     let features = DeviceFeatures {
         dynamic_rendering: true,
-        ..Default::default()
+        descriptor_binding_sampled_image_update_after_bind: true,
+        ..DeviceFeatures::empty()
     };
 
     let queue_create_infos = queue_families
@@ -305,8 +306,12 @@ pub fn init_openxr_graphics(
     let mut dynamic_rendering =
         vk::PhysicalDeviceDynamicRenderingFeatures::default().dynamic_rendering(true);
 
+    let mut indexing_features = vk::PhysicalDeviceDescriptorIndexingFeatures::default()
+        .descriptor_binding_sampled_image_update_after_bind(true);
+
     dynamic_rendering.p_next = device_create_info.p_next.cast_mut();
-    device_create_info.p_next = &raw mut dynamic_rendering as *const c_void;
+    indexing_features.p_next = &raw mut dynamic_rendering as *mut c_void;
+    device_create_info.p_next = &raw mut indexing_features as *const c_void;
 
     let (device, queues) = unsafe {
         let vk_device = xr_instance
@@ -375,6 +380,8 @@ pub fn init_openvr_graphics(
     mut vk_instance_extensions: InstanceExtensions,
     mut vk_device_extensions_fn: impl FnMut(&PhysicalDevice) -> DeviceExtensions,
 ) -> anyhow::Result<(Arc<WGfx>, WGfxExtras)> {
+    use vulkano::device::Device;
+
     //#[cfg(debug_assertions)]
     //let layers = vec!["VK_LAYER_KHRONOS_validation".to_owned()];
     //#[cfg(not(debug_assertions))]
@@ -449,6 +456,7 @@ pub fn init_openvr_graphics(
             enabled_extensions: my_extensions,
             enabled_features: DeviceFeatures {
                 dynamic_rendering: true,
+                descriptor_binding_sampled_image_update_after_bind: true,
                 ..DeviceFeatures::empty()
             },
             queue_create_infos: queue_families

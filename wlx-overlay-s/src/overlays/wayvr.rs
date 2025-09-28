@@ -1,14 +1,18 @@
-use glam::{Affine2, Vec3, Vec3A, vec3a};
+use glam::{vec3a, Affine2, Vec3, Vec3A};
+use smallvec::smallvec;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 use vulkano::{
     buffer::{BufferUsage, Subbuffer},
     command_buffer::CommandBufferUsage,
     format::Format,
-    image::{Image, ImageTiling, SubresourceLayout, view::ImageView},
-    pipeline::graphics::input_assembly::PrimitiveTopology,
+    image::{view::ImageView, Image, ImageTiling, SubresourceLayout},
 };
 use wayvr_ipc::packet_server::{self, PacketServer, WvrStateChanged};
-use wgui::gfx::{WGfx, pass::WGfxPass, pipeline::WGfxPipeline};
+use wgui::gfx::{
+    pass::WGfxPass,
+    pipeline::{WGfxPipeline, WPipelineCreateInfo},
+    WGfx,
+};
 use wlx_capture::frame::{DmabufFrame, FourCC, FrameFormat, FramePlane};
 
 use crate::{
@@ -16,17 +20,18 @@ use crate::{
         common::{OverlayContainer, OverlaySelector},
         input::{self},
         overlay::{
-            FrameMeta, OverlayBackend, OverlayData, OverlayID, OverlayState, ShouldRender,
-            Z_ORDER_DASHBOARD, ui_transform,
+            ui_transform, FrameMeta, OverlayBackend, OverlayData, OverlayID, OverlayState,
+            ShouldRender, Z_ORDER_DASHBOARD,
         },
         task::TaskType,
         wayvr::{
-            self, WayVR, WayVRAction, WayVRDisplayClickAction, display,
+            self, display,
             server_ipc::{gen_args_vec, gen_env_vec},
+            WayVR, WayVRAction, WayVRDisplayClickAction,
         },
     },
     config_wayvr,
-    graphics::{CommandBuffers, Vert2Uv, dmabuf::WGfxDmabuf},
+    graphics::{dmabuf::WGfxDmabuf, CommandBuffers, Vert2Uv},
     state::{self, AppState},
     subsystem::input::KeyboardFocus,
 };
@@ -125,10 +130,8 @@ impl WayVRBackend {
         let pipeline = app.gfx.create_pipeline(
             app.gfx_extras.shaders.get("vert_quad").unwrap(), // want panic
             app.gfx_extras.shaders.get("frag_srgb").unwrap(), // want panic
-            app.gfx.surface_format,
-            None,
-            PrimitiveTopology::TriangleStrip,
-            false,
+            WPipelineCreateInfo::new(app.gfx.surface_format)
+                .use_updatable_descriptors(smallvec![0]),
         )?;
 
         let buf_alpha = app

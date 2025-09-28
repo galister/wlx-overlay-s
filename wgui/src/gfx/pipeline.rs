@@ -1,12 +1,15 @@
 use std::{marker::PhantomData, ops::Range, sync::Arc};
 
-use smallvec::smallvec;
+use smallvec::{smallvec, SmallVec};
 use vulkano::{
 	buffer::{
-		BufferContents, BufferUsage, Subbuffer,
 		allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo},
+		BufferContents, BufferUsage, Subbuffer,
 	},
-	descriptor_set::{DescriptorSet, WriteDescriptorSet},
+	descriptor_set::{
+		layout::{DescriptorBindingFlags, DescriptorSetLayoutCreateFlags},
+		DescriptorSet, WriteDescriptorSet,
+	},
 	format::Format,
 	image::{
 		sampler::{Filter, Sampler, SamplerAddressMode, SamplerCreateInfo},
@@ -14,9 +17,8 @@ use vulkano::{
 	},
 	memory::allocator::MemoryTypeFilter,
 	pipeline::{
-		DynamicState, GraphicsPipeline, Pipeline, PipelineLayout,
 		graphics::{
-			self, GraphicsPipelineCreateInfo,
+			self,
 			color_blend::{AttachmentBlend, ColorBlendAttachmentState, ColorBlendState},
 			input_assembly::{InputAssemblyState, PrimitiveTopology},
 			multisample::MultisampleState,
@@ -24,13 +26,15 @@ use vulkano::{
 			subpass::PipelineRenderingCreateInfo,
 			vertex_input::{Vertex, VertexDefinition, VertexInputState},
 			viewport::ViewportState,
+			GraphicsPipelineCreateInfo,
 		},
 		layout::PipelineDescriptorSetLayoutCreateInfo,
+		DynamicState, GraphicsPipeline, Pipeline, PipelineLayout,
 	},
 	shader::{EntryPoint, ShaderModule},
 };
 
-use super::{WGfx, pass::WGfxPass};
+use super::{pass::WGfxPass, WGfx};
 
 pub struct WGfxPipeline<V> {
 	pub graphics: Arc<WGfx>,
@@ -51,16 +55,27 @@ where
 		vert_entry_point: EntryPoint,
 		frag_entry_point: EntryPoint,
 		vertex_input_state: Option<VertexInputState>,
+		updatable_sets: &[usize],
 	) -> anyhow::Result<Self> {
 		let stages = smallvec![
 			vulkano::pipeline::PipelineShaderStageCreateInfo::new(vert_entry_point),
 			vulkano::pipeline::PipelineShaderStageCreateInfo::new(frag_entry_point),
 		];
 
+		let mut layout_info = PipelineDescriptorSetLayoutCreateInfo::from_stages(&stages);
+		for (idx_l, l) in layout_info.set_layouts.iter_mut().enumerate() {
+			if updatable_sets.contains(&idx_l) {
+				// mark all bindings in the set as UAB
+				l.flags |= DescriptorSetLayoutCreateFlags::UPDATE_AFTER_BIND_POOL;
+				for b in l.bindings.values_mut() {
+					b.binding_flags |= DescriptorBindingFlags::UPDATE_AFTER_BIND;
+				}
+			}
+		}
+
 		let layout = PipelineLayout::new(
 			graphics.device.clone(),
-			PipelineDescriptorSetLayoutCreateInfo::from_stages(&stages)
-				.into_pipeline_layout_create_info(graphics.device.clone())?,
+			layout_info.into_pipeline_layout_create_info(graphics.device.clone())?,
 		)?;
 
 		let subpass = PipelineRenderingCreateInfo {
@@ -173,6 +188,46 @@ where
 	}
 }
 
+pub struct WPipelineCreateInfo {
+	format: Format,
+	blend: Option<AttachmentBlend>,
+	topology: PrimitiveTopology,
+	instanced: bool,
+	updatable_sets: SmallVec<[usize; 8]>,
+}
+
+impl WPipelineCreateInfo {
+	pub fn new(format: Format) -> Self {
+		Self {
+			format,
+			blend: None,
+			topology: PrimitiveTopology::TriangleStrip,
+			instanced: false,
+			updatable_sets: smallvec![],
+		}
+	}
+
+	pub fn use_blend(mut self, blend: AttachmentBlend) -> Self {
+		self.blend = Some(blend);
+		self
+	}
+
+	pub fn use_topology(mut self, topology: PrimitiveTopology) -> Self {
+		self.topology = topology;
+		self
+	}
+
+	pub fn use_instanced(mut self) -> Self {
+		self.instanced = true;
+		self
+	}
+
+	pub fn use_updatable_descriptors(mut self, updatable_sets: SmallVec<[usize; 8]>) -> Self {
+		self.updatable_sets = updatable_sets;
+		self
+	}
+}
+
 impl<V> WGfxPipeline<V>
 where
 	V: BufferContents + Vertex,
@@ -181,15 +236,12 @@ where
 		graphics: Arc<WGfx>,
 		vert: &Arc<ShaderModule>,
 		frag: &Arc<ShaderModule>,
-		format: Format,
-		blend: Option<AttachmentBlend>,
-		topology: PrimitiveTopology,
-		instanced: bool,
+		info: WPipelineCreateInfo,
 	) -> anyhow::Result<Self> {
 		let vert_entry_point = vert.entry_point("main").unwrap(); // want panic
 		let frag_entry_point = frag.entry_point("main").unwrap(); // want panic
 
-		let vertex_input_state = Some(if instanced {
+		let vertex_input_state = Some(if info.instanced {
 			V::per_instance().definition(&vert_entry_point)?
 		} else {
 			V::per_vertex().definition(&vert_entry_point)?
@@ -197,12 +249,13 @@ where
 
 		Self::new_from_stages(
 			graphics,
-			format,
-			blend,
-			topology,
+			info.format,
+			info.blend,
+			info.topology,
 			vert_entry_point,
 			frag_entry_point,
 			vertex_input_state,
+			&info.updatable_sets,
 		)
 	}
 

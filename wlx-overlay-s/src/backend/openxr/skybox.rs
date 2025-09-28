@@ -7,22 +7,21 @@ use std::{
 use glam::{Quat, Vec3A};
 use openxr as xr;
 use vulkano::{
-    command_buffer::CommandBufferUsage,
-    image::view::ImageView,
-    pipeline::graphics::{color_blend::AttachmentBlend, input_assembly::PrimitiveTopology},
+    command_buffer::CommandBufferUsage, image::view::ImageView,
+    pipeline::graphics::color_blend::AttachmentBlend,
 };
-use wgui::gfx::cmd::WGfxClearMode;
+use wgui::gfx::{cmd::WGfxClearMode, pipeline::WPipelineCreateInfo};
 
 use crate::{
     backend::openxr::{helpers::translation_rotation_to_posef, swapchain::SwapchainOpts},
     config_io,
-    graphics::{CommandBuffers, ExtentExt, dds::WlxCommandBufferDds},
+    graphics::{dds::WlxCommandBufferDds, CommandBuffers, ExtentExt},
     state::AppState,
 };
 
 use super::{
+    swapchain::{create_swapchain, WlxSwapchain},
     CompositionLayer, XrState,
-    swapchain::{WlxSwapchain, create_swapchain},
 };
 
 pub(super) struct Skybox {
@@ -99,10 +98,7 @@ impl Skybox {
         let pipeline = app.gfx.create_pipeline(
             app.gfx_extras.shaders.get("vert_quad").unwrap(), // want panic
             app.gfx_extras.shaders.get("frag_srgb").unwrap(), // want panic
-            app.gfx.surface_format,
-            None,
-            PrimitiveTopology::TriangleStrip,
-            false,
+            WPipelineCreateInfo::new(app.gfx.surface_format),
         )?;
 
         let set0 = pipeline.uniform_sampler(0, self.view.clone(), app.gfx.texture_filter)?;
@@ -149,10 +145,7 @@ impl Skybox {
         let pipeline = app.gfx.create_pipeline(
             app.gfx_extras.shaders.get("vert_quad").unwrap(), // want panic
             app.gfx_extras.shaders.get("frag_grid").unwrap(), // want panic
-            app.gfx.surface_format,
-            Some(AttachmentBlend::alpha()),
-            PrimitiveTopology::TriangleStrip,
-            false,
+            WPipelineCreateInfo::new(app.gfx.surface_format).use_blend(AttachmentBlend::alpha()),
         )?;
 
         let tgt = swapchain.acquire_wait_image()?;

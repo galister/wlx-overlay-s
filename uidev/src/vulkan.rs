@@ -1,8 +1,8 @@
 use std::sync::{Arc, OnceLock};
 use vulkano::{
 	device::{
-		Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures, Queue, QueueCreateInfo, QueueFlags,
 		physical::{PhysicalDevice, PhysicalDeviceType},
+		Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures, Queue, QueueCreateInfo, QueueFlags,
 	},
 	instance::{Instance, InstanceCreateInfo},
 };

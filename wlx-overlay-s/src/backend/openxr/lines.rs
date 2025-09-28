@@ -4,12 +4,17 @@ use openxr as xr;
 use std::{
     f32::consts::PI,
     sync::{
-        Arc,
         atomic::{AtomicUsize, Ordering},
+        Arc,
     },
 };
 
-use wgui::gfx::{WGfx, cmd::WGfxClearMode, pass::WGfxPass, pipeline::WGfxPipeline};
+use wgui::gfx::{
+    cmd::WGfxClearMode,
+    pass::WGfxPass,
+    pipeline::{WGfxPipeline, WPipelineCreateInfo},
+    WGfx,
+};
 
 use crate::{
     backend::openxr::helpers,
@@ -19,12 +24,11 @@ use crate::{
 use vulkano::{
     buffer::{BufferUsage, Subbuffer},
     command_buffer::CommandBufferUsage,
-    pipeline::graphics::input_assembly::PrimitiveTopology,
 };
 
 use super::{
+    swapchain::{create_swapchain, SwapchainOpts, WlxSwapchain},
     CompositionLayer, XrState,
-    swapchain::{SwapchainOpts, WlxSwapchain, create_swapchain},
 };
 
 static LINE_AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(1);
@@ -53,10 +57,7 @@ impl LinePool {
         let pipeline = app.gfx.create_pipeline(
             app.gfx_extras.shaders.get("vert_quad").unwrap(), // want panic
             app.gfx_extras.shaders.get("frag_color").unwrap(), // want panic
-            app.gfx.surface_format,
-            None,
-            PrimitiveTopology::TriangleStrip,
-            false,
+            WPipelineCreateInfo::new(app.gfx.surface_format),
         )?;
 
         let buf_color = app

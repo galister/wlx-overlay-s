@@ -1,27 +1,32 @@
 use std::{f32::consts::PI, sync::Arc};
 
 use glam::{Affine3A, Vec3};
+use smallvec::smallvec;
 use vulkano::{
     buffer::{BufferUsage, Subbuffer},
     command_buffer::CommandBufferUsage,
     device::Queue,
     format::Format,
-    image::{Image, sampler::Filter, view::ImageView},
-    pipeline::graphics::{color_blend::AttachmentBlend, input_assembly::PrimitiveTopology},
+    image::{sampler::Filter, view::ImageView, Image},
+    pipeline::graphics::color_blend::AttachmentBlend,
 };
-use wgui::gfx::{WGfx, cmd::WGfxClearMode, pass::WGfxPass, pipeline::WGfxPipeline};
+use wgui::gfx::{
+    cmd::WGfxClearMode,
+    pass::WGfxPass,
+    pipeline::{WGfxPipeline, WPipelineCreateInfo},
+    WGfx,
+};
 use wlx_capture::{
-    WlxCapture,
     frame::{self as wlx_frame, DrmFormat, FrameFormat, MouseMeta, Transform, WlxFrame},
+    WlxCapture,
 };
 
 use crate::{
     backend::overlay::FrameMeta,
     config::GeneralConfig,
     graphics::{
-        CommandBuffers, Vert2Uv,
-        dmabuf::{WGfxDmabuf, fourcc_to_vk},
-        upload_quad_vertices,
+        dmabuf::{fourcc_to_vk, WGfxDmabuf},
+        upload_quad_vertices, CommandBuffers, Vert2Uv,
     },
     state::AppState,
 };
@@ -48,10 +53,9 @@ impl ScreenPipeline {
         let pipeline = app.gfx.create_pipeline(
             app.gfx_extras.shaders.get("vert_quad").unwrap(), // want panic
             app.gfx_extras.shaders.get("frag_screen").unwrap(), // want panic
-            app.gfx.surface_format,
-            Some(AttachmentBlend::default()),
-            PrimitiveTopology::TriangleStrip,
-            false,
+            WPipelineCreateInfo::new(app.gfx.surface_format)
+                .use_blend(AttachmentBlend::default())
+                .use_updatable_descriptors(smallvec![0]),
         )?;
 
         let buf_alpha = app

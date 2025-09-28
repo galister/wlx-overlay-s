@@ -7,28 +7,29 @@ use std::{marker::PhantomData, slice::Iter, sync::Arc};
 use cmd::{GfxCommandBuffer, XferCommandBuffer};
 use pipeline::WGfxPipeline;
 use vulkano::{
-	DeviceSize,
 	buffer::{Buffer, BufferContents, BufferCreateInfo, BufferUsage, IndexBuffer, Subbuffer},
 	command_buffer::{
-		AutoCommandBufferBuilder, CommandBufferUsage,
 		allocator::{StandardCommandBufferAllocator, StandardCommandBufferAllocatorCreateInfo},
+		AutoCommandBufferBuilder, CommandBufferUsage,
 	},
 	descriptor_set::allocator::{StandardDescriptorSetAllocator, StandardDescriptorSetAllocatorCreateInfo},
 	device::{Device, Queue},
 	format::Format,
-	image::{Image, ImageCreateInfo, ImageType, ImageUsage, sampler::Filter},
+	image::{sampler::Filter, Image, ImageCreateInfo, ImageType, ImageUsage},
 	instance::Instance,
 	memory::{
-		MemoryPropertyFlags,
 		allocator::{AllocationCreateInfo, GenericMemoryAllocatorCreateInfo, MemoryTypeFilter, StandardMemoryAllocator},
+		MemoryPropertyFlags,
 	},
 	pipeline::graphics::{
 		color_blend::{AttachmentBlend, BlendFactor, BlendOp},
-		input_assembly::PrimitiveTopology,
 		vertex_input::Vertex,
 	},
 	shader::ShaderModule,
+	DeviceSize,
 };
+
+use crate::gfx::pipeline::WPipelineCreateInfo;
 
 pub const BLEND_ALPHA: AttachmentBlend = AttachmentBlend {
 	src_color_blend_factor: BlendFactor::SrcAlpha,
@@ -90,7 +91,10 @@ impl WGfx {
 		));
 		let descriptor_set_allocator = Arc::new(StandardDescriptorSetAllocator::new(
 			device.clone(),
-			StandardDescriptorSetAllocatorCreateInfo::default(),
+			StandardDescriptorSetAllocatorCreateInfo {
+				update_after_bind: true,
+				..Default::default()
+			},
 		));
 
 		let quality_filter = if device.enabled_extensions().img_filter_cubic {
@@ -166,10 +170,7 @@ impl WGfx {
 		self: &Arc<Self>,
 		vert: &Arc<ShaderModule>,
 		frag: &Arc<ShaderModule>,
-		format: Format,
-		blend: Option<AttachmentBlend>,
-		topology: PrimitiveTopology,
-		instanced: bool,
+		info: WPipelineCreateInfo,
 	) -> anyhow::Result<Arc<WGfxPipeline<V>>>
 	where
 		V: BufferContents + Vertex,
@@ -178,10 +179,7 @@ impl WGfx {
 			self.clone(),
 			vert,
 			frag,
-			format,
-			blend,
-			topology,
-			instanced,
+			info,
 		)?))
 	}
 

@@ -1,5 +1,5 @@
 use cosmic_text::{FontSystem, SwashCache};
-use etagere::{Allocation, BucketedAtlasAllocator, size2};
+use etagere::{size2, Allocation, BucketedAtlasAllocator};
 use lru::LruCache;
 use rustc_hash::FxHasher;
 use std::{collections::HashSet, hash::BuildHasherDefault, sync::Arc};
@@ -8,18 +8,21 @@ use vulkano::{
 	command_buffer::CommandBufferUsage,
 	descriptor_set::DescriptorSet,
 	format::Format,
-	image::{Image, ImageCreateInfo, ImageType, ImageUsage, view::ImageView},
+	image::{view::ImageView, Image, ImageCreateInfo, ImageType, ImageUsage},
 	memory::allocator::AllocationCreateInfo,
-	pipeline::graphics::{input_assembly::PrimitiveTopology, vertex_input::Vertex},
+	pipeline::graphics::vertex_input::Vertex,
 };
 
 use super::{
-	GlyphDetails, GpuCacheStatus,
 	custom_glyph::ContentType,
 	shaders::{frag_atlas, vert_atlas},
 	text_renderer::GlyphonCacheKey,
+	GlyphDetails, GpuCacheStatus,
 };
-use crate::gfx::{BLEND_ALPHA, WGfx, pipeline::WGfxPipeline};
+use crate::gfx::{
+	pipeline::{WGfxPipeline, WPipelineCreateInfo},
+	WGfx, BLEND_ALPHA,
+};
 
 /// Pipeline & shaders to be reused between `TextRenderer` instances
 #[derive(Clone)]
@@ -36,10 +39,7 @@ impl TextPipeline {
 		let pipeline = gfx.create_pipeline::<GlyphVertex>(
 			&vert,
 			&frag,
-			format,
-			Some(BLEND_ALPHA),
-			PrimitiveTopology::TriangleStrip,
-			true,
+			WPipelineCreateInfo::new(format).use_blend(BLEND_ALPHA).use_instanced(),
 		)?;
 
 		Ok(Self { gfx, inner: pipeline })

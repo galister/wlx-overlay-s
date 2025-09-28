@@ -4,12 +4,17 @@ use glam::Mat4;
 use vulkano::{
 	buffer::{BufferContents, BufferUsage, Subbuffer},
 	format::Format,
-	pipeline::graphics::{self, input_assembly::PrimitiveTopology, vertex_input::Vertex},
+	pipeline::graphics::{self, vertex_input::Vertex},
 };
 
 use crate::{
 	drawing::{Boundary, Rectangle},
-	gfx::{BLEND_ALPHA, WGfx, cmd::GfxCommandBuffer, pass::WGfxPass, pipeline::WGfxPipeline},
+	gfx::{
+		cmd::GfxCommandBuffer,
+		pass::WGfxPass,
+		pipeline::{WGfxPipeline, WPipelineCreateInfo},
+		WGfx, BLEND_ALPHA,
+	},
 	renderer_vk::model_buffer::ModelBuffer,
 };
 
@@ -47,10 +52,7 @@ impl RectPipeline {
 		let color_rect = gfx.create_pipeline::<RectVertex>(
 			&vert,
 			&frag,
-			format,
-			Some(BLEND_ALPHA),
-			PrimitiveTopology::TriangleStrip,
-			true,
+			WPipelineCreateInfo::new(format).use_blend(BLEND_ALPHA).use_instanced(),
 		)?;
 
 		Ok(Self { gfx, color_rect })
