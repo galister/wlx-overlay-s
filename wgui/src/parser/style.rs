@@ -78,6 +78,25 @@ pub fn parse_text_style(attribs: &[AttribPair]) -> TextStyle {
 					print_invalid_attrib(key, value);
 				}
 			}
+			"shadow" => {
+				if let Some(color) = parse_color_hex(value) {
+					style.shadow.get_or_insert_default().color = color;
+				}
+			}
+			"shadow_x" => {
+				if let Ok(x) = value.parse::<f32>() {
+					style.shadow.get_or_insert_default().x = x;
+				} else {
+					print_invalid_attrib(key, value);
+				}
+			}
+			"shadow_y" => {
+				if let Ok(y) = value.parse::<f32>() {
+					style.shadow.get_or_insert_default().y = y;
+				} else {
+					print_invalid_attrib(key, value);
+				}
+			}
 			_ => {}
 		}
 	}

@@ -376,16 +376,13 @@ fn battery_on_tick(
     app: &AppState,
 ) {
     let device = app.input_state.devices.get(state.device);
-
-    let tags = ["", "H", "L", "R", "T"];
-
     let label = data.obj.get_as_mut::<WidgetLabel>().unwrap();
 
     if let Some(device) = device
         && let Some(soc) = device.soc
     {
         let soc = (soc * 100.).min(99.) as u32;
-        let text = format!("{}{}", tags[device.role as usize], soc);
+        let text = soc.to_string();
         let color = if device.charging {
             state.charging_color
         } else if soc < state.low_threshold {

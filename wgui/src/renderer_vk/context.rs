@@ -2,20 +2,20 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use cosmic_text::Buffer;
 use glam::{Mat4, Vec2, Vec3};
-use slotmap::{SlotMap, new_key_type};
+use slotmap::{new_key_type, SlotMap};
 use vulkano::pipeline::graphics::viewport;
 
 use crate::{
 	drawing::{self},
-	gfx::{WGfx, cmd::GfxCommandBuffer},
+	gfx::{cmd::GfxCommandBuffer, WGfx},
 };
 
 use super::{
 	rect::{RectPipeline, RectRenderer},
 	text::{
-		DEFAULT_METRICS, FONT_SYSTEM, SWASH_CACHE, TextArea, TextBounds,
 		text_atlas::{TextAtlas, TextPipeline},
 		text_renderer::TextRenderer,
+		TextArea, TextBounds, DEFAULT_METRICS, FONT_SYSTEM, SWASH_CACHE,
 	},
 	viewport::Viewport,
 };
@@ -248,7 +248,20 @@ impl Context {
 						.rect_renderer
 						.add_rect(extent.boundary, *rectangle, &extent.transform);
 				}
-				drawing::RenderPrimitive::Text(extent, text) => {
+				drawing::RenderPrimitive::Text(extent, text, shadow) => {
+					if let Some(shadow) = shadow {
+						pass.text_areas.push(TextArea {
+							buffer: text.clone(),
+							left: (extent.boundary.pos.x + shadow.x) * self.pixel_scale,
+							top: (extent.boundary.pos.y + shadow.y) * self.pixel_scale,
+							bounds: TextBounds::default(), //FIXME: just using boundary coords here doesn't work
+							scale: self.pixel_scale,
+							default_color: cosmic_text::Color::rgb(0, 0, 0),
+							override_color: Some(shadow.color.into()),
+							custom_glyphs: &[],
+							transform: extent.transform,
+						});
+					}
 					pass.text_areas.push(TextArea {
 						buffer: text.clone(),
 						left: extent.boundary.pos.x * self.pixel_scale,
@@ -256,6 +269,7 @@ impl Context {
 						bounds: TextBounds::default(), //FIXME: just using boundary coords here doesn't work
 						scale: self.pixel_scale,
 						default_color: cosmic_text::Color::rgb(0, 0, 0),
+						override_color: None,
 						custom_glyphs: &[],
 						transform: extent.transform,
 					});
@@ -269,6 +283,7 @@ impl Context {
 						scale: self.pixel_scale,
 						custom_glyphs: sprites.as_slice(),
 						default_color: cosmic_text::Color::rgb(255, 0, 255),
+						override_color: None,
 						transform: extent.transform,
 					});
 				}

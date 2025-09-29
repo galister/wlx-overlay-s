@@ -25,6 +25,23 @@ const DEFAULT_LINE_HEIGHT_RATIO: f32 = 1.43;
 pub(crate) const DEFAULT_METRICS: Metrics =
 	Metrics::new(DEFAULT_FONT_SIZE, DEFAULT_FONT_SIZE * DEFAULT_LINE_HEIGHT_RATIO);
 
+#[derive(Clone)]
+pub struct TextShadow {
+	pub y: f32,
+	pub x: f32,
+	pub color: drawing::Color,
+}
+
+impl Default for TextShadow {
+	fn default() -> Self {
+		Self {
+			y: 1.5,
+			x: 1.5,
+			color: drawing::Color::default(),
+		}
+	}
+}
+
 #[derive(Default, Clone)]
 pub struct TextStyle {
 	pub size: Option<f32>,
@@ -34,6 +51,7 @@ pub struct TextStyle {
 	pub weight: Option<FontWeight>,
 	pub align: Option<HorizontalAlign>,
 	pub wrap: bool,
+	pub shadow: Option<TextShadow>,
 }
 
 impl From<&TextStyle> for Attrs<'_> {
@@ -60,7 +78,11 @@ impl From<&TextStyle> for Metrics {
 
 impl From<&TextStyle> for Wrap {
 	fn from(value: &TextStyle) -> Self {
-		if value.wrap { Self::WordOrGlyph } else { Self::None }
+		if value.wrap {
+			Self::WordOrGlyph
+		} else {
+			Self::None
+		}
 	}
 }
 
@@ -199,6 +221,8 @@ pub struct TextArea<'a> {
 	pub bounds: TextBounds,
 	/// The default color of the text area.
 	pub default_color: Color,
+	/// Override text color. Used for shadow.
+	pub override_color: Option<Color>,
 	/// Additional custom glyphs to render.
 	pub custom_glyphs: &'a [CustomGlyph],
 	/// Text transformation

@@ -7,7 +7,7 @@ use taffy::TraversePartialTree;
 use crate::{
 	drawing,
 	layout::Widget,
-	renderer_vk::text::custom_glyph::CustomGlyph,
+	renderer_vk::text::{custom_glyph::CustomGlyph, TextShadow},
 	stack::{self, ScissorStack, TransformStack},
 	widget::{self},
 };
@@ -135,7 +135,7 @@ pub struct PrimitiveExtent {
 
 pub enum RenderPrimitive {
 	Rectangle(PrimitiveExtent, Rectangle),
-	Text(PrimitiveExtent, Rc<RefCell<Buffer>>),
+	Text(PrimitiveExtent, Rc<RefCell<Buffer>>, Option<TextShadow>),
 	Sprite(PrimitiveExtent, Option<CustomGlyph>), //option because we want as_slice
 	ScissorEnable(Boundary),
 	ScissorDisable,

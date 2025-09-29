@@ -1,6 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 
-use glam::{Mat4, Vec2, Vec3, vec2, vec3a};
+use glam::{vec2, vec3a, Mat4, Vec2, Vec3};
 use wgui::{
     animation::{Animation, AnimationEasing},
     drawing::Color,
@@ -20,13 +20,13 @@ use crate::{
     backend::overlay::{OverlayData, OverlayState, Positioning},
     gui::panel::GuiPanel,
     state::AppState,
-    subsystem::hid::{ALT, CTRL, META, SHIFT, SUPER, XkbKeymap},
+    subsystem::hid::{XkbKeymap, ALT, CTRL, META, SHIFT, SUPER},
 };
 
 use super::{
-    KEYBOARD_NAME, KeyButtonData, KeyState, KeyboardBackend, KeyboardState, handle_press,
-    handle_release,
+    handle_press, handle_release,
     layout::{self, AltModifier, KeyCapType},
+    KeyButtonData, KeyState, KeyboardBackend, KeyboardState, KEYBOARD_NAME,
 };
 
 const BACKGROUND_PADDING: f32 = 4.;

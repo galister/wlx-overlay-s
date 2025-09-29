@@ -4,9 +4,9 @@ use crate::{
 };
 
 use super::{
-	ContentType, FontSystem, GlyphDetails, GpuCacheStatus, SwashCache, TextArea,
 	custom_glyph::{CustomGlyphCacheKey, RasterizeCustomGlyphRequest, RasterizedCustomGlyph},
 	text_atlas::{GlyphVertex, TextAtlas, TextPipeline},
+	ContentType, FontSystem, GlyphDetails, GpuCacheStatus, SwashCache, TextArea,
 };
 use cosmic_text::{Color, SubpixelBin, SwashContent};
 use glam::{Mat4, Vec2, Vec3};
@@ -96,7 +96,10 @@ impl TextRenderer {
 					y_bin,
 				});
 
-				let color = glyph.color.unwrap_or(text_area.default_color);
+				let color = text_area
+					.override_color
+					.or(glyph.color)
+					.unwrap_or(text_area.default_color);
 
 				if let Some(glyph_to_render) = prepare_glyph(
 					&mut PrepareGlyphParams {
@@ -168,10 +171,10 @@ impl TextRenderer {
 				for glyph in run.glyphs {
 					let physical_glyph = glyph.physical((text_area.left, text_area.top), text_area.scale);
 
-					let color = match glyph.color_opt {
-						Some(some) => some,
-						None => text_area.default_color,
-					};
+					let color = text_area
+						.override_color
+						.or(glyph.color_opt)
+						.unwrap_or(text_area.default_color);
 
 					if let Some(glyph_to_render) = prepare_glyph(
 						&mut PrepareGlyphParams {

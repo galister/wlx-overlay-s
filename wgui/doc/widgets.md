@@ -100,6 +100,16 @@ _Text size in pixel units_
 
 `weight`: "normal" | "bold"
 
+`shadow`: #112233 | #112233CC (default: None)
+
+`shadow_x`: **float** (default: 1.5)
+
+_Horizontal offset of the shadow from the original text. Positive is right._
+
+`shadow_y`: **float** (default: 1.5)
+
+_Vertical offset of the shadow from the original text. Positive is down._
+
 ---
 
 ## rectangle widget
