@@ -2,20 +2,20 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use cosmic_text::Buffer;
 use glam::{Mat4, Vec2, Vec3};
-use slotmap::{new_key_type, SlotMap};
+use slotmap::{SlotMap, new_key_type};
 use vulkano::pipeline::graphics::viewport;
 
 use crate::{
 	drawing::{self},
-	gfx::{cmd::GfxCommandBuffer, WGfx},
+	gfx::{WGfx, cmd::GfxCommandBuffer},
 };
 
 use super::{
 	rect::{RectPipeline, RectRenderer},
 	text::{
+		DEFAULT_METRICS, FONT_SYSTEM, SWASH_CACHE, TextArea, TextBounds,
 		text_atlas::{TextAtlas, TextPipeline},
 		text_renderer::TextRenderer,
-		TextArea, TextBounds, DEFAULT_METRICS, FONT_SYSTEM, SWASH_CACHE,
 	},
 	viewport::Viewport,
 };
@@ -287,12 +287,8 @@ impl Context {
 						transform: extent.transform,
 					});
 				}
-				drawing::RenderPrimitive::ScissorEnable(boundary) => {
-					next_scissor = Some(*boundary);
-					needs_new_pass = true;
-				}
-				drawing::RenderPrimitive::ScissorDisable => {
-					next_scissor = None;
+				drawing::RenderPrimitive::ScissorSet(boundary) => {
+					next_scissor = Some(boundary.0);
 					needs_new_pass = true;
 				}
 			}

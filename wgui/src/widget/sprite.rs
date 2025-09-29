@@ -7,8 +7,8 @@ use crate::{
 	drawing::{self, PrimitiveExtent},
 	layout::WidgetID,
 	renderer_vk::text::{
-		custom_glyph::{CustomGlyph, CustomGlyphData},
 		DEFAULT_METRICS, FONT_SYSTEM,
+		custom_glyph::{CustomGlyph, CustomGlyphData},
 	},
 };
 
@@ -37,7 +37,7 @@ impl WidgetSprite {
 
 impl WidgetObj for WidgetSprite {
 	fn draw(&mut self, state: &mut super::DrawState, _params: &super::DrawParams) {
-		let boundary = drawing::Boundary::construct(state.transform_stack);
+		let boundary = drawing::Boundary::construct_relative(state.transform_stack);
 
 		if let Some(glyph_data) = self.params.glyph_data.as_ref() {
 			let glyph = CustomGlyph {

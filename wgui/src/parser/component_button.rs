@@ -1,12 +1,11 @@
 use crate::{
-	components::{button, Component},
+	components::{Component, button},
 	drawing::Color,
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		parse_children, process_component,
+		AttribPair, ParserContext, ParserFile, parse_children, process_component,
 		style::{parse_color_opt, parse_round, parse_style, parse_text_style},
-		AttribPair, ParserContext, ParserFile,
 	},
 	widget::util::WLength,
 };
@@ -30,27 +29,27 @@ pub fn parse_component_button<'a, U1, U2>(
 
 	for pair in attribs {
 		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
-		match key.as_ref() {
+		match key {
 			"text" => {
-				translation = Some(Translation::from_raw_text(&value));
+				translation = Some(Translation::from_raw_text(value));
 			}
 			"translation" => {
-				translation = Some(Translation::from_translation_key(&value));
+				translation = Some(Translation::from_translation_key(value));
 			}
 			"round" => {
-				parse_round(&value, &mut round);
+				parse_round(value, &mut round);
 			}
 			"color" => {
-				parse_color_opt(&value, &mut color);
+				parse_color_opt(value, &mut color);
 			}
 			"border_color" => {
-				parse_color_opt(&value, &mut border_color);
+				parse_color_opt(value, &mut border_color);
 			}
 			"hover_color" => {
-				parse_color_opt(&value, &mut hover_color);
+				parse_color_opt(value, &mut hover_color);
 			}
 			"hover_border_color" => {
-				parse_color_opt(&value, &mut hover_border_color);
+				parse_color_opt(value, &mut hover_border_color);
 			}
 			_ => {}
 		}
@@ -58,7 +57,7 @@ pub fn parse_component_button<'a, U1, U2>(
 
 	let globals = ctx.layout.state.globals.clone();
 
-	let (new_id, component) = button::construct(
+	let (widget, component) = button::construct(
 		&mut globals.get(),
 		ctx.layout,
 		ctx.listeners,
@@ -75,8 +74,8 @@ pub fn parse_component_button<'a, U1, U2>(
 		},
 	)?;
 
-	process_component(ctx, Component(component), new_id, attribs);
-	parse_children(file, ctx, node, new_id)?;
+	process_component(ctx, Component(component), widget.id, attribs);
+	parse_children(file, ctx, node, widget.id)?;
 
-	Ok(new_id)
+	Ok(widget.id)
 }

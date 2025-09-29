@@ -10,7 +10,7 @@ use crate::{
 	animation::{self, Animation},
 	i18n::I18n,
 	layout::{LayoutState, WidgetID},
-	stack::{Transform, TransformStack},
+	stack::{ScissorStack, Transform, TransformStack},
 	widget::{WidgetData, WidgetObj},
 };
 
@@ -74,10 +74,10 @@ pub enum Event {
 
 impl Event {
 	fn test_transform_pos(transform: &Transform, pos: Vec2) -> bool {
-		pos.x >= transform.pos.x
-			&& pos.x < transform.pos.x + transform.dim.x
-			&& pos.y >= transform.pos.y
-			&& pos.y < transform.pos.y + transform.dim.y
+		pos.x >= transform.abs_pos.x
+			&& pos.x < transform.abs_pos.x + transform.dim.x
+			&& pos.y >= transform.abs_pos.y
+			&& pos.y < transform.abs_pos.y + transform.dim.y
 	}
 
 	pub fn test_mouse_within_transform(&self, transform: &Transform) -> bool {
@@ -97,6 +97,7 @@ pub struct EventAlterables {
 	pub style_set_requests: Vec<(taffy::NodeId, taffy::Style)>,
 	pub animations: Vec<animation::Animation>,
 	pub transform_stack: TransformStack,
+	pub scissor_stack: ScissorStack,
 	pub needs_redraw: bool,
 	pub trigger_haptics: bool,
 }
@@ -170,7 +171,7 @@ impl CallbackMetadata {
 
 	pub fn get_mouse_pos_relative(&self, transform_stack: &TransformStack) -> Option<Vec2> {
 		let mouse_pos_abs = self.get_mouse_pos_absolute()?;
-		Some(mouse_pos_abs - transform_stack.get().pos)
+		Some(mouse_pos_abs - transform_stack.get().abs_pos)
 	}
 }
 

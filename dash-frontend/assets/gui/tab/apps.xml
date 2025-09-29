@@ -36,6 +36,7 @@
       flex_wrap="wrap"
       justify_content="stretch"
       gap="4"
+      overflow_y="scroll"
     />
   </elements>
 </layout>

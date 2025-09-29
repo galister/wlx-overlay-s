@@ -36,7 +36,7 @@ impl WidgetRectangle {
 
 impl WidgetObj for WidgetRectangle {
 	fn draw(&mut self, state: &mut super::DrawState, _params: &super::DrawParams) {
-		let boundary = drawing::Boundary::construct(state.transform_stack);
+		let boundary = drawing::Boundary::construct_relative(state.transform_stack);
 
 		let round_units = match self.params.round {
 			WLength::Units(units) => units as u8,

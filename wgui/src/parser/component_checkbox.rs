@@ -1,11 +1,11 @@
 use crate::{
-	components::{checkbox, Component},
+	components::{Component, checkbox},
 	i18n::Translation,
 	layout::WidgetID,
-	parser::{parse_check_f32, parse_check_i32, process_component, style::parse_style, AttribPair, ParserContext},
+	parser::{AttribPair, ParserContext, parse_check_f32, parse_check_i32, process_component, style::parse_style},
 };
 
-pub fn parse_component_checkbox<'a, U1, U2>(
+pub fn parse_component_checkbox<U1, U2>(
 	ctx: &mut ParserContext<U1, U2>,
 	parent_id: WidgetID,
 	attribs: &[AttribPair],
@@ -35,7 +35,7 @@ pub fn parse_component_checkbox<'a, U1, U2>(
 		}
 	}
 
-	let (new_id, component) = checkbox::construct(
+	let (widget, component) = checkbox::construct(
 		ctx.layout,
 		ctx.listeners,
 		parent_id,
@@ -47,7 +47,7 @@ pub fn parse_component_checkbox<'a, U1, U2>(
 		},
 	)?;
 
-	process_component(ctx, Component(component), new_id, attribs);
+	process_component(ctx, Component(component), widget.id, attribs);
 
-	Ok(new_id)
+	Ok(widget.id)
 }

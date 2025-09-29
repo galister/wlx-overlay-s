@@ -1,6 +1,7 @@
-use glam::{FloatExt, Vec2};
+use glam::FloatExt;
 
 use crate::{
+	drawing::Boundary,
 	event::{CallbackDataCommon, EventAlterables},
 	layout::{LayoutState, WidgetID},
 	widget::{WidgetData, WidgetObj},
@@ -46,7 +47,7 @@ pub struct CallbackData<'a> {
 	pub obj: &'a mut dyn WidgetObj,
 	pub data: &'a mut WidgetData,
 	pub widget_id: WidgetID,
-	pub widget_size: Vec2,
+	pub widget_boundary: Boundary,
 	pub pos: f32, // 0.0 (start of animation) - 1.0 (end of animation)
 }
 
@@ -98,14 +99,13 @@ impl Animation {
 		};
 
 		let widget_node = *state.nodes.get(self.target_widget).unwrap();
-		let layout = state.tree.layout(widget_node).unwrap(); // should always succeed
 
 		let mut widget_state = widget.state();
 		let (data, obj) = widget_state.get_data_obj_mut();
 
 		let data = &mut CallbackData {
 			widget_id: self.target_widget,
-			widget_size: Vec2::new(layout.size.width, layout.size.height),
+			widget_boundary: state.get_widget_boundary(widget_node),
 			obj,
 			data,
 			pos,

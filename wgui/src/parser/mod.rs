@@ -530,9 +530,9 @@ fn parse_widget_other_internal<U1, U2>(
 	Ok(())
 }
 
-fn parse_widget_other<'a, U1, U2>(
+fn parse_widget_other<U1, U2>(
 	xml_tag_name: &str,
-	file: &'a ParserFile,
+	file: &ParserFile,
 	ctx: &mut ParserContext<U1, U2>,
 	parent_id: WidgetID,
 	attribs: &[AttribPair],
@@ -548,7 +548,7 @@ fn parse_widget_other<'a, U1, U2>(
 	parse_widget_other_internal(&template, template_parameters, file, ctx, parent_id)
 }
 
-fn parse_tag_include<'a, U1, U2>(
+fn parse_tag_include<U1, U2>(
 	file: &ParserFile,
 	ctx: &mut ParserContext<U1, U2>,
 	parent_id: WidgetID,
@@ -641,7 +641,7 @@ fn process_attrib<'a, U1, U2>(
 		let name = &value[1..];
 
 		match ctx.get_var(name) {
-			Some(name) => AttribPair::new(key, name.clone()),
+			Some(name) => AttribPair::new(key, name),
 			None => AttribPair::new(key, "undefined"),
 		}
 	} else {
@@ -655,7 +655,7 @@ fn raw_attribs<'a>(node: &'a roxmltree::Node<'a, 'a>) -> Vec<AttribPair> {
 		let (key, value) = (attrib.name(), attrib.value());
 		res.push(AttribPair::new(key, value));
 	}
-	return res;
+	res
 }
 
 fn process_attribs<'a, U1, U2>(
@@ -761,7 +761,7 @@ fn parse_tag_macro<U1, U2>(file: &ParserFile, ctx: &mut ParserContext<U1, U2>, n
 	ctx.insert_macro_attrib(name, MacroAttribs { attribs: macro_attribs });
 }
 
-fn process_component<'a, U1, U2>(
+fn process_component<U1, U2>(
 	ctx: &mut ParserContext<U1, U2>,
 	component: Component,
 	widget_id: WidgetID,
@@ -782,7 +782,7 @@ fn process_component<'a, U1, U2>(
 	ctx.insert_component(widget_id, component, component_id);
 }
 
-fn parse_widget_universal<'a, U1, U2>(ctx: &mut ParserContext<U1, U2>, widget_id: WidgetID, attribs: &[AttribPair]) {
+fn parse_widget_universal<U1, U2>(ctx: &mut ParserContext<U1, U2>, widget_id: WidgetID, attribs: &[AttribPair]) {
 	for pair in attribs {
 		#[allow(clippy::single_match)]
 		match pair.attrib.as_ref() {
@@ -957,7 +957,7 @@ impl CustomAttribsInfo<'_> {
 		CustomAttribsInfoOwned {
 			parent_id: self.parent_id,
 			widget_id: self.widget_id,
-			pairs: self.pairs.iter().cloned().collect(),
+			pairs: self.pairs.to_vec(),
 		}
 	}
 }

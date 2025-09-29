@@ -1,10 +1,9 @@
 use std::{collections::HashMap, rc::Rc};
 
 use wgui::{
-	components::{self, button::ComponentButton},
+	components::button::ComponentButton,
 	layout::WidgetPair,
 	parser::{Fetchable, ParseDocumentParams, ParserData, ParserState},
-	taffy::{self, Dimension, prelude::length},
 };
 
 use crate::{
@@ -16,7 +15,9 @@ pub struct TabApps {
 	#[allow(dead_code)]
 	pub state: ParserState,
 
+	#[allow(dead_code)]
 	entries: Vec<DesktopEntry>,
+	#[allow(dead_code)]
 	app_list: AppList,
 }
 
@@ -105,7 +106,7 @@ impl AppList {
 		)?;
 
 		let button = data.fetch_component_as::<ComponentButton>("button")?;
-		button.on_click(Box::new(move |common, evt| {
+		button.on_click(Box::new(move |_common, _evt| {
 			log::info!("click");
 			Ok(())
 		}));

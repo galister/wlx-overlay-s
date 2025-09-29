@@ -1,21 +1,25 @@
-use std::{cell::RefCell, rc::Rc};
-use taffy::{AlignItems, JustifyContent};
-
 use crate::{
 	animation::{Animation, AnimationEasing},
 	components::{Component, ComponentBase, ComponentTrait, InitData},
-	drawing::{self, Color},
+	drawing::{self, Boundary, Color},
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerKind, ListenerHandleVec},
 	globals::Globals,
 	i18n::Translation,
-	layout::{Layout, WidgetID},
-	renderer_vk::text::{FontWeight, TextStyle},
+	layout::{Layout, WidgetID, WidgetPair},
+	renderer_vk::{
+		text::{FontWeight, TextStyle},
+		util::centered_matrix,
+	},
 	widget::{
+		WidgetData,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
 	},
 };
+use glam::{Mat4, Vec3};
+use std::{cell::RefCell, rc::Rc};
+use taffy::{AlignItems, JustifyContent};
 
 pub struct Params {
 	pub text: Option<Translation>, // if unset, label will not be populated
@@ -93,9 +97,21 @@ fn get_color2(color: &drawing::Color) -> drawing::Color {
 	color.lerp(&Color::new(0.0, 0.0, 0.0, color.a), 0.2)
 }
 
-fn anim_hover(rect: &mut WidgetRectangle, data: &Data, pos: f32, pressed: bool) {
+fn anim_hover(
+	rect: &mut WidgetRectangle,
+	widget_data: &mut WidgetData,
+	data: &Data,
+	widget_boundary: Boundary,
+	pos: f32,
+	pressed: bool,
+) {
 	let mult = pos * if pressed { 1.5 } else { 1.0 };
 	let bgcolor = data.initial_color.lerp(&data.initial_hover_color, mult);
+
+	//let t = Mat4::from_scale(Vec3::splat(1.0 + pos * 0.5)) * Mat4::from_rotation_z(pos * 1.0);
+
+	let t = Mat4::from_scale(Vec3::splat(1.0 + pos * 0.05));
+	widget_data.transform = centered_matrix(widget_boundary.size, &t);
 
 	rect.params.color = bgcolor;
 	rect.params.color2 = get_color2(&bgcolor);
@@ -103,14 +119,21 @@ fn anim_hover(rect: &mut WidgetRectangle, data: &Data, pos: f32, pressed: bool) 
 	rect.params.border = 2.0;
 }
 
-fn anim_hover_out(data: Rc<Data>, state: Rc<RefCell<State>>, widget_id: WidgetID) -> Animation {
+fn anim_hover_create(data: Rc<Data>, state: Rc<RefCell<State>>, widget_id: WidgetID, fade_in: bool) -> Animation {
 	Animation::new(
 		widget_id,
-		15,
+		if fade_in { 5 } else { 10 },
 		AnimationEasing::OutCubic,
 		Box::new(move |common, anim_data| {
 			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
-			anim_hover(rect, &data, 1.0 - anim_data.pos, state.borrow().down);
+			anim_hover(
+				rect,
+				anim_data.data,
+				&data,
+				anim_data.widget_boundary,
+				if fade_in { anim_data.pos } else { 1.0 - anim_data.pos },
+				state.borrow().down,
+			);
 			common.alterables.mark_redraw();
 		}),
 	)
@@ -129,10 +152,13 @@ fn register_event_mouse_enter<U1, U2>(
 		Box::new(move |common, event_data, _, _| {
 			common.alterables.trigger_haptics();
 			common.alterables.mark_redraw();
-			let rect = event_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
-			let mut state = state.borrow_mut();
-			anim_hover(rect, &data, 1.0, state.down);
-			state.hovered = true;
+			common.alterables.animate(anim_hover_create(
+				data.clone(),
+				state.clone(),
+				event_data.widget_id,
+				true,
+			));
+			state.borrow_mut().hovered = true;
 			Ok(())
 		}),
 	);
@@ -150,9 +176,12 @@ fn register_event_mouse_leave<U1, U2>(
 		EventListenerKind::MouseLeave,
 		Box::new(move |common, event_data, _, _| {
 			common.alterables.trigger_haptics();
-			common
-				.alterables
-				.animate(anim_hover_out(data.clone(), state.clone(), event_data.widget_id));
+			common.alterables.animate(anim_hover_create(
+				data.clone(),
+				state.clone(),
+				event_data.widget_id,
+				false,
+			));
 			state.borrow_mut().hovered = false;
 			Ok(())
 		}),
@@ -173,7 +202,14 @@ fn register_event_mouse_press<U1, U2>(
 			let mut state = state.borrow_mut();
 
 			let rect = event_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
-			anim_hover(rect, &data, 1.0, true);
+			anim_hover(
+				rect,
+				event_data.widget_data,
+				&data,
+				common.state.get_widget_boundary(event_data.node_id),
+				1.0,
+				true,
+			);
 
 			if state.hovered {
 				state.down = true;
@@ -199,7 +235,14 @@ fn register_event_mouse_release<U1, U2>(
 		EventListenerKind::MouseRelease,
 		Box::new(move |common, event_data, _, _| {
 			let rect = event_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
-			anim_hover(rect, &data, 1.0, false);
+			anim_hover(
+				rect,
+				event_data.widget_data,
+				&data,
+				common.state.get_widget_boundary(event_data.node_id),
+				1.0,
+				false,
+			);
 
 			let mut state = state.borrow_mut();
 			if state.down {
@@ -226,7 +269,7 @@ pub fn construct<U1, U2>(
 	listeners: &mut EventListenerCollection<U1, U2>,
 	parent: WidgetID,
 	params: Params,
-) -> anyhow::Result<(WidgetID, Rc<ComponentButton>)> {
+) -> anyhow::Result<(WidgetPair, Rc<ComponentButton>)> {
 	let mut style = params.style;
 
 	// force-override style
@@ -260,7 +303,7 @@ pub fn construct<U1, U2>(
 		Color::new(color.r + 0.5, color.g + 0.5, color.g + 0.5, color.a + 0.5)
 	};
 
-	let (id_root, _) = layout.add_child(
+	let (root, _) = layout.add_child(
 		parent,
 		WidgetRectangle::create(WidgetRectangleParams {
 			color,
@@ -272,12 +315,13 @@ pub fn construct<U1, U2>(
 		}),
 		style,
 	)?;
-	let id_rect = id_root;
+
+	let id_rect = root.id;
 
 	let light_text = (color.r + color.g + color.b) < 1.5;
 
 	let id_label = if let Some(content) = params.text {
-		let (id_label, _node_label) = layout.add_child(
+		let (label, _node_label) = layout.add_child(
 			id_rect,
 			WidgetLabel::create(
 				globals,
@@ -296,7 +340,7 @@ pub fn construct<U1, U2>(
 			),
 			Default::default(),
 		)?;
-		id_label
+		label.id
 	} else {
 		WidgetID::default()
 	};
@@ -326,5 +370,5 @@ pub fn construct<U1, U2>(
 	let button = Rc::new(ComponentButton { base, data, state });
 
 	layout.defer_component_init(Component(button.clone()));
-	Ok((id_root, button))
+	Ok((root, button))
 }

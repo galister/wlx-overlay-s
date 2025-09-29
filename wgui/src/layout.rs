@@ -1,21 +1,22 @@
 use std::{
 	cell::{RefCell, RefMut},
 	collections::VecDeque,
-	rc::Rc,
+	rc::{Rc, Weak},
 };
 
 use crate::{
 	animation::Animations,
 	components::{Component, InitData},
+	drawing::{self, Boundary, has_overflow_clip},
 	event::{self, CallbackDataCommon, EventAlterables, EventListenerCollection},
 	globals::WguiGlobals,
-	stack::Transform,
+	stack::{self, ScissorBoundary, Transform},
 	widget::{self, EventParams, WidgetObj, WidgetState, div::WidgetDiv},
 };
 
 use glam::{Vec2, vec2};
 use slotmap::{HopSlotMap, SecondaryMap, new_key_type};
-use taffy::{TaffyTree, TraversePartialTree};
+use taffy::{NodeId, TaffyTree, TraversePartialTree};
 
 new_key_type! {
 	pub struct WidgetID;
@@ -23,6 +24,7 @@ new_key_type! {
 
 #[derive(Clone)]
 pub struct Widget(Rc<RefCell<WidgetState>>);
+pub struct WeakWidget(Weak<RefCell<WidgetState>>);
 
 impl Widget {
 	pub fn new(widget_state: WidgetState) -> Self {
@@ -33,8 +35,18 @@ impl Widget {
 		RefMut::filter_map(self.0.borrow_mut(), |w| w.obj.get_as_mut::<T>()).ok()
 	}
 
+	pub fn downgrade(&self) -> WeakWidget {
+		WeakWidget(Rc::downgrade(&self.0))
+	}
+
 	pub fn state(&self) -> RefMut<'_, WidgetState> {
 		self.0.borrow_mut()
+	}
+}
+
+impl WeakWidget {
+	pub fn upgrade(&self) -> Option<Widget> {
+		self.0.upgrade().map(Widget)
 	}
 }
 
@@ -128,9 +140,10 @@ fn add_child_internal(
 	parent_node: Option<taffy::NodeId>,
 	widget_state: WidgetState,
 	style: taffy::Style,
-) -> anyhow::Result<(WidgetID, taffy::NodeId)> {
-	#[allow(clippy::arc_with_non_send_sync)]
-	let child_id = widgets.insert(Widget::new(widget_state));
+) -> anyhow::Result<(WidgetPair, taffy::NodeId)> {
+	let new_widget = Widget::new(widget_state);
+
+	let child_id = widgets.insert(new_widget.clone());
 	let child_node = tree.new_leaf_with_context(style, child_id)?;
 
 	if let Some(parent_node) = parent_node {
@@ -139,7 +152,13 @@ fn add_child_internal(
 
 	nodes.insert(child_id, child_node);
 
-	Ok((child_id, child_node))
+	Ok((
+		WidgetPair {
+			id: child_id,
+			widget: new_widget,
+		},
+		child_node,
+	))
 }
 
 impl Layout {
@@ -152,7 +171,7 @@ impl Layout {
 		parent_widget_id: WidgetID,
 		widget: WidgetState,
 		style: taffy::Style,
-	) -> anyhow::Result<(WidgetID, taffy::NodeId)> {
+	) -> anyhow::Result<(WidgetPair, taffy::NodeId)> {
 		let parent_node = *self.state.nodes.get(parent_widget_id).unwrap();
 
 		self.mark_redraw();
@@ -255,13 +274,26 @@ impl Layout {
 			anyhow::bail!("invalid widget");
 		};
 
-		let transform = Transform {
-			pos: Vec2::new(l.location.x, l.location.y),
-			dim: Vec2::new(l.size.width, l.size.height),
-			transform: glam::Mat4::IDENTITY, // TODO: event transformations? Not needed for now
+		let mut widget = widget.0.borrow_mut();
+		let (scroll_shift, info) = match widget::get_scrollbar_info(l) {
+			Some(info) => (widget.get_scroll_shift(&info, l), Some(info)),
+			None => (Vec2::default(), None),
 		};
 
-		alterables.transform_stack.push(transform);
+		alterables.transform_stack.push(stack::Transform {
+			rel_pos: Vec2::new(l.location.x, l.location.y) - scroll_shift,
+			transform: widget.data.transform,
+			dim: Vec2::new(l.size.width, l.size.height),
+			..Default::default()
+		});
+
+		// see drawing.rs too
+		let scissor_pushed = info.is_some() && has_overflow_clip(style);
+		if scissor_pushed {
+			let mut boundary_absolute = drawing::Boundary::construct_absolute(&alterables.transform_stack);
+			boundary_absolute.pos += scroll_shift;
+			alterables.scissor_stack.push(ScissorBoundary(boundary_absolute));
+		}
 
 		let mut iter_children = true;
 
@@ -274,8 +306,6 @@ impl Layout {
 		};
 
 		let listeners_vec = listeners.get(widget_id);
-
-		let mut widget = widget.0.borrow_mut();
 
 		match widget.process_event(widget_id, listeners_vec, node_id, event, user_data, &mut params)? {
 			widget::EventResult::Pass => {
@@ -290,6 +320,10 @@ impl Layout {
 
 		if iter_children {
 			self.push_event_children(listeners, node_id, event, alterables, user_data)?;
+		}
+
+		if scissor_pushed {
+			alterables.scissor_stack.pop();
 		}
 
 		alterables.transform_stack.pop();
@@ -361,7 +395,7 @@ impl Layout {
 			prev_size: Vec2::default(),
 			content_size: Vec2::default(),
 			root_node,
-			root_widget,
+			root_widget: root_widget.id,
 			needs_redraw: true,
 			haptics_triggered: false,
 			animations: Animations::default(),
@@ -466,5 +500,26 @@ impl Layout {
 		}
 
 		Ok(())
+	}
+}
+
+impl LayoutState {
+	pub fn get_widget_boundary(&self, id: NodeId) -> Boundary {
+		let Ok(layout) = self.tree.layout(id) else {
+			return Boundary::default();
+		};
+
+		Boundary {
+			pos: Vec2::new(layout.location.x, layout.location.y),
+			size: Vec2::new(layout.size.width, layout.size.height),
+		}
+	}
+
+	pub fn get_widget_size(&self, id: NodeId) -> Vec2 {
+		let Ok(layout) = self.tree.layout(id) else {
+			return Vec2::ZERO;
+		};
+
+		Vec2::new(layout.size.width, layout.size.height)
 	}
 }

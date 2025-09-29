@@ -10,7 +10,7 @@ use crate::{
 	globals::Globals,
 	i18n::{I18n, Translation},
 	layout::WidgetID,
-	renderer_vk::text::{TextStyle, FONT_SYSTEM},
+	renderer_vk::text::{FONT_SYSTEM, TextStyle},
 };
 
 use super::{WidgetObj, WidgetState};
@@ -109,7 +109,7 @@ impl WidgetLabel {
 
 impl WidgetObj for WidgetLabel {
 	fn draw(&mut self, state: &mut super::DrawState, _params: &super::DrawParams) {
-		let boundary = drawing::Boundary::construct(state.transform_stack);
+		let boundary = drawing::Boundary::construct_relative(state.transform_stack);
 
 		if self.last_boundary != boundary {
 			self.last_boundary = boundary;

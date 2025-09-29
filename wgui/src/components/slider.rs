@@ -9,7 +9,7 @@ use crate::{
 	drawing::{self},
 	event::{self, CallbackDataCommon, EventListenerCollection, EventListenerKind, ListenerHandleVec},
 	i18n::Translation,
-	layout::{Layout, WidgetID},
+	layout::{Layout, WidgetID, WidgetPair},
 	renderer_vk::{
 		text::{FontWeight, HorizontalAlign, TextStyle},
 		util,
@@ -175,7 +175,7 @@ fn on_enter_anim(common: &mut event::CallbackDataCommon, handle_id: WidgetID) {
 		AnimationEasing::OutBack,
 		Box::new(move |common, data| {
 			let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
-			data.data.transform = get_anim_transform(data.pos, data.widget_size);
+			data.data.transform = get_anim_transform(data.pos, data.widget_boundary.size);
 			anim_rect(rect, data.pos);
 			common.alterables.mark_redraw();
 		}),
@@ -189,7 +189,7 @@ fn on_leave_anim(common: &mut event::CallbackDataCommon, handle_id: WidgetID) {
 		AnimationEasing::OutQuad,
 		Box::new(move |common, data| {
 			let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
-			data.data.transform = get_anim_transform(1.0 - data.pos, data.widget_size);
+			data.data.transform = get_anim_transform(1.0 - data.pos, data.widget_boundary.size);
 			anim_rect(rect, 1.0 - data.pos);
 			common.alterables.mark_redraw();
 		}),
@@ -308,14 +308,14 @@ pub fn construct<U1, U2>(
 	listeners: &mut EventListenerCollection<U1, U2>,
 	parent: WidgetID,
 	params: Params,
-) -> anyhow::Result<(WidgetID, Rc<ComponentSlider>)> {
+) -> anyhow::Result<(WidgetPair, Rc<ComponentSlider>)> {
 	let mut style = params.style;
 	style.position = taffy::Position::Relative;
 	style.min_size = style.size;
 	style.max_size = style.size;
 
-	let (root_id, slider_body_node) = layout.add_child(parent, WidgetDiv::create(), style)?;
-	let body_id = root_id;
+	let (root, slider_body_node) = layout.add_child(parent, WidgetDiv::create(), style)?;
+	let body_id = root.id;
 
 	let (_background_id, _) = layout.add_child(
 		body_id,
@@ -350,10 +350,10 @@ pub fn construct<U1, U2>(
 	};
 
 	// invisible outer handle body
-	let (slider_handle_id, slider_handle_node) = layout.add_child(body_id, WidgetDiv::create(), slider_handle_style)?;
+	let (slider_handle, slider_handle_node) = layout.add_child(body_id, WidgetDiv::create(), slider_handle_style)?;
 
-	let (slider_handle_rect_id, _) = layout.add_child(
-		slider_handle_id,
+	let (slider_handle_rect, _) = layout.add_child(
+		slider_handle.id,
 		WidgetRectangle::create(WidgetRectangleParams {
 			color: HANDLE_COLOR,
 			border_color: HANDLE_BORDER_COLOR,
@@ -379,8 +379,8 @@ pub fn construct<U1, U2>(
 
 	let globals = layout.state.globals.clone();
 
-	let (slider_text_id, _) = layout.add_child(
-		slider_handle_id,
+	let (slider_text, _) = layout.add_child(
+		slider_handle.id,
 		WidgetLabel::create(
 			&mut globals.get(),
 			WidgetLabelParams {
@@ -399,9 +399,9 @@ pub fn construct<U1, U2>(
 	let data = Rc::new(Data {
 		body: body_id,
 		slider_handle_node,
-		slider_handle_rect_id,
+		slider_handle_rect_id: slider_handle_rect.id,
 		slider_body_node,
-		slider_text_id,
+		slider_text_id: slider_text.id,
 	});
 
 	let state = Rc::new(RefCell::new(state));
@@ -418,5 +418,5 @@ pub fn construct<U1, U2>(
 	let slider = Rc::new(ComponentSlider { base, data, state });
 
 	layout.defer_component_init(Component(slider.clone()));
-	Ok((root_id, slider))
+	Ok((root, slider))
 }

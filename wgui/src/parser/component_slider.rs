@@ -1,10 +1,10 @@
 use crate::{
-	components::{slider, Component},
+	components::{Component, slider},
 	layout::WidgetID,
-	parser::{parse_check_f32, process_component, style::parse_style, AttribPair, ParserContext},
+	parser::{AttribPair, ParserContext, parse_check_f32, process_component, style::parse_style},
 };
 
-pub fn parse_component_slider<'a, U1, U2>(
+pub fn parse_component_slider<U1, U2>(
 	ctx: &mut ParserContext<U1, U2>,
 	parent_id: WidgetID,
 	attribs: &[AttribPair],
@@ -31,7 +31,7 @@ pub fn parse_component_slider<'a, U1, U2>(
 		}
 	}
 
-	let (new_id, component) = slider::construct(
+	let (widget, component) = slider::construct(
 		ctx.layout,
 		ctx.listeners,
 		parent_id,
@@ -45,7 +45,7 @@ pub fn parse_component_slider<'a, U1, U2>(
 		},
 	)?;
 
-	process_component(ctx, Component(component), new_id, attribs);
+	process_component(ctx, Component(component), widget.id, attribs);
 
-	Ok(new_id)
+	Ok(widget.id)
 }

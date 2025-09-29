@@ -1,6 +1,6 @@
 use crate::{
 	layout::WidgetID,
-	parser::{parse_children, parse_widget_universal, style::parse_style, AttribPair, ParserContext, ParserFile},
+	parser::{AttribPair, ParserContext, ParserFile, parse_children, parse_widget_universal, style::parse_style},
 	renderer_vk::text::custom_glyph::{CustomGlyphContent, CustomGlyphData},
 	widget::sprite::{WidgetSprite, WidgetSpriteParams},
 };
@@ -15,7 +15,7 @@ pub fn parse_widget_sprite<'a, U1, U2>(
 	attribs: &[AttribPair],
 ) -> anyhow::Result<WidgetID> {
 	let mut params = WidgetSpriteParams::default();
-	let style = parse_style(&attribs);
+	let style = parse_style(attribs);
 
 	let mut glyph = None;
 	for pair in attribs {
@@ -54,10 +54,10 @@ pub fn parse_widget_sprite<'a, U1, U2>(
 		log::warn!("No source for sprite node!");
 	}
 
-	let (new_id, _) = ctx.layout.add_child(parent_id, WidgetSprite::create(params), style)?;
+	let (widget, _) = ctx.layout.add_child(parent_id, WidgetSprite::create(params), style)?;
 
-	parse_widget_universal(ctx, new_id, attribs);
-	parse_children(file, ctx, node, new_id)?;
+	parse_widget_universal(ctx, widget.id, attribs);
+	parse_children(file, ctx, node, widget.id)?;
 
-	Ok(new_id)
+	Ok(widget.id)
 }

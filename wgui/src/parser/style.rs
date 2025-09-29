@@ -6,8 +6,8 @@ use taffy::{
 use crate::{
 	drawing,
 	parser::{
-		is_percent, parse_color_hex, parse_f32, parse_percent, parse_size_unit, parse_val, print_invalid_attrib,
-		print_invalid_value, AttribPair,
+		AttribPair, is_percent, parse_color_hex, parse_f32, parse_percent, parse_size_unit, parse_val,
+		print_invalid_attrib, print_invalid_value,
 	},
 	renderer_vk::text::{FontWeight, HorizontalAlign, TextStyle},
 	widget::util::WLength,
@@ -54,7 +54,7 @@ pub fn parse_text_style(attribs: &[AttribPair]) -> TextStyle {
 					style.color = Some(color);
 				}
 			}
-			"align" => match value.as_ref() {
+			"align" => match value {
 				"left" => style.align = Some(HorizontalAlign::Left),
 				"right" => style.align = Some(HorizontalAlign::Right),
 				"center" => style.align = Some(HorizontalAlign::Center),
@@ -64,7 +64,7 @@ pub fn parse_text_style(attribs: &[AttribPair]) -> TextStyle {
 					print_invalid_attrib(key, value);
 				}
 			},
-			"weight" => match value.as_ref() {
+			"weight" => match value {
 				"normal" => style.weight = Some(FontWeight::Normal),
 				"bold" => style.weight = Some(FontWeight::Bold),
 				_ => {
@@ -111,8 +111,8 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 
 	for pair in attribs {
 		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
-		match key.as_ref() {
-			"display" => match value.as_ref() {
+		match key {
+			"display" => match value {
 				"flex" => style.display = Display::Flex,
 				"block" => style.display = Display::Block,
 				"grid" => style.display = Display::Grid,
@@ -176,7 +176,7 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 					style.padding.bottom = dim;
 				}
 			}
-			"overflow" => match value.as_ref() {
+			"overflow" => match value {
 				"hidden" => {
 					style.overflow.x = Overflow::Hidden;
 					style.overflow.y = Overflow::Hidden;
@@ -197,7 +197,7 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 					print_invalid_attrib(key, value);
 				}
 			},
-			"overflow_x" => match value.as_ref() {
+			"overflow_x" => match value {
 				"hidden" => style.overflow.x = Overflow::Hidden,
 				"visible" => style.overflow.x = Overflow::Visible,
 				"clip" => style.overflow.x = Overflow::Clip,
@@ -206,7 +206,7 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 					print_invalid_attrib(key, value);
 				}
 			},
-			"overflow_y" => match value.as_ref() {
+			"overflow_y" => match value {
 				"hidden" => style.overflow.y = Overflow::Hidden,
 				"visible" => style.overflow.y = Overflow::Visible,
 				"clip" => style.overflow.y = Overflow::Clip,
@@ -265,21 +265,21 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 					style.flex_shrink = val;
 				}
 			}
-			"position" => match value.as_ref() {
+			"position" => match value {
 				"absolute" => style.position = taffy::Position::Absolute,
 				"relative" => style.position = taffy::Position::Relative,
 				_ => {
 					print_invalid_attrib(key, value);
 				}
 			},
-			"box_sizing" => match value.as_ref() {
+			"box_sizing" => match value {
 				"border_box" => style.box_sizing = BoxSizing::BorderBox,
 				"content_box" => style.box_sizing = BoxSizing::ContentBox,
 				_ => {
 					print_invalid_attrib(key, value);
 				}
 			},
-			"align_self" => match value.as_ref() {
+			"align_self" => match value {
 				"baseline" => style.align_self = Some(AlignSelf::Baseline),
 				"center" => style.align_self = Some(AlignSelf::Center),
 				"end" => style.align_self = Some(AlignSelf::End),
@@ -291,7 +291,7 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 					print_invalid_attrib(key, value);
 				}
 			},
-			"justify_self" => match value.as_ref() {
+			"justify_self" => match value {
 				"center" => style.justify_self = Some(JustifySelf::Center),
 				"end" => style.justify_self = Some(JustifySelf::End),
 				"flex_end" => style.justify_self = Some(JustifySelf::FlexEnd),
@@ -302,7 +302,7 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 					print_invalid_attrib(key, value);
 				}
 			},
-			"align_items" => match value.as_ref() {
+			"align_items" => match value {
 				"baseline" => style.align_items = Some(AlignItems::Baseline),
 				"center" => style.align_items = Some(AlignItems::Center),
 				"end" => style.align_items = Some(AlignItems::End),
@@ -314,7 +314,7 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 					print_invalid_attrib(key, value);
 				}
 			},
-			"align_content" => match value.as_ref() {
+			"align_content" => match value {
 				"center" => style.align_content = Some(AlignContent::Center),
 				"end" => style.align_content = Some(AlignContent::End),
 				"flex_end" => style.align_content = Some(AlignContent::FlexEnd),
@@ -328,7 +328,7 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 					print_invalid_attrib(key, value);
 				}
 			},
-			"justify_content" => match value.as_ref() {
+			"justify_content" => match value {
 				"center" => style.justify_content = Some(JustifyContent::Center),
 				"end" => style.justify_content = Some(JustifyContent::End),
 				"flex_end" => style.justify_content = Some(JustifyContent::FlexEnd),
@@ -342,13 +342,13 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 					print_invalid_attrib(key, value);
 				}
 			},
-			"flex_wrap" => match value.as_ref() {
+			"flex_wrap" => match value {
 				"wrap" => style.flex_wrap = FlexWrap::Wrap,
 				"no_wrap" => style.flex_wrap = FlexWrap::NoWrap,
 				"wrap_reverse" => style.flex_wrap = FlexWrap::WrapReverse,
 				_ => {}
 			},
-			"flex_direction" => match value.as_ref() {
+			"flex_direction" => match value {
 				"column_reverse" => style.flex_direction = FlexDirection::ColumnReverse,
 				"column" => style.flex_direction = FlexDirection::Column,
 				"row_reverse" => style.flex_direction = FlexDirection::RowReverse,

@@ -1,4 +1,4 @@
-use glam::Vec2;
+use glam::{Mat4, Vec2, Vec3};
 
 use crate::drawing;
 
@@ -50,18 +50,40 @@ impl<T: StackItem<T>, const STACK_MAX: usize> Default for GenericStack<T, STACK_
 // Transform stack
 // ########################################
 
-#[derive(Default, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct Transform {
-	pub pos: Vec2,
+	pub rel_pos: Vec2,
+	pub dim: Vec2,     // for convenience
+	pub abs_pos: Vec2, // for convenience, will be set after pushing
 	pub transform: glam::Mat4,
-	pub dim: Vec2, // for convenience
+	pub transform_rel: glam::Mat4,
+}
+
+impl Default for Transform {
+	fn default() -> Self {
+		Self {
+			abs_pos: Default::default(),
+			rel_pos: Default::default(),
+			dim: Default::default(),
+			transform: Mat4::IDENTITY,
+			transform_rel: Default::default(),
+		}
+	}
 }
 
 impl<T> StackItem<T> for Transform where Transform: Pushable<T> {}
 
 impl Pushable<Transform> for Transform {
 	fn push(&mut self, upper: &Transform) {
-		self.pos += upper.pos;
+		// fixme: there is definitely a better way to do these operations
+		let translation_matrix = Mat4::from_translation(Vec3::new(self.rel_pos.x, self.rel_pos.y, 0.0));
+
+		self.abs_pos = upper.abs_pos + self.rel_pos;
+		let absolute_shift_matrix = Mat4::from_translation(Vec3::new(self.abs_pos.x, self.abs_pos.y, 0.0));
+		let absolute_shift_matrix_neg = Mat4::from_translation(Vec3::new(-self.abs_pos.x, -self.abs_pos.y, 0.0));
+
+		self.transform =
+			(absolute_shift_matrix * self.transform * absolute_shift_matrix_neg) * upper.transform * translation_matrix;
 	}
 }
 
@@ -71,12 +93,26 @@ pub type TransformStack = GenericStack<Transform, 64>;
 // Scissor stack
 // ########################################
 
-impl<T> StackItem<T> for drawing::Boundary where drawing::Boundary: Pushable<T> {}
+#[derive(Copy, Clone)]
+pub struct ScissorBoundary(pub drawing::Boundary);
 
-impl Pushable<drawing::Boundary> for drawing::Boundary {
-	fn push(&mut self, upper: &drawing::Boundary) {
-		let mut display_pos = self.pos;
-		let mut display_size = self.size;
+impl Default for ScissorBoundary {
+	fn default() -> Self {
+		Self(drawing::Boundary {
+			pos: Default::default(),
+			size: Vec2::splat(1.0e12),
+		})
+	}
+}
+
+impl<T> StackItem<T> for ScissorBoundary where ScissorBoundary: Pushable<T> {}
+
+impl Pushable<ScissorBoundary> for ScissorBoundary {
+	fn push(&mut self, upper: &ScissorBoundary) {
+		let mut display_pos = self.0.pos;
+		let mut display_size = self.0.size;
+
+		let upper = &upper.0;
 
 		// limit in x-coord
 		if display_pos.x < upper.left() {
@@ -100,9 +136,9 @@ impl Pushable<drawing::Boundary> for drawing::Boundary {
 			display_size.y = upper.bottom() - display_pos.y;
 		}
 
-		self.pos = display_pos;
-		self.size = display_size;
+		self.0.pos = display_pos;
+		self.0.size = display_size;
 	}
 }
 
-pub type ScissorStack = GenericStack<drawing::Boundary, 64>;
+pub type ScissorStack = GenericStack<ScissorBoundary, 64>;

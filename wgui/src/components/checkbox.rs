@@ -10,7 +10,7 @@ use crate::{
 	drawing::Color,
 	event::{CallbackDataCommon, EventAlterables, EventListenerCollection, EventListenerKind, ListenerHandleVec},
 	i18n::Translation,
-	layout::{self, Layout, LayoutState, WidgetID},
+	layout::{self, Layout, LayoutState, WidgetID, WidgetPair},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
 		label::{WidgetLabel, WidgetLabelParams},
@@ -249,7 +249,7 @@ pub fn construct<U1, U2>(
 	listeners: &mut EventListenerCollection<U1, U2>,
 	parent: WidgetID,
 	params: Params,
-) -> anyhow::Result<(WidgetID, Rc<ComponentCheckbox>)> {
+) -> anyhow::Result<(WidgetPair, Rc<ComponentCheckbox>)> {
 	let mut style = params.style;
 
 	// force-override style
@@ -267,7 +267,7 @@ pub fn construct<U1, U2>(
 
 	let globals = layout.state.globals.clone();
 
-	let (id_root, _) = layout.add_child(
+	let (root, _) = layout.add_child(
 		parent,
 		WidgetRectangle::create(WidgetRectangleParams {
 			color: Color::new(1.0, 1.0, 1.0, 0.0),
@@ -277,14 +277,15 @@ pub fn construct<U1, U2>(
 		}),
 		style,
 	)?;
-	let id_container = id_root;
+
+	let id_container = root.id;
 
 	let box_size = taffy::Size {
 		width: length(params.box_size),
 		height: length(params.box_size),
 	};
 
-	let (id_outer_box, _) = layout.add_child(
+	let (outer_box, _) = layout.add_child(
 		id_container,
 		WidgetRectangle::create(WidgetRectangleParams {
 			border: 2.0,
@@ -302,8 +303,8 @@ pub fn construct<U1, U2>(
 		},
 	)?;
 
-	let (id_inner_box, _) = layout.add_child(
-		id_outer_box,
+	let (inner_box, _) = layout.add_child(
+		outer_box.id,
 		WidgetRectangle::create(WidgetRectangleParams {
 			round: WLength::Units(5.0),
 			color: if params.checked { COLOR_CHECKED } else { COLOR_UNCHECKED },
@@ -318,7 +319,7 @@ pub fn construct<U1, U2>(
 		},
 	)?;
 
-	let (id_label, _node_label) = layout.add_child(
+	let (label, _node_label) = layout.add_child(
 		id_container,
 		WidgetLabel::create(
 			&mut globals.get(),
@@ -335,8 +336,8 @@ pub fn construct<U1, U2>(
 
 	let data = Rc::new(Data {
 		id_container,
-		id_inner_box,
-		id_label,
+		id_inner_box: inner_box.id,
+		id_label: label.id,
 	});
 
 	let state = Rc::new(RefCell::new(State {
@@ -356,5 +357,5 @@ pub fn construct<U1, U2>(
 	let checkbox = Rc::new(ComponentCheckbox { base, data, state });
 
 	layout.defer_component_init(Component(checkbox.clone()));
-	Ok((id_root, checkbox))
+	Ok((root, checkbox))
 }

@@ -11,6 +11,7 @@ use crate::{
 	},
 	layout::{Layout, LayoutState, WidgetID},
 	stack::{ScissorStack, TransformStack},
+	widget,
 };
 
 pub mod div;
@@ -248,8 +249,8 @@ impl WidgetState {
 				PrimitiveExtent {
 					boundary: drawing::Boundary::from_pos_size(
 						Vec2::new(
-							transform.pos.x + transform.dim.x * (1.0 - info.handle_size.x) * self.data.scrolling.x,
-							transform.pos.y + transform.dim.y - thickness - margin,
+							transform.abs_pos.x + transform.dim.x * (1.0 - info.handle_size.x) * self.data.scrolling.x,
+							transform.abs_pos.y + transform.dim.y - thickness - margin,
 						),
 						Vec2::new(transform.dim.x * info.handle_size.x, thickness),
 					),
@@ -265,8 +266,8 @@ impl WidgetState {
 				PrimitiveExtent {
 					boundary: drawing::Boundary::from_pos_size(
 						Vec2::new(
-							transform.pos.x + transform.dim.x - thickness - margin,
-							transform.pos.y + transform.dim.y * (1.0 - info.handle_size.y) * self.data.scrolling.y,
+							transform.abs_pos.x + transform.dim.x - thickness - margin,
+							transform.abs_pos.y + transform.dim.y * (1.0 - info.handle_size.y) * self.data.scrolling.y,
 						),
 						Vec2::new(thickness, transform.dim.y * info.handle_size.y),
 					),

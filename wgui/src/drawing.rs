@@ -7,8 +7,8 @@ use taffy::TraversePartialTree;
 use crate::{
 	drawing,
 	layout::Widget,
-	renderer_vk::text::{custom_glyph::CustomGlyph, TextShadow},
-	stack::{self, ScissorStack, TransformStack},
+	renderer_vk::text::{TextShadow, custom_glyph::CustomGlyph},
+	stack::{self, ScissorBoundary, ScissorStack, TransformStack},
 	widget::{self},
 };
 
@@ -29,11 +29,22 @@ impl Boundary {
 		Self { pos, size }
 	}
 
-	pub const fn construct(transform_stack: &TransformStack) -> Self {
+	/// top-left is an absolute position
+	pub const fn construct_absolute(transform_stack: &TransformStack) -> Self {
 		let transform = transform_stack.get();
 
 		Self {
-			pos: Vec2::new(transform.pos.x, transform.pos.y),
+			pos: Vec2::new(transform.abs_pos.x, transform.abs_pos.y),
+			size: Vec2::new(transform.dim.x, transform.dim.y),
+		}
+	}
+
+	/// top-left is zero
+	pub const fn construct_relative(transform_stack: &TransformStack) -> Self {
+		let transform = transform_stack.get();
+
+		Self {
+			pos: Vec2::ZERO,
 			size: Vec2::new(transform.dim.x, transform.dim.y),
 		}
 	}
@@ -137,8 +148,7 @@ pub enum RenderPrimitive {
 	Rectangle(PrimitiveExtent, Rectangle),
 	Text(PrimitiveExtent, Rc<RefCell<Buffer>>, Option<TextShadow>),
 	Sprite(PrimitiveExtent, Option<CustomGlyph>), //option because we want as_slice
-	ScissorEnable(Boundary),
-	ScissorDisable,
+	ScissorSet(ScissorBoundary),
 }
 
 pub struct DrawParams<'a> {
@@ -146,7 +156,7 @@ pub struct DrawParams<'a> {
 	pub debug_draw: bool,
 }
 
-fn has_overflow_clip(style: &taffy::Style) -> bool {
+pub fn has_overflow_clip(style: &taffy::Style) -> bool {
 	style.overflow.x != taffy::Overflow::Visible || style.overflow.y != taffy::Overflow::Visible
 }
 
@@ -171,7 +181,6 @@ fn draw_widget(
 	node_id: taffy::NodeId,
 	style: &taffy::Style,
 	widget: &Widget,
-	parent_transform: &glam::Mat4,
 ) {
 	let Ok(l) = params.layout.state.tree.layout(node_id) else {
 		debug_assert!(false);
@@ -180,24 +189,23 @@ fn draw_widget(
 
 	let mut widget_state = widget.state();
 
-	let transform = widget_state.data.transform * *parent_transform;
-
-	let (shift, info) = match widget::get_scrollbar_info(l) {
+	let (scroll_shift, info) = match widget::get_scrollbar_info(l) {
 		Some(info) => (widget_state.get_scroll_shift(&info, l), Some(info)),
 		None => (Vec2::default(), None),
 	};
 
 	state.transform_stack.push(stack::Transform {
-		pos: Vec2::new(l.location.x, l.location.y) - shift,
-		transform,
+		rel_pos: Vec2::new(l.location.x, l.location.y) - scroll_shift,
+		transform: widget_state.data.transform,
 		dim: Vec2::new(l.size.width, l.size.height),
+		..Default::default()
 	});
 
 	if params.debug_draw {
-		let boundary = drawing::Boundary::construct(state.transform_stack);
+		let boundary = drawing::Boundary::construct_relative(state.transform_stack);
 		state.primitives.push(primitive_debug_rect(
 			&boundary,
-			&transform,
+			&state.transform_stack.get().transform,
 			Color::new(0.0, 1.0, 1.0, 0.5),
 		));
 	}
@@ -205,17 +213,23 @@ fn draw_widget(
 	let scissor_pushed = info.is_some() && has_overflow_clip(style);
 
 	if scissor_pushed {
-		let boundary = drawing::Boundary::construct(state.transform_stack);
-		state.scissor_stack.push(boundary);
+		let mut boundary_absolute = drawing::Boundary::construct_absolute(state.transform_stack);
+		boundary_absolute.pos += scroll_shift;
+		state.scissor_stack.push(ScissorBoundary(boundary_absolute));
+
 		if params.debug_draw {
+			let mut boundary_relative = drawing::Boundary::construct_relative(state.transform_stack);
+			boundary_relative.pos += scroll_shift;
 			state.primitives.push(primitive_debug_rect(
-				&boundary,
-				&transform,
+				&boundary_relative,
+				&state.transform_stack.get().transform,
 				Color::new(1.0, 0.0, 1.0, 1.0),
 			));
 		}
 
-		state.primitives.push(drawing::RenderPrimitive::ScissorEnable(boundary));
+		state
+			.primitives
+			.push(drawing::RenderPrimitive::ScissorSet(*state.scissor_stack.get()));
 	}
 
 	let draw_params = widget::DrawParams {
@@ -226,11 +240,13 @@ fn draw_widget(
 
 	widget_state.draw_all(state, &draw_params);
 
-	draw_children(params, state, node_id, &transform);
+	draw_children(params, state, node_id);
 
 	if scissor_pushed {
-		state.primitives.push(drawing::RenderPrimitive::ScissorDisable);
 		state.scissor_stack.pop();
+		state
+			.primitives
+			.push(drawing::RenderPrimitive::ScissorSet(*state.scissor_stack.get()));
 	}
 
 	state.transform_stack.pop();
@@ -240,7 +256,7 @@ fn draw_widget(
 	}
 }
 
-fn draw_children(params: &DrawParams, state: &mut DrawState, parent_node_id: taffy::NodeId, model: &glam::Mat4) {
+fn draw_children(params: &DrawParams, state: &mut DrawState, parent_node_id: taffy::NodeId) {
 	let layout = &params.layout;
 
 	for node_id in layout.state.tree.child_ids(parent_node_id) {
@@ -259,7 +275,7 @@ fn draw_children(params: &DrawParams, state: &mut DrawState, parent_node_id: taf
 			continue;
 		};
 
-		draw_widget(params, state, node_id, style, widget, model);
+		draw_widget(params, state, node_id, style, widget);
 	}
 }
 
@@ -267,7 +283,6 @@ pub fn draw(params: &DrawParams) -> anyhow::Result<Vec<RenderPrimitive>> {
 	let mut primitives = Vec::<RenderPrimitive>::new();
 	let mut transform_stack = TransformStack::new();
 	let mut scissor_stack = ScissorStack::new();
-	let model = glam::Mat4::IDENTITY;
 
 	let Some(root_widget) = params.layout.state.widgets.get(params.layout.root_widget) else {
 		panic!();
@@ -277,11 +292,6 @@ pub fn draw(params: &DrawParams) -> anyhow::Result<Vec<RenderPrimitive>> {
 		panic!();
 	};
 
-	scissor_stack.push(Boundary {
-		pos: Default::default(),
-		size: Vec2::splat(1.0e12),
-	});
-
 	let mut state = DrawState {
 		primitives: &mut primitives,
 		transform_stack: &mut transform_stack,
@@ -289,7 +299,7 @@ pub fn draw(params: &DrawParams) -> anyhow::Result<Vec<RenderPrimitive>> {
 		layout: params.layout,
 	};
 
-	draw_widget(params, &mut state, params.layout.root_node, style, root_widget, &model);
+	draw_widget(params, &mut state, params.layout.root_node, style, root_widget);
 
 	Ok(primitives)
 }
