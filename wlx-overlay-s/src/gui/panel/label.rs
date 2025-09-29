@@ -15,7 +15,7 @@ use wgui::{
     event::{self, EventCallback, EventListenerCollection, ListenerHandleVec},
     i18n::Translation,
     layout::Layout,
-    parser::{CustomAttribsInfoOwned, parse_color_hex},
+    parser::{parse_color_hex, CustomAttribsInfoOwned},
     widget::label::WidgetLabel,
 };
 
@@ -31,14 +31,14 @@ pub(super) fn setup_custom_label<S>(
     listener_handles: &mut ListenerHandleVec,
     app: &AppState,
 ) {
-    let Some(source) = attribs.get_value("source") else {
+    let Some(source) = attribs.get_value("_source") else {
         log::warn!("custom label with no source!");
         return;
     };
 
     let callback: EventCallback<AppState, S> = match source {
         "shell" => {
-            let Some(exec) = attribs.get_value("exec") else {
+            let Some(exec) = attribs.get_value("_exec") else {
                 log::warn!("label with shell source but no exec attribute!");
                 return;
             };
@@ -57,7 +57,7 @@ pub(super) fn setup_custom_label<S>(
             })
         }
         "fifo" => {
-            let Some(path) = attribs.get_value("path") else {
+            let Some(path) = attribs.get_value("_path") else {
                 log::warn!("label with fifo source but no path attribute!");
                 return;
             };
@@ -76,7 +76,7 @@ pub(super) fn setup_custom_label<S>(
         }
         "battery" => {
             let Some(device) = attribs
-                .get_value("device")
+                .get_value("_device")
                 .and_then(|s| s.parse::<usize>().ok())
             else {
                 log::warn!("label with battery source but no device attribute!");
@@ -85,19 +85,19 @@ pub(super) fn setup_custom_label<S>(
 
             let state = BatteryLabelState {
                 low_color: attribs
-                    .get_value("low_color")
+                    .get_value("_low_color")
                     .and_then(parse_color_hex)
                     .unwrap_or(BAT_LOW),
                 normal_color: attribs
-                    .get_value("normal_color")
+                    .get_value("_normal_color")
                     .and_then(parse_color_hex)
                     .unwrap_or(BAT_NORMAL),
                 charging_color: attribs
-                    .get_value("charging_color")
+                    .get_value("_charging_color")
                     .and_then(parse_color_hex)
                     .unwrap_or(BAT_CHARGING),
                 low_threshold: attribs
-                    .get_value("low_threshold")
+                    .get_value("_low_threshold")
                     .and_then(|s| s.parse().ok())
                     .unwrap_or(BAT_LOW_THRESHOLD),
                 device,
@@ -108,7 +108,7 @@ pub(super) fn setup_custom_label<S>(
             })
         }
         "clock" => {
-            let Some(display) = attribs.get_value("display") else {
+            let Some(display) = attribs.get_value("_display") else {
                 log::warn!("label with clock source but no display attribute!");
                 return;
             };
@@ -116,7 +116,7 @@ pub(super) fn setup_custom_label<S>(
             let format = match display {
                 "name" => {
                     let maybe_pretty_tz = attribs
-                        .get_value("timezone")
+                        .get_value("_timezone")
                         .and_then(|tz| tz.parse::<usize>().ok())
                         .and_then(|tz_idx| app.session.config.timezones.get(tz_idx))
                         .and_then(|tz_name| {
@@ -152,7 +152,7 @@ pub(super) fn setup_custom_label<S>(
             };
 
             let tz_str = attribs
-                .get_value("timezone")
+                .get_value("_timezone")
                 .and_then(|tz| tz.parse::<usize>().ok())
                 .and_then(|tz_idx| app.session.config.timezones.get(tz_idx));
 

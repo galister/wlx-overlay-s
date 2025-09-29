@@ -1,32 +1,31 @@
 use crate::{
-	components::{Component, slider},
+	components::{slider, Component},
 	layout::WidgetID,
-	parser::{ParserContext, ParserFile, iter_attribs, parse_check_f32, process_component, style::parse_style},
+	parser::{parse_check_f32, process_component, style::parse_style, AttribPair, ParserContext},
 };
 
 pub fn parse_component_slider<'a, U1, U2>(
-	file: &'a ParserFile,
 	ctx: &mut ParserContext<U1, U2>,
-	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
+	attribs: &[AttribPair],
 ) -> anyhow::Result<WidgetID> {
 	let mut min_value = 0.0;
 	let mut max_value = 1.0;
 	let mut initial_value = 0.5;
 
-	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
-	let style = parse_style(&attribs);
+	let style = parse_style(attribs);
 
-	for (key, value) in attribs {
-		match key.as_ref() {
+	for pair in attribs {
+		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
+		match key {
 			"min_value" => {
-				parse_check_f32(value.as_ref(), &mut min_value);
+				parse_check_f32(value, &mut min_value);
 			}
 			"max_value" => {
-				parse_check_f32(value.as_ref(), &mut max_value);
+				parse_check_f32(value, &mut max_value);
 			}
 			"value" => {
-				parse_check_f32(value.as_ref(), &mut initial_value);
+				parse_check_f32(value, &mut initial_value);
 			}
 			_ => {}
 		}
@@ -46,7 +45,7 @@ pub fn parse_component_slider<'a, U1, U2>(
 		},
 	)?;
 
-	process_component(file, ctx, node, Component(component), new_id);
+	process_component(ctx, Component(component), new_id, attribs);
 
 	Ok(new_id)
 }

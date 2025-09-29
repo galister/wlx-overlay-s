@@ -441,7 +441,7 @@ fn print_invalid_value(value: &str) {
 	log::warn!("Invalid value \"{value}\"");
 }
 
-fn parse_val(value: &Rc<str>) -> Option<f32> {
+fn parse_val(value: &str) -> Option<f32> {
 	let Ok(val) = value.parse::<f32>() else {
 		print_invalid_value(value);
 		return None;
@@ -534,15 +534,16 @@ fn parse_widget_other<'a, U1, U2>(
 	xml_tag_name: &str,
 	file: &'a ParserFile,
 	ctx: &mut ParserContext<U1, U2>,
-	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
+	attribs: &[AttribPair],
 ) -> anyhow::Result<()> {
 	let Some(template) = ctx.get_template(xml_tag_name) else {
 		log::error!("Undefined tag named \"{xml_tag_name}\"");
 		return Ok(()); // not critical
 	};
 
-	let template_parameters: HashMap<Rc<str>, Rc<str>> = iter_attribs(file, ctx, &node, false).collect();
+	let template_parameters: HashMap<Rc<str>, Rc<str>> =
+		attribs.iter().map(|a| (a.attrib.clone(), a.value.clone())).collect();
 
 	parse_widget_other_internal(&template, template_parameters, file, ctx, parent_id)
 }
@@ -550,17 +551,15 @@ fn parse_widget_other<'a, U1, U2>(
 fn parse_tag_include<'a, U1, U2>(
 	file: &ParserFile,
 	ctx: &mut ParserContext<U1, U2>,
-	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
+	attribs: &[AttribPair],
 ) -> anyhow::Result<()> {
-	for attrib in node.attributes() {
-		let (key, value) = (attrib.name(), attrib.value());
-
+	for pair in attribs {
 		#[allow(clippy::single_match)]
-		match key {
+		match pair.attrib.as_ref() {
 			"src" => {
 				let mut new_path = file.path.parent().unwrap_or_else(|| Path::new("/")).to_path_buf();
-				new_path.push(value);
+				new_path.push(pair.value.as_ref());
 				let new_path = assets::normalize_path(&new_path);
 
 				let (new_file, node_layout) = get_doc_from_path(ctx, &new_path)?;
@@ -569,7 +568,7 @@ fn parse_tag_include<'a, U1, U2>(
 				return Ok(());
 			}
 			_ => {
-				print_invalid_attrib(key, value);
+				print_invalid_attrib(pair.attrib.as_ref(), pair.value.as_ref());
 			}
 		}
 	}
@@ -637,38 +636,39 @@ fn process_attrib<'a, U1, U2>(
 	ctx: &'a ParserContext<U1, U2>,
 	key: &str,
 	value: &str,
-) -> (Rc<str>, Rc<str>) {
+) -> AttribPair {
 	if value.starts_with('~') {
 		let name = &value[1..];
 
-		(
-			Rc::from(key),
-			match ctx.get_var(name) {
-				Some(name) => name,
-				None => Rc::from("undefined"),
-			},
-		)
+		match ctx.get_var(name) {
+			Some(name) => AttribPair::new(key, name.clone()),
+			None => AttribPair::new(key, "undefined"),
+		}
 	} else {
-		(Rc::from(key), replace_vars(value, &file.template_parameters))
+		AttribPair::new(key, replace_vars(value, &file.template_parameters))
 	}
 }
 
-fn iter_attribs<'a, U1, U2>(
+fn raw_attribs<'a>(node: &'a roxmltree::Node<'a, 'a>) -> Vec<AttribPair> {
+	let mut res = vec![];
+	for attrib in node.attributes() {
+		let (key, value) = (attrib.name(), attrib.value());
+		res.push(AttribPair::new(key, value));
+	}
+	return res;
+}
+
+fn process_attribs<'a, U1, U2>(
 	file: &'a ParserFile,
 	ctx: &'a ParserContext<U1, U2>,
 	node: &'a roxmltree::Node<'a, 'a>,
 	is_tag_macro: bool,
-) -> impl Iterator<Item = (/*key*/ Rc<str>, /*value*/ Rc<str>)> + 'a {
-	let mut res = Vec::<(Rc<str>, Rc<str>)>::new();
-
+) -> Vec<AttribPair> {
 	if is_tag_macro {
 		// return as-is, no attrib post-processing
-		for attrib in node.attributes() {
-			let (key, value) = (attrib.name(), attrib.value());
-			res.push((Rc::from(key), Rc::from(value)));
-		}
-		return res.into_iter();
+		return raw_attribs(node);
 	}
+	let mut res = vec![];
 
 	for attrib in node.attributes() {
 		let (key, value) = (attrib.name(), attrib.value());
@@ -686,7 +686,7 @@ fn iter_attribs<'a, U1, U2>(
 		}
 	}
 
-	res.into_iter()
+	res
 }
 
 fn parse_tag_theme<'a, U1, U2>(ctx: &mut ParserContext<U1, U2>, node: roxmltree::Node<'a, 'a>) {
@@ -707,15 +707,15 @@ fn parse_tag_theme<'a, U1, U2>(ctx: &mut ParserContext<U1, U2>, node: roxmltree:
 fn parse_tag_template<U1, U2>(file: &ParserFile, ctx: &mut ParserContext<U1, U2>, node: roxmltree::Node<'_, '_>) {
 	let mut template_name: Option<Rc<str>> = None;
 
-	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
+	let attribs = process_attribs(file, ctx, &node, false);
 
-	for (key, value) in attribs {
-		match key.as_ref() {
+	for pair in attribs {
+		match pair.attrib.as_ref() {
 			"name" => {
-				template_name = Some(value);
+				template_name = Some(pair.value);
 			}
 			_ => {
-				print_invalid_attrib(&key, &value);
+				print_invalid_attrib(pair.value.as_ref(), pair.value.as_ref());
 			}
 		}
 	}
@@ -737,17 +737,17 @@ fn parse_tag_template<U1, U2>(file: &ParserFile, ctx: &mut ParserContext<U1, U2>
 fn parse_tag_macro<U1, U2>(file: &ParserFile, ctx: &mut ParserContext<U1, U2>, node: roxmltree::Node<'_, '_>) {
 	let mut macro_name: Option<Rc<str>> = None;
 
-	let attribs: Vec<_> = iter_attribs(file, ctx, &node, true).collect();
+	let attribs = process_attribs(file, ctx, &node, true);
 	let mut macro_attribs = HashMap::<Rc<str>, Rc<str>>::new();
 
-	for (key, value) in attribs {
-		match key.as_ref() {
+	for pair in attribs {
+		match pair.attrib.as_ref() {
 			"name" => {
-				macro_name = Some(value);
+				macro_name = Some(pair.value);
 			}
 			_ => {
-				if macro_attribs.insert(key.clone(), value).is_some() {
-					log::warn!("macro attrib \"{key}\" already defined!");
+				if macro_attribs.insert(pair.attrib.clone(), pair.value).is_some() {
+					log::warn!("macro attrib \"{}\" already defined!", pair.attrib);
 				}
 			}
 		}
@@ -762,21 +762,18 @@ fn parse_tag_macro<U1, U2>(file: &ParserFile, ctx: &mut ParserContext<U1, U2>, n
 }
 
 fn process_component<'a, U1, U2>(
-	file: &'a ParserFile,
 	ctx: &mut ParserContext<U1, U2>,
-	node: roxmltree::Node<'a, 'a>,
 	component: Component,
 	widget_id: WidgetID,
+	attribs: &[AttribPair],
 ) {
-	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
-
 	let mut component_id: Option<Rc<str>> = None;
 
-	for (key, value) in attribs {
+	for pair in attribs {
 		#[allow(clippy::single_match)]
-		match key.as_ref() {
+		match pair.attrib.as_ref() {
 			"id" => {
-				component_id = Some(value);
+				component_id = Some(pair.value.clone());
 			}
 			_ => {}
 		}
@@ -785,20 +782,13 @@ fn process_component<'a, U1, U2>(
 	ctx.insert_component(widget_id, component, component_id);
 }
 
-fn parse_widget_universal<'a, U1, U2>(
-	file: &'a ParserFile,
-	ctx: &mut ParserContext<U1, U2>,
-	node: roxmltree::Node<'a, 'a>,
-	widget_id: WidgetID,
-) {
-	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
-
-	for (key, value) in attribs {
+fn parse_widget_universal<'a, U1, U2>(ctx: &mut ParserContext<U1, U2>, widget_id: WidgetID, attribs: &[AttribPair]) {
+	for pair in attribs {
 		#[allow(clippy::single_match)]
-		match key.as_ref() {
+		match pair.attrib.as_ref() {
 			"id" => {
 				// Attach a specific widget to name-ID map (just like getElementById)
-				ctx.insert_id(&value, widget_id);
+				ctx.insert_id(&pair.value, widget_id);
 			}
 			_ => {}
 		}
@@ -827,36 +817,38 @@ fn parse_child<'a, U1, U2>(
 		_ => {}
 	}
 
+	let attribs = process_attribs(file, ctx, &child_node, false);
+
 	let mut new_widget_id: Option<WidgetID> = None;
 
 	match child_node.tag_name().name() {
 		"include" => {
-			parse_tag_include(file, ctx, child_node, parent_id)?;
+			parse_tag_include(file, ctx, parent_id, &attribs)?;
 		}
 		"div" => {
-			new_widget_id = Some(parse_widget_div(file, ctx, child_node, parent_id)?);
+			new_widget_id = Some(parse_widget_div(file, ctx, child_node, parent_id, &attribs)?);
 		}
 		"rectangle" => {
-			new_widget_id = Some(parse_widget_rectangle(file, ctx, child_node, parent_id)?);
+			new_widget_id = Some(parse_widget_rectangle(file, ctx, child_node, parent_id, &attribs)?);
 		}
 		"label" => {
-			new_widget_id = Some(parse_widget_label(file, ctx, child_node, parent_id)?);
+			new_widget_id = Some(parse_widget_label(file, ctx, child_node, parent_id, &attribs)?);
 		}
 		"sprite" => {
-			new_widget_id = Some(parse_widget_sprite(file, ctx, child_node, parent_id)?);
+			new_widget_id = Some(parse_widget_sprite(file, ctx, child_node, parent_id, &attribs)?);
 		}
 		"Button" => {
-			new_widget_id = Some(parse_component_button(file, ctx, child_node, parent_id)?);
+			new_widget_id = Some(parse_component_button(file, ctx, child_node, parent_id, &attribs)?);
 		}
 		"Slider" => {
-			new_widget_id = Some(parse_component_slider(file, ctx, child_node, parent_id)?);
+			new_widget_id = Some(parse_component_slider(ctx, parent_id, &attribs)?);
 		}
 		"CheckBox" => {
-			new_widget_id = Some(parse_component_checkbox(file, ctx, child_node, parent_id)?);
+			new_widget_id = Some(parse_component_checkbox(ctx, parent_id, &attribs)?);
 		}
 		"" => { /* ignore */ }
 		other_tag_name => {
-			parse_widget_other(other_tag_name, file, ctx, child_node, parent_id)?;
+			parse_widget_other(other_tag_name, file, ctx, parent_id, &attribs)?;
 		}
 	}
 
@@ -864,20 +856,13 @@ fn parse_child<'a, U1, U2>(
 	if let Some(widget_id) = new_widget_id
 		&& let Some(on_custom_attribs) = &ctx.doc_params.extra.on_custom_attribs
 	{
-		let mut pairs = SmallVec::<[CustomAttribPair; 4]>::new();
+		let mut pairs = SmallVec::<[AttribPair; 4]>::new();
 
-		for attrib in child_node.attributes() {
-			let attr_name = attrib.name();
-			if !attr_name.starts_with('_') || attr_name.is_empty() {
+		for pair in attribs {
+			if !pair.attrib.starts_with('_') || pair.attrib.is_empty() {
 				continue;
 			}
-
-			let attr_without_prefix = &attr_name[1..]; // safe
-
-			pairs.push(CustomAttribPair {
-				attrib: attr_without_prefix,
-				value: attrib.value(),
-			});
+			pairs.push(pair.clone());
 		}
 
 		if !pairs.is_empty() {
@@ -921,16 +906,30 @@ fn create_default_context<'a, U1, U2>(
 	}
 }
 
-pub struct CustomAttribPair<'a> {
-	pub attrib: &'a str, // without _ at the beginning
-	pub value: &'a str,
+#[derive(Clone)]
+pub struct AttribPair {
+	pub attrib: Rc<str>,
+	pub value: Rc<str>,
+}
+
+impl AttribPair {
+	fn new<A, V>(attrib: A, value: V) -> Self
+	where
+		A: Into<Rc<str>>,
+		V: Into<Rc<str>>,
+	{
+		Self {
+			attrib: attrib.into(),
+			value: value.into(),
+		}
+	}
 }
 
 pub struct CustomAttribsInfo<'a> {
 	pub parent_id: WidgetID,
 	pub widget_id: WidgetID,
 	pub widgets: &'a WidgetMap,
-	pub pairs: &'a [CustomAttribPair<'a>],
+	pub pairs: &'a [AttribPair],
 }
 
 // helper functions
@@ -943,11 +942,11 @@ impl CustomAttribsInfo<'_> {
 		self.widgets.get(self.widget_id)?.get_as_mut::<T>()
 	}
 
-	pub fn get_value(&self, attrib_name: &str) -> Option<&str> {
+	pub fn get_value(&self, attrib_name: &str) -> Option<Rc<str>> {
 		// O(n) search, these pairs won't be problematically big anyways
 		for pair in self.pairs {
-			if pair.attrib == attrib_name {
-				return Some(pair.value);
+			if *pair.attrib == *attrib_name {
+				return Some(pair.value.clone());
 			}
 		}
 
@@ -958,35 +957,23 @@ impl CustomAttribsInfo<'_> {
 		CustomAttribsInfoOwned {
 			parent_id: self.parent_id,
 			widget_id: self.widget_id,
-			pairs: self
-				.pairs
-				.iter()
-				.map(|p| CustomAttribPairOwned {
-					attrib: p.attrib.to_string(),
-					value: p.value.to_string(),
-				})
-				.collect(),
+			pairs: self.pairs.iter().cloned().collect(),
 		}
 	}
-}
-
-pub struct CustomAttribPairOwned {
-	pub attrib: String, // without _ at the beginning
-	pub value: String,
 }
 
 pub struct CustomAttribsInfoOwned {
 	pub parent_id: WidgetID,
 	pub widget_id: WidgetID,
-	pub pairs: Vec<CustomAttribPairOwned>,
+	pub pairs: Vec<AttribPair>,
 }
 
 impl CustomAttribsInfoOwned {
 	pub fn get_value(&self, attrib_name: &str) -> Option<&str> {
 		// O(n) search, these pairs won't be problematically big anyways
 		for pair in &self.pairs {
-			if pair.attrib == attrib_name {
-				return Some(pair.value.as_str());
+			if pair.attrib.as_ref() == attrib_name {
+				return Some(pair.value.as_ref());
 			}
 		}
 
@@ -1091,7 +1078,7 @@ fn parse_document_root<U1, U2>(
 		#[allow(clippy::single_match)]
 		match child_node.tag_name().name() {
 			/*  topmost include directly in <layout>  */
-			"include" => parse_tag_include(file, ctx, child_node, parent_id)?,
+			"include" => parse_tag_include(file, ctx, parent_id, &raw_attribs(&child_node))?,
 			"theme" => parse_tag_theme(ctx, child_node),
 			"template" => parse_tag_template(file, ctx, child_node),
 			"macro" => parse_tag_macro(file, ctx, child_node),

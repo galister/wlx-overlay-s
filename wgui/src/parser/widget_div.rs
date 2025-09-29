@@ -1,9 +1,6 @@
 use crate::{
 	layout::WidgetID,
-	parser::{
-		ParserContext, ParserFile, iter_attribs, parse_children, parse_widget_universal,
-		style::parse_style,
-	},
+	parser::{parse_children, parse_widget_universal, style::parse_style, AttribPair, ParserContext, ParserFile},
 	widget::div::WidgetDiv,
 };
 
@@ -12,15 +9,13 @@ pub fn parse_widget_div<'a, U1, U2>(
 	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
+	attribs: &[AttribPair],
 ) -> anyhow::Result<WidgetID> {
-	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
-	let style = parse_style(&attribs);
+	let style = parse_style(attribs);
 
-	let (new_id, _) = ctx
-		.layout
-		.add_child(parent_id, WidgetDiv::create(), style)?;
+	let (new_id, _) = ctx.layout.add_child(parent_id, WidgetDiv::create(), style)?;
 
-	parse_widget_universal(file, ctx, node, new_id);
+	parse_widget_universal(ctx, new_id, attribs);
 	parse_children(file, ctx, node, new_id)?;
 
 	Ok(new_id)
