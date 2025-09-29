@@ -1,38 +1,35 @@
 use crate::{
-	components::{Component, checkbox},
+	components::{checkbox, Component},
 	i18n::Translation,
 	layout::WidgetID,
-	parser::{
-		ParserContext, ParserFile, iter_attribs, parse_check_f32, parse_check_i32, process_component, style::parse_style,
-	},
+	parser::{parse_check_f32, parse_check_i32, process_component, style::parse_style, AttribPair, ParserContext},
 };
 
 pub fn parse_component_checkbox<'a, U1, U2>(
-	file: &'a ParserFile,
 	ctx: &mut ParserContext<U1, U2>,
-	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
+	attribs: &[AttribPair],
 ) -> anyhow::Result<WidgetID> {
 	let mut box_size = 24.0;
 	let mut translation = Translation::default();
 	let mut checked = 0;
 
-	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
-	let style = parse_style(&attribs);
+	let style = parse_style(attribs);
 
-	for (key, value) in attribs {
-		match key.as_ref() {
+	for pair in attribs {
+		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
+		match key {
 			"text" => {
-				translation = Translation::from_raw_text(&value);
+				translation = Translation::from_raw_text(value);
 			}
 			"translation" => {
-				translation = Translation::from_translation_key(&value);
+				translation = Translation::from_translation_key(value);
 			}
 			"box_size" => {
-				parse_check_f32(value.as_ref(), &mut box_size);
+				parse_check_f32(value, &mut box_size);
 			}
 			"checked" => {
-				parse_check_i32(value.as_ref(), &mut checked);
+				parse_check_i32(value, &mut checked);
 			}
 			_ => {}
 		}
@@ -50,7 +47,7 @@ pub fn parse_component_checkbox<'a, U1, U2>(
 		},
 	)?;
 
-	process_component(file, ctx, node, Component(component), new_id);
+	process_component(ctx, Component(component), new_id, attribs);
 
 	Ok(new_id)
 }

@@ -1,11 +1,12 @@
 use crate::{
-	components::{Component, button},
+	components::{button, Component},
 	drawing::Color,
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		ParserContext, ParserFile, iter_attribs, parse_children, process_component,
+		parse_children, process_component,
 		style::{parse_color_opt, parse_round, parse_style, parse_text_style},
+		AttribPair, ParserContext, ParserFile,
 	},
 	widget::util::WLength,
 };
@@ -15,6 +16,7 @@ pub fn parse_component_button<'a, U1, U2>(
 	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
+	attribs: &[AttribPair],
 ) -> anyhow::Result<WidgetID> {
 	let mut color: Option<Color> = None;
 	let mut border_color: Option<Color> = None;
@@ -23,11 +25,11 @@ pub fn parse_component_button<'a, U1, U2>(
 	let mut round = WLength::Units(4.0);
 	let mut translation: Option<Translation> = None;
 
-	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
-	let text_style = parse_text_style(&attribs);
-	let style = parse_style(&attribs);
+	let text_style = parse_text_style(attribs);
+	let style = parse_style(attribs);
 
-	for (key, value) in attribs {
+	for pair in attribs {
+		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
 		match key.as_ref() {
 			"text" => {
 				translation = Some(Translation::from_raw_text(&value));
@@ -73,7 +75,7 @@ pub fn parse_component_button<'a, U1, U2>(
 		},
 	)?;
 
-	process_component(file, ctx, node, Component(component), new_id);
+	process_component(ctx, Component(component), new_id, attribs);
 	parse_children(file, ctx, node, new_id)?;
 
 	Ok(new_id)

@@ -7,8 +7,8 @@ use crate::{
 	drawing::{self, PrimitiveExtent},
 	layout::WidgetID,
 	renderer_vk::text::{
-		DEFAULT_METRICS, FONT_SYSTEM,
 		custom_glyph::{CustomGlyph, CustomGlyphData},
+		DEFAULT_METRICS, FONT_SYSTEM,
 	},
 };
 
@@ -81,6 +81,7 @@ impl WidgetObj for WidgetSprite {
 					transform: state.transform_stack.get().transform,
 				},
 				Rc::new(RefCell::new(buffer)),
+				None,
 			));
 		}
 	}

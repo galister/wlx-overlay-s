@@ -1,6 +1,6 @@
 use crate::{
 	layout::WidgetID,
-	parser::{ParserContext, ParserFile, iter_attribs, parse_children, parse_widget_universal, style::parse_style},
+	parser::{parse_children, parse_widget_universal, style::parse_style, AttribPair, ParserContext, ParserFile},
 	renderer_vk::text::custom_glyph::{CustomGlyphContent, CustomGlyphData},
 	widget::sprite::{WidgetSprite, WidgetSpriteParams},
 };
@@ -12,17 +12,18 @@ pub fn parse_widget_sprite<'a, U1, U2>(
 	ctx: &mut ParserContext<U1, U2>,
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
+	attribs: &[AttribPair],
 ) -> anyhow::Result<WidgetID> {
 	let mut params = WidgetSpriteParams::default();
-	let attribs: Vec<_> = iter_attribs(file, ctx, &node, false).collect();
 	let style = parse_style(&attribs);
 
 	let mut glyph = None;
-	for (key, value) in attribs {
-		match key.as_ref() {
+	for pair in attribs {
+		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
+		match key {
 			"src" => {
 				if !value.is_empty() {
-					glyph = match CustomGlyphContent::from_assets(&mut ctx.layout.state.globals.assets(), &value) {
+					glyph = match CustomGlyphContent::from_assets(&mut ctx.layout.state.globals.assets(), value) {
 						Ok(glyph) => Some(glyph),
 						Err(e) => {
 							log::warn!("failed to load {value}: {e}");
@@ -32,15 +33,15 @@ pub fn parse_widget_sprite<'a, U1, U2>(
 				}
 			}
 			"src_ext" => {
-				if !value.is_empty() && std::fs::exists(value.as_ref()).unwrap_or(false) {
-					glyph = CustomGlyphContent::from_file(&value).ok();
+				if !value.is_empty() && std::fs::exists(value).unwrap_or(false) {
+					glyph = CustomGlyphContent::from_file(value).ok();
 				}
 			}
 			"color" => {
-				if let Some(color) = parse_color_hex(&value) {
+				if let Some(color) = parse_color_hex(value) {
 					params.color = Some(color);
 				} else {
-					print_invalid_attrib(&key, &value);
+					print_invalid_attrib(key, value);
 				}
 			}
 			_ => {}
@@ -55,7 +56,7 @@ pub fn parse_widget_sprite<'a, U1, U2>(
 
 	let (new_id, _) = ctx.layout.add_child(parent_id, WidgetSprite::create(params), style)?;
 
-	parse_widget_universal(file, ctx, node, new_id);
+	parse_widget_universal(ctx, new_id, attribs);
 	parse_children(file, ctx, node, new_id)?;
 
 	Ok(new_id)

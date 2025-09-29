@@ -11,7 +11,7 @@ use wgui::{
 
 use crate::{
     backend::{common::OverlaySelector, overlay::OverlayID, task::TaskType, wayvr::WayVRAction},
-    config::{AStrSetExt, save_layout},
+    config::{save_layout, AStrSetExt},
     state::AppState,
 };
 
@@ -24,8 +24,8 @@ pub(super) fn setup_custom_button<S>(
     _app: &AppState,
 ) {
     const EVENTS: [(&str, EventListenerKind); 2] = [
-        ("press", EventListenerKind::MousePress),
-        ("release", EventListenerKind::MouseRelease),
+        ("_press", EventListenerKind::MousePress),
+        ("_release", EventListenerKind::MouseRelease),
     ];
 
     for (name, kind) in &EVENTS {

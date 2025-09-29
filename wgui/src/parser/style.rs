@@ -1,15 +1,13 @@
-use std::rc::Rc;
-
 use taffy::{
-	AlignContent, AlignItems, AlignSelf, BoxSizing, Display, FlexDirection, FlexWrap, JustifyContent,
-	JustifySelf, Overflow,
+	AlignContent, AlignItems, AlignSelf, BoxSizing, Display, FlexDirection, FlexWrap, JustifyContent, JustifySelf,
+	Overflow,
 };
 
 use crate::{
 	drawing,
 	parser::{
-		is_percent, parse_color_hex, parse_f32, parse_percent, parse_size_unit, parse_val,
-		print_invalid_attrib, print_invalid_value,
+		is_percent, parse_color_hex, parse_f32, parse_percent, parse_size_unit, parse_val, print_invalid_attrib,
+		print_invalid_value, AttribPair,
 	},
 	renderer_vk::text::{FontWeight, HorizontalAlign, TextStyle},
 	widget::util::WLength,
@@ -45,11 +43,12 @@ pub fn parse_color_opt(value: &str, color: &mut Option<drawing::Color>) {
 	}
 }
 
-pub fn parse_text_style(attribs: &[(Rc<str>, Rc<str>)]) -> TextStyle {
+pub fn parse_text_style(attribs: &[AttribPair]) -> TextStyle {
 	let mut style = TextStyle::default();
 
-	for (key, value) in attribs {
-		match key.as_ref() {
+	for pair in attribs {
+		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
+		match key {
 			"color" => {
 				if let Some(color) = parse_color_hex(value) {
 					style.color = Some(color);
@@ -79,6 +78,25 @@ pub fn parse_text_style(attribs: &[(Rc<str>, Rc<str>)]) -> TextStyle {
 					print_invalid_attrib(key, value);
 				}
 			}
+			"shadow" => {
+				if let Some(color) = parse_color_hex(value) {
+					style.shadow.get_or_insert_default().color = color;
+				}
+			}
+			"shadow_x" => {
+				if let Ok(x) = value.parse::<f32>() {
+					style.shadow.get_or_insert_default().x = x;
+				} else {
+					print_invalid_attrib(key, value);
+				}
+			}
+			"shadow_y" => {
+				if let Ok(y) = value.parse::<f32>() {
+					style.shadow.get_or_insert_default().y = y;
+				} else {
+					print_invalid_attrib(key, value);
+				}
+			}
 			_ => {}
 		}
 	}
@@ -88,10 +106,11 @@ pub fn parse_text_style(attribs: &[(Rc<str>, Rc<str>)]) -> TextStyle {
 
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::cognitive_complexity)]
-pub fn parse_style(attribs: &[(Rc<str>, Rc<str>)]) -> taffy::Style {
+pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 	let mut style = taffy::Style::default();
 
-	for (key, value) in attribs {
+	for pair in attribs {
+		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
 		match key.as_ref() {
 			"display" => match value.as_ref() {
 				"flex" => style.display = Display::Flex,

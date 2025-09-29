@@ -7,9 +7,9 @@ use crate::{
 use glam::Vec2;
 use wgui::{
 	components::{
-		Component,
 		button::{ButtonClickCallback, ComponentButton},
 		checkbox::ComponentCheckbox,
+		Component,
 	},
 	drawing::Color,
 	event::EventListenerCollection,
@@ -66,17 +66,17 @@ impl TestbedGeneric {
 
 		let extra = ParseDocumentExtra {
 			on_custom_attribs: Some(Box::new(move |par| {
-				let Some(my_custom_value) = par.get_value("my_custom") else {
+				let Some(my_custom_value) = par.get_value("_my_custom") else {
 					return;
 				};
 
-				let Some(mult_value) = par.get_value("mult") else {
+				let Some(mult_value) = par.get_value("_mult") else {
 					return;
 				};
 
 				let mult_f32 = mult_value.parse::<f32>().unwrap();
 
-				let mut color = match my_custom_value {
+				let mut color = match my_custom_value.as_ref() {
 					"red" => Color::new(1.0, 0.0, 0.0, 1.0),
 					"green" => Color::new(0.0, 1.0, 0.0, 1.0),
 					"blue" => Color::new(0.0, 0.0, 1.0, 1.0),
