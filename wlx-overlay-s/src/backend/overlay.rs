@@ -1,13 +1,10 @@
 use std::{
     f32::consts::PI,
-    sync::{
-        Arc,
-        atomic::{AtomicUsize, Ordering},
-    },
+    sync::{atomic::AtomicUsize, Arc},
 };
 
 use glam::{Affine2, Affine3A, Mat3A, Quat, Vec2, Vec3, Vec3A};
-use serde::Deserialize;
+use slotmap::new_key_type;
 use vulkano::{format::Format, image::view::ImageView};
 
 use crate::{
@@ -21,8 +18,9 @@ use super::{
 
 static OVERLAY_AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(0);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Default)]
-pub struct OverlayID(pub usize);
+new_key_type! {
+    pub struct OverlayID;
+}
 
 pub const Z_ORDER_TOAST: u32 = 70;
 pub const Z_ORDER_LINES: u32 = 69;
@@ -32,7 +30,6 @@ pub const Z_ORDER_DEFAULT: u32 = 0;
 pub const Z_ORDER_DASHBOARD: u32 = Z_ORDER_DEFAULT;
 
 pub struct OverlayState {
-    pub id: OverlayID,
     pub name: Arc<str>,
     pub want_visible: bool,
     pub show_hide: bool,
@@ -56,7 +53,6 @@ pub struct OverlayState {
 impl Default for OverlayState {
     fn default() -> Self {
         Self {
-            id: OverlayID(OVERLAY_AUTO_INCREMENT.fetch_add(1, Ordering::Relaxed)),
             name: Arc::from(""),
             want_visible: false,
             show_hide: false,

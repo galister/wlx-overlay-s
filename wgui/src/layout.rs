@@ -7,15 +7,15 @@ use std::{
 use crate::{
 	animation::Animations,
 	components::{Component, InitData},
-	drawing::{self, Boundary, has_overflow_clip},
+	drawing::{self, has_overflow_clip, Boundary},
 	event::{self, CallbackDataCommon, EventAlterables, EventListenerCollection},
 	globals::WguiGlobals,
-	stack::{self, ScissorBoundary, Transform},
-	widget::{self, EventParams, WidgetObj, WidgetState, div::WidgetDiv},
+	stack::{self, ScissorBoundary},
+	widget::{self, div::WidgetDiv, EventParams, WidgetObj, WidgetState},
 };
 
-use glam::{Vec2, vec2};
-use slotmap::{HopSlotMap, SecondaryMap, new_key_type};
+use glam::{vec2, Vec2};
+use slotmap::{new_key_type, HopSlotMap, SecondaryMap};
 use taffy::{NodeId, TaffyTree, TraversePartialTree};
 
 new_key_type! {

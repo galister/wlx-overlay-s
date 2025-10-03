@@ -5,7 +5,7 @@ use std::{
     time::Instant,
 };
 
-use glam::{Quat, vec3a};
+use glam::{vec3a, Quat};
 use idmap_derive::IntegerId;
 use serde::{Deserialize, Serialize};
 use wgui::{
@@ -110,7 +110,7 @@ impl Toast {
         // frame, only the first one gets created
         app.tasks.enqueue_at(
             TaskType::CreateOverlay(
-                selector,
+                selector.clone(),
                 Box::new(move |app| {
                     let mut maybe_toast = new_toast(self, app);
                     if let Some((state, _)) = maybe_toast.as_mut() {
@@ -118,7 +118,7 @@ impl Toast {
                         app.tasks.enqueue_at(
                             // at timeout, drop the overlay by ID instead
                             // in order to avoid dropping any newer toasts
-                            TaskType::DropOverlay(OverlaySelector::Id(state.id)),
+                            TaskType::DropOverlay(selector),
                             destroy_at,
                         );
                     }
@@ -193,7 +193,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
         .ok()?;
 
     let _ = panel.layout.add_child(
-        rect,
+        rect.id,
         WidgetLabel::create(
             &mut globals.get(),
             WidgetLabelParams {
@@ -215,7 +215,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
     );
 
     let _ = panel.layout.add_child(
-        rect,
+        rect.id,
         WidgetLabel::create(
             &mut globals.get(),
             WidgetLabelParams {

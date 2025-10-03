@@ -1,9 +1,9 @@
 use glam::vec2;
 use wlx_capture::{
-    WlxCapture,
     wayland::{WlxClient, WlxOutput},
     wlr_dmabuf::WlrDmabufCapture,
     wlr_screencopy::WlrScreencopyCapture,
+    WlxCapture,
 };
 
 use crate::{
@@ -13,10 +13,10 @@ use crate::{
 };
 
 use super::{
-    ScreenCreateData,
     backend::ScreenBackend,
-    capture::{MainThreadWlxCapture, new_wlx_capture},
+    capture::{new_wlx_capture, MainThreadWlxCapture},
     pw::{load_pw_token_config, save_pw_token_config},
+    ScreenCreateData,
 };
 
 impl ScreenBackend {
@@ -134,7 +134,6 @@ pub fn create_screens_wayland(wl: &mut WlxClient, app: &mut AppState) -> ScreenC
 
             let meta = ScreenMeta {
                 name: wl.outputs[id].name.clone(),
-                id: state.id,
                 native_handle: *id,
             };
 

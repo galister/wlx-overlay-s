@@ -58,7 +58,7 @@ fn new_tooltip(
         .ok()?;
 
     let _ = panel.layout.add_child(
-        rect,
+        rect.id,
         TextLabel::create(
             &mut i18n,
             TextParams {

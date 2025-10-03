@@ -4,7 +4,7 @@ use std::{collections::VecDeque, time::Instant};
 
 use glam::{Affine3A, Vec2, Vec3, Vec3A, Vec3Swizzles};
 
-use smallvec::{SmallVec, smallvec};
+use smallvec::{smallvec, SmallVec};
 
 use crate::backend::common::OverlaySelector;
 use crate::backend::overlay::Positioning;
@@ -323,7 +323,7 @@ where
         if let Some(grabbed) = overlays.mut_by_id(grab_data.grabbed_id) {
             Pointer::handle_grabbed(idx, grabbed, app);
         } else {
-            log::warn!("Grabbed overlay {} does not exist", grab_data.grabbed_id.0);
+            log::warn!("Grabbed overlay {:?} does not exist", grab_data.grabbed_id);
             pointer.interaction.grabbed = None;
         }
         return (0.1, None);
@@ -364,7 +364,7 @@ where
         pointer = &mut app.input_state.pointers[idx];
     }
     let Some(hovered) = overlays.mut_by_id(hit.overlay) else {
-        log::warn!("Hit overlay {} does not exist", hit.overlay.0);
+        log::warn!("Hit overlay {:?} does not exist", hit.overlay);
         return (0.0, None); // no hit
     };
 
@@ -385,7 +385,7 @@ where
 
     if pointer.now.grab && !pointer.before.grab && hovered.state.grabbable {
         update_focus(&mut app.hid_provider.keyboard_focus, &hovered.state);
-        pointer.start_grab(hovered, &mut app.tasks);
+        pointer.start_grab(hit.overlay, hovered, &mut app.tasks);
         return (
             hit.dist,
             Some(Haptics {
@@ -454,13 +454,13 @@ impl Pointer {
     {
         let mut hits: SmallVec<[RayHit; 8]> = smallvec!();
 
-        for overlay in overlays.iter() {
+        for (id, overlay) in overlays.iter() {
             if !overlay.state.want_visible || !overlay.state.interactable {
                 continue;
             }
 
             if let Some(hit) = self.ray_test(
-                overlay.state.id,
+                id,
                 &overlay.state.transform,
                 overlay.state.curvature.as_ref(),
             ) {
@@ -502,8 +502,12 @@ impl Pointer {
         None
     }
 
-    fn start_grab<O>(&mut self, overlay: &mut OverlayData<O>, tasks: &mut TaskContainer)
-    where
+    fn start_grab<O>(
+        &mut self,
+        id: OverlayID,
+        overlay: &mut OverlayData<O>,
+        tasks: &mut TaskContainer,
+    ) where
         O: Default,
     {
         let offset = self
@@ -513,7 +517,7 @@ impl Pointer {
 
         self.interaction.grabbed = Some(GrabData {
             offset,
-            grabbed_id: overlay.state.id,
+            grabbed_id: id,
             old_curvature: overlay.state.curvature,
             grab_all: matches!(self.interaction.mode, PointerMode::Right),
         });
@@ -570,7 +574,7 @@ impl Pointer {
                 overlay.state.realign(&app.input_state.hmd);
                 overlay.state.dirty = true;
             } else {
-                log::error!("Grabbed overlay {} does not exist", overlay.state.id.0);
+                log::error!("Grabbed overlay does not exist");
                 pointer.interaction.grabbed = None;
             }
         } else {

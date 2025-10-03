@@ -1,7 +1,7 @@
 use glam::Affine3A;
 use idmap::IdMap;
 use serde::{Deserialize, Serialize};
-use smallvec::{SmallVec, smallvec};
+use smallvec::{smallvec, SmallVec};
 use std::sync::Arc;
 use wgui::{
     gfx::WGfx, globals::WguiGlobals, renderer_vk::context::SharedContext as WSharedContext,
@@ -18,7 +18,7 @@ use {
 use crate::subsystem::osc::OscSender;
 
 use crate::{
-    backend::{input::InputState, overlay::OverlayID, task::TaskContainer},
+    backend::{input::InputState, task::TaskContainer},
     config::GeneralConfig,
     config_io,
     graphics::WGfxExtras,
@@ -184,7 +184,6 @@ impl AppSession {
 
 pub struct ScreenMeta {
     pub name: Arc<str>,
-    pub id: OverlayID,
     pub native_handle: u32,
 }
 

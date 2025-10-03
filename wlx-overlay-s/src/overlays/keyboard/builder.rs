@@ -90,7 +90,7 @@ where
 
     for row in 0..layout.key_sizes.len() {
         let (div, _) = panel.layout.add_child(
-            background,
+            background.id,
             WidgetDiv::create(),
             taffy::Style {
                 flex_direction: taffy::FlexDirection::Row,
@@ -111,7 +111,7 @@ where
 
             let Some(key) = layout.get_key_data(keymap.as_ref(), has_altgr, col, row) else {
                 let _ = panel.layout.add_child(
-                    div,
+                    div.id,
                     WidgetDiv::create(),
                     taffy::Style {
                         size: taffy_size,
@@ -169,7 +169,7 @@ where
                 &template_key,
                 &mut panel.layout,
                 &mut panel.listeners,
-                div,
+                div.id,
                 params,
             )?;
 
@@ -327,7 +327,7 @@ fn on_enter_anim(
         Box::new(move |common, data| {
             let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
             set_anim_color(&key_state, rect, data.pos);
-            data.data.transform = get_anim_transform(data.pos, data.widget_size);
+            data.data.transform = get_anim_transform(data.pos, data.widget_boundary.size);
             common.alterables.mark_redraw();
         }),
     ));
@@ -345,7 +345,7 @@ fn on_leave_anim(
         Box::new(move |common, data| {
             let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
             set_anim_color(&key_state, rect, 1.0 - data.pos);
-            data.data.transform = get_anim_transform(1.0 - data.pos, data.widget_size);
+            data.data.transform = get_anim_transform(1.0 - data.pos, data.widget_boundary.size);
             common.alterables.mark_redraw();
         }),
     ));

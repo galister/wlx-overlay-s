@@ -1,10 +1,10 @@
-use std::{collections::HashMap, rc::Rc, time::Duration};
+use std::{collections::HashMap, rc::Rc, sync::Arc, time::Duration};
 
 use glam::Vec3A;
 use smallvec::SmallVec;
 
 use crate::{
-    backend::overlay::{OverlayData, OverlayID, OverlayState, Positioning, Z_ORDER_WATCH},
+    backend::overlay::{OverlayData, OverlayState, Positioning, Z_ORDER_WATCH},
     gui::{panel::GuiPanel, timer::GuiTimer},
     state::AppState,
 };
@@ -21,8 +21,8 @@ where
     let screens = app
         .screens
         .iter()
-        .map(|s| s.id)
-        .collect::<SmallVec<[OverlayID; 8]>>();
+        .map(|s| s.name.clone())
+        .collect::<SmallVec<[Arc<str>; 8]>>();
 
     let state = WatchState {};
     let mut panel = GuiPanel::new_from_template(
@@ -38,7 +38,7 @@ where
                 for (idx, handle) in screens.iter().enumerate() {
                     let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
                     params.insert("display".into(), (idx + 1).to_string().into());
-                    params.insert("handle".into(), handle.0.to_string().into());
+                    params.insert("handle".into(), handle.as_ref().into());
                     parser_state.instantiate_template(
                         doc_params, "Set", layout, listeners, widget, params,
                     )?;

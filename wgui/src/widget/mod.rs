@@ -11,7 +11,6 @@ use crate::{
 	},
 	layout::{Layout, LayoutState, WidgetID},
 	stack::{ScissorStack, TransformStack},
-	widget,
 };
 
 pub mod div;

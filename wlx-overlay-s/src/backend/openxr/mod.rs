@@ -2,8 +2,8 @@ use std::{
     collections::VecDeque,
     ops::Add,
     sync::{
-        Arc,
         atomic::{AtomicBool, AtomicUsize, Ordering},
+        Arc,
     },
     time::{Duration, Instant},
 };
@@ -23,10 +23,10 @@ use crate::{
         overlay::{OverlayData, ShouldRender},
         task::{SystemTask, TaskType},
     },
-    graphics::{CommandBuffers, init_openxr_graphics},
+    graphics::{init_openxr_graphics, CommandBuffers},
     overlays::{
         toast::{Toast, ToastTopic},
-        watch::{WATCH_NAME, watch_fade},
+        watch::{watch_fade, WATCH_NAME},
     },
     state::AppState,
     subsystem::notifications::NotificationManager,
@@ -155,7 +155,7 @@ pub fn openxr_run(
         lines.allocate(&xr_state, app.gfx.clone())?,
     ];
 
-    let watch_id = overlays.get_by_name(WATCH_NAME).unwrap().state.id; // want panic
+    let watch_id = overlays.lookup(WATCH_NAME).unwrap(); // want panic
 
     let mut input_source = input::OpenXrInputSource::new(&xr_state)?;
 
@@ -311,7 +311,7 @@ pub fn openxr_run(
             );
         }
 
-        for o in overlays.iter_mut() {
+        for o in overlays.values_mut() {
             o.after_input(&mut app)?;
         }
 
@@ -335,7 +335,7 @@ pub fn openxr_run(
         }
 
         overlays
-            .iter_mut()
+            .values_mut()
             .for_each(|o| o.state.auto_movement(&mut app));
 
         let lengths_haptics = interact(&mut overlays, &mut app);
@@ -379,7 +379,7 @@ pub fn openxr_run(
             skybox.render(&xr_state, &app, &mut buffers)?;
         }
 
-        for o in overlays.iter_mut() {
+        for o in overlays.values_mut() {
             o.data.cur_visible = false;
             if !o.state.want_visible {
                 continue;
@@ -431,7 +431,7 @@ pub fn openxr_run(
             }
         }
 
-        for o in overlays.iter_mut() {
+        for o in overlays.values_mut() {
             if !o.data.cur_visible {
                 continue;
             }

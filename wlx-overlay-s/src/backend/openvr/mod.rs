@@ -2,18 +2,18 @@ use std::{
     collections::VecDeque,
     ops::Add,
     sync::{
-        Arc,
         atomic::{AtomicBool, AtomicUsize, Ordering},
+        Arc,
     },
     time::{Duration, Instant},
 };
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use ovr_overlay::{
-    TrackedDeviceIndex,
     sys::{ETrackedDeviceProperty, EVRApplicationType, EVREventType},
+    TrackedDeviceIndex,
 };
-use vulkano::{Handle, VulkanObject, device::physical::PhysicalDevice};
+use vulkano::{device::physical::PhysicalDevice, Handle, VulkanObject};
 
 use crate::{
     backend::{
@@ -21,7 +21,7 @@ use crate::{
         input::interact,
         openvr::{
             helpers::adjust_gain,
-            input::{OpenVrInputSource, set_action_manifest},
+            input::{set_action_manifest, OpenVrInputSource},
             lines::LinePool,
             manifest::{install_manifest, uninstall_manifest},
             overlay::OpenVrOverlayData,
@@ -29,10 +29,10 @@ use crate::{
         overlay::{OverlayData, ShouldRender},
         task::{SystemTask, TaskType},
     },
-    graphics::{CommandBuffers, init_openvr_graphics},
+    graphics::{init_openvr_graphics, CommandBuffers},
     overlays::{
         toast::{Toast, ToastTopic},
-        watch::{WATCH_NAME, watch_fade},
+        watch::{watch_fade, WATCH_NAME},
     },
     state::AppState,
     subsystem::notifications::NotificationManager,
@@ -289,7 +289,7 @@ pub fn openvr_run(
         }
 
         overlays
-            .iter_mut()
+            .values_mut()
             .for_each(|o| o.state.auto_movement(&mut state));
 
         watch_fade(&mut state, overlays.mut_by_id(watch_id).unwrap()); // want panic
@@ -314,7 +314,7 @@ pub fn openvr_run(
 
         lines.update(universe.clone(), &mut overlay_mgr, &mut state)?;
 
-        for o in overlays.iter_mut() {
+        for o in overlays.values_mut() {
             o.after_input(&mut overlay_mgr, &mut state)?;
         }
 
@@ -332,7 +332,7 @@ pub fn openvr_run(
 
         log::trace!("Rendering frame");
 
-        for o in overlays.iter_mut() {
+        for o in overlays.values_mut() {
             if o.state.want_visible {
                 let ShouldRender::Should = o.should_render(&mut state)? else {
                     continue;
@@ -359,7 +359,7 @@ pub fn openvr_run(
         }
 
         overlays
-            .iter_mut()
+            .values_mut()
             .for_each(|o| o.after_render(universe.clone(), &mut overlay_mgr, &state.gfx));
 
         #[cfg(feature = "wayvr")]

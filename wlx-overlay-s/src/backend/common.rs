@@ -4,17 +4,16 @@ use std::sync::{Arc, LazyLock};
 use openxr as xr;
 
 use glam::{Affine3A, Vec3, Vec3A};
-use idmap::IdMap;
-use serde::Deserialize;
+use slotmap::HopSlotMap;
 use thiserror::Error;
 
 use crate::{
     config::AStrSetExt,
     overlays::{
         anchor::create_anchor,
-        keyboard::{KEYBOARD_NAME, builder::create_keyboard},
+        keyboard::{builder::create_keyboard, KEYBOARD_NAME},
         screen::create_screens,
-        watch::{WATCH_NAME, create_watch},
+        watch::{create_watch, WATCH_NAME},
     },
     state::AppState,
 };
@@ -40,7 +39,7 @@ pub struct OverlayContainer<T>
 where
     T: Default,
 {
-    overlays: IdMap<usize, OverlayData<T>>,
+    overlays: HopSlotMap<OverlayID, OverlayData<T>>,
 }
 
 impl<T> OverlayContainer<T>
@@ -48,7 +47,7 @@ where
     T: Default,
 {
     pub fn new(app: &mut AppState, headless: bool) -> anyhow::Result<Self> {
-        let mut overlays = IdMap::new();
+        let mut overlays = HopSlotMap::with_key();
         let mut show_screens = app.session.config.show_screens.clone();
         let mut maybe_keymap = None;
 
@@ -66,13 +65,10 @@ where
                         if show_screens.arc_get(state.name.as_ref()) {
                             state.show_hide = true;
                         }
-                        overlays.insert(
-                            state.id.0,
-                            OverlayData::<T> {
-                                state,
-                                ..OverlayData::from_backend(backend)
-                            },
-                        );
+                        overlays.insert(OverlayData::<T> {
+                            state,
+                            ..OverlayData::from_backend(backend)
+                        });
                         app.screens.push(meta);
                     }
 
@@ -83,16 +79,16 @@ where
         }
 
         let anchor = create_anchor(app)?;
-        overlays.insert(anchor.state.id.0, anchor);
+        overlays.insert(anchor);
 
         let mut watch = create_watch::<T>(app)?;
         watch.state.want_visible = true;
-        overlays.insert(watch.state.id.0, watch);
+        overlays.insert(watch);
 
         let mut keyboard = create_keyboard(app, maybe_keymap)?;
         keyboard.state.show_hide = show_screens.arc_get(KEYBOARD_NAME);
         keyboard.state.want_visible = false;
-        overlays.insert(keyboard.state.id.0, keyboard);
+        overlays.insert(keyboard);
 
         Ok(Self { overlays })
     }
@@ -106,24 +102,19 @@ where
 
     pub fn remove_by_selector(&mut self, selector: &OverlaySelector) -> Option<OverlayData<T>> {
         match selector {
-            OverlaySelector::Id(id) => self.overlays.remove(id.0),
+            OverlaySelector::Id(id) => self.overlays.remove(*id),
             OverlaySelector::Name(name) => {
-                let id = self
-                    .overlays
-                    .iter()
-                    .find(|(_, o)| *o.state.name == **name)
-                    .map(|(id, _)| *id);
-                id.and_then(|id| self.overlays.remove(id))
+                self.lookup(name).and_then(|id| self.overlays.remove(id))
             }
         }
     }
 
     pub fn get_by_id(&mut self, id: OverlayID) -> Option<&OverlayData<T>> {
-        self.overlays.get(id.0)
+        self.overlays.get(id)
     }
 
     pub fn mut_by_id(&mut self, id: OverlayID) -> Option<&mut OverlayData<T>> {
-        self.overlays.get_mut(id.0)
+        self.overlays.get_mut(id)
     }
 
     pub fn get_by_name<'a>(&'a mut self, name: &str) -> Option<&'a OverlayData<T>> {
@@ -134,16 +125,31 @@ where
         self.overlays.values_mut().find(|o| *o.state.name == *name)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &'_ OverlayData<T>> {
+    pub fn iter(&self) -> impl Iterator<Item = (OverlayID, &'_ OverlayData<T>)> {
+        self.overlays.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (OverlayID, &'_ mut OverlayData<T>)> {
+        self.overlays.iter_mut()
+    }
+
+    pub fn values(&self) -> impl Iterator<Item = &'_ OverlayData<T>> {
         self.overlays.values()
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &'_ mut OverlayData<T>> {
+    pub fn values_mut(&mut self) -> impl Iterator<Item = &'_ mut OverlayData<T>> {
         self.overlays.values_mut()
     }
 
-    pub fn add(&mut self, overlay: OverlayData<T>) {
-        self.overlays.insert(overlay.state.id.0, overlay);
+    pub fn lookup(&self, name: &str) -> Option<OverlayID> {
+        self.overlays
+            .iter()
+            .find(|(_, v)| v.state.name.as_ref() == name)
+            .map(|(k, _)| k)
+    }
+
+    pub fn add(&mut self, overlay: OverlayData<T>) -> OverlayID {
+        self.overlays.insert(overlay)
     }
 
     pub fn show_hide(&mut self, app: &mut AppState) {
@@ -177,8 +183,7 @@ where
     }
 }
 
-#[derive(Clone, Deserialize, Debug)]
-#[serde(untagged)]
+#[derive(Clone, Debug)]
 pub enum OverlaySelector {
     Id(OverlayID),
     Name(Arc<str>),

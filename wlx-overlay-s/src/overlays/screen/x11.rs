@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use glam::vec2;
 use wlx_capture::{
-    WlxCapture,
     frame::Transform,
     xshm::{XshmCapture, XshmScreen},
+    WlxCapture,
 };
 
 use crate::{
@@ -13,9 +13,9 @@ use crate::{
 };
 
 use super::{
-    ScreenCreateData,
     backend::ScreenBackend,
-    capture::{MainThreadWlxCapture, new_wlx_capture},
+    capture::{new_wlx_capture, MainThreadWlxCapture},
+    ScreenCreateData,
 };
 
 #[cfg(feature = "pipewire")]
@@ -112,7 +112,6 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
 
             let meta = ScreenMeta {
                 name: m.name.clone(),
-                id: state.id,
                 native_handle: 0,
             };
 
@@ -194,7 +193,6 @@ pub fn create_screens_xshm(app: &mut AppState) -> anyhow::Result<ScreenCreateDat
 
             let meta = ScreenMeta {
                 name: s.name.clone(),
-                id: state.id,
                 native_handle: 0,
             };
 

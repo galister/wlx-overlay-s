@@ -10,7 +10,7 @@ use wgui::{
 };
 
 use crate::{
-    backend::{common::OverlaySelector, overlay::OverlayID, task::TaskType, wayvr::WayVRAction},
+    backend::{common::OverlaySelector, task::TaskType, wayvr::WayVRAction},
     config::{save_layout, AStrSetExt},
     state::AppState,
 };
@@ -51,10 +51,7 @@ pub(super) fn setup_custom_button<S>(
                     continue;
                 };
 
-                let selector = selector.parse::<usize>().map_or_else(
-                    |_| OverlaySelector::Name(selector.into()),
-                    |id| OverlaySelector::Id(OverlayID(id)),
-                );
+                let selector = OverlaySelector::Name(selector.into());
 
                 Box::new(move |_common, _data, app, _| {
                     app.tasks.enqueue(TaskType::Overlay(

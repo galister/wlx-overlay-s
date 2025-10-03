@@ -68,7 +68,7 @@ impl OscSender {
             let mut has_keyboard = false;
             let mut has_wrist = false;
 
-            for o in overlays.iter() {
+            for o in overlays.values() {
                 if !o.state.want_visible {
                     continue;
                 }

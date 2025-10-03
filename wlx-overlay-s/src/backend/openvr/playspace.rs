@@ -68,7 +68,7 @@ impl PlayspaceMover {
             overlay_transform.translation = offset;
             space_transform.translation = offset;
 
-            overlays.iter_mut().for_each(|overlay| {
+            overlays.values_mut().for_each(|overlay| {
                 if overlay.state.grabbable {
                     overlay.state.dirty = true;
                     overlay.state.transform.translation =
@@ -125,7 +125,7 @@ impl PlayspaceMover {
 
             let overlay_offset = data.pose.inverse().transform_vector3a(relative_pos) * -1.0;
 
-            overlays.iter_mut().for_each(|overlay| {
+            overlays.values_mut().for_each(|overlay| {
                 if overlay.state.grabbable {
                     overlay.state.dirty = true;
                     overlay.state.transform.translation += overlay_offset;

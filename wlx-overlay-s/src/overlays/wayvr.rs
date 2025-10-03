@@ -101,6 +101,12 @@ impl WayVRData {
 
         candidate
     }
+
+    fn set_overlay_display_handle(&mut self, id: OverlayID, disp_handle: display::DisplayHandle) {
+        self.display_handle_map.insert(disp_handle, id);
+        let display = self.data.state.displays.get_mut(&disp_handle).unwrap(); // Never fails
+        display.overlay_id = Some(id);
+    }
 }
 
 struct ImageData {
@@ -241,7 +247,6 @@ where
 
         let mut overlay = create_overlay::<O>(
             app,
-            wayvr,
             DASHBOARD_DISPLAY_NAME,
             OverlayToCreate {
                 disp_handle,
@@ -264,7 +269,8 @@ where
         overlay.state.z_order = Z_ORDER_DASHBOARD;
         overlay.state.reset(app, true);
 
-        overlays.add(overlay);
+        let overlay_id = overlays.add(overlay);
+        wayvr.set_overlay_display_handle(overlay_id, disp_handle);
 
         let args_vec = &conf_dash
             .args
@@ -326,7 +332,6 @@ where
 
 fn create_overlay<O>(
     app: &mut AppState,
-    data: &mut WayVRData,
     name: &str,
     cell: OverlayToCreate,
 ) -> anyhow::Result<OverlayData<O>>
@@ -345,9 +350,6 @@ where
         name,
     )?;
 
-    data.display_handle_map
-        .insert(disp_handle, overlay.state.id);
-
     if let Some(attach_to) = &conf_display.attach_to {
         overlay.state.positioning = attach_to.get_positioning();
     }
@@ -360,9 +362,6 @@ where
     if let Some(pos) = &conf_display.pos {
         overlay.state.spawn_point = Vec3A::from_slice(pos);
     }
-
-    let display = data.data.state.displays.get_mut(&disp_handle).unwrap(); // Never fails
-    display.overlay_id = Some(overlay.state.id);
 
     Ok(overlay)
 }
@@ -384,8 +383,10 @@ where
 
         let name = disp.name.clone();
 
-        let overlay = create_overlay::<O>(app, data, name.as_str(), cell)?;
-        overlays.add(overlay); // Insert freshly created WayVR overlay into wlx stack
+        let disp_handle = cell.disp_handle;
+        let overlay = create_overlay::<O>(app, name.as_str(), cell)?;
+        let overlay_id = overlays.add(overlay); // Insert freshly created WayVR overlay into wlx stack
+        data.set_overlay_display_handle(overlay_id, disp_handle);
     }
 
     Ok(())
