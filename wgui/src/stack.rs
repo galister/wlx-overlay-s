@@ -53,8 +53,9 @@ impl<T: StackItem<T>, const STACK_MAX: usize> Default for GenericStack<T, STACK_
 #[derive(Copy, Clone)]
 pub struct Transform {
 	pub rel_pos: Vec2,
-	pub dim: Vec2,     // for convenience
-	pub abs_pos: Vec2, // for convenience, will be set after pushing
+	pub visual_dim: Vec2, // for convenience
+	pub raw_dim: Vec2,    // for convenience
+	pub abs_pos: Vec2,    // for convenience, will be set after pushing
 	pub transform: glam::Mat4,
 	pub transform_rel: glam::Mat4,
 }
@@ -64,7 +65,8 @@ impl Default for Transform {
 		Self {
 			abs_pos: Default::default(),
 			rel_pos: Default::default(),
-			dim: Default::default(),
+			visual_dim: Default::default(),
+			raw_dim: Default::default(),
 			transform: Mat4::IDENTITY,
 			transform_rel: Default::default(),
 		}

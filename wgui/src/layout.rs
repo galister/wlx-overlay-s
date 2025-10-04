@@ -7,15 +7,15 @@ use std::{
 use crate::{
 	animation::Animations,
 	components::{Component, InitData},
-	drawing::{self, has_overflow_clip, Boundary},
+	drawing::{self, Boundary, has_overflow_clip, push_scissor_stack, push_transform_stack},
 	event::{self, CallbackDataCommon, EventAlterables, EventListenerCollection},
 	globals::WguiGlobals,
 	stack::{self, ScissorBoundary},
-	widget::{self, div::WidgetDiv, EventParams, WidgetObj, WidgetState},
+	widget::{self, EventParams, WidgetObj, WidgetState, div::WidgetDiv},
 };
 
-use glam::{vec2, Vec2};
-use slotmap::{new_key_type, HopSlotMap, SecondaryMap};
+use glam::{Vec2, vec2};
+use slotmap::{HopSlotMap, SecondaryMap, new_key_type};
 use taffy::{NodeId, TaffyTree, TraversePartialTree};
 
 new_key_type! {
@@ -112,7 +112,8 @@ pub struct LayoutState {
 pub struct Layout {
 	pub state: LayoutState,
 
-	pub components_to_init: VecDeque<Component>,
+	pub components_to_init: Vec<Component>,
+	pub widgets_to_tick: Vec<WidgetID>,
 
 	pub root_widget: WidgetID,
 	pub root_node: taffy::NodeId,
@@ -218,25 +219,32 @@ impl Layout {
 		self.needs_redraw = true;
 	}
 
-	fn process_pending_components(&mut self) -> anyhow::Result<()> {
-		let mut alterables = EventAlterables::default();
-
-		while let Some(c) = self.components_to_init.pop_front() {
+	fn process_pending_components(&mut self, alterables: &mut EventAlterables) -> anyhow::Result<()> {
+		for comp in &self.components_to_init {
 			let mut common = CallbackDataCommon {
 				state: &self.state,
-				alterables: &mut alterables,
+				alterables,
 			};
 
-			c.0.init(&mut InitData { common: &mut common });
+			comp.0.init(&mut InitData { common: &mut common });
 		}
-
-		self.process_alterables(alterables)?;
-
+		self.components_to_init.clear();
 		Ok(())
 	}
 
+	fn process_pending_widget_ticks(&mut self, alterables: &mut EventAlterables) {
+		for widget_id in &self.widgets_to_tick {
+			let Some(widget) = self.state.widgets.get(*widget_id) else {
+				continue;
+			};
+
+			widget.state().tick(*widget_id, alterables);
+		}
+		self.widgets_to_tick.clear();
+	}
+
 	pub fn defer_component_init(&mut self, component: Component) {
-		self.components_to_init.push_back(component);
+		self.components_to_init.push(component);
 	}
 
 	fn push_event_children<U1, U2>(
@@ -276,24 +284,20 @@ impl Layout {
 
 		let mut widget = widget.0.borrow_mut();
 		let (scroll_shift, info) = match widget::get_scrollbar_info(l) {
-			Some(info) => (widget.get_scroll_shift(&info, l), Some(info)),
+			Some(info) => (widget.get_scroll_shift_raw(&info, l), Some(info)),
 			None => (Vec2::default(), None),
 		};
 
-		alterables.transform_stack.push(stack::Transform {
-			rel_pos: Vec2::new(l.location.x, l.location.y) - scroll_shift,
-			transform: widget.data.transform,
-			dim: Vec2::new(l.size.width, l.size.height),
-			..Default::default()
-		});
+		// see drawing.rs draw_widget too
+		push_transform_stack(&mut alterables.transform_stack, l, scroll_shift, &widget);
 
-		// see drawing.rs too
-		let scissor_pushed = info.is_some() && has_overflow_clip(style);
-		if scissor_pushed {
-			let mut boundary_absolute = drawing::Boundary::construct_absolute(&alterables.transform_stack);
-			boundary_absolute.pos += scroll_shift;
-			alterables.scissor_stack.push(ScissorBoundary(boundary_absolute));
-		}
+		let scissor_pushed = push_scissor_stack(
+			&mut alterables.transform_stack,
+			&mut alterables.scissor_stack,
+			scroll_shift,
+			&info,
+			style,
+		);
 
 		let mut iter_children = true;
 
@@ -399,7 +403,8 @@ impl Layout {
 			needs_redraw: true,
 			haptics_triggered: false,
 			animations: Animations::default(),
-			components_to_init: VecDeque::new(),
+			components_to_init: Vec::new(),
+			widgets_to_tick: Vec::new(),
 		})
 	}
 
@@ -467,9 +472,9 @@ impl Layout {
 	pub fn tick(&mut self) -> anyhow::Result<()> {
 		let mut alterables = EventAlterables::default();
 		self.animations.tick(&self.state, &mut alterables);
-		self.process_pending_components()?;
+		self.process_pending_components(&mut alterables)?;
+		self.process_pending_widget_ticks(&mut alterables);
 		self.process_alterables(alterables)?;
-
 		Ok(())
 	}
 
@@ -490,6 +495,12 @@ impl Layout {
 			self.mark_redraw();
 			for anim in alterables.animations {
 				self.animations.add(anim);
+			}
+		}
+
+		if !alterables.widgets_to_tick.is_empty() {
+			for widget_id in &alterables.widgets_to_tick {
+				self.widgets_to_tick.push(*widget_id);
 			}
 		}
 

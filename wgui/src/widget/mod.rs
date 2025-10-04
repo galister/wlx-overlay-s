@@ -22,7 +22,9 @@ pub mod util;
 pub struct WidgetData {
 	hovered: usize,
 	pressed: usize,
-	pub scrolling: Vec2, // normalized, 0.0-1.0. Not used in case if overflow != scroll
+	pub scrolling_target: Vec2,   // normalized, 0.0-1.0. Not used in case if overflow != scroll
+	pub scrolling_cur: Vec2,      // normalized, used for smooth scrolling animation
+	pub scrolling_cur_prev: Vec2, // for motion interpolation while rendering between ticks
 	pub transform: glam::Mat4,
 }
 
@@ -87,7 +89,9 @@ impl WidgetState {
 			data: WidgetData {
 				hovered: 0,
 				pressed: 0,
-				scrolling: Vec2::default(),
+				scrolling_target: Vec2::default(),
+				scrolling_cur: Vec2::default(),
+				scrolling_cur_prev: Vec2::default(),
 				transform: glam::Mat4::IDENTITY,
 			},
 			obj,
@@ -101,6 +105,7 @@ pub struct DrawState<'a> {
 	pub primitives: &'a mut Vec<RenderPrimitive>,
 	pub transform_stack: &'a mut TransformStack,
 	pub scissor_stack: &'a mut ScissorStack,
+	pub alterables: &'a mut EventAlterables,
 }
 
 // per-widget draw params
@@ -116,6 +121,7 @@ pub trait WidgetObj: AnyTrait {
 	fn set_id(&mut self, id: WidgetID); // always set at insertion
 
 	fn draw(&mut self, state: &mut DrawState, params: &DrawParams);
+
 	fn measure(
 		&mut self,
 		_known_dimensions: taffy::Size<Option<f32>>,
@@ -131,12 +137,6 @@ pub struct EventParams<'a> {
 	pub state: &'a LayoutState,
 	pub alterables: &'a mut EventAlterables,
 	pub layout: &'a taffy::Layout,
-}
-
-impl EventParams<'_> {
-	pub const fn mark_redraw(&mut self) {
-		self.alterables.needs_redraw = true;
-	}
 }
 
 pub enum EventResult {
@@ -212,15 +212,57 @@ macro_rules! call_event {
 }
 
 impl WidgetState {
-	pub fn get_scroll_shift(&self, info: &ScrollbarInfo, l: &taffy::Layout) -> Vec2 {
+	pub fn get_scroll_shift_smooth(&self, info: &ScrollbarInfo, l: &taffy::Layout, timestep_alpha: f32) -> (Vec2, bool) {
+		let currently_animating = self.data.scrolling_cur != self.data.scrolling_cur_prev;
+
+		let scrolling = self
+			.data
+			.scrolling_cur_prev
+			.lerp(self.data.scrolling_cur, timestep_alpha);
+
+		(
+			Vec2::new(
+				(info.content_size.x - l.content_box_width()) * scrolling.x,
+				(info.content_size.y - l.content_box_height()) * scrolling.y,
+			),
+			currently_animating,
+		)
+	}
+
+	pub fn get_scroll_shift_raw(&self, info: &ScrollbarInfo, l: &taffy::Layout) -> Vec2 {
 		Vec2::new(
-			(info.content_size.x - l.content_box_width()) * self.data.scrolling.x,
-			(info.content_size.y - l.content_box_height()) * self.data.scrolling.y,
+			(info.content_size.x - l.content_box_width()) * self.data.scrolling_target.x,
+			(info.content_size.y - l.content_box_height()) * self.data.scrolling_target.y,
 		)
 	}
 
 	pub fn draw_all(&mut self, state: &mut DrawState, params: &DrawParams) {
 		self.obj.draw(state, params);
+	}
+
+	pub fn tick(&mut self, this_widget_id: WidgetID, alterables: &mut EventAlterables) {
+		let scrolling_cur = &mut self.data.scrolling_cur;
+		let scrolling_cur_prev = &mut self.data.scrolling_cur_prev;
+		let scrolling_target = &mut self.data.scrolling_target;
+
+		*scrolling_cur_prev = *scrolling_cur;
+
+		if scrolling_cur != scrolling_target {
+			// the magic part
+			*scrolling_cur = scrolling_cur.lerp(*scrolling_target, 0.2);
+
+			// trigger tick request again
+			alterables.mark_tick(this_widget_id);
+			alterables.mark_redraw();
+
+			let epsilon = 0.00001;
+			if (scrolling_cur.x - scrolling_target.x).abs() < epsilon
+				&& (scrolling_cur.y - scrolling_target.y).abs() < epsilon
+			{
+				log::info!("stopped animating");
+				*scrolling_cur = *scrolling_target;
+			}
+		}
 	}
 
 	pub fn draw_scrollbars(&mut self, state: &mut DrawState, params: &DrawParams, info: &ScrollbarInfo) {
@@ -248,10 +290,10 @@ impl WidgetState {
 				PrimitiveExtent {
 					boundary: drawing::Boundary::from_pos_size(
 						Vec2::new(
-							transform.abs_pos.x + transform.dim.x * (1.0 - info.handle_size.x) * self.data.scrolling.x,
-							transform.abs_pos.y + transform.dim.y - thickness - margin,
+							transform.abs_pos.x + transform.raw_dim.x * (1.0 - info.handle_size.x) * self.data.scrolling_cur.x,
+							transform.abs_pos.y + transform.raw_dim.y - thickness - margin,
 						),
-						Vec2::new(transform.dim.x * info.handle_size.x, thickness),
+						Vec2::new(transform.raw_dim.x * info.handle_size.x, thickness),
 					),
 					transform: transform.transform,
 				},
@@ -265,10 +307,10 @@ impl WidgetState {
 				PrimitiveExtent {
 					boundary: drawing::Boundary::from_pos_size(
 						Vec2::new(
-							transform.abs_pos.x + transform.dim.x - thickness - margin,
-							transform.abs_pos.y + transform.dim.y * (1.0 - info.handle_size.y) * self.data.scrolling.y,
+							transform.abs_pos.x + transform.raw_dim.x - thickness - margin,
+							transform.abs_pos.y + transform.raw_dim.y * (1.0 - info.handle_size.y) * self.data.scrolling_cur.y,
 						),
-						Vec2::new(thickness, transform.dim.y * info.handle_size.y),
+						Vec2::new(thickness, transform.raw_dim.y * info.handle_size.y),
 					),
 					transform: transform.transform,
 				},
@@ -293,25 +335,25 @@ impl WidgetState {
 			return false;
 		};
 
-		let step_pixels = 32.0;
+		let step_pixels = 64.0;
 
 		if info.handle_size.x < 1.0 && wheel.pos.x != 0.0 {
 			// Horizontal scrolling
 			let mult = (1.0 / (l.content_box_width() - info.content_size.x)) * step_pixels;
-			let new_scroll = (self.data.scrolling.x + wheel.shift.x * mult).clamp(0.0, 1.0);
-			if self.data.scrolling.x != new_scroll {
-				self.data.scrolling.x = new_scroll;
-				params.mark_redraw();
+			let new_scroll = (self.data.scrolling_target.x + wheel.shift.x * mult).clamp(0.0, 1.0);
+			if self.data.scrolling_target.x != new_scroll {
+				self.data.scrolling_target.x = new_scroll;
+				params.alterables.mark_tick(self.obj.get_id());
 			}
 		}
 
 		if info.handle_size.y < 1.0 && wheel.pos.y != 0.0 {
 			// Vertical scrolling
 			let mult = (1.0 / (l.content_box_height() - info.content_size.y)) * step_pixels;
-			let new_scroll = (self.data.scrolling.y + wheel.shift.y * mult).clamp(0.0, 1.0);
-			if self.data.scrolling.y != new_scroll {
-				self.data.scrolling.y = new_scroll;
-				params.mark_redraw();
+			let new_scroll = (self.data.scrolling_target.y + wheel.shift.y * mult).clamp(0.0, 1.0);
+			if self.data.scrolling_target.y != new_scroll {
+				self.data.scrolling_target.y = new_scroll;
+				params.alterables.mark_tick(self.obj.get_id());
 			}
 		}
 

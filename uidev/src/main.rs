@@ -335,12 +335,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 						.begin_rendering(tgt, WGfxClearMode::Clear([0.0, 0.0, 0.0, 0.1]))
 						.unwrap();
 
-					let draw_params = wgui::drawing::DrawParams {
-						layout: &testbed.layout().borrow_mut(),
+					let mut layout = testbed.layout().borrow_mut();
+					let mut draw_params = wgui::drawing::DrawParams {
+						layout: &mut layout,
 						debug_draw: debug_draw_enabled,
+						alpha: timestep.alpha,
 					};
 
-					let primitives = wgui::drawing::draw(&draw_params).unwrap();
+					let primitives = wgui::drawing::draw(&mut draw_params).unwrap();
+					drop(layout);
+
 					let draw_result = render_context
 						.draw(&mut shared_context, &mut cmd_buf, &primitives)
 						.unwrap();

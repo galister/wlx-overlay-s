@@ -6,10 +6,11 @@ use taffy::TraversePartialTree;
 
 use crate::{
 	drawing,
+	event::EventAlterables,
 	layout::Widget,
 	renderer_vk::text::{TextShadow, custom_glyph::CustomGlyph},
 	stack::{self, ScissorBoundary, ScissorStack, TransformStack},
-	widget::{self},
+	widget::{self, ScrollbarInfo, WidgetState},
 };
 
 use super::{layout::Layout, widget::DrawState};
@@ -34,8 +35,8 @@ impl Boundary {
 		let transform = transform_stack.get();
 
 		Self {
-			pos: Vec2::new(transform.abs_pos.x, transform.abs_pos.y),
-			size: Vec2::new(transform.dim.x, transform.dim.y),
+			pos: transform.abs_pos,
+			size: transform.raw_dim,
 		}
 	}
 
@@ -45,7 +46,7 @@ impl Boundary {
 
 		Self {
 			pos: Vec2::ZERO,
-			size: Vec2::new(transform.dim.x, transform.dim.y),
+			size: transform.raw_dim,
 		}
 	}
 
@@ -152,8 +153,9 @@ pub enum RenderPrimitive {
 }
 
 pub struct DrawParams<'a> {
-	pub layout: &'a Layout,
+	pub layout: &'a mut Layout,
 	pub debug_draw: bool,
+	pub alpha: f32, // timestep alpha, 0.0 - 1.0, used for motion interpolation if rendering above tick rate: smoother animations or scrolling
 }
 
 pub fn has_overflow_clip(style: &taffy::Style) -> bool {
@@ -175,6 +177,45 @@ fn primitive_debug_rect(boundary: &Boundary, transform: &Mat4, color: drawing::C
 	)
 }
 
+pub fn push_transform_stack(
+	transform_stack: &mut TransformStack,
+	l: &taffy::Layout,
+	scroll_shift: Vec2,
+	widget_state: &WidgetState,
+) {
+	let raw_dim = Vec2::new(l.size.width, l.size.height);
+	let visual_dim = raw_dim + scroll_shift;
+
+	transform_stack.push(stack::Transform {
+		rel_pos: Vec2::new(l.location.x, l.location.y) - scroll_shift,
+		transform: widget_state.data.transform,
+		raw_dim,
+		visual_dim,
+		abs_pos: Default::default(),
+		transform_rel: Default::default(),
+	});
+}
+
+/// returns true if scissor has been pushed
+pub fn push_scissor_stack(
+	transform_stack: &mut TransformStack,
+	scissor_stack: &mut ScissorStack,
+	scroll_shift: Vec2,
+	info: &Option<ScrollbarInfo>,
+	style: &taffy::Style,
+) -> bool {
+	let scissor_pushed = info.is_some() && has_overflow_clip(style);
+	if !scissor_pushed {
+		return false;
+	}
+
+	let mut boundary_absolute = drawing::Boundary::construct_absolute(transform_stack);
+	boundary_absolute.pos += scroll_shift;
+	scissor_stack.push(ScissorBoundary(boundary_absolute));
+
+	true
+}
+
 fn draw_widget(
 	params: &DrawParams,
 	state: &mut DrawState,
@@ -189,17 +230,16 @@ fn draw_widget(
 
 	let mut widget_state = widget.state();
 
-	let (scroll_shift, info) = match widget::get_scrollbar_info(l) {
-		Some(info) => (widget_state.get_scroll_shift(&info, l), Some(info)),
-		None => (Vec2::default(), None),
+	let (scroll_shift, wants_redraw, info) = match widget::get_scrollbar_info(l) {
+		Some(info) => {
+			let (scrolling, wants_redraw) = widget_state.get_scroll_shift_smooth(&info, l, params.alpha);
+			(scrolling, wants_redraw, Some(info))
+		}
+		None => (Vec2::default(), false, None),
 	};
 
-	state.transform_stack.push(stack::Transform {
-		rel_pos: Vec2::new(l.location.x, l.location.y) - scroll_shift,
-		transform: widget_state.data.transform,
-		dim: Vec2::new(l.size.width, l.size.height),
-		..Default::default()
-	});
+	// see layout.rs push_event_widget too
+	push_transform_stack(state.transform_stack, l, scroll_shift, &widget_state);
 
 	if params.debug_draw {
 		let boundary = drawing::Boundary::construct_relative(state.transform_stack);
@@ -210,13 +250,9 @@ fn draw_widget(
 		));
 	}
 
-	let scissor_pushed = info.is_some() && has_overflow_clip(style);
+	let scissor_pushed = push_scissor_stack(state.transform_stack, state.scissor_stack, scroll_shift, &info, style);
 
 	if scissor_pushed {
-		let mut boundary_absolute = drawing::Boundary::construct_absolute(state.transform_stack);
-		boundary_absolute.pos += scroll_shift;
-		state.scissor_stack.push(ScissorBoundary(boundary_absolute));
-
 		if params.debug_draw {
 			let mut boundary_relative = drawing::Boundary::construct_relative(state.transform_stack);
 			boundary_relative.pos += scroll_shift;
@@ -254,6 +290,10 @@ fn draw_widget(
 	if let Some(info) = &info {
 		widget_state.draw_scrollbars(state, &draw_params, info);
 	}
+
+	if wants_redraw {
+		state.alterables.mark_redraw();
+	}
 }
 
 fn draw_children(params: &DrawParams, state: &mut DrawState, parent_node_id: taffy::NodeId) {
@@ -279,7 +319,7 @@ fn draw_children(params: &DrawParams, state: &mut DrawState, parent_node_id: taf
 	}
 }
 
-pub fn draw(params: &DrawParams) -> anyhow::Result<Vec<RenderPrimitive>> {
+pub fn draw(params: &mut DrawParams) -> anyhow::Result<Vec<RenderPrimitive>> {
 	let mut primitives = Vec::<RenderPrimitive>::new();
 	let mut transform_stack = TransformStack::new();
 	let mut scissor_stack = ScissorStack::new();
@@ -292,14 +332,18 @@ pub fn draw(params: &DrawParams) -> anyhow::Result<Vec<RenderPrimitive>> {
 		panic!();
 	};
 
+	let mut alterables = EventAlterables::default();
+
 	let mut state = DrawState {
 		primitives: &mut primitives,
 		transform_stack: &mut transform_stack,
 		scissor_stack: &mut scissor_stack,
 		layout: params.layout,
+		alterables: &mut alterables,
 	};
 
 	draw_widget(params, &mut state, params.layout.root_node, style, root_widget);
+	params.layout.process_alterables(alterables)?;
 
 	Ok(primitives)
 }

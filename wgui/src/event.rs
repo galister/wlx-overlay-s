@@ -1,5 +1,6 @@
 use std::{
 	cell::{RefCell, RefMut},
+	collections::HashSet,
 	rc::Rc,
 };
 
@@ -75,9 +76,9 @@ pub enum Event {
 impl Event {
 	fn test_transform_pos(transform: &Transform, pos: Vec2) -> bool {
 		pos.x >= transform.abs_pos.x
-			&& pos.x < transform.abs_pos.x + transform.dim.x
+			&& pos.x < transform.abs_pos.x + transform.visual_dim.x
 			&& pos.y >= transform.abs_pos.y
-			&& pos.y < transform.abs_pos.y + transform.dim.y
+			&& pos.y < transform.abs_pos.y + transform.visual_dim.y
 	}
 
 	pub fn test_mouse_within_transform(&self, transform: &Transform) -> bool {
@@ -96,6 +97,7 @@ pub struct EventAlterables {
 	pub dirty_nodes: Vec<taffy::NodeId>,
 	pub style_set_requests: Vec<(taffy::NodeId, taffy::Style)>,
 	pub animations: Vec<animation::Animation>,
+	pub widgets_to_tick: HashSet<WidgetID>, // widgets which needs to be ticked in the next `Layout::update()` fn
 	pub transform_stack: TransformStack,
 	pub scissor_stack: ScissorStack,
 	pub needs_redraw: bool,
@@ -113,6 +115,10 @@ impl EventAlterables {
 
 	pub fn mark_dirty(&mut self, node_id: taffy::NodeId) {
 		self.dirty_nodes.push(node_id);
+	}
+
+	pub fn mark_tick(&mut self, widget_id: WidgetID) {
+		self.widgets_to_tick.insert(widget_id);
 	}
 
 	pub const fn trigger_haptics(&mut self) {

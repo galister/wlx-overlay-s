@@ -34,7 +34,7 @@
       id="app_list_parent"
       flex_direction="row"
       flex_wrap="wrap"
-      justify_content="stretch"
+      justify_content="center"
       gap="4"
       overflow_y="scroll"
     />
