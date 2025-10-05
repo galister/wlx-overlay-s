@@ -7,8 +7,8 @@ use crate::assets::AssetProvider;
 // for now it's just a simple string container
 #[derive(Debug, Default)]
 pub struct Translation {
-	text: Rc<str>,
-	translated: bool, // if true, `text` is a translation key
+	pub text: Rc<str>,
+	pub translated: bool, // if true, `text` is a translation key
 }
 
 impl PartialEq for Translation {

@@ -15,7 +15,7 @@ use crate::{
 
 use super::{WidgetObj, WidgetState};
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct WidgetLabelParams {
 	pub content: Translation,
 	pub style: TextStyle,
@@ -159,5 +159,19 @@ impl WidgetObj for WidgetLabel {
 
 	fn set_id(&mut self, id: WidgetID) {
 		self.id = id;
+	}
+
+	fn get_type(&self) -> super::WidgetType {
+		super::WidgetType::Label
+	}
+
+	fn debug_print(&self) -> String {
+		let color = if let Some(color) = self.params.style.color {
+			format!("[color: {}]", color.debug_ansi_block())
+		} else {
+			String::default()
+		};
+
+		format!("[text: \"{}\"]{}", self.params.content.text, color)
 	}
 }

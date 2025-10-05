@@ -75,6 +75,9 @@ pub struct Color {
 	pub a: f32,
 }
 
+pub const ANSI_RESET_CODE: &str = "\x1b[39m\x1b[49m";
+pub const ANSI_BOLD_CODE: &str = "\x1b[1m";
+
 impl Color {
 	pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
 		Self { r, g, b, a }
@@ -108,6 +111,18 @@ impl Color {
 			b: self.b * (1.0 - n) + other.b * n,
 			a: self.a * (1.0 - n) + other.a * n,
 		}
+	}
+
+	pub fn debug_ansi_format(&self) -> String {
+		let r = (self.r * 255.0).clamp(0.0, 255.0) as u8;
+		let g = (self.g * 255.0).clamp(0.0, 255.0) as u8;
+		let b = (self.b * 255.0).clamp(0.0, 255.0) as u8;
+		format!("\x1b[38;2;{r};{g};{b}m")
+	}
+
+	// pretty-print ansi escape code color
+	pub fn debug_ansi_block(&self) -> String {
+		format!("{}███{}", self.debug_ansi_format(), ANSI_RESET_CODE)
 	}
 }
 

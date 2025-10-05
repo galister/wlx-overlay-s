@@ -26,4 +26,12 @@ impl WidgetObj for WidgetDiv {
 	fn set_id(&mut self, id: WidgetID) {
 		self.id = id;
 	}
+
+	fn get_type(&self) -> super::WidgetType {
+		super::WidgetType::Div
+	}
+
+	fn debug_print(&self) -> String {
+		String::default()
+	}
 }

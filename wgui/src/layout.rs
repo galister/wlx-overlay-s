@@ -1,12 +1,13 @@
 use std::{
 	cell::{RefCell, RefMut},
+	io::Write,
 	rc::{Rc, Weak},
 };
 
 use crate::{
 	animation::Animations,
 	components::{Component, InitData},
-	drawing::{Boundary, push_scissor_stack, push_transform_stack},
+	drawing::{self, ANSI_BOLD_CODE, ANSI_RESET_CODE, Boundary, push_scissor_stack, push_transform_stack},
 	event::{self, CallbackDataCommon, EventAlterables, EventListenerCollection},
 	globals::WguiGlobals,
 	widget::{self, EventParams, WidgetObj, WidgetState, div::WidgetDiv},
@@ -545,6 +546,54 @@ impl Layout {
 		}
 
 		Ok(())
+	}
+
+	pub fn print_tree(&self) {
+		let mut buf = Vec::<u8>::new();
+		self.print_tree_recur(&mut buf, 0, self.tree_root_node);
+		let str = format!("\n{}", unsafe { str::from_utf8_unchecked(&buf) });
+		std::io::stdout().write_all(str.as_bytes()).unwrap();
+	}
+
+	fn print_tree_recur(&self, buf: &mut Vec<u8>, depth: u32, node_id: taffy::NodeId) {
+		// indent
+		for _ in 0..depth {
+			buf.push(b'|');
+			buf.push(b' ');
+		}
+
+		let widget_id = self.state.tree.get_node_context(node_id).unwrap();
+		let layout = self.state.tree.layout(node_id).unwrap();
+
+		let widget = self.state.widgets.get(*widget_id).unwrap();
+
+		let state = widget.state();
+
+		let type_color = match state.obj.get_type() {
+			widget::WidgetType::Div => drawing::Color::new(1.0, 1.0, 1.0, 1.0),
+			widget::WidgetType::Label => drawing::Color::new(0.4, 1.0, 0.0, 1.0),
+			widget::WidgetType::Sprite => drawing::Color::new(0.0, 0.8, 1.0, 1.0),
+			widget::WidgetType::Rectangle => drawing::Color::new(1.0, 0.5, 0.2, 1.0),
+		};
+
+		let line = format!(
+			"{}{}{}{}: [pos: {}x{}][size: {}x{}]{}\n",
+			ANSI_BOLD_CODE,
+			type_color.debug_ansi_format(),
+			state.obj.get_type().as_str(),
+			ANSI_RESET_CODE,
+			layout.location.x,
+			layout.location.y,
+			layout.content_size.width,
+			layout.content_size.height,
+			state.obj.debug_print()
+		);
+
+		buf.append(&mut line.into_bytes());
+
+		for child_id in self.state.tree.child_ids(node_id) {
+			self.print_tree_recur(buf, depth + 1, child_id);
+		}
 	}
 }
 

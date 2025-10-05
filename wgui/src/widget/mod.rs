@@ -115,10 +115,30 @@ pub struct DrawParams<'a> {
 	pub taffy_layout: &'a taffy::Layout,
 }
 
+pub enum WidgetType {
+	Div,
+	Label,
+	Sprite,
+	Rectangle,
+}
+
+impl WidgetType {
+	pub const fn as_str(&self) -> &str {
+		match self {
+			WidgetType::Div => "div",
+			WidgetType::Label => "label",
+			WidgetType::Sprite => "sprite",
+			WidgetType::Rectangle => "rectangle",
+		}
+	}
+}
+
 pub trait WidgetObj: AnyTrait {
 	// every widget stores their of id for convenience reasons
 	fn get_id(&self) -> WidgetID;
 	fn set_id(&mut self, id: WidgetID); // always set at insertion
+	fn get_type(&self) -> WidgetType;
+	fn debug_print(&self) -> String;
 
 	fn draw(&mut self, state: &mut DrawState, params: &DrawParams);
 

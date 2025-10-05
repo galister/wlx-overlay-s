@@ -25,7 +25,7 @@ const DEFAULT_LINE_HEIGHT_RATIO: f32 = 1.43;
 pub(crate) const DEFAULT_METRICS: Metrics =
 	Metrics::new(DEFAULT_FONT_SIZE, DEFAULT_FONT_SIZE * DEFAULT_LINE_HEIGHT_RATIO);
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct TextShadow {
 	pub y: f32,
 	pub x: f32,
@@ -42,7 +42,7 @@ impl Default for TextShadow {
 	}
 }
 
-#[derive(Default, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct TextStyle {
 	pub size: Option<f32>,
 	pub line_height: Option<f32>,
@@ -78,11 +78,7 @@ impl From<&TextStyle> for Metrics {
 
 impl From<&TextStyle> for Wrap {
 	fn from(value: &TextStyle) -> Self {
-		if value.wrap {
-			Self::WordOrGlyph
-		} else {
-			Self::None
-		}
+		if value.wrap { Self::WordOrGlyph } else { Self::None }
 	}
 }
 

@@ -8,7 +8,7 @@ use crate::{
 
 use super::{WidgetObj, WidgetState};
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct WidgetRectangleParams {
 	pub color: drawing::Color,
 	pub color2: drawing::Color,
@@ -65,5 +65,18 @@ impl WidgetObj for WidgetRectangle {
 
 	fn set_id(&mut self, id: WidgetID) {
 		self.id = id;
+	}
+
+	fn get_type(&self) -> super::WidgetType {
+		super::WidgetType::Rectangle
+	}
+
+	fn debug_print(&self) -> String {
+		format!(
+			"[color: {}][color2: {}][gradient: {:?}]",
+			self.params.color.debug_ansi_block(),
+			self.params.color2.debug_ansi_block(),
+			self.params.gradient,
+		)
 	}
 }

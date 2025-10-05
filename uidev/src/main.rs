@@ -77,7 +77,8 @@ fn load_testbed(
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	init_logging();
 
-	let (gfx, event_loop, window, surface) = init_window("[-/=]: gui scale, F10: debug draw")?;
+	let (gfx, event_loop, window, surface) =
+		init_window("[-/=]: gui scale, F10: debug draw, F11: print tree")?;
 	let inner_size = window.inner_size();
 	let mut swapchain_size = [inner_size.width, inner_size.height];
 
@@ -230,6 +231,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 						testbed.layout().borrow_mut().mark_redraw();
 					}
 
+					if event.physical_key == PhysicalKey::Code(KeyCode::F11) {
+						testbed.layout().borrow_mut().print_tree();
+					}
+
 					if event.physical_key == PhysicalKey::Code(KeyCode::Equal) {
 						scale *= 1.25;
 						render_context
@@ -309,7 +314,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				log::trace!("drawing frame {frame_index}");
 				frame_index += 1;
 
-				limiter.start(0); // max 120 fps
+				limiter.start(120); // max 120 fps
 				profiler.start();
 
 				{
