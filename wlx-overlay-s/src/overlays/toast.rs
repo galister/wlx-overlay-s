@@ -5,7 +5,7 @@ use std::{
     time::Instant,
 };
 
-use glam::{vec3a, Quat};
+use glam::{vec3, Affine3A, Quat, Vec3};
 use idmap_derive::IntegerId;
 use serde::{Deserialize, Serialize};
 use wgui::{
@@ -24,13 +24,13 @@ use wgui::{
 };
 
 use crate::{
-    backend::{
-        common::OverlaySelector,
-        overlay::{OverlayBackend, OverlayState, Positioning, Z_ORDER_TOAST},
-        task::TaskType,
-    },
+    backend::task::TaskType,
     gui::panel::GuiPanel,
     state::{AppState, LeftRight},
+    windowing::{
+        window::{OverlayWindowConfig, OverlayWindowState, Positioning},
+        OverlaySelector, Z_ORDER_TOAST,
+    },
 };
 
 const FONT_SIZE: isize = 16;
@@ -112,16 +112,13 @@ impl Toast {
             TaskType::CreateOverlay(
                 selector.clone(),
                 Box::new(move |app| {
-                    let mut maybe_toast = new_toast(self, app);
-                    if let Some((state, _)) = maybe_toast.as_mut() {
-                        state.auto_movement(app);
-                        app.tasks.enqueue_at(
-                            // at timeout, drop the overlay by ID instead
-                            // in order to avoid dropping any newer toasts
-                            TaskType::DropOverlay(selector),
-                            destroy_at,
-                        );
-                    }
+                    let maybe_toast = new_toast(self, app);
+                    app.tasks.enqueue_at(
+                        // at timeout, drop the overlay by ID instead
+                        // in order to avoid dropping any newer toasts
+                        TaskType::DropOverlay(selector),
+                        destroy_at,
+                    );
                     maybe_toast
                 }),
             ),
@@ -131,7 +128,7 @@ impl Toast {
 }
 
 #[allow(clippy::too_many_lines)]
-fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn OverlayBackend>)> {
+fn new_toast(toast: Toast, app: &mut AppState) -> Option<OverlayWindowConfig> {
     let current_method = app
         .session
         .toast_topics
@@ -142,12 +139,13 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
     let (spawn_point, spawn_rotation, positioning) = match current_method {
         DisplayMethod::Hide => return None,
         DisplayMethod::Center => (
-            vec3a(0., -0.2, -0.5),
+            vec3(0., -0.2, -0.5),
             Quat::IDENTITY,
             Positioning::FollowHead { lerp: 0.1 },
         ),
         DisplayMethod::Watch => {
-            let mut watch_pos = app.session.config.watch_pos + vec3a(-0.005, -0.05, 0.02);
+            let mut watch_pos =
+                Vec3::from(app.session.config.watch_pos) + vec3(-0.005, -0.05, 0.02);
             let mut watch_rot = app.session.config.watch_rot;
             let relative_to = match app.session.config.watch_hand {
                 LeftRight::Left => Positioning::FollowHand { hand: 0, lerp: 1.0 },
@@ -239,19 +237,21 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<(OverlayState, Box<dyn 
 
     panel.update_layout().ok()?;
 
-    let state = OverlayState {
+    Some(OverlayWindowConfig {
         name: TOAST_NAME.clone(),
-        want_visible: true,
-        spawn_scale: panel.layout.content_size.x * PIXELS_TO_METERS,
-        spawn_rotation,
-        spawn_point,
+        default_state: OverlayWindowState {
+            positioning,
+            transform: Affine3A::from_scale_rotation_translation(
+                Vec3::ONE * panel.layout.content_size.x * PIXELS_TO_METERS,
+                spawn_rotation,
+                spawn_point,
+            ),
+            ..OverlayWindowState::default()
+        },
+        global: true,
         z_order: Z_ORDER_TOAST,
-        positioning,
-        ..Default::default()
-    };
-    let backend = Box::new(panel);
-
-    Some((state, backend))
+        ..OverlayWindowConfig::from_backend(Box::new(panel))
+    })
 }
 
 fn msg_err(app: &mut AppState, message: &str) {

@@ -1,7 +1,9 @@
+use glam::{Affine3A, Vec3};
+
 use crate::{
-    backend::overlay::{OverlayData, OverlayState},
     gui::panel::GuiPanel,
     state::AppState,
+    windowing::window::{OverlayWindowConfig, OverlayWindowState},
 };
 
 pub const BAR_NAME: &str = "bar";
@@ -11,7 +13,7 @@ struct BarState {}
 #[allow(clippy::significant_drop_tightening)]
 #[allow(clippy::for_kv_map)] // TODO: remove later
 #[allow(clippy::match_same_arms)] // TODO: remove later
-pub fn create_bar<O>(app: &mut AppState) -> anyhow::Result<OverlayData<O>>
+pub fn create_bar<O>(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig>
 where
     O: Default,
 {
@@ -34,14 +36,14 @@ where
 
     panel.update_layout()?;
 
-    Ok(OverlayData {
-        state: OverlayState {
-            name: BAR_NAME.into(),
-            want_visible: true,
+    Ok(OverlayWindowConfig {
+        name: BAR_NAME.into(),
+        default_state: OverlayWindowState {
             interactable: true,
-            spawn_scale: 0.15,
-            ..Default::default()
+            transform: Affine3A::from_scale(Vec3::ONE * 0.15),
+            ..OverlayWindowState::default()
         },
-        ..OverlayData::from_backend(Box::new(panel))
+        global: true,
+        ..OverlayWindowConfig::from_backend(Box::new(panel))
     })
 }

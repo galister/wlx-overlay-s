@@ -17,7 +17,6 @@ use vulkano::{device::physical::PhysicalDevice, Handle, VulkanObject};
 
 use crate::{
     backend::{
-        common::{BackendError, OverlayContainer},
         input::interact,
         openvr::{
             helpers::adjust_gain,
@@ -26,8 +25,8 @@ use crate::{
             manifest::{install_manifest, uninstall_manifest},
             overlay::OpenVrOverlayData,
         },
-        overlay::{OverlayData, ShouldRender},
         task::{SystemTask, TaskType},
+        BackendError,
     },
     graphics::{init_openvr_graphics, CommandBuffers},
     overlays::{
@@ -36,6 +35,7 @@ use crate::{
     },
     state::AppState,
     subsystem::notifications::NotificationManager,
+    windowing::{backend::ShouldRender, manager::OverlayWindowManager, window::OverlayWindowData},
 };
 
 #[cfg(feature = "wayvr")]
@@ -94,13 +94,13 @@ pub fn openvr_run(
         names.iter().map(std::string::String::as_str).collect()
     };
 
-    let mut state = {
+    let mut app = {
         let (gfx, gfx_extras) = init_openvr_graphics(instance_extensions, device_extensions_fn)?;
         AppState::from_graphics(gfx, gfx_extras)?
     };
 
     if show_by_default {
-        state.tasks.enqueue_at(
+        app.tasks.enqueue_at(
             TaskType::System(SystemTask::ShowHide),
             Instant::now().add(Duration::from_secs(1)),
         );
@@ -110,13 +110,13 @@ pub fn openvr_run(
         TrackedDeviceIndex::HMD,
         ETrackedDeviceProperty::Prop_UserIpdMeters_Float,
     ) {
-        state.input_state.ipd = (ipd * 1000.0).round();
-        log::info!("IPD: {:.0} mm", state.input_state.ipd);
+        app.input_state.ipd = (ipd * 1000.0).round();
+        log::info!("IPD: {:.0} mm", app.input_state.ipd);
     }
 
     let _ = install_manifest(&mut app_mgr);
 
-    let mut overlays = OverlayContainer::<OpenVrOverlayData>::new(&mut state, headless)?;
+    let mut overlays = OverlayWindowManager::<OpenVrOverlayData>::new(&mut app, headless)?;
     let mut notifications = NotificationManager::new();
     notifications.run_dbus();
     notifications.run_udp();
@@ -139,7 +139,7 @@ pub fn openvr_run(
 
     log::info!("HMD running @ {refresh_rate} Hz");
 
-    let watch_id = overlays.get_by_name(WATCH_NAME).unwrap().state.id; // want panic
+    let watch_id = overlays.lookup(WATCH_NAME).unwrap(); // want panic
 
     // want at least half refresh rate
     let frame_timeout = 2 * (1000.0 / refresh_rate).floor() as u32;
@@ -147,7 +147,7 @@ pub fn openvr_run(
     let mut next_device_update = Instant::now();
     let mut due_tasks = VecDeque::with_capacity(4);
 
-    let mut lines = LinePool::new(state.gfx.clone())?;
+    let mut lines = LinePool::new(app.gfx.clone())?;
     let pointer_lines = [lines.allocate(), lines.allocate()];
 
     'main_loop: loop {
@@ -183,12 +183,12 @@ pub fn openvr_run(
                         ETrackedDeviceProperty::Prop_UserIpdMeters_Float,
                     ) {
                         let ipd = (ipd * 1000.0).round();
-                        if (ipd - state.input_state.ipd).abs() > 0.05 {
-                            log::info!("IPD: {:.1} mm -> {:.1} mm", state.input_state.ipd, ipd);
+                        if (ipd - app.input_state.ipd).abs() > 0.05 {
+                            log::info!("IPD: {:.1} mm -> {:.1} mm", app.input_state.ipd, ipd);
                             Toast::new(ToastTopic::IpdChange, "IPD".into(), format!("{ipd:.1} mm"))
-                                .submit(&mut state);
+                                .submit(&mut app);
                         }
-                        state.input_state.ipd = ipd;
+                        app.input_state.ipd = ipd;
                     }
                 }
                 _ => {}
@@ -196,19 +196,19 @@ pub fn openvr_run(
         }
 
         if next_device_update <= Instant::now() {
-            input_source.update_devices(&mut system_mgr, &mut state);
+            input_source.update_devices(&mut system_mgr, &mut app);
             next_device_update = Instant::now() + Duration::from_secs(30);
         }
 
-        notifications.submit_pending(&mut state);
+        notifications.submit_pending(&mut app);
 
-        state.tasks.retrieve_due(&mut due_tasks);
+        app.tasks.retrieve_due(&mut due_tasks);
 
         while let Some(task) = due_tasks.pop_front() {
             match task {
                 TaskType::Overlay(sel, f) => {
                     if let Some(o) = overlays.mut_by_selector(&sel) {
-                        f(&mut state, &mut o.state);
+                        f(&mut app, &mut o.config);
                     } else {
                         log::warn!("Overlay not found for task: {sel:?}");
                     }
@@ -218,19 +218,21 @@ pub fn openvr_run(
                         continue;
                     };
 
-                    let Some((mut state, backend)) = f(&mut state) else {
+                    let Some(overlay_config) = f(&mut app) else {
                         continue;
                     };
-                    state.birthframe = cur_frame;
 
-                    overlays.add(OverlayData {
-                        state,
-                        ..OverlayData::from_backend(backend)
-                    });
+                    overlays.add(
+                        OverlayWindowData {
+                            birthframe: cur_frame,
+                            ..OverlayWindowData::from_config(overlay_config)
+                        },
+                        &mut app,
+                    );
                 }
                 TaskType::DropOverlay(sel) => {
                     if let Some(o) = overlays.mut_by_selector(&sel)
-                        && o.state.birthframe < cur_frame
+                        && o.birthframe < cur_frame
                     {
                         o.destroy(&mut overlay_mgr);
                         overlays.remove_by_selector(&sel);
@@ -241,91 +243,89 @@ pub fn openvr_run(
                         let _ = adjust_gain(&mut settings_mgr, channel, value);
                     }
                     SystemTask::FixFloor => {
-                        playspace.fix_floor(&mut chaperone_mgr, &state.input_state);
+                        playspace.fix_floor(&mut chaperone_mgr, &app.input_state);
                     }
                     SystemTask::ResetPlayspace => {
-                        playspace.reset_offset(&mut chaperone_mgr, &state.input_state);
+                        playspace.reset_offset(&mut chaperone_mgr, &app.input_state);
                     }
                     SystemTask::ShowHide => {
-                        overlays.show_hide(&mut state);
+                        overlays.show_hide(&mut app);
                     }
                 },
+                TaskType::ToggleSet(set) => {
+                    overlays.switch_or_toggle_set(&mut app, set);
+                }
                 #[cfg(feature = "wayvr")]
                 TaskType::WayVR(action) => {
-                    wayvr_action(&mut state, &mut overlays, &action);
+                    wayvr_action(&mut app, &mut overlays, &action);
                 }
             }
         }
 
         let universe = playspace.get_universe();
 
-        state.input_state.pre_update();
-        input_source.update(
-            universe.clone(),
-            &mut input_mgr,
-            &mut system_mgr,
-            &mut state,
-        );
-        state.input_state.post_update(&state.session);
+        app.input_state.pre_update();
+        input_source.update(universe.clone(), &mut input_mgr, &mut system_mgr, &mut app);
+        app.input_state.post_update(&app.session);
 
-        if state
+        if app
             .input_state
             .pointers
             .iter()
             .any(|p| p.now.show_hide && !p.before.show_hide)
         {
             lines.mark_dirty(); // workaround to prevent lines from not showing
-            overlays.show_hide(&mut state);
+            overlays.show_hide(&mut app);
         }
 
         #[cfg(feature = "wayvr")]
-        if state
+        if app
             .input_state
             .pointers
             .iter()
             .any(|p| p.now.toggle_dashboard && !p.before.toggle_dashboard)
         {
-            wayvr_action(&mut state, &mut overlays, &WayVRAction::ToggleDashboard);
+            wayvr_action(&mut app, &mut overlays, &WayVRAction::ToggleDashboard);
         }
 
         overlays
             .values_mut()
-            .for_each(|o| o.state.auto_movement(&mut state));
+            .for_each(|o| o.config.auto_movement(&mut app));
 
-        watch_fade(&mut state, overlays.mut_by_id(watch_id).unwrap()); // want panic
-        playspace.update(&mut chaperone_mgr, &mut overlays, &state);
+        watch_fade(&mut app, overlays.mut_by_id(watch_id).unwrap()); // want panic
+        playspace.update(&mut chaperone_mgr, &mut overlays, &app);
 
-        let lengths_haptics = interact(&mut overlays, &mut state);
+        let lengths_haptics = interact(&mut overlays, &mut app);
         for (idx, (len, haptics)) in lengths_haptics.iter().enumerate() {
             lines.draw_from(
                 pointer_lines[idx],
-                state.input_state.pointers[idx].pose,
+                app.input_state.pointers[idx].pose,
                 *len,
-                state.input_state.pointers[idx].interaction.mode as usize + 1,
-                &state.input_state.hmd,
+                app.input_state.pointers[idx].interaction.mode as usize + 1,
+                &app.input_state.hmd,
             );
             if let Some(haptics) = haptics {
                 input_source.haptics(&mut input_mgr, idx, haptics);
             }
         }
 
-        state.hid_provider.inner.commit();
+        app.hid_provider.inner.commit();
         let mut buffers = CommandBuffers::default();
 
-        lines.update(universe.clone(), &mut overlay_mgr, &mut state)?;
+        lines.update(universe.clone(), &mut overlay_mgr, &mut app)?;
 
         for o in overlays.values_mut() {
-            o.after_input(&mut overlay_mgr, &mut state)?;
+            o.after_input(&mut overlay_mgr, &mut app)?;
         }
 
         #[cfg(feature = "osc")]
-        if let Some(ref mut sender) = state.osc_sender {
-            let _ = sender.send_params(&overlays, &state.input_state.devices);
+        if let Some(ref mut sender) = app.osc_sender {
+            let _ = sender.send_params(&overlays, &app.input_state.devices);
         }
 
         #[cfg(feature = "wayvr")]
         if let Err(e) =
-            crate::overlays::wayvr::tick_events::<OpenVrOverlayData>(&mut state, &mut overlays)
+            crate::overlays::wayvr::tick_events::<OpenVrOverlayData>(&mut app, &mut overlays)
         {
             log::error!("WayVR tick_events failed: {e:?}");
         }
@@ -333,15 +333,15 @@ pub fn openvr_run(
         log::trace!("Rendering frame");
 
         for o in overlays.values_mut() {
-            if o.state.want_visible {
-                let ShouldRender::Should = o.should_render(&mut state)? else {
+            if o.config.active_state.is_some() {
+                let ShouldRender::Should = o.should_render(&mut app)? else {
                     continue;
                 };
-                if !o.ensure_image_allocated(&mut state)? {
+                if !o.ensure_image_allocated(&mut app)? {
                     continue;
                 }
                 o.data.image_dirty = o.render(
-                    &mut state,
+                    &mut app,
                     o.data.image_view.as_ref().unwrap().clone(),
                     &mut buffers,
                     1.0, // alpha is instead set using OVR API
@@ -351,7 +351,7 @@ pub fn openvr_run(
 
         log::trace!("Rendering overlays");
 
-        if let Some(mut future) = buffers.execute_now(state.gfx.queue_gfx.clone())? {
+        if let Some(mut future) = buffers.execute_now(app.gfx.queue_gfx.clone())? {
             if let Err(e) = future.flush() {
                 return Err(BackendError::Fatal(e.into()));
             }
@@ -360,10 +360,10 @@ pub fn openvr_run(
 
         overlays
             .values_mut()
-            .for_each(|o| o.after_render(universe.clone(), &mut overlay_mgr, &state.gfx));
+            .for_each(|o| o.after_render(universe.clone(), &mut overlay_mgr, &app.gfx));
 
         #[cfg(feature = "wayvr")]
-        if let Some(wayvr) = &state.wayvr {
+        if let Some(wayvr) = &app.wayvr {
             wayvr.borrow_mut().data.tick_finish()?;
         }
 

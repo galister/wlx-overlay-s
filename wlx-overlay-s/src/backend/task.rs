@@ -7,15 +7,13 @@ use std::{
 
 use serde::Deserialize;
 
-use crate::state::AppState;
+use crate::{
+    state::AppState,
+    windowing::{window::OverlayWindowConfig, OverlaySelector},
+};
 
 #[cfg(feature = "wayvr")]
 use crate::backend::wayvr::WayVRAction;
-
-use super::{
-    common::OverlaySelector,
-    overlay::{OverlayBackend, OverlayState},
-};
 
 static TASK_AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(0);
 
@@ -52,14 +50,14 @@ pub enum SystemTask {
     ShowHide,
 }
 
-pub type OverlayTask = dyn FnOnce(&mut AppState, &mut OverlayState) + Send;
-pub type CreateOverlayTask =
-    dyn FnOnce(&mut AppState) -> Option<(OverlayState, Box<dyn OverlayBackend>)> + Send;
+pub type OverlayTask = dyn FnOnce(&mut AppState, &mut OverlayWindowConfig) + Send;
+pub type CreateOverlayTask = dyn FnOnce(&mut AppState) -> Option<OverlayWindowConfig> + Send;
 
 pub enum TaskType {
     Overlay(OverlaySelector, Box<OverlayTask>),
     CreateOverlay(OverlaySelector, Box<CreateOverlayTask>),
     DropOverlay(OverlaySelector),
+    ToggleSet(usize),
     System(SystemTask),
     #[cfg(feature = "wayvr")]
     WayVR(WayVRAction),

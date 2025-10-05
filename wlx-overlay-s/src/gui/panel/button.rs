@@ -9,11 +9,10 @@ use wgui::{
     parser::CustomAttribsInfoOwned,
 };
 
-use crate::{
-    backend::{common::OverlaySelector, task::TaskType, wayvr::WayVRAction},
-    config::{save_layout, AStrSetExt},
-    state::AppState,
-};
+use crate::state::AppState;
+
+#[cfg(feature = "wayvr")]
+use crate::backend::{task::TaskType, wayvr::WayVRAction};
 
 use super::helper::read_label_from_pipe;
 
@@ -41,47 +40,19 @@ pub(super) fn setup_custom_button<S>(
 
         let callback: EventCallback<AppState, S> = match command {
             "::DashToggle" => Box::new(move |_common, _data, app, _| {
+                #[cfg(feature = "wayvr")]
                 app.tasks
                     .enqueue(TaskType::WayVR(WayVRAction::ToggleDashboard));
                 Ok(())
             }),
-            "::OverlayToggle" => {
-                let Some(selector) = args.next() else {
-                    log::warn!("Missing argument for {command}");
-                    continue;
+            "::SetToggle" => {
+                let arg = args.next().unwrap_or_default();
+                let Ok(set_idx) = arg.parse() else {
+                    log::error!("::SetToggle has invalid argument: \"{arg}\"");
+                    return;
                 };
-
-                let selector = OverlaySelector::Name(selector.into());
-
                 Box::new(move |_common, _data, app, _| {
-                    app.tasks.enqueue(TaskType::Overlay(
-                        selector.clone(),
-                        Box::new(|app, o| {
-                            o.want_visible = !o.want_visible;
-                            if o.recenter {
-                                o.show_hide = o.want_visible;
-                                o.reset(app, false);
-                            }
-
-                            let mut state_dirty = false;
-                            if !o.want_visible {
-                                state_dirty |=
-                                    app.session.config.show_screens.arc_rm(o.name.as_ref());
-                            } else if o.want_visible {
-                                state_dirty |=
-                                    app.session.config.show_screens.arc_set(o.name.clone());
-                            }
-
-                            if state_dirty {
-                                match save_layout(&app.session.config) {
-                                    Ok(()) => log::debug!("Saved state"),
-                                    Err(e) => {
-                                        log::error!("Failed to save state: {e:?}");
-                                    }
-                                }
-                            }
-                        }),
-                    ));
+                    app.tasks.enqueue(TaskType::ToggleSet(set_idx));
                     Ok(())
                 })
             }
@@ -94,7 +65,7 @@ pub(super) fn setup_custom_button<S>(
             #[allow(clippy::match_same_arms)]
             "::OscSend" => return,
             // shell
-            _ => todo!(),
+            _ => return,
         };
 
         listeners.register(listener_handles, attribs.widget_id, *kind, callback);

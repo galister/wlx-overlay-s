@@ -11,14 +11,12 @@ use wgui::{
 };
 
 use crate::{
-    backend::{
-        input::{Haptics, PointerHit},
-        overlay::{FrameMeta, OverlayBackend, ShouldRender},
-    },
+    backend::input::{Haptics, PointerHit},
     graphics::CommandBuffers,
     gui::panel::GuiPanel,
     state::AppState,
     subsystem::hid::{ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey},
+    windowing::backend::{FrameMeta, OverlayBackend, ShouldRender},
 };
 
 pub mod builder;

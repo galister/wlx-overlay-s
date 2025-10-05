@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use button::setup_custom_button;
-use glam::{vec2, Affine2, Vec2};
+use glam::{Affine2, Vec2, vec2};
 use label::setup_custom_label;
 use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 use wgui::{
@@ -18,12 +18,10 @@ use wgui::{
 };
 
 use crate::{
-    backend::{
-        input::{Haptics, PointerHit, PointerMode},
-        overlay::{ui_transform, FrameMeta, OverlayBackend, ShouldRender},
-    },
+    backend::input::{Haptics, PointerHit, PointerMode},
     graphics::{CommandBuffers, ExtentExt},
     state::AppState,
+    windowing::backend::{FrameMeta, OverlayBackend, ShouldRender, ui_transform},
 };
 
 use super::{timer::GuiTimer, timestep::Timestep};

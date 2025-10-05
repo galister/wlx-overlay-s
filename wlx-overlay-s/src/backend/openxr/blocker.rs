@@ -1,7 +1,7 @@
 use libmonado::{ClientState, Monado};
 use log::{info, warn};
 
-use crate::{backend::overlay::OverlayID, state::AppState};
+use crate::{state::AppState, windowing::OverlayID};
 
 pub(super) struct InputBlocker {
     hovered_last_frame: bool,

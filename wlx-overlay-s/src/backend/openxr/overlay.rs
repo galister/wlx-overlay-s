@@ -5,11 +5,9 @@ use xr::EyeVisibility;
 
 use super::{CompositionLayer, XrState, helpers, swapchain::WlxSwapchain};
 use crate::{
-    backend::{
-        openxr::swapchain::{SwapchainOpts, create_swapchain},
-        overlay::OverlayData,
-    },
+    backend::openxr::swapchain::{SwapchainOpts, create_swapchain},
     state::AppState,
+    windowing::window::OverlayWindowData,
 };
 
 #[derive(Default)]
@@ -21,7 +19,7 @@ pub struct OpenXrOverlayData {
     pub(super) last_alpha: f32,
 }
 
-impl OverlayData<OpenXrOverlayData> {
+impl OverlayWindowData<OpenXrOverlayData> {
     pub(super) fn ensure_swapchain<'a>(
         &'a mut self,
         app: &AppState,
@@ -30,7 +28,7 @@ impl OverlayData<OpenXrOverlayData> {
         let Some(meta) = self.frame_meta() else {
             log::warn!(
                 "{}: swapchain cannot be created due to missing metadata",
-                self.state.name
+                self.config.name
             );
             return Ok(false);
         };
@@ -46,7 +44,7 @@ impl OverlayData<OpenXrOverlayData> {
 
         log::debug!(
             "{}: recreating swapchain at {}x{}",
-            self.state.name,
+            self.config.name,
             meta.extent[0],
             meta.extent[1],
         );
@@ -64,17 +62,20 @@ impl OverlayData<OpenXrOverlayData> {
         xr: &'a XrState,
     ) -> anyhow::Result<CompositionLayer<'a>> {
         let Some(swapchain) = self.data.swapchain.as_mut() else {
-            log::warn!("{}: swapchain not ready", self.state.name);
+            log::warn!("{}: swapchain not ready", self.config.name);
             return Ok(CompositionLayer::None);
         };
         if !swapchain.ever_acquired {
-            log::warn!("{}: swapchain not rendered", self.state.name);
+            log::warn!("{}: swapchain not rendered", self.config.name);
             return Ok(CompositionLayer::None);
         }
         swapchain.ensure_image_released()?;
 
+        // overlays without active_state don't get queued for present
+        let state = self.config.active_state.as_ref().unwrap();
+
         let sub_image = swapchain.get_subimage();
-        let transform = self.state.transform * self.backend.frame_meta().unwrap().transform; // contract
+        let transform = state.transform * self.config.backend.frame_meta().unwrap().transform; // contract
 
         let aspect_ratio = swapchain.extent[1] as f32 / swapchain.extent[0] as f32;
         let (scale_x, scale_y) = if aspect_ratio < 1.0 {
@@ -85,7 +86,7 @@ impl OverlayData<OpenXrOverlayData> {
             (major / aspect_ratio, major)
         };
 
-        if let Some(curvature) = self.state.curvature {
+        if let Some(curvature) = state.curvature {
             let radius = scale_x / (2.0 * PI * curvature);
             let quat = helpers::transform_to_norm_quat(&transform);
             let center_point = transform.translation + quat.mul_vec3a(Vec3A::Z * radius);
@@ -120,14 +121,21 @@ impl OverlayData<OpenXrOverlayData> {
     }
 
     pub(super) fn after_input(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        if self.data.last_visible != self.state.want_visible {
-            if self.state.want_visible {
-                self.backend.resume(app)?;
+        let want_visible = self
+            .config
+            .active_state
+            .as_ref()
+            .map(|x| x.alpha > 0.05)
+            .unwrap_or(false);
+
+        if self.data.last_visible != want_visible {
+            if want_visible {
+                self.config.backend.resume(app)?;
             } else {
-                self.backend.pause(app)?;
+                self.config.backend.pause(app)?;
             }
         }
-        self.data.last_visible = self.state.want_visible;
+        self.data.last_visible = want_visible;
         Ok(())
     }
 }

@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use glam::Vec3A;
+use glam::{vec3, Affine3A, Quat, Vec3};
 
 use crate::{
-    backend::overlay::{OverlayBackend, OverlayState},
     gui::panel::GuiPanel,
     state::AppState,
+    windowing::window::{OverlayWindowConfig, OverlayWindowState},
 };
 
 const SETTINGS_NAME: &str = "settings";
@@ -13,10 +13,7 @@ const SETTINGS_NAME: &str = "settings";
 #[allow(unreachable_code)]
 #[allow(unused_variables)]
 #[allow(dead_code)]
-pub fn create_custom(
-    app: &mut AppState,
-    name: Arc<str>,
-) -> Option<(OverlayState, Box<dyn OverlayBackend>)> {
+pub fn create_custom(app: &mut AppState, name: Arc<str>) -> Option<OverlayWindowConfig> {
     return None;
 
     unreachable!();
@@ -24,17 +21,18 @@ pub fn create_custom(
     let panel = GuiPanel::new_blank(app, ()).ok()?;
     panel.update_layout().ok()?;
 
-    let state = OverlayState {
+    Some(OverlayWindowConfig {
         name,
-        want_visible: true,
-        interactable: true,
-        grabbable: true,
-        spawn_scale: 0.1, //TODO: this
-        spawn_point: Vec3A::from_array([0., 0., -0.5]),
-        //interaction_transform: ui_transform(config.size),
-        ..Default::default()
-    };
-    let backend = Box::new(panel);
-
-    Some((state, backend))
+        default_state: OverlayWindowState {
+            interactable: true,
+            grabbable: true,
+            transform: Affine3A::from_scale_rotation_translation(
+                Vec3::ONE * 0.1, // TODO scale
+                Quat::IDENTITY,
+                vec3(0.0, 0.0, -0.5),
+            ),
+            ..OverlayWindowState::default()
+        },
+        ..OverlayWindowConfig::from_backend(Box::new(panel))
+    })
 }

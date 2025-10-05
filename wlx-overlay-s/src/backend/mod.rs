@@ -1,4 +1,3 @@
-pub mod common;
 pub mod input;
 
 #[cfg(feature = "openvr")]
@@ -10,7 +9,23 @@ pub mod openxr;
 #[cfg(feature = "wayvr")]
 pub mod wayvr;
 
-pub mod overlay;
 pub mod set;
 
 pub mod task;
+
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum BackendError {
+    #[error("backend not supported")]
+    NotSupported,
+    #[cfg(feature = "openxr")]
+    #[error("OpenXR Error: {0:?}")]
+    OpenXrError(#[from] ::openxr::sys::Result),
+    #[error("Shutdown")]
+    Shutdown,
+    #[error("Restart")]
+    Restart,
+    #[error("Fatal: {0:?}")]
+    Fatal(#[from] anyhow::Error),
+}

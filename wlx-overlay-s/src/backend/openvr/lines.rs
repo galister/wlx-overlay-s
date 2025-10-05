@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 
 use ash::vk::SubmitInfo;
 use glam::{Affine3A, Vec3, Vec3A, Vec4};
@@ -8,7 +8,6 @@ use idmap::IdMap;
 use ovr_overlay::overlay::OverlayManager;
 use ovr_overlay::sys::ETrackingUniverseOrigin;
 use vulkano::{
-    VulkanObject,
     command_buffer::{
         CommandBufferBeginInfo, CommandBufferLevel, CommandBufferUsage, RecordingCommandBuffer,
     },
@@ -16,25 +15,26 @@ use vulkano::{
     image::view::ImageView,
     image::{Image, ImageLayout},
     sync::{
-        AccessFlags, DependencyInfo, ImageMemoryBarrier, PipelineStages,
         fence::{Fence, FenceCreateInfo},
+        AccessFlags, DependencyInfo, ImageMemoryBarrier, PipelineStages,
     },
+    VulkanObject,
 };
 use wgui::gfx::WGfx;
 
 use crate::backend::input::{Haptics, PointerHit};
-use crate::backend::overlay::{
-    FrameMeta, OverlayBackend, OverlayData, OverlayState, ShouldRender, Z_ORDER_LINES,
-};
 use crate::graphics::CommandBuffers;
 use crate::state::AppState;
+use crate::windowing::backend::{FrameMeta, OverlayBackend, ShouldRender};
+use crate::windowing::window::{OverlayWindowConfig, OverlayWindowData, OverlayWindowState};
+use crate::windowing::Z_ORDER_LINES;
 
 use super::overlay::OpenVrOverlayData;
 
 static LINE_AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(1);
 
 pub(super) struct LinePool {
-    lines: IdMap<usize, OverlayData<OpenVrOverlayData>>,
+    lines: IdMap<usize, OverlayWindowData<OpenVrOverlayData>>,
     view: Arc<ImageView>,
     colors: [Vec4; 5],
 }
@@ -75,12 +75,7 @@ impl LinePool {
     pub fn allocate(&mut self) -> usize {
         let id = LINE_AUTO_INCREMENT.fetch_add(1, Ordering::Relaxed);
 
-        let mut data = OverlayData::<OpenVrOverlayData> {
-            state: OverlayState {
-                name: Arc::from(format!("wlx-line{id}")),
-                show_hide: true,
-                ..Default::default()
-            },
+        let data = OverlayWindowData::<OpenVrOverlayData> {
             data: OpenVrOverlayData {
                 width: 0.002,
                 override_width: true,
@@ -88,12 +83,17 @@ impl LinePool {
                 image_dirty: true,
                 ..Default::default()
             },
-            ..OverlayData::from_backend(Box::new(LineBackend {
-                view: self.view.clone(),
-            }))
+            ..OverlayWindowData::from_config(OverlayWindowConfig {
+                name: Arc::from(format!("wlx-line{id}")),
+                default_state: OverlayWindowState {
+                    ..Default::default()
+                },
+                z_order: Z_ORDER_LINES,
+                ..OverlayWindowConfig::from_backend(Box::new(LineBackend {
+                    view: self.view.clone(),
+                }))
+            })
         };
-        data.state.z_order = Z_ORDER_LINES;
-        data.state.dirty = true;
 
         self.lines.insert(id, data);
         id
@@ -137,8 +137,8 @@ impl LinePool {
 
     fn draw_transform(&mut self, id: usize, transform: Affine3A, color: Vec4) {
         if let Some(data) = self.lines.get_mut(id) {
-            data.state.want_visible = true;
-            data.state.transform = transform;
+            data.config.default_state.alpha = 1.0;
+            data.config.default_state.transform = transform;
             data.data.color = color;
         } else {
             log::warn!("Line {id} does not exist");
@@ -153,10 +153,10 @@ impl LinePool {
     ) -> anyhow::Result<()> {
         for data in self.lines.values_mut() {
             data.after_input(overlay, app)?;
-            if data.state.want_visible {
-                if data.state.dirty {
+            if data.config.default_state.alpha > 0.01 {
+                if data.config.dirty {
                     data.upload_texture(overlay, &app.gfx);
-                    data.state.dirty = false;
+                    data.config.dirty = false;
                 }
 
                 data.upload_transform(universe.clone(), overlay);
@@ -168,7 +168,7 @@ impl LinePool {
 
     pub fn mark_dirty(&mut self) {
         for data in self.lines.values_mut() {
-            data.state.dirty = true;
+            data.config.dirty = true;
         }
     }
 }

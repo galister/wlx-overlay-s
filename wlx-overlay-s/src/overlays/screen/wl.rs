@@ -1,22 +1,22 @@
 use glam::vec2;
 use wlx_capture::{
+    WlxCapture,
     wayland::{WlxClient, WlxOutput},
     wlr_dmabuf::WlrDmabufCapture,
     wlr_screencopy::WlrScreencopyCapture,
-    WlxCapture,
 };
 
 use crate::{
     config::{AStrMapExt, PwTokenMap},
-    overlays::screen::create_screen_state,
+    overlays::screen::create_screen_from_backend,
     state::{AppState, ScreenMeta},
 };
 
 use super::{
-    backend::ScreenBackend,
-    capture::{new_wlx_capture, MainThreadWlxCapture},
-    pw::{load_pw_token_config, save_pw_token_config},
     ScreenCreateData,
+    backend::ScreenBackend,
+    capture::{MainThreadWlxCapture, new_wlx_capture},
+    pw::{load_pw_token_config, save_pw_token_config},
 };
 
 impl ScreenBackend {
@@ -130,15 +130,19 @@ pub fn create_screens_wayland(wl: &mut WlxClient, app: &mut AppState) -> ScreenC
 
             backend.set_mouse_transform(logical_pos, logical_size, transform);
 
-            let state = create_screen_state(output.name.clone(), transform, &app.session);
+            let window_config = create_screen_from_backend(
+                output.name.clone(),
+                transform,
+                &app.session,
+                Box::new(backend),
+            );
 
             let meta = ScreenMeta {
                 name: wl.outputs[id].name.clone(),
                 native_handle: *id,
             };
 
-            let backend = Box::new(backend);
-            screens.push((meta, state, backend));
+            screens.push((meta, window_config));
         }
     }
 

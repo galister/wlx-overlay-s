@@ -2,20 +2,14 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::config_io;
-use crate::overlays::toast::DisplayMethod;
-use crate::overlays::toast::ToastTopic;
+use crate::overlays::toast::{DisplayMethod, ToastTopic};
 use crate::state::LeftRight;
 use chrono::Offset;
-use config::Config;
-use config::File;
-use glam::Affine3A;
-use glam::Quat;
-use glam::Vec3A;
-use glam::vec3a;
+use config::{Config, File};
+use glam::{vec3, Affine3A, Quat, Vec3};
 use idmap::IdMap;
 use log::error;
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 pub type AStrMap<V> = Vec<(Arc<str>, V)>;
 
@@ -76,8 +70,8 @@ impl AStrSetExt for AStrSet {
 
 pub type PwTokenMap = AStrMap<String>;
 
-pub const fn def_watch_pos() -> Vec3A {
-    vec3a(-0.03, -0.01, 0.125)
+pub const fn def_watch_pos() -> Vec3 {
+    vec3(-0.03, -0.01, 0.125)
 }
 
 pub const fn def_watch_rot() -> Quat {
@@ -179,7 +173,7 @@ const fn def_max_height() -> u16 {
 #[derive(Deserialize, Serialize)]
 pub struct GeneralConfig {
     #[serde(default = "def_watch_pos")]
-    pub watch_pos: Vec3A,
+    pub watch_pos: Vec3,
 
     #[serde(default = "def_watch_rot")]
     pub watch_rot: Quat,
@@ -444,7 +438,7 @@ pub fn load_general() -> GeneralConfig {
 
 #[derive(Serialize)]
 pub struct AutoSettings {
-    pub watch_pos: Vec3A,
+    pub watch_pos: Vec3,
     pub watch_rot: Quat,
     pub watch_hand: LeftRight,
     pub watch_view_angle_min: f32,

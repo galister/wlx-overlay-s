@@ -1,6 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 
-use glam::{vec2, vec3a, Mat4, Vec2, Vec3};
+use glam::{vec2, vec3, Affine3A, Mat4, Quat, Vec2, Vec3};
 use wgui::{
     animation::{Animation, AnimationEasing},
     drawing::Color,
@@ -17,10 +17,10 @@ use wgui::{
 };
 
 use crate::{
-    backend::overlay::{OverlayData, OverlayState, Positioning},
     gui::panel::GuiPanel,
     state::AppState,
     subsystem::hid::{XkbKeymap, ALT, CTRL, META, SHIFT, SUPER},
+    windowing::window::{OverlayWindowConfig, OverlayWindowState, Positioning},
 };
 
 use super::{
@@ -33,13 +33,10 @@ const BACKGROUND_PADDING: f32 = 4.;
 const PIXELS_PER_UNIT: f32 = 80.;
 
 #[allow(clippy::too_many_lines, clippy::significant_drop_tightening)]
-pub fn create_keyboard<O>(
+pub fn create_keyboard(
     app: &mut AppState,
     mut keymap: Option<XkbKeymap>,
-) -> anyhow::Result<OverlayData<O>>
-where
-    O: Default,
-{
+) -> anyhow::Result<OverlayWindowConfig> {
     let layout = layout::Layout::load_from_disk();
     let state = KeyboardState {
         modifiers: 0,
@@ -278,18 +275,21 @@ where
 
     let width = layout.row_size * 0.05 * app.session.config.keyboard_scale;
 
-    Ok(OverlayData {
-        state: OverlayState {
-            name: KEYBOARD_NAME.into(),
+    Ok(OverlayWindowConfig {
+        name: KEYBOARD_NAME.into(),
+        default_state: OverlayWindowState {
             grabbable: true,
-            recenter: true,
             positioning: Positioning::Anchored,
             interactable: true,
-            spawn_scale: width,
-            spawn_point: vec3a(0., -0.5, 0.),
-            ..Default::default()
+            curvature: Some(0.15),
+            transform: Affine3A::from_scale_rotation_translation(
+                Vec3::ONE * width,
+                Quat::from_rotation_x(-10f32.to_radians()),
+                vec3(0.0, -0.5, -0.5),
+            ),
+            ..OverlayWindowState::default()
         },
-        ..OverlayData::from_backend(Box::new(KeyboardBackend { panel }))
+        ..OverlayWindowConfig::from_backend(Box::new(KeyboardBackend { panel }))
     })
 }
 

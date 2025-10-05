@@ -1,14 +1,15 @@
 use std::{f32::consts::PI, sync::Arc};
 
-use backend::ScreenBackend;
-use glam::{vec3a, Quat, Vec3};
-use wl::create_screens_wayland;
+use glam::{vec3, Affine3A, Quat, Vec3};
 use wlx_capture::frame::Transform;
 
 use crate::{
-    backend::overlay::{OverlayState, Positioning},
     state::{AppSession, AppState, ScreenMeta},
     subsystem::{hid::XkbKeymap, input::KeyboardFocus},
+    windowing::{
+        backend::OverlayBackend,
+        window::{OverlayWindowConfig, OverlayWindowState, Positioning},
+    },
 };
 
 pub mod backend;
@@ -20,7 +21,12 @@ pub mod wl;
 #[cfg(feature = "x11")]
 pub mod x11;
 
-fn create_screen_state(name: Arc<str>, transform: Transform, session: &AppSession) -> OverlayState {
+fn create_screen_from_backend(
+    name: Arc<str>,
+    transform: Transform,
+    session: &AppSession,
+    backend: Box<dyn OverlayBackend>,
+) -> OverlayWindowConfig {
     let angle = if session.config.upright_screen_fix {
         match transform {
             Transform::Rotated90 | Transform::Flipped90 => PI / 2.,
@@ -32,22 +38,27 @@ fn create_screen_state(name: Arc<str>, transform: Transform, session: &AppSessio
         0.
     };
 
-    OverlayState {
+    OverlayWindowConfig {
         name,
+        default_state: OverlayWindowState {
+            grabbable: true,
+            positioning: Positioning::Anchored,
+            interactable: true,
+            curvature: Some(0.15),
+            transform: Affine3A::from_scale_rotation_translation(
+                Vec3::ONE * 1.5 * session.config.desktop_view_scale,
+                Quat::from_rotation_z(angle),
+                vec3(0.0, 0.2, -0.5),
+            ),
+            ..OverlayWindowState::default()
+        },
         keyboard_focus: Some(KeyboardFocus::PhysicalScreen),
-        grabbable: true,
-        recenter: true,
-        positioning: Positioning::Anchored,
-        interactable: true,
-        spawn_scale: 1.5 * session.config.desktop_view_scale,
-        spawn_point: vec3a(0., 0.5, 0.),
-        spawn_rotation: Quat::from_axis_angle(Vec3::Z, angle),
-        ..Default::default()
+        ..OverlayWindowConfig::from_backend(backend)
     }
 }
 
 pub struct ScreenCreateData {
-    pub screens: Vec<(ScreenMeta, OverlayState, Box<ScreenBackend>)>,
+    pub screens: Vec<(ScreenMeta, OverlayWindowConfig)>,
 }
 
 pub fn create_screens(app: &mut AppState) -> anyhow::Result<(ScreenCreateData, Option<XkbKeymap>)> {
@@ -61,7 +72,7 @@ pub fn create_screens(app: &mut AppState) -> anyhow::Result<(ScreenCreateData, O
                 .map_err(|f| log::warn!("Could not load keyboard layout: {f}"))
                 .ok();
 
-            return Ok((create_screens_wayland(&mut wl, app), keymap));
+            return Ok((wl::create_screens_wayland(&mut wl, app), keymap));
         }
         log::info!("Wayland not detected, assuming X11.");
     }

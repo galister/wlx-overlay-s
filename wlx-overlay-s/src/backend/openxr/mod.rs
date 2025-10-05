@@ -17,11 +17,10 @@ use vulkano::{Handle, VulkanObject};
 
 use crate::{
     backend::{
-        common::{BackendError, OverlayContainer},
         input::interact,
         openxr::{lines::LinePool, overlay::OpenXrOverlayData},
-        overlay::{OverlayData, ShouldRender},
         task::{SystemTask, TaskType},
+        BackendError,
     },
     graphics::{init_openxr_graphics, CommandBuffers},
     overlays::{
@@ -30,6 +29,7 @@ use crate::{
     },
     state::AppState,
     subsystem::notifications::NotificationManager,
+    windowing::{backend::ShouldRender, manager::OverlayWindowManager, window::OverlayWindowData},
 };
 
 #[cfg(feature = "wayvr")]
@@ -94,7 +94,7 @@ pub fn openxr_run(
         );
     }
 
-    let mut overlays = OverlayContainer::<OpenXrOverlayData>::new(&mut app, headless)?;
+    let mut overlays = OverlayWindowManager::<OpenXrOverlayData>::new(&mut app, headless)?;
     let mut lines = LinePool::new(&app)?;
 
     let mut notifications = NotificationManager::new();
@@ -336,7 +336,7 @@ pub fn openxr_run(
 
         overlays
             .values_mut()
-            .for_each(|o| o.state.auto_movement(&mut app));
+            .for_each(|o| o.config.auto_movement(&mut app));
 
         let lengths_haptics = interact(&mut overlays, &mut app);
         for (idx, (len, haptics)) in lengths_haptics.iter().enumerate() {
@@ -355,10 +355,11 @@ pub fn openxr_run(
         app.hid_provider.inner.commit();
 
         let watch = overlays.mut_by_id(watch_id).unwrap(); // want panic
-        let watch_transform = watch.state.transform;
-        if !watch.state.want_visible {
-            watch.state.want_visible = true;
-            watch.state.transform = Affine3A::from_scale(Vec3 {
+        let watch_state = watch.config.active_state.as_mut().unwrap();
+        let watch_transform = watch_state.transform;
+        if watch_state.alpha < 0.05 {
+            //FIXME: Temporary workaround for Monado bug
+            watch_state.transform = Affine3A::from_scale(Vec3 {
                 x: 0.001,
                 y: 0.001,
                 z: 0.001,
@@ -381,9 +382,9 @@ pub fn openxr_run(
 
         for o in overlays.values_mut() {
             o.data.cur_visible = false;
-            if !o.state.want_visible {
+            let Some(alpha) = o.config.active_state.as_ref().map(|x| x.alpha) else {
                 continue;
-            }
+            };
 
             if !o.data.init {
                 o.init(&mut app)?;
@@ -392,7 +393,7 @@ pub fn openxr_run(
 
             let should_render = match o.should_render(&mut app)? {
                 ShouldRender::Should => true,
-                ShouldRender::Can => (o.data.last_alpha - o.state.alpha).abs() > f32::EPSILON,
+                ShouldRender::Can => (o.data.last_alpha - alpha).abs() > f32::EPSILON,
                 ShouldRender::Unable => false, //try show old image if exists
             };
 
@@ -401,11 +402,11 @@ pub fn openxr_run(
                     continue;
                 }
                 let tgt = o.data.swapchain.as_mut().unwrap().acquire_wait_image()?; // want
-                if !o.render(&mut app, tgt, &mut buffers, o.state.alpha)? {
+                if !o.render(&mut app, tgt, &mut buffers, alpha)? {
                     o.data.swapchain.as_mut().unwrap().ensure_image_released()?; // want
                     continue;
                 }
-                o.data.last_alpha = o.state.alpha;
+                o.data.last_alpha = alpha;
             } else if o.data.swapchain.is_none() {
                 continue;
             }
@@ -435,9 +436,11 @@ pub fn openxr_run(
             if !o.data.cur_visible {
                 continue;
             }
-            let dist_sq = (app.input_state.hmd.translation - o.state.transform.translation)
+            // unwrap: above if only passes if active_state is some
+            let active_state = o.config.active_state.as_ref().unwrap();
+            let dist_sq = (app.input_state.hmd.translation - active_state.transform.translation)
                 .length_squared()
-                + (100f32 - o.state.z_order as f32);
+                + (100f32 - o.config.z_order as f32);
             if !dist_sq.is_normal() {
                 o.data.swapchain.as_mut().unwrap().ensure_image_released()?;
                 continue;
@@ -489,7 +492,7 @@ pub fn openxr_run(
             match task {
                 TaskType::Overlay(sel, f) => {
                     if let Some(o) = overlays.mut_by_selector(&sel) {
-                        f(&mut app, &mut o.state);
+                        f(&mut app, &mut o.config);
                     } else {
                         log::warn!("Overlay not found for task: {sel:?}");
                     }
@@ -498,22 +501,22 @@ pub fn openxr_run(
                     let None = overlays.mut_by_selector(&sel) else {
                         continue;
                     };
-
-                    let Some((mut overlay_state, overlay_backend)) = f(&mut app) else {
+                    let Some(overlay_config) = f(&mut app) else {
                         continue;
                     };
-                    overlay_state.birthframe = cur_frame;
-
-                    overlays.add(OverlayData {
-                        state: overlay_state,
-                        ..OverlayData::from_backend(overlay_backend)
-                    });
+                    overlays.add(
+                        OverlayWindowData {
+                            birthframe: cur_frame,
+                            ..OverlayWindowData::from_config(overlay_config)
+                        },
+                        &mut app,
+                    );
                 }
                 TaskType::DropOverlay(sel) => {
                     if let Some(o) = overlays.mut_by_selector(&sel)
-                        && o.state.birthframe < cur_frame
+                        && o.birthframe < cur_frame
                     {
-                        log::debug!("{}: destroy", o.state.name);
+                        log::debug!("{}: destroy", o.config.name);
                         if let Some(o) = overlays.remove_by_selector(&sel) {
                             // set for deletion after all images are done showing
                             delete_queue.push((o, cur_frame + 5));
@@ -539,6 +542,9 @@ pub fn openxr_run(
                     }
                     _ => {}
                 },
+                TaskType::ToggleSet(set) => {
+                    overlays.switch_or_toggle_set(&mut app, set);
+                }
                 #[cfg(feature = "wayvr")]
                 TaskType::WayVR(action) => {
                     wayvr_action(&mut app, &mut overlays, &action);
@@ -548,8 +554,9 @@ pub fn openxr_run(
 
         delete_queue.retain(|(_, frame)| *frame > cur_frame);
 
+        //FIXME: Temporary workaround for Monado bug
         let watch = overlays.mut_by_id(watch_id).unwrap(); // want panic
-        watch.state.transform = watch_transform;
+        watch.config.active_state.as_mut().unwrap().transform = watch_transform;
     }
 
     Ok(())

@@ -1,7 +1,9 @@
-use std::{cell::RefCell, rc::Rc};
-
 use super::hid::{self, HidProvider, VirtualKey};
+
+#[cfg(feature = "wayvr")]
 use crate::overlays::wayvr::WayVRData;
+#[cfg(feature = "wayvr")]
+use std::{cell::RefCell, rc::Rc};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum KeyboardFocus {
@@ -14,6 +16,7 @@ pub enum KeyboardFocus {
 pub struct HidWrapper {
     pub keyboard_focus: KeyboardFocus,
     pub inner: Box<dyn HidProvider>,
+    #[cfg(feature = "wayvr")]
     pub wayvr: Option<Rc<RefCell<WayVRData>>>, // Dynamically created if requested
 }
 
@@ -22,6 +25,7 @@ impl HidWrapper {
         Self {
             keyboard_focus: KeyboardFocus::PhysicalScreen,
             inner: hid::initialize(),
+            #[cfg(feature = "wayvr")]
             wayvr: None,
         }
     }

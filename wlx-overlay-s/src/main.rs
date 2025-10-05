@@ -23,6 +23,7 @@ mod overlays;
 mod shaders;
 mod state;
 mod subsystem;
+mod windowing;
 
 #[cfg(feature = "wayvr")]
 mod config_wayvr;
@@ -30,8 +31,8 @@ mod config_wayvr;
 use std::{
     path::PathBuf,
     sync::{
-        Arc,
         atomic::{AtomicBool, Ordering},
+        Arc,
     },
 };
 
@@ -39,7 +40,7 @@ use clap::Parser;
 use subsystem::notifications::DbusNotificationSender;
 use sysinfo::Pid;
 use tracing::level_filters::LevelFilter;
-use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 /// The lightweight desktop overlay for OpenVR and OpenXR
 #[derive(Default, Parser, Debug)]
@@ -129,14 +130,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 #[allow(unused_mut, clippy::similar_names)]
 fn auto_run(running: Arc<AtomicBool>, args: Args) {
-    use backend::common::BackendError;
-
     let mut tried_xr = false;
     let mut tried_vr = false;
 
     #[cfg(feature = "openxr")]
     if !args_get_openvr(&args) {
-        use crate::backend::openxr::openxr_run;
+        use crate::backend::{openxr::openxr_run, BackendError};
         tried_xr = true;
         match openxr_run(running.clone(), args.show, args.headless) {
             Ok(()) => return,
@@ -150,7 +149,7 @@ fn auto_run(running: Arc<AtomicBool>, args: Args) {
 
     #[cfg(feature = "openvr")]
     if !args_get_openxr(&args) {
-        use crate::backend::openvr::openvr_run;
+        use crate::backend::{openvr::openvr_run, BackendError};
         tried_vr = true;
         match openvr_run(running, args.show, args.headless) {
             Ok(()) => return,
@@ -239,6 +238,7 @@ fn logging_init(args: &mut Args) {
             EnvFilter::builder()
                 .with_default_directive(LevelFilter::INFO.into())
                 .from_env_lossy()
+                .add_directive("symphonia_core::probe=warn".parse().unwrap())
                 .add_directive("zbus=warn".parse().unwrap())
                 .add_directive("cosmic_text=warn".parse().unwrap())
                 .add_directive("wlx_capture::wayland=info".parse().unwrap())

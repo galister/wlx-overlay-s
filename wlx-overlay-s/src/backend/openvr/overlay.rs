@@ -13,7 +13,7 @@ use vulkano::{
 };
 use wgui::gfx::WGfx;
 
-use crate::{backend::overlay::OverlayData, state::AppState};
+use crate::{state::AppState, windowing::window::OverlayWindowData};
 
 use super::helpers::Affine3AConvert;
 
@@ -28,13 +28,13 @@ pub(super) struct OpenVrOverlayData {
     pub(super) image_dirty: bool,
 }
 
-impl OverlayData<OpenVrOverlayData> {
+impl OverlayWindowData<OpenVrOverlayData> {
     pub(super) fn initialize(
         &mut self,
         overlay: &mut OverlayManager,
         app: &mut AppState,
     ) -> anyhow::Result<OverlayHandle> {
-        let key = format!("wlx-{}", self.state.name);
+        let key = format!("wlx-{}", self.config.name);
         log::debug!("Create overlay with key: {}", &key);
         let handle = match overlay.create_overlay(&key, &key) {
             Ok(handle) => handle,
@@ -42,7 +42,7 @@ impl OverlayData<OpenVrOverlayData> {
                 panic!("Failed to create overlay: {e}");
             }
         };
-        log::debug!("{}: initialize", self.state.name);
+        log::debug!("{}: initialize", self.config.name);
 
         self.data.handle = Some(handle);
         self.data.color = Vec4::ONE;
@@ -66,7 +66,7 @@ impl OverlayData<OpenVrOverlayData> {
         if self.data.image_view.is_some() {
             return Ok(true);
         }
-        let Some(meta) = self.backend.frame_meta() else {
+        let Some(meta) = self.config.backend.frame_meta() else {
             return Ok(false);
         };
         let image = app.gfx.new_image(
@@ -84,9 +84,16 @@ impl OverlayData<OpenVrOverlayData> {
         overlay: &mut OverlayManager,
         app: &mut AppState,
     ) -> anyhow::Result<()> {
-        if self.state.want_visible && !self.data.visible {
+        let want_visible = self
+            .config
+            .active_state
+            .as_ref()
+            .map(|x| x.alpha > 0.05)
+            .unwrap_or(false);
+
+        if want_visible && !self.data.visible {
             self.show_internal(overlay, app)?;
-        } else if !self.state.want_visible && self.data.visible {
+        } else if !want_visible && self.data.visible {
             self.hide_internal(overlay, app)?;
         }
         Ok(())
@@ -99,12 +106,12 @@ impl OverlayData<OpenVrOverlayData> {
         graphics: &WGfx,
     ) {
         if self.data.visible {
-            if self.state.dirty {
+            if self.config.dirty {
                 self.upload_curvature(overlay);
 
                 self.upload_transform(universe, overlay);
                 self.upload_alpha(overlay);
-                self.state.dirty = false;
+                self.config.dirty = false;
             }
             self.upload_texture(overlay, graphics);
         }
@@ -119,12 +126,12 @@ impl OverlayData<OpenVrOverlayData> {
             Some(handle) => handle,
             None => self.initialize(overlay, app)?,
         };
-        log::debug!("{}: show", self.state.name);
+        log::debug!("{}: show", self.config.name);
         if let Err(e) = overlay.set_visibility(handle, true) {
-            log::error!("{}: Failed to show overlay: {}", self.state.name, e);
+            log::error!("{}: Failed to show overlay: {}", self.config.name, e);
         }
         self.data.visible = true;
-        self.backend.resume(app)
+        self.config.backend.resume(app)
     }
 
     fn hide_internal(
@@ -135,27 +142,30 @@ impl OverlayData<OpenVrOverlayData> {
         let Some(handle) = self.data.handle else {
             return Ok(());
         };
-        log::debug!("{}: hide", self.state.name);
+        log::debug!("{}: hide", self.config.name);
         if let Err(e) = overlay.set_visibility(handle, false) {
-            log::error!("{}: Failed to hide overlay: {}", self.state.name, e);
+            log::error!("{}: Failed to hide overlay: {}", self.config.name, e);
         }
         self.data.visible = false;
-        self.backend.pause(app)
+        self.config.backend.pause(app)
     }
 
     pub(super) fn upload_alpha(&self, overlay: &mut OverlayManager) {
         let Some(handle) = self.data.handle else {
-            log::debug!("{}: No overlay handle", self.state.name);
+            log::debug!("{}: No overlay handle", self.config.name);
             return;
         };
-        if let Err(e) = overlay.set_opacity(handle, self.state.alpha) {
-            log::error!("{}: Failed to set overlay alpha: {}", self.state.name, e);
+        let Some(state) = self.config.active_state.as_ref() else {
+            return;
+        };
+        if let Err(e) = overlay.set_opacity(handle, state.alpha) {
+            log::error!("{}: Failed to set overlay alpha: {}", self.config.name, e);
         }
     }
 
     pub(super) fn upload_color(&self, overlay: &mut OverlayManager) {
         let Some(handle) = self.data.handle else {
-            log::debug!("{}: No overlay handle", self.state.name);
+            log::debug!("{}: No overlay handle", self.config.name);
             return;
         };
         if let Err(e) = overlay.set_tint(
@@ -167,29 +177,37 @@ impl OverlayData<OpenVrOverlayData> {
                 a: self.data.color.w,
             },
         ) {
-            log::error!("{}: Failed to set overlay tint: {}", self.state.name, e);
+            log::error!("{}: Failed to set overlay tint: {}", self.config.name, e);
         }
     }
 
     fn upload_width(&self, overlay: &mut OverlayManager) {
         let Some(handle) = self.data.handle else {
-            log::debug!("{}: No overlay handle", self.state.name);
+            log::debug!("{}: No overlay handle", self.config.name);
             return;
         };
         if let Err(e) = overlay.set_width(handle, self.data.width) {
-            log::error!("{}: Failed to set overlay width: {}", self.state.name, e);
+            log::error!("{}: Failed to set overlay width: {}", self.config.name, e);
         }
     }
 
     fn upload_curvature(&self, overlay: &mut OverlayManager) {
         let Some(handle) = self.data.handle else {
-            log::debug!("{}: No overlay handle", self.state.name);
+            log::debug!("{}: No overlay handle", self.config.name);
             return;
         };
-        if let Err(e) = overlay.set_curvature(handle, self.state.curvature.unwrap_or(0.0)) {
+        if let Err(e) = overlay.set_curvature(
+            handle,
+            self.config
+                .active_state
+                .as_ref()
+                .unwrap()
+                .curvature
+                .unwrap_or(0.0),
+        ) {
             log::error!(
                 "{}: Failed to set overlay curvature: {}",
-                self.state.name,
+                self.config.name,
                 e
             );
         }
@@ -197,11 +215,11 @@ impl OverlayData<OpenVrOverlayData> {
 
     fn upload_sort_order(&self, overlay: &mut OverlayManager) {
         let Some(handle) = self.data.handle else {
-            log::debug!("{}: No overlay handle", self.state.name);
+            log::debug!("{}: No overlay handle", self.config.name);
             return;
         };
-        if let Err(e) = overlay.set_sort_order(handle, self.state.z_order) {
-            log::error!("{}: Failed to set overlay z order: {}", self.state.name, e);
+        if let Err(e) = overlay.set_sort_order(handle, self.config.z_order) {
+            log::error!("{}: Failed to set overlay z order: {}", self.config.name, e);
         }
     }
 
@@ -211,12 +229,16 @@ impl OverlayData<OpenVrOverlayData> {
         overlay: &mut OverlayManager,
     ) {
         let Some(handle) = self.data.handle else {
-            log::debug!("{}: No overlay handle", self.state.name);
+            log::debug!("{}: No overlay handle", self.config.name);
+            return;
+        };
+        let Some(state) = self.config.active_state.as_ref() else {
             return;
         };
 
-        let effective = self.state.transform
+        let effective = state.transform
             * self
+                .config
                 .backend
                 .frame_meta()
                 .map(|f| f.transform)
@@ -227,7 +249,7 @@ impl OverlayData<OpenVrOverlayData> {
         if let Err(e) = overlay.set_transform_absolute(handle, universe, &transform) {
             log::error!(
                 "{}: Failed to set overlay transform: {}",
-                self.state.name,
+                self.config.name,
                 e
             );
         }
@@ -235,12 +257,12 @@ impl OverlayData<OpenVrOverlayData> {
 
     pub(super) fn upload_texture(&mut self, overlay: &mut OverlayManager, graphics: &WGfx) {
         let Some(handle) = self.data.handle else {
-            log::debug!("{}: No overlay handle", self.state.name);
+            log::debug!("{}: No overlay handle", self.config.name);
             return;
         };
 
         let Some(view) = self.data.image_view.as_ref() else {
-            log::debug!("{}: Not rendered", self.state.name);
+            log::debug!("{}: Not rendered", self.config.name);
             return;
         };
 
@@ -254,7 +276,7 @@ impl OverlayData<OpenVrOverlayData> {
         if !self.data.override_width {
             let new_width = ((dimensions[0] as f32) / (dimensions[1] as f32)).min(1.0);
             if (new_width - self.data.width).abs() > f32::EPSILON {
-                log::info!("{}: New width {}", self.state.name, new_width);
+                log::info!("{}: New width {}", self.config.name, new_width);
                 self.data.width = new_width;
                 self.upload_width(overlay);
             }
@@ -277,22 +299,22 @@ impl OverlayData<OpenVrOverlayData> {
         };
         log::trace!(
             "{}: UploadTex {:?}, {}x{}, {:?}",
-            self.state.name,
+            self.config.name,
             format,
             texture.m_nWidth,
             texture.m_nHeight,
             image.usage()
         );
         if let Err(e) = overlay.set_image_vulkan(handle, &mut texture) {
-            log::error!("{}: Failed to set overlay texture: {}", self.state.name, e);
+            log::error!("{}: Failed to set overlay texture: {}", self.config.name, e);
         }
     }
 
     pub(super) fn destroy(&mut self, overlay: &mut OverlayManager) {
         if let Some(handle) = self.data.handle {
-            log::debug!("{}: destroy", self.state.name);
+            log::debug!("{}: destroy", self.config.name);
             if let Err(e) = overlay.destroy_overlay(handle) {
-                log::error!("{}: Failed to destroy overlay: {}", self.state.name, e);
+                log::error!("{}: Failed to destroy overlay: {}", self.config.name, e);
             }
         }
     }

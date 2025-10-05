@@ -12,13 +12,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     backend::{
-        overlay::Positioning,
         task::{TaskContainer, TaskType},
         wayvr::{self, WayVRAction},
     },
     config::load_config_with_conf_d,
     config_io,
     overlays::wayvr::{WayVRData, executable_exists_in_path},
+    windowing::window::Positioning,
 };
 
 // Flat version of RelativeTo

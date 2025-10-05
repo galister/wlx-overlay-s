@@ -2,13 +2,13 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use smithay::{
     backend::renderer::{
-        element::{
-            surface::{render_elements_from_surface_tree, WaylandSurfaceRenderElement},
-            Kind,
-        },
-        gles::{ffi, GlesRenderer, GlesTexture},
-        utils::draw_render_elements,
         Bind, Color32F, Frame, Renderer,
+        element::{
+            Kind,
+            surface::{WaylandSurfaceRenderElement, render_elements_from_surface_tree},
+        },
+        gles::{GlesRenderer, GlesTexture, ffi},
+        utils::draw_render_elements,
     },
     input,
     utils::{Logical, Point, Rectangle, Size, Transform},
@@ -16,14 +16,11 @@ use smithay::{
 };
 use wayvr_ipc::packet_server;
 
-use crate::{
-    backend::{overlay::OverlayID, wayvr::time::get_millis},
-    gen_id,
-};
+use crate::{backend::wayvr::time::get_millis, gen_id, windowing::OverlayID};
 
 use super::{
-    client::WayVRCompositor, comp::send_frames_surface_tree, egl_data, event_queue::SyncEventQueue,
-    process, smithay_wrapper, time, window, BlitMethod, WayVRSignal,
+    BlitMethod, WayVRSignal, client::WayVRCompositor, comp::send_frames_surface_tree, egl_data,
+    event_queue::SyncEventQueue, process, smithay_wrapper, time, window,
 };
 
 fn generate_auth_key() -> String {

@@ -7,28 +7,29 @@ use vulkano::{
     command_buffer::CommandBufferUsage,
     device::Queue,
     format::Format,
-    image::{sampler::Filter, view::ImageView, Image},
+    image::{Image, sampler::Filter, view::ImageView},
     pipeline::graphics::color_blend::AttachmentBlend,
 };
 use wgui::gfx::{
+    WGfx,
     cmd::WGfxClearMode,
     pass::WGfxPass,
     pipeline::{WGfxPipeline, WPipelineCreateInfo},
-    WGfx,
 };
 use wlx_capture::{
-    frame::{self as wlx_frame, DrmFormat, FrameFormat, MouseMeta, Transform, WlxFrame},
     WlxCapture,
+    frame::{self as wlx_frame, DrmFormat, FrameFormat, MouseMeta, Transform, WlxFrame},
 };
 
 use crate::{
-    backend::overlay::FrameMeta,
     config::GeneralConfig,
     graphics::{
-        dmabuf::{fourcc_to_vk, WGfxDmabuf},
-        upload_quad_vertices, CommandBuffers, Vert2Uv,
+        CommandBuffers, Vert2Uv,
+        dmabuf::{WGfxDmabuf, fourcc_to_vk},
+        upload_quad_vertices,
     },
     state::AppState,
+    windowing::backend::FrameMeta,
 };
 
 const CURSOR_SIZE: f32 = 16. / 1440.;

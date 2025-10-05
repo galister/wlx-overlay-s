@@ -4,7 +4,7 @@ use glam::Affine3A;
 use ovr_overlay::{pose::Matrix3x4, settings::SettingsManager, sys::HmdMatrix34_t};
 use thiserror::Error;
 
-use crate::backend::{common::BackendError, task::ColorChannel};
+use crate::backend::{BackendError, task::ColorChannel};
 
 pub trait Affine3AConvert {
     fn from_affine(affine: &Affine3A) -> Self;

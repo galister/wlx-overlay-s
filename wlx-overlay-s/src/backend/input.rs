@@ -2,20 +2,18 @@ use std::f32::consts::PI;
 use std::process::{Child, Command};
 use std::{collections::VecDeque, time::Instant};
 
-use glam::{Affine3A, Vec2, Vec3, Vec3A, Vec3Swizzles};
+use glam::{Affine3A, Vec2, Vec3A, Vec3Swizzles};
 
 use smallvec::{smallvec, SmallVec};
 
-use crate::backend::common::OverlaySelector;
-use crate::backend::overlay::Positioning;
-use crate::config::AStrMapExt;
 use crate::overlays::anchor::ANCHOR_NAME;
 use crate::state::{AppSession, AppState};
 use crate::subsystem::input::KeyboardFocus;
+use crate::windowing::manager::OverlayWindowManager;
+use crate::windowing::window::{OverlayWindowData, OverlayWindowState, Positioning};
+use crate::windowing::{OverlayID, OverlaySelector};
 
-use super::overlay::{OverlayID, OverlayState};
 use super::task::{TaskContainer, TaskType};
-use super::{common::OverlayContainer, overlay::OverlayData};
 
 pub struct TrackedDevice {
     pub soc: Option<f32>,
@@ -282,17 +280,17 @@ pub enum PointerMode {
     Special,
 }
 
-fn update_focus(focus: &mut KeyboardFocus, state: &OverlayState) {
-    if let Some(f) = &state.keyboard_focus
+fn update_focus(focus: &mut KeyboardFocus, overlay_keyboard_focus: &Option<KeyboardFocus>) {
+    if let Some(f) = &overlay_keyboard_focus
         && *focus != *f
     {
-        log::info!("Setting keyboard focus to {:?}", *f);
+        log::debug!("Setting keyboard focus to {:?}", *f);
         *focus = *f;
     }
 }
 
 pub fn interact<O>(
-    overlays: &mut OverlayContainer<O>,
+    overlays: &mut OverlayWindowManager<O>,
     app: &mut AppState,
 ) -> [(f32, Option<Haptics>); 2]
 where
@@ -312,7 +310,7 @@ where
 #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
 fn interact_hand<O>(
     idx: usize,
-    overlays: &mut OverlayContainer<O>,
+    overlays: &mut OverlayWindowManager<O>,
     app: &mut AppState,
 ) -> (f32, Option<Haptics>)
 where
@@ -332,7 +330,7 @@ where
     let Some(mut hit) = pointer.get_nearest_hit(overlays) else {
         if let Some(hovered_id) = pointer.interaction.hovered_id.take() {
             if let Some(hovered) = overlays.mut_by_id(hovered_id) {
-                hovered.backend.on_left(app, idx);
+                hovered.config.backend.on_left(app, idx);
             }
             pointer = &mut app.input_state.pointers[idx];
             pointer.interaction.hovered_id = None;
@@ -348,7 +346,7 @@ where
                 mode: pointer.interaction.mode,
                 ..Default::default()
             };
-            clicked.backend.on_pointer(app, &hit, false);
+            clicked.config.backend.on_pointer(app, &hit, false);
         }
         return (0.0, None); // no hit
     };
@@ -360,7 +358,7 @@ where
         if Some(pointer.idx) == old_hovered.primary_pointer {
             old_hovered.primary_pointer = None;
         }
-        old_hovered.backend.on_left(app, idx);
+        old_hovered.config.backend.on_left(app, idx);
         pointer = &mut app.input_state.pointers[idx];
     }
     let Some(hovered) = overlays.mut_by_id(hit.overlay) else {
@@ -381,11 +379,17 @@ where
     }
 
     #[cfg(debug_assertions)]
-    log::trace!("Hit: {} {:?}", hovered.state.name, hit);
+    log::trace!("Hit: {} {:?}", hovered.config.name, hit);
 
-    if pointer.now.grab && !pointer.before.grab && hovered.state.grabbable {
-        update_focus(&mut app.hid_provider.keyboard_focus, &hovered.state);
-        pointer.start_grab(hit.overlay, hovered, &mut app.tasks);
+    let hovered_state = hovered.config.active_state.as_mut().unwrap();
+
+    if pointer.now.grab && !pointer.before.grab && hovered_state.grabbable {
+        update_focus(
+            &mut app.hid_provider.keyboard_focus,
+            &hovered.config.keyboard_focus,
+        );
+        pointer.start_grab(hit.overlay, hovered_state, &mut app.tasks);
+        log::debug!("Hand {}: grabbed {}", hit.pointer, hovered.config.name);
         return (
             hit.dist,
             Some(Haptics {
@@ -398,7 +402,7 @@ where
 
     // Pass mouse motion events only if not scrolling
     // (allows scrolling on all Chromium-based applications)
-    let haptics = hovered.backend.on_hover(app, &hit);
+    let haptics = hovered.config.backend.on_hover(app, &hit);
 
     pointer = &mut app.input_state.pointers[idx];
 
@@ -414,55 +418,66 @@ where
                 .frame_meta()
                 .is_some_and(|e| e.extent[0] >= e.extent[1]);
 
+            // re-borrow
+            let hovered_state = hovered.config.active_state.as_mut().unwrap();
             if can_curve {
-                let cur = hovered.state.curvature.unwrap_or(0.0);
+                let cur = hovered_state.curvature.unwrap_or(0.0);
                 let new = scroll_y.mul_add(-0.01, cur).min(0.5);
                 if new <= f32::EPSILON {
-                    hovered.state.curvature = None;
+                    hovered_state.curvature = None;
                 } else {
-                    hovered.state.curvature = Some(new);
+                    hovered_state.curvature = Some(new);
                 }
             } else {
-                hovered.state.curvature = None;
+                hovered_state.curvature = None;
             }
         } else {
-            hovered.backend.on_scroll(app, &hit, scroll_y, scroll_x);
+            hovered
+                .config
+                .backend
+                .on_scroll(app, &hit, scroll_y, scroll_x);
         }
         pointer = &mut app.input_state.pointers[idx];
     }
 
     if pointer.now.click && !pointer.before.click {
         pointer.interaction.clicked_id = Some(hit.overlay);
-        update_focus(&mut app.hid_provider.keyboard_focus, &hovered.state);
-        hovered.backend.on_pointer(app, &hit, true);
+        update_focus(
+            &mut app.hid_provider.keyboard_focus,
+            &hovered.config.keyboard_focus,
+        );
+        hovered.config.backend.on_pointer(app, &hit, true);
     } else if !pointer.now.click && pointer.before.click {
         if let Some(clicked_id) = pointer.interaction.clicked_id.take() {
             if let Some(clicked) = overlays.mut_by_id(clicked_id) {
-                clicked.backend.on_pointer(app, &hit, false);
+                clicked.config.backend.on_pointer(app, &hit, false);
             }
         } else {
-            hovered.backend.on_pointer(app, &hit, false);
+            hovered.config.backend.on_pointer(app, &hit, false);
         }
     }
     (hit.dist, haptics)
 }
 
 impl Pointer {
-    fn get_nearest_hit<O>(&mut self, overlays: &mut OverlayContainer<O>) -> Option<PointerHit>
+    fn get_nearest_hit<O>(&mut self, overlays: &mut OverlayWindowManager<O>) -> Option<PointerHit>
     where
         O: Default,
     {
         let mut hits: SmallVec<[RayHit; 8]> = smallvec!();
 
         for (id, overlay) in overlays.iter() {
-            if !overlay.state.want_visible || !overlay.state.interactable {
+            let Some(overlay_state) = overlay.config.active_state.as_ref() else {
+                continue;
+            };
+            if !overlay_state.interactable {
                 continue;
             }
 
             if let Some(hit) = self.ray_test(
                 id,
-                &overlay.state.transform,
-                overlay.state.curvature.as_ref(),
+                &overlay_state.transform,
+                overlay_state.curvature.as_ref(),
             ) {
                 if hit.dist.is_infinite() || hit.dist.is_nan() {
                     continue;
@@ -477,6 +492,7 @@ impl Pointer {
             let overlay = overlays.mut_by_id(hit.overlay).unwrap(); // safe because we just got the id from the overlay
 
             let Some(uv) = overlay
+                .config
                 .backend
                 .as_mut()
                 .get_interaction_transform()
@@ -502,26 +518,24 @@ impl Pointer {
         None
     }
 
-    fn start_grab<O>(
+    fn start_grab(
         &mut self,
         id: OverlayID,
-        overlay: &mut OverlayData<O>,
+        state: &mut OverlayWindowState,
         tasks: &mut TaskContainer,
-    ) where
-        O: Default,
-    {
+    ) {
         let offset = self
             .pose
             .inverse()
-            .transform_point3a(overlay.state.transform.translation);
+            .transform_point3a(state.transform.translation);
 
         self.interaction.grabbed = Some(GrabData {
             offset,
             grabbed_id: id,
-            old_curvature: overlay.state.curvature,
+            old_curvature: state.curvature,
             grab_all: matches!(self.interaction.mode, PointerMode::Right),
         });
-        overlay.state.positioning = match overlay.state.positioning {
+        state.positioning = match state.positioning {
             Positioning::FollowHand { hand, lerp } => Positioning::FollowHandPaused { hand, lerp },
             Positioning::FollowHead { lerp } => Positioning::FollowHeadPaused { lerp },
             x => x,
@@ -531,29 +545,26 @@ impl Pointer {
         tasks.enqueue(TaskType::Overlay(
             OverlaySelector::Name(ANCHOR_NAME.clone()),
             Box::new(|app, o| {
-                o.transform = app.anchor
-                    * Affine3A::from_scale_rotation_translation(
-                        Vec3::ONE * o.spawn_scale,
-                        o.spawn_rotation,
-                        o.spawn_point.into(),
-                    );
-                o.dirty = true;
-                o.want_visible = true;
+                o.saved_transform = Some(app.anchor);
+                o.activate(app);
             }),
         ));
-        log::info!("Hand {}: grabbed {}", self.idx, overlay.state.name);
     }
 
-    fn handle_grabbed<O>(idx: usize, overlay: &mut OverlayData<O>, app: &mut AppState)
+    fn handle_grabbed<O>(idx: usize, overlay: &mut OverlayWindowData<O>, app: &mut AppState)
     where
         O: Default,
     {
-        let mut pointer = &mut app.input_state.pointers[idx];
+        let Some(overlay_state) = overlay.config.active_state.as_mut() else {
+            return;
+        };
+
+        let pointer = &mut app.input_state.pointers[idx];
         if pointer.now.grab {
             if let Some(grab_data) = pointer.interaction.grabbed.as_mut() {
                 if pointer.now.click {
                     pointer.interaction.mode = PointerMode::Special;
-                    let cur_scale = overlay.state.transform.x_axis.length();
+                    let cur_scale = overlay_state.transform.x_axis.length();
                     if cur_scale < 0.1 && pointer.now.scroll_y > 0.0 {
                         return;
                     }
@@ -561,24 +572,22 @@ impl Pointer {
                         return;
                     }
 
-                    overlay.state.transform.matrix3 = overlay
-                        .state
+                    overlay_state.transform.matrix3 = overlay_state
                         .transform
                         .matrix3
                         .mul_scalar(0.025f32.mul_add(-pointer.now.scroll_y, 1.0));
                 } else if app.session.config.allow_sliding && pointer.now.scroll_y.is_finite() {
                     grab_data.offset.z -= pointer.now.scroll_y * 0.05;
                 }
-                overlay.state.transform.translation =
+                overlay_state.transform.translation =
                     pointer.pose.transform_point3a(grab_data.offset);
-                overlay.state.realign(&app.input_state.hmd);
-                overlay.state.dirty = true;
+                overlay.config.realign(&app.input_state.hmd);
             } else {
                 log::error!("Grabbed overlay does not exist");
                 pointer.interaction.grabbed = None;
             }
         } else {
-            overlay.state.positioning = match overlay.state.positioning {
+            overlay_state.positioning = match overlay_state.positioning {
                 Positioning::FollowHandPaused { hand, lerp } => {
                     Positioning::FollowHand { hand, lerp }
                 }
@@ -586,41 +595,17 @@ impl Pointer {
                 x => x,
             };
 
-            let save_success = overlay.state.save_transform(app);
-
-            // re-borrow
-            pointer = &mut app.input_state.pointers[idx];
-
-            if save_success {
-                if let Some(grab_data) = pointer.interaction.grabbed.as_ref()
-                    && overlay.state.curvature != grab_data.old_curvature
-                {
-                    if let Some(val) = overlay.state.curvature {
-                        app.session
-                            .config
-                            .curve_values
-                            .arc_set(overlay.state.name.clone(), val);
-                    } else {
-                        let ref_name = overlay.state.name.as_ref();
-                        app.session.config.curve_values.arc_rm(ref_name);
-                    }
-                }
-                app.session.config.transform_values.arc_set(
-                    overlay.state.name.clone(),
-                    overlay.state.saved_transform.unwrap(), // safe
-                );
-            }
-
             pointer.interaction.grabbed = None;
+            overlay.config.save_transform(app);
 
             // Hide anchor
             app.tasks.enqueue(TaskType::Overlay(
                 OverlaySelector::Name(ANCHOR_NAME.clone()),
                 Box::new(|_app, o| {
-                    o.want_visible = false;
+                    o.deactivate();
                 }),
             ));
-            log::info!("Hand {}: dropped {}", idx, overlay.state.name);
+            log::debug!("Hand {}: dropped {}", idx, overlay.config.name);
         }
     }
 

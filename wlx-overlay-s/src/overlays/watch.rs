@@ -1,12 +1,14 @@
-use std::{collections::HashMap, rc::Rc, sync::Arc, time::Duration};
+use std::{collections::HashMap, rc::Rc, time::Duration};
 
-use glam::Vec3A;
-use smallvec::SmallVec;
+use glam::{Affine3A, Vec3, Vec3A};
 
 use crate::{
-    backend::overlay::{OverlayData, OverlayState, Positioning, Z_ORDER_WATCH},
     gui::{panel::GuiPanel, timer::GuiTimer},
     state::AppState,
+    windowing::{
+        window::{OverlayWindowConfig, OverlayWindowData, OverlayWindowState, Positioning},
+        Z_ORDER_WATCH,
+    },
 };
 
 pub const WATCH_NAME: &str = "watch";
@@ -14,16 +16,7 @@ pub const WATCH_NAME: &str = "watch";
 struct WatchState {}
 
 #[allow(clippy::significant_drop_tightening)]
-pub fn create_watch<O>(app: &mut AppState) -> anyhow::Result<OverlayData<O>>
-where
-    O: Default,
-{
-    let screens = app
-        .screens
-        .iter()
-        .map(|s| s.name.clone())
-        .collect::<SmallVec<[Arc<str>; 8]>>();
-
+pub fn create_watch(app: &mut AppState, num_sets: usize) -> anyhow::Result<OverlayWindowConfig> {
     let state = WatchState {};
     let mut panel = GuiPanel::new_from_template(
         app,
@@ -35,10 +28,10 @@ where
                     return Ok(());
                 }
 
-                for (idx, handle) in screens.iter().enumerate() {
+                for idx in 0..num_sets {
                     let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
                     params.insert("display".into(), (idx + 1).to_string().into());
-                    params.insert("handle".into(), handle.as_ref().into());
+                    params.insert("handle".into(), idx.to_string().into());
                     parser_state.instantiate_template(
                         doc_params, "Set", layout, listeners, widget, params,
                     )?;
@@ -59,47 +52,36 @@ where
 
     panel.update_layout()?;
 
-    Ok(OverlayData {
-        state: OverlayState {
-            name: WATCH_NAME.into(),
-            want_visible: true,
+    Ok(OverlayWindowConfig {
+        name: WATCH_NAME.into(),
+        z_order: Z_ORDER_WATCH,
+        default_state: OverlayWindowState {
             interactable: true,
-            z_order: Z_ORDER_WATCH,
-            spawn_scale: 0.115, //TODO:configurable
-            spawn_point: app.session.config.watch_pos,
-            spawn_rotation: app.session.config.watch_rot,
             positioning,
-            ..Default::default()
+            transform: Affine3A::from_scale_rotation_translation(
+                Vec3::ONE * 0.115,
+                app.session.config.watch_rot,
+                app.session.config.watch_pos,
+            ),
+            ..OverlayWindowState::default()
         },
-        ..OverlayData::from_backend(Box::new(panel))
+        show_on_spawn: true,
+        global: true,
+        ..OverlayWindowConfig::from_backend(Box::new(panel))
     })
 }
 
-pub fn watch_fade<D>(app: &mut AppState, watch: &mut OverlayData<D>)
-where
-    D: Default,
-{
-    if watch.state.saved_transform.is_some() {
-        watch.state.want_visible = false;
+pub fn watch_fade<D>(app: &mut AppState, watch: &mut OverlayWindowData<D>) {
+    let Some(state) = watch.config.active_state.as_mut() else {
         return;
-    }
+    };
 
-    let to_hmd = (watch.state.transform.translation - app.input_state.hmd.translation).normalize();
-    let watch_normal = watch
-        .state
-        .transform
-        .transform_vector3a(Vec3A::NEG_Z)
-        .normalize();
+    let to_hmd = (state.transform.translation - app.input_state.hmd.translation).normalize();
+    let watch_normal = state.transform.transform_vector3a(Vec3A::NEG_Z).normalize();
     let dot = to_hmd.dot(watch_normal);
 
-    if dot < app.session.config.watch_view_angle_min {
-        watch.state.want_visible = false;
-    } else {
-        watch.state.want_visible = true;
-
-        watch.state.alpha = (dot - app.session.config.watch_view_angle_min)
-            / (app.session.config.watch_view_angle_max - app.session.config.watch_view_angle_min);
-        watch.state.alpha += 0.1;
-        watch.state.alpha = watch.state.alpha.clamp(0., 1.);
-    }
+    state.alpha = (dot - app.session.config.watch_view_angle_min)
+        / (app.session.config.watch_view_angle_max - app.session.config.watch_view_angle_min);
+    state.alpha += 0.1;
+    state.alpha = state.alpha.clamp(0., 1.);
 }

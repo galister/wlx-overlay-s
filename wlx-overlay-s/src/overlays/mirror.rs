@@ -4,19 +4,22 @@ use std::{
 };
 
 use futures::{Future, FutureExt};
-use glam::Affine2;
+use glam::{Affine2, Affine3A, Vec3};
 use vulkano::image::view::ImageView;
-use wlx_capture::pipewire::{PipewireCapture, PipewireSelectScreenResult, pipewire_select_screen};
+use wlx_capture::pipewire::{pipewire_select_screen, PipewireCapture, PipewireSelectScreenResult};
 
 use crate::{
     backend::{
-        common::OverlaySelector,
         input::{Haptics, PointerHit},
-        overlay::{FrameMeta, OverlayBackend, OverlayState, ShouldRender, ui_transform},
         task::TaskType,
     },
     graphics::CommandBuffers,
     state::{AppSession, AppState},
+    windowing::{
+        backend::{ui_transform, FrameMeta, OverlayBackend, ShouldRender},
+        window::{OverlayWindowConfig, OverlayWindowState},
+        OverlaySelector,
+    },
 };
 
 use super::screen::backend::ScreenBackend;
@@ -70,9 +73,7 @@ impl OverlayBackend for MirrorBackend {
                     app.tasks.enqueue(TaskType::Overlay(
                         OverlaySelector::Name(self.name.clone()),
                         Box::new(|app, o| {
-                            o.grabbable = true;
-                            o.interactable = true;
-                            o.reset(app, false);
+                            o.activate(app);
                         }),
                     ));
                 }
@@ -140,19 +141,15 @@ impl OverlayBackend for MirrorBackend {
     }
 }
 
-pub fn new_mirror(
-    name: Arc<str>,
-    show_hide: bool,
-    session: &AppSession,
-) -> (OverlayState, Box<dyn OverlayBackend>) {
-    let state = OverlayState {
+pub fn new_mirror(name: Arc<str>, session: &AppSession) -> OverlayWindowConfig {
+    OverlayWindowConfig {
         name: name.clone(),
-        show_hide,
-        want_visible: true,
-        spawn_scale: 0.5 * session.config.desktop_view_scale,
-        ..Default::default()
-    };
-    let backend = Box::new(MirrorBackend::new(name));
-
-    (state, backend)
+        default_state: OverlayWindowState {
+            interactable: true,
+            grabbable: true,
+            transform: Affine3A::from_scale(Vec3::ONE * 0.5 * session.config.desktop_view_scale),
+            ..OverlayWindowState::default()
+        },
+        ..OverlayWindowConfig::from_backend(Box::new(MirrorBackend::new(name)))
+    }
 }

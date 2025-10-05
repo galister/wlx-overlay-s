@@ -87,7 +87,7 @@ pub enum WayVRSignal {
         packet_server::WvrDisplayWindowLayout,
     ),
     BroadcastStateChanged(packet_server::WvrStateChanged),
-    DropOverlay(super::overlay::OverlayID),
+    DropOverlay(crate::windowing::OverlayID),
     Haptics(super::input::Haptics),
 }
 

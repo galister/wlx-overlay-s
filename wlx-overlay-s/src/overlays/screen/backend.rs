@@ -1,23 +1,21 @@
 use std::{
-    sync::{atomic::AtomicU64, Arc, LazyLock},
+    sync::{Arc, LazyLock, atomic::AtomicU64},
     time::Instant,
 };
 
-use glam::{vec2, Affine2, Vec2};
+use glam::{Affine2, Vec2, vec2};
 use vulkano::image::view::ImageView;
-use wlx_capture::{frame::Transform, WlxCapture};
+use wlx_capture::{WlxCapture, frame::Transform};
 
 use crate::{
-    backend::{
-        input::{Haptics, PointerHit, PointerMode},
-        overlay::{FrameMeta, OverlayBackend, ShouldRender},
-    },
+    backend::input::{Haptics, PointerHit, PointerMode},
     graphics::{CommandBuffers, ExtentExt},
     state::AppState,
     subsystem::hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
+    windowing::backend::{FrameMeta, OverlayBackend, ShouldRender},
 };
 
-use super::capture::{receive_callback, ScreenPipeline, WlxCaptureIn, WlxCaptureOut};
+use super::capture::{ScreenPipeline, WlxCaptureIn, WlxCaptureOut, receive_callback};
 
 const CURSOR_SIZE: f32 = 16. / 1440.;
 

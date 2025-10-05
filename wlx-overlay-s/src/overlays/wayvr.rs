@@ -1,4 +1,4 @@
-use glam::{vec3a, Affine2, Vec3, Vec3A};
+use glam::{vec3, Affine2, Affine3A, Quat, Vec3};
 use smallvec::smallvec;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 use vulkano::{
@@ -17,12 +17,7 @@ use wlx_capture::frame::{DmabufFrame, FourCC, FrameFormat, FramePlane};
 
 use crate::{
     backend::{
-        common::{OverlayContainer, OverlaySelector},
         input::{self},
-        overlay::{
-            ui_transform, FrameMeta, OverlayBackend, OverlayData, OverlayID, OverlayState,
-            ShouldRender, Z_ORDER_DASHBOARD,
-        },
         task::TaskType,
         wayvr::{
             self, display,
@@ -34,6 +29,12 @@ use crate::{
     graphics::{dmabuf::WGfxDmabuf, CommandBuffers, Vert2Uv},
     state::{self, AppState},
     subsystem::input::KeyboardFocus,
+    windowing::{
+        backend::{ui_transform, FrameMeta, OverlayBackend, ShouldRender},
+        manager::OverlayWindowManager,
+        window::{OverlayWindowConfig, OverlayWindowData, OverlayWindowState},
+        OverlayID, OverlaySelector, Z_ORDER_DASHBOARD,
+    },
 };
 
 use super::toast::error_toast;
@@ -222,7 +223,7 @@ pub fn executable_exists_in_path(command: &str) -> bool {
 
 fn toggle_dashboard<O>(
     app: &mut AppState,
-    overlays: &mut OverlayContainer<O>,
+    overlays: &mut OverlayWindowManager<O>,
     wayvr: &mut WayVRData,
 ) -> anyhow::Result<()>
 where
@@ -245,31 +246,39 @@ where
     if newly_created {
         log::info!("Creating dashboard overlay");
 
-        let mut overlay = create_overlay::<O>(
-            app,
-            DASHBOARD_DISPLAY_NAME,
-            OverlayToCreate {
-                disp_handle,
-                conf_display: config_wayvr::WayVRDisplay {
-                    attach_to: None,
-                    width: DASHBOARD_WIDTH,
-                    height: DASHBOARD_HEIGHT,
-                    scale: None,
-                    rotation: None,
-                    pos: None,
-                    primary: None,
-                },
+        let mut overlay = OverlayWindowData::from_config(OverlayWindowConfig {
+            default_state: OverlayWindowState {
+                curvature: Some(0.15),
+                transform: Affine3A::from_scale_rotation_translation(
+                    Vec3::ONE * 2.0,
+                    Quat::IDENTITY,
+                    vec3(0.0, -0.35, -1.75),
+                ),
+                ..OverlayWindowState::default()
             },
-        )?;
+            z_order: Z_ORDER_DASHBOARD,
+            show_on_spawn: true,
+            ..create_overlay(
+                app,
+                DASHBOARD_DISPLAY_NAME,
+                OverlayToCreate {
+                    disp_handle,
+                    conf_display: config_wayvr::WayVRDisplay {
+                        attach_to: None,
+                        width: DASHBOARD_WIDTH,
+                        height: DASHBOARD_HEIGHT,
+                        scale: None,
+                        rotation: None,
+                        pos: None,
+                        primary: None,
+                    },
+                },
+            )?
+        });
 
-        overlay.state.curvature = Some(0.15);
-        overlay.state.want_visible = true;
-        overlay.state.spawn_scale = 2.0;
-        overlay.state.spawn_point = vec3a(0.0, -0.35, -1.75);
-        overlay.state.z_order = Z_ORDER_DASHBOARD;
-        overlay.state.reset(app, true);
+        overlay.config.reset(app, true);
 
-        let overlay_id = overlays.add(overlay);
+        let overlay_id = overlays.add(overlay, app);
         wayvr.set_overlay_display_handle(overlay_id, disp_handle);
 
         let args_vec = &conf_dash
@@ -319,29 +328,22 @@ where
     app.tasks.enqueue(TaskType::Overlay(
         OverlaySelector::Id(overlay_id),
         Box::new(move |app, o| {
-            // Toggle visibility
-            o.want_visible = cur_visibility;
-            if cur_visibility {
-                o.reset(app, true);
-            }
+            o.toggle(app);
         }),
     ));
 
     Ok(())
 }
 
-fn create_overlay<O>(
+fn create_overlay(
     app: &mut AppState,
     name: &str,
     cell: OverlayToCreate,
-) -> anyhow::Result<OverlayData<O>>
-where
-    O: Default,
-{
+) -> anyhow::Result<OverlayWindowConfig> {
     let conf_display = &cell.conf_display;
     let disp_handle = cell.disp_handle;
 
-    let mut overlay = create_wayvr_display_overlay::<O>(
+    let mut overlay = create_wayvr_display_overlay(
         app,
         conf_display.width,
         conf_display.height,
@@ -351,17 +353,22 @@ where
     )?;
 
     if let Some(attach_to) = &conf_display.attach_to {
-        overlay.state.positioning = attach_to.get_positioning();
+        overlay.default_state.positioning = attach_to.get_positioning();
     }
 
-    if let Some(rot) = &conf_display.rotation {
-        overlay.state.spawn_rotation =
-            glam::Quat::from_axis_angle(Vec3::from_slice(&rot.axis), f32::to_radians(rot.angle));
-    }
+    let rot = if let Some(rot) = &conf_display.rotation {
+        glam::Quat::from_axis_angle(Vec3::from_slice(&rot.axis), f32::to_radians(rot.angle))
+    } else {
+        glam::Quat::IDENTITY
+    };
 
-    if let Some(pos) = &conf_display.pos {
-        overlay.state.spawn_point = Vec3A::from_slice(pos);
-    }
+    let pos = if let Some(pos) = &conf_display.pos {
+        Vec3::from_slice(pos)
+    } else {
+        Vec3::NEG_Z
+    };
+
+    overlay.default_state.transform = Affine3A::from_rotation_translation(rot, pos);
 
     Ok(overlay)
 }
@@ -369,7 +376,7 @@ where
 fn create_queued_displays<O>(
     app: &mut AppState,
     data: &mut WayVRData,
-    overlays: &mut OverlayContainer<O>,
+    overlays: &mut OverlayWindowManager<O>,
 ) -> anyhow::Result<()>
 where
     O: Default,
@@ -384,8 +391,8 @@ where
         let name = disp.name.clone();
 
         let disp_handle = cell.disp_handle;
-        let overlay = create_overlay::<O>(app, name.as_str(), cell)?;
-        let overlay_id = overlays.add(overlay); // Insert freshly created WayVR overlay into wlx stack
+        let overlay = OverlayWindowData::from_config(create_overlay(app, name.as_str(), cell)?);
+        let overlay_id = overlays.add(overlay, app); // Insert freshly created WayVR overlay into wlx stack
         data.set_overlay_display_handle(overlay_id, disp_handle);
     }
 
@@ -393,7 +400,10 @@ where
 }
 
 #[allow(clippy::too_many_lines)]
-pub fn tick_events<O>(app: &mut AppState, overlays: &mut OverlayContainer<O>) -> anyhow::Result<()>
+pub fn tick_events<O>(
+    app: &mut AppState,
+    overlays: &mut OverlayWindowManager<O>,
+) -> anyhow::Result<()>
 where
     O: Default,
 {
@@ -414,8 +424,8 @@ where
                         .set_display_visible(display_handle, visible);
                     app.tasks.enqueue(TaskType::Overlay(
                         OverlaySelector::Id(overlay_id),
-                        Box::new(move |_app, o| {
-                            o.want_visible = visible;
+                        Box::new(move |app, o| {
+                            o.toggle(app);
                         }),
                     ));
                 }
@@ -775,28 +785,14 @@ impl OverlayBackend for WayVRBackend {
 }
 
 #[allow(dead_code)]
-pub fn create_wayvr_display_overlay<O>(
+pub fn create_wayvr_display_overlay(
     app: &mut state::AppState,
     display_width: u16,
     display_height: u16,
     display_handle: wayvr::display::DisplayHandle,
     display_scale: f32,
     name: &str,
-) -> anyhow::Result<OverlayData<O>>
-where
-    O: Default,
-{
-    let state = OverlayState {
-        name: format!("WayVR - {name}").into(),
-        keyboard_focus: Some(KeyboardFocus::WayVR),
-        want_visible: true,
-        interactable: true,
-        grabbable: true,
-        spawn_scale: display_scale,
-        spawn_point: vec3a(0.0, -0.1, -1.0),
-        ..Default::default()
-    };
-
+) -> anyhow::Result<OverlayWindowConfig> {
     let wayvr = app.get_wayvr()?;
 
     let backend = Box::new(WayVRBackend::new(
@@ -806,21 +802,36 @@ where
         [display_width, display_height],
     )?);
 
-    Ok(OverlayData {
-        state,
-        ..OverlayData::from_backend(backend)
+    Ok(OverlayWindowConfig {
+        name: format!("WayVR - {name}").into(),
+        keyboard_focus: Some(KeyboardFocus::WayVR),
+        default_state: OverlayWindowState {
+            interactable: true,
+            grabbable: true,
+            transform: Affine3A::from_scale_rotation_translation(
+                Vec3::ONE * display_scale,
+                Quat::IDENTITY,
+                vec3(0.0, -0.1, -1.0),
+            ),
+            ..OverlayWindowState::default()
+        },
+        ..OverlayWindowConfig::from_backend(backend)
     })
 }
 
-fn show_display<O>(wayvr: &mut WayVRData, overlays: &mut OverlayContainer<O>, display_name: &str)
-where
+fn show_display<O>(
+    wayvr: &mut WayVRData,
+    overlays: &mut OverlayWindowManager<O>,
+    app: &mut AppState,
+    display_name: &str,
+) where
     O: Default,
 {
     if let Some(display) = WayVR::get_display_by_name(&wayvr.data.state.displays, display_name) {
         if let Some(overlay_id) = wayvr.display_handle_map.get(&display)
             && let Some(overlay) = overlays.mut_by_id(*overlay_id)
         {
-            overlay.state.want_visible = true;
+            overlay.config.activate(app);
         }
 
         wayvr.data.state.set_display_visible(display, true);
@@ -829,7 +840,7 @@ where
 
 fn action_app_click<O>(
     app: &mut AppState,
-    overlays: &mut OverlayContainer<O>,
+    overlays: &mut OverlayWindowManager<O>,
     catalog_name: &Arc<str>,
     app_name: &Arc<str>,
 ) -> anyhow::Result<()>
@@ -884,7 +895,7 @@ where
                 HashMap::default(),
             )?;
 
-            show_display::<O>(&mut wayvr, overlays, app_entry.target_display.as_str());
+            show_display::<O>(&mut wayvr, overlays, app, app_entry.target_display.as_str());
         }
     }
 
@@ -893,7 +904,7 @@ where
 
 pub fn action_display_click<O>(
     app: &mut AppState,
-    overlays: &mut OverlayContainer<O>,
+    overlays: &mut OverlayWindowManager<O>,
     display_name: &Arc<str>,
     action: &WayVRDisplayClickAction,
 ) -> anyhow::Result<()>
@@ -922,20 +933,22 @@ where
     match action {
         WayVRDisplayClickAction::ToggleVisibility => {
             // Toggle visibility
-            overlay.state.want_visible = !overlay.state.want_visible;
+            overlay.config.toggle(app);
         }
         WayVRDisplayClickAction::Reset => {
             // Show it at the front
-            overlay.state.want_visible = true;
-            overlay.state.reset(app, true);
+            overlay.config.reset(app, true);
         }
     }
 
     Ok(())
 }
 
-pub fn wayvr_action<O>(app: &mut AppState, overlays: &mut OverlayContainer<O>, action: &WayVRAction)
-where
+pub fn wayvr_action<O>(
+    app: &mut AppState,
+    overlays: &mut OverlayWindowManager<O>,
+    action: &WayVRAction,
+) where
     O: Default,
 {
     match action {

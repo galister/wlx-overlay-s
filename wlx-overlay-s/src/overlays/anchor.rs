@@ -1,30 +1,31 @@
-use glam::Vec3A;
+use glam::{Affine3A, Quat, Vec3};
 use std::sync::{Arc, LazyLock};
 
-use crate::backend::overlay::{OverlayData, OverlayState, Positioning, Z_ORDER_ANCHOR};
 use crate::gui::panel::GuiPanel;
 use crate::state::AppState;
+use crate::windowing::window::{OverlayWindowConfig, OverlayWindowState, Positioning};
+use crate::windowing::Z_ORDER_ANCHOR;
 
 pub static ANCHOR_NAME: LazyLock<Arc<str>> = LazyLock::new(|| Arc::from("anchor"));
 
-pub fn create_anchor<O>(app: &mut AppState) -> anyhow::Result<OverlayData<O>>
-where
-    O: Default,
-{
+pub fn create_anchor(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
     let panel = GuiPanel::new_from_template(app, "gui/anchor.xml", (), None)?;
 
-    Ok(OverlayData {
-        state: OverlayState {
-            name: ANCHOR_NAME.clone(),
-            want_visible: false,
+    Ok(OverlayWindowConfig {
+        name: ANCHOR_NAME.clone(),
+        z_order: Z_ORDER_ANCHOR,
+        default_state: OverlayWindowState {
             interactable: false,
             grabbable: false,
-            z_order: Z_ORDER_ANCHOR,
-            spawn_scale: 0.1,
-            spawn_point: Vec3A::NEG_Z * 0.5,
             positioning: Positioning::Static,
-            ..Default::default()
+            transform: Affine3A::from_scale_rotation_translation(
+                Vec3::ONE * 0.1,
+                Quat::IDENTITY,
+                Vec3::NEG_Z * 0.5,
+            ),
+            ..OverlayWindowState::default()
         },
-        ..OverlayData::from_backend(Box::new(panel))
+        global: true,
+        ..OverlayWindowConfig::from_backend(Box::new(panel))
     })
 }

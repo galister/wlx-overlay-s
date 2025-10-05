@@ -7,8 +7,9 @@ use anyhow::bail;
 use rosc::{OscMessage, OscPacket, OscType};
 
 use crate::{
-    backend::{common::OverlayContainer, input::TrackedDevice},
+    backend::input::TrackedDevice,
     overlays::{keyboard::KEYBOARD_NAME, watch::WATCH_NAME},
+    windowing::manager::OverlayWindowManager,
 };
 
 use crate::backend::input::TrackedDeviceRole;
@@ -54,7 +55,7 @@ impl OscSender {
     #[allow(clippy::too_many_lines)]
     pub fn send_params<D>(
         &mut self,
-        overlays: &OverlayContainer<D>,
+        overlays: &OverlayWindowManager<D>,
         devices: &Vec<TrackedDevice>,
     ) -> anyhow::Result<()>
     where
@@ -69,14 +70,14 @@ impl OscSender {
             let mut has_wrist = false;
 
             for o in overlays.values() {
-                if !o.state.want_visible {
+                let Some(state) = o.config.active_state.as_ref() else {
                     continue;
-                }
-                match o.state.name.as_ref() {
+                };
+                match o.config.name.as_ref() {
                     WATCH_NAME => has_wrist = true,
                     KEYBOARD_NAME => has_keyboard = true,
                     _ => {
-                        if o.state.interactable {
+                        if state.interactable {
                             num_overlays += 1;
                         }
                     }

@@ -2,20 +2,20 @@ use std::sync::Arc;
 
 use glam::vec2;
 use wlx_capture::{
+    WlxCapture,
     frame::Transform,
     xshm::{XshmCapture, XshmScreen},
-    WlxCapture,
 };
 
 use crate::{
-    overlays::screen::create_screen_state,
+    overlays::screen::create_screen_from_backend,
     state::{AppState, ScreenMeta},
 };
 
 use super::{
-    backend::ScreenBackend,
-    capture::{new_wlx_capture, MainThreadWlxCapture},
     ScreenCreateData,
+    backend::ScreenBackend,
+    capture::{MainThreadWlxCapture, new_wlx_capture},
 };
 
 #[cfg(feature = "pipewire")]
@@ -39,7 +39,7 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
     use crate::{
         config::{AStrMapExt, PwTokenMap},
         overlays::screen::{
-            create_screen_state,
+            create_screen_from_backend,
             pw::{load_pw_token_config, save_pw_token_config, select_pw_screen},
         },
         state::ScreenMeta,
@@ -108,15 +108,19 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
                 Transform::Normal,
             );
 
-            let state = create_screen_state(m.name.clone(), Transform::Normal, &app.session);
+            let window_data = create_screen_from_backend(
+                m.name.clone(),
+                Transform::Normal,
+                &app.session,
+                Box::new(backend),
+            );
 
             let meta = ScreenMeta {
                 name: m.name.clone(),
                 native_handle: 0,
             };
 
-            let backend = Box::new(backend);
-            (meta, state, backend)
+            (meta, window_data)
         })
         .collect();
 
@@ -189,15 +193,19 @@ pub fn create_screens_xshm(app: &mut AppState) -> anyhow::Result<ScreenCreateDat
                 Transform::Normal,
             );
 
-            let state = create_screen_state(s.name.clone(), Transform::Normal, &app.session);
+            let window_data = create_screen_from_backend(
+                s.name.clone(),
+                Transform::Normal,
+                &app.session,
+                Box::new(backend),
+            );
 
             let meta = ScreenMeta {
                 name: s.name.clone(),
                 native_handle: 0,
             };
 
-            let backend = Box::new(backend);
-            (meta, state, backend)
+            (meta, window_data)
         })
         .collect();
 

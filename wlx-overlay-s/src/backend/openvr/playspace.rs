@@ -6,8 +6,7 @@ use ovr_overlay::{
 };
 
 use crate::{
-    backend::{common::OverlayContainer, input::InputState},
-    state::AppState,
+    backend::input::InputState, state::AppState, windowing::manager::OverlayWindowManager,
 };
 
 use super::{helpers::Affine3AConvert, overlay::OpenVrOverlayData};
@@ -37,7 +36,7 @@ impl PlayspaceMover {
     pub fn update(
         &mut self,
         chaperone_mgr: &mut ChaperoneSetupManager,
-        overlays: &mut OverlayContainer<OpenVrOverlayData>,
+        overlays: &mut OverlayWindowManager<OpenVrOverlayData>,
         state: &AppState,
     ) {
         let universe = self.universe.clone();
@@ -67,14 +66,6 @@ impl PlayspaceMover {
 
             overlay_transform.translation = offset;
             space_transform.translation = offset;
-
-            overlays.values_mut().for_each(|overlay| {
-                if overlay.state.grabbable {
-                    overlay.state.dirty = true;
-                    overlay.state.transform.translation =
-                        overlay_transform.transform_point3a(overlay.state.transform.translation);
-                }
-            });
 
             data.pose *= space_transform;
             data.hand_pose = new_hand;
@@ -126,9 +117,12 @@ impl PlayspaceMover {
             let overlay_offset = data.pose.inverse().transform_vector3a(relative_pos) * -1.0;
 
             overlays.values_mut().for_each(|overlay| {
-                if overlay.state.grabbable {
-                    overlay.state.dirty = true;
-                    overlay.state.transform.translation += overlay_offset;
+                let Some(state) = overlay.config.active_state.as_mut() else {
+                    return;
+                };
+                if state.positioning.moves_with_space() {
+                    state.transform.translation += overlay_offset;
+                    overlay.config.dirty = true;
                 }
             });
 
