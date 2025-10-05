@@ -15,6 +15,7 @@ use crate::{
 		util,
 	},
 	widget::{
+		EventResult,
 		div::WidgetDiv,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
@@ -210,7 +211,7 @@ fn register_event_mouse_enter<U1, U2>(
 			common.alterables.trigger_haptics();
 			state.borrow_mut().hovered = true;
 			on_enter_anim(common, data.slider_handle_rect_id);
-			Ok(())
+			Ok(EventResult::Pass)
 		}),
 	);
 }
@@ -229,7 +230,7 @@ fn register_event_mouse_leave<U1, U2>(
 			common.alterables.trigger_haptics();
 			state.borrow_mut().hovered = false;
 			on_leave_anim(common, data.slider_handle_rect_id);
-			Ok(())
+			Ok(EventResult::Pass)
 		}),
 	);
 }
@@ -249,9 +250,10 @@ fn register_event_mouse_motion<U1, U2>(
 
 			if state.dragging {
 				state.update_value_to_mouse(event_data, &data, common);
+				Ok(EventResult::Consumed)
+			} else {
+				Ok(EventResult::Pass)
 			}
-
-			Ok(())
 		}),
 	);
 }
@@ -273,9 +275,10 @@ fn register_event_mouse_press<U1, U2>(
 			if state.hovered {
 				state.dragging = true;
 				state.update_value_to_mouse(event_data, &data, common);
+				Ok(EventResult::Consumed)
+			} else {
+				Ok(EventResult::Pass)
 			}
-
-			Ok(())
 		}),
 	);
 }
@@ -296,9 +299,10 @@ fn register_event_mouse_release<U1, U2>(
 			let mut state = state.borrow_mut();
 			if state.dragging {
 				state.dragging = false;
+				Ok(EventResult::Consumed)
+			} else {
+				Ok(EventResult::Pass)
 			}
-
-			Ok(())
 		}),
 	);
 }

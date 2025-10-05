@@ -12,7 +12,7 @@ use crate::{
 	i18n::I18n,
 	layout::{LayoutState, WidgetID},
 	stack::{ScissorStack, Transform, TransformStack},
-	widget::{WidgetData, WidgetObj},
+	widget::{EventResult, WidgetData, WidgetObj},
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -192,7 +192,7 @@ pub enum EventListenerKind {
 }
 
 pub type EventCallback<U1, U2> =
-	Box<dyn Fn(&mut CallbackDataCommon, &mut CallbackData, &mut U1, &mut U2) -> anyhow::Result<()>>;
+	Box<dyn Fn(&mut CallbackDataCommon, &mut CallbackData, &mut U1, &mut U2) -> anyhow::Result<EventResult>>;
 
 //for ref-counting
 pub struct ListenerHandle {
@@ -224,7 +224,7 @@ impl<U1, U2> EventListener<U1, U2> {
 	pub fn callback_for_kind(
 		&self,
 		kind: EventListenerKind,
-	) -> Option<&impl Fn(&mut CallbackDataCommon, &mut CallbackData, &mut U1, &mut U2) -> anyhow::Result<()>> {
+	) -> Option<&impl Fn(&mut CallbackDataCommon, &mut CallbackData, &mut U1, &mut U2) -> anyhow::Result<EventResult>> {
 		if self.kind == kind { Some(&self.callback) } else { None }
 	}
 }

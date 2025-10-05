@@ -13,6 +13,7 @@ use crate::{
 	layout::{self, Layout, LayoutState, WidgetID, WidgetPair},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
+		EventResult,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
@@ -154,7 +155,7 @@ fn register_event_mouse_enter<U1, U2>(
 				.alterables
 				.animate(anim_hover_in(state.clone(), event_data.widget_id));
 			state.borrow_mut().hovered = true;
-			Ok(())
+			Ok(EventResult::Pass)
 		}),
 	);
 }
@@ -175,7 +176,7 @@ fn register_event_mouse_leave<U1, U2>(
 				.alterables
 				.animate(anim_hover_out(state.clone(), event_data.widget_id));
 			state.borrow_mut().hovered = false;
-			Ok(())
+			Ok(EventResult::Pass)
 		}),
 	);
 }
@@ -196,14 +197,15 @@ fn register_event_mouse_press<U1, U2>(
 			let rect = event_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
 			anim_hover(rect, 1.0, true);
 
-			if state.hovered {
-				state.down = true;
-			}
-
 			common.alterables.trigger_haptics();
 			common.alterables.mark_redraw();
 
-			Ok(())
+			if state.hovered {
+				state.down = true;
+				Ok(EventResult::Consumed)
+			} else {
+				Ok(EventResult::Pass)
+			}
 		}),
 	);
 }
@@ -222,6 +224,9 @@ fn register_event_mouse_release<U1, U2>(
 			let rect = event_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
 			anim_hover(rect, 1.0, false);
 
+			common.alterables.trigger_haptics();
+			common.alterables.mark_redraw();
+
 			let mut state = state.borrow_mut();
 			if state.down {
 				state.down = false;
@@ -234,12 +239,10 @@ fn register_event_mouse_release<U1, U2>(
 				{
 					on_toggle(common, CheckboxToggleEvent { checked: state.checked })?;
 				}
+				Ok(EventResult::Consumed)
+			} else {
+				Ok(EventResult::Pass)
 			}
-
-			common.alterables.trigger_haptics();
-			common.alterables.mark_redraw();
-
-			Ok(())
 		}),
 	);
 }

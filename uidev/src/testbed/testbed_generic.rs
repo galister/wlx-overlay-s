@@ -210,7 +210,7 @@ impl TestbedGeneric {
 			},
 		)?;
 
-		let _state = wgui::parser::parse_from_assets(
+		let state = wgui::parser::parse_from_assets(
 			&ParseDocumentParams {
 				globals,
 				path: XML_PATH,
@@ -220,6 +220,18 @@ impl TestbedGeneric {
 			params.listeners,
 			widget.id,
 		)?;
+
+		let button = state
+			.fetch_component_as::<ComponentButton>("button")
+			.unwrap();
+
+		button.on_click(Box::new(move |_common, _e| {
+			log::info!("click");
+			Ok(())
+		}));
+
+		// temporary, preserve listeners state
+		Box::leak(Box::new(state));
 
 		Ok(())
 	}

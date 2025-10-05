@@ -159,11 +159,10 @@ pub struct EventParams<'a> {
 	pub layout: &'a taffy::Layout,
 }
 
+#[derive(Eq, PartialEq)]
 pub enum EventResult {
-	Pass,     // widget acknowledged it and allows the event to pass to the children
-	Consumed, // widget triggered an action, do not pass to children
-	Outside,  // widget acknowledged this event but ignores it due the fact the mouse is not hovered over it
-	Unused,   // widget doesn't have any events attached
+	Pass,     // widget acknowledged it and allows the event to pass further
+	Consumed, // widget triggered an action, do not pass further
 }
 
 fn get_scroll_enabled(style: &taffy::Style) -> (bool, bool) {
@@ -225,7 +224,10 @@ macro_rules! call_event {
 					alterables: $params.alterables,
 				};
 
-				callback(&mut common, &mut data, $user_data.0, $user_data.1)?;
+				let result = callback(&mut common, &mut data, $user_data.0, $user_data.1)?;
+				if result == EventResult::Consumed {
+					return Ok(EventResult::Consumed);
+				}
 			}
 		}
 	};

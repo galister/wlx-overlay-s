@@ -10,7 +10,7 @@ use crate::{
 	drawing::{self, ANSI_BOLD_CODE, ANSI_RESET_CODE, Boundary, push_scissor_stack, push_transform_stack},
 	event::{self, CallbackDataCommon, EventAlterables, EventListenerCollection},
 	globals::WguiGlobals,
-	widget::{self, EventParams, WidgetObj, WidgetState, div::WidgetDiv},
+	widget::{self, EventParams, EventResult, WidgetObj, WidgetState, div::WidgetDiv},
 };
 
 use glam::{Vec2, vec2};
@@ -275,12 +275,37 @@ impl Layout {
 		event: &event::Event,
 		alterables: &mut EventAlterables,
 		user_data: &mut (&mut U1, &mut U2),
-	) -> anyhow::Result<()> {
-		for child_id in self.state.tree.child_ids(parent_node_id) {
-			self.push_event_widget(listeners, child_id, event, alterables, user_data)?;
+		reverse: bool,
+	) -> anyhow::Result<EventResult> {
+		let mut event_result = EventResult::Pass;
+
+		let count = self.state.tree.child_count(parent_node_id);
+
+		let mut iter = |idx: usize| -> anyhow::Result<bool> {
+			let child_id = self.state.tree.get_child_id(parent_node_id, idx);
+			let child_result = self.push_event_widget(listeners, child_id, event, alterables, user_data, false)?;
+			if child_result != EventResult::Pass {
+				event_result = child_result;
+				return Ok(true);
+			}
+			Ok(false)
+		};
+
+		if reverse {
+			for idx in (0..count).rev() {
+				if iter(idx)? {
+					break;
+				}
+			}
+		} else {
+			for idx in 0..count {
+				if iter(idx)? {
+					break;
+				}
+			}
 		}
 
-		Ok(())
+		Ok(event_result)
 	}
 
 	fn push_event_widget<U1, U2>(
@@ -290,7 +315,8 @@ impl Layout {
 		event: &event::Event,
 		alterables: &mut EventAlterables,
 		user_data: &mut (&mut U1, &mut U2),
-	) -> anyhow::Result<()> {
+		is_root_node: bool,
+	) -> anyhow::Result<EventResult> {
 		let l = self.state.tree.layout(node_id)?;
 		let Some(widget_id) = self.state.tree.get_node_context(node_id).copied() else {
 			anyhow::bail!("invalid widget ID");
@@ -320,40 +346,35 @@ impl Layout {
 			style,
 		);
 
-		let mut iter_children = true;
+		// topmost widgets are iterated in reverse order
+		let reverse_iter = is_root_node;
 
-		let mut params = EventParams {
-			state: &self.state,
-			layout: l,
-			alterables,
-			node_id,
-			style,
-		};
+		// check children first
+		let mut evt_result = self.push_event_children(listeners, node_id, event, alterables, user_data, reverse_iter)?;
 
-		let listeners_vec = listeners.get(widget_id);
+		if evt_result == EventResult::Pass {
+			let mut params = EventParams {
+				state: &self.state,
+				layout: l,
+				alterables,
+				node_id,
+				style,
+			};
 
-		match widget.process_event(widget_id, listeners_vec, node_id, event, user_data, &mut params)? {
-			widget::EventResult::Pass => {
-				// go on
+			let listeners_vec = listeners.get(widget_id);
+
+			let this_evt_result = widget.process_event(widget_id, listeners_vec, node_id, event, user_data, &mut params)?;
+			if this_evt_result != EventResult::Pass {
+				evt_result = this_evt_result;
 			}
-			widget::EventResult::Consumed | widget::EventResult::Outside | widget::EventResult::Unused => {
-				iter_children = false;
-			}
-		}
-
-		drop(widget); // free mutex
-
-		if iter_children {
-			self.push_event_children(listeners, node_id, event, alterables, user_data)?;
 		}
 
 		if scissor_pushed {
 			alterables.scissor_stack.pop();
 		}
-
 		alterables.transform_stack.pop();
 
-		Ok(())
+		Ok(evt_result)
 	}
 
 	pub const fn check_toggle_needs_redraw(&mut self) -> bool {
@@ -381,7 +402,14 @@ impl Layout {
 		mut user_data: (&mut U1, &mut U2),
 	) -> anyhow::Result<()> {
 		let mut alterables = EventAlterables::default();
-		self.push_event_widget(listeners, self.tree_root_node, event, &mut alterables, &mut user_data)?;
+		let _event_result = self.push_event_widget(
+			listeners,
+			self.tree_root_node,
+			event,
+			&mut alterables,
+			&mut user_data,
+			true,
+		)?;
 		self.process_alterables(alterables)?;
 
 		listeners.gc();
@@ -551,7 +579,10 @@ impl Layout {
 	pub fn print_tree(&self) {
 		let mut buf = Vec::<u8>::new();
 		self.print_tree_recur(&mut buf, 0, self.tree_root_node);
-		let str = format!("\n{}", unsafe { str::from_utf8_unchecked(&buf) });
+		let str = format!(
+			"\n=== tree ===\n[widget type] [WidgetID] [taffy NodeID] [other data]\n{}",
+			unsafe { str::from_utf8_unchecked(&buf) }
+		);
 		std::io::stdout().write_all(str.as_bytes()).unwrap();
 	}
 
@@ -577,11 +608,13 @@ impl Layout {
 		};
 
 		let line = format!(
-			"{}{}{}{}: [pos: {}x{}][size: {}x{}]{}\n",
+			"{}{}{}{} 0x{:x?} 0x{:x?}: [pos: {}x{}][size: {}x{}]{}\n",
 			ANSI_BOLD_CODE,
 			type_color.debug_ansi_format(),
 			state.obj.get_type().as_str(),
 			ANSI_RESET_CODE,
+			state.obj.get_id().0.as_ffi(),
+			u64::from(node_id),
 			layout.location.x,
 			layout.location.y,
 			layout.content_size.width,
