@@ -396,6 +396,12 @@ impl Layout {
 			globals,
 		};
 
+		let size = if params.resize_to_parent {
+			taffy::Size::percent(1.0)
+		} else {
+			taffy::Size::auto()
+		};
+
 		let (tree_root_widget, tree_root_node) = add_child_internal(
 			&mut state.tree,
 			&mut state.widgets,
@@ -403,11 +409,7 @@ impl Layout {
 			None, // no parent
 			WidgetDiv::create(),
 			taffy::Style {
-				size: if params.resize_to_parent {
-					taffy::Size::percent(1.0)
-				} else {
-					taffy::Size::auto()
-				},
+				size,
 				..Default::default()
 			},
 		)?;
@@ -418,7 +420,10 @@ impl Layout {
 			&mut state.nodes,
 			Some(tree_root_node),
 			WidgetDiv::create(),
-			taffy::Style::default(),
+			taffy::Style {
+				size,
+				..Default::default()
+			},
 		)?;
 
 		Ok(Self {
