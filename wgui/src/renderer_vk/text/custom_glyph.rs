@@ -10,7 +10,7 @@ use cosmic_text::SubpixelBin;
 use image::RgbaImage;
 use resvg::usvg::{Options, Tree};
 
-use crate::assets::AssetProvider;
+use crate::{assets::AssetPath, globals::WguiGlobals};
 
 static AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(0);
 
@@ -32,19 +32,10 @@ impl CustomGlyphContent {
 	}
 
 	#[allow(clippy::case_sensitive_file_extension_comparisons)]
-	pub fn from_assets(provider: &mut Box<dyn AssetProvider>, path: &str) -> anyhow::Result<Self> {
-		let data = provider.load_from_path(path)?;
-		if path.ends_with(".svg") || path.ends_with(".svgz") {
-			Ok(Self::from_bin_svg(&data)?)
-		} else {
-			Ok(Self::from_bin_raster(&data)?)
-		}
-	}
-
-	#[allow(clippy::case_sensitive_file_extension_comparisons)]
-	pub fn from_file(path: &str) -> anyhow::Result<Self> {
-		let data = std::fs::read(path)?;
-		if path.ends_with(".svg") || path.ends_with(".svgz") {
+	pub fn from_assets(globals: &mut WguiGlobals, path: AssetPath) -> anyhow::Result<Self> {
+		let path_str = path.get_str();
+		let data = globals.get_asset(path)?;
+		if path_str.ends_with(".svg") || path_str.ends_with(".svgz") {
 			Ok(Self::from_bin_svg(&data)?)
 		} else {
 			Ok(Self::from_bin_raster(&data)?)
@@ -165,11 +156,7 @@ impl RasterizedCustomGlyph {
 		}
 	}
 
-	pub(super) fn validate(
-		&self,
-		input: &RasterizeCustomGlyphRequest,
-		expected_type: Option<ContentType>,
-	) {
+	pub(super) fn validate(&self, input: &RasterizeCustomGlyphRequest, expected_type: Option<ContentType>) {
 		if let Some(expected_type) = expected_type {
 			assert_eq!(
 				self.content_type, expected_type,
@@ -222,10 +209,7 @@ impl ContentType {
 	}
 }
 
-fn rasterize_svg(
-	tree: &Tree,
-	input: &RasterizeCustomGlyphRequest,
-) -> Option<RasterizedCustomGlyph> {
+fn rasterize_svg(tree: &Tree, input: &RasterizeCustomGlyphRequest) -> Option<RasterizedCustomGlyph> {
 	// Calculate the scale based on the "glyph size".
 	let svg_size = tree.size();
 	let scale_x = f32::from(input.width) / svg_size.width();

@@ -1,4 +1,5 @@
 use wgui::{
+	assets::AssetPath,
 	components::button::ComponentButton,
 	i18n::Translation,
 	parser::{Fetchable, ParseDocumentParams, ParserState},
@@ -38,7 +39,7 @@ impl TabHome {
 		let state = wgui::parser::parse_from_assets(
 			&ParseDocumentParams {
 				globals: params.globals.clone(),
-				path: "gui/tab/home.xml",
+				path: AssetPath::BuiltIn("gui/tab/home.xml"),
 				extra: Default::default(),
 			},
 			params.layout,

@@ -243,6 +243,9 @@ impl Context {
 			let pass = passes.last_mut().unwrap(); // always safe
 
 			match &primitive {
+				drawing::RenderPrimitive::NewPass => {
+					needs_new_pass = true;
+				}
 				drawing::RenderPrimitive::Rectangle(extent, rectangle) => {
 					pass
 						.rect_renderer

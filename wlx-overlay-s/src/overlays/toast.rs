@@ -5,7 +5,7 @@ use std::{
     time::Instant,
 };
 
-use glam::{vec3, Affine3A, Quat, Vec3};
+use glam::{Affine3A, Quat, Vec3, vec3};
 use idmap_derive::IntegerId;
 use serde::{Deserialize, Serialize};
 use wgui::{
@@ -28,8 +28,8 @@ use crate::{
     gui::panel::GuiPanel,
     state::{AppState, LeftRight},
     windowing::{
-        window::{OverlayWindowConfig, OverlayWindowState, Positioning},
         OverlaySelector, Z_ORDER_TOAST,
+        window::{OverlayWindowConfig, OverlayWindowState, Positioning},
     },
 };
 
@@ -144,8 +144,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<OverlayWindowConfig> {
             Positioning::FollowHead { lerp: 0.1 },
         ),
         DisplayMethod::Watch => {
-            let mut watch_pos =
-                Vec3::from(app.session.config.watch_pos) + vec3(-0.005, -0.05, 0.02);
+            let mut watch_pos = app.session.config.watch_pos + vec3(-0.005, -0.05, 0.02);
             let mut watch_rot = app.session.config.watch_rot;
             let relative_to = match app.session.config.watch_hand {
                 LeftRight::Left => Positioning::FollowHand { hand: 0, lerp: 1.0 },
@@ -172,7 +171,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<OverlayWindowConfig> {
     let (rect, _) = panel
         .layout
         .add_child(
-            panel.layout.root_widget,
+            panel.layout.content_root_widget,
             WidgetRectangle::create(WidgetRectangleParams {
                 color: parse_color_hex("#1e2030").unwrap(),
                 border_color: parse_color_hex("#5e7090").unwrap(),

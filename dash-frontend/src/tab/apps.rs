@@ -1,6 +1,7 @@
 use std::{collections::HashMap, rc::Rc};
 
 use wgui::{
+	assets::AssetPath,
 	components::button::ComponentButton,
 	layout::WidgetPair,
 	parser::{Fetchable, ParseDocumentParams, ParserData, ParserState},
@@ -36,7 +37,7 @@ impl TabApps {
 	pub fn new(mut tab_params: TabParams) -> anyhow::Result<Self> {
 		let doc_params = &ParseDocumentParams {
 			globals: tab_params.globals.clone(),
-			path: "gui/tab/apps.xml",
+			path: AssetPath::BuiltIn("gui/tab/apps.xml"),
 			extra: Default::default(),
 		};
 

@@ -6,14 +6,14 @@ use std::{
 use crate::{
 	animation::Animations,
 	components::{Component, InitData},
-	drawing::{push_scissor_stack, push_transform_stack, Boundary},
+	drawing::{Boundary, push_scissor_stack, push_transform_stack},
 	event::{self, CallbackDataCommon, EventAlterables, EventListenerCollection},
 	globals::WguiGlobals,
-	widget::{self, div::WidgetDiv, EventParams, WidgetObj, WidgetState},
+	widget::{self, EventParams, WidgetObj, WidgetState, div::WidgetDiv},
 };
 
-use glam::{vec2, Vec2};
-use slotmap::{new_key_type, HopSlotMap, SecondaryMap};
+use glam::{Vec2, vec2};
+use slotmap::{HopSlotMap, SecondaryMap, new_key_type};
 use taffy::{NodeId, TaffyTree, TraversePartialTree};
 
 new_key_type! {
@@ -113,8 +113,15 @@ pub struct Layout {
 	pub components_to_init: Vec<Component>,
 	pub widgets_to_tick: Vec<WidgetID>,
 
-	pub root_widget: WidgetID,
-	pub root_node: taffy::NodeId,
+	// *Main root*
+	// contains content_root_widget and topmost widgets
+	pub tree_root_widget: WidgetID,
+	pub tree_root_node: taffy::NodeId,
+
+	// *Main topmost widget*
+	// main topmost widget, always present, parent of `tree_root_widget`
+	pub content_root_widget: WidgetID,
+	pub content_root_node: taffy::NodeId,
 
 	pub prev_size: Vec2,
 	pub content_size: Vec2,
@@ -163,6 +170,22 @@ fn add_child_internal(
 impl Layout {
 	pub fn as_rc(self) -> RcLayout {
 		Rc::new(RefCell::new(self))
+	}
+
+	pub fn add_topmost_child(
+		&mut self,
+		widget: WidgetState,
+		style: taffy::Style,
+	) -> anyhow::Result<(WidgetPair, taffy::NodeId)> {
+		self.mark_redraw();
+		add_child_internal(
+			&mut self.state.tree,
+			&mut self.state.widgets,
+			&mut self.state.nodes,
+			Some(self.tree_root_node),
+			widget,
+			style,
+		)
 	}
 
 	pub fn add_child(
@@ -217,7 +240,7 @@ impl Layout {
 		self.needs_redraw = true;
 	}
 
-	fn process_pending_components(&mut self, alterables: &mut EventAlterables) -> anyhow::Result<()> {
+	fn process_pending_components(&mut self, alterables: &mut EventAlterables) {
 		for comp in &self.components_to_init {
 			let mut common = CallbackDataCommon {
 				state: &self.state,
@@ -227,7 +250,6 @@ impl Layout {
 			comp.0.init(&mut InitData { common: &mut common });
 		}
 		self.components_to_init.clear();
-		Ok(())
 	}
 
 	fn process_pending_widget_ticks(&mut self, alterables: &mut EventAlterables) {
@@ -358,9 +380,7 @@ impl Layout {
 		mut user_data: (&mut U1, &mut U2),
 	) -> anyhow::Result<()> {
 		let mut alterables = EventAlterables::default();
-
-		self.push_event_widget(listeners, self.root_node, event, &mut alterables, &mut user_data)?;
-
+		self.push_event_widget(listeners, self.tree_root_node, event, &mut alterables, &mut user_data)?;
 		self.process_alterables(alterables)?;
 
 		listeners.gc();
@@ -376,7 +396,7 @@ impl Layout {
 			globals,
 		};
 
-		let (root_widget, root_node) = add_child_internal(
+		let (tree_root_widget, tree_root_node) = add_child_internal(
 			&mut state.tree,
 			&mut state.widgets,
 			&mut state.nodes,
@@ -392,12 +412,23 @@ impl Layout {
 			},
 		)?;
 
+		let (content_root_widget, content_root_node) = add_child_internal(
+			&mut state.tree,
+			&mut state.widgets,
+			&mut state.nodes,
+			Some(tree_root_node),
+			WidgetDiv::create(),
+			taffy::Style::default(),
+		)?;
+
 		Ok(Self {
 			state,
 			prev_size: Vec2::default(),
 			content_size: Vec2::default(),
-			root_node,
-			root_widget: root_widget.id,
+			tree_root_node,
+			tree_root_widget: tree_root_widget.id,
+			content_root_node,
+			content_root_widget: content_root_widget.id,
 			needs_redraw: true,
 			haptics_triggered: false,
 			animations: Animations::default(),
@@ -407,7 +438,7 @@ impl Layout {
 	}
 
 	fn try_recompute_layout(&mut self, size: Vec2) -> anyhow::Result<()> {
-		if !self.state.tree.dirty(self.root_node)? && self.prev_size == size {
+		if !self.state.tree.dirty(self.tree_root_node)? && self.prev_size == size {
 			// Nothing to do
 			return Ok(());
 		}
@@ -417,7 +448,7 @@ impl Layout {
 		self.prev_size = size;
 
 		self.state.tree.compute_layout_with_measure(
-			self.root_node,
+			self.tree_root_node,
 			taffy::Size {
 				width: taffy::AvailableSpace::Definite(size.x),
 				height: taffy::AvailableSpace::Definite(size.y),
@@ -443,7 +474,7 @@ impl Layout {
 				}
 			},
 		)?;
-		let root_size = self.state.tree.layout(self.root_node).unwrap().size;
+		let root_size = self.state.tree.layout(self.tree_root_node).unwrap().size;
 		if self.content_size.x != root_size.width || self.content_size.y != root_size.height {
 			log::debug!(
 				"content size changed: {:.0}x{:.0} → {:.0}x{:.0}",
@@ -470,7 +501,7 @@ impl Layout {
 	pub fn tick(&mut self) -> anyhow::Result<()> {
 		let mut alterables = EventAlterables::default();
 		self.animations.tick(&self.state, &mut alterables);
-		self.process_pending_components(&mut alterables)?;
+		self.process_pending_components(&mut alterables);
 		self.process_pending_widget_ticks(&mut alterables);
 		self.process_alterables(alterables)?;
 		Ok(())

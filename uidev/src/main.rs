@@ -309,7 +309,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				log::trace!("drawing frame {frame_index}");
 				frame_index += 1;
 
-				limiter.start(120); // max 120 fps
+				limiter.start(0); // max 120 fps
 				profiler.start();
 
 				{

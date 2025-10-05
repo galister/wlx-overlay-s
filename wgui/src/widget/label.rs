@@ -46,7 +46,7 @@ impl WidgetLabel {
 			buffer.set_wrap(wrap);
 
 			buffer.set_rich_text(
-				[(params.content.generate(&mut globals.i18n).as_ref(), attrs)],
+				[(params.content.generate(&mut globals.i18n_builtin).as_ref(), attrs)],
 				&Attrs::new(),
 				Shaping::Advanced,
 				params.style.align.map(Into::into),

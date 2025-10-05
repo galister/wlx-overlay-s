@@ -146,6 +146,7 @@ pub struct PrimitiveExtent {
 }
 
 pub enum RenderPrimitive {
+	NewPass,
 	Rectangle(PrimitiveExtent, Rectangle),
 	Text(PrimitiveExtent, Rc<RefCell<Buffer>>, Option<TextShadow>),
 	Sprite(PrimitiveExtent, Option<CustomGlyph>), //option because we want as_slice
@@ -276,7 +277,7 @@ fn draw_widget(
 
 	widget_state.draw_all(state, &draw_params);
 
-	draw_children(params, state, node_id);
+	draw_children(params, state, node_id, false);
 
 	if scissor_pushed {
 		state.scissor_stack.pop();
@@ -296,7 +297,7 @@ fn draw_widget(
 	}
 }
 
-fn draw_children(params: &DrawParams, state: &mut DrawState, parent_node_id: taffy::NodeId) {
+fn draw_children(params: &DrawParams, state: &mut DrawState, parent_node_id: taffy::NodeId, is_topmost: bool) {
 	let layout = &params.layout;
 
 	for node_id in layout.state.tree.child_ids(parent_node_id) {
@@ -316,6 +317,10 @@ fn draw_children(params: &DrawParams, state: &mut DrawState, parent_node_id: taf
 		};
 
 		draw_widget(params, state, node_id, style, widget);
+
+		if is_topmost {
+			state.primitives.push(RenderPrimitive::NewPass);
+		}
 	}
 }
 
@@ -323,14 +328,6 @@ pub fn draw(params: &mut DrawParams) -> anyhow::Result<Vec<RenderPrimitive>> {
 	let mut primitives = Vec::<RenderPrimitive>::new();
 	let mut transform_stack = TransformStack::new();
 	let mut scissor_stack = ScissorStack::new();
-
-	let Some(root_widget) = params.layout.state.widgets.get(params.layout.root_widget) else {
-		panic!();
-	};
-
-	let Ok(style) = params.layout.state.tree.style(params.layout.root_node) else {
-		panic!();
-	};
 
 	let mut alterables = EventAlterables::default();
 
@@ -342,7 +339,8 @@ pub fn draw(params: &mut DrawParams) -> anyhow::Result<Vec<RenderPrimitive>> {
 		alterables: &mut alterables,
 	};
 
-	draw_widget(params, &mut state, params.layout.root_node, style, root_widget);
+	draw_children(params, &mut state, params.layout.tree_root_node, true);
+
 	params.layout.process_alterables(alterables)?;
 
 	Ok(primitives)

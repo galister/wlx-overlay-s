@@ -2,6 +2,7 @@ use gio::prelude::{AppInfoExt, IconExt};
 use gtk::traits::IconThemeExt;
 
 #[derive(Debug)]
+#[allow(dead_code)] // TODO: remove this
 pub struct DesktopEntry {
 	pub exec_path: String,
 	pub exec_args: Vec<String>,
@@ -10,6 +11,7 @@ pub struct DesktopEntry {
 	pub categories: Vec<String>,
 }
 
+#[allow(dead_code)] // TODO: remove this
 pub struct EntrySearchCell {
 	pub exec_path: String,
 	pub exec_args: Vec<String>,

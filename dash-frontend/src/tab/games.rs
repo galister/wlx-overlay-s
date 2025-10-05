@@ -1,4 +1,7 @@
-use wgui::parser::{ParseDocumentParams, ParserState};
+use wgui::{
+	assets::AssetPath,
+	parser::{ParseDocumentParams, ParserState},
+};
 
 use crate::tab::{Tab, TabParams, TabType};
 
@@ -18,7 +21,7 @@ impl TabGames {
 		let state = wgui::parser::parse_from_assets(
 			&ParseDocumentParams {
 				globals: params.globals.clone(),
-				path: "gui/tab/games.xml",
+				path: AssetPath::BuiltIn("gui/tab/games.xml"),
 				extra: Default::default(),
 			},
 			params.layout,

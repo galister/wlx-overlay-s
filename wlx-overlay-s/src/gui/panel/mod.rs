@@ -1,10 +1,11 @@
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use button::setup_custom_button;
-use glam::{vec2, Affine2, Vec2};
+use glam::{Affine2, Vec2, vec2};
 use label::setup_custom_label;
 use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 use wgui::{
+    assets::AssetPath,
     drawing,
     event::{
         Event as WguiEvent, EventListenerCollection, InternalStateChangeEvent, ListenerHandleVec,
@@ -21,7 +22,7 @@ use crate::{
     backend::input::{Haptics, PointerHit, PointerMode},
     graphics::{CommandBuffers, ExtentExt},
     state::AppState,
-    windowing::backend::{ui_transform, FrameMeta, OverlayBackend, ShouldRender},
+    windowing::backend::{FrameMeta, OverlayBackend, ShouldRender, ui_transform},
 };
 
 use super::{timer::GuiTimer, timestep::Timestep};
@@ -72,7 +73,7 @@ impl<S> GuiPanel<S> {
 
         let doc_params = wgui::parser::ParseDocumentParams {
             globals: app.wgui_globals.clone(),
-            path,
+            path: AssetPath::BuiltIn(path),
             extra: wgui::parser::ParseDocumentExtra {
                 on_custom_attribs: Some(Box::new({
                     let custom_elems = custom_elems.clone();

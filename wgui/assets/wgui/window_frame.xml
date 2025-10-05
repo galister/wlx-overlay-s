@@ -1,0 +1,25 @@
+<layout>
+  <elements>
+    <rectangle
+      flex_direction="column"
+      round="8"
+      border="2"
+      border_color="#778899"
+      color="#001122ee"
+      padding="2">
+
+      <!-- window title -->
+      <rectangle width="100%" height="100%" round="4" align_items="center" justify_content="space_between"
+        gradient="vertical" color="#224466" color2="#113355">
+        <label margin_left="8" text="Window title" weight="bold" />
+        <sprite src_internal="wgui/close.svg" width="24" height="24" />
+      </rectangle>
+
+      <!-- content itself -->
+      <div width="100%" height="100%" padding="8" gap="4" flex_direction="column">
+        <label text="Window content" />
+        <Button color="#9911AA" text="I'm clickable." width="128" height="24" />
+      </div>
+    </rectangle>
+  </elements>
+</layout>

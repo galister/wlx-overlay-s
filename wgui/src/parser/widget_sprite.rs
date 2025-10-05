@@ -1,4 +1,5 @@
 use crate::{
+	assets::AssetPath,
 	layout::WidgetID,
 	parser::{AttribPair, ParserContext, ParserFile, parse_children, parse_widget_universal, style::parse_style},
 	renderer_vk::text::custom_glyph::{CustomGlyphContent, CustomGlyphData},
@@ -21,20 +22,22 @@ pub fn parse_widget_sprite<'a, U1, U2>(
 	for pair in attribs {
 		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
 		match key {
-			"src" => {
+			"src" | "src_ext" | "src_internal" => {
+				let asset_path = match key {
+					"src" => AssetPath::BuiltIn(value),
+					"src_ext" => AssetPath::Filesystem(value),
+					"src_internal" => AssetPath::WguiInternal(value),
+					_ => unreachable!(),
+				};
+
 				if !value.is_empty() {
-					glyph = match CustomGlyphContent::from_assets(&mut ctx.layout.state.globals.assets(), value) {
+					glyph = match CustomGlyphContent::from_assets(&mut ctx.layout.state.globals, asset_path) {
 						Ok(glyph) => Some(glyph),
 						Err(e) => {
 							log::warn!("failed to load {value}: {e}");
 							None
 						}
 					}
-				}
-			}
-			"src_ext" => {
-				if !value.is_empty() && std::fs::exists(value).unwrap_or(false) {
-					glyph = CustomGlyphContent::from_file(value).ok();
 				}
 			}
 			"color" => {

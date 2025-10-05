@@ -1,15 +1,16 @@
 <layout>
   <elements>
     <rectangle
-      color="#888888"
-      width="1000" height="500" min_width="1000" min_height="500"
+      width="1000" height="1000" min_width="1000" min_height="500"
       gap="4" flex_direction="column"
+      color="#444444ee"
       overflow_y="scroll">
       <label text="Raw text" color="#FFFFFF" />
       <label translation="TESTBED.HELLO_WORLD" color="#FFFFFF" />
 
       <div margin_left="16" gap="8" flex_direction="column">
         <label id="label_current_option" text="Click any of these buttons" size="20" weight="bold" />
+        <Button id="button_popup" text="Show pop-up" width="200" height="32" color="#777777" />
         <div gap="4">
           <Button id="button_red" text="Red button" width="150" height="32" color="#FF0000" />
           <Button id="button_aqua" text="Aqua button" width="150" height="32" color="#00FFFF" />

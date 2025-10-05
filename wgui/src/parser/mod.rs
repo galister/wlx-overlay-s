@@ -8,7 +8,7 @@ mod widget_rectangle;
 mod widget_sprite;
 
 use crate::{
-	assets::{self, AssetProvider},
+	assets::{AssetPath, AssetPathOwned, normalize_path},
 	components::{Component, ComponentWeak},
 	drawing::{self},
 	event::EventListenerCollection,
@@ -22,12 +22,7 @@ use crate::{
 };
 use ouroboros::self_referencing;
 use smallvec::SmallVec;
-use std::{
-	cell::RefMut,
-	collections::HashMap,
-	path::{Path, PathBuf},
-	rc::Rc,
-};
+use std::{cell::RefMut, collections::HashMap, path::Path, rc::Rc};
 
 #[self_referencing]
 struct XmlDocument {
@@ -44,7 +39,7 @@ pub struct Template {
 }
 
 struct ParserFile {
-	path: PathBuf,
+	path: AssetPathOwned,
 	document: Rc<XmlDocument>,
 	template_parameters: HashMap<Rc<str>, Rc<str>>,
 }
@@ -201,7 +196,7 @@ impl Fetchable for ParserData {
 #[derive(Default)]
 pub struct ParserState {
 	pub data: ParserData,
-	pub path: PathBuf,
+	pub path: AssetPathOwned,
 }
 
 impl ParserState {
@@ -558,11 +553,22 @@ fn parse_tag_include<U1, U2>(
 		#[allow(clippy::single_match)]
 		match pair.attrib.as_ref() {
 			"src" => {
-				let mut new_path = file.path.parent().unwrap_or_else(|| Path::new("/")).to_path_buf();
-				new_path.push(pair.value.as_ref());
-				let new_path = assets::normalize_path(&new_path);
+				let new_path = {
+					let this = &file.path.clone();
+					let include: &str = &pair.value;
+					let buf = this.get_path_buf();
+					let mut new_path = buf.parent().unwrap_or_else(|| Path::new("/")).to_path_buf();
+					new_path.push(include);
+					let new_path = normalize_path(&new_path);
 
-				let (new_file, node_layout) = get_doc_from_path(ctx, &new_path)?;
+					match this {
+						AssetPathOwned::WguiInternal(_) => AssetPathOwned::WguiInternal(new_path),
+						AssetPathOwned::BuiltIn(_) => AssetPathOwned::BuiltIn(new_path),
+						AssetPathOwned::Filesystem(_) => AssetPathOwned::Filesystem(new_path),
+					}
+				};
+				let new_path_ref = new_path.as_ref();
+				let (new_file, node_layout) = get_doc_from_asset_path(ctx, new_path_ref)?;
 				parse_document_root(&new_file, ctx, parent_id, node_layout)?;
 
 				return Ok(());
@@ -992,7 +998,7 @@ pub struct ParseDocumentExtra {
 // filled-in by you in `new_layout_from_assets` function
 pub struct ParseDocumentParams<'a> {
 	pub globals: WguiGlobals,      // mandatory field
-	pub path: &'a str,             // mandatory field
+	pub path: AssetPath<'a>,       // mandatory field
 	pub extra: ParseDocumentExtra, // optional field, can be Default-ed
 }
 
@@ -1002,18 +1008,15 @@ pub fn parse_from_assets<U1, U2>(
 	listeners: &mut EventListenerCollection<U1, U2>,
 	parent_id: WidgetID,
 ) -> anyhow::Result<ParserState> {
-	let path = PathBuf::from(doc_params.path);
-
 	let parser_data = ParserData::default();
 	let mut ctx = create_default_context(doc_params, layout, listeners, &parser_data);
-
-	let (file, node_layout) = get_doc_from_path(&ctx, &path)?;
+	let (file, node_layout) = get_doc_from_asset_path(&ctx, doc_params.path)?;
 	parse_document_root(&file, &mut ctx, parent_id, node_layout)?;
 
 	// move everything essential to the result
 	let result = ParserState {
 		data: std::mem::take(&mut ctx.data_local),
-		path,
+		path: doc_params.path.to_owned(),
 	};
 
 	drop(ctx);
@@ -1027,21 +1030,18 @@ pub fn new_layout_from_assets<U1, U2>(
 	layout_params: &LayoutParams,
 ) -> anyhow::Result<(Layout, ParserState)> {
 	let mut layout = Layout::new(doc_params.globals.clone(), layout_params)?;
-	let widget = layout.root_widget;
+	let widget = layout.content_root_widget;
 	let state = parse_from_assets(doc_params, &mut layout, listeners, widget)?;
 	Ok((layout, state))
 }
 
-fn assets_path_to_xml(assets: &mut Box<dyn AssetProvider>, path: &Path) -> anyhow::Result<String> {
-	let data = assets.load_from_path(&path.to_string_lossy())?;
-	Ok(String::from_utf8(data)?)
-}
-
-fn get_doc_from_path<U1, U2>(
+fn get_doc_from_asset_path<U1, U2>(
 	ctx: &ParserContext<U1, U2>,
-	path: &Path,
+	asset_path: AssetPath,
 ) -> anyhow::Result<(ParserFile, roxmltree::NodeId)> {
-	let xml = assets_path_to_xml(&mut ctx.layout.state.globals.assets(), path)?;
+	let data = ctx.layout.state.globals.get_asset(asset_path)?;
+	let xml = String::from_utf8(data)?;
+
 	let document = Rc::new(XmlDocument::new(xml, |xml| {
 		let opt = roxmltree::ParsingOptions {
 			allow_dtd: true,
@@ -1054,7 +1054,7 @@ fn get_doc_from_path<U1, U2>(
 	let tag_layout = require_tag_by_name(&root, "layout")?;
 
 	let file = ParserFile {
-		path: PathBuf::from(path),
+		path: asset_path.to_owned(),
 		document: document.clone(),
 		template_parameters: Default::default(),
 	};

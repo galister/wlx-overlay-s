@@ -152,7 +152,11 @@ _Internal (assets) image path_
 
 `src_ext`: **string**
 
-_External image path_
+_External (filesystem) image path_
+
+`src_internal`: **string**
+
+_wgui internal image path. Do not use directly unless it's related to the core wgui assets._
 
 ---
 

@@ -1,8 +1,9 @@
 use std::{collections::HashMap, rc::Rc};
 
-use glam::{vec2, vec3, Affine3A, Mat4, Quat, Vec2, Vec3};
+use glam::{Affine3A, Mat4, Quat, Vec2, Vec3, vec2, vec3};
 use wgui::{
     animation::{Animation, AnimationEasing},
+    assets::AssetPath,
     drawing::Color,
     event::{self, CallbackMetadata, EventListenerKind},
     layout::LayoutParams,
@@ -19,14 +20,14 @@ use wgui::{
 use crate::{
     gui::panel::GuiPanel,
     state::AppState,
-    subsystem::hid::{XkbKeymap, ALT, CTRL, META, SHIFT, SUPER},
+    subsystem::hid::{ALT, CTRL, META, SHIFT, SUPER, XkbKeymap},
     windowing::window::{OverlayWindowConfig, OverlayWindowState, Positioning},
 };
 
 use super::{
-    handle_press, handle_release,
+    KEYBOARD_NAME, KeyButtonData, KeyState, KeyboardBackend, KeyboardState, handle_press,
+    handle_release,
     layout::{self, AltModifier, KeyCapType},
-    KeyButtonData, KeyState, KeyboardBackend, KeyboardState, KEYBOARD_NAME,
 };
 
 const BACKGROUND_PADDING: f32 = 4.;
@@ -54,7 +55,7 @@ pub fn create_keyboard(
     let mut panel = GuiPanel::new_blank(app, state)?;
 
     let (background, _) = panel.layout.add_child(
-        panel.layout.root_widget,
+        panel.layout.content_root_widget,
         WidgetRectangle::create(WidgetRectangleParams {
             color: wgui::drawing::Color::new(0., 0., 0., 0.6),
             round: WLength::Units(4.0),
@@ -75,7 +76,7 @@ pub fn create_keyboard(
 
     let parse_doc_params = wgui::parser::ParseDocumentParams {
         globals: app.wgui_globals.clone(),
-        path: "gui/keyboard.xml",
+        path: AssetPath::BuiltIn("gui/keyboard.xml"),
         extra: Default::default(),
     };
 

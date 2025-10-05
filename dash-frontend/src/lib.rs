@@ -3,6 +3,7 @@ use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 use chrono::Timelike;
 use glam::Vec2;
 use wgui::{
+	assets::AssetPath,
 	components::button::ComponentButton,
 	event::{CallbackDataCommon, EventAlterables, EventListenerCollection},
 	globals::WguiGlobals,
@@ -56,7 +57,7 @@ impl Frontend {
 			params.listeners,
 			&ParseDocumentParams {
 				globals: globals.clone(),
-				path: "gui/dashboard.xml",
+				path: AssetPath::BuiltIn("gui/dashboard.xml"),
 				extra: Default::default(),
 			},
 			&LayoutParams { resize_to_parent: true },

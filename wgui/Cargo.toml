@@ -29,3 +29,4 @@ smallvec = "1.15.1"
 taffy = "0.9.1"
 vulkano = { workspace = true }
 vulkano-shaders = { workspace = true }
+rust-embed = { workspace = true }

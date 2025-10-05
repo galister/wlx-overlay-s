@@ -6285,6 +6285,7 @@ dependencies = [
  "regex",
  "resvg",
  "roxmltree 0.20.0",
+ "rust-embed",
  "rustc-hash 2.1.1",
  "serde_json",
  "slotmap",

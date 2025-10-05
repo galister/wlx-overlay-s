@@ -1,14 +1,14 @@
 use std::{marker::PhantomData, ops::Range, sync::Arc};
 
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use vulkano::{
 	buffer::{
-		allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo},
 		BufferContents, BufferUsage, Subbuffer,
+		allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo},
 	},
 	descriptor_set::{
-		layout::{DescriptorBindingFlags, DescriptorSetLayoutCreateFlags},
 		DescriptorSet, WriteDescriptorSet,
+		layout::{DescriptorBindingFlags, DescriptorSetLayoutCreateFlags},
 	},
 	format::Format,
 	image::{
@@ -17,8 +17,9 @@ use vulkano::{
 	},
 	memory::allocator::MemoryTypeFilter,
 	pipeline::{
+		DynamicState, GraphicsPipeline, Pipeline, PipelineLayout,
 		graphics::{
-			self,
+			self, GraphicsPipelineCreateInfo,
 			color_blend::{AttachmentBlend, ColorBlendAttachmentState, ColorBlendState},
 			input_assembly::{InputAssemblyState, PrimitiveTopology},
 			multisample::MultisampleState,
@@ -26,15 +27,13 @@ use vulkano::{
 			subpass::PipelineRenderingCreateInfo,
 			vertex_input::{Vertex, VertexDefinition, VertexInputState},
 			viewport::ViewportState,
-			GraphicsPipelineCreateInfo,
 		},
 		layout::PipelineDescriptorSetLayoutCreateInfo,
-		DynamicState, GraphicsPipeline, Pipeline, PipelineLayout,
 	},
 	shader::{EntryPoint, ShaderModule},
 };
 
-use super::{pass::WGfxPass, WGfx};
+use super::{WGfx, pass::WGfxPass};
 
 pub struct WGfxPipeline<V> {
 	pub graphics: Arc<WGfx>,
@@ -47,6 +46,7 @@ impl<V> WGfxPipeline<V>
 where
 	V: Sized,
 {
+	#[allow(clippy::too_many_arguments)]
 	fn new_from_stages(
 		graphics: Arc<WGfx>,
 		format: Format,
@@ -207,21 +207,25 @@ impl WPipelineCreateInfo {
 		}
 	}
 
-	pub fn use_blend(mut self, blend: AttachmentBlend) -> Self {
+	#[must_use]
+	pub const fn use_blend(mut self, blend: AttachmentBlend) -> Self {
 		self.blend = Some(blend);
 		self
 	}
 
-	pub fn use_topology(mut self, topology: PrimitiveTopology) -> Self {
+	#[must_use]
+	pub const fn use_topology(mut self, topology: PrimitiveTopology) -> Self {
 		self.topology = topology;
 		self
 	}
 
-	pub fn use_instanced(mut self) -> Self {
+	#[must_use]
+	pub const fn use_instanced(mut self) -> Self {
 		self.instanced = true;
 		self
 	}
 
+	#[must_use]
 	pub fn use_updatable_descriptors(mut self, updatable_sets: SmallVec<[usize; 8]>) -> Self {
 		self.updatable_sets = updatable_sets;
 		self

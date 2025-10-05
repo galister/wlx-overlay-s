@@ -23,6 +23,7 @@
 pub mod animation;
 pub mod any;
 pub mod assets;
+mod assets_internal;
 pub mod components;
 pub mod drawing;
 pub mod event;

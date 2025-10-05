@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
 use crate::{
 	assets,
@@ -6,25 +6,37 @@ use crate::{
 };
 use glam::Vec2;
 use wgui::{
+	assets::AssetPath,
 	components::{
+		Component,
 		button::{ButtonClickCallback, ComponentButton},
 		checkbox::ComponentCheckbox,
-		Component,
 	},
 	drawing::Color,
 	event::EventListenerCollection,
 	globals::WguiGlobals,
 	i18n::Translation,
-	layout::{LayoutParams, RcLayout, Widget},
+	layout::{Layout, LayoutParams, RcLayout, Widget},
 	parser::{Fetchable, ParseDocumentExtra, ParseDocumentParams, ParserState},
-	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
+	taffy::{self, prelude::length},
+	widget::{div::WidgetDiv, label::WidgetLabel, rectangle::WidgetRectangle},
 };
 
+pub enum TestbedTask {
+	ShowPopup,
+}
+
+struct Data {
+	tasks: VecDeque<TestbedTask>,
+	#[allow(dead_code)]
+	state: ParserState,
+}
+
+#[derive(Clone)]
 pub struct TestbedGeneric {
 	pub layout: RcLayout,
 
-	#[allow(dead_code)]
-	state: ParserState,
+	data: Rc<RefCell<Data>>,
 }
 
 fn button_click_callback(
@@ -57,7 +69,7 @@ fn handle_button_click(button: Rc<ComponentButton>, label: Widget, text: &'stati
 
 impl TestbedGeneric {
 	pub fn new(listeners: &mut EventListenerCollection<(), ()>) -> anyhow::Result<Self> {
-		const XML_PATH: &str = "gui/various_widgets.xml";
+		const XML_PATH: AssetPath = AssetPath::BuiltIn("gui/various_widgets.xml");
 
 		let globals = WguiGlobals::new(
 			Box::new(assets::Asset {}),
@@ -112,6 +124,7 @@ impl TestbedGeneric {
 			Ok(())
 		}));
 
+		let button_popup = state.fetch_component_as::<ComponentButton>("button_popup")?;
 		let button_red = state.fetch_component_as::<ComponentButton>("button_red")?;
 		let button_aqua = state.fetch_component_as::<ComponentButton>("button_aqua")?;
 		let button_yellow = state.fetch_component_as::<ComponentButton>("button_yellow")?;
@@ -133,19 +146,102 @@ impl TestbedGeneric {
 			Ok(())
 		}));
 
-		Ok(Self {
+		let testbed = Self {
 			layout: layout.as_rc(),
-			state,
-		})
+			data: Rc::new(RefCell::new(Data {
+				state,
+				tasks: Default::default(),
+			})),
+		};
+
+		button_popup.on_click({
+			let testbed = testbed.clone();
+			Box::new(move |_, _| {
+				testbed.push_task(TestbedTask::ShowPopup);
+				Ok(())
+			})
+		});
+
+		Ok(testbed)
+	}
+
+	fn push_task(&self, task: TestbedTask) {
+		self.data.borrow_mut().tasks.push_back(task);
+	}
+
+	fn process_task(
+		&mut self,
+		task: &TestbedTask,
+		params: &mut TestbedUpdateParams,
+		layout: &mut Layout,
+		data: &mut Data,
+	) -> anyhow::Result<()> {
+		match task {
+			TestbedTask::ShowPopup => self.show_popup(params, layout, data)?,
+		}
+
+		Ok(())
+	}
+
+	fn show_popup(
+		&mut self,
+		params: &mut TestbedUpdateParams,
+		layout: &mut Layout,
+		_data: &mut Data,
+	) -> anyhow::Result<()> {
+		const XML_PATH: AssetPath = AssetPath::WguiInternal("wgui/window_frame.xml");
+
+		let globals = WguiGlobals::new(
+			Box::new(assets::Asset {}),
+			wgui::globals::Defaults::default(),
+		)?;
+
+		let (widget, _) = layout.add_topmost_child(
+			WidgetDiv::create(),
+			taffy::Style {
+				position: taffy::Position::Absolute,
+				margin: taffy::Rect {
+					left: length(64.0),
+					right: length(0.0),
+					top: length(64.0),
+					bottom: length(0.0),
+				},
+				..Default::default()
+			},
+		)?;
+
+		let _state = wgui::parser::parse_from_assets(
+			&ParseDocumentParams {
+				globals,
+				path: XML_PATH,
+				extra: Default::default(),
+			},
+			layout,
+			params.listeners,
+			widget.id,
+		)?;
+
+		Ok(())
 	}
 }
 
 impl Testbed for TestbedGeneric {
-	fn update(&mut self, params: TestbedUpdateParams) -> anyhow::Result<()> {
-		self.layout.borrow_mut().update(
+	fn update(&mut self, mut params: TestbedUpdateParams) -> anyhow::Result<()> {
+		let layout = self.layout.clone();
+		let data = self.data.clone();
+
+		let mut layout = layout.borrow_mut();
+		let mut data = data.borrow_mut();
+
+		layout.update(
 			Vec2::new(params.width, params.height),
 			params.timestep_alpha,
 		)?;
+
+		while let Some(task) = data.tasks.pop_front() {
+			self.process_task(&task, &mut params, &mut layout, &mut data)?;
+		}
+
 		Ok(())
 	}
 
