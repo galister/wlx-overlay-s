@@ -1,21 +1,19 @@
 use std::{
 	cell::{RefCell, RefMut},
-	collections::VecDeque,
 	rc::{Rc, Weak},
 };
 
 use crate::{
 	animation::Animations,
 	components::{Component, InitData},
-	drawing::{self, Boundary, has_overflow_clip, push_scissor_stack, push_transform_stack},
+	drawing::{push_scissor_stack, push_transform_stack, Boundary},
 	event::{self, CallbackDataCommon, EventAlterables, EventListenerCollection},
 	globals::WguiGlobals,
-	stack::{self, ScissorBoundary},
-	widget::{self, EventParams, WidgetObj, WidgetState, div::WidgetDiv},
+	widget::{self, div::WidgetDiv, EventParams, WidgetObj, WidgetState},
 };
 
-use glam::{Vec2, vec2};
-use slotmap::{HopSlotMap, SecondaryMap, new_key_type};
+use glam::{vec2, Vec2};
+use slotmap::{new_key_type, HopSlotMap, SecondaryMap};
 use taffy::{NodeId, TaffyTree, TraversePartialTree};
 
 new_key_type! {

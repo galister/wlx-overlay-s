@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use button::setup_custom_button;
-use glam::{Affine2, Vec2, vec2};
+use glam::{vec2, Affine2, Vec2};
 use label::setup_custom_label;
 use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 use wgui::{
@@ -21,7 +21,7 @@ use crate::{
     backend::input::{Haptics, PointerHit, PointerMode},
     graphics::{CommandBuffers, ExtentExt},
     state::AppState,
-    windowing::backend::{FrameMeta, OverlayBackend, ShouldRender, ui_transform},
+    windowing::backend::{ui_transform, FrameMeta, OverlayBackend, ShouldRender},
 };
 
 use super::{timer::GuiTimer, timestep::Timestep};
@@ -230,7 +230,7 @@ impl<S> OverlayBackend for GuiPanel<S> {
         app: &mut AppState,
         tgt: Arc<ImageView>,
         buf: &mut CommandBuffers,
-        _alpha: f32,
+        alpha: f32,
     ) -> anyhow::Result<bool> {
         self.context
             .update_viewport(&mut app.wgui_shared, tgt.extent_u32arr(), 1.0)?;
@@ -246,9 +246,10 @@ impl<S> OverlayBackend for GuiPanel<S> {
             wgui::gfx::cmd::WGfxClearMode::Clear([0.0, 0.0, 0.0, 0.0]),
         )?;
 
-        let primitives = wgui::drawing::draw(&wgui::drawing::DrawParams {
-            layout: &self.layout,
+        let primitives = wgui::drawing::draw(&mut wgui::drawing::DrawParams {
+            layout: &mut self.layout,
             debug_draw: false,
+            alpha,
         })?;
         self.context
             .draw(&mut app.wgui_shared, &mut cmd_buf, &primitives)?;
