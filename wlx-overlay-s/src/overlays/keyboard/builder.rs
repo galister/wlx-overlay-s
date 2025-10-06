@@ -11,6 +11,7 @@ use wgui::{
     renderer_vk::util,
     taffy::{self, prelude::length},
     widget::{
+        EventResult,
         div::WidgetDiv,
         rectangle::{WidgetRectangle, WidgetRectangleParams},
         util::WLength,
@@ -198,7 +199,7 @@ pub fn create_keyboard(
                         move |common, data, _app, _state| {
                             common.alterables.trigger_haptics();
                             on_enter_anim(k.clone(), common, data);
-                            Ok(())
+                            Ok(EventResult::Pass)
                         }
                     }),
                 );
@@ -211,7 +212,7 @@ pub fn create_keyboard(
                         move |common, data, _app, _state| {
                             common.alterables.trigger_haptics();
                             on_leave_anim(k.clone(), common, data);
-                            Ok(())
+                            Ok(EventResult::Pass)
                         }
                     }),
                 );
@@ -228,7 +229,7 @@ pub fn create_keyboard(
 
                             handle_press(app, &k, state, button);
                             on_press_anim(k.clone(), common, data);
-                            Ok(())
+                            Ok(EventResult::Pass)
                         }
                     }),
                 );
@@ -242,7 +243,7 @@ pub fn create_keyboard(
                             if handle_release(app, &k, state) {
                                 on_release_anim(k.clone(), common, data);
                             }
-                            Ok(())
+                            Ok(EventResult::Pass)
                         }
                     }),
                 );
@@ -260,7 +261,7 @@ pub fn create_keyboard(
                                 } else {
                                     on_release_anim(k.clone(), common, data);
                                 }
-                                Ok(())
+                                Ok(EventResult::Pass)
                             }
                         }),
                     );

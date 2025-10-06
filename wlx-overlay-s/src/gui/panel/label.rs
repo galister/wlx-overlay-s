@@ -15,8 +15,8 @@ use wgui::{
     event::{self, EventCallback, EventListenerCollection, ListenerHandleVec},
     i18n::Translation,
     layout::Layout,
-    parser::{parse_color_hex, CustomAttribsInfoOwned},
-    widget::label::WidgetLabel,
+    parser::{CustomAttribsInfoOwned, parse_color_hex},
+    widget::{EventResult, label::WidgetLabel},
 };
 
 use crate::state::AppState;
@@ -53,7 +53,7 @@ pub(super) fn setup_custom_label<S>(
             };
             Box::new(move |common, data, _app, _| {
                 shell_on_tick(&state, common, data);
-                Ok(())
+                Ok(EventResult::Pass)
             })
         }
         "fifo" => {
@@ -71,7 +71,7 @@ pub(super) fn setup_custom_label<S>(
             };
             Box::new(move |common, data, _app, _| {
                 pipe_on_tick(&state, common, data);
-                Ok(())
+                Ok(EventResult::Pass)
             })
         }
         "battery" => {
@@ -104,7 +104,7 @@ pub(super) fn setup_custom_label<S>(
             };
             Box::new(move |common, data, app, _| {
                 battery_on_tick(&state, common, data, app);
-                Ok(())
+                Ok(EventResult::Pass)
             })
         }
         "clock" => {
@@ -167,12 +167,12 @@ pub(super) fn setup_custom_label<S>(
 
             Box::new(move |common, data, _app, _| {
                 clock_on_tick(&state, common, data);
-                Ok(())
+                Ok(EventResult::Pass)
             })
         }
         "ipd" => Box::new(|common, data, app, _| {
             ipd_on_tick(common, data, app);
-            Ok(())
+            Ok(EventResult::Pass)
         }),
         unk => {
             log::warn!("Unknown source value for label: {unk}");

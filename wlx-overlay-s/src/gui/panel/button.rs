@@ -7,6 +7,7 @@ use std::{
 use wgui::{
     event::{self, EventCallback, EventListenerCollection, EventListenerKind, ListenerHandleVec},
     parser::CustomAttribsInfoOwned,
+    widget::EventResult,
 };
 
 use crate::state::AppState;
@@ -43,7 +44,7 @@ pub(super) fn setup_custom_button<S>(
                 #[cfg(feature = "wayvr")]
                 app.tasks
                     .enqueue(TaskType::WayVR(WayVRAction::ToggleDashboard));
-                Ok(())
+                Ok(EventResult::Consumed)
             }),
             "::SetToggle" => {
                 let arg = args.next().unwrap_or_default();
@@ -53,7 +54,7 @@ pub(super) fn setup_custom_button<S>(
                 };
                 Box::new(move |_common, _data, app, _| {
                     app.tasks.enqueue(TaskType::ToggleSet(set_idx));
-                    Ok(())
+                    Ok(EventResult::Consumed)
                 })
             }
             "::WatchHide" => todo!(),
