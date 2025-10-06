@@ -180,6 +180,8 @@ _Translated by key_
 
 `round`: **float** (default: 4) | **percent** (0-100%)
 
+`border`: **float** (default: 2)
+
 `color`: #FFAABB | #FFAABBCC
 
 `border_color`: #FFAABB | #FFAABBCC

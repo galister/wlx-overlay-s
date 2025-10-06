@@ -4,7 +4,7 @@ use crate::{
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		AttribPair, ParserContext, ParserFile, parse_children, process_component,
+		AttribPair, ParserContext, ParserFile, parse_check_f32, parse_children, process_component,
 		style::{parse_color_opt, parse_round, parse_style, parse_text_style},
 	},
 	widget::util::WLength,
@@ -18,10 +18,12 @@ pub fn parse_component_button<'a, U1, U2>(
 	attribs: &[AttribPair],
 ) -> anyhow::Result<WidgetID> {
 	let mut color: Option<Color> = None;
+	let mut border = 2.0;
 	let mut border_color: Option<Color> = None;
 	let mut hover_color: Option<Color> = None;
 	let mut hover_border_color: Option<Color> = None;
 	let mut round = WLength::Units(4.0);
+
 	let mut translation: Option<Translation> = None;
 
 	let text_style = parse_text_style(attribs);
@@ -41,6 +43,9 @@ pub fn parse_component_button<'a, U1, U2>(
 			}
 			"color" => {
 				parse_color_opt(value, &mut color);
+			}
+			"border" => {
+				parse_check_f32(value, &mut border);
 			}
 			"border_color" => {
 				parse_color_opt(value, &mut border_color);
@@ -64,6 +69,7 @@ pub fn parse_component_button<'a, U1, U2>(
 		parent_id,
 		button::Params {
 			color,
+			border,
 			border_color,
 			hover_border_color,
 			hover_color,

@@ -35,6 +35,7 @@ pub mod parser;
 pub mod renderer_vk;
 pub mod stack;
 pub mod widget;
+pub mod windowing;
 
 // re-exported libs
 pub use cosmic_text;

@@ -1,5 +1,6 @@
 use std::{
 	cell::{RefCell, RefMut},
+	collections::VecDeque,
 	io::Write,
 	rc::{Rc, Weak},
 };
@@ -108,8 +109,27 @@ pub struct LayoutState {
 	pub tree: taffy::tree::TaffyTree<WidgetID>,
 }
 
+pub enum LayoutTask {
+	RemoveWidget(WidgetID),
+}
+
+#[derive(Clone)]
+pub struct LayoutTasks(pub Rc<RefCell<VecDeque<LayoutTask>>>);
+
+impl LayoutTasks {
+	fn new() -> Self {
+		Self(Rc::new(RefCell::new(VecDeque::new())))
+	}
+
+	pub fn push(&self, task: LayoutTask) {
+		self.0.borrow_mut().push_back(task);
+	}
+}
+
 pub struct Layout {
 	pub state: LayoutState,
+
+	pub tasks: LayoutTasks,
 
 	pub components_to_init: Vec<Component>,
 	pub widgets_to_tick: Vec<WidgetID>,
@@ -221,6 +241,14 @@ impl Layout {
 		}
 	}
 
+	fn remove_widget_single(&mut self, widget_id: WidgetID, node_id: Option<taffy::NodeId>) {
+		self.state.widgets.remove_single(widget_id);
+		self.state.nodes.remove(widget_id);
+		if let Some(node_id) = node_id {
+			let _ = self.state.tree.remove(node_id);
+		}
+	}
+
 	// removes all children of a specific widget
 	pub fn remove_children(&mut self, widget_id: WidgetID) {
 		let mut ids = Vec::new();
@@ -231,10 +259,16 @@ impl Layout {
 		}
 
 		for (widget_id, node_id) in ids {
-			self.state.widgets.remove_single(widget_id);
-			self.state.nodes.remove(widget_id);
-			self.state.tree.remove(node_id).unwrap();
+			self.remove_widget_single(widget_id, Some(node_id));
 		}
+	}
+
+	// remove widget and its children, recursively
+	pub fn remove_widget(&mut self, widget_id: WidgetID) {
+		self.remove_children(widget_id);
+		let node_id = self.state.nodes.get(widget_id);
+		self.remove_widget_single(widget_id, node_id.copied());
+		self.mark_redraw();
 	}
 
 	pub const fn mark_redraw(&mut self) {
@@ -468,6 +502,7 @@ impl Layout {
 			animations: Animations::default(),
 			components_to_init: Vec::new(),
 			widgets_to_tick: Vec::new(),
+			tasks: LayoutTasks::new(),
 		})
 	}
 
@@ -541,7 +576,21 @@ impl Layout {
 		Ok(())
 	}
 
+	fn process_tasks(&mut self) {
+		let tasks = self.tasks.clone();
+		let mut tasks = tasks.0.borrow_mut();
+		while let Some(task) = tasks.pop_front() {
+			match task {
+				LayoutTask::RemoveWidget(widget_id) => {
+					self.remove_widget(widget_id);
+				}
+			}
+		}
+	}
+
 	pub fn process_alterables(&mut self, alterables: EventAlterables) -> anyhow::Result<()> {
+		self.process_tasks();
+
 		for node in alterables.dirty_nodes {
 			self.state.tree.mark_dirty(node)?;
 		}

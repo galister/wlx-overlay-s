@@ -24,6 +24,7 @@ use taffy::{AlignItems, JustifyContent};
 pub struct Params {
 	pub text: Option<Translation>, // if unset, label will not be populated
 	pub color: Option<drawing::Color>,
+	pub border: f32,
 	pub border_color: Option<drawing::Color>,
 	pub hover_border_color: Option<drawing::Color>,
 	pub hover_color: Option<drawing::Color>,
@@ -39,6 +40,7 @@ impl Default for Params {
 			color: None,
 			hover_color: None,
 			border_color: None,
+			border: 2.0,
 			hover_border_color: None,
 			round: WLength::Units(4.0),
 			style: Default::default(),
@@ -116,7 +118,6 @@ fn anim_hover(
 	rect.params.color = bgcolor;
 	rect.params.color2 = get_color2(&bgcolor);
 	rect.params.border_color = data.initial_border_color.lerp(&data.initial_hover_border_color, mult);
-	rect.params.border = 2.0;
 }
 
 fn anim_hover_create(data: Rc<Data>, state: Rc<RefCell<State>>, widget_id: WidgetID, fade_in: bool) -> Animation {
@@ -313,7 +314,7 @@ pub fn construct<U1, U2>(
 			gradient: drawing::GradientMode::Vertical,
 			round: params.round,
 			border_color,
-			border: 2.0,
+			border: params.border,
 		}),
 		style,
 	)?;

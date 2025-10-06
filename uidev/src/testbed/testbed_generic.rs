@@ -18,8 +18,8 @@ use wgui::{
 	i18n::Translation,
 	layout::{Layout, LayoutParams, RcLayout, Widget},
 	parser::{Fetchable, ParseDocumentExtra, ParseDocumentParams, ParserState},
-	taffy::{self, prelude::length},
-	widget::{div::WidgetDiv, label::WidgetLabel, rectangle::WidgetRectangle},
+	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
+	windowing::{WguiWindow, WguiWindowParams},
 };
 
 pub enum TestbedTask {
@@ -30,12 +30,15 @@ struct Data {
 	tasks: VecDeque<TestbedTask>,
 	#[allow(dead_code)]
 	state: ParserState,
+
+	popup_window: WguiWindow,
 }
 
 #[derive(Clone)]
 pub struct TestbedGeneric {
 	pub layout: RcLayout,
 
+	globals: WguiGlobals,
 	data: Rc<RefCell<Data>>,
 }
 
@@ -106,7 +109,7 @@ impl TestbedGeneric {
 		let (layout, state) = wgui::parser::new_layout_from_assets(
 			listeners,
 			&ParseDocumentParams {
-				globals,
+				globals: globals.clone(),
 				path: XML_PATH,
 				extra,
 			},
@@ -148,9 +151,11 @@ impl TestbedGeneric {
 
 		let testbed = Self {
 			layout: layout.as_rc(),
+			globals: globals.clone(),
 			data: Rc::new(RefCell::new(Data {
 				state,
 				tasks: Default::default(),
+				popup_window: WguiWindow::default(),
 			})),
 		};
 
@@ -187,51 +192,14 @@ impl TestbedGeneric {
 		&mut self,
 		params: &mut TestbedUpdateParams,
 		layout: &mut Layout,
-		_data: &mut Data,
+		data: &mut Data,
 	) -> anyhow::Result<()> {
-		const XML_PATH: AssetPath = AssetPath::WguiInternal("wgui/window_frame.xml");
-
-		let globals = WguiGlobals::new(
-			Box::new(assets::Asset {}),
-			wgui::globals::Defaults::default(),
-		)?;
-
-		let (widget, _) = layout.add_topmost_child(
-			WidgetDiv::create(),
-			taffy::Style {
-				position: taffy::Position::Absolute,
-				margin: taffy::Rect {
-					left: length(64.0),
-					right: length(0.0),
-					top: length(64.0),
-					bottom: length(0.0),
-				},
-				..Default::default()
-			},
-		)?;
-
-		let state = wgui::parser::parse_from_assets(
-			&ParseDocumentParams {
-				globals,
-				path: XML_PATH,
-				extra: Default::default(),
-			},
+		data.popup_window.open(WguiWindowParams {
+			globals: self.globals.clone(),
+			position: Vec2::new(128.0, 128.0),
 			layout,
-			params.listeners,
-			widget.id,
-		)?;
-
-		let button = state
-			.fetch_component_as::<ComponentButton>("button")
-			.unwrap();
-
-		button.on_click(Box::new(move |_common, _e| {
-			log::info!("click");
-			Ok(())
-		}));
-
-		// temporary, preserve listeners state
-		Box::leak(Box::new(state));
+			listeners: params.listeners,
+		})?;
 
 		Ok(())
 	}

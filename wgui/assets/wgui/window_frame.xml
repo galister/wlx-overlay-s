@@ -11,7 +11,9 @@
       <rectangle width="100%" height="100%" round="4" align_items="center" justify_content="space_between"
         gradient="vertical" color="#224466" color2="#113355">
         <label margin_left="8" text="Window title" weight="bold" />
-        <sprite src_internal="wgui/close.svg" width="24" height="24" />
+        <Button id="but_close" border="0" round="0">
+          <sprite src_internal="wgui/close.svg" width="24" height="24" />
+        </Button>
       </rectangle>
 
       <!-- content itself -->
