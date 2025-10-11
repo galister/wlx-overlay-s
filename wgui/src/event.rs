@@ -1,5 +1,5 @@
 use std::{
-	cell::{RefCell, RefMut},
+	cell::{Ref, RefCell, RefMut},
 	collections::HashSet,
 	rc::Rc,
 };
@@ -10,7 +10,7 @@ use slotmap::SecondaryMap;
 use crate::{
 	animation::{self, Animation},
 	i18n::I18n,
-	layout::{LayoutState, WidgetID},
+	layout::{LayoutState, LayoutTask, WidgetID},
 	stack::{ScissorStack, Transform, TransformStack},
 	widget::{EventResult, WidgetData, WidgetObj},
 };
@@ -100,6 +100,7 @@ pub struct EventAlterables {
 	pub widgets_to_tick: HashSet<WidgetID>, // widgets which needs to be ticked in the next `Layout::update()` fn
 	pub transform_stack: TransformStack,
 	pub scissor_stack: ScissorStack,
+	pub tasks: Vec<LayoutTask>,
 	pub needs_redraw: bool,
 	pub trigger_haptics: bool,
 }
@@ -239,7 +240,7 @@ impl<U1, U2> EventListenerVec<U1, U2> {
 }
 
 pub struct EventListenerCollection<U1, U2> {
-	map: SecondaryMap<WidgetID, EventListenerVec<U1, U2>>,
+	pub map: SecondaryMap<WidgetID, EventListenerVec<U1, U2>>,
 	needs_gc: Rc<RefCell<bool>>,
 }
 
@@ -291,12 +292,14 @@ impl<U1, U2> EventListenerCollection<U1, U2> {
 
 	// clean-up expired events
 	pub fn gc(&mut self) {
-		let mut needs_gc = self.needs_gc.borrow_mut();
-		if !*needs_gc {
-			return;
-		}
+		{
+			let mut needs_gc = self.needs_gc.borrow_mut();
+			if !*needs_gc {
+				return;
+			}
 
-		*needs_gc = false;
+			*needs_gc = false;
+		}
 
 		let mut count = 0;
 
@@ -314,9 +317,5 @@ impl<U1, U2> EventListenerCollection<U1, U2> {
 		self.map.retain(|_k, v| !v.0.is_empty());
 
 		log::debug!("EventListenerCollection: cleaned-up {count} expired events");
-	}
-
-	pub fn get(&self, widget_id: WidgetID) -> Option<&EventListenerVec<U1, U2>> {
-		self.map.get(widget_id)
 	}
 }

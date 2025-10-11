@@ -1,10 +1,10 @@
 use crate::{
 	animation::{Animation, AnimationEasing},
-	components::{Component, ComponentBase, ComponentTrait, InitData},
+	components::{self, Component, ComponentBase, ComponentTrait, InitData, tooltip::ComponentTooltip},
 	drawing::{self, Boundary, Color},
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerKind, ListenerHandleVec},
 	i18n::Translation,
-	layout::{WidgetID, WidgetPair},
+	layout::{LayoutTask, WidgetID, WidgetPair},
 	renderer_vk::{
 		text::{FontWeight, TextStyle},
 		util::centered_matrix,
@@ -55,6 +55,8 @@ struct State {
 	hovered: bool,
 	down: bool,
 	on_click: Option<ButtonClickCallback>,
+
+	tooltip: Option<ComponentTooltip>,
 }
 
 struct Data {
@@ -158,7 +160,26 @@ fn register_event_mouse_enter<U1, U2>(
 				event_data.widget_id,
 				true,
 			));
-			state.borrow_mut().hovered = true;
+			let mut state = state.borrow_mut();
+
+			// todo
+			/*common.alterables.tasks.push(LayoutTask::ModifyLayoutState({
+				let parent = data.id_rect.clone();
+				Box::new(move |m| {
+					components::tooltip::construct(
+						&mut ConstructEssentials {
+							layout: m.layout,
+							listeners: &listeners,
+							parent,
+						},
+						components::tooltip::Params {
+							text: Translation::from_raw_text("this is a tooltip"),
+						},
+					);
+				})
+			}));*/
+
+			state.hovered = true;
 			Ok(EventResult::Pass)
 		}),
 	);
@@ -182,7 +203,9 @@ fn register_event_mouse_leave<U1, U2>(
 				event_data.widget_id,
 				false,
 			));
-			state.borrow_mut().hovered = false;
+			let mut state = state.borrow_mut();
+			state.tooltip = None;
+			state.hovered = false;
 			Ok(EventResult::Pass)
 		}),
 	);
@@ -266,7 +289,7 @@ fn register_event_mouse_release<U1, U2>(
 }
 
 pub fn construct<U1, U2>(
-	ess: ConstructEssentials<U1, U2>,
+	ess: &mut ConstructEssentials<U1, U2>,
 	params: Params,
 ) -> anyhow::Result<(WidgetPair, Rc<ComponentButton>)> {
 	let globals = ess.layout.state.globals.clone();
@@ -358,6 +381,7 @@ pub fn construct<U1, U2>(
 		down: false,
 		hovered: false,
 		on_click: None,
+		tooltip: None,
 	}));
 
 	let mut base = ComponentBase::default();

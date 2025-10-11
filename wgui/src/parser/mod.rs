@@ -19,6 +19,7 @@ use crate::{
 		component_slider::parse_component_slider, widget_div::parse_widget_div, widget_label::parse_widget_label,
 		widget_rectangle::parse_widget_rectangle, widget_sprite::parse_widget_sprite,
 	},
+	widget::ConstructEssentials,
 };
 use ouroboros::self_referencing;
 use smallvec::SmallVec;
@@ -303,6 +304,14 @@ struct ParserContext<'a, U1, U2> {
 }
 
 impl<U1, U2> ParserContext<'_, U1, U2> {
+	const fn get_construct_essentials(&mut self, parent: WidgetID) -> ConstructEssentials<'_, U1, U2> {
+		ConstructEssentials {
+			layout: self.layout,
+			listeners: self.listeners,
+			parent,
+		}
+	}
+
 	fn get_template(&self, name: &str) -> Option<Rc<Template>> {
 		// find in local
 		if let Some(template) = self.data_local.templates.get(name) {

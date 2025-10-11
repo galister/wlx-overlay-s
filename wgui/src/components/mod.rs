@@ -8,6 +8,7 @@ use crate::{
 pub mod button;
 pub mod checkbox;
 pub mod slider;
+pub mod tooltip;
 
 pub struct InitData<'a> {
 	pub common: &'a mut CallbackDataCommon<'a>,

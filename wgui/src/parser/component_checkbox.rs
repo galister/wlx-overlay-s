@@ -37,11 +37,7 @@ pub fn parse_component_checkbox<U1, U2>(
 	}
 
 	let (widget, component) = checkbox::construct(
-		ConstructEssentials {
-			layout: ctx.layout,
-			listeners: ctx.listeners,
-			parent: parent_id,
-		},
+		&mut ctx.get_construct_essentials(parent_id),
 		checkbox::Params {
 			box_size,
 			text: translation,

@@ -110,8 +110,15 @@ pub struct LayoutState {
 	pub tree: taffy::tree::TaffyTree<WidgetID>,
 }
 
+pub struct ModifyLayoutStateData<'a> {
+	pub layout: &'a mut Layout,
+	// don't uncomment this, todo!
+	// pub listeners: &'a mut EventListenerCollection<U1, U2>,
+}
+
 pub enum LayoutTask {
 	RemoveWidget(WidgetID),
+	ModifyLayoutState(Box<dyn Fn(ModifyLayoutStateData)>),
 }
 
 #[derive(Clone)]
@@ -305,7 +312,7 @@ impl Layout {
 
 	fn push_event_children<U1, U2>(
 		&self,
-		listeners: &EventListenerCollection<U1, U2>,
+		listeners: &mut EventListenerCollection<U1, U2>,
 		parent_node_id: taffy::NodeId,
 		event: &event::Event,
 		alterables: &mut EventAlterables,
@@ -345,7 +352,7 @@ impl Layout {
 
 	fn push_event_widget<U1, U2>(
 		&self,
-		listeners: &EventListenerCollection<U1, U2>,
+		listeners: &mut EventListenerCollection<U1, U2>,
 		node_id: taffy::NodeId,
 		event: &event::Event,
 		alterables: &mut EventAlterables,
@@ -396,8 +403,7 @@ impl Layout {
 				style,
 			};
 
-			let listeners_vec = listeners.get(widget_id);
-
+			let listeners_vec = listeners.map.get(widget_id);
 			let this_evt_result = widget.process_event(widget_id, listeners_vec, node_id, event, user_data, &mut params)?;
 			if this_evt_result != EventResult::Pass {
 				evt_result = this_evt_result;
@@ -585,11 +591,16 @@ impl Layout {
 				LayoutTask::RemoveWidget(widget_id) => {
 					self.remove_widget(widget_id);
 				}
+				LayoutTask::ModifyLayoutState(_fn) => todo!(),
 			}
 		}
 	}
 
 	pub fn process_alterables(&mut self, alterables: EventAlterables) -> anyhow::Result<()> {
+		for task in alterables.tasks {
+			self.tasks.push(task);
+		}
+
 		self.process_tasks();
 
 		for node in alterables.dirty_nodes {

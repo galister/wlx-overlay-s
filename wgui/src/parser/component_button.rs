@@ -61,11 +61,7 @@ pub fn parse_component_button<'a, U1, U2>(
 	}
 
 	let (widget, component) = button::construct(
-		ConstructEssentials {
-			layout: ctx.layout,
-			listeners: ctx.listeners,
-			parent: parent_id,
-		},
+		&mut ctx.get_construct_essentials(parent_id),
 		button::Params {
 			color,
 			border,

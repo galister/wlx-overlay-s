@@ -248,7 +248,7 @@ fn register_event_mouse_release<U1, U2>(
 }
 
 pub fn construct<U1, U2>(
-	ess: ConstructEssentials<U1, U2>,
+	ess: &mut ConstructEssentials<U1, U2>,
 	params: Params,
 ) -> anyhow::Result<(WidgetPair, Rc<ComponentCheckbox>)> {
 	let mut style = params.style;

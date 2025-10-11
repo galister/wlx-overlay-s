@@ -33,7 +33,7 @@ pub fn parse_component_slider<U1, U2>(
 	}
 
 	let (widget, component) = slider::construct(
-		ConstructEssentials {
+		&mut ConstructEssentials {
 			layout: ctx.layout,
 			listeners: ctx.listeners,
 			parent: parent_id,
