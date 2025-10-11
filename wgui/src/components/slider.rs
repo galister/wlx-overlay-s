@@ -9,13 +9,13 @@ use crate::{
 	drawing::{self},
 	event::{self, CallbackDataCommon, EventListenerCollection, EventListenerKind, ListenerHandleVec},
 	i18n::Translation,
-	layout::{Layout, WidgetID, WidgetPair},
+	layout::{WidgetID, WidgetPair},
 	renderer_vk::{
 		text::{FontWeight, HorizontalAlign, TextStyle},
 		util,
 	},
 	widget::{
-		EventResult,
+		ConstructEssentials, EventResult,
 		div::WidgetDiv,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
@@ -308,9 +308,7 @@ fn register_event_mouse_release<U1, U2>(
 }
 
 pub fn construct<U1, U2>(
-	layout: &mut Layout,
-	listeners: &mut EventListenerCollection<U1, U2>,
-	parent: WidgetID,
+	ess: ConstructEssentials<U1, U2>,
 	params: Params,
 ) -> anyhow::Result<(WidgetPair, Rc<ComponentSlider>)> {
 	let mut style = params.style;
@@ -318,10 +316,10 @@ pub fn construct<U1, U2>(
 	style.min_size = style.size;
 	style.max_size = style.size;
 
-	let (root, slider_body_node) = layout.add_child(parent, WidgetDiv::create(), style)?;
+	let (root, slider_body_node) = ess.layout.add_child(ess.parent, WidgetDiv::create(), style)?;
 	let body_id = root.id;
 
-	let (_background_id, _) = layout.add_child(
+	let (_background_id, _) = ess.layout.add_child(
 		body_id,
 		WidgetRectangle::create(WidgetRectangleParams {
 			color: BODY_COLOR,
@@ -354,9 +352,11 @@ pub fn construct<U1, U2>(
 	};
 
 	// invisible outer handle body
-	let (slider_handle, slider_handle_node) = layout.add_child(body_id, WidgetDiv::create(), slider_handle_style)?;
+	let (slider_handle, slider_handle_node) = ess
+		.layout
+		.add_child(body_id, WidgetDiv::create(), slider_handle_style)?;
 
-	let (slider_handle_rect, _) = layout.add_child(
+	let (slider_handle_rect, _) = ess.layout.add_child(
 		slider_handle.id,
 		WidgetRectangle::create(WidgetRectangleParams {
 			color: HANDLE_COLOR,
@@ -381,9 +381,9 @@ pub fn construct<U1, U2>(
 		values: params.values,
 	};
 
-	let globals = layout.state.globals.clone();
+	let globals = ess.layout.state.globals.clone();
 
-	let (slider_text, _) = layout.add_child(
+	let (slider_text, _) = ess.layout.add_child(
 		slider_handle.id,
 		WidgetLabel::create(
 			&mut globals.get(),
@@ -412,15 +412,15 @@ pub fn construct<U1, U2>(
 
 	let mut base = ComponentBase::default();
 
-	register_event_mouse_enter(data.clone(), state.clone(), listeners, &mut base.lhandles);
-	register_event_mouse_leave(data.clone(), state.clone(), listeners, &mut base.lhandles);
-	register_event_mouse_motion(data.clone(), state.clone(), listeners, &mut base.lhandles);
-	register_event_mouse_press(data.clone(), state.clone(), listeners, &mut base.lhandles);
-	register_event_mouse_leave(data.clone(), state.clone(), listeners, &mut base.lhandles);
-	register_event_mouse_release(&data, state.clone(), listeners, &mut base.lhandles);
+	register_event_mouse_enter(data.clone(), state.clone(), ess.listeners, &mut base.lhandles);
+	register_event_mouse_leave(data.clone(), state.clone(), ess.listeners, &mut base.lhandles);
+	register_event_mouse_motion(data.clone(), state.clone(), ess.listeners, &mut base.lhandles);
+	register_event_mouse_press(data.clone(), state.clone(), ess.listeners, &mut base.lhandles);
+	register_event_mouse_leave(data.clone(), state.clone(), ess.listeners, &mut base.lhandles);
+	register_event_mouse_release(&data, state.clone(), ess.listeners, &mut base.lhandles);
 
 	let slider = Rc::new(ComponentSlider { base, data, state });
 
-	layout.defer_component_init(Component(slider.clone()));
+	ess.layout.defer_component_init(Component(slider.clone()));
 	Ok((root, slider))
 }

@@ -194,7 +194,7 @@ impl TestbedGeneric {
 		layout: &mut Layout,
 		data: &mut Data,
 	) -> anyhow::Result<()> {
-		data.popup_window.open(WguiWindowParams {
+		data.popup_window.open(&mut WguiWindowParams {
 			globals: self.globals.clone(),
 			position: Vec2::new(128.0, 128.0),
 			layout,

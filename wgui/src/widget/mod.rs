@@ -6,8 +6,8 @@ use crate::{
 	any::AnyTrait,
 	drawing::{self, PrimitiveExtent},
 	event::{
-		self, CallbackData, CallbackDataCommon, CallbackMetadata, Event, EventAlterables, EventListenerKind,
-		EventListenerVec, MouseWheelEvent,
+		self, CallbackData, CallbackDataCommon, CallbackMetadata, Event, EventAlterables, EventListenerCollection,
+		EventListenerKind, EventListenerVec, MouseWheelEvent,
 	},
 	layout::{Layout, LayoutState, WidgetID},
 	stack::{ScissorStack, TransformStack},
@@ -515,4 +515,10 @@ impl WidgetState {
 		}
 		Ok(EventResult::Pass)
 	}
+}
+
+pub struct ConstructEssentials<'a, U1, U2> {
+	pub layout: &'a mut Layout,
+	pub listeners: &'a mut EventListenerCollection<U1, U2>,
+	pub parent: WidgetID,
 }

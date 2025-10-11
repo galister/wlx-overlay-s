@@ -7,7 +7,7 @@ use crate::{
 		AttribPair, ParserContext, ParserFile, parse_check_f32, parse_children, process_component,
 		style::{parse_color_opt, parse_round, parse_style, parse_text_style},
 	},
-	widget::util::WLength,
+	widget::{ConstructEssentials, util::WLength},
 };
 
 pub fn parse_component_button<'a, U1, U2>(
@@ -60,13 +60,12 @@ pub fn parse_component_button<'a, U1, U2>(
 		}
 	}
 
-	let globals = ctx.layout.state.globals.clone();
-
 	let (widget, component) = button::construct(
-		&mut globals.get(),
-		ctx.layout,
-		ctx.listeners,
-		parent_id,
+		ConstructEssentials {
+			layout: ctx.layout,
+			listeners: ctx.listeners,
+			parent: parent_id,
+		},
 		button::Params {
 			color,
 			border,

@@ -3,15 +3,14 @@ use crate::{
 	components::{Component, ComponentBase, ComponentTrait, InitData},
 	drawing::{self, Boundary, Color},
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerKind, ListenerHandleVec},
-	globals::Globals,
 	i18n::Translation,
-	layout::{Layout, WidgetID, WidgetPair},
+	layout::{WidgetID, WidgetPair},
 	renderer_vk::{
 		text::{FontWeight, TextStyle},
 		util::centered_matrix,
 	},
 	widget::{
-		EventResult, WidgetData,
+		ConstructEssentials, EventResult, WidgetData,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
@@ -267,12 +266,10 @@ fn register_event_mouse_release<U1, U2>(
 }
 
 pub fn construct<U1, U2>(
-	globals: &mut Globals,
-	layout: &mut Layout,
-	listeners: &mut EventListenerCollection<U1, U2>,
-	parent: WidgetID,
+	ess: ConstructEssentials<U1, U2>,
 	params: Params,
 ) -> anyhow::Result<(WidgetPair, Rc<ComponentButton>)> {
+	let globals = ess.layout.state.globals.clone();
 	let mut style = params.style;
 
 	// force-override style
@@ -285,7 +282,7 @@ pub fn construct<U1, U2>(
 	let color = if let Some(color) = params.color {
 		color
 	} else {
-		globals.defaults.button_color
+		globals.get().defaults.button_color
 	};
 
 	let border_color = if let Some(border_color) = params.border_color {
@@ -306,8 +303,8 @@ pub fn construct<U1, U2>(
 		Color::new(color.r + 0.5, color.g + 0.5, color.g + 0.5, color.a + 0.5)
 	};
 
-	let (root, _) = layout.add_child(
-		parent,
+	let (root, _) = ess.layout.add_child(
+		ess.parent,
 		WidgetRectangle::create(WidgetRectangleParams {
 			color,
 			color2: get_color2(&color),
@@ -324,10 +321,10 @@ pub fn construct<U1, U2>(
 	let light_text = (color.r + color.g + color.b) < 1.5;
 
 	let id_label = if let Some(content) = params.text {
-		let (label, _node_label) = layout.add_child(
+		let (label, _node_label) = ess.layout.add_child(
 			id_rect,
 			WidgetLabel::create(
-				globals,
+				&mut globals.get(),
 				WidgetLabelParams {
 					content,
 					style: TextStyle {
@@ -365,13 +362,13 @@ pub fn construct<U1, U2>(
 
 	let mut base = ComponentBase::default();
 
-	register_event_mouse_enter(data.clone(), state.clone(), listeners, &mut base.lhandles);
-	register_event_mouse_leave(data.clone(), state.clone(), listeners, &mut base.lhandles);
-	register_event_mouse_press(data.clone(), state.clone(), listeners, &mut base.lhandles);
-	register_event_mouse_release(data.clone(), state.clone(), listeners, &mut base.lhandles);
+	register_event_mouse_enter(data.clone(), state.clone(), ess.listeners, &mut base.lhandles);
+	register_event_mouse_leave(data.clone(), state.clone(), ess.listeners, &mut base.lhandles);
+	register_event_mouse_press(data.clone(), state.clone(), ess.listeners, &mut base.lhandles);
+	register_event_mouse_release(data.clone(), state.clone(), ess.listeners, &mut base.lhandles);
 
 	let button = Rc::new(ComponentButton { base, data, state });
 
-	layout.defer_component_init(Component(button.clone()));
+	ess.layout.defer_component_init(Component(button.clone()));
 	Ok((root, button))
 }

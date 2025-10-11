@@ -3,6 +3,7 @@ use crate::{
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{AttribPair, ParserContext, parse_check_f32, parse_check_i32, process_component, style::parse_style},
+	widget::ConstructEssentials,
 };
 
 pub fn parse_component_checkbox<U1, U2>(
@@ -36,9 +37,11 @@ pub fn parse_component_checkbox<U1, U2>(
 	}
 
 	let (widget, component) = checkbox::construct(
-		ctx.layout,
-		ctx.listeners,
-		parent_id,
+		ConstructEssentials {
+			layout: ctx.layout,
+			listeners: ctx.listeners,
+			parent: parent_id,
+		},
 		checkbox::Params {
 			box_size,
 			text: translation,

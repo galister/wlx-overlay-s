@@ -16,6 +16,7 @@ use crate::{
 struct OpenedWindow {
 	layout_tasks: LayoutTasks,
 	widget: WidgetPair,
+	content: WidgetPair,
 
 	#[allow(dead_code)]
 	state: ParserState,
@@ -33,6 +34,10 @@ struct State {
 
 #[derive(Clone)]
 pub struct WguiWindow(Rc<RefCell<State>>);
+
+pub struct OnContentData {
+	pub widget: WidgetPair,
+}
 
 pub struct WguiWindowParams<'a> {
 	pub position: Vec2,
@@ -52,7 +57,7 @@ impl WguiWindow {
 		self.0.borrow_mut().opened_window = None;
 	}
 
-	pub fn open(&mut self, params: WguiWindowParams) -> anyhow::Result<()> {
+	pub fn open(&mut self, params: &mut WguiWindowParams) -> anyhow::Result<()> {
 		// close previous one if it's already open
 		self.close();
 
@@ -74,7 +79,7 @@ impl WguiWindow {
 
 		let state = parser::parse_from_assets(
 			&parser::ParseDocumentParams {
-				globals: params.globals,
+				globals: params.globals.clone(),
 				path: XML_PATH,
 				extra: Default::default(),
 			},
@@ -92,19 +97,20 @@ impl WguiWindow {
 			})
 		});
 
-		let button = state.fetch_component_as::<ComponentButton>("button").unwrap();
-
-		button.on_click(Box::new(move |_common, _e| {
-			log::info!("click");
-			Ok(())
-		}));
+		let content = state.fetch_widget(&params.layout.state, "content")?;
 
 		self.0.borrow_mut().opened_window = Some(OpenedWindow {
 			widget,
 			state,
 			layout_tasks: params.layout.tasks.clone(),
+			content,
 		});
 
 		Ok(())
+	}
+
+	pub fn get_content(&self) -> WidgetPair {
+		let state = self.0.borrow_mut();
+		state.opened_window.as_ref().unwrap().content.clone()
 	}
 }

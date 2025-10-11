@@ -10,10 +10,10 @@ use crate::{
 	drawing::Color,
 	event::{CallbackDataCommon, EventAlterables, EventListenerCollection, EventListenerKind, ListenerHandleVec},
 	i18n::Translation,
-	layout::{self, Layout, LayoutState, WidgetID, WidgetPair},
+	layout::{self, LayoutState, WidgetID, WidgetPair},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
-		EventResult,
+		ConstructEssentials, EventResult,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
@@ -248,9 +248,7 @@ fn register_event_mouse_release<U1, U2>(
 }
 
 pub fn construct<U1, U2>(
-	layout: &mut Layout,
-	listeners: &mut EventListenerCollection<U1, U2>,
-	parent: WidgetID,
+	ess: ConstructEssentials<U1, U2>,
 	params: Params,
 ) -> anyhow::Result<(WidgetPair, Rc<ComponentCheckbox>)> {
 	let mut style = params.style;
@@ -268,10 +266,10 @@ pub fn construct<U1, U2>(
 	//style.align_self = Some(taffy::AlignSelf::Start); // do not stretch self to the parent
 	style.gap = length(4.0);
 
-	let globals = layout.state.globals.clone();
+	let globals = ess.layout.state.globals.clone();
 
-	let (root, _) = layout.add_child(
-		parent,
+	let (root, _) = ess.layout.add_child(
+		ess.parent,
 		WidgetRectangle::create(WidgetRectangleParams {
 			color: Color::new(1.0, 1.0, 1.0, 0.0),
 			border_color: Color::new(1.0, 1.0, 1.0, 0.0),
@@ -288,7 +286,7 @@ pub fn construct<U1, U2>(
 		height: length(params.box_size),
 	};
 
-	let (outer_box, _) = layout.add_child(
+	let (outer_box, _) = ess.layout.add_child(
 		id_container,
 		WidgetRectangle::create(WidgetRectangleParams {
 			border: 2.0,
@@ -306,7 +304,7 @@ pub fn construct<U1, U2>(
 		},
 	)?;
 
-	let (inner_box, _) = layout.add_child(
+	let (inner_box, _) = ess.layout.add_child(
 		outer_box.id,
 		WidgetRectangle::create(WidgetRectangleParams {
 			round: WLength::Units(5.0),
@@ -322,7 +320,7 @@ pub fn construct<U1, U2>(
 		},
 	)?;
 
-	let (label, _node_label) = layout.add_child(
+	let (label, _node_label) = ess.layout.add_child(
 		id_container,
 		WidgetLabel::create(
 			&mut globals.get(),
@@ -352,13 +350,13 @@ pub fn construct<U1, U2>(
 
 	let mut base = ComponentBase::default();
 
-	register_event_mouse_enter(&data, state.clone(), listeners, &mut base.lhandles);
-	register_event_mouse_leave(&data, state.clone(), listeners, &mut base.lhandles);
-	register_event_mouse_press(&data, state.clone(), listeners, &mut base.lhandles);
-	register_event_mouse_release(data.clone(), state.clone(), listeners, &mut base.lhandles);
+	register_event_mouse_enter(&data, state.clone(), ess.listeners, &mut base.lhandles);
+	register_event_mouse_leave(&data, state.clone(), ess.listeners, &mut base.lhandles);
+	register_event_mouse_press(&data, state.clone(), ess.listeners, &mut base.lhandles);
+	register_event_mouse_release(data.clone(), state.clone(), ess.listeners, &mut base.lhandles);
 
 	let checkbox = Rc::new(ComponentCheckbox { base, data, state });
 
-	layout.defer_component_init(Component(checkbox.clone()));
+	ess.layout.defer_component_init(Component(checkbox.clone()));
 	Ok((root, checkbox))
 }

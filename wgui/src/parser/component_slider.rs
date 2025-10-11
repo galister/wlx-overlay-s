@@ -2,6 +2,7 @@ use crate::{
 	components::{Component, slider},
 	layout::WidgetID,
 	parser::{AttribPair, ParserContext, parse_check_f32, process_component, style::parse_style},
+	widget::ConstructEssentials,
 };
 
 pub fn parse_component_slider<U1, U2>(
@@ -32,9 +33,11 @@ pub fn parse_component_slider<U1, U2>(
 	}
 
 	let (widget, component) = slider::construct(
-		ctx.layout,
-		ctx.listeners,
-		parent_id,
+		ConstructEssentials {
+			layout: ctx.layout,
+			listeners: ctx.listeners,
+			parent: parent_id,
+		},
 		slider::Params {
 			style,
 			values: slider::ValuesMinMax {

@@ -53,6 +53,7 @@ impl WeakWidget {
 pub struct WidgetMap(HopSlotMap<WidgetID, Widget>);
 pub type WidgetNodeMap = SecondaryMap<WidgetID, taffy::NodeId>;
 
+#[derive(Clone)]
 pub struct WidgetPair {
 	pub id: WidgetID,
 	pub widget: Widget,
