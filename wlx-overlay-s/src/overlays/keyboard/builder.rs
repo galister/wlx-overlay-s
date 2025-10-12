@@ -1,6 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 
-use glam::{Affine3A, Mat4, Quat, Vec2, Vec3, vec2, vec3};
+use glam::{vec2, vec3, Affine3A, Mat4, Quat, Vec2, Vec3};
 use wgui::{
     animation::{Animation, AnimationEasing},
     assets::AssetPath,
@@ -11,24 +11,24 @@ use wgui::{
     renderer_vk::util,
     taffy::{self, prelude::length},
     widget::{
-        EventResult,
         div::WidgetDiv,
         rectangle::{WidgetRectangle, WidgetRectangleParams},
         util::WLength,
+        EventResult,
     },
 };
 
 use crate::{
     gui::panel::GuiPanel,
     state::AppState,
-    subsystem::hid::{ALT, CTRL, META, SHIFT, SUPER, XkbKeymap},
+    subsystem::hid::{XkbKeymap, ALT, CTRL, META, SHIFT, SUPER},
     windowing::window::{OverlayWindowConfig, OverlayWindowState, Positioning},
 };
 
 use super::{
-    KEYBOARD_NAME, KeyButtonData, KeyState, KeyboardBackend, KeyboardState, handle_press,
-    handle_release,
+    handle_press, handle_release,
     layout::{self, AltModifier, KeyCapType},
+    KeyButtonData, KeyState, KeyboardBackend, KeyboardState, KEYBOARD_NAME,
 };
 
 const BACKGROUND_PADDING: f32 = 4.;
@@ -81,11 +81,8 @@ pub fn create_keyboard(
         extra: Default::default(),
     };
 
-    let (_, mut gui_state_key) = wgui::parser::new_layout_from_assets(
-        &mut panel.listeners,
-        &parse_doc_params,
-        &LayoutParams::default(),
-    )?;
+    let (_, mut gui_state_key) =
+        wgui::parser::new_layout_from_assets(&parse_doc_params, &LayoutParams::default())?;
 
     for row in 0..layout.key_sizes.len() {
         let (div, _) = panel.layout.add_child(
@@ -167,7 +164,6 @@ pub fn create_keyboard(
                 &parse_doc_params,
                 &template_key,
                 &mut panel.layout,
-                &mut panel.listeners,
                 div.id,
                 params,
             )?;
@@ -190,8 +186,7 @@ pub fn create_keyboard(
                     })
                 };
 
-                panel.listeners.register(
-                    &mut panel.listener_handles,
+                panel.add_event_listener(
                     widget_id,
                     EventListenerKind::MouseEnter,
                     Box::new({
@@ -203,8 +198,7 @@ pub fn create_keyboard(
                         }
                     }),
                 );
-                panel.listeners.register(
-                    &mut panel.listener_handles,
+                panel.add_event_listener(
                     widget_id,
                     EventListenerKind::MouseLeave,
                     Box::new({
@@ -216,8 +210,7 @@ pub fn create_keyboard(
                         }
                     }),
                 );
-                panel.listeners.register(
-                    &mut panel.listener_handles,
+                panel.add_event_listener(
                     widget_id,
                     EventListenerKind::MousePress,
                     Box::new({
@@ -233,8 +226,7 @@ pub fn create_keyboard(
                         }
                     }),
                 );
-                panel.listeners.register(
-                    &mut panel.listener_handles,
+                panel.add_event_listener(
                     widget_id,
                     EventListenerKind::MouseRelease,
                     Box::new({
@@ -249,8 +241,7 @@ pub fn create_keyboard(
                 );
 
                 if let Some(modifier) = my_modifier {
-                    panel.listeners.register(
-                        &mut panel.listener_handles,
+                    panel.add_event_listener(
                         widget_id,
                         EventListenerKind::InternalStateChange,
                         Box::new({

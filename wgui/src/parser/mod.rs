@@ -11,7 +11,6 @@ use crate::{
 	assets::{AssetPath, AssetPathOwned, normalize_path},
 	components::{Component, ComponentWeak},
 	drawing::{self},
-	event::EventListenerCollection,
 	globals::WguiGlobals,
 	layout::{Layout, LayoutParams, LayoutState, Widget, WidgetID, WidgetMap, WidgetPair},
 	parser::{
@@ -204,12 +203,11 @@ impl ParserState {
 	/// This function is suitable in cases if you don't want to pollute main parser state with dynamic IDs
 	/// Use `instantiate_template` instead unless you want to handle `components` results yourself.
 	/// Make sure not to drop them if you want to have your listener handles valid
-	pub fn parse_template<U1, U2>(
+	pub fn parse_template(
 		&mut self,
 		doc_params: &ParseDocumentParams,
 		template_name: &str,
 		layout: &mut Layout,
-		listeners: &mut EventListenerCollection<U1, U2>,
 		widget_id: WidgetID,
 		template_parameters: HashMap<Rc<str>, Rc<str>>,
 	) -> anyhow::Result<ParserData> {
@@ -219,7 +217,6 @@ impl ParserState {
 
 		let mut ctx = ParserContext {
 			layout,
-			listeners,
 			data_global: &self.data,
 			data_local: ParserData::default(),
 			doc_params,
@@ -236,23 +233,15 @@ impl ParserState {
 	}
 
 	/// Instantinate template by saving all the results into the main `ParserState`
-	pub fn instantiate_template<U1, U2>(
+	pub fn instantiate_template(
 		&mut self,
 		doc_params: &ParseDocumentParams,
 		template_name: &str,
 		layout: &mut Layout,
-		listeners: &mut EventListenerCollection<U1, U2>,
 		widget_id: WidgetID,
 		template_parameters: HashMap<Rc<str>, Rc<str>>,
 	) -> anyhow::Result<()> {
-		let mut data_local = self.parse_template(
-			doc_params,
-			template_name,
-			layout,
-			listeners,
-			widget_id,
-			template_parameters,
-		)?;
+		let mut data_local = self.parse_template(doc_params, template_name, layout, widget_id, template_parameters)?;
 
 		self.data.take_results_from(&mut data_local);
 		Ok(())
@@ -295,19 +284,17 @@ struct MacroAttribs {
 	attribs: HashMap<Rc<str>, Rc<str>>,
 }
 
-struct ParserContext<'a, U1, U2> {
+struct ParserContext<'a> {
 	doc_params: &'a ParseDocumentParams<'a>,
 	layout: &'a mut Layout,
-	listeners: &'a mut EventListenerCollection<U1, U2>,
 	data_global: &'a ParserData, // current parser state at a given moment
 	data_local: ParserData,      // newly processed items in a given template
 }
 
-impl<U1, U2> ParserContext<'_, U1, U2> {
-	const fn get_construct_essentials(&mut self, parent: WidgetID) -> ConstructEssentials<'_, U1, U2> {
+impl ParserContext<'_> {
+	const fn get_construct_essentials(&mut self, parent: WidgetID) -> ConstructEssentials<'_> {
 		ConstructEssentials {
 			layout: self.layout,
-			listeners: self.listeners,
 			parent,
 		}
 	}
@@ -509,11 +496,11 @@ where
 	}
 }
 
-fn parse_widget_other_internal<U1, U2>(
+fn parse_widget_other_internal(
 	template: &Rc<Template>,
 	template_parameters: HashMap<Rc<str>, Rc<str>>,
 	file: &ParserFile,
-	ctx: &mut ParserContext<U1, U2>,
+	ctx: &mut ParserContext,
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
 	let template_file = ParserFile {
@@ -534,10 +521,10 @@ fn parse_widget_other_internal<U1, U2>(
 	Ok(())
 }
 
-fn parse_widget_other<U1, U2>(
+fn parse_widget_other(
 	xml_tag_name: &str,
 	file: &ParserFile,
-	ctx: &mut ParserContext<U1, U2>,
+	ctx: &mut ParserContext,
 	parent_id: WidgetID,
 	attribs: &[AttribPair],
 ) -> anyhow::Result<()> {
@@ -552,9 +539,9 @@ fn parse_widget_other<U1, U2>(
 	parse_widget_other_internal(&template, template_parameters, file, ctx, parent_id)
 }
 
-fn parse_tag_include<U1, U2>(
+fn parse_tag_include(
 	file: &ParserFile,
-	ctx: &mut ParserContext<U1, U2>,
+	ctx: &mut ParserContext,
 	parent_id: WidgetID,
 	attribs: &[AttribPair],
 ) -> anyhow::Result<()> {
@@ -591,7 +578,7 @@ fn parse_tag_include<U1, U2>(
 	Ok(())
 }
 
-fn parse_tag_var<'a, U1, U2>(ctx: &mut ParserContext<U1, U2>, node: roxmltree::Node<'a, 'a>) {
+fn parse_tag_var<'a>(ctx: &mut ParserContext, node: roxmltree::Node<'a, 'a>) {
 	let mut out_key: Option<&str> = None;
 	let mut out_value: Option<&str> = None;
 
@@ -646,12 +633,7 @@ pub fn replace_vars(input: &str, vars: &HashMap<Rc<str>, Rc<str>>) -> Rc<str> {
 }
 
 #[allow(clippy::manual_strip)]
-fn process_attrib<'a, U1, U2>(
-	file: &'a ParserFile,
-	ctx: &'a ParserContext<U1, U2>,
-	key: &str,
-	value: &str,
-) -> AttribPair {
+fn process_attrib<'a>(file: &'a ParserFile, ctx: &'a ParserContext, key: &str, value: &str) -> AttribPair {
 	if value.starts_with('~') {
 		let name = &value[1..];
 
@@ -673,9 +655,9 @@ fn raw_attribs<'a>(node: &'a roxmltree::Node<'a, 'a>) -> Vec<AttribPair> {
 	res
 }
 
-fn process_attribs<'a, U1, U2>(
+fn process_attribs<'a>(
 	file: &'a ParserFile,
-	ctx: &'a ParserContext<U1, U2>,
+	ctx: &'a ParserContext,
 	node: &'a roxmltree::Node<'a, 'a>,
 	is_tag_macro: bool,
 ) -> Vec<AttribPair> {
@@ -704,7 +686,7 @@ fn process_attribs<'a, U1, U2>(
 	res
 }
 
-fn parse_tag_theme<'a, U1, U2>(ctx: &mut ParserContext<U1, U2>, node: roxmltree::Node<'a, 'a>) {
+fn parse_tag_theme<'a>(ctx: &mut ParserContext, node: roxmltree::Node<'a, 'a>) {
 	for child_node in node.children() {
 		let child_name = child_node.tag_name().name();
 		match child_name {
@@ -719,7 +701,7 @@ fn parse_tag_theme<'a, U1, U2>(ctx: &mut ParserContext<U1, U2>, node: roxmltree:
 	}
 }
 
-fn parse_tag_template<U1, U2>(file: &ParserFile, ctx: &mut ParserContext<U1, U2>, node: roxmltree::Node<'_, '_>) {
+fn parse_tag_template(file: &ParserFile, ctx: &mut ParserContext, node: roxmltree::Node<'_, '_>) {
 	let mut template_name: Option<Rc<str>> = None;
 
 	let attribs = process_attribs(file, ctx, &node, false);
@@ -749,7 +731,7 @@ fn parse_tag_template<U1, U2>(file: &ParserFile, ctx: &mut ParserContext<U1, U2>
 	);
 }
 
-fn parse_tag_macro<U1, U2>(file: &ParserFile, ctx: &mut ParserContext<U1, U2>, node: roxmltree::Node<'_, '_>) {
+fn parse_tag_macro(file: &ParserFile, ctx: &mut ParserContext, node: roxmltree::Node<'_, '_>) {
 	let mut macro_name: Option<Rc<str>> = None;
 
 	let attribs = process_attribs(file, ctx, &node, true);
@@ -776,12 +758,7 @@ fn parse_tag_macro<U1, U2>(file: &ParserFile, ctx: &mut ParserContext<U1, U2>, n
 	ctx.insert_macro_attrib(name, MacroAttribs { attribs: macro_attribs });
 }
 
-fn process_component<U1, U2>(
-	ctx: &mut ParserContext<U1, U2>,
-	component: Component,
-	widget_id: WidgetID,
-	attribs: &[AttribPair],
-) {
+fn process_component(ctx: &mut ParserContext, component: Component, widget_id: WidgetID, attribs: &[AttribPair]) {
 	let mut component_id: Option<Rc<str>> = None;
 
 	for pair in attribs {
@@ -797,7 +774,7 @@ fn process_component<U1, U2>(
 	ctx.insert_component(widget_id, component, component_id);
 }
 
-fn parse_widget_universal<U1, U2>(ctx: &mut ParserContext<U1, U2>, widget_id: WidgetID, attribs: &[AttribPair]) {
+fn parse_widget_universal(ctx: &mut ParserContext, widget_id: WidgetID, attribs: &[AttribPair]) {
 	for pair in attribs {
 		#[allow(clippy::single_match)]
 		match pair.attrib.as_ref() {
@@ -810,9 +787,9 @@ fn parse_widget_universal<U1, U2>(ctx: &mut ParserContext<U1, U2>, widget_id: Wi
 	}
 }
 
-fn parse_child<'a, U1, U2>(
+fn parse_child<'a>(
 	file: &ParserFile,
-	ctx: &mut ParserContext<U1, U2>,
+	ctx: &mut ParserContext,
 	parent_node: roxmltree::Node<'a, 'a>,
 	child_node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
@@ -893,9 +870,9 @@ fn parse_child<'a, U1, U2>(
 	Ok(())
 }
 
-fn parse_children<'a, U1, U2>(
+fn parse_children<'a>(
 	file: &ParserFile,
-	ctx: &mut ParserContext<U1, U2>,
+	ctx: &mut ParserContext,
 	parent_node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
@@ -906,16 +883,14 @@ fn parse_children<'a, U1, U2>(
 	Ok(())
 }
 
-fn create_default_context<'a, U1, U2>(
+fn create_default_context<'a>(
 	doc_params: &'a ParseDocumentParams,
 	layout: &'a mut Layout,
-	listeners: &'a mut EventListenerCollection<U1, U2>,
 	data_global: &'a ParserData,
-) -> ParserContext<'a, U1, U2> {
+) -> ParserContext<'a> {
 	ParserContext {
 		doc_params,
 		layout,
-		listeners,
 		data_local: ParserData::default(),
 		data_global,
 	}
@@ -1011,14 +986,13 @@ pub struct ParseDocumentParams<'a> {
 	pub extra: ParseDocumentExtra, // optional field, can be Default-ed
 }
 
-pub fn parse_from_assets<U1, U2>(
+pub fn parse_from_assets(
 	doc_params: &ParseDocumentParams,
 	layout: &mut Layout,
-	listeners: &mut EventListenerCollection<U1, U2>,
 	parent_id: WidgetID,
 ) -> anyhow::Result<ParserState> {
 	let parser_data = ParserData::default();
-	let mut ctx = create_default_context(doc_params, layout, listeners, &parser_data);
+	let mut ctx = create_default_context(doc_params, layout, &parser_data);
 	let (file, node_layout) = get_doc_from_asset_path(&ctx, doc_params.path)?;
 	parse_document_root(&file, &mut ctx, parent_id, node_layout)?;
 
@@ -1033,19 +1007,18 @@ pub fn parse_from_assets<U1, U2>(
 	Ok(result)
 }
 
-pub fn new_layout_from_assets<U1, U2>(
-	listeners: &mut EventListenerCollection<U1, U2>,
+pub fn new_layout_from_assets(
 	doc_params: &ParseDocumentParams,
 	layout_params: &LayoutParams,
 ) -> anyhow::Result<(Layout, ParserState)> {
 	let mut layout = Layout::new(doc_params.globals.clone(), layout_params)?;
 	let widget = layout.content_root_widget;
-	let state = parse_from_assets(doc_params, &mut layout, listeners, widget)?;
+	let state = parse_from_assets(doc_params, &mut layout, widget)?;
 	Ok((layout, state))
 }
 
-fn get_doc_from_asset_path<U1, U2>(
-	ctx: &ParserContext<U1, U2>,
+fn get_doc_from_asset_path(
+	ctx: &ParserContext,
 	asset_path: AssetPath,
 ) -> anyhow::Result<(ParserFile, roxmltree::NodeId)> {
 	let data = ctx.layout.state.globals.get_asset(asset_path)?;
@@ -1071,9 +1044,9 @@ fn get_doc_from_asset_path<U1, U2>(
 	Ok((file, tag_layout.id()))
 }
 
-fn parse_document_root<U1, U2>(
+fn parse_document_root(
 	file: &ParserFile,
-	ctx: &mut ParserContext<U1, U2>,
+	ctx: &mut ParserContext,
 	parent_id: WidgetID,
 	node_layout: roxmltree::NodeId,
 ) -> anyhow::Result<()> {

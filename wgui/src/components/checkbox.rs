@@ -1,22 +1,22 @@
 use std::{cell::RefCell, rc::Rc};
 use taffy::{
-	AlignItems, JustifyContent,
 	prelude::{length, percent},
+	AlignItems, JustifyContent,
 };
 
 use crate::{
 	animation::{Animation, AnimationEasing},
 	components::{Component, ComponentBase, ComponentTrait, InitData},
 	drawing::Color,
-	event::{CallbackDataCommon, EventAlterables, EventListenerCollection, EventListenerKind, ListenerHandleVec},
+	event::{CallbackDataCommon, EventAlterables, EventListenerCollection, EventListenerID, EventListenerKind},
 	i18n::Translation,
 	layout::{self, LayoutState, WidgetID, WidgetPair},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
-		ConstructEssentials, EventResult,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
+		ConstructEssentials, EventResult,
 	},
 };
 
@@ -139,17 +139,10 @@ fn anim_hover_out(state: Rc<RefCell<State>>, widget_id: WidgetID) -> Animation {
 	)
 }
 
-fn register_event_mouse_enter<U1, U2>(
-	data: &Rc<Data>,
-	state: Rc<RefCell<State>>,
-	listeners: &mut EventListenerCollection<U1, U2>,
-	listener_handles: &mut ListenerHandleVec,
-) {
+fn register_event_mouse_enter(state: Rc<RefCell<State>>, listeners: &mut EventListenerCollection) -> EventListenerID {
 	listeners.register(
-		listener_handles,
-		data.id_container,
 		EventListenerKind::MouseEnter,
-		Box::new(move |common, event_data, _, _| {
+		Box::new(move |common, event_data, (), ()| {
 			common.alterables.trigger_haptics();
 			common
 				.alterables
@@ -157,20 +150,13 @@ fn register_event_mouse_enter<U1, U2>(
 			state.borrow_mut().hovered = true;
 			Ok(EventResult::Pass)
 		}),
-	);
+	)
 }
 
-fn register_event_mouse_leave<U1, U2>(
-	data: &Rc<Data>,
-	state: Rc<RefCell<State>>,
-	listeners: &mut EventListenerCollection<U1, U2>,
-	listener_handles: &mut ListenerHandleVec,
-) {
+fn register_event_mouse_leave(state: Rc<RefCell<State>>, listeners: &mut EventListenerCollection) -> EventListenerID {
 	listeners.register(
-		listener_handles,
-		data.id_container,
 		EventListenerKind::MouseLeave,
-		Box::new(move |common, event_data, _, _| {
+		Box::new(move |common, event_data, (), ()| {
 			common.alterables.trigger_haptics();
 			common
 				.alterables
@@ -178,20 +164,13 @@ fn register_event_mouse_leave<U1, U2>(
 			state.borrow_mut().hovered = false;
 			Ok(EventResult::Pass)
 		}),
-	);
+	)
 }
 
-fn register_event_mouse_press<U1, U2>(
-	data: &Rc<Data>,
-	state: Rc<RefCell<State>>,
-	listeners: &mut EventListenerCollection<U1, U2>,
-	listener_handles: &mut ListenerHandleVec,
-) {
+fn register_event_mouse_press(state: Rc<RefCell<State>>, listeners: &mut EventListenerCollection) -> EventListenerID {
 	listeners.register(
-		listener_handles,
-		data.id_container,
 		EventListenerKind::MousePress,
-		Box::new(move |common, event_data, _, _| {
+		Box::new(move |common, event_data, (), ()| {
 			let mut state = state.borrow_mut();
 
 			let rect = event_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
@@ -207,20 +186,17 @@ fn register_event_mouse_press<U1, U2>(
 				Ok(EventResult::Pass)
 			}
 		}),
-	);
+	)
 }
 
-fn register_event_mouse_release<U1, U2>(
+fn register_event_mouse_release(
 	data: Rc<Data>,
 	state: Rc<RefCell<State>>,
-	listeners: &mut EventListenerCollection<U1, U2>,
-	listener_handles: &mut ListenerHandleVec,
-) {
+	listeners: &mut EventListenerCollection,
+) -> EventListenerID {
 	listeners.register(
-		listener_handles,
-		data.id_container,
 		EventListenerKind::MouseRelease,
-		Box::new(move |common, event_data, _, _| {
+		Box::new(move |common, event_data, (), ()| {
 			let rect = event_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
 			anim_hover(rect, 1.0, false);
 
@@ -244,13 +220,10 @@ fn register_event_mouse_release<U1, U2>(
 				Ok(EventResult::Pass)
 			}
 		}),
-	);
+	)
 }
 
-pub fn construct<U1, U2>(
-	ess: &mut ConstructEssentials<U1, U2>,
-	params: Params,
-) -> anyhow::Result<(WidgetPair, Rc<ComponentCheckbox>)> {
+pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Result<(WidgetPair, Rc<ComponentCheckbox>)> {
 	let mut style = params.style;
 
 	// force-override style
@@ -348,12 +321,17 @@ pub fn construct<U1, U2>(
 		on_toggle: None,
 	}));
 
-	let mut base = ComponentBase::default();
-
-	register_event_mouse_enter(&data, state.clone(), ess.listeners, &mut base.lhandles);
-	register_event_mouse_leave(&data, state.clone(), ess.listeners, &mut base.lhandles);
-	register_event_mouse_press(&data, state.clone(), ess.listeners, &mut base.lhandles);
-	register_event_mouse_release(data.clone(), state.clone(), ess.listeners, &mut base.lhandles);
+	let base = ComponentBase {
+		lhandles: {
+			let mut widget = ess.layout.state.widgets.get(id_container).unwrap().state();
+			vec![
+				register_event_mouse_enter(state.clone(), &mut widget.event_listeners),
+				register_event_mouse_leave(state.clone(), &mut widget.event_listeners),
+				register_event_mouse_press(state.clone(), &mut widget.event_listeners),
+				register_event_mouse_release(data.clone(), state.clone(), &mut widget.event_listeners),
+			]
+		},
+	};
 
 	let checkbox = Rc::new(ComponentCheckbox { base, data, state });
 

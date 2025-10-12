@@ -8,9 +8,9 @@ use crate::{
 	widget::label::{WidgetLabel, WidgetLabelParams},
 };
 
-pub fn parse_widget_label<'a, U1, U2>(
+pub fn parse_widget_label<'a>(
 	file: &'a ParserFile,
-	ctx: &mut ParserContext<U1, U2>,
+	ctx: &mut ParserContext,
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 	attribs: &[AttribPair],

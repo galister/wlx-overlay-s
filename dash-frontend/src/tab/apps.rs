@@ -41,12 +41,7 @@ impl TabApps {
 			extra: Default::default(),
 		};
 
-		let mut state = wgui::parser::parse_from_assets(
-			doc_params,
-			tab_params.layout,
-			tab_params.listeners,
-			tab_params.parent_id,
-		)?;
+		let mut state = wgui::parser::parse_from_assets(doc_params, tab_params.layout, tab_params.parent_id)?;
 
 		gtk::init()?;
 
@@ -97,14 +92,7 @@ impl AppList {
 
 		template_params.insert(Rc::from("name"), Rc::from(entry.app_name.as_str()));
 
-		let data = parser_state.parse_template(
-			doc_params,
-			"AppEntry",
-			params.layout,
-			params.listeners,
-			list_parent.id,
-			template_params,
-		)?;
+		let data = parser_state.parse_template(doc_params, "AppEntry", params.layout, list_parent.id, template_params)?;
 
 		let button = data.fetch_component_as::<ComponentButton>("button")?;
 		button.on_click(Box::new(move |_common, _evt| {

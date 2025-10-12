@@ -4,9 +4,9 @@ use crate::{
 	widget::div::WidgetDiv,
 };
 
-pub fn parse_widget_div<'a, U1, U2>(
+pub fn parse_widget_div<'a>(
 	file: &ParserFile,
-	ctx: &mut ParserContext<U1, U2>,
+	ctx: &mut ParserContext,
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 	attribs: &[AttribPair],

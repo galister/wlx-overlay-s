@@ -4,15 +4,15 @@ use taffy::prelude::length;
 use crate::{
 	components::{Component, ComponentBase, ComponentTrait, InitData},
 	drawing::Color,
-	event::{EventListenerCollection, EventListenerKind, ListenerHandleVec},
+	event::{EventListenerCollection, EventListenerKind},
 	i18n::Translation,
 	layout::{LayoutTasks, WidgetID, WidgetPair},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
-		ConstructEssentials, EventResult,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
+		ConstructEssentials, EventResult,
 	},
 };
 
@@ -53,44 +53,27 @@ impl ComponentTrait for ComponentTooltip {
 
 impl ComponentTooltip {}
 
-fn register_event_mouse_enter<U1, U2>(
-	data: &Rc<Data>,
-	state: Rc<RefCell<State>>,
-	listeners: &mut EventListenerCollection<U1, U2>,
-	listener_handles: &mut ListenerHandleVec,
-) {
+fn register_event_mouse_enter(listeners: &mut EventListenerCollection) -> crate::event::EventListenerID {
 	listeners.register(
-		listener_handles,
-		data.id_container,
 		EventListenerKind::MouseEnter,
-		Box::new(move |common, event_data, _, _| {
+		Box::new(move |common, _event_data, (), ()| {
 			common.alterables.trigger_haptics();
 			Ok(EventResult::Pass)
 		}),
-	);
+	)
 }
 
-fn register_event_mouse_leave<U1, U2>(
-	data: &Rc<Data>,
-	state: Rc<RefCell<State>>,
-	listeners: &mut EventListenerCollection<U1, U2>,
-	listener_handles: &mut ListenerHandleVec,
-) {
+fn register_event_mouse_leave(listeners: &mut EventListenerCollection) -> crate::event::EventListenerID {
 	listeners.register(
-		listener_handles,
-		data.id_container,
 		EventListenerKind::MouseEnter,
-		Box::new(move |common, event_data, _, _| {
+		Box::new(move |common, _event_data, (), ()| {
 			common.alterables.trigger_haptics();
 			Ok(EventResult::Pass)
 		}),
-	);
+	)
 }
 
-pub fn construct<U1, U2>(
-	ess: &mut ConstructEssentials<U1, U2>,
-	params: Params,
-) -> anyhow::Result<(WidgetPair, Rc<ComponentTooltip>)> {
+pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Result<(WidgetPair, Rc<ComponentTooltip>)> {
 	let style = taffy::Style {
 		align_items: Some(taffy::AlignItems::Center),
 		justify_content: Some(taffy::JustifyContent::Center),
@@ -141,10 +124,15 @@ pub fn construct<U1, U2>(
 
 	let state = Rc::new(RefCell::new(State {}));
 
-	let mut base = ComponentBase::default();
-
-	register_event_mouse_enter(&data, state.clone(), ess.listeners, &mut base.lhandles);
-	register_event_mouse_leave(&data, state.clone(), ess.listeners, &mut base.lhandles);
+	let base = ComponentBase {
+		lhandles: {
+			let mut widget = ess.layout.state.widgets.get(id_container).unwrap().state();
+			vec![
+				register_event_mouse_enter(&mut widget.event_listeners),
+				register_event_mouse_leave(&mut widget.event_listeners),
+			]
+		},
+	};
 
 	let tooltip = Rc::new(ComponentTooltip {
 		base,

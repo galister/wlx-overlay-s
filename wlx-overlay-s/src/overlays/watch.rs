@@ -23,7 +23,7 @@ pub fn create_watch(app: &mut AppState, num_sets: usize) -> anyhow::Result<Overl
         "gui/watch.xml",
         state,
         Some(Box::new(
-            move |id, widget, doc_params, layout, parser_state, listeners| {
+            move |id, widget, doc_params, layout, parser_state| {
                 if &*id != "sets" {
                     return Ok(());
                 }
@@ -32,9 +32,7 @@ pub fn create_watch(app: &mut AppState, num_sets: usize) -> anyhow::Result<Overl
                     let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
                     params.insert("display".into(), (idx + 1).to_string().into());
                     params.insert("handle".into(), idx.to_string().into());
-                    parser_state.instantiate_template(
-                        doc_params, "Set", layout, listeners, widget, params,
-                    )?;
+                    parser_state.instantiate_template(doc_params, "Set", layout, widget, params)?;
                 }
                 Ok(())
             },

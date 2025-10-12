@@ -7,7 +7,8 @@ use crate::{
 	drawing::{self, PrimitiveExtent},
 	event::{
 		self, CallbackData, CallbackDataCommon, CallbackMetadata, Event, EventAlterables, EventListenerCollection,
-		EventListenerKind, EventListenerVec, MouseWheelEvent,
+		EventListenerKind::{InternalStateChange, MouseEnter, MouseLeave, MouseMotion, MousePress, MouseRelease},
+		MouseWheelEvent,
 	},
 	layout::{Layout, LayoutState, WidgetID},
 	stack::{ScissorStack, TransformStack},
@@ -75,6 +76,7 @@ impl WidgetData {
 pub struct WidgetState {
 	pub data: WidgetData,
 	pub obj: Box<dyn WidgetObj>,
+	pub event_listeners: EventListenerCollection,
 }
 
 impl WidgetState {
@@ -95,6 +97,7 @@ impl WidgetState {
 				transform: glam::Mat4::IDENTITY,
 			},
 			obj,
+			event_listeners: EventListenerCollection::default(),
 		}
 	}
 }
@@ -208,26 +211,23 @@ impl dyn WidgetObj {
 }
 
 macro_rules! call_event {
-	($self:ident, $listeners:ident, $widget_id:ident, $node_id:ident, $params:ident, $kind:ident, $user_data:expr, $metadata:expr) => {
-		for listener in $listeners.iter() {
-			if let Some(callback) = listener.callback_for_kind(EventListenerKind::$kind) {
-				let mut data = CallbackData {
-					obj: $self.obj.as_mut(),
-					widget_data: &mut $self.data,
-					$widget_id,
-					$node_id,
-					metadata: $metadata,
-				};
+	($self:ident, $widget_id:ident, $node_id:ident, $params:ident, $kind:ident, $u1:ty, $u2:ty, $user_data:expr, $metadata:expr) => {
+		for listener in $self.event_listeners.iter_filtered::<$u1, $u2>($kind) {
+			let mut data = CallbackData {
+				obj: $self.obj.as_mut(),
+				widget_data: &mut $self.data,
+				$widget_id,
+				$node_id,
+				metadata: $metadata,
+			};
 
-				let mut common = CallbackDataCommon {
-					state: $params.state,
-					alterables: $params.alterables,
-				};
-
-				let result = callback(&mut common, &mut data, $user_data.0, $user_data.1)?;
-				if result == EventResult::Consumed {
-					return Ok(EventResult::Consumed);
-				}
+			let mut common = CallbackDataCommon {
+				state: $params.state,
+				alterables: $params.alterables,
+			};
+			let result = listener.call_with(&mut common, &mut data, $user_data)?;
+			if result == EventResult::Consumed {
+				return Ok(EventResult::Consumed);
 			}
 		}
 	};
@@ -384,10 +384,9 @@ impl WidgetState {
 
 	#[allow(clippy::too_many_lines)]
 	#[allow(clippy::cognitive_complexity)]
-	pub fn process_event<'a, U1, U2>(
+	pub fn process_event<'a, U1: 'static, U2: 'static>(
 		&mut self,
 		widget_id: WidgetID,
-		listeners: Option<&EventListenerVec<U1, U2>>,
 		node_id: taffy::NodeId,
 		event: &Event,
 		user_data: &mut (&mut U1, &mut U2),
@@ -397,17 +396,15 @@ impl WidgetState {
 
 		match &event {
 			Event::MouseDown(e) => {
-				if hovered
-					&& self.data.set_device_pressed(e.device, true)
-					&& let Some(listeners) = &listeners
-				{
+				if hovered && self.data.set_device_pressed(e.device, true) {
 					call_event!(
 						self,
-						listeners,
 						widget_id,
 						node_id,
 						params,
 						MousePress,
+						U1,
+						U2,
 						user_data,
 						CallbackMetadata::MouseButton(event::MouseButton {
 							index: e.index,
@@ -417,16 +414,15 @@ impl WidgetState {
 				}
 			}
 			Event::MouseUp(e) => {
-				if self.data.set_device_pressed(e.device, false)
-					&& let Some(listeners) = listeners
-				{
+				if self.data.set_device_pressed(e.device, false) {
 					call_event!(
 						self,
-						listeners,
 						widget_id,
 						node_id,
 						params,
 						MouseRelease,
+						U1,
+						U2,
 						user_data,
 						CallbackMetadata::MouseButton(event::MouseButton {
 							index: e.index,
@@ -438,40 +434,41 @@ impl WidgetState {
 			Event::MouseMotion(e) => {
 				let hover_state_changed = self.data.set_device_hovered(e.device, hovered);
 
-				if let Some(listeners) = &listeners {
-					if hover_state_changed {
-						if self.data.is_hovered() {
-							call_event!(
-								self,
-								listeners,
-								widget_id,
-								node_id,
-								params,
-								MouseEnter,
-								user_data,
-								CallbackMetadata::None
-							);
-						} else {
-							call_event!(
-								self,
-								listeners,
-								widget_id,
-								node_id,
-								params,
-								MouseLeave,
-								user_data,
-								CallbackMetadata::None
-							);
-						}
+				if hover_state_changed {
+					if self.data.is_hovered() {
+						call_event!(
+							self,
+							widget_id,
+							node_id,
+							params,
+							MouseEnter,
+							U1,
+							U2,
+							user_data,
+							CallbackMetadata::None
+						);
+					} else {
+						call_event!(
+							self,
+							widget_id,
+							node_id,
+							params,
+							MouseLeave,
+							U1,
+							U2,
+							user_data,
+							CallbackMetadata::None
+						);
 					}
 
 					call_event!(
 						self,
-						listeners,
 						widget_id,
 						node_id,
 						params,
 						MouseMotion,
+						U1,
+						U2,
 						user_data,
 						CallbackMetadata::MousePosition(event::MousePosition { pos: e.pos })
 					);
@@ -483,42 +480,39 @@ impl WidgetState {
 				}
 			}
 			Event::MouseLeave(e) => {
-				if self.data.set_device_hovered(e.device, false)
-					&& let Some(listeners) = &listeners
-				{
+				if self.data.set_device_hovered(e.device, false) {
 					call_event!(
 						self,
-						listeners,
 						widget_id,
 						node_id,
 						params,
 						MouseLeave,
+						U1,
+						U2,
 						user_data,
 						CallbackMetadata::None
 					);
 				}
 			}
 			Event::InternalStateChange(e) => {
-				if let Some(listeners) = &listeners {
-					call_event!(
-						self,
-						listeners,
-						widget_id,
-						node_id,
-						params,
-						InternalStateChange,
-						user_data,
-						CallbackMetadata::Custom(e.metadata)
-					);
-				}
+				call_event!(
+					self,
+					widget_id,
+					node_id,
+					params,
+					InternalStateChange,
+					U1,
+					U2,
+					user_data,
+					CallbackMetadata::Custom(e.metadata)
+				);
 			}
 		}
 		Ok(EventResult::Pass)
 	}
 }
 
-pub struct ConstructEssentials<'a, U1, U2> {
+pub struct ConstructEssentials<'a> {
 	pub layout: &'a mut Layout,
-	pub listeners: &'a mut EventListenerCollection<U1, U2>,
 	pub parent: WidgetID,
 }

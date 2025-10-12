@@ -1,16 +1,16 @@
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use button::setup_custom_button;
-use glam::{Affine2, Vec2, vec2};
+use glam::{vec2, Affine2, Vec2};
 use label::setup_custom_label;
 use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 use wgui::{
     assets::AssetPath,
     drawing,
     event::{
-        Event as WguiEvent, EventListenerCollection, InternalStateChangeEvent, ListenerHandleVec,
-        MouseButtonIndex, MouseDownEvent, MouseLeaveEvent, MouseMotionEvent, MouseUpEvent,
-        MouseWheelEvent,
+        Event as WguiEvent, EventCallback, EventListenerID, EventListenerKind,
+        InternalStateChangeEvent, MouseButtonIndex, MouseDownEvent, MouseLeaveEvent,
+        MouseMotionEvent, MouseUpEvent, MouseWheelEvent,
     },
     layout::{Layout, LayoutParams, WidgetID},
     parser::ParserState,
@@ -22,7 +22,7 @@ use crate::{
     backend::input::{Haptics, PointerHit, PointerMode},
     graphics::{CommandBuffers, ExtentExt},
     state::AppState,
-    windowing::backend::{FrameMeta, OverlayBackend, ShouldRender, ui_transform},
+    windowing::backend::{ui_transform, FrameMeta, OverlayBackend, ShouldRender},
 };
 
 use super::{timer::GuiTimer, timestep::Timestep};
@@ -40,35 +40,29 @@ pub struct GuiPanel<S> {
     pub layout: Layout,
     pub state: S,
     pub timers: Vec<GuiTimer>,
-    pub listeners: EventListenerCollection<AppState, S>,
-    pub listener_handles: ListenerHandleVec,
     pub parser_state: ParserState,
     interaction_transform: Option<Affine2>,
     context: WguiContext,
     timestep: Timestep,
 }
 
-pub type OnCustomIdFunc<S> = Box<
+pub type OnCustomIdFunc = Box<
     dyn Fn(
         Rc<str>,
         WidgetID,
         &wgui::parser::ParseDocumentParams,
         &mut Layout,
         &mut ParserState,
-        &mut EventListenerCollection<AppState, S>,
     ) -> anyhow::Result<()>,
 >;
 
-impl<S> GuiPanel<S> {
+impl<S: 'static> GuiPanel<S> {
     pub fn new_from_template(
         app: &mut AppState,
         path: &str,
         state: S,
-        on_custom_id: Option<OnCustomIdFunc<S>>,
+        on_custom_id: Option<OnCustomIdFunc>,
     ) -> anyhow::Result<Self> {
-        let mut listeners = EventListenerCollection::<AppState, S>::default();
-        let mut listener_handles = ListenerHandleVec::default();
-
         let custom_elems = Rc::new(RefCell::new(vec![]));
 
         let doc_params = wgui::parser::ParseDocumentParams {
@@ -85,11 +79,8 @@ impl<S> GuiPanel<S> {
             },
         };
 
-        let (mut layout, mut parser_state) = wgui::parser::new_layout_from_assets(
-            &mut listeners,
-            &doc_params,
-            &LayoutParams::default(),
-        )?;
+        let (mut layout, mut parser_state) =
+            wgui::parser::new_layout_from_assets(&doc_params, &LayoutParams::default())?;
 
         if let Some(on_element_id) = on_custom_id {
             let ids = parser_state.data.ids.clone(); // FIXME: copying all ids?
@@ -101,7 +92,6 @@ impl<S> GuiPanel<S> {
                     &doc_params,
                     &mut layout,
                     &mut parser_state,
-                    &mut listeners,
                 )?;
             }
         }
@@ -113,20 +103,14 @@ impl<S> GuiPanel<S> {
                 .get_as::<WidgetLabel>(elem.widget_id)
                 .is_some()
             {
-                setup_custom_label(
-                    &mut layout,
-                    elem,
-                    &mut listeners,
-                    &mut listener_handles,
-                    app,
-                );
+                setup_custom_label::<S>(&mut layout, elem, app);
             } else if layout
                 .state
                 .widgets
                 .get_as::<WidgetRectangle>(elem.widget_id)
                 .is_some()
             {
-                setup_custom_button(elem, &mut listeners, &mut listener_handles, app);
+                setup_custom_button::<S>(&mut layout, elem, app);
             }
         }
 
@@ -139,10 +123,8 @@ impl<S> GuiPanel<S> {
             context,
             timestep,
             state,
-            listener_handles,
             parser_state,
             timers: vec![],
-            listeners,
             interaction_transform: None,
         })
     }
@@ -159,9 +141,7 @@ impl<S> GuiPanel<S> {
             timestep,
             state,
             parser_state: ParserState::default(),
-            listener_handles: ListenerHandleVec::default(),
             timers: vec![],
-            listeners: EventListenerCollection::default(),
             interaction_transform: None,
         })
     }
@@ -171,16 +151,22 @@ impl<S> GuiPanel<S> {
     }
 
     pub fn push_event(&mut self, app: &mut AppState, event: &WguiEvent) {
-        if let Err(e) = self
-            .layout
-            .push_event(&mut self.listeners, event, (app, &mut self.state))
-        {
+        if let Err(e) = self.layout.push_event(event, app, &mut self.state) {
             log::error!("Failed to push event: {e:?}");
         }
     }
+
+    pub fn add_event_listener(
+        &mut self,
+        widget_id: WidgetID,
+        kind: EventListenerKind,
+        callback: EventCallback<AppState, S>,
+    ) -> Option<EventListenerID> {
+        self.layout.add_event_listener(widget_id, kind, callback)
+    }
 }
 
-impl<S> OverlayBackend for GuiPanel<S> {
+impl<S: 'static> OverlayBackend for GuiPanel<S> {
     fn init(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
         if self.layout.content_size.x * self.layout.content_size.y != 0.0 {
             self.update_layout()?;
@@ -274,13 +260,13 @@ impl<S> OverlayBackend for GuiPanel<S> {
     fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32) {
         self.layout
             .push_event(
-                &mut self.listeners,
                 &WguiEvent::MouseWheel(MouseWheelEvent {
                     shift: vec2(delta_x, delta_y),
                     pos: hit.uv * self.layout.content_size,
                     device: hit.pointer,
                 }),
-                (app, &mut self.state),
+                app,
+                &mut self.state,
             )
             .unwrap(); // want panic
     }

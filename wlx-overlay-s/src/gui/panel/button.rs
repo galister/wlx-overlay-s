@@ -5,7 +5,8 @@ use std::{
 };
 
 use wgui::{
-    event::{self, EventCallback, EventListenerCollection, EventListenerKind, ListenerHandleVec},
+    event::{self, EventCallback, EventListenerKind},
+    layout::Layout,
     parser::CustomAttribsInfoOwned,
     widget::EventResult,
 };
@@ -17,10 +18,9 @@ use crate::backend::{task::TaskType, wayvr::WayVRAction};
 
 use super::helper::read_label_from_pipe;
 
-pub(super) fn setup_custom_button<S>(
+pub(super) fn setup_custom_button<S: 'static>(
+    layout: &mut Layout,
     attribs: &CustomAttribsInfoOwned,
-    listeners: &mut EventListenerCollection<AppState, S>,
-    listener_handles: &mut ListenerHandleVec,
     _app: &AppState,
 ) {
     const EVENTS: [(&str, EventListenerKind); 2] = [
@@ -69,7 +69,7 @@ pub(super) fn setup_custom_button<S>(
             _ => return,
         };
 
-        listeners.register(listener_handles, attribs.widget_id, *kind, callback);
+        layout.add_event_listener(attribs.widget_id, *kind, callback);
     }
 }
 struct ShellButtonMutableState {

@@ -6,7 +6,6 @@ use taffy::prelude::length;
 use crate::{
 	assets::AssetPath,
 	components::button::ComponentButton,
-	event::EventListenerCollection,
 	globals::WguiGlobals,
 	layout::{Layout, LayoutTask, LayoutTasks, WidgetPair},
 	parser::{self, Fetchable, ParserState},
@@ -43,7 +42,6 @@ pub struct WguiWindowParams<'a> {
 	pub position: Vec2,
 	pub globals: WguiGlobals,
 	pub layout: &'a mut Layout,
-	pub listeners: &'a mut EventListenerCollection<(), ()>,
 }
 
 impl Default for WguiWindow {
@@ -84,7 +82,6 @@ impl WguiWindow {
 				extra: Default::default(),
 			},
 			params.layout,
-			params.listeners,
 			widget.id,
 		)?;
 

@@ -25,7 +25,6 @@ impl TabGames {
 				extra: Default::default(),
 			},
 			params.layout,
-			params.listeners,
 			params.parent_id,
 		)?;
 

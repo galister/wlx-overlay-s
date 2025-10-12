@@ -8,9 +8,9 @@ use crate::{
 	widget::rectangle::{WidgetRectangle, WidgetRectangleParams},
 };
 
-pub fn parse_widget_rectangle<'a, U1, U2>(
+pub fn parse_widget_rectangle<'a>(
 	file: &ParserFile,
-	ctx: &mut ParserContext<U1, U2>,
+	ctx: &mut ParserContext,
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 	attribs: &[AttribPair],

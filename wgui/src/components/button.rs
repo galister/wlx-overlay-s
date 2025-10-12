@@ -1,19 +1,19 @@
 use crate::{
 	animation::{Animation, AnimationEasing},
-	components::{self, Component, ComponentBase, ComponentTrait, InitData, tooltip::ComponentTooltip},
+	components::{tooltip::ComponentTooltip, Component, ComponentBase, ComponentTrait, InitData},
 	drawing::{self, Boundary, Color},
-	event::{CallbackDataCommon, EventListenerCollection, EventListenerKind, ListenerHandleVec},
+	event::{CallbackDataCommon, EventListenerCollection, EventListenerID, EventListenerKind},
 	i18n::Translation,
-	layout::{LayoutTask, WidgetID, WidgetPair},
+	layout::{WidgetID, WidgetPair},
 	renderer_vk::{
 		text::{FontWeight, TextStyle},
 		util::centered_matrix,
 	},
 	widget::{
-		ConstructEssentials, EventResult, WidgetData,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
+		ConstructEssentials, EventResult, WidgetData,
 	},
 };
 use glam::{Mat4, Vec3};
@@ -141,17 +141,14 @@ fn anim_hover_create(data: Rc<Data>, state: Rc<RefCell<State>>, widget_id: Widge
 	)
 }
 
-fn register_event_mouse_enter<U1, U2>(
+fn register_event_mouse_enter(
 	data: Rc<Data>,
 	state: Rc<RefCell<State>>,
-	listeners: &mut EventListenerCollection<U1, U2>,
-	listener_handles: &mut ListenerHandleVec,
-) {
+	listeners: &mut EventListenerCollection,
+) -> EventListenerID {
 	listeners.register(
-		listener_handles,
-		data.id_rect,
 		EventListenerKind::MouseEnter,
-		Box::new(move |common, event_data, _, _| {
+		Box::new(move |common, event_data, (), ()| {
 			common.alterables.trigger_haptics();
 			common.alterables.mark_redraw();
 			common.alterables.animate(anim_hover_create(
@@ -182,20 +179,17 @@ fn register_event_mouse_enter<U1, U2>(
 			state.hovered = true;
 			Ok(EventResult::Pass)
 		}),
-	);
+	)
 }
 
-fn register_event_mouse_leave<U1, U2>(
+fn register_event_mouse_leave(
 	data: Rc<Data>,
 	state: Rc<RefCell<State>>,
-	listeners: &mut EventListenerCollection<U1, U2>,
-	listener_handles: &mut ListenerHandleVec,
-) {
+	listeners: &mut EventListenerCollection,
+) -> EventListenerID {
 	listeners.register(
-		listener_handles,
-		data.id_rect,
 		EventListenerKind::MouseLeave,
-		Box::new(move |common, event_data, _, _| {
+		Box::new(move |common, event_data, (), ()| {
 			common.alterables.trigger_haptics();
 			common.alterables.animate(anim_hover_create(
 				data.clone(),
@@ -208,20 +202,17 @@ fn register_event_mouse_leave<U1, U2>(
 			state.hovered = false;
 			Ok(EventResult::Pass)
 		}),
-	);
+	)
 }
 
-fn register_event_mouse_press<U1, U2>(
+fn register_event_mouse_press(
 	data: Rc<Data>,
 	state: Rc<RefCell<State>>,
-	listeners: &mut EventListenerCollection<U1, U2>,
-	listener_handles: &mut ListenerHandleVec,
-) {
+	listeners: &mut EventListenerCollection,
+) -> EventListenerID {
 	listeners.register(
-		listener_handles,
-		data.id_rect,
 		EventListenerKind::MousePress,
-		Box::new(move |common, event_data, _, _| {
+		Box::new(move |common, event_data, (), ()| {
 			let mut state = state.borrow_mut();
 
 			let rect = event_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
@@ -244,20 +235,17 @@ fn register_event_mouse_press<U1, U2>(
 				Ok(EventResult::Pass)
 			}
 		}),
-	);
+	)
 }
 
-fn register_event_mouse_release<U1, U2>(
+fn register_event_mouse_release(
 	data: Rc<Data>,
 	state: Rc<RefCell<State>>,
-	listeners: &mut EventListenerCollection<U1, U2>,
-	listener_handles: &mut ListenerHandleVec,
-) {
+	listeners: &mut EventListenerCollection,
+) -> EventListenerID {
 	listeners.register(
-		listener_handles,
-		data.id_rect,
 		EventListenerKind::MouseRelease,
-		Box::new(move |common, event_data, _, _| {
+		Box::new(move |common, event_data, (), ()| {
 			let rect = event_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
 			anim_hover(
 				rect,
@@ -285,13 +273,10 @@ fn register_event_mouse_release<U1, U2>(
 				Ok(EventResult::Pass)
 			}
 		}),
-	);
+	)
 }
 
-pub fn construct<U1, U2>(
-	ess: &mut ConstructEssentials<U1, U2>,
-	params: Params,
-) -> anyhow::Result<(WidgetPair, Rc<ComponentButton>)> {
+pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Result<(WidgetPair, Rc<ComponentButton>)> {
 	let globals = ess.layout.state.globals.clone();
 	let mut style = params.style;
 
@@ -384,12 +369,17 @@ pub fn construct<U1, U2>(
 		tooltip: None,
 	}));
 
-	let mut base = ComponentBase::default();
-
-	register_event_mouse_enter(data.clone(), state.clone(), ess.listeners, &mut base.lhandles);
-	register_event_mouse_leave(data.clone(), state.clone(), ess.listeners, &mut base.lhandles);
-	register_event_mouse_press(data.clone(), state.clone(), ess.listeners, &mut base.lhandles);
-	register_event_mouse_release(data.clone(), state.clone(), ess.listeners, &mut base.lhandles);
+	let base = ComponentBase {
+		lhandles: {
+			let mut widget = ess.layout.state.widgets.get(id_rect).unwrap().state();
+			vec![
+				register_event_mouse_enter(data.clone(), state.clone(), &mut widget.event_listeners),
+				register_event_mouse_leave(data.clone(), state.clone(), &mut widget.event_listeners),
+				register_event_mouse_press(data.clone(), state.clone(), &mut widget.event_listeners),
+				register_event_mouse_release(data.clone(), state.clone(), &mut widget.event_listeners),
+			]
+		},
+	};
 
 	let button = Rc::new(ComponentButton { base, data, state });
 

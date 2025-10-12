@@ -7,12 +7,12 @@ use crate::{
 		AttribPair, ParserContext, ParserFile, parse_check_f32, parse_children, process_component,
 		style::{parse_color_opt, parse_round, parse_style, parse_text_style},
 	},
-	widget::{ConstructEssentials, util::WLength},
+	widget::util::WLength,
 };
 
-pub fn parse_component_button<'a, U1, U2>(
+pub fn parse_component_button<'a>(
 	file: &'a ParserFile,
-	ctx: &mut ParserContext<U1, U2>,
+	ctx: &mut ParserContext,
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 	attribs: &[AttribPair],

@@ -5,7 +5,7 @@ use glam::Vec2;
 use wgui::{
 	assets::AssetPath,
 	components::button::ComponentButton,
-	event::{CallbackDataCommon, EventAlterables, EventListenerCollection},
+	event::{CallbackDataCommon, EventAlterables},
 	globals::WguiGlobals,
 	i18n::Translation,
 	layout::{LayoutParams, RcLayout, WidgetID},
@@ -14,8 +14,8 @@ use wgui::{
 };
 
 use crate::tab::{
-	Tab, TabParams, TabType, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses,
-	settings::TabSettings,
+	apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses, settings::TabSettings,
+	Tab, TabParams, TabType,
 };
 
 mod assets;
@@ -45,16 +45,11 @@ pub enum FrontendTask {
 	SetTab(TabType),
 }
 
-pub struct FrontendParams<'a> {
-	pub listeners: &'a mut EventListenerCollection<(), ()>,
-}
-
 impl Frontend {
-	pub fn new(params: FrontendParams) -> anyhow::Result<(RcFrontend, RcLayout)> {
+	pub fn new() -> anyhow::Result<(RcFrontend, RcLayout)> {
 		let globals = WguiGlobals::new(Box::new(assets::Asset {}), wgui::globals::Defaults::default())?;
 
 		let (layout, state) = wgui::parser::new_layout_from_assets(
-			params.listeners,
 			&ParseDocumentParams {
 				globals: globals.clone(),
 				path: AssetPath::BuiltIn("gui/dashboard.xml"),
@@ -85,16 +80,9 @@ impl Frontend {
 		Ok((res, rc_layout))
 	}
 
-	pub fn update(
-		&mut self,
-		rc_this: &RcFrontend,
-		listeners: &mut EventListenerCollection<(), ()>,
-		width: f32,
-		height: f32,
-		timestep_alpha: f32,
-	) -> anyhow::Result<()> {
+	pub fn update(&mut self, rc_this: &RcFrontend, width: f32, height: f32, timestep_alpha: f32) -> anyhow::Result<()> {
 		while let Some(task) = self.tasks.pop_front() {
-			self.process_task(rc_this, task, listeners)?;
+			self.process_task(rc_this, task)?;
 		}
 
 		self.tick(width, height, timestep_alpha)?;
@@ -143,24 +131,14 @@ impl Frontend {
 		self.tasks.push_back(task);
 	}
 
-	fn process_task(
-		&mut self,
-		rc_this: &RcFrontend,
-		task: FrontendTask,
-		listeners: &mut EventListenerCollection<(), ()>,
-	) -> anyhow::Result<()> {
+	fn process_task(&mut self, rc_this: &RcFrontend, task: FrontendTask) -> anyhow::Result<()> {
 		match task {
-			FrontendTask::SetTab(tab_type) => self.set_tab(tab_type, rc_this, listeners)?,
+			FrontendTask::SetTab(tab_type) => self.set_tab(tab_type, rc_this)?,
 		}
 		Ok(())
 	}
 
-	fn set_tab(
-		&mut self,
-		tab_type: TabType,
-		rc_this: &RcFrontend,
-		listeners: &mut EventListenerCollection<(), ()>,
-	) -> anyhow::Result<()> {
+	fn set_tab(&mut self, tab_type: TabType, rc_this: &RcFrontend) -> anyhow::Result<()> {
 		log::info!("Setting tab to {tab_type:?}");
 		let mut layout = self.layout.borrow_mut();
 		let widget_content = self.state.fetch_widget(&layout.state, "content")?;
@@ -170,7 +148,6 @@ impl Frontend {
 			globals: &self.globals,
 			layout: &mut layout,
 			parent_id: widget_content.id,
-			listeners,
 			frontend: rc_this,
 		};
 

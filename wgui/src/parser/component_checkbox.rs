@@ -3,11 +3,10 @@ use crate::{
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{AttribPair, ParserContext, parse_check_f32, parse_check_i32, process_component, style::parse_style},
-	widget::ConstructEssentials,
 };
 
-pub fn parse_component_checkbox<U1, U2>(
-	ctx: &mut ParserContext<U1, U2>,
+pub fn parse_component_checkbox(
+	ctx: &mut ParserContext,
 	parent_id: WidgetID,
 	attribs: &[AttribPair],
 ) -> anyhow::Result<WidgetID> {

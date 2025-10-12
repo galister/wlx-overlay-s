@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::{
 	any::AnyTrait,
-	event::{self, CallbackDataCommon},
+	event::{CallbackDataCommon, EventListenerID},
 };
 
 pub mod button;
@@ -17,7 +17,7 @@ pub struct InitData<'a> {
 // common component data
 #[derive(Default)]
 pub struct ComponentBase {
-	lhandles: event::ListenerHandleVec,
+	lhandles: Vec<EventListenerID>,
 }
 
 pub trait ComponentTrait: AnyTrait {

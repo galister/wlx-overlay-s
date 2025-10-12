@@ -8,14 +8,14 @@ use std::{
 use crate::{
 	animation::Animations,
 	components::{Component, InitData},
-	drawing::{self, ANSI_BOLD_CODE, ANSI_RESET_CODE, Boundary, push_scissor_stack, push_transform_stack},
-	event::{self, CallbackDataCommon, EventAlterables, EventListenerCollection},
+	drawing::{self, push_scissor_stack, push_transform_stack, Boundary, ANSI_BOLD_CODE, ANSI_RESET_CODE},
+	event::{self, CallbackDataCommon, EventAlterables},
 	globals::WguiGlobals,
-	widget::{self, EventParams, EventResult, WidgetObj, WidgetState, div::WidgetDiv},
+	widget::{self, div::WidgetDiv, EventParams, EventResult, WidgetObj, WidgetState},
 };
 
-use glam::{Vec2, vec2};
-use slotmap::{HopSlotMap, SecondaryMap, new_key_type};
+use glam::{vec2, Vec2};
+use slotmap::{new_key_type, HopSlotMap, SecondaryMap};
 use taffy::{NodeId, TaffyTree, TraversePartialTree};
 
 new_key_type! {
@@ -113,7 +113,7 @@ pub struct LayoutState {
 pub struct ModifyLayoutStateData<'a> {
 	pub layout: &'a mut Layout,
 	// don't uncomment this, todo!
-	// pub listeners: &'a mut EventListenerCollection<U1, U2>,
+	// pub listeners: &'a mut EventListenerCollection,
 }
 
 pub enum LayoutTask {
@@ -310,9 +310,26 @@ impl Layout {
 		self.components_to_init.push(component);
 	}
 
-	fn push_event_children<U1, U2>(
+	/// Convenience function to avoid repeated `WidgetID` → `WidgetState` lookups.
+	pub fn add_event_listener<U1: 'static, U2: 'static>(
 		&self,
-		listeners: &mut EventListenerCollection<U1, U2>,
+		widget_id: WidgetID,
+		kind: event::EventListenerKind,
+		callback: event::EventCallback<U1, U2>,
+	) -> Option<event::EventListenerID> {
+		Some(
+			self
+				.state
+				.widgets
+				.get(widget_id)?
+				.state()
+				.event_listeners
+				.register(kind, callback),
+		)
+	}
+
+	fn push_event_children<U1: 'static, U2: 'static>(
+		&self,
 		parent_node_id: taffy::NodeId,
 		event: &event::Event,
 		alterables: &mut EventAlterables,
@@ -325,7 +342,7 @@ impl Layout {
 
 		let mut iter = |idx: usize| -> anyhow::Result<bool> {
 			let child_id = self.state.tree.get_child_id(parent_node_id, idx);
-			let child_result = self.push_event_widget(listeners, child_id, event, alterables, user_data, false)?;
+			let child_result = self.push_event_widget(child_id, event, alterables, user_data, false)?;
 			if child_result != EventResult::Pass {
 				event_result = child_result;
 				return Ok(true);
@@ -350,9 +367,8 @@ impl Layout {
 		Ok(event_result)
 	}
 
-	fn push_event_widget<U1, U2>(
+	fn push_event_widget<U1: 'static, U2: 'static>(
 		&self,
-		listeners: &mut EventListenerCollection<U1, U2>,
 		node_id: taffy::NodeId,
 		event: &event::Event,
 		alterables: &mut EventAlterables,
@@ -392,7 +408,7 @@ impl Layout {
 		let reverse_iter = is_root_node;
 
 		// check children first
-		let mut evt_result = self.push_event_children(listeners, node_id, event, alterables, user_data, reverse_iter)?;
+		let mut evt_result = self.push_event_children(node_id, event, alterables, user_data, reverse_iter)?;
 
 		if evt_result == EventResult::Pass {
 			let mut params = EventParams {
@@ -403,8 +419,7 @@ impl Layout {
 				style,
 			};
 
-			let listeners_vec = listeners.map.get(widget_id);
-			let this_evt_result = widget.process_event(widget_id, listeners_vec, node_id, event, user_data, &mut params)?;
+			let this_evt_result = widget.process_event(widget_id, node_id, event, user_data, &mut params)?;
 			if this_evt_result != EventResult::Pass {
 				evt_result = this_evt_result;
 			}
@@ -436,25 +451,16 @@ impl Layout {
 		}
 	}
 
-	pub fn push_event<U1, U2>(
+	pub fn push_event<U1: 'static, U2: 'static>(
 		&mut self,
-		listeners: &mut EventListenerCollection<U1, U2>,
 		event: &event::Event,
-		mut user_data: (&mut U1, &mut U2),
+		user1: &mut U1,
+		user2: &mut U2,
 	) -> anyhow::Result<()> {
 		let mut alterables = EventAlterables::default();
-		let _event_result = self.push_event_widget(
-			listeners,
-			self.tree_root_node,
-			event,
-			&mut alterables,
-			&mut user_data,
-			true,
-		)?;
+		let _event_result =
+			self.push_event_widget(self.tree_root_node, event, &mut alterables, &mut (user1, user2), true)?;
 		self.process_alterables(alterables)?;
-
-		listeners.gc();
-
 		Ok(())
 	}
 

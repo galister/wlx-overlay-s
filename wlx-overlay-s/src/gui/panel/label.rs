@@ -12,11 +12,11 @@ use chrono_tz::Tz;
 use interprocess::os::unix::fifo_file::create_fifo;
 use wgui::{
     drawing,
-    event::{self, EventCallback, EventListenerCollection, ListenerHandleVec},
+    event::{self, EventCallback},
     i18n::Translation,
     layout::Layout,
-    parser::{CustomAttribsInfoOwned, parse_color_hex},
-    widget::{EventResult, label::WidgetLabel},
+    parser::{parse_color_hex, CustomAttribsInfoOwned},
+    widget::{label::WidgetLabel, EventResult},
 };
 
 use crate::state::AppState;
@@ -24,11 +24,9 @@ use crate::state::AppState;
 use super::helper::{expand_env_vars, read_label_from_pipe};
 
 #[allow(clippy::too_many_lines)]
-pub(super) fn setup_custom_label<S>(
+pub(super) fn setup_custom_label<S: 'static>(
     layout: &mut Layout,
     attribs: &CustomAttribsInfoOwned,
-    listeners: &mut EventListenerCollection<AppState, S>,
-    listener_handles: &mut ListenerHandleVec,
     app: &AppState,
 ) {
     let Some(source) = attribs.get_value("_source") else {
@@ -51,7 +49,7 @@ pub(super) fn setup_custom_label<S>(
                 }),
                 carry_over: RefCell::new(None),
             };
-            Box::new(move |common, data, _app, _| {
+            Box::new(move |common, data, _, _| {
                 shell_on_tick(&state, common, data);
                 Ok(EventResult::Pass)
             })
@@ -69,7 +67,7 @@ pub(super) fn setup_custom_label<S>(
                     next_try: Instant::now(),
                 }),
             };
-            Box::new(move |common, data, _app, _| {
+            Box::new(move |common, data, _, _| {
                 pipe_on_tick(&state, common, data);
                 Ok(EventResult::Pass)
             })
@@ -165,7 +163,7 @@ pub(super) fn setup_custom_label<S>(
                 format: format.into(),
             };
 
-            Box::new(move |common, data, _app, _| {
+            Box::new(move |common, data, _, _| {
                 clock_on_tick(&state, common, data);
                 Ok(EventResult::Pass)
             })
@@ -180,8 +178,7 @@ pub(super) fn setup_custom_label<S>(
         }
     };
 
-    listeners.register(
-        listener_handles,
+    layout.add_event_listener(
         attribs.widget_id,
         wgui::event::EventListenerKind::InternalStateChange,
         callback,

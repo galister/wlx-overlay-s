@@ -5,8 +5,8 @@ use crate::{
 	widget::ConstructEssentials,
 };
 
-pub fn parse_component_slider<U1, U2>(
-	ctx: &mut ParserContext<U1, U2>,
+pub fn parse_component_slider(
+	ctx: &mut ParserContext,
 	parent_id: WidgetID,
 	attribs: &[AttribPair],
 ) -> anyhow::Result<WidgetID> {
@@ -35,7 +35,6 @@ pub fn parse_component_slider<U1, U2>(
 	let (widget, component) = slider::construct(
 		&mut ConstructEssentials {
 			layout: ctx.layout,
-			listeners: ctx.listeners,
 			parent: parent_id,
 		},
 		slider::Params {
