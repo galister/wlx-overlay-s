@@ -8,12 +8,11 @@ use glam::Vec2;
 use wgui::{
 	assets::AssetPath,
 	components::{
-		Component,
 		button::{ButtonClickCallback, ComponentButton},
 		checkbox::ComponentCheckbox,
+		Component,
 	},
 	drawing::Color,
-	event::EventListenerCollection,
 	globals::WguiGlobals,
 	i18n::Translation,
 	layout::{Layout, LayoutParams, RcLayout, Widget},
@@ -71,7 +70,7 @@ fn handle_button_click(button: Rc<ComponentButton>, label: Widget, text: &'stati
 }
 
 impl TestbedGeneric {
-	pub fn new(listeners: &mut EventListenerCollection<(), ()>) -> anyhow::Result<Self> {
+	pub fn new() -> anyhow::Result<Self> {
 		const XML_PATH: AssetPath = AssetPath::BuiltIn("gui/various_widgets.xml");
 
 		let globals = WguiGlobals::new(
@@ -107,7 +106,6 @@ impl TestbedGeneric {
 		};
 
 		let (layout, state) = wgui::parser::new_layout_from_assets(
-			listeners,
 			&ParseDocumentParams {
 				globals: globals.clone(),
 				path: XML_PATH,
@@ -190,7 +188,7 @@ impl TestbedGeneric {
 
 	fn show_popup(
 		&mut self,
-		params: &mut TestbedUpdateParams,
+		_params: &mut TestbedUpdateParams,
 		layout: &mut Layout,
 		data: &mut Data,
 	) -> anyhow::Result<()> {
@@ -198,7 +196,6 @@ impl TestbedGeneric {
 			globals: self.globals.clone(),
 			position: Vec2::new(128.0, 128.0),
 			layout,
-			listeners: params.listeners,
 		})?;
 
 		Ok(())

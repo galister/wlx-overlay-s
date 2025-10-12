@@ -1,5 +1,5 @@
 use crate::testbed::{Testbed, TestbedUpdateParams};
-use wgui::{event::EventListenerCollection, layout::RcLayout};
+use wgui::layout::RcLayout;
 
 pub struct TestbedDashboard {
 	layout: RcLayout,
@@ -7,9 +7,8 @@ pub struct TestbedDashboard {
 }
 
 impl TestbedDashboard {
-	pub fn new(listeners: &mut EventListenerCollection<(), ()>) -> anyhow::Result<Self> {
-		let (frontend, layout) =
-			dash_frontend::Frontend::new(dash_frontend::FrontendParams { listeners })?;
+	pub fn new() -> anyhow::Result<Self> {
+		let (frontend, layout) = dash_frontend::Frontend::new()?;
 		Ok(Self { frontend, layout })
 	}
 }
@@ -19,7 +18,6 @@ impl Testbed for TestbedDashboard {
 		let mut frontend = self.frontend.borrow_mut();
 		frontend.update(
 			&self.frontend,
-			params.listeners,
 			params.width,
 			params.height,
 			params.timestep_alpha,

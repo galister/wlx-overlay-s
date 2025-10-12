@@ -5,7 +5,6 @@ use crate::{
 use glam::Vec2;
 use wgui::{
 	assets::AssetPath,
-	event::EventListenerCollection,
 	globals::WguiGlobals,
 	layout::{LayoutParams, RcLayout},
 	parser::{ParseDocumentParams, ParserState},
@@ -19,7 +18,7 @@ pub struct TestbedAny {
 }
 
 impl TestbedAny {
-	pub fn new(name: &str, listeners: &mut EventListenerCollection<(), ()>) -> anyhow::Result<Self> {
+	pub fn new(name: &str) -> anyhow::Result<Self> {
 		let path = AssetPath::BuiltIn(&format!("gui/{name}.xml"));
 
 		let globals = WguiGlobals::new(
@@ -28,7 +27,6 @@ impl TestbedAny {
 		)?;
 
 		let (layout, state) = wgui::parser::new_layout_from_assets(
-			listeners,
 			&ParseDocumentParams {
 				globals,
 				path,

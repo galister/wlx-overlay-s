@@ -1,11 +1,10 @@
-use wgui::{event::EventListenerCollection, layout::RcLayout};
+use wgui::layout::RcLayout;
 
 pub mod testbed_any;
 pub mod testbed_dashboard;
 pub mod testbed_generic;
 
-pub struct TestbedUpdateParams<'a> {
-	pub listeners: &'a mut EventListenerCollection<(), ()>,
+pub struct TestbedUpdateParams {
 	pub width: f32,
 	pub height: f32,
 	pub timestep_alpha: f32,

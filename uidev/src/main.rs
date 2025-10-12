@@ -1,29 +1,26 @@
-use glam::{Vec2, vec2};
+use glam::{vec2, Vec2};
 use std::sync::Arc;
-use testbed::{Testbed, testbed_any::TestbedAny};
+use testbed::{testbed_any::TestbedAny, Testbed};
 use timestep::Timestep;
-use tracing_subscriber::EnvFilter;
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::EnvFilter;
 use vulkan::init_window;
 use vulkano::{
-	Validated, VulkanError,
 	command_buffer::CommandBufferUsage,
 	format::Format,
-	image::{ImageUsage, view::ImageView},
+	image::{view::ImageView, ImageUsage},
 	swapchain::{
-		CompositeAlpha, PresentMode, Surface, SurfaceInfo, Swapchain, SwapchainCreateInfo,
-		SwapchainPresentInfo, acquire_next_image,
+		acquire_next_image, CompositeAlpha, PresentMode, Surface, SurfaceInfo, Swapchain,
+		SwapchainCreateInfo, SwapchainPresentInfo,
 	},
 	sync::GpuFuture,
+	Validated, VulkanError,
 };
 use wgui::{
-	event::{
-		EventListenerCollection, MouseButtonIndex, MouseDownEvent, MouseMotionEvent, MouseUpEvent,
-		MouseWheelEvent,
-	},
-	gfx::{WGfx, cmd::WGfxClearMode},
+	event::{MouseButtonIndex, MouseDownEvent, MouseMotionEvent, MouseUpEvent, MouseWheelEvent},
+	gfx::{cmd::WGfxClearMode, WGfx},
 	renderer_vk::{self},
 };
 use winit::{
@@ -35,7 +32,7 @@ use winit::{
 use crate::{
 	rate_limiter::RateLimiter,
 	testbed::{
-		TestbedUpdateParams, testbed_dashboard::TestbedDashboard, testbed_generic::TestbedGeneric,
+		testbed_dashboard::TestbedDashboard, testbed_generic::TestbedGeneric, TestbedUpdateParams,
 	},
 };
 
@@ -63,14 +60,12 @@ fn init_logging() {
 		.init();
 }
 
-fn load_testbed(
-	listeners: &mut EventListenerCollection<(), ()>,
-) -> anyhow::Result<Box<dyn Testbed>> {
+fn load_testbed() -> anyhow::Result<Box<dyn Testbed>> {
 	let name = std::env::var("TESTBED").unwrap_or_default();
 	Ok(match name.as_str() {
-		"dashboard" => Box::new(TestbedDashboard::new(listeners)?),
-		"" => Box::new(TestbedGeneric::new(listeners)?),
-		_ => Box::new(TestbedAny::new(&name, listeners)?),
+		"dashboard" => Box::new(TestbedDashboard::new()?),
+		"" => Box::new(TestbedGeneric::new()?),
+		_ => Box::new(TestbedAny::new(&name)?),
 	})
 }
 
@@ -104,9 +99,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let mut scale = window.scale_factor() as f32;
 
-	let mut listeners = EventListenerCollection::default();
-
-	let mut testbed = load_testbed(&mut listeners)?;
+	let mut testbed = load_testbed()?;
 
 	let mut mouse = Vec2::ZERO;
 
@@ -139,26 +132,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 					.layout()
 					.borrow_mut()
 					.push_event(
-						&mut listeners,
 						&wgui::event::Event::MouseWheel(MouseWheelEvent {
 							shift: Vec2::new(x, y),
 							pos: mouse / scale,
 							device: 0,
 						}),
-						(&mut (), &mut ()),
+						&mut (),
+						&mut (),
 					)
 					.unwrap(),
 				MouseScrollDelta::PixelDelta(pos) => testbed
 					.layout()
 					.borrow_mut()
 					.push_event(
-						&mut listeners,
 						&wgui::event::Event::MouseWheel(MouseWheelEvent {
 							shift: Vec2::new(pos.x as f32 / 5.0, pos.y as f32 / 5.0),
 							pos: mouse / scale,
 							device: 0,
 						}),
-						(&mut (), &mut ()),
+						&mut (),
+						&mut (),
 					)
 					.unwrap(),
 			},
@@ -172,13 +165,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 							.layout()
 							.borrow_mut()
 							.push_event(
-								&mut listeners,
 								&wgui::event::Event::MouseDown(MouseDownEvent {
 									pos: mouse / scale,
 									index: MouseButtonIndex::Left,
 									device: 0,
 								}),
-								(&mut (), &mut ()),
+								&mut (),
+								&mut (),
 							)
 							.unwrap();
 					} else {
@@ -186,13 +179,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 							.layout()
 							.borrow_mut()
 							.push_event(
-								&mut listeners,
 								&wgui::event::Event::MouseUp(MouseUpEvent {
 									pos: mouse / scale,
 									index: MouseButtonIndex::Left,
 									device: 0,
 								}),
-								(&mut (), &mut ()),
+								&mut (),
+								&mut (),
 							)
 							.unwrap();
 					}
@@ -207,12 +200,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 					.layout()
 					.borrow_mut()
 					.push_event(
-						&mut listeners,
 						&wgui::event::Event::MouseMotion(MouseMotionEvent {
 							pos: mouse / scale,
 							device: 0,
 						}),
-						(&mut (), &mut ()),
+						&mut (),
+						&mut (),
 					)
 					.unwrap();
 			}
@@ -298,7 +291,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 				testbed
 					.update(TestbedUpdateParams {
-						listeners: &mut listeners,
 						width: (swapchain_size[0] as f32 / scale) as _,
 						height: (swapchain_size[1] as f32 / scale) as _,
 						timestep_alpha: timestep.alpha,
