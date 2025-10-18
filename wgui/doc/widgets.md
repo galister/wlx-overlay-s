@@ -190,6 +190,12 @@ _Translated by key_
 
 `hover_border_color`: #FFAABB | #FFAABBCC
 
+`tooltip`: **string**
+
+_Tooltip text on hover, translated by key_
+
+`tooltip_side`: "top" | "bottom" | "left" | "right" (default: top)
+
 #### Info
 
 Child widgets are supported and can be added directly in XML.

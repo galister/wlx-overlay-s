@@ -27,6 +27,7 @@ pub struct WidgetData {
 	pub scrolling_cur: Vec2,      // normalized, used for smooth scrolling animation
 	pub scrolling_cur_prev: Vec2, // for motion interpolation while rendering between ticks
 	pub transform: glam::Mat4,
+	pub cached_absolute_boundary: drawing::Boundary, // updated in Layout::push_event_widget
 }
 
 impl WidgetData {
@@ -95,6 +96,7 @@ impl WidgetState {
 				scrolling_cur: Vec2::default(),
 				scrolling_cur_prev: Vec2::default(),
 				transform: glam::Mat4::IDENTITY,
+				cached_absolute_boundary: drawing::Boundary::default(),
 			},
 			obj,
 			event_listeners: EventListenerCollection::default(),

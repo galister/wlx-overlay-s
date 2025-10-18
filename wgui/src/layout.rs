@@ -8,14 +8,14 @@ use std::{
 use crate::{
 	animation::Animations,
 	components::{Component, InitData},
-	drawing::{self, push_scissor_stack, push_transform_stack, Boundary, ANSI_BOLD_CODE, ANSI_RESET_CODE},
+	drawing::{self, ANSI_BOLD_CODE, ANSI_RESET_CODE, Boundary, push_scissor_stack, push_transform_stack},
 	event::{self, CallbackDataCommon, EventAlterables},
 	globals::WguiGlobals,
-	widget::{self, div::WidgetDiv, EventParams, EventResult, WidgetObj, WidgetState},
+	widget::{self, EventParams, EventResult, WidgetObj, WidgetState, div::WidgetDiv},
 };
 
-use glam::{vec2, Vec2};
-use slotmap::{new_key_type, HopSlotMap, SecondaryMap};
+use glam::{Vec2, vec2};
+use slotmap::{HopSlotMap, SecondaryMap, new_key_type};
 use taffy::{NodeId, TaffyTree, TraversePartialTree};
 
 new_key_type! {
@@ -112,13 +112,13 @@ pub struct LayoutState {
 
 pub struct ModifyLayoutStateData<'a> {
 	pub layout: &'a mut Layout,
-	// don't uncomment this, todo!
-	// pub listeners: &'a mut EventListenerCollection,
 }
+
+pub type ModifyLayoutStateFunc = Box<dyn Fn(ModifyLayoutStateData) -> anyhow::Result<()>>;
 
 pub enum LayoutTask {
 	RemoveWidget(WidgetID),
-	ModifyLayoutState(Box<dyn Fn(ModifyLayoutStateData)>),
+	ModifyLayoutState(ModifyLayoutStateFunc),
 }
 
 #[derive(Clone)]
@@ -396,6 +396,8 @@ impl Layout {
 		// see drawing.rs draw_widget too
 		push_transform_stack(&mut alterables.transform_stack, l, scroll_shift, &widget);
 
+		widget.data.cached_absolute_boundary = drawing::Boundary::construct_absolute(&alterables.transform_stack);
+
 		let scissor_pushed = push_scissor_stack(
 			&mut alterables.transform_stack,
 			&mut alterables.scissor_stack,
@@ -589,7 +591,7 @@ impl Layout {
 		Ok(())
 	}
 
-	fn process_tasks(&mut self) {
+	pub fn process_tasks(&mut self) -> anyhow::Result<()> {
 		let tasks = self.tasks.clone();
 		let mut tasks = tasks.0.borrow_mut();
 		while let Some(task) = tasks.pop_front() {
@@ -597,9 +599,13 @@ impl Layout {
 				LayoutTask::RemoveWidget(widget_id) => {
 					self.remove_widget(widget_id);
 				}
-				LayoutTask::ModifyLayoutState(_fn) => todo!(),
+				LayoutTask::ModifyLayoutState(callback) => {
+					(*callback)(ModifyLayoutStateData { layout: self })?;
+				}
 			}
 		}
+
+		Ok(())
 	}
 
 	pub fn process_alterables(&mut self, alterables: EventAlterables) -> anyhow::Result<()> {
@@ -607,7 +613,7 @@ impl Layout {
 			self.tasks.push(task);
 		}
 
-		self.process_tasks();
+		self.process_tasks()?;
 
 		for node in alterables.dirty_nodes {
 			self.state.tree.mark_dirty(node)?;
@@ -698,7 +704,7 @@ impl Layout {
 }
 
 impl LayoutState {
-	pub fn get_widget_boundary(&self, id: NodeId) -> Boundary {
+	pub fn get_node_boundary(&self, id: NodeId) -> Boundary {
 		let Ok(layout) = self.tree.layout(id) else {
 			return Boundary::default();
 		};
@@ -709,11 +715,27 @@ impl LayoutState {
 		}
 	}
 
-	pub fn get_widget_size(&self, id: NodeId) -> Vec2 {
+	pub fn get_node_size(&self, id: NodeId) -> Vec2 {
 		let Ok(layout) = self.tree.layout(id) else {
 			return Vec2::ZERO;
 		};
 
 		Vec2::new(layout.size.width, layout.size.height)
+	}
+
+	pub fn get_widget_boundary(&self, id: WidgetID) -> Boundary {
+		let Some(node_id) = self.nodes.get(id) else {
+			return Boundary::default();
+		};
+
+		self.get_node_boundary(*node_id)
+	}
+
+	pub fn get_widget_size(&self, id: WidgetID) -> Vec2 {
+		let Some(node_id) = self.nodes.get(id) else {
+			return Vec2::ZERO;
+		};
+
+		self.get_node_size(*node_id)
 	}
 }

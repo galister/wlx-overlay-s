@@ -5,7 +5,7 @@ use std::{
 };
 
 use glam::Vec2;
-use slotmap::{new_key_type, DenseSlotMap};
+use slotmap::{DenseSlotMap, new_key_type};
 
 use crate::{
 	animation::{self, Animation},
@@ -92,6 +92,7 @@ impl Event {
 	}
 }
 
+// alterables which will be dispatched in the next loop iteration phase
 #[derive(Default)]
 pub struct EventAlterables {
 	pub dirty_nodes: Vec<taffy::NodeId>,
@@ -105,6 +106,7 @@ pub struct EventAlterables {
 	pub trigger_haptics: bool,
 }
 
+// helper functions
 impl EventAlterables {
 	pub const fn mark_redraw(&mut self) {
 		self.needs_redraw = true;

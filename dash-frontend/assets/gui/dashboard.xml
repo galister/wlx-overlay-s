@@ -15,7 +15,10 @@
       height="~side_button_size"
       color="#44444400"
       hover_color="#333333ff"
-      hover_border_color="#555555ff">
+      hover_border_color="#555555ff"
+      tooltip="${tooltip}"
+      tooltip_side="${tooltip_side}"
+    >
       <sprite src="${src}" width="~side_sprite_size" height="~side_sprite_size" />
     </Button>
   </template>
@@ -43,13 +46,13 @@
           align_items="center"
           gap="4"
         >
-          <SideButton id="btn_side_home" src="dashboard/wayvr_dashboard_mono.svg" />
-          <SideButton id="btn_side_apps" src="dashboard/apps.svg" />
-          <SideButton id="btn_side_games" src="dashboard/games.svg" />
-          <SideButton id="btn_side_monado" src="dashboard/monado.svg" />
-          <SideButton id="btn_side_processes" src="dashboard/window.svg" />
+          <SideButton id="btn_side_home" src="dashboard/wayvr_dashboard_mono.svg" tooltip="HOME_SCREEN" tooltip_side="right" />
+          <SideButton id="btn_side_apps" src="dashboard/apps.svg" tooltip="APPLICATIONS" tooltip_side="right" />
+          <SideButton id="btn_side_games" src="dashboard/games.svg" tooltip="GAMES" tooltip_side="right" />
+          <SideButton id="btn_side_monado" src="dashboard/monado.svg" tooltip="MONADO_RUNTIME" tooltip_side="right" />
+          <SideButton id="btn_side_processes" src="dashboard/window.svg" tooltip="PROCESSES" tooltip_side="right" />
           <rectangle height="2" color="#FFFFFF33" width="~side_sprite_size" />
-          <SideButton id="btn_side_settings" src="dashboard/settings.svg" />
+          <SideButton id="btn_side_settings" src="dashboard/settings.svg" tooltip="SETTINGS" tooltip_side="right" />
         </rectangle>
       </div>
       <!-- REST -->

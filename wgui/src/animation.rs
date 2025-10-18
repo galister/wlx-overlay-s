@@ -98,14 +98,12 @@ impl Animation {
 			return; // failed
 		};
 
-		let widget_node = *state.nodes.get(self.target_widget).unwrap();
-
 		let mut widget_state = widget.state();
 		let (data, obj) = widget_state.get_data_obj_mut();
 
 		let data = &mut CallbackData {
 			widget_id: self.target_widget,
-			widget_boundary: state.get_widget_boundary(widget_node),
+			widget_boundary: state.get_widget_boundary(self.target_widget),
 			obj,
 			data,
 			pos,

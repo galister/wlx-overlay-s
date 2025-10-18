@@ -1,19 +1,19 @@
 use crate::{
 	animation::{Animation, AnimationEasing},
-	components::{tooltip::ComponentTooltip, Component, ComponentBase, ComponentTrait, InitData},
+	components::{self, Component, ComponentBase, ComponentTrait, InitData, tooltip::ComponentTooltip},
 	drawing::{self, Boundary, Color},
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerID, EventListenerKind},
 	i18n::Translation,
-	layout::{WidgetID, WidgetPair},
+	layout::{LayoutTask, WidgetID, WidgetPair},
 	renderer_vk::{
 		text::{FontWeight, TextStyle},
 		util::centered_matrix,
 	},
 	widget::{
+		ConstructEssentials, EventResult, WidgetData,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
-		ConstructEssentials, EventResult, WidgetData,
 	},
 };
 use glam::{Mat4, Vec3};
@@ -30,6 +30,7 @@ pub struct Params {
 	pub round: WLength,
 	pub style: taffy::Style,
 	pub text_style: TextStyle,
+	pub tooltip: Option<components::tooltip::TooltipInfo>,
 }
 
 impl Default for Params {
@@ -44,6 +45,7 @@ impl Default for Params {
 			round: WLength::Units(4.0),
 			style: Default::default(),
 			text_style: TextStyle::default(),
+			tooltip: None,
 		}
 	}
 }
@@ -55,8 +57,7 @@ struct State {
 	hovered: bool,
 	down: bool,
 	on_click: Option<ButtonClickCallback>,
-
-	tooltip: Option<ComponentTooltip>,
+	active_tooltip: Option<Rc<ComponentTooltip>>,
 }
 
 struct Data {
@@ -145,6 +146,7 @@ fn register_event_mouse_enter(
 	data: Rc<Data>,
 	state: Rc<RefCell<State>>,
 	listeners: &mut EventListenerCollection,
+	info: Option<components::tooltip::TooltipInfo>,
 ) -> EventListenerID {
 	listeners.register(
 		EventListenerKind::MouseEnter,
@@ -157,26 +159,20 @@ fn register_event_mouse_enter(
 				event_data.widget_id,
 				true,
 			));
-			let mut state = state.borrow_mut();
 
-			// todo
-			/*common.alterables.tasks.push(LayoutTask::ModifyLayoutState({
-				let parent = data.id_rect.clone();
-				Box::new(move |m| {
-					components::tooltip::construct(
-						&mut ConstructEssentials {
-							layout: m.layout,
-							listeners: &listeners,
-							parent,
-						},
-						components::tooltip::Params {
-							text: Translation::from_raw_text("this is a tooltip"),
-						},
-					);
-				})
-			}));*/
+			if let Some(info) = info.clone() {
+				common.alterables.tasks.push(LayoutTask::ModifyLayoutState({
+					let widget_to_watch = data.id_rect;
+					let state = state.clone();
+					Box::new(move |m| {
+						state.borrow_mut().active_tooltip =
+							Some(components::tooltip::show(m.layout, widget_to_watch, info.clone())?);
+						Ok(())
+					})
+				}));
+			}
 
-			state.hovered = true;
+			state.borrow_mut().hovered = true;
 			Ok(EventResult::Pass)
 		}),
 	)
@@ -198,7 +194,7 @@ fn register_event_mouse_leave(
 				false,
 			));
 			let mut state = state.borrow_mut();
-			state.tooltip = None;
+			state.active_tooltip = None;
 			state.hovered = false;
 			Ok(EventResult::Pass)
 		}),
@@ -220,7 +216,7 @@ fn register_event_mouse_press(
 				rect,
 				event_data.widget_data,
 				&data,
-				common.state.get_widget_boundary(event_data.node_id),
+				common.state.get_node_boundary(event_data.node_id),
 				1.0,
 				true,
 			);
@@ -251,7 +247,7 @@ fn register_event_mouse_release(
 				rect,
 				event_data.widget_data,
 				&data,
-				common.state.get_widget_boundary(event_data.node_id),
+				common.state.get_node_boundary(event_data.node_id),
 				1.0,
 				false,
 			);
@@ -366,14 +362,14 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		down: false,
 		hovered: false,
 		on_click: None,
-		tooltip: None,
+		active_tooltip: None,
 	}));
 
 	let base = ComponentBase {
 		lhandles: {
 			let mut widget = ess.layout.state.widgets.get(id_rect).unwrap().state();
 			vec![
-				register_event_mouse_enter(data.clone(), state.clone(), &mut widget.event_listeners),
+				register_event_mouse_enter(data.clone(), state.clone(), &mut widget.event_listeners, params.tooltip),
 				register_event_mouse_leave(data.clone(), state.clone(), &mut widget.event_listeners),
 				register_event_mouse_press(data.clone(), state.clone(), &mut widget.event_listeners),
 				register_event_mouse_release(data.clone(), state.clone(), &mut widget.event_listeners),

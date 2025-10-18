@@ -1,10 +1,10 @@
 use crate::{
-	components::{Component, button},
+	components::{self, Component, button, tooltip},
 	drawing::Color,
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		AttribPair, ParserContext, ParserFile, parse_check_f32, parse_children, process_component,
+		AttribPair, ParserContext, ParserFile, parse_check_f32, parse_children, print_invalid_attrib, process_component,
 		style::{parse_color_opt, parse_round, parse_style, parse_text_style},
 	},
 	widget::util::WLength,
@@ -23,6 +23,8 @@ pub fn parse_component_button<'a>(
 	let mut hover_color: Option<Color> = None;
 	let mut hover_border_color: Option<Color> = None;
 	let mut round = WLength::Units(4.0);
+	let mut tooltip: Option<String> = None;
+	let mut tooltip_side: Option<tooltip::TooltipSide> = None;
 
 	let mut translation: Option<Translation> = None;
 
@@ -56,6 +58,19 @@ pub fn parse_component_button<'a>(
 			"hover_border_color" => {
 				parse_color_opt(value, &mut hover_border_color);
 			}
+			"tooltip" => tooltip = Some(String::from(value)),
+			"tooltip_side" => {
+				tooltip_side = match value {
+					"left" => Some(tooltip::TooltipSide::Left),
+					"right" => Some(tooltip::TooltipSide::Right),
+					"top" => Some(tooltip::TooltipSide::Top),
+					"bottom" => Some(tooltip::TooltipSide::Bottom),
+					_ => {
+						print_invalid_attrib(key, value);
+						None
+					}
+				}
+			}
 			_ => {}
 		}
 	}
@@ -72,6 +87,10 @@ pub fn parse_component_button<'a>(
 			style,
 			text_style,
 			round,
+			tooltip: tooltip.map(|t| tooltip::TooltipInfo {
+				side: tooltip_side.map_or(tooltip::TooltipSide::Bottom, |f| f),
+				text: Translation::from_translation_key(&t),
+			}),
 		},
 	)?;
 
