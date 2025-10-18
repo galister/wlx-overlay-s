@@ -15,8 +15,11 @@ use crate::{
 pub struct OverlayWindowManager<T> {
     overlays: HopSlotMap<OverlayID, OverlayWindowData<T>>,
     sets: Vec<OverlayWindowSet>,
+    /// The set that is currently visible.
     current_set: Option<usize>,
-    last_set: usize,
+    /// The set that will be restored by show_hide.
+    /// Usually the same as current_set, except it keeps its value when current_set is hidden.
+    restore_set: usize,
     anchor_local: Affine3A,
     watch_id: OverlayID,
 }
@@ -31,7 +34,7 @@ where
         let mut me = Self {
             overlays: HopSlotMap::with_key(),
             current_set: Some(0),
-            last_set: 0,
+            restore_set: 0,
             sets: vec![OverlayWindowSet::default()],
             anchor_local: Affine3A::from_translation(Vec3::NEG_Z),
             watch_id: OverlayID::null(), // set down below
@@ -175,7 +178,7 @@ where
                     } else {
                         state.transform = Affine3A::ZERO;
                     }
-                    log::warn!("{}: active_state → ws{}", data.config.name, current_set);
+                    log::debug!("{}: active_state → ws{}", data.config.name, current_set);
                     ws.overlays.insert(id, state);
                 }
             }
@@ -194,11 +197,12 @@ where
                         data.config.saved_transform = Some(state.transform);
                     }
                     state.transform = Affine3A::IDENTITY;
-                    log::warn!("{}: ws{} → active_state", data.config.name, new_set);
+                    log::debug!("{}: ws{} → active_state", data.config.name, new_set);
                     data.config.active_state = Some(state);
                     data.config.reset(app, false);
                 }
             }
+            self.restore_set = new_set;
         }
         self.current_set = new_set;
     }
@@ -208,7 +212,7 @@ where
             let hmd = snap_upright(app.input_state.hmd, Vec3A::Y);
             app.anchor = hmd * self.anchor_local;
 
-            self.switch_to_set(app, Some(self.last_set));
+            self.switch_to_set(app, Some(self.restore_set));
         } else {
             self.switch_to_set(app, None);
         }
