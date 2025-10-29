@@ -240,7 +240,9 @@ pub fn openxr_run(
             continue 'main_loop;
         }
 
+        log::trace!("xrWaitFrame");
         let xr_frame_state = frame_wait.wait()?;
+        log::trace!("xrBeginFrame");
         frame_stream.begin()?;
 
         xr_state.predicted_display_time = xr_frame_state.predicted_display_time;
@@ -263,6 +265,7 @@ pub fn openxr_run(
         };
 
         if !xr_frame_state.should_render {
+            log::trace!("xrEndFrame");
             frame_stream.end(
                 xr_frame_state.predicted_display_time,
                 environment_blend_mode,
@@ -478,6 +481,7 @@ pub fn openxr_run(
             })
             .collect::<Vec<_>>();
 
+        log::trace!("xrEndFrame");
         frame_stream.end(
             xr_state.predicted_display_time,
             environment_blend_mode,

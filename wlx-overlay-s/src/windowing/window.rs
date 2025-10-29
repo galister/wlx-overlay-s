@@ -129,14 +129,14 @@ impl OverlayWindowConfig {
     }
 
     pub fn activate(&mut self, app: &mut AppState) {
-        log::warn!("activate {}", self.name.as_ref());
+        log::debug!("activate {}", self.name.as_ref());
         self.dirty = true;
         self.active_state = Some(self.default_state.clone());
         self.reset(app, true);
     }
 
     pub fn deactivate(&mut self) {
-        log::warn!("deactivate {}", self.name.as_ref());
+        log::debug!("deactivate {}", self.name.as_ref());
         self.active_state = None;
     }
 
@@ -144,7 +144,7 @@ impl OverlayWindowConfig {
         if self.active_state.take().is_none() {
             self.activate(app);
         } else {
-            log::warn!("deactivate {}", self.name.as_ref());
+            log::debug!("deactivate {}", self.name.as_ref());
         }
     }
 

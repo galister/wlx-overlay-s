@@ -219,8 +219,8 @@ new_key_type! {
 pub struct EventListener {
 	kind: EventListenerKind,
 	callback: EventCallbackInternal,
-	tid1: TypeId,
-	tid2: TypeId,
+	tid1: Option<TypeId>,
+	tid2: Option<TypeId>,
 }
 
 impl EventListener {
@@ -230,7 +230,9 @@ impl EventListener {
 		data: &mut CallbackData,
 		user_data: &mut (&mut U1, &mut U2),
 	) -> anyhow::Result<EventResult> {
-		(self.callback)(common, data, user_data.0, user_data.1)
+		let a1: &mut (dyn Any + 'static) = if self.tid1.is_none() { &mut () } else { user_data.0 };
+		let a2: &mut (dyn Any + 'static) = if self.tid2.is_none() { &mut () } else { user_data.1 };
+		(self.callback)(common, data, a1, a2)
 	}
 }
 
@@ -250,7 +252,7 @@ impl EventListenerCollection {
 		self
 			.inner
 			.values()
-			.filter(move |p| p.tid1 == tid1 && p.tid2 == tid2 && p.kind == kind)
+			.filter(move |p| p.tid1.is_none_or(|a| a == tid1) && p.tid2.is_none_or(|a| a == tid2) && p.kind == kind)
 	}
 
 	pub fn register<U1: 'static, U2: 'static>(
@@ -258,6 +260,8 @@ impl EventListenerCollection {
 		kind: EventListenerKind,
 		callback: EventCallback<U1, U2>,
 	) -> EventListenerID {
+		let tid_unit = TypeId::of::<()>();
+
 		let tid1 = TypeId::of::<U1>();
 		let tid2 = TypeId::of::<U2>();
 
@@ -274,8 +278,8 @@ impl EventListenerCollection {
 		let new_item = EventListener {
 			kind,
 			callback: callback_inner,
-			tid1,
-			tid2,
+			tid1: (tid1 != tid_unit).then_some(tid1),
+			tid2: (tid2 != tid_unit).then_some(tid2),
 		};
 
 		self.inner.insert(new_item)

@@ -258,27 +258,20 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
     }
 
     fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32) {
-        self.layout
-            .push_event(
-                &WguiEvent::MouseWheel(MouseWheelEvent {
-                    shift: vec2(delta_x, delta_y),
-                    pos: hit.uv * self.layout.content_size,
-                    device: hit.pointer,
-                }),
-                app,
-                &mut self.state,
-            )
-            .unwrap(); // want panic
+        let e = WguiEvent::MouseWheel(MouseWheelEvent {
+            shift: vec2(delta_x, delta_y),
+            pos: hit.uv * self.layout.content_size,
+            device: hit.pointer,
+        });
+        self.push_event(app, &e);
     }
 
     fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
-        self.push_event(
-            app,
-            &WguiEvent::MouseMotion(MouseMotionEvent {
-                pos: hit.uv * self.layout.content_size,
-                device: hit.pointer,
-            }),
-        );
+        let e = &WguiEvent::MouseMotion(MouseMotionEvent {
+            pos: hit.uv * self.layout.content_size,
+            device: hit.pointer,
+        });
+        self.push_event(app, &e);
 
         self.layout
             .check_toggle_haptics_triggered()
@@ -290,10 +283,8 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
     }
 
     fn on_left(&mut self, app: &mut AppState, pointer: usize) {
-        self.push_event(
-            app,
-            &WguiEvent::MouseLeave(MouseLeaveEvent { device: pointer }),
-        );
+        let e = WguiEvent::MouseLeave(MouseLeaveEvent { device: pointer });
+        self.push_event(app, &e);
     }
 
     fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool) {
@@ -304,25 +295,21 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
             _ => return,
         };
 
-        if pressed {
-            self.push_event(
-                app,
-                &WguiEvent::MouseDown(MouseDownEvent {
-                    pos: hit.uv * self.layout.content_size,
-                    index,
-                    device: hit.pointer,
-                }),
-            );
+        let e = if pressed {
+            WguiEvent::MouseDown(MouseDownEvent {
+                pos: hit.uv * self.layout.content_size,
+                index,
+                device: hit.pointer,
+            })
         } else {
-            self.push_event(
-                app,
-                &WguiEvent::MouseUp(MouseUpEvent {
-                    pos: hit.uv * self.layout.content_size,
-                    index,
-                    device: hit.pointer,
-                }),
-            );
-        }
+            WguiEvent::MouseUp(MouseUpEvent {
+                pos: hit.uv * self.layout.content_size,
+                index,
+                device: hit.pointer,
+            })
+        };
+
+        self.push_event(app, &e);
     }
 
     fn get_interaction_transform(&mut self) -> Option<Affine2> {

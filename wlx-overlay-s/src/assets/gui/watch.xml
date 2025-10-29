@@ -26,7 +26,7 @@
   </template>
 
   <template name="Set">
-    <Button macro="button_style" _press="::SetToggle ${handle}">
+    <Button macro="button_style" _press="::SetToggle ${handle}" tooltip="Switch to set" tooltip_side="top">
       <sprite width="40" height="40" color="~set_color" src="watch/set2.svg" />
       <div position="absolute" margin_top="9">
         <label text="${display}" size="24" color="#00050F" weight="bold" />
@@ -64,13 +64,13 @@
           </div>
         </div>
         <div width="100%" flex_direction="row">
-          <Button macro="button_style" _press="::DashToggle">
+          <Button macro="button_style" _press="::DashToggle" tooltip="Toggle dashboard" tooltip_side="top">
             <sprite color="~set_color" width="40" height="40" src="watch/home.svg" />
           </Button>
           <div id="sets">
             <!-- Will populate <Set> tags at runtime -->
           </div>
-          <Button macro="button_style" _press="::EditToggle">
+          <Button macro="button_style" _press="::EditToggle" tooltip="Edit sets" tooltip_side="top">
             <sprite color="~set_color" width="40" height="40" src="watch/edit.svg" />
           </Button>
         </div>
