@@ -70,6 +70,10 @@ struct Args {
     #[arg(long)]
     multi: bool,
 
+    /// Disable desktop access altogether.
+    #[arg(long)]
+    headless: bool,
+
     /// Path to write logs to
     #[arg(short, long, value_name = "FILE_PATH")]
     log_to: Option<String>,
@@ -139,7 +143,7 @@ fn auto_run(running: Arc<AtomicBool>, args: Args) {
     if !args_get_openvr(&args) {
         use crate::backend::openxr::openxr_run;
         tried_xr = true;
-        match openxr_run(running.clone(), args.show) {
+        match openxr_run(running.clone(), args.show, args.headless) {
             Ok(()) => return,
             Err(BackendError::NotSupported) => (),
             Err(e) => {
@@ -153,7 +157,7 @@ fn auto_run(running: Arc<AtomicBool>, args: Args) {
     if !args_get_openxr(&args) {
         use crate::backend::openvr::openvr_run;
         tried_vr = true;
-        match openvr_run(running, args.show) {
+        match openvr_run(running, args.show, args.headless) {
             Ok(()) => return,
             Err(BackendError::NotSupported) => (),
             Err(e) => {

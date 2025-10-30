@@ -59,53 +59,59 @@ impl<T> OverlayContainer<T>
 where
     T: Default,
 {
-    pub fn new(app: &mut AppState) -> anyhow::Result<Self> {
+    pub fn new(app: &mut AppState, headless: bool) -> anyhow::Result<Self> {
         let mut overlays = IdMap::new();
-        let mut wl = create_wl_client();
-
-        let keymap;
+        let mut show_screens = app.session.config.show_screens.clone();
+        let mut wl = None;
+        let mut keymap = None;
 
         app.screens.clear();
-        let data = if let Some(wl) = wl.as_mut() {
-            log::info!("Wayland detected.");
-            keymap = get_keymap_wl()
-                .map_err(|f| log::warn!("Could not load keyboard layout: {f}"))
-                .ok();
-            crate::overlays::screen::create_screens_wayland(wl, app)
+
+        if headless {
+            log::info!("Running in headless mode; keyboard will be en-US");
         } else {
-            log::info!("Wayland not detected, assuming X11.");
-            keymap = get_keymap_x11()
-                .map_err(|f| log::warn!("Could not load keyboard layout: {f}"))
-                .ok();
-            match crate::overlays::screen::create_screens_x11pw(app) {
-                Ok(data) => data,
-                Err(e) => {
-                    log::info!("Will not use X11 PipeWire capture: {e:?}");
-                    crate::overlays::screen::create_screens_xshm(app)?
+            wl = create_wl_client();
+
+            let data = if let Some(wl) = wl.as_mut() {
+                log::info!("Wayland detected.");
+                keymap = get_keymap_wl()
+                    .map_err(|f| log::warn!("Could not load keyboard layout: {f}"))
+                    .ok();
+                crate::overlays::screen::create_screens_wayland(wl, app)
+            } else {
+                log::info!("Wayland not detected, assuming X11.");
+                keymap = get_keymap_x11()
+                    .map_err(|f| log::warn!("Could not load keyboard layout: {f}"))
+                    .ok();
+                match crate::overlays::screen::create_screens_x11pw(app) {
+                    Ok(data) => data,
+                    Err(e) => {
+                        log::info!("Will not use X11 PipeWire capture: {e:?}");
+                        crate::overlays::screen::create_screens_xshm(app)?
+                    }
+                }
+            };
+
+            if show_screens.is_empty() {
+                if let Some((_, s, _)) = data.screens.first() {
+                    show_screens.arc_set(s.name.clone());
                 }
             }
-        };
 
-        let mut show_screens = app.session.config.show_screens.clone();
-        if show_screens.is_empty() {
-            if let Some((_, s, _)) = data.screens.first() {
-                show_screens.arc_set(s.name.clone());
+            for (meta, mut state, backend) in data.screens {
+                if show_screens.arc_get(state.name.as_ref()) {
+                    state.show_hide = true;
+                }
+                overlays.insert(
+                    state.id.0,
+                    OverlayData::<T> {
+                        state,
+                        backend,
+                        ..Default::default()
+                    },
+                );
+                app.screens.push(meta);
             }
-        }
-
-        for (meta, mut state, backend) in data.screens {
-            if show_screens.arc_get(state.name.as_ref()) {
-                state.show_hide = true;
-            }
-            overlays.insert(
-                state.id.0,
-                OverlayData::<T> {
-                    state,
-                    backend,
-                    ..Default::default()
-                },
-            );
-            app.screens.push(meta);
         }
 
         let anchor = create_anchor(app)?;
