@@ -264,9 +264,6 @@ impl WidgetState {
 			// Consider all listeners on this widget, even if we had a Consume.
 			// Store the highest value for return.
 			*call_data.event_result = call_data.event_result.merge(new_result);
-			if !call_data.event_result.can_propagate() {
-				break;
-			}
 		}
 		Ok(())
 	}

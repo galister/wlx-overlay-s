@@ -2,10 +2,11 @@ use std::{
 	any::{Any, TypeId},
 	cell::RefMut,
 	collections::HashSet,
+	ops::Deref,
 };
 
 use glam::Vec2;
-use slotmap::{DenseSlotMap, new_key_type};
+use slotmap::{new_key_type, DenseSlotMap};
 
 use crate::{
 	animation::{self, Animation},
@@ -184,7 +185,7 @@ impl CallbackMetadata {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventListenerKind {
 	MousePress,
 	MouseRelease,

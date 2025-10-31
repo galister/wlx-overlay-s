@@ -69,7 +69,8 @@ pub(super) fn setup_custom_button<S: 'static>(
             _ => return,
         };
 
-        layout.add_event_listener(attribs.widget_id, *kind, callback);
+        let id = layout.add_event_listener(attribs.widget_id, *kind, callback);
+        log::debug!("Registered {action} on {:?} as {id:?}", attribs.widget_id);
     }
 }
 struct ShellButtonMutableState {
