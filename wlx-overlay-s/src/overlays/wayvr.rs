@@ -248,6 +248,8 @@ where
 
         let mut overlay = OverlayWindowData::from_config(OverlayWindowConfig {
             default_state: OverlayWindowState {
+                interactable: true,
+                grabbable: true,
                 curvature: Some(0.15),
                 transform: Affine3A::from_scale_rotation_translation(
                     Vec3::ONE * 2.0,
