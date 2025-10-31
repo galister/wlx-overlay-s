@@ -2,13 +2,13 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use smithay::{
     backend::renderer::{
-        Bind, Color32F, Frame, Renderer,
         element::{
+            surface::{render_elements_from_surface_tree, WaylandSurfaceRenderElement},
             Kind,
-            surface::{WaylandSurfaceRenderElement, render_elements_from_surface_tree},
         },
-        gles::{GlesRenderer, GlesTexture, ffi},
+        gles::{ffi, GlesRenderer, GlesTexture},
         utils::draw_render_elements,
+        Bind, Color32F, Frame, Renderer,
     },
     input,
     utils::{Logical, Point, Rectangle, Size, Transform},
@@ -19,8 +19,8 @@ use wayvr_ipc::packet_server;
 use crate::{backend::wayvr::time::get_millis, gen_id, windowing::OverlayID};
 
 use super::{
-    BlitMethod, WayVRSignal, client::WayVRCompositor, comp::send_frames_surface_tree, egl_data,
-    event_queue::SyncEventQueue, process, smithay_wrapper, time, window,
+    client::WayVRCompositor, comp::send_frames_surface_tree, egl_data, event_queue::SyncEventQueue,
+    process, smithay_wrapper, time, window, BlitMethod, WayVRSignal,
 };
 
 fn generate_auth_key() -> String {
@@ -304,6 +304,7 @@ impl Display {
         }
     }
 
+    #[allow(clippy::significant_drop_tightening)]
     pub fn tick_render(&mut self, renderer: &mut GlesRenderer, time_ms: u64) -> anyhow::Result<()> {
         let mut gles_texture = self.gles_texture.clone();
         let mut target = renderer.bind(&mut gles_texture)?;

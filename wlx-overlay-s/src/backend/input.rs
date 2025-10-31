@@ -287,7 +287,7 @@ pub enum PointerMode {
     Special,
 }
 
-fn update_focus(focus: &mut KeyboardFocus, overlay_keyboard_focus: &Option<KeyboardFocus>) {
+fn update_focus(focus: &mut KeyboardFocus, overlay_keyboard_focus: Option<KeyboardFocus>) {
     if let Some(f) = &overlay_keyboard_focus
         && *focus != *f
     {
@@ -378,7 +378,7 @@ where
     if pointer.now.grab && !pointer.before.grab && hovered_state.grabbable {
         update_focus(
             &mut app.hid_provider.keyboard_focus,
-            &hovered.config.keyboard_focus,
+            hovered.config.keyboard_focus,
         );
         pointer.start_grab(hit.overlay, hovered_state, &mut app.tasks);
         log::debug!("Hand {}: grabbed {}", hit.pointer, hovered.config.name);
@@ -400,7 +400,7 @@ where
         pointer.interaction.clicked_id = Some(hit.overlay);
         update_focus(
             &mut app.hid_provider.keyboard_focus,
-            &hovered.config.keyboard_focus,
+            hovered.config.keyboard_focus,
         );
         hovered.config.backend.on_pointer(app, &hit, true);
     } else if !pointer.now.click && pointer.before.click {
@@ -511,10 +511,10 @@ where
             id,
             &overlay_state.transform,
             overlay_state.curvature.as_ref(),
-        )
-            && hit.dist.is_finite() {
-                hits.push(hit);
-            }
+        ) && hit.dist.is_finite()
+        {
+            hits.push(hit);
+        }
     }
 
     hits.sort_by(|a, b| a.dist.total_cmp(&b.dist));

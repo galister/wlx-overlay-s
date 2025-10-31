@@ -13,10 +13,7 @@ struct BarState {}
 #[allow(clippy::significant_drop_tightening)]
 #[allow(clippy::for_kv_map)] // TODO: remove later
 #[allow(clippy::match_same_arms)] // TODO: remove later
-pub fn create_bar<O>(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig>
-where
-    O: Default,
-{
+pub fn create_bar(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
     let state = BarState {};
     let mut panel = GuiPanel::new_from_template(app, "gui/bar.xml", state, None)?;
 

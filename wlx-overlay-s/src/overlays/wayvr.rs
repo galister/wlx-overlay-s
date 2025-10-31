@@ -356,17 +356,17 @@ fn create_overlay(
         overlay.default_state.positioning = attach_to.get_positioning();
     }
 
-    let rot = if let Some(rot) = &conf_display.rotation {
-        glam::Quat::from_axis_angle(Vec3::from_slice(&rot.axis), f32::to_radians(rot.angle))
-    } else {
-        glam::Quat::IDENTITY
-    };
+    let rot = conf_display
+        .rotation
+        .as_ref()
+        .map_or(glam::Quat::IDENTITY, |rot| {
+            glam::Quat::from_axis_angle(Vec3::from_slice(&rot.axis), f32::to_radians(rot.angle))
+        });
 
-    let pos = if let Some(pos) = &conf_display.pos {
-        Vec3::from_slice(pos)
-    } else {
-        Vec3::NEG_Z
-    };
+    let pos = conf_display
+        .pos
+        .as_ref()
+        .map_or(Vec3::NEG_Z, |pos| Vec3::from_slice(pos));
 
     overlay.default_state.transform = Affine3A::from_rotation_translation(rot, pos);
 
