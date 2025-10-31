@@ -354,7 +354,7 @@ pub fn set_action_manifest(input: &mut InputManager) -> anyhow::Result<()> {
     }
 
     if let Err(e) = input.set_action_manifest(action_path.as_path()) {
-        bail!("Failed to set action manifest: {}", e);
+        bail!("Failed to set action manifest: {e}");
     }
     Ok(())
 }

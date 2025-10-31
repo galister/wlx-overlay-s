@@ -187,7 +187,7 @@ fn get_or_create_display_by_name(
                 .session
                 .wayvr_config
                 .get_display(disp_name)
-                .ok_or_else(|| anyhow::anyhow!("Cannot find display named \"{}\"", disp_name))?
+                .ok_or_else(|| anyhow::anyhow!("Cannot find display named \"{disp_name}\""))?
                 .clone();
 
             let disp_handle = wayvr.data.state.create_display(
@@ -852,7 +852,7 @@ where
         .session
         .wayvr_config
         .get_catalog(catalog_name)
-        .ok_or_else(|| anyhow::anyhow!("Failed to get catalog \"{}\"", catalog_name))?
+        .ok_or_else(|| anyhow::anyhow!("Failed to get catalog \"{catalog_name}\""))?
         .clone();
 
     if let Some(app_entry) = catalog.get_app(app_name) {

@@ -26,7 +26,7 @@ use crate::backend::input::{HoverResult, PointerHit};
 use crate::graphics::CommandBuffers;
 use crate::state::AppState;
 use crate::windowing::backend::{FrameMeta, OverlayBackend, ShouldRender};
-use crate::windowing::window::{OverlayWindowConfig, OverlayWindowData, OverlayWindowState};
+use crate::windowing::window::{OverlayWindowConfig, OverlayWindowData};
 use crate::windowing::Z_ORDER_LINES;
 
 use super::overlay::OpenVrOverlayData;
@@ -85,9 +85,7 @@ impl LinePool {
             },
             ..OverlayWindowData::from_config(OverlayWindowConfig {
                 name: Arc::from(format!("wlx-line{id}")),
-                default_state: OverlayWindowState {
-                    ..Default::default()
-                },
+                default_state: Default::default(),
                 z_order: Z_ORDER_LINES,
                 ..OverlayWindowConfig::from_backend(Box::new(LineBackend {
                     view: self.view.clone(),

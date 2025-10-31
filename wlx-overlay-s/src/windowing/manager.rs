@@ -77,7 +77,7 @@ where
             .and_then(|s| s.overlays.get(keyboard_id))
             .unwrap()
             .clone();
-        for set in me.sets.iter_mut() {
+        for set in &mut me.sets {
             set.overlays.insert(keyboard_id, kbd_state.clone());
         }
 
@@ -151,8 +151,8 @@ impl<T> OverlayWindowManager<T> {
         if overlay.config.show_on_spawn {
             overlay.config.activate(app);
         }
-        let id = self.overlays.insert(overlay);
-        id
+        
+        self.overlays.insert(overlay)
     }
 
     pub fn switch_or_toggle_set(&mut self, app: &mut AppState, set: usize) {

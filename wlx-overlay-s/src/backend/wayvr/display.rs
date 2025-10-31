@@ -576,9 +576,7 @@ impl Display {
             Ok(child) => Ok(SpawnProcessResult { auth_key, child }),
             Err(e) => {
                 anyhow::bail!(
-                    "Failed to launch process with path \"{}\": {}. Make sure your exec path exists.",
-                    exec_path,
-                    e
+                    "Failed to launch process with path \"{exec_path}\": {e}. Make sure your exec path exists."
                 );
             }
         }

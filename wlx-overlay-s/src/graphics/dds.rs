@@ -96,6 +96,6 @@ pub fn dds_to_vk(dds_fmt: ImageFormat) -> anyhow::Result<Format> {
         // BPTC
         ImageFormat::BC7RgbaUnorm => Ok(Format::BC7_UNORM_BLOCK),
         ImageFormat::BC7RgbaUnormSrgb => Ok(Format::BC7_SRGB_BLOCK),
-        _ => anyhow::bail!("Unsupported format {:?}", dds_fmt),
+        _ => anyhow::bail!("Unsupported format {dds_fmt:?}"),
     }
 }

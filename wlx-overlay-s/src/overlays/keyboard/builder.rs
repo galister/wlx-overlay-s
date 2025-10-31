@@ -168,7 +168,7 @@ pub fn create_keyboard(
                 params,
             )?;
 
-            if let Some(widget_id) = gui_state_key.get_widget_id(&*my_id).ok() {
+            if let Ok(widget_id) = gui_state_key.get_widget_id(&my_id) {
                 let key_state = {
                     let rect = panel
                         .layout

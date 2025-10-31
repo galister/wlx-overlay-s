@@ -88,8 +88,7 @@ impl OverlayWindowData<OpenVrOverlayData> {
             .config
             .active_state
             .as_ref()
-            .map(|x| x.alpha > 0.05)
-            .unwrap_or(false);
+            .is_some_and(|x| x.alpha > 0.05);
 
         if want_visible && !self.data.visible {
             self.show_internal(overlay, app)?;

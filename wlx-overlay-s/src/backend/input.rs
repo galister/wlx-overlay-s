@@ -479,7 +479,7 @@ fn handle_scroll<O>(hit: &PointerHit, hovered: &mut OverlayWindowData<O>, app: &
             hovered
                 .config
                 .backend
-                .on_scroll(app, &hit, scroll_y, scroll_x);
+                .on_scroll(app, hit, scroll_y, scroll_x);
         }
     }
 }
@@ -511,11 +511,10 @@ where
             id,
             &overlay_state.transform,
             overlay_state.curvature.as_ref(),
-        ) {
-            if hit.dist.is_finite() {
+        )
+            && hit.dist.is_finite() {
                 hits.push(hit);
             }
-        }
     }
 
     hits.sort_by(|a, b| a.dist.total_cmp(&b.dist));
@@ -657,7 +656,7 @@ fn ray_test(
     let (dist, local_pos) = curvature.map_or_else(
         || {
             Some(raycast_plane(
-                &ray_origin,
+                ray_origin,
                 Vec3A::NEG_Z,
                 overlay_pose,
                 Vec3A::NEG_Z,

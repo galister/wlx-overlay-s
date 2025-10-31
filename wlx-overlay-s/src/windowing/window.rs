@@ -34,10 +34,10 @@ pub enum Positioning {
 }
 
 impl Positioning {
-    pub fn moves_with_space(&self) -> bool {
+    pub const fn moves_with_space(&self) -> bool {
         matches!(
             self,
-            Positioning::Floating | Positioning::Anchored | Positioning::Static
+            Self::Floating | Self::Anchored | Self::Static
         )
     }
 }

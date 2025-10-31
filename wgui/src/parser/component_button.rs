@@ -1,5 +1,5 @@
 use crate::{
-	components::{self, Component, button, tooltip},
+	components::{Component, button, tooltip},
 	drawing::Color,
 	i18n::Translation,
 	layout::WidgetID,

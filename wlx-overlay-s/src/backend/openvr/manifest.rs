@@ -53,14 +53,12 @@ pub(super) fn install_manifest(app_mgr: &mut ApplicationsManager) -> anyhow::Res
     };
 
     let Ok(mut file) = File::create(&manifest_path) else {
-        bail!("Failed to create manifest file at {:?}", manifest_path);
+        bail!("Failed to create manifest file at {manifest_path:?}");
     };
 
     if let Err(e) = manifest.write(&mut file) {
         bail!(
-            "Failed to write manifest file at {:?}: {:?}",
-            manifest_path,
-            e
+            "Failed to write manifest file at {manifest_path:?}: {e:?}"
         );
     }
 

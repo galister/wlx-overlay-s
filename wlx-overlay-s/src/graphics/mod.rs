@@ -310,7 +310,7 @@ pub fn init_openxr_graphics(
         .descriptor_binding_sampled_image_update_after_bind(true);
 
     dynamic_rendering.p_next = device_create_info.p_next.cast_mut();
-    indexing_features.p_next = &raw mut dynamic_rendering as *mut c_void;
+    indexing_features.p_next = (&raw mut dynamic_rendering).cast::<c_void>();
     device_create_info.p_next = &raw mut indexing_features as *const c_void;
 
     let (device, queues) = unsafe {

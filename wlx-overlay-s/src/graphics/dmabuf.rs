@@ -347,6 +347,6 @@ pub fn fourcc_to_vk(fourcc: FourCC) -> anyhow::Result<Format> {
         DRM_FORMAT_ABGR8888 | DRM_FORMAT_XBGR8888 => Ok(Format::R8G8B8A8_UNORM),
         DRM_FORMAT_ARGB8888 | DRM_FORMAT_XRGB8888 => Ok(Format::B8G8R8A8_UNORM),
         DRM_FORMAT_ABGR2101010 | DRM_FORMAT_XBGR2101010 => Ok(Format::A2B10G10R10_UNORM_PACK32),
-        _ => anyhow::bail!("Unsupported format {}", fourcc),
+        _ => anyhow::bail!("Unsupported format {fourcc}"),
     }
 }

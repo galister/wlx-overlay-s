@@ -783,7 +783,7 @@ fn parse_widget_universal(ctx: &mut ParserContext, widget_id: WidgetID, attribs:
 				ctx.insert_id(&pair.value, widget_id);
 			}
 			"interactable" => {
-				if let Ok(0) = &pair.value.parse::<i32>() {
+				if matches!(&pair.value.parse::<i32>(), Ok(0)) {
 					log::info!("setting {widget_id:?} to noninteractable.");
 					ctx.layout.state.widgets.get(widget_id).unwrap().state().interactable = false;
 				} else {

@@ -619,7 +619,7 @@ impl WayVRServer {
             .nonblocking(local_socket::ListenerNonblockingMode::Both);
         let listener = match opts.create_sync() {
             Ok(listener) => listener,
-            Err(e) => anyhow::bail!("Failed to start WayVRServer IPC listener. Reason: {}", e),
+            Err(e) => anyhow::bail!("Failed to start WayVRServer IPC listener. Reason: {e}"),
         };
 
         log::info!("WayVRServer IPC running at {printname}");

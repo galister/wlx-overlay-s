@@ -275,7 +275,7 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
             pos: hit.uv * self.layout.content_size,
             device: hit.pointer,
         });
-        let result = self.push_event(app, &e);
+        let result = self.push_event(app, e);
 
         HoverResult {
             consume: result != EventResult::NoHit,

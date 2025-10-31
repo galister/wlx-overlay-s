@@ -40,6 +40,6 @@ impl AudioOutput {
                 return;
             }
         };
-        let _ = handle.mixer().add(source);
+        let () = handle.mixer().add(source);
     }
 }

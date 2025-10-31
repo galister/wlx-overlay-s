@@ -125,8 +125,7 @@ impl OverlayWindowData<OpenXrOverlayData> {
             .config
             .active_state
             .as_ref()
-            .map(|x| x.alpha > 0.05)
-            .unwrap_or(false);
+            .is_some_and(|x| x.alpha > 0.05);
 
         if self.data.last_visible != want_visible {
             if want_visible {

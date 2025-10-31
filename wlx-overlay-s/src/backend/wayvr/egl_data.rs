@@ -56,7 +56,7 @@ fn load_egl_func(
 ) -> anyhow::Result<extern "system" fn()> {
     let raw_fn = egl
         .get_proc_address(func_name)
-        .ok_or_else(|| anyhow::anyhow!("Required EGL function {} not found", func_name))?;
+        .ok_or_else(|| anyhow::anyhow!("Required EGL function {func_name} not found"))?;
     Ok(raw_fn)
 }
 
