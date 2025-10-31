@@ -11,11 +11,11 @@ use wgui::{
 };
 
 use crate::{
-    backend::input::{Haptics, PointerHit},
+    backend::input::{HoverResult, PointerHit},
     graphics::CommandBuffers,
     gui::panel::GuiPanel,
     state::AppState,
-    subsystem::hid::{ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey},
+    subsystem::hid::{KeyModifier, VirtualKey, ALT, CTRL, META, SHIFT, SUPER},
     windowing::backend::{FrameMeta, OverlayBackend, ShouldRender},
 };
 
@@ -75,7 +75,7 @@ impl OverlayBackend for KeyboardBackend {
     fn on_left(&mut self, app: &mut AppState, pointer: usize) {
         self.panel.on_left(app, pointer);
     }
-    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
+    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> HoverResult {
         self.panel.on_hover(app, hit)
     }
     fn get_interaction_transform(&mut self) -> Option<glam::Affine2> {

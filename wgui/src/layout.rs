@@ -8,14 +8,14 @@ use std::{
 use crate::{
 	animation::Animations,
 	components::{Component, InitData},
-	drawing::{self, ANSI_BOLD_CODE, ANSI_RESET_CODE, Boundary, push_scissor_stack, push_transform_stack},
+	drawing::{self, push_scissor_stack, push_transform_stack, Boundary, ANSI_BOLD_CODE, ANSI_RESET_CODE},
 	event::{self, CallbackDataCommon, EventAlterables},
 	globals::WguiGlobals,
-	widget::{self, EventParams, EventResult, WidgetObj, WidgetState, div::WidgetDiv},
+	widget::{self, div::WidgetDiv, EventParams, EventResult, WidgetObj, WidgetState},
 };
 
-use glam::{Vec2, vec2};
-use slotmap::{HopSlotMap, SecondaryMap, new_key_type};
+use glam::{vec2, Vec2};
+use slotmap::{new_key_type, HopSlotMap, SecondaryMap};
 use taffy::{NodeId, TaffyTree, TraversePartialTree};
 
 new_key_type! {
@@ -328,26 +328,21 @@ impl Layout {
 		)
 	}
 
-	fn push_event_children<U1: 'static, U2: 'static>(
+	fn push_event_children<'a, U1: 'static, U2: 'static>(
 		&self,
 		parent_node_id: taffy::NodeId,
 		event: &event::Event,
+		event_result: &mut EventResult,
 		alterables: &mut EventAlterables,
-		user_data: &mut (&mut U1, &mut U2),
+		user_data: &mut (&'a mut U1, &'a mut U2),
 		reverse: bool,
-	) -> anyhow::Result<EventResult> {
-		let mut event_result = EventResult::Pass;
-
+	) -> anyhow::Result<()> {
 		let count = self.state.tree.child_count(parent_node_id);
 
 		let mut iter = |idx: usize| -> anyhow::Result<bool> {
 			let child_id = self.state.tree.get_child_id(parent_node_id, idx);
-			let child_result = self.push_event_widget(child_id, event, alterables, user_data, false)?;
-			if child_result != EventResult::Pass {
-				event_result = child_result;
-				return Ok(true);
-			}
-			Ok(false)
+			self.push_event_widget(child_id, event, event_result, alterables, user_data, false)?;
+			Ok(!event_result.can_propagate())
 		};
 
 		if reverse {
@@ -364,17 +359,18 @@ impl Layout {
 			}
 		}
 
-		Ok(event_result)
+		Ok(())
 	}
 
-	fn push_event_widget<U1: 'static, U2: 'static>(
+	fn push_event_widget<'a, U1: 'static, U2: 'static>(
 		&self,
 		node_id: taffy::NodeId,
 		event: &event::Event,
+		event_result: &mut EventResult,
 		alterables: &mut EventAlterables,
-		user_data: &mut (&mut U1, &mut U2),
+		user_data: &mut (&'a mut U1, &'a mut U2),
 		is_root_node: bool,
-	) -> anyhow::Result<EventResult> {
+	) -> anyhow::Result<()> {
 		let l = self.state.tree.layout(node_id)?;
 		let Some(widget_id) = self.state.tree.get_node_context(node_id).copied() else {
 			anyhow::bail!("invalid widget ID");
@@ -410,9 +406,9 @@ impl Layout {
 		let reverse_iter = is_root_node;
 
 		// check children first
-		let mut evt_result = self.push_event_children(node_id, event, alterables, user_data, reverse_iter)?;
+		self.push_event_children(node_id, event, event_result, alterables, user_data, reverse_iter)?;
 
-		if evt_result == EventResult::Pass {
+		if event_result.can_propagate() {
 			let mut params = EventParams {
 				state: &self.state,
 				layout: l,
@@ -421,10 +417,7 @@ impl Layout {
 				style,
 			};
 
-			let this_evt_result = widget.process_event(widget_id, node_id, event, user_data, &mut params)?;
-			if this_evt_result != EventResult::Pass {
-				evt_result = this_evt_result;
-			}
+			widget.process_event(widget_id, node_id, event, event_result, user_data, &mut params)?;
 		}
 
 		if scissor_pushed {
@@ -432,7 +425,7 @@ impl Layout {
 		}
 		alterables.transform_stack.pop();
 
-		Ok(evt_result)
+		Ok(())
 	}
 
 	pub const fn check_toggle_needs_redraw(&mut self) -> bool {
@@ -458,12 +451,19 @@ impl Layout {
 		event: &event::Event,
 		user1: &mut U1,
 		user2: &mut U2,
-	) -> anyhow::Result<()> {
+	) -> anyhow::Result<EventResult> {
 		let mut alterables = EventAlterables::default();
-		let _event_result =
-			self.push_event_widget(self.tree_root_node, event, &mut alterables, &mut (user1, user2), true)?;
+		let mut event_result = EventResult::NoHit;
+		self.push_event_widget(
+			self.tree_root_node,
+			event,
+			&mut event_result,
+			&mut alterables,
+			&mut (user1, user2),
+			true,
+		)?;
 		self.process_alterables(alterables)?;
-		Ok(())
+		Ok(event_result)
 	}
 
 	pub fn new(globals: WguiGlobals, params: &LayoutParams) -> anyhow::Result<Self> {
@@ -485,7 +485,10 @@ impl Layout {
 			&mut state.widgets,
 			&mut state.nodes,
 			None, // no parent
-			WidgetDiv::create(),
+			WidgetState {
+				interactable: false,
+				..WidgetDiv::create()
+			},
 			taffy::Style {
 				size,
 				..Default::default()
@@ -497,7 +500,10 @@ impl Layout {
 			&mut state.widgets,
 			&mut state.nodes,
 			Some(tree_root_node),
-			WidgetDiv::create(),
+			WidgetState {
+				interactable: false,
+				..WidgetDiv::create()
+			},
 			taffy::Style {
 				size,
 				..Default::default()

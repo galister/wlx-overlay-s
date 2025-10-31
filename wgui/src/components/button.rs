@@ -1,6 +1,6 @@
 use crate::{
 	animation::{Animation, AnimationEasing},
-	components::{self, Component, ComponentBase, ComponentTrait, InitData, tooltip::ComponentTooltip},
+	components::{self, tooltip::ComponentTooltip, Component, ComponentBase, ComponentTrait, InitData},
 	drawing::{self, Boundary, Color},
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerID, EventListenerKind},
 	i18n::Translation,
@@ -10,10 +10,10 @@ use crate::{
 		util::centered_matrix,
 	},
 	widget::{
-		ConstructEssentials, EventResult, WidgetData,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
+		ConstructEssentials, EventResult, WidgetData,
 	},
 };
 use glam::{Mat4, Vec3};

@@ -8,7 +8,7 @@ mod widget_rectangle;
 mod widget_sprite;
 
 use crate::{
-	assets::{AssetPath, AssetPathOwned, normalize_path},
+	assets::{normalize_path, AssetPath, AssetPathOwned},
 	components::{Component, ComponentWeak},
 	drawing::{self},
 	globals::WguiGlobals,
@@ -781,6 +781,14 @@ fn parse_widget_universal(ctx: &mut ParserContext, widget_id: WidgetID, attribs:
 			"id" => {
 				// Attach a specific widget to name-ID map (just like getElementById)
 				ctx.insert_id(&pair.value, widget_id);
+			}
+			"interactable" => {
+				if let Ok(0) = &pair.value.parse::<i32>() {
+					log::info!("setting {widget_id:?} to noninteractable.");
+					ctx.layout.state.widgets.get(widget_id).unwrap().state().interactable = false;
+				} else {
+					print_invalid_attrib(&pair.attrib, &pair.value);
+				}
 			}
 			_ => {}
 		}

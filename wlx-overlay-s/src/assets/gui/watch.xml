@@ -35,7 +35,7 @@
   </template>
 
   <elements>
-    <div width="400" height="200">
+    <div width="460" height="260" padding="30" interactable="0">
       <rectangle width="100%" height="100%" padding="4" box_sizing="content_box" flex_wrap="wrap" flex_direction="column" gap="4" color="~bg_color">
         <div width="100%" flex_direction="row">
           <Device src="watch/hmd.svg" size="40" device="0" />
@@ -64,13 +64,13 @@
           </div>
         </div>
         <div width="100%" flex_direction="row">
-          <Button macro="button_style" _press="::DashToggle" tooltip="Toggle dashboard" tooltip_side="top">
+          <Button macro="button_style" _press="::DashToggle" tooltip="Dashboard" tooltip_side="top">
             <sprite color="~set_color" width="40" height="40" src="watch/home.svg" />
           </Button>
           <div id="sets">
             <!-- Will populate <Set> tags at runtime -->
           </div>
-          <Button macro="button_style" _press="::EditToggle" tooltip="Edit sets" tooltip_side="top">
+          <Button macro="button_style" _press="::EditToggle" tooltip="Edit mode" tooltip_side="top">
             <sprite color="~set_color" width="40" height="40" src="watch/edit.svg" />
           </Button>
         </div>

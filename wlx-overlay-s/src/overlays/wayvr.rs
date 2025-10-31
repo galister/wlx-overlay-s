@@ -17,7 +17,7 @@ use wlx_capture::frame::{DmabufFrame, FourCC, FrameFormat, FramePlane};
 
 use crate::{
     backend::{
-        input::{self},
+        input::{self, HoverResult},
         task::TaskType,
         wayvr::{
             self, display,
@@ -716,11 +716,7 @@ impl OverlayBackend for WayVRBackend {
         })
     }
 
-    fn on_hover(
-        &mut self,
-        _app: &mut state::AppState,
-        hit: &input::PointerHit,
-    ) -> Option<input::Haptics> {
+    fn on_hover(&mut self, _app: &mut state::AppState, hit: &input::PointerHit) -> HoverResult {
         let ctx = self.context.borrow();
 
         let wayvr = &mut ctx.wayvr.borrow_mut();
@@ -737,7 +733,10 @@ impl OverlayBackend for WayVRBackend {
                 .send_mouse_move(ctx.display, x as u32, y as u32);
         }
 
-        wayvr.pending_haptics.take()
+        HoverResult {
+            haptics: wayvr.pending_haptics.take(),
+            consume: true,
+        }
     }
 
     fn on_left(&mut self, _app: &mut state::AppState, _pointer: usize) {

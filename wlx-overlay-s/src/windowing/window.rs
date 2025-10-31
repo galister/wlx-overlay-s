@@ -63,10 +63,7 @@ where
     }
 }
 
-impl<T> OverlayWindowData<T>
-where
-    T: Default,
-{
+impl<T> OverlayWindowData<T> {
     pub fn init(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         //TODO: load state?
 

@@ -15,6 +15,13 @@ use crate::windowing::{OverlayID, OverlaySelector};
 
 use super::task::{TaskContainer, TaskType};
 
+#[derive(Clone, Default)]
+pub struct HoverResult {
+    pub haptics: Option<Haptics>,
+    /// If true, the laster shows at this position and no further raycasting will be done.
+    pub consume: bool,
+}
+
 pub struct TrackedDevice {
     pub soc: Option<f32>,
     pub charging: bool,
@@ -307,7 +314,6 @@ where
     }
 }
 
-#[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
 fn interact_hand<O>(
     idx: usize,
     overlays: &mut OverlayWindowManager<O>,
@@ -316,6 +322,7 @@ fn interact_hand<O>(
 where
     O: Default,
 {
+    // already grabbing, ignore everything else
     let mut pointer = &mut app.input_state.pointers[idx];
     if let Some(grab_data) = pointer.interaction.grabbed {
         if let Some(grabbed) = overlays.mut_by_id(grab_data.grabbed_id) {
@@ -327,45 +334,29 @@ where
         return (0.1, None);
     }
 
-    let Some(mut hit) = pointer.get_nearest_hit(overlays) else {
-        if let Some(hovered_id) = pointer.interaction.hovered_id.take() {
-            if let Some(hovered) = overlays.mut_by_id(hovered_id) {
-                hovered.config.backend.on_left(app, idx);
-            }
-            pointer = &mut app.input_state.pointers[idx];
-            pointer.interaction.hovered_id = None;
-        }
-        if !pointer.now.click
-            && pointer.before.click
-            && let Some(clicked_id) = pointer.interaction.clicked_id.take()
-            && let Some(clicked) = overlays.mut_by_id(clicked_id)
-        {
-            let hit = PointerHit {
-                pointer: pointer.idx,
-                overlay: clicked_id,
-                mode: pointer.interaction.mode,
-                ..Default::default()
-            };
-            clicked.config.backend.on_pointer(app, &hit, false);
-        }
+    let hovered_id = pointer.interaction.hovered_id.take();
+    let (Some(mut hit), haptics) = get_nearest_hit(idx, overlays, app) else {
+        handle_no_hit(idx, hovered_id, overlays, app);
         return (0.0, None); // no hit
     };
 
-    if let Some(hovered_id) = pointer.interaction.hovered_id
+    // focus change
+    if let Some(hovered_id) = hovered_id
         && hovered_id != hit.overlay
         && let Some(old_hovered) = overlays.mut_by_id(hovered_id)
     {
-        if Some(pointer.idx) == old_hovered.primary_pointer {
+        if old_hovered.primary_pointer.is_some_and(|i| i == idx) {
             old_hovered.primary_pointer = None;
         }
+        log::debug!("{} on_left (focus changed)", old_hovered.config.name);
         old_hovered.config.backend.on_left(app, idx);
-        pointer = &mut app.input_state.pointers[idx];
     }
+
     let Some(hovered) = overlays.mut_by_id(hit.overlay) else {
         log::warn!("Hit overlay {:?} does not exist", hit.overlay);
         return (0.0, None); // no hit
     };
-
+    pointer = &mut app.input_state.pointers[idx];
     pointer.interaction.hovered_id = Some(hit.overlay);
 
     if let Some(primary_pointer) = hovered.primary_pointer {
@@ -383,6 +374,7 @@ where
 
     let hovered_state = hovered.config.active_state.as_mut().unwrap();
 
+    // grab
     if pointer.now.grab && !pointer.before.grab && hovered_state.grabbable {
         update_focus(
             &mut app.hid_provider.keyboard_focus,
@@ -400,16 +392,68 @@ where
         );
     }
 
-    // Pass mouse motion events only if not scrolling
-    // (allows scrolling on all Chromium-based applications)
-    let haptics = hovered.config.backend.on_hover(app, &hit);
+    handle_scroll(&hit, hovered, app);
 
-    pointer = &mut app.input_state.pointers[idx];
+    // click / release
+    let pointer = &mut app.input_state.pointers[hit.pointer];
+    if pointer.now.click && !pointer.before.click {
+        pointer.interaction.clicked_id = Some(hit.overlay);
+        update_focus(
+            &mut app.hid_provider.keyboard_focus,
+            &hovered.config.keyboard_focus,
+        );
+        hovered.config.backend.on_pointer(app, &hit, true);
+    } else if !pointer.now.click && pointer.before.click {
+        // send release event to overlay that was originally clicked
+        if let Some(clicked_id) = pointer.interaction.clicked_id.take() {
+            if let Some(clicked) = overlays.mut_by_id(clicked_id) {
+                clicked.config.backend.on_pointer(app, &hit, false);
+            }
+        } else {
+            hovered.config.backend.on_pointer(app, &hit, false);
+        }
+    }
 
+    (hit.dist, haptics)
+}
+
+fn handle_no_hit<O>(
+    pointer_idx: usize,
+    hovered_id: Option<OverlayID>,
+    overlays: &mut OverlayWindowManager<O>,
+    app: &mut AppState,
+) {
+    if let Some(hovered_id) = hovered_id
+        && let Some(hovered) = overlays.mut_by_id(hovered_id)
+    {
+        log::debug!("{} on_left (no hit)", hovered.config.name);
+        hovered.config.backend.on_left(app, pointer_idx);
+    }
+
+    // in case click released while not aiming at anything
+    // send release event to overlay that was originally clicked
+    let pointer = &mut app.input_state.pointers[pointer_idx];
+    if !pointer.now.click
+        && pointer.before.click
+        && let Some(clicked_id) = pointer.interaction.clicked_id.take()
+        && let Some(clicked) = overlays.mut_by_id(clicked_id)
+    {
+        let hit = PointerHit {
+            pointer: pointer.idx,
+            overlay: clicked_id,
+            mode: pointer.interaction.mode,
+            ..Default::default()
+        };
+        clicked.config.backend.on_pointer(app, &hit, false);
+    }
+}
+
+fn handle_scroll<O>(hit: &PointerHit, hovered: &mut OverlayWindowData<O>, app: &mut AppState) {
+    let pointer = &mut app.input_state.pointers[hit.pointer];
     if pointer.now.scroll_x.abs() > 0.1 || pointer.now.scroll_y.abs() > 0.1 {
         let scroll_x = pointer.now.scroll_x;
         let scroll_y = pointer.now.scroll_y;
-        if app.input_state.pointers[1 - idx]
+        if app.input_state.pointers[1 - hit.pointer]
             .interaction
             .grabbed
             .is_some_and(|x| x.grabbed_id == hit.overlay)
@@ -437,87 +481,81 @@ where
                 .backend
                 .on_scroll(app, &hit, scroll_y, scroll_x);
         }
-        pointer = &mut app.input_state.pointers[idx];
     }
-
-    if pointer.now.click && !pointer.before.click {
-        pointer.interaction.clicked_id = Some(hit.overlay);
-        update_focus(
-            &mut app.hid_provider.keyboard_focus,
-            &hovered.config.keyboard_focus,
-        );
-        hovered.config.backend.on_pointer(app, &hit, true);
-    } else if !pointer.now.click && pointer.before.click {
-        if let Some(clicked_id) = pointer.interaction.clicked_id.take() {
-            if let Some(clicked) = overlays.mut_by_id(clicked_id) {
-                clicked.config.backend.on_pointer(app, &hit, false);
-            }
-        } else {
-            hovered.config.backend.on_pointer(app, &hit, false);
-        }
-    }
-    (hit.dist, haptics)
 }
 
-impl Pointer {
-    fn get_nearest_hit<O>(&mut self, overlays: &mut OverlayWindowManager<O>) -> Option<PointerHit>
-    where
-        O: Default,
-    {
-        let mut hits: SmallVec<[RayHit; 8]> = smallvec!();
+fn get_nearest_hit<O>(
+    pointer_idx: usize,
+    overlays: &mut OverlayWindowManager<O>,
+    app: &mut AppState,
+) -> (Option<PointerHit>, Option<Haptics>)
+where
+    O: Default,
+{
+    let pointer = &mut app.input_state.pointers[pointer_idx];
+    let ray_origin = pointer.pose;
+    let mode = pointer.interaction.mode;
 
-        for (id, overlay) in overlays.iter() {
-            let Some(overlay_state) = overlay.config.active_state.as_ref() else {
-                continue;
-            };
-            if !overlay_state.interactable {
-                continue;
-            }
+    let mut hits: SmallVec<[RayHit; 8]> = smallvec!();
 
-            if let Some(hit) = self.ray_test(
-                id,
-                &overlay_state.transform,
-                overlay_state.curvature.as_ref(),
-            ) {
-                if hit.dist.is_infinite() || hit.dist.is_nan() {
-                    continue;
-                }
+    for (id, overlay) in overlays.iter() {
+        let Some(overlay_state) = overlay.config.active_state.as_ref() else {
+            continue;
+        };
+        if !overlay_state.interactable {
+            continue;
+        }
+
+        if let Some(hit) = ray_test(
+            &ray_origin,
+            id,
+            &overlay_state.transform,
+            overlay_state.curvature.as_ref(),
+        ) {
+            if hit.dist.is_finite() {
                 hits.push(hit);
             }
         }
-
-        hits.sort_by(|a, b| a.dist.total_cmp(&b.dist));
-
-        for hit in &hits {
-            let overlay = overlays.mut_by_id(hit.overlay).unwrap(); // safe because we just got the id from the overlay
-
-            let Some(uv) = overlay
-                .config
-                .backend
-                .as_mut()
-                .get_interaction_transform()
-                .map(|a| a.transform_point2(hit.local_pos))
-            else {
-                continue;
-            };
-
-            if uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 {
-                continue;
-            }
-
-            return Some(PointerHit {
-                pointer: self.idx,
-                overlay: hit.overlay,
-                mode: self.interaction.mode,
-                primary: false,
-                uv,
-                dist: hit.dist,
-            });
-        }
-
-        None
     }
 
+    hits.sort_by(|a, b| a.dist.total_cmp(&b.dist));
+
+    for hit in &hits {
+        let overlay = overlays.mut_by_id(hit.overlay).unwrap(); // safe because we just got the id from the overlay
+
+        let Some(uv) = overlay
+            .config
+            .backend
+            .as_mut()
+            .get_interaction_transform()
+            .map(|a| a.transform_point2(hit.local_pos))
+        else {
+            continue;
+        };
+
+        if uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 {
+            continue;
+        }
+
+        let hit = PointerHit {
+            pointer: pointer_idx,
+            overlay: hit.overlay,
+            mode,
+            primary: false,
+            uv,
+            dist: hit.dist,
+        };
+
+        let result = overlay.config.backend.on_hover(app, &hit);
+        if result.consume {
+            return (Some(hit), result.haptics);
+        }
+    }
+
+    (None, None)
+}
+
+impl Pointer {
     fn start_grab(
         &mut self,
         id: OverlayID,
@@ -608,37 +646,37 @@ impl Pointer {
             log::debug!("Hand {}: dropped {}", idx, overlay.config.name);
         }
     }
+}
 
-    fn ray_test(
-        &self,
-        overlay: OverlayID,
-        transform: &Affine3A,
-        curvature: Option<&f32>,
-    ) -> Option<RayHit> {
-        let (dist, local_pos) = curvature.map_or_else(
-            || {
-                Some(raycast_plane(
-                    &self.pose,
-                    Vec3A::NEG_Z,
-                    transform,
-                    Vec3A::NEG_Z,
-                ))
-            },
-            |curvature| raycast_cylinder(&self.pose, Vec3A::NEG_Z, transform, *curvature),
-        )?;
+fn ray_test(
+    ray_origin: &Affine3A,
+    overlay: OverlayID,
+    overlay_pose: &Affine3A,
+    curvature: Option<&f32>,
+) -> Option<RayHit> {
+    let (dist, local_pos) = curvature.map_or_else(
+        || {
+            Some(raycast_plane(
+                &ray_origin,
+                Vec3A::NEG_Z,
+                overlay_pose,
+                Vec3A::NEG_Z,
+            ))
+        },
+        |curvature| raycast_cylinder(ray_origin, Vec3A::NEG_Z, overlay_pose, *curvature),
+    )?;
 
-        if dist < 0.0 {
-            // hit is behind us
-            return None;
-        }
-
-        Some(RayHit {
-            overlay,
-            global_pos: self.pose.transform_point3a(Vec3A::NEG_Z * dist),
-            local_pos,
-            dist,
-        })
+    if dist < 0.0 {
+        // hit is behind us
+        return None;
     }
+
+    Some(RayHit {
+        overlay,
+        global_pos: ray_origin.transform_point3a(Vec3A::NEG_Z * dist),
+        local_pos,
+        dist,
+    })
 }
 
 fn raycast_plane(

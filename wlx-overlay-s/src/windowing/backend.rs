@@ -3,7 +3,7 @@ use std::sync::Arc;
 use vulkano::{format::Format, image::view::ImageView};
 
 use crate::{
-    backend::input::{Haptics, PointerHit},
+    backend::input::{HoverResult, PointerHit},
     graphics::CommandBuffers,
     state::AppState,
 };
@@ -48,7 +48,7 @@ pub trait OverlayBackend {
     /// Must be true if should_render was also true on the same frame.
     fn frame_meta(&mut self) -> Option<FrameMeta>;
 
-    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> Option<Haptics>;
+    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> HoverResult;
     fn on_left(&mut self, app: &mut AppState, pointer: usize);
     fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool);
     fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32);

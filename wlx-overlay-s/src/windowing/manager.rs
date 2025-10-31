@@ -91,7 +91,9 @@ where
 
         Ok(me)
     }
+}
 
+impl<T> OverlayWindowManager<T> {
     pub fn mut_by_selector(
         &mut self,
         selector: &OverlaySelector,

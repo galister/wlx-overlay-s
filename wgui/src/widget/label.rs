@@ -10,7 +10,7 @@ use crate::{
 	globals::Globals,
 	i18n::{I18n, Translation},
 	layout::WidgetID,
-	renderer_vk::text::{FONT_SYSTEM, TextStyle},
+	renderer_vk::text::{TextStyle, FONT_SYSTEM},
 };
 
 use super::{WidgetObj, WidgetState};

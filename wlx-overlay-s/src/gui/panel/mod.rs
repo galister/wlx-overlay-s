@@ -15,11 +15,11 @@ use wgui::{
     layout::{Layout, LayoutParams, WidgetID},
     parser::ParserState,
     renderer_vk::context::Context as WguiContext,
-    widget::{label::WidgetLabel, rectangle::WidgetRectangle},
+    widget::{label::WidgetLabel, rectangle::WidgetRectangle, EventResult},
 };
 
 use crate::{
-    backend::input::{Haptics, PointerHit, PointerMode},
+    backend::input::{Haptics, HoverResult, PointerHit, PointerMode},
     graphics::{CommandBuffers, ExtentExt},
     state::AppState,
     windowing::backend::{ui_transform, FrameMeta, OverlayBackend, ShouldRender},
@@ -150,9 +150,13 @@ impl<S: 'static> GuiPanel<S> {
         self.layout.update(MAX_SIZE_VEC2, 0.0)
     }
 
-    pub fn push_event(&mut self, app: &mut AppState, event: &WguiEvent) {
-        if let Err(e) = self.layout.push_event(event, app, &mut self.state) {
-            log::error!("Failed to push event: {e:?}");
+    pub fn push_event(&mut self, app: &mut AppState, event: &WguiEvent) -> EventResult {
+        match self.layout.push_event(event, app, &mut self.state) {
+            Ok(r) => r,
+            Err(e) => {
+                log::error!("Failed to push event: {e:?}");
+                EventResult::NoHit
+            }
         }
     }
 
@@ -266,23 +270,28 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
         self.push_event(app, &e);
     }
 
-    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
+    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> HoverResult {
         let e = &WguiEvent::MouseMotion(MouseMotionEvent {
             pos: hit.uv * self.layout.content_size,
             device: hit.pointer,
         });
-        self.push_event(app, &e);
+        let result = self.push_event(app, &e);
 
-        self.layout
-            .check_toggle_haptics_triggered()
-            .then_some(Haptics {
-                intensity: 0.1,
-                duration: 0.01,
-                frequency: 5.0,
-            })
+        HoverResult {
+            consume: result != EventResult::NoHit,
+            haptics: self
+                .layout
+                .check_toggle_haptics_triggered()
+                .then_some(Haptics {
+                    intensity: 0.1,
+                    duration: 0.01,
+                    frequency: 5.0,
+                }),
+        }
     }
 
     fn on_left(&mut self, app: &mut AppState, pointer: usize) {
+        log::info!("panel: on left");
         let e = WguiEvent::MouseLeave(MouseLeaveEvent { device: pointer });
         self.push_event(app, &e);
     }

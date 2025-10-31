@@ -1,26 +1,26 @@
-use glam::{Vec2, vec2};
+use glam::{vec2, Vec2};
 use std::sync::Arc;
-use testbed::{Testbed, testbed_any::TestbedAny};
+use testbed::{testbed_any::TestbedAny, Testbed};
 use timestep::Timestep;
-use tracing_subscriber::EnvFilter;
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::EnvFilter;
 use vulkan::init_window;
 use vulkano::{
-	Validated, VulkanError,
 	command_buffer::CommandBufferUsage,
 	format::Format,
-	image::{ImageUsage, view::ImageView},
+	image::{view::ImageView, ImageUsage},
 	swapchain::{
-		CompositeAlpha, PresentMode, Surface, SurfaceInfo, Swapchain, SwapchainCreateInfo,
-		SwapchainPresentInfo, acquire_next_image,
+		acquire_next_image, CompositeAlpha, PresentMode, Surface, SurfaceInfo, Swapchain,
+		SwapchainCreateInfo, SwapchainPresentInfo,
 	},
 	sync::GpuFuture,
+	Validated, VulkanError,
 };
 use wgui::{
 	event::{MouseButtonIndex, MouseDownEvent, MouseMotionEvent, MouseUpEvent, MouseWheelEvent},
-	gfx::{WGfx, cmd::WGfxClearMode},
+	gfx::{cmd::WGfxClearMode, WGfx},
 	renderer_vk::{self},
 };
 use winit::{
@@ -32,7 +32,7 @@ use winit::{
 use crate::{
 	rate_limiter::RateLimiter,
 	testbed::{
-		TestbedUpdateParams, testbed_dashboard::TestbedDashboard, testbed_generic::TestbedGeneric,
+		testbed_dashboard::TestbedDashboard, testbed_generic::TestbedGeneric, TestbedUpdateParams,
 	},
 };
 
@@ -128,32 +128,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				event: WindowEvent::MouseWheel { delta, .. },
 				..
 			} => match delta {
-				MouseScrollDelta::LineDelta(x, y) => testbed
-					.layout()
-					.borrow_mut()
-					.push_event(
-						&wgui::event::Event::MouseWheel(MouseWheelEvent {
-							shift: Vec2::new(x, y),
-							pos: mouse / scale,
-							device: 0,
-						}),
-						&mut (),
-						&mut (),
-					)
-					.unwrap(),
-				MouseScrollDelta::PixelDelta(pos) => testbed
-					.layout()
-					.borrow_mut()
-					.push_event(
-						&wgui::event::Event::MouseWheel(MouseWheelEvent {
-							shift: Vec2::new(pos.x as f32 / 5.0, pos.y as f32 / 5.0),
-							pos: mouse / scale,
-							device: 0,
-						}),
-						&mut (),
-						&mut (),
-					)
-					.unwrap(),
+				MouseScrollDelta::LineDelta(x, y) => {
+					testbed
+						.layout()
+						.borrow_mut()
+						.push_event(
+							&wgui::event::Event::MouseWheel(MouseWheelEvent {
+								shift: Vec2::new(x, y),
+								pos: mouse / scale,
+								device: 0,
+							}),
+							&mut (),
+							&mut (),
+						)
+						.unwrap();
+				}
+				MouseScrollDelta::PixelDelta(pos) => {
+					testbed
+						.layout()
+						.borrow_mut()
+						.push_event(
+							&wgui::event::Event::MouseWheel(MouseWheelEvent {
+								shift: Vec2::new(pos.x as f32 / 5.0, pos.y as f32 / 5.0),
+								pos: mouse / scale,
+								device: 0,
+							}),
+							&mut (),
+							&mut (),
+						)
+						.unwrap();
+				}
 			},
 			Event::WindowEvent {
 				event: WindowEvent::MouseInput { state, button, .. },

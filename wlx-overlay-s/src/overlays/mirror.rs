@@ -10,7 +10,7 @@ use wlx_capture::pipewire::{pipewire_select_screen, PipewireCapture, PipewireSel
 
 use crate::{
     backend::{
-        input::{Haptics, PointerHit},
+        input::{HoverResult, PointerHit},
         task::TaskType,
     },
     graphics::CommandBuffers,
@@ -130,8 +130,11 @@ impl OverlayBackend for MirrorBackend {
         self.renderer.as_mut().and_then(ScreenBackend::frame_meta)
     }
 
-    fn on_hover(&mut self, _: &mut AppState, _: &PointerHit) -> Option<Haptics> {
-        None
+    fn on_hover(&mut self, _: &mut AppState, _: &PointerHit) -> HoverResult {
+        HoverResult {
+            consume: true,
+            ..HoverResult::default()
+        }
     }
     fn on_left(&mut self, _: &mut AppState, _: usize) {}
     fn on_pointer(&mut self, _: &mut AppState, _: &PointerHit, _: bool) {}

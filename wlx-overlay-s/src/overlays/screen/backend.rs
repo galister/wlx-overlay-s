@@ -1,21 +1,21 @@
 use std::{
-    sync::{Arc, LazyLock, atomic::AtomicU64},
+    sync::{atomic::AtomicU64, Arc, LazyLock},
     time::Instant,
 };
 
-use glam::{Affine2, Vec2, vec2};
+use glam::{vec2, Affine2, Vec2};
 use vulkano::image::view::ImageView;
-use wlx_capture::{WlxCapture, frame::Transform};
+use wlx_capture::{frame::Transform, WlxCapture};
 
 use crate::{
-    backend::input::{Haptics, PointerHit, PointerMode},
+    backend::input::{HoverResult, PointerHit, PointerMode},
     graphics::{CommandBuffers, ExtentExt},
     state::AppState,
     subsystem::hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     windowing::backend::{FrameMeta, OverlayBackend, ShouldRender},
 };
 
-use super::capture::{ScreenPipeline, WlxCaptureIn, WlxCaptureOut, receive_callback};
+use super::capture::{receive_callback, ScreenPipeline, WlxCaptureIn, WlxCaptureOut};
 
 const CURSOR_SIZE: f32 = 16. / 1440.;
 
@@ -211,7 +211,7 @@ impl OverlayBackend for ScreenBackend {
         self.meta
     }
 
-    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> Option<Haptics> {
+    fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> HoverResult {
         #[cfg(debug_assertions)]
         log::trace!("Hover: {:?}", hit.uv);
         if can_move()
@@ -222,7 +222,10 @@ impl OverlayBackend for ScreenBackend {
             app.hid_provider.inner.mouse_move(pos);
             set_next_move(u64::from(app.session.config.mouse_move_interval_ms));
         }
-        None
+        HoverResult {
+            consume: true,
+            ..HoverResult::default()
+        }
     }
     fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool) {
         let btn = match hit.mode {

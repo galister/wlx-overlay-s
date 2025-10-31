@@ -7,7 +7,7 @@ use crate::{
 	drawing::{self, PrimitiveExtent},
 	event::{
 		self, CallbackData, CallbackDataCommon, CallbackMetadata, Event, EventAlterables, EventListenerCollection,
-		EventListenerKind::{InternalStateChange, MouseEnter, MouseLeave, MouseMotion, MousePress, MouseRelease},
+		EventListenerKind::{self, InternalStateChange, MouseLeave},
 		MouseWheelEvent,
 	},
 	layout::{Layout, LayoutState, WidgetID},
@@ -78,6 +78,7 @@ pub struct WidgetState {
 	pub data: WidgetData,
 	pub obj: Box<dyn WidgetObj>,
 	pub event_listeners: EventListenerCollection,
+	pub interactable: bool,
 }
 
 impl WidgetState {
@@ -100,6 +101,7 @@ impl WidgetState {
 			},
 			obj,
 			event_listeners: EventListenerCollection::default(),
+			interactable: true,
 		}
 	}
 }
@@ -164,10 +166,27 @@ pub struct EventParams<'a> {
 	pub layout: &'a taffy::Layout,
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq, PartialOrd)]
 pub enum EventResult {
-	Pass,     // widget acknowledged it and allows the event to pass further
-	Consumed, // widget triggered an action, do not pass further
+	NoHit,    // event was pushed but has not found a listener (yet)
+	Pass,     // widget acknowledged it and allows the event to propagate further
+	Consumed, // widget triggered an action, do not propagate further
+}
+
+impl EventResult {
+	#[must_use]
+	pub const fn can_propagate(self) -> bool {
+		!matches!(self, EventResult::Consumed)
+	}
+
+	#[must_use]
+	pub fn merge(self, other: Self) -> Self {
+		if self > other {
+			self
+		} else {
+			other
+		}
+	}
 }
 
 fn get_scroll_enabled(style: &taffy::Style) -> (bool, bool) {
@@ -212,30 +231,46 @@ impl dyn WidgetObj {
 	}
 }
 
-macro_rules! call_event {
-	($self:ident, $widget_id:ident, $node_id:ident, $params:ident, $kind:ident, $u1:ty, $u2:ty, $user_data:expr, $metadata:expr) => {
-		for listener in $self.event_listeners.iter_filtered::<$u1, $u2>($kind) {
-			let mut data = CallbackData {
-				obj: $self.obj.as_mut(),
-				widget_data: &mut $self.data,
-				$widget_id,
-				$node_id,
-				metadata: $metadata,
-			};
-
-			let mut common = CallbackDataCommon {
-				state: $params.state,
-				alterables: $params.alterables,
-			};
-			let result = listener.call_with(&mut common, &mut data, $user_data)?;
-			if result == EventResult::Consumed {
-				return Ok(EventResult::Consumed);
-			}
-		}
-	};
+struct InvokeData<'a, 'b, U1: 'static, U2: 'static> {
+	widget_id: WidgetID,
+	node_id: taffy::NodeId,
+	event_result: &'a mut EventResult,
+	user_data: &'a mut (&'b mut U1, &'b mut U2),
+	params: &'a mut EventParams<'a>,
 }
 
 impl WidgetState {
+	fn invoke_listeners<U1: 'static, U2: 'static>(
+		&mut self,
+		call_data: &mut InvokeData<'_, '_, U1, U2>,
+		kind: event::EventListenerKind,
+		metadata: CallbackMetadata,
+	) -> anyhow::Result<()> {
+		let mut data = CallbackData {
+			obj: self.obj.as_mut(),
+			widget_data: &mut self.data,
+			widget_id: call_data.widget_id,
+			node_id: call_data.node_id,
+			metadata,
+		};
+
+		let mut common = CallbackDataCommon {
+			state: call_data.params.state,
+			alterables: call_data.params.alterables,
+		};
+
+		for listener in self.event_listeners.iter_filtered::<U1, U2>(kind) {
+			let new_result = listener.call_with(&mut common, &mut data, call_data.user_data)?;
+			// Consider all listeners on this widget, even if we had a Consume.
+			// Store the highest value for return.
+			*call_data.event_result = call_data.event_result.merge(new_result);
+			if !call_data.event_result.can_propagate() {
+				break;
+			}
+		}
+		Ok(())
+	}
+
 	pub fn get_scroll_shift_smooth(&self, info: &ScrollbarInfo, l: &taffy::Layout, timestep_alpha: f32) -> (Vec2, bool) {
 		let currently_animating = self.data.scrolling_cur != self.data.scrolling_cur_prev;
 
@@ -384,53 +419,48 @@ impl WidgetState {
 		true
 	}
 
-	#[allow(clippy::too_many_lines)]
-	#[allow(clippy::cognitive_complexity)]
-	pub fn process_event<'a, U1: 'static, U2: 'static>(
+	pub fn process_event<'a, 'b, U1: 'static, U2: 'static>(
 		&mut self,
 		widget_id: WidgetID,
 		node_id: taffy::NodeId,
 		event: &Event,
-		user_data: &mut (&mut U1, &mut U2),
+		event_result: &'a mut EventResult,
+		user_data: &'a mut (&'b mut U1, &'b mut U2),
 		params: &'a mut EventParams<'a>,
-	) -> anyhow::Result<EventResult> {
+	) -> anyhow::Result<()> {
 		let hovered = event.test_mouse_within_transform(params.alterables.transform_stack.get());
+
+		let mut invoke_data = InvokeData {
+			widget_id,
+			node_id,
+			event_result,
+			user_data,
+			params,
+		};
 
 		match &event {
 			Event::MouseDown(e) => {
 				if hovered && self.data.set_device_pressed(e.device, true) {
-					call_event!(
-						self,
-						widget_id,
-						node_id,
-						params,
-						MousePress,
-						U1,
-						U2,
-						user_data,
+					self.invoke_listeners(
+						&mut invoke_data,
+						EventListenerKind::MousePress,
 						CallbackMetadata::MouseButton(event::MouseButton {
 							index: e.index,
-							pos: e.pos
-						})
-					);
+							pos: e.pos,
+						}),
+					)?;
 				}
 			}
 			Event::MouseUp(e) => {
 				if self.data.set_device_pressed(e.device, false) {
-					call_event!(
-						self,
-						widget_id,
-						node_id,
-						params,
-						MouseRelease,
-						U1,
-						U2,
-						user_data,
+					self.invoke_listeners(
+						&mut invoke_data,
+						EventListenerKind::MouseRelease,
 						CallbackMetadata::MouseButton(event::MouseButton {
 							index: e.index,
 							pos: e.pos,
-						})
-					);
+						}),
+					)?;
 				}
 			}
 			Event::MouseMotion(e) => {
@@ -438,79 +468,42 @@ impl WidgetState {
 
 				if hover_state_changed {
 					if self.data.is_hovered() {
-						call_event!(
-							self,
-							widget_id,
-							node_id,
-							params,
-							MouseEnter,
-							U1,
-							U2,
-							user_data,
-							CallbackMetadata::None
-						);
+						self.invoke_listeners(&mut invoke_data, EventListenerKind::MouseEnter, CallbackMetadata::None)?;
 					} else {
-						call_event!(
-							self,
-							widget_id,
-							node_id,
-							params,
-							MouseLeave,
-							U1,
-							U2,
-							user_data,
-							CallbackMetadata::None
-						);
+						self.invoke_listeners(&mut invoke_data, EventListenerKind::MouseLeave, CallbackMetadata::None)?;
 					}
+				} else if hovered {
+					self.invoke_listeners(
+						&mut invoke_data,
+						EventListenerKind::MouseMotion,
+						CallbackMetadata::MousePosition(event::MousePosition { pos: e.pos }),
+					)?;
 
-					call_event!(
-						self,
-						widget_id,
-						node_id,
-						params,
-						MouseMotion,
-						U1,
-						U2,
-						user_data,
-						CallbackMetadata::MousePosition(event::MousePosition { pos: e.pos })
-					);
+					if self.interactable {
+						*invoke_data.event_result = invoke_data.event_result.merge(EventResult::Pass);
+					}
 				}
 			}
 			Event::MouseWheel(e) => {
-				if hovered && self.process_wheel(params, e) {
-					return Ok(EventResult::Consumed);
+				if hovered && self.process_wheel(invoke_data.params, e) {
+					*invoke_data.event_result = EventResult::Consumed;
+					return Ok(());
 				}
 			}
 			Event::MouseLeave(e) => {
 				if self.data.set_device_hovered(e.device, false) {
-					call_event!(
-						self,
-						widget_id,
-						node_id,
-						params,
-						MouseLeave,
-						U1,
-						U2,
-						user_data,
-						CallbackMetadata::None
-					);
+					self.invoke_listeners(&mut invoke_data, MouseLeave, CallbackMetadata::None)?;
 				}
 			}
 			Event::InternalStateChange(e) => {
-				call_event!(
-					self,
-					widget_id,
-					node_id,
-					params,
+				self.invoke_listeners(
+					&mut invoke_data,
 					InternalStateChange,
-					U1,
-					U2,
-					user_data,
-					CallbackMetadata::Custom(e.metadata)
-				);
+					CallbackMetadata::Custom(e.metadata),
+				)?;
 			}
 		}
-		Ok(EventResult::Pass)
+		Ok(())
 	}
 }
 

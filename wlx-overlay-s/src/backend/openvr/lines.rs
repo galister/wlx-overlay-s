@@ -22,7 +22,7 @@ use vulkano::{
 };
 use wgui::gfx::WGfx;
 
-use crate::backend::input::{Haptics, PointerHit};
+use crate::backend::input::{HoverResult, PointerHit};
 use crate::graphics::CommandBuffers;
 use crate::state::AppState;
 use crate::windowing::backend::{FrameMeta, OverlayBackend, ShouldRender};
@@ -206,8 +206,8 @@ impl OverlayBackend for LineBackend {
         })
     }
 
-    fn on_hover(&mut self, _: &mut AppState, _: &PointerHit) -> Option<Haptics> {
-        None
+    fn on_hover(&mut self, _: &mut AppState, _: &PointerHit) -> HoverResult {
+        HoverResult::default()
     }
     fn on_left(&mut self, _: &mut AppState, _: usize) {}
     fn on_pointer(&mut self, _: &mut AppState, _: &PointerHit, _: bool) {}
