@@ -8,6 +8,8 @@ WayVR Dashboard: An application (and game) launcher which is displayed in front 
 OpenVR: API made by Valve
 OpenXR: API made by Khronos
 OSC: OpenSoundControl
+Space-drag: A feature which allows the user to move their HMD origin position via a controller
+Passthrough: Some headsets have built-in cameras for displaying image on the HMD screen
 
 You will be given the input in the code blocks which needs to be translated to {TARGET_LANG} language. Write only the result in codeblocks, do not explain. Keep any newlines and other important formatting-required identifiers as-is.
 

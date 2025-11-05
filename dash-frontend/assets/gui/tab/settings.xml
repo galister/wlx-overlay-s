@@ -1,7 +1,61 @@
 <layout>
   <include src="t_tab_title.xml" />
+  <include src="../t_group_box.xml" />
 
   <elements>
     <TabTitle translation="SETTINGS" icon="dashboard/settings.svg" />
+
+
+    <div flex_wrap="wrap" justify_content="stretch" gap="4">
+      <!-- Home screen -->
+      <rectangle macro="group_box">
+        <GroupBoxTitle translation="HOME_SCREEN" src="dashboard/wayvr_dashboard.svg" />
+        <CheckBox translation="APP_SETTINGS.HIDE_USERNAME" />
+      </rectangle>
+
+      <!-- General settings -->
+      <rectangle macro="group_box">
+        <GroupBoxTitle translation="GENERAL_SETTINGS" src="dashboard/settings.svg" />
+        <CheckBox translation="APP_SETTINGS.12_HOUR_CLOCK" />
+        <CheckBox translation="APP_SETTINGS.OPAQUE_BACKGROUND" />
+      </rectangle>
+
+      <!-- Application launcher -->
+      <rectangle macro="group_box">
+        <GroupBoxTitle translation="APPLICATION_LAUNCHER" src="dashboard/apps.svg" />
+        <CheckBox translation="APP_SETTINGS.RUN_IN_XWAYLAND_MODE_BY_DEFAULT" />
+      </rectangle>
+
+      <!-- headset settings -->
+      <rectangle macro="group_box">
+        <GroupBoxTitle translation="APP_SETTINGS.HEADSET_SETTINGS" src="dashboard/vr.svg" />
+        <label translation="APP_SETTINGS.BRIGHTNESS" />
+        <Slider width="100" height="24" min_value="0.0" max_value="100.0" />
+      </rectangle>
+
+      <!-- wlx-overlay-s settings -->
+      <rectangle macro="group_box">
+        <GroupBoxTitle translation="APP_SETTINGS.WLX_OVERLAY_S_SETTINGS" src="dashboard/vr.svg" />
+        <CheckBox translation="APP_SETTINGS.WLX.NOTIFICATIONS_ENABLED" />
+        <CheckBox translation="APP_SETTINGS.WLX.NOTIFICATIONS_SOUND_ENABLED" />
+        <CheckBox translation="APP_SETTINGS.WLX.KEYBOARD_SOUND_ENABLED" />
+        <CheckBox translation="APP_SETTINGS.WLX.BLOCK_GAME_INPUT" />
+        <label translation="APP_SETTINGS.WLX.SPACE_DRAG_MULTIPLIER" />
+        <Slider width="100" height="24" min_value="0.0" max_value="3.0" />
+        <CheckBox translation="APP_SETTINGS.WLX.SPACE_DRAG_ROTATION_ENABLED" />
+        <CheckBox translation="APP_SETTINGS.WLX.SHOW_SKYBOX" />
+        <CheckBox translation="APP_SETTINGS.WLX.ENABLE_PASSTHROUGH" />
+      </rectangle>
+    </div>
+
+    <div>
+      <!-- TODO: icon support in buttons -->
+      <Button color="#AA3333" height="32">
+        <div margin_left="8" margin_right="8" gap="4" align_items="center">
+          <sprite src="dashboard/refresh.svg" width="24" height="24" />
+          <label weight="bold" translation="APP_SETTINGS.RESTART_SOFTWARE" />
+        </div>
+      </Button>
+    </div>
   </elements>
 </layout>

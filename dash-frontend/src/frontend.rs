@@ -14,7 +14,7 @@ use wgui::{
 };
 
 use crate::{
-	assets,
+	assets, settings,
 	tab::{
 		Tab, TabParams, TabType, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses,
 		settings::TabSettings,
@@ -24,6 +24,8 @@ use crate::{
 pub struct Frontend {
 	pub layout: RcLayout,
 	globals: WguiGlobals,
+
+	settings: settings::Settings,
 
 	#[allow(dead_code)]
 	state: ParserState,
@@ -37,6 +39,10 @@ pub struct Frontend {
 	label_time_id: WidgetID,
 }
 
+pub struct InitParams {
+	pub settings: settings::Settings,
+}
+
 pub type RcFrontend = Rc<RefCell<Frontend>>;
 
 pub enum FrontendTask {
@@ -44,7 +50,7 @@ pub enum FrontendTask {
 }
 
 impl Frontend {
-	pub fn new() -> anyhow::Result<(RcFrontend, RcLayout)> {
+	pub fn new(params: InitParams) -> anyhow::Result<(RcFrontend, RcLayout)> {
 		let globals = WguiGlobals::new(Box::new(assets::Asset {}), wgui::globals::Defaults::default())?;
 
 		let (layout, state) = wgui::parser::new_layout_from_assets(
@@ -71,6 +77,7 @@ impl Frontend {
 			tasks,
 			ticks: 0,
 			label_time_id,
+			settings: params.settings,
 		}));
 
 		Frontend::register_widgets(&res)?;

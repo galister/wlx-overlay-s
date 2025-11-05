@@ -1,6 +1,6 @@
 use crate::{
 	animation::{Animation, AnimationEasing},
-	components::{self, tooltip::ComponentTooltip, Component, ComponentBase, ComponentTrait, InitData},
+	components::{self, Component, ComponentBase, ComponentTrait, InitData, tooltip::ComponentTooltip},
 	drawing::{self, Boundary, Color},
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerID, EventListenerKind},
 	i18n::Translation,
@@ -10,15 +10,15 @@ use crate::{
 		util::centered_matrix,
 	},
 	widget::{
+		ConstructEssentials, EventResult, WidgetData,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
-		ConstructEssentials, EventResult, WidgetData,
 	},
 };
 use glam::{Mat4, Vec3};
 use std::{cell::RefCell, rc::Rc};
-use taffy::{AlignItems, JustifyContent};
+use taffy::{AlignItems, JustifyContent, prelude::length};
 
 pub struct Params {
 	pub text: Option<Translation>, // if unset, label will not be populated
@@ -281,6 +281,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	style.justify_content = Some(JustifyContent::Center);
 	style.overflow.x = taffy::Overflow::Hidden;
 	style.overflow.y = taffy::Overflow::Hidden;
+	style.gap = length(4.0);
 
 	// update colors to default ones if they are not specified
 	let color = if let Some(color) = params.color {

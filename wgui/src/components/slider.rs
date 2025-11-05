@@ -15,11 +15,11 @@ use crate::{
 		util,
 	},
 	widget::{
+		ConstructEssentials, EventResult,
 		div::WidgetDiv,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
-		ConstructEssentials, EventResult,
 	},
 };
 
@@ -149,7 +149,7 @@ impl State {
 	}
 }
 
-const BODY_COLOR: drawing::Color = drawing::Color::new(0.6, 0.65, 0.7, 1.0);
+const BODY_COLOR: drawing::Color = drawing::Color::new(0.6, 0.65, 0.7, 0.2);
 const BODY_BORDER_COLOR: drawing::Color = drawing::Color::new(0.4, 0.45, 0.5, 1.0);
 const HANDLE_BORDER_COLOR: drawing::Color = drawing::Color::new(0.85, 0.85, 0.85, 1.0);
 const HANDLE_BORDER_COLOR_HOVERED: drawing::Color = drawing::Color::new(0.0, 0.0, 0.0, 1.0);

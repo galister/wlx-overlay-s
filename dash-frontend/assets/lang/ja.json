@@ -5,5 +5,27 @@
   "GAMES": "ゲーム",
   "SETTINGS": "設定",
   "PROCESSES": "プロセス",
-  "HELLO_USER": "こんにちは、{USER}！"
+  "HELLO_USER": "こんにちは、{USER}！",
+  "GENERAL_SETTINGS": "全般設定",
+  "APPLICATION_LAUNCHER": "アプリケーションランチャー",
+  "APP_SETTINGS": {
+    "HIDE_USERNAME": "ユーザー名を表示しない",
+    "12_HOUR_CLOCK": "12時間表示",
+    "OPAQUE_BACKGROUND": "不透明な背景",
+    "RUN_IN_XWAYLAND_MODE_BY_DEFAULT": "XWaylandモードでデフォルトで実行する",
+    "WLX_OVERLAY_S_SETTINGS": "WlxOverlay-Sの設定",
+    "HEADSET_SETTINGS": "ヘッドセット設定",
+    "BRIGHTNESS": "明るさ",
+    "WLX": {
+      "NOTIFICATIONS_ENABLED": "通知が有効",
+      "NOTIFICATIONS_SOUND_ENABLED": "通知音を有効にする",
+      "KEYBOARD_SOUND_ENABLED": "キーボード音を有効にする",
+      "BLOCK_GAME_INPUT": "ゲーム入力をブロック",
+      "SPACE_DRAG_MULTIPLIER": "スペースドラッグ乗数",
+      "SPACE_DRAG_ROTATION_ENABLED": "スペースドラッグでの回転を有効にする",
+      "SHOW_SKYBOX": "スカイボックスを表示",
+      "ENABLE_PASSTHROUGH": "Passthroughを有効にする"
+    },
+    "RESTART_SOFTWARE": "ソフトウェアを再起動"
+  }
 }

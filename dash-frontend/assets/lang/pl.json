@@ -1,9 +1,31 @@
 {
-  "HOME_SCREEN": "Ekran główny",
-  "MONADO_RUNTIME": "„Monado” środowisko uruchomieniowe",
-  "APPLICATIONS": "Aplikacje",
-  "GAMES": "Gry",
-  "SETTINGS": "Ustawienia",
-  "PROCESSES": "Procesy",
-  "HELLO_USER": "Witaj, {USER}!"
+	"HOME_SCREEN": "Ekran główny",
+	"MONADO_RUNTIME": "„Monado” środowisko uruchomieniowe",
+	"APPLICATIONS": "Aplikacje",
+	"GAMES": "Gry",
+	"SETTINGS": "Ustawienia",
+	"PROCESSES": "Procesy",
+	"HELLO_USER": "Witaj, {USER}!",
+	"GENERAL_SETTINGS": "Ustawienia ogólne",
+	"APPLICATION_LAUNCHER": "Uruchamiacz aplikacji",
+	"APP_SETTINGS": {
+		"HIDE_USERNAME": "Ukryj nazwę użytkownika",
+		"12_HOUR_CLOCK": "12-godzinny zegar",
+		"OPAQUE_BACKGROUND": "Nieprzezroczysty tło",
+		"RUN_IN_XWAYLAND_MODE_BY_DEFAULT": "Uruchom domyślnie w trybie XWayland",
+		"WLX_OVERLAY_S_SETTINGS": "Ustawienia wlx-overlay-s",
+		"HEADSET_SETTINGS": "Ustawienia głośności",
+		"BRIGHTNESS": "Jasność",
+		"WLX": {
+			"NOTIFICATIONS_ENABLED": "Powiadomienia",
+			"NOTIFICATIONS_SOUND_ENABLED": "Dźwięk powiadomień",
+			"KEYBOARD_SOUND_ENABLED": "Dźwięki klawiatury",
+			"BLOCK_GAME_INPUT": "Zablokuj sterowanie grą podczas używania Wlx",
+			"SPACE_DRAG_MULTIPLIER": "Mnożnik space-drag",
+			"SPACE_DRAG_ROTATION_ENABLED": "Włącz rotację w space-drag",
+			"SHOW_SKYBOX": "Pokaż skybox",
+			"ENABLE_PASSTHROUGH": "Włącz passthrough"
+		},
+		"RESTART_SOFTWARE": "Uruchom ponownie oprogramowanie"
+	}
 }

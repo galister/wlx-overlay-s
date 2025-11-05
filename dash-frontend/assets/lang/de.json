@@ -5,5 +5,27 @@
   "GAMES": "Spiele",
   "SETTINGS": "Einstellungen",
   "PROCESSES": "Prozesse",
-  "HELLO_USER": "Hallo, {USER}!"
+  "HELLO_USER": "Hallo, {USER}!",
+  "GENERAL_SETTINGS": "Allgemeine Einstellungen",
+  "APPLICATION_LAUNCHER": "Anwendung Launcher",
+  "APP_SETTINGS": {
+    "HIDE_USERNAME": "Benutzernamen ausblenden",
+    "12_HOUR_CLOCK": "12-Stunden-Uhr",
+    "OPAQUE_BACKGROUND": "Undurchsichtiger Hintergrund",
+    "RUN_IN_XWAYLAND_MODE_BY_DEFAULT": "Standardmäßig in XWayland-Modus ausführen",
+    "WLX_OVERLAY_S_SETTINGS": "WlxOverlay-S Einstellungen",
+    "HEADSET_SETTINGS": "Headset-Einstellungen",
+    "BRIGHTNESS": "Helligkeit",
+    "WLX": {
+      "NOTIFICATIONS_ENABLED": "Benachrichtigungen aktiviert",
+      "NOTIFICATIONS_SOUND_ENABLED": "Benachrichtigungssound aktiviert",
+      "KEYBOARD_SOUND_ENABLED": "Tastaturgeräusch aktiviert",
+      "BLOCK_GAME_INPUT": "Spielsteuerung blockieren",
+      "SPACE_DRAG_MULTIPLIER": "Raum-Drag-Multiplikator",
+      "SPACE_DRAG_ROTATION_ENABLED": "Rotation im Space-Drag aktivieren",
+      "SHOW_SKYBOX": "Skybox anzeigen",
+      "ENABLE_PASSTHROUGH": "Passthrough aktivieren"
+    },
+    "RESTART_SOFTWARE": "Software neu starten"
+  }
 }

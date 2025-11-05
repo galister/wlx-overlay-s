@@ -9,7 +9,9 @@ pub struct TestbedDashboard {
 
 impl TestbedDashboard {
 	pub fn new() -> anyhow::Result<Self> {
-		let (frontend, layout) = frontend::Frontend::new()?;
+		let (frontend, layout) = frontend::Frontend::new(frontend::InitParams {
+			settings: Default::default(),
+		})?;
 		Ok(Self { frontend, layout })
 	}
 }

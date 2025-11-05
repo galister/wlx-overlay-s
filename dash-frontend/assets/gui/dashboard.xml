@@ -79,9 +79,9 @@
             gradient="radial" color="#44BBFF22" color2="#00000000" />
           <div
             id="content"
+            flex_direction="column"
             overflow_x="scroll"
             overflow_y="scroll"
-            flex_direction="column"
             padding_top="8"
             padding_bottom="8"
             padding_left="16"

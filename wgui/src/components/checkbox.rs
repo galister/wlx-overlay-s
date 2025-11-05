@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 use taffy::{
-	prelude::{length, percent},
 	AlignItems, JustifyContent,
+	prelude::{length, percent},
 };
 
 use crate::{
@@ -13,10 +13,10 @@ use crate::{
 	layout::{self, LayoutState, WidgetID, WidgetPair},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
+		ConstructEssentials, EventResult,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
-		ConstructEssentials, EventResult,
 	},
 };
 
@@ -223,6 +223,7 @@ fn register_event_mouse_release(
 	)
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Result<(WidgetPair, Rc<ComponentCheckbox>)> {
 	let mut style = params.style;
 
@@ -230,11 +231,20 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	style.flex_wrap = taffy::FlexWrap::NoWrap;
 	style.align_items = Some(AlignItems::Center);
 	style.justify_content = Some(JustifyContent::Center);
+
+	// make checkbox interaction box larger by setting padding and negative margin
 	style.padding = taffy::Rect {
 		left: length(4.0),
 		right: length(8.0),
 		top: length(4.0),
 		bottom: length(4.0),
+	};
+
+	style.margin = taffy::Rect {
+		left: length(-4.0),
+		right: length(-8.0),
+		top: length(-4.0),
+		bottom: length(-4.0),
 	};
 	//style.align_self = Some(taffy::AlignSelf::Start); // do not stretch self to the parent
 	style.gap = length(4.0);
