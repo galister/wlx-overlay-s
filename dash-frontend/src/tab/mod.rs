@@ -6,7 +6,7 @@ use wgui::{
 	layout::{Layout, WidgetID},
 };
 
-use crate::{FrontendTask, RcFrontend};
+use crate::frontend::{FrontendTask, RcFrontend};
 
 pub mod apps;
 pub mod games;

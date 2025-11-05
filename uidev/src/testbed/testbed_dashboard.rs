@@ -1,14 +1,15 @@
 use crate::testbed::{Testbed, TestbedUpdateParams};
+use dash_frontend::frontend;
 use wgui::layout::RcLayout;
 
 pub struct TestbedDashboard {
 	layout: RcLayout,
-	frontend: dash_frontend::RcFrontend,
+	frontend: frontend::RcFrontend,
 }
 
 impl TestbedDashboard {
 	pub fn new() -> anyhow::Result<Self> {
-		let (frontend, layout) = dash_frontend::Frontend::new()?;
+		let (frontend, layout) = frontend::Frontend::new()?;
 		Ok(Self { frontend, layout })
 	}
 }
