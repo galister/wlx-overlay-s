@@ -10,7 +10,6 @@
   "APPLICATION_LAUNCHER": "アプリケーションランチャー",
   "APP_SETTINGS": {
     "HIDE_USERNAME": "ユーザー名を表示しない",
-    "12_HOUR_CLOCK": "12時間表示",
     "OPAQUE_BACKGROUND": "不透明な背景",
     "RUN_IN_XWAYLAND_MODE_BY_DEFAULT": "XWaylandモードでデフォルトで実行する",
     "WLX_OVERLAY_S_SETTINGS": "WlxOverlay-Sの設定",

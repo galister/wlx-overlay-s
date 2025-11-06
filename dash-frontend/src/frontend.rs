@@ -25,7 +25,7 @@ pub struct Frontend {
 	pub layout: RcLayout,
 	globals: WguiGlobals,
 
-	settings: settings::Settings,
+	pub settings: settings::Settings,
 
 	#[allow(dead_code)]
 	state: ParserState,
@@ -99,19 +99,15 @@ impl Frontend {
 	fn tick(&mut self, width: f32, height: f32, timestep_alpha: f32) -> anyhow::Result<()> {
 		let mut layout = self.layout.borrow_mut();
 
-		let mut alterables = EventAlterables::default();
-		let mut common = CallbackDataCommon {
-			alterables: &mut alterables,
-			state: &layout.state,
-		};
+		let mut c = layout.start_common();
 
 		// fixme: timer events instead of this thing
 		if self.ticks.is_multiple_of(1000) {
-			self.update_time(&mut common);
+			self.update_time(&mut c.common());
 		}
 
+		c.finish()?;
 		layout.update(Vec2::new(width, height), timestep_alpha)?;
-		layout.process_alterables(alterables)?;
 
 		Ok(())
 	}
@@ -154,6 +150,7 @@ impl Frontend {
 			layout: &mut layout,
 			parent_id: widget_content.id,
 			frontend: rc_this,
+			settings: &mut self.settings,
 		};
 
 		let tab: Box<dyn Tab> = match tab_type {

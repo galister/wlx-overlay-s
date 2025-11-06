@@ -10,7 +10,6 @@
   "APPLICATION_LAUNCHER": "Anwendung Launcher",
   "APP_SETTINGS": {
     "HIDE_USERNAME": "Benutzernamen ausblenden",
-    "12_HOUR_CLOCK": "12-Stunden-Uhr",
     "OPAQUE_BACKGROUND": "Undurchsichtiger Hintergrund",
     "RUN_IN_XWAYLAND_MODE_BY_DEFAULT": "Standardmäßig in XWayland-Modus ausführen",
     "WLX_OVERLAY_S_SETTINGS": "WlxOverlay-S Einstellungen",

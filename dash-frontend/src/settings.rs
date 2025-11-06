@@ -12,15 +12,8 @@ pub struct General {
 }
 
 #[derive(Default, Serialize, Deserialize)]
-pub enum ApplicationRunMode {
-	#[default]
-	Native, /* use Smithay compositor */
-	XWaylandCage,
-}
-
-#[derive(Default, Serialize, Deserialize)]
 pub struct Tweaks {
-	pub default_run_mode: ApplicationRunMode,
+	pub xwayland_by_default: bool,
 }
 
 #[derive(Default, Serialize, Deserialize)]

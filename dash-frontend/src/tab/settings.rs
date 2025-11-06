@@ -1,9 +1,17 @@
+use std::rc::Rc;
+
 use wgui::{
 	assets::AssetPath,
-	parser::{ParseDocumentParams, ParserState},
+	components::checkbox::ComponentCheckbox,
+	event::CallbackDataCommon,
+	parser::{Fetchable, ParseDocumentParams, ParserState},
 };
 
-use crate::tab::{Tab, TabParams, TabType};
+use crate::{
+	frontend::{Frontend, RcFrontend},
+	settings,
+	tab::{Tab, TabParams, TabType},
+};
 
 pub struct TabSettings {
 	#[allow(dead_code)]
@@ -16,8 +24,27 @@ impl Tab for TabSettings {
 	}
 }
 
+fn init_setting_checkbox(
+	params: &mut TabParams,
+	checkbox: Rc<ComponentCheckbox>,
+	fetch_callback: fn(&mut settings::Settings) -> &mut bool,
+) -> anyhow::Result<()> {
+	let mut c = params.layout.start_common();
+
+	checkbox.set_checked(&mut c.common(), *fetch_callback(params.settings));
+	let rc_frontend = params.frontend.clone();
+	checkbox.on_toggle(Box::new(move |_common, e| {
+		let mut frontend = rc_frontend.borrow_mut();
+		*fetch_callback(&mut frontend.settings) = e.checked;
+		Ok(())
+	}));
+
+	c.finish()?;
+	Ok(())
+}
+
 impl TabSettings {
-	pub fn new(params: TabParams) -> anyhow::Result<Self> {
+	pub fn new(mut params: TabParams) -> anyhow::Result<Self> {
 		let state = wgui::parser::parse_from_assets(
 			&ParseDocumentParams {
 				globals: params.globals.clone(),
@@ -26,6 +53,34 @@ impl TabSettings {
 			},
 			params.layout,
 			params.parent_id,
+		)?;
+
+		init_setting_checkbox(
+			&mut params,
+			state.data.fetch_component_as::<ComponentCheckbox>("cb_hide_username")?,
+			|settings| &mut settings.home_screen.hide_username,
+		)?;
+
+		init_setting_checkbox(
+			&mut params,
+			state.data.fetch_component_as::<ComponentCheckbox>("cb_am_pm_clock")?,
+			|settings| &mut settings.general.am_pm_clock,
+		)?;
+
+		init_setting_checkbox(
+			&mut params,
+			state
+				.data
+				.fetch_component_as::<ComponentCheckbox>("cb_opaque_background")?,
+			|settings| &mut settings.general.opaque_background,
+		)?;
+
+		init_setting_checkbox(
+			&mut params,
+			state
+				.data
+				.fetch_component_as::<ComponentCheckbox>("cb_xwayland_by_default")?,
+			|settings| &mut settings.tweaks.xwayland_by_default,
 		)?;
 
 		Ok(Self { state })

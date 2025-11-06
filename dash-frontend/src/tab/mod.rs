@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use wgui::{
 	components::button::ComponentButton,
+	event::CallbackDataCommon,
 	globals::WguiGlobals,
 	layout::{Layout, WidgetID},
 };
@@ -30,6 +31,7 @@ pub struct TabParams<'a> {
 	pub layout: &'a mut Layout,
 	pub parent_id: WidgetID,
 	pub frontend: &'a RcFrontend,
+	pub settings: &'a mut crate::settings::Settings,
 }
 
 pub trait Tab {

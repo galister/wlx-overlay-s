@@ -84,18 +84,18 @@ fn set_box_checked(widgets: &layout::WidgetMap, data: &Data, checked: bool) {
 }
 
 impl ComponentCheckbox {
-	pub fn set_text(&self, state: &LayoutState, common: &mut CallbackDataCommon, text: Translation) {
-		let Some(mut label) = state.widgets.get_as::<WidgetLabel>(self.data.id_label) else {
+	pub fn set_text(&self, common: &mut CallbackDataCommon, text: Translation) {
+		let Some(mut label) = common.state.widgets.get_as::<WidgetLabel>(self.data.id_label) else {
 			return;
 		};
 
 		label.set_text(common, text);
 	}
 
-	pub fn set_checked(&self, state: &LayoutState, alterables: &mut EventAlterables, checked: bool) {
+	pub fn set_checked(&self, common: &mut CallbackDataCommon, checked: bool) {
 		self.state.borrow_mut().checked = checked;
-		set_box_checked(&state.widgets, &self.data, checked);
-		alterables.mark_redraw();
+		set_box_checked(&common.state.widgets, &self.data, checked);
+		common.alterables.mark_redraw();
 	}
 
 	pub fn on_toggle(&self, func: CheckboxToggleCallback) {

@@ -6,7 +6,7 @@ use std::{
 };
 
 use glam::Vec2;
-use slotmap::{new_key_type, DenseSlotMap};
+use slotmap::{DenseSlotMap, new_key_type};
 
 use crate::{
 	animation::{self, Animation},

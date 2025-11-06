@@ -10,7 +10,6 @@
   "APPLICATION_LAUNCHER": "Lanzador de aplicaciones",
   "APP_SETTINGS": {
     "HIDE_USERNAME": "Ocultar nombre de usuario",
-    "12_HOUR_CLOCK": "Reloj de 12 horas",
     "OPAQUE_BACKGROUND": "Fondo opaco",
     "RUN_IN_XWAYLAND_MODE_BY_DEFAULT": "Ejecutar en modo XWayland por defecto",
     "WLX_OVERLAY_S_SETTINGS": "Configuración de WlxOverlay-S",

@@ -8,14 +8,14 @@ use std::{
 use crate::{
 	animation::Animations,
 	components::{Component, InitData},
-	drawing::{self, push_scissor_stack, push_transform_stack, Boundary, ANSI_BOLD_CODE, ANSI_RESET_CODE},
+	drawing::{self, ANSI_BOLD_CODE, ANSI_RESET_CODE, Boundary, push_scissor_stack, push_transform_stack},
 	event::{self, CallbackDataCommon, EventAlterables},
 	globals::WguiGlobals,
-	widget::{self, div::WidgetDiv, EventParams, EventResult, WidgetObj, WidgetState},
+	widget::{self, EventParams, EventResult, WidgetObj, WidgetState, div::WidgetDiv},
 };
 
-use glam::{vec2, Vec2};
-use slotmap::{new_key_type, HopSlotMap, SecondaryMap};
+use glam::{Vec2, vec2};
+use slotmap::{HopSlotMap, SecondaryMap, new_key_type};
 use taffy::{NodeId, TaffyTree, TraversePartialTree};
 
 new_key_type! {
@@ -196,7 +196,34 @@ fn add_child_internal(
 	))
 }
 
+pub struct LayoutCommon<'a> {
+	alterables: EventAlterables,
+	layout: &'a mut Layout,
+}
+
+impl LayoutCommon<'_> {
+	pub const fn common(&mut self) -> CallbackDataCommon<'_> {
+		CallbackDataCommon {
+			alterables: &mut self.alterables,
+			state: &self.layout.state,
+		}
+	}
+
+	pub fn finish(self) -> anyhow::Result<()> {
+		self.layout.process_alterables(self.alterables)?;
+		Ok(())
+	}
+}
+
 impl Layout {
+	// helper function
+	pub fn start_common(&mut self) -> LayoutCommon<'_> {
+		LayoutCommon {
+			alterables: EventAlterables::default(),
+			layout: self,
+		}
+	}
+
 	pub fn as_rc(self) -> RcLayout {
 		Rc::new(RefCell::new(self))
 	}
@@ -580,9 +607,7 @@ impl Layout {
 
 	pub fn update(&mut self, size: Vec2, timestep_alpha: f32) -> anyhow::Result<()> {
 		let mut alterables = EventAlterables::default();
-
 		self.animations.process(&self.state, &mut alterables, timestep_alpha);
-
 		self.process_alterables(alterables)?;
 		self.try_recompute_layout(size)?;
 		Ok(())

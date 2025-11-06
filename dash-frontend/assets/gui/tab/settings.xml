@@ -10,20 +10,20 @@
       <!-- Home screen -->
       <rectangle macro="group_box">
         <GroupBoxTitle translation="HOME_SCREEN" src="dashboard/wayvr_dashboard.svg" />
-        <CheckBox translation="APP_SETTINGS.HIDE_USERNAME" />
+        <CheckBox id="cb_hide_username" translation="APP_SETTINGS.HIDE_USERNAME" />
       </rectangle>
 
       <!-- General settings -->
       <rectangle macro="group_box">
         <GroupBoxTitle translation="GENERAL_SETTINGS" src="dashboard/settings.svg" />
-        <CheckBox translation="APP_SETTINGS.12_HOUR_CLOCK" />
-        <CheckBox translation="APP_SETTINGS.OPAQUE_BACKGROUND" />
+        <CheckBox id="cb_am_pm_clock" text="AM/PM clock" />
+        <CheckBox id="cb_opaque_background" translation="APP_SETTINGS.OPAQUE_BACKGROUND" />
       </rectangle>
 
       <!-- Application launcher -->
       <rectangle macro="group_box">
         <GroupBoxTitle translation="APPLICATION_LAUNCHER" src="dashboard/apps.svg" />
-        <CheckBox translation="APP_SETTINGS.RUN_IN_XWAYLAND_MODE_BY_DEFAULT" />
+        <CheckBox id="cb_xwayland_by_default" translation="APP_SETTINGS.RUN_IN_XWAYLAND_MODE_BY_DEFAULT" />
       </rectangle>
 
       <!-- headset settings -->
