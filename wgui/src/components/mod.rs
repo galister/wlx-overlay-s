@@ -17,6 +17,7 @@ pub struct InitData<'a> {
 // common component data
 #[derive(Default)]
 pub struct ComponentBase {
+	#[allow(dead_code)]
 	lhandles: Vec<EventListenerID>,
 }
 

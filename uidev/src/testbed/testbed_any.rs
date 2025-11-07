@@ -5,6 +5,7 @@ use crate::{
 use glam::Vec2;
 use wgui::{
 	assets::AssetPath,
+	font_config::WguiFontConfig,
 	globals::WguiGlobals,
 	layout::{LayoutParams, RcLayout},
 	parser::{ParseDocumentParams, ParserState},
@@ -24,6 +25,7 @@ impl TestbedAny {
 		let globals = WguiGlobals::new(
 			Box::new(assets::Asset {}),
 			wgui::globals::Defaults::default(),
+			&WguiFontConfig::default(),
 		)?;
 
 		let (layout, state) = wgui::parser::new_layout_from_assets(

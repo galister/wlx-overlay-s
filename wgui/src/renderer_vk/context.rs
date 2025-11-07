@@ -7,13 +7,14 @@ use vulkano::pipeline::graphics::viewport;
 
 use crate::{
 	drawing::{self},
+	font_config,
 	gfx::{WGfx, cmd::GfxCommandBuffer},
 };
 
 use super::{
 	rect::{RectPipeline, RectRenderer},
 	text::{
-		DEFAULT_METRICS, FONT_SYSTEM, SWASH_CACHE, TextArea, TextBounds,
+		DEFAULT_METRICS, SWASH_CACHE, TextArea, TextBounds,
 		text_atlas::{TextAtlas, TextPipeline},
 		text_renderer::TextRenderer,
 	},
@@ -51,6 +52,7 @@ impl RendererPass<'_> {
 
 	fn submit(
 		&mut self,
+		font_system: &font_config::WguiFontSystem,
 		gfx: &Arc<WGfx>,
 		viewport: &mut Viewport,
 		cmd_buf: &mut GfxCommandBuffer,
@@ -90,7 +92,7 @@ impl RendererPass<'_> {
 		self.rect_renderer.render(gfx, viewport, &vk_scissor, cmd_buf)?;
 
 		{
-			let mut font_system = FONT_SYSTEM.lock();
+			let mut font_system = font_system.system.lock();
 			let mut swash_cache = SWASH_CACHE.lock();
 
 			self.text_renderer.prepare(
@@ -217,6 +219,7 @@ impl Context {
 
 	pub fn draw(
 		&mut self,
+		font_system: &font_config::WguiFontSystem,
 		shared: &mut SharedContext,
 		cmd_buf: &mut GfxCommandBuffer,
 		primitives: &[drawing::RenderPrimitive],
@@ -302,7 +305,13 @@ impl Context {
 		};
 
 		for mut pass in passes {
-			pass.submit(&shared.gfx, &mut self.viewport, cmd_buf, &mut atlas.text_atlas)?;
+			pass.submit(
+				font_system,
+				&shared.gfx,
+				&mut self.viewport,
+				cmd_buf,
+				&mut atlas.text_atlas,
+			)?;
 		}
 
 		Ok(res)

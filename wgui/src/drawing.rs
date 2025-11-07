@@ -7,6 +7,7 @@ use taffy::TraversePartialTree;
 use crate::{
 	drawing,
 	event::EventAlterables,
+	globals::Globals,
 	layout::Widget,
 	renderer_vk::text::{TextShadow, custom_glyph::CustomGlyph},
 	stack::{self, ScissorBoundary, ScissorStack, TransformStack},
@@ -169,6 +170,7 @@ pub enum RenderPrimitive {
 }
 
 pub struct DrawParams<'a> {
+	pub globals: &'a Globals,
 	pub layout: &'a mut Layout,
 	pub debug_draw: bool,
 	pub alpha: f32, // timestep alpha, 0.0 - 1.0, used for motion interpolation if rendering above tick rate: smoother animations or scrolling
@@ -347,6 +349,7 @@ pub fn draw(params: &mut DrawParams) -> anyhow::Result<Vec<RenderPrimitive>> {
 	let mut alterables = EventAlterables::default();
 
 	let mut state = DrawState {
+		globals: params.globals,
 		primitives: &mut primitives,
 		transform_stack: &mut transform_stack,
 		scissor_stack: &mut scissor_stack,

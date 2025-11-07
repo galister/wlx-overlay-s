@@ -8,9 +8,9 @@ use crate::{
 	animation::{Animation, AnimationEasing},
 	components::{Component, ComponentBase, ComponentTrait, InitData},
 	drawing::Color,
-	event::{CallbackDataCommon, EventAlterables, EventListenerCollection, EventListenerID, EventListenerKind},
+	event::{CallbackDataCommon, EventListenerCollection, EventListenerID, EventListenerKind},
 	i18n::Translation,
-	layout::{self, LayoutState, WidgetID, WidgetPair},
+	layout::{self, WidgetID, WidgetPair},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
 		ConstructEssentials, EventResult,
@@ -53,6 +53,7 @@ struct State {
 
 #[allow(clippy::struct_field_names)]
 struct Data {
+	#[allow(dead_code)]
 	id_container: WidgetID, // Rectangle, transparent if not hovered
 
 	//id_outer_box: WidgetID, // Rectangle, parent of container

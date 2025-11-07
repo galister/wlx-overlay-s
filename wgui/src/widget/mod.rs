@@ -10,6 +10,7 @@ use crate::{
 		EventListenerKind::{self, InternalStateChange, MouseLeave},
 		MouseWheelEvent,
 	},
+	globals::Globals,
 	layout::{Layout, LayoutState, WidgetID},
 	stack::{ScissorStack, TransformStack},
 };
@@ -108,6 +109,7 @@ impl WidgetState {
 
 // global draw params
 pub struct DrawState<'a> {
+	pub globals: &'a Globals,
 	pub layout: &'a Layout,
 	pub primitives: &'a mut Vec<RenderPrimitive>,
 	pub transform_stack: &'a mut TransformStack,
@@ -151,6 +153,7 @@ pub trait WidgetObj: AnyTrait {
 
 	fn measure(
 		&mut self,
+		_globals: &Globals,
 		_known_dimensions: taffy::Size<Option<f32>>,
 		_available_space: taffy::Size<taffy::AvailableSpace>,
 	) -> taffy::Size<f32> {
@@ -181,11 +184,7 @@ impl EventResult {
 
 	#[must_use]
 	pub fn merge(self, other: Self) -> Self {
-		if self > other {
-			self
-		} else {
-			other
-		}
+		if self > other { self } else { other }
 	}
 }
 

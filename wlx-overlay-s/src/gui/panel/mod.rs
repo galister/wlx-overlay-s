@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use button::setup_custom_button;
-use glam::{vec2, Affine2, Vec2};
+use glam::{Affine2, Vec2, vec2};
 use label::setup_custom_label;
 use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 use wgui::{
@@ -15,14 +15,14 @@ use wgui::{
     layout::{Layout, LayoutParams, WidgetID},
     parser::ParserState,
     renderer_vk::context::Context as WguiContext,
-    widget::{label::WidgetLabel, rectangle::WidgetRectangle, EventResult},
+    widget::{EventResult, label::WidgetLabel, rectangle::WidgetRectangle},
 };
 
 use crate::{
     backend::input::{Haptics, HoverResult, PointerHit, PointerMode},
     graphics::{CommandBuffers, ExtentExt},
     state::AppState,
-    windowing::backend::{ui_transform, FrameMeta, OverlayBackend, ShouldRender},
+    windowing::backend::{FrameMeta, OverlayBackend, ShouldRender, ui_transform},
 };
 
 use super::{timer::GuiTimer, timestep::Timestep};
@@ -237,13 +237,21 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
             wgui::gfx::cmd::WGfxClearMode::Clear([0.0, 0.0, 0.0, 0.0]),
         )?;
 
+        let globals = self.layout.state.globals.clone(); // sorry
+        let mut globals = globals.get();
+
         let primitives = wgui::drawing::draw(&mut wgui::drawing::DrawParams {
+            globals: &mut globals,
             layout: &mut self.layout,
             debug_draw: false,
             alpha,
         })?;
-        self.context
-            .draw(&mut app.wgui_shared, &mut cmd_buf, &primitives)?;
+        self.context.draw(
+            &globals.font_system,
+            &mut app.wgui_shared,
+            &mut cmd_buf,
+            &primitives,
+        )?;
         cmd_buf.end_rendering()?;
         buf.push(cmd_buf.build()?);
 

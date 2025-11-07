@@ -1,0 +1,45 @@
+use parking_lot::Mutex;
+
+#[derive(Default)]
+pub struct WguiFontConfig<'a> {
+	pub binaries: Vec<&'a [u8]>,
+	pub family_name_sans_serif: &'a str,
+	pub family_name_serif: &'a str,
+	pub family_name_monospace: &'a str,
+}
+
+pub struct WguiFontSystem {
+	pub system: Mutex<cosmic_text::FontSystem>,
+}
+
+impl WguiFontSystem {
+	pub fn new(config: &WguiFontConfig) -> Self {
+		let mut db = cosmic_text::fontdb::Database::new();
+
+		let system = if config.binaries.is_empty() {
+			cosmic_text::FontSystem::new()
+		} else {
+			for binary in &config.binaries {
+				// binary data is copied and preserved here
+				db.load_font_data(binary.to_vec());
+			}
+
+			if !config.family_name_sans_serif.is_empty() {
+				db.set_sans_serif_family(config.family_name_sans_serif);
+			}
+
+			if !config.family_name_serif.is_empty() {
+				db.set_serif_family(config.family_name_serif);
+			}
+
+			// we don't require anything special, at least for now
+			let locale = String::from("C");
+
+			cosmic_text::FontSystem::new_with_locale_and_db(locale, db)
+		};
+
+		Self {
+			system: Mutex::new(system),
+		}
+	}
+}

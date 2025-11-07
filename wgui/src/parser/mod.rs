@@ -8,7 +8,7 @@ mod widget_rectangle;
 mod widget_sprite;
 
 use crate::{
-	assets::{normalize_path, AssetPath, AssetPathOwned},
+	assets::{AssetPath, AssetPathOwned, normalize_path},
 	components::{Component, ComponentWeak},
 	drawing::{self},
 	globals::WguiGlobals,
@@ -624,7 +624,7 @@ pub fn replace_vars(input: &str, vars: &HashMap<Rc<str>, Rc<str>>) -> Rc<str> {
 		if let Some(replacement) = vars.get(input_var) {
 			replacement.clone()
 		} else {
-			log::warn!("failed to replace var named \"{input_var}\" (not found)");
+			// failed to find var, return an empty string
 			Rc::from("")
 		}
 	});

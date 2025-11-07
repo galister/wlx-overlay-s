@@ -7,6 +7,7 @@ use std::{
 use crate::{
 	assets::{AssetPath, AssetProvider},
 	assets_internal, drawing,
+	font_config::{WguiFontConfig, WguiFontSystem},
 	i18n::I18n,
 };
 
@@ -31,13 +32,18 @@ pub struct Globals {
 	pub assets_builtin: Box<dyn AssetProvider>,
 	pub i18n_builtin: I18n,
 	pub defaults: Defaults,
+	pub font_system: WguiFontSystem,
 }
 
 #[derive(Clone)]
 pub struct WguiGlobals(Rc<RefCell<Globals>>);
 
 impl WguiGlobals {
-	pub fn new(mut assets_builtin: Box<dyn AssetProvider>, defaults: Defaults) -> anyhow::Result<Self> {
+	pub fn new(
+		mut assets_builtin: Box<dyn AssetProvider>,
+		defaults: Defaults,
+		font_config: &WguiFontConfig,
+	) -> anyhow::Result<Self> {
 		let i18n_builtin = I18n::new(&mut assets_builtin)?;
 		let assets_internal = Box::new(assets_internal::AssetInternal {});
 
@@ -46,6 +52,7 @@ impl WguiGlobals {
 			assets_builtin,
 			i18n_builtin,
 			defaults,
+			font_system: WguiFontSystem::new(font_config),
 		}))))
 	}
 
@@ -80,5 +87,9 @@ impl WguiGlobals {
 
 	pub fn assets_builtin(&self) -> RefMut<'_, Box<dyn AssetProvider>> {
 		RefMut::map(self.0.borrow_mut(), |x| &mut x.assets_builtin)
+	}
+
+	pub fn font_system(&self) -> RefMut<'_, WguiFontSystem> {
+		RefMut::map(self.0.borrow_mut(), |x| &mut x.font_system)
 	}
 }

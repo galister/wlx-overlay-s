@@ -15,8 +15,8 @@ use wgui::{
     event::{self, EventCallback},
     i18n::Translation,
     layout::Layout,
-    parser::{parse_color_hex, CustomAttribsInfoOwned},
-    widget::{label::WidgetLabel, EventResult},
+    parser::{CustomAttribsInfoOwned, parse_color_hex},
+    widget::{EventResult, label::WidgetLabel},
 };
 
 use crate::state::AppState;
@@ -123,13 +123,13 @@ pub(super) fn setup_custom_label<S: 'static>(
 
                     let pretty_tz = maybe_pretty_tz.as_ref().map_or("Local", |x| x.as_str());
 
-                    let mut i18n = layout.state.globals.i18n();
+                    let mut globals = layout.state.globals.get();
                     layout
                         .state
                         .widgets
                         .get_as::<WidgetLabel>(attribs.widget_id)
                         .unwrap()
-                        .set_text_simple(&mut i18n, Translation::from_raw_text(pretty_tz));
+                        .set_text_simple(&mut globals, Translation::from_raw_text(pretty_tz));
 
                     // does not need to be dynamic
                     return;

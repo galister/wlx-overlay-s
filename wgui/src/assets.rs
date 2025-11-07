@@ -1,3 +1,5 @@
+use flate2::read::GzDecoder;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Copy)]
@@ -74,6 +76,13 @@ impl Default for AssetPathOwned {
 
 pub trait AssetProvider {
 	fn load_from_path(&mut self, path: &str) -> anyhow::Result<Vec<u8>>;
+	fn load_from_path_gzip(&mut self, path: &str) -> anyhow::Result<Vec<u8>> {
+		let compressed = self.load_from_path(path)?;
+		let mut gz = GzDecoder::new(&compressed[..]);
+		let mut out = Vec::new();
+		gz.read_to_end(&mut out)?;
+		Ok(out)
+	}
 }
 
 // replace "./foo/bar/../file.txt" with "./foo/file.txt"

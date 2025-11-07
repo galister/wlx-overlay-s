@@ -5,10 +5,11 @@ use slotmap::Key;
 
 use crate::{
 	drawing::{self, PrimitiveExtent},
+	globals::Globals,
 	layout::WidgetID,
 	renderer_vk::text::{
+		DEFAULT_METRICS,
 		custom_glyph::{CustomGlyph, CustomGlyphData},
-		DEFAULT_METRICS, FONT_SYSTEM,
 	},
 };
 
@@ -67,7 +68,7 @@ impl WidgetObj for WidgetSprite {
 			let mut buffer = Buffer::new_empty(DEFAULT_METRICS);
 
 			{
-				let mut font_system = FONT_SYSTEM.lock();
+				let mut font_system = state.globals.font_system.system.lock();
 				let mut buffer = buffer.borrow_with(&mut font_system);
 				let attrs = Attrs::new().color(Color::rgb(255, 0, 255)).weight(Weight::BOLD);
 
@@ -88,6 +89,7 @@ impl WidgetObj for WidgetSprite {
 
 	fn measure(
 		&mut self,
+		_globals: &Globals,
 		_known_dimensions: taffy::Size<Option<f32>>,
 		_available_space: taffy::Size<taffy::AvailableSpace>,
 	) -> taffy::Size<f32> {

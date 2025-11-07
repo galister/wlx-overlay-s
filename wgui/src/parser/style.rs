@@ -65,6 +65,7 @@ pub fn parse_text_style(attribs: &[AttribPair]) -> TextStyle {
 				}
 			},
 			"weight" => match value {
+				"light" => style.weight = Some(FontWeight::Light),
 				"normal" => style.weight = Some(FontWeight::Normal),
 				"bold" => style.weight = Some(FontWeight::Bold),
 				_ => {

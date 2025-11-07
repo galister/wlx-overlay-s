@@ -1,10 +1,11 @@
 use glam::Affine3A;
 use idmap::IdMap;
 use serde::{Deserialize, Serialize};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use std::sync::Arc;
 use wgui::{
-    gfx::WGfx, globals::WguiGlobals, renderer_vk::context::SharedContext as WSharedContext,
+    font_config::WguiFontConfig, gfx::WGfx, globals::WguiGlobals,
+    renderer_vk::context::SharedContext as WSharedContext,
 };
 
 #[cfg(feature = "wayvr")]
@@ -97,6 +98,7 @@ impl AppState {
             wgui_globals: WguiGlobals::new(
                 Box::new(gui::asset::GuiAsset {}),
                 wgui::globals::Defaults::default(),
+                &WguiFontConfig::default(),
             )?,
 
             #[cfg(feature = "osc")]

@@ -8,9 +8,9 @@ use crate::{
 	drawing::{self, Boundary, PrimitiveExtent},
 	event::CallbackDataCommon,
 	globals::Globals,
-	i18n::{I18n, Translation},
+	i18n::Translation,
 	layout::WidgetID,
-	renderer_vk::text::{TextStyle, FONT_SYSTEM},
+	renderer_vk::text::TextStyle,
 };
 
 use super::{WidgetObj, WidgetState};
@@ -41,7 +41,7 @@ impl WidgetLabel {
 
 		let mut buffer = Buffer::new_empty(metrics);
 		{
-			let mut font_system = FONT_SYSTEM.lock();
+			let mut font_system = globals.font_system.system.lock();
 			let mut buffer = buffer.borrow_with(&mut font_system);
 			buffer.set_wrap(wrap);
 
@@ -63,19 +63,19 @@ impl WidgetLabel {
 
 	// set text without layout/re-render update.
 	// Not recommended unless the widget wasn't rendered yet (first init).
-	pub fn set_text_simple(&mut self, i18n: &mut I18n, translation: Translation) -> bool {
+	pub fn set_text_simple(&mut self, globals: &mut Globals, translation: Translation) -> bool {
 		if self.params.content == translation {
 			return false;
 		}
 
 		self.params.content = translation;
 		let attrs = Attrs::from(&self.params.style);
-		let mut font_system = FONT_SYSTEM.lock();
+		let mut font_system = globals.font_system.system.lock();
 
 		let mut buffer = self.buffer.borrow_mut();
 		buffer.set_rich_text(
 			&mut font_system,
-			[(self.params.content.generate(i18n).as_ref(), attrs)],
+			[(self.params.content.generate(&mut globals.i18n_builtin).as_ref(), attrs)],
 			&Attrs::new(),
 			Shaping::Advanced,
 			self.params.style.align.map(Into::into),
@@ -93,7 +93,9 @@ impl WidgetLabel {
 
 	// set text and check if it needs to be re-rendered/re-layouted
 	pub fn set_text(&mut self, common: &mut CallbackDataCommon, translation: Translation) {
-		if self.set_text_simple(&mut common.i18n(), translation) {
+		let mut globals = common.state.globals.get();
+
+		if self.set_text_simple(&mut globals, translation) {
 			common.mark_widget_dirty(self.id);
 		}
 	}
@@ -113,7 +115,7 @@ impl WidgetObj for WidgetLabel {
 
 		if self.last_boundary != boundary {
 			self.last_boundary = boundary;
-			let mut font_system = FONT_SYSTEM.lock();
+			let mut font_system = state.globals.font_system.system.lock();
 			let mut buffer = self.buffer.borrow_mut();
 			buffer.set_size(&mut font_system, Some(boundary.size.x), Some(boundary.size.y));
 		}
@@ -130,6 +132,7 @@ impl WidgetObj for WidgetLabel {
 
 	fn measure(
 		&mut self,
+		globals: &Globals,
 		known_dimensions: taffy::Size<Option<f32>>,
 		available_space: taffy::Size<taffy::AvailableSpace>,
 	) -> taffy::Size<f32> {
@@ -140,7 +143,8 @@ impl WidgetObj for WidgetLabel {
 			AvailableSpace::Definite(width) => Some(width),
 		});
 
-		let mut font_system = FONT_SYSTEM.lock();
+		let wgui_font_system = &globals.font_system;
+		let mut font_system = wgui_font_system.system.lock();
 		let mut buffer = self.buffer.borrow_mut();
 
 		buffer.set_size(&mut font_system, width_constraint, None);

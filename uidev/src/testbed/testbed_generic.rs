@@ -8,11 +8,12 @@ use glam::Vec2;
 use wgui::{
 	assets::AssetPath,
 	components::{
+		Component,
 		button::{ButtonClickCallback, ComponentButton},
 		checkbox::ComponentCheckbox,
-		Component,
 	},
 	drawing::Color,
+	font_config::WguiFontConfig,
 	globals::WguiGlobals,
 	i18n::Translation,
 	layout::{Layout, LayoutParams, RcLayout, Widget},
@@ -76,6 +77,7 @@ impl TestbedGeneric {
 		let globals = WguiGlobals::new(
 			Box::new(assets::Asset {}),
 			wgui::globals::Defaults::default(),
+			&WguiFontConfig::default(),
 		)?;
 
 		let extra = ParseDocumentExtra {

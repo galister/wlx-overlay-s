@@ -27,6 +27,7 @@ mod assets_internal;
 pub mod components;
 pub mod drawing;
 pub mod event;
+pub mod font_config;
 pub mod gfx;
 pub mod globals;
 pub mod i18n;

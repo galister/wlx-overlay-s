@@ -100,6 +100,8 @@
         <rectangle
           width="100%"
           height="48"
+          min_height="48"
+          max_height="48"
           box_sizing="border_box"
           round="8"
           flex_direction="row"
@@ -130,7 +132,7 @@
 
           <!-- Right bottom side -->
           <div margin_right="16">
-            <label id="label_time" size="16" />
+            <label id="label_time" size="16" weight="light" />
           </div>
         </rectangle>
       </div>

@@ -75,7 +75,7 @@ impl I18n {
 		log::info!("Guessed system language: {lang}");
 
 		match lang.as_str() {
-			"en" | "pl" | "it" | "ja" | "es" => {}
+			"en" | "pl" | "it" | "ja" | "es" | "de" => {}
 			_ => {
 				log::warn!("Unsupported language \"{}\", defaulting to \"en\".", lang.as_str());
 

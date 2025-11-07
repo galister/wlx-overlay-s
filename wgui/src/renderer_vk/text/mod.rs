@@ -13,7 +13,6 @@ use parking_lot::Mutex;
 
 use crate::drawing::{self};
 
-pub static FONT_SYSTEM: LazyLock<Mutex<FontSystem>> = LazyLock::new(|| Mutex::new(FontSystem::new()));
 pub static SWASH_CACHE: LazyLock<Mutex<SwashCache>> = LazyLock::new(|| Mutex::new(SwashCache::new()));
 
 /// Used in case no `font_size` is defined
@@ -102,6 +101,7 @@ impl From<FontStyle> for Style {
 
 #[derive(Default, Debug, Clone, Copy)]
 pub enum FontWeight {
+	Light,
 	#[default]
 	Normal,
 	Bold,
@@ -110,6 +110,7 @@ pub enum FontWeight {
 impl From<FontWeight> for Weight {
 	fn from(value: FontWeight) -> Self {
 		match value {
+			FontWeight::Light => Self::LIGHT,
 			FontWeight::Normal => Self::NORMAL,
 			FontWeight::Bold => Self::BOLD,
 		}

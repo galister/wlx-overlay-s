@@ -3,9 +3,9 @@ use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 use chrono::Timelike;
 use glam::Vec2;
 use wgui::{
-	assets::AssetPath,
+	assets::{AssetPath, AssetProvider},
 	components::button::ComponentButton,
-	event::{CallbackDataCommon, EventAlterables},
+	font_config::WguiFontConfig,
 	globals::WguiGlobals,
 	i18n::Translation,
 	layout::{LayoutParams, RcLayout, WidgetID},
@@ -54,7 +54,22 @@ pub enum FrontendTask {
 
 impl Frontend {
 	pub fn new(params: InitParams) -> anyhow::Result<(RcFrontend, RcLayout)> {
-		let globals = WguiGlobals::new(Box::new(assets::Asset {}), wgui::globals::Defaults::default())?;
+		let mut assets = Box::new(assets::Asset {});
+
+		let font_binary_bold = assets.load_from_path_gzip("Quicksand-Bold.ttf.gz")?;
+		let font_binary_regular = assets.load_from_path_gzip("Quicksand-Regular.ttf.gz")?;
+		let font_binary_light = assets.load_from_path_gzip("Quicksand-Light.ttf.gz")?;
+
+		let globals = WguiGlobals::new(
+			assets,
+			wgui::globals::Defaults::default(),
+			&WguiFontConfig {
+				binaries: vec![&font_binary_regular, &font_binary_bold, &font_binary_light],
+				family_name_sans_serif: "Quicksand",
+				family_name_serif: "Quicksand",
+				family_name_monospace: "",
+			},
+		)?;
 
 		let (layout, state) = wgui::parser::new_layout_from_assets(
 			&ParseDocumentParams {

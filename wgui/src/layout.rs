@@ -198,7 +198,7 @@ fn add_child_internal(
 
 pub struct LayoutCommon<'a> {
 	alterables: EventAlterables,
-	layout: &'a mut Layout,
+	pub layout: &'a mut Layout,
 }
 
 impl LayoutCommon<'_> {
@@ -564,6 +564,8 @@ impl Layout {
 		log::debug!("re-computing layout, size {}x{}", size.x, size.y);
 		self.prev_size = size;
 
+		let globals = self.state.globals.get();
+
 		self.state.tree.compute_layout_with_measure(
 			self.tree_root_node,
 			taffy::Size {
@@ -583,7 +585,10 @@ impl Layout {
 					None => taffy::Size::ZERO,
 					Some(h) => {
 						if let Some(w) = self.state.widgets.get(*h) {
-							w.0.borrow_mut().obj.measure(known_dimensions, available_space)
+							w.0
+								.borrow_mut()
+								.obj
+								.measure(&globals, known_dimensions, available_space)
 						} else {
 							taffy::Size::ZERO
 						}

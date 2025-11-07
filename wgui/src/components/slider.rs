@@ -53,7 +53,8 @@ struct State {
 }
 
 struct Data {
-	body: WidgetID,                  // Div
+	#[allow(dead_code)]
+	body: WidgetID, // Div
 	slider_handle_rect_id: WidgetID, // Rectangle
 	slider_text_id: WidgetID,        // Text
 	slider_handle_node: taffy::NodeId,

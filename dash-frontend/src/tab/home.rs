@@ -1,7 +1,9 @@
 use wgui::{
 	assets::AssetPath,
 	components::button::ComponentButton,
+	event::CallbackDataCommon,
 	i18n::Translation,
+	layout::Widget,
 	parser::{Fetchable, ParseDocumentParams, ParserState},
 	widget::label::WidgetLabel,
 };
@@ -23,7 +25,7 @@ impl Tab for TabHome {
 	}
 }
 
-fn configure_label_hello(label_hello: &mut WidgetLabel, i18n: &mut wgui::i18n::I18n, settings: &settings::Settings) {
+fn configure_label_hello(common: &mut CallbackDataCommon, label_hello: Widget, settings: &settings::Settings) {
 	let mut username = various::get_username();
 	// first character as uppercase
 	if let Some(first) = username.chars().next() {
@@ -32,12 +34,13 @@ fn configure_label_hello(label_hello: &mut WidgetLabel, i18n: &mut wgui::i18n::I
 	}
 
 	let translated = if !settings.home_screen.hide_username {
-		i18n.translate_and_replace("HELLO_USER", ("{USER}", &username))
+		common.i18n().translate_and_replace("HELLO_USER", ("{USER}", &username))
 	} else {
-		i18n.translate("HELLO").to_string()
+		common.i18n().translate("HELLO").to_string()
 	};
 
-	label_hello.set_text_simple(i18n, Translation::from_raw_text(&translated));
+	let mut label_hello = label_hello.get_as_mut::<WidgetLabel>().unwrap();
+	label_hello.set_text(common, Translation::from_raw_text(&translated));
 }
 
 impl TabHome {
@@ -52,8 +55,9 @@ impl TabHome {
 			params.parent_id,
 		)?;
 
-		let mut label_hello = state.fetch_widget_as::<WidgetLabel>(&params.layout.state, "label_hello")?;
-		configure_label_hello(&mut label_hello, &mut params.globals.i18n(), params.settings);
+		let mut c = params.layout.start_common();
+		let widget_label = state.fetch_widget(&c.layout.state, "label_hello")?.widget;
+		configure_label_hello(&mut c.common(), widget_label, params.settings);
 
 		let btn_apps = state.fetch_component_as::<ComponentButton>("btn_apps")?;
 		let btn_games = state.fetch_component_as::<ComponentButton>("btn_games")?;

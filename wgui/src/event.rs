@@ -2,7 +2,6 @@ use std::{
 	any::{Any, TypeId},
 	cell::RefMut,
 	collections::HashSet,
-	ops::Deref,
 };
 
 use glam::Vec2;

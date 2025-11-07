@@ -2,7 +2,6 @@ use std::rc::Rc;
 
 use wgui::{
 	components::button::ComponentButton,
-	event::CallbackDataCommon,
 	globals::WguiGlobals,
 	layout::{Layout, WidgetID},
 };

@@ -1,26 +1,26 @@
-use glam::{vec2, Vec2};
+use glam::{Vec2, vec2};
 use std::sync::Arc;
-use testbed::{testbed_any::TestbedAny, Testbed};
+use testbed::{Testbed, testbed_any::TestbedAny};
 use timestep::Timestep;
+use tracing_subscriber::EnvFilter;
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::EnvFilter;
 use vulkan::init_window;
 use vulkano::{
+	Validated, VulkanError,
 	command_buffer::CommandBufferUsage,
 	format::Format,
-	image::{view::ImageView, ImageUsage},
+	image::{ImageUsage, view::ImageView},
 	swapchain::{
-		acquire_next_image, CompositeAlpha, PresentMode, Surface, SurfaceInfo, Swapchain,
-		SwapchainCreateInfo, SwapchainPresentInfo,
+		CompositeAlpha, PresentMode, Surface, SurfaceInfo, Swapchain, SwapchainCreateInfo,
+		SwapchainPresentInfo, acquire_next_image,
 	},
 	sync::GpuFuture,
-	Validated, VulkanError,
 };
 use wgui::{
 	event::{MouseButtonIndex, MouseDownEvent, MouseMotionEvent, MouseUpEvent, MouseWheelEvent},
-	gfx::{cmd::WGfxClearMode, WGfx},
+	gfx::{WGfx, cmd::WGfxClearMode},
 	renderer_vk::{self},
 };
 use winit::{
@@ -32,7 +32,7 @@ use winit::{
 use crate::{
 	rate_limiter::RateLimiter,
 	testbed::{
-		testbed_dashboard::TestbedDashboard, testbed_generic::TestbedGeneric, TestbedUpdateParams,
+		TestbedUpdateParams, testbed_dashboard::TestbedDashboard, testbed_generic::TestbedGeneric,
 	},
 };
 
@@ -337,7 +337,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 						.unwrap();
 
 					let mut layout = testbed.layout().borrow_mut();
+					let globals = layout.state.globals.clone();
+					let mut globals = globals.get();
+
 					let mut draw_params = wgui::drawing::DrawParams {
+						globals: &mut globals,
 						layout: &mut layout,
 						debug_draw: debug_draw_enabled,
 						alpha: timestep.alpha,
@@ -347,7 +351,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 					drop(layout);
 
 					let draw_result = render_context
-						.draw(&mut shared_context, &mut cmd_buf, &primitives)
+						.draw(
+							&globals.font_system,
+							&mut shared_context,
+							&mut cmd_buf,
+							&primitives,
+						)
 						.unwrap();
 
 					if debug_draw_enabled {
