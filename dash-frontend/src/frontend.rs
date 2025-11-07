@@ -10,7 +10,7 @@ use wgui::{
 	i18n::Translation,
 	layout::{LayoutParams, RcLayout, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
-	widget::label::WidgetLabel,
+	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
 };
 
 use crate::{
@@ -36,7 +36,8 @@ pub struct Frontend {
 
 	ticks: u32,
 
-	label_time_id: WidgetID,
+	id_label_time: WidgetID,
+	id_rect_content: WidgetID,
 }
 
 pub struct InitParams {
@@ -47,6 +48,8 @@ pub type RcFrontend = Rc<RefCell<Frontend>>;
 
 pub enum FrontendTask {
 	SetTab(TabType),
+	RefreshClock,
+	RefreshBackground,
 }
 
 impl Frontend {
@@ -67,18 +70,26 @@ impl Frontend {
 		let mut tasks = VecDeque::<FrontendTask>::new();
 		tasks.push_back(FrontendTask::SetTab(TabType::Home));
 
-		let label_time_id = state.get_widget_id("label_time")?;
+		let id_label_time = state.get_widget_id("label_time")?;
+		let id_rect_content = state.get_widget_id("rect_content")?;
 
-		let res = Rc::new(RefCell::new(Self {
+		let frontend = Self {
 			layout: rc_layout.clone(),
 			state,
 			current_tab: None,
 			globals,
 			tasks,
 			ticks: 0,
-			label_time_id,
+			id_label_time,
+			id_rect_content,
 			settings: params.settings,
-		}));
+		};
+
+		// init some things first
+		frontend.update_background()?;
+		frontend.update_time()?;
+
+		let res = Rc::new(RefCell::new(frontend));
 
 		Frontend::register_widgets(&res)?;
 
@@ -97,31 +108,65 @@ impl Frontend {
 	}
 
 	fn tick(&mut self, width: f32, height: f32, timestep_alpha: f32) -> anyhow::Result<()> {
-		let mut layout = self.layout.borrow_mut();
-
-		let mut c = layout.start_common();
-
 		// fixme: timer events instead of this thing
 		if self.ticks.is_multiple_of(1000) {
-			self.update_time(&mut c.common());
+			self.update_time()?;
 		}
 
-		c.finish()?;
-		layout.update(Vec2::new(width, height), timestep_alpha)?;
+		{
+			let mut layout = self.layout.borrow_mut();
+			layout.update(Vec2::new(width, height), timestep_alpha)?;
+		}
 
 		Ok(())
 	}
 
-	fn update_time(&self, common: &mut CallbackDataCommon) {
-		let Some(mut label) = common.state.widgets.get_as::<WidgetLabel>(self.label_time_id) else {
-			return;
+	fn update_time(&self) -> anyhow::Result<()> {
+		let mut layout = self.layout.borrow_mut();
+		let mut c = layout.start_common();
+		let mut common = c.common();
+
+		{
+			let Some(mut label) = common.state.widgets.get_as::<WidgetLabel>(self.id_label_time) else {
+				anyhow::bail!("");
+			};
+
+			let now = chrono::Local::now();
+			let hours = now.hour();
+			let minutes = now.minute();
+
+			let text: String = if !self.settings.general.am_pm_clock {
+				format!("{hours:02}:{minutes:02}")
+			} else {
+				let hours_ampm = (hours + 11) % 12 + 1;
+				let suffix = if hours >= 12 { "PM" } else { "AM" };
+				format!("{hours_ampm:02}:{minutes:02} {suffix}")
+			};
+
+			label.set_text(&mut common, Translation::from_raw_text(&text));
+		}
+
+		c.finish()?;
+		Ok(())
+	}
+
+	fn update_background(&self) -> anyhow::Result<()> {
+		let layout = self.layout.borrow_mut();
+
+		let Some(mut rect) = layout.state.widgets.get_as::<WidgetRectangle>(self.id_rect_content) else {
+			anyhow::bail!("");
 		};
 
-		let now = chrono::Local::now();
-		let hours = now.hour();
-		let minutes = now.minute();
+		let (alpha1, alpha2) = if !self.settings.general.opaque_background {
+			(0.8666, 0.9333)
+		} else {
+			(1.0, 1.0)
+		};
 
-		label.set_text(common, Translation::from_raw_text(&format!("{hours:02}:{minutes:02}")));
+		rect.params.color.a = alpha1;
+		rect.params.color2.a = alpha2;
+
+		Ok(())
 	}
 
 	pub fn get_layout(&self) -> &RcLayout {
@@ -135,6 +180,8 @@ impl Frontend {
 	fn process_task(&mut self, rc_this: &RcFrontend, task: FrontendTask) -> anyhow::Result<()> {
 		match task {
 			FrontendTask::SetTab(tab_type) => self.set_tab(tab_type, rc_this)?,
+			FrontendTask::RefreshClock => self.update_time()?,
+			FrontendTask::RefreshBackground => self.update_background()?,
 		}
 		Ok(())
 	}

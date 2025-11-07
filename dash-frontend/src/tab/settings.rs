@@ -3,12 +3,11 @@ use std::rc::Rc;
 use wgui::{
 	assets::AssetPath,
 	components::checkbox::ComponentCheckbox,
-	event::CallbackDataCommon,
 	parser::{Fetchable, ParseDocumentParams, ParserState},
 };
 
 use crate::{
-	frontend::{Frontend, RcFrontend},
+	frontend::{Frontend, FrontendTask},
 	settings,
 	tab::{Tab, TabParams, TabType},
 };
@@ -28,6 +27,7 @@ fn init_setting_checkbox(
 	params: &mut TabParams,
 	checkbox: Rc<ComponentCheckbox>,
 	fetch_callback: fn(&mut settings::Settings) -> &mut bool,
+	change_callback: Option<fn(&mut Frontend, bool)>,
 ) -> anyhow::Result<()> {
 	let mut c = params.layout.start_common();
 
@@ -36,6 +36,10 @@ fn init_setting_checkbox(
 	checkbox.on_toggle(Box::new(move |_common, e| {
 		let mut frontend = rc_frontend.borrow_mut();
 		*fetch_callback(&mut frontend.settings) = e.checked;
+
+		if let Some(change_callback) = &change_callback {
+			change_callback(&mut frontend, e.checked);
+		}
 		Ok(())
 	}));
 
@@ -59,12 +63,16 @@ impl TabSettings {
 			&mut params,
 			state.data.fetch_component_as::<ComponentCheckbox>("cb_hide_username")?,
 			|settings| &mut settings.home_screen.hide_username,
+			None,
 		)?;
 
 		init_setting_checkbox(
 			&mut params,
 			state.data.fetch_component_as::<ComponentCheckbox>("cb_am_pm_clock")?,
 			|settings| &mut settings.general.am_pm_clock,
+			Some(|frontend, _| {
+				frontend.push_task(FrontendTask::RefreshClock);
+			}),
 		)?;
 
 		init_setting_checkbox(
@@ -73,6 +81,9 @@ impl TabSettings {
 				.data
 				.fetch_component_as::<ComponentCheckbox>("cb_opaque_background")?,
 			|settings| &mut settings.general.opaque_background,
+			Some(|frontend, _| {
+				frontend.push_task(FrontendTask::RefreshBackground);
+			}),
 		)?;
 
 		init_setting_checkbox(
@@ -81,6 +92,7 @@ impl TabSettings {
 				.data
 				.fetch_component_as::<ComponentCheckbox>("cb_xwayland_by_default")?,
 			|settings| &mut settings.tweaks.xwayland_by_default,
+			None,
 		)?;
 
 		Ok(Self { state })

@@ -64,9 +64,12 @@
         height="100%"
         overflow_x="scroll">
         <!-- CONTENT -->
+
+        <!-- color and color2 alpha will be modified at runtime -->
         <rectangle
-          color2="#0d131aee"
-          color="#244179dd"
+          id="rect_content"
+          color2="#0d131a00"
+          color="#24417900"
           gradient="vertical"
           round="8"
           flex_grow="1"

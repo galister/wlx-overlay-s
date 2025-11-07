@@ -26,5 +26,6 @@
       "ENABLE_PASSTHROUGH": "Passthrough aktivieren"
     },
     "RESTART_SOFTWARE": "Software neu starten"
-  }
+  },
+  "HELLO": "Hallo!"
 }

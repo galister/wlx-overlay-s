@@ -6,6 +6,7 @@
 	"SETTINGS": "Settings",
 	"PROCESSES": "Processes",
 	"HELLO_USER": "Hello, {USER}!",
+	"HELLO": "Hello!",
 	"GENERAL_SETTINGS": "General settings",
 	"APPLICATION_LAUNCHER": "Application launcher",
 	"APP_SETTINGS": {

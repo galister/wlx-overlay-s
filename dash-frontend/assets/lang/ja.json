@@ -26,5 +26,6 @@
       "ENABLE_PASSTHROUGH": "Passthroughを有効にする"
     },
     "RESTART_SOFTWARE": "ソフトウェアを再起動"
-  }
+  },
+  "HELLO": "こんにちは！"
 }
