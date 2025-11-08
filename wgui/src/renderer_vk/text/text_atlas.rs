@@ -1,5 +1,5 @@
 use cosmic_text::{FontSystem, SwashCache};
-use etagere::{size2, Allocation, BucketedAtlasAllocator};
+use etagere::{Allocation, BucketedAtlasAllocator, size2};
 use lru::LruCache;
 use rustc_hash::FxHasher;
 use std::{collections::HashSet, hash::BuildHasherDefault, sync::Arc};
@@ -8,20 +8,20 @@ use vulkano::{
 	command_buffer::CommandBufferUsage,
 	descriptor_set::DescriptorSet,
 	format::Format,
-	image::{view::ImageView, Image, ImageCreateInfo, ImageType, ImageUsage},
+	image::{Image, ImageCreateInfo, ImageType, ImageUsage, view::ImageView},
 	memory::allocator::AllocationCreateInfo,
 	pipeline::graphics::vertex_input::Vertex,
 };
 
 use super::{
+	GlyphDetails, GpuCacheStatus,
 	custom_glyph::ContentType,
 	shaders::{frag_atlas, vert_atlas},
 	text_renderer::GlyphonCacheKey,
-	GlyphDetails, GpuCacheStatus,
 };
 use crate::gfx::{
+	BLEND_ALPHA, WGfx,
 	pipeline::{WGfxPipeline, WPipelineCreateInfo},
-	WGfx, BLEND_ALPHA,
 };
 
 /// Pipeline & shaders to be reused between `TextRenderer` instances
@@ -77,6 +77,8 @@ pub(super) struct InnerAtlas {
 	common: TextPipeline,
 }
 
+pub const TEXT_ATLAS_ISLAND_PADDING_PX: u32 = 1;
+
 impl InnerAtlas {
 	const INITIAL_SIZE: u32 = 256;
 
@@ -131,10 +133,15 @@ impl InnerAtlas {
 	}
 
 	pub(super) fn try_allocate(&mut self, width: usize, height: usize) -> Option<Allocation> {
-		let size = size2(width as i32, height as i32);
+		let glyph_size = size2(width as i32, height as i32);
+		let padded_size = glyph_size
+			+ size2(
+				(TEXT_ATLAS_ISLAND_PADDING_PX * 2) as i32,
+				(TEXT_ATLAS_ISLAND_PADDING_PX * 2) as i32,
+			);
 
 		loop {
-			let allocation = self.packer.allocate(size);
+			let allocation = self.packer.allocate(padded_size);
 
 			if allocation.is_some() {
 				return allocation;
@@ -199,6 +206,9 @@ impl InnerAtlas {
 			.common
 			.gfx
 			.create_xfer_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+
+		// clear newly allocated image with zeros
+		cmd_buf.clear_image(&image)?;
 
 		// Re-upload glyphs
 		for (&cache_key, glyph) in &self.glyph_cache {

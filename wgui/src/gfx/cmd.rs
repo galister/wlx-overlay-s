@@ -4,11 +4,11 @@ use vulkano::{
 	DeviceSize,
 	buffer::{Buffer, BufferCreateInfo, BufferUsage, Subbuffer},
 	command_buffer::{
-		AutoCommandBufferBuilder, CommandBufferExecFuture, CopyBufferToImageInfo, CopyImageInfo, PrimaryAutoCommandBuffer,
-		PrimaryCommandBufferAbstract, RenderingAttachmentInfo, RenderingInfo, SubpassContents,
+		AutoCommandBufferBuilder, ClearColorImageInfo, CommandBufferExecFuture, CopyBufferToImageInfo, CopyImageInfo,
+		PrimaryAutoCommandBuffer, PrimaryCommandBufferAbstract, RenderingAttachmentInfo, RenderingInfo, SubpassContents,
 	},
 	device::Queue,
-	format::{ClearValue, Format},
+	format::{ClearColorValue, ClearValue, Format},
 	image::{Image, ImageCreateInfo, ImageType, ImageUsage, view::ImageView},
 	memory::allocator::{AllocationCreateInfo, MemoryTypeFilter},
 	render_pass::{AttachmentLoadOp, AttachmentStoreOp},
@@ -126,6 +126,16 @@ impl WCommandBuffer<CmdBufXfer> {
 			.copy_buffer_to_image(CopyBufferToImageInfo::buffer_image(buffer, image.clone()))?;
 
 		Ok(image)
+	}
+
+	pub fn clear_image(&mut self, image: &Arc<Image>) -> anyhow::Result<()> {
+		let clear_info = ClearColorImageInfo {
+			clear_value: ClearColorValue::Uint([0, 0, 0, 0]),
+			..ClearColorImageInfo::image(image.clone())
+		};
+
+		self.command_buffer.clear_color_image(clear_info)?;
+		Ok(())
 	}
 
 	pub fn update_image(

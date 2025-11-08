@@ -1,14 +1,15 @@
 use crate::{
 	gfx::{cmd::GfxCommandBuffer, pass::WGfxPass},
-	renderer_vk::{model_buffer::ModelBuffer, viewport::Viewport},
+	renderer_vk::{model_buffer::ModelBuffer, text::text_atlas::TEXT_ATLAS_ISLAND_PADDING_PX, viewport::Viewport},
 };
 
 use super::{
+	ContentType, FontSystem, GlyphDetails, GpuCacheStatus, SwashCache, TextArea,
 	custom_glyph::{CustomGlyphCacheKey, RasterizeCustomGlyphRequest, RasterizedCustomGlyph},
 	text_atlas::{GlyphVertex, TextAtlas, TextPipeline},
-	ContentType, FontSystem, GlyphDetails, GpuCacheStatus, SwashCache, TextArea,
 };
 use cosmic_text::{Color, SubpixelBin, SwashContent};
+use etagere::size2;
 use glam::{Mat4, Vec2, Vec3};
 use vulkano::{
 	buffer::{BufferUsage, Subbuffer},
@@ -359,14 +360,29 @@ fn prepare_glyph(
 
 				inner = par.atlas.inner_for_content_mut(image.content_type);
 			};
-			let atlas_min = allocation.rectangle.min;
+
+			let atlas_with_island_min = allocation.rectangle.min;
+			let size_with_island = allocation.rectangle.size();
+			let atlas_glyph_min =
+				allocation.rectangle.min + size2(TEXT_ATLAS_ISLAND_PADDING_PX as i32, TEXT_ATLAS_ISLAND_PADDING_PX as i32);
 
 			let mut cmd_buf = gfx.create_xfer_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
 
+			// Set data to zeros for the whole glyph island
+			// TODO: use `vkCmdClearColorImage` with an image subresource (or xywh region?) to omit unnecessary allocation
+			let zero_bytes_data: Vec<u8> = vec![0x00; size_with_island.area() as usize * 4 /* RGBX */];
+			cmd_buf.update_image(
+				inner.image_view.image(),
+				&zero_bytes_data,
+				[atlas_with_island_min.x as u32, atlas_with_island_min.y as u32, 0],
+				Some([size_with_island.width as u32, size_with_island.height as u32, 1]),
+			)?;
+
+			// Upload glyph itself
 			cmd_buf.update_image(
 				inner.image_view.image(),
 				&image.data,
-				[atlas_min.x as _, atlas_min.y as _, 0],
+				[atlas_glyph_min.x as u32, atlas_glyph_min.y as u32, 0],
 				Some([image.width.into(), image.height.into(), 1]),
 			)?;
 
@@ -374,8 +390,8 @@ fn prepare_glyph(
 
 			(
 				GpuCacheStatus::InAtlas {
-					x: atlas_min.x as u16,
-					y: atlas_min.y as u16,
+					x: atlas_glyph_min.x as u16,
+					y: atlas_glyph_min.y as u16,
 					content_type: image.content_type,
 				},
 				Some(allocation.id),
