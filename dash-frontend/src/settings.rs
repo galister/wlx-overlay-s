@@ -25,10 +25,18 @@ pub struct Settings {
 
 impl Settings {
 	pub fn save(&self) -> String {
-		serde_json::to_string(&self).unwrap() /* want panic */
+		serde_json::to_string_pretty(&self).unwrap() /* want panic */
 	}
 
 	pub fn load(input: &str) -> anyhow::Result<Settings> {
 		Ok(serde_json::from_str::<Settings>(input)?)
 	}
+}
+
+pub trait SettingsIO {
+	fn get_mut(&mut self) -> &mut Settings;
+	fn get(&self) -> &Settings;
+	fn save_to_disk(&mut self);
+	fn read_from_disk(&mut self);
+	fn mark_as_dirty(&mut self);
 }

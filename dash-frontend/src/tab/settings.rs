@@ -35,11 +35,14 @@ fn init_setting_checkbox(
 	let rc_frontend = params.frontend.clone();
 	checkbox.on_toggle(Box::new(move |_common, e| {
 		let mut frontend = rc_frontend.borrow_mut();
-		*fetch_callback(&mut frontend.settings) = e.checked;
+		*fetch_callback(frontend.settings.get_mut()) = e.checked;
 
 		if let Some(change_callback) = &change_callback {
 			change_callback(&mut frontend, e.checked);
 		}
+
+		frontend.settings.mark_as_dirty();
+
 		Ok(())
 	}));
 

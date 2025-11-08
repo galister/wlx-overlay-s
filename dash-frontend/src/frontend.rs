@@ -25,7 +25,7 @@ pub struct Frontend {
 	pub layout: RcLayout,
 	globals: WguiGlobals,
 
-	pub settings: settings::Settings,
+	pub settings: Box<dyn settings::SettingsIO>,
 
 	#[allow(dead_code)]
 	state: ParserState,
@@ -41,7 +41,7 @@ pub struct Frontend {
 }
 
 pub struct InitParams {
-	pub settings: settings::Settings,
+	pub settings: Box<dyn settings::SettingsIO>,
 }
 
 pub type RcFrontend = Rc<RefCell<Frontend>>;
@@ -150,7 +150,7 @@ impl Frontend {
 			let hours = now.hour();
 			let minutes = now.minute();
 
-			let text: String = if !self.settings.general.am_pm_clock {
+			let text: String = if !self.settings.get().general.am_pm_clock {
 				format!("{hours:02}:{minutes:02}")
 			} else {
 				let hours_ampm = (hours + 11) % 12 + 1;
@@ -172,7 +172,7 @@ impl Frontend {
 			anyhow::bail!("");
 		};
 
-		let (alpha1, alpha2) = if !self.settings.general.opaque_background {
+		let (alpha1, alpha2) = if !self.settings.get().general.opaque_background {
 			(0.8666, 0.9333)
 		} else {
 			(1.0, 1.0)
@@ -212,7 +212,7 @@ impl Frontend {
 			layout: &mut layout,
 			parent_id: widget_content.id,
 			frontend: rc_this,
-			settings: &mut self.settings,
+			settings: &mut self.settings.get_mut(),
 		};
 
 		let tab: Box<dyn Tab> = match tab_type {
