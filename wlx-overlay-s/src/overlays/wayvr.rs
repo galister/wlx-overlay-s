@@ -260,6 +260,7 @@ where
             },
             z_order: Z_ORDER_DASHBOARD,
             show_on_spawn: true,
+            global: true,
             ..create_overlay(
                 app,
                 DASHBOARD_DISPLAY_NAME,
