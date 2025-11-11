@@ -5,8 +5,8 @@ use slotmap::{HopSlotMap, Key, SecondaryMap};
 
 use crate::{
     overlays::{
-        anchor::create_anchor, keyboard::builder::create_keyboard, screen::create_screens,
-        watch::create_watch,
+        adjust::EditModeManager, anchor::create_anchor, keyboard::builder::create_keyboard,
+        screen::create_screens, watch::create_watch,
     },
     state::AppState,
     windowing::{
@@ -18,6 +18,7 @@ use crate::{
 };
 
 pub struct OverlayWindowManager<T> {
+    wrappers: EditModeManager,
     overlays: HopSlotMap<OverlayID, OverlayWindowData<T>>,
     sets: Vec<OverlayWindowSet>,
     /// The set that is currently visible.
@@ -37,6 +38,7 @@ where
         let mut maybe_keymap = None;
 
         let mut me = Self {
+            wrappers: EditModeManager::default(),
             overlays: HopSlotMap::with_key(),
             current_set: Some(0),
             restore_set: 0,
@@ -166,6 +168,20 @@ impl<T> OverlayWindowManager<T> {
             });
         }
         self.restore_set = (app.session.config.last_set as usize).min(self.sets.len() - 1);
+    }
+
+    pub fn edit_overlay(&mut self, id: OverlayID, enabled: bool, app: &mut AppState) {
+        let Some(overlay) = self.overlays.get_mut(id) else {
+            return;
+        };
+
+        if enabled {
+            self.wrappers
+                .wrap_edit_mode(&mut overlay.config, app)
+                .unwrap(); // FIXME: unwrap
+        } else {
+            self.wrappers.unwrap_edit_mode(&mut overlay.config);
+        }
     }
 
     pub fn mut_by_selector(

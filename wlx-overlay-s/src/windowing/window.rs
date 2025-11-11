@@ -99,6 +99,8 @@ pub struct OverlayWindowConfig {
     pub global: bool,
     /// True if transform, curvature, alpha has changed. Only used by OpenVR.
     pub dirty: bool,
+    /// True if the window is showing the edit overlay
+    pub editing: bool,
     pub saved_transform: Option<Affine3A>,
 }
 
@@ -118,6 +120,7 @@ impl OverlayWindowConfig {
             show_on_spawn: false,
             global: false,
             dirty: true,
+            editing: false,
         }
     }
 

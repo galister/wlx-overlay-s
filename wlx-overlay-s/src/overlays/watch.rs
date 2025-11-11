@@ -37,6 +37,7 @@ pub fn create_watch(app: &mut AppState, num_sets: usize) -> anyhow::Result<Overl
                 Ok(())
             },
         )),
+        false,
     )?;
 
     panel

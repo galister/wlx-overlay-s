@@ -9,7 +9,7 @@ use wgui::{
     layout::LayoutParams,
     parser::Fetchable,
     renderer_vk::util,
-    taffy::{self, prelude::length},
+    taffy::{self, prelude::length, BoxSizing},
     widget::{
         div::WidgetDiv,
         rectangle::{WidgetRectangle, WidgetRectangleParams},
@@ -53,7 +53,7 @@ pub fn create_keyboard(
         processes: vec![],
     };
 
-    let mut panel = GuiPanel::new_blank(app, state)?;
+    let mut panel = GuiPanel::new_blank(app, state, false)?;
 
     let (background, _) = panel.layout.add_child(
         panel.layout.content_root_widget,

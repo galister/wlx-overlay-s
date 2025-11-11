@@ -1,0 +1,44 @@
+<layout>
+  <theme>
+    <var key="border" value="2" />
+    <var key="tint_color" value="#0044CC99" />
+  </theme>
+
+  <template name="TopButton">
+    <rectangle id="~id" color="~bg_color" padding="8" round="50%">
+      <sprite color="~device_color" width="48" height="48" src="${src}" />
+    </rectangle>
+  </template>
+
+  <macro name="button_style"
+    margin="2" overflow="hidden" box_sizing="border_box" align_items="center" justify_content="center"
+    border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical" />
+
+  <elements>
+    <div width="600" height="600">
+      <rectangle width="100%" height="100%" padding="4" gap="4" align_items="center" justify_content="center" color="#000000DD" flex_direction="row">
+          <div></div>
+          <div flex_direction="column">
+          <div></div>
+          <rectangle padding="10" gap="8" round="100%" color="~bg_color" justify_content="center" >
+            <TopButton id="lock" src="bar/lock_open.svg" />
+            <TopButton id="anchor" src="bar/anchor.svg" />
+            <TopButton id="mouse" src="bar/mouse.svg" />
+            <TopButton id="fade" src="bar/fade.svg" />
+            <TopButton id="move" src="bar/move-all.svg" />
+            <TopButton id="resize" src="bar/resize.svg" />
+            <TopButton id="inout" src="bar/inout.svg" />
+            <TopButton id="delete" src="bar/delete.svg" />
+          </rectangle>
+          <rectangle padding="8" gap="8" round="100%" color="~bg_color_active" justify_content="center" align_items="center">
+            <label text="range 10-20 value 15" />
+            <Slider width="200" height="16" min_value="10" max_value="20" value="15" />
+            <CheckBox id="test0" text="AM/PM clock" />
+          </rectangle>
+          <div></div>
+            </div>
+          <div></div>
+      </rectangle>
+    </div>
+  </elements>
+</layout>

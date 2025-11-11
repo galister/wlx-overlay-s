@@ -18,7 +18,7 @@ pub fn create_custom(app: &mut AppState, name: Arc<str>) -> Option<OverlayWindow
 
     unreachable!();
 
-    let panel = GuiPanel::new_blank(app, ()).ok()?;
+    let panel = GuiPanel::new_blank(app, (), false).ok()?;
     panel.update_layout().ok()?;
 
     Some(OverlayWindowConfig {

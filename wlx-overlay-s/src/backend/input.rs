@@ -19,7 +19,7 @@ use super::task::{TaskContainer, TaskType};
 #[derive(Clone, Default)]
 pub struct HoverResult {
     pub haptics: Option<Haptics>,
-    /// If true, the laster shows at this position and no further raycasting will be done.
+    /// If true, the laser shows at this position and no further raycasting will be done.
     pub consume: bool,
 }
 
@@ -344,15 +344,18 @@ where
     // focus change
     if let Some(hovered_id) = hovered_id
         && hovered_id != hit.overlay
-        && let Some(old_hovered) = overlays.mut_by_id(hovered_id)
     {
-        if old_hovered.primary_pointer.is_some_and(|i| i == idx) {
-            old_hovered.primary_pointer = None;
+        if let Some(old_hovered) = overlays.mut_by_id(hovered_id) {
+            if old_hovered.primary_pointer.is_some_and(|i| i == idx) {
+                old_hovered.primary_pointer = None;
+            }
+            log::debug!("{} on_left (focus changed)", old_hovered.config.name);
+            old_hovered.config.backend.on_left(app, idx);
         }
-        log::debug!("{} on_left (focus changed)", old_hovered.config.name);
-        old_hovered.config.backend.on_left(app, idx);
+        overlays.edit_overlay(hovered_id, false, app);
     }
 
+    overlays.edit_overlay(hit.overlay, true, app);
     let Some(hovered) = overlays.mut_by_id(hit.overlay) else {
         log::warn!("Hit overlay {:?} does not exist", hit.overlay);
         return (0.0, None); // no hit
@@ -424,11 +427,12 @@ fn handle_no_hit<O>(
     overlays: &mut OverlayWindowManager<O>,
     app: &mut AppState,
 ) {
-    if let Some(hovered_id) = hovered_id
-        && let Some(hovered) = overlays.mut_by_id(hovered_id)
-    {
-        log::debug!("{} on_left (no hit)", hovered.config.name);
-        hovered.config.backend.on_left(app, pointer_idx);
+    if let Some(hovered_id) = hovered_id {
+        if let Some(hovered) = overlays.mut_by_id(hovered_id) {
+            log::debug!("{} on_left (no hit)", hovered.config.name);
+            hovered.config.backend.on_left(app, pointer_idx);
+        }
+        overlays.edit_overlay(hovered_id, false, app);
     }
 
     // in case click released while not aiming at anything
@@ -568,7 +572,7 @@ where
         };
 
         let result = overlay.config.backend.on_hover(app, &hit);
-        if result.consume {
+        if result.consume || overlay.config.editing {
             return (Some(hit), result.haptics);
         }
     }

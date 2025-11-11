@@ -12,6 +12,7 @@ use wgui::{
         InternalStateChangeEvent, MouseButtonIndex, MouseDownEvent, MouseLeaveEvent,
         MouseMotionEvent, MouseUpEvent, MouseWheelEvent,
     },
+    gfx::cmd::WGfxClearMode,
     layout::{Layout, LayoutParams, WidgetID},
     parser::ParserState,
     renderer_vk::context::Context as WguiContext,
@@ -32,8 +33,7 @@ mod button;
 mod helper;
 mod label;
 
-const MAX_SIZE: u32 = 2048;
-const MAX_SIZE_VEC2: Vec2 = vec2(MAX_SIZE as _, MAX_SIZE as _);
+const DEFAULT_MAX_SIZE: f32 = 2048.0;
 
 const COLOR_ERR: drawing::Color = drawing::Color::new(1., 0., 1., 1.);
 
@@ -42,6 +42,7 @@ pub struct GuiPanel<S> {
     pub state: S,
     pub timers: Vec<GuiTimer>,
     pub parser_state: ParserState,
+    pub max_size: Vec2,
     interaction_transform: Option<Affine2>,
     context: WguiContext,
     timestep: Timestep,
@@ -63,6 +64,7 @@ impl<S: 'static> GuiPanel<S> {
         path: &str,
         state: S,
         on_custom_id: Option<OnCustomIdFunc>,
+        resize_to_parent: bool,
     ) -> anyhow::Result<Self> {
         let custom_elems = Rc::new(RefCell::new(vec![]));
 
@@ -81,7 +83,7 @@ impl<S: 'static> GuiPanel<S> {
         };
 
         let (mut layout, mut parser_state) =
-            wgui::parser::new_layout_from_assets(&doc_params, &LayoutParams::default())?;
+            wgui::parser::new_layout_from_assets(&doc_params, &LayoutParams { resize_to_parent })?;
 
         if let Some(on_element_id) = on_custom_id {
             let ids = parser_state.data.ids.clone(); // FIXME: copying all ids?
@@ -125,13 +127,14 @@ impl<S: 'static> GuiPanel<S> {
             timestep,
             state,
             parser_state,
+            max_size: vec2(DEFAULT_MAX_SIZE as _, DEFAULT_MAX_SIZE as _),
             timers: vec![],
             interaction_transform: None,
         })
     }
 
-    pub fn new_blank(app: &mut AppState, state: S) -> anyhow::Result<Self> {
-        let layout = Layout::new(app.wgui_globals.clone(), &LayoutParams::default())?;
+    pub fn new_blank(app: &mut AppState, state: S, resize_to_parent: bool) -> anyhow::Result<Self> {
+        let layout = Layout::new(app.wgui_globals.clone(), &LayoutParams { resize_to_parent })?;
         let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
         let mut timestep = Timestep::new();
         timestep.set_tps(60.0);
@@ -142,13 +145,14 @@ impl<S: 'static> GuiPanel<S> {
             timestep,
             state,
             parser_state: ParserState::default(),
+            max_size: vec2(DEFAULT_MAX_SIZE as _, DEFAULT_MAX_SIZE as _),
             timers: vec![],
             interaction_transform: None,
         })
     }
 
     pub fn update_layout(&mut self) -> anyhow::Result<()> {
-        self.layout.update(MAX_SIZE_VEC2, 0.0)
+        self.layout.update(self.max_size, 0.0)
     }
 
     pub fn push_event(&mut self, app: &mut AppState, event: &WguiEvent) -> EventResult {
@@ -223,21 +227,25 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
         app: &mut AppState,
         tgt: Arc<ImageView>,
         buf: &mut CommandBuffers,
-        alpha: f32,
+        mut alpha: f32,
     ) -> anyhow::Result<bool> {
         self.context
             .update_viewport(&mut app.wgui_shared, tgt.extent_u32arr(), 1.0)?;
-        self.layout.update(MAX_SIZE_VEC2, self.timestep.alpha)?;
+        self.layout.update(self.max_size, self.timestep.alpha)?;
+
+        // FIXME: pass this properly
+        let mut clear = WGfxClearMode::Clear([0., 0., 0., 0.]);
+        if alpha < 0. {
+            alpha *= -1.;
+            clear = WGfxClearMode::Keep;
+        }
 
         let mut cmd_buf = app
             .gfx
             .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)
             .unwrap(); // want panic
 
-        cmd_buf.begin_rendering(
-            tgt,
-            wgui::gfx::cmd::WGfxClearMode::Clear([0.0, 0.0, 0.0, 0.0]),
-        )?;
+        cmd_buf.begin_rendering(tgt, clear)?;
 
         let globals = self.layout.state.globals.clone(); // sorry
         let mut globals = globals.get();
@@ -263,8 +271,8 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
     fn frame_meta(&mut self) -> Option<FrameMeta> {
         Some(FrameMeta {
             extent: [
-                MAX_SIZE.min(self.layout.content_size.x as _),
-                MAX_SIZE.min(self.layout.content_size.y as _),
+                self.max_size.x.min(self.layout.content_size.x) as _,
+                self.max_size.y.min(self.layout.content_size.y) as _,
                 1,
             ],
             ..Default::default()
@@ -301,7 +309,7 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
     }
 
     fn on_left(&mut self, app: &mut AppState, pointer: usize) {
-        log::info!("panel: on left");
+        log::debug!("panel: on left");
         let e = WguiEvent::MouseLeave(MouseLeaveEvent { device: pointer });
         self.push_event(app, &e);
     }
