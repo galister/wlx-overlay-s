@@ -6,7 +6,7 @@ use std::{
 use futures::{Future, FutureExt};
 use glam::{Affine2, Affine3A, Vec3};
 use vulkano::image::view::ImageView;
-use wlx_capture::pipewire::{pipewire_select_screen, PipewireCapture, PipewireSelectScreenResult};
+use wlx_capture::pipewire::{PipewireCapture, PipewireSelectScreenResult, pipewire_select_screen};
 
 use crate::{
     backend::{
@@ -15,10 +15,11 @@ use crate::{
     },
     graphics::CommandBuffers,
     state::{AppSession, AppState},
+    subsystem::hid::WheelDelta,
     windowing::{
-        backend::{ui_transform, FrameMeta, OverlayBackend, ShouldRender},
-        window::{OverlayWindowConfig, OverlayWindowState},
         OverlaySelector,
+        backend::{FrameMeta, OverlayBackend, ShouldRender, ui_transform},
+        window::{OverlayWindowConfig, OverlayWindowState},
     },
 };
 
@@ -138,7 +139,7 @@ impl OverlayBackend for MirrorBackend {
     }
     fn on_left(&mut self, _: &mut AppState, _: usize) {}
     fn on_pointer(&mut self, _: &mut AppState, _: &PointerHit, _: bool) {}
-    fn on_scroll(&mut self, _: &mut AppState, _: &PointerHit, _: f32, _: f32) {}
+    fn on_scroll(&mut self, _: &mut AppState, _: &PointerHit, _delta: WheelDelta) {}
     fn get_interaction_transform(&mut self) -> Option<Affine2> {
         self.interaction_transform
     }

@@ -2,13 +2,13 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use smithay::{
     backend::renderer::{
-        element::{
-            surface::{render_elements_from_surface_tree, WaylandSurfaceRenderElement},
-            Kind,
-        },
-        gles::{ffi, GlesRenderer, GlesTexture},
-        utils::draw_render_elements,
         Bind, Color32F, Frame, Renderer,
+        element::{
+            Kind,
+            surface::{WaylandSurfaceRenderElement, render_elements_from_surface_tree},
+        },
+        gles::{GlesRenderer, GlesTexture, ffi},
+        utils::draw_render_elements,
     },
     input,
     utils::{Logical, Point, Rectangle, Size, Transform},
@@ -16,11 +16,13 @@ use smithay::{
 };
 use wayvr_ipc::packet_server;
 
-use crate::{backend::wayvr::time::get_millis, gen_id, windowing::OverlayID};
+use crate::{
+    backend::wayvr::time::get_millis, gen_id, subsystem::hid::WheelDelta, windowing::OverlayID,
+};
 
 use super::{
-    client::WayVRCompositor, comp::send_frames_surface_tree, egl_data, event_queue::SyncEventQueue,
-    process, smithay_wrapper, time, window, BlitMethod, WayVRSignal,
+    BlitMethod, WayVRSignal, client::WayVRCompositor, comp::send_frames_surface_tree, egl_data,
+    event_queue::SyncEventQueue, process, smithay_wrapper, time, window,
 };
 
 fn generate_auth_key() -> String {
@@ -527,7 +529,7 @@ impl Display {
         manager.seat_pointer.frame(&mut manager.state);
     }
 
-    pub fn send_mouse_scroll(manager: &mut WayVRCompositor, delta_y: f32, delta_x: f32) {
+    pub fn send_mouse_scroll(manager: &mut WayVRCompositor, delta: WheelDelta) {
         manager.seat_pointer.axis(
             &mut manager.state,
             input::pointer::AxisFrame {
@@ -537,8 +539,8 @@ impl Display {
                     smithay::backend::input::AxisRelativeDirection::Identical,
                 ),
                 time: 0,
-                axis: (f64::from(delta_x), f64::from(-delta_y)),
-                v120: Some((0, (delta_y * -120.0) as i32)),
+                axis: (f64::from(delta.x), f64::from(-delta.y)),
+                v120: Some((0, (delta.y * -64.0) as i32)),
                 stop: (false, false),
             },
         );

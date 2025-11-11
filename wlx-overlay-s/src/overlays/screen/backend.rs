@@ -1,21 +1,21 @@
 use std::{
-    sync::{atomic::AtomicU64, Arc, LazyLock},
+    sync::{Arc, LazyLock, atomic::AtomicU64},
     time::Instant,
 };
 
-use glam::{vec2, Affine2, Vec2};
+use glam::{Affine2, Vec2, vec2};
 use vulkano::image::view::ImageView;
-use wlx_capture::{frame::Transform, WlxCapture};
+use wlx_capture::{WlxCapture, frame::Transform};
 
 use crate::{
     backend::input::{HoverResult, PointerHit, PointerMode},
     graphics::{CommandBuffers, ExtentExt},
     state::AppState,
-    subsystem::hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
+    subsystem::hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT, WheelDelta},
     windowing::backend::{FrameMeta, OverlayBackend, ShouldRender},
 };
 
-use super::capture::{receive_callback, ScreenPipeline, WlxCaptureIn, WlxCaptureOut};
+use super::capture::{ScreenPipeline, WlxCaptureIn, WlxCaptureOut, receive_callback};
 
 const CURSOR_SIZE: f32 = 16. / 1440.;
 
@@ -246,11 +246,11 @@ impl OverlayBackend for ScreenBackend {
         let pos = self.mouse_transform.transform_point2(hit.uv);
         app.hid_provider.inner.mouse_move(pos);
     }
-    fn on_scroll(&mut self, app: &mut AppState, _hit: &PointerHit, delta_y: f32, delta_x: f32) {
-        app.hid_provider
-            .inner
-            .wheel((delta_y * 64.) as i32, (delta_x * 64.) as i32);
+
+    fn on_scroll(&mut self, app: &mut AppState, _hit: &PointerHit, delta: WheelDelta) {
+        app.hid_provider.inner.wheel(delta);
     }
+
     fn on_left(&mut self, _app: &mut AppState, _hand: usize) {}
 
     fn get_interaction_transform(&mut self) -> Option<Affine2> {

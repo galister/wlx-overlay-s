@@ -1,5 +1,5 @@
-use glam::{IVec2, Vec2};
-use idmap::{idmap, IdMap};
+use glam::Vec2;
+use idmap::{IdMap, idmap};
 use idmap_derive::IntegerId;
 use input_linux::{
     AbsoluteAxis, AbsoluteInfo, AbsoluteInfoSetup, EventKind, InputId, Key, RelativeAxis,
@@ -40,10 +40,15 @@ pub(super) fn initialize() -> Box<dyn HidProvider> {
     Box::new(DummyProvider {})
 }
 
+pub struct WheelDelta {
+    pub x: f32,
+    pub y: f32,
+}
+
 pub trait HidProvider: Sync + Send {
     fn mouse_move(&mut self, pos: Vec2);
     fn send_button(&mut self, button: u16, down: bool);
-    fn wheel(&mut self, delta_y: i32, delta_x: i32);
+    fn wheel(&mut self, delta: WheelDelta);
     fn set_modifiers(&mut self, mods: u8);
     fn send_key(&self, key: VirtualKey, down: bool);
     fn set_desktop_extent(&mut self, extent: Vec2);
@@ -61,7 +66,7 @@ struct MouseAction {
     last_requested_pos: Option<Vec2>,
     pos: Option<Vec2>,
     button: Option<MouseButtonAction>,
-    scroll: Option<IVec2>,
+    scroll: Option<WheelDelta>,
 }
 
 pub struct UInputProvider {
@@ -195,7 +200,12 @@ impl UInputProvider {
             log::error!("{res}");
         }
     }
-    fn wheel_internal(&self, delta_y: i32, delta_x: i32) {
+
+    fn wheel_internal(&self, delta: WheelDelta) {
+        let multiplier = 64.0; /* cherry-picked value, overall scrolling speed can be altered via `scroll_speed` in the config */
+        let delta_x = (delta.x * multiplier) as i32;
+        let delta_y = (delta.y * multiplier) as i32;
+
         let time = get_time();
         let events = [
             new_event(time, EV_REL, RelativeAxis::WheelHiRes as _, delta_y),
@@ -257,14 +267,16 @@ impl HidProvider for UInputProvider {
             self.current_action.pos = self.current_action.last_requested_pos;
         }
     }
-    fn wheel(&mut self, delta_y: i32, delta_x: i32) {
+
+    fn wheel(&mut self, delta: WheelDelta) {
         if self.current_action.scroll.is_none() {
-            self.current_action.scroll = Some(IVec2::new(delta_x, delta_y));
+            self.current_action.scroll = Some(delta);
             // Pass mouse motion events only if not scrolling
             // (allows scrolling on all Chromium-based applications)
             self.current_action.pos = None;
         }
     }
+
     fn commit(&mut self) {
         if let Some(pos) = self.current_action.pos.take() {
             self.mouse_move_internal(pos);
@@ -273,7 +285,7 @@ impl HidProvider for UInputProvider {
             self.send_button_internal(button.button, button.down);
         }
         if let Some(scroll) = self.current_action.scroll.take() {
-            self.wheel_internal(scroll.y, scroll.x);
+            self.wheel_internal(scroll);
         }
     }
 }
@@ -281,7 +293,7 @@ impl HidProvider for UInputProvider {
 impl HidProvider for DummyProvider {
     fn mouse_move(&mut self, _pos: Vec2) {}
     fn send_button(&mut self, _button: u16, _down: bool) {}
-    fn wheel(&mut self, _delta_y: i32, _delta_x: i32) {}
+    fn wheel(&mut self, _delta: WheelDelta) {}
     fn set_modifiers(&mut self, _modifiers: u8) {}
     fn send_key(&self, _key: VirtualKey, _down: bool) {}
     fn set_desktop_extent(&mut self, _extent: Vec2) {}

@@ -6,6 +6,7 @@ use crate::{
     backend::input::{HoverResult, PointerHit},
     graphics::CommandBuffers,
     state::AppState,
+    subsystem::hid::WheelDelta,
 };
 
 #[derive(Default, Clone, Copy)]
@@ -51,7 +52,7 @@ pub trait OverlayBackend {
     fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> HoverResult;
     fn on_left(&mut self, app: &mut AppState, pointer: usize);
     fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool);
-    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32);
+    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta: WheelDelta);
     fn get_interaction_transform(&mut self) -> Option<Affine2>;
 }
 

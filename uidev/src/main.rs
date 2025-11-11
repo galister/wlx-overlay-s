@@ -134,7 +134,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 						.borrow_mut()
 						.push_event(
 							&wgui::event::Event::MouseWheel(MouseWheelEvent {
-								shift: Vec2::new(x, y),
+								delta: Vec2::new(x, y),
 								pos: mouse / scale,
 								device: 0,
 							}),
@@ -149,7 +149,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 						.borrow_mut()
 						.push_event(
 							&wgui::event::Event::MouseWheel(MouseWheelEvent {
-								shift: Vec2::new(pos.x as f32 / 5.0, pos.y as f32 / 5.0),
+								delta: Vec2::new(pos.x as f32 / 5.0, pos.y as f32 / 5.0),
 								pos: mouse / scale,
 								device: 0,
 							}),

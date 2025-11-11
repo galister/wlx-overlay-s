@@ -1,17 +1,17 @@
-use glam::{vec3, Affine2, Affine3A, Quat, Vec3};
+use glam::{Affine2, Affine3A, Quat, Vec3, vec3};
 use smallvec::smallvec;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 use vulkano::{
     buffer::{BufferUsage, Subbuffer},
     command_buffer::CommandBufferUsage,
     format::Format,
-    image::{view::ImageView, Image, ImageTiling, SubresourceLayout},
+    image::{Image, ImageTiling, SubresourceLayout, view::ImageView},
 };
 use wayvr_ipc::packet_server::{self, PacketServer, WvrStateChanged};
 use wgui::gfx::{
+    WGfx,
     pass::WGfxPass,
     pipeline::{WGfxPipeline, WPipelineCreateInfo},
-    WGfx,
 };
 use wlx_capture::frame::{DmabufFrame, FourCC, FrameFormat, FramePlane};
 
@@ -20,20 +20,19 @@ use crate::{
         input::{self, HoverResult},
         task::TaskType,
         wayvr::{
-            self, display,
+            self, WayVR, WayVRAction, WayVRDisplayClickAction, display,
             server_ipc::{gen_args_vec, gen_env_vec},
-            WayVR, WayVRAction, WayVRDisplayClickAction,
         },
     },
     config_wayvr,
-    graphics::{dmabuf::WGfxDmabuf, CommandBuffers, Vert2Uv},
+    graphics::{CommandBuffers, Vert2Uv, dmabuf::WGfxDmabuf},
     state::{self, AppState},
-    subsystem::input::KeyboardFocus,
+    subsystem::{hid::WheelDelta, input::KeyboardFocus},
     windowing::{
-        backend::{ui_transform, FrameMeta, OverlayBackend, ShouldRender},
+        OverlayID, OverlaySelector, Z_ORDER_DASHBOARD,
+        backend::{FrameMeta, OverlayBackend, ShouldRender, ui_transform},
         manager::OverlayWindowManager,
         window::{OverlayWindowConfig, OverlayWindowData, OverlayWindowState},
-        OverlayID, OverlaySelector, Z_ORDER_DASHBOARD,
     },
 };
 
@@ -770,15 +769,10 @@ impl OverlayBackend for WayVRBackend {
         &mut self,
         _app: &mut state::AppState,
         _hit: &input::PointerHit,
-        delta_y: f32,
-        delta_x: f32,
+        delta: WheelDelta,
     ) {
         let ctx = self.context.borrow();
-        ctx.wayvr
-            .borrow_mut()
-            .data
-            .state
-            .send_mouse_scroll(delta_y, delta_x);
+        ctx.wayvr.borrow_mut().data.state.send_mouse_scroll(delta);
     }
 
     fn get_interaction_transform(&mut self) -> Option<Affine2> {

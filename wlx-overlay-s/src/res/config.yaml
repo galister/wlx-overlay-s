@@ -3,6 +3,17 @@
 # Default: 300
 click_freeze_time_ms: 300
 
+# Make scroll events inverted in X/Y axis
+# Default: false
+invert_scroll_direction_x: false
+invert_scroll_direction_y: false
+
+# Change speed of scrolling
+# Default: 1.0
+# 0.5: half the speed
+# 2.0: twice the speed
+scroll_speed: 1.0
+
 # Default: true
 keyboard_sound_enabled: true
 

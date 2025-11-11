@@ -55,8 +55,8 @@ pub struct MouseUpEvent {
 }
 
 pub struct MouseWheelEvent {
-	pub pos: Vec2,
-	pub shift: Vec2,
+	pub pos: Vec2,   /* mouse position */
+	pub delta: Vec2, /* wheel delta */
 	pub device: usize,
 }
 

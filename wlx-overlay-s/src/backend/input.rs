@@ -4,10 +4,11 @@ use std::{collections::VecDeque, time::Instant};
 
 use glam::{Affine3A, Vec2, Vec3, Vec3A, Vec3Swizzles};
 
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 
 use crate::overlays::anchor::ANCHOR_NAME;
 use crate::state::{AppSession, AppState};
+use crate::subsystem::hid::WheelDelta;
 use crate::subsystem::input::KeyboardFocus;
 use crate::windowing::manager::OverlayWindowManager;
 use crate::windowing::window::{OverlayWindowData, OverlayWindowState, Positioning};
@@ -450,37 +451,58 @@ fn handle_no_hit<O>(
 
 fn handle_scroll<O>(hit: &PointerHit, hovered: &mut OverlayWindowData<O>, app: &mut AppState) {
     let pointer = &mut app.input_state.pointers[hit.pointer];
-    if pointer.now.scroll_x.abs() > 0.1 || pointer.now.scroll_y.abs() > 0.1 {
-        let scroll_x = pointer.now.scroll_x;
-        let scroll_y = pointer.now.scroll_y;
-        if app.input_state.pointers[1 - hit.pointer]
-            .interaction
-            .grabbed
-            .is_some_and(|x| x.grabbed_id == hit.overlay)
-        {
-            let can_curve = hovered
-                .frame_meta()
-                .is_some_and(|e| e.extent[0] >= e.extent[1]);
+    if pointer.now.scroll_x.abs() <= 0.1 && pointer.now.scroll_x.abs() <= 0.1 {
+        return;
+    }
 
-            // re-borrow
-            let hovered_state = hovered.config.active_state.as_mut().unwrap();
-            if can_curve {
-                let cur = hovered_state.curvature.unwrap_or(0.0);
-                let new = scroll_y.mul_add(-0.01, cur).min(0.5);
-                if new <= f32::EPSILON {
-                    hovered_state.curvature = None;
-                } else {
-                    hovered_state.curvature = Some(new);
-                }
-            } else {
+    let config = &app.session.config;
+
+    let scroll_x = pointer.now.scroll_x
+        * config.scroll_speed
+        * if config.invert_scroll_direction_x {
+            -1.0
+        } else {
+            1.0
+        };
+    let scroll_y = pointer.now.scroll_y
+        * config.scroll_speed
+        * if config.invert_scroll_direction_x {
+            -1.0
+        } else {
+            1.0
+        };
+
+    if app.input_state.pointers[1 - hit.pointer]
+        .interaction
+        .grabbed
+        .is_some_and(|x| x.grabbed_id == hit.overlay)
+    {
+        let can_curve = hovered
+            .frame_meta()
+            .is_some_and(|e| e.extent[0] >= e.extent[1]);
+
+        // re-borrow
+        let hovered_state = hovered.config.active_state.as_mut().unwrap();
+        if can_curve {
+            let cur = hovered_state.curvature.unwrap_or(0.0);
+            let new = scroll_y.mul_add(-0.01, cur).min(0.5);
+            if new <= f32::EPSILON {
                 hovered_state.curvature = None;
+            } else {
+                hovered_state.curvature = Some(new);
             }
         } else {
-            hovered
-                .config
-                .backend
-                .on_scroll(app, hit, scroll_y, scroll_x);
+            hovered_state.curvature = None;
         }
+    } else {
+        hovered.config.backend.on_scroll(
+            app,
+            hit,
+            WheelDelta {
+                x: scroll_x,
+                y: scroll_y,
+            },
+        );
     }
 }
 

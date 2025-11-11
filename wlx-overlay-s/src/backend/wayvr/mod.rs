@@ -42,7 +42,10 @@ use std::{
 use time::get_millis;
 use wayvr_ipc::{packet_client, packet_server};
 
-use crate::{state::AppState, subsystem::hid::MODS_TO_KEYS};
+use crate::{
+    state::AppState,
+    subsystem::hid::{MODS_TO_KEYS, WheelDelta},
+};
 
 const STR_INVALID_HANDLE_DISP: &str = "Invalid display handle";
 
@@ -507,8 +510,8 @@ impl WayVRState {
         Display::send_mouse_up(&mut self.manager, index);
     }
 
-    pub fn send_mouse_scroll(&mut self, delta_y: f32, delta_x: f32) {
-        Display::send_mouse_scroll(&mut self.manager, delta_y, delta_x);
+    pub fn send_mouse_scroll(&mut self, delta: WheelDelta) {
+        Display::send_mouse_scroll(&mut self.manager, delta);
     }
 
     pub fn send_key(&mut self, virtual_key: u32, down: bool) {

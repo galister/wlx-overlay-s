@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use button::setup_custom_button;
-use glam::{vec2, Affine2, Vec2};
+use glam::{Affine2, Vec2, vec2};
 use label::setup_custom_label;
 use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 use wgui::{
@@ -15,14 +15,15 @@ use wgui::{
     layout::{Layout, LayoutParams, WidgetID},
     parser::ParserState,
     renderer_vk::context::Context as WguiContext,
-    widget::{label::WidgetLabel, rectangle::WidgetRectangle, EventResult},
+    widget::{EventResult, label::WidgetLabel, rectangle::WidgetRectangle},
 };
 
 use crate::{
     backend::input::{Haptics, HoverResult, PointerHit, PointerMode},
     graphics::{CommandBuffers, ExtentExt},
     state::AppState,
-    windowing::backend::{ui_transform, FrameMeta, OverlayBackend, ShouldRender},
+    subsystem::hid::WheelDelta,
+    windowing::backend::{FrameMeta, OverlayBackend, ShouldRender, ui_transform},
 };
 
 use super::{timer::GuiTimer, timestep::Timestep};
@@ -270,9 +271,9 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
         })
     }
 
-    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32) {
+    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta: WheelDelta) {
         let e = WguiEvent::MouseWheel(MouseWheelEvent {
-            shift: vec2(delta_x, delta_y),
+            delta: vec2(delta.x, delta.y),
             pos: hit.uv * self.layout.content_size,
             device: hit.pointer,
         });

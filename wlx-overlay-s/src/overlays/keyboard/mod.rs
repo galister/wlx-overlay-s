@@ -15,7 +15,7 @@ use crate::{
     graphics::CommandBuffers,
     gui::panel::GuiPanel,
     state::AppState,
-    subsystem::hid::{KeyModifier, VirtualKey, ALT, CTRL, META, SHIFT, SUPER},
+    subsystem::hid::{ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey, WheelDelta},
     windowing::backend::{FrameMeta, OverlayBackend, ShouldRender},
 };
 
@@ -69,8 +69,8 @@ impl OverlayBackend for KeyboardBackend {
             &wgui::event::Event::InternalStateChange(InternalStateChangeEvent { metadata: 0 }),
         );
     }
-    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta_y: f32, delta_x: f32) {
-        self.panel.on_scroll(app, hit, delta_y, delta_x);
+    fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta: WheelDelta) {
+        self.panel.on_scroll(app, hit, delta);
     }
     fn on_left(&mut self, app: &mut AppState, pointer: usize) {
         self.panel.on_left(app, pointer);

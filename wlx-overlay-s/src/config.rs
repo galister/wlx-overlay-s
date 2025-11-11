@@ -7,7 +7,7 @@ use crate::state::LeftRight;
 use crate::windowing::set::SerializedWindowSet;
 use chrono::Offset;
 use config::{Config, File};
-use glam::{vec3, Affine3A, Quat, Vec3};
+use glam::{Affine3A, Quat, Vec3, vec3};
 use idmap::IdMap;
 use log::error;
 use serde::{Deserialize, Serialize};
@@ -193,6 +193,15 @@ pub struct GeneralConfig {
     #[serde(default = "def_click_freeze_time_ms")]
     pub click_freeze_time_ms: u32,
 
+    #[serde(default = "def_false")]
+    pub invert_scroll_direction_x: bool,
+
+    #[serde(default = "def_false")]
+    pub invert_scroll_direction_y: bool,
+
+    #[serde(default = "def_one")]
+    pub scroll_speed: f32,
+
     #[serde(default = "def_mouse_move_interval_ms")]
     pub mouse_move_interval_ms: u32,
 
@@ -343,6 +352,7 @@ impl GeneralConfig {
     fn post_load(&self) {
         Self::sanitize_range("keyboard_scale", self.keyboard_scale, 0.05, 5.0);
         Self::sanitize_range("desktop_view_scale", self.desktop_view_scale, 0.05, 5.0);
+        Self::sanitize_range("scroll_speed", self.scroll_speed, 0.01, 10.0);
     }
 }
 
