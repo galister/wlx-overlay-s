@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use glam::{Affine3A, Vec3, Vec3A};
-use slotmap::{HopSlotMap, Key};
+use slotmap::{HopSlotMap, Key, SecondaryMap};
 
 use crate::{
     overlays::{
@@ -8,7 +10,10 @@ use crate::{
     },
     state::AppState,
     windowing::{
-        set::OverlayWindowSet, snap_upright, window::OverlayWindowData, OverlayID, OverlaySelector,
+        set::{OverlayWindowSet, SerializedWindowSet},
+        snap_upright,
+        window::OverlayWindowData,
+        OverlayID, OverlaySelector,
     },
 };
 
@@ -43,7 +48,9 @@ where
         if headless {
             log::info!("Running in headless mode; keyboard will be en-US");
         } else {
-            // create one work set for each screen.
+            // create one window set for each screen.
+            // this is the default and would be overwritten by
+            // OverlayWindowManager::restore_layout down below
             match create_screens(app) {
                 Ok((data, keymap)) => {
                     let last_idx = data.screens.len() - 1;
@@ -68,6 +75,7 @@ where
         keyboard.config.show_on_spawn = true;
         let keyboard_id = me.add(keyboard, app);
 
+        // is this needed?
         me.switch_to_set(app, None);
 
         // copy keyboard to all sets
@@ -87,13 +95,79 @@ where
         let watch = OverlayWindowData::from_config(create_watch(app, me.sets.len())?);
         me.watch_id = me.add(watch, app);
 
-        me.switch_to_set(app, None);
+        // overwrite default layout with saved layout, if exists
+        me.restore_layout(app);
 
         Ok(me)
     }
 }
 
 impl<T> OverlayWindowManager<T> {
+    pub fn persist_layout(&mut self, app: &mut AppState) {
+        app.session.config.sets.clear();
+        app.session.config.sets.reserve(self.sets.len());
+        app.session.config.last_set = self.restore_set as _;
+
+        let mut restore_after = false;
+        // only safe to save when current_set is None
+        if self.current_set.is_some() {
+            self.switch_to_set(app, None);
+            restore_after = true;
+        }
+
+        for set in self.sets.iter() {
+            let overlays: HashMap<_, _> = set
+                .overlays
+                .iter()
+                .filter_map(|(k, v)| {
+                    let Some(n) = self.overlays.get(k).map(|o| o.config.name.clone()) else {
+                        return None;
+                    };
+                    Some((n, v.clone()))
+                })
+                .collect();
+
+            let serialized = SerializedWindowSet {
+                name: set.name.clone(),
+                overlays,
+            };
+            app.session.config.sets.push(serialized);
+        }
+
+        if restore_after {
+            self.switch_to_set(app, Some(self.restore_set));
+        }
+    }
+
+    pub fn restore_layout(&mut self, app: &mut AppState) {
+        if app.session.config.sets.is_empty() {
+            // keep defaults
+            return;
+        }
+
+        // only safe to load when current_set is None
+        if self.current_set.is_some() {
+            self.switch_to_set(app, None);
+        }
+
+        self.sets.clear();
+        self.sets.reserve(app.session.config.sets.len());
+
+        for s in app.session.config.sets.iter() {
+            let overlays: SecondaryMap<_, _> = s
+                .overlays
+                .iter()
+                .filter_map(|(name, v)| self.lookup(&name).map(|id| (id, v.clone())))
+                .collect();
+
+            self.sets.push(OverlayWindowSet {
+                name: s.name.clone(),
+                overlays,
+            });
+        }
+        self.restore_set = (app.session.config.last_set as usize).min(self.sets.len() - 1);
+    }
+
     pub fn mut_by_selector(
         &mut self,
         selector: &OverlaySelector,
@@ -151,7 +225,6 @@ impl<T> OverlayWindowManager<T> {
         if overlay.config.show_on_spawn {
             overlay.config.activate(app);
         }
-        
         self.overlays.insert(overlay)
     }
 
@@ -188,7 +261,7 @@ impl<T> OverlayWindowManager<T> {
 
         if let Some(new_set) = new_set {
             if new_set >= self.sets.len() {
-                log::warn!("switch_to_set: new_set is out of range ({new_set:?})");
+                log::error!("switch_to_set: new_set is out of range ({new_set:?})");
                 return;
             }
 

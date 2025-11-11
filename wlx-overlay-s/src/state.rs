@@ -1,7 +1,7 @@
 use glam::Affine3A;
 use idmap::IdMap;
 use serde::{Deserialize, Serialize};
-use smallvec::{SmallVec, smallvec};
+use smallvec::{smallvec, SmallVec};
 use std::sync::Arc;
 use wgui::{
     font_config::WguiFontConfig, gfx::WGfx, globals::WguiGlobals,
@@ -189,7 +189,7 @@ pub struct ScreenMeta {
     pub native_handle: u32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, Default)]
 #[repr(u8)]
 pub enum LeftRight {
     #[default]

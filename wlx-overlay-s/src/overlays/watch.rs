@@ -44,7 +44,7 @@ pub fn create_watch(app: &mut AppState, num_sets: usize) -> anyhow::Result<Overl
         .push(GuiTimer::new(Duration::from_millis(100), 0));
 
     let positioning = Positioning::FollowHand {
-        hand: app.session.config.watch_hand as _,
+        hand: app.session.config.watch_hand,
         lerp: 1.0,
     };
 

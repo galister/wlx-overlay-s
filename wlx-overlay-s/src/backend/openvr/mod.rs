@@ -28,6 +28,7 @@ use crate::{
         task::{SystemTask, TaskType},
         BackendError,
     },
+    config::save_state,
     graphics::{init_openvr_graphics, CommandBuffers},
     overlays::{
         toast::{Toast, ToastTopic},
@@ -368,8 +369,11 @@ pub fn openvr_run(
         }
 
         // chaperone
+    } // main_loop
 
-        // close font handles?
+    overlays.persist_layout(&mut app);
+    if let Err(e) = save_state(&app.session.config) {
+        log::error!("Could not save state: {e:?}");
     }
 
     log::warn!("OpenVR shutdown");

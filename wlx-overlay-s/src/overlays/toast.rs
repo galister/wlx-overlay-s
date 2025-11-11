@@ -147,11 +147,17 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<OverlayWindowConfig> {
             let mut watch_pos = app.session.config.watch_pos + vec3(-0.005, -0.05, 0.02);
             let mut watch_rot = app.session.config.watch_rot;
             let relative_to = match app.session.config.watch_hand {
-                LeftRight::Left => Positioning::FollowHand { hand: 0, lerp: 1.0 },
+                LeftRight::Left => Positioning::FollowHand {
+                    hand: LeftRight::Left,
+                    lerp: 1.0,
+                },
                 LeftRight::Right => {
                     watch_pos.x = -watch_pos.x;
                     watch_rot = watch_rot * Quat::from_rotation_x(PI) * Quat::from_rotation_z(PI);
-                    Positioning::FollowHand { hand: 1, lerp: 1.0 }
+                    Positioning::FollowHand {
+                        hand: LeftRight::Right,
+                        lerp: 1.0,
+                    }
                 }
             };
             (watch_pos, watch_rot, relative_to)

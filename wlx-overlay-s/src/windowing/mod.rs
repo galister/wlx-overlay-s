@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 pub mod backend;
 pub mod manager;
-mod set;
+pub mod set;
 pub mod window;
 
 new_key_type! {

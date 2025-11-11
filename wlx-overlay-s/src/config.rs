@@ -4,6 +4,7 @@ use std::sync::Arc;
 use crate::config_io;
 use crate::overlays::toast::{DisplayMethod, ToastTopic};
 use crate::state::LeftRight;
+use crate::windowing::set::SerializedWindowSet;
 use chrono::Offset;
 use config::{Config, File};
 use glam::{vec3, Affine3A, Quat, Vec3};
@@ -124,6 +125,14 @@ const fn def_osc_port() -> u16 {
 
 const fn def_empty_vec_string() -> Vec<String> {
     Vec::new()
+}
+
+const fn def_sets() -> Vec<SerializedWindowSet> {
+    Vec::new()
+}
+
+const fn def_zero_u32() -> u32 {
+    0
 }
 
 fn def_timezones() -> Vec<String> {
@@ -309,6 +318,12 @@ pub struct GeneralConfig {
 
     #[serde(default = "def_false")]
     pub clock_12h: bool,
+
+    #[serde(default = "def_sets")]
+    pub sets: Vec<SerializedWindowSet>,
+
+    #[serde(default = "def_zero_u32")]
+    pub last_set: u32,
 }
 
 impl GeneralConfig {
@@ -480,9 +495,8 @@ pub fn save_settings(config: &GeneralConfig) -> anyhow::Result<()> {
 
 #[derive(Serialize)]
 pub struct AutoState {
-    pub show_screens: AStrSet,
-    pub curve_values: AStrMap<f32>,
-    pub transform_values: AStrMap<Affine3A>,
+    pub sets: Vec<SerializedWindowSet>,
+    pub last_set: u32,
 }
 
 fn get_state_path() -> PathBuf {
@@ -491,15 +505,15 @@ fn get_state_path() -> PathBuf {
         .join("zz-saved-state.json5")
 }
 
-pub fn save_layout(config: &GeneralConfig) -> anyhow::Result<()> {
+pub fn save_state(config: &GeneralConfig) -> anyhow::Result<()> {
     let conf = AutoState {
-        show_screens: config.show_screens.clone(),
-        curve_values: config.curve_values.clone(),
-        transform_values: config.transform_values.clone(),
+        sets: config.sets.clone(),
+        last_set: config.last_set.clone(),
     };
 
     let json = serde_json::to_string_pretty(&conf).unwrap(); // want panic
     std::fs::write(get_state_path(), json)?;
 
+    log::info!("State was saved successfully.");
     Ok(())
 }

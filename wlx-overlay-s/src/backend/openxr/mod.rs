@@ -22,6 +22,7 @@ use crate::{
         task::{SystemTask, TaskType},
         BackendError,
     },
+    config::save_state,
     graphics::{init_openxr_graphics, CommandBuffers},
     overlays::{
         toast::{Toast, ToastTopic},
@@ -561,6 +562,11 @@ pub fn openxr_run(
         //FIXME: Temporary workaround for Monado bug
         let watch = overlays.mut_by_id(watch_id).unwrap(); // want panic
         watch.config.active_state.as_mut().unwrap().transform = watch_transform;
+    } // main_loop
+
+    overlays.persist_layout(&mut app);
+    if let Err(e) = save_state(&app.session.config) {
+        log::error!("Could not save state: {e:?}");
     }
 
     Ok(())

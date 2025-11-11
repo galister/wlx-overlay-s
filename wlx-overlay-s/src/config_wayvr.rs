@@ -17,7 +17,8 @@ use crate::{
     },
     config::load_config_with_conf_d,
     config_io,
-    overlays::wayvr::{WayVRData, executable_exists_in_path},
+    overlays::wayvr::{executable_exists_in_path, WayVRData},
+    state::LeftRight,
     windowing::window::Positioning,
 };
 
@@ -36,8 +37,14 @@ impl AttachTo {
     pub const fn get_positioning(&self) -> Positioning {
         match self {
             Self::None => Positioning::Floating,
-            Self::HandLeft => Positioning::FollowHand { hand: 0, lerp: 1.0 },
-            Self::HandRight => Positioning::FollowHand { hand: 1, lerp: 1.0 },
+            Self::HandLeft => Positioning::FollowHand {
+                hand: LeftRight::Left,
+                lerp: 1.0,
+            },
+            Self::HandRight => Positioning::FollowHand {
+                hand: LeftRight::Right,
+                lerp: 1.0,
+            },
             Self::Stage => Positioning::Static,
             Self::Head => Positioning::FollowHead { lerp: 1.0 },
         }

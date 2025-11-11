@@ -1,10 +1,11 @@
 use glam::{Affine3A, Mat3A, Quat, Vec3, Vec3A};
+use serde::{Deserialize, Serialize};
 use std::{f32::consts::PI, sync::Arc};
 use vulkano::image::view::ImageView;
 
 use crate::{
     graphics::CommandBuffers,
-    state::AppState,
+    state::{AppState, LeftRight},
     subsystem::input::KeyboardFocus,
     windowing::{
         backend::{FrameMeta, OverlayBackend, ShouldRender},
@@ -12,7 +13,7 @@ use crate::{
     },
 };
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
 pub enum Positioning {
     /// Stays in place, recenters relative to HMD
     #[default]
@@ -26,19 +27,14 @@ pub enum Positioning {
     /// Normally follows HMD, but paused due to interaction
     FollowHeadPaused { lerp: f32 },
     /// Following hand
-    FollowHand { hand: usize, lerp: f32 },
+    FollowHand { hand: LeftRight, lerp: f32 },
     /// Normally follows hand, but paused due to interaction
-    FollowHandPaused { hand: usize, lerp: f32 },
-    /// Follow another overlay
-    FollowOverlay { id: usize },
+    FollowHandPaused { hand: LeftRight, lerp: f32 },
 }
 
 impl Positioning {
     pub const fn moves_with_space(&self) -> bool {
-        matches!(
-            self,
-            Self::Floating | Self::Anchored | Self::Static
-        )
+        matches!(self, Self::Floating | Self::Anchored | Self::Static)
     }
 }
 
@@ -154,9 +150,10 @@ impl OverlayWindowConfig {
 
         let (target_transform, lerp) = match state.positioning {
             Positioning::FollowHead { lerp } => (app.input_state.hmd * cur_transform, lerp),
-            Positioning::FollowHand { hand, lerp } => {
-                (app.input_state.pointers[hand].pose * cur_transform, lerp)
-            }
+            Positioning::FollowHand { hand, lerp } => (
+                app.input_state.pointers[hand as usize].pose * cur_transform,
+                lerp,
+            ),
             _ => return,
         };
 
@@ -196,10 +193,10 @@ impl OverlayWindowConfig {
                 app.input_state.hmd
             }
             Positioning::FollowHand { hand, .. } | Positioning::FollowHandPaused { hand, .. } => {
-                app.input_state.pointers[hand].pose
+                app.input_state.pointers[hand as usize].pose
             }
             Positioning::Anchored => snap_upright(app.anchor, Vec3A::Y),
-            Positioning::FollowOverlay { .. } | Positioning::Static => return false,
+            Positioning::Static => return false,
         };
 
         self.saved_transform = Some(parent_transform.inverse() * state.transform);
@@ -219,10 +216,10 @@ impl OverlayWindowConfig {
             | Positioning::FollowHead { .. }
             | Positioning::FollowHeadPaused { .. } => app.input_state.hmd,
             Positioning::FollowHand { hand, .. } | Positioning::FollowHandPaused { hand, .. } => {
-                app.input_state.pointers[hand].pose
+                app.input_state.pointers[hand as usize].pose
             }
             Positioning::Anchored => app.anchor,
-            Positioning::FollowOverlay { .. } | Positioning::Static => return,
+            Positioning::Static => return,
         };
 
         if hard_reset {
@@ -284,7 +281,7 @@ impl OverlayWindowConfig {
 }
 
 // Contains the window state for a given set
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct OverlayWindowState {
     pub transform: Affine3A,
     pub alpha: f32,
