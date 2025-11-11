@@ -128,6 +128,14 @@ impl OverlayWindowConfig {
         self.reset(app, true);
     }
 
+    pub fn activate_static(&mut self, global_transform: Affine3A) {
+        log::debug!("activate {}", self.name.as_ref());
+        self.dirty = true;
+        let mut state = self.default_state.clone();
+        state.transform = global_transform;
+        self.active_state = Some(state);
+    }
+
     pub fn deactivate(&mut self) {
         log::debug!("deactivate {}", self.name.as_ref());
         self.active_state = None;

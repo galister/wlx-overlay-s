@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use button::setup_custom_button;
-use glam::{Affine2, Vec2, vec2};
+use glam::{vec2, Affine2, Vec2};
 use label::setup_custom_label;
 use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 use wgui::{
@@ -15,14 +15,14 @@ use wgui::{
     layout::{Layout, LayoutParams, WidgetID},
     parser::ParserState,
     renderer_vk::context::Context as WguiContext,
-    widget::{EventResult, label::WidgetLabel, rectangle::WidgetRectangle},
+    widget::{label::WidgetLabel, rectangle::WidgetRectangle, EventResult},
 };
 
 use crate::{
     backend::input::{Haptics, HoverResult, PointerHit, PointerMode},
     graphics::{CommandBuffers, ExtentExt},
     state::AppState,
-    windowing::backend::{FrameMeta, OverlayBackend, ShouldRender, ui_transform},
+    windowing::backend::{ui_transform, FrameMeta, OverlayBackend, ShouldRender},
 };
 
 use super::{timer::GuiTimer, timestep::Timestep};
@@ -206,6 +206,7 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
         }
 
         if self.layout.content_size.x * self.layout.content_size.y == 0.0 {
+            log::trace!("Unable to render: content size 0");
             return Ok(ShouldRender::Unable);
         }
 

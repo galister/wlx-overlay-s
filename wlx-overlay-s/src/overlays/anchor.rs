@@ -9,7 +9,8 @@ use crate::windowing::Z_ORDER_ANCHOR;
 pub static ANCHOR_NAME: LazyLock<Arc<str>> = LazyLock::new(|| Arc::from("anchor"));
 
 pub fn create_anchor(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
-    let panel = GuiPanel::new_from_template(app, "gui/anchor.xml", (), None)?;
+    let mut panel = GuiPanel::new_from_template(app, "gui/anchor.xml", (), None)?;
+    panel.update_layout()?;
 
     Ok(OverlayWindowConfig {
         name: ANCHOR_NAME.clone(),

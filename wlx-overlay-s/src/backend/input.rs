@@ -2,7 +2,7 @@ use std::f32::consts::PI;
 use std::process::{Child, Command};
 use std::{collections::VecDeque, time::Instant};
 
-use glam::{Affine3A, Vec2, Vec3A, Vec3Swizzles};
+use glam::{Affine3A, Vec2, Vec3, Vec3A, Vec3Swizzles};
 
 use smallvec::{smallvec, SmallVec};
 
@@ -582,8 +582,7 @@ impl Pointer {
         tasks.enqueue(TaskType::Overlay(
             OverlaySelector::Name(ANCHOR_NAME.clone()),
             Box::new(|app, o| {
-                o.saved_transform = Some(app.anchor);
-                o.activate(app);
+                o.activate_static(app.anchor * Affine3A::from_scale(Vec3::ONE * 0.1));
             }),
         ));
     }
