@@ -15,11 +15,11 @@ use crate::{
 		util,
 	},
 	widget::{
-		ConstructEssentials, EventResult,
 		div::WidgetDiv,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
+		ConstructEssentials, EventResult,
 	},
 };
 
@@ -50,6 +50,7 @@ struct State {
 	dragging: bool,
 	hovered: bool,
 	values: ValuesMinMax,
+	on_value_changed: Option<SliderValueChangedCallback>,
 }
 
 struct Data {
@@ -60,6 +61,13 @@ struct Data {
 	slider_handle_node: taffy::NodeId,
 	slider_body_node: taffy::NodeId,
 }
+
+pub struct SliderValueChangedEvent {
+	pub value: f32,
+}
+
+pub type SliderValueChangedCallback =
+	Box<dyn Fn(&mut CallbackDataCommon, SliderValueChangedEvent) -> anyhow::Result<()>>;
 
 pub struct ComponentSlider {
 	base: ComponentBase,
@@ -76,6 +84,20 @@ impl ComponentTrait for ComponentSlider {
 
 	fn base(&mut self) -> &mut ComponentBase {
 		&mut self.base
+	}
+}
+
+impl ComponentSlider {
+	pub fn get_value(&self) -> f32 {
+		self.state.borrow().values.value
+	}
+	pub fn set_value(&mut self, common: &mut CallbackDataCommon, value: f32) {
+		let mut state = self.state.borrow_mut();
+		state.set_value(common, &self.data, value);
+	}
+
+	pub fn on_value_changed(&self, func: SliderValueChangedCallback) {
+		self.state.borrow_mut().on_value_changed = Some(func);
 	}
 }
 
@@ -137,6 +159,9 @@ impl State {
 
 	fn set_value(&mut self, common: &mut CallbackDataCommon, data: &Data, value: f32) {
 		//common.call_on_widget(data.slider_handle_id, |_div: &mut Div| {});
+
+		let changed = (self.values.value - value).abs() > f32::EPSILON;
+
 		self.values.value = value;
 		let mut style = common.state.tree.style(data.slider_handle_node).unwrap().clone();
 		conf_handle_style(&self.values, data.slider_body_node, &mut style, &common.state.tree);
@@ -146,6 +171,12 @@ impl State {
 
 		if let Some(mut label) = common.state.widgets.get_as::<WidgetLabel>(data.slider_text_id) {
 			Self::update_text(common, &mut label, value);
+		}
+
+		if changed && let Some(on_value_changed) = &self.on_value_changed {
+			if let Err(e) = on_value_changed(common, SliderValueChangedEvent { value }) {
+				log::error!("{e:?}"); // FIXME: proper error handling
+			}
 		}
 	}
 }
@@ -362,6 +393,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		dragging: false,
 		hovered: false,
 		values: params.values,
+		on_value_changed: None,
 	};
 
 	let globals = ess.layout.state.globals.clone();

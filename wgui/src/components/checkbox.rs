@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 use taffy::{
-	AlignItems, JustifyContent,
 	prelude::{length, percent},
+	AlignItems, JustifyContent,
 };
 
 use crate::{
@@ -13,10 +13,10 @@ use crate::{
 	layout::{self, WidgetID, WidgetPair},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
-		ConstructEssentials, EventResult,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
+		ConstructEssentials, EventResult,
 	},
 };
 

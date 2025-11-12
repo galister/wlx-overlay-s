@@ -4,7 +4,7 @@ use std::{collections::VecDeque, time::Instant};
 
 use glam::{Affine3A, Vec2, Vec3, Vec3A, Vec3Swizzles};
 
-use smallvec::{SmallVec, smallvec};
+use smallvec::{smallvec, SmallVec};
 
 use crate::overlays::anchor::ANCHOR_NAME;
 use crate::state::{AppSession, AppState};
@@ -521,6 +521,7 @@ where
     let pointer = &mut app.input_state.pointers[pointer_idx];
     let ray_origin = pointer.pose;
     let mode = pointer.interaction.mode;
+    let edit_mode = overlays.get_edit_mode();
 
     let mut hits: SmallVec<[RayHit; 8]> = smallvec!();
 
@@ -528,7 +529,7 @@ where
         let Some(overlay_state) = overlay.config.active_state.as_ref() else {
             continue;
         };
-        if !overlay_state.interactable {
+        if !overlay_state.interactable && !edit_mode {
             continue;
         }
 
