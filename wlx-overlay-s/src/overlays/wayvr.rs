@@ -1,17 +1,17 @@
-use glam::{Affine2, Affine3A, Quat, Vec3, vec3};
+use glam::{vec3, Affine2, Affine3A, Quat, Vec3};
 use smallvec::smallvec;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 use vulkano::{
     buffer::{BufferUsage, Subbuffer},
     command_buffer::CommandBufferUsage,
     format::Format,
-    image::{Image, ImageTiling, SubresourceLayout, view::ImageView},
+    image::{view::ImageView, Image, ImageTiling, SubresourceLayout},
 };
 use wayvr_ipc::packet_server::{self, PacketServer, WvrStateChanged};
 use wgui::gfx::{
-    WGfx,
     pass::WGfxPass,
     pipeline::{WGfxPipeline, WPipelineCreateInfo},
+    WGfx,
 };
 use wlx_capture::frame::{DmabufFrame, FourCC, FrameFormat, FramePlane};
 
@@ -20,19 +20,20 @@ use crate::{
         input::{self, HoverResult},
         task::TaskType,
         wayvr::{
-            self, WayVR, WayVRAction, WayVRDisplayClickAction, display,
+            self, display,
             server_ipc::{gen_args_vec, gen_env_vec},
+            WayVR, WayVRAction, WayVRDisplayClickAction,
         },
     },
     config_wayvr,
-    graphics::{CommandBuffers, Vert2Uv, dmabuf::WGfxDmabuf},
+    graphics::{dmabuf::WGfxDmabuf, Vert2Uv},
     state::{self, AppState},
     subsystem::{hid::WheelDelta, input::KeyboardFocus},
     windowing::{
-        OverlayID, OverlaySelector, Z_ORDER_DASHBOARD,
-        backend::{FrameMeta, OverlayBackend, ShouldRender, ui_transform},
+        backend::{ui_transform, FrameMeta, OverlayBackend, RenderResources, ShouldRender},
         manager::OverlayWindowManager,
         window::{OverlayWindowConfig, OverlayWindowData, OverlayWindowState},
+        OverlayID, OverlaySelector, Z_ORDER_DASHBOARD,
     },
 };
 
@@ -660,11 +661,9 @@ impl OverlayBackend for WayVRBackend {
 
     fn render(
         &mut self,
-        app: &mut state::AppState,
-        tgt: Arc<ImageView>,
-        buf: &mut CommandBuffers,
-        alpha: f32,
-    ) -> anyhow::Result<bool> {
+        _app: &mut state::AppState,
+        rdr: &mut RenderResources,
+    ) -> anyhow::Result<()> {
         let ctx = self.context.borrow();
         let wayvr = ctx.wayvr.borrow_mut();
 
@@ -689,26 +688,12 @@ impl OverlayBackend for WayVRBackend {
             }
         }
 
-        let Some(image) = self.image.as_ref() else {
-            return Ok(false);
-        };
-
+        let image = self.image.as_ref().unwrap();
         self.pass
             .update_sampler(0, image.vk_image_view.clone(), self.graphics.texture_filter)?;
-        self.buf_alpha.write()?[0] = alpha;
-
-        let mut cmd_buffer = app
-            .gfx
-            .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
-        cmd_buffer.begin_rendering(
-            tgt,
-            wgui::gfx::cmd::WGfxClearMode::Clear([0.0, 0.0, 0.0, 1.0]),
-        )?;
-        cmd_buffer.run_ref(&self.pass)?;
-        cmd_buffer.end_rendering()?;
-        buf.push(cmd_buffer.build()?);
-
-        Ok(true)
+        self.buf_alpha.write()?[0] = rdr.alpha;
+        rdr.cmd_buf.run_ref(&self.pass)?;
+        Ok(())
     }
 
     fn frame_meta(&mut self) -> Option<FrameMeta> {

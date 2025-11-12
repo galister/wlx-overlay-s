@@ -1,21 +1,20 @@
 use std::{
-    sync::{Arc, LazyLock, atomic::AtomicU64},
+    sync::{atomic::AtomicU64, Arc, LazyLock},
     time::Instant,
 };
 
-use glam::{Affine2, Vec2, vec2};
-use vulkano::image::view::ImageView;
-use wlx_capture::{WlxCapture, frame::Transform};
+use glam::{vec2, Affine2, Vec2};
+use wlx_capture::{frame::Transform, WlxCapture};
 
 use crate::{
     backend::input::{HoverResult, PointerHit, PointerMode},
-    graphics::{CommandBuffers, ExtentExt},
+    graphics::ExtentExt,
     state::AppState,
-    subsystem::hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT, WheelDelta},
-    windowing::backend::{FrameMeta, OverlayBackend, ShouldRender},
+    subsystem::hid::{WheelDelta, MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
+    windowing::backend::{FrameMeta, OverlayBackend, RenderResources, ShouldRender},
 };
 
-use super::capture::{ScreenPipeline, WlxCaptureIn, WlxCaptureOut, receive_callback};
+use super::capture::{receive_callback, ScreenPipeline, WlxCaptureIn, WlxCaptureOut};
 
 const CURSOR_SIZE: f32 = 16. / 1440.;
 
@@ -179,25 +178,14 @@ impl OverlayBackend for ScreenBackend {
             Ok(ShouldRender::Unable)
         }
     }
-    fn render(
-        &mut self,
-        app: &mut AppState,
-        tgt: Arc<ImageView>,
-        buf: &mut CommandBuffers,
-        alpha: f32,
-    ) -> anyhow::Result<bool> {
-        let Some(capture) = self.cur_frame.take() else {
-            return Ok(false);
-        };
+    fn render(&mut self, app: &mut AppState, rdr: &mut RenderResources) -> anyhow::Result<()> {
+        // want panic; must be some if should_render was not Unable
+        let capture = self.cur_frame.take().unwrap();
 
         // want panic; must be Some if cur_frame is also Some
-        self.pipeline
-            .as_mut()
-            .unwrap()
-            .render(&capture, app, tgt, buf, alpha)?;
-
+        self.pipeline.as_mut().unwrap().render(&capture, app, rdr)?;
         self.capture.request_new_frame();
-        Ok(true)
+        Ok(())
     }
     fn pause(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
         self.capture.pause();

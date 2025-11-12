@@ -1,11 +1,12 @@
 use glam::Vec3A;
 use openxr::{self as xr, CompositionLayerFlags};
-use std::f32::consts::PI;
+use std::{f32::consts::PI, sync::Arc};
+use vulkano::image::view::ImageView;
 use xr::EyeVisibility;
 
-use super::{CompositionLayer, XrState, helpers, swapchain::WlxSwapchain};
+use super::{helpers, swapchain::WlxSwapchain, CompositionLayer, XrState};
 use crate::{
-    backend::openxr::swapchain::{SwapchainOpts, create_swapchain},
+    backend::openxr::swapchain::{create_swapchain, SwapchainOpts},
     state::AppState,
     windowing::window::OverlayWindowData,
 };
@@ -20,41 +21,28 @@ pub struct OpenXrOverlayData {
 }
 
 impl OverlayWindowData<OpenXrOverlayData> {
-    pub(super) fn ensure_swapchain<'a>(
+    pub(super) fn ensure_swapchain_acquire<'a>(
         &'a mut self,
         app: &AppState,
         xr: &'a XrState,
-    ) -> anyhow::Result<bool> {
-        let Some(meta) = self.frame_meta() else {
-            log::warn!(
-                "{}: swapchain cannot be created due to missing metadata",
-                self.config.name
-            );
-            return Ok(false);
-        };
-
-        if self
-            .data
-            .swapchain
-            .as_ref()
-            .is_some_and(|s| s.extent == meta.extent)
+        extent: [u32; 3],
+    ) -> anyhow::Result<Arc<ImageView>> {
+        if let Some(swapchain) = self.data.swapchain.as_mut()
+            && swapchain.extent == extent
         {
-            return Ok(true);
+            return Ok(swapchain.acquire_wait_image()?);
         }
 
         log::debug!(
             "{}: recreating swapchain at {}x{}",
             self.config.name,
-            meta.extent[0],
-            meta.extent[1],
+            extent[0],
+            extent[1],
         );
-        self.data.swapchain = Some(create_swapchain(
-            xr,
-            app.gfx.clone(),
-            meta.extent,
-            SwapchainOpts::new(),
-        )?);
-        Ok(true)
+        let mut swapchain = create_swapchain(xr, app.gfx.clone(), extent, SwapchainOpts::new())?;
+        let tgt = swapchain.acquire_wait_image()?;
+        self.data.swapchain = Some(swapchain);
+        Ok(tgt)
     }
 
     pub(super) fn present<'a>(

@@ -9,7 +9,7 @@ use wgui::{
     layout::LayoutParams,
     parser::Fetchable,
     renderer_vk::util,
-    taffy::{self, prelude::length, BoxSizing},
+    taffy::{self, prelude::length},
     widget::{
         div::WidgetDiv,
         rectangle::{WidgetRectangle, WidgetRectangleParams},

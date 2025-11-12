@@ -5,7 +5,7 @@ use slotmap::{HopSlotMap, Key, SecondaryMap};
 
 use crate::{
     overlays::{
-        adjust::EditModeManager, anchor::create_anchor, keyboard::builder::create_keyboard,
+        anchor::create_anchor, edit::EditModeManager, keyboard::builder::create_keyboard,
         screen::create_screens, watch::create_watch,
     },
     state::AppState,

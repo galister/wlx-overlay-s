@@ -636,28 +636,32 @@ fn queue_families_priorities(
 }
 
 #[derive(Default)]
-pub struct CommandBuffers {
-    inner: Vec<Arc<PrimaryAutoCommandBuffer>>,
+pub struct GpuFutures {
+    futures: Vec<Box<dyn GpuFuture>>,
 }
 
-impl CommandBuffers {
-    pub fn push(&mut self, buffer: Arc<PrimaryAutoCommandBuffer>) {
-        self.inner.push(buffer);
+impl GpuFutures {
+    pub fn execute(
+        &mut self,
+        cmd: (Arc<Queue>, Arc<PrimaryAutoCommandBuffer>),
+    ) -> anyhow::Result<()> {
+        self.futures.push(cmd.1.execute(cmd.0)?.boxed());
+
+        Ok(())
     }
-    pub fn execute_now(self, queue: Arc<Queue>) -> anyhow::Result<Option<Box<dyn GpuFuture>>> {
-        let mut buffers = self.inner.into_iter();
-        let Some(first) = buffers.next() else {
-            return Ok(None);
+    pub fn wait(self) -> anyhow::Result<()> {
+        let mut it = self.futures.into_iter();
+        let Some(mut all) = it.next() else {
+            return Ok(());
         };
-
-        let future = first.execute(queue)?;
-        let mut future: Box<dyn GpuFuture> = Box::new(future);
-
-        for buf in buffers {
-            future = Box::new(future.then_execute_same_queue(buf)?);
+        for f in it {
+            all = all.join(f).boxed();
         }
 
-        Ok(Some(future))
+        let finished = all.then_signal_fence_and_flush()?;
+        finished.wait(None)?;
+
+        Ok(())
     }
 }
 

@@ -7,29 +7,28 @@ use vulkano::{
     command_buffer::CommandBufferUsage,
     device::Queue,
     format::Format,
-    image::{Image, sampler::Filter, view::ImageView},
+    image::{sampler::Filter, view::ImageView, Image},
     pipeline::graphics::color_blend::AttachmentBlend,
 };
 use wgui::gfx::{
-    WGfx,
     cmd::WGfxClearMode,
     pass::WGfxPass,
     pipeline::{WGfxPipeline, WPipelineCreateInfo},
+    WGfx,
 };
 use wlx_capture::{
-    WlxCapture,
     frame::{self as wlx_frame, DrmFormat, FrameFormat, MouseMeta, Transform, WlxFrame},
+    WlxCapture,
 };
 
 use crate::{
     config::GeneralConfig,
     graphics::{
-        CommandBuffers, Vert2Uv,
-        dmabuf::{WGfxDmabuf, fourcc_to_vk},
-        upload_quad_vertices,
+        dmabuf::{fourcc_to_vk, WGfxDmabuf},
+        upload_quad_vertices, Vert2Uv,
     },
     state::AppState,
-    windowing::backend::FrameMeta,
+    windowing::backend::{FrameMeta, RenderResources},
 };
 
 const CURSOR_SIZE: f32 = 16. / 1440.;
@@ -147,20 +146,14 @@ impl ScreenPipeline {
         &mut self,
         capture: &WlxCaptureOut,
         app: &mut AppState,
-        tgt: Arc<ImageView>,
-        buf: &mut CommandBuffers,
-        alpha: f32,
+        rdr: &mut RenderResources,
     ) -> anyhow::Result<()> {
         let view = ImageView::new_default(capture.image.clone())?;
 
         self.pass.update_sampler(0, view, app.gfx.texture_filter)?;
-        self.buf_alpha.write()?[0] = alpha;
+        self.buf_alpha.write()?[0] = rdr.alpha;
 
-        let mut cmd = app
-            .gfx
-            .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
-        cmd.begin_rendering(tgt, WGfxClearMode::DontCare)?;
-        cmd.run_ref(&self.pass)?;
+        rdr.cmd_buf.run_ref(&self.pass)?;
 
         if let Some(mouse) = capture.mouse.as_ref() {
             let size = CURSOR_SIZE * self.extentf[1];
@@ -176,11 +169,9 @@ impl ScreenPipeline {
                 size,
             )?;
 
-            cmd.run_ref(&self.mouse.pass)?;
+            rdr.cmd_buf.run_ref(&self.mouse.pass)?;
         }
 
-        cmd.end_rendering()?;
-        buf.push(cmd.build()?);
         Ok(())
     }
 }
@@ -217,6 +208,7 @@ pub struct WlxCaptureOut {
 impl WlxCaptureOut {
     pub(super) fn get_frame_meta(&self, config: &GeneralConfig) -> FrameMeta {
         FrameMeta {
+            clear: WGfxClearMode::DontCare,
             extent: extent_from_format(self.format, config),
             transform: affine_from_format(&self.format),
             format: self.image.format(),

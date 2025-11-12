@@ -1,10 +1,19 @@
 use glam::{Affine2, Affine3A, Vec2};
 use std::{any::Any, sync::Arc};
-use vulkano::{format::Format, image::view::ImageView};
+use vulkano::{
+    command_buffer::{CommandBufferUsage, PrimaryAutoCommandBuffer},
+    device::Queue,
+    format::Format,
+    image::view::ImageView,
+};
+use wgui::gfx::{
+    cmd::{GfxCommandBuffer, WGfxClearMode},
+    WGfx,
+};
 
 use crate::{
     backend::input::{HoverResult, PointerHit},
-    graphics::CommandBuffers,
+    graphics::ExtentExt,
     state::AppState,
     subsystem::hid::WheelDelta,
 };
@@ -14,6 +23,7 @@ pub struct FrameMeta {
     pub extent: [u32; 3],
     pub transform: Affine3A,
     pub format: Format,
+    pub clear: WGfxClearMode,
 }
 
 pub enum ShouldRender {
@@ -23,6 +33,35 @@ pub enum ShouldRender {
     Can,
     /// The overlay is not ready to be rendered.
     Unable,
+}
+
+pub struct RenderResources {
+    pub alpha: f32,
+    pub cmd_buf: GfxCommandBuffer,
+    pub extent: [u32; 2],
+}
+
+impl RenderResources {
+    pub fn new(
+        gfx: Arc<WGfx>,
+        tgt: Arc<ImageView>,
+        meta: &FrameMeta,
+        alpha: f32,
+    ) -> anyhow::Result<Self> {
+        let mut cmd_buf = gfx.create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+        cmd_buf.begin_rendering(tgt, meta.clear)?;
+
+        Ok(Self {
+            cmd_buf,
+            alpha,
+            extent: meta.extent.extent_u32arr(),
+        })
+    }
+
+    pub fn end(mut self) -> anyhow::Result<(Arc<Queue>, Arc<PrimaryAutoCommandBuffer>)> {
+        self.cmd_buf.end_rendering()?;
+        Ok((self.cmd_buf.queue.clone(), self.cmd_buf.build()?))
+    }
 }
 
 pub trait OverlayBackend: Any {
@@ -35,13 +74,7 @@ pub trait OverlayBackend: Any {
     fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender>;
 
     /// Called when the contents need to be rendered to the swapchain
-    fn render(
-        &mut self,
-        app: &mut AppState,
-        tgt: Arc<ImageView>,
-        buf: &mut CommandBuffers,
-        alpha: f32,
-    ) -> anyhow::Result<bool>;
+    fn render(&mut self, app: &mut AppState, rdr: &mut RenderResources) -> anyhow::Result<()>;
 
     /// Called to retrieve the effective extent of the image
     /// Used for creating swapchains.
@@ -85,17 +118,11 @@ impl OverlayBackend for DummyBackend {
     fn should_render(&mut self, _: &mut AppState) -> anyhow::Result<ShouldRender> {
         Ok(ShouldRender::Unable)
     }
-    fn render(
-        &mut self,
-        _: &mut AppState,
-        _: Arc<ImageView>,
-        _: &mut CommandBuffers,
-        _: f32,
-    ) -> anyhow::Result<bool> {
-        Ok(false)
+    fn render(&mut self, _: &mut AppState, _: &mut RenderResources) -> anyhow::Result<()> {
+        unreachable!()
     }
     fn frame_meta(&mut self) -> Option<FrameMeta> {
-        None
+        unreachable!()
     }
 
     fn on_hover(&mut self, _: &mut AppState, _: &PointerHit) -> HoverResult {
@@ -103,7 +130,7 @@ impl OverlayBackend for DummyBackend {
     }
     fn on_left(&mut self, _: &mut AppState, _: usize) {}
     fn on_pointer(&mut self, _: &mut AppState, _: &PointerHit, _: bool) {}
-    fn on_scroll(&mut self, _: &mut AppState, _: &PointerHit, _: f32, _: f32) {}
+    fn on_scroll(&mut self, _: &mut AppState, _: &PointerHit, _: WheelDelta) {}
     fn get_interaction_transform(&mut self) -> Option<glam::Affine2> {
         None
     }

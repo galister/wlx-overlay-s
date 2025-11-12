@@ -5,14 +5,14 @@ use std::{
 };
 
 use glam::vec2;
-use vulkano::image::{view::ImageView, ImageUsage};
 
 use crate::{
     backend::input::HoverResult,
     gui::panel::GuiPanel,
     state::AppState,
+    subsystem::hid::WheelDelta,
     windowing::{
-        backend::{DummyBackend, OverlayBackend, ShouldRender},
+        backend::{DummyBackend, OverlayBackend, RenderResources, ShouldRender},
         window::OverlayWindowConfig,
     },
 };
@@ -38,15 +38,13 @@ impl EditModeManager {
         let inner = mem::replace(&mut owc.backend, Box::new(DummyBackend {}));
         let mut panel = self.panel_pool.pop();
         if panel.is_none() {
-            panel = Some(make_adjustment_panel(app)?);
+            panel = Some(make_edit_panel(app)?);
         }
         let mut panel = panel.unwrap();
         panel.state = owc.name.clone();
         owc.backend = Box::new(EditModeBackendWrapper {
             inner: ManuallyDrop::new(inner),
             panel: ManuallyDrop::new(panel),
-            can_render_inner: false,
-            image: None,
         });
         owc.editing = true;
 
@@ -79,8 +77,6 @@ impl EditModeManager {
 pub struct EditModeBackendWrapper {
     panel: ManuallyDrop<EditModeWrapPanel>,
     inner: ManuallyDrop<Box<dyn OverlayBackend>>,
-    image: Option<Arc<ImageView>>,
-    can_render_inner: bool,
 }
 
 impl OverlayBackend for EditModeBackendWrapper {
@@ -99,8 +95,7 @@ impl OverlayBackend for EditModeBackendWrapper {
     fn should_render(&mut self, app: &mut crate::state::AppState) -> anyhow::Result<ShouldRender> {
         let i = self.inner.should_render(app)?;
 
-        self.can_render_inner = !matches!(i, ShouldRender::Unable);
-        if self.can_render_inner
+        if !matches!(i, ShouldRender::Unable)
             && let Some(ref frame_meta) = self.inner.frame_meta()
         {
             let new_size = vec2(frame_meta.extent[0] as _, frame_meta.extent[1] as _);
@@ -109,6 +104,8 @@ impl OverlayBackend for EditModeBackendWrapper {
                 self.panel.max_size = new_size;
                 self.panel.update_layout()?;
             }
+        } else {
+            return Ok(ShouldRender::Unable);
         }
 
         let p = self.panel.should_render(app)?;
@@ -118,39 +115,19 @@ impl OverlayBackend for EditModeBackendWrapper {
             (ShouldRender::Should, ShouldRender::Can) => ShouldRender::Should,
             (ShouldRender::Can, ShouldRender::Should) => ShouldRender::Should,
             (ShouldRender::Can, ShouldRender::Can) => ShouldRender::Can,
-            // (ShouldRender::Unable, ShouldRender::Should) if self.image.is_some() => {
-            //     ShouldRender::Should
-            // }
-            // (ShouldRender::Unable, ShouldRender::Can) if self.image.is_some() => ShouldRender::Can,
             _ => ShouldRender::Unable,
         })
     }
     fn render(
         &mut self,
         app: &mut crate::state::AppState,
-        tgt: std::sync::Arc<vulkano::image::view::ImageView>,
-        buf: &mut crate::graphics::CommandBuffers,
-        alpha: f32,
-    ) -> anyhow::Result<bool> {
-        if self.can_render_inner {
-            if self.image.is_none()
-                && let Some(ref meta) = self.inner.frame_meta()
-            {
-                let image = app.gfx.new_image(
-                    meta.extent[0],
-                    meta.extent[1],
-                    app.gfx.surface_format,
-                    ImageUsage::COLOR_ATTACHMENT | ImageUsage::SAMPLED,
-                )?;
-                self.image = Some(ImageView::new_default(image)?);
-            }
-            self.inner.render(app, tgt.clone(), buf, alpha)?;
-        }
-
-        self.panel.render(app, tgt, buf, -1.)
+        rdr: &mut RenderResources,
+    ) -> anyhow::Result<()> {
+        self.inner.render(app, rdr)?;
+        self.panel.render(app, rdr)
     }
     fn frame_meta(&mut self) -> Option<crate::windowing::backend::FrameMeta> {
-        self.inner.frame_meta().or_else(|| self.panel.frame_meta())
+        self.inner.frame_meta()
     }
     fn on_hover(
         &mut self,
@@ -177,19 +154,17 @@ impl OverlayBackend for EditModeBackendWrapper {
         &mut self,
         app: &mut crate::state::AppState,
         hit: &crate::backend::input::PointerHit,
-        delta_y: f32,
-        delta_x: f32,
+        delta: WheelDelta,
     ) {
-        self.panel.on_scroll(app, hit, delta_y, delta_x);
+        self.panel.on_scroll(app, hit, delta);
     }
     fn get_interaction_transform(&mut self) -> Option<glam::Affine2> {
         self.inner.get_interaction_transform()
     }
 }
 
-fn make_adjustment_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
-    let mut panel = GuiPanel::new_from_template(app, "gui/adjust.xml", "".into(), None, true)?;
-    panel.update_layout()?;
+fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
+    let panel = GuiPanel::new_from_template(app, "gui/edit.xml", "".into(), None, true)?;
 
     Ok(panel)
 }

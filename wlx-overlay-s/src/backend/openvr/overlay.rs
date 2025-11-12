@@ -62,21 +62,33 @@ impl OverlayWindowData<OpenVrOverlayData> {
         Ok(handle)
     }
 
-    pub(super) fn ensure_image_allocated(&mut self, app: &mut AppState) -> anyhow::Result<bool> {
-        if self.data.image_view.is_some() {
-            return Ok(true);
+    pub(super) fn ensure_staging_image(
+        &mut self,
+        app: &mut AppState,
+        extent: [u32; 3],
+    ) -> anyhow::Result<Arc<ImageView>> {
+        if let Some(image_view) = self.data.image_view.as_ref()
+            && image_view.image().extent() == extent
+        {
+            return Ok(image_view.clone());
         }
-        let Some(meta) = self.config.backend.frame_meta() else {
-            return Ok(false);
-        };
+
+        log::debug!(
+            "{}: recreating staging image at {}x{}",
+            self.config.name,
+            extent[0],
+            extent[1],
+        );
+
         let image = app.gfx.new_image(
-            meta.extent[0],
-            meta.extent[1],
+            extent[0],
+            extent[1],
             app.gfx.surface_format,
             ImageUsage::TRANSFER_SRC | ImageUsage::COLOR_ATTACHMENT | ImageUsage::SAMPLED,
         )?;
-        self.data.image_view = Some(ImageView::new_default(image)?);
-        Ok(true)
+        let image_view = ImageView::new_default(image)?;
+        self.data.image_view = Some(image_view.clone());
+        Ok(image_view)
     }
 
     pub(super) fn after_input(

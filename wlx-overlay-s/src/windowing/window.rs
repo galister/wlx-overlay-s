@@ -1,14 +1,12 @@
 use glam::{Affine3A, Mat3A, Quat, Vec3, Vec3A};
 use serde::{Deserialize, Serialize};
 use std::{f32::consts::PI, sync::Arc};
-use vulkano::image::view::ImageView;
 
 use crate::{
-    graphics::CommandBuffers,
     state::{AppState, LeftRight},
     subsystem::input::KeyboardFocus,
     windowing::{
-        backend::{FrameMeta, OverlayBackend, ShouldRender},
+        backend::{FrameMeta, OverlayBackend, RenderResources, ShouldRender},
         snap_upright,
     },
 };
@@ -68,14 +66,8 @@ impl<T> OverlayWindowData<T> {
     pub fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
         self.config.backend.should_render(app)
     }
-    pub fn render(
-        &mut self,
-        app: &mut AppState,
-        tgt: Arc<ImageView>,
-        buf: &mut CommandBuffers,
-        alpha: f32,
-    ) -> anyhow::Result<bool> {
-        self.config.backend.render(app, tgt, buf, alpha)
+    pub fn render(&mut self, app: &mut AppState, rdr: &mut RenderResources) -> anyhow::Result<()> {
+        self.config.backend.render(app, rdr)
     }
     pub fn frame_meta(&mut self) -> Option<FrameMeta> {
         self.config.backend.frame_meta()

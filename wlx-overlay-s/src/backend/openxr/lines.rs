@@ -18,7 +18,7 @@ use wgui::gfx::{
 
 use crate::{
     backend::openxr::helpers,
-    graphics::{CommandBuffers, Vert2Uv},
+    graphics::{GpuFutures, Vert2Uv},
     state::AppState,
 };
 use vulkano::{
@@ -152,7 +152,7 @@ impl LinePool {
     pub(super) fn render(
         &mut self,
         app: &AppState,
-        buf: &mut CommandBuffers,
+        futures: &mut GpuFutures,
     ) -> anyhow::Result<()> {
         for line in self.lines.values_mut() {
             if let Some(inner) = line.maybe_line.as_mut() {
@@ -167,7 +167,7 @@ impl LinePool {
                 cmd_buffer.run_ref(&self.pass)?;
                 cmd_buffer.end_rendering()?;
 
-                buf.push(cmd_buffer.build()?);
+                futures.execute((cmd_buffer.queue.clone(), cmd_buffer.build()?))?;
             }
         }
 

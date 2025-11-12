@@ -1,10 +1,8 @@
 use std::{
     cell::Cell,
     process::{Child, Command},
-    sync::Arc,
 };
 
-use vulkano::image::view::ImageView;
 use wgui::{
     drawing,
     event::{InternalStateChangeEvent, MouseButton, MouseButtonIndex},
@@ -12,11 +10,10 @@ use wgui::{
 
 use crate::{
     backend::input::{HoverResult, PointerHit},
-    graphics::CommandBuffers,
     gui::panel::GuiPanel,
     state::AppState,
-    subsystem::hid::{ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey, WheelDelta},
-    windowing::backend::{FrameMeta, OverlayBackend, ShouldRender},
+    subsystem::hid::{KeyModifier, VirtualKey, WheelDelta, ALT, CTRL, META, SHIFT, SUPER},
+    windowing::backend::{FrameMeta, OverlayBackend, RenderResources, ShouldRender},
 };
 
 pub mod builder;
@@ -36,14 +33,8 @@ impl OverlayBackend for KeyboardBackend {
     fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
         self.panel.should_render(app)
     }
-    fn render(
-        &mut self,
-        app: &mut AppState,
-        tgt: Arc<ImageView>,
-        buf: &mut CommandBuffers,
-        alpha: f32,
-    ) -> anyhow::Result<bool> {
-        self.panel.render(app, tgt, buf, alpha)
+    fn render(&mut self, app: &mut AppState, rdr: &mut RenderResources) -> anyhow::Result<()> {
+        self.panel.render(app, rdr)
     }
     fn frame_meta(&mut self) -> Option<FrameMeta> {
         self.panel.frame_meta()

@@ -29,14 +29,18 @@ use crate::{
         BackendError,
     },
     config::save_state,
-    graphics::{init_openvr_graphics, CommandBuffers},
+    graphics::{init_openvr_graphics, GpuFutures},
     overlays::{
         toast::{Toast, ToastTopic},
         watch::{watch_fade, WATCH_NAME},
     },
     state::AppState,
     subsystem::notifications::NotificationManager,
-    windowing::{backend::ShouldRender, manager::OverlayWindowManager, window::OverlayWindowData},
+    windowing::{
+        backend::{RenderResources, ShouldRender},
+        manager::OverlayWindowManager,
+        window::OverlayWindowData,
+    },
 };
 
 #[cfg(feature = "wayvr")]
@@ -311,7 +315,7 @@ pub fn openvr_run(
         }
 
         app.hid_provider.inner.commit();
-        let mut buffers = CommandBuffers::default();
+        let mut futures = GpuFutures::default();
 
         lines.update(universe.clone(), &mut overlay_mgr, &mut app)?;
 
@@ -338,26 +342,17 @@ pub fn openvr_run(
                 let ShouldRender::Should = o.should_render(&mut app)? else {
                     continue;
                 };
-                if !o.ensure_image_allocated(&mut app)? {
-                    continue;
-                }
-                o.data.image_dirty = o.render(
-                    &mut app,
-                    o.data.image_view.as_ref().unwrap().clone(),
-                    &mut buffers,
-                    1.0, // alpha is instead set using OVR API
-                )?;
+                let meta = o.config.backend.frame_meta().unwrap();
+                let tgt = o.ensure_staging_image(&mut app, meta.extent)?;
+                let mut rdr = RenderResources::new(app.gfx.clone(), tgt, &meta, 1.0)?;
+                o.render(&mut app, &mut rdr)?;
+                o.data.image_dirty = true;
+                futures.execute(rdr.end()?)?;
             }
         }
 
         log::trace!("Rendering overlays");
-
-        if let Some(mut future) = buffers.execute_now(app.gfx.queue_gfx.clone())? {
-            if let Err(e) = future.flush() {
-                return Err(BackendError::Fatal(e.into()));
-            }
-            future.cleanup_finished();
-        }
+        futures.wait()?;
 
         overlays
             .values_mut()

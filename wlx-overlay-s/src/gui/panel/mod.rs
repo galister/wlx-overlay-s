@@ -1,9 +1,8 @@
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{cell::RefCell, rc::Rc};
 
 use button::setup_custom_button;
-use glam::{Affine2, Vec2, vec2};
+use glam::{vec2, Affine2, Vec2};
 use label::setup_custom_label;
-use vulkano::{command_buffer::CommandBufferUsage, image::view::ImageView};
 use wgui::{
     assets::AssetPath,
     drawing,
@@ -16,15 +15,14 @@ use wgui::{
     layout::{Layout, LayoutParams, WidgetID},
     parser::ParserState,
     renderer_vk::context::Context as WguiContext,
-    widget::{EventResult, label::WidgetLabel, rectangle::WidgetRectangle},
+    widget::{label::WidgetLabel, rectangle::WidgetRectangle, EventResult},
 };
 
 use crate::{
     backend::input::{Haptics, HoverResult, PointerHit, PointerMode},
-    graphics::{CommandBuffers, ExtentExt},
     state::AppState,
     subsystem::hid::WheelDelta,
-    windowing::backend::{FrameMeta, OverlayBackend, ShouldRender, ui_transform},
+    windowing::backend::{ui_transform, FrameMeta, OverlayBackend, RenderResources, ShouldRender},
 };
 
 use super::{timer::GuiTimer, timestep::Timestep};
@@ -222,30 +220,10 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
         })
     }
 
-    fn render(
-        &mut self,
-        app: &mut AppState,
-        tgt: Arc<ImageView>,
-        buf: &mut CommandBuffers,
-        mut alpha: f32,
-    ) -> anyhow::Result<bool> {
+    fn render(&mut self, app: &mut AppState, rdr: &mut RenderResources) -> anyhow::Result<()> {
         self.context
-            .update_viewport(&mut app.wgui_shared, tgt.extent_u32arr(), 1.0)?;
+            .update_viewport(&mut app.wgui_shared, rdr.extent, 1.0)?;
         self.layout.update(self.max_size, self.timestep.alpha)?;
-
-        // FIXME: pass this properly
-        let mut clear = WGfxClearMode::Clear([0., 0., 0., 0.]);
-        if alpha < 0. {
-            alpha *= -1.;
-            clear = WGfxClearMode::Keep;
-        }
-
-        let mut cmd_buf = app
-            .gfx
-            .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)
-            .unwrap(); // want panic
-
-        cmd_buf.begin_rendering(tgt, clear)?;
 
         let globals = self.layout.state.globals.clone(); // sorry
         let mut globals = globals.get();
@@ -254,22 +232,20 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
             globals: &mut globals,
             layout: &mut self.layout,
             debug_draw: false,
-            alpha,
+            alpha: rdr.alpha,
         })?;
         self.context.draw(
             &globals.font_system,
             &mut app.wgui_shared,
-            &mut cmd_buf,
+            &mut rdr.cmd_buf,
             &primitives,
         )?;
-        cmd_buf.end_rendering()?;
-        buf.push(cmd_buf.build()?);
-
-        Ok(true)
+        Ok(())
     }
 
     fn frame_meta(&mut self) -> Option<FrameMeta> {
         Some(FrameMeta {
+            clear: WGfxClearMode::Clear([0., 0., 0., 0.]),
             extent: [
                 self.max_size.x.min(self.layout.content_size.x) as _,
                 self.max_size.y.min(self.layout.content_size.y) as _,

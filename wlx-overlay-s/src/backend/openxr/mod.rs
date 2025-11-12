@@ -23,14 +23,18 @@ use crate::{
         BackendError,
     },
     config::save_state,
-    graphics::{init_openxr_graphics, CommandBuffers},
+    graphics::{init_openxr_graphics, GpuFutures},
     overlays::{
         toast::{Toast, ToastTopic},
         watch::{watch_fade, WATCH_NAME},
     },
     state::AppState,
     subsystem::notifications::NotificationManager,
-    windowing::{backend::ShouldRender, manager::OverlayWindowManager, window::OverlayWindowData},
+    windowing::{
+        backend::{RenderResources, ShouldRender},
+        manager::OverlayWindowManager,
+        window::OverlayWindowData,
+    },
 };
 
 #[cfg(feature = "wayvr")]
@@ -378,10 +382,10 @@ pub fn openxr_run(
         }
 
         // Begin rendering
-        let mut buffers = CommandBuffers::default();
+        let mut futures = GpuFutures::default();
 
         if !main_session_visible && let Some(skybox) = skybox.as_mut() {
-            skybox.render(&xr_state, &app, &mut buffers)?;
+            skybox.render(&xr_state, &app, &mut futures)?;
         }
 
         for o in overlays.values_mut() {
@@ -402,30 +406,20 @@ pub fn openxr_run(
             };
 
             if should_render {
-                if !o.ensure_swapchain(&app, &xr_state)? {
-                    continue;
-                }
-                let tgt = o.data.swapchain.as_mut().unwrap().acquire_wait_image()?; // want
-                if !o.render(&mut app, tgt, &mut buffers, alpha)? {
-                    o.data.swapchain.as_mut().unwrap().ensure_image_released()?; // want
-                    continue;
-                }
+                let meta = o.config.backend.frame_meta().unwrap(); // want panic
+                let tgt = o.ensure_swapchain_acquire(&app, &xr_state, meta.extent)?;
+                let mut rdr = RenderResources::new(app.gfx.clone(), tgt, &meta, alpha)?;
+                o.render(&mut app, &mut rdr)?;
                 o.data.last_alpha = alpha;
+                futures.execute(rdr.end()?)?;
             } else if o.data.swapchain.is_none() {
                 continue;
             }
             o.data.cur_visible = true;
         }
 
-        lines.render(&app, &mut buffers)?;
-
-        let future = buffers.execute_now(app.gfx.queue_gfx.clone())?;
-        if let Some(mut future) = future {
-            if let Err(e) = future.flush() {
-                return Err(BackendError::Fatal(e.into()));
-            }
-            future.cleanup_finished();
-        }
+        lines.render(&app, &mut futures)?;
+        futures.wait()?;
         // End rendering
 
         // Layer composition

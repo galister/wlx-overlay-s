@@ -5,21 +5,19 @@ use std::{
 
 use futures::{Future, FutureExt};
 use glam::{Affine2, Affine3A, Vec3};
-use vulkano::image::view::ImageView;
-use wlx_capture::pipewire::{PipewireCapture, PipewireSelectScreenResult, pipewire_select_screen};
+use wlx_capture::pipewire::{pipewire_select_screen, PipewireCapture, PipewireSelectScreenResult};
 
 use crate::{
     backend::{
         input::{HoverResult, PointerHit},
         task::TaskType,
     },
-    graphics::CommandBuffers,
     state::{AppSession, AppState},
     subsystem::hid::WheelDelta,
     windowing::{
-        OverlaySelector,
-        backend::{FrameMeta, OverlayBackend, ShouldRender, ui_transform},
+        backend::{ui_transform, FrameMeta, OverlayBackend, RenderResources, ShouldRender},
         window::{OverlayWindowConfig, OverlayWindowState},
+        OverlaySelector,
     },
 };
 
@@ -93,26 +91,21 @@ impl OverlayBackend for MirrorBackend {
             .as_mut()
             .map_or(Ok(ShouldRender::Unable), |r| r.should_render(app))
     }
-    fn render(
-        &mut self,
-        app: &mut AppState,
-        tgt: Arc<ImageView>,
-        buf: &mut CommandBuffers,
-        alpha: f32,
-    ) -> anyhow::Result<bool> {
-        let mut result = false;
-        if let Some(renderer) = self.renderer.as_mut() {
-            result = renderer.render(app, tgt, buf, alpha)?;
-            if let Some(meta) = renderer.frame_meta() {
-                let extent = meta.extent;
-                if self.last_extent != extent {
-                    self.last_extent = extent;
-                    self.interaction_transform = Some(ui_transform([extent[0], extent[1]]));
-                }
+    fn render(&mut self, app: &mut AppState, rdr: &mut RenderResources) -> anyhow::Result<()> {
+        let Some(renderer) = self.renderer.as_mut() else {
+            anyhow::bail!("render failed after should_render passed");
+        };
+
+        renderer.render(app, rdr)?;
+        if let Some(meta) = renderer.frame_meta() {
+            let extent = meta.extent;
+            if self.last_extent != extent {
+                self.last_extent = extent;
+                self.interaction_transform = Some(ui_transform([extent[0], extent[1]]));
             }
         }
 
-        Ok(result)
+        Ok(())
     }
     fn pause(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         if let Some(renderer) = self.renderer.as_mut() {

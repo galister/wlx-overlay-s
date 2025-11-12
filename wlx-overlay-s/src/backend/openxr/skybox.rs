@@ -15,7 +15,7 @@ use wgui::gfx::{cmd::WGfxClearMode, pipeline::WPipelineCreateInfo};
 use crate::{
     backend::openxr::{helpers::translation_rotation_to_posef, swapchain::SwapchainOpts},
     config_io,
-    graphics::{dds::WlxCommandBufferDds, CommandBuffers, ExtentExt},
+    graphics::{dds::WlxCommandBufferDds, ExtentExt, GpuFutures},
     state::AppState,
 };
 
@@ -85,7 +85,7 @@ impl Skybox {
         &'a mut self,
         xr: &'a XrState,
         app: &AppState,
-        buf: &mut CommandBuffers,
+        futures: &mut GpuFutures,
     ) -> anyhow::Result<()> {
         if self.sky.is_some() {
             return Ok(());
@@ -119,7 +119,7 @@ impl Skybox {
         cmd_buffer.run_ref(&pass)?;
         cmd_buffer.end_rendering()?;
 
-        buf.push(cmd_buffer.build()?);
+        futures.execute((cmd_buffer.queue.clone(), cmd_buffer.build()?))?;
 
         self.sky = Some(swapchain);
         Ok(())
@@ -129,7 +129,7 @@ impl Skybox {
         &'a mut self,
         xr: &'a XrState,
         app: &AppState,
-        buf: &mut CommandBuffers,
+        futures: &mut GpuFutures,
     ) -> anyhow::Result<()> {
         if self.grid.is_some() {
             return Ok(());
@@ -165,7 +165,7 @@ impl Skybox {
         cmd_buffer.run_ref(&pass)?;
         cmd_buffer.end_rendering()?;
 
-        buf.push(cmd_buffer.build()?);
+        futures.execute((cmd_buffer.queue.clone(), cmd_buffer.build()?))?;
 
         self.grid = Some(swapchain);
         Ok(())
@@ -175,7 +175,7 @@ impl Skybox {
         &mut self,
         xr: &XrState,
         app: &AppState,
-        buf: &mut CommandBuffers,
+        buf: &mut GpuFutures,
     ) -> anyhow::Result<()> {
         self.prepare_sky(xr, app, buf)?;
         self.prepare_grid(xr, app, buf)?;
