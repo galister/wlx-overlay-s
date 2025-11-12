@@ -28,6 +28,7 @@ pub struct ValuesMinMax {
 	pub value: f32,
 	pub min_value: f32,
 	pub max_value: f32,
+	pub step: f32,
 }
 
 impl ValuesMinMax {
@@ -37,6 +38,27 @@ impl ValuesMinMax {
 
 	fn get_from_normalized(&self, normalized: f32) -> f32 {
 		normalized * (self.max_value - self.min_value) + self.min_value
+	}
+
+	fn set_value(&mut self, new_value: f32) -> &mut Self {
+		let span = self.max_value - self.min_value;
+		let clamped = new_value.max(self.min_value).min(self.max_value);
+
+		// get the step index from min
+		let mut k = ((clamped - self.min_value) / self.step).round();
+
+		let k_max = (span / self.step).floor();
+		if k < 0.0 {
+			k = 0.0;
+		}
+		if k > k_max {
+			k = k_max;
+		}
+
+		let snapped = self.min_value + k * self.step;
+		self.value = snapped.max(self.min_value).min(self.max_value);
+
+		self
 	}
 }
 
@@ -153,16 +175,23 @@ impl State {
 	}
 
 	fn update_text(common: &mut CallbackDataCommon, text: &mut WidgetLabel, value: f32) {
-		// round displayed value, should be sufficient for now
-		text.set_text(common, Translation::from_raw_text(&format!("{}", value.round())));
+		let pretty = if value < 0.005 && value >= -0.005 {
+			"0".to_string() // avoid cursed "-0"
+		} else {
+			let s = format!("{:.2}", value);
+			s.trim_end_matches('0').trim_end_matches('.').to_string()
+		};
+
+		text.set_text(common, Translation::from_raw_text(&pretty));
 	}
 
 	fn set_value(&mut self, common: &mut CallbackDataCommon, data: &Data, value: f32) {
 		//common.call_on_widget(data.slider_handle_id, |_div: &mut Div| {});
 
-		let changed = (self.values.value - value).abs() > f32::EPSILON;
+		let before = self.values.value;
+		self.values.set_value(value);
 
-		self.values.value = value;
+		let changed = self.values.value != before;
 		let mut style = common.state.tree.style(data.slider_handle_node).unwrap().clone();
 		conf_handle_style(&self.values, data.slider_body_node, &mut style, &common.state.tree);
 		common.alterables.mark_dirty(data.slider_handle_node);
@@ -170,11 +199,16 @@ impl State {
 		common.alterables.set_style(data.slider_handle_node, style);
 
 		if let Some(mut label) = common.state.widgets.get_as::<WidgetLabel>(data.slider_text_id) {
-			Self::update_text(common, &mut label, value);
+			Self::update_text(common, &mut label, self.values.value);
 		}
 
 		if changed && let Some(on_value_changed) = &self.on_value_changed {
-			if let Err(e) = on_value_changed(common, SliderValueChangedEvent { value }) {
+			if let Err(e) = on_value_changed(
+				common,
+				SliderValueChangedEvent {
+					value: self.values.value,
+				},
+			) {
 				log::error!("{e:?}"); // FIXME: proper error handling
 			}
 		}

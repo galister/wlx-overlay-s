@@ -37,9 +37,9 @@
                 <TopButton id="lock" src="bar/lock_open.svg" tooltip="Lock interaction" kind="btn_primary" />
                 <TopButton id="anchor" src="bar/anchor.svg" tooltip="Positioning" kind="btn_primary" />
                 <TopButton id="fade" src="bar/fade.svg" tooltip="Opacity" kind="btn_primary" />
+                <TopButton id="curve" src="bar/curve.svg" tooltip="Adjust curvature" kind="btn_primary" />
                 <TopButton id="move" src="bar/move-all.svg" tooltip="Move (click &amp; drag)" kind="btn_primary" />
                 <TopButton id="resize" src="bar/resize.svg" tooltip="Resize (click &amp; drag)" kind="btn_primary" />
-                <TopButton id="inout" src="bar/inout.svg" tooltip="Adjust distance (click &amp; drag)" kind="btn_primary" />
                 <TopButtonDanger id="delete" src="bar/delete.svg" tooltip="Delete" kind="btn_danger" />
                 <div width="8" height="100%" />
                 <TopButtonFaded src="watch/edit.svg" tooltip="Leave edit mode" press="::EditToggle" kind="btn_faded" />
@@ -48,6 +48,10 @@
                 <label translation="Opacity" />
                 <Slider width="200" height="16" min_value="5" max_value="100" value="100" />
                 <CheckBox id="additive" translation="Additive" tooltip="Alpha blend mode" tooltip_side="bottom" />
+              </div>
+              <div padding="8" gap="8" justify_content="center" align_items="center">
+                <label translation="Curvature" />
+                <Slider width="250" height="16" min_value="0" max_value="0.5" value="0.15" step="0.01" />
               </div>
             </div>
           </rectangle>
