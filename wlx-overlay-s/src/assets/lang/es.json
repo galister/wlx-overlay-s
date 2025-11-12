@@ -1,0 +1,16 @@
+{
+  "EDIT_MODE": {
+    "ADJUST_CURVATURE": "Ajustar curvatura",
+    "ALPHA_BLEND_MODE": "Modo de mezcla alfa",
+    "BLENDING_ADDITIVE": "Aditivo",
+    "CURVATURE": "Curvatura",
+    "DELETE": "Eliminar",
+    "HINT_POINT_WINDOW": "Pulsa sobre una ventana para cambiar sus parámetros.\nUna vez terminado, sal del modo de edición usando el botón de la derecha.",
+    "LEAVE": "Salir del modo edición",
+    "LOCK_INTERACTION": "Bloquear interacción",
+    "MOVE_PRESS_AND_DRAG": "Mover (presionar y arrastrar)",
+    "OPACITY": "Opacidad",
+    "POSITIONING": "Posicionamiento",
+    "RESIZE_PRESS_AND_DRAG": "Redimensionar (presionar y arrastrar)"
+  }
+}

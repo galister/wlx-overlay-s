@@ -29,25 +29,25 @@
         <div flex_direction="column">
           <rectangle padding="16" gap="8" round="32" color="~color_bg" border="2" border_color="~color_accent" justify_content="center">
             <div flex_direction="column" gap="8">
-              <label align="center" translation="Point on a window to change its parameters.&#xA;Once done, leave edit mode using the button on the right." />
+              <label align="center" translation="EDIT_MODE.HINT_POINT_WINDOW" />
               <div flex_direction="row" gap="4">
-                <TopButton id="lock" src="bar/lock_open.svg" tooltip="Lock interaction" kind="btn_primary" />
-                <TopButton id="anchor" src="bar/anchor.svg" tooltip="Positioning" kind="btn_primary" />
-                <TopButton id="fade" src="bar/fade.svg" tooltip="Opacity" kind="btn_primary" />
-                <TopButton id="curve" src="bar/curve.svg" tooltip="Adjust curvature" kind="btn_primary" />
-                <TopButton id="move" src="bar/move-all.svg" tooltip="Move (click &amp; drag)" kind="btn_primary" />
-                <TopButton id="resize" src="bar/resize.svg" tooltip="Resize (click &amp; drag)" kind="btn_primary" />
-                <TopButtonDanger id="delete" src="bar/delete.svg" tooltip="Delete" kind="btn_danger" />
+                <TopButton id="lock" src="bar/lock_open.svg" tooltip="EDIT_MODE.LOCK_INTERACTION" kind="btn_primary" />
+                <TopButton id="anchor" src="bar/anchor.svg" tooltip="EDIT_MODE.POSITIONING" kind="btn_primary" />
+                <TopButton id="fade" src="bar/fade.svg" tooltip="EDIT_MODE.OPACITY" kind="btn_primary" />
+                <TopButton id="curve" src="bar/curve.svg" tooltip="EDIT_MODE.ADJUST_CURVATURE" kind="btn_primary" />
+                <TopButton id="move" src="bar/move-all.svg" tooltip="EDIT_MODE.MOVE_PRESS_AND_DRAG" kind="btn_primary" />
+                <TopButton id="resize" src="bar/resize.svg" tooltip="EDIT_MODE.RESIZE_PRESS_AND_DRAG" kind="btn_primary" />
+                <TopButtonDanger id="delete" src="bar/delete.svg" tooltip="EDIT_MODE.DELETE" kind="btn_danger" />
                 <div width="8" height="100%" />
-                <TopButtonFaded src="watch/edit.svg" tooltip="Leave edit mode" press="::EditToggle" kind="btn_faded" />
+                <TopButtonFaded src="watch/edit.svg" tooltip="EDIT_MODE.LEAVE" press="::EditToggle" kind="btn_faded" />
               </div>
               <div padding="8" gap="8" justify_content="center" align_items="center">
-                <label translation="Opacity" />
+                <label translation="EDIT_MODE.OPACITY" />
                 <Slider width="200" height="16" min_value="5" max_value="100" value="100" />
-                <CheckBox id="additive" translation="Additive" tooltip="Alpha blend mode" tooltip_side="bottom" />
+                <CheckBox id="additive" translation="EDIT_MODE.BLENDING_ADDITIVE" tooltip="EDIT_MODE.ALPHA_BLEND_MODE" tooltip_side="bottom" />
               </div>
               <div padding="8" gap="8" justify_content="center" align_items="center">
-                <label translation="Curvature" />
+                <label translation="EDIT_MODE.CURVATURE" />
                 <Slider width="250" height="16" min_value="0" max_value="0.5" value="0.15" step="0.01" />
               </div>
             </div>

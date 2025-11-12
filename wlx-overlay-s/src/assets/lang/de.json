@@ -1,0 +1,16 @@
+{
+  "EDIT_MODE": {
+    "ADJUST_CURVATURE": "Krümmung anpassen",
+    "ALPHA_BLEND_MODE": "Alpha-Mischmodus",
+    "BLENDING_ADDITIVE": "Additiv",
+    "CURVATURE": "Krümmung",
+    "DELETE": "Löschen",
+    "HINT_POINT_WINDOW": "Zeigen Sie auf ein Fenster, um seine Parameter zu ändern.\nWenn Sie fertig sind, verlassen Sie den Bearbeitungsmodus mit der Schaltfläche auf der rechten Seite.",
+    "LEAVE": "Bearbeitungsmodus verlassen",
+    "LOCK_INTERACTION": "Interaktion sperren",
+    "MOVE_PRESS_AND_DRAG": "Verschieben (drücken & ziehen)",
+    "OPACITY": "Undurchsichtigkeit",
+    "POSITIONING": "Positionierung",
+    "RESIZE_PRESS_AND_DRAG": "Größe ändern (gedrückt halten & ziehen)"
+  }
+}

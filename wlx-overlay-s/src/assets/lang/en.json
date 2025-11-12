@@ -1,1 +1,16 @@
-{}
+{
+	"EDIT_MODE": {
+		"ADJUST_CURVATURE": "Adjust curvature",
+		"ALPHA_BLEND_MODE": "Alpha blend mode",
+		"BLENDING_ADDITIVE": "Additive",
+		"CURVATURE": "Curvature",
+		"DELETE": "Delete",
+		"HINT_POINT_WINDOW": "Point on a window to change its parameters.\nOnce done, leave edit mode using the button on the right.",
+		"LEAVE": "Leave edit mode",
+		"LOCK_INTERACTION": "Lock interaction",
+		"MOVE_PRESS_AND_DRAG": "Move (press & drag)",
+		"OPACITY": "Opacity",
+		"POSITIONING": "Positioning",
+		"RESIZE_PRESS_AND_DRAG": "Resize (press & drag)"
+	}
+}

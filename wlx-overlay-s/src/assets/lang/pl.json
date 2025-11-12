@@ -1,0 +1,16 @@
+{
+	"EDIT_MODE": {
+		"ADJUST_CURVATURE": "Dostosuj krzywiznę",
+		"ALPHA_BLEND_MODE": "Tryb mieszania kolorów",
+		"BLENDING_ADDITIVE": "Addytywne",
+		"CURVATURE": "Zakrzywienie",
+		"DELETE": "Usuń",
+		"HINT_POINT_WINDOW": "Wskaż na okno, aby zmienić jego parametry.\nPo zakończeniu wyjdź z trybu edycji za pomocą przycisku po prawej stronie.",
+		"LEAVE": "Wyjdź z trybu edycji",
+		"LOCK_INTERACTION": "Zablokuj interakcję",
+		"MOVE_PRESS_AND_DRAG": "Przesuń (naciśnij i przeciągnij)",
+		"OPACITY": "Przezroczystość",
+		"POSITIONING": "Pozycjonowanie",
+		"RESIZE_PRESS_AND_DRAG": "Zmień rozmiar (naciśnij i przeciągnij)"
+	}
+}

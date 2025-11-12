@@ -1,0 +1,16 @@
+{
+  "EDIT_MODE": {
+    "ADJUST_CURVATURE": "曲率を調整する",
+    "ALPHA_BLEND_MODE": "アルファブレンドモード",
+    "BLENDING_ADDITIVE": "加算",
+    "CURVATURE": "曲率",
+    "DELETE": "削除",
+    "HINT_POINT_WINDOW": "ウィンドウをタップしてそのパラメータを変更します。\n完了したら、右側のボタンで編集モードを終了してください。",
+    "LEAVE": "編集モードを終了",
+    "LOCK_INTERACTION": "インタラクションをロック",
+    "MOVE_PRESS_AND_DRAG": "移動（押してドラッグ）",
+    "OPACITY": "不透明度",
+    "POSITIONING": "位置調整",
+    "RESIZE_PRESS_AND_DRAG": "サイズ変更（押してドラッグ）"
+  }
+}
