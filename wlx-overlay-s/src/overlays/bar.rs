@@ -15,7 +15,7 @@ struct BarState {}
 #[allow(clippy::match_same_arms)] // TODO: remove later
 pub fn create_bar(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
     let state = BarState {};
-    let mut panel = GuiPanel::new_from_template(app, "gui/bar.xml", state, None, false)?;
+    let mut panel = GuiPanel::new_from_template(app, "gui/bar.xml", state, Default::default())?;
 
     for (id, _widget_id) in &panel.parser_state.data.ids {
         match id.as_ref() {

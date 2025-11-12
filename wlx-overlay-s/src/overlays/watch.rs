@@ -3,11 +3,14 @@ use std::{collections::HashMap, rc::Rc, time::Duration};
 use glam::{Affine3A, Vec3, Vec3A};
 
 use crate::{
-    gui::{panel::GuiPanel, timer::GuiTimer},
+    gui::{
+        panel::{GuiPanel, NewGuiPanelParams},
+        timer::GuiTimer,
+    },
     state::AppState,
     windowing::{
-        window::{OverlayWindowConfig, OverlayWindowData, OverlayWindowState, Positioning},
         Z_ORDER_WATCH,
+        window::{OverlayWindowConfig, OverlayWindowData, OverlayWindowState, Positioning},
     },
 };
 
@@ -22,22 +25,25 @@ pub fn create_watch(app: &mut AppState, num_sets: usize) -> anyhow::Result<Overl
         app,
         "gui/watch.xml",
         state,
-        Some(Box::new(
-            move |id, widget, doc_params, layout, parser_state| {
-                if &*id != "sets" {
-                    return Ok(());
-                }
+        NewGuiPanelParams {
+            on_custom_id: Some(Box::new(
+                move |id, widget, doc_params, layout, parser_state| {
+                    if &*id != "sets" {
+                        return Ok(());
+                    }
 
-                for idx in 0..num_sets {
-                    let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
-                    params.insert("display".into(), (idx + 1).to_string().into());
-                    params.insert("handle".into(), idx.to_string().into());
-                    parser_state.instantiate_template(doc_params, "Set", layout, widget, params)?;
-                }
-                Ok(())
-            },
-        )),
-        false,
+                    for idx in 0..num_sets {
+                        let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
+                        params.insert("display".into(), (idx + 1).to_string().into());
+                        params.insert("handle".into(), idx.to_string().into());
+                        parser_state
+                            .instantiate_template(doc_params, "Set", layout, widget, params)?;
+                    }
+                    Ok(())
+                },
+            )),
+            ..Default::default()
+        },
     )?;
 
     panel

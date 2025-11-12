@@ -53,7 +53,7 @@ pub fn create_keyboard(
         processes: vec![],
     };
 
-    let mut panel = GuiPanel::new_blank(app, state, false)?;
+    let mut panel = GuiPanel::new_blank(app, state, Default::default())?;
 
     let globals = app.wgui_globals.clone();
     let accent_color = globals.get().defaults.accent_color;

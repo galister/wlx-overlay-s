@@ -5,7 +5,7 @@ use std::{
     time::Instant,
 };
 
-use glam::{vec3, Affine3A, Quat, Vec3};
+use glam::{Affine3A, Quat, Vec3, vec3};
 use idmap_derive::IntegerId;
 use serde::{Deserialize, Serialize};
 use wgui::{
@@ -28,8 +28,8 @@ use crate::{
     gui::panel::GuiPanel,
     state::{AppState, LeftRight},
     windowing::{
-        window::{OverlayWindowConfig, OverlayWindowState, Positioning},
         OverlaySelector, Z_ORDER_TOAST,
+        window::{OverlayWindowConfig, OverlayWindowState, Positioning},
     },
 };
 
@@ -170,7 +170,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<OverlayWindowConfig> {
         toast.title
     };
 
-    let mut panel = GuiPanel::new_blank(app, (), false).ok()?;
+    let mut panel = GuiPanel::new_blank(app, (), Default::default()).ok()?;
 
     let globals = panel.layout.state.globals.clone();
 

@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use button::setup_custom_button;
-use glam::{vec2, Affine2, Vec2};
+use glam::{Affine2, Vec2, vec2};
 use label::setup_custom_label;
 use wgui::{
     assets::AssetPath,
@@ -15,14 +15,14 @@ use wgui::{
     layout::{Layout, LayoutParams, WidgetID},
     parser::ParserState,
     renderer_vk::context::Context as WguiContext,
-    widget::{label::WidgetLabel, rectangle::WidgetRectangle, EventResult},
+    widget::{EventResult, label::WidgetLabel, rectangle::WidgetRectangle},
 };
 
 use crate::{
     backend::input::{Haptics, HoverResult, PointerHit, PointerMode},
     state::AppState,
     subsystem::hid::WheelDelta,
-    windowing::backend::{ui_transform, FrameMeta, OverlayBackend, RenderResources, ShouldRender},
+    windowing::backend::{FrameMeta, OverlayBackend, RenderResources, ShouldRender, ui_transform},
 };
 
 use super::{timer::GuiTimer, timestep::Timestep};
@@ -41,6 +41,7 @@ pub struct GuiPanel<S> {
     pub timers: Vec<GuiTimer>,
     pub parser_state: ParserState,
     pub max_size: Vec2,
+    pub gui_scale: f32,
     interaction_transform: Option<Affine2>,
     context: WguiContext,
     timestep: Timestep,
@@ -56,13 +57,28 @@ pub type OnCustomIdFunc = Box<
     ) -> anyhow::Result<()>,
 >;
 
+pub struct NewGuiPanelParams {
+    pub on_custom_id: Option<OnCustomIdFunc>, // used only in `new_from_template`
+    pub resize_to_parent: bool,
+    pub gui_scale: f32,
+}
+
+impl Default for NewGuiPanelParams {
+    fn default() -> Self {
+        Self {
+            on_custom_id: None,
+            resize_to_parent: false,
+            gui_scale: 1.0,
+        }
+    }
+}
+
 impl<S: 'static> GuiPanel<S> {
     pub fn new_from_template(
         app: &mut AppState,
         path: &str,
         state: S,
-        on_custom_id: Option<OnCustomIdFunc>,
-        resize_to_parent: bool,
+        params: NewGuiPanelParams,
     ) -> anyhow::Result<Self> {
         let custom_elems = Rc::new(RefCell::new(vec![]));
 
@@ -80,10 +96,14 @@ impl<S: 'static> GuiPanel<S> {
             },
         };
 
-        let (mut layout, mut parser_state) =
-            wgui::parser::new_layout_from_assets(&doc_params, &LayoutParams { resize_to_parent })?;
+        let (mut layout, mut parser_state) = wgui::parser::new_layout_from_assets(
+            &doc_params,
+            &LayoutParams {
+                resize_to_parent: params.resize_to_parent,
+            },
+        )?;
 
-        if let Some(on_element_id) = on_custom_id {
+        if let Some(on_element_id) = params.on_custom_id {
             let ids = parser_state.data.ids.clone(); // FIXME: copying all ids?
 
             for (id, widget) in ids {
@@ -128,11 +148,21 @@ impl<S: 'static> GuiPanel<S> {
             max_size: vec2(DEFAULT_MAX_SIZE as _, DEFAULT_MAX_SIZE as _),
             timers: vec![],
             interaction_transform: None,
+            gui_scale: params.gui_scale,
         })
     }
 
-    pub fn new_blank(app: &mut AppState, state: S, resize_to_parent: bool) -> anyhow::Result<Self> {
-        let layout = Layout::new(app.wgui_globals.clone(), &LayoutParams { resize_to_parent })?;
+    pub fn new_blank(
+        app: &mut AppState,
+        state: S,
+        params: NewGuiPanelParams,
+    ) -> anyhow::Result<Self> {
+        let layout = Layout::new(
+            app.wgui_globals.clone(),
+            &LayoutParams {
+                resize_to_parent: params.resize_to_parent,
+            },
+        )?;
         let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
         let mut timestep = Timestep::new();
         timestep.set_tps(60.0);
@@ -146,6 +176,7 @@ impl<S: 'static> GuiPanel<S> {
             max_size: vec2(DEFAULT_MAX_SIZE as _, DEFAULT_MAX_SIZE as _),
             timers: vec![],
             interaction_transform: None,
+            gui_scale: params.gui_scale,
         })
     }
 
@@ -222,8 +253,9 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
 
     fn render(&mut self, app: &mut AppState, rdr: &mut RenderResources) -> anyhow::Result<()> {
         self.context
-            .update_viewport(&mut app.wgui_shared, rdr.extent, 1.0)?;
-        self.layout.update(self.max_size, self.timestep.alpha)?;
+            .update_viewport(&mut app.wgui_shared, rdr.extent, self.gui_scale)?;
+        self.layout
+            .update(self.max_size / self.gui_scale, self.timestep.alpha)?;
 
         let globals = self.layout.state.globals.clone(); // sorry
         let mut globals = globals.get();

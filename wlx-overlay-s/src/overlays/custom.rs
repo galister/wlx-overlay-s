@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use glam::{vec3, Affine3A, Quat, Vec3};
+use glam::{Affine3A, Quat, Vec3, vec3};
 
 use crate::{
     gui::panel::GuiPanel,
@@ -18,7 +18,7 @@ pub fn create_custom(app: &mut AppState, name: Arc<str>) -> Option<OverlayWindow
 
     unreachable!();
 
-    let panel = GuiPanel::new_blank(app, (), false).ok()?;
+    let panel = GuiPanel::new_blank(app, (), Default::default()).ok()?;
     panel.update_layout().ok()?;
 
     Some(OverlayWindowConfig {

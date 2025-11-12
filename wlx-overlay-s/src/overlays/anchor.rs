@@ -3,13 +3,13 @@ use std::sync::{Arc, LazyLock};
 
 use crate::gui::panel::GuiPanel;
 use crate::state::AppState;
-use crate::windowing::window::{OverlayWindowConfig, OverlayWindowState, Positioning};
 use crate::windowing::Z_ORDER_ANCHOR;
+use crate::windowing::window::{OverlayWindowConfig, OverlayWindowState, Positioning};
 
 pub static ANCHOR_NAME: LazyLock<Arc<str>> = LazyLock::new(|| Arc::from("anchor"));
 
 pub fn create_anchor(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
-    let mut panel = GuiPanel::new_from_template(app, "gui/anchor.xml", (), None, false)?;
+    let mut panel = GuiPanel::new_from_template(app, "gui/anchor.xml", (), Default::default())?;
     panel.update_layout()?;
 
     Ok(OverlayWindowConfig {

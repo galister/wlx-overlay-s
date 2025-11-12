@@ -4,11 +4,11 @@ use std::{
     sync::Arc,
 };
 
-use glam::vec2;
+use glam::{UVec2, vec2};
 
 use crate::{
     backend::input::HoverResult,
-    gui::panel::GuiPanel,
+    gui::panel::{GuiPanel, NewGuiPanelParams},
     state::AppState,
     subsystem::hid::WheelDelta,
     windowing::{
@@ -35,11 +35,19 @@ impl EditWrapperManager {
             return Ok(());
         }
 
+        let Some(meta) = owc.backend.frame_meta() else {
+            log::error!("META NULL");
+            return Ok(());
+        };
+
         log::debug!("EditMode wrap on {}", owc.name);
         let inner = mem::replace(&mut owc.backend, Box::new(DummyBackend {}));
         let mut panel = self.panel_pool.pop();
         if panel.is_none() {
-            panel = Some(make_edit_panel(app)?);
+            panel = Some(make_edit_panel(
+                app,
+                UVec2::new(meta.extent[0], meta.extent[1]),
+            )?);
         }
         let mut panel = panel.unwrap();
         panel.state = owc.name.clone();
@@ -99,10 +107,15 @@ impl OverlayBackend for EditModeBackendWrapper {
         if !matches!(i, ShouldRender::Unable)
             && let Some(ref frame_meta) = self.inner.frame_meta()
         {
-            let new_size = vec2(frame_meta.extent[0] as _, frame_meta.extent[1] as _);
+            let (width_px, height_px) = (frame_meta.extent[0], frame_meta.extent[1]);
+
+            let new_size = vec2(width_px as _, height_px as _);
             if self.panel.max_size != new_size {
                 log::debug!("EditWrapperGui size {} → {new_size}", self.panel.max_size);
                 self.panel.max_size = new_size;
+
+                let gui_scale = width_px.min(height_px) as f32 / 550.0;
+                self.panel.gui_scale = gui_scale;
                 self.panel.update_layout()?;
             }
         } else {
@@ -165,8 +178,25 @@ impl OverlayBackend for EditModeBackendWrapper {
     }
 }
 
-fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
-    let panel = GuiPanel::new_from_template(app, "gui/edit.xml", "".into(), None, true)?;
+fn make_edit_panel(
+    app: &mut AppState,
+    overlay_resolution: UVec2,
+) -> anyhow::Result<EditModeWrapPanel> {
+    log::error!(
+        "overlay res {} {}",
+        overlay_resolution.x,
+        overlay_resolution.y
+    );
+
+    let panel = GuiPanel::new_from_template(
+        app,
+        "gui/edit.xml",
+        "".into(),
+        NewGuiPanelParams {
+            resize_to_parent: true,
+            ..Default::default()
+        },
+    )?;
 
     Ok(panel)
 }
