@@ -356,21 +356,12 @@ impl GeneralConfig {
     }
 }
 
-const FALLBACKS: [&str; 5] = [
+const FALLBACKS: [&str; 2] = [
     include_str!("res/keyboard.yaml"),
-    include_str!("res/watch.yaml"),
-    include_str!("res/settings.yaml"),
-    include_str!("res/anchor.yaml"),
     include_str!("res/wayvr.yaml"),
 ];
 
-const FILES: [&str; 5] = [
-    "keyboard.yaml",
-    "watch.yaml",
-    "settings.yaml",
-    "anchor.yaml",
-    "wayvr.yaml",
-];
+const FILES: [&str; 2] = ["keyboard.yaml", "wayvr.yaml"];
 
 #[derive(Clone, Copy)]
 #[repr(usize)]
