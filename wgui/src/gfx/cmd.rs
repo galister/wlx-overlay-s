@@ -1,6 +1,7 @@
 use std::{marker::PhantomData, sync::Arc};
 
 use vulkano::{
+	DeviceSize,
 	buffer::{Buffer, BufferCreateInfo, BufferUsage, Subbuffer},
 	command_buffer::{
 		AutoCommandBufferBuilder, ClearColorImageInfo, CommandBufferExecFuture, CopyBufferToImageInfo, CopyImageInfo,
@@ -8,14 +9,13 @@ use vulkano::{
 	},
 	device::Queue,
 	format::{ClearColorValue, ClearValue, Format},
-	image::{view::ImageView, Image, ImageCreateInfo, ImageType, ImageUsage},
+	image::{Image, ImageCreateInfo, ImageType, ImageUsage, view::ImageView},
 	memory::allocator::{AllocationCreateInfo, MemoryTypeFilter},
 	render_pass::{AttachmentLoadOp, AttachmentStoreOp},
-	sync::{future::NowFuture, GpuFuture},
-	DeviceSize,
+	sync::{GpuFuture, future::NowFuture},
 };
 
-use super::{pass::WGfxPass, WGfx};
+use super::{WGfx, pass::WGfxPass};
 
 pub type GfxCommandBuffer = WCommandBuffer<CmdBufGfx>;
 pub type XferCommandBuffer = WCommandBuffer<CmdBufXfer>;
@@ -54,7 +54,8 @@ pub enum WGfxClearMode {
 
 #[allow(dead_code)]
 impl WGfxClearMode {
-	pub fn or_default(self, def: WGfxClearMode) -> WGfxClearMode {
+	#[must_use]
+	pub const fn or_default(self, def: WGfxClearMode) -> WGfxClearMode {
 		match self {
 			Self::DontCare => def,
 			s => s,

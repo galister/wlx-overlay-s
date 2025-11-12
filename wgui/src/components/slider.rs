@@ -15,11 +15,11 @@ use crate::{
 		util,
 	},
 	widget::{
+		ConstructEssentials, EventResult,
 		div::WidgetDiv,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
-		ConstructEssentials, EventResult,
 	},
 };
 
@@ -175,10 +175,10 @@ impl State {
 	}
 
 	fn update_text(common: &mut CallbackDataCommon, text: &mut WidgetLabel, value: f32) {
-		let pretty = if value < 0.005 && value >= -0.005 {
+		let pretty = if (-0.005..0.005).contains(&value) {
 			"0".to_string() // avoid cursed "-0"
 		} else {
-			let s = format!("{:.2}", value);
+			let s = format!("{value:.2}");
 			s.trim_end_matches('0').trim_end_matches('.').to_string()
 		};
 
@@ -202,15 +202,15 @@ impl State {
 			Self::update_text(common, &mut label, self.values.value);
 		}
 
-		if changed && let Some(on_value_changed) = &self.on_value_changed {
-			if let Err(e) = on_value_changed(
+		if changed
+			&& let Some(on_value_changed) = &self.on_value_changed
+			&& let Err(e) = on_value_changed(
 				common,
 				SliderValueChangedEvent {
 					value: self.values.value,
 				},
 			) {
-				log::error!("{e:?}"); // FIXME: proper error handling
-			}
+			log::error!("{e:?}"); // FIXME: proper error handling
 		}
 	}
 }

@@ -212,7 +212,7 @@ impl Frontend {
 			layout: &mut layout,
 			parent_id: widget_content.id,
 			frontend: rc_this,
-			settings: &mut self.settings.get_mut(),
+			settings: self.settings.get_mut(),
 		};
 
 		let tab: Box<dyn Tab> = match tab_type {

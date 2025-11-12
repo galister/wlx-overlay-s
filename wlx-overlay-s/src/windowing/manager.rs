@@ -9,14 +9,14 @@ use crate::{
         edit::EditWrapperManager,
         keyboard::builder::create_keyboard,
         screen::create_screens,
-        watch::{create_watch, WATCH_NAME},
+        watch::{WATCH_NAME, create_watch},
     },
     state::AppState,
     windowing::{
+        OverlayID, OverlaySelector,
         set::{OverlayWindowSet, SerializedWindowSet},
         snap_upright,
         window::OverlayWindowData,
-        OverlayID, OverlaySelector,
     },
 };
 
@@ -115,21 +115,20 @@ impl<T> OverlayWindowManager<T> {
         app.session.config.sets.reserve(self.sets.len());
         app.session.config.last_set = self.restore_set as _;
 
-        let mut restore_after = false;
         // only safe to save when current_set is None
-        if self.current_set.is_some() {
+        let restore_after = if self.current_set.is_some() {
             self.switch_to_set(app, None);
-            restore_after = true;
-        }
+            true
+        } else {
+            false
+        };
 
-        for set in self.sets.iter() {
+        for set in &self.sets {
             let overlays: HashMap<_, _> = set
                 .overlays
                 .iter()
                 .filter_map(|(k, v)| {
-                    let Some(n) = self.overlays.get(k).map(|o| o.config.name.clone()) else {
-                        return None;
-                    };
+                    let n = self.overlays.get(k).map(|o| o.config.name.clone())?;
                     Some((n, v.clone()))
                 })
                 .collect();
@@ -160,11 +159,11 @@ impl<T> OverlayWindowManager<T> {
         self.sets.clear();
         self.sets.reserve(app.session.config.sets.len());
 
-        for s in app.session.config.sets.iter() {
+        for s in &app.session.config.sets {
             let overlays: SecondaryMap<_, _> = s
                 .overlays
                 .iter()
-                .filter_map(|(name, v)| self.lookup(&name).map(|id| (id, v.clone())))
+                .filter_map(|(name, v)| self.lookup(name).map(|id| (id, v.clone())))
                 .collect();
 
             self.sets.push(OverlayWindowSet {
@@ -175,9 +174,10 @@ impl<T> OverlayWindowManager<T> {
         self.restore_set = (app.session.config.last_set as usize).min(self.sets.len() - 1);
     }
 
-    pub fn get_edit_mode(&self) -> bool {
+    pub const fn get_edit_mode(&self) -> bool {
         self.edit_mode
     }
+
     pub fn set_edit_mode(&mut self, enabled: bool) {
         self.edit_mode = enabled;
         if enabled {

@@ -111,6 +111,7 @@ impl OverlayBackend for EditModeBackendWrapper {
 
         let p = self.panel.should_render(app)?;
 
+        #[allow(clippy::match_same_arms)]
         Ok(match (i, p) {
             (ShouldRender::Should, ShouldRender::Should) => ShouldRender::Should,
             (ShouldRender::Should, ShouldRender::Can) => ShouldRender::Should,

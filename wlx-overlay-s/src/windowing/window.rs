@@ -31,7 +31,7 @@ pub enum Positioning {
 }
 
 impl Positioning {
-    pub const fn moves_with_space(&self) -> bool {
+    pub const fn moves_with_space(self) -> bool {
         matches!(self, Self::Floating | Self::Anchored | Self::Static)
     }
 }

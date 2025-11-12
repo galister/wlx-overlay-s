@@ -4,9 +4,9 @@ use std::{f32::consts::PI, sync::Arc};
 use vulkano::image::view::ImageView;
 use xr::EyeVisibility;
 
-use super::{helpers, swapchain::WlxSwapchain, CompositionLayer, XrState};
+use super::{CompositionLayer, XrState, helpers, swapchain::WlxSwapchain};
 use crate::{
-    backend::openxr::swapchain::{create_swapchain, SwapchainOpts},
+    backend::openxr::swapchain::{SwapchainOpts, create_swapchain},
     state::AppState,
     windowing::window::OverlayWindowData,
 };
@@ -30,7 +30,7 @@ impl OverlayWindowData<OpenXrOverlayData> {
         if let Some(swapchain) = self.data.swapchain.as_mut()
             && swapchain.extent == extent
         {
-            return Ok(swapchain.acquire_wait_image()?);
+            return swapchain.acquire_wait_image();
         }
 
         log::debug!(

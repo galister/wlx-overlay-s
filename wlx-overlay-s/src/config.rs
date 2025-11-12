@@ -509,7 +509,7 @@ fn get_state_path() -> PathBuf {
 pub fn save_state(config: &GeneralConfig) -> anyhow::Result<()> {
     let conf = AutoState {
         sets: config.sets.clone(),
-        last_set: config.last_set.clone(),
+        last_set: config.last_set,
     };
 
     let json = serde_json::to_string_pretty(&conf).unwrap(); // want panic
