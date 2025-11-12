@@ -260,6 +260,20 @@ pub fn openvr_run(
                 TaskType::ToggleSet(set) => {
                     overlays.switch_or_toggle_set(&mut app, set);
                 }
+                TaskType::ToggleEditMode => {
+                    if !overlays.get_edit_mode() {
+                        Toast::new(
+                            ToastTopic::System,
+                            "Edit mode enabled".into(),
+                            "Hover overlays to see their options".into(),
+                        )
+                        .with_timeout(5.)
+                        .with_sound(true)
+                        .submit(&mut app);
+                    }
+
+                    overlays.set_edit_mode(!overlays.get_edit_mode());
+                }
                 #[cfg(feature = "wayvr")]
                 TaskType::WayVR(action) => {
                     wayvr_action(&mut app, &mut overlays, &action);

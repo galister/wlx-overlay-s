@@ -5,8 +5,11 @@ use slotmap::{HopSlotMap, Key, SecondaryMap};
 
 use crate::{
     overlays::{
-        anchor::create_anchor, edit::EditModeManager, keyboard::builder::create_keyboard,
-        screen::create_screens, watch::create_watch,
+        anchor::create_anchor,
+        edit::EditWrapperManager,
+        keyboard::builder::create_keyboard,
+        screen::create_screens,
+        watch::{create_watch, WATCH_NAME},
     },
     state::AppState,
     windowing::{
@@ -18,7 +21,7 @@ use crate::{
 };
 
 pub struct OverlayWindowManager<T> {
-    wrappers: EditModeManager,
+    wrappers: EditWrapperManager,
     overlays: HopSlotMap<OverlayID, OverlayWindowData<T>>,
     sets: Vec<OverlayWindowSet>,
     /// The set that is currently visible.
@@ -28,6 +31,7 @@ pub struct OverlayWindowManager<T> {
     restore_set: usize,
     anchor_local: Affine3A,
     watch_id: OverlayID,
+    edit_mode: bool,
 }
 
 impl<T> OverlayWindowManager<T>
@@ -38,13 +42,14 @@ where
         let mut maybe_keymap = None;
 
         let mut me = Self {
-            wrappers: EditModeManager::default(),
+            wrappers: EditWrapperManager::default(),
             overlays: HopSlotMap::with_key(),
             current_set: Some(0),
             restore_set: 0,
             sets: vec![OverlayWindowSet::default()],
             anchor_local: Affine3A::from_translation(Vec3::NEG_Z),
             watch_id: OverlayID::null(), // set down below
+            edit_mode: false,
         };
 
         if headless {
@@ -170,10 +175,31 @@ impl<T> OverlayWindowManager<T> {
         self.restore_set = (app.session.config.last_set as usize).min(self.sets.len() - 1);
     }
 
+    pub fn get_edit_mode(&self) -> bool {
+        self.edit_mode
+    }
+    pub fn set_edit_mode(&mut self, enabled: bool) {
+        self.edit_mode = enabled;
+        if enabled {
+            return;
+        }
+        for o in self.overlays.values_mut() {
+            self.wrappers.unwrap_edit_mode(&mut o.config);
+        }
+    }
+
     pub fn edit_overlay(&mut self, id: OverlayID, enabled: bool, app: &mut AppState) {
+        if !self.edit_mode {
+            return;
+        }
+
         let Some(overlay) = self.overlays.get_mut(id) else {
             return;
         };
+
+        if &*overlay.config.name == WATCH_NAME {
+            return; // FIXME: not a proper solution
+        }
 
         if enabled {
             self.wrappers

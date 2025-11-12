@@ -61,7 +61,10 @@ pub(super) fn setup_custom_button<S: 'static>(
             "::WatchSwapHand" => todo!(),
             // TODO
             #[allow(clippy::match_same_arms)]
-            "::EditToggle" => return,
+            "::EditToggle" => Box::new(move |_common, _data, app, _| {
+                app.tasks.enqueue(TaskType::ToggleEditMode);
+                Ok(EventResult::Consumed)
+            }),
             // TODO
             #[allow(clippy::match_same_arms)]
             "::OscSend" => return,

@@ -58,6 +58,7 @@ pub enum TaskType {
     CreateOverlay(OverlaySelector, Box<CreateOverlayTask>),
     DropOverlay(OverlaySelector),
     ToggleSet(usize),
+    ToggleEditMode,
     System(SystemTask),
     #[cfg(feature = "wayvr")]
     WayVR(WayVRAction),

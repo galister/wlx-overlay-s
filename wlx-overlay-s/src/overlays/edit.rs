@@ -20,11 +20,12 @@ use crate::{
 type EditModeWrapPanel = GuiPanel<Arc<str>>;
 
 #[derive(Default)]
-pub struct EditModeManager {
+pub struct EditWrapperManager {
+    edit_mode: bool,
     panel_pool: Vec<EditModeWrapPanel>,
 }
 
-impl EditModeManager {
+impl EditWrapperManager {
     pub fn wrap_edit_mode(
         &mut self,
         owc: &mut OverlayWindowConfig,
