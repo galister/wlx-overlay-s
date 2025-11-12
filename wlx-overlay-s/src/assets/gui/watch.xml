@@ -19,10 +19,10 @@
     border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical" />
 
   <template name="Device">
-    <sprite color="~device_color" width="${size}" height="${size}" src="${src}" />
-      <div position="absolute" margin_top="10" margin_left="9">
-        <label _source="battery" _device="${device}" size="18" shadow="#000000" weight="bold" />
-      </div>
+    <sprite width="${size}" height="${size}" src="${src}" />
+    <div position="absolute" margin_top="10" margin_left="9">
+      <label _source="battery" _device="${device}" size="18" shadow="#000000" weight="bold" />
+    </div>
   </template>
 
   <template name="Set">
@@ -36,7 +36,7 @@
 
   <elements>
     <div width="460" height="260" padding="30" interactable="0">
-      <rectangle width="100%" height="100%" padding="4" box_sizing="content_box" flex_wrap="wrap" flex_direction="column" gap="4" color="~bg_color">
+      <rectangle width="100%" height="100%" padding="4" box_sizing="content_box" flex_wrap="wrap" flex_direction="column" gap="4" color="~color_bg">
         <div width="100%" flex_direction="row">
           <Device src="watch/hmd.svg" size="40" device="0" />
           <Device src="watch/controller_l.svg" size="36" device="1" />

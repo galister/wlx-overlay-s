@@ -12,7 +12,7 @@ use crate::{
     backend::input::{HoverResult, PointerHit},
     gui::panel::GuiPanel,
     state::AppState,
-    subsystem::hid::{KeyModifier, VirtualKey, WheelDelta, ALT, CTRL, META, SHIFT, SUPER},
+    subsystem::hid::{ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey, WheelDelta},
     windowing::backend::{FrameMeta, OverlayBackend, RenderResources, ShouldRender},
 };
 
@@ -91,6 +91,7 @@ struct KeyState {
     color: drawing::Color,
     color2: drawing::Color,
     border_color: drawing::Color,
+    border: f32,
     drawn_state: Cell<bool>,
 }
 

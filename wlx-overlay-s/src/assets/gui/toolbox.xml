@@ -18,7 +18,7 @@
 
   <elements>
     <div width="400" height="200">
-      <rectangle width="100%" height="100%" padding="4" box_sizing="content_box" flex_wrap="wrap" flex_direction="column" gap="4" color="~bg_color">
+      <rectangle width="100%" height="100%" padding="4" box_sizing="content_box" flex_wrap="wrap" flex_direction="column" gap="4" color="~color_bg">
         <label text="Select set to edit" size="48" color="#ffffff" weight="bold" />
         <div width="100%" flex_direction="row">
           <div id="sets">

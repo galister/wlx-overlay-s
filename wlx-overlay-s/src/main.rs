@@ -1,6 +1,7 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
 #![allow(
     dead_code,
+    clippy::suboptimal_flops,
     clippy::default_trait_access,
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
@@ -31,8 +32,8 @@ mod config_wayvr;
 use std::{
     path::PathBuf,
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc,
+        atomic::{AtomicBool, Ordering},
     },
 };
 
@@ -40,7 +41,7 @@ use clap::Parser;
 use subsystem::notifications::DbusNotificationSender;
 use sysinfo::Pid;
 use tracing::level_filters::LevelFilter;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 /// The lightweight desktop overlay for OpenVR and OpenXR
 #[derive(Default, Parser, Debug)]
@@ -135,7 +136,7 @@ fn auto_run(running: Arc<AtomicBool>, args: Args) {
 
     #[cfg(feature = "openxr")]
     if !args_get_openvr(&args) {
-        use crate::backend::{openxr::openxr_run, BackendError};
+        use crate::backend::{BackendError, openxr::openxr_run};
         tried_xr = true;
         match openxr_run(running.clone(), args.show, args.headless) {
             Ok(()) => return,
@@ -149,7 +150,7 @@ fn auto_run(running: Arc<AtomicBool>, args: Args) {
 
     #[cfg(feature = "openvr")]
     if !args_get_openxr(&args) {
-        use crate::backend::{openvr::openvr_run, BackendError};
+        use crate::backend::{BackendError, openvr::openvr_run};
         tried_vr = true;
         match openvr_run(running, args.show, args.headless) {
             Ok(()) => return,

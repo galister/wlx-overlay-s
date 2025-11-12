@@ -40,7 +40,7 @@
         <rectangle
           width="100%"
           round="100%"
-          color="~menu_dark"
+          color="~color_menu_dark"
           flex_direction="column"
           justify_content="center"
           align_items="center"
@@ -107,7 +107,7 @@
           flex_direction="row"
           align_items="center"
           justify_content="space_between"
-          color="~bottom_panel"
+          color="~color_bottom_panel"
         >
           <!-- left gradient -->
           <div position="absolute" width="100%" height="100%" justify_content="start">

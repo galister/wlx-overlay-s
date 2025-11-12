@@ -1,7 +1,9 @@
 <layout>
+  <include src="theme.xml" />
+
   <macro name="keycap_rect"
     margin="2" width="100%" overflow="hidden" box_sizing="border_box"
-    border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical"
+    border_color="~color_accent_translucent" border="2" round="8" color="~color_accent_5" color2="~color_accent_1" gradient="vertical"
     align_items="center" justify_content="center" />
 
   <macro name="keycap_div"
@@ -15,7 +17,7 @@
   <template name="KeySpecial">
     <div macro="keycap_div">
       <rectangle id="${id}" macro="keycap_rect">
-        <sprite color="#FFFFFF" width="32" height="32" src="keyboard/${text}.svg" />
+        <sprite width="32" height="32" src="keyboard/${text}.svg" />
       </rectangle>
     </div>
   </template>
@@ -25,7 +27,7 @@
   <template name="KeyLetter">
     <div macro="keycap_div">
       <rectangle id="${id}" macro="keycap_rect">
-        <label color="#FFFFFF" text="${text}" size="24" />
+        <label text="${text}" size="24" />
       </rectangle>
     </div>
   </template>
@@ -35,8 +37,8 @@
   <template name="KeyLetterAltGr">
     <div macro="keycap_div">
       <rectangle id="${id}" macro="keycap_rect" gap="4">
-        <label color="#FFFFFF" text="${text}" size="24" />
-        <label color="#FFFFFF70" text="${text_altgr}" size="24" />
+        <label text="${text}" size="24" />
+        <label color="~color_text_translucent" text="${text_altgr}" size="24" />
       </rectangle>
     </div>
   </template>
@@ -46,8 +48,8 @@
   <template name="KeySymbol">
     <div macro="keycap_div">
       <rectangle id="${id}" macro="keycap_rect" gap="4">
-        <label color="#FFFFFF70" text="${text_shift}" size="24" />
-        <label color="#FFFFFF" text="${text}" size="24" />
+        <label color="~color_text_translucent" text="${text_shift}" size="24" />
+        <label text="${text}" size="24" />
       </rectangle>
     </div>
   </template>
@@ -58,14 +60,14 @@
     <div macro="keycap_div">
       <rectangle id="${id}" macro="keycap_rect" flex_direction="row" flex_wrap="wrap">
         <div width="50%" height="50%" align_items="center" justify_content="center">
-          <label color="#FFFFFF70" text="${text_shift}" size="24" />
+          <label color="~color_text_translucent" text="${text_shift}" size="24" />
         </div>
         <div width="50%" height="50%" align_items="center" justify_content="center" />
         <div width="50%" height="50%" align_items="center" justify_content="center">
-          <label color="#FFFFFF" text="${text}" size="24" />
+          <label text="${text}" size="24" />
         </div>
         <div width="50%" height="50%" align_items="center" justify_content="center">
-          <label color="#FFFFFF70" text="${text_altgr}" size="24" />
+          <label color="~color_text_translucent" text="${text_altgr}" size="24" />
         </div>
       </rectangle>
     </div>

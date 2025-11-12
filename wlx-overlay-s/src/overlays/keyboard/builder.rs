@@ -1,37 +1,37 @@
 use std::{collections::HashMap, rc::Rc};
 
-use glam::{vec2, vec3, Affine3A, Mat4, Quat, Vec2, Vec3};
+use glam::{Affine3A, FloatExt, Mat4, Quat, Vec2, Vec3, vec2, vec3};
 use wgui::{
     animation::{Animation, AnimationEasing},
     assets::AssetPath,
-    drawing::Color,
+    drawing::{self, Color},
     event::{self, CallbackMetadata, EventListenerKind},
     layout::LayoutParams,
     parser::Fetchable,
     renderer_vk::util,
     taffy::{self, prelude::length},
     widget::{
+        EventResult,
         div::WidgetDiv,
         rectangle::{WidgetRectangle, WidgetRectangleParams},
         util::WLength,
-        EventResult,
     },
 };
 
 use crate::{
     gui::panel::GuiPanel,
     state::AppState,
-    subsystem::hid::{XkbKeymap, ALT, CTRL, META, SHIFT, SUPER},
+    subsystem::hid::{ALT, CTRL, META, SHIFT, SUPER, XkbKeymap},
     windowing::window::{OverlayWindowConfig, OverlayWindowState, Positioning},
 };
 
 use super::{
-    handle_press, handle_release,
+    KEYBOARD_NAME, KeyButtonData, KeyState, KeyboardBackend, KeyboardState, handle_press,
+    handle_release,
     layout::{self, AltModifier, KeyCapType},
-    KeyButtonData, KeyState, KeyboardBackend, KeyboardState, KEYBOARD_NAME,
 };
 
-const BACKGROUND_PADDING: f32 = 4.;
+const BACKGROUND_PADDING: f32 = 16.0;
 const PIXELS_PER_UNIT: f32 = 80.;
 
 #[allow(clippy::too_many_lines, clippy::significant_drop_tightening)]
@@ -55,11 +55,16 @@ pub fn create_keyboard(
 
     let mut panel = GuiPanel::new_blank(app, state, false)?;
 
+    let globals = app.wgui_globals.clone();
+    let accent_color = globals.get().defaults.accent_color;
+
     let (background, _) = panel.layout.add_child(
         panel.layout.content_root_widget,
         WidgetRectangle::create(WidgetRectangleParams {
-            color: wgui::drawing::Color::new(0., 0., 0., 0.6),
-            round: WLength::Units(4.0),
+            color: wgui::drawing::Color::new(0., 0., 0., 0.75),
+            round: WLength::Units(16.0),
+            border: 2.0,
+            border_color: accent_color,
             ..Default::default()
         }),
         taffy::Style {
@@ -76,7 +81,7 @@ pub fn create_keyboard(
     }
 
     let parse_doc_params = wgui::parser::ParseDocumentParams {
-        globals: app.wgui_globals.clone(),
+        globals,
         path: AssetPath::BuiltIn("gui/keyboard.xml"),
         extra: Default::default(),
     };
@@ -182,6 +187,7 @@ pub fn create_keyboard(
                         color: rect.params.color,
                         color2: rect.params.color2,
                         border_color: rect.params.border_color,
+                        border: rect.params.border,
                         drawn_state: false.into(),
                     })
                 };
@@ -193,7 +199,7 @@ pub fn create_keyboard(
                         let k = key_state.clone();
                         move |common, data, _app, _state| {
                             common.alterables.trigger_haptics();
-                            on_enter_anim(k.clone(), common, data);
+                            on_enter_anim(k.clone(), common, data, accent_color);
                             Ok(EventResult::Pass)
                         }
                     }),
@@ -205,7 +211,7 @@ pub fn create_keyboard(
                         let k = key_state.clone();
                         move |common, data, _app, _state| {
                             common.alterables.trigger_haptics();
-                            on_leave_anim(k.clone(), common, data);
+                            on_leave_anim(k.clone(), common, data, accent_color);
                             Ok(EventResult::Pass)
                         }
                     }),
@@ -295,23 +301,36 @@ fn get_anim_transform(pos: f32, widget_size: Vec2) -> Mat4 {
     )
 }
 
-fn set_anim_color(key_state: &KeyState, rect: &mut WidgetRectangle, pos: f32) {
-    let br1 = pos * 0.25;
-    let br2 = pos * 0.15;
+fn set_anim_color(
+    key_state: &KeyState,
+    rect: &mut WidgetRectangle,
+    pos: f32,
+    accent_color: drawing::Color,
+) {
+    // fade to accent color
+    rect.params.color.r = key_state.color.r.lerp(accent_color.r, pos);
+    rect.params.color.g = key_state.color.g.lerp(accent_color.g, pos);
+    rect.params.color.b = key_state.color.b.lerp(accent_color.b, pos);
 
-    rect.params.color.r = key_state.color.r + br1;
-    rect.params.color.g = key_state.color.g + br1;
-    rect.params.color.b = key_state.color.b + br1;
+    // fade to accent color
+    rect.params.color2.r = key_state.color2.r.lerp(accent_color.r, pos);
+    rect.params.color2.g = key_state.color2.g.lerp(accent_color.g, pos);
+    rect.params.color2.b = key_state.color2.b.lerp(accent_color.b, pos);
 
-    rect.params.color2.r = key_state.color2.r + br2;
-    rect.params.color2.g = key_state.color2.g + br2;
-    rect.params.color2.b = key_state.color2.b + br2;
+    // fade to white
+    rect.params.border_color.r = key_state.border_color.r.lerp(1.0, pos);
+    rect.params.border_color.g = key_state.border_color.g.lerp(1.0, pos);
+    rect.params.border_color.b = key_state.border_color.b.lerp(1.0, pos);
+    rect.params.border_color.a = key_state.border_color.a.lerp(1.0, pos);
+
+    rect.params.border = key_state.border.lerp(key_state.border * 1.5, pos);
 }
 
 fn on_enter_anim(
     key_state: Rc<KeyState>,
     common: &mut event::CallbackDataCommon,
     data: &event::CallbackData,
+    accent_color: drawing::Color,
 ) {
     common.alterables.animate(Animation::new(
         data.widget_id,
@@ -319,7 +338,7 @@ fn on_enter_anim(
         AnimationEasing::OutBack,
         Box::new(move |common, data| {
             let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
-            set_anim_color(&key_state, rect, data.pos);
+            set_anim_color(&key_state, rect, data.pos, accent_color);
             data.data.transform = get_anim_transform(data.pos, data.widget_boundary.size);
             common.alterables.mark_redraw();
         }),
@@ -330,6 +349,7 @@ fn on_leave_anim(
     key_state: Rc<KeyState>,
     common: &mut event::CallbackDataCommon,
     data: &event::CallbackData,
+    accent_color: drawing::Color,
 ) {
     common.alterables.animate(Animation::new(
         data.widget_id,
@@ -337,7 +357,7 @@ fn on_leave_anim(
         AnimationEasing::OutQuad,
         Box::new(move |common, data| {
             let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
-            set_anim_color(&key_state, rect, 1.0 - data.pos);
+            set_anim_color(&key_state, rect, 1.0 - data.pos, accent_color);
             data.data.transform = get_anim_transform(1.0 - data.pos, data.widget_boundary.size);
             common.alterables.mark_redraw();
         }),
