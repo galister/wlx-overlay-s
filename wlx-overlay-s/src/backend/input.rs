@@ -455,7 +455,7 @@ fn handle_no_hit<O>(
 
 fn handle_scroll<O>(hit: &PointerHit, hovered: &mut OverlayWindowData<O>, app: &mut AppState) {
     let pointer = &mut app.input_state.pointers[hit.pointer];
-    if pointer.now.scroll_x.abs() <= 0.1 && pointer.now.scroll_x.abs() <= 0.1 {
+    if pointer.now.scroll_x.abs() <= 0.1 && pointer.now.scroll_y.abs() <= 0.1 {
         return;
     }
 
