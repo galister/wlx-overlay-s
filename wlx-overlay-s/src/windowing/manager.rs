@@ -197,8 +197,9 @@ impl<T> OverlayWindowManager<T> {
             return;
         };
 
-        if !overlay.config.default_state.grabbable {
-            return; // FIXME: not a proper solution
+        if !overlay.config.global {
+            // watch, anchor, toast, dashboard
+            return;
         }
 
         if enabled {
