@@ -344,7 +344,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 						globals: &mut globals,
 						layout: &mut layout,
 						debug_draw: debug_draw_enabled,
-						alpha: timestep.alpha,
+						timestep_alpha: timestep.alpha,
 					};
 
 					let primitives = wgui::drawing::draw(&mut draw_params).unwrap();

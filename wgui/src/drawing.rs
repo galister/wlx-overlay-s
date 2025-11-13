@@ -9,7 +9,7 @@ use crate::{
 	event::EventAlterables,
 	globals::Globals,
 	layout::Widget,
-	renderer_vk::text::{custom_glyph::CustomGlyph, TextShadow},
+	renderer_vk::text::{TextShadow, custom_glyph::CustomGlyph},
 	stack::{self, ScissorBoundary, ScissorStack, TransformStack},
 	widget::{self, ScrollbarInfo, WidgetState},
 };
@@ -173,7 +173,7 @@ pub struct DrawParams<'a> {
 	pub globals: &'a Globals,
 	pub layout: &'a mut Layout,
 	pub debug_draw: bool,
-	pub alpha: f32, // timestep alpha, 0.0 - 1.0, used for motion interpolation if rendering above tick rate: smoother animations or scrolling
+	pub timestep_alpha: f32, // timestep alpha, 0.0 - 1.0, used for motion interpolation if rendering above tick rate: smoother animations or scrolling
 }
 
 pub fn has_overflow_clip(style: &taffy::Style) -> bool {
@@ -250,7 +250,7 @@ fn draw_widget(
 
 	let (scroll_shift, wants_redraw, info) = match widget::get_scrollbar_info(l) {
 		Some(info) => {
-			let (scrolling, wants_redraw) = widget_state.get_scroll_shift_smooth(&info, l, params.alpha);
+			let (scrolling, wants_redraw) = widget_state.get_scroll_shift_smooth(&info, l, params.timestep_alpha);
 			(scrolling, wants_redraw, Some(info))
 		}
 		None => (Vec2::default(), false, None),
@@ -264,7 +264,7 @@ fn draw_widget(
 		state.primitives.push(primitive_debug_rect(
 			&boundary,
 			&state.transform_stack.get().transform,
-			Color::new(0.0, 1.0, 1.0, 0.5 * params.alpha),
+			Color::new(0.0, 1.0, 1.0, 0.5),
 		));
 	}
 
@@ -277,7 +277,7 @@ fn draw_widget(
 			state.primitives.push(primitive_debug_rect(
 				&boundary_relative,
 				&state.transform_stack.get().transform,
-				Color::new(1.0, 0.0, 1.0, params.alpha),
+				Color::new(1.0, 0.0, 1.0, 1.0),
 			));
 		}
 

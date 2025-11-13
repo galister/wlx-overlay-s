@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use button::setup_custom_button;
-use glam::{vec2, Affine2, Vec2};
+use glam::{Affine2, Vec2, vec2};
 use label::setup_custom_label;
 use wgui::{
     assets::AssetPath,
@@ -16,14 +16,14 @@ use wgui::{
     layout::{Layout, LayoutParams, WidgetID},
     parser::{CustomAttribsInfoOwned, ParserState},
     renderer_vk::context::Context as WguiContext,
-    widget::{label::WidgetLabel, rectangle::WidgetRectangle, EventResult},
+    widget::{EventResult, label::WidgetLabel, rectangle::WidgetRectangle},
 };
 
 use crate::{
     backend::input::{Haptics, HoverResult, PointerHit, PointerMode},
     state::AppState,
     subsystem::hid::WheelDelta,
-    windowing::backend::{ui_transform, FrameMeta, OverlayBackend, RenderResources, ShouldRender},
+    windowing::backend::{FrameMeta, OverlayBackend, RenderResources, ShouldRender, ui_transform},
 };
 
 use super::{timer::GuiTimer, timestep::Timestep};
@@ -289,7 +289,7 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
             globals: &mut globals,
             layout: &mut self.layout,
             debug_draw: false,
-            alpha: self.timestep.alpha,
+            timestep_alpha: self.timestep.alpha,
         })?;
         self.context.draw(
             &globals.font_system,
