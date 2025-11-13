@@ -2,21 +2,21 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use cosmic_text::Buffer;
 use glam::{Mat4, Vec2, Vec3};
-use slotmap::{SlotMap, new_key_type};
+use slotmap::{new_key_type, SlotMap};
 use vulkano::pipeline::graphics::viewport;
 
 use crate::{
 	drawing::{self},
 	font_config,
-	gfx::{WGfx, cmd::GfxCommandBuffer},
+	gfx::{cmd::GfxCommandBuffer, WGfx},
 };
 
 use super::{
 	rect::{RectPipeline, RectRenderer},
 	text::{
-		DEFAULT_METRICS, SWASH_CACHE, TextArea, TextBounds,
 		text_atlas::{TextAtlas, TextPipeline},
 		text_renderer::TextRenderer,
+		TextArea, TextBounds, DEFAULT_METRICS, SWASH_CACHE,
 	},
 	viewport::Viewport,
 };

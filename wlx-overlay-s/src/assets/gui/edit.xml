@@ -7,48 +7,48 @@
 
   <template name="TopButton">
     <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" border_color="#0044CC" color="#000A1C" color2="#000002">
-      <sprite width="48" height="48" src="${src}" />
+      <sprite width="48" height="48" src="${src}" _release="${release}" />
     </Button>
   </template>
 
   <template name="TopButtonDanger">
     <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" border_color="#CC0000" color="#110000" color2="#020000">
-      <sprite width="48" height="48" src="${src}" />
+      <sprite width="48" height="48" src="${src}" _release="${release}" />
     </Button>
   </template>
 
   <template name="TopButtonFaded">
     <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" border_color="#707070" color="#202020" color2="#010101">
-      <sprite width="48" height="48" src="${src}" />
+      <sprite width="48" height="48" src="${src}" _release="${release}" />
     </Button>
   </template>
 
   <elements>
     <div width="100%" height="100%">
-      <rectangle width="100%" height="100%" padding="4" gap="4" align_items="center" justify_content="center" color="#000000DD" flex_direction="row">
+      <rectangle id="shadow" width="100%" height="100%" padding="4" gap="4" align_items="center" justify_content="center" color="#000000DD" flex_direction="row">
         <div flex_direction="column">
           <rectangle padding="16" gap="8" round="32" color="~color_bg" border="2" border_color="~color_accent" justify_content="center">
             <div flex_direction="column" gap="8">
               <label align="center" translation="EDIT_MODE.HINT_POINT_WINDOW" />
               <div flex_direction="row" gap="4">
-                <TopButton id="lock" src="bar/lock_open.svg" tooltip="EDIT_MODE.LOCK_INTERACTION" kind="btn_primary" />
-                <TopButton id="anchor" src="bar/anchor.svg" tooltip="EDIT_MODE.POSITIONING" kind="btn_primary" />
-                <TopButton id="fade" src="bar/fade.svg" tooltip="EDIT_MODE.OPACITY" kind="btn_primary" />
-                <TopButton id="curve" src="bar/curve.svg" tooltip="EDIT_MODE.ADJUST_CURVATURE" kind="btn_primary" />
+                <TopButton id="lock" src="bar/lock_open.svg" tooltip="EDIT_MODE.LOCK_INTERACTION" kind="btn_primary" press="::EditModeToggleLock" />
+                <TopButton id="anchor" src="bar/anchor.svg" tooltip="EDIT_MODE.POSITIONING" kind="btn_primary" press="::EditModeToggleAnchor" />
+                <TopButton id="alpha" src="bar/fade.svg" tooltip="EDIT_MODE.OPACITY" kind="btn_primary" press="::EditModeToggleFade" />
+                <TopButton id="curve" src="bar/curve.svg" tooltip="EDIT_MODE.ADJUST_CURVATURE" kind="btn_primary" press="::EditModeToggleCurve" />
                 <TopButton id="move" src="bar/move-all.svg" tooltip="EDIT_MODE.MOVE_PRESS_AND_DRAG" kind="btn_primary" />
                 <TopButton id="resize" src="bar/resize.svg" tooltip="EDIT_MODE.RESIZE_PRESS_AND_DRAG" kind="btn_primary" />
-                <TopButtonDanger id="delete" src="bar/delete.svg" tooltip="EDIT_MODE.DELETE" kind="btn_danger" />
+                <TopButtonDanger id="delete" src="bar/delete.svg" tooltip="EDIT_MODE.DELETE" kind="btn_danger" press="::EditModeDeletePress" release="::EditModeDeleteRelease" />
                 <div width="8" height="100%" />
-                <TopButtonFaded src="watch/edit.svg" tooltip="EDIT_MODE.LEAVE" press="::EditToggle" kind="btn_faded" />
+                <TopButtonFaded src="watch/edit.svg" tooltip="EDIT_MODE.LEAVE" kind="btn_faded" press="::EditToggle" />
               </div>
               <div padding="8" gap="8" justify_content="center" align_items="center">
                 <label translation="EDIT_MODE.OPACITY" />
-                <Slider width="200" height="16" min_value="5" max_value="100" value="100" />
-                <CheckBox id="additive" translation="EDIT_MODE.BLENDING_ADDITIVE" tooltip="EDIT_MODE.ALPHA_BLEND_MODE" tooltip_side="bottom" />
+                <Slider id="alpha_slider" width="200" height="16" min_value="0.1" max_value="1" value="1" step="0.05" />
+                <CheckBox id="additive_box" translation="EDIT_MODE.BLENDING_ADDITIVE" tooltip="EDIT_MODE.ALPHA_BLEND_MODE" tooltip_side="bottom" />
               </div>
               <div padding="8" gap="8" justify_content="center" align_items="center">
                 <label translation="EDIT_MODE.CURVATURE" />
-                <Slider width="250" height="16" min_value="0" max_value="0.5" value="0.15" step="0.01" />
+                <Slider id="curve_slider" width="250" height="16" min_value="0" max_value="0.5" value="0.15" step="0.01" />
               </div>
             </div>
           </rectangle>

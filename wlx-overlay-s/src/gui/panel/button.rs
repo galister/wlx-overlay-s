@@ -18,23 +18,22 @@ use crate::backend::{task::TaskType, wayvr::WayVRAction};
 
 use super::helper::read_label_from_pipe;
 
+pub const BUTTON_EVENTS: [(&str, EventListenerKind); 2] = [
+    ("_press", EventListenerKind::MousePress),
+    ("_release", EventListenerKind::MouseRelease),
+];
+
 pub(super) fn setup_custom_button<S: 'static>(
     layout: &mut Layout,
     attribs: &CustomAttribsInfoOwned,
     _app: &AppState,
 ) {
-    const EVENTS: [(&str, EventListenerKind); 2] = [
-        ("_press", EventListenerKind::MousePress),
-        ("_release", EventListenerKind::MouseRelease),
-    ];
-
-    for (name, kind) in &EVENTS {
+    for (name, kind) in &BUTTON_EVENTS {
         let Some(action) = attribs.get_value(name) else {
             continue;
         };
 
         let mut args = action.split_whitespace();
-
         let Some(command) = args.next() else {
             continue;
         };

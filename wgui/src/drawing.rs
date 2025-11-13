@@ -9,7 +9,7 @@ use crate::{
 	event::EventAlterables,
 	globals::Globals,
 	layout::Widget,
-	renderer_vk::text::{TextShadow, custom_glyph::CustomGlyph},
+	renderer_vk::text::{custom_glyph::CustomGlyph, TextShadow},
 	stack::{self, ScissorBoundary, ScissorStack, TransformStack},
 	widget::{self, ScrollbarInfo, WidgetState},
 };
@@ -264,7 +264,7 @@ fn draw_widget(
 		state.primitives.push(primitive_debug_rect(
 			&boundary,
 			&state.transform_stack.get().transform,
-			Color::new(0.0, 1.0, 1.0, 0.5),
+			Color::new(0.0, 1.0, 1.0, 0.5 * params.alpha),
 		));
 	}
 
@@ -277,7 +277,7 @@ fn draw_widget(
 			state.primitives.push(primitive_debug_rect(
 				&boundary_relative,
 				&state.transform_stack.get().transform,
-				Color::new(1.0, 0.0, 1.0, 1.0),
+				Color::new(1.0, 0.0, 1.0, params.alpha),
 			));
 		}
 

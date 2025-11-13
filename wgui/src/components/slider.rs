@@ -15,11 +15,11 @@ use crate::{
 		util,
 	},
 	widget::{
-		ConstructEssentials, EventResult,
 		div::WidgetDiv,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
+		ConstructEssentials, EventResult,
 	},
 };
 
@@ -113,7 +113,8 @@ impl ComponentSlider {
 	pub fn get_value(&self) -> f32 {
 		self.state.borrow().values.value
 	}
-	pub fn set_value(&mut self, common: &mut CallbackDataCommon, value: f32) {
+
+	pub fn set_value(&self, common: &mut CallbackDataCommon, value: f32) {
 		let mut state = self.state.borrow_mut();
 		state.set_value(common, &self.data, value);
 	}

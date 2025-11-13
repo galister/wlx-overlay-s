@@ -9,14 +9,14 @@ use crate::{
         edit::EditWrapperManager,
         keyboard::builder::create_keyboard,
         screen::create_screens,
-        watch::{WATCH_NAME, create_watch},
+        watch::{create_watch, WATCH_NAME},
     },
     state::AppState,
     windowing::{
-        OverlayID, OverlaySelector,
         set::{OverlayWindowSet, SerializedWindowSet},
         snap_upright,
         window::OverlayWindowData,
+        OverlayID, OverlaySelector,
     },
 };
 
@@ -197,13 +197,13 @@ impl<T> OverlayWindowManager<T> {
             return;
         };
 
-        if &*overlay.config.name == WATCH_NAME {
+        if !overlay.config.default_state.grabbable {
             return; // FIXME: not a proper solution
         }
 
         if enabled {
             self.wrappers
-                .wrap_edit_mode(&mut overlay.config, app)
+                .wrap_edit_mode(id, &mut overlay.config, app)
                 .unwrap(); // FIXME: unwrap
         } else {
             self.wrappers.unwrap_edit_mode(&mut overlay.config);

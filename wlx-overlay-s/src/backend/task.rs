@@ -83,6 +83,10 @@ impl TaskContainer {
         }
     }
 
+    pub fn transfer_from(&mut self, other: &mut TaskContainer) {
+        self.tasks.append(&mut other.tasks);
+    }
+
     pub fn enqueue(&mut self, task: TaskType) {
         self.tasks.push(AppTask {
             not_before: Instant::now(),

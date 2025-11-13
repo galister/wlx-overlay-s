@@ -1,33 +1,34 @@
 use std::{cell::RefCell, rc::Rc};
 
 use button::setup_custom_button;
-use glam::{Affine2, Vec2, vec2};
+use glam::{vec2, Affine2, Vec2};
 use label::setup_custom_label;
 use wgui::{
     assets::AssetPath,
+    components::ComponentTrait,
     drawing,
     event::{
-        Event as WguiEvent, EventCallback, EventListenerID, EventListenerKind,
-        InternalStateChangeEvent, MouseButtonIndex, MouseDownEvent, MouseLeaveEvent,
-        MouseMotionEvent, MouseUpEvent, MouseWheelEvent,
+        CallbackDataCommon, Event as WguiEvent, EventAlterables, EventCallback, EventListenerID,
+        EventListenerKind, InternalStateChangeEvent, MouseButtonIndex, MouseDownEvent,
+        MouseLeaveEvent, MouseMotionEvent, MouseUpEvent, MouseWheelEvent,
     },
     gfx::cmd::WGfxClearMode,
     layout::{Layout, LayoutParams, WidgetID},
-    parser::ParserState,
+    parser::{CustomAttribsInfoOwned, ParserState},
     renderer_vk::context::Context as WguiContext,
-    widget::{EventResult, label::WidgetLabel, rectangle::WidgetRectangle},
+    widget::{label::WidgetLabel, rectangle::WidgetRectangle, EventResult},
 };
 
 use crate::{
     backend::input::{Haptics, HoverResult, PointerHit, PointerMode},
     state::AppState,
     subsystem::hid::WheelDelta,
-    windowing::backend::{FrameMeta, OverlayBackend, RenderResources, ShouldRender, ui_transform},
+    windowing::backend::{ui_transform, FrameMeta, OverlayBackend, RenderResources, ShouldRender},
 };
 
 use super::{timer::GuiTimer, timestep::Timestep};
 
-mod button;
+pub mod button;
 mod helper;
 mod label;
 
@@ -57,8 +58,11 @@ pub type OnCustomIdFunc = Box<
     ) -> anyhow::Result<()>,
 >;
 
+pub type OnCustomAttribFunc = Box<dyn Fn(&mut Layout, &CustomAttribsInfoOwned, &AppState)>;
+
 pub struct NewGuiPanelParams {
     pub on_custom_id: Option<OnCustomIdFunc>, // used only in `new_from_template`
+    pub on_custom_attrib: Option<OnCustomAttribFunc>, // used only in `new_from_template`
     pub resize_to_parent: bool,
     pub gui_scale: f32,
 }
@@ -67,6 +71,7 @@ impl Default for NewGuiPanelParams {
     fn default() -> Self {
         Self {
             on_custom_id: None,
+            on_custom_attrib: None,
             resize_to_parent: false,
             gui_scale: 1.0,
         }
@@ -132,6 +137,10 @@ impl<S: 'static> GuiPanel<S> {
                 .is_some()
             {
                 setup_custom_button::<S>(&mut layout, elem, app);
+            }
+
+            if let Some(on_custom_attrib) = &params.on_custom_attrib {
+                on_custom_attrib(&mut layout, elem, app);
             }
         }
 
@@ -202,6 +211,22 @@ impl<S: 'static> GuiPanel<S> {
     ) -> Option<EventListenerID> {
         self.layout.add_event_listener(widget_id, kind, callback)
     }
+
+    pub fn component_make_call<C: ComponentTrait>(
+        &mut self,
+        component: Rc<C>,
+        run: Box<dyn Fn(Rc<C>, &mut CallbackDataCommon)>,
+    ) -> anyhow::Result<()> {
+        let mut alterables = EventAlterables::default();
+        let mut common = CallbackDataCommon {
+            state: &self.layout.state,
+            alterables: &mut alterables,
+        };
+
+        run(component, &mut common);
+
+        self.layout.process_alterables(alterables)
+    }
 }
 
 impl<S: 'static> OverlayBackend for GuiPanel<S> {
@@ -264,7 +289,7 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
             globals: &mut globals,
             layout: &mut self.layout,
             debug_draw: false,
-            alpha: rdr.alpha,
+            alpha: self.timestep.alpha,
         })?;
         self.context.draw(
             &globals.font_system,

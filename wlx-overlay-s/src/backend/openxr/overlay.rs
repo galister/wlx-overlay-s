@@ -4,9 +4,9 @@ use std::{f32::consts::PI, sync::Arc};
 use vulkano::image::view::ImageView;
 use xr::EyeVisibility;
 
-use super::{CompositionLayer, XrState, helpers, swapchain::WlxSwapchain};
+use super::{helpers, swapchain::WlxSwapchain, CompositionLayer, XrState};
 use crate::{
-    backend::openxr::swapchain::{SwapchainOpts, create_swapchain},
+    backend::openxr::swapchain::{create_swapchain, SwapchainOpts},
     state::AppState,
     windowing::window::OverlayWindowData,
 };
@@ -74,6 +74,13 @@ impl OverlayWindowData<OpenXrOverlayData> {
             (major / aspect_ratio, major)
         };
 
+        let flags = if state.additive {
+            CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA
+        } else {
+            CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA
+                | CompositionLayerFlags::UNPREMULTIPLIED_ALPHA
+        };
+
         if let Some(curvature) = state.curvature {
             let radius = scale_x / (2.0 * PI * curvature);
             let quat = helpers::transform_to_norm_quat(&transform);
@@ -83,7 +90,7 @@ impl OverlayWindowData<OpenXrOverlayData> {
             let angle = 2.0 * (scale_x / (2.0 * radius));
 
             let cylinder = xr::CompositionLayerCylinderKHR::new()
-                .layer_flags(CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA)
+                .layer_flags(flags)
                 .pose(posef)
                 .sub_image(sub_image)
                 .eye_visibility(EyeVisibility::BOTH)
@@ -95,7 +102,7 @@ impl OverlayWindowData<OpenXrOverlayData> {
         } else {
             let posef = helpers::transform_to_posef(&transform);
             let quad = xr::CompositionLayerQuad::new()
-                .layer_flags(CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA)
+                .layer_flags(flags)
                 .pose(posef)
                 .sub_image(sub_image)
                 .eye_visibility(EyeVisibility::BOTH)

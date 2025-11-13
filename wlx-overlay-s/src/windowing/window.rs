@@ -285,6 +285,7 @@ impl OverlayWindowConfig {
 
 // Contains the window state for a given set
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct OverlayWindowState {
     pub transform: Affine3A,
     pub alpha: f32,
@@ -292,6 +293,7 @@ pub struct OverlayWindowState {
     pub interactable: bool,
     pub positioning: Positioning,
     pub curvature: Option<f32>,
+    pub additive: bool,
 }
 
 impl Default for OverlayWindowState {
@@ -303,6 +305,7 @@ impl Default for OverlayWindowState {
             positioning: Positioning::Floating,
             curvature: None,
             transform: Affine3A::IDENTITY,
+            additive: false,
         }
     }
 }
