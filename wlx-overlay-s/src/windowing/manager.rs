@@ -194,7 +194,7 @@ impl<T> OverlayWindowManager<T> {
             return;
         };
 
-        if !overlay.config.global {
+        if overlay.config.global {
             // watch, anchor, toast, dashboard
             return;
         }
