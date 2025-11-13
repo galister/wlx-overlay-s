@@ -405,6 +405,10 @@ impl Layout {
 
 		let style = self.state.tree.style(node_id)?;
 
+		if style.display == taffy::Display::None {
+			return Ok(());
+		}
+
 		let Some(widget) = self.state.widgets.get(widget_id) else {
 			debug_assert!(false);
 			anyhow::bail!("invalid widget");

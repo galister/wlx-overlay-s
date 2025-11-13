@@ -5,18 +5,15 @@ use slotmap::{HopSlotMap, Key, SecondaryMap};
 
 use crate::{
     overlays::{
-        anchor::create_anchor,
-        edit::EditWrapperManager,
-        keyboard::builder::create_keyboard,
-        screen::create_screens,
-        watch::{create_watch, WATCH_NAME},
+        anchor::create_anchor, edit::EditWrapperManager, keyboard::builder::create_keyboard,
+        screen::create_screens, watch::create_watch,
     },
     state::AppState,
     windowing::{
+        OverlayID, OverlaySelector,
         set::{OverlayWindowSet, SerializedWindowSet},
         snap_upright,
         window::OverlayWindowData,
-        OverlayID, OverlaySelector,
     },
 };
 

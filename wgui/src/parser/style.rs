@@ -117,6 +117,7 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 				"flex" => style.display = Display::Flex,
 				"block" => style.display = Display::Block,
 				"grid" => style.display = Display::Grid,
+				"none" => style.display = Display::None,
 				_ => {
 					print_invalid_attrib(key, value);
 				}

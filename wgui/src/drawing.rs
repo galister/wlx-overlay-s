@@ -318,12 +318,16 @@ fn draw_children(params: &DrawParams, state: &mut DrawState, parent_node_id: taf
 	let layout = &params.layout;
 
 	for node_id in layout.state.tree.child_ids(parent_node_id) {
-		let Some(widget_id) = layout.state.tree.get_node_context(node_id).copied() else {
+		let Ok(style) = layout.state.tree.style(node_id) else {
 			debug_assert!(false);
 			continue;
 		};
 
-		let Ok(style) = layout.state.tree.style(node_id) else {
+		if style.display == taffy::Display::None {
+			continue;
+		}
+
+		let Some(widget_id) = layout.state.tree.get_node_context(node_id).copied() else {
 			debug_assert!(false);
 			continue;
 		};
