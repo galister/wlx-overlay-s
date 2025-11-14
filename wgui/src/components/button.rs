@@ -1,6 +1,6 @@
 use crate::{
 	animation::{Animation, AnimationEasing},
-	components::{self, tooltip::ComponentTooltip, Component, ComponentBase, ComponentTrait, InitData},
+	components::{self, Component, ComponentBase, ComponentTrait, RefreshData, tooltip::ComponentTooltip},
 	drawing::{self, Boundary, Color},
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerID, EventListenerKind},
 	i18n::Translation,
@@ -10,15 +10,15 @@ use crate::{
 		util::centered_matrix,
 	},
 	widget::{
+		ConstructEssentials, EventResult, WidgetData,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
-		ConstructEssentials, EventResult, WidgetData,
 	},
 };
 use glam::{Mat4, Vec3};
 use std::{cell::RefCell, rc::Rc};
-use taffy::{prelude::length, AlignItems, JustifyContent};
+use taffy::{AlignItems, JustifyContent, prelude::length};
 
 pub struct Params {
 	pub text: Option<Translation>, // if unset, label will not be populated
@@ -83,11 +83,15 @@ pub struct ComponentButton {
 }
 
 impl ComponentTrait for ComponentButton {
-	fn base(&mut self) -> &mut ComponentBase {
+	fn base(&self) -> &ComponentBase {
+		&self.base
+	}
+
+	fn base_mut(&mut self) -> &mut ComponentBase {
 		&mut self.base
 	}
 
-	fn init(&self, _data: &mut InitData) {}
+	fn refresh(&self, _data: &mut RefreshData) {}
 }
 
 impl ComponentButton {
@@ -339,6 +343,7 @@ fn register_event_mouse_release(
 	)
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Result<(WidgetPair, Rc<ComponentButton>)> {
 	let globals = ess.layout.state.globals.clone();
 	let mut style = params.style;
@@ -390,7 +395,14 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 
 	let id_rect = root.id;
 
-	let light_text = (color.r + color.g + color.b) < 1.5;
+	let light_text = {
+		let mult = if globals.get().defaults.dark_mode {
+			color.a
+		} else {
+			1.0 - color.a
+		};
+		(color.r + color.g + color.b) * mult < 1.5
+	};
 
 	let id_label = if let Some(content) = params.text {
 		let (label, _node_label) = ess.layout.add_child(
@@ -436,6 +448,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	}));
 
 	let base = ComponentBase {
+		id: root.id,
 		lhandles: {
 			let mut widget = ess.layout.state.widgets.get(id_rect).unwrap().state();
 			vec![
@@ -449,6 +462,6 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 
 	let button = Rc::new(ComponentButton { base, data, state });
 
-	ess.layout.defer_component_init(Component(button.clone()));
+	ess.layout.defer_component_refresh(Component(button.clone()));
 	Ok((root, button))
 }

@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use taffy::prelude::length;
 
 use crate::{
-	components::{self, Component, ComponentBase, ComponentTrait, InitData},
+	components::{self, Component, ComponentBase, ComponentTrait, RefreshData},
 	drawing::Color,
 	i18n::Translation,
 	layout::{self, LayoutTask, LayoutTasks, WidgetID, WidgetPair},
@@ -65,11 +65,15 @@ pub struct ComponentTooltip {
 }
 
 impl ComponentTrait for ComponentTooltip {
-	fn base(&mut self) -> &mut ComponentBase {
+	fn base_mut(&mut self) -> &mut ComponentBase {
 		&mut self.base
 	}
 
-	fn init(&self, _data: &mut InitData) {}
+	fn base(&self) -> &ComponentBase {
+		&self.base
+	}
+
+	fn refresh(&self, _data: &mut RefreshData) {}
 }
 
 impl ComponentTooltip {}
@@ -200,7 +204,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		tasks: ess.layout.tasks.clone(),
 	});
 
-	ess.layout.defer_component_init(Component(tooltip.clone()));
+	ess.layout.defer_component_refresh(Component(tooltip.clone()));
 	Ok((div, tooltip))
 }
 

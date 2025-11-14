@@ -196,6 +196,10 @@ _Tooltip text on hover, translated by key_
 
 `tooltip_side`: "top" | "bottom" | "left" | "right" (default: top)
 
+`sticky`: "1" | "0" (default: "0")
+
+_make button act as a toggle (visual only)_
+
 #### Info
 
 Child widgets are supported and can be added directly in XML.

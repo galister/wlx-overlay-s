@@ -18,6 +18,7 @@ use wgui::{
 	i18n::Translation,
 	layout::{Layout, LayoutParams, RcLayout, Widget},
 	parser::{Fetchable, ParseDocumentExtra, ParseDocumentParams, ParserState},
+	taffy,
 	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
 	windowing::{WguiWindow, WguiWindowParams},
 };
@@ -117,6 +118,24 @@ impl TestbedGeneric {
 				resize_to_parent: true,
 			},
 		)?;
+
+		let cb_visible = state.fetch_component_as::<ComponentCheckbox>("cb_visible")?;
+		let div_visibility = state.fetch_widget(&layout.state, "div_visibility")?;
+
+		cb_visible.on_toggle(Box::new(move |common, evt| {
+			let mut style = common
+				.state
+				.get_widget_style(div_visibility.id)
+				.unwrap()
+				.clone();
+			style.display = if evt.checked {
+				taffy::Display::Flex
+			} else {
+				taffy::Display::None
+			};
+			common.alterables.set_style(div_visibility.id, style);
+			Ok(())
+		}));
 
 		let label_cur_option = state.fetch_widget(&layout.state, "label_current_option")?;
 

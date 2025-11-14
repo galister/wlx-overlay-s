@@ -3,6 +3,7 @@ use std::rc::Rc;
 use crate::{
 	any::AnyTrait,
 	event::{CallbackDataCommon, EventListenerID},
+	layout::WidgetID,
 };
 
 pub mod button;
@@ -10,7 +11,7 @@ pub mod checkbox;
 pub mod slider;
 pub mod tooltip;
 
-pub struct InitData<'a> {
+pub struct RefreshData<'a> {
 	pub common: &'a mut CallbackDataCommon<'a>,
 }
 
@@ -19,11 +20,19 @@ pub struct InitData<'a> {
 pub struct ComponentBase {
 	#[allow(dead_code)]
 	lhandles: Vec<EventListenerID>,
+	id: WidgetID,
+}
+
+impl ComponentBase {
+	pub const fn get_id(&self) -> WidgetID {
+		self.id
+	}
 }
 
 pub trait ComponentTrait: AnyTrait {
-	fn base(&mut self) -> &mut ComponentBase;
-	fn init(&self, data: &mut InitData);
+	fn base(&self) -> &ComponentBase;
+	fn base_mut(&mut self) -> &mut ComponentBase;
+	fn refresh(&self, data: &mut RefreshData);
 }
 
 #[derive(Clone)]

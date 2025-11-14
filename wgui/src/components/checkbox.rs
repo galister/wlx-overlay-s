@@ -1,22 +1,22 @@
 use std::{cell::RefCell, rc::Rc};
 use taffy::{
-	prelude::{length, percent},
 	AlignItems, JustifyContent,
+	prelude::{length, percent},
 };
 
 use crate::{
 	animation::{Animation, AnimationEasing},
-	components::{Component, ComponentBase, ComponentTrait, InitData},
+	components::{Component, ComponentBase, ComponentTrait, RefreshData},
 	drawing::Color,
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerID, EventListenerKind},
 	i18n::Translation,
 	layout::{self, WidgetID, WidgetPair},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
+		ConstructEssentials, EventResult,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
-		ConstructEssentials, EventResult,
 	},
 };
 
@@ -68,11 +68,15 @@ pub struct ComponentCheckbox {
 }
 
 impl ComponentTrait for ComponentCheckbox {
-	fn base(&mut self) -> &mut ComponentBase {
+	fn base(&self) -> &ComponentBase {
+		&self.base
+	}
+
+	fn base_mut(&mut self) -> &mut ComponentBase {
 		&mut self.base
 	}
 
-	fn init(&self, _data: &mut InitData) {}
+	fn refresh(&self, _data: &mut RefreshData) {}
 }
 
 const COLOR_CHECKED: Color = Color::new(0.1, 0.5, 1.0, 1.0);
@@ -333,6 +337,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	}));
 
 	let base = ComponentBase {
+		id: root.id,
 		lhandles: {
 			let mut widget = ess.layout.state.widgets.get(id_container).unwrap().state();
 			vec![
@@ -346,6 +351,6 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 
 	let checkbox = Rc::new(ComponentCheckbox { base, data, state });
 
-	ess.layout.defer_component_init(Component(checkbox.clone()));
+	ess.layout.defer_component_refresh(Component(checkbox.clone()));
 	Ok((root, checkbox))
 }

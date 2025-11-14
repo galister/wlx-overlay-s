@@ -80,7 +80,6 @@ impl ButtonPaneTabSwitcher {
 }
 
 fn set_tab_active(common: &mut CallbackDataCommon, data: &TabData, active: bool) {
-    let pane_node = common.state.nodes[data.pane];
     let style = Style {
         display: if active {
             Display::Block
@@ -89,7 +88,7 @@ fn set_tab_active(common: &mut CallbackDataCommon, data: &TabData, active: bool)
         },
         ..Default::default()
     };
-    common.alterables.set_style(pane_node, style);
+    common.alterables.set_style(data.pane, style);
     if let Some(button) = data.button.as_ref() {
         button.set_sticky_state(common, active);
     }

@@ -5,7 +5,7 @@ use taffy::prelude::{length, percent};
 
 use crate::{
 	animation::{Animation, AnimationEasing},
-	components::{Component, ComponentBase, ComponentTrait, InitData},
+	components::{Component, ComponentBase, ComponentTrait, RefreshData},
 	drawing::{self},
 	event::{self, CallbackDataCommon, EventListenerCollection, EventListenerKind},
 	i18n::Translation,
@@ -15,11 +15,11 @@ use crate::{
 		util,
 	},
 	widget::{
+		ConstructEssentials, EventResult,
 		div::WidgetDiv,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
-		ConstructEssentials, EventResult,
 	},
 };
 
@@ -80,7 +80,8 @@ struct Data {
 	body: WidgetID, // Div
 	slider_handle_rect_id: WidgetID, // Rectangle
 	slider_text_id: WidgetID,        // Text
-	slider_handle_node: taffy::NodeId,
+	slider_handle: WidgetPair,
+	slider_handle_node_id: taffy::NodeId,
 	slider_body_node: taffy::NodeId,
 }
 
@@ -98,13 +99,17 @@ pub struct ComponentSlider {
 }
 
 impl ComponentTrait for ComponentSlider {
-	fn init(&self, init_data: &mut InitData) {
+	fn refresh(&self, init_data: &mut RefreshData) {
 		let mut state = self.state.borrow_mut();
 		let value = state.values.value;
 		state.set_value(init_data.common, &self.data, value);
 	}
 
-	fn base(&mut self) -> &mut ComponentBase {
+	fn base(&self) -> &ComponentBase {
+		&self.base
+	}
+
+	fn base_mut(&mut self) -> &mut ComponentBase {
 		&mut self.base
 	}
 }
@@ -187,17 +192,15 @@ impl State {
 	}
 
 	fn set_value(&mut self, common: &mut CallbackDataCommon, data: &Data, value: f32) {
-		//common.call_on_widget(data.slider_handle_id, |_div: &mut Div| {});
-
 		let before = self.values.value;
 		self.values.set_value(value);
 
 		let changed = self.values.value != before;
-		let mut style = common.state.tree.style(data.slider_handle_node).unwrap().clone();
+		let mut style = common.state.tree.style(data.slider_handle_node_id).unwrap().clone();
 		conf_handle_style(&self.values, data.slider_body_node, &mut style, &common.state.tree);
-		common.alterables.mark_dirty(data.slider_handle_node);
+		common.alterables.mark_dirty(data.slider_handle_node_id);
 		common.alterables.mark_redraw();
-		common.alterables.set_style(data.slider_handle_node, style);
+		common.alterables.set_style(data.slider_handle.id, style);
 
 		if let Some(mut label) = common.state.widgets.get_as::<WidgetLabel>(data.slider_text_id) {
 			Self::update_text(common, &mut label, self.values.value);
@@ -401,9 +404,10 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	};
 
 	// invisible outer handle body
-	let (slider_handle, slider_handle_node) = ess
-		.layout
-		.add_child(body_id, WidgetDiv::create(), slider_handle_style)?;
+	let (slider_handle, slider_handle_node_id) =
+		ess
+			.layout
+			.add_child(body_id, WidgetDiv::create(), slider_handle_style)?;
 
 	let (slider_handle_rect, _) = ess.layout.add_child(
 		slider_handle.id,
@@ -452,15 +456,17 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 
 	let data = Rc::new(Data {
 		body: body_id,
-		slider_handle_node,
+		slider_handle,
 		slider_handle_rect_id: slider_handle_rect.id,
 		slider_body_node,
+		slider_handle_node_id,
 		slider_text_id: slider_text.id,
 	});
 
 	let state = Rc::new(RefCell::new(state));
 
 	let base = ComponentBase {
+		id: root.id,
 		lhandles: {
 			let mut widget = ess.layout.state.widgets.get(body_id).unwrap().state();
 			vec![
@@ -476,6 +482,6 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 
 	let slider = Rc::new(ComponentSlider { base, data, state });
 
-	ess.layout.defer_component_init(Component(slider.clone()));
+	ess.layout.defer_component_refresh(Component(slider.clone()));
 	Ok((root, slider))
 }

@@ -7,7 +7,7 @@ use std::{
 
 use crate::{
 	animation::Animations,
-	components::{Component, InitData},
+	components::{Component, RefreshData},
 	drawing::{self, ANSI_BOLD_CODE, ANSI_RESET_CODE, Boundary, push_scissor_stack, push_transform_stack},
 	event::{self, CallbackDataCommon, EventAlterables},
 	globals::WguiGlobals,
@@ -139,7 +139,8 @@ pub struct Layout {
 
 	pub tasks: LayoutTasks,
 
-	pub components_to_init: Vec<Component>,
+	components_to_refresh: Vec<Component>,
+
 	pub widgets_to_tick: Vec<WidgetID>,
 
 	// *Main root*
@@ -311,15 +312,19 @@ impl Layout {
 	}
 
 	fn process_pending_components(&mut self, alterables: &mut EventAlterables) {
-		for comp in &self.components_to_init {
+		for comp in &self.components_to_refresh {
 			let mut common = CallbackDataCommon {
 				state: &self.state,
 				alterables,
 			};
 
-			comp.0.init(&mut InitData { common: &mut common });
+			/* todo
+			let widget_id = comp.0.base().get_id();
+			 */
+
+			comp.0.refresh(&mut RefreshData { common: &mut common });
 		}
-		self.components_to_init.clear();
+		self.components_to_refresh.clear();
 	}
 
 	fn process_pending_widget_ticks(&mut self, alterables: &mut EventAlterables) {
@@ -333,8 +338,8 @@ impl Layout {
 		self.widgets_to_tick.clear();
 	}
 
-	pub fn defer_component_init(&mut self, component: Component) {
-		self.components_to_init.push(component);
+	pub fn defer_component_refresh(&mut self, component: Component) {
+		self.components_to_refresh.push(component);
 	}
 
 	/// Convenience function to avoid repeated `WidgetID` → `WidgetState` lookups.
@@ -552,7 +557,7 @@ impl Layout {
 			needs_redraw: true,
 			haptics_triggered: false,
 			animations: Animations::default(),
-			components_to_init: Vec::new(),
+			components_to_refresh: Vec::new(),
 			widgets_to_tick: Vec::new(),
 			tasks: LayoutTasks::new(),
 		})
@@ -680,9 +685,11 @@ impl Layout {
 			}
 		}
 
-		for request in alterables.style_set_requests {
-			if let Err(e) = self.state.tree.set_style(request.0, request.1) {
-				log::error!("failed to set style for taffy widget ID {:?}: {:?}", request.0, e);
+		for (widget_id, style) in alterables.style_set_requests {
+			if let Some(node_id) = self.state.nodes.get(widget_id) {
+				if let Err(e) = self.state.tree.set_style(*node_id, style) {
+					log::error!("failed to set style for taffy widget ID {node_id:?}: {e:?}");
+				}
 			}
 		}
 
@@ -763,6 +770,14 @@ impl LayoutState {
 		Vec2::new(layout.size.width, layout.size.height)
 	}
 
+	pub fn get_node_style(&self, id: NodeId) -> Option<&taffy::Style> {
+		let Ok(style) = self.tree.style(id) else {
+			return None;
+		};
+
+		Some(style)
+	}
+
 	pub fn get_widget_boundary(&self, id: WidgetID) -> Boundary {
 		let Some(node_id) = self.nodes.get(id) else {
 			return Boundary::default();
@@ -777,5 +792,9 @@ impl LayoutState {
 		};
 
 		self.get_node_size(*node_id)
+	}
+
+	pub fn get_widget_style(&self, id: WidgetID) -> Option<&taffy::Style> {
+		self.get_node_style(*self.nodes.get(id)?)
 	}
 }
