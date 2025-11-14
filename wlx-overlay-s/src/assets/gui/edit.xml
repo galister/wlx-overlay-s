@@ -6,20 +6,26 @@
     border="2" round="50%" padding="8" gradient="vertical" tooltip_side="bottom" />
 
   <template name="TopButton">
-    <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" border_color="#0044CC" color="#000A1C" color2="#000002">
-      <sprite width="48" height="48" src="${src}" _release="${release}" />
+    <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" sticky="${sticky}" border_color="#0044CC" color="#000A1C" color2="#000002">
+      <sprite id="${id}_sprite" width="48" height="48" src="${src}" _release="${release}" />
     </Button>
   </template>
 
   <template name="TopButtonDanger">
-    <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" border_color="#CC0000" color="#110000" color2="#020000">
+    <Button macro="button_style" tooltip="${tooltip}" _press="${press}" border_color="#CC0000" color="#110000" color2="#020000">
       <sprite width="48" height="48" src="${src}" _release="${release}" />
     </Button>
   </template>
 
   <template name="TopButtonFaded">
-    <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" border_color="#707070" color="#202020" color2="#010101">
+    <Button macro="button_style" tooltip="${tooltip}" _press="${press}" border_color="#707070" color="#202020" color2="#010101">
       <sprite width="48" height="48" src="${src}" _release="${release}" />
+    </Button>
+  </template>
+
+  <template name="PosButton">
+    <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" border_color="#0044CC" color="#000A1C" color2="#000002">
+      <sprite id="${id}_sprite" width="40" height="40" src="${src}" _release="${release}" />
     </Button>
   </template>
 
@@ -29,26 +35,55 @@
         <div flex_direction="column">
           <rectangle padding="16" gap="8" round="32" color="~color_bg" border="2" border_color="~color_accent" justify_content="center">
             <div flex_direction="column" gap="8">
-              <label align="center" translation="EDIT_MODE.HINT_POINT_WINDOW" />
               <div flex_direction="row" gap="4">
-                <TopButton id="lock" src="bar/lock_open.svg" tooltip="EDIT_MODE.LOCK_INTERACTION" kind="btn_primary" press="::EditModeToggleLock" />
-                <TopButton id="anchor" src="bar/anchor.svg" tooltip="EDIT_MODE.POSITIONING" kind="btn_primary" press="::EditModeToggleAnchor" />
-                <TopButton id="alpha" src="bar/fade.svg" tooltip="EDIT_MODE.OPACITY" kind="btn_primary" press="::EditModeToggleFade" />
-                <TopButton id="curve" src="bar/curve.svg" tooltip="EDIT_MODE.ADJUST_CURVATURE" kind="btn_primary" press="::EditModeToggleCurve" />
-                <TopButton id="move" src="bar/move-all.svg" tooltip="EDIT_MODE.MOVE_PRESS_AND_DRAG" kind="btn_primary" />
-                <TopButton id="resize" src="bar/resize.svg" tooltip="EDIT_MODE.RESIZE_PRESS_AND_DRAG" kind="btn_primary" />
-                <TopButtonDanger id="delete" src="bar/delete.svg" tooltip="EDIT_MODE.DELETE" kind="btn_danger" press="::EditModeDeletePress" release="::EditModeDeleteRelease" />
+                <TopButton sticky="1" id="top_lock" src="edit/lock_open.svg" tooltip="EDIT_MODE.LOCK_INTERACTION" press="::EditModeToggleLock" />
+                <TopButton sticky="0" id="top_pos" src="edit/anchor.svg" tooltip="EDIT_MODE.POSITIONING" press="::EditModeTab pos" />
+                <TopButton sticky="0" id="top_alpha" src="edit/fade.svg" tooltip="EDIT_MODE.OPACITY" press="::EditModeTab alpha" />
+                <TopButton sticky="0" id="top_curve" src="edit/curve.svg" tooltip="EDIT_MODE.ADJUST_CURVATURE" press="::EditModeTab curve" />
+                <TopButton sticky="0" id="top_move" src="edit/move-all.svg" tooltip="EDIT_MODE.MOVE_PRESS_AND_DRAG" />
+                <TopButton sticky="0" id="top_resize" src="edit/resize.svg" tooltip="EDIT_MODE.RESIZE_PRESS_AND_DRAG" />
+                <TopButtonDanger src="edit/delete.svg" tooltip="EDIT_MODE.DELETE" press="::EditModeDeletePress" release="::EditModeDeleteRelease" />
                 <div width="8" height="100%" />
-                <TopButtonFaded src="watch/edit.svg" tooltip="EDIT_MODE.LEAVE" kind="btn_faded" press="::EditToggle" />
+                <TopButtonFaded src="watch/edit.svg" tooltip="EDIT_MODE.LEAVE" press="::EditToggle" />
               </div>
-              <div padding="8" gap="8" justify_content="center" align_items="center">
-                <label translation="EDIT_MODE.OPACITY" />
-                <Slider id="alpha_slider" width="200" height="16" min_value="0.1" max_value="1" value="1" step="0.05" />
-                <CheckBox id="additive_box" translation="EDIT_MODE.BLENDING_ADDITIVE" tooltip="EDIT_MODE.ALPHA_BLEND_MODE" tooltip_side="bottom" />
+              <div id="tab_none" display="none">
+                <div height="100">
+                  <label align="center" translation="EDIT_MODE.HINT_POINT_WINDOW" />
+                </div>
               </div>
-              <div padding="8" gap="8" justify_content="center" align_items="center">
-                <label translation="EDIT_MODE.CURVATURE" />
-                <Slider id="curve_slider" width="250" height="16" min_value="0" max_value="0.5" value="0.15" step="0.01" />
+              <div id="tab_pos" display="none">
+                <div height="100" flex_direction="column">
+                  <div padding="8" gap="8" justify_content="center" align_items="center">
+                    <PosButton id="pos_static" src="edit/pin.svg" tooltip="EDIT_MODE.POS_STATIC" press="::EditModeSetPos static" />
+                    <PosButton id="pos_anchored" src="edit/anchor.svg" tooltip="EDIT_MODE.POS_ANCHORED" press="::EditModeSetPos anchored" />
+                    <PosButton id="pos_floating" src="edit/float.svg" tooltip="EDIT_MODE.POS_FLOATING" press="::EditModeSetPos floating" />
+                    <PosButton id="pos_hmd" src="watch/hmd.svg" tooltip="EDIT_MODE.POS_HMD" press="::EditModeSetPos hmd" />
+                    <PosButton id="pos_hand_l" src="watch/controller_l.svg" tooltip="EDIT_MODE.POS_HAND_L" press="::EditModeSetPos hand_l" />
+                    <PosButton id="pos_hand_r" src="watch/controller_r.svg" tooltip="EDIT_MODE.POS_HAND_R" press="::EditModeSetPos hand_r" />
+                  </div>
+                  <div padding="8" gap="8" justify_content="center" align_items="center">
+                    <label translation="EDIT_MODE.INTERPOLATION" />
+                    <Slider id="lerp_slider" width="250" height="16" min_value="0.05" max_value="1" value="1" step="0.05" />
+                  </div>
+                </div>
+              </div>
+              <div id="tab_alpha" display="none">
+                <div height="100" padding="8" gap="8" justify_content="center" align_items="center">
+                  <label translation="EDIT_MODE.OPACITY" />
+                  <Slider id="alpha_slider" width="200" height="16" min_value="0.1" max_value="1" value="1" step="0.05" />
+                  <CheckBox id="additive_box" translation="EDIT_MODE.BLENDING_ADDITIVE" tooltip="EDIT_MODE.ALPHA_BLEND_MODE" tooltip_side="bottom" />
+                </div>
+              </div>
+              <div id="tab_curve" display="none">
+                <div height="100" flex_direction="column">
+                  <div padding="8" gap="8" justify_content="center" align_items="center">
+                    <label translation="EDIT_MODE.CURVATURE_EXPLANATION" />
+                  </div>
+                  <div padding="8" gap="8" justify_content="center" align_items="center">
+                    <label translation="EDIT_MODE.CURVATURE" />
+                    <Slider id="curve_slider" width="250" height="16" min_value="0" max_value="0.5" value="0.15" step="0.01" />
+                  </div>
+                </div>
               </div>
             </div>
           </rectangle>

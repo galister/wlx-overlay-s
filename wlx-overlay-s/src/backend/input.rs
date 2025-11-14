@@ -657,9 +657,8 @@ impl Pointer {
                 Positioning::FollowHeadPaused { lerp } => Positioning::FollowHead { lerp },
                 x => x,
             };
-
             pointer.interaction.grabbed = None;
-            overlay.config.save_transform(app);
+            overlay_state.save_transform(app);
 
             // Hide anchor
             app.tasks.enqueue(TaskType::Overlay(

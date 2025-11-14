@@ -8,8 +8,8 @@ use crate::{
 	globals::Globals,
 	layout::WidgetID,
 	renderer_vk::text::{
-		DEFAULT_METRICS,
 		custom_glyph::{CustomGlyph, CustomGlyphData},
+		DEFAULT_METRICS,
 	},
 };
 
@@ -23,7 +23,7 @@ pub struct WidgetSpriteParams {
 
 #[derive(Debug, Default)]
 pub struct WidgetSprite {
-	params: WidgetSpriteParams,
+	pub params: WidgetSpriteParams,
 	id: WidgetID,
 }
 

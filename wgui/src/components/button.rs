@@ -1,6 +1,6 @@
 use crate::{
 	animation::{Animation, AnimationEasing},
-	components::{self, Component, ComponentBase, ComponentTrait, InitData, tooltip::ComponentTooltip},
+	components::{self, tooltip::ComponentTooltip, Component, ComponentBase, ComponentTrait, InitData},
 	drawing::{self, Boundary, Color},
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerID, EventListenerKind},
 	i18n::Translation,
@@ -10,15 +10,15 @@ use crate::{
 		util::centered_matrix,
 	},
 	widget::{
-		ConstructEssentials, EventResult, WidgetData,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
+		ConstructEssentials, EventResult, WidgetData,
 	},
 };
 use glam::{Mat4, Vec3};
 use std::{cell::RefCell, rc::Rc};
-use taffy::{AlignItems, JustifyContent, prelude::length};
+use taffy::{prelude::length, AlignItems, JustifyContent};
 
 pub struct Params {
 	pub text: Option<Translation>, // if unset, label will not be populated
@@ -31,6 +31,10 @@ pub struct Params {
 	pub style: taffy::Style,
 	pub text_style: TextStyle,
 	pub tooltip: Option<components::tooltip::TooltipInfo>,
+	/// make this a toggle-style button that stays depressed
+	/// until "un-clicked". this is visual only.
+	/// set the initial state using `set_sticky_state`
+	pub sticky: bool,
 }
 
 impl Default for Params {
@@ -46,6 +50,7 @@ impl Default for Params {
 			style: Default::default(),
 			text_style: TextStyle::default(),
 			tooltip: None,
+			sticky: false,
 		}
 	}
 }
@@ -56,6 +61,7 @@ pub type ButtonClickCallback = Box<dyn Fn(&mut CallbackDataCommon, ButtonClickEv
 struct State {
 	hovered: bool,
 	down: bool,
+	sticky_down: bool,
 	on_click: Option<ButtonClickCallback>,
 	active_tooltip: Option<Rc<ComponentTooltip>>,
 }
@@ -67,6 +73,7 @@ struct Data {
 	initial_hover_border_color: drawing::Color,
 	id_label: WidgetID, // Label
 	id_rect: WidgetID,  // Rectangle
+	sticky: bool,
 }
 
 pub struct ComponentButton {
@@ -95,6 +102,45 @@ impl ComponentButton {
 	pub fn on_click(&self, func: ButtonClickCallback) {
 		self.state.borrow_mut().on_click = Some(func);
 	}
+
+	/// Sets the sticky state of the button.
+	///
+	/// On buttons where sticky is false, sticky state won't automatically clear.
+	pub fn set_sticky_state(&self, common: &mut CallbackDataCommon, sticky_down: bool) {
+		let mut state = self.state.borrow_mut();
+
+		// only play anim if we're not changing the border highlight
+		let dirty = !state.hovered && !state.down && state.sticky_down != sticky_down;
+
+		state.sticky_down = sticky_down;
+
+		if !dirty {
+			return;
+		}
+
+		let data = self.data.clone();
+		let anim = Animation::new(
+			self.data.id_rect,
+			if sticky_down { 5 } else { 10 },
+			AnimationEasing::OutCubic,
+			Box::new(move |common, anim_data| {
+				let rect = anim_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
+				let mult = if sticky_down {
+					anim_data.pos
+				} else {
+					1.0 - anim_data.pos
+				};
+
+				let bgcolor = data.initial_color.lerp(&data.initial_hover_color, mult * 0.5);
+				rect.params.color = bgcolor;
+				rect.params.color2 = get_color2(&bgcolor);
+				rect.params.border_color = data.initial_border_color.lerp(&data.initial_hover_border_color, mult);
+				common.alterables.mark_redraw();
+			}),
+		);
+
+		common.alterables.animations.push(anim);
+	}
 }
 
 fn get_color2(color: &drawing::Color) -> drawing::Color {
@@ -108,9 +154,20 @@ fn anim_hover(
 	widget_boundary: Boundary,
 	pos: f32,
 	pressed: bool,
+	sticky_down: bool,
 ) {
 	let mult = pos * if pressed { 1.5 } else { 1.0 };
-	let bgcolor = data.initial_color.lerp(&data.initial_hover_color, mult);
+
+	let (init_border_color, init_color) = if sticky_down {
+		(
+			data.initial_hover_border_color,
+			data.initial_color.lerp(&data.initial_hover_color, 0.5),
+		)
+	} else {
+		(data.initial_border_color, data.initial_color)
+	};
+
+	let bgcolor = init_color.lerp(&data.initial_hover_color, mult);
 
 	//let t = Mat4::from_scale(Vec3::splat(1.0 + pos * 0.5)) * Mat4::from_rotation_z(pos * 1.0);
 
@@ -119,7 +176,8 @@ fn anim_hover(
 
 	rect.params.color = bgcolor;
 	rect.params.color2 = get_color2(&bgcolor);
-	rect.params.border_color = data.initial_border_color.lerp(&data.initial_hover_border_color, mult);
+
+	rect.params.border_color = init_border_color.lerp(&data.initial_hover_border_color, mult);
 }
 
 fn anim_hover_create(data: Rc<Data>, state: Rc<RefCell<State>>, widget_id: WidgetID, fade_in: bool) -> Animation {
@@ -129,13 +187,15 @@ fn anim_hover_create(data: Rc<Data>, state: Rc<RefCell<State>>, widget_id: Widge
 		AnimationEasing::OutCubic,
 		Box::new(move |common, anim_data| {
 			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
+			let state = state.borrow();
 			anim_hover(
 				rect,
 				anim_data.data,
 				&data,
 				anim_data.widget_boundary,
 				if fade_in { anim_data.pos } else { 1.0 - anim_data.pos },
-				state.borrow().down,
+				state.down,
+				state.sticky_down,
 			);
 			common.alterables.mark_redraw();
 		}),
@@ -219,6 +279,7 @@ fn register_event_mouse_press(
 				common.state.get_node_boundary(event_data.node_id),
 				1.0,
 				true,
+				state.sticky_down,
 			);
 
 			common.alterables.trigger_haptics();
@@ -243,6 +304,12 @@ fn register_event_mouse_release(
 		EventListenerKind::MouseRelease,
 		Box::new(move |common, event_data, (), ()| {
 			let rect = event_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
+			let mut state = state.borrow_mut();
+
+			if data.sticky {
+				state.sticky_down = !state.sticky_down;
+			}
+
 			anim_hover(
 				rect,
 				event_data.widget_data,
@@ -250,12 +317,12 @@ fn register_event_mouse_release(
 				common.state.get_node_boundary(event_data.node_id),
 				1.0,
 				false,
+				state.sticky_down,
 			);
 
 			common.alterables.trigger_haptics();
 			common.alterables.mark_redraw();
 
-			let mut state = state.borrow_mut();
 			if state.down {
 				state.down = false;
 
@@ -357,6 +424,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		initial_border_color: border_color,
 		initial_hover_color: hover_color,
 		initial_hover_border_color: hover_border_color,
+		sticky: params.sticky,
 	});
 
 	let state = Rc::new(RefCell::new(State {
@@ -364,6 +432,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		hovered: false,
 		on_click: None,
 		active_tooltip: None,
+		sticky_down: false,
 	}));
 
 	let base = ComponentBase {

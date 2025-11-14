@@ -93,7 +93,6 @@ pub struct OverlayWindowConfig {
     pub dirty: bool,
     /// True if the window is showing the edit overlay
     pub editing: bool,
-    pub saved_transform: Option<Affine3A>,
 }
 
 impl OverlayWindowConfig {
@@ -106,7 +105,6 @@ impl OverlayWindowConfig {
                 ..OverlayWindowState::default()
             },
             active_state: None,
-            saved_transform: None,
             z_order: 0,
             keyboard_focus: None,
             show_on_spawn: false,
@@ -149,7 +147,9 @@ impl OverlayWindowConfig {
             return;
         };
 
-        let cur_transform = self.saved_transform.unwrap_or(self.default_state.transform);
+        let cur_transform = state
+            .saved_transform
+            .unwrap_or(self.default_state.transform);
 
         let (target_transform, lerp) = match state.positioning {
             Positioning::FollowHead { lerp } => (app.input_state.hmd * cur_transform, lerp),
@@ -185,34 +185,14 @@ impl OverlayWindowConfig {
     }
 
     /// Returns true if changes were saved.
-    pub fn save_transform(&mut self, app: &mut AppState) -> bool {
-        let Some(state) = self.active_state.as_mut() else {
-            return false;
-        };
-
-        let parent_transform = match state.positioning {
-            Positioning::Floating => snap_upright(app.input_state.hmd, Vec3A::Y),
-            Positioning::FollowHead { .. } | Positioning::FollowHeadPaused { .. } => {
-                app.input_state.hmd
-            }
-            Positioning::FollowHand { hand, .. } | Positioning::FollowHandPaused { hand, .. } => {
-                app.input_state.pointers[hand as usize].pose
-            }
-            Positioning::Anchored => snap_upright(app.anchor, Vec3A::Y),
-            Positioning::Static => return false,
-        };
-
-        self.saved_transform = Some(parent_transform.inverse() * state.transform);
-
-        true
-    }
-
     pub fn reset(&mut self, app: &mut AppState, hard_reset: bool) {
         let Some(state) = self.active_state.as_mut() else {
             return;
         };
 
-        let cur_transform = self.saved_transform.unwrap_or(self.default_state.transform);
+        let cur_transform = state
+            .saved_transform
+            .unwrap_or(self.default_state.transform);
 
         let parent_transform = match state.positioning {
             Positioning::Floating
@@ -226,7 +206,7 @@ impl OverlayWindowConfig {
         };
 
         if hard_reset {
-            self.saved_transform = None;
+            state.saved_transform = None;
         }
 
         state.transform = parent_transform * cur_transform;
@@ -294,6 +274,7 @@ pub struct OverlayWindowState {
     pub positioning: Positioning,
     pub curvature: Option<f32>,
     pub additive: bool,
+    pub saved_transform: Option<Affine3A>,
 }
 
 impl Default for OverlayWindowState {
@@ -306,6 +287,27 @@ impl Default for OverlayWindowState {
             curvature: None,
             transform: Affine3A::IDENTITY,
             additive: false,
+            saved_transform: None,
         }
+    }
+}
+
+impl OverlayWindowState {
+    pub fn save_transform(&mut self, app: &mut AppState) -> bool {
+        let parent_transform = match self.positioning {
+            Positioning::Floating => snap_upright(app.input_state.hmd, Vec3A::Y),
+            Positioning::FollowHead { .. } | Positioning::FollowHeadPaused { .. } => {
+                app.input_state.hmd
+            }
+            Positioning::FollowHand { hand, .. } | Positioning::FollowHandPaused { hand, .. } => {
+                app.input_state.pointers[hand as usize].pose
+            }
+            Positioning::Anchored => snap_upright(app.anchor, Vec3A::Y),
+            Positioning::Static => return false,
+        };
+
+        self.saved_transform = Some(parent_transform.inverse() * self.transform);
+
+        true
     }
 }

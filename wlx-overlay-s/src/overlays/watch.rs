@@ -9,8 +9,8 @@ use crate::{
     },
     state::AppState,
     windowing::{
-        Z_ORDER_WATCH,
         window::{OverlayWindowConfig, OverlayWindowData, OverlayWindowState, Positioning},
+        Z_ORDER_WATCH,
     },
 };
 

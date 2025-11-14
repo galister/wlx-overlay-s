@@ -1,29 +1,28 @@
 use std::{cell::RefCell, rc::Rc};
 
 use button::setup_custom_button;
-use glam::{Affine2, Vec2, vec2};
+use glam::{vec2, Affine2, Vec2};
 use label::setup_custom_label;
 use wgui::{
     assets::AssetPath,
-    components::ComponentTrait,
     drawing,
     event::{
-        CallbackDataCommon, Event as WguiEvent, EventAlterables, EventCallback, EventListenerID,
-        EventListenerKind, InternalStateChangeEvent, MouseButtonIndex, MouseDownEvent,
-        MouseLeaveEvent, MouseMotionEvent, MouseUpEvent, MouseWheelEvent,
+        Event as WguiEvent, EventCallback, EventListenerID, EventListenerKind,
+        InternalStateChangeEvent, MouseButtonIndex, MouseDownEvent, MouseLeaveEvent,
+        MouseMotionEvent, MouseUpEvent, MouseWheelEvent,
     },
     gfx::cmd::WGfxClearMode,
     layout::{Layout, LayoutParams, WidgetID},
     parser::{CustomAttribsInfoOwned, ParserState},
     renderer_vk::context::Context as WguiContext,
-    widget::{EventResult, label::WidgetLabel, rectangle::WidgetRectangle},
+    widget::{label::WidgetLabel, rectangle::WidgetRectangle, EventResult},
 };
 
 use crate::{
     backend::input::{Haptics, HoverResult, PointerHit, PointerMode},
     state::AppState,
     subsystem::hid::WheelDelta,
-    windowing::backend::{FrameMeta, OverlayBackend, RenderResources, ShouldRender, ui_transform},
+    windowing::backend::{ui_transform, FrameMeta, OverlayBackend, RenderResources, ShouldRender},
 };
 
 use super::{timer::GuiTimer, timestep::Timestep};
@@ -210,22 +209,6 @@ impl<S: 'static> GuiPanel<S> {
         callback: EventCallback<AppState, S>,
     ) -> Option<EventListenerID> {
         self.layout.add_event_listener(widget_id, kind, callback)
-    }
-
-    pub fn component_make_call<C: ComponentTrait>(
-        &mut self,
-        component: Rc<C>,
-        run: Box<dyn Fn(Rc<C>, &mut CallbackDataCommon)>,
-    ) -> anyhow::Result<()> {
-        let mut alterables = EventAlterables::default();
-        let mut common = CallbackDataCommon {
-            state: &self.layout.state,
-            alterables: &mut alterables,
-        };
-
-        run(component, &mut common);
-
-        self.layout.process_alterables(alterables)
     }
 }
 

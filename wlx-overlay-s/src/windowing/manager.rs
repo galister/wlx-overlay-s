@@ -10,10 +10,10 @@ use crate::{
     },
     state::AppState,
     windowing::{
-        OverlayID, OverlaySelector,
         set::{OverlayWindowSet, SerializedWindowSet},
         snap_upright,
         window::OverlayWindowData,
+        OverlayID, OverlaySelector,
     },
 };
 
@@ -288,7 +288,7 @@ impl<T> OverlayWindowManager<T> {
             ws.overlays.clear();
             for (id, data) in self.overlays.iter_mut().filter(|(_, d)| !d.config.global) {
                 if let Some(mut state) = data.config.active_state.take() {
-                    if let Some(transform) = data.config.saved_transform.take() {
+                    if let Some(transform) = state.saved_transform {
                         state.transform = transform;
                     } else {
                         state.transform = Affine3A::ZERO;
@@ -309,7 +309,7 @@ impl<T> OverlayWindowManager<T> {
             for (id, data) in self.overlays.iter_mut().filter(|(_, d)| !d.config.global) {
                 if let Some(mut state) = ws.overlays.remove(id) {
                     if state.transform.x_axis.length_squared() > f32::EPSILON {
-                        data.config.saved_transform = Some(state.transform);
+                        state.saved_transform = Some(state.transform);
                     }
                     state.transform = Affine3A::IDENTITY;
                     log::debug!("{}: ws{} → active_state", data.config.name, new_set);

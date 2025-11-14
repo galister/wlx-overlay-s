@@ -83,7 +83,7 @@ impl TaskContainer {
         }
     }
 
-    pub fn transfer_from(&mut self, other: &mut TaskContainer) {
+    pub fn transfer_from(&mut self, other: &mut Self) {
         self.tasks.append(&mut other.tasks);
     }
 

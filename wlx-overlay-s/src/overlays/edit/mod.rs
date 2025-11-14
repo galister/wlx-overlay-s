@@ -6,15 +6,14 @@ use std::{
     time::{Duration, Instant},
 };
 
-use glam::{vec2, FloatExt, UVec2};
+use glam::vec2;
 use slotmap::Key;
 use wgui::{
-    animation::{Animation, AnimationEasing},
     components::{checkbox::ComponentCheckbox, slider::ComponentSlider},
-    event::EventCallback,
-    layout::{Layout, WidgetID},
+    event::{CallbackDataCommon, EventAlterables, EventCallback},
+    layout::Layout,
     parser::{CustomAttribsInfoOwned, Fetchable},
-    widget::{rectangle::WidgetRectangle, EventResult},
+    widget::EventResult,
 };
 
 #[cfg(feature = "wayvr")]
@@ -22,14 +21,21 @@ use crate::{backend::task::TaskType, windowing::OverlaySelector};
 use crate::{
     backend::{input::HoverResult, task::TaskContainer},
     gui::panel::{button::BUTTON_EVENTS, GuiPanel, NewGuiPanelParams},
+    overlays::edit::{
+        lock::InteractLockHandler, pos::PositioningHandler, tab::ButtonPaneTabSwitcher,
+    },
     state::AppState,
     subsystem::hid::WheelDelta,
     windowing::{
         backend::{DummyBackend, OverlayBackend, RenderResources, ShouldRender},
-        window::{OverlayWindowConfig, Positioning},
+        window::OverlayWindowConfig,
         OverlayID,
     },
 };
+
+mod lock;
+mod pos;
+mod tab;
 
 struct LongPressButtonState {
     pressed: Instant,
@@ -38,12 +44,10 @@ struct LongPressButtonState {
 struct EditModeState {
     tasks: Rc<RefCell<TaskContainer>>,
     id: Rc<RefCell<OverlayID>>,
-    interact_lock: bool,
-    positioning: Positioning,
     delete: LongPressButtonState,
-    rect_id: WidgetID,
-    rect_color: wgui::drawing::Color,
-    border_color: wgui::drawing::Color,
+    tabs: ButtonPaneTabSwitcher,
+    lock: InteractLockHandler,
+    pos: PositioningHandler,
 }
 
 type EditModeWrapPanel = GuiPanel<EditModeState>;
@@ -65,22 +69,14 @@ impl EditWrapperManager {
             return Ok(());
         }
 
-        let Some(meta) = owc.backend.frame_meta() else {
-            log::error!("META NULL");
-            return Ok(());
-        };
-
         log::debug!("EditMode wrap on {}", owc.name);
         let inner = mem::replace(&mut owc.backend, Box::new(DummyBackend {}));
         let mut panel = self.panel_pool.pop();
         if panel.is_none() {
-            panel = Some(make_edit_panel(
-                app,
-                UVec2::new(meta.extent[0], meta.extent[1]),
-            )?);
+            panel = Some(make_edit_panel(app)?);
         }
         let mut panel = panel.unwrap();
-        panel_new_assignment(&mut panel, id, owc, app)?;
+        reset_panel(&mut panel, id, owc)?;
 
         owc.backend = Box::new(EditModeBackendWrapper {
             inner: ManuallyDrop::new(inner),
@@ -214,27 +210,16 @@ impl OverlayBackend for EditModeBackendWrapper {
     }
 }
 
-fn make_edit_panel(
-    app: &mut AppState,
-    overlay_resolution: UVec2,
-) -> anyhow::Result<EditModeWrapPanel> {
-    log::error!(
-        "overlay res {} {}",
-        overlay_resolution.x,
-        overlay_resolution.y
-    );
-
+fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
     let state = EditModeState {
         id: Rc::new(RefCell::new(OverlayID::null())),
-        interact_lock: false,
-        positioning: Positioning::Static,
         tasks: Rc::new(RefCell::new(TaskContainer::new())),
         delete: LongPressButtonState {
             pressed: Instant::now(),
         },
-        rect_id: WidgetID::null(),
-        rect_color: wgui::drawing::Color::default(),
-        border_color: wgui::drawing::Color::default(),
+        tabs: ButtonPaneTabSwitcher::default(),
+        lock: InteractLockHandler::default(),
+        pos: PositioningHandler::default(),
     };
 
     let on_custom_attrib: Box<dyn Fn(&mut Layout, &CustomAttribsInfoOwned, &AppState)> =
@@ -251,58 +236,27 @@ fn make_edit_panel(
 
                 let callback: EventCallback<AppState, EditModeState> = match command {
                     "::EditModeToggleLock" => Box::new(move |common, _data, app, state| {
-                        state.interact_lock = !state.interact_lock;
-
-                        let defaults = app.wgui_globals.get().defaults.clone();
-                        let rect_color = state.rect_color.clone();
-                        let border_color = state.border_color.clone();
-
-                        if state.interact_lock {
-                            common.alterables.animate(Animation::new(
-                                state.rect_id,
-                                10,
-                                AnimationEasing::OutBack,
-                                Box::new(move |common, data| {
-                                    let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
-                                    set_anim_color(
-                                        rect,
-                                        data.pos * 0.2,
-                                        rect_color,
-                                        border_color,
-                                        defaults.danger_color,
-                                    );
-                                    common.alterables.mark_redraw();
-                                }),
-                            ));
-                        } else {
-                            common.alterables.animate(Animation::new(
-                                state.rect_id,
-                                10,
-                                AnimationEasing::OutQuad,
-                                Box::new(move |common, data| {
-                                    let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
-                                    set_anim_color(
-                                        rect,
-                                        0.2 - (data.pos * 0.2),
-                                        rect_color,
-                                        border_color,
-                                        defaults.danger_color,
-                                    );
-                                    common.alterables.mark_redraw();
-                                }),
-                            ));
-                        };
-
-                        let interactable = !state.interact_lock;
-                        app.tasks.enqueue(TaskType::Overlay(
-                            OverlaySelector::Id(state.id.borrow().clone()),
-                            Box::new(move |_app, owc| {
-                                let state = owc.active_state.as_mut().unwrap(); //want panic
-                                state.interactable = interactable;
-                            }),
-                        ));
+                        let sel = OverlaySelector::Id(*state.id.borrow());
+                        let task = state.lock.toggle(common, app);
+                        app.tasks.enqueue(TaskType::Overlay(sel, task));
                         Ok(EventResult::Consumed)
                     }),
+                    "::EditModeTab" => {
+                        let tab_name = args.next().unwrap().to_owned();
+                        Box::new(move |common, _data, _app, state| {
+                            state.tabs.tab_button_clicked(common, &tab_name);
+                            Ok(EventResult::Consumed)
+                        })
+                    }
+                    "::EditModeSetPos" => {
+                        let pos_key = args.next().unwrap().to_owned();
+                        Box::new(move |common, _data, app, state| {
+                            let sel = OverlaySelector::Id(*state.id.borrow());
+                            let task = state.pos.pos_button_clicked(common, &pos_key);
+                            app.tasks.enqueue(TaskType::Overlay(sel, task));
+                            Ok(EventResult::Consumed)
+                        })
+                    }
                     "::EditModeDeletePress" => Box::new(move |_common, _data, _app, state| {
                         state.delete.pressed = Instant::now();
                         // TODO: animate to light up button after 2s
@@ -312,9 +266,12 @@ fn make_edit_panel(
                         if state.delete.pressed.elapsed() > Duration::from_secs(2) {
                             return Ok(EventResult::Pass);
                         }
-                        app.tasks.enqueue(TaskType::DropOverlay(OverlaySelector::Id(
-                            state.id.borrow().clone(),
-                        )));
+                        app.tasks.enqueue(TaskType::Overlay(
+                            OverlaySelector::Id(*state.id.borrow()),
+                            Box::new(move |_app, owc| {
+                                owc.active_state = None;
+                            }),
+                        ));
                         Ok(EventResult::Consumed)
                     }),
                     _ => return,
@@ -336,7 +293,10 @@ fn make_edit_panel(
         },
     )?;
 
-    set_up_shadow(&mut panel)?;
+    panel.state.pos = PositioningHandler::new(&mut panel)?;
+    panel.state.lock = InteractLockHandler::new(&mut panel)?;
+    panel.state.tabs = ButtonPaneTabSwitcher::new(&mut panel)?;
+
     set_up_checkbox(&mut panel, "additive_box", cb_assign_additive)?;
     set_up_slider(&mut panel, "alpha_slider", cb_assign_alpha)?;
     set_up_slider(&mut panel, "curve_slider", cb_assign_curve)?;
@@ -344,7 +304,45 @@ fn make_edit_panel(
     Ok(panel)
 }
 
-fn cb_assign_alpha(_app: &mut AppState, owc: &mut OverlayWindowConfig, alpha: f32) {
+fn reset_panel(
+    panel: &mut EditModeWrapPanel,
+    id: OverlayID,
+    owc: &mut OverlayWindowConfig,
+) -> anyhow::Result<()> {
+    *panel.state.id.borrow_mut() = id;
+    let state = owc.active_state.as_mut().unwrap();
+
+    let mut alterables = EventAlterables::default();
+    let mut common = CallbackDataCommon {
+        alterables: &mut alterables,
+        state: &panel.layout.state,
+    };
+
+    let c = panel
+        .parser_state
+        .fetch_component_as::<ComponentSlider>("alpha_slider")?;
+    c.set_value(&mut common, state.alpha);
+
+    let c = panel
+        .parser_state
+        .fetch_component_as::<ComponentSlider>("curve_slider")?;
+    c.set_value(&mut common, state.curvature.unwrap_or(0.0));
+
+    let c = panel
+        .parser_state
+        .fetch_component_as::<ComponentCheckbox>("additive_box")?;
+    c.set_checked(&mut common, state.additive);
+
+    panel.state.pos.reset(&mut common, state.positioning);
+    panel.state.lock.reset(&mut common, state.interactable);
+    panel.state.tabs.reset(&mut common);
+
+    panel.layout.process_alterables(alterables)?;
+
+    Ok(())
+}
+
+const fn cb_assign_alpha(_app: &mut AppState, owc: &mut OverlayWindowConfig, alpha: f32) {
     owc.dirty = true;
     owc.active_state.as_mut().unwrap().alpha = alpha;
 }
@@ -358,7 +356,7 @@ fn cb_assign_curve(_app: &mut AppState, owc: &mut OverlayWindowConfig, curvature
     };
 }
 
-fn cb_assign_additive(_app: &mut AppState, owc: &mut OverlayWindowConfig, additive: bool) {
+const fn cb_assign_additive(_app: &mut AppState, owc: &mut OverlayWindowConfig, additive: bool) {
     owc.dirty = true;
     owc.active_state.as_mut().unwrap().additive = additive;
 }
@@ -378,7 +376,7 @@ fn set_up_slider(
         let e_value = e.value;
 
         tasks.enqueue(TaskType::Overlay(
-            OverlaySelector::Id(overlay_id.borrow().clone()),
+            OverlaySelector::Id(*overlay_id.borrow()),
             Box::new(move |app, owc| callback(app, owc, e_value)),
         ));
         Ok(())
@@ -402,100 +400,11 @@ fn set_up_checkbox(
         let e_checked = e.checked;
 
         tasks.enqueue(TaskType::Overlay(
-            OverlaySelector::Id(overlay_id.borrow().clone()),
+            OverlaySelector::Id(*overlay_id.borrow()),
             Box::new(move |app, owc| callback(app, owc, e_checked)),
         ));
         Ok(())
     }));
 
     Ok(())
-}
-
-fn set_up_shadow(panel: &mut EditModeWrapPanel) -> anyhow::Result<()> {
-    panel.state.rect_id = panel.parser_state.get_widget_id("shadow")?;
-    let shadow_rect = panel
-        .layout
-        .state
-        .widgets
-        .get_as::<WidgetRectangle>(panel.state.rect_id)
-        .ok_or_else(|| anyhow::anyhow!("Element with id=\"shadow\" must be a <rectangle>"))?;
-    panel.state.rect_color = shadow_rect.params.color;
-    panel.state.border_color = shadow_rect.params.border_color;
-    Ok(())
-}
-
-fn panel_new_assignment(
-    panel: &mut EditModeWrapPanel,
-    id: OverlayID,
-    owc: &mut OverlayWindowConfig,
-    app: &mut AppState,
-) -> anyhow::Result<()> {
-    *panel.state.id.borrow_mut() = id;
-    let active_state = owc.active_state.as_mut().unwrap();
-    panel.state.interact_lock = !active_state.interactable;
-    panel.state.positioning = active_state.positioning;
-
-    let alpha = active_state.alpha;
-    let c = panel
-        .parser_state
-        .fetch_component_as::<ComponentSlider>("alpha_slider")?;
-    panel.component_make_call(c, Box::new(move |c, cdc| c.set_value(cdc, alpha)))?;
-
-    let curve = active_state.curvature.unwrap_or(0.0);
-    let c = panel
-        .parser_state
-        .fetch_component_as::<ComponentSlider>("curve_slider")?;
-    panel.component_make_call(c, Box::new(move |c, cdc| c.set_value(cdc, curve)))?;
-
-    let additive = active_state.additive;
-    let c = panel
-        .parser_state
-        .fetch_component_as::<ComponentCheckbox>("additive_box")?;
-    panel.component_make_call(c, Box::new(move |c, cdc| c.set_checked(cdc, additive)))?;
-
-    let mut rect = panel
-        .layout
-        .state
-        .widgets
-        .get_as::<WidgetRectangle>(panel.state.rect_id)
-        .unwrap(); // can only fail if set_up_rect has issues
-
-    if active_state.interactable {
-        set_anim_color(
-            &mut rect,
-            0.0,
-            panel.state.rect_color,
-            panel.state.border_color,
-            app.wgui_globals.get().defaults.danger_color,
-        );
-    } else {
-        set_anim_color(
-            &mut rect,
-            0.2,
-            panel.state.rect_color,
-            panel.state.border_color,
-            app.wgui_globals.get().defaults.danger_color,
-        );
-    }
-
-    Ok(())
-}
-
-fn set_anim_color(
-    rect: &mut WidgetRectangle,
-    pos: f32,
-    rect_color: wgui::drawing::Color,
-    border_color: wgui::drawing::Color,
-    target_color: wgui::drawing::Color,
-) {
-    // rect to target_color
-    rect.params.color.r = rect_color.r.lerp(target_color.r, pos);
-    rect.params.color.g = rect_color.g.lerp(target_color.g, pos);
-    rect.params.color.b = rect_color.b.lerp(target_color.b, pos);
-
-    // border to white
-    rect.params.border_color.r = border_color.r.lerp(1.0, pos);
-    rect.params.border_color.g = border_color.g.lerp(1.0, pos);
-    rect.params.border_color.b = border_color.b.lerp(1.0, pos);
-    rect.params.border_color.a = border_color.a.lerp(1.0, pos);
 }
