@@ -73,7 +73,9 @@ impl ComponentTrait for ComponentTooltip {
 		&self.base
 	}
 
-	fn refresh(&self, _data: &mut RefreshData) {}
+	fn refresh(&self, _data: &mut RefreshData) {
+		// nothing to do
+	}
 }
 
 impl ComponentTooltip {}

@@ -1,6 +1,6 @@
 use std::{
 	cell::{RefCell, RefMut},
-	collections::VecDeque,
+	collections::{HashMap, VecDeque},
 	io::Write,
 	rc::{Rc, Weak},
 };
@@ -139,7 +139,8 @@ pub struct Layout {
 
 	pub tasks: LayoutTasks,
 
-	components_to_refresh: Vec<Component>,
+	components_to_refresh_once: Vec<Component>,
+	registered_components_to_refresh: HashMap<taffy::NodeId, Component>,
 
 	pub widgets_to_tick: Vec<WidgetID>,
 
@@ -281,6 +282,7 @@ impl Layout {
 		self.state.widgets.remove_single(widget_id);
 		self.state.nodes.remove(widget_id);
 		if let Some(node_id) = node_id {
+			self.registered_components_to_refresh.remove(&node_id);
 			let _ = self.state.tree.remove(node_id);
 		}
 	}
@@ -312,7 +314,7 @@ impl Layout {
 	}
 
 	fn process_pending_components(&mut self, alterables: &mut EventAlterables) {
-		for comp in &self.components_to_refresh {
+		for comp in &self.components_to_refresh_once {
 			let mut common = CallbackDataCommon {
 				state: &self.state,
 				alterables,
@@ -324,7 +326,7 @@ impl Layout {
 
 			comp.0.refresh(&mut RefreshData { common: &mut common });
 		}
-		self.components_to_refresh.clear();
+		self.components_to_refresh_once.clear();
 	}
 
 	fn process_pending_widget_ticks(&mut self, alterables: &mut EventAlterables) {
@@ -338,8 +340,20 @@ impl Layout {
 		self.widgets_to_tick.clear();
 	}
 
+	// call ComponentTrait::refresh() once
 	pub fn defer_component_refresh(&mut self, component: Component) {
-		self.components_to_refresh.push(component);
+		self.components_to_refresh_once.push(component);
+	}
+
+	// call ComponentTrait::refresh() every time the layout is dirty
+	pub fn register_component_refresh(&mut self, component: Component) {
+		let widget_id = component.0.base().get_id();
+		let Some(node_id) = self.state.nodes.get(widget_id) else {
+			debug_assert!(false);
+			return;
+		};
+
+		self.registered_components_to_refresh.insert(*node_id, component);
 	}
 
 	/// Convenience function to avoid repeated `WidgetID` → `WidgetState` lookups.
@@ -557,10 +571,26 @@ impl Layout {
 			needs_redraw: true,
 			haptics_triggered: false,
 			animations: Animations::default(),
-			components_to_refresh: Vec::new(),
+			components_to_refresh_once: Vec::new(),
+			registered_components_to_refresh: HashMap::new(),
 			widgets_to_tick: Vec::new(),
 			tasks: LayoutTasks::new(),
 		})
+	}
+
+	fn refresh_recursively(&self, node_id: taffy::NodeId, to_refresh: &mut Vec<Component>) {
+		// skip refreshing clean nodes
+		if !self.state.tree.dirty(node_id).unwrap() {
+			return;
+		}
+
+		if let Some(component) = self.registered_components_to_refresh.get(&node_id) {
+			to_refresh.push(component.clone());
+		}
+
+		for child_id in self.state.tree.child_ids(node_id) {
+			self.refresh_recursively(child_id, to_refresh);
+		}
 	}
 
 	fn try_recompute_layout(&mut self, size: Vec2) -> anyhow::Result<()> {
@@ -569,9 +599,19 @@ impl Layout {
 			return Ok(());
 		}
 
-		self.mark_redraw();
 		log::debug!("re-computing layout, size {}x{}", size.x, size.y);
+		self.mark_redraw();
 		self.prev_size = size;
+
+		let mut to_refresh = Vec::<Component>::new();
+		self.refresh_recursively(self.tree_root_node, &mut to_refresh);
+
+		if !to_refresh.is_empty() {
+			log::debug!("refreshing {} registered widgets", to_refresh.len());
+			for c in &to_refresh {
+				self.components_to_refresh_once.push(c.clone());
+			}
+		}
 
 		let globals = self.state.globals.get();
 
@@ -686,10 +726,10 @@ impl Layout {
 		}
 
 		for (widget_id, style) in alterables.style_set_requests {
-			if let Some(node_id) = self.state.nodes.get(widget_id) {
-				if let Err(e) = self.state.tree.set_style(*node_id, style) {
-					log::error!("failed to set style for taffy widget ID {node_id:?}: {e:?}");
-				}
+			if let Some(node_id) = self.state.nodes.get(widget_id)
+				&& let Err(e) = self.state.tree.set_style(*node_id, style)
+			{
+				log::error!("failed to set style for taffy widget ID {node_id:?}: {e:?}");
 			}
 		}
 

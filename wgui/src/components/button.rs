@@ -91,7 +91,9 @@ impl ComponentTrait for ComponentButton {
 		&mut self.base
 	}
 
-	fn refresh(&self, _data: &mut RefreshData) {}
+	fn refresh(&self, _data: &mut RefreshData) {
+		// nothing to do
+	}
 }
 
 impl ComponentButton {

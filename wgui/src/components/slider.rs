@@ -142,15 +142,24 @@ fn get_width(slider_body_node: taffy::NodeId, tree: &taffy::tree::TaffyTree<Widg
 fn conf_handle_style(
 	values: &ValuesMinMax,
 	slider_body_node: taffy::NodeId,
-	slider_handle_style: &mut taffy::Style,
+	slider_handle_style: &taffy::Style,
 	tree: &taffy::tree::TaffyTree<WidgetID>,
-) {
+) -> Option<taffy::Style> {
 	let norm = values.to_normalized();
 
 	// convert normalized value to taffy percentage margin in percent
 	let width = get_width(slider_body_node, tree);
 	let percent_margin = (HANDLE_WIDTH / width) / 2.0;
-	slider_handle_style.margin.left = percent(percent_margin + norm * (1.0 - percent_margin * 2.0));
+
+	let new_percent = percent(percent_margin + norm * (1.0 - percent_margin * 2.0));
+
+	if slider_handle_style.margin.left == new_percent {
+		None // nothing changed
+	} else {
+		let mut new_style = slider_handle_style.clone();
+		new_style.margin.left = new_percent;
+		Some(new_style)
+	}
 }
 
 const PAD_PERCENT: f32 = 0.75;
@@ -196,11 +205,14 @@ impl State {
 		self.values.set_value(value);
 
 		let changed = self.values.value != before;
-		let mut style = common.state.tree.style(data.slider_handle_node_id).unwrap().clone();
-		conf_handle_style(&self.values, data.slider_body_node, &mut style, &common.state.tree);
+		let style = common.state.tree.style(data.slider_handle_node_id).unwrap();
+		let Some(new_style) = conf_handle_style(&self.values, data.slider_body_node, style, &common.state.tree) else {
+			return; //nothing changed visually
+		};
+
 		common.alterables.mark_dirty(data.slider_handle_node_id);
 		common.alterables.mark_redraw();
-		common.alterables.set_style(data.slider_handle.id, style);
+		common.alterables.set_style(data.slider_handle.id, new_style);
 
 		if let Some(mut label) = common.state.widgets.get_as::<WidgetLabel>(data.slider_text_id) {
 			Self::update_text(common, &mut label, self.values.value);
@@ -482,6 +494,6 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 
 	let slider = Rc::new(ComponentSlider { base, data, state });
 
-	ess.layout.defer_component_refresh(Component(slider.clone()));
+	ess.layout.register_component_refresh(Component(slider.clone()));
 	Ok((root, slider))
 }

@@ -11,8 +11,7 @@ use slotmap::Key;
 use wgui::{
     components::{checkbox::ComponentCheckbox, slider::ComponentSlider},
     event::{CallbackDataCommon, EventAlterables, EventCallback},
-    layout::Layout,
-    parser::{CustomAttribsInfoOwned, Fetchable},
+    parser::Fetchable,
     widget::EventResult,
 };
 
@@ -20,16 +19,16 @@ use wgui::{
 use crate::{backend::task::TaskType, windowing::OverlaySelector};
 use crate::{
     backend::{input::HoverResult, task::TaskContainer},
-    gui::panel::{button::BUTTON_EVENTS, GuiPanel, NewGuiPanelParams},
+    gui::panel::{GuiPanel, NewGuiPanelParams, OnCustomAttribFunc, button::BUTTON_EVENTS},
     overlays::edit::{
         lock::InteractLockHandler, pos::PositioningHandler, tab::ButtonPaneTabSwitcher,
     },
     state::AppState,
     subsystem::hid::WheelDelta,
     windowing::{
+        OverlayID,
         backend::{DummyBackend, OverlayBackend, RenderResources, ShouldRender},
         window::OverlayWindowConfig,
-        OverlayID,
     },
 };
 
@@ -222,65 +221,64 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
         pos: PositioningHandler::default(),
     };
 
-    let on_custom_attrib: Box<dyn Fn(&mut Layout, &CustomAttribsInfoOwned, &AppState)> =
-        Box::new(move |layout, attribs, _app| {
-            for (name, kind) in &BUTTON_EVENTS {
-                let Some(action) = attribs.get_value(name) else {
-                    continue;
-                };
+    let on_custom_attrib: OnCustomAttribFunc = Box::new(move |layout, attribs, _app| {
+        for (name, kind) in &BUTTON_EVENTS {
+            let Some(action) = attribs.get_value(name) else {
+                continue;
+            };
 
-                let mut args = action.split_whitespace();
-                let Some(command) = args.next() else {
-                    continue;
-                };
+            let mut args = action.split_whitespace();
+            let Some(command) = args.next() else {
+                continue;
+            };
 
-                let callback: EventCallback<AppState, EditModeState> = match command {
-                    "::EditModeToggleLock" => Box::new(move |common, _data, app, state| {
+            let callback: EventCallback<AppState, EditModeState> = match command {
+                "::EditModeToggleLock" => Box::new(move |common, _data, app, state| {
+                    let sel = OverlaySelector::Id(*state.id.borrow());
+                    let task = state.lock.toggle(common, app);
+                    app.tasks.enqueue(TaskType::Overlay(sel, task));
+                    Ok(EventResult::Consumed)
+                }),
+                "::EditModeTab" => {
+                    let tab_name = args.next().unwrap().to_owned();
+                    Box::new(move |common, _data, _app, state| {
+                        state.tabs.tab_button_clicked(common, &tab_name);
+                        Ok(EventResult::Consumed)
+                    })
+                }
+                "::EditModeSetPos" => {
+                    let pos_key = args.next().unwrap().to_owned();
+                    Box::new(move |common, _data, app, state| {
                         let sel = OverlaySelector::Id(*state.id.borrow());
-                        let task = state.lock.toggle(common, app);
+                        let task = state.pos.pos_button_clicked(common, &pos_key);
                         app.tasks.enqueue(TaskType::Overlay(sel, task));
                         Ok(EventResult::Consumed)
-                    }),
-                    "::EditModeTab" => {
-                        let tab_name = args.next().unwrap().to_owned();
-                        Box::new(move |common, _data, _app, state| {
-                            state.tabs.tab_button_clicked(common, &tab_name);
-                            Ok(EventResult::Consumed)
-                        })
+                    })
+                }
+                "::EditModeDeletePress" => Box::new(move |_common, _data, _app, state| {
+                    state.delete.pressed = Instant::now();
+                    // TODO: animate to light up button after 2s
+                    Ok(EventResult::Consumed)
+                }),
+                "::EditModeDeleteRelease" => Box::new(move |_common, _data, app, state| {
+                    if state.delete.pressed.elapsed() > Duration::from_secs(2) {
+                        return Ok(EventResult::Pass);
                     }
-                    "::EditModeSetPos" => {
-                        let pos_key = args.next().unwrap().to_owned();
-                        Box::new(move |common, _data, app, state| {
-                            let sel = OverlaySelector::Id(*state.id.borrow());
-                            let task = state.pos.pos_button_clicked(common, &pos_key);
-                            app.tasks.enqueue(TaskType::Overlay(sel, task));
-                            Ok(EventResult::Consumed)
-                        })
-                    }
-                    "::EditModeDeletePress" => Box::new(move |_common, _data, _app, state| {
-                        state.delete.pressed = Instant::now();
-                        // TODO: animate to light up button after 2s
-                        Ok(EventResult::Consumed)
-                    }),
-                    "::EditModeDeleteRelease" => Box::new(move |_common, _data, app, state| {
-                        if state.delete.pressed.elapsed() > Duration::from_secs(2) {
-                            return Ok(EventResult::Pass);
-                        }
-                        app.tasks.enqueue(TaskType::Overlay(
-                            OverlaySelector::Id(*state.id.borrow()),
-                            Box::new(move |_app, owc| {
-                                owc.active_state = None;
-                            }),
-                        ));
-                        Ok(EventResult::Consumed)
-                    }),
-                    _ => return,
-                };
+                    app.tasks.enqueue(TaskType::Overlay(
+                        OverlaySelector::Id(*state.id.borrow()),
+                        Box::new(move |_app, owc| {
+                            owc.active_state = None;
+                        }),
+                    ));
+                    Ok(EventResult::Consumed)
+                }),
+                _ => return,
+            };
 
-                let id = layout.add_event_listener(attribs.widget_id, *kind, callback);
-                log::debug!("Registered {action} on {:?} as {id:?}", attribs.widget_id);
-            }
-        });
+            let id = layout.add_event_listener(attribs.widget_id, *kind, callback);
+            log::debug!("Registered {action} on {:?} as {id:?}", attribs.widget_id);
+        }
+    });
 
     let mut panel = GuiPanel::new_from_template(
         app,

@@ -76,7 +76,9 @@ impl ComponentTrait for ComponentCheckbox {
 		&mut self.base
 	}
 
-	fn refresh(&self, _data: &mut RefreshData) {}
+	fn refresh(&self, _data: &mut RefreshData) {
+		// nothing to do
+	}
 }
 
 const COLOR_CHECKED: Color = Color::new(0.1, 0.5, 1.0, 1.0);
