@@ -16,8 +16,10 @@ pub enum Positioning {
     /// Stays in place, recenters relative to HMD
     #[default]
     Floating,
-    /// Stays in place, recenters relative to anchor
+    /// Stays in place, recenters relative to anchor. Follows anchor during anchor grab.
     Anchored,
+    /// Same as anchor but paused due to interaction
+    AnchoredPaused,
     /// Stays in place, no recentering
     Static,
     /// Following HMD
@@ -151,14 +153,16 @@ impl OverlayWindowConfig {
             .saved_transform
             .unwrap_or(self.default_state.transform);
 
-        let (target_transform, lerp) = match state.positioning {
-            Positioning::FollowHead { lerp } => (app.input_state.hmd * cur_transform, lerp),
-            Positioning::FollowHand { hand, lerp } => (
-                app.input_state.pointers[hand as usize].pose * cur_transform,
-                lerp,
-            ),
+        let (parent_transform, lerp) = match state.positioning {
+            Positioning::FollowHead { lerp } => (app.input_state.hmd, lerp),
+            Positioning::FollowHand { hand, lerp } => {
+                (app.input_state.pointers[hand as usize].pose, lerp)
+            }
+            Positioning::Anchored => (app.anchor, 1.0),
             _ => return,
         };
+
+        let target_transform = parent_transform * cur_transform;
 
         state.transform = match lerp {
             1.0 => target_transform,
@@ -201,7 +205,7 @@ impl OverlayWindowConfig {
             Positioning::FollowHand { hand, .. } | Positioning::FollowHandPaused { hand, .. } => {
                 app.input_state.pointers[hand as usize].pose
             }
-            Positioning::Anchored => app.anchor,
+            Positioning::Anchored | Positioning::AnchoredPaused => app.anchor,
             Positioning::Static => return,
         };
 
@@ -212,55 +216,49 @@ impl OverlayWindowConfig {
         state.transform = parent_transform * cur_transform;
 
         if state.grabbable && hard_reset {
-            self.realign(&app.input_state.hmd);
+            realign(&mut state.transform, &app.input_state.hmd);
         }
         self.dirty = true;
     }
+}
 
-    pub fn realign(&mut self, hmd: &Affine3A) {
-        let Some(state) = self.active_state.as_mut() else {
-            return;
-        };
+pub fn realign(transform: &mut Affine3A, hmd: &Affine3A) {
+    let to_hmd = hmd.translation - transform.translation;
+    let up_dir: Vec3A;
 
-        let to_hmd = hmd.translation - state.transform.translation;
-        let up_dir: Vec3A;
+    if hmd.x_axis.dot(Vec3A::Y).abs() > 0.2 {
+        // Snap upright
+        up_dir = hmd.y_axis;
+    } else {
+        let dot = to_hmd.normalize().dot(hmd.z_axis);
+        let z_dist = to_hmd.length();
+        let y_dist = (transform.translation.y - hmd.translation.y).abs();
+        let x_angle = (y_dist / z_dist).asin();
 
-        if hmd.x_axis.dot(Vec3A::Y).abs() > 0.2 {
-            // Snap upright
-            up_dir = hmd.y_axis;
+        if dot < -f32::EPSILON {
+            // facing down
+            let up_point = hmd.translation + z_dist / x_angle.cos() * Vec3A::Y;
+            up_dir = (up_point - transform.translation).normalize();
+        } else if dot > f32::EPSILON {
+            // facing up
+            let dn_point = hmd.translation + z_dist / x_angle.cos() * Vec3A::NEG_Y;
+            up_dir = (transform.translation - dn_point).normalize();
         } else {
-            let dot = to_hmd.normalize().dot(hmd.z_axis);
-            let z_dist = to_hmd.length();
-            let y_dist = (state.transform.translation.y - hmd.translation.y).abs();
-            let x_angle = (y_dist / z_dist).asin();
-
-            if dot < -f32::EPSILON {
-                // facing down
-                let up_point = hmd.translation + z_dist / x_angle.cos() * Vec3A::Y;
-                up_dir = (up_point - state.transform.translation).normalize();
-            } else if dot > f32::EPSILON {
-                // facing up
-                let dn_point = hmd.translation + z_dist / x_angle.cos() * Vec3A::NEG_Y;
-                up_dir = (state.transform.translation - dn_point).normalize();
-            } else {
-                // perfectly upright
-                up_dir = Vec3A::Y;
-            }
+            // perfectly upright
+            up_dir = Vec3A::Y;
         }
-
-        let scale = state.transform.x_axis.length();
-
-        let col_z = (state.transform.translation - hmd.translation).normalize();
-        let col_y = up_dir;
-        let col_x = col_y.cross(col_z);
-        let col_y = col_z.cross(col_x).normalize();
-        let col_x = col_x.normalize();
-
-        let rot = Mat3A::from_quat(Quat::from_axis_angle(Vec3::Y, PI));
-        state.transform.matrix3 = Mat3A::from_cols(col_x, col_y, col_z).mul_scalar(scale) * rot;
-
-        self.dirty = true;
     }
+
+    let scale = transform.x_axis.length();
+
+    let col_z = (transform.translation - hmd.translation).normalize();
+    let col_y = up_dir;
+    let col_x = col_y.cross(col_z);
+    let col_y = col_z.cross(col_x).normalize();
+    let col_x = col_x.normalize();
+
+    let rot = Mat3A::from_quat(Quat::from_axis_angle(Vec3::Y, PI));
+    transform.matrix3 = Mat3A::from_cols(col_x, col_y, col_z).mul_scalar(scale) * rot;
 }
 
 // Contains the window state for a given set
@@ -302,7 +300,9 @@ impl OverlayWindowState {
             Positioning::FollowHand { hand, .. } | Positioning::FollowHandPaused { hand, .. } => {
                 app.input_state.pointers[hand as usize].pose
             }
-            Positioning::Anchored => snap_upright(app.anchor, Vec3A::Y),
+            Positioning::Anchored | Positioning::AnchoredPaused => {
+                snap_upright(app.anchor, Vec3A::Y)
+            }
             Positioning::Static => return false,
         };
 

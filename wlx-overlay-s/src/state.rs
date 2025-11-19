@@ -42,6 +42,7 @@ pub struct AppState {
     pub input_state: InputState,
     pub screens: SmallVec<[ScreenMeta; 8]>,
     pub anchor: Affine3A,
+    pub anchor_grabbed: bool,
     pub toast_sound: &'static [u8],
 
     pub wgui_globals: WguiGlobals,
@@ -94,6 +95,7 @@ impl AppState {
             input_state: InputState::new(),
             screens: smallvec![],
             anchor: Affine3A::IDENTITY,
+            anchor_grabbed: false,
             toast_sound: toast_sound_wav,
             wgui_globals: WguiGlobals::new(
                 Box::new(gui::asset::GuiAsset {}),

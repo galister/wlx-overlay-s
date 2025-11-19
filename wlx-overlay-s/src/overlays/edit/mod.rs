@@ -19,16 +19,16 @@ use wgui::{
 use crate::{backend::task::TaskType, windowing::OverlaySelector};
 use crate::{
     backend::{input::HoverResult, task::TaskContainer},
-    gui::panel::{GuiPanel, NewGuiPanelParams, OnCustomAttribFunc, button::BUTTON_EVENTS},
+    gui::panel::{button::BUTTON_EVENTS, GuiPanel, NewGuiPanelParams, OnCustomAttribFunc},
     overlays::edit::{
         lock::InteractLockHandler, pos::PositioningHandler, tab::ButtonPaneTabSwitcher,
     },
     state::AppState,
     subsystem::hid::WheelDelta,
     windowing::{
-        OverlayID,
         backend::{DummyBackend, OverlayBackend, RenderResources, ShouldRender},
         window::OverlayWindowConfig,
+        OverlayID,
     },
 };
 

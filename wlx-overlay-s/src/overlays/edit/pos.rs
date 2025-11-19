@@ -131,7 +131,7 @@ fn key_to_pos(key: &str) -> Positioning {
 const fn pos_to_key(pos: Positioning) -> &'static str {
     match pos {
         Positioning::Static => "static",
-        Positioning::Anchored => "anchored",
+        Positioning::Anchored | Positioning::AnchoredPaused => "anchored",
         Positioning::Floating => "floating",
         Positioning::FollowHead { .. } | Positioning::FollowHeadPaused { .. } => "hmd",
         Positioning::FollowHand {

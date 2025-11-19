@@ -3,8 +3,8 @@ use std::sync::{Arc, LazyLock};
 
 use crate::gui::panel::GuiPanel;
 use crate::state::AppState;
-use crate::windowing::Z_ORDER_ANCHOR;
 use crate::windowing::window::{OverlayWindowConfig, OverlayWindowState, Positioning};
+use crate::windowing::Z_ORDER_ANCHOR;
 
 pub static ANCHOR_NAME: LazyLock<Arc<str>> = LazyLock::new(|| Arc::from("anchor"));
 
@@ -18,11 +18,11 @@ pub fn create_anchor(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> 
         default_state: OverlayWindowState {
             interactable: false,
             grabbable: false,
-            positioning: Positioning::Static,
+            positioning: Positioning::Anchored,
             transform: Affine3A::from_scale_rotation_translation(
                 Vec3::ONE * 0.1,
                 Quat::IDENTITY,
-                Vec3::NEG_Z * 0.5,
+                Vec3::ZERO, // Vec3::NEG_Z * 0.5,
             ),
             ..OverlayWindowState::default()
         },

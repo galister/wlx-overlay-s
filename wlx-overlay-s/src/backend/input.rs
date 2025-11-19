@@ -11,7 +11,7 @@ use crate::state::{AppSession, AppState};
 use crate::subsystem::hid::WheelDelta;
 use crate::subsystem::input::KeyboardFocus;
 use crate::windowing::manager::OverlayWindowManager;
-use crate::windowing::window::{OverlayWindowData, OverlayWindowState, Positioning};
+use crate::windowing::window::{realign, OverlayWindowData, OverlayWindowState, Positioning};
 use crate::windowing::{OverlayID, OverlaySelector};
 
 use super::task::{TaskContainer, TaskType};
@@ -274,8 +274,7 @@ struct RayHit {
 pub struct GrabData {
     pub offset: Vec3A,
     pub grabbed_id: OverlayID,
-    pub old_curvature: Option<f32>,
-    pub grab_all: bool,
+    pub grab_anchor: bool,
 }
 
 #[repr(u8)]
@@ -327,7 +326,7 @@ where
     let mut pointer = &mut app.input_state.pointers[idx];
     if let Some(grab_data) = pointer.interaction.grabbed {
         if let Some(grabbed) = overlays.mut_by_id(grab_data.grabbed_id) {
-            Pointer::handle_grabbed(idx, grabbed, app);
+            handle_grabbed(idx, grabbed, app);
         } else {
             log::warn!("Grabbed overlay {:?} does not exist", grab_data.grabbed_id);
             pointer.interaction.grabbed = None;
@@ -356,6 +355,8 @@ where
     }
 
     overlays.edit_overlay(hit.overlay, true, app);
+    let edit_mode = overlays.get_edit_mode();
+
     let Some(hovered) = overlays.mut_by_id(hit.overlay) else {
         log::warn!("Hit overlay {:?} does not exist", hit.overlay);
         return (0.0, None); // no hit
@@ -384,7 +385,7 @@ where
             &mut app.hid_provider.keyboard_focus,
             hovered.config.keyboard_focus,
         );
-        pointer.start_grab(hit.overlay, hovered_state, &mut app.tasks);
+        start_grab(idx, hit.overlay, hovered_state, app, edit_mode);
         log::debug!("Hand {}: grabbed {}", hit.pointer, hovered.config.name);
         return (
             hit.dist,
@@ -581,94 +582,137 @@ where
     (None, None)
 }
 
-impl Pointer {
-    fn start_grab(
-        &mut self,
-        id: OverlayID,
-        state: &mut OverlayWindowState,
-        tasks: &mut TaskContainer,
-    ) {
-        let offset = self
-            .pose
-            .inverse()
-            .transform_point3a(state.transform.translation);
+fn start_grab(
+    idx: usize,
+    id: OverlayID,
+    state: &mut OverlayWindowState,
+    app: &mut AppState,
+    edit_mode: bool,
+) {
+    let pointer = &mut app.input_state.pointers[idx];
 
-        self.interaction.grabbed = Some(GrabData {
-            offset,
-            grabbed_id: id,
-            old_curvature: state.curvature,
-            grab_all: matches!(self.interaction.mode, PointerMode::Right),
-        });
-        state.positioning = match state.positioning {
-            Positioning::FollowHand { hand, lerp } => Positioning::FollowHandPaused { hand, lerp },
-            Positioning::FollowHead { lerp } => Positioning::FollowHeadPaused { lerp },
-            x => x,
-        };
+    // Grab anchor if:
+    // - grabbed overlay is Anchored
+    // - not in editmode
+    // - grabbing with one hand. (grabbing with the 2nd hand will grab the individual overlay instead)
+    let grab_anchor =
+        !edit_mode && !app.anchor_grabbed && matches!(state.positioning, Positioning::Anchored);
 
-        // Show anchor
-        tasks.enqueue(TaskType::Overlay(
-            OverlaySelector::Name(ANCHOR_NAME.clone()),
-            Box::new(|app, o| {
-                o.activate_static(app.anchor * Affine3A::from_scale(Vec3::ONE * 0.1));
-            }),
-        ));
+    let relative_grab_point = if grab_anchor {
+        app.anchor.translation
+    } else {
+        state.transform.translation
+    };
+
+    let offset = pointer
+        .pose
+        .inverse()
+        .transform_point3a(relative_grab_point);
+
+    app.anchor_grabbed = grab_anchor;
+
+    pointer.interaction.grabbed = Some(GrabData {
+        offset,
+        grabbed_id: id,
+        grab_anchor,
+    });
+
+    state.positioning = match state.positioning {
+        Positioning::FollowHand { hand, lerp } => Positioning::FollowHandPaused { hand, lerp },
+        Positioning::FollowHead { lerp } => Positioning::FollowHeadPaused { lerp },
+        Positioning::Anchored if !grab_anchor => Positioning::AnchoredPaused,
+        x => x,
+    };
+
+    // Show anchor
+    app.tasks.enqueue(TaskType::Overlay(
+        OverlaySelector::Name(ANCHOR_NAME.clone()),
+        Box::new(|app, o| {
+            o.activate(app);
+        }),
+    ));
+}
+
+fn handle_scale(transform: &mut Affine3A, scroll_y: f32) {
+    let cur_scale = transform.x_axis.length();
+    if cur_scale < 0.1 && scroll_y > 0.0 {
+        return;
+    }
+    if cur_scale > 20. && scroll_y < 0.0 {
+        return;
     }
 
-    fn handle_grabbed<O>(idx: usize, overlay: &mut OverlayWindowData<O>, app: &mut AppState)
-    where
-        O: Default,
-    {
-        let Some(overlay_state) = overlay.config.active_state.as_mut() else {
-            return;
-        };
+    transform.matrix3 = transform
+        .matrix3
+        .mul_scalar(0.025f32.mul_add(-scroll_y, 1.0));
+}
 
-        let pointer = &mut app.input_state.pointers[idx];
-        if pointer.now.grab {
-            if let Some(grab_data) = pointer.interaction.grabbed.as_mut() {
-                if pointer.now.click {
-                    pointer.interaction.mode = PointerMode::Special;
-                    let cur_scale = overlay_state.transform.x_axis.length();
-                    if cur_scale < 0.1 && pointer.now.scroll_y > 0.0 {
-                        return;
-                    }
-                    if cur_scale > 20. && pointer.now.scroll_y < 0.0 {
-                        return;
-                    }
+fn handle_grabbed<O>(idx: usize, overlay: &mut OverlayWindowData<O>, app: &mut AppState)
+where
+    O: Default,
+{
+    let pointer = &mut app.input_state.pointers[idx];
+    let Some(grab_data) = pointer.interaction.grabbed.as_mut() else {
+        log::error!("Grabbed overlay does not exist");
+        return;
+    };
+    let grab_anchor = grab_data.grab_anchor;
 
-                    overlay_state.transform.matrix3 = overlay_state
-                        .transform
-                        .matrix3
-                        .mul_scalar(0.025f32.mul_add(-pointer.now.scroll_y, 1.0));
-                } else if app.session.config.allow_sliding && pointer.now.scroll_y.is_finite() {
-                    grab_data.offset.z -= pointer.now.scroll_y * 0.05;
-                }
-                overlay_state.transform.translation =
-                    pointer.pose.transform_point3a(grab_data.offset);
-                overlay.config.realign(&app.input_state.hmd);
-            } else {
-                log::error!("Grabbed overlay does not exist");
-                pointer.interaction.grabbed = None;
+    let Some(overlay_state) = overlay.config.active_state.as_mut() else {
+        return;
+    };
+
+    if pointer.now.grab {
+        if grab_anchor {
+            if pointer.now.click {
+                pointer.interaction.mode = PointerMode::Special;
+                handle_scale(&mut app.anchor, pointer.now.scroll_y);
+            } else if app.session.config.allow_sliding && pointer.now.scroll_y.is_finite() {
+                // single grab push/pull
+                grab_data.offset.z -= pointer.now.scroll_y * 0.05;
             }
+            app.anchor.translation = pointer.pose.transform_point3a(grab_data.offset);
+            realign(&mut app.anchor, &app.input_state.hmd);
         } else {
+            // single grab resize
+            if pointer.now.click {
+                pointer.interaction.mode = PointerMode::Special;
+                handle_scale(&mut overlay_state.transform, pointer.now.scroll_y);
+            } else if app.session.config.allow_sliding && pointer.now.scroll_y.is_finite() {
+                // single grab push/pull
+                grab_data.offset.z -= pointer.now.scroll_y * 0.05;
+            }
+            overlay_state.transform.translation = pointer.pose.transform_point3a(grab_data.offset);
+            realign(&mut overlay_state.transform, &app.input_state.hmd);
+            overlay.config.dirty = true;
+        }
+    } else {
+        // not now.grab
+        pointer.interaction.grabbed = None;
+        if grab_anchor {
+            app.anchor_grabbed = false;
+        } else {
+            // single grab released
             overlay_state.positioning = match overlay_state.positioning {
                 Positioning::FollowHandPaused { hand, lerp } => {
                     Positioning::FollowHand { hand, lerp }
                 }
                 Positioning::FollowHeadPaused { lerp } => Positioning::FollowHead { lerp },
+                Positioning::AnchoredPaused => Positioning::Anchored,
                 x => x,
             };
-            pointer.interaction.grabbed = None;
-            overlay_state.save_transform(app);
 
-            // Hide anchor
-            app.tasks.enqueue(TaskType::Overlay(
-                OverlaySelector::Name(ANCHOR_NAME.clone()),
-                Box::new(|_app, o| {
-                    o.deactivate();
-                }),
-            ));
-            log::debug!("Hand {}: dropped {}", idx, overlay.config.name);
+            overlay_state.save_transform(app);
         }
+
+        // Hide anchor
+        app.tasks.enqueue(TaskType::Overlay(
+            OverlaySelector::Name(ANCHOR_NAME.clone()),
+            Box::new(|_app, o| {
+                o.deactivate();
+            }),
+        ));
+        log::debug!("Hand {}: dropped {}", idx, overlay.config.name);
     }
 }
 
