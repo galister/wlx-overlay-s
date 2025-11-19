@@ -1,5 +1,5 @@
 use libmonado::{ClientState, Monado};
-use log::{info, warn};
+use log::{trace, warn};
 
 use crate::{state::AppState, windowing::OverlayID};
 
@@ -27,11 +27,11 @@ impl InputBlocker {
 
         match (any_hovered, self.hovered_last_frame) {
             (true, false) => {
-                info!("Blocking input");
+                trace!("Blocking input");
                 set_clients_io_active(monado, false);
             }
             (false, true) => {
-                info!("Unblocking input");
+                trace!("Unblocking input");
                 set_clients_io_active(monado, true);
             }
             _ => {}
