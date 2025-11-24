@@ -6848,6 +6848,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "wlx-common"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "glam",
+ "idmap",
+ "idmap-derive",
+ "serde",
+]
+
+[[package]]
 name = "wlx-overlay-s"
 version = "25.4.2"
 dependencies = [
@@ -6902,6 +6913,7 @@ dependencies = [
  "wgui",
  "winit",
  "wlx-capture",
+ "wlx-common",
  "xcb",
  "xdg 3.0.0",
  "xkbcommon 0.9.0",

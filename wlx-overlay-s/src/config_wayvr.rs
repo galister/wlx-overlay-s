@@ -9,6 +9,7 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
+use wlx_common::{common::LeftRight, config::GeneralConfig, windowing::Positioning};
 
 use crate::{
     backend::{
@@ -17,9 +18,7 @@ use crate::{
     },
     config::load_config_with_conf_d,
     config_io,
-    overlays::wayvr::{executable_exists_in_path, WayVRData},
-    state::LeftRight,
-    windowing::window::Positioning,
+    overlays::wayvr::{WayVRData, executable_exists_in_path},
 };
 
 // Flat version of RelativeTo
@@ -180,7 +179,7 @@ impl WayVRConfig {
     }
 
     pub fn get_wayvr_config(
-        config_general: &crate::config::GeneralConfig,
+        config_general: &GeneralConfig,
         config_wayvr: &Self,
     ) -> anyhow::Result<wayvr::Config> {
         Ok(wayvr::Config {
@@ -199,7 +198,7 @@ impl WayVRConfig {
 
     pub fn post_load(
         &self,
-        config: &crate::config::GeneralConfig,
+        config: &GeneralConfig,
         tasks: &mut TaskContainer,
     ) -> anyhow::Result<Option<Rc<RefCell<WayVRData>>>> {
         let primary_count = self

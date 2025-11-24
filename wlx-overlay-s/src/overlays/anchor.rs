@@ -1,10 +1,11 @@
 use glam::{Affine3A, Quat, Vec3};
 use std::sync::{Arc, LazyLock};
+use wlx_common::windowing::{OverlayWindowState, Positioning};
 
 use crate::gui::panel::GuiPanel;
 use crate::state::AppState;
-use crate::windowing::window::{OverlayWindowConfig, OverlayWindowState, Positioning};
 use crate::windowing::Z_ORDER_ANCHOR;
+use crate::windowing::window::OverlayWindowConfig;
 
 pub static ANCHOR_NAME: LazyLock<Arc<str>> = LazyLock::new(|| Arc::from("anchor"));
 

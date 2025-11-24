@@ -1,11 +1,14 @@
 use glam::Affine3A;
 use idmap::IdMap;
-use serde::{Deserialize, Serialize};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use std::sync::Arc;
 use wgui::{
     font_config::WguiFontConfig, gfx::WGfx, globals::WguiGlobals,
     renderer_vk::context::SharedContext as WSharedContext,
+};
+use wlx_common::{
+    config::GeneralConfig,
+    overlays::{ToastDisplayMethod, ToastTopic},
 };
 
 #[cfg(feature = "wayvr")]
@@ -20,11 +23,10 @@ use crate::subsystem::osc::OscSender;
 
 use crate::{
     backend::{input::InputState, task::TaskContainer},
-    config::GeneralConfig,
+    config::load_general_config,
     config_io,
     graphics::WGfxExtras,
     gui,
-    overlays::toast::{DisplayMethod, ToastTopic},
     subsystem::{audio::AudioOutput, input::HidWrapper},
 };
 
@@ -156,19 +158,19 @@ pub struct AppSession {
     #[cfg(feature = "wayvr")]
     pub wayvr_config: WayVRConfig,
 
-    pub toast_topics: IdMap<ToastTopic, DisplayMethod>,
+    pub toast_topics: IdMap<ToastTopic, ToastDisplayMethod>,
 }
 
 impl AppSession {
     pub fn load() -> Self {
         let config_root_path = config_io::ConfigRoot::Generic.ensure_dir();
         log::info!("Config root path: {}", config_root_path.display());
-        let config = GeneralConfig::load_from_disk();
+        let config = load_general_config();
 
         let mut toast_topics = IdMap::new();
-        toast_topics.insert(ToastTopic::System, DisplayMethod::Center);
-        toast_topics.insert(ToastTopic::DesktopNotification, DisplayMethod::Center);
-        toast_topics.insert(ToastTopic::XSNotification, DisplayMethod::Center);
+        toast_topics.insert(ToastTopic::System, ToastDisplayMethod::Center);
+        toast_topics.insert(ToastTopic::DesktopNotification, ToastDisplayMethod::Center);
+        toast_topics.insert(ToastTopic::XSNotification, ToastDisplayMethod::Center);
 
         config.notification_topics.iter().for_each(|(k, v)| {
             toast_topics.insert(*k, *v);
@@ -189,12 +191,4 @@ impl AppSession {
 pub struct ScreenMeta {
     pub name: Arc<str>,
     pub native_handle: u32,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, Default)]
-#[repr(u8)]
-pub enum LeftRight {
-    #[default]
-    Left,
-    Right,
 }

@@ -6,8 +6,6 @@ use std::{
 };
 
 use glam::{Affine3A, Quat, Vec3, vec3};
-use idmap_derive::IntegerId;
-use serde::{Deserialize, Serialize};
 use wgui::{
     i18n::Translation,
     parser::parse_color_hex,
@@ -22,36 +20,23 @@ use wgui::{
         util::WLength,
     },
 };
+use wlx_common::{
+    common::LeftRight,
+    overlays::{ToastDisplayMethod, ToastTopic},
+    windowing::{OverlayWindowState, Positioning},
+};
 
 use crate::{
     backend::task::TaskType,
     gui::panel::GuiPanel,
-    state::{AppState, LeftRight},
-    windowing::{
-        OverlaySelector, Z_ORDER_TOAST,
-        window::{OverlayWindowConfig, OverlayWindowState, Positioning},
-    },
+    state::AppState,
+    windowing::{OverlaySelector, Z_ORDER_TOAST, window::OverlayWindowConfig},
 };
 
 const FONT_SIZE: isize = 16;
 const PADDING: (f32, f32) = (25., 7.);
 const PIXELS_TO_METERS: f32 = 1. / 2000.;
 static TOAST_NAME: LazyLock<Arc<str>> = LazyLock::new(|| "toast".into());
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub enum DisplayMethod {
-    Hide,
-    Center,
-    Watch,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, IntegerId, Serialize, Deserialize)]
-pub enum ToastTopic {
-    System,
-    DesktopNotification,
-    XSNotification,
-    IpdChange,
-}
 
 pub struct Toast {
     pub title: String,
@@ -134,16 +119,16 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<OverlayWindowConfig> {
         .toast_topics
         .get(toast.topic)
         .copied()
-        .unwrap_or(DisplayMethod::Hide);
+        .unwrap_or(ToastDisplayMethod::Hide);
 
     let (spawn_point, spawn_rotation, positioning) = match current_method {
-        DisplayMethod::Hide => return None,
-        DisplayMethod::Center => (
+        ToastDisplayMethod::Hide => return None,
+        ToastDisplayMethod::Center => (
             vec3(0., -0.2, -0.5),
             Quat::IDENTITY,
             Positioning::FollowHead { lerp: 0.1 },
         ),
-        DisplayMethod::Watch => {
+        ToastDisplayMethod::Watch => {
             let mut watch_pos = app.session.config.watch_pos + vec3(-0.005, -0.05, 0.02);
             let mut watch_rot = app.session.config.watch_rot;
             let relative_to = match app.session.config.watch_hand {

@@ -5,7 +5,8 @@ use std::{
 
 use futures::{Future, FutureExt};
 use glam::{Affine2, Affine3A, Vec3};
-use wlx_capture::pipewire::{pipewire_select_screen, PipewireCapture, PipewireSelectScreenResult};
+use wlx_capture::pipewire::{PipewireCapture, PipewireSelectScreenResult, pipewire_select_screen};
+use wlx_common::windowing::OverlayWindowState;
 
 use crate::{
     backend::{
@@ -15,12 +16,12 @@ use crate::{
     state::{AppSession, AppState},
     subsystem::hid::WheelDelta,
     windowing::{
-        backend::{
-            ui_transform, FrameMeta, OverlayBackend, OverlayEventData, RenderResources,
-            ShouldRender,
-        },
-        window::{OverlayWindowConfig, OverlayWindowState},
         OverlaySelector,
+        backend::{
+            FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
+            ui_transform,
+        },
+        window::OverlayWindowConfig,
     },
 };
 

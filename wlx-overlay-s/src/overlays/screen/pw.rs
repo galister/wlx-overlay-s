@@ -6,12 +6,9 @@ use wlx_capture::{
     pipewire::{PipewireCapture, PipewireSelectScreenResult},
     wayland::WlxOutput,
 };
+use wlx_common::config::{PwTokenMap, def_pw_tokens};
 
-use crate::{
-    config::{PwTokenMap, def_pw_tokens},
-    config_io,
-    state::AppState,
-};
+use crate::{config_io, state::AppState};
 
 use super::{
     backend::ScreenBackend,

@@ -2,8 +2,8 @@ use std::{
     collections::VecDeque,
     ops::Add,
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
+        atomic::{AtomicBool, AtomicUsize, Ordering},
     },
     time::{Duration, Instant},
 };
@@ -14,19 +14,20 @@ use libmonado::Monado;
 use openxr as xr;
 use skybox::create_skybox;
 use vulkano::{Handle, VulkanObject};
+use wlx_common::overlays::ToastTopic;
 
 use crate::{
     backend::{
+        BackendError,
         input::interact,
         openxr::{lines::LinePool, overlay::OpenXrOverlayData},
         task::{SystemTask, TaskType},
-        BackendError,
     },
     config::save_state,
-    graphics::{init_openxr_graphics, GpuFutures},
+    graphics::{GpuFutures, init_openxr_graphics},
     overlays::{
-        toast::{Toast, ToastTopic},
-        watch::{watch_fade, WATCH_NAME},
+        toast::Toast,
+        watch::{WATCH_NAME, watch_fade},
     },
     state::AppState,
     subsystem::notifications::NotificationManager,

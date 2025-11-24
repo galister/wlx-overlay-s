@@ -6,6 +6,7 @@ use wgui::{
     event::{CallbackDataCommon, EventAlterables},
     parser::Fetchable,
 };
+use wlx_common::windowing::{OverlayWindowState, Positioning};
 
 use crate::{
     gui::{
@@ -14,9 +15,9 @@ use crate::{
     },
     state::AppState,
     windowing::{
-        backend::OverlayEventData,
-        window::{OverlayWindowConfig, OverlayWindowData, OverlayWindowState, Positioning},
         Z_ORDER_WATCH,
+        backend::OverlayEventData,
+        window::{OverlayWindowConfig, OverlayWindowData},
     },
 };
 

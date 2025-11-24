@@ -17,12 +17,13 @@ use wgui::{
         util::WLength,
     },
 };
+use wlx_common::windowing::{OverlayWindowState, Positioning};
 
 use crate::{
     gui::panel::GuiPanel,
     state::AppState,
     subsystem::hid::{ALT, CTRL, META, SHIFT, SUPER, XkbKeymap},
-    windowing::window::{OverlayWindowConfig, OverlayWindowState, Positioning},
+    windowing::window::OverlayWindowConfig,
 };
 
 use super::{

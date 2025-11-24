@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use glam::{Affine3A, Vec3, Vec3A};
 use slotmap::{HopSlotMap, Key, SecondaryMap};
+use wlx_common::config::SerializedWindowSet;
 
 use crate::{
     overlays::{
@@ -10,11 +11,8 @@ use crate::{
     },
     state::AppState,
     windowing::{
-        backend::OverlayEventData,
-        set::{OverlayWindowSet, SerializedWindowSet},
-        snap_upright,
+        OverlayID, OverlaySelector, backend::OverlayEventData, set::OverlayWindowSet, snap_upright,
         window::OverlayWindowData,
-        OverlayID, OverlaySelector,
     },
 };
 

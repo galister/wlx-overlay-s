@@ -1,12 +1,9 @@
 use std::sync::Arc;
 
 use glam::{Affine3A, Quat, Vec3, vec3};
+use wlx_common::windowing::OverlayWindowState;
 
-use crate::{
-    gui::panel::GuiPanel,
-    state::AppState,
-    windowing::window::{OverlayWindowConfig, OverlayWindowState},
-};
+use crate::{gui::panel::GuiPanel, state::AppState, windowing::window::OverlayWindowConfig};
 
 const SETTINGS_NAME: &str = "settings";
 

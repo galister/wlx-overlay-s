@@ -17,11 +17,9 @@ use std::{
     },
     time::Duration,
 };
+use wlx_common::overlays::ToastTopic;
 
-use crate::{
-    overlays::toast::{Toast, ToastTopic},
-    state::AppState,
-};
+use crate::{overlays::toast::Toast, state::AppState};
 
 pub struct NotificationManager {
     rx_toast: mpsc::Receiver<Toast>,

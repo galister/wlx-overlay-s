@@ -5,9 +5,9 @@ use wlx_capture::{
     wlr_dmabuf::WlrDmabufCapture,
     wlr_screencopy::WlrScreencopyCapture,
 };
+use wlx_common::{astr_containers::AStrMapExt, config::PwTokenMap};
 
 use crate::{
-    config::{AStrMapExt, PwTokenMap},
     overlays::screen::create_screen_from_backend,
     state::{AppState, ScreenMeta},
 };

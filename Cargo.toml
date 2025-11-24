@@ -10,13 +10,21 @@ inherits = "release"
 debug = true
 
 [workspace]
-members = ["uidev", "wgui", "wlx-overlay-s", "wlx-capture", "dash-frontend"]
+members = [
+  "uidev",
+  "wgui",
+  "wlx-common",
+  "wlx-overlay-s",
+  "wlx-capture",
+  "dash-frontend",
+]
 resolver = "3"
 
 [workspace.dependencies]
 anyhow = "1.0.100"
 glam = "0.30.7"
 idmap = "0.2.2"
+idmap-derive = "0.2.2"
 log = "0.4.28"
 regex = "1.11.3"
 rust-embed = "8.7.2"

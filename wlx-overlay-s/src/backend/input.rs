@@ -4,14 +4,15 @@ use std::{collections::VecDeque, time::Instant};
 
 use glam::{Affine3A, Vec2, Vec3A, Vec3Swizzles};
 
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
+use wlx_common::windowing::{OverlayWindowState, Positioning};
 
 use crate::overlays::anchor::ANCHOR_NAME;
 use crate::state::{AppSession, AppState};
 use crate::subsystem::hid::WheelDelta;
 use crate::subsystem::input::KeyboardFocus;
 use crate::windowing::manager::OverlayWindowManager;
-use crate::windowing::window::{realign, OverlayWindowData, OverlayWindowState, Positioning};
+use crate::windowing::window::{self, OverlayWindowData, realign};
 use crate::windowing::{OverlayID, OverlaySelector};
 
 use super::task::TaskType;
@@ -705,7 +706,7 @@ where
                 x => x,
             };
 
-            overlay_state.save_transform(app);
+            window::save_transform(overlay_state, app);
         }
 
         // Hide anchor
