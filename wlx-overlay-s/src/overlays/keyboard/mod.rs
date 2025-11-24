@@ -12,8 +12,10 @@ use crate::{
     backend::input::{HoverResult, PointerHit},
     gui::panel::GuiPanel,
     state::AppState,
-    subsystem::hid::{ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey, WheelDelta},
-    windowing::backend::{FrameMeta, OverlayBackend, RenderResources, ShouldRender},
+    subsystem::hid::{KeyModifier, VirtualKey, WheelDelta, ALT, CTRL, META, SHIFT, SUPER},
+    windowing::backend::{
+        FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
+    },
 };
 
 pub mod builder;
@@ -51,6 +53,10 @@ impl OverlayBackend for KeyboardBackend {
             &wgui::event::Event::InternalStateChange(InternalStateChangeEvent { metadata: 0 }),
         );
         Ok(())
+    }
+
+    fn notify(&mut self, app: &mut AppState, event_data: OverlayEventData) -> anyhow::Result<()> {
+        self.panel.notify(app, event_data)
     }
 
     fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool) {

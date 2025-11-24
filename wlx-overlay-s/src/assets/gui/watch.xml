@@ -26,7 +26,7 @@
   </template>
 
   <template name="Set">
-    <Button macro="button_style" _press="::SetToggle ${handle}" tooltip="Switch to set" tooltip_side="top">
+    <Button macro="button_style" id="set_${handle}" _press="::SetToggle ${handle}" tooltip="Switch to set" tooltip_side="top">
       <sprite width="40" height="40" color="~set_color" src="watch/set2.svg" />
       <div position="absolute" margin_top="9">
         <label text="${display}" size="24" color="#00050F" weight="bold" />

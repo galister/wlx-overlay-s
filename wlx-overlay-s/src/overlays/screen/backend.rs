@@ -11,7 +11,9 @@ use crate::{
     graphics::ExtentExt,
     state::AppState,
     subsystem::hid::{WheelDelta, MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
-    windowing::backend::{FrameMeta, OverlayBackend, RenderResources, ShouldRender},
+    windowing::backend::{
+        FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
+    },
 };
 
 use super::capture::{receive_callback, ScreenPipeline, WlxCaptureIn, WlxCaptureOut};
@@ -197,6 +199,10 @@ impl OverlayBackend for ScreenBackend {
     }
     fn frame_meta(&mut self) -> Option<FrameMeta> {
         self.meta
+    }
+
+    fn notify(&mut self, _app: &mut AppState, _event_data: OverlayEventData) -> anyhow::Result<()> {
+        todo!();
     }
 
     fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> HoverResult {

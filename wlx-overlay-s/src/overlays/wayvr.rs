@@ -30,7 +30,10 @@ use crate::{
     state::{self, AppState},
     subsystem::{hid::WheelDelta, input::KeyboardFocus},
     windowing::{
-        backend::{ui_transform, FrameMeta, OverlayBackend, RenderResources, ShouldRender},
+        backend::{
+            ui_transform, FrameMeta, OverlayBackend, OverlayEventData, RenderResources,
+            ShouldRender,
+        },
         manager::OverlayWindowManager,
         window::{OverlayWindowConfig, OverlayWindowData, OverlayWindowState},
         OverlayID, OverlaySelector, Z_ORDER_DASHBOARD,
@@ -701,6 +704,14 @@ impl OverlayBackend for WayVRBackend {
             extent: [self.resolution[0] as u32, self.resolution[1] as u32, 1],
             ..Default::default()
         })
+    }
+
+    fn notify(
+        &mut self,
+        _app: &mut state::AppState,
+        _event_data: OverlayEventData,
+    ) -> anyhow::Result<()> {
+        Ok(())
     }
 
     fn on_hover(&mut self, _app: &mut state::AppState, hit: &input::PointerHit) -> HoverResult {

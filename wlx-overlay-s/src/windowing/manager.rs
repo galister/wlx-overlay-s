@@ -10,6 +10,7 @@ use crate::{
     },
     state::AppState,
     windowing::{
+        backend::OverlayEventData,
         set::{OverlayWindowSet, SerializedWindowSet},
         snap_upright,
         window::OverlayWindowData,
@@ -320,6 +321,14 @@ impl<T> OverlayWindowManager<T> {
             self.restore_set = new_set;
         }
         self.current_set = new_set;
+
+        if let Some(watch) = self.mut_by_id(self.watch_id) {
+            watch
+                .config
+                .backend
+                .notify(app, OverlayEventData::SetChanged(new_set))
+                .unwrap(); // TODO: handle this
+        }
     }
 
     pub fn show_hide(&mut self, app: &mut AppState) {

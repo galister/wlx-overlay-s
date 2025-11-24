@@ -64,6 +64,10 @@ impl RenderResources {
     }
 }
 
+pub enum OverlayEventData {
+    SetChanged(Option<usize>),
+}
+
 pub trait OverlayBackend: Any {
     /// Called once, before the first frame is rendered
     fn init(&mut self, app: &mut AppState) -> anyhow::Result<()>;
@@ -81,6 +85,8 @@ pub trait OverlayBackend: Any {
     ///
     /// Must be Some if should_render was Should or Can on the same frame.
     fn frame_meta(&mut self) -> Option<FrameMeta>;
+
+    fn notify(&mut self, app: &mut AppState, event_data: OverlayEventData) -> anyhow::Result<()>;
 
     fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> HoverResult;
     fn on_left(&mut self, app: &mut AppState, pointer: usize);
@@ -122,6 +128,10 @@ impl OverlayBackend for DummyBackend {
         unreachable!()
     }
     fn frame_meta(&mut self) -> Option<FrameMeta> {
+        unreachable!()
+    }
+
+    fn notify(&mut self, _: &mut AppState, _event_data: OverlayEventData) -> anyhow::Result<()> {
         unreachable!()
     }
 

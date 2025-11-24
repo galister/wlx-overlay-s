@@ -1,6 +1,11 @@
 use std::{collections::HashMap, rc::Rc, time::Duration};
 
 use glam::{Affine3A, Vec3, Vec3A};
+use wgui::{
+    components::button::ComponentButton,
+    event::{CallbackDataCommon, EventAlterables},
+    parser::Fetchable,
+};
 
 use crate::{
     gui::{
@@ -9,6 +14,7 @@ use crate::{
     },
     state::AppState,
     windowing::{
+        backend::OverlayEventData,
         window::{OverlayWindowConfig, OverlayWindowData, OverlayWindowState, Positioning},
         Z_ORDER_WATCH,
     },
@@ -16,18 +22,22 @@ use crate::{
 
 pub const WATCH_NAME: &str = "watch";
 
-struct WatchState {}
+#[derive(Default)]
+struct WatchState {
+    current_set: Option<usize>,
+    set_buttons: Vec<Rc<ComponentButton>>,
+}
 
 #[allow(clippy::significant_drop_tightening)]
 pub fn create_watch(app: &mut AppState, num_sets: usize) -> anyhow::Result<OverlayWindowConfig> {
-    let state = WatchState {};
+    let state = WatchState::default();
     let mut panel = GuiPanel::new_from_template(
         app,
         "gui/watch.xml",
         state,
         NewGuiPanelParams {
             on_custom_id: Some(Box::new(
-                move |id, widget, doc_params, layout, parser_state| {
+                move |id, widget, doc_params, layout, parser_state, state| {
                     if &*id != "sets" {
                         return Ok(());
                     }
@@ -38,6 +48,11 @@ pub fn create_watch(app: &mut AppState, num_sets: usize) -> anyhow::Result<Overl
                         params.insert("handle".into(), idx.to_string().into());
                         parser_state
                             .instantiate_template(doc_params, "Set", layout, widget, params)?;
+
+                        let button_id = format!("set_{idx}");
+                        let component =
+                            parser_state.fetch_component_as::<ComponentButton>(&button_id)?;
+                        state.set_buttons.push(component);
                     }
                     Ok(())
                 },
@@ -45,6 +60,27 @@ pub fn create_watch(app: &mut AppState, num_sets: usize) -> anyhow::Result<Overl
             ..Default::default()
         },
     )?;
+
+    panel.on_notify = Some(Box::new(|panel, _app, event_data| {
+        match event_data {
+            OverlayEventData::SetChanged(current_set) => {
+                let mut alterables = EventAlterables::default();
+                let mut common = CallbackDataCommon {
+                    alterables: &mut alterables,
+                    state: &panel.layout.state,
+                };
+                if let Some(old_set) = panel.state.current_set.take() {
+                    panel.state.set_buttons[old_set].set_sticky_state(&mut common, false);
+                }
+                if let Some(new_set) = current_set {
+                    panel.state.set_buttons[new_set].set_sticky_state(&mut common, true);
+                }
+                panel.state.current_set = current_set;
+                panel.layout.process_alterables(alterables)?;
+            }
+        }
+        Ok(())
+    }));
 
     panel
         .timers

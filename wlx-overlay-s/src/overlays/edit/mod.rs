@@ -26,7 +26,7 @@ use crate::{
     state::AppState,
     subsystem::hid::WheelDelta,
     windowing::{
-        backend::{DummyBackend, OverlayBackend, RenderResources, ShouldRender},
+        backend::{DummyBackend, OverlayBackend, OverlayEventData, RenderResources, ShouldRender},
         window::OverlayWindowConfig,
         OverlayID,
     },
@@ -203,6 +203,9 @@ impl OverlayBackend for EditModeBackendWrapper {
         delta: WheelDelta,
     ) {
         self.panel.on_scroll(app, hit, delta);
+    }
+    fn notify(&mut self, app: &mut AppState, event_data: OverlayEventData) -> anyhow::Result<()> {
+        self.panel.notify(app, event_data)
     }
     fn get_interaction_transform(&mut self) -> Option<glam::Affine2> {
         self.inner.get_interaction_transform()

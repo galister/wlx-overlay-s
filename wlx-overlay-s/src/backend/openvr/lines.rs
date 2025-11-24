@@ -25,7 +25,9 @@ use wgui::gfx::WGfx;
 use crate::backend::input::{HoverResult, PointerHit};
 use crate::state::AppState;
 use crate::subsystem::hid::WheelDelta;
-use crate::windowing::backend::{FrameMeta, OverlayBackend, RenderResources, ShouldRender};
+use crate::windowing::backend::{
+    FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
+};
 use crate::windowing::window::{OverlayWindowConfig, OverlayWindowData};
 use crate::windowing::Z_ORDER_LINES;
 
@@ -196,6 +198,10 @@ impl OverlayBackend for LineBackend {
             extent: self.view.image().extent(),
             ..Default::default()
         })
+    }
+
+    fn notify(&mut self, _: &mut AppState, _: OverlayEventData) -> anyhow::Result<()> {
+        unreachable!()
     }
 
     fn on_hover(&mut self, _: &mut AppState, _: &PointerHit) -> HoverResult {

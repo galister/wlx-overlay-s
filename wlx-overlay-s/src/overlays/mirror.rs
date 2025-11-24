@@ -15,7 +15,10 @@ use crate::{
     state::{AppSession, AppState},
     subsystem::hid::WheelDelta,
     windowing::{
-        backend::{ui_transform, FrameMeta, OverlayBackend, RenderResources, ShouldRender},
+        backend::{
+            ui_transform, FrameMeta, OverlayBackend, OverlayEventData, RenderResources,
+            ShouldRender,
+        },
         window::{OverlayWindowConfig, OverlayWindowState},
         OverlaySelector,
     },
@@ -122,6 +125,13 @@ impl OverlayBackend for MirrorBackend {
 
     fn frame_meta(&mut self) -> Option<FrameMeta> {
         self.renderer.as_mut().and_then(ScreenBackend::frame_meta)
+    }
+
+    fn notify(&mut self, app: &mut AppState, event_data: OverlayEventData) -> anyhow::Result<()> {
+        let Some(renderer) = self.renderer.as_mut() else {
+            return Ok(());
+        };
+        renderer.notify(app, event_data)
     }
 
     fn on_hover(&mut self, _: &mut AppState, _: &PointerHit) -> HoverResult {

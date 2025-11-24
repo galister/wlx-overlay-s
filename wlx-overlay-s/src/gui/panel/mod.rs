@@ -22,7 +22,9 @@ use crate::{
     backend::input::{Haptics, HoverResult, PointerHit, PointerMode},
     state::AppState,
     subsystem::hid::WheelDelta,
-    windowing::backend::{ui_transform, FrameMeta, OverlayBackend, RenderResources, ShouldRender},
+    windowing::backend::{
+        ui_transform, FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
+    },
 };
 
 use super::{timer::GuiTimer, timestep::Timestep};
@@ -35,6 +37,9 @@ const DEFAULT_MAX_SIZE: f32 = 2048.0;
 
 const COLOR_ERR: drawing::Color = drawing::Color::new(1., 0., 1., 1.);
 
+pub type OnNotifyFunc<S> =
+    Box<dyn Fn(&mut GuiPanel<S>, &mut AppState, OverlayEventData) -> anyhow::Result<()>>;
+
 pub struct GuiPanel<S> {
     pub layout: Layout,
     pub state: S,
@@ -42,31 +47,33 @@ pub struct GuiPanel<S> {
     pub parser_state: ParserState,
     pub max_size: Vec2,
     pub gui_scale: f32,
+    pub on_notify: Option<OnNotifyFunc<S>>,
     interaction_transform: Option<Affine2>,
     context: WguiContext,
     timestep: Timestep,
 }
 
-pub type OnCustomIdFunc = Box<
+pub type OnCustomIdFunc<S> = Box<
     dyn Fn(
         Rc<str>,
         WidgetID,
         &wgui::parser::ParseDocumentParams,
         &mut Layout,
         &mut ParserState,
+        &mut S,
     ) -> anyhow::Result<()>,
 >;
 
 pub type OnCustomAttribFunc = Box<dyn Fn(&mut Layout, &CustomAttribsInfoOwned, &AppState)>;
 
-pub struct NewGuiPanelParams {
-    pub on_custom_id: Option<OnCustomIdFunc>, // used only in `new_from_template`
+pub struct NewGuiPanelParams<S> {
+    pub on_custom_id: Option<OnCustomIdFunc<S>>, // used only in `new_from_template`
     pub on_custom_attrib: Option<OnCustomAttribFunc>, // used only in `new_from_template`
     pub resize_to_parent: bool,
     pub gui_scale: f32,
 }
 
-impl Default for NewGuiPanelParams {
+impl<S> Default for NewGuiPanelParams<S> {
     fn default() -> Self {
         Self {
             on_custom_id: None,
@@ -81,8 +88,8 @@ impl<S: 'static> GuiPanel<S> {
     pub fn new_from_template(
         app: &mut AppState,
         path: &str,
-        state: S,
-        params: NewGuiPanelParams,
+        mut state: S,
+        params: NewGuiPanelParams<S>,
     ) -> anyhow::Result<Self> {
         let custom_elems = Rc::new(RefCell::new(vec![]));
 
@@ -117,6 +124,7 @@ impl<S: 'static> GuiPanel<S> {
                     &doc_params,
                     &mut layout,
                     &mut parser_state,
+                    &mut state,
                 )?;
             }
         }
@@ -156,6 +164,7 @@ impl<S: 'static> GuiPanel<S> {
             max_size: vec2(DEFAULT_MAX_SIZE as _, DEFAULT_MAX_SIZE as _),
             timers: vec![],
             interaction_transform: None,
+            on_notify: None,
             gui_scale: params.gui_scale,
         })
     }
@@ -163,7 +172,7 @@ impl<S: 'static> GuiPanel<S> {
     pub fn new_blank(
         app: &mut AppState,
         state: S,
-        params: NewGuiPanelParams,
+        params: NewGuiPanelParams<S>,
     ) -> anyhow::Result<Self> {
         let layout = Layout::new(
             app.wgui_globals.clone(),
@@ -183,6 +192,7 @@ impl<S: 'static> GuiPanel<S> {
             parser_state: ParserState::default(),
             max_size: vec2(DEFAULT_MAX_SIZE as _, DEFAULT_MAX_SIZE as _),
             timers: vec![],
+            on_notify: None,
             interaction_transform: None,
             gui_scale: params.gui_scale,
         })
@@ -293,6 +303,15 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
             ],
             ..Default::default()
         })
+    }
+
+    fn notify(&mut self, app: &mut AppState, data: OverlayEventData) -> anyhow::Result<()> {
+        let Some(on_notify) = self.on_notify.take() else {
+            return Ok(());
+        };
+        on_notify(self, app, data)?;
+        self.on_notify = Some(on_notify);
+        Ok(())
     }
 
     fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta: WheelDelta) {

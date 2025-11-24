@@ -2,7 +2,7 @@ use std::f32::consts::PI;
 use std::process::{Child, Command};
 use std::{collections::VecDeque, time::Instant};
 
-use glam::{Affine3A, Vec2, Vec3, Vec3A, Vec3Swizzles};
+use glam::{Affine3A, Vec2, Vec3A, Vec3Swizzles};
 
 use smallvec::{smallvec, SmallVec};
 
@@ -14,7 +14,7 @@ use crate::windowing::manager::OverlayWindowManager;
 use crate::windowing::window::{realign, OverlayWindowData, OverlayWindowState, Positioning};
 use crate::windowing::{OverlayID, OverlaySelector};
 
-use super::task::{TaskContainer, TaskType};
+use super::task::TaskType;
 
 #[derive(Clone, Default)]
 pub struct HoverResult {
