@@ -2,8 +2,8 @@ use std::{
     collections::VecDeque,
     ops::Add,
     sync::{
-        Arc,
         atomic::{AtomicBool, AtomicUsize, Ordering},
+        Arc,
     },
     time::{Duration, Instant},
 };
@@ -18,16 +18,16 @@ use wlx_common::overlays::ToastTopic;
 
 use crate::{
     backend::{
-        BackendError,
         input::interact,
         openxr::{lines::LinePool, overlay::OpenXrOverlayData},
-        task::{SystemTask, TaskType},
+        task::{ManagerTask, SystemTask, TaskType},
+        BackendError,
     },
     config::save_state,
-    graphics::{GpuFutures, init_openxr_graphics},
+    graphics::{init_openxr_graphics, GpuFutures},
     overlays::{
         toast::Toast,
-        watch::{WATCH_NAME, watch_fade},
+        watch::{watch_fade, WATCH_NAME},
     },
     state::AppState,
     subsystem::notifications::NotificationManager,
@@ -95,7 +95,7 @@ pub fn openxr_run(
 
     if show_by_default {
         app.tasks.enqueue_at(
-            TaskType::System(SystemTask::ShowHide),
+            TaskType::Manager(ManagerTask::ShowHide),
             Instant::now().add(Duration::from_secs(1)),
         );
     }
@@ -537,27 +537,10 @@ pub fn openxr_run(
                             playspace.reset_offset(monado.as_mut().unwrap()); // safe
                         }
                     }
-                    SystemTask::ShowHide => {
-                        overlays.show_hide(&mut app);
-                    }
                     _ => {}
                 },
-                TaskType::ToggleSet(set) => {
-                    overlays.switch_or_toggle_set(&mut app, set);
-                }
-                TaskType::ToggleEditMode => {
-                    if !overlays.get_edit_mode() {
-                        Toast::new(
-                            ToastTopic::System,
-                            "Edit mode enabled".into(),
-                            "Hover overlays to see their options".into(),
-                        )
-                        .with_timeout(5.)
-                        .with_sound(true)
-                        .submit(&mut app);
-                    }
-
-                    overlays.set_edit_mode(!overlays.get_edit_mode());
+                TaskType::Manager(task) => {
+                    overlays.handle_task(&mut app, task)?;
                 }
                 #[cfg(feature = "wayvr")]
                 TaskType::WayVR(action) => {

@@ -47,18 +47,23 @@ pub enum SystemTask {
     ColorGain(ColorChannel, f32),
     ResetPlayspace,
     FixFloor,
-    ShowHide,
 }
 
 pub type OverlayTask = dyn FnOnce(&mut AppState, &mut OverlayWindowConfig) + Send;
 pub type CreateOverlayTask = dyn FnOnce(&mut AppState) -> Option<OverlayWindowConfig> + Send;
+pub enum ManagerTask {
+    AddSet,
+    ToggleSet(usize),
+    DeleteActiveSet,
+    ToggleEditMode,
+    ShowHide,
+}
 
 pub enum TaskType {
     Overlay(OverlaySelector, Box<OverlayTask>),
     CreateOverlay(OverlaySelector, Box<CreateOverlayTask>),
     DropOverlay(OverlaySelector),
-    ToggleSet(usize),
-    ToggleEditMode,
+    Manager(ManagerTask),
     System(SystemTask),
     #[cfg(feature = "wayvr")]
     WayVR(WayVRAction),

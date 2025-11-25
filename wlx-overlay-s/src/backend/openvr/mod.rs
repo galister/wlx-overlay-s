@@ -2,38 +2,38 @@ use std::{
     collections::VecDeque,
     ops::Add,
     sync::{
-        Arc,
         atomic::{AtomicBool, AtomicUsize, Ordering},
+        Arc,
     },
     time::{Duration, Instant},
 };
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use ovr_overlay::{
-    TrackedDeviceIndex,
     sys::{ETrackedDeviceProperty, EVRApplicationType, EVREventType},
+    TrackedDeviceIndex,
 };
-use vulkano::{Handle, VulkanObject, device::physical::PhysicalDevice};
+use vulkano::{device::physical::PhysicalDevice, Handle, VulkanObject};
 use wlx_common::overlays::ToastTopic;
 
 use crate::{
     backend::{
-        BackendError,
         input::interact,
         openvr::{
             helpers::adjust_gain,
-            input::{OpenVrInputSource, set_action_manifest},
+            input::{set_action_manifest, OpenVrInputSource},
             lines::LinePool,
             manifest::{install_manifest, uninstall_manifest},
             overlay::OpenVrOverlayData,
         },
-        task::{SystemTask, TaskType},
+        task::{ManagerTask, SystemTask, TaskType},
+        BackendError,
     },
     config::save_state,
-    graphics::{GpuFutures, init_openvr_graphics},
+    graphics::{init_openvr_graphics, GpuFutures},
     overlays::{
         toast::Toast,
-        watch::{WATCH_NAME, watch_fade},
+        watch::{watch_fade, WATCH_NAME},
     },
     state::AppState,
     subsystem::notifications::NotificationManager,
@@ -107,7 +107,7 @@ pub fn openvr_run(
 
     if show_by_default {
         app.tasks.enqueue_at(
-            TaskType::System(SystemTask::ShowHide),
+            TaskType::Manager(ManagerTask::ShowHide),
             Instant::now().add(Duration::from_secs(1)),
         );
     }
@@ -254,26 +254,9 @@ pub fn openvr_run(
                     SystemTask::ResetPlayspace => {
                         playspace.reset_offset(&mut chaperone_mgr, &app.input_state);
                     }
-                    SystemTask::ShowHide => {
-                        overlays.show_hide(&mut app);
-                    }
                 },
-                TaskType::ToggleSet(set) => {
-                    overlays.switch_or_toggle_set(&mut app, set);
-                }
-                TaskType::ToggleEditMode => {
-                    if !overlays.get_edit_mode() {
-                        Toast::new(
-                            ToastTopic::System,
-                            "Edit mode enabled".into(),
-                            "Hover overlays to see their options".into(),
-                        )
-                        .with_timeout(5.)
-                        .with_sound(true)
-                        .submit(&mut app);
-                    }
-
-                    overlays.set_edit_mode(!overlays.get_edit_mode());
+                TaskType::Manager(task) => {
+                    overlays.handle_task(&mut app, task)?;
                 }
                 #[cfg(feature = "wayvr")]
                 TaskType::WayVR(action) => {

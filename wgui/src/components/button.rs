@@ -97,6 +97,14 @@ impl ComponentTrait for ComponentButton {
 }
 
 impl ComponentButton {
+	pub fn get_label(&self) -> WidgetID {
+		self.data.id_label
+	}
+
+	pub fn get_rect(&self) -> WidgetID {
+		self.data.id_rect
+	}
+
 	pub fn set_text(&self, common: &mut CallbackDataCommon, text: Translation) {
 		let Some(mut label) = common.state.widgets.get_as::<WidgetLabel>(self.data.id_label) else {
 			return;

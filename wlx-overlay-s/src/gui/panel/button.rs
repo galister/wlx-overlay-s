@@ -2,6 +2,7 @@ use std::{
     cell::RefCell,
     io::BufReader,
     process::{Child, ChildStdout},
+    sync::Arc,
 };
 
 use wgui::{
@@ -11,7 +12,7 @@ use wgui::{
     widget::EventResult,
 };
 
-use crate::state::AppState;
+use crate::{backend::task::ManagerTask, state::AppState, windowing::OverlaySelector};
 
 #[cfg(feature = "wayvr")]
 use crate::backend::{task::TaskType, wayvr::WayVRAction};
@@ -48,21 +49,42 @@ pub(super) fn setup_custom_button<S: 'static>(
             "::SetToggle" => {
                 let arg = args.next().unwrap_or_default();
                 let Ok(set_idx) = arg.parse() else {
-                    log::error!("::SetToggle has invalid argument: \"{arg}\"");
+                    log::error!("{command} has invalid argument: \"{arg}\"");
                     return;
                 };
                 Box::new(move |_common, _data, app, _| {
-                    app.tasks.enqueue(TaskType::ToggleSet(set_idx));
+                    app.tasks
+                        .enqueue(TaskType::Manager(ManagerTask::ToggleSet(set_idx)));
                     Ok(EventResult::Consumed)
                 })
             }
-            "::WatchHide" => todo!(),
-            "::WatchSwapHand" => todo!(),
-            // TODO
+            "::OverlayToggle" => {
+                let Some(arg): Option<Arc<str>> = args.next().map(|a| a.into()) else {
+                    log::error!("{command} has missing arguments");
+                    return;
+                };
+
+                Box::new(move |_common, _data, app, _| {
+                    app.tasks.enqueue(TaskType::Overlay(
+                        OverlaySelector::Name(arg.clone()),
+                        Box::new(move |app, owc| {
+                            if owc.active_state.is_none() {
+                                owc.activate(app);
+                            } else {
+                                owc.deactivate();
+                            }
+                        }),
+                    ));
+                    Ok(EventResult::Consumed)
+                })
+            }
             "::EditToggle" => Box::new(move |_common, _data, app, _| {
-                app.tasks.enqueue(TaskType::ToggleEditMode);
+                app.tasks
+                    .enqueue(TaskType::Manager(ManagerTask::ToggleEditMode));
                 Ok(EventResult::Consumed)
             }),
+            "::WatchHide" => todo!(),
+            "::WatchSwapHand" => todo!(),
             // TODO
             #[allow(clippy::match_same_arms)]
             "::OscSend" => return,

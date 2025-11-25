@@ -7,7 +7,7 @@ use wgui::{
     assets::AssetPath,
     drawing,
     event::{
-        Event as WguiEvent, EventCallback, EventListenerID, EventListenerKind,
+        Event as WguiEvent, EventAlterables, EventCallback, EventListenerID, EventListenerKind,
         InternalStateChangeEvent, MouseButtonIndex, MouseDownEvent, MouseLeaveEvent,
         MouseMotionEvent, MouseUpEvent, MouseWheelEvent,
     },
@@ -15,6 +15,7 @@ use wgui::{
     layout::{Layout, LayoutParams, WidgetID},
     parser::{CustomAttribsInfoOwned, ParserState},
     renderer_vk::context::Context as WguiContext,
+    taffy,
     widget::{label::WidgetLabel, rectangle::WidgetRectangle, EventResult},
 };
 
@@ -219,6 +220,22 @@ impl<S: 'static> GuiPanel<S> {
         callback: EventCallback<AppState, S>,
     ) -> Option<EventListenerID> {
         self.layout.add_event_listener(widget_id, kind, callback)
+    }
+
+    pub fn widget_set_display(
+        &self,
+        widget_id: WidgetID,
+        display: taffy::Display,
+        alterables: &mut EventAlterables,
+    ) {
+        let mut style = self
+            .layout
+            .state
+            .get_widget_style(widget_id)
+            .unwrap_or(&taffy::Style::DEFAULT)
+            .clone();
+        style.display = display;
+        alterables.set_style(widget_id, style);
     }
 }
 

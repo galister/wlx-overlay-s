@@ -1,23 +1,34 @@
-use std::{collections::HashMap, rc::Rc, time::Duration};
+use std::{
+    collections::HashMap,
+    rc::Rc,
+    time::{Duration, Instant},
+};
 
 use glam::{Affine3A, Vec3, Vec3A};
 use wgui::{
     components::button::ComponentButton,
-    event::{CallbackDataCommon, EventAlterables},
+    event::{CallbackDataCommon, EventAlterables, EventCallback},
+    i18n::Translation,
+    layout::WidgetID,
     parser::Fetchable,
+    taffy,
+    widget::EventResult,
 };
 use wlx_common::windowing::{OverlayWindowState, Positioning};
 
 use crate::{
+    backend::task::{ManagerTask, TaskType},
     gui::{
-        panel::{GuiPanel, NewGuiPanelParams},
+        panel::{button::BUTTON_EVENTS, GuiPanel, NewGuiPanelParams, OnCustomAttribFunc},
         timer::GuiTimer,
     },
+    overlays::edit::LongPressButtonState,
     state::AppState,
     windowing::{
-        Z_ORDER_WATCH,
         backend::OverlayEventData,
+        manager::MAX_OVERLAY_SETS,
         window::{OverlayWindowConfig, OverlayWindowData},
+        OverlaySelector, Z_ORDER_WATCH,
     },
 };
 
@@ -27,11 +38,78 @@ pub const WATCH_NAME: &str = "watch";
 struct WatchState {
     current_set: Option<usize>,
     set_buttons: Vec<Rc<ComponentButton>>,
+    screen_buttons: Vec<Rc<ComponentButton>>,
+    edit_mode_widgets: Vec<(WidgetID, bool)>,
+    edit_add_widget: WidgetID,
+    num_sets: usize,
+    delete: LongPressButtonState,
 }
 
 #[allow(clippy::significant_drop_tightening)]
-pub fn create_watch(app: &mut AppState, num_sets: usize) -> anyhow::Result<OverlayWindowConfig> {
+pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
     let state = WatchState::default();
+
+    let on_custom_attrib: OnCustomAttribFunc = Box::new(move |layout, attribs, _app| {
+        for (name, kind) in &BUTTON_EVENTS {
+            let Some(action) = attribs.get_value(name) else {
+                continue;
+            };
+
+            let mut args = action.split_whitespace();
+            let Some(command) = args.next() else {
+                continue;
+            };
+
+            let callback: EventCallback<AppState, WatchState> = match command {
+                "::EditModeDeleteDown" => Box::new(move |_common, _data, _app, state| {
+                    state.delete.pressed = Instant::now();
+                    Ok(EventResult::Consumed)
+                }),
+                "::EditModeDeleteUp" => Box::new(move |_common, _data, app, state| {
+                    if state.delete.pressed.elapsed() < Duration::from_secs(2) {
+                        return Ok(EventResult::Consumed);
+                    }
+                    app.tasks
+                        .enqueue(TaskType::Manager(ManagerTask::DeleteActiveSet));
+                    Ok(EventResult::Consumed)
+                }),
+                "::EditModeAddSet" => Box::new(move |_common, _data, app, _state| {
+                    app.tasks.enqueue(TaskType::Manager(ManagerTask::AddSet));
+                    Ok(EventResult::Consumed)
+                }),
+                "::EditModeScreenToggle" => {
+                    let arg = args.next().unwrap_or_default();
+                    let Ok(idx) = arg.parse::<usize>() else {
+                        log::error!("{command} has invalid argument: \"{arg}\"");
+                        return;
+                    };
+                    Box::new(move |_common, _data, app, _state| {
+                        let Some(screen) = app.screens.get(idx) else {
+                            log::error!("No screen at index {idx}.");
+                            return Ok(EventResult::Consumed);
+                        };
+
+                        app.tasks.enqueue(TaskType::Overlay(
+                            OverlaySelector::Name(screen.name.clone()),
+                            Box::new(move |app, owc| {
+                                if owc.active_state.is_none() {
+                                    owc.activate(app);
+                                } else {
+                                    owc.deactivate();
+                                }
+                            }),
+                        ));
+                        Ok(EventResult::Consumed)
+                    })
+                }
+                _ => return,
+            };
+
+            let id = layout.add_event_listener(attribs.widget_id, *kind, callback);
+            log::debug!("Registered {action} on {:?} as {id:?}", attribs.widget_id);
+        }
+    });
+
     let mut panel = GuiPanel::new_from_template(
         app,
         "gui/watch.xml",
@@ -39,37 +117,56 @@ pub fn create_watch(app: &mut AppState, num_sets: usize) -> anyhow::Result<Overl
         NewGuiPanelParams {
             on_custom_id: Some(Box::new(
                 move |id, widget, doc_params, layout, parser_state, state| {
-                    if &*id != "sets" {
-                        return Ok(());
-                    }
+                    if id.starts_with("norm_") {
+                        state.edit_mode_widgets.push((widget, false));
+                    } else if &*id == "edit_add" {
+                        state.edit_add_widget = widget;
+                    } else if id.starts_with("edit_") {
+                        state.edit_mode_widgets.push((widget, true));
+                    } else if &*id == "sets" {
+                        for idx in 0..MAX_OVERLAY_SETS {
+                            let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
+                            params.insert("display".into(), (idx + 1).to_string().into());
+                            params.insert("handle".into(), idx.to_string().into());
+                            parser_state
+                                .instantiate_template(doc_params, "Set", layout, widget, params)?;
 
-                    for idx in 0..num_sets {
-                        let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
-                        params.insert("display".into(), (idx + 1).to_string().into());
-                        params.insert("handle".into(), idx.to_string().into());
-                        parser_state
-                            .instantiate_template(doc_params, "Set", layout, widget, params)?;
+                            let button_id = format!("set_{idx}");
+                            let component =
+                                parser_state.fetch_component_as::<ComponentButton>(&button_id)?;
+                            state.set_buttons.push(component);
+                        }
+                    } else if &*id == "toolbox" {
+                        for idx in 0..9 {
+                            let screen_id = format!("screen_{idx}");
+                            let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
+                            params.insert("idx".into(), idx.to_string().into());
+                            parser_state.instantiate_template(
+                                doc_params, "Screen", layout, widget, params,
+                            )?;
 
-                        let button_id = format!("set_{idx}");
-                        let component =
-                            parser_state.fetch_component_as::<ComponentButton>(&button_id)?;
-                        state.set_buttons.push(component);
+                            let component =
+                                parser_state.fetch_component_as::<ComponentButton>(&screen_id)?;
+                            state.screen_buttons.push(component);
+                        }
                     }
                     Ok(())
                 },
             )),
+            on_custom_attrib: Some(on_custom_attrib),
             ..Default::default()
         },
     )?;
 
-    panel.on_notify = Some(Box::new(|panel, _app, event_data| {
+    panel.on_notify = Some(Box::new(|panel, app, event_data| {
+        let mut alterables = EventAlterables::default();
+        let mut common = CallbackDataCommon {
+            alterables: &mut alterables,
+            state: &panel.layout.state,
+        };
+
         match event_data {
-            OverlayEventData::SetChanged(current_set) => {
-                let mut alterables = EventAlterables::default();
-                let mut common = CallbackDataCommon {
-                    alterables: &mut alterables,
-                    state: &panel.layout.state,
-                };
+            OverlayEventData::ActiveSetChanged(current_set) => {
                 if let Some(old_set) = panel.state.current_set.take() {
                     panel.state.set_buttons[old_set].set_sticky_state(&mut common, false);
                 }
@@ -77,9 +174,64 @@ pub fn create_watch(app: &mut AppState, num_sets: usize) -> anyhow::Result<Overl
                     panel.state.set_buttons[new_set].set_sticky_state(&mut common, true);
                 }
                 panel.state.current_set = current_set;
-                panel.layout.process_alterables(alterables)?;
+            }
+            OverlayEventData::NumSetsChanged(num_sets) => {
+                panel.state.num_sets = num_sets;
+                for i in 0..MAX_OVERLAY_SETS {
+                    let comp = panel.state.set_buttons[i].clone();
+                    let rect_id = comp.get_rect();
+                    let display = if i < num_sets {
+                        taffy::Display::Flex
+                    } else {
+                        taffy::Display::None
+                    };
+                    panel.widget_set_display(rect_id, display, &mut common.alterables);
+                }
+                let display = if num_sets < 7 {
+                    taffy::Display::Flex
+                } else {
+                    taffy::Display::None
+                };
+                panel.widget_set_display(
+                    panel.state.edit_add_widget,
+                    display,
+                    &mut common.alterables,
+                );
+            }
+            OverlayEventData::EditModeChanged(edit_mode) => {
+                for (w, e) in panel.state.edit_mode_widgets.iter() {
+                    let display = if *e == edit_mode {
+                        taffy::Display::Flex
+                    } else {
+                        taffy::Display::None
+                    };
+                    panel.widget_set_display(*w, display, &mut common.alterables);
+                }
+                let display = if edit_mode && panel.state.num_sets < 7 {
+                    taffy::Display::Flex
+                } else {
+                    taffy::Display::None
+                };
+                panel.widget_set_display(
+                    panel.state.edit_add_widget,
+                    display,
+                    &mut common.alterables,
+                );
+            }
+            OverlayEventData::ScreensChanged => {
+                for (idx, btn) in panel.state.screen_buttons.iter().enumerate() {
+                    let display = if let Some(screen) = app.screens.get(idx) {
+                        btn.set_text(&mut common, Translation::from_raw_text(&screen.name));
+                        taffy::Display::Flex
+                    } else {
+                        taffy::Display::None
+                    };
+                    panel.widget_set_display(btn.get_rect(), display, &mut common.alterables);
+                }
             }
         }
+
+        panel.layout.process_alterables(alterables)?;
         Ok(())
     }));
 

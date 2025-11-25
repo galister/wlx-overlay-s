@@ -34,10 +34,17 @@ use crate::{
 
 mod lock;
 mod pos;
-mod tab;
+pub(crate) mod tab;
 
-struct LongPressButtonState {
-    pressed: Instant,
+pub(super) struct LongPressButtonState {
+    pub(super) pressed: Instant,
+}
+impl Default for LongPressButtonState {
+    fn default() -> Self {
+        Self {
+            pressed: Instant::now(),
+        }
+    }
 }
 
 struct EditModeState {
@@ -264,7 +271,7 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
                     Ok(EventResult::Consumed)
                 }),
                 "::EditModeDeleteRelease" => Box::new(move |_common, _data, app, state| {
-                    if state.delete.pressed.elapsed() > Duration::from_secs(2) {
+                    if state.delete.pressed.elapsed() < Duration::from_secs(2) {
                         return Ok(EventResult::Pass);
                     }
                     app.tasks.enqueue(TaskType::Overlay(
@@ -296,7 +303,7 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
 
     panel.state.pos = PositioningHandler::new(&mut panel)?;
     panel.state.lock = InteractLockHandler::new(&mut panel)?;
-    panel.state.tabs = ButtonPaneTabSwitcher::new(&mut panel)?;
+    panel.state.tabs = ButtonPaneTabSwitcher::new(&mut panel, &["none", "pos", "alpha", "curve"])?;
 
     set_up_checkbox(&mut panel, "additive_box", cb_assign_additive)?;
     set_up_slider(&mut panel, "alpha_slider", cb_assign_alpha)?;

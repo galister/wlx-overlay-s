@@ -65,7 +65,11 @@ impl RenderResources {
 }
 
 pub enum OverlayEventData {
-    SetChanged(Option<usize>),
+    ActiveSetChanged(Option<usize>),
+    NumSetsChanged(usize),
+    EditModeChanged(bool),
+    ///TODO: this only gets fired at startup
+    ScreensChanged,
 }
 
 pub trait OverlayBackend: Any {

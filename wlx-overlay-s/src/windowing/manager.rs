@@ -2,19 +2,22 @@ use std::collections::HashMap;
 
 use glam::{Affine3A, Vec3, Vec3A};
 use slotmap::{HopSlotMap, Key, SecondaryMap};
-use wlx_common::config::SerializedWindowSet;
+use wlx_common::{config::SerializedWindowSet, overlays::ToastTopic};
 
 use crate::{
+    backend::task::ManagerTask,
     overlays::{
         anchor::create_anchor, edit::EditWrapperManager, keyboard::builder::create_keyboard,
-        screen::create_screens, watch::create_watch,
+        screen::create_screens, toast::Toast, watch::create_watch,
     },
     state::AppState,
     windowing::{
-        OverlayID, OverlaySelector, backend::OverlayEventData, set::OverlayWindowSet, snap_upright,
-        window::OverlayWindowData,
+        backend::OverlayEventData, set::OverlayWindowSet, snap_upright, window::OverlayWindowData,
+        OverlayID, OverlaySelector,
     },
 };
+
+pub const MAX_OVERLAY_SETS: usize = 7;
 
 pub struct OverlayWindowManager<T> {
     wrappers: EditWrapperManager,
@@ -95,7 +98,15 @@ where
         let anchor = OverlayWindowData::from_config(create_anchor(app)?);
         me.add(anchor, app);
 
-        let watch = OverlayWindowData::from_config(create_watch(app, me.sets.len())?);
+        let mut watch = OverlayWindowData::from_config(create_watch(app)?);
+
+        for ev in [
+            OverlayEventData::ScreensChanged,
+            OverlayEventData::NumSetsChanged(me.sets.len()),
+            OverlayEventData::EditModeChanged(false),
+        ] {
+            watch.config.backend.notify(app, ev)?;
+        }
         me.watch_id = me.add(watch, app);
 
         // overwrite default layout with saved layout, if exists
@@ -174,14 +185,21 @@ impl<T> OverlayWindowManager<T> {
         self.edit_mode
     }
 
-    pub fn set_edit_mode(&mut self, enabled: bool) {
+    pub fn set_edit_mode(&mut self, enabled: bool, app: &mut AppState) -> anyhow::Result<()> {
+        let changed = enabled != self.edit_mode;
         self.edit_mode = enabled;
-        if enabled {
-            return;
+        if !enabled {
+            for o in self.overlays.values_mut() {
+                self.wrappers.unwrap_edit_mode(&mut o.config);
+            }
         }
-        for o in self.overlays.values_mut() {
-            self.wrappers.unwrap_edit_mode(&mut o.config);
+        if changed && let Some(watch) = self.mut_by_id(self.watch_id) {
+            watch
+                .config
+                .backend
+                .notify(app, OverlayEventData::EditModeChanged(enabled))?;
         }
+        Ok(())
     }
 
     pub fn edit_overlay(&mut self, id: OverlayID, enabled: bool, app: &mut AppState) {
@@ -324,7 +342,7 @@ impl<T> OverlayWindowManager<T> {
             watch
                 .config
                 .backend
-                .notify(app, OverlayEventData::SetChanged(new_set))
+                .notify(app, OverlayEventData::ActiveSetChanged(new_set))
                 .unwrap(); // TODO: handle this
         }
     }
@@ -341,5 +359,64 @@ impl<T> OverlayWindowManager<T> {
 
         // toggle watch back on if it was hidden
         self.mut_by_id(self.watch_id).unwrap().config.activate(app);
+    }
+
+    pub fn handle_task(&mut self, app: &mut AppState, task: ManagerTask) -> anyhow::Result<()> {
+        match task {
+            ManagerTask::ShowHide => self.show_hide(app),
+            ManagerTask::ToggleSet(set) => {
+                self.switch_or_toggle_set(app, set);
+            }
+            ManagerTask::ToggleEditMode => {
+                self.set_edit_mode(!self.edit_mode, app)?;
+            }
+            ManagerTask::AddSet => {
+                self.sets.push(OverlayWindowSet::default());
+                let len = self.sets.len();
+                if let Some(watch) = self.mut_by_id(self.watch_id) {
+                    watch
+                        .config
+                        .backend
+                        .notify(app, OverlayEventData::NumSetsChanged(len))?;
+                }
+            }
+            ManagerTask::DeleteActiveSet => {
+                let Some(set) = self.current_set else {
+                    Toast::new(
+                        ToastTopic::System,
+                        "Can't remove set".into(),
+                        "No set is selected!".into(),
+                    )
+                    .with_timeout(5.)
+                    .with_sound(true)
+                    .submit(app);
+                    return Ok(());
+                };
+
+                if self.sets.len() <= 1 {
+                    Toast::new(
+                        ToastTopic::System,
+                        "Can't remove set".into(),
+                        "This is the last existing set!".into(),
+                    )
+                    .with_timeout(5.)
+                    .with_sound(true)
+                    .submit(app);
+                    return Ok(());
+                }
+
+                self.switch_to_set(app, None);
+                self.sets.remove(set);
+                let len = self.sets.len();
+                if let Some(watch) = self.mut_by_id(self.watch_id) {
+                    watch
+                        .config
+                        .backend
+                        .notify(app, OverlayEventData::NumSetsChanged(len))?;
+                }
+            }
+        }
+
+        Ok(())
     }
 }

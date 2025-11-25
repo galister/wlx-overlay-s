@@ -6,26 +6,26 @@
     border="2" round="50%" padding="8" gradient="vertical" tooltip_side="bottom" />
 
   <template name="TopButton">
-    <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" sticky="${sticky}" border_color="#0044CC" color="#000A1C" color2="#000002">
-      <sprite id="${id}_sprite" width="48" height="48" src="${src}" _release="${release}" />
+    <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" sticky="${sticky}" border_color="#0044CC" color="#000A1C" color2="#000002">
+      <sprite id="${id}_sprite" width="48" height="48" src="${src}" />
     </Button>
   </template>
 
   <template name="TopButtonDanger">
-    <Button macro="button_style" tooltip="${tooltip}" _press="${press}" border_color="#CC0000" color="#110000" color2="#020000">
-      <sprite width="48" height="48" src="${src}" _release="${release}" />
+    <Button macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" border_color="#CC0000" color="#110000" color2="#020000">
+      <sprite width="48" height="48" src="${src}" />
     </Button>
   </template>
 
   <template name="TopButtonFaded">
-    <Button macro="button_style" tooltip="${tooltip}" _press="${press}" border_color="#707070" color="#202020" color2="#010101">
-      <sprite width="48" height="48" src="${src}" _release="${release}" />
+    <Button macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" border_color="#707070" color="#202020" color2="#010101">
+      <sprite width="48" height="48" src="${src}" />
     </Button>
   </template>
 
   <template name="PosButton">
-    <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" border_color="#0044CC" color="#000A1C" color2="#000002">
-      <sprite id="${id}_sprite" width="40" height="40" src="${src}" _release="${release}" />
+    <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" border_color="#0044CC" color="#000A1C" color2="#000002">
+      <sprite id="${id}_sprite" width="40" height="40" src="${src}" />
     </Button>
   </template>
 

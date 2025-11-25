@@ -19,10 +19,22 @@
     border_color="#0044CC" border="2" round="8" color="#000A1C" color2="#000002" gradient="vertical" />
 
   <template name="Device">
-    <sprite width="${size}" height="${size}" src="${src}" />
-    <div position="absolute" margin_top="10" margin_left="9">
-      <label _source="battery" _device="${device}" size="18" shadow="#000000" weight="bold" />
+    <div margin="4">
+      <sprite width="${size}" height="${size}" src="${src}" />
+      <div margin_top="10" margin_left="-31">
+        <label _source="battery" _device="${device}" size="18" shadow="#000000" weight="bold" />
+      </div>
     </div>
+  </template>
+
+  <template name="SpriteButton">
+    <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}">
+      <sprite width="40" height="40" src="${src}" />
+    </Button>
+  </template>
+
+  <template name="Screen">
+    <Button macro="button_style" padding="4" id="screen_${idx}" text="DISP-${idx}" tooltip="Toggle for current set" _press="::EditModeScreenToggle ${idx}" />
   </template>
 
   <template name="Set">
@@ -36,8 +48,8 @@
 
   <elements>
     <div width="460" height="260" padding="30" interactable="0">
-      <rectangle width="100%" height="100%" padding="4" box_sizing="content_box" flex_wrap="wrap" flex_direction="column" gap="4" color="~color_bg">
-        <div width="100%" flex_direction="row">
+      <rectangle width="100%" height="100%" padding="4" box_sizing="content_box" flex_wrap="wrap" flex_direction="column" gap="4" color="~color_bg" justify_content="space_between">
+        <div width="100%" flex_direction="row" id="norm_top">
           <Device src="watch/hmd.svg" size="40" device="0" />
           <Device src="watch/controller_l.svg" size="36" device="1" />
           <Device src="watch/controller_r.svg" size="36" device="2" />
@@ -45,7 +57,7 @@
           <Device src="watch/track3.svg" size="40" device="4" />
           <Device src="watch/track3.svg" size="40" device="5" />
         </div>
-        <div flex_direction="row">
+        <div width="100%" flex_direction="row" id="norm_pane">
           <div flex_direction="column" padding="4">
             <label text="23:59" _source="clock" _display="time" color="~clock0_color" size="~clock0_size" weight="bold" />
             <label text="22/2/2022" _source="clock" _display="date" color="~clock0_color" size="~clock0_date_size" weight="bold" />
@@ -63,12 +75,33 @@
             <label text="23:59" _source="clock" _display="time" _timezone="1" color="~clock_alt2_color" size="~clock_alt_size" weight="bold" />
           </div>
         </div>
+        <div width="100%" flex_direction="column" id="edit_pane" display="none" >
+          <div flex_direction="column" padding="4" align_items="center" justify_content="center">
+            <label text="Overlays can now be moved and tuned individually." />
+            <label text="Control which overlays are visible on this set:" />
+          </div>
+          <div flex_direction="row" flex_wrap="wrap" padding="4" align_items="center" justify_content="center" id="toolbox">
+            <Button macro="button_style" padding="4" translation="Keyboard" tooltip="Toggle for current set" _press="::OverlayToggle kbd" />
+          </div>
+        </div>
         <div width="100%" flex_direction="row">
-          <Button macro="button_style" _press="::DashToggle" tooltip="Dashboard" tooltip_side="top">
-            <sprite color="~set_color" width="40" height="40" src="watch/home.svg" />
-          </Button>
+          <div id="norm_dash">
+            <Button macro="button_style" _press="::DashToggle" tooltip="Dashboard" tooltip_side="top" id="norm_dash">
+              <sprite color="~set_color" width="40" height="40" src="watch/home.svg" />
+            </Button>
+          </div>
+          <div id="edit_delete">
+            <Button macro="button_style" _press="::EditModeDeleteDown" _release="::EditModeDeleteUp" tooltip="Long Press: Delete Set" tooltip_side="top" border_color="#CC0000" color="#110000" color2="#020000" >
+              <sprite color="~set_color" width="40" height="40" src="edit/delete.svg" />
+            </Button>
+          </div>
           <div id="sets">
             <!-- Will populate <Set> tags at runtime -->
+          </div>
+          <div id="edit_add">
+            <Button macro="button_style" _press="::EditModeAddSet" tooltip="Add a new set" tooltip_side="top">
+              <sprite color="~set_color" width="40" height="40" src="edit/add.svg" />
+            </Button>
           </div>
           <Button macro="button_style" _press="::EditToggle" tooltip="Edit mode" tooltip_side="top">
             <sprite color="~set_color" width="40" height="40" src="watch/edit.svg" />

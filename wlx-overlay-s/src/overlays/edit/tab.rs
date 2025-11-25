@@ -5,9 +5,8 @@ use wgui::{
     parser::Fetchable, taffy,
 };
 
-use crate::overlays::edit::EditModeWrapPanel;
+use crate::gui::panel::GuiPanel;
 
-static TABS: [&str; 4] = ["none", "pos", "alpha", "curve"];
 static BUTTON_PREFIX: &str = "top_";
 static PANE_PREFIX: &str = "tab_";
 
@@ -19,16 +18,16 @@ struct TabData {
 }
 
 #[derive(Default)]
-pub(super) struct ButtonPaneTabSwitcher {
+pub struct ButtonPaneTabSwitcher {
     tabs: HashMap<&'static str, Rc<TabData>>,
     active_tab: Option<Rc<TabData>>,
 }
 
 impl ButtonPaneTabSwitcher {
-    pub fn new(panel: &mut EditModeWrapPanel) -> anyhow::Result<Self> {
+    pub fn new<S>(panel: &mut GuiPanel<S>, tab_names: &[&'static str]) -> anyhow::Result<Self> {
         let mut tabs = HashMap::new();
 
-        for tab_name in &TABS {
+        for tab_name in tab_names {
             let name = format!("{BUTTON_PREFIX}{tab_name}");
             let button = panel.parser_state.fetch_component_as(&name).ok();
 
