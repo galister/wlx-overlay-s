@@ -92,11 +92,16 @@ impl Event {
 	}
 }
 
+pub enum StyleSetRequest {
+	Display(taffy::Display),
+	Margin(taffy::Rect<taffy::LengthPercentageAuto>),
+}
+
 // alterables which will be dispatched in the next loop iteration phase
 #[derive(Default)]
 pub struct EventAlterables {
 	pub dirty_nodes: Vec<taffy::NodeId>,
-	pub style_set_requests: Vec<(WidgetID, taffy::Style)>,
+	pub style_set_requests: Vec<(WidgetID, StyleSetRequest)>,
 	pub animations: Vec<animation::Animation>,
 	pub widgets_to_tick: HashSet<WidgetID>, // widgets which needs to be ticked in the next `Layout::update()` fn
 	pub transform_stack: TransformStack,
@@ -112,8 +117,8 @@ impl EventAlterables {
 		self.needs_redraw = true;
 	}
 
-	pub fn set_style(&mut self, widget_id: WidgetID, style: taffy::Style) {
-		self.style_set_requests.push((widget_id, style));
+	pub fn set_style(&mut self, widget_id: WidgetID, request: StyleSetRequest) {
+		self.style_set_requests.push((widget_id, request));
 	}
 
 	pub fn mark_dirty(&mut self, node_id: taffy::NodeId) {

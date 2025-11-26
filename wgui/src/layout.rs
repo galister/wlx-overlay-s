@@ -721,20 +721,33 @@ impl Layout {
 			}
 		}
 
-		for (widget_id, new_style) in alterables.style_set_requests {
-			if let Some(node_id) = self.state.nodes.get(widget_id) {
-				let old_style = self.state.tree.style(*node_id).unwrap() /* always safe */;
+		for (widget_id, style_request) in alterables.style_set_requests {
+			let Some(node_id) = self.state.nodes.get(widget_id) else {
+				continue;
+			};
 
-				// refresh the component in case if visibility/display mode has changed
-				if old_style.display != new_style.display
-					&& let Some(component) = self.registered_components_to_refresh.get(node_id)
-				{
-					self.components_to_refresh_once.insert(component.clone());
-				}
+			// taffy requires us to copy this whole 536-byte style struct.
+			// we can't get `&mut Style` directly from taffy unfortunately
+			let mut cur_style = self.state.tree.style(*node_id).unwrap().clone() /* always safe */;
 
-				if let Err(e) = self.state.tree.set_style(*node_id, new_style) {
-					log::error!("failed to set style for taffy widget ID {node_id:?}: {e:?}");
+			match style_request {
+				event::StyleSetRequest::Display(display) => {
+					// refresh the component in case if visibility/display mode has changed
+					if cur_style.display != display
+						&& let Some(component) = self.registered_components_to_refresh.get(node_id)
+					{
+						self.components_to_refresh_once.insert(component.clone());
+					}
+
+					cur_style.display = display;
 				}
+				event::StyleSetRequest::Margin(margin) => {
+					cur_style.margin = margin;
+				}
+			}
+
+			if let Err(e) = self.state.tree.set_style(*node_id, cur_style) {
+				log::error!("failed to set style for taffy widget ID {node_id:?}: {e:?}");
 			}
 		}
 

@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use button::setup_custom_button;
-use glam::{vec2, Affine2, Vec2};
+use glam::{Affine2, Vec2, vec2};
 use label::setup_custom_label;
 use wgui::{
     assets::AssetPath,
@@ -9,14 +9,14 @@ use wgui::{
     event::{
         Event as WguiEvent, EventAlterables, EventCallback, EventListenerID, EventListenerKind,
         InternalStateChangeEvent, MouseButtonIndex, MouseDownEvent, MouseLeaveEvent,
-        MouseMotionEvent, MouseUpEvent, MouseWheelEvent,
+        MouseMotionEvent, MouseUpEvent, MouseWheelEvent, StyleSetRequest,
     },
     gfx::cmd::WGfxClearMode,
     layout::{Layout, LayoutParams, WidgetID},
     parser::{CustomAttribsInfoOwned, ParserState},
     renderer_vk::context::Context as WguiContext,
     taffy,
-    widget::{label::WidgetLabel, rectangle::WidgetRectangle, EventResult},
+    widget::{EventResult, label::WidgetLabel, rectangle::WidgetRectangle},
 };
 
 use crate::{
@@ -24,7 +24,7 @@ use crate::{
     state::AppState,
     subsystem::hid::WheelDelta,
     windowing::backend::{
-        ui_transform, FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
+        FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender, ui_transform,
     },
 };
 
@@ -228,14 +228,7 @@ impl<S: 'static> GuiPanel<S> {
         display: taffy::Display,
         alterables: &mut EventAlterables,
     ) {
-        let mut style = self
-            .layout
-            .state
-            .get_widget_style(widget_id)
-            .unwrap_or(&taffy::Style::DEFAULT)
-            .clone();
-        style.display = display;
-        alterables.set_style(widget_id, style);
+        alterables.set_style(widget_id, StyleSetRequest::Display(display));
     }
 }
 

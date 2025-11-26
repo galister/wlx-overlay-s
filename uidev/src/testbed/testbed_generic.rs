@@ -13,6 +13,7 @@ use wgui::{
 		checkbox::ComponentCheckbox,
 	},
 	drawing::Color,
+	event::StyleSetRequest,
 	font_config::WguiFontConfig,
 	globals::WguiGlobals,
 	i18n::Translation,
@@ -123,17 +124,14 @@ impl TestbedGeneric {
 		let div_visibility = state.fetch_widget(&layout.state, "div_visibility")?;
 
 		cb_visible.on_toggle(Box::new(move |common, evt| {
-			let mut style = common
-				.state
-				.get_widget_style(div_visibility.id)
-				.unwrap()
-				.clone();
-			style.display = if evt.checked {
-				taffy::Display::Flex
-			} else {
-				taffy::Display::None
-			};
-			common.alterables.set_style(div_visibility.id, style);
+			common.alterables.set_style(
+				div_visibility.id,
+				StyleSetRequest::Display(if evt.checked {
+					taffy::Display::Flex
+				} else {
+					taffy::Display::None
+				}),
+			);
 			Ok(())
 		}));
 

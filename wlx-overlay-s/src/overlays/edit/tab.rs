@@ -1,8 +1,11 @@
 use std::{collections::HashMap, rc::Rc};
 
 use wgui::{
-    components::button::ComponentButton, event::CallbackDataCommon, layout::WidgetID,
-    parser::Fetchable, taffy,
+    components::button::ComponentButton,
+    event::{CallbackDataCommon, StyleSetRequest},
+    layout::WidgetID,
+    parser::Fetchable,
+    taffy,
 };
 
 use crate::gui::panel::GuiPanel;
@@ -76,19 +79,15 @@ impl ButtonPaneTabSwitcher {
 }
 
 fn set_tab_active(common: &mut CallbackDataCommon, data: &TabData, active: bool) {
-    let mut style = common
-        .state
-        .get_widget_style(data.pane)
-        .unwrap_or(&taffy::Style::DEFAULT)
-        .clone();
+    common.alterables.set_style(
+        data.pane,
+        StyleSetRequest::Display(if active {
+            taffy::Display::Block
+        } else {
+            taffy::Display::None
+        }),
+    );
 
-    style.display = if active {
-        taffy::Display::Block
-    } else {
-        taffy::Display::None
-    };
-
-    common.alterables.set_style(data.pane, style);
     if let Some(button) = data.button.as_ref() {
         button.set_sticky_state(common, active);
     }
