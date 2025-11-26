@@ -1,4 +1,5 @@
-use std::rc::Rc;
+use std::hash::Hash;
+use std::{hash::Hasher, rc::Rc};
 
 use crate::{
 	any::AnyTrait,
@@ -54,3 +55,21 @@ impl Component {
 		unsafe { Ok(Rc::from_raw(Rc::into_raw(self.0.clone()).cast())) }
 	}
 }
+
+// these hash/eq impls are required in case we want to do something like HashSet<Component> for convenience reasons.
+
+// hash by address
+impl Hash for Component {
+	fn hash<H: Hasher>(&self, state: &mut H) {
+		std::ptr::hash(&raw const self.0, state);
+	}
+}
+
+// match by address
+impl PartialEq for Component {
+	fn eq(&self, other: &Self) -> bool {
+		std::ptr::eq(&raw const self.0, &raw const other.0)
+	}
+}
+
+impl Eq for Component {}

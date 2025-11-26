@@ -59,7 +59,7 @@ pub(super) fn setup_custom_button<S: 'static>(
                 })
             }
             "::OverlayToggle" => {
-                let Some(arg): Option<Arc<str>> = args.next().map(|a| a.into()) else {
+                let Some(arg): Option<Arc<str>> = args.next().map(Into::into) else {
                     log::error!("{command} has missing arguments");
                     return;
                 };

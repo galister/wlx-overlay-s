@@ -12,11 +12,11 @@ use crate::{
     },
     state::AppState,
     windowing::{
+        OverlayID, OverlaySelector,
         backend::{OverlayEventData, OverlayMeta},
         set::OverlayWindowSet,
         snap_upright,
         window::{OverlayCategory, OverlayWindowData},
-        OverlayID, OverlaySelector,
     },
 };
 
@@ -246,12 +246,7 @@ impl<T> OverlayWindowManager<T> {
     ) -> Option<OverlayWindowData<T>> {
         let id = match selector {
             OverlaySelector::Id(id) => *id,
-            OverlaySelector::Name(name) => {
-                let Some(id) = self.lookup(name) else {
-                    return None;
-                };
-                id
-            }
+            OverlaySelector::Name(name) => self.lookup(name)?,
         };
 
         let ret_val = self.overlays.remove(id);
@@ -260,7 +255,7 @@ impl<T> OverlayWindowManager<T> {
             .is_some_and(|o| matches!(o.config.category, OverlayCategory::Internal));
 
         if !internal && let Err(e) = self.overlays_changed(app) {
-            log::error!("Error while removing overlay: {e:?}")
+            log::error!("Error while removing overlay: {e:?}");
         }
 
         ret_val
@@ -455,12 +450,12 @@ impl<T> OverlayWindowManager<T> {
 
     fn overlays_changed(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         let mut meta = Vec::with_capacity(self.overlays.len());
-        for (id, data) in self.overlays.iter() {
+        for (id, data) in &self.overlays {
             if matches!(data.config.category, OverlayCategory::Internal) {
                 continue;
             }
             meta.push(OverlayMeta {
-                id: id.clone(),
+                id,
                 name: data.config.name.clone(),
                 category: data.config.category,
             });

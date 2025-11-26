@@ -19,22 +19,22 @@ use wgui::{
 use crate::{backend::task::TaskType, windowing::OverlaySelector};
 use crate::{
     backend::{input::HoverResult, task::TaskContainer},
-    gui::panel::{button::BUTTON_EVENTS, GuiPanel, NewGuiPanelParams, OnCustomAttribFunc},
+    gui::panel::{GuiPanel, NewGuiPanelParams, OnCustomAttribFunc, button::BUTTON_EVENTS},
     overlays::edit::{
         lock::InteractLockHandler, pos::PositioningHandler, tab::ButtonPaneTabSwitcher,
     },
     state::AppState,
     subsystem::hid::WheelDelta,
     windowing::{
+        OverlayID,
         backend::{DummyBackend, OverlayBackend, OverlayEventData, RenderResources, ShouldRender},
         window::OverlayWindowConfig,
-        OverlayID,
     },
 };
 
 mod lock;
 mod pos;
-pub(crate) mod tab;
+pub mod tab;
 
 pub(super) struct LongPressButtonState {
     pub(super) pressed: Instant,

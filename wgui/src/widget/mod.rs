@@ -1,4 +1,5 @@
 use glam::Vec2;
+use taffy::{NodeId, TaffyTree};
 
 use super::drawing::RenderPrimitive;
 
@@ -392,25 +393,37 @@ impl WidgetState {
 
 		let step_pixels = 64.0;
 
-		if info.handle_size.x < 1.0 && wheel.pos.x != 0.0 {
-			// Horizontal scrolling
-			let mult = (1.0 / (l.content_box_width() - info.content_size.x)) * step_pixels;
-			let new_scroll = (self.data.scrolling_target.x + wheel.delta.x * mult).clamp(0.0, 1.0);
-			if self.data.scrolling_target.x != new_scroll {
-				self.data.scrolling_target.x = new_scroll;
-				params.alterables.mark_tick(self.obj.get_id());
-			}
-		}
+		let mut handle_scroll =
+			|scrolling_target: &mut f32, wheel_delta: f32, handle_size: f32, content_length: f32, content_box_length: f32| {
+				if handle_size >= 1.0 || wheel_delta == 0.0 {
+					return;
+				}
 
-		if info.handle_size.y < 1.0 && wheel.pos.y != 0.0 {
-			// Vertical scrolling
-			let mult = (1.0 / (l.content_box_height() - info.content_size.y)) * step_pixels;
-			let new_scroll = (self.data.scrolling_target.y + wheel.delta.y * mult).clamp(0.0, 1.0);
-			if self.data.scrolling_target.y != new_scroll {
-				self.data.scrolling_target.y = new_scroll;
+				let mult = (1.0 / (content_box_length - content_length)) * step_pixels;
+				let new_scroll = (*scrolling_target + wheel_delta * mult).clamp(0.0, 1.0);
+				if *scrolling_target == new_scroll {
+					return;
+				}
+
+				*scrolling_target = new_scroll;
 				params.alterables.mark_tick(self.obj.get_id());
-			}
-		}
+			};
+
+		handle_scroll(
+			&mut self.data.scrolling_target.x,
+			wheel.delta.x,
+			info.handle_size.x,
+			info.content_size.x,
+			l.content_box_width(),
+		);
+
+		handle_scroll(
+			&mut self.data.scrolling_target.y,
+			wheel.delta.y,
+			info.handle_size.y,
+			info.content_size.y,
+			l.content_box_height(),
+		);
 
 		true
 	}
@@ -506,4 +519,21 @@ impl WidgetState {
 pub struct ConstructEssentials<'a> {
 	pub layout: &'a mut Layout,
 	pub parent: WidgetID,
+}
+
+/// Determines whether a given node is visible within the layout tree.
+///
+/// Traversal is definitely a little bit more expensive than just checking the value, but
+/// Taffy doesn't calculate that for us, so here it is.
+pub fn is_node_visible(tree: &TaffyTree<WidgetID>, node_id: NodeId) -> bool {
+	let mut cur = Some(node_id);
+	while let Some(node_id) = cur {
+		if let Ok(style) = tree.style(node_id)
+			&& style.display == taffy::Display::None
+		{
+			return false;
+		}
+		cur = tree.parent(node_id);
+	}
+	true
 }

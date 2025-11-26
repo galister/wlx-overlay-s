@@ -19,16 +19,16 @@ use wlx_common::windowing::{OverlayWindowState, Positioning};
 use crate::{
     backend::task::{ManagerTask, TaskType},
     gui::{
-        panel::{button::BUTTON_EVENTS, GuiPanel, NewGuiPanelParams, OnCustomAttribFunc},
+        panel::{GuiPanel, NewGuiPanelParams, OnCustomAttribFunc, button::BUTTON_EVENTS},
         timer::GuiTimer,
     },
     overlays::edit::LongPressButtonState,
     state::AppState,
     windowing::{
+        OverlaySelector, Z_ORDER_WATCH,
         backend::{OverlayEventData, OverlayMeta},
         manager::MAX_OVERLAY_SETS,
         window::{OverlayWindowConfig, OverlayWindowData},
-        OverlaySelector, Z_ORDER_WATCH,
     },
 };
 
@@ -48,6 +48,7 @@ struct WatchState {
 }
 
 #[allow(clippy::significant_drop_tightening)]
+#[allow(clippy::too_many_lines)]
 pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
     let state = WatchState::default();
 
@@ -92,7 +93,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                         };
 
                         app.tasks.enqueue(TaskType::Overlay(
-                            OverlaySelector::Id(overlay.id.clone()),
+                            OverlaySelector::Id(overlay.id),
                             Box::new(move |app, owc| {
                                 if owc.active_state.is_none() {
                                     owc.activate(app);
@@ -187,42 +188,36 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                     } else {
                         taffy::Display::None
                     };
-                    panel.widget_set_display(rect_id, display, &mut common.alterables);
+                    panel.widget_set_display(rect_id, display, common.alterables);
                 }
                 let display = if num_sets < 7 {
                     taffy::Display::Flex
                 } else {
                     taffy::Display::None
                 };
-                panel.widget_set_display(
-                    panel.state.edit_add_widget,
-                    display,
-                    &mut common.alterables,
-                );
+                panel.widget_set_display(panel.state.edit_add_widget, display, common.alterables);
             }
             OverlayEventData::EditModeChanged(edit_mode) => {
-                for (w, e) in panel.state.edit_mode_widgets.iter() {
+                for (w, e) in &panel.state.edit_mode_widgets {
                     let display = if *e == edit_mode {
                         taffy::Display::Flex
                     } else {
                         taffy::Display::None
                     };
-                    panel.widget_set_display(*w, display, &mut common.alterables);
+                    panel.widget_set_display(*w, display, common.alterables);
                 }
                 let display = if edit_mode && panel.state.num_sets < 7 {
                     taffy::Display::Flex
                 } else {
                     taffy::Display::None
                 };
-                panel.widget_set_display(
-                    panel.state.edit_add_widget,
-                    display,
-                    &mut common.alterables,
-                );
+                panel.widget_set_display(panel.state.edit_add_widget, display, common.alterables);
             }
             OverlayEventData::OverlaysChanged(metas) => {
                 panel.state.overlay_metas = metas;
+                // FIXME: should we suppress this clippy warning in the crate itself? the resulting code isn't always more readable than before
                 for (idx, btn) in panel.state.overlay_buttons.iter().enumerate() {
+                    #[allow(clippy::option_if_let_else)]
                     let display = if let Some(meta) = panel.state.overlay_metas.get(idx) {
                         btn.set_text(&mut common, Translation::from_raw_text(&meta.name));
                         //TODO: add category icons
@@ -230,7 +225,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                     } else {
                         taffy::Display::None
                     };
-                    panel.widget_set_display(btn.get_rect(), display, &mut common.alterables);
+                    panel.widget_set_display(btn.get_rect(), display, common.alterables);
                 }
             }
         }

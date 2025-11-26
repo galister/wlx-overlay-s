@@ -7,8 +7,8 @@ use vulkano::{
     image::view::ImageView,
 };
 use wgui::gfx::{
-    cmd::{GfxCommandBuffer, WGfxClearMode},
     WGfx,
+    cmd::{GfxCommandBuffer, WGfxClearMode},
 };
 
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
     graphics::ExtentExt,
     state::AppState,
     subsystem::hid::WheelDelta,
-    windowing::{window::OverlayCategory, OverlayID},
+    windowing::{OverlayID, window::OverlayCategory},
 };
 
 #[derive(Default, Clone, Copy)]
@@ -71,6 +71,7 @@ pub struct OverlayMeta {
     pub category: OverlayCategory,
 }
 
+#[allow(clippy::enum_variant_names)]
 pub enum OverlayEventData {
     ActiveSetChanged(Option<usize>),
     NumSetsChanged(usize),

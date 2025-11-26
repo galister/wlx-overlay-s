@@ -1,6 +1,6 @@
 use crate::{
 	animation::{Animation, AnimationEasing},
-	components::{self, tooltip::ComponentTooltip, Component, ComponentBase, ComponentTrait, RefreshData},
+	components::{self, Component, ComponentBase, ComponentTrait, RefreshData, tooltip::ComponentTooltip},
 	drawing::{self, Boundary, Color},
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerID, EventListenerKind},
 	i18n::Translation,
@@ -10,15 +10,15 @@ use crate::{
 		util::centered_matrix,
 	},
 	widget::{
+		self, ConstructEssentials, EventResult, WidgetData,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
-		ConstructEssentials, EventResult, WidgetData,
 	},
 };
 use glam::{Mat4, Vec3};
 use std::{cell::RefCell, rc::Rc};
-use taffy::{prelude::length, AlignItems, JustifyContent};
+use taffy::{AlignItems, JustifyContent, prelude::length};
 
 pub struct Params {
 	pub text: Option<Translation>, // if unset, label will not be populated
@@ -91,8 +91,19 @@ impl ComponentTrait for ComponentButton {
 		&mut self.base
 	}
 
-	fn refresh(&self, _data: &mut RefreshData) {
+	fn refresh(&self, data: &mut RefreshData) {
 		// nothing to do
+		let mut state = self.state.borrow_mut();
+
+		if state.active_tooltip.is_some() {
+			if let Some(node_id) = data.common.state.nodes.get(self.base.get_id()) {
+				if !widget::is_node_visible(&data.common.state.tree, *node_id) {
+					state.active_tooltip = None; // destroy the tooltip, this button is now hidden
+				}
+			} else {
+				debug_assert!(false);
+			}
+		}
 	}
 }
 
@@ -472,6 +483,6 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 
 	let button = Rc::new(ComponentButton { base, data, state });
 
-	ess.layout.defer_component_refresh(Component(button.clone()));
+	ess.layout.register_component_refresh(Component(button.clone()));
 	Ok((root, button))
 }

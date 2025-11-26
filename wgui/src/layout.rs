@@ -1,6 +1,6 @@
 use std::{
 	cell::{RefCell, RefMut},
-	collections::{HashMap, VecDeque},
+	collections::{HashMap, HashSet, VecDeque},
 	io::Write,
 	rc::{Rc, Weak},
 };
@@ -139,7 +139,7 @@ pub struct Layout {
 
 	pub tasks: LayoutTasks,
 
-	components_to_refresh_once: Vec<Component>,
+	components_to_refresh_once: HashSet<Component>,
 	registered_components_to_refresh: HashMap<taffy::NodeId, Component>,
 
 	pub widgets_to_tick: Vec<WidgetID>,
@@ -320,10 +320,6 @@ impl Layout {
 				alterables,
 			};
 
-			/* todo
-			let widget_id = comp.0.base().get_id();
-			 */
-
 			comp.0.refresh(&mut RefreshData { common: &mut common });
 		}
 		self.components_to_refresh_once.clear();
@@ -340,12 +336,12 @@ impl Layout {
 		self.widgets_to_tick.clear();
 	}
 
-	// call ComponentTrait::refresh() once
+	// call ComponentTrait::refresh() *once* in the next tick
 	pub fn defer_component_refresh(&mut self, component: Component) {
-		self.components_to_refresh_once.push(component);
+		self.components_to_refresh_once.insert(component);
 	}
 
-	// call ComponentTrait::refresh() every time the layout is dirty
+	// call ComponentTrait::refresh() *every time time* the layout is dirty
 	pub fn register_component_refresh(&mut self, component: Component) {
 		let widget_id = component.0.base().get_id();
 		let Some(node_id) = self.state.nodes.get(widget_id) else {
@@ -571,7 +567,7 @@ impl Layout {
 			needs_redraw: true,
 			haptics_triggered: false,
 			animations: Animations::default(),
-			components_to_refresh_once: Vec::new(),
+			components_to_refresh_once: HashSet::new(),
 			registered_components_to_refresh: HashMap::new(),
 			widgets_to_tick: Vec::new(),
 			tasks: LayoutTasks::new(),
@@ -607,9 +603,9 @@ impl Layout {
 		self.refresh_recursively(self.tree_root_node, &mut to_refresh);
 
 		if !to_refresh.is_empty() {
-			log::debug!("refreshing {} registered widgets", to_refresh.len());
+			log::debug!("refreshing {} registered components", to_refresh.len());
 			for c in &to_refresh {
-				self.components_to_refresh_once.push(c.clone());
+				self.components_to_refresh_once.insert(c.clone());
 			}
 		}
 
@@ -725,11 +721,20 @@ impl Layout {
 			}
 		}
 
-		for (widget_id, style) in alterables.style_set_requests {
-			if let Some(node_id) = self.state.nodes.get(widget_id)
-				&& let Err(e) = self.state.tree.set_style(*node_id, style)
-			{
-				log::error!("failed to set style for taffy widget ID {node_id:?}: {e:?}");
+		for (widget_id, new_style) in alterables.style_set_requests {
+			if let Some(node_id) = self.state.nodes.get(widget_id) {
+				let old_style = self.state.tree.style(*node_id).unwrap() /* always safe */;
+
+				// refresh the component in case if visibility/display mode has changed
+				if old_style.display != new_style.display
+					&& let Some(component) = self.registered_components_to_refresh.get(node_id)
+				{
+					self.components_to_refresh_once.insert(component.clone());
+				}
+
+				if let Err(e) = self.state.tree.set_style(*node_id, new_style) {
+					log::error!("failed to set style for taffy widget ID {node_id:?}: {e:?}");
+				}
 			}
 		}
 

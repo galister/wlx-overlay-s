@@ -13,7 +13,8 @@
     clippy::struct_excessive_bools,
     clippy::needless_pass_by_value,
     clippy::needless_pass_by_ref_mut,
-    clippy::multiple_crate_versions
+    clippy::multiple_crate_versions,
+    clippy::cargo_common_metadata
 )]
 mod backend;
 mod config;
