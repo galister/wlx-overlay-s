@@ -5,7 +5,7 @@ use std::{
 
 use futures::{Future, FutureExt};
 use glam::{Affine2, Affine3A, Vec3};
-use wlx_capture::pipewire::{PipewireCapture, PipewireSelectScreenResult, pipewire_select_screen};
+use wlx_capture::pipewire::{pipewire_select_screen, PipewireCapture, PipewireSelectScreenResult};
 use wlx_common::windowing::OverlayWindowState;
 
 use crate::{
@@ -16,12 +16,12 @@ use crate::{
     state::{AppSession, AppState},
     subsystem::hid::WheelDelta,
     windowing::{
-        OverlaySelector,
         backend::{
-            FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
-            ui_transform,
+            ui_transform, FrameMeta, OverlayBackend, OverlayEventData, RenderResources,
+            ShouldRender,
         },
-        window::OverlayWindowConfig,
+        window::{OverlayCategory, OverlayWindowConfig},
+        OverlaySelector,
     },
 };
 
@@ -152,6 +152,7 @@ impl OverlayBackend for MirrorBackend {
 pub fn new_mirror(name: Arc<str>, session: &AppSession) -> OverlayWindowConfig {
     OverlayWindowConfig {
         name: name.clone(),
+        category: OverlayCategory::Mirror,
         default_state: OverlayWindowState {
             interactable: true,
             grabbable: true,

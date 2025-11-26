@@ -271,7 +271,7 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
                     Ok(EventResult::Consumed)
                 }),
                 "::EditModeDeleteRelease" => Box::new(move |_common, _data, app, state| {
-                    if state.delete.pressed.elapsed() < Duration::from_secs(2) {
+                    if state.delete.pressed.elapsed() < Duration::from_secs(1) {
                         return Ok(EventResult::Pass);
                     }
                     app.tasks.enqueue(TaskType::Overlay(

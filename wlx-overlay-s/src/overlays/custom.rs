@@ -1,9 +1,13 @@
 use std::sync::Arc;
 
-use glam::{Affine3A, Quat, Vec3, vec3};
+use glam::{vec3, Affine3A, Quat, Vec3};
 use wlx_common::windowing::OverlayWindowState;
 
-use crate::{gui::panel::GuiPanel, state::AppState, windowing::window::OverlayWindowConfig};
+use crate::{
+    gui::panel::GuiPanel,
+    state::AppState,
+    windowing::window::{OverlayCategory, OverlayWindowConfig},
+};
 
 const SETTINGS_NAME: &str = "settings";
 
@@ -20,6 +24,7 @@ pub fn create_custom(app: &mut AppState, name: Arc<str>) -> Option<OverlayWindow
 
     Some(OverlayWindowConfig {
         name,
+        category: OverlayCategory::PanelCustom,
         default_state: OverlayWindowState {
             interactable: true,
             grabbable: true,

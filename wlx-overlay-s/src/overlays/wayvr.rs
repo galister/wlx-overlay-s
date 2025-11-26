@@ -1,17 +1,17 @@
-use glam::{Affine2, Affine3A, Quat, Vec3, vec3};
+use glam::{vec3, Affine2, Affine3A, Quat, Vec3};
 use smallvec::smallvec;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 use vulkano::{
     buffer::{BufferUsage, Subbuffer},
     command_buffer::CommandBufferUsage,
     format::Format,
-    image::{Image, ImageTiling, SubresourceLayout, view::ImageView},
+    image::{view::ImageView, Image, ImageTiling, SubresourceLayout},
 };
 use wayvr_ipc::packet_server::{self, PacketServer, WvrStateChanged};
 use wgui::gfx::{
-    WGfx,
     pass::WGfxPass,
     pipeline::{WGfxPipeline, WPipelineCreateInfo},
+    WGfx,
 };
 use wlx_capture::frame::{DmabufFrame, FourCC, FrameFormat, FramePlane};
 use wlx_common::windowing::OverlayWindowState;
@@ -21,22 +21,23 @@ use crate::{
         input::{self, HoverResult},
         task::TaskType,
         wayvr::{
-            self, WayVR, WayVRAction, WayVRDisplayClickAction, display,
+            self, display,
             server_ipc::{gen_args_vec, gen_env_vec},
+            WayVR, WayVRAction, WayVRDisplayClickAction,
         },
     },
     config_wayvr,
-    graphics::{Vert2Uv, dmabuf::WGfxDmabuf},
+    graphics::{dmabuf::WGfxDmabuf, Vert2Uv},
     state::{self, AppState},
     subsystem::{hid::WheelDelta, input::KeyboardFocus},
     windowing::{
-        OverlayID, OverlaySelector, Z_ORDER_DASHBOARD,
         backend::{
-            FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
-            ui_transform,
+            ui_transform, FrameMeta, OverlayBackend, OverlayEventData, RenderResources,
+            ShouldRender,
         },
         manager::OverlayWindowManager,
-        window::{OverlayWindowConfig, OverlayWindowData},
+        window::{OverlayCategory, OverlayWindowConfig, OverlayWindowData},
+        OverlayID, OverlaySelector, Z_ORDER_DASHBOARD,
     },
 };
 
@@ -45,7 +46,7 @@ use super::toast::error_toast;
 // Hard-coded for now
 const DASHBOARD_WIDTH: u16 = 1920;
 const DASHBOARD_HEIGHT: u16 = 1080;
-const DASHBOARD_DISPLAY_NAME: &str = "_DASHBOARD";
+const DASHBOARD_DISPLAY_NAME: &str = "DASHBOARD";
 
 pub struct WayVRContext {
     wayvr: Rc<RefCell<WayVRData>>,
@@ -794,9 +795,16 @@ pub fn create_wayvr_display_overlay(
         [display_width, display_height],
     )?);
 
+    let category = if name == DASHBOARD_DISPLAY_NAME {
+        OverlayCategory::Internal
+    } else {
+        OverlayCategory::WayVR
+    };
+
     Ok(OverlayWindowConfig {
-        name: format!("WayVR - {name}").into(),
+        name: format!("WVR-{name}").into(),
         keyboard_focus: Some(KeyboardFocus::WayVR),
+        category,
         default_state: OverlayWindowState {
             interactable: true,
             grabbable: true,

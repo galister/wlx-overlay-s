@@ -517,7 +517,7 @@ pub fn openxr_run(
                         && o.birthframe < cur_frame
                     {
                         log::debug!("{}: destroy", o.config.name);
-                        if let Some(o) = overlays.remove_by_selector(&sel) {
+                        if let Some(o) = overlays.remove_by_selector(&sel, &mut app) {
                             // set for deletion after all images are done showing
                             delete_queue.push((o, cur_frame + 5));
                         }

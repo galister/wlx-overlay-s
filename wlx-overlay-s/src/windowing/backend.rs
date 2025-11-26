@@ -16,6 +16,7 @@ use crate::{
     graphics::ExtentExt,
     state::AppState,
     subsystem::hid::WheelDelta,
+    windowing::{window::OverlayCategory, OverlayID},
 };
 
 #[derive(Default, Clone, Copy)]
@@ -64,12 +65,17 @@ impl RenderResources {
     }
 }
 
+pub struct OverlayMeta {
+    pub id: OverlayID,
+    pub name: Arc<str>,
+    pub category: OverlayCategory,
+}
+
 pub enum OverlayEventData {
     ActiveSetChanged(Option<usize>),
     NumSetsChanged(usize),
     EditModeChanged(bool),
-    ///TODO: this only gets fired at startup
-    ScreensChanged,
+    OverlaysChanged(Vec<OverlayMeta>),
 }
 
 pub trait OverlayBackend: Any {

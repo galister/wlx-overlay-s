@@ -12,7 +12,10 @@ use crate::{
     },
     state::AppState,
     windowing::{
-        backend::OverlayEventData, set::OverlayWindowSet, snap_upright, window::OverlayWindowData,
+        backend::{OverlayEventData, OverlayMeta},
+        set::OverlayWindowSet,
+        snap_upright,
+        window::{OverlayCategory, OverlayWindowData},
         OverlayID, OverlaySelector,
     },
 };
@@ -101,13 +104,14 @@ where
         let mut watch = OverlayWindowData::from_config(create_watch(app)?);
 
         for ev in [
-            OverlayEventData::ScreensChanged,
             OverlayEventData::NumSetsChanged(me.sets.len()),
             OverlayEventData::EditModeChanged(false),
         ] {
             watch.config.backend.notify(app, ev)?;
         }
         me.watch_id = me.add(watch, app);
+
+        me.overlays_changed(app)?;
 
         // overwrite default layout with saved layout, if exists
         me.restore_layout(app);
@@ -238,13 +242,28 @@ impl<T> OverlayWindowManager<T> {
     pub fn remove_by_selector(
         &mut self,
         selector: &OverlaySelector,
+        app: &mut AppState,
     ) -> Option<OverlayWindowData<T>> {
-        match selector {
-            OverlaySelector::Id(id) => self.overlays.remove(*id),
+        let id = match selector {
+            OverlaySelector::Id(id) => *id,
             OverlaySelector::Name(name) => {
-                self.lookup(name).and_then(|id| self.overlays.remove(id))
+                let Some(id) = self.lookup(name) else {
+                    return None;
+                };
+                id
             }
+        };
+
+        let ret_val = self.overlays.remove(id);
+        let internal = ret_val
+            .as_ref()
+            .is_some_and(|o| matches!(o.config.category, OverlayCategory::Internal));
+
+        if !internal && let Err(e) = self.overlays_changed(app) {
+            log::error!("Error while removing overlay: {e:?}")
         }
+
+        ret_val
     }
 
     pub fn get_by_id(&mut self, id: OverlayID) -> Option<&OverlayWindowData<T>> {
@@ -279,10 +298,24 @@ impl<T> OverlayWindowManager<T> {
     }
 
     pub fn add(&mut self, mut overlay: OverlayWindowData<T>, app: &mut AppState) -> OverlayID {
+        let internal = matches!(overlay.config.category, OverlayCategory::Internal);
+
+        while self.lookup(&overlay.config.name).is_some() {
+            log::error!(
+                "An overlay with name {} already exists. Deduplicating, but things may break!",
+                overlay.config.name
+            );
+            overlay.config.name = format!("{}_2", overlay.config.name).into();
+        }
+
         if overlay.config.show_on_spawn {
             overlay.config.activate(app);
         }
-        self.overlays.insert(overlay)
+        let ret_val = self.overlays.insert(overlay);
+        if !internal && let Err(e) = self.overlays_changed(app) {
+            log::error!("Error while adding overlay: {e:?}");
+        }
+        ret_val
     }
 
     pub fn switch_or_toggle_set(&mut self, app: &mut AppState, set: usize) {
@@ -415,6 +448,29 @@ impl<T> OverlayWindowManager<T> {
                         .notify(app, OverlayEventData::NumSetsChanged(len))?;
                 }
             }
+        }
+
+        Ok(())
+    }
+
+    fn overlays_changed(&mut self, app: &mut AppState) -> anyhow::Result<()> {
+        let mut meta = Vec::with_capacity(self.overlays.len());
+        for (id, data) in self.overlays.iter() {
+            if matches!(data.config.category, OverlayCategory::Internal) {
+                continue;
+            }
+            meta.push(OverlayMeta {
+                id: id.clone(),
+                name: data.config.name.clone(),
+                category: data.config.category,
+            });
+        }
+
+        if let Some(watch) = self.mut_by_id(self.watch_id) {
+            watch
+                .config
+                .backend
+                .notify(app, OverlayEventData::OverlaysChanged(meta))?;
         }
 
         Ok(())

@@ -49,6 +49,15 @@ impl<T> OverlayWindowData<T> {
     }
 }
 
+#[derive(Clone, Copy)]
+pub enum OverlayCategory {
+    Internal,
+    PanelCustom,
+    Screen,
+    Mirror,
+    WayVR,
+}
+
 pub struct OverlayWindowConfig {
     pub name: Arc<str>,
     pub backend: Box<dyn OverlayBackend>,
@@ -60,6 +69,8 @@ pub struct OverlayWindowConfig {
     pub z_order: u32,
     /// If set, hovering this overlay will cause the HID provider to switch focus.
     pub keyboard_focus: Option<KeyboardFocus>,
+    /// Category of the overlay, used by toolbox on the watch.
+    pub category: OverlayCategory,
     /// Should the overlay be displayed on the next frame?
     pub show_on_spawn: bool,
     /// Does not belong to any set; switching sets does not affect this overlay.
@@ -82,6 +93,7 @@ impl OverlayWindowConfig {
             active_state: None,
             z_order: 0,
             keyboard_focus: None,
+            category: OverlayCategory::Internal,
             show_on_spawn: false,
             global: false,
             dirty: true,

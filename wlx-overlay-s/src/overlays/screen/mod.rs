@@ -1,13 +1,16 @@
 use std::{f32::consts::PI, sync::Arc};
 
-use glam::{Affine3A, Quat, Vec3, vec3};
+use glam::{vec3, Affine3A, Quat, Vec3};
 use wlx_capture::frame::Transform;
 use wlx_common::windowing::{OverlayWindowState, Positioning};
 
 use crate::{
     state::{AppSession, AppState, ScreenMeta},
     subsystem::{hid::XkbKeymap, input::KeyboardFocus},
-    windowing::{backend::OverlayBackend, window::OverlayWindowConfig},
+    windowing::{
+        backend::OverlayBackend,
+        window::{OverlayCategory, OverlayWindowConfig},
+    },
 };
 
 pub mod backend;
@@ -38,6 +41,7 @@ fn create_screen_from_backend(
 
     OverlayWindowConfig {
         name,
+        category: OverlayCategory::Screen,
         default_state: OverlayWindowState {
             grabbable: true,
             positioning: Positioning::Anchored,

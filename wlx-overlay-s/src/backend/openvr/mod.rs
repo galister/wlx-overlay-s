@@ -241,7 +241,7 @@ pub fn openvr_run(
                         && o.birthframe < cur_frame
                     {
                         o.destroy(&mut overlay_mgr);
-                        overlays.remove_by_selector(&sel);
+                        overlays.remove_by_selector(&sel, &mut app);
                     }
                 }
                 TaskType::System(task) => match task {

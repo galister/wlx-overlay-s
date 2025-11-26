@@ -33,8 +33,8 @@
     </Button>
   </template>
 
-  <template name="Screen">
-    <Button macro="button_style" padding="4" id="screen_${idx}" text="DISP-${idx}" tooltip="Toggle for current set" _press="::EditModeScreenToggle ${idx}" />
+  <template name="Overlay">
+    <Button macro="button_style" padding="4" id="overlay_${idx}" text="WLX-${idx}" tooltip="Toggle for current set" _press="::EditModeOverlayToggle ${idx}" />
   </template>
 
   <template name="Set">
@@ -82,6 +82,7 @@
           </div>
           <div flex_direction="row" flex_wrap="wrap" padding="4" align_items="center" justify_content="center" id="toolbox">
             <Button macro="button_style" padding="4" translation="Keyboard" tooltip="Toggle for current set" _press="::OverlayToggle kbd" />
+            <!-- Will populate <Overlay> tags at runtime -->
           </div>
         </div>
         <div width="100%" flex_direction="row">

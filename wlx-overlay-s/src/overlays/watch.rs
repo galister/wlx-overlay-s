@@ -25,7 +25,7 @@ use crate::{
     overlays::edit::LongPressButtonState,
     state::AppState,
     windowing::{
-        backend::OverlayEventData,
+        backend::{OverlayEventData, OverlayMeta},
         manager::MAX_OVERLAY_SETS,
         window::{OverlayWindowConfig, OverlayWindowData},
         OverlaySelector, Z_ORDER_WATCH,
@@ -33,12 +33,14 @@ use crate::{
 };
 
 pub const WATCH_NAME: &str = "watch";
+const MAX_TOOLBOX_BUTTONS: usize = 16;
 
 #[derive(Default)]
 struct WatchState {
     current_set: Option<usize>,
     set_buttons: Vec<Rc<ComponentButton>>,
-    screen_buttons: Vec<Rc<ComponentButton>>,
+    overlay_buttons: Vec<Rc<ComponentButton>>,
+    overlay_metas: Vec<OverlayMeta>,
     edit_mode_widgets: Vec<(WidgetID, bool)>,
     edit_add_widget: WidgetID,
     num_sets: usize,
@@ -66,7 +68,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                     Ok(EventResult::Consumed)
                 }),
                 "::EditModeDeleteUp" => Box::new(move |_common, _data, app, state| {
-                    if state.delete.pressed.elapsed() < Duration::from_secs(2) {
+                    if state.delete.pressed.elapsed() < Duration::from_secs(1) {
                         return Ok(EventResult::Consumed);
                     }
                     app.tasks
@@ -77,20 +79,20 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                     app.tasks.enqueue(TaskType::Manager(ManagerTask::AddSet));
                     Ok(EventResult::Consumed)
                 }),
-                "::EditModeScreenToggle" => {
+                "::EditModeOverlayToggle" => {
                     let arg = args.next().unwrap_or_default();
                     let Ok(idx) = arg.parse::<usize>() else {
                         log::error!("{command} has invalid argument: \"{arg}\"");
                         return;
                     };
-                    Box::new(move |_common, _data, app, _state| {
-                        let Some(screen) = app.screens.get(idx) else {
-                            log::error!("No screen at index {idx}.");
+                    Box::new(move |_common, _data, app, state| {
+                        let Some(overlay) = state.overlay_metas.get(idx) else {
+                            log::error!("No overlay at index {idx}.");
                             return Ok(EventResult::Consumed);
                         };
 
                         app.tasks.enqueue(TaskType::Overlay(
-                            OverlaySelector::Name(screen.name.clone()),
+                            OverlaySelector::Id(overlay.id.clone()),
                             Box::new(move |app, owc| {
                                 if owc.active_state.is_none() {
                                     owc.activate(app);
@@ -137,17 +139,17 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                             state.set_buttons.push(component);
                         }
                     } else if &*id == "toolbox" {
-                        for idx in 0..9 {
-                            let screen_id = format!("screen_{idx}");
+                        for idx in 0..MAX_TOOLBOX_BUTTONS {
+                            let overlay_id = format!("overlay_{idx}");
                             let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
                             params.insert("idx".into(), idx.to_string().into());
                             parser_state.instantiate_template(
-                                doc_params, "Screen", layout, widget, params,
+                                doc_params, "Overlay", layout, widget, params,
                             )?;
 
                             let component =
-                                parser_state.fetch_component_as::<ComponentButton>(&screen_id)?;
-                            state.screen_buttons.push(component);
+                                parser_state.fetch_component_as::<ComponentButton>(&overlay_id)?;
+                            state.overlay_buttons.push(component);
                         }
                     }
                     Ok(())
@@ -158,7 +160,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
         },
     )?;
 
-    panel.on_notify = Some(Box::new(|panel, app, event_data| {
+    panel.on_notify = Some(Box::new(|panel, _app, event_data| {
         let mut alterables = EventAlterables::default();
         let mut common = CallbackDataCommon {
             alterables: &mut alterables,
@@ -218,10 +220,12 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                     &mut common.alterables,
                 );
             }
-            OverlayEventData::ScreensChanged => {
-                for (idx, btn) in panel.state.screen_buttons.iter().enumerate() {
-                    let display = if let Some(screen) = app.screens.get(idx) {
-                        btn.set_text(&mut common, Translation::from_raw_text(&screen.name));
+            OverlayEventData::OverlaysChanged(metas) => {
+                panel.state.overlay_metas = metas;
+                for (idx, btn) in panel.state.overlay_buttons.iter().enumerate() {
+                    let display = if let Some(meta) = panel.state.overlay_metas.get(idx) {
+                        btn.set_text(&mut common, Translation::from_raw_text(&meta.name));
+                        //TODO: add category icons
                         taffy::Display::Flex
                     } else {
                         taffy::Display::None
