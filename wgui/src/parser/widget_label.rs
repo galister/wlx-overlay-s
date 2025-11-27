@@ -43,7 +43,7 @@ pub fn parse_widget_label<'a>(
 		.layout
 		.add_child(parent_id, WidgetLabel::create(&mut globals.get(), params), style)?;
 
-	parse_widget_universal(ctx, widget.id, attribs);
+	parse_widget_universal(ctx, &widget, attribs);
 	parse_children(file, ctx, node, widget.id)?;
 
 	Ok(widget.id)

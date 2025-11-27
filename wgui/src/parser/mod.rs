@@ -774,18 +774,24 @@ fn process_component(ctx: &mut ParserContext, component: Component, widget_id: W
 	ctx.insert_component(widget_id, component, component_id);
 }
 
-fn parse_widget_universal(ctx: &mut ParserContext, widget_id: WidgetID, attribs: &[AttribPair]) {
+fn parse_widget_universal(ctx: &mut ParserContext, widget: &WidgetPair, attribs: &[AttribPair]) {
 	for pair in attribs {
 		#[allow(clippy::single_match)]
 		match pair.attrib.as_ref() {
 			"id" => {
 				// Attach a specific widget to name-ID map (just like getElementById)
-				ctx.insert_id(&pair.value, widget_id);
+				ctx.insert_id(&pair.value, widget.id);
+			}
+			"new_pass" => {
+				if let Some(num) = parse_i32(&pair.value) {
+					widget.widget.state().new_pass = num != 0;
+				} else {
+					print_invalid_attrib(&pair.attrib, &pair.value);
+				}
 			}
 			"interactable" => {
-				if matches!(&pair.value.parse::<i32>(), Ok(0)) {
-					log::info!("setting {widget_id:?} to noninteractable.");
-					ctx.layout.state.widgets.get(widget_id).unwrap().state().interactable = false;
+				if let Some(num) = parse_i32(&pair.value) {
+					widget.widget.state().interactable = num != 0;
 				} else {
 					print_invalid_attrib(&pair.attrib, &pair.value);
 				}

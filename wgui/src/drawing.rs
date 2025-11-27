@@ -248,6 +248,10 @@ fn draw_widget(
 
 	let mut widget_state = widget.state();
 
+	if widget_state.new_pass {
+		state.primitives.push(RenderPrimitive::NewPass);
+	}
+
 	let (scroll_shift, wants_redraw, info) = match widget::get_scrollbar_info(l) {
 		Some(info) => {
 			let (scrolling, wants_redraw) = widget_state.get_scroll_shift_smooth(&info, l, params.timestep_alpha);

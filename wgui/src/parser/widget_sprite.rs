@@ -59,7 +59,7 @@ pub fn parse_widget_sprite<'a>(
 
 	let (widget, _) = ctx.layout.add_child(parent_id, WidgetSprite::create(params), style)?;
 
-	parse_widget_universal(ctx, widget.id, attribs);
+	parse_widget_universal(ctx, &widget, attribs);
 	parse_children(file, ctx, node, widget.id)?;
 
 	Ok(widget.id)

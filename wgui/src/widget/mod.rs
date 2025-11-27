@@ -81,6 +81,7 @@ pub struct WidgetState {
 	pub obj: Box<dyn WidgetObj>,
 	pub event_listeners: EventListenerCollection,
 	pub interactable: bool,
+	pub new_pass: bool, // force a new render pass
 }
 
 impl WidgetState {
@@ -104,6 +105,7 @@ impl WidgetState {
 			obj,
 			event_listeners: EventListenerCollection::default(),
 			interactable: true,
+			new_pass: false,
 		}
 	}
 }

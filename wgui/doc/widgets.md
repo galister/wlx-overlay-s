@@ -22,7 +22,7 @@
 
 # Universal widget attributes
 
-### They can be used in any widget/component
+_They can be used in any widget/component._
 
 `display`: "flex" | "block" | "grid"
 
@@ -59,6 +59,16 @@
 `max_width`, `max_height`: **float** | **percent**
 
 `width`, `height`: **float** | **percent**
+
+### Advanced attributes
+
+`interactable`: "1" | "0"
+
+_Set to 0 if you want to exclude this widget from altering the event state_
+
+`new_pass`: "1" | "0"
+
+_Set to 1 if you want to render overlapping pop-ups to properly render your widgets in order. Wgui renders with as few Vulkan drawcalls as possible, so this is your responsibility._
 
 # Widgets
 
