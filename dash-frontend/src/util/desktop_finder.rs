@@ -1,7 +1,7 @@
 use gio::prelude::{AppInfoExt, IconExt};
 use gtk::traits::IconThemeExt;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[allow(dead_code)] // TODO: remove this
 pub struct DesktopEntry {
 	pub exec_path: String,

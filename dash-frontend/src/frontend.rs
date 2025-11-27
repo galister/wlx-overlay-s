@@ -19,7 +19,13 @@ use crate::{
 		Tab, TabParams, TabType, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses,
 		settings::TabSettings,
 	},
+	util::popup_manager::{PopupManager, PopupManagerParams},
 };
+
+pub struct FrontendWidgets {
+	pub id_label_time: WidgetID,
+	pub id_rect_content: WidgetID,
+}
 
 pub struct Frontend {
 	pub layout: RcLayout,
@@ -36,8 +42,8 @@ pub struct Frontend {
 
 	ticks: u32,
 
-	id_label_time: WidgetID,
-	id_rect_content: WidgetID,
+	widgets: FrontendWidgets,
+	popup_manager: PopupManager,
 }
 
 pub struct InitParams {
@@ -50,6 +56,7 @@ pub enum FrontendTask {
 	SetTab(TabType),
 	RefreshClock,
 	RefreshBackground,
+	MountPopup,
 }
 
 impl Frontend {
@@ -71,7 +78,7 @@ impl Frontend {
 			},
 		)?;
 
-		let (layout, state) = wgui::parser::new_layout_from_assets(
+		let (mut layout, state) = wgui::parser::new_layout_from_assets(
 			&ParseDocumentParams {
 				globals: globals.clone(),
 				path: AssetPath::BuiltIn("gui/dashboard.xml"),
@@ -79,6 +86,13 @@ impl Frontend {
 			},
 			&LayoutParams { resize_to_parent: true },
 		)?;
+
+		let id_popup_manager = state.get_widget_id("popup_manager")?;
+		let popup_manager = PopupManager::new(PopupManagerParams {
+			globals: globals.clone(),
+			layout: &mut layout,
+			parent_id: id_popup_manager,
+		})?;
 
 		let rc_layout = layout.as_rc();
 
@@ -95,9 +109,12 @@ impl Frontend {
 			globals,
 			tasks,
 			ticks: 0,
-			id_label_time,
-			id_rect_content,
+			widgets: FrontendWidgets {
+				id_label_time,
+				id_rect_content,
+			},
 			settings: params.settings,
+			popup_manager,
 		};
 
 		// init some things first
@@ -142,7 +159,7 @@ impl Frontend {
 		let mut common = c.common();
 
 		{
-			let Some(mut label) = common.state.widgets.get_as::<WidgetLabel>(self.id_label_time) else {
+			let Some(mut label) = common.state.widgets.get_as::<WidgetLabel>(self.widgets.id_label_time) else {
 				anyhow::bail!("");
 			};
 
@@ -165,10 +182,22 @@ impl Frontend {
 		Ok(())
 	}
 
+	fn mount_popup(&mut self) -> anyhow::Result<()> {
+		let mut layout = self.layout.borrow_mut();
+
+		self.popup_manager.push_popup(self.globals.clone(), &mut layout)?;
+
+		Ok(())
+	}
+
 	fn update_background(&self) -> anyhow::Result<()> {
 		let layout = self.layout.borrow_mut();
 
-		let Some(mut rect) = layout.state.widgets.get_as::<WidgetRectangle>(self.id_rect_content) else {
+		let Some(mut rect) = layout
+			.state
+			.widgets
+			.get_as::<WidgetRectangle>(self.widgets.id_rect_content)
+		else {
 			anyhow::bail!("");
 		};
 
@@ -197,6 +226,7 @@ impl Frontend {
 			FrontendTask::SetTab(tab_type) => self.set_tab(tab_type, rc_this)?,
 			FrontendTask::RefreshClock => self.update_time()?,
 			FrontendTask::RefreshBackground => self.update_background()?,
+			FrontendTask::MountPopup => self.mount_popup()?,
 		}
 		Ok(())
 	}
@@ -212,6 +242,7 @@ impl Frontend {
 			layout: &mut layout,
 			parent_id: widget_content.id,
 			frontend: rc_this,
+			frontend_widgets: &self.widgets,
 			settings: self.settings.get_mut(),
 		};
 

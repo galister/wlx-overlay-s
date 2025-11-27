@@ -6,7 +6,7 @@ use wgui::{
 	layout::{Layout, WidgetID},
 };
 
-use crate::frontend::{FrontendTask, RcFrontend};
+use crate::frontend::{FrontendTask, FrontendWidgets, RcFrontend};
 
 pub mod apps;
 pub mod games;
@@ -30,6 +30,7 @@ pub struct TabParams<'a> {
 	pub layout: &'a mut Layout,
 	pub parent_id: WidgetID,
 	pub frontend: &'a RcFrontend,
+	pub frontend_widgets: &'a FrontendWidgets,
 	pub settings: &'a mut crate::settings::Settings,
 }
 

@@ -4,3 +4,4 @@ pub mod settings;
 mod tab;
 mod util;
 mod various;
+mod views;

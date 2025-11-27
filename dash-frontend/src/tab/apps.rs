@@ -8,8 +8,10 @@ use wgui::{
 };
 
 use crate::{
+	frontend::FrontendTask,
 	tab::{Tab, TabParams, TabType},
 	util::{self, desktop_finder::DesktopEntry},
+	views,
 };
 
 pub struct TabApps {
@@ -95,10 +97,14 @@ impl AppList {
 		let data = parser_state.parse_template(doc_params, "AppEntry", params.layout, list_parent.id, template_params)?;
 
 		let button = data.fetch_component_as::<ComponentButton>("button")?;
-		button.on_click(Box::new(move |_common, _evt| {
-			log::info!("click");
-			Ok(())
-		}));
+
+		button.on_click({
+			let frontend = params.frontend.clone();
+			Box::new(move |_common, _evt| {
+				frontend.borrow_mut().push_task(FrontendTask::MountPopup);
+				Ok(())
+			})
+		});
 
 		self.data.push(data);
 
