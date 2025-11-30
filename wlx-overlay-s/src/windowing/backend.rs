@@ -7,8 +7,8 @@ use vulkano::{
     image::view::ImageView,
 };
 use wgui::gfx::{
-    WGfx,
     cmd::{GfxCommandBuffer, WGfxClearMode},
+    WGfx,
 };
 
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
     graphics::ExtentExt,
     state::AppState,
     subsystem::hid::WheelDelta,
-    windowing::{OverlayID, window::OverlayCategory},
+    windowing::{window::OverlayCategory, OverlayID},
 };
 
 #[derive(Default, Clone, Copy)]
@@ -77,6 +77,7 @@ pub enum OverlayEventData {
     NumSetsChanged(usize),
     EditModeChanged(bool),
     OverlaysChanged(Vec<OverlayMeta>),
+    DevicesChanged,
 }
 
 pub trait OverlayBackend: Any {

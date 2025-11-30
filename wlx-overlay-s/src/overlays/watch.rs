@@ -19,16 +19,16 @@ use wlx_common::windowing::{OverlayWindowState, Positioning};
 use crate::{
     backend::task::{ManagerTask, TaskType},
     gui::{
-        panel::{GuiPanel, NewGuiPanelParams, OnCustomAttribFunc, button::BUTTON_EVENTS},
+        panel::{button::BUTTON_EVENTS, GuiPanel, NewGuiPanelParams, OnCustomAttribFunc},
         timer::GuiTimer,
     },
     overlays::edit::LongPressButtonState,
     state::AppState,
     windowing::{
-        OverlaySelector, Z_ORDER_WATCH,
         backend::{OverlayEventData, OverlayMeta},
         manager::MAX_OVERLAY_SETS,
         window::{OverlayWindowConfig, OverlayWindowData},
+        OverlaySelector, Z_ORDER_WATCH,
     },
 };
 
@@ -215,9 +215,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
             }
             OverlayEventData::OverlaysChanged(metas) => {
                 panel.state.overlay_metas = metas;
-                // FIXME: should we suppress this clippy warning in the crate itself? the resulting code isn't always more readable than before
                 for (idx, btn) in panel.state.overlay_buttons.iter().enumerate() {
-                    #[allow(clippy::option_if_let_else)]
                     let display = if let Some(meta) = panel.state.overlay_metas.get(idx) {
                         btn.set_text(&mut common, Translation::from_raw_text(&meta.name));
                         //TODO: add category icons
