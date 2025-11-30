@@ -8,10 +8,14 @@ use wgui::{
 	components::button::ComponentButton,
 	event::{EventAlterables, StyleSetRequest},
 	globals::WguiGlobals,
-	layout::{Layout, LayoutTask, WidgetID},
+	i18n::Translation,
+	layout::{Layout, LayoutTask, LayoutTasks, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
 	taffy::Display,
+	widget::label::WidgetLabel,
 };
+
+use crate::frontend::{FrontendTask, FrontendTasks};
 
 pub struct PopupManagerParams<'a> {
 	pub globals: WguiGlobals,
@@ -19,14 +23,32 @@ pub struct PopupManagerParams<'a> {
 	pub parent_id: WidgetID,
 }
 
-struct MountedPopup {
-	#[allow(dead_code)]
-	state: ParserState,
-	id_root: WidgetID,
+pub struct State {
+	popup_stack: Vec<Weak<RefCell<MountedPopupState>>>,
 }
 
-pub struct State {
-	popup_stack: Vec<MountedPopup>,
+pub struct MountedPopup {
+	#[allow(dead_code)]
+	state: ParserState,
+	id_root: WidgetID,        // decorations of a popup
+	pub id_content: WidgetID, // content of a popup
+	layout_tasks: LayoutTasks,
+	frontend_tasks: FrontendTasks,
+}
+
+struct MountedPopupState {
+	mounted_popup: Option<MountedPopup>,
+}
+
+#[derive(Clone)]
+pub struct PopupHandle {
+	state: Rc<RefCell<MountedPopupState>>,
+}
+
+impl PopupHandle {
+	pub fn close(&self) {
+		self.state.borrow_mut().mounted_popup = None; // Drop will be called
+	}
 }
 
 pub struct PopupManager {
@@ -35,16 +57,41 @@ pub struct PopupManager {
 	parent_id: WidgetID,
 }
 
-pub struct PushPopupResult {
+pub struct PopupContentFuncData<'a> {
+	pub layout: &'a mut Layout,
+	pub handle: PopupHandle,
 	pub id_content: WidgetID,
+}
+
+pub struct MountPopupParams {
+	pub title: Translation,
+	pub on_content: Box<dyn Fn(PopupContentFuncData) -> anyhow::Result<()>>,
+}
+
+impl Drop for MountedPopup {
+	fn drop(&mut self) {
+		self.layout_tasks.push(LayoutTask::RemoveWidget(self.id_root));
+		self.frontend_tasks.push(FrontendTask::RefreshPopupManager);
+	}
 }
 
 impl State {
 	fn refresh_stack(&mut self, alterables: &mut EventAlterables) {
 		// show only the topmost popup
+		self.popup_stack.retain(|weak| {
+			let Some(popup) = weak.upgrade() else {
+				return false;
+			};
+			popup.borrow_mut().mounted_popup.is_some()
+		});
+
 		for (idx, popup) in self.popup_stack.iter().enumerate() {
+			let popup = popup.upgrade().unwrap(); // safe
+			let popup = popup.borrow_mut();
+			let mounted_popup = popup.mounted_popup.as_ref().unwrap(); // safe;
+
 			alterables.set_style(
-				popup.id_root,
+				mounted_popup.id_root,
 				StyleSetRequest::Display(if idx == self.popup_stack.len() - 1 {
 					Display::Flex
 				} else {
@@ -52,15 +99,6 @@ impl State {
 				}),
 			);
 		}
-	}
-
-	fn pop_popup(&mut self, alterables: &mut EventAlterables) {
-		let Some(popup) = self.popup_stack.pop() else {
-			return;
-		};
-
-		alterables.tasks.push(LayoutTask::RemoveWidget(popup.id_root));
-		self.refresh_stack(alterables);
 	}
 }
 
@@ -75,9 +113,22 @@ impl PopupManager {
 		})
 	}
 
-	pub fn push_popup(&mut self, globals: WguiGlobals, layout: &mut Layout) -> anyhow::Result<PushPopupResult> {
+	pub fn refresh(&self, alterables: &mut EventAlterables) {
+		let mut state = self.state.borrow_mut();
+		state.refresh_stack(alterables);
+	}
+
+	/// Mount a new popup on top of the existing popup stack.
+	/// Only the topmost popup is visible.
+	pub fn mount_popup(
+		&mut self,
+		globals: WguiGlobals,
+		layout: &mut Layout,
+		frontend_tasks: FrontendTasks,
+		params: MountPopupParams,
+	) -> anyhow::Result<()> {
 		let doc_params = &ParseDocumentParams {
-			globals,
+			globals: globals.clone(),
 			path: AssetPath::BuiltIn("gui/view/popup_window.xml"),
 			extra: Default::default(),
 		};
@@ -86,25 +137,51 @@ impl PopupManager {
 		let id_root = state.get_widget_id("root")?;
 		let id_content = state.get_widget_id("content")?;
 
+		{
+			let mut label_title = state.fetch_widget_as::<WidgetLabel>(&layout.state, "popup_title")?;
+			label_title.set_text_simple(&mut globals.get(), params.title);
+		}
+
 		let but_back = state.fetch_component_as::<ComponentButton>("but_back")?;
 
+		let mounted_popup = MountedPopup {
+			state,
+			id_content,
+			id_root,
+			layout_tasks: layout.tasks.clone(),
+			frontend_tasks: frontend_tasks.clone(),
+		};
+
+		let mounted_popup_state = MountedPopupState {
+			mounted_popup: Some(mounted_popup),
+		};
+
+		let popup_handle = PopupHandle {
+			state: Rc::new(RefCell::new(mounted_popup_state)),
+		};
+
+		let mut state = self.state.borrow_mut();
+		state.popup_stack.push(Rc::downgrade(&popup_handle.state));
+
 		but_back.on_click({
-			let state = self.state.clone();
-			Box::new(move |common, _evt| {
-				state.borrow_mut().pop_popup(common.alterables);
+			let popup_handle = Rc::downgrade(&popup_handle.state);
+			Box::new(move |_common, _evt| {
+				if let Some(popup_handle) = popup_handle.upgrade() {
+					popup_handle.borrow_mut().mounted_popup = None; // will call Drop
+				}
 				Ok(())
 			})
 		});
 
-		let mounted_popup = MountedPopup { state, id_root };
+		frontend_tasks.push(FrontendTask::RefreshPopupManager);
 
-		let mut state = self.state.borrow_mut();
-		state.popup_stack.push(mounted_popup);
+		// mount user-set popup content
+		(*params.on_content)(PopupContentFuncData {
+			layout,
+			handle: popup_handle.clone(),
+			id_content,
+		})?;
 
-		let mut c = layout.start_common();
-		state.refresh_stack(c.common().alterables);
-		c.finish()?;
-
-		Ok(PushPopupResult { id_content })
+		Ok(())
 	}
 }

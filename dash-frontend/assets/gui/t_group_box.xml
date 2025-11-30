@@ -2,8 +2,6 @@
   <include src="theme.xml" />
 
   <macro name="group_box"
-    min_width="200"
-    flex_grow="1"
     flex_direction="column"
     align_items="baseline"
     border="2"

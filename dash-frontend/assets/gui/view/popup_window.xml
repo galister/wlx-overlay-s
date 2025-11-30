@@ -28,14 +28,14 @@
           </Button>
 
           <!-- Title -->
-          <label id="popup_title" weight="bold" size="18" text="Pop-up title" />
+          <label id="popup_title" weight="bold" size="18" />
         </div>
       </rectangle>
 
       <!-- Content -->
       <rectangle width="100%" height="100%"
-        color="#010310cc"
-        color2="#061e4acc"
+        color="#010310ee"
+        color2="#062a5eee"
         gradient="vertical"
         padding="16"
         id="content">

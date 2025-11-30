@@ -19,12 +19,25 @@ use crate::{
 		Tab, TabParams, TabType, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses,
 		settings::TabSettings,
 	},
-	util::popup_manager::{PopupManager, PopupManagerParams},
+	util::popup_manager::{MountPopupParams, PopupManager, PopupManagerParams},
 };
 
 pub struct FrontendWidgets {
 	pub id_label_time: WidgetID,
 	pub id_rect_content: WidgetID,
+}
+
+#[derive(Clone)]
+pub struct FrontendTasks(pub Rc<RefCell<VecDeque<FrontendTask>>>);
+
+impl FrontendTasks {
+	fn new() -> Self {
+		Self(Rc::new(RefCell::new(VecDeque::new())))
+	}
+
+	pub fn push(&self, task: FrontendTask) {
+		self.0.borrow_mut().push_back(task);
+	}
 }
 
 pub struct Frontend {
@@ -38,7 +51,7 @@ pub struct Frontend {
 
 	current_tab: Option<Box<dyn Tab>>,
 
-	tasks: VecDeque<FrontendTask>,
+	pub tasks: FrontendTasks,
 
 	ticks: u32,
 
@@ -56,7 +69,8 @@ pub enum FrontendTask {
 	SetTab(TabType),
 	RefreshClock,
 	RefreshBackground,
-	MountPopup,
+	MountPopup(MountPopupParams),
+	RefreshPopupManager,
 }
 
 impl Frontend {
@@ -96,8 +110,8 @@ impl Frontend {
 
 		let rc_layout = layout.as_rc();
 
-		let mut tasks = VecDeque::<FrontendTask>::new();
-		tasks.push_back(FrontendTask::SetTab(TabType::Home));
+		let tasks = FrontendTasks::new();
+		tasks.push(FrontendTask::SetTab(TabType::Home));
 
 		let id_label_time = state.get_widget_id("label_time")?;
 		let id_rect_content = state.get_widget_id("rect_content")?;
@@ -129,7 +143,12 @@ impl Frontend {
 	}
 
 	pub fn update(&mut self, rc_this: &RcFrontend, width: f32, height: f32, timestep_alpha: f32) -> anyhow::Result<()> {
-		while let Some(task) = self.tasks.pop_front() {
+		let mut tasks = {
+			let mut tasks = self.tasks.0.borrow_mut();
+			std::mem::take(&mut *tasks)
+		};
+
+		while let Some(task) = tasks.pop_front() {
 			self.process_task(rc_this, task)?;
 		}
 
@@ -182,11 +201,19 @@ impl Frontend {
 		Ok(())
 	}
 
-	fn mount_popup(&mut self) -> anyhow::Result<()> {
+	fn mount_popup(&mut self, params: MountPopupParams) -> anyhow::Result<()> {
 		let mut layout = self.layout.borrow_mut();
+		self
+			.popup_manager
+			.mount_popup(self.globals.clone(), &mut layout, self.tasks.clone(), params)?;
+		Ok(())
+	}
 
-		self.popup_manager.push_popup(self.globals.clone(), &mut layout)?;
-
+	fn refresh_popup_manager(&mut self) -> anyhow::Result<()> {
+		let mut layout = self.layout.borrow_mut();
+		let mut c = layout.start_common();
+		self.popup_manager.refresh(c.common().alterables);
+		c.finish()?;
 		Ok(())
 	}
 
@@ -217,16 +244,13 @@ impl Frontend {
 		&self.layout
 	}
 
-	pub fn push_task(&mut self, task: FrontendTask) {
-		self.tasks.push_back(task);
-	}
-
 	fn process_task(&mut self, rc_this: &RcFrontend, task: FrontendTask) -> anyhow::Result<()> {
 		match task {
 			FrontendTask::SetTab(tab_type) => self.set_tab(tab_type, rc_this)?,
 			FrontendTask::RefreshClock => self.update_time()?,
 			FrontendTask::RefreshBackground => self.update_background()?,
-			FrontendTask::MountPopup => self.mount_popup()?,
+			FrontendTask::MountPopup(params) => self.mount_popup(params)?,
+			FrontendTask::RefreshPopupManager => self.refresh_popup_manager()?,
 		}
 		Ok(())
 	}

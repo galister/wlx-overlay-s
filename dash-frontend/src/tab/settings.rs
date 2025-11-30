@@ -74,7 +74,7 @@ impl TabSettings {
 			state.data.fetch_component_as::<ComponentCheckbox>("cb_am_pm_clock")?,
 			|settings| &mut settings.general.am_pm_clock,
 			Some(|frontend, _| {
-				frontend.push_task(FrontendTask::RefreshClock);
+				frontend.tasks.push(FrontendTask::RefreshClock);
 			}),
 		)?;
 
@@ -85,7 +85,7 @@ impl TabSettings {
 				.fetch_component_as::<ComponentCheckbox>("cb_opaque_background")?,
 			|settings| &mut settings.general.opaque_background,
 			Some(|frontend, _| {
-				frontend.push_task(FrontendTask::RefreshBackground);
+				frontend.tasks.push(FrontendTask::RefreshBackground);
 			}),
 		)?;
 

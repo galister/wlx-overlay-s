@@ -43,7 +43,7 @@ impl TabType {
 	pub fn register_button(this_rc: RcFrontend, btn: &Rc<ComponentButton>, tab: TabType) {
 		btn.on_click({
 			Box::new(move |_common, _evt| {
-				this_rc.borrow_mut().push_task(FrontendTask::SetTab(tab));
+				this_rc.borrow_mut().tasks.push(FrontendTask::SetTab(tab));
 				Ok(())
 			})
 		});

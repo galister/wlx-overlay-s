@@ -1,7 +1,40 @@
 <layout>
+  <template name="Subtext">
+    <div flex_direction="row" gap="8">
+      <label weight="bold" text="${title}" />
+      <label text="foo" />
+    </div>
+  </template>
+
+  <template name="ApplicationIcon">
+    <sprite src_ext="${path}" width="128" height="128" />
+  </template>
+
+  <include src="../t_separator.xml" />
+  <include src="../t_group_box.xml" />
+
   <elements>
-    <rectangle new_pass="1" color="#ff000099" width="100%" height="100%">
-      <label text="TEST" size="80" />
-    </rectangle>
+    <div flex_direction="row" gap="16" width="100%">
+      <rectangle macro="group_box" id="icon_parent" height="100%" padding="8" color="#0033aa66" color2="#00000022" gradient="vertical" justify_content="center">
+
+      </rectangle>
+      <div flex_direction="column" gap="8" width="100%" align_items="baseline">
+        <label id="label_title" weight="bold" size="32" />
+        <Subtext title="Exec:" />
+        <Subtext title="Args:" />
+        <Separator />
+        <CheckBox text="Run in X11 mode (cage)" />
+        <CheckBox text="Run in Wayland mode" checked="1" />
+        <Separator />
+        <Button color="#44ce22FF" padding_top="4" padding_bottom="4" round="8" padding_right="12">
+          <sprite src="dashboard/play.svg" width="32" height="32" />
+          <label text="Launch embedded" weight="bold" size="17" shadow="#00000099" />
+        </Button>
+        <Separator />
+        <rectangle macro="group_box">
+          <label size="16" weight="bold" text="Or launch it detached" />
+        </rectangle>
+      </div>
+    </div>
   </elements>
 </layout>
