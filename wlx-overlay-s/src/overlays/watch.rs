@@ -298,18 +298,15 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                 }
             }
             OverlayEventData::DevicesChanged => {
-                log::info!("dev");
                 for (i, (div, s)) in panel.state.devices.iter().enumerate() {
                     if let Some(dev) = app.input_state.devices.get(i)
                         && let Some(glyph) = panel.state.device_role_icons.get(dev.role)
                         && let Some(mut s) = panel.layout.state.widgets.get_as::<WidgetSprite>(*s)
                     {
-                        log::info!("dev {i} ok");
                         s.params.glyph_data = Some(glyph.clone());
                         com.alterables
                             .set_style(*div, StyleSetRequest::Display(taffy::Display::Flex));
                     } else {
-                        log::info!("dev {i} nok");
                         com.alterables
                             .set_style(*div, StyleSetRequest::Display(taffy::Display::None));
                     };
