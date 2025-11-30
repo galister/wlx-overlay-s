@@ -1,16 +1,15 @@
-use glam::{Affine3A, Quat, Vec3, Vec3A};
+use glam::{Affine3A, Quat, Vec3A};
 use ovr_overlay::{
     chaperone_setup::ChaperoneSetupManager,
     compositor::CompositorManager,
     sys::{EChaperoneConfigFile, ETrackingUniverseOrigin, HmdMatrix34_t},
 };
 
+use super::{helpers::Affine3AConvert, overlay::OpenVrOverlayData};
 use crate::{
     backend::{common::OverlayContainer, input::InputState},
     state::AppState,
 };
-
-use super::{helpers::Affine3AConvert, overlay::OpenVrOverlayData};
 
 struct MoverData<T> {
     pose: Affine3A,
@@ -75,17 +74,15 @@ impl PlayspaceMover {
                     overlay.state.dirty = true;
                     overlay.state.transform.translation =
                         overlay_transform.transform_point3a(overlay.state.transform.translation);
+                    overlay.data.offset.translation =
+                        overlay_transform.transform_point3a(overlay.state.transform.translation);
                 }
             });
 
             data.pose *= space_transform;
             data.hand_pose = new_hand;
 
-            if self.universe == ETrackingUniverseOrigin::TrackingUniverseStanding {
-                apply_chaperone_transform(space_transform.inverse(), chaperone_mgr);
-            }
             set_working_copy(&universe, chaperone_mgr, &data.pose, self.floor_offset);
-            chaperone_mgr.commit_working_copy(EChaperoneConfigFile::EChaperoneConfigFile_Live);
         } else {
             for (i, pointer) in state.input_state.pointers.iter().enumerate() {
                 if pointer.now.space_rotate {
@@ -131,20 +128,23 @@ impl PlayspaceMover {
                 if overlay.state.grabbable {
                     overlay.state.dirty = true;
                     overlay.state.transform.translation += overlay_offset;
+                    overlay.data.offset.translation += overlay_offset;
                 }
             });
 
             data.pose.translation += relative_pos;
             data.hand_pose = new_hand;
 
-            if self.universe == ETrackingUniverseOrigin::TrackingUniverseStanding {
-                apply_chaperone_offset(overlay_offset, chaperone_mgr);
-            }
             set_working_copy(&universe, chaperone_mgr, &data.pose, self.floor_offset);
-            chaperone_mgr.commit_working_copy(EChaperoneConfigFile::EChaperoneConfigFile_Live);
         } else {
             for (i, pointer) in state.input_state.pointers.iter().enumerate() {
-                if pointer.now.space_drag {
+                if pointer.now.space_reset {
+                    if !pointer.before.space_reset {
+                        log::info!("Space reset!");
+                        self.reset_offset(chaperone_mgr, overlays);
+                    }
+                    return;
+                } else if pointer.now.space_drag {
                     let Some(mat) = get_working_copy(&universe, chaperone_mgr) else {
                         log::warn!("Can't space drag - failed to get zero pose");
                         return;
@@ -163,23 +163,19 @@ impl PlayspaceMover {
         }
     }
 
-    pub fn reset_offset(&mut self, chaperone_mgr: &mut ChaperoneSetupManager, input: &InputState) {
-        let mut height = 1.6;
-        if let Some(mat) = get_working_copy(&self.universe, chaperone_mgr) {
-            height = input.hmd.translation.y - mat.translation.y;
-            if self.universe == ETrackingUniverseOrigin::TrackingUniverseStanding {
-                apply_chaperone_transform(mat, chaperone_mgr);
-            }
-        }
+    pub fn reset_offset(
+        &mut self,
+        chaperone_mgr: &mut ChaperoneSetupManager,
+        overlays: &mut OverlayContainer<OpenVrOverlayData>,
+    ) {
+        chaperone_mgr.revert_working_copy();
+        chaperone_mgr.hide_working_set_preview();
 
-        let xform = if self.universe == ETrackingUniverseOrigin::TrackingUniverseSeated {
-            Affine3A::from_translation(Vec3::NEG_Y * height)
-        } else {
-            Affine3A::IDENTITY
-        };
-
-        set_working_copy(&self.universe, chaperone_mgr, &xform, self.floor_offset);
-        chaperone_mgr.commit_working_copy(EChaperoneConfigFile::EChaperoneConfigFile_Live);
+        overlays.iter_mut().for_each(|overlay| {
+            overlay.state.dirty = true;
+            overlay.state.transform.translation -= overlay.data.offset.translation;
+            overlay.data.offset = Affine3A::IDENTITY;
+        });
 
         if self.drag.is_some() {
             log::info!("Space drag interrupted by manual reset");
@@ -201,8 +197,8 @@ impl PlayspaceMover {
         let offset = y1.min(y2) - 0.03;
         self.floor_offset = offset;
 
+        chaperone_mgr.revert_working_copy();
         set_working_copy(&self.universe, chaperone_mgr, &mat, self.floor_offset);
-        chaperone_mgr.commit_working_copy(EChaperoneConfigFile::EChaperoneConfigFile_Live);
 
         if self.drag.is_some() {
             log::info!("Space drag interrupted by fix floor");
@@ -256,7 +252,6 @@ fn get_working_copy(
     universe: &ETrackingUniverseOrigin,
     chaperone_mgr: &mut ChaperoneSetupManager,
 ) -> Option<Affine3A> {
-    chaperone_mgr.revert_working_copy();
     let mat = match universe {
         ETrackingUniverseOrigin::TrackingUniverseStanding => {
             chaperone_mgr.get_working_standing_zero_pose_to_raw_tracking_pose()
@@ -280,28 +275,6 @@ fn set_working_copy(
             chaperone_mgr.set_working_standing_zero_pose_to_raw_tracking_pose(&ovr_mat);
         }
         _ => chaperone_mgr.set_working_seated_zero_pose_to_raw_tracking_pose(&ovr_mat),
-    }
-}
-
-fn apply_chaperone_offset(offset: Vec3A, chaperone_mgr: &mut ChaperoneSetupManager) {
-    let mut quads = chaperone_mgr.get_live_collision_bounds_info();
-    for quad in &mut quads {
-        quad.vCorners.iter_mut().for_each(|corner| {
-            corner.v[0] += offset.x;
-            corner.v[2] += offset.z;
-        });
-    }
-    chaperone_mgr.set_working_collision_bounds_info(quads.as_mut_slice());
-}
-
-fn apply_chaperone_transform(transform: Affine3A, chaperone_mgr: &mut ChaperoneSetupManager) {
-    let mut quads = chaperone_mgr.get_live_collision_bounds_info();
-    for quad in &mut quads {
-        quad.vCorners.iter_mut().for_each(|corner| {
-            let coord = transform.transform_point3a(Vec3A::from_slice(&corner.v));
-            corner.v[0] = coord.x;
-            corner.v[2] = coord.z;
-        });
-    }
-    chaperone_mgr.set_working_collision_bounds_info(quads.as_mut_slice());
+    };
+    chaperone_mgr.show_working_set_preview();
 }

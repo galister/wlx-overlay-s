@@ -254,7 +254,7 @@ pub fn openvr_run(
                         playspace.fix_floor(&mut chaperone_mgr, &state.input_state);
                     }
                     SystemTask::ResetPlayspace => {
-                        playspace.reset_offset(&mut chaperone_mgr, &state.input_state);
+                        playspace.reset_offset(&mut chaperone_mgr, &mut overlays);
                     }
                     SystemTask::ShowHide => {
                         overlays.show_hide(&mut state);

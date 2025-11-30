@@ -1,6 +1,7 @@
 use core::f32;
 use std::sync::Arc;
 
+use glam::Affine3A;
 use glam::Vec4;
 use ovr_overlay::{
     overlay::{OverlayHandle, OverlayManager},
@@ -22,6 +23,7 @@ pub(super) struct OpenVrOverlayData {
     pub(super) override_width: bool,
     pub(super) image_view: Option<Arc<ImageView>>,
     pub(super) image_dirty: bool,
+    pub(super) offset: Affine3A,
 }
 
 impl OverlayData<OpenVrOverlayData> {
