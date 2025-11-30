@@ -1,4 +1,12 @@
 {
+  "WATCH": {
+    "DASHBOARD": "ダッシュボード",
+    "EDIT_MODE": "編集モード",
+    "ADD_NEW_SET": "新しいセットを追加",
+    "SWITCH_TO_SET": "セットに切り替える",
+    "TOGGLE_FOR_CURRENT_SET": "現在のセットで表示を切り替え",
+    "LONG_PRESS_TO_DELETE_SET": "長押しでセットを削除"
+  },
   "EDIT_MODE": {
     "ADJUST_CURVATURE": "曲率を調整する",
     "ALPHA_BLEND_MODE": "アルファブレンドモード",
@@ -11,7 +19,7 @@
     "MOVE_PRESS_AND_DRAG": "移動（押してドラッグ）",
     "OPACITY": "不透明度",
     "POSITIONING": "位置調整",
-    "RESIZE_PRESS_AND_DRAG": "サイズ変更（押してドラッグ）"
+    "RESIZE_PRESS_AND_DRAG": "サイズ変更（押してドラッグ）",
     "POS_STATIC": "固定：その場に留まり、再センタリングされません。",
     "POS_ANCHORED": "アンカー：他のセット要素と一緒に移動します。デフォルト。",
     "POS_FLOATING": "フローティング：その場に留まり、表示されるときに再センタリングされます。",

@@ -1,4 +1,12 @@
 {
+  "WATCH": {
+    "DASHBOARD": "Armaturenbrett",
+    "EDIT_MODE": "Bearbeitungsmodus",
+    "ADD_NEW_SET": "Neuen Satz hinzufügen",
+    "SWITCH_TO_SET": "Zum Satz wechseln",
+    "TOGGLE_FOR_CURRENT_SET": "Sichtbarkeit im aktuellen Satz umschalten",
+    "LONG_PRESS_TO_DELETE_SET": "Lange drücken, um Satz zu löschen"
+  },
   "EDIT_MODE": {
     "ADJUST_CURVATURE": "Krümmung anpassen",
     "ALPHA_BLEND_MODE": "Alpha-Mischmodus",
@@ -11,7 +19,7 @@
     "MOVE_PRESS_AND_DRAG": "Verschieben (drücken & ziehen)",
     "OPACITY": "Undurchsichtigkeit",
     "POSITIONING": "Positionierung",
-    "RESIZE_PRESS_AND_DRAG": "Größe ändern (gedrückt halten & ziehen)"
+    "RESIZE_PRESS_AND_DRAG": "Größe ändern (gedrückt halten & ziehen)",
     "POS_STATIC": "Statisch: Bleibt an Ort und Stelle und wird niemals neu zentriert.",
     "POS_ANCHORED": "Verankert: Bewegt sich zusammen mit dem Rest des Sets. Standard.",
     "POS_FLOATING": "Schwebend: Bleibt an Ort und Stelle, wird beim Anzeigen neu zentriert.",

@@ -1,4 +1,12 @@
 {
+  "WATCH": {
+    "DASHBOARD": "Panel de control",
+    "EDIT_MODE": "Modo de edición",
+    "ADD_NEW_SET": "Añadir un nuevo conjunto",
+    "SWITCH_TO_SET": "Cambiar al conjunto",
+    "TOGGLE_FOR_CURRENT_SET": "Alternar visibilidad en el conjunto actual",
+    "LONG_PRESS_TO_DELETE_SET": "Mantén presionado para eliminar el conjunto"
+  },
   "EDIT_MODE": {
     "ADJUST_CURVATURE": "Ajustar curvatura",
     "ALPHA_BLEND_MODE": "Modo de mezcla alfa",
@@ -11,7 +19,7 @@
     "MOVE_PRESS_AND_DRAG": "Mover (presionar y arrastrar)",
     "OPACITY": "Opacidad",
     "POSITIONING": "Posicionamiento",
-    "RESIZE_PRESS_AND_DRAG": "Redimensionar (presionar y arrastrar)"
+    "RESIZE_PRESS_AND_DRAG": "Redimensionar (presionar y arrastrar)",
     "POS_STATIC": "Estático: Permanece en su lugar y nunca se recentra.",
     "POS_ANCHORED": "Anclado: Se mueve junto con el resto del conjunto. Predeterminado.",
     "POS_FLOATING": "Flotante: Permanece en su lugar, se recentra cuando se muestra.",

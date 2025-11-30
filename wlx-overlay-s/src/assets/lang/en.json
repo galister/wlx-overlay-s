@@ -1,23 +1,31 @@
 {
-	"EDIT_MODE": {
-		"ADJUST_CURVATURE": "Adjust curvature",
-		"ALPHA_BLEND_MODE": "Alpha blend mode",
-		"BLENDING_ADDITIVE": "Additive",
-		"CURVATURE": "Curvature",
-		"DELETE": "Long press to remove from current set",
-		"HINT_POINT_WINDOW": "Point at a window to change its parameters.\nOnce done, leave edit mode using the button on the right.",
-		"LEAVE": "Leave edit mode",
-		"LOCK_INTERACTION": "Lock interaction",
-		"MOVE_PRESS_AND_DRAG": "Move (press & drag)",
-		"OPACITY": "Opacity",
-		"POSITIONING": "Positioning",
-		"RESIZE_PRESS_AND_DRAG": "Resize (press & drag)",
-		"POS_STATIC": "Static: Stay in place and never recenter.",
-		"POS_ANCHORED": "Anchored: Moves together with the rest of the set. Default.",
-		"POS_FLOATING": "Floating: Stay in place, recenter when shown.",
-		"POS_HMD": "Follow the HMD.",
-		"POS_HAND_L": "Follow the left hand.",
-		"POS_HAND_R": "Follow the right hand.",
-		"INTERPOLATION": "Interpolation"
-	}
+  "WATCH": {
+    "DASHBOARD": "Dashboard",
+    "EDIT_MODE": "Edit Mode",
+    "ADD_NEW_SET": "Add a new set",
+    "SWITCH_TO_SET": "Switch to set",
+    "TOGGLE_FOR_CURRENT_SET": "Toggle for current set",
+    "LONG_PRESS_TO_DELETE_SET": "Long press to delete set"
+  },
+  "EDIT_MODE": {
+    "ADJUST_CURVATURE": "Adjust curvature",
+    "ALPHA_BLEND_MODE": "Alpha blend mode",
+    "BLENDING_ADDITIVE": "Additive",
+    "CURVATURE": "Curvature",
+    "DELETE": "Long press to remove from current set",
+    "HINT_POINT_WINDOW": "Point at a window to change its parameters.\nOnce done, leave edit mode using the button on the right.",
+    "LEAVE": "Leave edit mode",
+    "LOCK_INTERACTION": "Lock interaction",
+    "MOVE_PRESS_AND_DRAG": "Move (press & drag)",
+    "OPACITY": "Opacity",
+    "POSITIONING": "Positioning",
+    "RESIZE_PRESS_AND_DRAG": "Resize (press & drag)",
+    "POS_STATIC": "Static: Stay in place and never recenter.",
+    "POS_ANCHORED": "Anchored: Moves together with the rest of the set. Default.",
+    "POS_FLOATING": "Floating: Stay in place, recenter when shown.",
+    "POS_HMD": "Follow the HMD.",
+    "POS_HAND_L": "Follow the left hand.",
+    "POS_HAND_R": "Follow the right hand.",
+    "INTERPOLATION": "Interpolation"
+  }
 }
