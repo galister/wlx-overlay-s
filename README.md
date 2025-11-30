@@ -150,8 +150,6 @@ Check [here](https://github.com/galister/wlx-overlay-s/wiki/Troubleshooting) for
 
 ### Mouse is not where it should be
 
-Hyprland users: Hyprland v0.41.0 changed their absolute input implementation to one that does not respect existing absolute input standards. Make your voice heard: [Hyprland#6023](https://github.com/hyprwm/Hyprland/issues/6023)・[Hyprland#6889](https://github.com/hyprwm/Hyprland/issues/6889)
-
 Niri users: use on Niri 0.1.7 or later.
 
 X11 users might be dealing with a [Phantom Monitor](https://wiki.archlinux.org/title/Xrandr#Disabling_phantom_monitor).
