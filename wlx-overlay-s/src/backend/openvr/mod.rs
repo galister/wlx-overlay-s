@@ -202,7 +202,10 @@ pub fn openvr_run(
         }
 
         if next_device_update <= Instant::now() {
-            input_source.update_devices(&mut system_mgr, &mut app);
+            let changed = input_source.update_devices(&mut system_mgr, &mut app);
+            if changed {
+                overlays.devices_changed(&mut app)?;
+            }
             next_device_update = Instant::now() + Duration::from_secs(30);
         }
 

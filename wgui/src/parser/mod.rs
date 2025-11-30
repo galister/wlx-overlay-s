@@ -8,7 +8,7 @@ mod widget_rectangle;
 mod widget_sprite;
 
 use crate::{
-	assets::{AssetPath, AssetPathOwned, normalize_path},
+	assets::{normalize_path, AssetPath, AssetPathOwned},
 	components::{Component, ComponentWeak},
 	drawing::{self},
 	globals::WguiGlobals,
@@ -545,11 +545,14 @@ fn parse_tag_include(
 	parent_id: WidgetID,
 	attribs: &[AttribPair],
 ) -> anyhow::Result<()> {
+	let mut path = None;
+	let mut optional = false;
+
 	for pair in attribs {
 		#[allow(clippy::single_match)]
 		match pair.attrib.as_ref() {
-			"src" => {
-				let new_path = {
+			"src" | "src_ext" | "src_internal" => {
+				path = Some({
 					let this = &file.path.clone();
 					let include: &str = &pair.value;
 					let buf = this.get_path_buf();
@@ -557,20 +560,38 @@ fn parse_tag_include(
 					new_path.push(include);
 					let new_path = normalize_path(&new_path);
 
-					match this {
-						AssetPathOwned::WguiInternal(_) => AssetPathOwned::WguiInternal(new_path),
-						AssetPathOwned::BuiltIn(_) => AssetPathOwned::BuiltIn(new_path),
-						AssetPathOwned::Filesystem(_) => AssetPathOwned::Filesystem(new_path),
+					match pair.attrib.as_ref() {
+						"src" => match this {
+							AssetPathOwned::WguiInternal(_) => AssetPathOwned::WguiInternal(new_path),
+							AssetPathOwned::BuiltIn(_) => AssetPathOwned::BuiltIn(new_path),
+							AssetPathOwned::Filesystem(_) => AssetPathOwned::Filesystem(new_path),
+						},
+						"src_ext" => AssetPathOwned::Filesystem(new_path),
+						"src_internal" => AssetPathOwned::WguiInternal(new_path),
+						_ => unreachable!(),
 					}
-				};
-				let new_path_ref = new_path.as_ref();
-				let (new_file, node_layout) = get_doc_from_asset_path(ctx, new_path_ref)?;
-				parse_document_root(&new_file, ctx, parent_id, node_layout)?;
-
-				return Ok(());
+				});
+			}
+			"optional" => {
+				let mut optional_i32 = 0;
+				optional = parse_check_i32(&pair.value, &mut optional_i32) && optional_i32 == 1;
 			}
 			_ => {
 				print_invalid_attrib(pair.attrib.as_ref(), pair.value.as_ref());
+			}
+		}
+	}
+
+	let Some(path) = path else {
+		log::warn!("include tag with no source! specify either: src, src_ext, src_internal");
+		return Ok(());
+	};
+	let path_ref = path.as_ref();
+	match get_doc_from_asset_path(ctx, path_ref) {
+		Ok((new_file, node_layout)) => parse_document_root(&new_file, ctx, parent_id, node_layout)?,
+		Err(e) => {
+			if !optional {
+				return Err(e);
 			}
 		}
 	}

@@ -237,7 +237,10 @@ pub fn openxr_run(
         if next_device_update <= Instant::now()
             && let Some(monado) = &mut monado
         {
-            OpenXrInputSource::update_devices(&mut app, monado);
+            let changed = OpenXrInputSource::update_devices(&mut app, monado);
+            if changed {
+                overlays.devices_changed(&mut app)?;
+            }
             next_device_update = Instant::now() + Duration::from_secs(30);
         }
 

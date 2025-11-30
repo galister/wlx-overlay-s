@@ -239,7 +239,8 @@ impl OpenVrInputSource {
         }
     }
 
-    pub fn update_devices(&mut self, system: &mut SystemManager, app: &mut AppState) {
+    pub fn update_devices(&mut self, system: &mut SystemManager, app: &mut AppState) -> bool {
+        let old_len = app.input_state.devices.len();
         app.input_state.devices.clear();
         for idx in 0..TrackedDeviceIndex::MAX {
             let device = TrackedDeviceIndex::new(idx as _).unwrap(); // safe
@@ -282,6 +283,8 @@ impl OpenVrInputSource {
                 .then((a.role as u8).cmp(&(b.role as u8)))
                 .then(a.soc.unwrap_or(999.).total_cmp(&b.soc.unwrap_or(999.)))
         });
+
+        old_len != app.input_state.devices.len()
     }
 }
 

@@ -1,22 +1,21 @@
 use std::{cell::RefCell, rc::Rc};
 
 use button::setup_custom_button;
-use glam::{Affine2, Vec2, vec2};
+use glam::{vec2, Affine2, Vec2};
 use label::setup_custom_label;
 use wgui::{
     assets::AssetPath,
     drawing,
     event::{
-        Event as WguiEvent, EventAlterables, EventCallback, EventListenerID, EventListenerKind,
+        Event as WguiEvent, EventCallback, EventListenerID, EventListenerKind,
         InternalStateChangeEvent, MouseButtonIndex, MouseDownEvent, MouseLeaveEvent,
-        MouseMotionEvent, MouseUpEvent, MouseWheelEvent, StyleSetRequest,
+        MouseMotionEvent, MouseUpEvent, MouseWheelEvent,
     },
     gfx::cmd::WGfxClearMode,
     layout::{Layout, LayoutParams, WidgetID},
     parser::{CustomAttribsInfoOwned, ParserState},
     renderer_vk::context::Context as WguiContext,
-    taffy,
-    widget::{EventResult, label::WidgetLabel, rectangle::WidgetRectangle},
+    widget::{label::WidgetLabel, rectangle::WidgetRectangle, EventResult},
 };
 
 use crate::{
@@ -24,7 +23,7 @@ use crate::{
     state::AppState,
     subsystem::hid::WheelDelta,
     windowing::backend::{
-        FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender, ui_transform,
+        ui_transform, FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
     },
 };
 
@@ -220,15 +219,6 @@ impl<S: 'static> GuiPanel<S> {
         callback: EventCallback<AppState, S>,
     ) -> Option<EventListenerID> {
         self.layout.add_event_listener(widget_id, kind, callback)
-    }
-
-    pub fn widget_set_display(
-        &self,
-        widget_id: WidgetID,
-        display: taffy::Display,
-        alterables: &mut EventAlterables,
-    ) {
-        alterables.set_style(widget_id, StyleSetRequest::Display(display));
     }
 }
 

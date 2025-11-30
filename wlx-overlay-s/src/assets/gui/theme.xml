@@ -8,5 +8,18 @@
     <var key="color_accent_20" value="#001c33" /> <!-- 20% brightness -->
     <var key="color_accent_5" value="#00070d" /> <!-- 5% brightness -->
     <var key="color_accent_1" value="#000103" /> <!-- 1% brightness -->
+
+    
+    <var key="color_danger" value="#ff3300" />
+    <var key="color_danger_translucent" value="#ff330040" />
+    <var key="color_danger_20" value="#330a00" /> <!-- 20% brightness -->
+    <var key="color_danger_5" value="#0d0200" /> <!-- 5% brightness -->
+    <var key="color_danger_1" value="#030000" /> <!-- 1% brightness -->
+
+    <var key="color_faded" value="#668299" />
+    <var key="color_faded_translucent" value="#66829940" />
+    <var key="color_faded_20" value="#141a1f" /> <!-- 20% brightness -->
+    <var key="color_faded_5" value="#050708" /> <!-- 5% brightness -->
+    <var key="color_faded_1" value="#010102" /> <!-- 1% brightness -->
   </theme>
 </layout>

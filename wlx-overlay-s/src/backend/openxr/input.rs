@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use glam::{Affine3A, Quat, Vec3, bool};
+use glam::{bool, Affine3A, Quat, Vec3};
 use libmonado as mnd;
 use openxr::{self as xr, Quaternionf, Vector2f, Vector3f};
 use serde::{Deserialize, Serialize};
@@ -15,7 +15,7 @@ use crate::{
     state::{AppSession, AppState},
 };
 
-use super::{XrState, helpers::posef_to_transform};
+use super::{helpers::posef_to_transform, XrState};
 
 static CLICK_TIMES: [Duration; 3] = [
     Duration::ZERO,
@@ -247,7 +247,8 @@ impl OpenXrInputSource {
         }
     }
 
-    pub fn update_devices(app: &mut AppState, monado: &mut mnd::Monado) {
+    pub fn update_devices(app: &mut AppState, monado: &mut mnd::Monado) -> bool {
+        let old_len = app.input_state.devices.len();
         app.input_state.devices.clear();
 
         let roles = [
@@ -294,6 +295,8 @@ impl OpenXrInputSource {
                 .then((a.role as u8).cmp(&(b.role as u8)))
                 .then(a.soc.unwrap_or(999.).total_cmp(&b.soc.unwrap_or(999.)))
         });
+
+        old_len != app.input_state.devices.len()
     }
 }
 

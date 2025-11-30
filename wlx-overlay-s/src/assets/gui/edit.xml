@@ -2,36 +2,41 @@
   <include src="theme.xml" />
 
   <macro name="button_style"
+    margin="2" overflow="hidden" box_sizing="border_box"
+    border_color="~color_accent_translucent" border="2" round="8" color="~color_accent_5" color2="~color_accent_1" gradient="vertical"
+    align_items="center" justify_content="center" />
+
+  <macro name="button_style"
     margin="2" overflow="hidden" box_sizing="border_box" align_items="center" justify_content="center"
     border="2" round="50%" padding="8" gradient="vertical" tooltip_side="bottom" />
 
   <template name="TopButton">
-    <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" sticky="${sticky}" border_color="#0044CC" color="#000A1C" color2="#000002">
+    <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" sticky="${sticky}" border_color="~color_accent_translucent" color="~color_accent_5" color2="~color_accent_1">
       <sprite id="${id}_sprite" width="48" height="48" src="${src}" />
     </Button>
   </template>
 
   <template name="TopButtonDanger">
-    <Button macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" border_color="#CC0000" color="#110000" color2="#020000">
+    <Button macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" border_color="~color_danger_translucent" color="~color_danger_5" color2="~color_danger_1">
       <sprite width="48" height="48" src="${src}" />
     </Button>
   </template>
 
   <template name="TopButtonFaded">
-    <Button macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" border_color="#707070" color="#202020" color2="#010101">
+    <Button macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" border_color="~color_faded_translucent" color="~color_faded_5" color2="~color_faded_1">
       <sprite width="48" height="48" src="${src}" />
     </Button>
   </template>
 
   <template name="PosButton">
-    <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" border_color="#0044CC" color="#000A1C" color2="#000002">
+    <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" border_color="~color_accent_translucent" color="~color_accent_5" color2="~color_accent_1">
       <sprite id="${id}_sprite" width="40" height="40" src="${src}" />
     </Button>
   </template>
 
   <elements>
     <div width="100%" height="100%">
-      <rectangle id="shadow" width="100%" height="100%" padding="4" gap="4" align_items="center" justify_content="center" color="#000000DD" flex_direction="row">
+      <rectangle id="shadow" width="100%" height="100%" padding="4" gap="4" align_items="center" justify_content="center" color="#000000c0" flex_direction="row">
         <div flex_direction="column">
           <rectangle padding="16" gap="8" round="32" color="~color_bg" border="2" border_color="~color_accent" justify_content="center">
             <div flex_direction="column" gap="8">

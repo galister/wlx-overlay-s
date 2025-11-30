@@ -12,11 +12,11 @@ use crate::{
     },
     state::AppState,
     windowing::{
-        OverlayID, OverlaySelector,
         backend::{OverlayEventData, OverlayMeta},
         set::OverlayWindowSet,
         snap_upright,
         window::{OverlayCategory, OverlayWindowData},
+        OverlayID, OverlaySelector,
     },
 };
 
@@ -106,6 +106,7 @@ where
         for ev in [
             OverlayEventData::NumSetsChanged(me.sets.len()),
             OverlayEventData::EditModeChanged(false),
+            OverlayEventData::DevicesChanged,
         ] {
             watch.config.backend.notify(app, ev)?;
         }
@@ -466,6 +467,17 @@ impl<T> OverlayWindowManager<T> {
                 .config
                 .backend
                 .notify(app, OverlayEventData::OverlaysChanged(meta))?;
+        }
+
+        Ok(())
+    }
+
+    pub fn devices_changed(&mut self, app: &mut AppState) -> anyhow::Result<()> {
+        if let Some(watch) = self.mut_by_id(self.watch_id) {
+            watch
+                .config
+                .backend
+                .notify(app, OverlayEventData::DevicesChanged)?;
         }
 
         Ok(())

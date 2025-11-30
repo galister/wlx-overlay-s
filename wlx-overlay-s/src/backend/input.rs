@@ -4,7 +4,8 @@ use std::{collections::VecDeque, time::Instant};
 
 use glam::{Affine3A, Vec2, Vec3A, Vec3Swizzles};
 
-use smallvec::{SmallVec, smallvec};
+use idmap_derive::IntegerId;
+use smallvec::{smallvec, SmallVec};
 use wlx_common::windowing::{OverlayWindowState, Positioning};
 
 use crate::overlays::anchor::ANCHOR_NAME;
@@ -12,7 +13,7 @@ use crate::state::{AppSession, AppState};
 use crate::subsystem::hid::WheelDelta;
 use crate::subsystem::input::KeyboardFocus;
 use crate::windowing::manager::OverlayWindowManager;
-use crate::windowing::window::{self, OverlayWindowData, realign};
+use crate::windowing::window::{self, realign, OverlayWindowData};
 use crate::windowing::{OverlayID, OverlaySelector};
 
 use super::task::TaskType;
@@ -31,7 +32,7 @@ pub struct TrackedDevice {
 }
 
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, IntegerId)]
 pub enum TrackedDeviceRole {
     None,
     Hmd,
