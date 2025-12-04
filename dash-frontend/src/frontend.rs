@@ -8,9 +8,10 @@ use wgui::{
 	font_config::WguiFontConfig,
 	globals::WguiGlobals,
 	i18n::Translation,
-	layout::{LayoutParams, RcLayout, WidgetID},
+	layout::{Layout, LayoutParams, RcLayout, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
 	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
+	windowing::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra, WguiWindowPlacement},
 };
 
 use crate::{
@@ -20,6 +21,7 @@ use crate::{
 		settings::TabSettings,
 	},
 	util::popup_manager::{MountPopupParams, PopupManager, PopupManagerParams},
+	views,
 };
 
 pub struct FrontendWidgets {
@@ -57,6 +59,8 @@ pub struct Frontend {
 
 	widgets: FrontendWidgets,
 	popup_manager: PopupManager,
+
+	window_audio_settings: WguiWindow,
 }
 
 pub struct InitParams {
@@ -65,12 +69,15 @@ pub struct InitParams {
 
 pub type RcFrontend = Rc<RefCell<Frontend>>;
 
+#[derive(Clone)]
 pub enum FrontendTask {
 	SetTab(TabType),
 	RefreshClock,
 	RefreshBackground,
 	MountPopup(MountPopupParams),
 	RefreshPopupManager,
+	ShowAudioSettings,
+	RecenterPlayspace,
 }
 
 impl Frontend {
@@ -129,6 +136,7 @@ impl Frontend {
 			},
 			settings: params.settings,
 			popup_manager,
+			window_audio_settings: WguiWindow::default(),
 		};
 
 		// init some things first
@@ -251,6 +259,8 @@ impl Frontend {
 			FrontendTask::RefreshBackground => self.update_background()?,
 			FrontendTask::MountPopup(params) => self.mount_popup(params)?,
 			FrontendTask::RefreshPopupManager => self.refresh_popup_manager()?,
+			FrontendTask::ShowAudioSettings => self.action_show_audio_settings()?,
+			FrontendTask::RecenterPlayspace => self.action_recenter_playspace()?,
 		}
 		Ok(())
 	}
@@ -284,21 +294,112 @@ impl Frontend {
 		Ok(())
 	}
 
+	pub fn register_button_task(this_rc: RcFrontend, btn: &Rc<ComponentButton>, task: FrontendTask) {
+		btn.on_click({
+			Box::new(move |_common, _evt| {
+				this_rc.borrow_mut().tasks.push(task.clone());
+				Ok(())
+			})
+		});
+	}
+
 	fn register_widgets(rc_this: &RcFrontend) -> anyhow::Result<()> {
 		let this = rc_this.borrow_mut();
-		let btn_home = this.state.fetch_component_as::<ComponentButton>("btn_side_home")?;
-		let btn_apps = this.state.fetch_component_as::<ComponentButton>("btn_side_apps")?;
-		let btn_games = this.state.fetch_component_as::<ComponentButton>("btn_side_games")?;
-		let btn_monado = this.state.fetch_component_as::<ComponentButton>("btn_side_monado")?;
-		let btn_processes = this.state.fetch_component_as::<ComponentButton>("btn_side_processes")?;
-		let btn_settings = this.state.fetch_component_as::<ComponentButton>("btn_side_settings")?;
 
-		TabType::register_button(rc_this.clone(), &btn_home, TabType::Home);
-		TabType::register_button(rc_this.clone(), &btn_apps, TabType::Apps);
-		TabType::register_button(rc_this.clone(), &btn_games, TabType::Games);
-		TabType::register_button(rc_this.clone(), &btn_monado, TabType::Monado);
-		TabType::register_button(rc_this.clone(), &btn_processes, TabType::Processes);
-		TabType::register_button(rc_this.clone(), &btn_settings, TabType::Settings);
+		// ################################
+		// SIDE BUTTONS
+		// ################################
+
+		// "Home" side button
+		Frontend::register_button_task(
+			rc_this.clone(),
+			&this.state.fetch_component_as::<ComponentButton>("btn_side_home")?,
+			FrontendTask::SetTab(TabType::Home),
+		);
+
+		// "Apps" side button
+		Frontend::register_button_task(
+			rc_this.clone(),
+			&this.state.fetch_component_as::<ComponentButton>("btn_side_apps")?,
+			FrontendTask::SetTab(TabType::Apps),
+		);
+
+		// "Games" side button
+		Frontend::register_button_task(
+			rc_this.clone(),
+			&this.state.fetch_component_as::<ComponentButton>("btn_side_games")?,
+			FrontendTask::SetTab(TabType::Games),
+		);
+
+		// "Monado side button"
+		Frontend::register_button_task(
+			rc_this.clone(),
+			&this.state.fetch_component_as::<ComponentButton>("btn_side_monado")?,
+			FrontendTask::SetTab(TabType::Monado),
+		);
+
+		// "Processes" side button
+		Frontend::register_button_task(
+			rc_this.clone(),
+			&this.state.fetch_component_as::<ComponentButton>("btn_side_processes")?,
+			FrontendTask::SetTab(TabType::Processes),
+		);
+
+		// "Settings" side button
+		Frontend::register_button_task(
+			rc_this.clone(),
+			&this.state.fetch_component_as::<ComponentButton>("btn_side_settings")?,
+			FrontendTask::SetTab(TabType::Settings),
+		);
+
+		// ################################
+		// BOTTOM BAR BUTTONS
+		// ################################
+
+		// "Audio" bottom bar button
+		Frontend::register_button_task(
+			rc_this.clone(),
+			&this.state.fetch_component_as::<ComponentButton>("btn_audio")?,
+			FrontendTask::ShowAudioSettings,
+		);
+
+		// "Recenter playspace" bottom bar button
+		Frontend::register_button_task(
+			rc_this.clone(),
+			&this.state.fetch_component_as::<ComponentButton>("btn_recenter")?,
+			FrontendTask::RecenterPlayspace,
+		);
+
+		Ok(())
+	}
+
+	fn action_show_audio_settings(&mut self) -> anyhow::Result<()> {
+		let mut layout = self.layout.borrow_mut();
+
+		self.window_audio_settings.open(&mut WguiWindowParams {
+			globals: self.globals.clone(),
+			position: Vec2::new(64.0, 64.0),
+			layout: &mut layout,
+			title: Translation::from_translation_key("AUDIO.SETTINGS"),
+			extra: WguiWindowParamsExtra {
+				fixed_width: Some(400.0),
+				placement: WguiWindowPlacement::BottomLeft,
+				..Default::default()
+			},
+		})?;
+
+		let content = self.window_audio_settings.get_content();
+
+		views::audio_settings::View::new(views::audio_settings::Params {
+			globals: self.globals.clone(),
+			layout: &mut layout,
+			parent_id: content.id,
+		})?;
+		Ok(())
+	}
+
+	fn action_recenter_playspace(&mut self) -> anyhow::Result<()> {
+		log::info!("todo");
 		Ok(())
 	}
 }

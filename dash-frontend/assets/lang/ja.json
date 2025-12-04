@@ -27,5 +27,16 @@
     },
     "RESTART_SOFTWARE": "ソフトウェアを再起動"
   },
-  "HELLO": "こんにちは！"
+  "HELLO": "こんにちは！",
+  "AUDIO": {
+    "VOLUME": "音量",
+    "SETTINGS": "オーディオ設定",
+    "AUTO_SWITCH_TO_VR_AUDIO": "VRオーディオに自動切り替え",
+    "SPEAKERS": "スピーカー",
+    "MICROPHONES": "マイク",
+    "CARDS": "カード"
+  },
+  "ACTIONS": {
+    "RECENTER_PLAYSPACE": "プレイスペースを再中央"
+  }
 }

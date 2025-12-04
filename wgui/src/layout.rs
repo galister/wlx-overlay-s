@@ -744,6 +744,12 @@ impl Layout {
 				event::StyleSetRequest::Margin(margin) => {
 					cur_style.margin = margin;
 				}
+				event::StyleSetRequest::Width(val) => {
+					cur_style.size.width = val;
+				}
+				event::StyleSetRequest::Height(val) => {
+					cur_style.size.height = val;
+				}
 			}
 
 			if let Err(e) = self.state.tree.set_style(*node_id, cur_style) {

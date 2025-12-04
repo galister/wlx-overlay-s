@@ -95,6 +95,8 @@ impl Event {
 pub enum StyleSetRequest {
 	Display(taffy::Display),
 	Margin(taffy::Rect<taffy::LengthPercentageAuto>),
+	Width(taffy::Dimension),
+	Height(taffy::Dimension),
 }
 
 // alterables which will be dispatched in the next loop iteration phase

@@ -21,7 +21,7 @@ use wgui::{
 	parser::{Fetchable, ParseDocumentExtra, ParseDocumentParams, ParserState},
 	taffy,
 	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
-	windowing::{WguiWindow, WguiWindowParams},
+	windowing::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra},
 };
 
 pub enum TestbedTask {
@@ -215,6 +215,8 @@ impl TestbedGeneric {
 			globals: self.globals.clone(),
 			position: Vec2::new(128.0, 128.0),
 			layout,
+			title: Translation::from_raw_text("foo"),
+			extra: Default::default(),
 		})?;
 
 		Ok(())

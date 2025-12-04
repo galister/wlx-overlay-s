@@ -27,5 +27,16 @@
     },
     "RESTART_SOFTWARE": "Software neu starten"
   },
-  "HELLO": "Hallo!"
+  "HELLO": "Hallo!",
+  "AUDIO": {
+    "VOLUME": "Lautstärke",
+    "SETTINGS": "Audioeinstellungen",
+    "AUTO_SWITCH_TO_VR_AUDIO": "Automatisch auf VR-Audio umschalten",
+    "SPEAKERS": "Lautsprecher",
+    "MICROPHONES": "Mikrofone",
+    "CARDS": "Karten"
+  },
+  "ACTIONS": {
+    "RECENTER_PLAYSPACE": "Playspace neu zentrieren"
+  }
 }

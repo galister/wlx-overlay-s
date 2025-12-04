@@ -63,9 +63,10 @@ pub struct PopupContentFuncData<'a> {
 	pub id_content: WidgetID,
 }
 
+#[derive(Clone)]
 pub struct MountPopupParams {
 	pub title: Translation,
-	pub on_content: Box<dyn Fn(PopupContentFuncData) -> anyhow::Result<()>>,
+	pub on_content: Rc<dyn Fn(PopupContentFuncData) -> anyhow::Result<()>>,
 }
 
 impl Drop for MountedPopup {

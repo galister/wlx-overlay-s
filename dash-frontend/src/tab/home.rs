@@ -9,6 +9,7 @@ use wgui::{
 };
 
 use crate::{
+	frontend::{Frontend, FrontendTask},
 	settings,
 	tab::{Tab, TabParams, TabType},
 	various,
@@ -66,11 +67,15 @@ impl TabHome {
 		let btn_settings = state.fetch_component_as::<ComponentButton>("btn_settings")?;
 
 		let frontend = params.frontend;
-		TabType::register_button(frontend.clone(), &btn_apps, TabType::Apps);
-		TabType::register_button(frontend.clone(), &btn_games, TabType::Games);
-		TabType::register_button(frontend.clone(), &btn_monado, TabType::Monado);
-		TabType::register_button(frontend.clone(), &btn_processes, TabType::Processes);
-		TabType::register_button(frontend.clone(), &btn_settings, TabType::Settings);
+		Frontend::register_button_task(frontend.clone(), &btn_apps, FrontendTask::SetTab(TabType::Apps));
+		Frontend::register_button_task(frontend.clone(), &btn_games, FrontendTask::SetTab(TabType::Games));
+		Frontend::register_button_task(frontend.clone(), &btn_monado, FrontendTask::SetTab(TabType::Monado));
+		Frontend::register_button_task(
+			frontend.clone(),
+			&btn_processes,
+			FrontendTask::SetTab(TabType::Processes),
+		);
+		Frontend::register_button_task(frontend.clone(), &btn_settings, FrontendTask::SetTab(TabType::Settings));
 
 		Ok(Self { state })
 	}

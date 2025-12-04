@@ -27,5 +27,16 @@
 			"SHOW_SKYBOX": "Show skybox",
 			"ENABLE_PASSTHROUGH": "Enable passthrough"
 		}
+	},
+	"AUDIO": {
+		"SETTINGS": "Audio settings",
+		"VOLUME": "Volume",
+		"AUTO_SWITCH_TO_VR_AUDIO": "Auto-switch to VR audio",
+		"SPEAKERS": "Speakers",
+		"MICROPHONES": "Microphones",
+		"CARDS": "Cards"
+	},
+	"ACTIONS": {
+		"RECENTER_PLAYSPACE": "Re-center playspace"
 	}
 }

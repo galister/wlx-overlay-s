@@ -27,5 +27,16 @@
     },
     "RESTART_SOFTWARE": "Reiniciar software"
   },
-  "HELLO": "¡Hola!"
+  "HELLO": "¡Hola!",
+  "AUDIO": {
+    "VOLUME": "Volumen",
+    "SETTINGS": "Configuración de audio",
+    "AUTO_SWITCH_TO_VR_AUDIO": "Conmutar automáticamente al audio VR",
+    "SPEAKERS": "Altavoces",
+    "MICROPHONES": "Micrófonos",
+    "CARDS": "Tarjetas"
+  },
+  "ACTIONS": {
+    "RECENTER_PLAYSPACE": "Re-centrar espacio de juego"
+  }
 }

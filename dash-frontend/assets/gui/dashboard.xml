@@ -130,8 +130,12 @@
 
           <!-- Left bottom side -->
           <div margin_left="8">
-            <sprite src="dashboard/volume.svg" width="24" height="24" margin="8" />
-            <sprite src="dashboard/recenter.svg" width="24" height="24" margin="8" />
+            <Button id="btn_audio" color="#FFFFFF00" border_color="#FFFFFF00" tooltip="AUDIO.VOLUME" tooltip_side="top">
+              <sprite src="dashboard/volume.svg" width="24" height="24" margin="8" />
+            </Button>
+            <Button id="btn_recenter" color="#FFFFFF00" border_color="#FFFFFF00" tooltip="ACTIONS.RECENTER_PLAYSPACE" tooltip_side="top">
+              <sprite src="dashboard/recenter.svg" width="24" height="24" margin="8" />
+            </Button>
           </div>
 
           <!-- Right bottom side -->

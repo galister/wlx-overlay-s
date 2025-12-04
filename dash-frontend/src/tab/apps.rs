@@ -64,7 +64,7 @@ fn on_app_click(
 					let state = state.clone();
 					let entry = entry.clone();
 					let globals = globals.clone();
-					Box::new(move |data| {
+					Rc::new(move |data| {
 						let view = app_launcher::View::new(app_launcher::Params {
 							entry: entry.clone(),
 							globals: globals.clone(),

@@ -103,7 +103,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 
 	let transform = Mat4::from_translation(Vec3::new(-0.5, 0.0, 0.0));
 
-	let (pin_left, pin_top, pin_align_items, pin_justify_content) = match params.info.side {
+	let (mut pin_left, mut pin_top, pin_align_items, pin_justify_content) = match params.info.side {
 		TooltipSide::Left => (
 			absolute_boundary.left() - spacing,
 			absolute_boundary.top() + absolute_boundary.size.y / 2.0,

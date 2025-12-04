@@ -1,0 +1,47 @@
+<layout>
+  <include src="../t_group_box.xml" />
+
+  <!-- device_name, device_icon -->
+  <template name="AudioDevice">
+    <rectangle macro="group_box">
+      <div width="100%" align_items="center" justify_content="center" gap="8">
+        <sprite src="${device_icon}" width="16" height="16" />
+        <label translation="${device_name}" margin_right="8" size="12" weight="bold" />
+      </div>
+      <div width="100%" align_items="center">
+        <CheckBox />
+        <Button>
+          <sprite src="dashboard/volume.svg" width="20" height="20" margin="4" margin_left="8" margin_right="8" />
+        </Button>
+        <Slider flex_grow="1" height="16" min_value="0" max_value="150" margin_left="8" />
+      </div>
+    </rectangle>
+  </template>
+
+  <!-- src, translation -->
+  <template name="BottomButton">
+    <Button flex_grow="1">
+      <sprite src="${src}"
+        min_width="24" min_height="24" width="24" height="24" margin="4" margin_left="16" />
+      <label translation="${translation}" weight="bold" margin_right="16" />
+    </Button>
+  </template>
+
+  <elements>
+    <AudioDevice device_name="Analog Stereo Output" device_icon="dashboard/minijack.svg" />
+    <AudioDevice device_name="My spectacular display" device_icon="dashboard/displayport.svg" />
+    <AudioDevice device_name="Foobar device" device_icon="dashboard/minijack.svg" />
+
+    <!-- bottom buttons -->
+    <div flex_direction="row" gap="4">
+      <Button tooltip="AUDIO.AUTO_SWITCH_TO_VR_AUDIO" color="#00CCFF" tooltip_side="right">
+        <sprite src="dashboard/magic_wand.svg"
+          min_width="24" width="24" height="24" margin="4" />
+      </Button>
+
+      <BottomButton src="dashboard/volume.svg" translation="AUDIO.SPEAKERS" />
+      <BottomButton src="dashboard/microphone.svg" translation="AUDIO.MICROPHONES" />
+      <BottomButton src="dashboard/cpu.svg" translation="AUDIO.CARDS" />
+    </div>
+  </elements>
+</layout>
