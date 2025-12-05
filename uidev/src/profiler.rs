@@ -31,7 +31,7 @@ impl Profiler {
 		self.frametime_sum_us += frametime;
 
 		if self.last_measure_us + self.interval_us < cur_micros {
-			log::debug!(
+			log::trace!(
 				"avg frametime: {:.3}ms",
 				(self.frametime_sum_us / self.measure_frames) as f32 / 1000.0
 			);

@@ -595,7 +595,7 @@ impl Layout {
 			return Ok(());
 		}
 
-		log::debug!("re-computing layout, size {}x{}", size.x, size.y);
+		log::trace!("re-computing layout, size {}x{}", size.x, size.y);
 		self.mark_redraw();
 		self.prev_size = size;
 
@@ -603,7 +603,7 @@ impl Layout {
 		self.refresh_recursively(self.tree_root_node, &mut to_refresh);
 
 		if !to_refresh.is_empty() {
-			log::debug!("refreshing {} registered components", to_refresh.len());
+			log::trace!("refreshing {} registered components", to_refresh.len());
 			for c in &to_refresh {
 				self.components_to_refresh_once.insert(c.clone());
 			}

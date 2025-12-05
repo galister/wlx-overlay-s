@@ -1,26 +1,26 @@
 <layout>
   <include src="../t_group_box.xml" />
 
-  <!-- device_name, device_icon -->
-  <template name="AudioDevice">
+  <!-- device_name, device_icon, id_checkbox -->
+  <template name="DeviceSlider">
     <rectangle macro="group_box">
       <div width="100%" align_items="center" justify_content="center" gap="8">
         <sprite src="${device_icon}" width="16" height="16" />
-        <label translation="${device_name}" margin_right="8" size="12" weight="bold" />
+        <label text="${device_name}" margin_right="8" size="12" weight="bold" />
       </div>
       <div width="100%" align_items="center">
-        <CheckBox />
-        <Button>
-          <sprite src="dashboard/volume.svg" width="20" height="20" margin="4" margin_left="8" margin_right="8" />
+        <CheckBox id="checkbox" />
+        <Button id="btn_mute">
+          <sprite src="${volume_icon}" width="20" height="20" margin="4" margin_left="8" margin_right="8" />
         </Button>
-        <Slider flex_grow="1" height="16" min_value="0" max_value="150" margin_left="8" />
+        <Slider id="slider" flex_grow="1" height="16" min_value="0" max_value="150" margin_left="8" />
       </div>
     </rectangle>
   </template>
 
-  <!-- src, translation -->
+  <!-- id (Button), src, translation -->
   <template name="BottomButton">
-    <Button flex_grow="1">
+    <Button flex_grow="1" id="${id}">
       <sprite src="${src}"
         min_width="24" min_height="24" width="24" height="24" margin="4" margin_left="16" />
       <label translation="${translation}" weight="bold" margin_right="16" />
@@ -28,9 +28,9 @@
   </template>
 
   <elements>
-    <AudioDevice device_name="Analog Stereo Output" device_icon="dashboard/minijack.svg" />
-    <AudioDevice device_name="My spectacular display" device_icon="dashboard/displayport.svg" />
-    <AudioDevice device_name="Foobar device" device_icon="dashboard/minijack.svg" />
+    <div id="devices" flex_direction="column" gap="8">
+
+    </div>
 
     <!-- bottom buttons -->
     <div flex_direction="row" gap="4">
@@ -39,9 +39,9 @@
           min_width="24" width="24" height="24" margin="4" />
       </Button>
 
-      <BottomButton src="dashboard/volume.svg" translation="AUDIO.SPEAKERS" />
-      <BottomButton src="dashboard/microphone.svg" translation="AUDIO.MICROPHONES" />
-      <BottomButton src="dashboard/cpu.svg" translation="AUDIO.CARDS" />
+      <BottomButton id="btn_sinks" src="dashboard/volume.svg" translation="AUDIO.SPEAKERS" />
+      <BottomButton id="btn_sources" src="dashboard/microphone.svg" translation="AUDIO.MICROPHONES" />
+      <BottomButton id="btn_cards" src="dashboard/cpu.svg" translation="AUDIO.CARDS" />
     </div>
   </elements>
 </layout>

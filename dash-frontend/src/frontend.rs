@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::VecDeque, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
 use chrono::Timelike;
 use glam::Vec2;
@@ -8,7 +8,7 @@ use wgui::{
 	font_config::WguiFontConfig,
 	globals::WguiGlobals,
 	i18n::Translation,
-	layout::{Layout, LayoutParams, RcLayout, WidgetID},
+	layout::{LayoutParams, RcLayout, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
 	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
 	windowing::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra, WguiWindowPlacement},
@@ -20,6 +20,7 @@ use crate::{
 		Tab, TabParams, TabType, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses,
 		settings::TabSettings,
 	},
+	task::Tasks,
 	util::popup_manager::{MountPopupParams, PopupManager, PopupManagerParams},
 	views,
 };
@@ -29,18 +30,7 @@ pub struct FrontendWidgets {
 	pub id_rect_content: WidgetID,
 }
 
-#[derive(Clone)]
-pub struct FrontendTasks(pub Rc<RefCell<VecDeque<FrontendTask>>>);
-
-impl FrontendTasks {
-	fn new() -> Self {
-		Self(Rc::new(RefCell::new(VecDeque::new())))
-	}
-
-	pub fn push(&self, task: FrontendTask) {
-		self.0.borrow_mut().push_back(task);
-	}
-}
+pub type FrontendTasks = Tasks<FrontendTask>;
 
 pub struct Frontend {
 	pub layout: RcLayout,
@@ -61,6 +51,7 @@ pub struct Frontend {
 	popup_manager: PopupManager,
 
 	window_audio_settings: WguiWindow,
+	view_audio_settings: Option<views::audio_settings::View>,
 }
 
 pub struct InitParams {
@@ -77,6 +68,7 @@ pub enum FrontendTask {
 	MountPopup(MountPopupParams),
 	RefreshPopupManager,
 	ShowAudioSettings,
+	UpdateAudioSettingsView,
 	RecenterPlayspace,
 }
 
@@ -137,6 +129,7 @@ impl Frontend {
 			settings: params.settings,
 			popup_manager,
 			window_audio_settings: WguiWindow::default(),
+			view_audio_settings: None,
 		};
 
 		// init some things first
@@ -151,10 +144,7 @@ impl Frontend {
 	}
 
 	pub fn update(&mut self, rc_this: &RcFrontend, width: f32, height: f32, timestep_alpha: f32) -> anyhow::Result<()> {
-		let mut tasks = {
-			let mut tasks = self.tasks.0.borrow_mut();
-			std::mem::take(&mut *tasks)
-		};
+		let mut tasks = self.tasks.drain();
 
 		while let Some(task) = tasks.pop_front() {
 			self.process_task(rc_this, task)?;
@@ -260,6 +250,7 @@ impl Frontend {
 			FrontendTask::MountPopup(params) => self.mount_popup(params)?,
 			FrontendTask::RefreshPopupManager => self.refresh_popup_manager()?,
 			FrontendTask::ShowAudioSettings => self.action_show_audio_settings()?,
+			FrontendTask::UpdateAudioSettingsView => self.action_update_audio_settings()?,
 			FrontendTask::RecenterPlayspace => self.action_recenter_playspace()?,
 		}
 		Ok(())
@@ -390,11 +381,28 @@ impl Frontend {
 
 		let content = self.window_audio_settings.get_content();
 
-		views::audio_settings::View::new(views::audio_settings::Params {
+		self.view_audio_settings = Some(views::audio_settings::View::new(views::audio_settings::Params {
 			globals: self.globals.clone(),
 			layout: &mut layout,
 			parent_id: content.id,
-		})?;
+			on_update: {
+				let tasks = self.tasks.clone();
+				Rc::new(move || {
+					tasks.push(FrontendTask::UpdateAudioSettingsView);
+				})
+			},
+		})?);
+		Ok(())
+	}
+
+	fn action_update_audio_settings(&mut self) -> anyhow::Result<()> {
+		let Some(view) = &mut self.view_audio_settings else {
+			return Ok(());
+		};
+
+		let mut layout = self.layout.borrow_mut();
+		view.update(&mut layout)?;
+
 		Ok(())
 	}
 
