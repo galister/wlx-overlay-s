@@ -46,7 +46,7 @@ use super::toast::error_toast;
 // Hard-coded for now
 const DASHBOARD_WIDTH: u16 = 1920;
 const DASHBOARD_HEIGHT: u16 = 1080;
-const DASHBOARD_DISPLAY_NAME: &str = "DASHBOARD";
+const DASHBOARD_DISPLAY_NAME: &str = "_DASHBOARD";
 
 pub struct WayVRContext {
     wayvr: Rc<RefCell<WayVRData>>,
@@ -802,7 +802,7 @@ pub fn create_wayvr_display_overlay(
     };
 
     Ok(OverlayWindowConfig {
-        name: format!("WVR-{name}").into(),
+        name: name.into(),
         keyboard_focus: Some(KeyboardFocus::WayVR),
         category,
         default_state: OverlayWindowState {
