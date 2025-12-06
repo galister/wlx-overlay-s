@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use glam::{bool, Affine3A, Quat, Vec3};
+use glam::{Affine3A, Quat, Vec3, bool};
 use libmonado as mnd;
 use openxr::{self as xr, Quaternionf, Vector2f, Vector3f};
 use serde::{Deserialize, Serialize};
@@ -15,7 +15,7 @@ use crate::{
     state::{AppSession, AppState},
 };
 
-use super::{helpers::posef_to_transform, XrState};
+use super::{XrState, helpers::posef_to_transform};
 
 static CLICK_TIMES: [Duration; 3] = [
     Duration::ZERO,
@@ -40,6 +40,12 @@ pub struct MultiClickHandler<const COUNT: usize> {
     previous: [Instant; COUNT],
     held_active: bool,
     held_inactive: bool,
+}
+
+pub struct ClickThresholdHandler {
+    handler: MultiClickHandler<0>,
+    threshold: f32,
+    threshold_release: f32,
 }
 
 impl<const COUNT: usize> MultiClickHandler<COUNT> {
@@ -108,7 +114,33 @@ impl<const COUNT: usize> MultiClickHandler<COUNT> {
     }
 }
 
+impl ClickThresholdHandler {
+    pub fn new(action_set: &xr::ActionSet, action_name: &str, side: &str) -> anyhow::Result<Self> {
+        Ok(Self {
+            handler: MultiClickHandler::new(action_set, &format!("{action_name}_threshold"), side)?,
+            threshold: 0.0,
+            threshold_release: 0.0,
+        })
+    }
+
+    pub const fn set_thresholds(&mut self, thresholds: [f32; 2]) {
+        self.threshold = thresholds[0];
+        self.threshold_release = thresholds[1];
+    }
+
+    pub fn check<G>(&mut self, session: &xr::Session<G>, before: bool) -> anyhow::Result<bool> {
+        let threshold = if before {
+            self.threshold_release
+        } else {
+            self.threshold
+        };
+
+        self.handler.check(session, threshold)
+    }
+}
+
 pub struct CustomClickAction {
+    single_threshold: ClickThresholdHandler,
     single: MultiClickHandler<0>,
     double: MultiClickHandler<1>,
     triple: MultiClickHandler<2>,
@@ -116,11 +148,13 @@ pub struct CustomClickAction {
 
 impl CustomClickAction {
     pub fn new(action_set: &xr::ActionSet, name: &str, side: &str) -> anyhow::Result<Self> {
+        let single_threshold = ClickThresholdHandler::new(action_set, name, side)?;
         let single = MultiClickHandler::new(action_set, name, side)?;
         let double = MultiClickHandler::new(action_set, name, side)?;
         let triple = MultiClickHandler::new(action_set, name, side)?;
 
         Ok(Self {
+            single_threshold,
             single,
             double,
             triple,
@@ -140,7 +174,8 @@ impl CustomClickAction {
 
         Ok(self.single.check(&state.session, threshold)?
             || self.double.check(&state.session, threshold)?
-            || self.triple.check(&state.session, threshold)?)
+            || self.triple.check(&state.session, threshold)?
+            || self.single_threshold.check(&state.session, before)?)
     }
 }
 
@@ -168,10 +203,10 @@ impl OpenXrInputSource {
                 .instance()
                 .create_action_set("wlx-overlay-s", "WlxOverlay-S Actions", 0)?;
 
-        let left_source = OpenXrHandSource::new(&mut action_set, "left")?;
-        let right_source = OpenXrHandSource::new(&mut action_set, "right")?;
+        let mut left_source = OpenXrHandSource::new(&mut action_set, "left")?;
+        let mut right_source = OpenXrHandSource::new(&mut action_set, "right")?;
 
-        suggest_bindings(&xr.instance, &[&left_source, &right_source]);
+        suggest_bindings(&xr.instance, &mut left_source, &mut right_source);
 
         xr.session.attach_action_sets(&[&action_set])?;
 
@@ -471,7 +506,13 @@ macro_rules! add_custom {
                         $bindings.push(xr::Binding::new(&$left.single.action_bool, p));
                     }
                 } else {
-                    if action.triple_click.unwrap_or(false) {
+                    if let Some(thresholds) = action.threshold {
+                        $left.single_threshold.set_thresholds(thresholds);
+                        $bindings.push(xr::Binding::new(
+                            &$left.single_threshold.handler.action_f32,
+                            p,
+                        ));
+                    } else if action.triple_click.unwrap_or(false) {
                         $bindings.push(xr::Binding::new(&$left.triple.action_f32, p));
                     } else if action.double_click.unwrap_or(false) {
                         $bindings.push(xr::Binding::new(&$left.double.action_f32, p));
@@ -490,7 +531,13 @@ macro_rules! add_custom {
                         $bindings.push(xr::Binding::new(&$right.single.action_bool, p));
                     }
                 } else {
-                    if action.triple_click.unwrap_or(false) {
+                    if let Some(thresholds) = action.threshold {
+                        $right.single_threshold.set_thresholds(thresholds);
+                        $bindings.push(xr::Binding::new(
+                            &$right.single_threshold.handler.action_f32,
+                            p,
+                        ));
+                    } else if action.triple_click.unwrap_or(false) {
                         $bindings.push(xr::Binding::new(&$right.triple.action_f32, p));
                     } else if action.double_click.unwrap_or(false) {
                         $bindings.push(xr::Binding::new(&$right.double.action_f32, p));
@@ -504,7 +551,11 @@ macro_rules! add_custom {
 }
 
 #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
-fn suggest_bindings(instance: &xr::Instance, hands: &[&OpenXrHandSource; 2]) {
+fn suggest_bindings(
+    instance: &xr::Instance,
+    left: &mut OpenXrHandSource,
+    right: &mut OpenXrHandSource,
+) {
     let profiles = load_action_profiles();
 
     for profile in profiles {
@@ -517,115 +568,103 @@ fn suggest_bindings(instance: &xr::Instance, hands: &[&OpenXrHandSource; 2]) {
 
         if let Some(action) = profile.pose {
             if let Some(p) = to_path(action.left.as_ref(), instance) {
-                bindings.push(xr::Binding::new(&hands[0].pose, p));
+                bindings.push(xr::Binding::new(&left.pose, p));
             }
             if let Some(p) = to_path(action.right.as_ref(), instance) {
-                bindings.push(xr::Binding::new(&hands[1].pose, p));
+                bindings.push(xr::Binding::new(&right.pose, p));
             }
         }
 
         if let Some(action) = profile.haptic {
             if let Some(p) = to_path(action.left.as_ref(), instance) {
-                bindings.push(xr::Binding::new(&hands[0].haptics, p));
+                bindings.push(xr::Binding::new(&left.haptics, p));
             }
             if let Some(p) = to_path(action.right.as_ref(), instance) {
-                bindings.push(xr::Binding::new(&hands[1].haptics, p));
+                bindings.push(xr::Binding::new(&right.haptics, p));
             }
         }
 
         if let Some(action) = profile.scroll {
             if let Some(p) = to_path(action.left.as_ref(), instance) {
-                bindings.push(xr::Binding::new(&hands[0].scroll, p));
+                bindings.push(xr::Binding::new(&left.scroll, p));
             }
             if let Some(p) = to_path(action.right.as_ref(), instance) {
-                bindings.push(xr::Binding::new(&hands[1].scroll, p));
+                bindings.push(xr::Binding::new(&right.scroll, p));
             }
         }
 
-        add_custom!(
-            profile.click,
-            hands[0].click,
-            hands[1].click,
-            bindings,
-            instance
-        );
+        add_custom!(profile.click, left.click, right.click, bindings, instance);
 
         add_custom!(
             profile.alt_click,
-            &hands[0].alt_click,
-            &hands[1].alt_click,
+            left.alt_click,
+            right.alt_click,
             bindings,
             instance
         );
 
-        add_custom!(
-            profile.grab,
-            &hands[0].grab,
-            &hands[1].grab,
-            bindings,
-            instance
-        );
+        add_custom!(profile.grab, left.grab, right.grab, bindings, instance);
 
         add_custom!(
             profile.show_hide,
-            &hands[0].show_hide,
-            &hands[1].show_hide,
+            left.show_hide,
+            right.show_hide,
             bindings,
             instance
         );
 
         add_custom!(
             profile.toggle_dashboard,
-            &hands[0].toggle_dashboard,
-            &hands[1].toggle_dashboard,
+            left.toggle_dashboard,
+            right.toggle_dashboard,
             bindings,
             instance
         );
 
         add_custom!(
             profile.space_drag,
-            &hands[0].space_drag,
-            &hands[1].space_drag,
+            left.space_drag,
+            right.space_drag,
             bindings,
             instance
         );
 
         add_custom!(
             profile.space_rotate,
-            &hands[0].space_rotate,
-            &hands[1].space_rotate,
+            left.space_rotate,
+            right.space_rotate,
             bindings,
             instance
         );
 
         add_custom!(
             profile.space_reset,
-            &hands[0].space_reset,
-            &hands[1].space_reset,
+            left.space_reset,
+            right.space_reset,
             bindings,
             instance
         );
 
         add_custom!(
             profile.click_modifier_right,
-            &hands[0].modifier_right,
-            &hands[1].modifier_right,
+            left.modifier_right,
+            right.modifier_right,
             bindings,
             instance
         );
 
         add_custom!(
             profile.click_modifier_middle,
-            &hands[0].modifier_middle,
-            &hands[1].modifier_middle,
+            left.modifier_middle,
+            right.modifier_middle,
             bindings,
             instance
         );
 
         add_custom!(
             profile.move_mouse,
-            &hands[0].move_mouse,
-            &hands[1].move_mouse,
+            left.move_mouse,
+            right.move_mouse,
             bindings,
             instance
         );
