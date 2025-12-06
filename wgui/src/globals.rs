@@ -66,13 +66,20 @@ impl WguiGlobals {
 			AssetPath::WguiInternal(path) => self.assets_internal().load_from_path(path),
 			AssetPath::BuiltIn(path) => self.assets_builtin().load_from_path(path),
 			AssetPath::Filesystem(path) => {
-				let mut file = std::fs::File::open(path)?;
+				let mut file = match std::fs::File::open(path) {
+					Ok(f) => f,
+					Err(e) => {
+						anyhow::bail!("Could not open asset from {path}: {e}");
+					}
+				};
 				/* 16 MiB safeguard */
 				if file.metadata()?.len() > 16 * 1024 * 1024 {
-					anyhow::bail!("Too large file size");
+					anyhow::bail!("Could not open asset from {path}: Over size limit (16MiB)");
 				}
 				let mut data = Vec::new();
-				file.read_to_end(&mut data)?;
+				if let Err(e) = file.read_to_end(&mut data) {
+					anyhow::bail!("Could not read asset from {path}: {e}");
+				}
 				Ok(data)
 			}
 		}

@@ -1,4 +1,5 @@
 use flate2::read::GzDecoder;
+use std::ffi::OsStr;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
@@ -95,6 +96,9 @@ pub fn normalize_path(path: &Path) -> PathBuf {
 			}
 			std::path::Component::Normal(name) => {
 				stack.push(name);
+			}
+			std::path::Component::RootDir => {
+				stack.push(OsStr::new(std::path::MAIN_SEPARATOR_STR));
 			}
 			_ => {}
 		}

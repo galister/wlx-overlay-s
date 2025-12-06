@@ -20,7 +20,11 @@ pub struct TestbedAny {
 
 impl TestbedAny {
 	pub fn new(name: &str) -> anyhow::Result<Self> {
-		let path = AssetPath::BuiltIn(&format!("gui/{name}.xml"));
+		let path = if name.ends_with(".xml") {
+			AssetPath::Filesystem(name)
+		} else {
+			AssetPath::BuiltIn(&format!("gui/{name}.xml"))
+		};
 
 		let globals = WguiGlobals::new(
 			Box::new(assets::Asset {}),
