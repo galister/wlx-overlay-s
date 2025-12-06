@@ -164,6 +164,9 @@ async function run() {
     const response = await ollama.chat({
       model: model_name,
       messages: [{ role: "user", content: prompt }],
+      options: {
+        seed: 12345,
+      }
     })
 
     const msg = extract_backticks(response.message.content);

@@ -34,7 +34,8 @@
     "AUTO_SWITCH_TO_VR_AUDIO": "Automatyczne przełączanie na dźwięk VR",
     "SPEAKERS": "Głośniki",
     "MICROPHONES": "Mikrofony",
-    "CARDS": "Karty"
+    "CARDS": "Karty",
+    "SELECT_AUDIO_CARD_PROFILE": "Wybierz profil karty dźwiękowej"
   },
   "ACTIONS": {
     "RECENTER_PLAYSPACE": "Wycentruj przestrzeń"

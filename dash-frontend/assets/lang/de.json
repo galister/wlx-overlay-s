@@ -34,7 +34,8 @@
     "AUTO_SWITCH_TO_VR_AUDIO": "Automatisch auf VR-Audio umschalten",
     "SPEAKERS": "Lautsprecher",
     "MICROPHONES": "Mikrofone",
-    "CARDS": "Karten"
+    "CARDS": "Karten",
+    "SELECT_AUDIO_CARD_PROFILE": "Wählen Sie das Audio-Kartenprofil"
   },
   "ACTIONS": {
     "RECENTER_PLAYSPACE": "Playspace neu zentrieren"

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use serde::{Deserialize, Serialize};
 
@@ -98,8 +98,8 @@ pub struct Card {
 	pub name: String,           // alsa_card.pci-0000_0c_00.4
 	pub active_profile: String, // output:analog-stereo
 	pub properties: CardProperties,
-	pub profiles: HashMap<String, CardProfile>, // key: "output:analog-stereo"
-	pub ports: HashMap<String, CardPort>,       // key: "analog-output-lineout"
+	pub profiles: BTreeMap<String, CardProfile>, // key: "output:analog-stereo"
+	pub ports: BTreeMap<String, CardPort>,       // key: "analog-output-lineout"
 }
 
 // ########################################

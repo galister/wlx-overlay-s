@@ -21,7 +21,7 @@ use wgui::{
 	parser::{Fetchable, ParseDocumentExtra, ParseDocumentParams, ParserState},
 	taffy,
 	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
-	windowing::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra},
+	windowing::{WguiWindow, WguiWindowParams},
 };
 
 pub enum TestbedTask {

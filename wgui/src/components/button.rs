@@ -1,18 +1,23 @@
 use crate::{
 	animation::{Animation, AnimationEasing},
+	assets::AssetPath,
 	components::{self, Component, ComponentBase, ComponentTrait, RefreshData, tooltip::ComponentTooltip},
 	drawing::{self, Boundary, Color},
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerID, EventListenerKind},
 	i18n::Translation,
 	layout::{LayoutTask, WidgetID, WidgetPair},
 	renderer_vk::{
-		text::{FontWeight, TextStyle},
+		text::{
+			FontWeight, TextStyle,
+			custom_glyph::{CustomGlyphContent, CustomGlyphData},
+		},
 		util::centered_matrix,
 	},
 	widget::{
 		self, ConstructEssentials, EventResult, WidgetData,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
+		sprite::{WidgetSprite, WidgetSpriteParams},
 		util::WLength,
 	},
 };
@@ -20,8 +25,9 @@ use glam::{Mat4, Vec3};
 use std::{cell::RefCell, rc::Rc};
 use taffy::{AlignItems, JustifyContent, prelude::length};
 
-pub struct Params {
+pub struct Params<'a> {
 	pub text: Option<Translation>, // if unset, label will not be populated
+	pub sprite_src: Option<AssetPath<'a>>,
 	pub color: Option<drawing::Color>,
 	pub border: f32,
 	pub border_color: Option<drawing::Color>,
@@ -37,10 +43,11 @@ pub struct Params {
 	pub sticky: bool,
 }
 
-impl Default for Params {
+impl Default for Params<'_> {
 	fn default() -> Self {
 		Self {
 			text: Some(Translation::from_raw_text("")),
+			sprite_src: None,
 			color: None,
 			hover_color: None,
 			border_color: None,
@@ -366,7 +373,7 @@ fn register_event_mouse_release(
 
 #[allow(clippy::too_many_lines)]
 pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Result<(WidgetPair, Rc<ComponentButton>)> {
-	let globals = ess.layout.state.globals.clone();
+	let mut globals = ess.layout.state.globals.clone();
 	let mut style = params.style;
 
 	// force-override style
@@ -374,7 +381,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	style.justify_content = Some(JustifyContent::Center);
 	style.overflow.x = taffy::Overflow::Hidden;
 	style.overflow.y = taffy::Overflow::Hidden;
-	style.gap = length(4.0);
+	style.gap = length(8.0);
 
 	// update colors to default ones if they are not specified
 	let color = if let Some(color) = params.color {
@@ -424,6 +431,34 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		};
 		(color.r + color.g + color.b) * mult < 1.5
 	};
+
+	if let Some(sprite_path) = params.sprite_src {
+		let sprite = WidgetSprite::create(WidgetSpriteParams {
+			glyph_data: Some(CustomGlyphData::new(CustomGlyphContent::from_assets(
+				&mut globals,
+				sprite_path,
+			)?)),
+			..Default::default()
+		});
+
+		ess.layout.add_child(
+			root.id,
+			sprite,
+			taffy::Style {
+				min_size: taffy::Size {
+					width: length(20.0),
+					height: length(20.0),
+				},
+				margin: taffy::Rect {
+					top: length(4.0),
+					bottom: length(4.0),
+					left: length(0.0),
+					right: length(0.0),
+				},
+				..Default::default()
+			},
+		)?;
+	}
 
 	let id_label = if let Some(content) = params.text {
 		let (label, _node_label) = ess.layout.add_child(

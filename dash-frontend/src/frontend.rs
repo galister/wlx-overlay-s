@@ -70,6 +70,7 @@ pub enum FrontendTask {
 	ShowAudioSettings,
 	UpdateAudioSettingsView,
 	RecenterPlayspace,
+	PushToast(String),
 }
 
 impl Frontend {
@@ -252,6 +253,7 @@ impl Frontend {
 			FrontendTask::ShowAudioSettings => self.action_show_audio_settings()?,
 			FrontendTask::UpdateAudioSettingsView => self.action_update_audio_settings()?,
 			FrontendTask::RecenterPlayspace => self.action_recenter_playspace()?,
+			FrontendTask::PushToast(text) => self.push_toast(text)?,
 		}
 		Ok(())
 	}
@@ -383,6 +385,7 @@ impl Frontend {
 
 		self.view_audio_settings = Some(views::audio_settings::View::new(views::audio_settings::Params {
 			globals: self.globals.clone(),
+			frontend_tasks: self.tasks.clone(),
 			layout: &mut layout,
 			parent_id: content.id,
 			on_update: {
@@ -408,6 +411,11 @@ impl Frontend {
 
 	fn action_recenter_playspace(&mut self) -> anyhow::Result<()> {
 		log::info!("todo");
+		Ok(())
+	}
+
+	fn push_toast(&mut self, text: String) -> anyhow::Result<()> {
+		log::info!("TODO toast: {}", text);
 		Ok(())
 	}
 }

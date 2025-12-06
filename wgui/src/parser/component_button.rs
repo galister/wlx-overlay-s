@@ -1,4 +1,5 @@
 use crate::{
+	assets::AssetPath,
 	components::{Component, button, tooltip},
 	drawing::Color,
 	i18n::Translation,
@@ -27,6 +28,7 @@ pub fn parse_component_button<'a>(
 	let mut tooltip: Option<String> = None;
 	let mut tooltip_side: Option<tooltip::TooltipSide> = None;
 	let mut sticky: bool = false;
+	let mut sprite_src: Option<AssetPath> = None;
 
 	let mut translation: Option<Translation> = None;
 
@@ -59,6 +61,18 @@ pub fn parse_component_button<'a>(
 			}
 			"hover_border_color" => {
 				parse_color_opt(value, &mut hover_border_color);
+			}
+			"sprite_src" | "sprite_src_ext" | "sprite_src_internal" => {
+				let asset_path = match key {
+					"sprite_src" => AssetPath::BuiltIn(value),
+					"sprite_src_ext" => AssetPath::Filesystem(value),
+					"sprite_src_internal" => AssetPath::WguiInternal(value),
+					_ => unreachable!(),
+				};
+
+				if !value.is_empty() {
+					sprite_src = Some(asset_path);
+				}
 			}
 			"tooltip" => tooltip = Some(String::from(value)),
 			"tooltip_side" => {
@@ -98,6 +112,7 @@ pub fn parse_component_button<'a>(
 				text: Translation::from_translation_key(&t),
 			}),
 			sticky,
+			sprite_src,
 		},
 	)?;
 

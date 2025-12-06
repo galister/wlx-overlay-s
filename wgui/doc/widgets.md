@@ -210,6 +210,10 @@ _Tooltip text on hover, translated by key_
 
 _make button act as a toggle (visual only)_
 
+`sprite_src` | `sprite_src_ext` | `sprite_src_internal`
+
+_Image path (see [sprite](#sprite-widget)) for src descriptions_
+
 #### Info
 
 Child widgets are supported and can be added directly in XML.

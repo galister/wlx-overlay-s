@@ -3,22 +3,37 @@ use std::{collections::HashMap, rc::Rc};
 use wgui::{
 	assets::AssetPath,
 	components::{
+		self,
 		button::{ButtonClickCallback, ComponentButton},
 		checkbox::ComponentCheckbox,
 		slider::ComponentSlider,
 	},
 	globals::WguiGlobals,
+	i18n::Translation,
 	layout::{Layout, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
+	widget::ConstructEssentials,
 };
 
-use crate::{task::Tasks, util::pactl_wrapper};
+use crate::{
+	frontend::{FrontendTask, FrontendTasks},
+	task::Tasks,
+	util::pactl_wrapper,
+};
 
 #[derive(Clone)]
+#[allow(clippy::large_enum_variant)]
 enum CurrentMode {
 	Sinks,
 	Sources,
 	Cards,
+	CardProfileSelector(pactl_wrapper::Card),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SearchType {
+	Sink,
+	Source,
 }
 
 #[derive(Clone)]
@@ -28,17 +43,27 @@ struct IndexAndVolume {
 }
 
 #[derive(Clone)]
+struct CardAndProfileName {
+	card: pactl_wrapper::Card,
+	profile_name: String,
+}
+
+#[derive(Clone)]
+#[allow(clippy::large_enum_variant)]
 enum ViewTask {
 	Remount,
 	SetMode(CurrentMode),
+	AutoSwitch,
 	SetSinkVolume(IndexAndVolume),
 	SetSourceVolume(IndexAndVolume),
+	SetCardProfile(CardAndProfileName),
 }
 
 type ViewTasks = Tasks<ViewTask>;
 
 pub struct View {
 	tasks: ViewTasks,
+	frontend_tasks: FrontendTasks, // used only for toasts
 	on_update: Rc<dyn Fn()>,
 
 	globals: WguiGlobals,
@@ -54,6 +79,7 @@ pub struct View {
 
 pub struct Params<'a> {
 	pub globals: WguiGlobals,
+	pub frontend_tasks: FrontendTasks,
 	pub layout: &'a mut Layout,
 	pub parent_id: WidgetID,
 	pub on_update: Rc<dyn Fn()>,
@@ -63,6 +89,51 @@ struct ProfileDisplayName {
 	name: String,
 	icon_path: &'static str,
 	is_vr: bool,
+}
+
+struct SelectorCell {
+	key: String,
+	display_text: String,
+	icon_path: &'static str,
+}
+
+struct MultiSelectorParams<'a> {
+	cells: &'a [SelectorCell],
+	def_cell: &'a str,
+	ess: &'a mut ConstructEssentials<'a>,
+	on_click: Rc<dyn Fn(&str /* key */)>,
+}
+
+fn mount_multi_selector(params: MultiSelectorParams) -> anyhow::Result<()> {
+	let globals = params.ess.layout.state.globals.clone();
+	let accent_color = globals.get().defaults.accent_color;
+
+	for cell in params.cells {
+		let highlighted = cell.key == params.def_cell;
+		let color = if highlighted { Some(accent_color) } else { None };
+
+		// button
+		let (_, button) = components::button::construct(
+			params.ess,
+			components::button::Params {
+				text: Some(Translation::from_raw_text(&cell.display_text)),
+				sprite_src: Some(AssetPath::BuiltIn(cell.icon_path)),
+				color,
+				..Default::default()
+			},
+		)?;
+
+		button.on_click({
+			let on_click = params.on_click.clone();
+			let key = cell.key.clone();
+			Box::new(move |_, _| {
+				(*on_click)(key.as_str());
+				Ok(())
+			})
+		});
+	}
+
+	Ok(())
 }
 
 fn get_card_from_sink<'a>(
@@ -325,6 +396,172 @@ struct MountDeviceSliderParams<'a> {
 	alt_desc: String,
 }
 
+fn switch_sink_card(
+	frontend_tasks: &FrontendTasks,
+	card: &pactl_wrapper::Card,
+	profile_name: &str,
+	name: &ProfileDisplayName,
+) -> anyhow::Result<()> {
+	let card_index = card.index;
+	let profile = profile_name.to_string();
+	pactl_wrapper::set_card_profile(card_index, &profile)?;
+	let sinks = pactl_wrapper::list_sinks()?;
+
+	let mut sink_found = false;
+	for sink in &sinks {
+		if let Some(device_name) = sink.properties.get("device.name")
+			&& device_name == &card.name
+		{
+			pactl_wrapper::set_default_sink(sink.index)?;
+			sink_found = true;
+			break;
+		}
+	}
+
+	if sink_found {
+		frontend_tasks.push(FrontendTask::PushToast(format!(
+			"Speakers set to \"{}\" successfully!",
+			name.name
+		)));
+	} else {
+		frontend_tasks.push(FrontendTask::PushToast(format!(
+			"\"{}\" found and initialized! (not switched)",
+			name.name
+		)));
+	}
+
+	Ok(())
+}
+
+fn switch_source(frontend_tasks: &FrontendTasks, source: &pactl_wrapper::Source) -> anyhow::Result<()> {
+	match pactl_wrapper::set_default_source(source.index) {
+		Ok(()) => {
+			frontend_tasks.push(FrontendTask::PushToast(format!(
+				"Microphone set to \"{}\" successfully!",
+				if let Some(card_name) = &source.properties.card_name {
+					card_name
+				} else {
+					&source.description
+				}
+			)));
+			Ok(())
+		}
+		Err(e) => {
+			frontend_tasks.push(FrontendTask::PushToast(format!("Failed to switch microphone: {:?}", e)));
+			Err(e)
+		}
+	}
+}
+
+fn switch_to_vr_microphone(frontend_tasks: &FrontendTasks) -> anyhow::Result<()> {
+	let sources = pactl_wrapper::list_sources()?;
+	let mut switched = false;
+
+	for source in &sources {
+		if is_source_mentioning_hmd(source) {
+			switch_source(frontend_tasks, source)?;
+			switched = true;
+			break;
+		}
+	}
+
+	if !switched {
+		frontend_tasks.push(FrontendTask::PushToast(
+			"No VR microphone found. Switch it manually.".to_string(),
+		));
+	}
+
+	Ok(())
+}
+
+#[derive(Debug, Clone)]
+struct CardPriorityResult<'a> {
+	priority: u32,
+	name: String,
+	card: &'a pactl_wrapper::Card,
+}
+
+fn get_card_best_profile<'a>(card: &'a pactl_wrapper::Card, search_type: SearchType) -> Option<CardPriorityResult<'a>> {
+	let mut best_priority = 0;
+	let mut best_profile_name = "";
+	let mut best_profile: Option<&'a pactl_wrapper::CardProfile> = None;
+
+	for (profile_name, profile) in &card.profiles {
+		match search_type {
+			SearchType::Sink if profile.sinks == 0 => continue,
+			SearchType::Source if profile.sources == 0 => continue,
+			_ => {}
+		}
+
+		if profile.priority > best_priority {
+			best_priority = profile.priority;
+			best_profile = Some(profile);
+			best_profile_name = profile_name;
+		}
+	}
+
+	best_profile?; // do not proceed if no profile was found
+
+	Some(CardPriorityResult {
+		priority: best_priority,
+		name: best_profile_name.to_string(),
+		card,
+	})
+}
+
+fn get_best_profile_from_array<'a>(arr: &[CardPriorityResult<'a>]) -> Option<CardPriorityResult<'a>> {
+	let mut best_priority = 0;
+	let mut res: Option<CardPriorityResult<'a>> = None;
+
+	for cell in arr {
+		if cell.priority > best_priority {
+			best_priority = cell.priority;
+			res = Some(cell.clone());
+		}
+	}
+
+	res
+}
+
+fn switch_to_vr_speakers(frontend_tasks: &FrontendTasks) -> anyhow::Result<()> {
+	let cards = pactl_wrapper::list_cards()?;
+	let mut best_profiles = Vec::new();
+
+	for card in &cards {
+		if !is_card_mentioning_hmd(card) {
+			continue;
+		}
+		if let Some(best_profile) = get_card_best_profile(card, SearchType::Sink) {
+			best_profiles.push(best_profile);
+		}
+	}
+
+	if !best_profiles.is_empty() {
+		let best_profile = get_best_profile_from_array(&best_profiles).unwrap();
+		let name = get_profile_display_name(&best_profile.name, best_profile.card);
+		switch_sink_card(frontend_tasks, best_profile.card, &best_profile.name, &name)?;
+		return Ok(());
+	}
+
+	// There aren't any cards which mention VR explicitly. Time for plan B.
+	for card in &cards {
+		for profile_name in card.profiles.keys() {
+			let name = get_profile_display_name(profile_name, card);
+			if !name.is_vr {
+				continue;
+			}
+			switch_sink_card(frontend_tasks, card, profile_name, &name)?;
+			return Ok(());
+		}
+	}
+
+	frontend_tasks.push(FrontendTask::PushToast(
+		"No VR speakers found. Switch them manually.".to_string(),
+	));
+
+	Ok(())
+}
+
 const ONE_HUNDRED_PERCENT: f32 = 100.0;
 const VOLUME_MULT: f32 = 1.0 / ONE_HUNDRED_PERCENT;
 
@@ -349,9 +586,11 @@ impl View {
 		let btn_sinks = state.fetch_component_as::<ComponentButton>("btn_sinks")?;
 		let btn_sources = state.fetch_component_as::<ComponentButton>("btn_sources")?;
 		let btn_cards = state.fetch_component_as::<ComponentButton>("btn_cards")?;
+		let btn_auto = state.fetch_component_as::<ComponentButton>("btn_auto")?;
 
 		let mut res = Self {
 			globals: params.globals,
+			frontend_tasks: params.frontend_tasks,
 			state,
 			mode: CurrentMode::Sinks,
 			id_devices,
@@ -362,6 +601,7 @@ impl View {
 		btn_sinks.on_click(res.handle_func_button_click(ViewTask::SetMode(CurrentMode::Sinks)));
 		btn_sources.on_click(res.handle_func_button_click(ViewTask::SetMode(CurrentMode::Sources)));
 		btn_cards.on_click(res.handle_func_button_click(ViewTask::SetMode(CurrentMode::Cards)));
+		btn_auto.on_click(res.handle_func_button_click(ViewTask::AutoSwitch));
 
 		res.init_mode_sinks(params.layout)?;
 
@@ -379,10 +619,11 @@ impl View {
 
 		for task in tasks {
 			match task {
-				ViewTask::Remount => match self.mode {
+				ViewTask::Remount => match &self.mode {
 					CurrentMode::Sinks => self.init_mode_sinks(layout)?,
 					CurrentMode::Sources => self.init_mode_sources(layout)?,
 					CurrentMode::Cards => self.init_mode_cards(layout)?,
+					CurrentMode::CardProfileSelector(card) => self.init_mode_card_selector(layout, card.clone())?,
 				},
 				ViewTask::SetSinkVolume(s) => {
 					set_sink_volume = Some(s);
@@ -392,6 +633,14 @@ impl View {
 				}
 				ViewTask::SetMode(current_mode) => {
 					self.mode = current_mode;
+					self.tasks.push(ViewTask::Remount);
+				}
+				ViewTask::SetCardProfile(c) => {
+					pactl_wrapper::set_card_profile(c.card.index, &c.profile_name)?;
+				}
+				ViewTask::AutoSwitch => {
+					switch_to_vr_microphone(&self.frontend_tasks)?;
+					switch_to_vr_speakers(&self.frontend_tasks)?;
 					self.tasks.push(ViewTask::Remount);
 				}
 			}
@@ -417,6 +666,29 @@ impl View {
 	}
 
 	fn mount_card(&mut self, params: MountCardParams) -> anyhow::Result<()> {
+		let desc = &params.card.properties.device_description;
+		let disp_name = get_profile_display_name(&params.card.active_profile, params.card);
+
+		let mut par = HashMap::<Rc<str>, Rc<str>>::new();
+		par.insert("card_name".into(), desc.as_str().into());
+		par.insert("profile_name".into(), disp_name.name.as_str().into());
+
+		let data = self
+			.state
+			.parse_template(&doc_params(&self.globals), "Card", params.layout, self.id_devices, par)?;
+
+		let btn_card = data.fetch_component_as::<ComponentButton>("btn_card")?;
+		btn_card.on_click({
+			let tasks = self.tasks.clone();
+			let card = params.card.clone();
+			let on_update = self.on_update.clone();
+			Box::new(move |_common, _evt| {
+				tasks.push(ViewTask::SetMode(CurrentMode::CardProfileSelector(card.clone())));
+				(*on_update)();
+				Ok(())
+			})
+		});
+
 		log::info!("mount card TODO: {}", params.card.name);
 		Ok(())
 	}
@@ -578,6 +850,72 @@ impl View {
 		for card in cards {
 			self.mount_card(MountCardParams { layout, card: &card })?;
 		}
+
+		Ok(())
+	}
+
+	fn init_mode_card_selector(&mut self, layout: &mut Layout, card: pactl_wrapper::Card) -> anyhow::Result<()> {
+		log::info!("showing card selector for {}", card.name);
+
+		layout.remove_children(self.id_devices);
+
+		{
+			let data = self.state.parse_template(
+				&doc_params(&self.globals),
+				"SelectAudioProfileText",
+				layout,
+				self.id_devices,
+				Default::default(),
+			)?;
+			let btn_back = data.fetch_component_as::<ComponentButton>("btn_back")?;
+			btn_back.on_click({
+				let tasks = self.tasks.clone();
+				let on_update = self.on_update.clone();
+				Box::new(move |_, _| {
+					tasks.push(ViewTask::SetMode(CurrentMode::Cards));
+					(*on_update)();
+					Ok(())
+				})
+			});
+		}
+
+		let mut cells = Vec::<SelectorCell>::new();
+		for profile_name in card.profiles.keys() {
+			if profile_name.contains("surround") {
+				continue; // we aren't interested in that
+			}
+
+			let disp_name = get_profile_display_name(profile_name, &card);
+			cells.push(SelectorCell {
+				key: profile_name.clone(),
+				display_text: disp_name.name,
+				icon_path: disp_name.icon_path,
+			});
+		}
+
+		let mut ess = ConstructEssentials {
+			layout,
+			parent: self.id_devices,
+		};
+
+		mount_multi_selector(MultiSelectorParams {
+			cells: &cells,
+			def_cell: &card.active_profile,
+			ess: &mut ess,
+			on_click: {
+				let card = card.clone();
+				let tasks = self.tasks.clone();
+				let on_update = self.on_update.clone();
+				Rc::new(move |profile_name| {
+					tasks.push(ViewTask::SetCardProfile(CardAndProfileName {
+						card: card.clone(),
+						profile_name: profile_name.to_string(),
+					}));
+					tasks.push(ViewTask::SetMode(CurrentMode::Cards));
+					(*on_update)();
+				})
+			},
+		})?;
 
 		Ok(())
 	}

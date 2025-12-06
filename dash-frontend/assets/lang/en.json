@@ -29,6 +29,7 @@
 		}
 	},
 	"AUDIO": {
+		"SELECT_AUDIO_CARD_PROFILE": "Select audio card profile",
 		"SETTINGS": "Audio settings",
 		"VOLUME": "Volume",
 		"AUTO_SWITCH_TO_VR_AUDIO": "Auto-switch to VR audio",
