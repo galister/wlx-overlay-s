@@ -1,7 +1,7 @@
 use flate2::read::GzDecoder;
 use std::ffi::OsStr;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 #[derive(Clone, Copy)]
 pub enum AssetPath<'a> {
@@ -86,22 +86,42 @@ pub trait AssetProvider {
 	}
 }
 
-// replace "./foo/bar/../file.txt" with "./foo/file.txt"
+// replace "./foo/bar/../file.txt" with "foo/file.txt"
 pub fn normalize_path(path: &Path) -> PathBuf {
 	let mut stack = Vec::new();
+
 	for component in path.components() {
 		match component {
-			std::path::Component::ParentDir => {
-				stack.pop();
+			Component::ParentDir => {
+				match stack.last() {
+					// ../foo, ../../foo, ./../foo → push ".."
+					None | Some(Component::ParentDir) | Some(Component::CurDir) => stack.push(Component::ParentDir),
+					// "foo/../bar" → pop "foo" and don't push ".."
+					Some(Component::Normal(_)) => {
+						stack.pop();
+					}
+					// other weird cases, e.g. "/../foo" → "/foo"
+					_ => {}
+				}
 			}
-			std::path::Component::Normal(name) => {
-				stack.push(name);
+			// ./foo → foo
+			Component::CurDir => {}
+
+			// keep as-is
+			Component::RootDir | Component::Prefix(_) | Component::Normal(_) => {
+				stack.push(component);
 			}
-			std::path::Component::RootDir => {
-				stack.push(OsStr::new(std::path::MAIN_SEPARATOR_STR));
-			}
-			_ => {}
 		}
 	}
-	stack.iter().collect()
+
+	stack
+		.into_iter()
+		.map(|comp| match comp {
+			Component::RootDir => OsStr::new("/"),
+			Component::Prefix(p) => p.as_os_str(), // should not occur on Unix
+			Component::ParentDir => OsStr::new(".."),
+			Component::Normal(s) => s,
+			Component::CurDir => unreachable!(), // stripped in all cases
+		})
+		.collect()
 }
