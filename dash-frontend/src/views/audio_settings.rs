@@ -33,7 +33,8 @@ enum CurrentMode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SearchType {
 	Sink,
-	Source,
+	#[allow(dead_code)]
+	Source, // might be useful in the future
 }
 
 #[derive(Clone)]
@@ -75,6 +76,10 @@ pub struct View {
 	mode: CurrentMode,
 
 	id_devices: WidgetID,
+
+	btn_sinks: Rc<ComponentButton>,
+	btn_sources: Rc<ComponentButton>,
+	btn_cards: Rc<ComponentButton>,
 }
 
 pub struct Params<'a> {
@@ -596,6 +601,9 @@ impl View {
 			id_devices,
 			tasks,
 			on_update: params.on_update,
+			btn_sinks: btn_sinks.clone(),
+			btn_sources: btn_sources.clone(),
+			btn_cards: btn_cards.clone(),
 		};
 
 		btn_sinks.on_click(res.handle_func_button_click(ViewTask::SetMode(CurrentMode::Sinks)));
@@ -604,8 +612,41 @@ impl View {
 		btn_auto.on_click(res.handle_func_button_click(ViewTask::AutoSwitch));
 
 		res.init_mode_sinks(params.layout)?;
+		res.update_button_highlights(params.layout)?;
 
 		Ok(res)
+	}
+
+	fn update_button_highlights(&self, layout: &mut Layout) -> anyhow::Result<()> {
+		let defaults = self.globals.defaults();
+
+		let mut c = layout.start_common();
+		let mut common = c.common();
+
+		let num: u8 = match &self.mode {
+			CurrentMode::Sinks => 0,
+			CurrentMode::Sources => 1,
+			CurrentMode::Cards => 2,
+			CurrentMode::CardProfileSelector(_) => 255,
+		};
+
+		let mut perform = |btn_num: u8, btn: &Rc<ComponentButton>| {
+			btn.set_color(
+				&mut common,
+				if num == btn_num {
+					defaults.accent_color
+				} else {
+					defaults.button_color
+				},
+			);
+		};
+
+		perform(0, &self.btn_sinks);
+		perform(1, &self.btn_sources);
+		perform(2, &self.btn_cards);
+
+		c.finish()?;
+		Ok(())
 	}
 
 	fn process_tasks(&mut self, layout: &mut Layout) -> anyhow::Result<bool> {
@@ -619,12 +660,15 @@ impl View {
 
 		for task in tasks {
 			match task {
-				ViewTask::Remount => match &self.mode {
-					CurrentMode::Sinks => self.init_mode_sinks(layout)?,
-					CurrentMode::Sources => self.init_mode_sources(layout)?,
-					CurrentMode::Cards => self.init_mode_cards(layout)?,
-					CurrentMode::CardProfileSelector(card) => self.init_mode_card_selector(layout, card.clone())?,
-				},
+				ViewTask::Remount => {
+					self.update_button_highlights(layout)?;
+					match &self.mode {
+						CurrentMode::Sinks => self.init_mode_sinks(layout)?,
+						CurrentMode::Sources => self.init_mode_sources(layout)?,
+						CurrentMode::Cards => self.init_mode_cards(layout)?,
+						CurrentMode::CardProfileSelector(card) => self.init_mode_card_selector(layout, card.clone())?,
+					}
+				}
 				ViewTask::SetSinkVolume(s) => {
 					set_sink_volume = Some(s);
 				}

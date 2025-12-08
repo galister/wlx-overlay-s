@@ -65,19 +65,23 @@ impl Default for Params<'_> {
 pub struct ButtonClickEvent {}
 pub type ButtonClickCallback = Box<dyn Fn(&mut CallbackDataCommon, ButtonClickEvent) -> anyhow::Result<()>>;
 
+pub struct Colors {
+	pub color: drawing::Color,
+	pub border_color: drawing::Color,
+	pub hover_color: drawing::Color,
+	pub hover_border_color: drawing::Color,
+}
+
 struct State {
 	hovered: bool,
 	down: bool,
 	sticky_down: bool,
 	on_click: Option<ButtonClickCallback>,
 	active_tooltip: Option<Rc<ComponentTooltip>>,
+	colors: Colors,
 }
 
 struct Data {
-	initial_color: drawing::Color,
-	initial_border_color: drawing::Color,
-	initial_hover_color: drawing::Color,
-	initial_hover_border_color: drawing::Color,
 	id_label: WidgetID, // Label
 	id_rect: WidgetID,  // Rectangle
 	sticky: bool,
@@ -114,6 +118,10 @@ impl ComponentTrait for ComponentButton {
 	}
 }
 
+fn get_color2(color: &drawing::Color) -> drawing::Color {
+	color.lerp(&Color::new(0.0, 0.0, 0.0, color.a), 0.2)
+}
+
 impl ComponentButton {
 	pub fn get_label(&self) -> WidgetID {
 		self.data.id_label
@@ -129,6 +137,18 @@ impl ComponentButton {
 		};
 
 		label.set_text(common, text);
+	}
+
+	pub fn set_color(&self, common: &mut CallbackDataCommon, color: Color) {
+		let Some(mut rect) = common.state.widgets.get_as::<WidgetRectangle>(self.data.id_rect) else {
+			return;
+		};
+
+		let mut state = self.state.borrow_mut();
+		state.colors.color = color;
+
+		rect.params.color = color;
+		rect.params.color2 = get_color2(&color);
 	}
 
 	pub fn on_click(&self, func: ButtonClickCallback) {
@@ -150,7 +170,7 @@ impl ComponentButton {
 			return;
 		}
 
-		let data = self.data.clone();
+		let state = self.state.clone();
 		let anim = Animation::new(
 			self.data.id_rect,
 			if sticky_down { 5 } else { 10 },
@@ -163,10 +183,12 @@ impl ComponentButton {
 					1.0 - anim_data.pos
 				};
 
-				let bgcolor = data.initial_color.lerp(&data.initial_hover_color, mult * 0.5);
+				let state = state.borrow();
+				let colors = &state.colors;
+				let bgcolor = colors.color.lerp(&colors.hover_color, mult * 0.5);
 				rect.params.color = bgcolor;
 				rect.params.color2 = get_color2(&bgcolor);
-				rect.params.border_color = data.initial_border_color.lerp(&data.initial_hover_border_color, mult);
+				rect.params.border_color = colors.border_color.lerp(&colors.hover_border_color, mult);
 				common.alterables.mark_redraw();
 			}),
 		);
@@ -175,14 +197,10 @@ impl ComponentButton {
 	}
 }
 
-fn get_color2(color: &drawing::Color) -> drawing::Color {
-	color.lerp(&Color::new(0.0, 0.0, 0.0, color.a), 0.2)
-}
-
 fn anim_hover(
 	rect: &mut WidgetRectangle,
 	widget_data: &mut WidgetData,
-	data: &Data,
+	colors: &Colors,
 	widget_boundary: Boundary,
 	pos: f32,
 	pressed: bool,
@@ -191,15 +209,12 @@ fn anim_hover(
 	let mult = pos * if pressed { 1.5 } else { 1.0 };
 
 	let (init_border_color, init_color) = if sticky_down {
-		(
-			data.initial_hover_border_color,
-			data.initial_color.lerp(&data.initial_hover_color, 0.5),
-		)
+		(colors.hover_border_color, colors.color.lerp(&colors.hover_color, 0.5))
 	} else {
-		(data.initial_border_color, data.initial_color)
+		(colors.border_color, colors.color)
 	};
 
-	let bgcolor = init_color.lerp(&data.initial_hover_color, mult);
+	let bgcolor = init_color.lerp(&colors.hover_color, mult);
 
 	//let t = Mat4::from_scale(Vec3::splat(1.0 + pos * 0.5)) * Mat4::from_rotation_z(pos * 1.0);
 
@@ -209,10 +224,10 @@ fn anim_hover(
 	rect.params.color = bgcolor;
 	rect.params.color2 = get_color2(&bgcolor);
 
-	rect.params.border_color = init_border_color.lerp(&data.initial_hover_border_color, mult);
+	rect.params.border_color = init_border_color.lerp(&colors.hover_border_color, mult);
 }
 
-fn anim_hover_create(data: Rc<Data>, state: Rc<RefCell<State>>, widget_id: WidgetID, fade_in: bool) -> Animation {
+fn anim_hover_create(state: Rc<RefCell<State>>, widget_id: WidgetID, fade_in: bool) -> Animation {
 	Animation::new(
 		widget_id,
 		if fade_in { 5 } else { 10 },
@@ -223,7 +238,7 @@ fn anim_hover_create(data: Rc<Data>, state: Rc<RefCell<State>>, widget_id: Widge
 			anim_hover(
 				rect,
 				anim_data.data,
-				&data,
+				&state.colors,
 				anim_data.widget_boundary,
 				if fade_in { anim_data.pos } else { 1.0 - anim_data.pos },
 				state.down,
@@ -245,12 +260,9 @@ fn register_event_mouse_enter(
 		Box::new(move |common, event_data, (), ()| {
 			common.alterables.trigger_haptics();
 			common.alterables.mark_redraw();
-			common.alterables.animate(anim_hover_create(
-				data.clone(),
-				state.clone(),
-				event_data.widget_id,
-				true,
-			));
+			common
+				.alterables
+				.animate(anim_hover_create(state.clone(), event_data.widget_id, true));
 
 			if let Some(info) = info.clone() {
 				common.alterables.tasks.push(LayoutTask::ModifyLayoutState({
@@ -270,21 +282,14 @@ fn register_event_mouse_enter(
 	)
 }
 
-fn register_event_mouse_leave(
-	data: Rc<Data>,
-	state: Rc<RefCell<State>>,
-	listeners: &mut EventListenerCollection,
-) -> EventListenerID {
+fn register_event_mouse_leave(state: Rc<RefCell<State>>, listeners: &mut EventListenerCollection) -> EventListenerID {
 	listeners.register(
 		EventListenerKind::MouseLeave,
 		Box::new(move |common, event_data, (), ()| {
 			common.alterables.trigger_haptics();
-			common.alterables.animate(anim_hover_create(
-				data.clone(),
-				state.clone(),
-				event_data.widget_id,
-				false,
-			));
+			common
+				.alterables
+				.animate(anim_hover_create(state.clone(), event_data.widget_id, false));
 			let mut state = state.borrow_mut();
 			state.active_tooltip = None;
 			state.hovered = false;
@@ -293,11 +298,7 @@ fn register_event_mouse_leave(
 	)
 }
 
-fn register_event_mouse_press(
-	data: Rc<Data>,
-	state: Rc<RefCell<State>>,
-	listeners: &mut EventListenerCollection,
-) -> EventListenerID {
+fn register_event_mouse_press(state: Rc<RefCell<State>>, listeners: &mut EventListenerCollection) -> EventListenerID {
 	listeners.register(
 		EventListenerKind::MousePress,
 		Box::new(move |common, event_data, (), ()| {
@@ -307,7 +308,7 @@ fn register_event_mouse_press(
 			anim_hover(
 				rect,
 				event_data.widget_data,
-				&data,
+				&state.colors,
 				common.state.get_node_boundary(event_data.node_id),
 				1.0,
 				true,
@@ -345,7 +346,7 @@ fn register_event_mouse_release(
 			anim_hover(
 				rect,
 				event_data.widget_data,
-				&data,
+				&state.colors,
 				common.state.get_node_boundary(event_data.node_id),
 				1.0,
 				false,
@@ -488,10 +489,6 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	let data = Rc::new(Data {
 		id_label,
 		id_rect,
-		initial_color: color,
-		initial_border_color: border_color,
-		initial_hover_color: hover_color,
-		initial_hover_border_color: hover_border_color,
 		sticky: params.sticky,
 	});
 
@@ -501,6 +498,12 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		on_click: None,
 		active_tooltip: None,
 		sticky_down: false,
+		colors: Colors {
+			color,
+			border_color,
+			hover_color,
+			hover_border_color,
+		},
 	}));
 
 	let base = ComponentBase {
@@ -509,8 +512,8 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 			let mut widget = ess.layout.state.widgets.get(id_rect).unwrap().state();
 			vec![
 				register_event_mouse_enter(data.clone(), state.clone(), &mut widget.event_listeners, params.tooltip),
-				register_event_mouse_leave(data.clone(), state.clone(), &mut widget.event_listeners),
-				register_event_mouse_press(data.clone(), state.clone(), &mut widget.event_listeners),
+				register_event_mouse_leave(state.clone(), &mut widget.event_listeners),
+				register_event_mouse_press(state.clone(), &mut widget.event_listeners),
 				register_event_mouse_release(data.clone(), state.clone(), &mut widget.event_listeners),
 			]
 		},

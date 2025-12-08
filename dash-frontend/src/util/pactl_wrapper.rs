@@ -145,10 +145,6 @@ pub fn set_default_sink(sink_index: u32) -> anyhow::Result<()> {
 	Ok(())
 }
 
-pub fn get_sink_from_index(sinks: &[Sink], index: u32) -> Option<&Sink> {
-	sinks.iter().find(|&sink| sink.index == index)
-}
-
 pub fn get_sink_volume(sink: &Sink) -> anyhow::Result<f32> {
 	let volume_channel = {
 		if let Some(front_left) = &sink.volume.front_left {
@@ -238,10 +234,6 @@ pub fn set_default_source(source_index: u32) -> anyhow::Result<()> {
 		.output()?;
 
 	Ok(())
-}
-
-pub fn get_source_from_index(sources: &[Source], index: u32) -> Option<&Source> {
-	sources.iter().find(|&source| source.index == index)
 }
 
 pub fn get_source_volume(source: &Source) -> anyhow::Result<f32> {

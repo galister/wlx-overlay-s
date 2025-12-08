@@ -1,5 +1,5 @@
 use std::{
-	cell::{RefCell, RefMut},
+	cell::{Ref, RefCell, RefMut},
 	io::Read,
 	rc::Rc,
 };
@@ -91,6 +91,10 @@ impl WguiGlobals {
 
 	pub fn i18n(&self) -> RefMut<'_, I18n> {
 		RefMut::map(self.0.borrow_mut(), |x| &mut x.i18n_builtin)
+	}
+
+	pub fn defaults(&self) -> Ref<'_, Defaults> {
+		Ref::map(self.0.borrow(), |x| &x.defaults)
 	}
 
 	pub fn assets_internal(&self) -> RefMut<'_, Box<dyn AssetProvider>> {
