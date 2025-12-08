@@ -8,8 +8,8 @@ description = "wgui library testing using winit backend"
 anyhow = { workspace = true }
 glam = { workspace = true }
 log = { workspace = true }
-rust-embed = "8.7.2"
-tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
+rust-embed = "8.9.0"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 wgui = { path = "../wgui/" }
 winit = "0.30.12"
 vulkano = { workspace = true }

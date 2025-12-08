@@ -22,13 +22,13 @@ resolver = "3"
 
 [workspace.dependencies]
 anyhow = "1.0.100"
-glam = { version = "0.30.7", features = ["mint", "serde"] }
+glam = { version = "0.30.9", features = ["mint", "serde"] }
 idmap = "0.2.2"
-idmap-derive = "0.2.2"
-log = "0.4.28"
-regex = "1.11.3"
-rust-embed = "8.7.2"
-slotmap = "1.0.7"
+idmap-derive = "0.2.22"
+log = "0.4.29"
+regex = "1.12.2"
+rust-embed = "8.9.0"
+slotmap = "1.1.1"
 vulkano = { version = "0.35.2", default-features = false, features = [
   "macros",
 ] }

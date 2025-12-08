@@ -8,8 +8,8 @@ use crate::{
 	globals::Globals,
 	layout::WidgetID,
 	renderer_vk::text::{
-		custom_glyph::{CustomGlyph, CustomGlyphData},
 		DEFAULT_METRICS,
+		custom_glyph::{CustomGlyph, CustomGlyphData},
 	},
 };
 
@@ -73,7 +73,7 @@ impl WidgetObj for WidgetSprite {
 				let attrs = Attrs::new().color(Color::rgb(255, 0, 255)).weight(Weight::BOLD);
 
 				// set text last in order to avoid expensive re-shaping
-				buffer.set_text("Error", &attrs, Shaping::Basic);
+				buffer.set_text("Error", &attrs, Shaping::Basic, None);
 			}
 
 			state.primitives.push(drawing::RenderPrimitive::Text(
