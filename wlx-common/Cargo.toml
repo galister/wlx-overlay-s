@@ -5,7 +5,7 @@ edition = "2024"
 
 
 [dependencies]
-serde = { version = "1.0.228", features = ["derive"] }
+serde = { version = "1.0.228", features = ["derive", "rc"] }
 glam = { workspace = true }
 chrono = "0.4.42"
 idmap = { workspace = true, features = ["serde"] }

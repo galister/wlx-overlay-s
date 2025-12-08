@@ -14,7 +14,7 @@ use wgui::{
     parser::Fetchable,
     renderer_vk::text::custom_glyph::CustomGlyphData,
     taffy,
-    widget::{sprite::WidgetSprite, EventResult},
+    widget::{EventResult, sprite::WidgetSprite},
 };
 use wlx_common::windowing::{OverlayWindowState, Positioning};
 
@@ -24,16 +24,16 @@ use crate::{
         task::{ManagerTask, TaskType},
     },
     gui::{
-        panel::{button::BUTTON_EVENTS, GuiPanel, NewGuiPanelParams, OnCustomAttribFunc},
+        panel::{GuiPanel, NewGuiPanelParams, OnCustomAttribFunc, button::BUTTON_EVENTS},
         timer::GuiTimer,
     },
     overlays::edit::LongPressButtonState,
     state::AppState,
     windowing::{
+        OverlaySelector, Z_ORDER_WATCH,
         backend::{OverlayEventData, OverlayMeta},
         manager::MAX_OVERLAY_SETS,
         window::{OverlayWindowConfig, OverlayWindowData},
-        OverlaySelector, Z_ORDER_WATCH,
     },
 };
 
@@ -205,7 +205,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                             if idx >= num_children {
                                 let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
                                 params.insert("idx".into(), idx.to_string().into());
-                                params.insert("src".into(), "".to_string().into());
+                                params.insert("src".into(), String::new().into());
                                 parser_state.instantiate_template(
                                     doc_params, "Device", layout, widget, params,
                                 )?;
@@ -309,7 +309,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                     } else {
                         com.alterables
                             .set_style(*div, StyleSetRequest::Display(taffy::Display::None));
-                    };
+                    }
                 }
             }
         }

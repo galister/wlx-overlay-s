@@ -35,7 +35,13 @@
     "SPEAKERS": "Lautsprecher",
     "MICROPHONES": "Mikrofone",
     "CARDS": "Karten",
-    "SELECT_AUDIO_CARD_PROFILE": "Wählen Sie das Audio-Kartenprofil"
+    "SELECT_AUDIO_CARD_PROFILE": "Wählen Sie das Audio-Kartenprofil",
+    "NO_VR_SPEAKERS_FOUND_SWITCH_MANUALLY": "Keine VR-Lautsprecher gefunden. Schalten Sie diese manuell um.",
+    "NO_VR_MICROPHONE_SWITCH_MANUALLY": "Kein VR-Mikrofon gefunden. Schalten Sie es manuell um.",
+    "FAILED_TO_SWITCH_MICROPHONE": "Fehler beim Wechseln des Mikrofons",
+    "MICROPHONE_SET_SUCCESSFULLY": "Mikrofon erfolgreich eingestellt",
+    "SPEAKERS_SET_SUCCESSFULLY": "Lautsprecher erfolgreich eingestellt",
+    "DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED": "Gerät gefunden und initialisiert, aber nicht umgeschaltet"
   },
   "ACTIONS": {
     "RECENTER_PLAYSPACE": "Playspace neu zentrieren"

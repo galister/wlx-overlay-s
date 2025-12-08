@@ -86,6 +86,9 @@ impl Drop for ComponentTooltip {
 	}
 }
 
+pub const TOOLTIP_COLOR: Color = Color::new(0.1, 0.1, 0.1, 0.9);
+pub const TOOLTIP_BORDER_COLOR: Color = Color::new(0.3, 0.3, 0.3, 1.0);
+
 #[allow(clippy::too_many_lines)]
 pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Result<(WidgetPair, Rc<ComponentTooltip>)> {
 	let absolute_boundary = {
@@ -103,7 +106,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 
 	let transform = Mat4::from_translation(Vec3::new(-0.5, 0.0, 0.0));
 
-	let (mut pin_left, mut pin_top, pin_align_items, pin_justify_content) = match params.info.side {
+	let (pin_left, pin_top, pin_align_items, pin_justify_content) = match params.info.side {
 		TooltipSide::Left => (
 			absolute_boundary.left() - spacing,
 			absolute_boundary.top() + absolute_boundary.size.y / 2.0,
@@ -159,8 +162,8 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	let (rect, _) = ess.layout.add_child(
 		div.id,
 		WidgetRectangle::create(WidgetRectangleParams {
-			color: Color::new(0.1, 0.1, 0.1, 0.8),
-			border_color: Color::new(0.3, 0.3, 0.3, 1.0),
+			color: TOOLTIP_COLOR,
+			border_color: TOOLTIP_BORDER_COLOR,
 			border: 2.0,
 			round: WLength::Percent(1.0),
 			..Default::default()

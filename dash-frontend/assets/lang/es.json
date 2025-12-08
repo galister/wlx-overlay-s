@@ -35,7 +35,13 @@
     "SPEAKERS": "Altavoces",
     "MICROPHONES": "Micrófonos",
     "CARDS": "Tarjetas",
-    "SELECT_AUDIO_CARD_PROFILE": "Seleccionar perfil de tarjeta de audio"
+    "SELECT_AUDIO_CARD_PROFILE": "Seleccionar perfil de tarjeta de audio",
+    "NO_VR_SPEAKERS_FOUND_SWITCH_MANUALLY": "No se encontraron altavoces VR. Actívelos manualmente.",
+    "NO_VR_MICROPHONE_SWITCH_MANUALLY": "No se encontró micrófono VR. Actívelo manualmente.",
+    "FAILED_TO_SWITCH_MICROPHONE": "No se pudo cambiar el micrófono",
+    "MICROPHONE_SET_SUCCESSFULLY": "Micrófono configurado correctamente",
+    "SPEAKERS_SET_SUCCESSFULLY": "Altavoces configurados correctamente",
+    "DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED": "Dispositivo encontrado e inicializado, pero no cambiado"
   },
   "ACTIONS": {
     "RECENTER_PLAYSPACE": "Re-centrar espacio de juego"

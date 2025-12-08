@@ -1,12 +1,9 @@
-use std::rc::Rc;
-
 use wgui::{
-	components::button::ComponentButton,
 	globals::WguiGlobals,
 	layout::{Layout, WidgetID},
 };
 
-use crate::frontend::{FrontendTask, FrontendWidgets, RcFrontend};
+use crate::frontend::RcFrontend;
 
 pub mod apps;
 pub mod games;
@@ -30,7 +27,6 @@ pub struct TabParams<'a> {
 	pub layout: &'a mut Layout,
 	pub parent_id: WidgetID,
 	pub frontend: &'a RcFrontend,
-	pub frontend_widgets: &'a FrontendWidgets,
 	pub settings: &'a mut crate::settings::Settings,
 }
 

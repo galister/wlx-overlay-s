@@ -424,14 +424,12 @@ fn switch_sink_card(
 	}
 
 	if sink_found {
-		frontend_tasks.push(FrontendTask::PushToast(format!(
-			"Speakers set to \"{}\" successfully!",
-			name.name
+		frontend_tasks.push(FrontendTask::PushToast(Translation::from_translation_key(
+			format!("[AUDIO.SPEAKERS_SET_SUCCESSFULLY]: {}", name.name).as_str(),
 		)));
 	} else {
-		frontend_tasks.push(FrontendTask::PushToast(format!(
-			"\"{}\" found and initialized! (not switched)",
-			name.name
+		frontend_tasks.push(FrontendTask::PushToast(Translation::from_translation_key(
+			format!("[AUDIO.DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED]: {}", name.name).as_str(),
 		)));
 	}
 
@@ -441,18 +439,21 @@ fn switch_sink_card(
 fn switch_source(frontend_tasks: &FrontendTasks, source: &pactl_wrapper::Source) -> anyhow::Result<()> {
 	match pactl_wrapper::set_default_source(source.index) {
 		Ok(()) => {
-			frontend_tasks.push(FrontendTask::PushToast(format!(
-				"Microphone set to \"{}\" successfully!",
-				if let Some(card_name) = &source.properties.card_name {
-					card_name
-				} else {
-					&source.description
-				}
+			frontend_tasks.push(FrontendTask::PushToast(Translation::from_translation_key(
+				format!(
+					"[AUDIO.MICROPHONE_SET_SUCCESSFULLY]: {}",
+					if let Some(card_name) = &source.properties.card_name {
+						card_name
+					} else {
+						&source.description
+					}
+				)
+				.as_str(),
 			)));
 			Ok(())
 		}
 		Err(e) => {
-			frontend_tasks.push(FrontendTask::PushToast(format!("Failed to switch microphone: {:?}", e)));
+			Translation::from_translation_key(format!("[AUDIO.FAILED_TO_SWITCH_MICROPHONE]: {:?}", e).as_str());
 			Err(e)
 		}
 	}
@@ -471,9 +472,9 @@ fn switch_to_vr_microphone(frontend_tasks: &FrontendTasks) -> anyhow::Result<()>
 	}
 
 	if !switched {
-		frontend_tasks.push(FrontendTask::PushToast(
-			"No VR microphone found. Switch it manually.".to_string(),
-		));
+		frontend_tasks.push(FrontendTask::PushToast(Translation::from_translation_key(
+			"AUDIO.NO_VR_MICROPHONE_SWITCH_MANUALLY",
+		)));
 	}
 
 	Ok(())
@@ -560,9 +561,9 @@ fn switch_to_vr_speakers(frontend_tasks: &FrontendTasks) -> anyhow::Result<()> {
 		}
 	}
 
-	frontend_tasks.push(FrontendTask::PushToast(
-		"No VR speakers found. Switch them manually.".to_string(),
-	));
+	frontend_tasks.push(FrontendTask::PushToast(Translation::from_translation_key(
+		"AUDIO.NO_VR_SPEAKERS_FOUND_SWITCH_MANUALLY",
+	)));
 
 	Ok(())
 }

@@ -19,3 +19,9 @@ impl<TaskType: Clone + 'static> Tasks<TaskType> {
 		std::mem::take(&mut *tasks)
 	}
 }
+
+impl<TaskType: Clone + 'static> Default for Tasks<TaskType> {
+	fn default() -> Self {
+		Self::new()
+	}
+}

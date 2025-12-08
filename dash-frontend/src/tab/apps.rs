@@ -6,7 +6,7 @@ use wgui::{
 	globals::WguiGlobals,
 	i18n::Translation,
 	layout::WidgetPair,
-	parser::{Fetchable, ParseDocumentParams, ParserData, ParserState},
+	parser::{Fetchable, ParseDocumentParams, ParserState},
 };
 
 use crate::{
@@ -28,6 +28,7 @@ pub struct TabApps {
 	#[allow(dead_code)]
 	pub parser_state: ParserState,
 
+	#[allow(dead_code)]
 	state: Rc<RefCell<State>>,
 
 	#[allow(dead_code)]
@@ -44,7 +45,7 @@ impl Tab for TabApps {
 
 #[derive(Default)]
 struct AppList {
-	data: Vec<ParserData>,
+	//data: Vec<ParserData>,
 }
 
 // called after the user clicks any desktop entry

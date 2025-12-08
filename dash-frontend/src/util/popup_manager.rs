@@ -17,21 +17,18 @@ use wgui::{
 
 use crate::frontend::{FrontendTask, FrontendTasks};
 
-pub struct PopupManagerParams<'a> {
-	pub globals: WguiGlobals,
-	pub layout: &'a mut Layout,
+pub struct PopupManagerParams {
 	pub parent_id: WidgetID,
 }
 
-pub struct State {
+struct State {
 	popup_stack: Vec<Weak<RefCell<MountedPopupState>>>,
 }
 
 pub struct MountedPopup {
 	#[allow(dead_code)]
 	state: ParserState,
-	id_root: WidgetID,        // decorations of a popup
-	pub id_content: WidgetID, // content of a popup
+	id_root: WidgetID, // decorations of a popup
 	layout_tasks: LayoutTasks,
 	frontend_tasks: FrontendTasks,
 }
@@ -52,8 +49,7 @@ impl PopupHandle {
 }
 
 pub struct PopupManager {
-	pub state: Rc<RefCell<State>>,
-	globals: WguiGlobals,
+	state: Rc<RefCell<State>>,
 	parent_id: WidgetID,
 }
 
@@ -104,14 +100,13 @@ impl State {
 }
 
 impl PopupManager {
-	pub fn new(params: PopupManagerParams) -> anyhow::Result<Self> {
-		Ok(Self {
-			globals: params.globals,
+	pub fn new(params: PopupManagerParams) -> Self {
+		Self {
 			parent_id: params.parent_id,
 			state: Rc::new(RefCell::new(State {
 				popup_stack: Vec::new(),
 			})),
-		})
+		}
 	}
 
 	pub fn refresh(&self, alterables: &mut EventAlterables) {
@@ -147,7 +142,6 @@ impl PopupManager {
 
 		let mounted_popup = MountedPopup {
 			state,
-			id_content,
 			id_root,
 			layout_tasks: layout.tasks.clone(),
 			frontend_tasks: frontend_tasks.clone(),

@@ -1432,6 +1432,7 @@ dependencies = [
  "serde",
  "serde_json",
  "wgui",
+ "wlx-common",
 ]
 
 [[package]]

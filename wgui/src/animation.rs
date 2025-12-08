@@ -20,7 +20,7 @@ pub enum AnimationEasing {
 }
 
 impl AnimationEasing {
-	fn interpolate(&self, x: f32) -> f32 {
+	pub fn interpolate(&self, x: f32) -> f32 {
 		match self {
 			Self::Linear => x,
 			Self::InQuad => x.powi(2),

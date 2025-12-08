@@ -95,7 +95,7 @@ pub fn normalize_path(path: &Path) -> PathBuf {
 			Component::ParentDir => {
 				match stack.last() {
 					// ../foo, ../../foo, ./../foo → push ".."
-					None | Some(Component::ParentDir) | Some(Component::CurDir) => stack.push(Component::ParentDir),
+					None | Some(Component::ParentDir | Component::CurDir) => stack.push(Component::ParentDir),
 					// "foo/../bar" → pop "foo" and don't push ".."
 					Some(Component::Normal(_)) => {
 						stack.pop();

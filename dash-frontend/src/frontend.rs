@@ -13,6 +13,7 @@ use wgui::{
 	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
 	windowing::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra, WguiWindowPlacement},
 };
+use wlx_common::timestep::Timestep;
 
 use crate::{
 	assets, settings,
@@ -21,7 +22,10 @@ use crate::{
 		settings::TabSettings,
 	},
 	task::Tasks,
-	util::popup_manager::{MountPopupParams, PopupManager, PopupManagerParams},
+	util::{
+		popup_manager::{MountPopupParams, PopupManager, PopupManagerParams},
+		toast_manager::ToastManager,
+	},
 	views,
 };
 
@@ -49,6 +53,8 @@ pub struct Frontend {
 
 	widgets: FrontendWidgets,
 	popup_manager: PopupManager,
+	toast_manager: ToastManager,
+	timestep: Timestep,
 
 	window_audio_settings: WguiWindow,
 	view_audio_settings: Option<views::audio_settings::View>,
@@ -70,7 +76,7 @@ pub enum FrontendTask {
 	ShowAudioSettings,
 	UpdateAudioSettingsView,
 	RecenterPlayspace,
-	PushToast(String),
+	PushToast(Translation),
 }
 
 impl Frontend {
@@ -92,7 +98,7 @@ impl Frontend {
 			},
 		)?;
 
-		let (mut layout, state) = wgui::parser::new_layout_from_assets(
+		let (layout, state) = wgui::parser::new_layout_from_assets(
 			&ParseDocumentParams {
 				globals: globals.clone(),
 				path: AssetPath::BuiltIn("gui/dashboard.xml"),
@@ -103,10 +109,10 @@ impl Frontend {
 
 		let id_popup_manager = state.get_widget_id("popup_manager")?;
 		let popup_manager = PopupManager::new(PopupManagerParams {
-			globals: globals.clone(),
-			layout: &mut layout,
 			parent_id: id_popup_manager,
-		})?;
+		});
+
+		let toast_manager = ToastManager::new();
 
 		let rc_layout = layout.as_rc();
 
@@ -115,6 +121,9 @@ impl Frontend {
 
 		let id_label_time = state.get_widget_id("label_time")?;
 		let id_rect_content = state.get_widget_id("rect_content")?;
+
+		let mut timestep = Timestep::new();
+		timestep.set_tps(30.0); // 30 ticks per second
 
 		let frontend = Self {
 			layout: rc_layout.clone(),
@@ -127,8 +136,10 @@ impl Frontend {
 				id_label_time,
 				id_rect_content,
 			},
+			timestep,
 			settings: params.settings,
 			popup_manager,
+			toast_manager,
 			window_audio_settings: WguiWindow::default(),
 			view_audio_settings: None,
 		};
@@ -165,6 +176,12 @@ impl Frontend {
 
 		{
 			let mut layout = self.layout.borrow_mut();
+
+			// always 30 times per second
+			while self.timestep.on_tick() {
+				self.toast_manager.tick(&self.globals, &mut layout)?;
+			}
+
 			layout.update(Vec2::new(width, height), timestep_alpha)?;
 		}
 
@@ -253,8 +270,8 @@ impl Frontend {
 			FrontendTask::ShowAudioSettings => self.action_show_audio_settings()?,
 			FrontendTask::UpdateAudioSettingsView => self.action_update_audio_settings()?,
 			FrontendTask::RecenterPlayspace => self.action_recenter_playspace()?,
-			FrontendTask::PushToast(text) => self.push_toast(text)?,
-		}
+			FrontendTask::PushToast(content) => self.toast_manager.push(content),
+		};
 		Ok(())
 	}
 
@@ -269,7 +286,7 @@ impl Frontend {
 			layout: &mut layout,
 			parent_id: widget_content.id,
 			frontend: rc_this,
-			frontend_widgets: &self.widgets,
+			//frontend_widgets: &self.widgets,
 			settings: self.settings.get_mut(),
 		};
 
@@ -411,11 +428,6 @@ impl Frontend {
 
 	fn action_recenter_playspace(&mut self) -> anyhow::Result<()> {
 		log::info!("todo");
-		Ok(())
-	}
-
-	fn push_toast(&mut self, text: String) -> anyhow::Result<()> {
-		log::info!("TODO toast: {}", text);
 		Ok(())
 	}
 }

@@ -22,7 +22,7 @@ resolver = "3"
 
 [workspace.dependencies]
 anyhow = "1.0.100"
-glam = "0.30.7"
+glam = { version = "0.30.7", features = ["mint", "serde"] }
 idmap = "0.2.2"
 idmap-derive = "0.2.2"
 log = "0.4.28"
