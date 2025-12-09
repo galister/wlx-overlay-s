@@ -10,7 +10,15 @@ license = "GPL-3.0-only"
 authors = ["galister"]
 description = "Access your Wayland/X11 desktop from Monado/WiVRn/SteamVR. Now with Vulkan!"
 repository = "https://github.com/galister/wlx-overlay-s"
-keywords = ["linux", "openvr", "openxr", "x11", "wayland", "openvr-overlay", "openxr-overlay"]
+keywords = [
+  "linux",
+  "openvr",
+  "openxr",
+  "x11",
+  "wayland",
+  "openvr-overlay",
+  "openxr-overlay",
+]
 categories = ["games"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -58,7 +66,7 @@ sysinfo = { version = "0.34.2" }
 thiserror = "2.0.3"
 vulkano = { version = "0.35.1" }
 vulkano-shaders = { version = "0.35.0" }
-wlx-capture = { git = "https://github.com/galister/wlx-capture", tag = "v0.5.4", default-features = false }
+wlx-capture = { git = "https://github.com/cheesecakecg/wlx-capture", default-features = false, branch = "nvfbc-support" }
 libmonado = { version = "1.3.2", optional = true }
 winit = { version = "0.30.0", optional = true }
 xdg = "2.5.2"
@@ -98,11 +106,12 @@ wayvr_ipc = { git = "https://github.com/olekolek1000/wayvr-ipc.git", rev = "a725
 regex = { version = "1.11.1" }
 
 [features]
-default = ["openvr", "openxr", "osc", "x11", "wayland", "wayvr"]
+default = ["openvr", "openxr", "osc", "x11", "wayland", "wayvr", "nvfbc"]
 openvr = ["dep:ovr_overlay", "dep:json"]
 openxr = ["dep:openxr", "dep:libmonado"]
 osc = ["dep:rosc"]
 x11 = ["dep:xcb", "wlx-capture/xshm", "xkbcommon/x11"]
+nvfbc = ["wlx-capture/nvfbc"]
 wayland = ["pipewire", "wlx-capture/wlr", "xkbcommon/wayland"]
 pipewire = ["wlx-capture/pipewire"]
 uidev = ["dep:winit"]
