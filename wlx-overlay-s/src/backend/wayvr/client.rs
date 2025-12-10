@@ -10,9 +10,8 @@ use smithay::{
 use crate::backend::wayvr::{ExternalProcessRequest, WayVRTask};
 
 use super::{
-    ProcessWayVREnv,
     comp::{self, ClientState},
-    display, process,
+    display, process, ProcessWayVREnv,
 };
 
 pub struct WayVRClient {
@@ -247,7 +246,9 @@ fn create_wayland_listener() -> anyhow::Result<(super::WaylandEnv, wayland_serve
         }
     };
 
-    let _ = export_display_number(env.display_num);
+    if let Err(e) = export_display_number(env.display_num) {
+        log::error!("Could not write wayvr.disp: {e:?}");
+    }
 
     Ok((env, listener))
 }
