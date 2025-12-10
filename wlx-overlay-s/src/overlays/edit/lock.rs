@@ -1,3 +1,4 @@
+use anyhow::Context;
 use glam::FloatExt;
 use wgui::{
     animation::{Animation, AnimationEasing},
@@ -24,7 +25,7 @@ impl InteractLockHandler {
             .state
             .widgets
             .get_as::<WidgetRectangle>(id)
-            .ok_or_else(|| anyhow::anyhow!("Element with id=\"shadow\" must be a <rectangle>"))?;
+            .context("Element with id=\"shadow\" must be a <rectangle>")?;
 
         Ok(Self {
             id,

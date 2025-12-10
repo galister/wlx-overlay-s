@@ -1,3 +1,4 @@
+use anyhow::Context;
 use glam::{vec3, Affine2, Affine3A, Quat, Vec3};
 use smallvec::smallvec;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
@@ -677,7 +678,7 @@ impl OverlayBackend for WayVRBackend {
             .data
             .state
             .get_render_data(ctx.display)
-            .ok_or_else(|| anyhow::anyhow!("Failed to fetch render data"))?
+            .context("Failed to fetch render data")?
             .clone();
 
         drop(wayvr);

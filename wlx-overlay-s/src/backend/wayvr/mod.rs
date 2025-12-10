@@ -10,6 +10,7 @@ pub mod server_ipc;
 mod smithay_wrapper;
 mod time;
 mod window;
+use anyhow::Context;
 use comp::Application;
 use display::{Display, DisplayInitParams, DisplayVec};
 use event_queue::SyncEventQueue;
@@ -20,9 +21,9 @@ use smallvec::SmallVec;
 use smithay::{
     backend::{
         egl,
-        renderer::{ImportDma, gles::GlesRenderer},
+        renderer::{gles::GlesRenderer, ImportDma},
     },
-    input::{SeatState, keyboard::XkbConfig},
+    input::{keyboard::XkbConfig, SeatState},
     output::{Mode, Output},
     reexports::wayland_server::{self, backend::ClientId},
     wayland::{
@@ -44,7 +45,7 @@ use wayvr_ipc::{packet_client, packet_server};
 
 use crate::{
     state::AppState,
-    subsystem::hid::{MODS_TO_KEYS, WheelDelta},
+    subsystem::hid::{WheelDelta, MODS_TO_KEYS},
 };
 
 const STR_INVALID_HANDLE_DISP: &str = "Invalid display handle";
@@ -283,7 +284,7 @@ impl WayVR {
             .state
             .displays
             .get_mut(&display)
-            .ok_or_else(|| anyhow::anyhow!(STR_INVALID_HANDLE_DISP))?;
+            .context(STR_INVALID_HANDLE_DISP)?;
 
         /* Buffer warm-up is required, always two first calls of this function are always rendered */
         if !display.wants_redraw && display.rendered_frame_count >= 2 {
@@ -695,7 +696,7 @@ impl WayVRState {
         let display = self
             .displays
             .get_mut(&display_handle)
-            .ok_or_else(|| anyhow::anyhow!(STR_INVALID_HANDLE_DISP))?;
+            .context(STR_INVALID_HANDLE_DISP)?;
 
         let res = display.spawn_process(exec_path, args, env, working_dir)?;
 

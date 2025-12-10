@@ -1,6 +1,6 @@
 use std::{fs::File, io::Read};
 
-use anyhow::bail;
+use anyhow::{bail, Context};
 use json::{array, object};
 use ovr_overlay::applications::ApplicationsManager;
 
@@ -18,7 +18,7 @@ pub(super) fn install_manifest(app_mgr: &mut ApplicationsManager) -> anyhow::Res
         Ok(ref path) => path,
         Err(_) => executable_pathbuf
             .to_str()
-            .ok_or_else(|| anyhow::anyhow!("Invalid executable path"))?,
+            .context("Invalid executable path")?,
     };
 
     if app_mgr.is_application_installed(APP_KEY) == Ok(true)

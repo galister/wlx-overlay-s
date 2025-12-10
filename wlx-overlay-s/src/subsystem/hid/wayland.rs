@@ -1,11 +1,12 @@
+use anyhow::Context;
 use wlx_capture::wayland::wayland_client::{
-    Connection, Dispatch, Proxy, QueueHandle,
-    globals::{GlobalListContents, registry_queue_init},
+    globals::{registry_queue_init, GlobalListContents},
     protocol::{
         wl_keyboard::{self, WlKeyboard},
         wl_registry::WlRegistry,
         wl_seat::{self, Capability, WlSeat},
     },
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 use xkbcommon::xkb;
 
@@ -46,9 +47,7 @@ pub fn get_keymap_wl() -> anyhow::Result<XkbKeymap> {
     // this gets us the wl_keyboard
     let _ = queue.blocking_dispatch(&mut me);
 
-    me.keymap
-        .take()
-        .ok_or_else(|| anyhow::anyhow!("Could not load keymap"))
+    me.keymap.take().context("could not load keymap")
 }
 
 impl Dispatch<WlRegistry, GlobalListContents> for WlKeymapHandler {

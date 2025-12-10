@@ -8,6 +8,7 @@ use std::{
     sync::Arc,
 };
 
+use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use wlx_common::{common::LeftRight, config::GeneralConfig, windowing::Positioning};
 
@@ -187,7 +188,7 @@ impl WayVRConfig {
             keyboard_repeat_delay_ms: config_wayvr.keyboard_repeat_delay,
             keyboard_repeat_rate: config_wayvr.keyboard_repeat_rate,
             blit_method: wayvr::BlitMethod::from_string(&config_wayvr.blit_method)
-                .ok_or_else(|| anyhow::anyhow!("Unknown blit method"))?,
+                .context("unknown blit method")?,
             auto_hide_delay: if config_wayvr.auto_hide {
                 Some(config_wayvr.auto_hide_delay)
             } else {

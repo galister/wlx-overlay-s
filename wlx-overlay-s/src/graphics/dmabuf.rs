@@ -4,23 +4,24 @@ use std::{
     sync::Arc,
 };
 
+use anyhow::Context;
 use smallvec::SmallVec;
 use vulkano::{
-    VulkanError, VulkanObject,
     device::Device,
     format::Format,
-    image::{Image, ImageCreateInfo, ImageTiling, ImageUsage, SubresourceLayout, sys::RawImage},
+    image::{sys::RawImage, Image, ImageCreateInfo, ImageTiling, ImageUsage, SubresourceLayout},
     memory::{
+        allocator::{MemoryAllocator, MemoryTypeFilter},
         DedicatedAllocation, DeviceMemory, ExternalMemoryHandleType, ExternalMemoryHandleTypes,
         MemoryAllocateInfo, MemoryImportInfo, MemoryPropertyFlags, ResourceMemory,
-        allocator::{MemoryAllocator, MemoryTypeFilter},
     },
     sync::Sharing,
+    VulkanError, VulkanObject,
 };
 use wgui::gfx::WGfx;
 use wlx_capture::frame::{
-    DRM_FORMAT_ABGR8888, DRM_FORMAT_ABGR2101010, DRM_FORMAT_ARGB8888, DRM_FORMAT_XBGR8888,
-    DRM_FORMAT_XBGR2101010, DRM_FORMAT_XRGB8888, DmabufFrame, DrmFormat, FourCC,
+    DmabufFrame, DrmFormat, FourCC, DRM_FORMAT_ABGR2101010, DRM_FORMAT_ABGR8888,
+    DRM_FORMAT_ARGB8888, DRM_FORMAT_XBGR2101010, DRM_FORMAT_XBGR8888, DRM_FORMAT_XRGB8888,
 };
 
 pub const DRM_FORMAT_MOD_INVALID: u64 = 0xff_ffff_ffff_ffff;
@@ -74,7 +75,7 @@ impl WGfxDmabuf for WGfx {
                     ..Default::default()
                 },
             )
-            .ok_or_else(|| anyhow::anyhow!("failed to get memory type index"))?;
+            .context("failed to get memory type index")?;
 
         debug_assert!(self.device.enabled_extensions().khr_external_memory_fd);
         debug_assert!(self.device.enabled_extensions().khr_external_memory);

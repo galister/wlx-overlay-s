@@ -6,7 +6,7 @@ use crate::backend::wayvr::egl_ex::{
 };
 
 use super::egl_ex;
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 
 #[derive(Debug)]
 pub struct EGLData {
@@ -83,9 +83,9 @@ fn get_disp(
 
         egl
             .get_display(khronos_egl::DEFAULT_DISPLAY)
-            .ok_or_else(|| anyhow!(
+            .context(
                 "Both eglGetPlatformDisplayEXT and eglGetDisplay failed. This shouldn't happen unless you don't have any display manager running. Cannot continue, check your EGL installation."
-            ))
+            )
     }
 }
 
@@ -113,7 +113,7 @@ impl EGLData {
 
         let config = egl
             .choose_first_config(display, &attrib_list)?
-            .ok_or_else(|| anyhow!("Failed to get EGL config"))?;
+            .context("Failed to get EGL config")?;
 
         egl.bind_api(khronos_egl::OPENGL_ES_API)?;
 
