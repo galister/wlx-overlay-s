@@ -131,22 +131,14 @@ fn key_to_pos(key: &str) -> Positioning {
 const fn pos_to_key(pos: Positioning) -> &'static str {
     match pos {
         Positioning::Static => "static",
-        Positioning::Anchored | Positioning::AnchoredPaused => "anchored",
+        Positioning::Anchored => "anchored",
         Positioning::Floating => "floating",
-        Positioning::FollowHead { .. } | Positioning::FollowHeadPaused { .. } => "hmd",
+        Positioning::FollowHead { .. } => "hmd",
         Positioning::FollowHand {
-            hand: LeftRight::Left,
-            ..
-        }
-        | Positioning::FollowHandPaused {
             hand: LeftRight::Left,
             ..
         } => "hand_l",
         Positioning::FollowHand {
-            hand: LeftRight::Right,
-            ..
-        }
-        | Positioning::FollowHandPaused {
             hand: LeftRight::Right,
             ..
         } => "hand_r",

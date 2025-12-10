@@ -1,15 +1,18 @@
 use std::f32::consts::PI;
 use std::process::{Child, Command};
+use std::sync::Arc;
 use std::{collections::VecDeque, time::Instant};
 
 use glam::{Affine3A, Vec2, Vec3A, Vec3Swizzles};
 
 use idmap_derive::IntegerId;
 use smallvec::{smallvec, SmallVec};
+use wlx_common::common::LeftRight;
 use wlx_common::windowing::{OverlayWindowState, Positioning};
 
 use crate::backend::task::OverlayTask;
 use crate::overlays::anchor::ANCHOR_NAME;
+use crate::overlays::watch::WATCH_NAME;
 use crate::state::{AppSession, AppState};
 use crate::subsystem::hid::WheelDelta;
 use crate::subsystem::input::KeyboardFocus;
@@ -232,6 +235,14 @@ impl Pointer {
             interaction: InteractionState::default(),
         }
     }
+
+    pub fn hand(&self) -> Option<LeftRight> {
+        match self.idx {
+            0 => Some(LeftRight::Left),
+            1 => Some(LeftRight::Right),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Default)]
@@ -278,7 +289,7 @@ struct RayHit {
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct GrabData {
-    pub offset: Vec3A,
+    pub offset: Affine3A,
     pub grabbed_id: OverlayID,
     pub grab_anchor: bool,
 }
@@ -604,16 +615,13 @@ fn start_grab(
     let grab_anchor =
         !edit_mode && !app.anchor_grabbed && matches!(state.positioning, Positioning::Anchored);
 
-    let relative_grab_point = if grab_anchor {
-        app.anchor.translation
+    let relative_grab_transform = if grab_anchor {
+        app.anchor
     } else {
-        state.transform.translation
+        state.transform
     };
 
-    let offset = pointer
-        .pose
-        .inverse()
-        .transform_point3a(relative_grab_point);
+    let offset = pointer.pose.inverse() * relative_grab_transform;
 
     app.anchor_grabbed = grab_anchor;
 
@@ -622,13 +630,6 @@ fn start_grab(
         grabbed_id: id,
         grab_anchor,
     });
-
-    state.positioning = match state.positioning {
-        Positioning::FollowHand { hand, lerp } => Positioning::FollowHandPaused { hand, lerp },
-        Positioning::FollowHead { lerp } => Positioning::FollowHeadPaused { lerp },
-        Positioning::Anchored if !grab_anchor => Positioning::AnchoredPaused,
-        x => x,
-    };
 
     // Show anchor
     app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
@@ -664,22 +665,27 @@ where
     };
     let grab_anchor = grab_data.grab_anchor;
 
-    let Some(overlay_state) = overlay.config.active_state.as_mut() else {
-        return;
-    };
-
     if pointer.now.grab {
+        let Some(overlay_state) = overlay.config.active_state.as_mut() else {
+            // overlay got toggled off while being grabbed. those dastardly users!
+            // just wait for them to release the grab
+            return;
+        };
+
         if grab_anchor {
             if pointer.now.click {
                 pointer.interaction.mode = PointerMode::Special;
                 handle_scale(&mut app.anchor, pointer.now.scroll_y);
             } else if app.session.config.allow_sliding && pointer.now.scroll_y.is_finite() {
                 // single grab push/pull
-                grab_data.offset.z -= pointer.now.scroll_y * 0.05;
+                grab_data.offset.translation.z -= pointer.now.scroll_y * 0.05;
             }
-            app.anchor.translation = pointer.pose.transform_point3a(grab_data.offset);
             if !pointer.now.click_modifier_right {
+                app.anchor.translation =
+                    pointer.pose.transform_point3a(grab_data.offset.translation);
                 realign(&mut app.anchor, &app.input_state.hmd);
+            } else {
+                app.anchor = pointer.pose * grab_data.offset;
             }
         } else {
             // single grab resize
@@ -688,12 +694,16 @@ where
                 handle_scale(&mut overlay_state.transform, pointer.now.scroll_y);
             } else if app.session.config.allow_sliding && pointer.now.scroll_y.is_finite() {
                 // single grab push/pull
-                grab_data.offset.z -= pointer.now.scroll_y * 0.05;
+                grab_data.offset.translation.z -= pointer.now.scroll_y * 0.05;
             }
-            overlay_state.transform.translation = pointer.pose.transform_point3a(grab_data.offset);
             if !pointer.now.click_modifier_right {
+                overlay_state.transform.translation =
+                    pointer.pose.transform_point3a(grab_data.offset.translation);
                 realign(&mut overlay_state.transform, &app.input_state.hmd);
+            } else {
+                overlay_state.transform = pointer.pose * grab_data.offset;
             }
+            overlay.config.pause_movement = true;
             overlay.config.dirty = true;
         }
     } else {
@@ -703,16 +713,29 @@ where
             app.anchor_grabbed = false;
         } else {
             // single grab released
-            overlay_state.positioning = match overlay_state.positioning {
-                Positioning::FollowHandPaused { hand, lerp } => {
-                    Positioning::FollowHand { hand, lerp }
+            if &*overlay.config.name == WATCH_NAME {
+                // watch special: when dropped, follow the hand that wasn't grabbing
+                if let Some(overlay_state) = overlay.config.active_state.as_mut() {
+                    overlay_state.positioning = match overlay_state.positioning {
+                        Positioning::FollowHand { hand, lerp } => match pointer.hand() {
+                            Some(LeftRight::Left) => Positioning::FollowHand {
+                                hand: LeftRight::Right,
+                                lerp,
+                            },
+                            Some(LeftRight::Right) => Positioning::FollowHand {
+                                hand: LeftRight::Left,
+                                lerp,
+                            },
+                            _ => Positioning::FollowHand { hand, lerp },
+                        },
+                        x => x,
+                    };
                 }
-                Positioning::FollowHeadPaused { lerp } => Positioning::FollowHead { lerp },
-                Positioning::AnchoredPaused => Positioning::Anchored,
-                x => x,
-            };
-
-            window::save_transform(overlay_state, app);
+            }
+            overlay.config.pause_movement = false;
+            if let Some(overlay_state) = overlay.config.active_state.as_mut() {
+                window::save_transform(overlay_state, app);
+            }
         }
 
         // Hide anchor

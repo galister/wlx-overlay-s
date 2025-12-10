@@ -10,18 +10,12 @@ pub enum Positioning {
 	Floating,
 	/// Stays in place, recenters relative to anchor. Follows anchor during anchor grab.
 	Anchored,
-	/// Same as anchor but paused due to interaction
-	AnchoredPaused,
 	/// Stays in place, no recentering
 	Static,
 	/// Following HMD
 	FollowHead { lerp: f32 },
-	/// Normally follows HMD, but paused due to interaction
-	FollowHeadPaused { lerp: f32 },
 	/// Following hand
 	FollowHand { hand: LeftRight, lerp: f32 },
-	/// Normally follows hand, but paused due to interaction
-	FollowHandPaused { hand: LeftRight, lerp: f32 },
 }
 
 impl Positioning {

@@ -79,6 +79,8 @@ pub struct OverlayWindowConfig {
     pub dirty: bool,
     /// True if the window is showing the edit overlay
     pub editing: bool,
+    /// Used by grab to pause following of HMD or other devices
+    pub pause_movement: bool,
 }
 
 impl OverlayWindowConfig {
@@ -98,6 +100,7 @@ impl OverlayWindowConfig {
             global: false,
             dirty: true,
             editing: false,
+            pause_movement: false,
         }
     }
 
@@ -130,6 +133,10 @@ impl OverlayWindowConfig {
     }
 
     pub fn auto_movement(&mut self, app: &mut AppState) {
+        if self.pause_movement {
+            return;
+        }
+
         let Some(state) = self.active_state.as_mut() else {
             return;
         };
@@ -184,13 +191,9 @@ impl OverlayWindowConfig {
             .unwrap_or(self.default_state.transform);
 
         let parent_transform = match state.positioning {
-            Positioning::Floating
-            | Positioning::FollowHead { .. }
-            | Positioning::FollowHeadPaused { .. } => app.input_state.hmd,
-            Positioning::FollowHand { hand, .. } | Positioning::FollowHandPaused { hand, .. } => {
-                app.input_state.pointers[hand as usize].pose
-            }
-            Positioning::Anchored | Positioning::AnchoredPaused => app.anchor,
+            Positioning::Floating | Positioning::FollowHead { .. } => app.input_state.hmd,
+            Positioning::FollowHand { hand, .. } => app.input_state.pointers[hand as usize].pose,
+            Positioning::Anchored => app.anchor,
             Positioning::Static => return,
         };
 
@@ -249,13 +252,9 @@ pub fn realign(transform: &mut Affine3A, hmd: &Affine3A) {
 pub fn save_transform(state: &mut OverlayWindowState, app: &mut AppState) -> bool {
     let parent_transform = match state.positioning {
         Positioning::Floating => snap_upright(app.input_state.hmd, Vec3A::Y),
-        Positioning::FollowHead { .. } | Positioning::FollowHeadPaused { .. } => {
-            app.input_state.hmd
-        }
-        Positioning::FollowHand { hand, .. } | Positioning::FollowHandPaused { hand, .. } => {
-            app.input_state.pointers[hand as usize].pose
-        }
-        Positioning::Anchored | Positioning::AnchoredPaused => snap_upright(app.anchor, Vec3A::Y),
+        Positioning::FollowHead { .. } => app.input_state.hmd,
+        Positioning::FollowHand { hand, .. } => app.input_state.pointers[hand as usize].pose,
+        Positioning::Anchored => snap_upright(app.anchor, Vec3A::Y),
         Positioning::Static => return false,
     };
 
