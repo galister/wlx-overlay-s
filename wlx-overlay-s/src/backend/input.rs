@@ -678,7 +678,9 @@ where
                 grab_data.offset.z -= pointer.now.scroll_y * 0.05;
             }
             app.anchor.translation = pointer.pose.transform_point3a(grab_data.offset);
-            realign(&mut app.anchor, &app.input_state.hmd);
+            if !pointer.now.click_modifier_right {
+                realign(&mut app.anchor, &app.input_state.hmd);
+            }
         } else {
             // single grab resize
             if pointer.now.click {
@@ -689,7 +691,9 @@ where
                 grab_data.offset.z -= pointer.now.scroll_y * 0.05;
             }
             overlay_state.transform.translation = pointer.pose.transform_point3a(grab_data.offset);
-            realign(&mut overlay_state.transform, &app.input_state.hmd);
+            if !pointer.now.click_modifier_right {
+                realign(&mut overlay_state.transform, &app.input_state.hmd);
+            }
             overlay.config.dirty = true;
         }
     } else {
