@@ -15,20 +15,21 @@ use wgui::{
     widget::EventResult,
 };
 
-#[cfg(feature = "wayvr")]
-use crate::{backend::task::TaskType, windowing::OverlaySelector};
 use crate::{
-    backend::{input::HoverResult, task::TaskContainer},
-    gui::panel::{GuiPanel, NewGuiPanelParams, OnCustomAttribFunc, button::BUTTON_EVENTS},
+    backend::{
+        input::HoverResult,
+        task::{TaskContainer, TaskType},
+    },
+    gui::panel::{button::BUTTON_EVENTS, GuiPanel, NewGuiPanelParams, OnCustomAttribFunc},
     overlays::edit::{
         lock::InteractLockHandler, pos::PositioningHandler, tab::ButtonPaneTabSwitcher,
     },
     state::AppState,
     subsystem::hid::WheelDelta,
     windowing::{
-        OverlayID,
         backend::{DummyBackend, OverlayBackend, OverlayEventData, RenderResources, ShouldRender},
         window::OverlayWindowConfig,
+        OverlayID, OverlaySelector,
     },
 };
 

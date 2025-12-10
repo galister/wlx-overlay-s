@@ -12,10 +12,14 @@ use wgui::{
     widget::EventResult,
 };
 
-use crate::{backend::task::ManagerTask, state::AppState, windowing::OverlaySelector};
+use crate::{
+    backend::task::{ManagerTask, TaskType},
+    state::AppState,
+    windowing::OverlaySelector,
+};
 
 #[cfg(feature = "wayvr")]
-use crate::backend::{task::TaskType, wayvr::WayVRAction};
+use crate::backend::wayvr::WayVRAction;
 
 use super::helper::read_label_from_pipe;
 
@@ -40,8 +44,8 @@ pub(super) fn setup_custom_button<S: 'static>(
         };
 
         let callback: EventCallback<AppState, S> = match command {
+            #[cfg(feature = "wayvr")]
             "::DashToggle" => Box::new(move |_common, _data, app, _| {
-                #[cfg(feature = "wayvr")]
                 app.tasks
                     .enqueue(TaskType::WayVR(WayVRAction::ToggleDashboard));
                 Ok(EventResult::Consumed)
