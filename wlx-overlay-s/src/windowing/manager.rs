@@ -302,6 +302,11 @@ impl<T> OverlayWindowManager<T> {
         if changed && let Some(watch) = self.mut_by_id(self.watch_id) {
             watch
                 .config
+                .active_state
+                .iter_mut()
+                .for_each(|f| f.grabbable = enabled);
+            watch
+                .config
                 .backend
                 .notify(app, OverlayEventData::EditModeChanged(enabled))?;
         }
