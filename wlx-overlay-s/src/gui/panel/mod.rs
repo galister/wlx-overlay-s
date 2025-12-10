@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use button::setup_custom_button;
-use glam::{Affine2, Vec2, vec2};
+use glam::{vec2, Affine2, Vec2};
 use label::setup_custom_label;
 use wgui::{
     assets::AssetPath,
@@ -15,7 +15,7 @@ use wgui::{
     layout::{Layout, LayoutParams, WidgetID},
     parser::{CustomAttribsInfoOwned, ParserState},
     renderer_vk::context::Context as WguiContext,
-    widget::{EventResult, label::WidgetLabel, rectangle::WidgetRectangle},
+    widget::{label::WidgetLabel, rectangle::WidgetRectangle, EventResult},
 };
 use wlx_common::timestep::Timestep;
 
@@ -24,7 +24,7 @@ use crate::{
     state::AppState,
     subsystem::hid::WheelDelta,
     windowing::backend::{
-        FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender, ui_transform,
+        ui_transform, FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
     },
 };
 
@@ -96,7 +96,7 @@ impl<S: 'static> GuiPanel<S> {
 
         let doc_params = wgui::parser::ParseDocumentParams {
             globals: app.wgui_globals.clone(),
-            path: AssetPath::BuiltIn(path),
+            path: AssetPath::FileOrBuiltIn(path),
             extra: wgui::parser::ParseDocumentExtra {
                 on_custom_attribs: Some(Box::new({
                     let custom_elems = custom_elems.clone();

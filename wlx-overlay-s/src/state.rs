@@ -24,7 +24,7 @@ use crate::subsystem::osc::OscSender;
 use crate::{
     backend::{input::InputState, task::TaskContainer},
     config::load_general_config,
-    config_io,
+    config_io::{self, get_config_file_path},
     graphics::WGfxExtras,
     gui,
     subsystem::{audio::AudioOutput, input::HidWrapper},
@@ -85,6 +85,7 @@ impl AppState {
         );
 
         let wgui_shared = WSharedContext::new(gfx.clone())?;
+        let theme = session.config.theme_path.clone();
 
         Ok(Self {
             session,
@@ -103,6 +104,7 @@ impl AppState {
                 Box::new(gui::asset::GuiAsset {}),
                 wgui::globals::Defaults::default(),
                 &WguiFontConfig::default(),
+                get_config_file_path(&*theme),
             )?,
 
             #[cfg(feature = "osc")]

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 
-use glam::{Affine3A, FloatExt, Mat4, Quat, Vec2, Vec3, vec2, vec3};
+use glam::{vec2, vec3, Affine3A, FloatExt, Mat4, Quat, Vec2, Vec3};
 use wgui::{
     animation::{Animation, AnimationEasing},
     assets::AssetPath,
@@ -11,10 +11,10 @@ use wgui::{
     renderer_vk::util,
     taffy::{self, prelude::length},
     widget::{
-        EventResult,
         div::WidgetDiv,
         rectangle::{WidgetRectangle, WidgetRectangleParams},
         util::WLength,
+        EventResult,
     },
 };
 use wlx_common::windowing::{OverlayWindowState, Positioning};
@@ -22,14 +22,14 @@ use wlx_common::windowing::{OverlayWindowState, Positioning};
 use crate::{
     gui::panel::GuiPanel,
     state::AppState,
-    subsystem::hid::{ALT, CTRL, META, SHIFT, SUPER, XkbKeymap},
+    subsystem::hid::{XkbKeymap, ALT, CTRL, META, SHIFT, SUPER},
     windowing::window::OverlayWindowConfig,
 };
 
 use super::{
-    KEYBOARD_NAME, KeyButtonData, KeyState, KeyboardBackend, KeyboardState, handle_press,
-    handle_release,
+    handle_press, handle_release,
     layout::{self, AltModifier, KeyCapType},
+    KeyButtonData, KeyState, KeyboardBackend, KeyboardState, KEYBOARD_NAME,
 };
 
 const BACKGROUND_PADDING: f32 = 16.0;
@@ -83,7 +83,7 @@ pub fn create_keyboard(
 
     let parse_doc_params = wgui::parser::ParseDocumentParams {
         globals,
-        path: AssetPath::BuiltIn("gui/keyboard.xml"),
+        path: AssetPath::FileOrBuiltIn("gui/keyboard.xml"),
         extra: Default::default(),
     };
 

@@ -5,16 +5,16 @@ use std::path::{Component, Path, PathBuf};
 
 #[derive(Clone, Copy)]
 pub enum AssetPath<'a> {
-	WguiInternal(&'a str), // tied to internal wgui AssetProvider. Used internally
-	BuiltIn(&'a str),      // tied to user AssetProvider
-	Filesystem(&'a str),   // tied to filesystem path
+	WguiInternal(&'a str),  // tied to internal wgui AssetProvider. Used internally
+	BuiltIn(&'a str),       // tied to user AssetProvider
+	FileOrBuiltIn(&'a str), // attempts to load from a path relative to asset_folder, falls back to BuiltIn
 }
 
 #[derive(Clone)]
 pub enum AssetPathOwned {
 	WguiInternal(PathBuf),
 	BuiltIn(PathBuf),
-	Filesystem(PathBuf),
+	FileOrBuiltIn(PathBuf),
 }
 
 impl AssetPath<'_> {
@@ -22,7 +22,7 @@ impl AssetPath<'_> {
 		match &self {
 			AssetPath::WguiInternal(path) => path,
 			AssetPath::BuiltIn(path) => path,
-			AssetPath::Filesystem(path) => path,
+			AssetPath::FileOrBuiltIn(path) => path,
 		}
 	}
 
@@ -30,7 +30,7 @@ impl AssetPath<'_> {
 		match self {
 			AssetPath::WguiInternal(path) => AssetPathOwned::WguiInternal(PathBuf::from(path)),
 			AssetPath::BuiltIn(path) => AssetPathOwned::BuiltIn(PathBuf::from(path)),
-			AssetPath::Filesystem(path) => AssetPathOwned::Filesystem(PathBuf::from(path)),
+			AssetPath::FileOrBuiltIn(path) => AssetPathOwned::FileOrBuiltIn(PathBuf::from(path)),
 		}
 	}
 }
@@ -40,7 +40,7 @@ impl AssetPathOwned {
 		match self {
 			AssetPathOwned::WguiInternal(buf) => AssetPath::WguiInternal(buf.to_str().unwrap()),
 			AssetPathOwned::BuiltIn(buf) => AssetPath::BuiltIn(buf.to_str().unwrap()),
-			AssetPathOwned::Filesystem(buf) => AssetPath::Filesystem(buf.to_str().unwrap()),
+			AssetPathOwned::FileOrBuiltIn(buf) => AssetPath::FileOrBuiltIn(buf.to_str().unwrap()),
 		}
 	}
 
@@ -48,7 +48,7 @@ impl AssetPathOwned {
 		match self {
 			AssetPathOwned::WguiInternal(buf) => buf,
 			AssetPathOwned::BuiltIn(buf) => buf,
-			AssetPathOwned::Filesystem(buf) => buf,
+			AssetPathOwned::FileOrBuiltIn(buf) => buf,
 		}
 	}
 }
@@ -64,7 +64,7 @@ impl AssetPathOwned {
 		match self {
 			AssetPathOwned::WguiInternal(_) => AssetPathOwned::WguiInternal(new_path),
 			AssetPathOwned::BuiltIn(_) => AssetPathOwned::BuiltIn(new_path),
-			AssetPathOwned::Filesystem(_) => AssetPathOwned::Filesystem(new_path),
+			AssetPathOwned::FileOrBuiltIn(_) => AssetPathOwned::FileOrBuiltIn(new_path),
 		}
 	}
 }

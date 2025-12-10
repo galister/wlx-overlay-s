@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use chrono::Timelike;
 use glam::Vec2;
@@ -18,8 +18,8 @@ use wlx_common::timestep::Timestep;
 use crate::{
 	assets, settings,
 	tab::{
-		Tab, TabParams, TabType, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses,
-		settings::TabSettings,
+		apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses, settings::TabSettings,
+		Tab, TabParams, TabType,
 	},
 	task::Tasks,
 	util::{
@@ -96,6 +96,7 @@ impl Frontend {
 				family_name_serif: "Quicksand",
 				family_name_monospace: "",
 			},
+			PathBuf::new(), //FIXME: pass from somewhere else
 		)?;
 
 		let (layout, state) = wgui::parser::new_layout_from_assets(

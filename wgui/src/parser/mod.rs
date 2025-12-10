@@ -551,7 +551,7 @@ fn parse_tag_include(
 	for pair in attribs {
 		#[allow(clippy::single_match)]
 		match pair.attrib.as_ref() {
-			"src" | "src_ext" | "src_internal" => {
+			"src" | "src_builtin" | "src_internal" => {
 				path = Some({
 					let this = &file.path.clone();
 					let include: &str = &pair.value;
@@ -564,9 +564,9 @@ fn parse_tag_include(
 						"src" => match this {
 							AssetPathOwned::WguiInternal(_) => AssetPathOwned::WguiInternal(new_path),
 							AssetPathOwned::BuiltIn(_) => AssetPathOwned::BuiltIn(new_path),
-							AssetPathOwned::Filesystem(_) => AssetPathOwned::Filesystem(new_path),
+							AssetPathOwned::FileOrBuiltIn(_) => AssetPathOwned::FileOrBuiltIn(new_path),
 						},
-						"src_ext" => AssetPathOwned::Filesystem(new_path),
+						"src_builtin" => AssetPathOwned::BuiltIn(new_path),
 						"src_internal" => AssetPathOwned::WguiInternal(new_path),
 						_ => unreachable!(),
 					}
@@ -583,7 +583,7 @@ fn parse_tag_include(
 	}
 
 	let Some(path) = path else {
-		log::warn!("include tag with no source! specify either: src, src_ext, src_internal");
+		log::warn!("include tag with no source! specify either: src, src_builtin, src_internal");
 		return Ok(());
 	};
 	let path_ref = path.as_ref();

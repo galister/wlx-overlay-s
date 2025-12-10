@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::{
 	assets,
 	testbed::{Testbed, TestbedUpdateParams},
@@ -21,7 +23,7 @@ pub struct TestbedAny {
 impl TestbedAny {
 	pub fn new(name: &str) -> anyhow::Result<Self> {
 		let path = if name.ends_with(".xml") {
-			AssetPath::Filesystem(name)
+			AssetPath::FileOrBuiltIn(name)
 		} else {
 			AssetPath::BuiltIn(&format!("gui/{name}.xml"))
 		};
@@ -30,6 +32,7 @@ impl TestbedAny {
 			Box::new(assets::Asset {}),
 			wgui::globals::Defaults::default(),
 			&WguiFontConfig::default(),
+			PathBuf::new(), // cwd
 		)?;
 
 		let (layout, state) = wgui::parser::new_layout_from_assets(

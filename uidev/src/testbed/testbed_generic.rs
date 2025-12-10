@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::VecDeque, rc::Rc};
+use std::{cell::RefCell, collections::VecDeque, path::PathBuf, rc::Rc};
 
 use crate::{
 	assets,
@@ -8,9 +8,9 @@ use glam::Vec2;
 use wgui::{
 	assets::AssetPath,
 	components::{
-		Component,
 		button::{ButtonClickCallback, ComponentButton},
 		checkbox::ComponentCheckbox,
+		Component,
 	},
 	drawing::Color,
 	event::StyleSetRequest,
@@ -80,6 +80,7 @@ impl TestbedGeneric {
 			Box::new(assets::Asset {}),
 			wgui::globals::Defaults::default(),
 			&WguiFontConfig::default(),
+			PathBuf::new(), // cwd
 		)?;
 
 		let extra = ParseDocumentExtra {

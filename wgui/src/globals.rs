@@ -1,8 +1,11 @@
 use std::{
 	cell::{Ref, RefCell, RefMut},
 	io::Read,
+	path::PathBuf,
 	rc::Rc,
 };
+
+use anyhow::Context;
 
 use crate::{
 	assets::{AssetPath, AssetProvider},
@@ -35,6 +38,7 @@ impl Default for Defaults {
 pub struct Globals {
 	pub assets_internal: Box<dyn AssetProvider>,
 	pub assets_builtin: Box<dyn AssetProvider>,
+	pub asset_folder: PathBuf,
 	pub i18n_builtin: I18n,
 	pub defaults: Defaults,
 	pub font_system: WguiFontSystem,
@@ -48,6 +52,7 @@ impl WguiGlobals {
 		mut assets_builtin: Box<dyn AssetProvider>,
 		defaults: Defaults,
 		font_config: &WguiFontConfig,
+		asset_folder: PathBuf,
 	) -> anyhow::Result<Self> {
 		let i18n_builtin = I18n::new(&mut assets_builtin)?;
 		let assets_internal = Box::new(assets_internal::AssetInternal {});
@@ -57,6 +62,7 @@ impl WguiGlobals {
 			assets_builtin,
 			i18n_builtin,
 			defaults,
+			asset_folder,
 			font_system: WguiFontSystem::new(font_config),
 		}))))
 	}
@@ -65,24 +71,31 @@ impl WguiGlobals {
 		match asset_path {
 			AssetPath::WguiInternal(path) => self.assets_internal().load_from_path(path),
 			AssetPath::BuiltIn(path) => self.assets_builtin().load_from_path(path),
-			AssetPath::Filesystem(path) => {
-				let mut file = match std::fs::File::open(path) {
-					Ok(f) => f,
-					Err(e) => {
-						anyhow::bail!("Could not open asset from {path}: {e}");
-					}
-				};
-				/* 16 MiB safeguard */
-				if file.metadata()?.len() > 16 * 1024 * 1024 {
-					anyhow::bail!("Could not open asset from {path}: Over size limit (16MiB)");
-				}
-				let mut data = Vec::new();
-				if let Err(e) = file.read_to_end(&mut data) {
-					anyhow::bail!("Could not read asset from {path}: {e}");
-				}
-				Ok(data)
-			}
+			AssetPath::FileOrBuiltIn(path) => self
+				.load_asset_from_fs(path)
+				.inspect_err(|e| log::debug!("{e:?}"))
+				.or_else(|_| self.assets_builtin().load_from_path(path)),
 		}
+	}
+
+	fn load_asset_from_fs(&self, path: &str) -> anyhow::Result<Vec<u8>> {
+		let path = self.0.borrow().asset_folder.join(path);
+		let mut file =
+			std::fs::File::open(path.as_path()).with_context(|| format!("Could not open asset from {}", path.display()))?;
+
+		/* 16 MiB safeguard */
+		let metadata = file
+			.metadata()
+			.with_context(|| format!("Could not get file metadata for {}", path.display()))?;
+
+		if metadata.len() > 16 * 1024 * 1024 {
+			anyhow::bail!("Could not open asset from {}: Over size limit (16MiB)", path.display());
+		}
+		let mut data = Vec::new();
+		file
+			.read_to_end(&mut data)
+			.with_context(|| format!("Could not read asset from {}", path.display()))?;
+		Ok(data)
 	}
 
 	pub fn get(&self) -> RefMut<'_, Globals> {

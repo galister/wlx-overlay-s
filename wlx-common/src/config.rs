@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use chrono::Offset;
-use glam::{Affine3A, Quat, Vec3, vec3};
+use glam::{vec3, Affine3A, Quat, Vec3};
 use idmap::IdMap;
 use serde::{Deserialize, Serialize};
 
@@ -116,6 +116,10 @@ fn def_empty() -> Arc<str> {
 	"".into()
 }
 
+fn def_theme_path() -> Arc<str> {
+	"theme".into()
+}
+
 fn def_toast_topics() -> IdMap<ToastTopic, ToastDisplayMethod> {
 	IdMap::new()
 }
@@ -130,6 +134,9 @@ const fn def_max_height() -> u16 {
 
 #[derive(Deserialize, Serialize)]
 pub struct GeneralConfig {
+	#[serde(default = "def_theme_path")]
+	pub theme_path: Arc<str>,
+
 	#[serde(default = "def_watch_pos")]
 	pub watch_pos: Vec3,
 
