@@ -102,7 +102,6 @@ impl Toast {
     }
 }
 
-#[allow(clippy::too_many_lines)]
 fn new_toast(toast: Toast, app: &mut AppState) -> Option<OverlayWindowConfig> {
     let current_method = app
         .session
@@ -112,7 +111,10 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<OverlayWindowConfig> {
         .unwrap_or(ToastDisplayMethod::Hide);
 
     let (spawn_point, spawn_rotation, positioning) = match current_method {
-        ToastDisplayMethod::Hide => return None,
+        ToastDisplayMethod::Hide => {
+            log::debug!("Not showing toast: filtered out");
+            return None;
+        }
         ToastDisplayMethod::Center => (
             vec3(0., -0.2, -0.5),
             Quat::IDENTITY,
@@ -168,7 +170,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<OverlayWindowConfig> {
             Ok(())
         });
 
-    let panel = GuiPanel::new_from_template(
+    let mut panel = GuiPanel::new_from_template(
         app,
         "gui/toast.xml",
         (),
@@ -177,7 +179,10 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<OverlayWindowConfig> {
             ..Default::default()
         },
     )
+    .inspect_err(|e| log::error!("Could not create toast: {e:?}"))
     .ok()?;
+
+    panel.update_layout().context("layout update failed").ok()?;
 
     Some(OverlayWindowConfig {
         name: TOAST_NAME.clone(),

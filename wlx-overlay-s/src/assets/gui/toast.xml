@@ -2,13 +2,13 @@
   <include src="theme.xml" />
 
   <elements>
-    <div interactable="0" flex_direction="column">
-      <rectangle height="100%" padding="4" box_sizing="content_box" flex_wrap="wrap" flex_direction="row" gap="4" color="#000000c0" border_color="~color_accent" border="2" round="8" justify_content="space_between">
-        <div flex_direction="row" padding="4" align_items="center" justify_content="center">
-          <label text="" id="toast_title" weight="bold" />
+    <div interactable="0" >
+      <rectangle padding="4" box_sizing="content_box" flex_wrap="wrap" flex_direction="row" gap="4" color="#000000c0" border_color="~color_accent" border="2" round="8" justify_content="space_between">
+        <div width="100%" padding="4">
+          <label text="toast title" id="toast_title" weight="bold" />
         </div>
-        <div flex_direction="row" flex_wrap="wrap" padding="4" align_items="center" justify_content="center" id="toolbox">
-          <label text="" id="toast_body" />
+        <div width="100%" height="100%" padding="4" flex_wrap="wrap">
+          <label text="toast body goes here" id="toast_body" />
         </div>
       </rectangle>
     </div>

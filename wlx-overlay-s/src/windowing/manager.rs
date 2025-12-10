@@ -189,10 +189,12 @@ where
             }
             OverlayTask::Create(sel, f) => {
                 let None = self.mut_by_selector(&sel) else {
+                    log::debug!("Could not create {sel:?}: exists");
                     return Ok(());
                 };
 
                 let Some(overlay_config) = f(app) else {
+                    log::debug!("Could not create {sel:?}: empty config");
                     return Ok(());
                 };
 
@@ -209,6 +211,7 @@ where
                     && o.birthframe < FRAME_COUNTER.load(Ordering::Relaxed)
                 {
                     if let Some(o) = self.remove_by_selector(&sel, app) {
+                        log::debug!("Dropping overlay {}", o.config.name);
                         self.dropped_overlays.push_back(o);
                     }
                 }
@@ -346,7 +349,7 @@ impl<T> OverlayWindowManager<T> {
         }
     }
 
-    pub fn remove_by_selector(
+    fn remove_by_selector(
         &mut self,
         selector: &OverlaySelector,
         app: &mut AppState,
@@ -411,6 +414,7 @@ impl<T> OverlayWindowManager<T> {
         }
 
         if overlay.config.show_on_spawn {
+            log::debug!("activating {} due to show_on_spawn", overlay.config.name);
             overlay.config.activate(app);
         }
         let ret_val = self.overlays.insert(overlay);
