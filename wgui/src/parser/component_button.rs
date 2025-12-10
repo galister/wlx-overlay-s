@@ -1,13 +1,13 @@
 use crate::{
 	assets::AssetPath,
-	components::{button, tooltip, Component},
+	components::{Component, button, tooltip},
 	drawing::Color,
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		parse_check_f32, parse_check_i32, parse_children, print_invalid_attrib, process_component,
+		AttribPair, ParserContext, ParserFile, parse_check_f32, parse_check_i32, parse_children, print_invalid_attrib,
+		process_component,
 		style::{parse_color_opt, parse_round, parse_style, parse_text_style},
-		AttribPair, ParserContext, ParserFile,
 	},
 	widget::util::WLength,
 };
@@ -62,9 +62,10 @@ pub fn parse_component_button<'a>(
 			"hover_border_color" => {
 				parse_color_opt(value, &mut hover_border_color);
 			}
-			"sprite_src" | "sprite_src_builtin" | "sprite_src_internal" => {
+			"sprite_src" | "sprite_src_ext" | "sprite_src_builtin" | "sprite_src_internal" => {
 				let asset_path = match key {
 					"sprite_src" => AssetPath::FileOrBuiltIn(value),
+					"sprite_src_ext" => AssetPath::File(value),
 					"sprite_src_builtin" => AssetPath::BuiltIn(value),
 					"sprite_src_internal" => AssetPath::WguiInternal(value),
 					_ => unreachable!(),

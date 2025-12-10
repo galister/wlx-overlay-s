@@ -1,7 +1,7 @@
 use crate::{
 	assets::AssetPath,
 	layout::WidgetID,
-	parser::{parse_children, parse_widget_universal, style::parse_style, AttribPair, ParserContext, ParserFile},
+	parser::{AttribPair, ParserContext, ParserFile, parse_children, parse_widget_universal, style::parse_style},
 	renderer_vk::text::custom_glyph::{CustomGlyphContent, CustomGlyphData},
 	widget::sprite::{WidgetSprite, WidgetSpriteParams},
 };
@@ -22,9 +22,10 @@ pub fn parse_widget_sprite<'a>(
 	for pair in attribs {
 		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
 		match key {
-			"src" | "src_builtin" | "src_internal" => {
+			"src" | "src_ext" | "src_builtin" | "src_internal" => {
 				let asset_path = match key {
 					"src" => AssetPath::FileOrBuiltIn(value),
+					"src_ext" => AssetPath::File(value),
 					"src_builtin" => AssetPath::BuiltIn(value),
 					"src_internal" => AssetPath::WguiInternal(value),
 					_ => unreachable!(),

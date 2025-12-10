@@ -8,7 +8,7 @@ mod widget_rectangle;
 mod widget_sprite;
 
 use crate::{
-	assets::{normalize_path, AssetPath, AssetPathOwned},
+	assets::{AssetPath, AssetPathOwned, normalize_path},
 	components::{Component, ComponentWeak},
 	drawing::{self},
 	globals::WguiGlobals,
@@ -551,7 +551,7 @@ fn parse_tag_include(
 	for pair in attribs {
 		#[allow(clippy::single_match)]
 		match pair.attrib.as_ref() {
-			"src" | "src_builtin" | "src_internal" => {
+			"src" | "src_ext" | "src_builtin" | "src_internal" => {
 				path = Some({
 					let this = &file.path.clone();
 					let include: &str = &pair.value;
@@ -565,7 +565,9 @@ fn parse_tag_include(
 							AssetPathOwned::WguiInternal(_) => AssetPathOwned::WguiInternal(new_path),
 							AssetPathOwned::BuiltIn(_) => AssetPathOwned::BuiltIn(new_path),
 							AssetPathOwned::FileOrBuiltIn(_) => AssetPathOwned::FileOrBuiltIn(new_path),
+							AssetPathOwned::File(_) => AssetPathOwned::File(new_path),
 						},
+						"src_ext" => AssetPathOwned::File(new_path),
 						"src_builtin" => AssetPathOwned::BuiltIn(new_path),
 						"src_internal" => AssetPathOwned::WguiInternal(new_path),
 						_ => unreachable!(),

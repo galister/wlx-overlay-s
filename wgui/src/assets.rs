@@ -8,13 +8,16 @@ pub enum AssetPath<'a> {
 	WguiInternal(&'a str),  // tied to internal wgui AssetProvider. Used internally
 	BuiltIn(&'a str),       // tied to user AssetProvider
 	FileOrBuiltIn(&'a str), // attempts to load from a path relative to asset_folder, falls back to BuiltIn
+	File(&'a str),          // load from filesystem
 }
 
+// see AssetPath above for documentation
 #[derive(Clone)]
 pub enum AssetPathOwned {
 	WguiInternal(PathBuf),
 	BuiltIn(PathBuf),
 	FileOrBuiltIn(PathBuf),
+	File(PathBuf),
 }
 
 impl AssetPath<'_> {
@@ -23,6 +26,7 @@ impl AssetPath<'_> {
 			AssetPath::WguiInternal(path) => path,
 			AssetPath::BuiltIn(path) => path,
 			AssetPath::FileOrBuiltIn(path) => path,
+			AssetPath::File(path) => path,
 		}
 	}
 
@@ -31,6 +35,7 @@ impl AssetPath<'_> {
 			AssetPath::WguiInternal(path) => AssetPathOwned::WguiInternal(PathBuf::from(path)),
 			AssetPath::BuiltIn(path) => AssetPathOwned::BuiltIn(PathBuf::from(path)),
 			AssetPath::FileOrBuiltIn(path) => AssetPathOwned::FileOrBuiltIn(PathBuf::from(path)),
+			AssetPath::File(path) => AssetPathOwned::File(PathBuf::from(path)),
 		}
 	}
 }
@@ -41,6 +46,7 @@ impl AssetPathOwned {
 			AssetPathOwned::WguiInternal(buf) => AssetPath::WguiInternal(buf.to_str().unwrap()),
 			AssetPathOwned::BuiltIn(buf) => AssetPath::BuiltIn(buf.to_str().unwrap()),
 			AssetPathOwned::FileOrBuiltIn(buf) => AssetPath::FileOrBuiltIn(buf.to_str().unwrap()),
+			AssetPathOwned::File(buf) => AssetPath::File(buf.to_str().unwrap()),
 		}
 	}
 
@@ -49,6 +55,7 @@ impl AssetPathOwned {
 			AssetPathOwned::WguiInternal(buf) => buf,
 			AssetPathOwned::BuiltIn(buf) => buf,
 			AssetPathOwned::FileOrBuiltIn(buf) => buf,
+			AssetPathOwned::File(buf) => buf,
 		}
 	}
 }
@@ -65,6 +72,7 @@ impl AssetPathOwned {
 			AssetPathOwned::WguiInternal(_) => AssetPathOwned::WguiInternal(new_path),
 			AssetPathOwned::BuiltIn(_) => AssetPathOwned::BuiltIn(new_path),
 			AssetPathOwned::FileOrBuiltIn(_) => AssetPathOwned::FileOrBuiltIn(new_path),
+			AssetPathOwned::File(_) => AssetPathOwned::File(new_path),
 		}
 	}
 }

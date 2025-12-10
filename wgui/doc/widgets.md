@@ -160,6 +160,10 @@ _2nd gradient color_
 
 _External (filesystem) image path. Falls back to Internal (assets) if not found._
 
+`src_ext`: **string**
+
+_External (filesystem) image path_
+
 `src_builtin`: **string**
 
 _Internal (assets) image path_
@@ -210,7 +214,7 @@ _Tooltip text on hover, translated by key_
 
 _make button act as a toggle (visual only)_
 
-`sprite_src` | `sprite_src_builtin` | `sprite_src_internal`
+`sprite_src` | `sprite_src_ext` | `sprite_src_builtin` | `sprite_src_internal`
 
 _Image path (see [sprite](#sprite-widget)) for src descriptions_
 

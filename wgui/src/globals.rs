@@ -71,6 +71,7 @@ impl WguiGlobals {
 		match asset_path {
 			AssetPath::WguiInternal(path) => self.assets_internal().load_from_path(path),
 			AssetPath::BuiltIn(path) => self.assets_builtin().load_from_path(path),
+			AssetPath::File(path) => self.load_asset_from_fs(path),
 			AssetPath::FileOrBuiltIn(path) => self
 				.load_asset_from_fs(path)
 				.inspect_err(|e| log::debug!("{e:?}"))
