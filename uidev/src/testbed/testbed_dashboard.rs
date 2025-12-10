@@ -4,6 +4,7 @@ use dash_frontend::{
 	settings::{self, SettingsIO},
 };
 use wgui::layout::RcLayout;
+use wlx_common::dash_interface_emulated::DashInterfaceEmulated;
 
 struct SimpleSettingsIO {
 	settings: settings::Settings,
@@ -59,9 +60,11 @@ pub struct TestbedDashboard {
 impl TestbedDashboard {
 	pub fn new() -> anyhow::Result<Self> {
 		let settings = SimpleSettingsIO::new();
+		let interface = DashInterfaceEmulated::new();
 
 		let (frontend, layout) = frontend::Frontend::new(frontend::InitParams {
 			settings: Box::new(settings),
+			interface: Box::new(interface),
 		})?;
 		Ok(Self { frontend, layout })
 	}
