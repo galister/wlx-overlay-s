@@ -804,7 +804,7 @@ pub fn create_wayvr_display_overlay(
     };
 
     Ok(OverlayWindowConfig {
-        name: name.into(),
+        name: format!("WVR-{name}").into(),
         keyboard_focus: Some(KeyboardFocus::WayVR),
         category,
         default_state: OverlayWindowState {
