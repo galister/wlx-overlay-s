@@ -88,7 +88,9 @@ impl LinePool {
             ..OverlayWindowData::from_config(OverlayWindowConfig {
                 name: Arc::from(format!("wlx-line{id}")),
                 default_state: Default::default(),
+                active_state: Some(Default::default()),
                 z_order: Z_ORDER_LINES,
+                global: true,
                 ..OverlayWindowConfig::from_backend(Box::new(LineBackend {
                     view: self.view.clone(),
                 }))
@@ -137,8 +139,9 @@ impl LinePool {
 
     fn draw_transform(&mut self, id: usize, transform: Affine3A, color: Vec4) {
         if let Some(data) = self.lines.get_mut(id) {
-            data.config.default_state.alpha = 1.0;
-            data.config.default_state.transform = transform;
+            let state = data.config.active_state.as_mut().unwrap();
+            state.alpha = 1.0;
+            state.transform = transform;
             data.data.color = color;
         } else {
             log::warn!("Line {id} does not exist");
@@ -153,7 +156,8 @@ impl LinePool {
     ) -> anyhow::Result<()> {
         for data in self.lines.values_mut() {
             data.after_input(overlay, app)?;
-            if data.config.default_state.alpha > 0.01 {
+            let state = data.config.active_state.as_mut().unwrap();
+            if state.alpha > 0.01 {
                 if data.config.dirty {
                     data.upload_texture(overlay, &app.gfx);
                     data.config.dirty = false;
