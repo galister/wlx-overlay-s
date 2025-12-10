@@ -1,12 +1,12 @@
 <layout>
   <elements>
-    <sprite width="32" height="32" src_ext="/usr/share/icons/nvtop.svg" />
-    <sprite width="64" height="64" src_ext="/usr/share/icons/nvtop.svg" />
-    <sprite width="128" height="128" src_ext="/usr/share/icons/nvtop.svg" />
+    <sprite width="32" height="32" src="/usr/share/icons/nvtop.svg" />
+    <sprite width="64" height="64" src="/usr/share/icons/nvtop.svg" />
+    <sprite width="128" height="128" src="/usr/share/icons/nvtop.svg" />
     <!-- File not found, will show "Error" in purple -->
-    <sprite width="32" height="32" src_ext="/this/file/does/not/exist.png" />
-    <sprite width="32" height="32" src_ext="/usr/share/icons/hicolor/128x128/apps/blueman.png" />
-    <sprite width="32" height="32" src_ext="/usr/share/icons/hicolor/32x32/apps/blueman.png" />
-    <sprite width="64" height="64" src_ext="/usr/share/icons/hicolor/64x64/apps/blueman.png" />
+    <sprite width="32" height="32" src="/this/file/does/not/exist.png" />
+    <sprite width="32" height="32" src="/usr/share/icons/hicolor/128x128/apps/blueman.png" />
+    <sprite width="32" height="32" src="/usr/share/icons/hicolor/32x32/apps/blueman.png" />
+    <sprite width="64" height="64" src="/usr/share/icons/hicolor/64x64/apps/blueman.png" />
   </elements>
 </layout>
