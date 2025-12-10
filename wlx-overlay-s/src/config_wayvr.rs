@@ -18,7 +18,7 @@ use crate::{
     },
     config::load_config_with_conf_d,
     config_io,
-    overlays::wayvr::{WayVRData, executable_exists_in_path},
+    overlays::wayvr::{executable_exists_in_path, WayVRData},
 };
 
 // Flat version of RelativeTo

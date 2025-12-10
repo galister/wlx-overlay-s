@@ -5,21 +5,9 @@ use std::{
     time::Instant,
 };
 
+use anyhow::Context;
 use glam::{vec3, Affine3A, Quat, Vec3};
-use wgui::{
-    i18n::Translation,
-    parser::parse_color_hex,
-    renderer_vk::text::{FontWeight, TextStyle},
-    taffy::{
-        self,
-        prelude::{auto, length, percent},
-    },
-    widget::{
-        label::{WidgetLabel, WidgetLabelParams},
-        rectangle::{WidgetRectangle, WidgetRectangleParams},
-        util::WLength,
-    },
-};
+use wgui::{i18n::Translation, widget::label::WidgetLabel};
 use wlx_common::{
     common::LeftRight,
     overlays::{ToastDisplayMethod, ToastTopic},
@@ -28,7 +16,7 @@ use wlx_common::{
 
 use crate::{
     backend::task::{OverlayTask, TaskType},
-    gui::panel::GuiPanel,
+    gui::panel::{GuiPanel, NewGuiPanelParams, OnCustomIdFunc},
     state::AppState,
     windowing::{window::OverlayWindowConfig, OverlaySelector, Z_ORDER_TOAST},
 };
@@ -152,82 +140,44 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<OverlayWindowConfig> {
     };
 
     let title = if toast.title.is_empty() {
-        "Notification".into()
+        Translation::from_translation_key("TOAST.DEFAULT_TITLE")
     } else {
-        toast.title
+        Translation::from_raw_text(&toast.title)
     };
 
-    let mut panel = GuiPanel::new_blank(app, (), Default::default()).ok()?;
+    let on_custom_id: OnCustomIdFunc<()> =
+        Box::new(move |id, widget, _doc_params, layout, _parser_state, ()| {
+            if &*id == "toast_title" {
+                let mut label = layout
+                    .state
+                    .widgets
+                    .get_as::<WidgetLabel>(widget)
+                    .context("toast.xml: missing element with id: toast_title")?;
+                let mut globals = layout.state.globals.get();
+                label.set_text_simple(&mut globals, title.clone());
+            }
+            if &*id == "toast_body" {
+                let mut label = layout
+                    .state
+                    .widgets
+                    .get_as::<WidgetLabel>(widget)
+                    .context("toast.xml: missing element with id: toast_body")?;
+                let mut globals = layout.state.globals.get();
+                label.set_text_simple(&mut globals, Translation::from_raw_text(&toast.body));
+            }
+            Ok(())
+        });
 
-    let globals = panel.layout.state.globals.clone();
-
-    let (rect, _) = panel
-        .layout
-        .add_child(
-            panel.layout.content_root_widget,
-            WidgetRectangle::create(WidgetRectangleParams {
-                color: parse_color_hex("#1e2030").unwrap(),
-                border_color: parse_color_hex("#5e7090").unwrap(),
-                border: 1.0,
-                round: WLength::Units(4.0),
-                ..Default::default()
-            }),
-            taffy::Style {
-                align_items: Some(taffy::AlignItems::Center),
-                justify_content: Some(taffy::JustifyContent::Center),
-                flex_direction: taffy::FlexDirection::Column,
-                padding: length(4.0),
-                ..Default::default()
-            },
-        )
-        .ok()?;
-
-    let _ = panel.layout.add_child(
-        rect.id,
-        WidgetLabel::create(
-            &mut globals.get(),
-            WidgetLabelParams {
-                content: Translation::from_raw_text(&title),
-                style: TextStyle {
-                    color: parse_color_hex("#ffffff"),
-                    ..Default::default()
-                },
-            },
-        ),
-        taffy::Style {
-            size: taffy::Size {
-                width: percent(1.0),
-                height: auto(),
-            },
-            padding: length(8.0),
+    let panel = GuiPanel::new_from_template(
+        app,
+        "gui/toast.xml",
+        (),
+        NewGuiPanelParams {
+            on_custom_id: Some(on_custom_id),
             ..Default::default()
         },
-    );
-
-    let _ = panel.layout.add_child(
-        rect.id,
-        WidgetLabel::create(
-            &mut globals.get(),
-            WidgetLabelParams {
-                content: Translation::from_raw_text(&toast.body),
-                style: TextStyle {
-                    weight: Some(FontWeight::Bold),
-                    color: parse_color_hex("#eeeeee"),
-                    ..Default::default()
-                },
-            },
-        ),
-        taffy::Style {
-            size: taffy::Size {
-                width: percent(1.0),
-                height: auto(),
-            },
-            padding: length(8.0),
-            ..Default::default()
-        },
-    );
-
-    panel.update_layout().ok()?;
+    )
+    .ok()?;
 
     Some(OverlayWindowConfig {
         name: TOAST_NAME.clone(),
