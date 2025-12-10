@@ -14,26 +14,26 @@ use wgui::{
     parser::Fetchable,
     renderer_vk::text::custom_glyph::CustomGlyphData,
     taffy,
-    widget::{EventResult, sprite::WidgetSprite},
+    widget::{sprite::WidgetSprite, EventResult},
 };
 use wlx_common::windowing::{OverlayWindowState, Positioning};
 
 use crate::{
     backend::{
         input::TrackedDeviceRole,
-        task::{ManagerTask, TaskType},
+        task::{OverlayTask, TaskType},
     },
     gui::{
-        panel::{GuiPanel, NewGuiPanelParams, OnCustomAttribFunc, button::BUTTON_EVENTS},
+        panel::{button::BUTTON_EVENTS, GuiPanel, NewGuiPanelParams, OnCustomAttribFunc},
         timer::GuiTimer,
     },
     overlays::edit::LongPressButtonState,
     state::AppState,
     windowing::{
-        OverlaySelector, Z_ORDER_WATCH,
         backend::{OverlayEventData, OverlayMeta},
         manager::MAX_OVERLAY_SETS,
         window::{OverlayWindowConfig, OverlayWindowData},
+        OverlaySelector, Z_ORDER_WATCH,
     },
 };
 
@@ -81,11 +81,11 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                         return Ok(EventResult::Consumed);
                     }
                     app.tasks
-                        .enqueue(TaskType::Manager(ManagerTask::DeleteActiveSet));
+                        .enqueue(TaskType::Overlay(OverlayTask::DeleteActiveSet));
                     Ok(EventResult::Consumed)
                 }),
                 "::EditModeAddSet" => Box::new(move |_common, _data, app, _state| {
-                    app.tasks.enqueue(TaskType::Manager(ManagerTask::AddSet));
+                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::AddSet));
                     Ok(EventResult::Consumed)
                 }),
                 "::EditModeOverlayToggle" => {
@@ -100,7 +100,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                             return Ok(EventResult::Consumed);
                         };
 
-                        app.tasks.enqueue(TaskType::Overlay(
+                        app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
                             OverlaySelector::Id(overlay.id),
                             Box::new(move |app, owc| {
                                 if owc.active_state.is_none() {
@@ -109,7 +109,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                                     owc.deactivate();
                                 }
                             }),
-                        ));
+                        )));
                         Ok(EventResult::Consumed)
                     })
                 }

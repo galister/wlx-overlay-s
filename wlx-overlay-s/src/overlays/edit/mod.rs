@@ -18,7 +18,7 @@ use wgui::{
 use crate::{
     backend::{
         input::HoverResult,
-        task::{TaskContainer, TaskType},
+        task::{OverlayTask, TaskContainer, TaskType},
     },
     gui::panel::{button::BUTTON_EVENTS, GuiPanel, NewGuiPanelParams, OnCustomAttribFunc},
     overlays::edit::{
@@ -247,7 +247,8 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
                 "::EditModeToggleLock" => Box::new(move |common, _data, app, state| {
                     let sel = OverlaySelector::Id(*state.id.borrow());
                     let task = state.lock.toggle(common, app);
-                    app.tasks.enqueue(TaskType::Overlay(sel, task));
+                    app.tasks
+                        .enqueue(TaskType::Overlay(OverlayTask::Modify(sel, task)));
                     Ok(EventResult::Consumed)
                 }),
                 "::EditModeTab" => {
@@ -262,7 +263,8 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
                     Box::new(move |common, _data, app, state| {
                         let sel = OverlaySelector::Id(*state.id.borrow());
                         let task = state.pos.pos_button_clicked(common, &pos_key);
-                        app.tasks.enqueue(TaskType::Overlay(sel, task));
+                        app.tasks
+                            .enqueue(TaskType::Overlay(OverlayTask::Modify(sel, task)));
                         Ok(EventResult::Consumed)
                     })
                 }
@@ -275,12 +277,12 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
                     if state.delete.pressed.elapsed() < Duration::from_secs(1) {
                         return Ok(EventResult::Pass);
                     }
-                    app.tasks.enqueue(TaskType::Overlay(
+                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
                         OverlaySelector::Id(*state.id.borrow()),
                         Box::new(move |_app, owc| {
                             owc.active_state = None;
                         }),
-                    ));
+                    )));
                     Ok(EventResult::Consumed)
                 }),
                 _ => return,
@@ -384,10 +386,10 @@ fn set_up_slider(
         let mut tasks = tasks.borrow_mut();
         let e_value = e.value;
 
-        tasks.enqueue(TaskType::Overlay(
+        tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
             OverlaySelector::Id(*overlay_id.borrow()),
             Box::new(move |app, owc| callback(app, owc, e_value)),
-        ));
+        )));
         Ok(())
     }));
 
@@ -408,10 +410,10 @@ fn set_up_checkbox(
         let mut tasks = tasks.borrow_mut();
         let e_checked = e.checked;
 
-        tasks.enqueue(TaskType::Overlay(
+        tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
             OverlaySelector::Id(*overlay_id.borrow()),
             Box::new(move |app, owc| callback(app, owc, e_checked)),
-        ));
+        )));
         Ok(())
     }));
 

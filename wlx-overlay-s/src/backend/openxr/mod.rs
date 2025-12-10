@@ -2,7 +2,7 @@ use std::{
     collections::VecDeque,
     ops::Add,
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
+        atomic::{AtomicBool, Ordering},
         Arc,
     },
     time::{Duration, Instant},
@@ -20,7 +20,7 @@ use crate::{
     backend::{
         input::interact,
         openxr::{lines::LinePool, overlay::OpenXrOverlayData},
-        task::{ManagerTask, SystemTask, TaskType},
+        task::{OverlayTask, TaskType},
         BackendError,
     },
     config::save_state,
@@ -34,8 +34,8 @@ use crate::{
     windowing::{
         backend::{RenderResources, ShouldRender},
         manager::OverlayWindowManager,
-        window::OverlayWindowData,
     },
+    FRAME_COUNTER, RUNNING,
 };
 
 #[cfg(feature = "wayvr")]
@@ -51,7 +51,6 @@ mod skybox;
 mod swapchain;
 
 const VIEW_TYPE: xr::ViewConfigurationType = xr::ViewConfigurationType::PRIMARY_STEREO;
-static FRAME_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 struct XrState {
     instance: xr::Instance,
@@ -63,11 +62,7 @@ struct XrState {
 }
 
 #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
-pub fn openxr_run(
-    running: Arc<AtomicBool>,
-    show_by_default: bool,
-    headless: bool,
-) -> Result<(), BackendError> {
+pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendError> {
     let (xr_instance, system) = match helpers::init_xr() {
         Ok((xr_instance, system)) => (xr_instance, system),
         Err(e) => {
@@ -95,7 +90,7 @@ pub fn openxr_run(
 
     if show_by_default {
         app.tasks.enqueue_at(
-            TaskType::Manager(ManagerTask::ShowHide),
+            TaskType::Overlay(OverlayTask::ShowHide),
             Instant::now().add(Duration::from_secs(1)),
         );
     }
@@ -178,7 +173,7 @@ pub fn openxr_run(
     'main_loop: loop {
         let cur_frame = FRAME_COUNTER.fetch_add(1, Ordering::Relaxed);
 
-        if !running.load(Ordering::Relaxed) {
+        if !RUNNING.load(Ordering::Relaxed) {
             log::warn!("Received shutdown signal.");
             match xr_state.session.request_exit() {
                 Ok(()) => log::info!("OpenXR session exit requested."),
@@ -493,63 +488,25 @@ pub fn openxr_run(
         app.tasks.retrieve_due(&mut due_tasks);
         while let Some(task) = due_tasks.pop_front() {
             match task {
-                TaskType::Overlay(sel, f) => {
-                    if let Some(o) = overlays.mut_by_selector(&sel) {
-                        f(&mut app, &mut o.config);
-                    } else {
-                        log::warn!("Overlay not found for task: {sel:?}");
-                    }
-                }
-                TaskType::CreateOverlay(sel, f) => {
-                    let None = overlays.mut_by_selector(&sel) else {
-                        continue;
-                    };
-                    let Some(overlay_config) = f(&mut app) else {
-                        continue;
-                    };
-                    overlays.add(
-                        OverlayWindowData {
-                            birthframe: cur_frame,
-                            ..OverlayWindowData::from_config(overlay_config)
-                        },
-                        &mut app,
-                    );
-                }
-                TaskType::DropOverlay(sel) => {
-                    if let Some(o) = overlays.mut_by_selector(&sel)
-                        && o.birthframe < cur_frame
-                    {
-                        log::debug!("{}: destroy", o.config.name);
-                        if let Some(o) = overlays.remove_by_selector(&sel, &mut app) {
-                            // set for deletion after all images are done showing
-                            delete_queue.push((o, cur_frame + 5));
-                        }
-                    }
-                }
-                TaskType::System(task) => match task {
-                    SystemTask::FixFloor => {
-                        if let Some(ref mut playspace) = playspace {
-                            playspace.fix_floor(
-                                &app.input_state,
-                                monado.as_mut().unwrap(), // safe
-                            );
-                        }
-                    }
-                    SystemTask::ResetPlayspace => {
-                        if let Some(ref mut playspace) = playspace {
-                            playspace.reset_offset(monado.as_mut().unwrap()); // safe
-                        }
-                    }
-                    _ => {}
-                },
-                TaskType::Manager(task) => {
+                TaskType::Overlay(task) => {
                     overlays.handle_task(&mut app, task)?;
                 }
+                TaskType::Playspace(task) => {
+                    if let (Some(playspace), Some(monado)) = (playspace.as_mut(), monado.as_mut()) {
+                        playspace.handle_task(&mut app, monado, task);
+                    }
+                }
+                #[cfg(feature = "openvr")]
+                TaskType::OpenVR(_) => {}
                 #[cfg(feature = "wayvr")]
                 TaskType::WayVR(action) => {
                     wayvr_action(&mut app, &mut overlays, &action);
                 }
             }
+        }
+
+        while let Some(o) = overlays.pop_dropped() {
+            delete_queue.push((o, cur_frame + 5));
         }
 
         delete_queue.retain(|(_, frame)| *frame > cur_frame);

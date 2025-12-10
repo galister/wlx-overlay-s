@@ -1,10 +1,7 @@
 use std::{
     collections::VecDeque,
     ops::Add,
-    sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc,
-    },
+    sync::atomic::Ordering,
     time::{Duration, Instant},
 };
 
@@ -26,7 +23,7 @@ use crate::{
             manifest::{install_manifest, uninstall_manifest},
             overlay::OpenVrOverlayData,
         },
-        task::{ManagerTask, SystemTask, TaskType},
+        task::{OpenVrTask, OverlayTask, TaskType},
         BackendError,
     },
     config::save_state,
@@ -40,8 +37,8 @@ use crate::{
     windowing::{
         backend::{RenderResources, ShouldRender},
         manager::OverlayWindowManager,
-        window::OverlayWindowData,
     },
+    RUNNING,
 };
 
 #[cfg(feature = "wayvr")]
@@ -53,8 +50,6 @@ pub mod lines;
 pub mod manifest;
 pub mod overlay;
 pub mod playspace;
-
-static FRAME_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 pub fn openvr_uninstall() {
     let app_type = EVRApplicationType::VRApplication_Overlay;
@@ -68,11 +63,7 @@ pub fn openvr_uninstall() {
 }
 
 #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
-pub fn openvr_run(
-    running: Arc<AtomicBool>,
-    show_by_default: bool,
-    headless: bool,
-) -> Result<(), BackendError> {
+pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendError> {
     let app_type = EVRApplicationType::VRApplication_Overlay;
     let Ok(context) = ovr_overlay::Context::init(app_type) else {
         log::warn!("Will not use OpenVR: Context init failed");
@@ -107,7 +98,7 @@ pub fn openvr_run(
 
     if show_by_default {
         app.tasks.enqueue_at(
-            TaskType::Manager(ManagerTask::ShowHide),
+            TaskType::Overlay(OverlayTask::ShowHide),
             Instant::now().add(Duration::from_secs(1)),
         );
     }
@@ -159,12 +150,10 @@ pub fn openvr_run(
     'main_loop: loop {
         let _ = overlay_mgr.wait_frame_sync(frame_timeout);
 
-        if !running.load(Ordering::Relaxed) {
+        if !RUNNING.load(Ordering::Relaxed) {
             log::warn!("Received shutdown signal.");
             break 'main_loop;
         }
-
-        let cur_frame = FRAME_COUNTER.fetch_add(1, Ordering::Relaxed);
 
         while let Some(event) = system_mgr.poll_next_event() {
             match event.event_type {
@@ -215,57 +204,26 @@ pub fn openvr_run(
 
         while let Some(task) = due_tasks.pop_front() {
             match task {
-                TaskType::Overlay(sel, f) => {
-                    if let Some(o) = overlays.mut_by_selector(&sel) {
-                        f(&mut app, &mut o.config);
-                    } else {
-                        log::warn!("Overlay not found for task: {sel:?}");
-                    }
-                }
-                TaskType::CreateOverlay(sel, f) => {
-                    let None = overlays.mut_by_selector(&sel) else {
-                        continue;
-                    };
-
-                    let Some(overlay_config) = f(&mut app) else {
-                        continue;
-                    };
-
-                    overlays.add(
-                        OverlayWindowData {
-                            birthframe: cur_frame,
-                            ..OverlayWindowData::from_config(overlay_config)
-                        },
-                        &mut app,
-                    );
-                }
-                TaskType::DropOverlay(sel) => {
-                    if let Some(o) = overlays.mut_by_selector(&sel)
-                        && o.birthframe < cur_frame
-                    {
-                        o.destroy(&mut overlay_mgr);
-                        overlays.remove_by_selector(&sel, &mut app);
-                    }
-                }
-                TaskType::System(task) => match task {
-                    SystemTask::ColorGain(channel, value) => {
-                        let _ = adjust_gain(&mut settings_mgr, channel, value);
-                    }
-                    SystemTask::FixFloor => {
-                        playspace.fix_floor(&mut chaperone_mgr, &app.input_state);
-                    }
-                    SystemTask::ResetPlayspace => {
-                        playspace.reset_offset(&mut chaperone_mgr, &app.input_state);
-                    }
-                },
-                TaskType::Manager(task) => {
+                TaskType::Overlay(task) => {
                     overlays.handle_task(&mut app, task)?;
                 }
+                TaskType::Playspace(task) => {
+                    playspace.handle_task(&mut app, &mut chaperone_mgr, task);
+                }
+                TaskType::OpenVR(task) => match task {
+                    OpenVrTask::ColorGain(channel, value) => {
+                        let _ = adjust_gain(&mut settings_mgr, channel, value);
+                    }
+                },
                 #[cfg(feature = "wayvr")]
                 TaskType::WayVR(action) => {
                     wayvr_action(&mut app, &mut overlays, &action);
                 }
             }
+        }
+
+        while let Some(mut o) = overlays.pop_dropped() {
+            o.destroy(&mut overlay_mgr);
         }
 
         let universe = playspace.get_universe();

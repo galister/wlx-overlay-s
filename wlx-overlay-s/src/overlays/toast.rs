@@ -5,7 +5,7 @@ use std::{
     time::Instant,
 };
 
-use glam::{Affine3A, Quat, Vec3, vec3};
+use glam::{vec3, Affine3A, Quat, Vec3};
 use wgui::{
     i18n::Translation,
     parser::parse_color_hex,
@@ -27,10 +27,10 @@ use wlx_common::{
 };
 
 use crate::{
-    backend::task::TaskType,
+    backend::task::{OverlayTask, TaskType},
     gui::panel::GuiPanel,
     state::AppState,
-    windowing::{OverlaySelector, Z_ORDER_TOAST, window::OverlayWindowConfig},
+    windowing::{window::OverlayWindowConfig, OverlaySelector, Z_ORDER_TOAST},
 };
 
 const FONT_SIZE: isize = 16;
@@ -86,27 +86,29 @@ impl Toast {
         // drop any toast that was created before us.
         // (DropOverlay only drops overlays that were
         // created before current frame)
-        app.tasks
-            .enqueue_at(TaskType::DropOverlay(selector.clone()), instant);
+        app.tasks.enqueue_at(
+            TaskType::Overlay(OverlayTask::Drop(selector.clone())),
+            instant,
+        );
 
         // CreateOverlay only creates the overlay if
         // the selector doesn't exist yet, so in case
         // multiple toasts are submitted for the same
         // frame, only the first one gets created
         app.tasks.enqueue_at(
-            TaskType::CreateOverlay(
+            TaskType::Overlay(OverlayTask::Create(
                 selector.clone(),
                 Box::new(move |app| {
                     let maybe_toast = new_toast(self, app);
                     app.tasks.enqueue_at(
                         // at timeout, drop the overlay by ID instead
                         // in order to avoid dropping any newer toasts
-                        TaskType::DropOverlay(selector),
+                        TaskType::Overlay(OverlayTask::Drop(selector)),
                         destroy_at,
                     );
                     maybe_toast
                 }),
-            ),
+            )),
             instant,
         );
     }

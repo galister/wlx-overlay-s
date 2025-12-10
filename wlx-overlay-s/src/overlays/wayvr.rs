@@ -19,7 +19,7 @@ use wlx_common::windowing::OverlayWindowState;
 use crate::{
     backend::{
         input::{self, HoverResult},
-        task::TaskType,
+        task::{OverlayTask, TaskType},
         wayvr::{
             self, display,
             server_ipc::{gen_args_vec, gen_env_vec},
@@ -332,12 +332,12 @@ where
             WvrStateChanged::DashboardHidden
         }));
 
-    app.tasks.enqueue(TaskType::Overlay(
+    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
         OverlaySelector::Id(overlay_id),
         Box::new(move |app, o| {
             o.toggle(app);
         }),
-    ));
+    )));
 
     Ok(())
 }
@@ -429,12 +429,12 @@ where
                         .data
                         .state
                         .set_display_visible(display_handle, visible);
-                    app.tasks.enqueue(TaskType::Overlay(
+                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
                         OverlaySelector::Id(overlay_id),
                         Box::new(move |app, o| {
                             o.toggle(app);
                         }),
-                    ));
+                    )));
                 }
             }
             wayvr::WayVRSignal::DisplayWindowLayout(display_handle, layout) => {
@@ -448,7 +448,9 @@ where
             }
             wayvr::WayVRSignal::DropOverlay(overlay_id) => {
                 app.tasks
-                    .enqueue(TaskType::DropOverlay(OverlaySelector::Id(overlay_id)));
+                    .enqueue(TaskType::Overlay(OverlayTask::Drop(OverlaySelector::Id(
+                        overlay_id,
+                    ))));
             }
             wayvr::WayVRSignal::Haptics(haptics) => {
                 wayvr.pending_haptics = Some(haptics);

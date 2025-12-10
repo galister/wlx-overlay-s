@@ -8,6 +8,7 @@ use idmap_derive::IntegerId;
 use smallvec::{smallvec, SmallVec};
 use wlx_common::windowing::{OverlayWindowState, Positioning};
 
+use crate::backend::task::OverlayTask;
 use crate::overlays::anchor::ANCHOR_NAME;
 use crate::state::{AppSession, AppState};
 use crate::subsystem::hid::WheelDelta;
@@ -630,12 +631,12 @@ fn start_grab(
     };
 
     // Show anchor
-    app.tasks.enqueue(TaskType::Overlay(
+    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
         OverlaySelector::Name(ANCHOR_NAME.clone()),
         Box::new(|app, o| {
             o.activate(app);
         }),
-    ));
+    )));
 }
 
 fn handle_scale(transform: &mut Affine3A, scroll_y: f32) {
@@ -711,12 +712,12 @@ where
         }
 
         // Hide anchor
-        app.tasks.enqueue(TaskType::Overlay(
+        app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
             OverlaySelector::Name(ANCHOR_NAME.clone()),
             Box::new(|_app, o| {
                 o.deactivate();
             }),
-        ));
+        )));
         log::debug!("Hand {}: dropped {}", idx, overlay.config.name);
     }
 }

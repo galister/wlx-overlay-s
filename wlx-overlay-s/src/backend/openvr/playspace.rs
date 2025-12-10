@@ -6,7 +6,9 @@ use ovr_overlay::{
 };
 
 use crate::{
-    backend::input::InputState, state::AppState, windowing::manager::OverlayWindowManager,
+    backend::{input::InputState, task::PlayspaceTask},
+    state::AppState,
+    windowing::manager::OverlayWindowManager,
 };
 
 use super::{helpers::Affine3AConvert, overlay::OpenVrOverlayData};
@@ -29,6 +31,22 @@ impl PlayspaceMover {
             universe: ETrackingUniverseOrigin::TrackingUniverseRawAndUncalibrated,
             drag: None,
             rotate: None,
+        }
+    }
+
+    pub fn handle_task(
+        &mut self,
+        app: &AppState,
+        chaperone_mgr: &mut ChaperoneSetupManager,
+        task: PlayspaceTask,
+    ) {
+        match task {
+            PlayspaceTask::FixFloor => {
+                self.fix_floor(chaperone_mgr, &app.input_state);
+            }
+            PlayspaceTask::ResetPlayspace => {
+                self.reset_offset(chaperone_mgr, &app.input_state);
+            }
         }
     }
 

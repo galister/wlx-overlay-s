@@ -7,7 +7,9 @@ use wgui::{
 };
 use wlx_common::{common::LeftRight, windowing::Positioning};
 
-use crate::{backend::task::OverlayTask, overlays::edit::EditModeWrapPanel, windowing::window};
+use crate::{
+    backend::task::ModifyOverlayTask, overlays::edit::EditModeWrapPanel, windowing::window,
+};
 
 static POS_NAMES: [&str; 6] = ["static", "anchored", "floating", "hmd", "hand_l", "hand_r"];
 
@@ -89,7 +91,7 @@ impl PositioningHandler {
         &mut self,
         common: &mut CallbackDataCommon,
         key: &str,
-    ) -> Box<OverlayTask> {
+    ) -> Box<ModifyOverlayTask> {
         self.change_highlight(common, key);
 
         let pos = key_to_pos(key);

@@ -1,11 +1,14 @@
-use std::collections::HashMap;
+use std::{
+    collections::{HashMap, VecDeque},
+    sync::atomic::Ordering,
+};
 
 use glam::{Affine3A, Vec3, Vec3A};
 use slotmap::{HopSlotMap, Key, SecondaryMap};
 use wlx_common::{config::SerializedWindowSet, overlays::ToastTopic};
 
 use crate::{
-    backend::task::ManagerTask,
+    backend::task::OverlayTask,
     overlays::{
         anchor::create_anchor, edit::EditWrapperManager, keyboard::builder::create_keyboard,
         screen::create_screens, toast::Toast, watch::create_watch,
@@ -18,6 +21,7 @@ use crate::{
         window::{OverlayCategory, OverlayWindowData},
         OverlayID, OverlaySelector,
     },
+    FRAME_COUNTER,
 };
 
 pub const MAX_OVERLAY_SETS: usize = 7;
@@ -34,6 +38,7 @@ pub struct OverlayWindowManager<T> {
     anchor_local: Affine3A,
     watch_id: OverlayID,
     edit_mode: bool,
+    dropped_overlays: VecDeque<OverlayWindowData<T>>,
 }
 
 impl<T> OverlayWindowManager<T>
@@ -52,6 +57,7 @@ where
             anchor_local: Affine3A::from_translation(Vec3::NEG_Z),
             watch_id: OverlayID::null(), // set down below
             edit_mode: false,
+            dropped_overlays: VecDeque::with_capacity(8),
         };
 
         if headless {
@@ -119,9 +125,104 @@ where
 
         Ok(me)
     }
+
+    pub fn handle_task(&mut self, app: &mut AppState, task: OverlayTask) -> anyhow::Result<()> {
+        match task {
+            OverlayTask::ShowHide => self.show_hide(app),
+            OverlayTask::ToggleSet(set) => {
+                self.switch_or_toggle_set(app, set);
+            }
+            OverlayTask::ToggleEditMode => {
+                self.set_edit_mode(!self.edit_mode, app)?;
+            }
+            OverlayTask::AddSet => {
+                self.sets.push(OverlayWindowSet::default());
+                let len = self.sets.len();
+                if let Some(watch) = self.mut_by_id(self.watch_id) {
+                    watch
+                        .config
+                        .backend
+                        .notify(app, OverlayEventData::NumSetsChanged(len))?;
+                }
+            }
+            OverlayTask::DeleteActiveSet => {
+                let Some(set) = self.current_set else {
+                    Toast::new(
+                        ToastTopic::System,
+                        "Can't remove set".into(),
+                        "No set is selected!".into(),
+                    )
+                    .with_timeout(5.)
+                    .with_sound(true)
+                    .submit(app);
+                    return Ok(());
+                };
+
+                if self.sets.len() <= 1 {
+                    Toast::new(
+                        ToastTopic::System,
+                        "Can't remove set".into(),
+                        "This is the last existing set!".into(),
+                    )
+                    .with_timeout(5.)
+                    .with_sound(true)
+                    .submit(app);
+                    return Ok(());
+                }
+
+                self.switch_to_set(app, None);
+                self.sets.remove(set);
+                let len = self.sets.len();
+                if let Some(watch) = self.mut_by_id(self.watch_id) {
+                    watch
+                        .config
+                        .backend
+                        .notify(app, OverlayEventData::NumSetsChanged(len))?;
+                }
+            }
+            OverlayTask::Modify(sel, f) => {
+                if let Some(o) = self.mut_by_selector(&sel) {
+                    f(app, &mut o.config);
+                } else {
+                    log::warn!("Overlay not found for task: {sel:?}");
+                }
+            }
+            OverlayTask::Create(sel, f) => {
+                let None = self.mut_by_selector(&sel) else {
+                    return Ok(());
+                };
+
+                let Some(overlay_config) = f(app) else {
+                    return Ok(());
+                };
+
+                self.add(
+                    OverlayWindowData {
+                        birthframe: FRAME_COUNTER.load(Ordering::Relaxed),
+                        ..OverlayWindowData::from_config(overlay_config)
+                    },
+                    app,
+                );
+            }
+            OverlayTask::Drop(sel) => {
+                if let Some(o) = self.mut_by_selector(&sel)
+                    && o.birthframe < FRAME_COUNTER.load(Ordering::Relaxed)
+                {
+                    if let Some(o) = self.remove_by_selector(&sel, app) {
+                        self.dropped_overlays.push_back(o);
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 impl<T> OverlayWindowManager<T> {
+    pub fn pop_dropped(&mut self) -> Option<OverlayWindowData<T>> {
+        self.dropped_overlays.pop_front()
+    }
+
     pub fn persist_layout(&mut self, app: &mut AppState) {
         app.session.config.sets.clear();
         app.session.config.sets.reserve(self.sets.len());
@@ -388,65 +489,6 @@ impl<T> OverlayWindowManager<T> {
 
         // toggle watch back on if it was hidden
         self.mut_by_id(self.watch_id).unwrap().config.activate(app);
-    }
-
-    pub fn handle_task(&mut self, app: &mut AppState, task: ManagerTask) -> anyhow::Result<()> {
-        match task {
-            ManagerTask::ShowHide => self.show_hide(app),
-            ManagerTask::ToggleSet(set) => {
-                self.switch_or_toggle_set(app, set);
-            }
-            ManagerTask::ToggleEditMode => {
-                self.set_edit_mode(!self.edit_mode, app)?;
-            }
-            ManagerTask::AddSet => {
-                self.sets.push(OverlayWindowSet::default());
-                let len = self.sets.len();
-                if let Some(watch) = self.mut_by_id(self.watch_id) {
-                    watch
-                        .config
-                        .backend
-                        .notify(app, OverlayEventData::NumSetsChanged(len))?;
-                }
-            }
-            ManagerTask::DeleteActiveSet => {
-                let Some(set) = self.current_set else {
-                    Toast::new(
-                        ToastTopic::System,
-                        "Can't remove set".into(),
-                        "No set is selected!".into(),
-                    )
-                    .with_timeout(5.)
-                    .with_sound(true)
-                    .submit(app);
-                    return Ok(());
-                };
-
-                if self.sets.len() <= 1 {
-                    Toast::new(
-                        ToastTopic::System,
-                        "Can't remove set".into(),
-                        "This is the last existing set!".into(),
-                    )
-                    .with_timeout(5.)
-                    .with_sound(true)
-                    .submit(app);
-                    return Ok(());
-                }
-
-                self.switch_to_set(app, None);
-                self.sets.remove(set);
-                let len = self.sets.len();
-                if let Some(watch) = self.mut_by_id(self.watch_id) {
-                    watch
-                        .config
-                        .backend
-                        .notify(app, OverlayEventData::NumSetsChanged(len))?;
-                }
-            }
-        }
-
-        Ok(())
     }
 
     fn overlays_changed(&mut self, app: &mut AppState) -> anyhow::Result<()> {

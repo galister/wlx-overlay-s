@@ -33,10 +33,7 @@ mod config_wayvr;
 
 use std::{
     path::PathBuf,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
 use clap::Parser;
@@ -44,6 +41,9 @@ use subsystem::notifications::DbusNotificationSender;
 use sysinfo::Pid;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+
+pub static FRAME_COUNTER: AtomicUsize = AtomicUsize::new(0);
+pub static RUNNING: AtomicBool = AtomicBool::new(true);
 
 /// The lightweight desktop overlay for OpenVR and OpenXR
 #[derive(Default, Parser, Debug)]
@@ -82,11 +82,6 @@ struct Args {
     /// Path to write logs to
     #[arg(short, long, value_name = "FILE_PATH")]
     log_to: Option<String>,
-
-    #[cfg(feature = "uidev")]
-    /// Show a desktop window of a UI panel for development
-    #[arg(short, long, value_name = "UI_NAME")]
-    uidev: Option<String>,
 }
 
 #[allow(clippy::unnecessary_wraps)]
@@ -118,21 +113,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    let running = Arc::new(AtomicBool::new(true));
     let _ = ctrlc::set_handler({
-        let running = running.clone();
-        move || {
-            running.store(false, Ordering::Relaxed);
+        || {
+            RUNNING.store(false, Ordering::Relaxed);
         }
     });
 
-    auto_run(running, args);
+    auto_run(args);
 
     Ok(())
 }
 
 #[allow(unused_mut, clippy::similar_names)]
-fn auto_run(running: Arc<AtomicBool>, args: Args) {
+fn auto_run(args: Args) {
     let mut tried_xr = false;
     let mut tried_vr = false;
 
@@ -140,7 +133,7 @@ fn auto_run(running: Arc<AtomicBool>, args: Args) {
     if !args_get_openvr(&args) {
         use crate::backend::{openxr::openxr_run, BackendError};
         tried_xr = true;
-        match openxr_run(running.clone(), args.show, args.headless) {
+        match openxr_run(args.show, args.headless) {
             Ok(()) => return,
             Err(BackendError::NotSupported) => (),
             Err(e) => {
@@ -154,7 +147,7 @@ fn auto_run(running: Arc<AtomicBool>, args: Args) {
     if !args_get_openxr(&args) {
         use crate::backend::{openvr::openvr_run, BackendError};
         tried_vr = true;
-        match openvr_run(running, args.show, args.headless) {
+        match openvr_run(args.show, args.headless) {
             Ok(()) => return,
             Err(BackendError::NotSupported) => (),
             Err(e) => {

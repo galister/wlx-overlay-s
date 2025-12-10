@@ -7,7 +7,7 @@ use wgui::{
     widget::rectangle::WidgetRectangle,
 };
 
-use crate::{backend::task::OverlayTask, overlays::edit::EditModeWrapPanel, state::AppState};
+use crate::{backend::task::ModifyOverlayTask, overlays::edit::EditModeWrapPanel, state::AppState};
 
 #[derive(Default)]
 pub(super) struct InteractLockHandler {
@@ -53,7 +53,7 @@ impl InteractLockHandler {
         &mut self,
         common: &mut CallbackDataCommon,
         app: &mut AppState,
-    ) -> Box<OverlayTask> {
+    ) -> Box<ModifyOverlayTask> {
         let defaults = app.wgui_globals.get().defaults.clone();
         let rect_color = self.color;
 

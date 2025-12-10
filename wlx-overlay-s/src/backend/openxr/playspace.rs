@@ -2,7 +2,9 @@ use glam::{Affine3A, Quat, Vec3A};
 use libmonado::{Monado, Pose, ReferenceSpaceType};
 
 use crate::{
-    backend::input::InputState, state::AppState, windowing::manager::OverlayWindowManager,
+    backend::{input::InputState, task::PlayspaceTask},
+    state::AppState,
+    windowing::manager::OverlayWindowManager,
 };
 
 use super::overlay::OpenXrOverlayData;
@@ -39,6 +41,17 @@ impl PlayspaceMover {
             drag: None,
             rotate: None,
         })
+    }
+
+    pub fn handle_task(&mut self, app: &AppState, monado: &mut Monado, task: PlayspaceTask) {
+        match task {
+            PlayspaceTask::FixFloor => {
+                self.fix_floor(&app.input_state, monado);
+            }
+            PlayspaceTask::ResetPlayspace => {
+                self.reset_offset(monado);
+            }
+        }
     }
 
     pub fn update(

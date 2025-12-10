@@ -11,7 +11,7 @@ use wlx_common::windowing::OverlayWindowState;
 use crate::{
     backend::{
         input::{HoverResult, PointerHit},
-        task::TaskType,
+        task::{OverlayTask, TaskType},
     },
     state::{AppSession, AppState},
     subsystem::hid::WheelDelta,
@@ -73,21 +73,21 @@ impl OverlayBackend for MirrorBackend {
                     let capture = PipewireCapture::new(self.name.clone(), node_id);
                     self.renderer =
                         Some(ScreenBackend::new_raw(self.name.clone(), Box::new(capture)));
-                    app.tasks.enqueue(TaskType::Overlay(
+                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
                         OverlaySelector::Name(self.name.clone()),
                         Box::new(|app, o| {
                             o.activate(app);
                         }),
-                    ));
+                    )));
                 }
                 Err(e) => {
                     log::warn!("Failed to create mirror due to PipeWire error: {e:?}");
                     self.renderer = None;
                     // drop self
                     app.tasks
-                        .enqueue(TaskType::DropOverlay(OverlaySelector::Name(
+                        .enqueue(TaskType::Overlay(OverlayTask::Drop(OverlaySelector::Name(
                             self.name.clone(),
-                        )));
+                        ))));
                 }
             }
         }

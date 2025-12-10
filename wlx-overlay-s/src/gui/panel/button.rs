@@ -13,7 +13,7 @@ use wgui::{
 };
 
 use crate::{
-    backend::task::{ManagerTask, TaskType},
+    backend::task::{OverlayTask, TaskType},
     state::AppState,
     windowing::OverlaySelector,
 };
@@ -58,7 +58,7 @@ pub(super) fn setup_custom_button<S: 'static>(
                 };
                 Box::new(move |_common, _data, app, _| {
                     app.tasks
-                        .enqueue(TaskType::Manager(ManagerTask::ToggleSet(set_idx)));
+                        .enqueue(TaskType::Overlay(OverlayTask::ToggleSet(set_idx)));
                     Ok(EventResult::Consumed)
                 })
             }
@@ -69,7 +69,7 @@ pub(super) fn setup_custom_button<S: 'static>(
                 };
 
                 Box::new(move |_common, _data, app, _| {
-                    app.tasks.enqueue(TaskType::Overlay(
+                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
                         OverlaySelector::Name(arg.clone()),
                         Box::new(move |app, owc| {
                             if owc.active_state.is_none() {
@@ -78,13 +78,13 @@ pub(super) fn setup_custom_button<S: 'static>(
                                 owc.deactivate();
                             }
                         }),
-                    ));
+                    )));
                     Ok(EventResult::Consumed)
                 })
             }
             "::EditToggle" => Box::new(move |_common, _data, app, _| {
                 app.tasks
-                    .enqueue(TaskType::Manager(ManagerTask::ToggleEditMode));
+                    .enqueue(TaskType::Overlay(OverlayTask::ToggleEditMode));
                 Ok(EventResult::Consumed)
             }),
             "::WatchHide" => todo!(),

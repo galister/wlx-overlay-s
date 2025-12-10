@@ -43,28 +43,34 @@ impl Ord for AppTask {
     }
 }
 
-pub enum SystemTask {
+#[cfg(feature = "openvr")]
+pub enum OpenVrTask {
     ColorGain(ColorChannel, f32),
+}
+
+pub enum PlayspaceTask {
     ResetPlayspace,
     FixFloor,
 }
 
-pub type OverlayTask = dyn FnOnce(&mut AppState, &mut OverlayWindowConfig) + Send;
+pub type ModifyOverlayTask = dyn FnOnce(&mut AppState, &mut OverlayWindowConfig) + Send;
 pub type CreateOverlayTask = dyn FnOnce(&mut AppState) -> Option<OverlayWindowConfig> + Send;
-pub enum ManagerTask {
+pub enum OverlayTask {
     AddSet,
     ToggleSet(usize),
     DeleteActiveSet,
     ToggleEditMode,
     ShowHide,
+    Modify(OverlaySelector, Box<ModifyOverlayTask>),
+    Create(OverlaySelector, Box<CreateOverlayTask>),
+    Drop(OverlaySelector),
 }
 
 pub enum TaskType {
-    Overlay(OverlaySelector, Box<OverlayTask>),
-    CreateOverlay(OverlaySelector, Box<CreateOverlayTask>),
-    DropOverlay(OverlaySelector),
-    Manager(ManagerTask),
-    System(SystemTask),
+    Overlay(OverlayTask),
+    Playspace(PlayspaceTask),
+    #[cfg(feature = "openvr")]
+    OpenVR(OpenVrTask),
     #[cfg(feature = "wayvr")]
     WayVR(WayVRAction),
 }
