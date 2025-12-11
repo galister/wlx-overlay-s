@@ -6,7 +6,7 @@ use crate::backend::wayvr::egl_ex::{
 };
 
 use super::egl_ex;
-use anyhow::{anyhow, Context};
+use anyhow::Context;
 
 #[derive(Debug)]
 pub struct EGLData {

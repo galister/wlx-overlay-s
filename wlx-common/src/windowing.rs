@@ -35,6 +35,7 @@ pub struct OverlayWindowState {
 	pub positioning: Positioning,
 	pub curvature: Option<f32>,
 	pub additive: bool,
+	#[serde(skip_serializing, skip_deserializing)]
 	pub saved_transform: Option<Affine3A>,
 }
 

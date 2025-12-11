@@ -1,6 +1,5 @@
 use std::f32::consts::PI;
 use std::process::{Child, Command};
-use std::sync::Arc;
 use std::{collections::VecDeque, time::Instant};
 
 use glam::{Affine3A, Vec2, Vec3A, Vec3Swizzles};

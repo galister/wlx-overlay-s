@@ -251,7 +251,7 @@ where
     if newly_created {
         log::info!("Creating dashboard overlay");
 
-        let mut overlay = OverlayWindowData::from_config(OverlayWindowConfig {
+        let overlay = OverlayWindowData::from_config(OverlayWindowConfig {
             default_state: OverlayWindowState {
                 interactable: true,
                 grabbable: true,
@@ -283,8 +283,6 @@ where
                 },
             )?
         });
-
-        overlay.config.reset(app, true);
 
         let overlay_id = overlays.add(overlay, app);
         wayvr.set_overlay_display_handle(overlay_id, disp_handle);
@@ -433,7 +431,14 @@ where
                     app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
                         OverlaySelector::Id(overlay_id),
                         Box::new(move |app, o| {
-                            o.toggle(app);
+                            if visible == o.is_active() {
+                                return;
+                            }
+                            if visible {
+                                o.activate(app);
+                            } else {
+                                o.deactivate();
+                            }
                         }),
                     )));
                 }

@@ -104,19 +104,15 @@ impl OverlayWindowConfig {
         }
     }
 
+    pub fn is_active(&self) -> bool {
+        self.active_state.is_some()
+    }
+
     pub fn activate(&mut self, app: &mut AppState) {
         log::debug!("activate {}", self.name.as_ref());
         self.dirty = true;
         self.active_state = Some(self.default_state.clone());
         self.reset(app, true);
-    }
-
-    pub fn activate_static(&mut self, global_transform: Affine3A) {
-        log::debug!("activate {}", self.name.as_ref());
-        self.dirty = true;
-        let mut state = self.default_state.clone();
-        state.transform = global_transform;
-        self.active_state = Some(state);
     }
 
     pub fn deactivate(&mut self) {
@@ -128,7 +124,7 @@ impl OverlayWindowConfig {
         if self.active_state.take().is_none() {
             self.activate(app);
         } else {
-            log::debug!("deactivate {}", self.name.as_ref());
+            log::debug!("deactivate {} (toggle)", self.name.as_ref());
         }
     }
 
@@ -249,16 +245,14 @@ pub fn realign(transform: &mut Affine3A, hmd: &Affine3A) {
     transform.matrix3 = Mat3A::from_cols(col_x, col_y, col_z).mul_scalar(scale) * rot;
 }
 
-pub fn save_transform(state: &mut OverlayWindowState, app: &mut AppState) -> bool {
+pub fn save_transform(state: &mut OverlayWindowState, app: &mut AppState) {
     let parent_transform = match state.positioning {
         Positioning::Floating => snap_upright(app.input_state.hmd, Vec3A::Y),
         Positioning::FollowHead { .. } => app.input_state.hmd,
         Positioning::FollowHand { hand, .. } => app.input_state.pointers[hand as usize].pose,
         Positioning::Anchored => snap_upright(app.anchor, Vec3A::Y),
-        Positioning::Static => return false,
+        Positioning::Static => return,
     };
 
     state.saved_transform = Some(parent_transform.inverse() * state.transform);
-
-    true
 }

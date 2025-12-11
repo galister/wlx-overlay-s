@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use glam::{Affine3A, Vec3, Vec3A};
+use glam::{vec3, Affine3A, Quat, Vec3, Vec3A};
 use idmap::DirectIdMap;
 use wgui::{
     components::button::ComponentButton,
@@ -16,7 +16,10 @@ use wgui::{
     taffy,
     widget::{sprite::WidgetSprite, EventResult},
 };
-use wlx_common::windowing::{OverlayWindowState, Positioning};
+use wlx_common::{
+    common::LeftRight,
+    windowing::{OverlayWindowState, Positioning},
+};
 
 use crate::{
     backend::{
@@ -40,6 +43,9 @@ use crate::{
 pub const WATCH_NAME: &str = "watch";
 const MAX_TOOLBOX_BUTTONS: usize = 16;
 const MAX_DEVICES: usize = 9;
+
+pub(crate) const WATCH_POS: Vec3 = vec3(-0.03, -0.01, 0.125);
+pub(crate) const WATCH_ROT: Quat = Quat::from_xyzw(-0.707_106_6, 0.000_796_361_8, 0.707_106_6, 0.0);
 
 #[derive(Default)]
 struct WatchState {
@@ -323,7 +329,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
         .push(GuiTimer::new(Duration::from_millis(100), 0));
 
     let positioning = Positioning::FollowHand {
-        hand: app.session.config.watch_hand,
+        hand: LeftRight::Left,
         lerp: 1.0,
     };
 
@@ -337,8 +343,8 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
             positioning,
             transform: Affine3A::from_scale_rotation_translation(
                 Vec3::ONE * 0.115,
-                app.session.config.watch_rot,
-                app.session.config.watch_pos,
+                WATCH_ROT,
+                WATCH_POS,
             ),
             ..OverlayWindowState::default()
         },

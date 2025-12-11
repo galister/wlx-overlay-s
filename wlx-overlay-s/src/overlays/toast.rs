@@ -1,5 +1,4 @@
 use std::{
-    f32::consts::PI,
     ops::Add,
     sync::{Arc, LazyLock},
     time::Instant,
@@ -17,6 +16,7 @@ use wlx_common::{
 use crate::{
     backend::task::{OverlayTask, TaskType},
     gui::panel::{GuiPanel, NewGuiPanelParams, OnCustomIdFunc},
+    overlays::watch::{WATCH_POS, WATCH_ROT},
     state::AppState,
     windowing::{window::OverlayWindowConfig, OverlaySelector, Z_ORDER_TOAST},
 };
@@ -121,12 +121,14 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<OverlayWindowConfig> {
             Positioning::FollowHead { lerp: 0.1 },
         ),
         ToastDisplayMethod::Watch => {
-            let mut watch_pos = app.session.config.watch_pos + vec3(-0.005, -0.05, 0.02);
-            let mut watch_rot = app.session.config.watch_rot;
-            let relative_to = match app.session.config.watch_hand {
-                LeftRight::Left => Positioning::FollowHand {
+            //FIXME: properly follow watch
+            let watch_pos = WATCH_POS + vec3(-0.005, -0.05, 0.02);
+            let watch_rot = WATCH_ROT;
+            let relative_to = /*match app.session.config.watch_hand {
+                LeftRight::Left =>*/ Positioning::FollowHand {
                     hand: LeftRight::Left,
                     lerp: 1.0,
+                /*
                 },
                 LeftRight::Right => {
                     watch_pos.x = -watch_pos.x;
@@ -135,7 +137,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<OverlayWindowConfig> {
                         hand: LeftRight::Right,
                         lerp: 1.0,
                     }
-                }
+                }*/
             };
             (watch_pos, watch_rot, relative_to)
         }

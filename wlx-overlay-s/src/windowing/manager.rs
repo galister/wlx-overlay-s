@@ -5,7 +5,11 @@ use std::{
 
 use glam::{Affine3A, Vec3, Vec3A};
 use slotmap::{HopSlotMap, Key, SecondaryMap};
-use wlx_common::{config::SerializedWindowSet, overlays::ToastTopic};
+use wlx_common::{
+    astr_containers::{AStrMap, AStrMapExt},
+    config::SerializedWindowSet,
+    overlays::ToastTopic,
+};
 
 use crate::{
     backend::task::OverlayTask,
@@ -107,21 +111,24 @@ where
         let anchor = OverlayWindowData::from_config(create_anchor(app)?);
         me.add(anchor, app);
 
-        let mut watch = OverlayWindowData::from_config(create_watch(app)?);
+        let watch = OverlayWindowData::from_config(create_watch(app)?);
+        me.watch_id = me.add(watch, app);
+
+        // overwrite default layout with saved layout, if exists
+        me.restore_layout(app);
+        me.overlays_changed(app)?;
 
         for ev in [
             OverlayEventData::NumSetsChanged(me.sets.len()),
             OverlayEventData::EditModeChanged(false),
             OverlayEventData::DevicesChanged,
         ] {
-            watch.config.backend.notify(app, ev)?;
+            me.mut_by_id(me.watch_id)
+                .unwrap()
+                .config
+                .backend
+                .notify(app, ev)?;
         }
-        me.watch_id = me.add(watch, app);
-
-        me.overlays_changed(app)?;
-
-        // overwrite default layout with saved layout, if exists
-        me.restore_layout(app);
 
         Ok(me)
     }
@@ -227,6 +234,7 @@ impl<T> OverlayWindowManager<T> {
     }
 
     pub fn persist_layout(&mut self, app: &mut AppState) {
+        app.session.config.global_set.clear();
         app.session.config.sets.clear();
         app.session.config.sets.reserve(self.sets.len());
         app.session.config.last_set = self.restore_set as _;
@@ -240,7 +248,7 @@ impl<T> OverlayWindowManager<T> {
         };
 
         for set in &self.sets {
-            let overlays: HashMap<_, _> = set
+            let mut overlays: HashMap<_, _> = set
                 .overlays
                 .iter()
                 .filter_map(|(k, v)| {
@@ -249,11 +257,35 @@ impl<T> OverlayWindowManager<T> {
                 })
                 .collect();
 
+            // overlays that we haven't seen since startup (e.g. wayvr apps)
+            for (k, o) in set.inactive_overlays.iter() {
+                if !overlays.contains_key(k) {
+                    overlays.insert(k.clone(), o.clone());
+                }
+            }
+
             let serialized = SerializedWindowSet {
                 name: set.name.clone(),
                 overlays,
             };
             app.session.config.sets.push(serialized);
+        }
+
+        // global overlays; watch, toast
+        for oid in &[self.watch_id] {
+            let Some(o) = self.get_by_id(*oid) else {
+                break;
+            };
+            let Some(mut state) = o.config.active_state.clone() else {
+                break;
+            };
+            if let Some(transform) = state.saved_transform.as_ref() {
+                state.transform = *transform;
+            }
+            app.session
+                .config
+                .global_set
+                .insert(o.config.name.clone(), state.clone());
         }
 
         if restore_after {
@@ -275,18 +307,42 @@ impl<T> OverlayWindowManager<T> {
         self.sets.clear();
         self.sets.reserve(app.session.config.sets.len());
 
-        for s in &app.session.config.sets {
-            let overlays: SecondaryMap<_, _> = s
-                .overlays
-                .iter()
-                .filter_map(|(name, v)| self.lookup(name).map(|id| (id, v.clone())))
-                .collect();
+        for (i, s) in app.session.config.sets.iter().enumerate() {
+            let mut overlays = SecondaryMap::new();
+            let mut inactive_overlays = AStrMap::new();
+
+            for (name, o) in s.overlays.iter() {
+                if let Some(id) = self.lookup(&*name) {
+                    log::debug!("set {i}: loaded state for {name}");
+                    overlays.insert(id, o.clone());
+                } else {
+                    log::debug!("set {i} has saved state for {name} which doesn't exist. will apply state once added.");
+                    inactive_overlays.arc_set(name.clone(), o.clone());
+                }
+            }
 
             self.sets.push(OverlayWindowSet {
                 name: s.name.clone(),
                 overlays,
+                inactive_overlays,
             });
         }
+
+        // global overlays
+        for oid in &[self.watch_id] {
+            if let Some(o) = self.mut_by_id(*oid) {
+                if let Some(mut state) = app.session.config.global_set.get(&*o.config.name).cloned()
+                {
+                    state.saved_transform = Some(state.transform);
+                    o.config.active_state = Some(state);
+                    o.config.reset(app, false);
+                    log::debug!("global set: loaded state for {}", o.config.name);
+                } else {
+                    log::debug!("global set: no state for {}", o.config.name);
+                }
+            }
+        }
+
         self.restore_set = (app.session.config.last_set as usize).min(self.sets.len() - 1);
     }
 
@@ -403,8 +459,6 @@ impl<T> OverlayWindowManager<T> {
     }
 
     pub fn add(&mut self, mut overlay: OverlayWindowData<T>, app: &mut AppState) -> OverlayID {
-        let internal = matches!(overlay.config.category, OverlayCategory::Internal);
-
         while self.lookup(&overlay.config.name).is_some() {
             log::error!(
                 "An overlay with name {} already exists. Deduplicating, but things may break!",
@@ -413,15 +467,41 @@ impl<T> OverlayWindowManager<T> {
             overlay.config.name = format!("{}_2", overlay.config.name).into();
         }
 
-        if overlay.config.show_on_spawn {
-            log::debug!("activating {} due to show_on_spawn", overlay.config.name);
-            overlay.config.activate(app);
+        let name = overlay.config.name.clone();
+        let global = overlay.config.global;
+        let internal = matches!(overlay.config.category, OverlayCategory::Internal);
+        let show_on_spawn = overlay.config.show_on_spawn;
+
+        let oid = self.overlays.insert(overlay);
+        let mut shown = false;
+
+        if !global {
+            for (i, set) in self.sets.iter_mut().enumerate() {
+                let Some(mut state) = set.inactive_overlays.arc_rm(&*name) else {
+                    continue;
+                };
+                if self.current_set == Some(i) {
+                    let o = &mut self.overlays[oid];
+                    state.saved_transform = Some(state.transform);
+                    o.config.active_state = Some(state);
+                    o.config.reset(app, false);
+                    shown = true;
+                    log::debug!("loaded state for {name} to active set!");
+                } else {
+                    set.overlays.insert(oid, state);
+                    log::debug!("loaded state for {name} to set {i}");
+                }
+            }
         }
-        let ret_val = self.overlays.insert(overlay);
+
+        if !shown && show_on_spawn {
+            log::debug!("activating {} due to show_on_spawn", name);
+            self.overlays[oid].config.activate(app);
+        }
         if !internal && let Err(e) = self.overlays_changed(app) {
             log::error!("Error while adding overlay: {e:?}");
         }
-        ret_val
+        oid
     }
 
     pub fn switch_or_toggle_set(&mut self, app: &mut AppState, set: usize) {
@@ -495,9 +575,6 @@ impl<T> OverlayWindowManager<T> {
         } else {
             self.switch_to_set(app, None);
         }
-
-        // toggle watch back on if it was hidden
-        self.mut_by_id(self.watch_id).unwrap().config.activate(app);
     }
 
     fn overlays_changed(&mut self, app: &mut AppState) -> anyhow::Result<()> {

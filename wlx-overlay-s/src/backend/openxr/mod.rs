@@ -1,10 +1,7 @@
 use std::{
     collections::VecDeque,
     ops::Add,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
+    sync::{atomic::Ordering, Arc},
     time::{Duration, Instant},
 };
 

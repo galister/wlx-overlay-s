@@ -1,13 +1,9 @@
 use crate::config_io;
 use config::{Config, File};
-use glam::{Quat, Vec3};
 use log::error;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use wlx_common::{
-    common::LeftRight,
-    config::{GeneralConfig, SerializedWindowSet},
-};
+use wlx_common::config::{GeneralConfig, SerializedWindowSet, SerializedWindowStates};
 
 const FALLBACKS: [&str; 2] = [
     include_str!("res/keyboard.yaml"),
@@ -105,9 +101,6 @@ pub fn load_general_config() -> GeneralConfig {
 
 #[derive(Serialize)]
 pub struct AutoSettings {
-    pub watch_pos: Vec3,
-    pub watch_rot: Quat,
-    pub watch_hand: LeftRight,
     pub watch_view_angle_min: f32,
     pub watch_view_angle_max: f32,
     pub notifications_enabled: bool,
@@ -125,9 +118,6 @@ fn get_settings_path() -> PathBuf {
 
 pub fn save_settings(config: &GeneralConfig) -> anyhow::Result<()> {
     let conf = AutoSettings {
-        watch_pos: config.watch_pos,
-        watch_rot: config.watch_rot,
-        watch_hand: config.watch_hand,
         watch_view_angle_min: config.watch_view_angle_min,
         watch_view_angle_max: config.watch_view_angle_max,
         notifications_enabled: config.notifications_enabled,
@@ -148,6 +138,7 @@ pub fn save_settings(config: &GeneralConfig) -> anyhow::Result<()> {
 #[derive(Serialize)]
 pub struct AutoState {
     pub sets: Vec<SerializedWindowSet>,
+    pub global_set: SerializedWindowStates,
     pub last_set: u32,
 }
 
@@ -161,6 +152,7 @@ pub fn save_state(config: &GeneralConfig) -> anyhow::Result<()> {
     let conf = AutoState {
         sets: config.sets.clone(),
         last_set: config.last_set,
+        global_set: config.global_set.clone(),
     };
 
     let json = serde_json::to_string_pretty(&conf).unwrap(); // want panic

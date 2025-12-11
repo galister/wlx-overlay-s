@@ -1,35 +1,23 @@
 use std::{collections::HashMap, sync::Arc};
 
 use chrono::Offset;
-use glam::{vec3, Affine3A, Quat, Vec3};
+use glam::Affine3A;
 use idmap::IdMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
 	astr_containers::{AStrMap, AStrSet},
-	common::LeftRight,
 	overlays::{ToastDisplayMethod, ToastTopic},
 	windowing::OverlayWindowState,
 };
 
 pub type PwTokenMap = AStrMap<String>;
+pub type SerializedWindowStates = HashMap<Arc<str>, OverlayWindowState>;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SerializedWindowSet {
 	pub name: Arc<str>,
-	pub overlays: HashMap<Arc<str>, OverlayWindowState>,
-}
-
-pub const fn def_watch_pos() -> Vec3 {
-	vec3(-0.03, -0.01, 0.125)
-}
-
-pub const fn def_watch_rot() -> Quat {
-	Quat::from_xyzw(-0.707_106_6, 0.000_796_361_8, 0.707_106_6, 0.0)
-}
-
-pub const fn def_left() -> LeftRight {
-	LeftRight::Left
+	pub overlays: SerializedWindowStates,
 }
 
 pub const fn def_pw_tokens() -> PwTokenMap {
@@ -44,7 +32,7 @@ const fn def_click_freeze_time_ms() -> u32 {
 	300
 }
 
-pub const fn def_true() -> bool {
+const fn def_true() -> bool {
 	true
 }
 
@@ -56,15 +44,15 @@ const fn def_one() -> f32 {
 	1.0
 }
 
-pub const fn def_half() -> f32 {
+const fn def_half() -> f32 {
 	0.5
 }
 
-pub const fn def_point7() -> f32 {
+const fn def_point7() -> f32 {
 	0.7
 }
 
-pub const fn def_point3() -> f32 {
+const fn def_point3() -> f32 {
 	0.3
 }
 
@@ -78,6 +66,10 @@ const fn def_empty_vec_string() -> Vec<String> {
 
 const fn def_sets() -> Vec<SerializedWindowSet> {
 	Vec::new()
+}
+
+fn def_global_set() -> SerializedWindowStates {
+	HashMap::new()
 }
 
 const fn def_zero_u32() -> u32 {
@@ -136,15 +128,6 @@ const fn def_max_height() -> u16 {
 pub struct GeneralConfig {
 	#[serde(default = "def_theme_path")]
 	pub theme_path: Arc<str>,
-
-	#[serde(default = "def_watch_pos")]
-	pub watch_pos: Vec3,
-
-	#[serde(default = "def_watch_rot")]
-	pub watch_rot: Quat,
-
-	#[serde(default = "def_left")]
-	pub watch_hand: LeftRight,
 
 	#[serde(default = "def_click_freeze_time_ms")]
 	pub click_freeze_time_ms: u32,
@@ -286,6 +269,9 @@ pub struct GeneralConfig {
 
 	#[serde(default = "def_sets")]
 	pub sets: Vec<SerializedWindowSet>,
+
+	#[serde(default = "def_global_set")]
+	pub global_set: SerializedWindowStates,
 
 	#[serde(default = "def_zero_u32")]
 	pub last_set: u32,
