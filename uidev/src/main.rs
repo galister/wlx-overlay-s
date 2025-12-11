@@ -1,26 +1,26 @@
-use glam::{Vec2, vec2};
+use glam::{vec2, Vec2};
 use std::sync::Arc;
-use testbed::{Testbed, testbed_any::TestbedAny};
+use testbed::{testbed_any::TestbedAny, Testbed};
 use timestep::Timestep;
-use tracing_subscriber::EnvFilter;
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::EnvFilter;
 use vulkan::init_window;
 use vulkano::{
-	Validated, VulkanError,
 	command_buffer::CommandBufferUsage,
 	format::Format,
-	image::{ImageUsage, view::ImageView},
+	image::{view::ImageView, ImageUsage},
 	swapchain::{
-		CompositeAlpha, PresentMode, Surface, SurfaceInfo, Swapchain, SwapchainCreateInfo,
-		SwapchainPresentInfo, acquire_next_image,
+		acquire_next_image, CompositeAlpha, PresentMode, Surface, SurfaceInfo, Swapchain,
+		SwapchainCreateInfo, SwapchainPresentInfo,
 	},
 	sync::GpuFuture,
+	Validated, VulkanError,
 };
 use wgui::{
 	event::{MouseButtonIndex, MouseDownEvent, MouseMotionEvent, MouseUpEvent, MouseWheelEvent},
-	gfx::{WGfx, cmd::WGfxClearMode},
+	gfx::{cmd::WGfxClearMode, WGfx},
 	renderer_vk::{self},
 };
 use winit::{
@@ -32,7 +32,7 @@ use winit::{
 use crate::{
 	rate_limiter::RateLimiter,
 	testbed::{
-		TestbedUpdateParams, testbed_dashboard::TestbedDashboard, testbed_generic::TestbedGeneric,
+		testbed_dashboard::TestbedDashboard, testbed_generic::TestbedGeneric, TestbedUpdateParams,
 	},
 };
 
@@ -400,13 +400,27 @@ fn swapchain_create_info(
 	surface: Arc<Surface>,
 	extent: [u32; 2],
 ) -> SwapchainCreateInfo {
-	let mut surface_capabilities = graphics
+	let surface_capabilities = graphics
 		.device
 		.physical_device()
 		.surface_capabilities(&surface, SurfaceInfo::default())
 		.unwrap(); // want panic
 
-	surface_capabilities.supported_composite_alpha = CompositeAlpha::PreMultiplied.into();
+	let composite_alpha = if surface_capabilities
+		.supported_composite_alpha
+		.contains_enum(CompositeAlpha::PreMultiplied)
+	{
+		CompositeAlpha::PreMultiplied
+	} else {
+		log::warn!("Possible GPU driver issue: VkSurfaceCapabilitiesKHR supported_composite_alpha doesn't have PRE_MULTIPLIED! Desktop window will be blended using a fallback method and may look different.");
+		surface_capabilities
+			.supported_composite_alpha
+			.into_iter()
+			.next()
+			.expect(
+				"No supported_composite_alpha available on VkSurfaceCapabilitiesKHR. Possible GPU driver issue?",
+			)
+	};
 
 	SwapchainCreateInfo {
 		min_image_count: surface_capabilities.min_image_count.max(2),
@@ -414,11 +428,7 @@ fn swapchain_create_info(
 		image_format: format,
 		image_extent: extent,
 		image_usage: ImageUsage::COLOR_ATTACHMENT,
-		composite_alpha: surface_capabilities
-			.supported_composite_alpha
-			.into_iter()
-			.next()
-			.unwrap(), // want panic
+		composite_alpha,
 		..Default::default()
 	}
 }
