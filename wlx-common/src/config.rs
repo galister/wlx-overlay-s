@@ -223,6 +223,9 @@ pub struct GeneralConfig {
 	pub focus_follows_mouse_mode: bool,
 
 	#[serde(default = "def_false")]
+	pub left_handed_mouse: bool,
+
+	#[serde(default = "def_false")]
 	pub block_game_input: bool,
 
 	#[serde(default = "def_true")]

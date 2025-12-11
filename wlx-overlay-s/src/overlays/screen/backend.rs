@@ -222,10 +222,19 @@ impl OverlayBackend for ScreenBackend {
         }
     }
     fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool) {
-        let btn = match hit.mode {
+        let mut btn = match hit.mode {
             PointerMode::Right => MOUSE_RIGHT,
             PointerMode::Middle => MOUSE_MIDDLE,
             _ => MOUSE_LEFT,
+        };
+
+        // Swap left and right buttons if left-handed mode is enabled
+        if app.session.config.left_handed_mouse {
+            btn = match btn {
+                MOUSE_LEFT => MOUSE_RIGHT,
+                MOUSE_RIGHT => MOUSE_LEFT,
+                other => other,
+            };
         };
 
         if pressed {
