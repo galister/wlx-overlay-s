@@ -309,6 +309,7 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
     panel.state.tabs = ButtonPaneTabSwitcher::new(&mut panel, &["none", "pos", "alpha", "curve"])?;
 
     set_up_checkbox(&mut panel, "additive_box", cb_assign_additive)?;
+    set_up_slider(&mut panel, "lerp_slider", cb_assign_lerp)?;
     set_up_slider(&mut panel, "alpha_slider", cb_assign_alpha)?;
     set_up_slider(&mut panel, "curve_slider", cb_assign_curve)?;
 
@@ -328,6 +329,11 @@ fn reset_panel(
         alterables: &mut alterables,
         state: &panel.layout.state,
     };
+
+    let c = panel
+        .parser_state
+        .fetch_component_as::<ComponentSlider>("lerp_slider")?;
+    c.set_value(&mut common, state.positioning.get_lerp().unwrap_or(1.0));
 
     let c = panel
         .parser_state
@@ -351,6 +357,12 @@ fn reset_panel(
     panel.layout.process_alterables(alterables)?;
 
     Ok(())
+}
+
+const fn cb_assign_lerp(_app: &mut AppState, owc: &mut OverlayWindowConfig, lerp: f32) {
+    owc.dirty = true;
+    let active_state = owc.active_state.as_mut().unwrap();
+    active_state.positioning = active_state.positioning.with_lerp(lerp);
 }
 
 const fn cb_assign_alpha(_app: &mut AppState, owc: &mut OverlayWindowConfig, alpha: f32) {

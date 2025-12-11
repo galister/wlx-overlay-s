@@ -22,6 +22,21 @@ impl Positioning {
 	pub const fn moves_with_space(self) -> bool {
 		matches!(self, Self::Floating | Self::Anchored | Self::Static)
 	}
+	pub const fn get_lerp(self) -> Option<f32> {
+		match self {
+			Self::FollowHead { lerp } => Some(lerp),
+			Self::FollowHand { lerp, .. } => Some(lerp),
+			Self::Floating | Self::Anchored | Self::Static => None,
+		}
+	}
+	pub const fn with_lerp(mut self, value: f32) -> Self {
+		match self {
+			Self::FollowHead { ref mut lerp } => *lerp = value,
+			Self::FollowHand { ref mut lerp, .. } => *lerp = value,
+			Self::Floating | Self::Anchored | Self::Static => {}
+		}
+		self
+	}
 }
 
 // Contains the window state for a given set
