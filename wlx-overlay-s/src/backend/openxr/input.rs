@@ -438,8 +438,8 @@ impl OpenXrHandSource {
     }
 }
 
-fn to_path(maybe_path_str: Option<&String>, instance: &xr::Instance) -> Option<xr::Path> {
-    maybe_path_str.as_ref().and_then(|s| {
+fn to_paths(maybe_path_str: Option<&str>, instance: &xr::Instance) -> Option<xr::Path> {
+    maybe_path_str.and_then(|s| {
         instance
             .string_to_path(s)
             .inspect_err(|_| {
@@ -449,57 +449,99 @@ fn to_path(maybe_path_str: Option<&String>, instance: &xr::Instance) -> Option<x
     })
 }
 
-fn is_bool(maybe_type_str: Option<&String>) -> bool {
-    maybe_type_str
-        .as_ref()
-        .unwrap() // want panic
+fn is_bool(path_str: &str) -> bool {
+    path_str
         .split('/')
         .next_back()
         .is_some_and(|last| matches!(last, "click" | "touch") || last.starts_with("dpad_"))
 }
 
 macro_rules! add_custom {
-    ($action:expr, $left:expr, $right:expr, $bindings:expr, $instance:expr) => {
+    ($action:expr, $field:ident, $hands:expr, $bindings:expr, $instance:expr) => {
         if let Some(action) = $action.as_ref() {
-            if let Some(p) = to_path(action.left.as_ref(), $instance) {
-                if is_bool(action.left.as_ref()) {
-                    if action.triple_click.unwrap_or(false) {
-                        $bindings.push(xr::Binding::new(&$left.triple.action_bool, p));
-                    } else if action.double_click.unwrap_or(false) {
-                        $bindings.push(xr::Binding::new(&$left.double.action_bool, p));
-                    } else {
-                        $bindings.push(xr::Binding::new(&$left.single.action_bool, p));
-                    }
+            for i in 0..2 {
+                let spec = if i == 0 {
+                    action.left.as_ref()
                 } else {
-                    if action.triple_click.unwrap_or(false) {
-                        $bindings.push(xr::Binding::new(&$left.triple.action_f32, p));
-                    } else if action.double_click.unwrap_or(false) {
-                        $bindings.push(xr::Binding::new(&$left.double.action_f32, p));
-                    } else {
-                        $bindings.push(xr::Binding::new(&$left.single.action_f32, p));
+                    action.right.as_ref()
+                };
+
+                if let Some(spec) = spec {
+                    let iter: Box<dyn Iterator<Item = &String>> = match spec {
+                        OneOrMany::One(s) => Box::new(std::iter::once(s)),
+                        OneOrMany::Many(v) => Box::new(v.iter()),
+                    };
+
+                    for s in iter {
+                        if let Some(p) = to_paths(Some(s.as_str()), $instance) {
+                            if is_bool(s) {
+                                if action.triple_click.unwrap_or(false) {
+                                    $bindings.push(xr::Binding::new(
+                                        &$hands[i].$field.triple.action_bool,
+                                        p,
+                                    ));
+                                } else if action.double_click.unwrap_or(false) {
+                                    $bindings.push(xr::Binding::new(
+                                        &$hands[i].$field.double.action_bool,
+                                        p,
+                                    ));
+                                } else {
+                                    $bindings.push(xr::Binding::new(
+                                        &$hands[i].$field.single.action_bool,
+                                        p,
+                                    ));
+                                }
+                            } else {
+                                if action.triple_click.unwrap_or(false) {
+                                    $bindings.push(xr::Binding::new(
+                                        &$hands[i].$field.triple.action_f32,
+                                        p,
+                                    ));
+                                } else if action.double_click.unwrap_or(false) {
+                                    $bindings.push(xr::Binding::new(
+                                        &$hands[i].$field.double.action_f32,
+                                        p,
+                                    ));
+                                } else {
+                                    $bindings.push(xr::Binding::new(
+                                        &$hands[i].$field.single.action_f32,
+                                        p,
+                                    ));
+                                }
+                            }
+                        };
                     }
-                }
-            }
-            if let Some(p) = to_path(action.right.as_ref(), $instance) {
-                if is_bool(action.right.as_ref()) {
-                    if action.triple_click.unwrap_or(false) {
-                        $bindings.push(xr::Binding::new(&$right.triple.action_bool, p));
-                    } else if action.double_click.unwrap_or(false) {
-                        $bindings.push(xr::Binding::new(&$right.double.action_bool, p));
-                    } else {
-                        $bindings.push(xr::Binding::new(&$right.single.action_bool, p));
-                    }
-                } else {
-                    if action.triple_click.unwrap_or(false) {
-                        $bindings.push(xr::Binding::new(&$right.triple.action_f32, p));
-                    } else if action.double_click.unwrap_or(false) {
-                        $bindings.push(xr::Binding::new(&$right.double.action_f32, p));
-                    } else {
-                        $bindings.push(xr::Binding::new(&$right.single.action_f32, p));
-                    }
-                }
+                };
             }
         }
+    };
+}
+
+// TODO: rename this bad func name
+macro_rules! add_custom_lr {
+    ($action:expr, $field:ident, $hands:expr, $bindings:expr, $instance:expr) => {
+        if let Some(action) = $action {
+            for i in 0..2 {
+                let spec = if i == 0 {
+                    action.left.as_ref()
+                } else {
+                    action.right.as_ref()
+                };
+
+                if let Some(spec) = spec {
+                    let iter: Box<dyn Iterator<Item = &String>> = match spec {
+                        OneOrMany::One(s) => Box::new(std::iter::once(s)),
+                        OneOrMany::Many(v) => Box::new(v.iter()),
+                    };
+
+                    for s in iter {
+                        if let Some(p) = to_paths(Some(s.as_str()), $instance) {
+                            $bindings.push(xr::Binding::new(&$hands[i].$field, p));
+                        }
+                    }
+                };
+            }
+        };
     };
 }
 
@@ -515,120 +557,55 @@ fn suggest_bindings(instance: &xr::Instance, hands: &[&OpenXrHandSource; 2]) {
 
         let mut bindings: Vec<xr::Binding> = vec![];
 
-        if let Some(action) = profile.pose {
-            if let Some(p) = to_path(action.left.as_ref(), instance) {
-                bindings.push(xr::Binding::new(&hands[0].pose, p));
-            }
-            if let Some(p) = to_path(action.right.as_ref(), instance) {
-                bindings.push(xr::Binding::new(&hands[1].pose, p));
-            }
-        }
+        add_custom_lr!(profile.pose, pose, hands, bindings, instance);
+        add_custom_lr!(profile.haptic, haptics, hands, bindings, instance);
+        add_custom_lr!(profile.scroll, scroll, hands, bindings, instance);
 
-        if let Some(action) = profile.haptic {
-            if let Some(p) = to_path(action.left.as_ref(), instance) {
-                bindings.push(xr::Binding::new(&hands[0].haptics, p));
-            }
-            if let Some(p) = to_path(action.right.as_ref(), instance) {
-                bindings.push(xr::Binding::new(&hands[1].haptics, p));
-            }
-        }
+        add_custom!(profile.click, click, hands, bindings, instance);
 
-        if let Some(action) = profile.scroll {
-            if let Some(p) = to_path(action.left.as_ref(), instance) {
-                bindings.push(xr::Binding::new(&hands[0].scroll, p));
-            }
-            if let Some(p) = to_path(action.right.as_ref(), instance) {
-                bindings.push(xr::Binding::new(&hands[1].scroll, p));
-            }
-        }
+        add_custom!(profile.alt_click, alt_click, hands, bindings, instance);
 
-        add_custom!(
-            profile.click,
-            hands[0].click,
-            hands[1].click,
-            bindings,
-            instance
-        );
+        add_custom!(profile.grab, grab, hands, bindings, instance);
 
-        add_custom!(
-            profile.alt_click,
-            &hands[0].alt_click,
-            &hands[1].alt_click,
-            bindings,
-            instance
-        );
-
-        add_custom!(
-            profile.grab,
-            &hands[0].grab,
-            &hands[1].grab,
-            bindings,
-            instance
-        );
-
-        add_custom!(
-            profile.show_hide,
-            &hands[0].show_hide,
-            &hands[1].show_hide,
-            bindings,
-            instance
-        );
+        add_custom!(profile.show_hide, show_hide, hands, bindings, instance);
 
         add_custom!(
             profile.toggle_dashboard,
-            &hands[0].toggle_dashboard,
-            &hands[1].toggle_dashboard,
+            toggle_dashboard,
+            hands,
             bindings,
             instance
         );
 
-        add_custom!(
-            profile.space_drag,
-            &hands[0].space_drag,
-            &hands[1].space_drag,
-            bindings,
-            instance
-        );
+        add_custom!(profile.space_drag, space_drag, hands, bindings, instance);
 
         add_custom!(
             profile.space_rotate,
-            &hands[0].space_rotate,
-            &hands[1].space_rotate,
+            space_rotate,
+            hands,
             bindings,
             instance
         );
 
-        add_custom!(
-            profile.space_reset,
-            &hands[0].space_reset,
-            &hands[1].space_reset,
-            bindings,
-            instance
-        );
+        add_custom!(profile.space_reset, space_reset, hands, bindings, instance);
 
         add_custom!(
             profile.click_modifier_right,
-            &hands[0].modifier_right,
-            &hands[1].modifier_right,
+            modifier_right,
+            hands,
             bindings,
             instance
         );
 
         add_custom!(
             profile.click_modifier_middle,
-            &hands[0].modifier_middle,
-            &hands[1].modifier_middle,
+            modifier_middle,
+            hands,
             bindings,
             instance
         );
 
-        add_custom!(
-            profile.move_mouse,
-            &hands[0].move_mouse,
-            &hands[1].move_mouse,
-            bindings,
-            instance
-        );
+        add_custom!(profile.move_mouse, move_mouse, hands, bindings, instance);
 
         if instance
             .suggest_interaction_profile_bindings(profile_path, &bindings)
@@ -641,9 +618,16 @@ fn suggest_bindings(instance: &xr::Instance, hands: &[&OpenXrHandSource; 2]) {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+enum OneOrMany<T> {
+    One(T),
+    Many(Vec<T>),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct OpenXrActionConfAction {
-    left: Option<String>,
-    right: Option<String>,
+    left: Option<OneOrMany<String>>,
+    right: Option<OneOrMany<String>>,
     threshold: Option<[f32; 2]>,
     double_click: Option<bool>,
     triple_click: Option<bool>,
