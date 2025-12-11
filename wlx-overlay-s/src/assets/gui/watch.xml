@@ -75,8 +75,22 @@
             <label text="New York" _source="clock" _display="name" _timezone="1" color="~clock_alt2_color" size="~clock_alt_tz_size" weight="bold" />
             <label text="23:59" _source="clock" _display="time" _timezone="1" color="~clock_alt2_color" size="~clock_alt_size" weight="bold" />
           </div>
-          <div flex_direction="column" padding="4">
-
+          <div padding="8" />
+          <div flex_direction="column" padding="4" gap="4">
+            <Button macro="button_style" _press="::NewMirror" tooltip="WATCH.MIRROR" tooltip_side="bottom">
+              <sprite width="40" height="40" color="~set_color" src="edit/mirror.svg" />
+            </Button>
+            <Button macro="button_style" _press="::CleanupMirrors" tooltip="WATCH.CLEANUP_MIRRORS" tooltip_side="bottom">
+              <sprite width="40" height="40" color="~set_color" src="watch/mirror-off.svg" />
+            </Button>
+          </div>
+          <div flex_direction="column" padding="4" gap="4">
+            <Button macro="button_style" _press="::PlayspaceRecenter" tooltip="WATCH.RECENTER" tooltip_side="bottom">
+              <sprite width="40" height="40" color="~set_color" src="watch/recenter.svg" />
+            </Button>
+            <Button macro="button_style" _press="::PlayspaceFixFloor" tooltip="WATCH.FIX-FLOOR" tooltip_side="bottom">
+              <sprite width="40" height="40" color="~set_color" src="watch/fix-floor.svg" />
+            </Button>
           </div>
         </div>
         <div flex_direction="column" id="edit_pane" display="none" >

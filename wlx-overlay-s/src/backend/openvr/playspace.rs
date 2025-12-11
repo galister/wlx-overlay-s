@@ -44,8 +44,11 @@ impl PlayspaceMover {
             PlayspaceTask::FixFloor => {
                 self.fix_floor(chaperone_mgr, &app.input_state);
             }
-            PlayspaceTask::ResetPlayspace => {
+            PlayspaceTask::Reset => {
                 self.reset_offset(chaperone_mgr, &app.input_state);
+            }
+            PlayspaceTask::Recenter => {
+                self.recenter(chaperone_mgr, &app.input_state);
             }
         }
     }
@@ -210,6 +213,28 @@ impl PlayspaceMover {
         };
         let offset = y1.min(y2) - 0.03;
         mat.translation.y += offset;
+
+        set_working_copy(&self.universe, chaperone_mgr, &mat);
+        chaperone_mgr.commit_working_copy(EChaperoneConfigFile::EChaperoneConfigFile_Live);
+
+        if self.drag.is_some() {
+            log::info!("Space drag interrupted by fix floor");
+            self.drag = None;
+        }
+        if self.rotate.is_some() {
+            log::info!("Space rotate interrupted by fix floor");
+            self.rotate = None;
+        }
+    }
+
+    pub fn recenter(&mut self, chaperone_mgr: &mut ChaperoneSetupManager, input: &InputState) {
+        let Some(mut mat) = get_working_copy(&self.universe, chaperone_mgr) else {
+            log::warn!("Can't fix floor - failed to get zero pose");
+            return;
+        };
+
+        mat.translation.x += input.hmd.translation.x;
+        mat.translation.z += input.hmd.translation.z;
 
         set_working_copy(&self.universe, chaperone_mgr, &mat);
         chaperone_mgr.commit_working_copy(EChaperoneConfigFile::EChaperoneConfigFile_Live);

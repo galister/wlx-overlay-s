@@ -49,7 +49,8 @@ pub enum OpenVrTask {
 }
 
 pub enum PlayspaceTask {
-    ResetPlayspace,
+    Recenter,
+    Reset,
     FixFloor,
 }
 
@@ -61,6 +62,7 @@ pub enum OverlayTask {
     DeleteActiveSet,
     ToggleEditMode,
     ShowHide,
+    CleanupMirrors,
     Modify(OverlaySelector, Box<ModifyOverlayTask>),
     Create(OverlaySelector, Box<CreateOverlayTask>),
     Drop(OverlaySelector),

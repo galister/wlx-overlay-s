@@ -2,7 +2,8 @@ use std::{
     cell::RefCell,
     io::BufReader,
     process::{Child, ChildStdout},
-    sync::Arc,
+    sync::{atomic::Ordering, Arc},
+    time::{Duration, Instant},
 };
 
 use wgui::{
@@ -11,11 +12,17 @@ use wgui::{
     parser::CustomAttribsInfoOwned,
     widget::EventResult,
 };
+use wlx_common::overlays::ToastTopic;
 
 use crate::{
-    backend::task::{OverlayTask, TaskType},
+    backend::task::{OverlayTask, PlayspaceTask, TaskType},
+    overlays::{
+        mirror::{new_mirror, new_mirror_name},
+        toast::Toast,
+    },
     state::AppState,
     windowing::OverlaySelector,
+    RUNNING,
 };
 
 #[cfg(feature = "wayvr")]
@@ -87,9 +94,49 @@ pub(super) fn setup_custom_button<S: 'static>(
                     .enqueue(TaskType::Overlay(OverlayTask::ToggleEditMode));
                 Ok(EventResult::Consumed)
             }),
-            "::WatchHide" => todo!(),
-            "::WatchSwapHand" => todo!(),
-            // TODO
+            "::NewMirror" => Box::new(move |_common, _data, app, _| {
+                let name = new_mirror_name();
+                app.tasks.enqueue(TaskType::Overlay(OverlayTask::Create(
+                    OverlaySelector::Name(name.clone()),
+                    Box::new(move |app| Some(new_mirror(name, &app.session))),
+                )));
+                Ok(EventResult::Consumed)
+            }),
+            "::CleanupMirrors" => Box::new(move |_common, _data, app, _| {
+                app.tasks
+                    .enqueue(TaskType::Overlay(OverlayTask::CleanupMirrors));
+                Ok(EventResult::Consumed)
+            }),
+            "::PlayspaceReset" => Box::new(move |_common, _data, app, _| {
+                app.tasks.enqueue(TaskType::Playspace(PlayspaceTask::Reset));
+                Ok(EventResult::Consumed)
+            }),
+            "::PlayspaceRecenter" => Box::new(move |_common, _data, app, _| {
+                app.tasks
+                    .enqueue(TaskType::Playspace(PlayspaceTask::Recenter));
+                Ok(EventResult::Consumed)
+            }),
+            "::PlayspaceFixFloor" => Box::new(move |_common, _data, app, _| {
+                for i in 0..5 {
+                    Toast::new(
+                        ToastTopic::System,
+                        format!("Fixing floor in {}", 5 - i).into(),
+                        "Touch your controller to the floor!".into(),
+                    )
+                    .with_timeout(1.)
+                    .with_sound(true)
+                    .submit_at(app, Instant::now() + Duration::from_secs(i));
+                }
+                app.tasks.enqueue_at(
+                    TaskType::Playspace(PlayspaceTask::FixFloor),
+                    Instant::now() + Duration::from_secs(5),
+                );
+                Ok(EventResult::Consumed)
+            }),
+            "::Shutdown" => Box::new(move |_common, _data, _app, _| {
+                RUNNING.store(false, Ordering::Relaxed);
+                Ok(EventResult::Consumed)
+            }),
             #[allow(clippy::match_same_arms)]
             "::OscSend" => return,
             // shell

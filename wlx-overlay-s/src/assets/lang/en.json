@@ -1,5 +1,9 @@
 {
   "WATCH": {
+    "MIRROR": "Add a new mirror overlay",
+    "CLEANUP_MIRRORS": "Remove mirrors that are\nnot currently visible",
+    "RECENTER": "Recenter playspace",
+    "FIX-FLOOR": "Fix floor height",
     "DASHBOARD": "Dashboard",
     "EDIT_MODE": "Edit Mode",
     "ADD_NEW_SET": "Add a new set",

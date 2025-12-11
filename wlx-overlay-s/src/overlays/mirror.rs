@@ -1,10 +1,13 @@
 use std::{
-    sync::Arc,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
     task::{Context, Poll},
 };
 
 use futures::{Future, FutureExt};
-use glam::{Affine2, Affine3A, Vec3};
+use glam::{vec3, Affine2, Affine3A, Quat, Vec3};
 use wlx_capture::pipewire::{pipewire_select_screen, PipewireCapture, PipewireSelectScreenResult};
 use wlx_common::windowing::OverlayWindowState;
 
@@ -29,6 +32,8 @@ use super::screen::backend::ScreenBackend;
 type PinnedSelectorFuture = core::pin::Pin<
     Box<dyn Future<Output = Result<PipewireSelectScreenResult, wlx_capture::pipewire::AshpdError>>>,
 >;
+
+static MIRROR_COUNTER: AtomicUsize = AtomicUsize::new(1);
 
 pub struct MirrorBackend {
     name: Arc<str>,
@@ -149,14 +154,24 @@ impl OverlayBackend for MirrorBackend {
     }
 }
 
+pub fn new_mirror_name() -> Arc<str> {
+    format!("M-{}", MIRROR_COUNTER.fetch_add(1, Ordering::Relaxed)).into()
+}
+
 pub fn new_mirror(name: Arc<str>, session: &AppSession) -> OverlayWindowConfig {
     OverlayWindowConfig {
         name: name.clone(),
         category: OverlayCategory::Mirror,
+        show_on_spawn: true,
         default_state: OverlayWindowState {
             interactable: true,
             grabbable: true,
-            transform: Affine3A::from_scale(Vec3::ONE * 0.5 * session.config.desktop_view_scale),
+            curvature: Some(0.15),
+            transform: Affine3A::from_scale_rotation_translation(
+                Vec3::ONE * session.config.desktop_view_scale,
+                Quat::IDENTITY,
+                vec3(0.0, 0.2, -0.35),
+            ),
             ..OverlayWindowState::default()
         },
         ..OverlayWindowConfig::from_backend(Box::new(MirrorBackend::new(name)))

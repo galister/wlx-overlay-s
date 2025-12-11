@@ -187,6 +187,22 @@ where
                         .notify(app, OverlayEventData::NumSetsChanged(len))?;
                 }
             }
+            OverlayTask::CleanupMirrors => {
+                let mut ids_to_remove = vec![];
+                for (oid, o) in self.overlays.iter() {
+                    if !matches!(o.config.category, OverlayCategory::Mirror) {
+                        continue;
+                    }
+                    if o.config.active_state.is_some() {
+                        continue;
+                    }
+                    ids_to_remove.push(oid);
+                }
+
+                for oid in ids_to_remove {
+                    self.remove_by_selector(&OverlaySelector::Id(oid), app);
+                }
+            }
             OverlayTask::Modify(sel, f) => {
                 if let Some(o) = self.mut_by_selector(&sel) {
                     f(app, &mut o.config);
@@ -216,10 +232,11 @@ where
             OverlayTask::Drop(sel) => {
                 if let Some(o) = self.mut_by_selector(&sel)
                     && o.birthframe < FRAME_COUNTER.load(Ordering::Relaxed)
-                    && let Some(o) = self.remove_by_selector(&sel, app) {
-                        log::debug!("Dropping overlay {}", o.config.name);
-                        self.dropped_overlays.push_back(o);
-                    }
+                    && let Some(o) = self.remove_by_selector(&sel, app)
+                {
+                    log::debug!("Dropping overlay {}", o.config.name);
+                    self.dropped_overlays.push_back(o);
+                }
             }
         }
         Ok(())

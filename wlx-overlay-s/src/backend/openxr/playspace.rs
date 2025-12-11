@@ -48,8 +48,11 @@ impl PlayspaceMover {
             PlayspaceTask::FixFloor => {
                 self.fix_floor(&app.input_state, monado);
             }
-            PlayspaceTask::ResetPlayspace => {
+            PlayspaceTask::Reset => {
                 self.reset_offset(monado);
+            }
+            PlayspaceTask::Recenter => {
+                self.recenter(&app.input_state, monado);
             }
         }
     }
@@ -173,6 +176,31 @@ impl PlayspaceMover {
         }
     }
 
+    pub fn recenter(&mut self, input: &InputState, monado: &mut Monado) {
+        if self.drag.is_some() {
+            log::info!("Space drag interrupted by recenter");
+            self.drag = None;
+        }
+        if self.rotate.is_some() {
+            log::info!("Space rotate interrupted by recenter");
+            self.rotate = None;
+        }
+
+        let Ok(mut pose) = monado
+            .get_reference_space_offset(ReferenceSpaceType::Stage)
+            .inspect_err(|e| log::warn!("Could not recenter due to libmonado error: {e:?}"))
+        else {
+            return;
+        };
+
+        pose.position.x += input.hmd.translation.x;
+        pose.position.z += input.hmd.translation.z;
+
+        let _ = monado
+            .set_reference_space_offset(ReferenceSpaceType::Stage, pose)
+            .inspect_err(|e| log::warn!("Could not recenter due to libmonado error: {e:?}"));
+    }
+
     pub fn reset_offset(&mut self, monado: &mut Monado) {
         if self.drag.is_some() {
             log::info!("Space drag interrupted by manual reset");
@@ -197,11 +225,22 @@ impl PlayspaceMover {
             self.rotate = None;
         }
 
+        let Ok(mut pose) = monado
+            .get_reference_space_offset(ReferenceSpaceType::Stage)
+            .inspect_err(|e| log::warn!("Could not fix floor due to libmonado error: {e:?}"))
+        else {
+            return;
+        };
+
         let y1 = input.pointers[0].raw_pose.translation.y;
         let y2 = input.pointers[1].raw_pose.translation.y;
         let delta = y1.min(y2) - 0.03;
-        self.last_transform.translation.y += delta;
-        apply_offset(self.last_transform, monado);
+
+        pose.position.y += delta;
+
+        let _ = monado
+            .set_reference_space_offset(ReferenceSpaceType::Stage, pose)
+            .inspect_err(|e| log::warn!("Could not fix floor due to libmonado error: {e:?}"));
     }
 }
 
