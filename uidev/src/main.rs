@@ -1,3 +1,4 @@
+use anyhow::Context;
 use glam::{vec2, Vec2};
 use std::sync::Arc;
 use testbed::{testbed_any::TestbedAny, Testbed};
@@ -406,25 +407,43 @@ fn swapchain_create_info(
 		.surface_capabilities(&surface, SurfaceInfo::default())
 		.unwrap(); // want panic
 
-	let composite_alpha = if surface_capabilities
-		.supported_composite_alpha
-		.contains_enum(CompositeAlpha::PreMultiplied)
-	{
-		CompositeAlpha::PreMultiplied
-	} else {
-		log::warn!("Possible GPU driver issue: VkSurfaceCapabilitiesKHR supported_composite_alpha doesn't have PRE_MULTIPLIED! Desktop window will be blended using a fallback method and may look different.");
-		surface_capabilities
+	let mut composite_alpha = None;
+	for c in [
+		CompositeAlpha::PreMultiplied,
+		CompositeAlpha::PostMultiplied,
+		CompositeAlpha::Opaque,
+	] {
+		if surface_capabilities
 			.supported_composite_alpha
-			.into_iter()
-			.next()
-			.expect(
-				"No supported_composite_alpha available on VkSurfaceCapabilitiesKHR. Possible GPU driver issue?",
-			)
-	};
+			.contains_enum(c)
+		{
+			composite_alpha = Some(c);
+			break;
+		}
+		log::warn!("GPU driver doesn't support {c:?} compositeAlpha! Desktop window will be blended using a fallback method and may look different than in VR.");
+	}
+	let composite_alpha = composite_alpha
+		.expect("GPU driver issue: VkSurfaceCapabilitiesKHR has empty supportedCompositeAlpha.");
+
+	let present_modes = graphics
+		.device
+		.physical_device()
+		.surface_present_modes(&surface, SurfaceInfo::default())
+		.expect("Could not get GPU present modes for VKSurface.");
+
+	let mut present_mode = None;
+	for pm in [PresentMode::Mailbox, PresentMode::Fifo] {
+		if present_modes.contains(&pm) {
+			present_mode = Some(pm);
+			break;
+		}
+		log::warn!("GPU driver doesn't support {pm:?} presentMode! Desktop window may have a higher latency and/or glitch during grab/resize.");
+	}
+	let present_mode = present_mode.expect("GPU driver issue: VkPresentModeKHR FIFO is not supported even though it's required by Vulkan spec.");
 
 	SwapchainCreateInfo {
 		min_image_count: surface_capabilities.min_image_count.max(2),
-		present_mode: PresentMode::Mailbox,
+		present_mode,
 		image_format: format,
 		image_extent: extent,
 		image_usage: ImageUsage::COLOR_ATTACHMENT,
