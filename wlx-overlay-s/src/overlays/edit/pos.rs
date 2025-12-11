@@ -61,9 +61,9 @@ impl PositioningHandler {
             buttons.insert(
                 *name,
                 Rc::new(PosButtonState {
-                    component,
                     name,
                     sprite,
+                    component,
                     positioning,
                     has_interpolation,
                 }),

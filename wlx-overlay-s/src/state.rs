@@ -104,7 +104,7 @@ impl AppState {
                 Box::new(gui::asset::GuiAsset {}),
                 wgui::globals::Defaults::default(),
                 &WguiFontConfig::default(),
-                get_config_file_path(&*theme),
+                get_config_file_path(&theme),
             )?,
 
             #[cfg(feature = "osc")]

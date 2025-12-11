@@ -104,7 +104,7 @@ impl OverlayWindowConfig {
         }
     }
 
-    pub fn is_active(&self) -> bool {
+    pub const fn is_active(&self) -> bool {
         self.active_state.is_some()
     }
 

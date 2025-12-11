@@ -216,12 +216,10 @@ where
             OverlayTask::Drop(sel) => {
                 if let Some(o) = self.mut_by_selector(&sel)
                     && o.birthframe < FRAME_COUNTER.load(Ordering::Relaxed)
-                {
-                    if let Some(o) = self.remove_by_selector(&sel, app) {
+                    && let Some(o) = self.remove_by_selector(&sel, app) {
                         log::debug!("Dropping overlay {}", o.config.name);
                         self.dropped_overlays.push_back(o);
                     }
-                }
             }
         }
         Ok(())
@@ -258,7 +256,7 @@ impl<T> OverlayWindowManager<T> {
                 .collect();
 
             // overlays that we haven't seen since startup (e.g. wayvr apps)
-            for (k, o) in set.inactive_overlays.iter() {
+            for (k, o) in &set.inactive_overlays {
                 if !overlays.contains_key(k) {
                     overlays.insert(k.clone(), o.clone());
                 }
@@ -311,8 +309,8 @@ impl<T> OverlayWindowManager<T> {
             let mut overlays = SecondaryMap::new();
             let mut inactive_overlays = AStrMap::new();
 
-            for (name, o) in s.overlays.iter() {
-                if let Some(id) = self.lookup(&*name) {
+            for (name, o) in &s.overlays {
+                if let Some(id) = self.lookup(name) {
                     log::debug!("set {i}: loaded state for {name}");
                     overlays.insert(id, o.clone());
                 } else {
@@ -477,7 +475,7 @@ impl<T> OverlayWindowManager<T> {
 
         if !global {
             for (i, set) in self.sets.iter_mut().enumerate() {
-                let Some(mut state) = set.inactive_overlays.arc_rm(&*name) else {
+                let Some(mut state) = set.inactive_overlays.arc_rm(&name) else {
                     continue;
                 };
                 if self.current_set == Some(i) {
@@ -495,7 +493,7 @@ impl<T> OverlayWindowManager<T> {
         }
 
         if !shown && show_on_spawn {
-            log::debug!("activating {} due to show_on_spawn", name);
+            log::debug!("activating {name} due to show_on_spawn");
             self.overlays[oid].config.activate(app);
         }
         if !internal && let Err(e) = self.overlays_changed(app) {

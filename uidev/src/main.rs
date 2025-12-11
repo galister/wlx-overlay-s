@@ -1,4 +1,3 @@
-use anyhow::Context;
 use glam::{vec2, Vec2};
 use std::sync::Arc;
 use testbed::{testbed_any::TestbedAny, Testbed};

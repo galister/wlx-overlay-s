@@ -235,7 +235,7 @@ impl OverlayBackend for ScreenBackend {
                 MOUSE_RIGHT => MOUSE_LEFT,
                 other => other,
             };
-        };
+        }
 
         if pressed {
             set_next_move(u64::from(app.session.config.click_freeze_time_ms));

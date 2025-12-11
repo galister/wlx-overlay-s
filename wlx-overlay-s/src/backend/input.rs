@@ -235,7 +235,7 @@ impl Pointer {
         }
     }
 
-    pub fn hand(&self) -> Option<LeftRight> {
+    pub const fn hand(&self) -> Option<LeftRight> {
         match self.idx {
             0 => Some(LeftRight::Left),
             1 => Some(LeftRight::Right),
@@ -679,12 +679,12 @@ where
                 // single grab push/pull
                 grab_data.offset.translation.z -= pointer.now.scroll_y * 0.05;
             }
-            if !pointer.now.click_modifier_right {
+            if pointer.now.click_modifier_right {
+                app.anchor = pointer.pose * grab_data.offset;
+            } else {
                 app.anchor.translation =
                     pointer.pose.transform_point3a(grab_data.offset.translation);
                 realign(&mut app.anchor, &app.input_state.hmd);
-            } else {
-                app.anchor = pointer.pose * grab_data.offset;
             }
         } else {
             // single grab resize
@@ -695,12 +695,12 @@ where
                 // single grab push/pull
                 grab_data.offset.translation.z -= pointer.now.scroll_y * 0.05;
             }
-            if !pointer.now.click_modifier_right {
+            if pointer.now.click_modifier_right {
+                overlay_state.transform = pointer.pose * grab_data.offset;
+            } else {
                 overlay_state.transform.translation =
                     pointer.pose.transform_point3a(grab_data.offset.translation);
                 realign(&mut overlay_state.transform, &app.input_state.hmd);
-            } else {
-                overlay_state.transform = pointer.pose * grab_data.offset;
             }
             overlay.config.pause_movement = true;
             overlay.config.dirty = true;
