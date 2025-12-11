@@ -88,15 +88,14 @@
             <Button macro="button_style" _press="::PlayspaceRecenter" tooltip="WATCH.RECENTER" tooltip_side="bottom">
               <sprite width="40" height="40" color="~set_color" src="watch/recenter.svg" />
             </Button>
-            <Button macro="button_style" _press="::PlayspaceFixFloor" tooltip="WATCH.FIX-FLOOR" tooltip_side="bottom">
+            <Button macro="button_style" _press="::PlayspaceFixFloor" tooltip="WATCH.FIX_FLOOR" tooltip_side="bottom">
               <sprite width="40" height="40" color="~set_color" src="watch/fix-floor.svg" />
             </Button>
           </div>
         </div>
         <div flex_direction="column" id="edit_pane" display="none" >
           <div flex_direction="column" padding="4" align_items="center" justify_content="center">
-            <label text="Overlays can now be moved and tuned individually." />
-            <label text="Control which overlays are visible on this set:" />
+            <label translation="WATCH.EDIT_MODE_EXPLANATION" align="center" />
           </div>
           <div flex_direction="row" flex_wrap="wrap" padding="4" align_items="center" justify_content="center" id="toolbox">
             <Button macro="button_style" padding="4" translation="Keyboard" tooltip="WATCH.TOGGLE_FOR_CURRENT_SET" _press="::OverlayToggle kbd" />

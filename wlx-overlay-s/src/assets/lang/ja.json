@@ -1,5 +1,13 @@
 {
+  "ANCHOR": {
+    "CENTER": "センター"
+  },
   "WATCH": {
+    "MIRROR": "新しいミラーオーバーレイを追加",
+    "CLEANUP_MIRRORS": "現在表示されていないミラーを削除",
+    "RECENTER": "プレイスペースをリセンター",
+    "FIX_FLOOR": "床の高さを修正",
+    "EDIT_MODE_EXPLANATION": "オーバーレイは個別に移動および調整できます。\n現在のセットのオーバーレイを切り替え：",
     "DASHBOARD": "ダッシュボード",
     "EDIT_MODE": "編集モード",
     "ADD_NEW_SET": "新しいセットを追加",
@@ -25,6 +33,7 @@
     "POS_FLOATING": "フローティング：その場に留まり、表示されるときに再センタリングされます。",
     "POS_HMD": "HMD に追従する。",
     "POS_HAND_L": "左手に追従する。",
-    "POS_HAND_R": "右手に追従する。"
+    "POS_HAND_R": "右手に追従する。",
+    "INTERPOLATION": "補間"
   }
 }

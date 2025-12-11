@@ -1,9 +1,13 @@
 {
+  "ANCHOR": {
+    "CENTER": "Center"
+  },
   "WATCH": {
     "MIRROR": "Add a new mirror overlay",
     "CLEANUP_MIRRORS": "Remove mirrors that are\nnot currently visible",
     "RECENTER": "Recenter playspace",
-    "FIX-FLOOR": "Fix floor height",
+    "FIX_FLOOR": "Fix floor level",
+    "EDIT_MODE_EXPLANATION": "Overlays can now be moved and tuned individually.\nControl which overlays are visible on this set:",
     "DASHBOARD": "Dashboard",
     "EDIT_MODE": "Edit Mode",
     "ADD_NEW_SET": "Add a new set",

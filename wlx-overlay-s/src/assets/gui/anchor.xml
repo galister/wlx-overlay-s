@@ -10,7 +10,7 @@
       align_items="center"
       justify_content="center">
 
-      <label color="#FFFF00" size="36" text="Center" weight="bold" />
+      <label color="#FFFF00" size="36" translation="ANCHOR.CENTER" weight="bold" />
 
     </rectangle>
     </div>

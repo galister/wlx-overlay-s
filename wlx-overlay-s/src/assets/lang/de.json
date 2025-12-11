@@ -1,5 +1,13 @@
 {
+  "ANCHOR": {
+    "CENTER": "Zentrum"
+  },
   "WATCH": {
+    "MIRROR": "Neuen Spiegel-Overlay hinzufügen",
+    "CLEANUP_MIRRORS": "Spiegel entfernen,\ndie derzeit nicht sichtbar sind",
+    "RECENTER": "Spielbereich neu zentrieren",
+    "FIX_FLOOR": "Bodenhöhe korrigieren",
+    "EDIT_MODE_EXPLANATION": "Overlays können nun einzeln verschoben und angepasst werden.\nOverlays für das aktuelle Set umschalten:",
     "DASHBOARD": "Armaturenbrett",
     "EDIT_MODE": "Bearbeitungsmodus",
     "ADD_NEW_SET": "Neuen Satz hinzufügen",
@@ -25,6 +33,7 @@
     "POS_FLOATING": "Schwebend: Bleibt an Ort und Stelle, wird beim Anzeigen neu zentriert.",
     "POS_HMD": "Folge dem HMD.",
     "POS_HAND_L": "Folge der linken Hand.",
-    "POS_HAND_R": "Folge der rechten Hand."
+    "POS_HAND_R": "Folge der rechten Hand.",
+    "INTERPOLATION": "Interpolation"
   }
 }

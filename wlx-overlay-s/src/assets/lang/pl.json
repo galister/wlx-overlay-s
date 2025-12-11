@@ -1,5 +1,13 @@
 {
+  "ANCHOR": {
+    "CENTER": "Centrum"
+  },
   "WATCH": {
+    "MIRROR": "Dodaj nową nakładkę lustrzaną",
+    "CLEANUP_MIRRORS": "Usuń lustra, które\nnie są obecnie widoczne",
+    "RECENTER": "Wyśrodkuj przestrzeń gry",
+    "FIX_FLOOR": "Napraw wysokość podłogi",
+    "EDIT_MODE_EXPLANATION": "Nakładki można teraz przesuwać i dostosowywać indywidualnie.\nPrzełącz nakładki dla bieżącego zestawu:",
     "DASHBOARD": "Pulpit",
     "EDIT_MODE": "Tryb edycji",
     "ADD_NEW_SET": "Dodaj nowy zestaw",
@@ -25,6 +33,7 @@
     "POS_FLOATING": "Pływające: Pozostaje w miejscu, ponownie się wyśrodkowuje po pokazaniu.",
     "POS_HMD": "Podążaj za HMD.",
     "POS_HAND_L": "Podążaj za lewą dłonią.",
-    "POS_HAND_R": "Podążaj za prawą dłonią."
+    "POS_HAND_R": "Podążaj za prawą dłonią.",
+    "INTERPOLATION": "Interpolacja"
   }
 }

@@ -1,5 +1,13 @@
 {
+  "ANCHOR": {
+    "CENTER": "Centro"
+  },
   "WATCH": {
+    "MIRROR": "Agregar una nueva superposición de espejo",
+    "CLEANUP_MIRRORS": "Eliminar espejos que no están actualmente visibles",
+    "RECENTER": "Recentrar el área de juego",
+    "FIX_FLOOR": "Ajustar la altura del piso",
+    "EDIT_MODE_EXPLANATION": "Ahora las superposiciones se pueden mover y ajustar individualmente.\nAlternar superposiciones para el conjunto actual:",
     "DASHBOARD": "Panel de control",
     "EDIT_MODE": "Modo de edición",
     "ADD_NEW_SET": "Añadir un nuevo conjunto",
@@ -25,6 +33,7 @@
     "POS_FLOATING": "Flotante: Permanece en su lugar, se recentra cuando se muestra.",
     "POS_HMD": "Seguir el HMD.",
     "POS_HAND_L": "Seguir la mano izquierda.",
-    "POS_HAND_R": "Seguir la mano derecha."
+    "POS_HAND_R": "Seguir la mano derecha.",
+    "INTERPOLATION": "Interpolación"
   }
 }
