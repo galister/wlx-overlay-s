@@ -490,7 +490,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                 }
                 TaskType::Playspace(task) => {
                     if let (Some(playspace), Some(monado)) = (playspace.as_mut(), monado.as_mut()) {
-                        playspace.handle_task(&mut app, monado, task);
+                        playspace.handle_task(&app, monado, task);
                     }
                 }
                 #[cfg(feature = "openvr")]

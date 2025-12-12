@@ -210,11 +210,10 @@ fn shell_on_tick(
             label.set_text(common, Translation::from_raw_text(&text));
         }
 
-        if reader.is_finished() {
-            if !mut_state.reader.take().unwrap().is_success() {
+        if reader.is_finished()
+            && !mut_state.reader.take().unwrap().is_success() {
                 mut_state.next_try = Instant::now() + Duration::from_secs(15);
             }
-        }
         return Ok(());
     } else if mut_state.next_try > Instant::now() {
         return Ok(());
@@ -229,7 +228,7 @@ fn shell_on_tick(
 
     mut_state.reader = Some(PipeReaderThread::new_from_child(child));
 
-    return Ok(());
+    Ok(())
 }
 
 struct FifoLabelState {
@@ -303,11 +302,10 @@ fn fifo_on_tick(
         label.set_text(common, Translation::from_raw_text(&text));
     }
 
-    if reader.is_finished() {
-        if !mut_state.reader.take().unwrap().is_success() {
+    if reader.is_finished()
+        && !mut_state.reader.take().unwrap().is_success() {
             mut_state.next_try = Instant::now() + Duration::from_secs(15);
         }
-    }
 }
 
 const BAT_LOW: drawing::Color = drawing::Color::new(0.69, 0.38, 0.38, 1.);

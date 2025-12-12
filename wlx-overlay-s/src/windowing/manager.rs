@@ -189,7 +189,7 @@ where
             }
             OverlayTask::CleanupMirrors => {
                 let mut ids_to_remove = vec![];
-                for (oid, o) in self.overlays.iter() {
+                for (oid, o) in &self.overlays {
                     if !matches!(o.config.category, OverlayCategory::Mirror) {
                         continue;
                     }

@@ -123,7 +123,7 @@ pub(super) fn setup_custom_button<S: 'static>(
                 for i in 0..5 {
                     Toast::new(
                         ToastTopic::System,
-                        format!("Fixing floor in {}", 5 - i).into(),
+                        format!("Fixing floor in {}", 5 - i),
                         "Touch your controller to the floor!".into(),
                     )
                     .with_timeout(1.)
@@ -141,7 +141,7 @@ pub(super) fn setup_custom_button<S: 'static>(
                 Ok(EventResult::Consumed)
             }),
             "::ShellExec" => {
-                let state = Arc::new(ShellButtonState {
+                let state = Rc::new(ShellButtonState {
                     button: button.clone(),
                     exec: args.fold(String::new(), |c, n| c + " " + n),
                     mut_state: RefCell::new(ShellButtonMutableState::default()),
@@ -171,7 +171,7 @@ pub(super) fn setup_custom_button<S: 'static>(
             "::OscSend" => {
                 use crate::subsystem::osc::parse_osc_value;
 
-                let Some(address) = args.next().map(|s| s.to_string()) else {
+                let Some(address) = args.next().map(std::string::ToString::to_string) else {
                     log::error!("{command} has missing arguments");
                     return;
                 };
@@ -248,7 +248,7 @@ fn shell_on_action(state: &ShellButtonState) -> anyhow::Result<()> {
     mut_state.pid = Some(child.id());
     mut_state.reader = Some(PipeReaderThread::new_from_child(child));
 
-    return Ok(());
+    Ok(())
 }
 
 fn shell_on_tick(state: &ShellButtonState, common: &mut event::CallbackDataCommon, piped: bool) {

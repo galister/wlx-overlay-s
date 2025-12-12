@@ -58,7 +58,7 @@ impl PipeReaderThread {
                 }
                 c.wait()
                     .inspect_err(|e| log::error!("Failed to wait for child process: {e:?}"))
-                    .map_or(false, |c| c.success())
+                    .is_ok_and(|c| c.success())
             }
         });
 
@@ -112,7 +112,7 @@ impl PipeReaderThread {
         self.handle.is_finished()
     }
 
-    pub fn is_success(self) -> bool {
+    pub fn check_success(self) -> bool {
         self.handle.join().unwrap_or(false)
     }
 }

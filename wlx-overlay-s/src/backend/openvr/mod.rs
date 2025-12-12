@@ -208,7 +208,7 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                     overlays.handle_task(&mut app, task)?;
                 }
                 TaskType::Playspace(task) => {
-                    playspace.handle_task(&mut app, &mut chaperone_mgr, task);
+                    playspace.handle_task(&app, &mut chaperone_mgr, task);
                 }
                 TaskType::OpenVR(task) => match task {
                     OpenVrTask::ColorGain(channel, value) => {
