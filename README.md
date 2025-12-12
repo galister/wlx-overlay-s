@@ -25,8 +25,8 @@ There are multiple ways to install WlxOverlay-S:
 1. AppImage: Download from [Releases](https://github.com/galister/wlx-overlay-s/releases)
 1. AUR package: [wlx-overlay-s-git](https://aur.archlinux.org/packages/wlx-overlay-s-git)
 1. Homebrew:
-  1. Add AtomicXR tap: `brew tap matrixfurry.com/atomicxr https://tangled.sh/@matrixfurry.com/homebrew-atomicxr`
-  1. Install WlxOverlay-S: `brew install wlx-overlay-s`
+  - Add AtomicXR tap: `brew tap matrixfurry.com/atomicxr https://tangled.sh/@matrixfurry.com/homebrew-atomicxr`
+  - Install WlxOverlay-S: `brew install wlx-overlay-s`
 1. [Building from source](https://github.com/galister/wlx-overlay-s/wiki/Building-from-Source).
 
 ### General Setup
