@@ -17,8 +17,8 @@ use wgui::{
     event::{self, EventCallback},
     i18n::Translation,
     layout::Layout,
-    parser::{CustomAttribsInfoOwned, parse_color_hex},
-    widget::{EventResult, label::WidgetLabel},
+    parser::{parse_color_hex, CustomAttribsInfoOwned},
+    widget::{label::WidgetLabel, EventResult},
 };
 
 use crate::{gui::panel::helper::PipeReaderThread, state::AppState};
@@ -210,7 +210,7 @@ fn shell_on_tick(
             label.set_text(common, Translation::from_raw_text(&text));
         }
 
-        if reader.is_finished() && !mut_state.reader.take().unwrap().is_success() {
+        if reader.is_finished() && !mut_state.reader.take().unwrap().check_success() {
             mut_state.next_try = Instant::now() + Duration::from_secs(15);
         }
         return Ok(());
@@ -301,7 +301,7 @@ fn fifo_on_tick(
         label.set_text(common, Translation::from_raw_text(&text));
     }
 
-    if reader.is_finished() && !mut_state.reader.take().unwrap().is_success() {
+    if reader.is_finished() && !mut_state.reader.take().unwrap().check_success() {
         mut_state.next_try = Instant::now() + Duration::from_secs(15);
     }
 }
