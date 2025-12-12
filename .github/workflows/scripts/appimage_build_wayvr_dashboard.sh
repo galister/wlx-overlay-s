@@ -1,9 +1,14 @@
 #!/bin/sh
-git clone --depth=1 https://github.com/olekolek1000/wayvr-dashboard.git wayvr-dashboard
+WAYVR_DASHBOARD_PATH="/tmp/wayvr-dashboard"
 
 WLX_DIR=$(realpath $(pwd))
 
-cd wayvr-dashboard
+# built wayvr-dashboard binary executable path
+DASH_PATH="${WAYVR_DASHBOARD_PATH}/temp/wayvr-dashboard"
+
+git clone --depth=1 https://github.com/olekolek1000/wayvr-dashboard.git ${WAYVR_DASHBOARD_PATH}
+
+cd ${WAYVR_DASHBOARD_PATH}
 .github/workflows/build.sh
 
 # See https://github.com/olekolek1000/wayvr-dashboard/blob/master/.github/workflows/appimage.sh
@@ -27,7 +32,6 @@ sed -i -e "s|/usr|././|g" "${TARGET_WEBKIT_SO}"
 
 cd ${WLX_DIR}
 
-DASH_PATH="${WLX_DIR}/wayvr-dashboard/temp/wayvr-dashboard"
 chmod +x ${DASH_PATH}
 
 # Put resulting executable into wlx AppDir
