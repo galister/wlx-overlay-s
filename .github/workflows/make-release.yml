@@ -27,7 +27,7 @@ jobs:
       - name: Cargo Build
         run: |
           cargo build --release
-          cp target/release/wlx-overlay-s ${APPDIR}/usr/bin
+          cp ../target/release/wlx-overlay-s ${APPDIR}/usr/bin
           chmod +x ${APPDIR}/usr/bin/wlx-overlay-s
 
       - name: Package AppImage
@@ -60,7 +60,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.RELEASE_KEY }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: target/release/wlx-overlay-s
+          asset_path: ../target/release/wlx-overlay-s
           asset_name: wlx-overlay-s
           asset_content_type: application/octet-stream
 

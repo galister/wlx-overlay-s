@@ -57,7 +57,7 @@ modules:
     build-commands:
       - cargo --offline fetch --manifest-path Cargo.toml --verbose
       - cargo --offline build --release --no-default-features --features=openxr,x11,wayland --verbose
-      - install -Dm755 ./target/release/wlx-overlay-s -t /app/bin/
+      - install -Dm755 ../target/release/wlx-overlay-s -t /app/bin/
     sources:
       - type: dir
         path: ..
