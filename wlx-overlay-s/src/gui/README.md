@@ -1,12 +1,12 @@
 # WayVR GUI Customization
 
-Place custom XML files under ~/.config/wayvr/gui
+When customizing the watch, keyboard, dashboard, etc; place custom XML files under ~/.config/wlxoverlay/theme/gui
 
 ## Custom timezones, 12 vs 24-hour clock
 
 These are not done via the GUI system, but via the regular config.
 
-Create `~/.config/wayvr/conf.d/clock.yaml` as such:
+Create `~/.config/wlxoverlay/conf.d/clock.yaml` as such:
 
 ```yaml
 timezones:
@@ -28,7 +28,9 @@ There is usually no need to specify your own local timezone in here; omitting `_
 
 #### Clock label
 
-Clock labels are driven by the current time. Available display values are: `name` (timezone name), `time`, `date`, `dow`
+Clock labels are driven by the current time, adhering to the user's 12/24 hour setting as well as timezone settings.
+
+Available display values are: `name` (timezone name), `time`, `date`, `dow`
 
 See the Custom Timezones section for more info on timezones. Skip `_timezone` to use local time.
 
@@ -40,10 +42,9 @@ See the Custom Timezones section for more info on timezones. Skip `_timezone` to
 
 Fifo label creates a fifo on your system that other programs can pipe output into.
 
-- The label will look for the last line that has a trailing `\n` and display it as its text.
-- The pipe is only actively read while the HMD is active.
-  - If the producer fills up the pipe buffer before the headset is activated, a SIGPIPE will be sent to the producer, which shall be handled gracefully.
-- If the pipe breaks for any reason, re-creation is attempted after 15 seconds.
+- The label will look for the last complete line to use as its text.
+- If the pipe breaks due to an IO error, re-creation is attempted after 15 seconds.
+- `_path` supports environment variables, but not `~`!
 
 ```xml
 <label _source="fifo" _path="$XDG_RUNTIME_DIR/my-test-label" [...] />
@@ -59,11 +60,11 @@ for i in {0..99}; do echo "i is $i" > $XDG_RUNTIME_DIR/my-test-label; sleep 1; d
 This label executes a shell script using the `sh` shell.
 
 - Write lines to the script's stdout to update the label text.
-- The label will look for the last line that has a trailing `\n` and display it as its text.
-- Long-running scripts are allowed, but the stdout buffer is only read from while the headset is active.
-  - As a consequence, the buffer may fill up during very long periods of inactivity, hanging the script due to IO wait until the headset is activated.
-- If the script exits successfully (code 0), it will be re-ran on the next frame.
+- The label will look for the last complete line to use as its text.
+- Long-running scripts are allowed, but the label is only updated while the HMD is active.
+- If the script exits successfully (code 0), it will be re-ran on the next frame. Otherwise, it will be re-ran in 15s.
 - Control the pacing from inside the script itself. For example, adding a sleep 5 will make the script execute at most once per 5 seconds.
+- `_exec` supports everything that `sh` supports!
 
 ```xml
 <label _source="shell" _exec="$HOME/.local/bin/my-test-script.sh" [...] />
@@ -94,17 +95,70 @@ Format: `ipd`
 
 ### Buttons
 
-Buttons consist of a label component and and one or more actions to handle press or release events.
-
-If a shell-type press/release event's script writes to stdout, the last line of stdout will be set as the label text.
-
-Long-running processes are allowed, but a new execution will not be triggered until the previous process has exited.
+Buttons consist of a label component and one or more actions to handle press and/or release events.
 
 Note: As of WlxOverlay 25.10, we no longer support events based on laser color, as this was bad practice accessibility-wise.
 
 Supported events:
 
 ```xml
-<button _press="" _release="" />
+<button _press="..." _release="..." />
 ```
 
+#### Supported button actions
+
+##### `::ShellExec <command> [args ..]`
+
+This button action executes a shell script using the `sh` shell.
+
+- Long-running processes are allowed, but a new execution will not be triggered until the previous process has exited.
+- If triggered again while the previous process is still running, SIGUSR1 will be sent to that child process.
+
+```xml
+<button _press="::ShellExec $HOME/myscript.sh test-argument" [...] />
+```
+
+###### Update the button's label from stdout
+
+```xml
+<button _press="::ShellExec $HOME/myscript.sh test-argument" _update_label="1" [...] />
+```
+
+- Write lines to the script's stdout to update the label text.
+- The label will look for the last complete line to use as its text.
+- Long-running scripts are allowed, but the label is only updated while the HMD is active.
+
+##### `::OscSend <path> <args ..>`
+
+Send an OSC message. The target port comes from the `osc_out_port` configuration setting.
+
+```xml
+<button _press="::OscSend /avatar/parameters/MyInt 1i32" [...] />
+```
+
+Available argument value types (case insensitive):
+- Bool: `true` or `false`
+- Nil: `nil`
+- Inf: `inf`
+- Int: `-1i32`, `1i32`, etc
+- Long: `-1i64`, `1i64`, etc
+- Float: `1f32`, `1.0f32`, etc
+- Double: `1f64`, `1.0f64`, etc
+
+##### `::ShutDown`
+
+Gracefully shuts down WlxOverlay-S. Useful when using an auto-restart script.
+
+##### `::PlayspaceReset`
+
+Resets the STAGE space to (0,0,0) with identity rotation.
+
+##### `::PlayspaceRecenter`
+
+Recenters the STAGE space position so that the HMD is in the center. Does not modify floor level.
+
+##### `::PlayspaceFixFloor`
+
+Adjusts the level of floor for STAGE and LOCAL_FLOOR spaces.
+
+The user is asked to place one controller on the floor.

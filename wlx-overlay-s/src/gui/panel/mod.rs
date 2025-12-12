@@ -5,6 +5,7 @@ use glam::{vec2, Affine2, Vec2};
 use label::setup_custom_label;
 use wgui::{
     assets::AssetPath,
+    components::button::ComponentButton,
     drawing,
     event::{
         Event as WguiEvent, EventCallback, EventListenerID, EventListenerKind,
@@ -13,9 +14,9 @@ use wgui::{
     },
     gfx::cmd::WGfxClearMode,
     layout::{Layout, LayoutParams, WidgetID},
-    parser::{CustomAttribsInfoOwned, ParserState},
+    parser::{CustomAttribsInfoOwned, Fetchable, ParserState},
     renderer_vk::context::Context as WguiContext,
-    widget::{label::WidgetLabel, rectangle::WidgetRectangle, EventResult},
+    widget::{label::WidgetLabel, EventResult},
 };
 use wlx_common::timestep::Timestep;
 
@@ -138,13 +139,10 @@ impl<S: 'static> GuiPanel<S> {
                 .is_some()
             {
                 setup_custom_label::<S>(&mut layout, elem, app);
-            } else if layout
-                .state
-                .widgets
-                .get_as::<WidgetRectangle>(elem.widget_id)
-                .is_some()
+            } else if let Ok(button) =
+                parser_state.fetch_component_from_widget_id_as::<ComponentButton>(elem.widget_id)
             {
-                setup_custom_button::<S>(&mut layout, elem, app);
+                setup_custom_button::<S>(&mut layout, elem, app, button);
             }
 
             if let Some(on_custom_attrib) = &params.on_custom_attrib {

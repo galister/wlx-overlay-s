@@ -130,9 +130,7 @@ impl OscSender {
                 let level = device.soc.unwrap_or(-1.0);
                 let parameter = match device.role {
                     TrackedDeviceRole::None => continue,
-                    TrackedDeviceRole::Hmd => {
-                        "hmd"
-                    }
+                    TrackedDeviceRole::Hmd => "hmd",
                     TrackedDeviceRole::LeftHand => {
                         controller_count += 1;
                         controller_total_bat += level;
@@ -183,14 +181,30 @@ impl OscSender {
 
         Ok(())
     }
+}
 
-    pub fn send_single_param(
-        &mut self,
-        parameter: String,
-        values: Vec<OscType>,
-    ) -> anyhow::Result<()> {
-        self.send_message(parameter, values)?;
+pub fn parse_osc_value(s: &str) -> anyhow::Result<OscType> {
+    let lower = s.to_lowercase();
 
-        Ok(())
+    match lower.as_str() {
+        "true" => Ok(OscType::Bool(true)),
+        "false" => Ok(OscType::Bool(false)),
+        "inf" => Ok(OscType::Inf),
+        "nil" => Ok(OscType::Nil),
+        _ => {
+            if lower.len() > 3 {
+                let (num, suffix) = lower.split_at(lower.len() - 3);
+
+                match suffix {
+                    "f32" => return Ok(OscType::Float(num.parse::<f32>()?)),
+                    "f64" => return Ok(OscType::Double(num.parse::<f64>()?)),
+                    "i32" => return Ok(OscType::Int(num.parse::<i32>()?)),
+                    "i64" => return Ok(OscType::Long(num.parse::<i64>()?)),
+                    _ => {}
+                }
+            }
+
+            anyhow::bail!("Unknown OSC type literal: {}", s)
+        }
     }
 }

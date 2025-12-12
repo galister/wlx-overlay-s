@@ -1,13 +1,16 @@
 use std::{
     cell::RefCell,
-    io::BufReader,
-    process::{Child, ChildStdout},
+    process::{Command, Stdio},
+    rc::Rc,
     sync::{atomic::Ordering, Arc},
     time::{Duration, Instant},
 };
 
+use anyhow::Context;
 use wgui::{
+    components::button::ComponentButton,
     event::{self, EventCallback, EventListenerKind},
+    i18n::Translation,
     layout::Layout,
     parser::CustomAttribsInfoOwned,
     widget::EventResult,
@@ -16,6 +19,7 @@ use wlx_common::overlays::ToastTopic;
 
 use crate::{
     backend::task::{OverlayTask, PlayspaceTask, TaskType},
+    gui::panel::helper::PipeReaderThread,
     overlays::{
         mirror::{new_mirror, new_mirror_name},
         toast::Toast,
@@ -28,8 +32,6 @@ use crate::{
 #[cfg(feature = "wayvr")]
 use crate::backend::wayvr::WayVRAction;
 
-use super::helper::read_label_from_pipe;
-
 pub const BUTTON_EVENTS: [(&str, EventListenerKind); 2] = [
     ("_press", EventListenerKind::MousePress),
     ("_release", EventListenerKind::MouseRelease),
@@ -39,6 +41,7 @@ pub(super) fn setup_custom_button<S: 'static>(
     layout: &mut Layout,
     attribs: &CustomAttribsInfoOwned,
     _app: &AppState,
+    button: Rc<ComponentButton>,
 ) {
     for (name, kind) in &BUTTON_EVENTS {
         let Some(action) = attribs.get_value(name) else {
@@ -137,8 +140,65 @@ pub(super) fn setup_custom_button<S: 'static>(
                 RUNNING.store(false, Ordering::Relaxed);
                 Ok(EventResult::Consumed)
             }),
-            #[allow(clippy::match_same_arms)]
-            "::OscSend" => return,
+            "::ShellExec" => {
+                let state = Arc::new(ShellButtonState {
+                    button: button.clone(),
+                    exec: args.fold(String::new(), |c, n| c + " " + n),
+                    mut_state: RefCell::new(ShellButtonMutableState::default()),
+                    carry_over: RefCell::new(None),
+                });
+
+                let piped = attribs.get_value("_update_label").is_some_and(|s| s == "1");
+
+                layout.add_event_listener::<AppState, S>(
+                    attribs.widget_id,
+                    EventListenerKind::InternalStateChange,
+                    Box::new({
+                        let state = state.clone();
+                        move |common, _data, _, _| {
+                            shell_on_tick(&state, common, piped);
+                            Ok(EventResult::Consumed)
+                        }
+                    }),
+                );
+
+                Box::new(move |_common, _data, _app, _| {
+                    let _ = shell_on_action(&state).inspect_err(|e| log::error!("{e:?}"));
+                    Ok(EventResult::Consumed)
+                })
+            }
+            #[cfg(feature = "osc")]
+            "::OscSend" => {
+                use crate::subsystem::osc::parse_osc_value;
+
+                let Some(address) = args.next().map(|s| s.to_string()) else {
+                    log::error!("{command} has missing arguments");
+                    return;
+                };
+
+                let mut osc_args = vec![];
+                for arg in args {
+                    let Ok(osc_arg) = parse_osc_value(arg)
+                        .inspect_err(|e| log::error!("Could not parse OSC value '{arg}': {e:?}"))
+                    else {
+                        return;
+                    };
+                    osc_args.push(osc_arg);
+                }
+
+                Box::new(move |_common, _data, app, _| {
+                    let Some(sender) = app.osc_sender.as_mut() else {
+                        log::error!("OscSend: sender is not available.");
+                        return Ok(EventResult::Consumed);
+                    };
+
+                    let _ = sender
+                        .send_message(address.clone(), osc_args.clone())
+                        .inspect_err(|e| log::error!("OscSend: Could not send message: {e:?}"));
+
+                    Ok(EventResult::Consumed)
+                })
+            }
             // shell
             _ => return,
         };
@@ -147,64 +207,64 @@ pub(super) fn setup_custom_button<S: 'static>(
         log::debug!("Registered {action} on {:?} as {id:?}", attribs.widget_id);
     }
 }
+
+#[derive(Default)]
 struct ShellButtonMutableState {
-    child: Option<Child>,
-    reader: Option<BufReader<ChildStdout>>,
+    reader: Option<PipeReaderThread>,
+    pid: Option<u32>,
 }
 
 struct ShellButtonState {
+    button: Rc<ComponentButton>,
     exec: String,
     mut_state: RefCell<ShellButtonMutableState>,
     carry_over: RefCell<Option<String>>,
 }
 
-// TODO
-#[allow(clippy::missing_const_for_fn)]
-fn shell_on_action(
-    _state: &ShellButtonState,
-    _common: &mut event::CallbackDataCommon,
-    _data: &mut event::CallbackData,
-) {
-    //let mut mut_state = state.mut_state.borrow_mut();
-}
-
-fn shell_on_tick(
-    state: &ShellButtonState,
-    _common: &mut event::CallbackDataCommon,
-    _data: &mut event::CallbackData,
-) {
+fn shell_on_action(state: &ShellButtonState) -> anyhow::Result<()> {
     let mut mut_state = state.mut_state.borrow_mut();
 
-    if let Some(mut child) = mut_state.child.take() {
-        match child.try_wait() {
-            // not exited yet
-            Ok(None) => {
-                if let Some(_text) = mut_state.reader.as_mut().and_then(|r| {
-                    read_label_from_pipe("child process", r, &mut state.carry_over.borrow_mut())
-                }) {
-                    //TODO update label
-                }
-                mut_state.child = Some(child);
-            }
-            // exited successfully
-            Ok(Some(code)) if code.success() => {
-                if let Some(_text) = mut_state.reader.as_mut().and_then(|r| {
-                    read_label_from_pipe("child process", r, &mut state.carry_over.borrow_mut())
-                }) {
-                    //TODO update label
-                }
-                mut_state.child = None;
-            }
-            // exited with failure
-            Ok(Some(code)) => {
-                mut_state.child = None;
-                log::warn!("Label process exited with code {code}");
-            }
-            // lost
-            Err(_) => {
-                mut_state.child = None;
-                log::warn!("Label child process lost.");
-            }
-        }
+    if mut_state.reader.as_ref().is_some_and(|r| !r.is_finished())
+        && let Some(pid) = mut_state.pid.as_ref()
+    {
+        log::info!("ShellExec triggered while child is still running; sending SIGUSR1");
+        let _ = Command::new("kill")
+            .arg("-s")
+            .arg("USR1")
+            .arg(pid.to_string())
+            .spawn()
+            .unwrap()
+            .wait();
+        return Ok(());
+    }
+
+    let child = Command::new("sh")
+        .arg("-c")
+        .arg(&state.exec)
+        .stdout(Stdio::piped())
+        .spawn()
+        .with_context(|| format!("Failed to run shell script: '{}'", &state.exec))?;
+
+    mut_state.pid = Some(child.id());
+    mut_state.reader = Some(PipeReaderThread::new_from_child(child));
+
+    return Ok(());
+}
+
+fn shell_on_tick(state: &ShellButtonState, common: &mut event::CallbackDataCommon, piped: bool) {
+    let mut mut_state = state.mut_state.borrow_mut();
+
+    let Some(reader) = mut_state.reader.as_mut() else {
+        return;
+    };
+
+    if piped && let Some(text) = reader.get_last_line() {
+        state
+            .button
+            .set_text(common, Translation::from_raw_text(&text));
+    }
+
+    if reader.is_finished() {
+        mut_state.reader = None;
     }
 }

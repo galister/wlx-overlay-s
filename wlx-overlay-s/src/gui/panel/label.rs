@@ -1,12 +1,14 @@
 use std::{
     cell::RefCell,
-    fs, io,
+    fs,
     os::unix::fs::FileTypeExt,
-    process::{Child, ChildStdout, Command, Stdio},
+    process::{Command, Stdio},
     rc::Rc,
+    sync::Arc,
     time::{Duration, Instant},
 };
 
+use anyhow::Context;
 use chrono::Local;
 use chrono_tz::Tz;
 use interprocess::os::unix::fifo_file::create_fifo;
@@ -15,13 +17,13 @@ use wgui::{
     event::{self, EventCallback},
     i18n::Translation,
     layout::Layout,
-    parser::{CustomAttribsInfoOwned, parse_color_hex},
-    widget::{EventResult, label::WidgetLabel},
+    parser::{parse_color_hex, CustomAttribsInfoOwned},
+    widget::{label::WidgetLabel, EventResult},
 };
 
-use crate::state::AppState;
+use crate::{gui::panel::helper::PipeReaderThread, state::AppState};
 
-use super::helper::{expand_env_vars, read_label_from_pipe};
+use super::helper::expand_env_vars;
 
 #[allow(clippy::too_many_lines)]
 pub(super) fn setup_custom_label<S: 'static>(
@@ -42,15 +44,14 @@ pub(super) fn setup_custom_label<S: 'static>(
             };
             let state = ShellLabelState {
                 exec: exec.to_string(),
-                mut_state: RefCell::new(ShellLabelMutableState {
-                    child: None,
+                mut_state: RefCell::new(PipeLabelMutableState {
                     reader: None,
                     next_try: Instant::now(),
                 }),
                 carry_over: RefCell::new(None),
             };
             Box::new(move |common, data, _, _| {
-                shell_on_tick(&state, common, data);
+                let _ = shell_on_tick(&state, common, data).inspect_err(|e| log::error!("{e:?}"));
                 Ok(EventResult::Pass)
             })
         }
@@ -60,15 +61,15 @@ pub(super) fn setup_custom_label<S: 'static>(
                 return;
             };
             let state = FifoLabelState {
-                path: expand_env_vars(path),
+                path: expand_env_vars(path).into(),
                 carry_over: RefCell::new(None),
-                mut_state: RefCell::new(FifoLabelMutableState {
+                mut_state: RefCell::new(PipeLabelMutableState {
                     reader: None,
                     next_try: Instant::now(),
                 }),
             };
             Box::new(move |common, data, _, _| {
-                pipe_on_tick(&state, common, data);
+                fifo_on_tick(&state, common, data);
                 Ok(EventResult::Pass)
             })
         }
@@ -185,103 +186,64 @@ pub(super) fn setup_custom_label<S: 'static>(
     );
 }
 
-struct ShellLabelMutableState {
-    child: Option<Child>,
-    reader: Option<io::BufReader<ChildStdout>>,
+struct PipeLabelMutableState {
+    reader: Option<PipeReaderThread>,
     next_try: Instant,
 }
 
 struct ShellLabelState {
     exec: String,
-    mut_state: RefCell<ShellLabelMutableState>,
+    mut_state: RefCell<PipeLabelMutableState>,
     carry_over: RefCell<Option<String>>,
 }
 
-#[allow(clippy::redundant_else)]
 fn shell_on_tick(
     state: &ShellLabelState,
     common: &mut event::CallbackDataCommon,
     data: &mut event::CallbackData,
-) {
+) -> anyhow::Result<()> {
     let mut mut_state = state.mut_state.borrow_mut();
 
-    if let Some(mut child) = mut_state.child.take() {
-        match child.try_wait() {
-            // not exited yet
-            Ok(None) => {
-                if let Some(text) = mut_state.reader.as_mut().and_then(|r| {
-                    read_label_from_pipe("child process", r, &mut state.carry_over.borrow_mut())
-                }) {
-                    let label = data.obj.get_as_mut::<WidgetLabel>().unwrap();
-                    label.set_text(common, Translation::from_raw_text(&text));
-                }
-                mut_state.child = Some(child);
-                return;
-            }
-            // exited successfully
-            Ok(Some(code)) if code.success() => {
-                if let Some(text) = mut_state.reader.as_mut().and_then(|r| {
-                    read_label_from_pipe("child process", r, &mut state.carry_over.borrow_mut())
-                }) {
-                    let label = data.obj.get_as_mut::<WidgetLabel>().unwrap();
-                    label.set_text(common, Translation::from_raw_text(&text));
-                }
-                mut_state.child = None;
-                return;
-            }
-            // exited with failure
-            Ok(Some(code)) => {
-                mut_state.child = None;
+    if let Some(reader) = mut_state.reader.as_mut() {
+        if let Some(text) = reader.get_last_line() {
+            let label = data.obj.get_as_mut::<WidgetLabel>().unwrap();
+            label.set_text(common, Translation::from_raw_text(&text));
+        }
+
+        if reader.is_finished() {
+            if !mut_state.reader.take().unwrap().is_success() {
                 mut_state.next_try = Instant::now() + Duration::from_secs(15);
-                log::warn!("Label process exited with code {code}");
-                return;
-            }
-            // lost
-            Err(_) => {
-                mut_state.child = None;
-                mut_state.next_try = Instant::now() + Duration::from_secs(15);
-                log::warn!("Label child process lost.");
-                return;
             }
         }
+        return Ok(());
     } else if mut_state.next_try > Instant::now() {
-        return;
+        return Ok(());
     }
 
-    match Command::new("sh")
+    let child = Command::new("sh")
         .arg("-c")
         .arg(&state.exec)
         .stdout(Stdio::piped())
         .spawn()
-    {
-        Ok(mut child) => {
-            let stdout = child.stdout.take().unwrap();
-            mut_state.child = Some(child);
-            mut_state.reader = Some(io::BufReader::new(stdout));
-        }
-        Err(e) => {
-            log::warn!("Failed to run shell script '{}': {e:?}", &state.exec);
-        }
-    }
-}
+        .with_context(|| format!("Failed to run shell script: '{}'", &state.exec))?;
 
-struct FifoLabelMutableState {
-    reader: Option<io::BufReader<fs::File>>,
-    next_try: Instant,
+    mut_state.reader = Some(PipeReaderThread::new_from_child(child));
+
+    return Ok(());
 }
 
 struct FifoLabelState {
-    path: String,
-    mut_state: RefCell<FifoLabelMutableState>,
+    path: Arc<str>,
+    mut_state: RefCell<PipeLabelMutableState>,
     carry_over: RefCell<Option<String>>,
 }
 
 impl FifoLabelState {
     fn try_remove_fifo(&self) -> anyhow::Result<()> {
-        let meta = match fs::metadata(&self.path) {
+        let meta = match fs::metadata(&*self.path) {
             Ok(meta) => meta,
             Err(e) => {
-                if fs::exists(&self.path).unwrap_or(true) {
+                if fs::exists(&*self.path).unwrap_or(true) {
                     anyhow::bail!("Could not stat existing file at {}: {e:?}", &self.path);
                 }
                 return Ok(());
@@ -292,7 +254,7 @@ impl FifoLabelState {
             anyhow::bail!("Existing file at {} is not a FIFO", &self.path);
         }
 
-        if let Err(e) = fs::remove_file(&self.path) {
+        if let Err(e) = fs::remove_file(&*self.path) {
             anyhow::bail!("Unable to remove existing FIFO at {}: {e:?}", &self.path);
         }
 
@@ -308,16 +270,14 @@ impl Drop for FifoLabelState {
     }
 }
 
-fn pipe_on_tick(
+fn fifo_on_tick(
     state: &FifoLabelState,
     common: &mut event::CallbackDataCommon,
     data: &mut event::CallbackData,
 ) {
     let mut mut_state = state.mut_state.borrow_mut();
 
-    let reader = if let Some(f) = mut_state.reader.as_mut() {
-        f
-    } else {
+    let Some(reader) = mut_state.reader.as_mut() else {
         if mut_state.next_try > Instant::now() {
             return;
         }
@@ -328,28 +288,25 @@ fn pipe_on_tick(
             return;
         }
 
-        if let Err(e) = create_fifo(&state.path, 0o777) {
+        if let Err(e) = create_fifo(&*state.path, 0o777) {
             mut_state.next_try = Instant::now() + Duration::from_secs(15);
             log::warn!("Failed to create FIFO: {e:?}");
             return;
         }
 
-        mut_state.reader = fs::File::open(&state.path)
-            .inspect_err(|e| {
-                log::warn!("Failed to open FIFO: {e:?}");
-                mut_state.next_try = Instant::now() + Duration::from_secs(15);
-            })
-            .map(io::BufReader::new)
-            .ok();
-
-        mut_state.reader.as_mut().unwrap()
+        mut_state.reader = Some(PipeReaderThread::new_from_fifo(state.path.clone()));
+        return;
     };
 
-    if let Some(text) =
-        read_label_from_pipe(&state.path, reader, &mut state.carry_over.borrow_mut())
-    {
+    if let Some(text) = reader.get_last_line() {
         let label = data.obj.get_as_mut::<WidgetLabel>().unwrap();
         label.set_text(common, Translation::from_raw_text(&text));
+    }
+
+    if reader.is_finished() {
+        if !mut_state.reader.take().unwrap().is_success() {
+            mut_state.next_try = Instant::now() + Duration::from_secs(15);
+        }
     }
 }
 

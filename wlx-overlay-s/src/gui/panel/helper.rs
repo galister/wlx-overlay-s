@@ -1,7 +1,13 @@
 use regex::Regex;
 use std::{
+    fs,
     io::{BufRead, BufReader, Read},
-    sync::LazyLock,
+    process::Child,
+    sync::{
+        mpsc::{self, Receiver},
+        Arc, LazyLock,
+    },
+    thread::JoinHandle,
 };
 
 static ENV_VAR_REGEX: LazyLock<Regex> = LazyLock::new(|| {
@@ -19,31 +25,94 @@ pub(super) fn expand_env_vars(template: &str) -> String {
         .into_owned()
 }
 
-pub(super) fn read_label_from_pipe<R>(
-    path: &str,
-    reader: &mut BufReader<R>,
-    carry_over: &mut Option<String>,
-) -> Option<String>
-where
-    R: Read + Sized,
-{
-    let mut prev = String::new();
-    let mut cur = String::new();
+pub(super) struct PipeReaderThread {
+    receiver: Receiver<String>,
+    handle: JoinHandle<bool>,
+}
 
-    for r in reader.lines() {
-        match r {
-            Ok(line) => {
-                prev = cur;
-                cur = carry_over.take().map(|s| s + &line).unwrap_or(line);
+impl PipeReaderThread {
+    pub fn new_from_child(mut c: Child) -> Self {
+        const BUF_LEN: usize = 128;
+        let (sender, receiver) = mpsc::sync_channel::<String>(4);
+
+        let handle = std::thread::spawn({
+            move || {
+                let stdout = c.stdout.take().unwrap();
+                let mut reader = BufReader::new(stdout).take(BUF_LEN as _);
+
+                loop {
+                    let mut buf = String::with_capacity(BUF_LEN);
+                    match reader.read_line(&mut buf) {
+                        Ok(0) => {
+                            // EOF reached
+                            break;
+                        }
+                        Ok(_) => {
+                            let _ = sender.try_send(buf);
+                        }
+                        Err(e) => {
+                            log::error!("Error reading pipe: {e:?}");
+                            break;
+                        }
+                    }
+                }
+                c.wait()
+                    .inspect_err(|e| log::error!("Failed to wait for child process: {e:?}"))
+                    .map_or(false, |c| c.success())
             }
-            Err(e) => {
-                log::warn!("pipe read error on {path}: {e:?}");
-                return None;
-            }
-        }
+        });
+
+        Self { receiver, handle }
     }
 
-    carry_over.replace(cur);
+    pub fn new_from_fifo(path: Arc<str>) -> Self {
+        const BUF_LEN: usize = 128;
+        let (sender, receiver) = mpsc::sync_channel::<String>(4);
 
-    if prev.is_empty() { None } else { Some(prev) }
+        let handle = std::thread::spawn({
+            move || {
+                let Ok(mut reader) = fs::File::open(&*path)
+                    .inspect_err(|e| {
+                        log::warn!("Failed to open fifo: {e:?}");
+                    })
+                    .map(|r| BufReader::new(r).take(BUF_LEN as _))
+                else {
+                    return false;
+                };
+
+                loop {
+                    let mut buf = String::with_capacity(BUF_LEN);
+                    match reader.read_line(&mut buf) {
+                        Ok(0) => {
+                            // EOF reached
+                            break;
+                        }
+                        Ok(_) => {
+                            let _ = sender.try_send(buf);
+                        }
+                        Err(e) => {
+                            log::error!("Error reading fifo: {e:?}");
+                            break;
+                        }
+                    }
+                }
+
+                true
+            }
+        });
+
+        Self { receiver, handle }
+    }
+
+    pub fn get_last_line(&mut self) -> Option<String> {
+        self.receiver.try_iter().last()
+    }
+
+    pub fn is_finished(&self) -> bool {
+        self.handle.is_finished()
+    }
+
+    pub fn is_success(self) -> bool {
+        self.handle.join().unwrap_or(false)
+    }
 }
