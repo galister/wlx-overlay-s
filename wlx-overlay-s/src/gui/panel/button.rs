@@ -21,10 +21,7 @@ use crate::{
     RUNNING,
     backend::task::{OverlayTask, PlayspaceTask, TaskType},
     gui::panel::helper::PipeReaderThread,
-    overlays::{
-        mirror::{new_mirror, new_mirror_name},
-        toast::Toast,
-    },
+    overlays::toast::Toast,
     state::AppState,
     windowing::OverlaySelector,
 };
@@ -97,11 +94,14 @@ pub(super) fn setup_custom_button<S: 'static>(
                     .enqueue(TaskType::Overlay(OverlayTask::ToggleEditMode));
                 Ok(EventResult::Consumed)
             }),
+            #[cfg(feature = "wayland")]
             "::NewMirror" => Box::new(move |_common, _data, app, _| {
-                let name = new_mirror_name();
+                let name = crate::overlays::mirror::new_mirror_name();
                 app.tasks.enqueue(TaskType::Overlay(OverlayTask::Create(
                     OverlaySelector::Name(name.clone()),
-                    Box::new(move |app| Some(new_mirror(name, &app.session))),
+                    Box::new(move |app| {
+                        Some(crate::overlays::mirror::new_mirror(name, &app.session))
+                    }),
                 )));
                 Ok(EventResult::Consumed)
             }),
