@@ -1,8 +1,8 @@
-name: Check X11+OpenVR
+name: Check Default
 
 on:
   pull_request:
-    #branches: [ "main" ]
+    #branches: [ "!main" ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -12,14 +12,21 @@ env:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: ./wlx-overlay-s
     steps:
     - uses: actions/checkout@v4
     - name: Setup sccache
       uses: mozilla-actions/sccache-action@v0.0.9
     - name: Prepare Environment
       run: |
-        .github/workflows/scripts/appimage_prepare_env.sh
+        ../.github/workflows/scripts/appimage_prepare_env.sh
+    - name: Run cargo fmt
+      run: cargo fmt --check
     - name: Build
-      run: cargo build --verbose --no-default-features --features=x11,openvr
+      run: cargo build --verbose
+    - name: Run clippy
+      run: cargo clippy --no-deps
     - name: Run tests
-      run: cargo test --verbose --no-default-features --features=x11,openvr
+      run: cargo test --verbose

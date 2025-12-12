@@ -1,4 +1,4 @@
-name: Check Wayland+OpenXR
+name: Check X11+OpenXR
 
 on:
   pull_request:
@@ -12,14 +12,17 @@ env:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: ./wlx-overlay-s
     steps:
     - uses: actions/checkout@v4
     - name: Setup sccache
       uses: mozilla-actions/sccache-action@v0.0.9
     - name: Prepare Environment
       run: |
-        .github/workflows/scripts/appimage_prepare_env.sh
+        ../.github/workflows/scripts/appimage_prepare_env.sh
     - name: Build
-      run: cargo build --verbose --no-default-features --features=wayland,openxr
+      run: cargo build --verbose --no-default-features --features=x11,openxr
     - name: Run tests
-      run: cargo test --verbose --no-default-features --features=wayland,openxr
+      run: cargo test --verbose --no-default-features --features=x11,openxr
