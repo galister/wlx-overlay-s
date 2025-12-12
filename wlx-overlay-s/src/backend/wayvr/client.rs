@@ -10,8 +10,9 @@ use smithay::{
 use crate::backend::wayvr::{ExternalProcessRequest, WayVRTask};
 
 use super::{
+    ProcessWayVREnv,
     comp::{self, ClientState},
-    display, process, ProcessWayVREnv,
+    display, process,
 };
 
 pub struct WayVRClient {

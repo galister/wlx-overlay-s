@@ -8,8 +8,8 @@ use ovr_overlay::{
     sys::{ETrackingUniverseOrigin, VRVulkanTextureData_t},
 };
 use vulkano::{
-    image::{view::ImageView, ImageUsage},
     Handle, VulkanObject,
+    image::{ImageUsage, view::ImageView},
 };
 use wgui::gfx::WGfx;
 

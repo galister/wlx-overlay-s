@@ -18,8 +18,8 @@ use wlx_common::timestep::Timestep;
 use crate::{
 	assets, settings,
 	tab::{
-		apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses, settings::TabSettings,
-		Tab, TabParams, TabType,
+		Tab, TabParams, TabType, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses,
+		settings::TabSettings,
 	},
 	task::Tasks,
 	util::{

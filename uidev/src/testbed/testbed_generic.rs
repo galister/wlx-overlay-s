@@ -8,9 +8,9 @@ use glam::Vec2;
 use wgui::{
 	assets::AssetPath,
 	components::{
+		Component,
 		button::{ButtonClickCallback, ComponentButton},
 		checkbox::ComponentCheckbox,
-		Component,
 	},
 	drawing::Color,
 	event::StyleSetRequest,

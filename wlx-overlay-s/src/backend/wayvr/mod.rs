@@ -21,9 +21,9 @@ use smallvec::SmallVec;
 use smithay::{
     backend::{
         egl,
-        renderer::{gles::GlesRenderer, ImportDma},
+        renderer::{ImportDma, gles::GlesRenderer},
     },
-    input::{keyboard::XkbConfig, SeatState},
+    input::{SeatState, keyboard::XkbConfig},
     output::{Mode, Output},
     reexports::wayland_server::{self, backend::ClientId},
     wayland::{
@@ -45,7 +45,7 @@ use wayvr_ipc::{packet_client, packet_server};
 
 use crate::{
     state::AppState,
-    subsystem::hid::{WheelDelta, MODS_TO_KEYS},
+    subsystem::hid::{MODS_TO_KEYS, WheelDelta},
 };
 
 const STR_INVALID_HANDLE_DISP: &str = "Invalid display handle";

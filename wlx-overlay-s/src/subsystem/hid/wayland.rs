@@ -1,12 +1,12 @@
 use anyhow::Context;
 use wlx_capture::wayland::wayland_client::{
-    globals::{registry_queue_init, GlobalListContents},
+    Connection, Dispatch, Proxy, QueueHandle,
+    globals::{GlobalListContents, registry_queue_init},
     protocol::{
         wl_keyboard::{self, WlKeyboard},
         wl_registry::WlRegistry,
         wl_seat::{self, Capability, WlSeat},
     },
-    Connection, Dispatch, Proxy, QueueHandle,
 };
 use xkbcommon::xkb;
 

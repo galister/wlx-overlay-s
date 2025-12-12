@@ -19,15 +19,15 @@ use smithay_client_toolkit::reexports::{
 
 pub use wayland_client;
 use wayland_client::{
+    Connection, Dispatch, EventQueue, Proxy, QueueHandle,
     backend::WaylandError,
-    globals::{registry_queue_init, GlobalList, GlobalListContents},
+    globals::{GlobalList, GlobalListContents, registry_queue_init},
     protocol::{
         wl_output::{self, Transform, WlOutput},
         wl_registry::{self, WlRegistry},
         wl_seat::WlSeat,
         wl_shm::WlShm,
     },
-    Connection, Dispatch, EventQueue, Proxy, QueueHandle,
 };
 
 use crate::frame;

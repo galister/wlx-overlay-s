@@ -1,7 +1,7 @@
 use std::{
     collections::VecDeque,
     ops::Add,
-    sync::{atomic::Ordering, Arc},
+    sync::{Arc, atomic::Ordering},
     time::{Duration, Instant},
 };
 
@@ -14,17 +14,18 @@ use vulkano::{Handle, VulkanObject};
 use wlx_common::overlays::ToastTopic;
 
 use crate::{
+    FRAME_COUNTER, RUNNING,
     backend::{
+        BackendError,
         input::interact,
         openxr::{lines::LinePool, overlay::OpenXrOverlayData},
         task::{OverlayTask, TaskType},
-        BackendError,
     },
     config::save_state,
-    graphics::{init_openxr_graphics, GpuFutures},
+    graphics::{GpuFutures, init_openxr_graphics},
     overlays::{
         toast::Toast,
-        watch::{watch_fade, WATCH_NAME},
+        watch::{WATCH_NAME, watch_fade},
     },
     state::AppState,
     subsystem::notifications::NotificationManager,
@@ -32,7 +33,6 @@ use crate::{
         backend::{RenderResources, ShouldRender},
         manager::OverlayWindowManager,
     },
-    FRAME_COUNTER, RUNNING,
 };
 
 #[cfg(feature = "wayvr")]

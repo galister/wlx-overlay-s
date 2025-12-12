@@ -9,7 +9,7 @@ use serde::Deserialize;
 
 use crate::{
     state::AppState,
-    windowing::{window::OverlayWindowConfig, OverlaySelector},
+    windowing::{OverlaySelector, window::OverlayWindowConfig},
 };
 
 #[cfg(feature = "wayvr")]

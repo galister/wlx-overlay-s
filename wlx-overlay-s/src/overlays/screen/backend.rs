@@ -1,22 +1,22 @@
 use std::{
-    sync::{atomic::AtomicU64, Arc, LazyLock},
+    sync::{Arc, LazyLock, atomic::AtomicU64},
     time::Instant,
 };
 
-use glam::{vec2, Affine2, Vec2};
-use wlx_capture::{frame::Transform, WlxCapture};
+use glam::{Affine2, Vec2, vec2};
+use wlx_capture::{WlxCapture, frame::Transform};
 
 use crate::{
     backend::input::{HoverResult, PointerHit, PointerMode},
     graphics::ExtentExt,
     state::AppState,
-    subsystem::hid::{WheelDelta, MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
+    subsystem::hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT, WheelDelta},
     windowing::backend::{
         FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
     },
 };
 
-use super::capture::{receive_callback, ScreenPipeline, WlxCaptureIn, WlxCaptureOut};
+use super::capture::{ScreenPipeline, WlxCaptureIn, WlxCaptureOut, receive_callback};
 
 const CURSOR_SIZE: f32 = 16. / 1440.;
 

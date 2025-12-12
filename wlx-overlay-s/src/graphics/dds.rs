@@ -1,12 +1,12 @@
 use image_dds::{ImageFormat, Surface};
 use std::{io::Read, sync::Arc};
 use vulkano::{
+    DeviceSize,
     buffer::{Buffer, BufferCreateInfo, BufferUsage, Subbuffer},
     command_buffer::CopyBufferToImageInfo,
     format::Format,
     image::{Image, ImageCreateInfo, ImageType, ImageUsage},
     memory::allocator::{AllocationCreateInfo, MemoryTypeFilter},
-    DeviceSize,
 };
 use wgui::gfx::cmd::XferCommandBuffer;
 
@@ -22,7 +22,9 @@ impl WlxCommandBufferDds for XferCommandBuffer {
         R: Read,
     {
         let Ok(dds) = image_dds::ddsfile::Dds::read(r) else {
-            anyhow::bail!("Not a valid DDS file.\nSee: https://github.com/galister/wlx-overlay-s/wiki/Custom-Textures");
+            anyhow::bail!(
+                "Not a valid DDS file.\nSee: https://github.com/galister/wlx-overlay-s/wiki/Custom-Textures"
+            );
         };
 
         let surface = Surface::from_dds(&dds)?;

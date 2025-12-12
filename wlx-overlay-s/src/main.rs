@@ -40,7 +40,7 @@ use clap::Parser;
 use subsystem::notifications::DbusNotificationSender;
 use sysinfo::Pid;
 use tracing::level_filters::LevelFilter;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 pub static FRAME_COUNTER: AtomicUsize = AtomicUsize::new(0);
 pub static RUNNING: AtomicBool = AtomicBool::new(true);
@@ -131,7 +131,7 @@ fn auto_run(args: Args) {
 
     #[cfg(feature = "openxr")]
     if !args_get_openvr(&args) {
-        use crate::backend::{openxr::openxr_run, BackendError};
+        use crate::backend::{BackendError, openxr::openxr_run};
         tried_xr = true;
         match openxr_run(args.show, args.headless) {
             Ok(()) => return,
@@ -145,7 +145,7 @@ fn auto_run(args: Args) {
 
     #[cfg(feature = "openvr")]
     if !args_get_openxr(&args) {
-        use crate::backend::{openvr::openvr_run, BackendError};
+        use crate::backend::{BackendError, openvr::openvr_run};
         tried_vr = true;
         match openvr_run(args.show, args.headless) {
             Ok(()) => return,

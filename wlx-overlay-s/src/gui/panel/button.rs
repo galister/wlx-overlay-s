@@ -2,7 +2,7 @@ use std::{
     cell::RefCell,
     process::{Command, Stdio},
     rc::Rc,
-    sync::{atomic::Ordering, Arc},
+    sync::{Arc, atomic::Ordering},
     time::{Duration, Instant},
 };
 
@@ -18,6 +18,7 @@ use wgui::{
 use wlx_common::overlays::ToastTopic;
 
 use crate::{
+    RUNNING,
     backend::task::{OverlayTask, PlayspaceTask, TaskType},
     gui::panel::helper::PipeReaderThread,
     overlays::{
@@ -26,7 +27,6 @@ use crate::{
     },
     state::AppState,
     windowing::OverlaySelector,
-    RUNNING,
 };
 
 #[cfg(feature = "wayvr")]

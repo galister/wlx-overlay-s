@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use glam::{vec3, Affine3A, Quat, Vec3, Vec3A};
+use glam::{Affine3A, Quat, Vec3, Vec3A, vec3};
 use idmap::DirectIdMap;
 use wgui::{
     components::button::ComponentButton,
@@ -14,7 +14,7 @@ use wgui::{
     parser::Fetchable,
     renderer_vk::text::custom_glyph::CustomGlyphData,
     taffy,
-    widget::{sprite::WidgetSprite, EventResult},
+    widget::{EventResult, sprite::WidgetSprite},
 };
 use wlx_common::{
     common::LeftRight,
@@ -27,16 +27,16 @@ use crate::{
         task::{OverlayTask, TaskType},
     },
     gui::{
-        panel::{button::BUTTON_EVENTS, GuiPanel, NewGuiPanelParams, OnCustomAttribFunc},
+        panel::{GuiPanel, NewGuiPanelParams, OnCustomAttribFunc, button::BUTTON_EVENTS},
         timer::GuiTimer,
     },
     overlays::edit::LongPressButtonState,
     state::AppState,
     windowing::{
+        OverlaySelector, Z_ORDER_WATCH,
         backend::{OverlayEventData, OverlayMeta},
         manager::MAX_OVERLAY_SETS,
         window::{OverlayWindowConfig, OverlayWindowData},
-        OverlaySelector, Z_ORDER_WATCH,
     },
 };
 

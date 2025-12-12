@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::Context;
-use glam::{vec3, Affine3A, Quat, Vec3};
+use glam::{Affine3A, Quat, Vec3, vec3};
 use wgui::{i18n::Translation, widget::label::WidgetLabel};
 use wlx_common::{
     common::LeftRight,
@@ -18,7 +18,7 @@ use crate::{
     gui::panel::{GuiPanel, NewGuiPanelParams, OnCustomIdFunc},
     overlays::watch::{WATCH_POS, WATCH_ROT},
     state::AppState,
-    windowing::{window::OverlayWindowConfig, OverlaySelector, Z_ORDER_TOAST},
+    windowing::{OverlaySelector, Z_ORDER_TOAST, window::OverlayWindowConfig},
 };
 
 const FONT_SIZE: isize = 16;

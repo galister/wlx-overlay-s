@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use ash::vk::SubmitInfo;
 use glam::{Affine3A, Vec3, Vec3A, Vec4};
@@ -8,6 +8,7 @@ use idmap::IdMap;
 use ovr_overlay::overlay::OverlayManager;
 use ovr_overlay::sys::ETrackingUniverseOrigin;
 use vulkano::{
+    VulkanObject,
     command_buffer::{
         CommandBufferBeginInfo, CommandBufferLevel, CommandBufferUsage, RecordingCommandBuffer,
     },
@@ -15,21 +16,20 @@ use vulkano::{
     image::view::ImageView,
     image::{Image, ImageLayout},
     sync::{
-        fence::{Fence, FenceCreateInfo},
         AccessFlags, DependencyInfo, ImageMemoryBarrier, PipelineStages,
+        fence::{Fence, FenceCreateInfo},
     },
-    VulkanObject,
 };
 use wgui::gfx::WGfx;
 
 use crate::backend::input::{HoverResult, PointerHit};
 use crate::state::AppState;
 use crate::subsystem::hid::WheelDelta;
+use crate::windowing::Z_ORDER_LINES;
 use crate::windowing::backend::{
     FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
 };
 use crate::windowing::window::{OverlayWindowConfig, OverlayWindowData};
-use crate::windowing::Z_ORDER_LINES;
 
 use super::overlay::OpenVrOverlayData;
 

@@ -29,10 +29,7 @@ impl Viewport {
 			projection: WMat4::default(),
 		};
 
-		let params_buffer = gfx.new_buffer(
-			BufferUsage::UNIFORM_BUFFER | BufferUsage::TRANSFER_DST,
-			[params].iter(),
-		)?;
+		let params_buffer = gfx.new_buffer(BufferUsage::UNIFORM_BUFFER | BufferUsage::TRANSFER_DST, [params].iter())?;
 
 		Ok(Self {
 			params,
@@ -46,10 +43,7 @@ impl Viewport {
 		self
 			.text_descriptor
 			.get_or_insert_with(|| {
-				pipeline
-					.inner
-					.buffer(2, self.params_buffer.clone())
-					.unwrap() // safe unwrap
+				pipeline.inner.buffer(2, self.params_buffer.clone()).unwrap() // safe unwrap
 			})
 			.clone()
 	}
@@ -58,21 +52,13 @@ impl Viewport {
 		self
 			.rect_descriptor
 			.get_or_insert_with(|| {
-				pipeline
-					.color_rect
-					.buffer(0, self.params_buffer.clone())
-					.unwrap() // safe unwrap
+				pipeline.color_rect.buffer(0, self.params_buffer.clone()).unwrap() // safe unwrap
 			})
 			.clone()
 	}
 
 	/// Updates the `Viewport` with the given `resolution` and `projection`.
-	pub fn update(
-		&mut self,
-		resolution: [u32; 2],
-		projection: &glam::Mat4,
-		pixel_scale: f32,
-	) -> anyhow::Result<()> {
+	pub fn update(&mut self, resolution: [u32; 2], projection: &glam::Mat4, pixel_scale: f32) -> anyhow::Result<()> {
 		if self.params.screen_resolution == resolution
 			&& self.params.projection.0 == *projection.as_ref()
 			&& self.params.pixel_scale == pixel_scale

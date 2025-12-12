@@ -1,6 +1,6 @@
 use glam::Affine3A;
 use idmap::IdMap;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use std::sync::Arc;
 use wgui::{
     font_config::WguiFontConfig, gfx::WGfx, globals::WguiGlobals,

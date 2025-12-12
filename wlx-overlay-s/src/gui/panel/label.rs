@@ -17,8 +17,8 @@ use wgui::{
     event::{self, EventCallback},
     i18n::Translation,
     layout::Layout,
-    parser::{parse_color_hex, CustomAttribsInfoOwned},
-    widget::{label::WidgetLabel, EventResult},
+    parser::{CustomAttribsInfoOwned, parse_color_hex},
+    widget::{EventResult, label::WidgetLabel},
 };
 
 use crate::{gui::panel::helper::PipeReaderThread, state::AppState};
@@ -210,10 +210,9 @@ fn shell_on_tick(
             label.set_text(common, Translation::from_raw_text(&text));
         }
 
-        if reader.is_finished()
-            && !mut_state.reader.take().unwrap().is_success() {
-                mut_state.next_try = Instant::now() + Duration::from_secs(15);
-            }
+        if reader.is_finished() && !mut_state.reader.take().unwrap().is_success() {
+            mut_state.next_try = Instant::now() + Duration::from_secs(15);
+        }
         return Ok(());
     } else if mut_state.next_try > Instant::now() {
         return Ok(());
@@ -302,10 +301,9 @@ fn fifo_on_tick(
         label.set_text(common, Translation::from_raw_text(&text));
     }
 
-    if reader.is_finished()
-        && !mut_state.reader.take().unwrap().is_success() {
-            mut_state.next_try = Instant::now() + Duration::from_secs(15);
-        }
+    if reader.is_finished() && !mut_state.reader.take().unwrap().is_success() {
+        mut_state.next_try = Instant::now() + Duration::from_secs(15);
+    }
 }
 
 const BAT_LOW: drawing::Color = drawing::Color::new(0.69, 0.38, 0.38, 1.);

@@ -1,6 +1,6 @@
 use std::{fs::File, io::Read};
 
-use anyhow::{bail, Context};
+use anyhow::{Context, bail};
 use json::{array, object};
 use ovr_overlay::applications::ApplicationsManager;
 

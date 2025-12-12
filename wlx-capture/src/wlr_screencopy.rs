@@ -10,19 +10,19 @@ use std::{
     thread::JoinHandle,
 };
 use wayland_client::{
-    protocol::{wl_buffer::WlBuffer, wl_shm::Format, wl_shm_pool::WlShmPool},
     Connection, Dispatch, Proxy, QueueHandle, WEnum,
+    protocol::{wl_buffer::WlBuffer, wl_shm::Format, wl_shm_pool::WlShmPool},
 };
 
 use smithay_client_toolkit::reexports::protocols_wlr::screencopy::v1::client::zwlr_screencopy_frame_v1::{ZwlrScreencopyFrameV1, self};
 
 use crate::{
+    WlxCapture,
     frame::{
-        DrmFormat, FourCC, FrameFormat, FramePlane, MemFdFrame, WlxFrame, DRM_FORMAT_ARGB8888,
-        DRM_FORMAT_XRGB8888,
+        DRM_FORMAT_ARGB8888, DRM_FORMAT_XRGB8888, DrmFormat, FourCC, FrameFormat, FramePlane,
+        MemFdFrame, WlxFrame,
     },
     wayland::WlxClient,
-    WlxCapture,
 };
 
 struct BufData {

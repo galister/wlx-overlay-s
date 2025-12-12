@@ -12,6 +12,7 @@ use wlx_common::{
 };
 
 use crate::{
+    FRAME_COUNTER,
     backend::task::OverlayTask,
     overlays::{
         anchor::create_anchor, edit::EditWrapperManager, keyboard::builder::create_keyboard,
@@ -19,13 +20,12 @@ use crate::{
     },
     state::AppState,
     windowing::{
+        OverlayID, OverlaySelector,
         backend::{OverlayEventData, OverlayMeta},
         set::OverlayWindowSet,
         snap_upright,
         window::{OverlayCategory, OverlayWindowData},
-        OverlayID, OverlaySelector,
     },
-    FRAME_COUNTER,
 };
 
 pub const MAX_OVERLAY_SETS: usize = 7;
@@ -331,7 +331,9 @@ impl<T> OverlayWindowManager<T> {
                     log::debug!("set {i}: loaded state for {name}");
                     overlays.insert(id, o.clone());
                 } else {
-                    log::debug!("set {i} has saved state for {name} which doesn't exist. will apply state once added.");
+                    log::debug!(
+                        "set {i} has saved state for {name} which doesn't exist. will apply state once added."
+                    );
                     inactive_overlays.arc_set(name.clone(), o.clone());
                 }
             }

@@ -20,16 +20,16 @@ use crate::{
         input::HoverResult,
         task::{OverlayTask, TaskContainer, TaskType},
     },
-    gui::panel::{button::BUTTON_EVENTS, GuiPanel, NewGuiPanelParams, OnCustomAttribFunc},
+    gui::panel::{GuiPanel, NewGuiPanelParams, OnCustomAttribFunc, button::BUTTON_EVENTS},
     overlays::edit::{
         lock::InteractLockHandler, pos::PositioningHandler, tab::ButtonPaneTabSwitcher,
     },
     state::AppState,
     subsystem::hid::WheelDelta,
     windowing::{
+        OverlayID, OverlaySelector,
         backend::{DummyBackend, OverlayBackend, OverlayEventData, RenderResources, ShouldRender},
         window::OverlayWindowConfig,
-        OverlayID, OverlaySelector,
     },
 };
 

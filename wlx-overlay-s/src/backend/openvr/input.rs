@@ -2,13 +2,13 @@ use std::{array, fs::File, io::Write, time::Duration};
 
 use anyhow::bail;
 use ovr_overlay::{
+    TrackedDeviceIndex,
     input::{ActionHandle, ActionSetHandle, ActiveActionSet, InputManager, InputValueHandle},
     sys::{
         ETrackedControllerRole, ETrackedDeviceClass, ETrackedDeviceProperty,
         ETrackingUniverseOrigin,
     },
     system::SystemManager,
-    TrackedDeviceIndex,
 };
 
 use crate::{

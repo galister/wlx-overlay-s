@@ -12,7 +12,7 @@ use crate::{
     backend::input::{HoverResult, PointerHit},
     gui::panel::GuiPanel,
     state::AppState,
-    subsystem::hid::{KeyModifier, VirtualKey, WheelDelta, ALT, CTRL, META, SHIFT, SUPER},
+    subsystem::hid::{ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey, WheelDelta},
     windowing::backend::{
         FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
     },

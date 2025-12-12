@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use glam::{bool, Affine3A, Quat, Vec3};
+use glam::{Affine3A, Quat, Vec3, bool};
 use libmonado as mnd;
 use openxr::{self as xr, Quaternionf, Vector2f, Vector3f};
 use serde::{Deserialize, Serialize};
@@ -15,7 +15,7 @@ use crate::{
     state::{AppSession, AppState},
 };
 
-use super::{helpers::posef_to_transform, XrState};
+use super::{XrState, helpers::posef_to_transform};
 
 static CLICK_TIMES: [Duration; 3] = [
     Duration::ZERO,

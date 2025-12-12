@@ -4,16 +4,16 @@ use openxr as xr;
 use std::{
     f32::consts::PI,
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc,
+        atomic::{AtomicUsize, Ordering},
     },
 };
 
 use wgui::gfx::{
+    WGfx,
     cmd::WGfxClearMode,
     pass::WGfxPass,
     pipeline::{WGfxPipeline, WPipelineCreateInfo},
-    WGfx,
 };
 
 use crate::{
@@ -27,8 +27,8 @@ use vulkano::{
 };
 
 use super::{
-    swapchain::{create_swapchain, SwapchainOpts, WlxSwapchain},
     CompositionLayer, XrState,
+    swapchain::{SwapchainOpts, WlxSwapchain, create_swapchain},
 };
 
 static LINE_AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(1);
