@@ -1,0 +1,9 @@
+{
+  "BAR": {
+    "OPACITY": "不透明度",
+    "ADDITIVE": "加法"
+  },
+  "TESTBED": {
+    "HELLO_WORLD": "こんにちは、世界！これは翻訳されたI18nテキストです。"
+  }
+}

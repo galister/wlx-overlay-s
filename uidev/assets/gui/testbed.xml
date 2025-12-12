@@ -1,0 +1,96 @@
+<layout>
+  <theme>
+    <var key="aqua1" value="#00AAFF" />
+    <var key="aqua2" value="#00CCFF" />
+    <var key="aqua3" value="#00FFFF" />
+  </theme>
+
+  <elements>
+    <rectangle width="750" height="550" color="#FFFFFF" flex_direction="column" overflow_y="scroll">
+      <div flex_direction="column" padding="16">
+        <label weight="bold" text="Try these environment variables:" />
+        <label text="TESTBED=bar" />
+        <label text="TESTBED=watch" />
+        <label text="TESTBED=dashboard" />
+      </div>
+
+      <div flex_direction="column">
+        <!-- 1/3 red rect -->
+        <rectangle padding="16" box_sizing="content_box" flex_wrap="wrap" gap="16" align_content="flex_start" color="#223344">
+          <rectangle color="#99AAFF" round="100%" width="128" height="48" align_items="center" justify_content="center" border="8" border_color="#FFFFFF">
+            <label text="I'm centered" color="#FF0000" weight="bold" />
+          </rectangle>
+          <div flex_direction="column">
+            <label text="I'm a text!" color="~aqua1" />
+            <label text="I'm a bold text!" color="~aqua2" weight="bold" />
+            <label text="I'm a BIG text!" color="~aqua3" weight="bold" size="20" />
+          </div>
+          <rectangle round="4" id="my_div_parent" color="#FFCC99" align_items="center" align_content="flex_start" justify_content="center" flex_wrap="wrap" gap="8" padding="16" border="2" border_color="#ffffff">
+            <!-- filled-in at runtime -->
+          </rectangle>
+          <rectangle width="400" round="8" padding="2" align_items="center" border_color="#ffffff">
+            <include src="testbed/icons.xml" />
+          </rectangle>
+
+          <!-- Embed sprites -->
+          <sprite width="64" height="64" src="raster.png" />
+          <sprite width="64" height="64" src="dashboard/wayvr_dashboard.svg" />
+        </rectangle>
+        <!-- 2/3 green rects -->
+        <div flex_direction="column">
+          <rectangle color="#44aa33" color2="#3344aa" round="4" gradient="radial" height="100%" border="2" border_color="#ffffff">
+            <div margin="16" width="100%" height="100%" align_items="center" justify_content="center" flex_wrap="wrap" align_content="center">
+              <rectangle width="64" height="64" color="#000000" />
+              <rectangle width="64" height="64" color="#002222" />
+              <rectangle width="64" height="64" color="#004444" />
+              <rectangle width="64" height="64" color="#006666" />
+            </div>
+          </rectangle>
+          <rectangle color="#aaff88" color2="#88aaff" round="4" gradient="vertical" height="100%">
+            <div margin="16" width="100%" height="100%" flex_wrap="wrap" gap="16" align_content="flex_start">
+              <rectangle width="64" height="32" color="#ff0000" />
+              <rectangle width="64" height="32" color="#ff0000" border="2" border_color="#000000" />
+              <rectangle width="64" height="32" color="#ff0000" border="4" border_color="#000000" />
+              <rectangle width="64" height="32" color="#ff0000" border="6" border_color="#000000" />
+              <rectangle width="64" height="32" color="#ff0000" border="8" border_color="#000000" />
+              <rectangle width="64" height="64" color="#000000" border="2" round="100%" border_color="#FFFF00" />
+              <rectangle width="64" height="64" color="#000000" border="8" round="100%" border_color="#FFFF00" />
+              <rectangle width="64" height="64" color="#000000" border="16" round="100%" border_color="#FFFF00" />
+              <rectangle width="64" height="64" color="#000000" border="30" round="100%" border_color="#FFFF00" />
+              <rectangle width="64" height="64" color="#000000" border="2" round="50%" border_color="#FFFF00" />
+              <rectangle width="64" height="64" color="#000000" border="8" round="50%" border_color="#FFFF00" />
+              <rectangle width="64" height="64" color="#000000" border="12" round="50%" border_color="#FFFF00" />
+              <rectangle width="64" height="64" color="#000000" border="13" round="50%" border_color="#FFFF00" />
+              <rectangle width="64" height="64" color="#000000" border="14" round="50%" border_color="#FFFF00" />
+              <rectangle width="64" height="64" color="#000000" border="15" round="50%" border_color="#FFFF00" />
+              <rectangle width="64" height="64" color="#000000" border="16.5" round="50%" border_color="#FFFF00" />
+              <rectangle width="64" height="64" color="#000000" border="30" round="50%" border_color="#FFFF00" />
+              <rectangle color="#000000">
+                <rectangle width="200" height="100" color="#ffffff" margin="2" />
+              </rectangle>
+            </div>
+          </rectangle>
+        </div>
+        <!-- 3/3 yellow rect -->
+        <rectangle color="#ffff99" flex_direction="column" padding="16">
+          <div height="100%" flex_direction="column">
+            <label text="Multi line test #1&#xA;This is aligned to the left." align="left" size="20" color="#330000" />
+            <rectangle width="100%" height="1" />
+          </div>
+          <div height="100%" flex_direction="column">
+            <label text="Multi line test #2&#xA;This is aligned to the right." align="right" size="20" color="#330000" />
+            <rectangle width="100%" height="1" />
+          </div>
+          <div height="100%" flex_direction="column">
+            <label text="Multi line test #3&#xA;This is aligned to the center.&#xA;The longer lines are still aligned to the center." align="center" size="20" color="#330000" />
+            <rectangle width="100%" height="1" />
+          </div>
+          <div height="100%" flex_direction="column">
+            <label text="Multi line test #4&#xA;This is justified alignment.&#xA;The longer lines are the same length as the shorter lines." align="justified" size="20" color="#330000" />
+            <rectangle width="100%" height="1" />
+          </div>
+        </rectangle>
+      </div>
+    </rectangle>
+  </elements>
+</layout>

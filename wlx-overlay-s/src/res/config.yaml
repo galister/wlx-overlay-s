@@ -1,0 +1,38 @@
+# For how much time mouse motion events should be stopped after clicking?
+# Prevents accidental dragging various GUI elements or links, making it easier to click
+# Default: 300
+click_freeze_time_ms: 300
+
+# Make scroll events inverted in X/Y axis
+# Default: false
+invert_scroll_direction_x: false
+invert_scroll_direction_y: false
+
+# Change speed of scrolling
+# Default: 1.0
+# 0.5: half the speed
+# 2.0: twice the speed
+scroll_speed: 1.0
+
+# Default: true
+keyboard_sound_enabled: true
+
+# Alter default scale of various overlays
+# Default: 1.0
+keyboard_scale: 1.0
+desktop_view_scale: 1.0
+watch_scale: 1.0
+
+# Enable / disable sliding windows back and forth with the scroll action
+# Default: true
+allow_sliding: true
+
+# Enable / disable realigning the working set windows when they are shown/hidden
+# Default: true
+realign_on_showhide: true
+
+# When enabled, the mouse pointer will not be moved on the screen, unless the trigger is touched
+# allowing for moving both pointers off the screens to the keyboard, while keeping the cursor position
+# unchanged, for when the desktop is configured to move the focus with the mouse cursor
+# Default: false
+focus_follows_mouse_mode: false

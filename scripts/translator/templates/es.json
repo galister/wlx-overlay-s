@@ -1,0 +1,20 @@
+{
+	"full_name": "Spanish",
+	"examples": [
+		{
+			"key": "BAR.OPACITY",
+			"en": "Opacity",
+			"translated": "Opacidad"
+		},
+		{
+			"key": "PANEL.CLOSE",
+			"en": "Close panel",
+			"translated": "Cerrar panel"
+		},
+		{
+			"key": "SETTINGS.LEFT_HANDED_MODE",
+			"en": "Left-handed mode",
+			"translated": "Modo para zurdos"
+		}
+	]
+}

@@ -1,0 +1,17 @@
+[package]
+name = "uidev"
+version = "0.1.0"
+edition = "2024"
+description = "wgui library testing using winit backend"
+
+[dependencies]
+anyhow = { workspace = true }
+glam = { workspace = true }
+log = { workspace = true }
+rust-embed = "8.9.0"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+wgui = { path = "../wgui/" }
+winit = "0.30.12"
+vulkano = { workspace = true }
+vulkano-shaders = { workspace = true }
+dash-frontend = { path = "../dash-frontend/" }

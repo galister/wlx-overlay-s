@@ -1,0 +1,39 @@
+{
+  "ANCHOR": {
+    "CENTER": "センター"
+  },
+  "WATCH": {
+    "MIRROR": "新しいミラーオーバーレイを追加",
+    "CLEANUP_MIRRORS": "現在表示されていないミラーを削除",
+    "RECENTER": "プレイスペースをリセンター",
+    "FIX_FLOOR": "床の高さを修正",
+    "EDIT_MODE_EXPLANATION": "オーバーレイは個別に移動および調整できます。\n現在のセットのオーバーレイを切り替え：",
+    "DASHBOARD": "ダッシュボード",
+    "EDIT_MODE": "編集モード",
+    "ADD_NEW_SET": "新しいセットを追加",
+    "SWITCH_TO_SET": "セットに切り替える",
+    "TOGGLE_FOR_CURRENT_SET": "現在のセットで表示を切り替え",
+    "LONG_PRESS_TO_DELETE_SET": "長押しでセットを削除"
+  },
+  "EDIT_MODE": {
+    "ADJUST_CURVATURE": "曲率を調整する",
+    "ALPHA_BLEND_MODE": "アルファブレンドモード",
+    "BLENDING_ADDITIVE": "加算",
+    "CURVATURE": "曲率",
+    "DELETE": "削除",
+    "HINT_POINT_WINDOW": "ウィンドウをタップしてそのパラメータを変更します。\n完了したら、右側のボタンで編集モードを終了してください。",
+    "LEAVE": "編集モードを終了",
+    "LOCK_INTERACTION": "インタラクションをロック",
+    "MOVE_PRESS_AND_DRAG": "移動（押してドラッグ）",
+    "OPACITY": "不透明度",
+    "POSITIONING": "位置調整",
+    "RESIZE_PRESS_AND_DRAG": "サイズ変更（押してドラッグ）",
+    "POS_STATIC": "固定：その場に留まり、再センタリングされません。",
+    "POS_ANCHORED": "アンカー：他のセット要素と一緒に移動します。デフォルト。",
+    "POS_FLOATING": "フローティング：その場に留まり、表示されるときに再センタリングされます。",
+    "POS_HMD": "HMD に追従する。",
+    "POS_HAND_L": "左手に追従する。",
+    "POS_HAND_R": "右手に追従する。",
+    "INTERPOLATION": "補間"
+  }
+}

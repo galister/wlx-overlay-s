@@ -1,0 +1,7 @@
+<layout>
+  <include src="t_tab_title.xml" />
+
+  <elements>
+    <TabTitle translation="MONADO_RUNTIME" icon="dashboard/monado.svg" />
+  </elements>
+</layout>

@@ -1,0 +1,148 @@
+<layout>
+  <include src="theme.xml" />
+
+  <theme>
+    <var key="side_size" value="48" />
+    <var key="side_sprite_size" value="26" />
+    <var key="side_button_size" value="48" />
+  </theme>
+
+  <template name="SideButton">
+    <Button
+      id="${id}"
+      round="100%"
+      width="~side_button_size"
+      height="~side_button_size"
+      color="#44444400"
+      hover_color="#333333ff"
+      hover_border_color="#555555ff"
+      tooltip="${tooltip}"
+      tooltip_side="${tooltip_side}"
+    >
+      <sprite src="${src}" width="~side_sprite_size" height="~side_sprite_size" />
+    </Button>
+  </template>
+
+  <elements>
+    <!-- background for testing -->
+    <!-- <rectangle position="absolute" color="#333333" width="100%" height="100%" /> -->
+
+    <!-- left/right separator (menu and rest) -->
+    <div flex_direction="row" gap="8" width="100%" height="100%">
+      <!-- LEFT MENU -->
+      <div id="menu"
+        width="~size_size"
+        min_width="~side_size"
+        max_width="~side_size"
+        height="100%"
+        align_items="center"
+        justify_content="center">
+        <rectangle
+          width="100%"
+          round="100%"
+          color="~color_menu_dark"
+          flex_direction="column"
+          justify_content="center"
+          align_items="center"
+          gap="4"
+        >
+          <SideButton id="btn_side_home" src="dashboard/wayvr_dashboard_mono.svg" tooltip="HOME_SCREEN" tooltip_side="right" />
+          <SideButton id="btn_side_apps" src="dashboard/apps.svg" tooltip="APPLICATIONS" tooltip_side="right" />
+          <SideButton id="btn_side_games" src="dashboard/games.svg" tooltip="GAMES" tooltip_side="right" />
+          <SideButton id="btn_side_monado" src="dashboard/monado.svg" tooltip="MONADO_RUNTIME" tooltip_side="right" />
+          <SideButton id="btn_side_processes" src="dashboard/window.svg" tooltip="PROCESSES" tooltip_side="right" />
+          <rectangle height="2" color="#FFFFFF33" width="~side_sprite_size" />
+          <SideButton id="btn_side_settings" src="dashboard/settings.svg" tooltip="SETTINGS" tooltip_side="right" />
+        </rectangle>
+      </div>
+      <!-- REST -->
+      <!-- content/bottom panel separator -->
+      <div
+        flex_direction="column"
+        gap="8"
+        width="100%"
+        height="100%"
+        overflow_x="scroll">
+        <!-- CONTENT -->
+
+        <!-- color and color2 alpha will be modified at runtime -->
+        <rectangle
+          id="rect_content"
+          color2="#0d131a00"
+          color="#24417900"
+          gradient="vertical"
+          round="8"
+          flex_grow="1"
+          width="100%"
+          overflow_y="scroll"
+        >
+          <!-- radial gradient -->
+          <rectangle
+            position="absolute" width="100%" height="100%"
+            gradient="radial" color="#44BBFF22" color2="#00000000" />
+
+          <div
+            id="content"
+            flex_direction="column"
+            overflow_x="scroll"
+            overflow_y="scroll"
+            padding_top="8"
+            padding_bottom="8"
+            padding_left="16"
+            padding_right="16"
+            gap="8"
+            width="100%"
+            min_height="100%"
+          >
+            <!-- filled-in at runtime -->
+          </div>
+
+          <div position="absolute" id="popup_manager" width="100%" height="100%" />
+        </rectangle>
+        <!-- BOTTOM PANEL -->
+        <rectangle
+          width="100%"
+          height="48"
+          min_height="48"
+          max_height="48"
+          box_sizing="border_box"
+          round="8"
+          flex_direction="row"
+          align_items="center"
+          justify_content="space_between"
+          color="~color_bottom_panel"
+        >
+          <!-- left gradient -->
+          <div position="absolute" width="100%" height="100%" justify_content="start">
+            <rectangle position="absolute" width="40%" height="100%" color="#0a0a0a" color2="#0a0a0a00" round="8" gradient="horizontal" />
+          </div>
+
+          <!-- right gradient -->
+          <div position="absolute" width="100%" height="100%" justify_content="end">
+            <rectangle position="absolute" width="40%" height="100%" color2="#0a0a0a" color="#0a0a0a00" round="8" gradient="horizontal" />
+          </div>
+
+          <!-- top shine -->
+          <div position="absolute" width="100%" height="100%" justify_content="center">
+            <rectangle position="absolute" width="99%" height="2" color="#FFFFFF66" round="4" />
+          </div>
+
+          <!-- Left bottom side -->
+          <div margin_left="8">
+            <Button id="btn_audio" color="#FFFFFF00" border_color="#FFFFFF00" tooltip="AUDIO.VOLUME" tooltip_side="top">
+              <sprite src="dashboard/volume.svg" width="24" height="24" margin="8" />
+            </Button>
+            <Button id="btn_recenter" color="#FFFFFF00" border_color="#FFFFFF00" tooltip="ACTIONS.RECENTER_PLAYSPACE" tooltip_side="top">
+              <sprite src="dashboard/recenter.svg" width="24" height="24" margin="8" />
+            </Button>
+          </div>
+
+          <!-- Right bottom side -->
+          <div margin_right="16">
+            <label id="label_time" size="16" weight="light" />
+          </div>
+        </rectangle>
+      </div>
+    </div>
+  </elements>
+</layout>

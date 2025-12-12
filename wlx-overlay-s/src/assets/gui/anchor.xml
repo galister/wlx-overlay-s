@@ -1,0 +1,18 @@
+
+<layout>
+  <elements>
+    <div width="192" height="192" padding="8">
+      <rectangle
+      width="100%" height="100%"
+      margin="4" box_sizing="border_box"
+      border_color="#FFFF00" border="2"
+      round="100%" color="#00000000"
+      align_items="center"
+      justify_content="center">
+
+      <label color="#FFFF00" size="36" translation="ANCHOR.CENTER" weight="bold" />
+
+    </rectangle>
+    </div>
+  </elements>
+</layout>

@@ -1,0 +1,49 @@
+{
+  "HOME_SCREEN": "Startbildschirm",
+  "MONADO_RUNTIME": "„Monado”-Laufzeitumgebung",
+  "APPLICATIONS": "Anwendungen",
+  "GAMES": "Spiele",
+  "SETTINGS": "Einstellungen",
+  "PROCESSES": "Prozesse",
+  "HELLO_USER": "Hallo, {USER}!",
+  "GENERAL_SETTINGS": "Allgemeine Einstellungen",
+  "APPLICATION_LAUNCHER": "Anwendung Launcher",
+  "APP_SETTINGS": {
+    "HIDE_USERNAME": "Benutzernamen ausblenden",
+    "OPAQUE_BACKGROUND": "Undurchsichtiger Hintergrund",
+    "RUN_IN_XWAYLAND_MODE_BY_DEFAULT": "Standardmäßig in XWayland-Modus ausführen",
+    "WLX_OVERLAY_S_SETTINGS": "WlxOverlay-S Einstellungen",
+    "HEADSET_SETTINGS": "Headset-Einstellungen",
+    "BRIGHTNESS": "Helligkeit",
+    "WLX": {
+      "NOTIFICATIONS_ENABLED": "Benachrichtigungen aktiviert",
+      "NOTIFICATIONS_SOUND_ENABLED": "Benachrichtigungssound aktiviert",
+      "KEYBOARD_SOUND_ENABLED": "Tastaturgeräusch aktiviert",
+      "BLOCK_GAME_INPUT": "Spielsteuerung blockieren",
+      "SPACE_DRAG_MULTIPLIER": "Raum-Drag-Multiplikator",
+      "SPACE_DRAG_ROTATION_ENABLED": "Rotation im Space-Drag aktivieren",
+      "SHOW_SKYBOX": "Skybox anzeigen",
+      "ENABLE_PASSTHROUGH": "Passthrough aktivieren"
+    },
+    "RESTART_SOFTWARE": "Software neu starten"
+  },
+  "HELLO": "Hallo!",
+  "AUDIO": {
+    "VOLUME": "Lautstärke",
+    "SETTINGS": "Audioeinstellungen",
+    "AUTO_SWITCH_TO_VR_AUDIO": "Automatisch auf VR-Audio umschalten",
+    "SPEAKERS": "Lautsprecher",
+    "MICROPHONES": "Mikrofone",
+    "CARDS": "Karten",
+    "SELECT_AUDIO_CARD_PROFILE": "Wählen Sie das Audio-Kartenprofil",
+    "NO_VR_SPEAKERS_FOUND_SWITCH_MANUALLY": "Keine VR-Lautsprecher gefunden. Schalten Sie diese manuell um.",
+    "NO_VR_MICROPHONE_SWITCH_MANUALLY": "Kein VR-Mikrofon gefunden. Schalten Sie es manuell um.",
+    "FAILED_TO_SWITCH_MICROPHONE": "Fehler beim Wechseln des Mikrofons",
+    "MICROPHONE_SET_SUCCESSFULLY": "Mikrofon erfolgreich eingestellt",
+    "SPEAKERS_SET_SUCCESSFULLY": "Lautsprecher erfolgreich eingestellt",
+    "DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED": "Gerät gefunden und initialisiert, aber nicht umgeschaltet"
+  },
+  "ACTIONS": {
+    "RECENTER_PLAYSPACE": "Playspace neu zentrieren"
+  }
+}

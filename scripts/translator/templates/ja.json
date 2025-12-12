@@ -1,0 +1,20 @@
+{
+	"full_name": "Japanese",
+	"examples": [
+		{
+			"key": "BAR.OPACITY",
+			"en": "Opacity",
+			"translated": "不透明度"
+		},
+		{
+			"key": "PANEL.CLOSE",
+			"en": "Close panel",
+			"translated": "パネルを閉じる"
+		},
+		{
+			"key": "SETTINGS.LEFT_HANDED_MODE",
+			"en": "Left-handed mode",
+			"translated": "左利きモード"
+		}
+	]
+}

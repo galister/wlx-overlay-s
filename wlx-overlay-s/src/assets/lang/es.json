@@ -1,0 +1,39 @@
+{
+  "ANCHOR": {
+    "CENTER": "Centro"
+  },
+  "WATCH": {
+    "MIRROR": "Agregar una nueva superposición de espejo",
+    "CLEANUP_MIRRORS": "Eliminar espejos que no están actualmente visibles",
+    "RECENTER": "Recentrar el área de juego",
+    "FIX_FLOOR": "Ajustar la altura del piso",
+    "EDIT_MODE_EXPLANATION": "Ahora las superposiciones se pueden mover y ajustar individualmente.\nAlternar superposiciones para el conjunto actual:",
+    "DASHBOARD": "Panel de control",
+    "EDIT_MODE": "Modo de edición",
+    "ADD_NEW_SET": "Añadir un nuevo conjunto",
+    "SWITCH_TO_SET": "Cambiar al conjunto",
+    "TOGGLE_FOR_CURRENT_SET": "Alternar visibilidad en el conjunto actual",
+    "LONG_PRESS_TO_DELETE_SET": "Mantén presionado para eliminar el conjunto"
+  },
+  "EDIT_MODE": {
+    "ADJUST_CURVATURE": "Ajustar curvatura",
+    "ALPHA_BLEND_MODE": "Modo de mezcla alfa",
+    "BLENDING_ADDITIVE": "Aditivo",
+    "CURVATURE": "Curvatura",
+    "DELETE": "Eliminar",
+    "HINT_POINT_WINDOW": "Pulsa sobre una ventana para cambiar sus parámetros.\nUna vez terminado, sal del modo de edición usando el botón de la derecha.",
+    "LEAVE": "Salir del modo edición",
+    "LOCK_INTERACTION": "Bloquear interacción",
+    "MOVE_PRESS_AND_DRAG": "Mover (presionar y arrastrar)",
+    "OPACITY": "Opacidad",
+    "POSITIONING": "Posicionamiento",
+    "RESIZE_PRESS_AND_DRAG": "Redimensionar (presionar y arrastrar)",
+    "POS_STATIC": "Estático: Permanece en su lugar y nunca se recentra.",
+    "POS_ANCHORED": "Anclado: Se mueve junto con el resto del conjunto. Predeterminado.",
+    "POS_FLOATING": "Flotante: Permanece en su lugar, se recentra cuando se muestra.",
+    "POS_HMD": "Seguir el HMD.",
+    "POS_HAND_L": "Seguir la mano izquierda.",
+    "POS_HAND_R": "Seguir la mano derecha.",
+    "INTERPOLATION": "Interpolación"
+  }
+}

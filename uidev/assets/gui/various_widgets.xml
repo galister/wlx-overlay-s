@@ -1,0 +1,102 @@
+<layout>
+  <macro name="rect"
+    color="#000000aa"
+    round="4" border="2"
+    border_color="#ffffffaa"
+    flex_direction="column"
+    gap="4"
+    padding="8"
+    align_self="baseline"
+    align_items="baseline" />
+
+  <elements>
+    <rectangle position="absolute" width="100%" height="100%" color="#1e3a3eee" />
+    <div
+      margin="16"
+      gap="4"
+      flex_direction="column"
+      overflow_y="scroll">
+
+      <rectangle macro="rect">
+        <label text="Raw text" color="#FFFFFF" />
+        <label translation="TESTBED.HELLO_WORLD" color="#FFFFFF" />
+      </rectangle>
+
+      <rectangle macro="rect">
+        <label id="label_current_option" text="Click any of these buttons" size="20" weight="bold" />
+        <div gap="4">
+          <Button id="button_red" text="Red button" width="150" height="32" color="#FF0000" tooltip="I'm at the top" tooltip_side="top" />
+          <Button id="button_aqua" text="Aqua button" width="150" height="32" color="#00FFFF" tooltip="I'm at the bottom" tooltip_side="bottom" />
+          <Button id="button_yellow" text="Yellow button" width="150" height="32" color="#FFFF00" tooltip="TESTBED.HELLO_WORLD" tooltip_side="right" />
+        </div>
+        <div gap="4">
+          <Button id="button_click_me" text="Click me" width="128" height="24" color="#FFFFFF" />
+          <Button id="button_popup" text="Show pop-up" width="200" height="32" color="#777777" />
+        </div>
+
+        <label text="custom attrib test" />
+        <div flex_direction="row" gap="8">
+          <label text="lighter:" />
+
+          <rectangle _my_custom="red" _mult="1.0" width="16" height="16" />
+          <rectangle _my_custom="green" _mult="1.0" width="16" height="16" />
+          <rectangle _my_custom="blue" _mult="1.0" width="16" height="16" />
+
+          <label text="darker:" />
+
+          <rectangle _my_custom="red" _mult="0.5" width="16" height="16" />
+          <rectangle _my_custom="green" _mult="0.5" width="16" height="16" />
+          <rectangle _my_custom="blue" _mult="0.5" width="16" height="16" />
+        </div>
+      </rectangle>
+
+      <rectangle macro="rect">
+        <label text="visibility test" weight="bold" />
+        <CheckBox id="cb_visible" height="24" text="visible" />
+        <div id="div_visibility" flex_direction="column" gap="8" margin_top="8" align_items="baseline" display="none">
+          <Button text="button" width="128" height="24" />
+          <Button text="button" width="128" height="24" />
+          <Button text="button" width="128" height="24" />
+          <CheckBox height="32" text="foobar" />
+          <Slider width="200" height="24" min_value="42" max_value="2137" value="100" />
+        </div>
+      </rectangle>
+
+      <rectangle macro="rect" flex_direction="row" gap="16">
+        <CheckBox id="cb_first" text="I'm a checkbox!" />
+        <CheckBox text="and me too!" />
+        <CheckBox text="i'm checked by default" checked="1" />
+      </rectangle>
+
+      <rectangle macro="rect" flex_direction="row" align_items="start">
+        <div flex_direction="column" gap="8">
+          <label text="height 16" weight="bold" />
+
+          <label text="range 0-100 value 25" />
+          <Slider width="200" height="16" min_value="0" max_value="100" value="25" />
+
+          <label text="range 10-20 value 15" />
+          <Slider width="200" height="16" min_value="10" max_value="20" value="15" />
+
+          <label text="range -10-42 value 0" />
+          <Slider width="200" height="16" min_value="-10" max_value="42" value="0" />
+        </div>
+
+        <rectangle color="#ffffff44" width="2" height="100%" margin_left="4" margin_right="4" />
+
+        <div flex_direction="column" gap="8">
+          <label text="height 24" weight="bold" />
+
+          <label text="range 0-100 value 25" />
+          <Slider width="200" height="24" min_value="0" max_value="100" value="25" />
+
+          <label text="range 10-20 value 15" />
+          <Slider width="200" height="24" min_value="10" max_value="20" value="15" />
+
+          <label text="range -10-42 value 0" />
+          <Slider width="200" height="24" min_value="-10" max_value="42" value="0" />
+        </div>
+      </rectangle>
+    </div>
+  </elements>
+</layout>

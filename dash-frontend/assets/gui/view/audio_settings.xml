@@ -1,0 +1,68 @@
+<layout>
+  <include src="../t_group_box.xml" />
+
+  <!-- device_name, device_icon -->
+  <template name="DeviceSlider">
+    <rectangle macro="group_box">
+      <div width="100%" align_items="center" justify_content="center" gap="8">
+        <sprite src="${device_icon}" width="16" height="16" />
+        <label text="${device_name}" margin_right="8" size="12" weight="bold" />
+      </div>
+      <div width="100%" align_items="center">
+        <CheckBox id="checkbox" />
+        <Button sprite_src="${volume_icon}" id="btn_mute" width="32" />
+        <Slider id="slider" flex_grow="1" height="16" min_value="0" max_value="150" margin_left="8" />
+      </div>
+    </rectangle>
+  </template>
+
+  <!-- card_name, profile_name -->
+  <template name="Card">
+    <rectangle macro="group_box">
+      <div width="100%" align_items="center" justify_content="center">
+        <label text="${card_name}" size="12" weight="bold" />
+      </div>
+      <Button id="btn_card" text="${profile_name}" width="100%" height="32" />
+    </rectangle>
+  </template>
+
+  <template name="SelectAudioProfileText">
+    <div align_items="center" gap="8">
+      <Button width="48" height="32" id="btn_back">
+        <sprite src="dashboard/back.svg" width="24" height="24" />
+      </Button>
+      <label translation="AUDIO.SELECT_AUDIO_CARD_PROFILE" size="14" weight="bold" />
+    </div>
+  </template>
+
+  <!-- id (Button), src, translation -->
+  <template name="BottomButton">
+    <Button
+      flex_grow="1"
+      id="${id}"
+      translation="${translation}"
+      sprite_src="${src}">
+    </Button>
+  </template>
+
+  <elements>
+    <div id="devices" flex_direction="column" gap="4">
+
+    </div>
+
+    <!-- bottom buttons -->
+    <div flex_direction="row" gap="4">
+      <Button
+        id="btn_auto"
+        sprite_src="dashboard/magic_wand.svg"
+        min_width="32"
+        tooltip="AUDIO.AUTO_SWITCH_TO_VR_AUDIO"
+        color="~color_accent"
+        tooltip_side="right" />
+
+      <BottomButton id="btn_sinks" src="dashboard/volume.svg" translation="AUDIO.SPEAKERS" />
+      <BottomButton id="btn_sources" src="dashboard/microphone.svg" translation="AUDIO.MICROPHONES" />
+      <BottomButton id="btn_cards" src="dashboard/cpu.svg" translation="AUDIO.CARDS" />
+    </div>
+  </elements>
+</layout>

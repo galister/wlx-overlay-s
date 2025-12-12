@@ -1,0 +1,92 @@
+<layout>
+  <include src="theme.xml" />
+
+  <macro name="button_style"
+    margin="2" overflow="hidden" box_sizing="border_box"
+    border_color="~color_accent_translucent" border="2" round="8" color="~color_accent_5" color2="~color_accent_1" gradient="vertical"
+    align_items="center" justify_content="center" />
+
+  <macro name="button_style"
+    margin="2" overflow="hidden" box_sizing="border_box" align_items="center" justify_content="center"
+    border="2" round="50%" padding="8" gradient="vertical" tooltip_side="bottom" />
+
+  <template name="TopButton">
+    <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" sticky="${sticky}" border_color="~color_accent_translucent" color="~color_accent_5" color2="~color_accent_1">
+      <sprite id="${id}_sprite" width="48" height="48" src="${src}" />
+    </Button>
+  </template>
+
+  <template name="TopButtonDanger">
+    <Button macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" border_color="~color_danger_translucent" color="~color_danger_5" color2="~color_danger_1">
+      <sprite width="48" height="48" src="${src}" />
+    </Button>
+  </template>
+
+  <template name="TopButtonFaded">
+    <Button macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" border_color="~color_faded_translucent" color="~color_faded_5" color2="~color_faded_1">
+      <sprite width="48" height="48" src="${src}" />
+    </Button>
+  </template>
+
+  <template name="PosButton">
+    <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" border_color="~color_accent_translucent" color="~color_accent_5" color2="~color_accent_1">
+      <sprite id="${id}_sprite" width="40" height="40" src="${src}" />
+    </Button>
+  </template>
+
+  <elements>
+    <div width="100%" height="100%">
+      <rectangle id="shadow" width="100%" height="100%" padding="4" gap="4" align_items="center" justify_content="center" color="#000000c0" flex_direction="row">
+        <div flex_direction="column">
+          <rectangle padding="16" gap="8" round="32" color="~color_bg" border="2" border_color="~color_accent" justify_content="center">
+            <div flex_direction="column" gap="8">
+              <div flex_direction="row" gap="4">
+                <TopButton sticky="1" id="top_lock" src="edit/lock_open.svg" tooltip="EDIT_MODE.LOCK_INTERACTION" press="::EditModeToggleLock" />
+                <TopButton sticky="0" id="top_pos" src="edit/anchor.svg" tooltip="EDIT_MODE.POSITIONING" press="::EditModeTab pos" />
+                <TopButton sticky="0" id="top_alpha" src="edit/fade.svg" tooltip="EDIT_MODE.OPACITY" press="::EditModeTab alpha" />
+                <TopButton sticky="0" id="top_curve" src="edit/curve.svg" tooltip="EDIT_MODE.ADJUST_CURVATURE" press="::EditModeTab curve" />
+                <!-- TopButton sticky="0" id="top_move" src="edit/move-all.svg" tooltip="EDIT_MODE.MOVE_PRESS_AND_DRAG" / -->
+                <!-- TopButton sticky="0" id="top_resize" src="edit/resize.svg" tooltip="EDIT_MODE.RESIZE_PRESS_AND_DRAG" / -->
+                <TopButtonDanger src="edit/delete.svg" tooltip="EDIT_MODE.DELETE" press="::EditModeDeletePress" release="::EditModeDeleteRelease" />
+                <div width="8" height="100%" />
+                <TopButtonFaded src="watch/edit.svg" tooltip="EDIT_MODE.LEAVE" press="::EditToggle" />
+              </div>
+              <div id="tab_none" display="none" height="100">
+                  <label align="center" translation="EDIT_MODE.HINT_POINT_WINDOW" />
+              </div>
+              <div id="tab_pos" display="none" height="100" flex_direction="column">
+                <div padding="8" gap="8" justify_content="center" align_items="center">
+                  <PosButton id="pos_static" src="edit/pin.svg" tooltip="EDIT_MODE.POS_STATIC" press="::EditModeSetPos static" />
+                  <PosButton id="pos_anchored" src="edit/anchor.svg" tooltip="EDIT_MODE.POS_ANCHORED" press="::EditModeSetPos anchored" />
+                  <PosButton id="pos_floating" src="edit/float.svg" tooltip="EDIT_MODE.POS_FLOATING" press="::EditModeSetPos floating" />
+                  <PosButton id="pos_hmd" src="watch/hmd.svg" tooltip="EDIT_MODE.POS_HMD" press="::EditModeSetPos hmd" />
+                  <PosButton id="pos_hand_l" src="watch/controller_l.svg" tooltip="EDIT_MODE.POS_HAND_L" press="::EditModeSetPos hand_l" />
+                  <PosButton id="pos_hand_r" src="watch/controller_r.svg" tooltip="EDIT_MODE.POS_HAND_R" press="::EditModeSetPos hand_r" />
+                </div>
+                <div id="pos_interpolation" padding="8" gap="8" justify_content="center" align_items="center">
+                  <label translation="EDIT_MODE.INTERPOLATION" />
+                  <Slider id="lerp_slider" width="250" height="16" min_value="0.05" max_value="1" value="1" step="0.05" />
+                </div>
+              </div>
+              <div id="tab_alpha" display="none" height="100" padding="8" gap="8" justify_content="center" align_items="center">
+                <div width="100%" padding="8" gap="8" justify_content="center" align_items="center">
+                  <label translation="EDIT_MODE.OPACITY" />
+                  <Slider id="alpha_slider" width="200" height="16" min_value="0.1" max_value="1" value="1" step="0.05" />
+                </div>
+                <div width="100%" padding="8" gap="8" justify_content="center" align_items="center">
+                  <CheckBox id="additive_box" translation="EDIT_MODE.BLENDING_ADDITIVE" tooltip="EDIT_MODE.ALPHA_BLEND_MODE" tooltip_side="bottom" />
+                </div>
+              </div>
+              <div id="tab_curve" display="none" height="100" flex_direction="column">
+                <div padding="8" gap="8" justify_content="center" align_items="center">
+                  <label translation="EDIT_MODE.CURVATURE" />
+                  <Slider id="curve_slider" width="250" height="16" min_value="0" max_value="0.5" value="0.15" step="0.01" />
+                </div>
+              </div>
+            </div>
+          </rectangle>
+        </div>
+      </rectangle>
+    </div>
+  </elements>
+</layout>

@@ -1,0 +1,76 @@
+<layout>
+  <include src="theme.xml" />
+
+  <macro name="keycap_rect"
+    margin="2" width="100%" overflow="hidden" box_sizing="border_box"
+    border_color="~color_accent_translucent" border="2" round="8" color="~color_accent_5" color2="~color_accent_1" gradient="vertical"
+    align_items="center" justify_content="center" />
+
+  <macro name="keycap_div"
+    width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}"
+  />
+
+  <!-- The keyboard is build from the xkb keymap. This file is for customizing the keycaps. -->
+
+  <!-- Key cap with a single label. -->
+  <!-- Used for special keys. -->
+  <template name="KeySpecial">
+    <div macro="keycap_div">
+      <rectangle id="${id}" macro="keycap_rect">
+        <sprite width="32" height="32" src="keyboard/${text}.svg" />
+      </rectangle>
+    </div>
+  </template>
+
+  <!-- Key cap with a single label. -->
+  <!-- Used for letter keys on layouts without AltGr. -->
+  <template name="KeyLetter">
+    <div macro="keycap_div">
+      <rectangle id="${id}" macro="keycap_rect">
+        <label text="${text}" size="24" />
+      </rectangle>
+    </div>
+  </template>
+
+  <!-- Key cap with a primary label on top and an AltGr label on bottom. -->
+  <!-- Used for letter keys on layouts with AltGr. -->
+  <template name="KeyLetterAltGr">
+    <div macro="keycap_div">
+      <rectangle id="${id}" macro="keycap_rect" gap="4">
+        <label text="${text}" size="24" />
+        <label color="~color_text_translucent" text="${text_altgr}" size="24" />
+      </rectangle>
+    </div>
+  </template>
+
+  <!-- Key cap with a primary label on bottom and a Shift label on top. -->
+  <!-- Used for number & symbol keys on layouts without AltGr. -->
+  <template name="KeySymbol">
+    <div macro="keycap_div">
+      <rectangle id="${id}" macro="keycap_rect" gap="4">
+        <label color="~color_text_translucent" text="${text_shift}" size="24" />
+        <label text="${text}" size="24" />
+      </rectangle>
+    </div>
+  </template>
+
+  <!-- Key cap with a primary label on bottom-left, an AltGr label on bottom-right, Shift label on top-left. -->
+  <!-- Used for number & symbol keys on layouts with AltGr. -->
+  <template name="KeySymbolAltGr">
+    <div macro="keycap_div">
+      <rectangle id="${id}" macro="keycap_rect" flex_direction="row" flex_wrap="wrap">
+        <div width="50%" height="50%" align_items="center" justify_content="center">
+          <label color="~color_text_translucent" text="${text_shift}" size="24" />
+        </div>
+        <div width="50%" height="50%" align_items="center" justify_content="center" />
+        <div width="50%" height="50%" align_items="center" justify_content="center">
+          <label text="${text}" size="24" />
+        </div>
+        <div width="50%" height="50%" align_items="center" justify_content="center">
+          <label color="~color_text_translucent" text="${text_altgr}" size="24" />
+        </div>
+      </rectangle>
+    </div>
+  </template>
+
+</layout>

@@ -1,0 +1,42 @@
+<layout>
+  <include src="t_tab_title.xml" />
+
+  <template name="AppEntry">
+    <Button
+      id="button" width="116" max_width="140" min_height="100" flex_grow="1"
+      flex_direction="column" overflow="visible" align_items="center" justify_content="center" gap="8">
+      <div>
+        <sprite src="${src}" src_ext="${src_ext}" width="64" height="64" />
+      </div>
+      <div align_items="center" justify_content="center">
+        <label weight="bold" text="${name}" size="12" />
+      </div>
+    </Button>
+  </template>
+
+  <elements>
+    <TabTitle translation="APPLICATIONS" icon="dashboard/apps.svg" />
+    <!-- placeholders for now -->
+    <div gap="4" align_items="center">
+      <Button width="48" height="38">
+        <sprite src="dashboard/alphabetical.svg" width="24" height="24" />
+      </Button>
+      <Button width="48" height="38">
+        <sprite src="dashboard/category_search.svg" width="24" height="24" />
+      </Button>
+      <sprite src="dashboard/search.svg" width="24" height="24" />
+      <!-- placeholder editbox -->
+      <rectangle flex_grow="1" height="100%" color="#1d2e51" border_color="#294774" border="2" round="4" align_items="center" padding_left="12">
+        <label text="Search" color="#FFFFFF88" weight="bold" />
+      </rectangle>
+    </div>
+    <div
+      id="app_list_parent"
+      flex_direction="row"
+      flex_wrap="wrap"
+      justify_content="center"
+      gap="4"
+      overflow_y="scroll"
+    />
+  </elements>
+</layout>

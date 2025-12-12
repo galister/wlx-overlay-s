@@ -1,0 +1,126 @@
+[package]
+name = "wlx-overlay-s"
+version = "25.4.2"
+edition = "2024"
+license = "GPL-3.0-only"
+authors = ["galister"]
+description = "Access your Wayland/X11 desktop from Monado/WiVRn/SteamVR. Now with Vulkan!"
+repository = "https://github.com/galister/wlx-overlay-s"
+keywords = [
+  "linux",
+  "openvr",
+  "openxr",
+  "x11",
+  "wayland",
+  "openvr-overlay",
+  "openxr-overlay",
+]
+categories = ["games"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = { workspace = true }
+ash = "^0.38.0" # must match vulkano
+chrono = "0.4.42"
+chrono-tz = "0.10.4"
+clap = { version = "4.5.53", features = ["derive"] }
+config = "0.15.19"
+ctrlc = { version = "3.5.1", features = ["termination"] }
+dbus = { version = "0.9.9" }
+futures = "0.3.31"
+glam = { workspace = true, features = ["mint", "serde"] }
+idmap = { workspace = true, features = ["serde"] }
+idmap-derive = { workspace = true }
+input-linux = "0.7.1"
+json = { version = "0.12.4", optional = true }
+json5 = "1.3.0"
+libc = "0.2.178"
+log = { workspace = true }
+openxr = { git = "https://github.com/Ralith/openxrs", rev = "d0afdd3365bc1e14de28f6a3a21f457e788a702e", features = [
+  "linked",
+  "mint",
+], optional = true }
+ovr_overlay = { features = [
+  "ovr_input",
+  "ovr_system",
+], git = "https://github.com/galister/ovr_overlay_oyasumi", optional = true }
+regex = { workspace = true }
+rodio = { version = "0.21.1", default-features = false, features = [
+  "playback",
+  "wav",
+  "hound",
+] }
+rosc = { version = "0.11.4", optional = true }
+serde = { version = "1.0.228", features = ["derive", "rc"] }
+serde_json = "1.0.145"
+serde_yaml = "0.9.34"
+slotmap = { workspace = true }
+smallvec = "1.15.1"
+strum = { version = "0.27.2", features = ["derive"] }
+sysinfo = { version = "0.37" }
+thiserror = "2.0"
+wlx-capture = { path = "../wlx-capture" }
+wlx-common = { path = "../wlx-common" }
+libmonado = { version = "1.3.2", optional = true }
+winit = { version = "0.30.12", optional = true }
+xdg = "3.0"
+log-panics = { version = "2.1.0", features = ["with-backtrace"] }
+serde_json5 = "0.2.1"
+xkbcommon = { version = "0.9.0" }
+xcb = { version = "1.6.0", optional = true, features = [
+  "as-raw-xcb-connection",
+] }
+image_dds = { version = "0.7.2", default-features = false, features = [
+  "ddsfile",
+] }
+interprocess = { version = "2.2.3" }
+mint = "0.5.9"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+tracing = "0.1.43"
+vulkano = { workspace = true }
+vulkano-shaders = { workspace = true }
+wgui = { path = "../wgui" }
+
+################################
+#WayVR-only deps
+################################
+khronos-egl = { version = "6.0.0", features = ["static"], optional = true }
+smithay = { version = "0.7.0", default-features = false, features = [
+  "renderer_gl",
+  "backend_egl",
+  "backend_drm",
+  "xwayland",
+  "wayland_frontend",
+], optional = true }
+uuid = { version = "1.19.0", features = ["v4", "fast-rng"], optional = true }
+wayland-client = { workspace = true, optional = true }
+wayland-egl = { version = "0.32.8", optional = true }
+bytes = { version = "1.11.0", optional = true }
+wayvr_ipc = { git = "https://github.com/olekolek1000/wayvr-ipc.git", rev = "a72587d23f3bb8624d9aeb1f13c0a21e65350f51", default-features = false, optional = true }
+rust-embed = { workspace = true }
+################################
+
+[build-dependencies]
+regex = { version = "1.12.2" }
+
+[features]
+default = ["openvr", "openxr", "osc", "x11", "wayland", "wayvr"]
+openvr = ["dep:ovr_overlay", "dep:json"]
+openxr = ["dep:openxr", "dep:libmonado"]
+osc = ["dep:rosc"]
+x11 = ["dep:xcb", "wlx-capture/xshm", "xkbcommon/x11"]
+wayland = ["pipewire", "wlx-capture/wlr", "xkbcommon/wayland"]
+pipewire = ["wlx-capture/pipewire"]
+uidev = ["dep:winit"]
+xcb = ["dep:xcb"]
+wayvr = [
+  "dep:khronos-egl",
+  "dep:smithay",
+  "dep:uuid",
+  "dep:wayland-client",
+  "dep:wayland-egl",
+  "dep:bytes",
+  "dep:wayvr_ipc",
+]
+as-raw-xcb-connection = []

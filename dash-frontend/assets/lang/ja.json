@@ -1,0 +1,49 @@
+{
+  "HOME_SCREEN": "ホーム",
+  "MONADO_RUNTIME": "「Monado」ランタイム",
+  "APPLICATIONS": "アプリケーション",
+  "GAMES": "ゲーム",
+  "SETTINGS": "設定",
+  "PROCESSES": "プロセス",
+  "HELLO_USER": "こんにちは、{USER}！",
+  "GENERAL_SETTINGS": "全般設定",
+  "APPLICATION_LAUNCHER": "アプリケーションランチャー",
+  "APP_SETTINGS": {
+    "HIDE_USERNAME": "ユーザー名を表示しない",
+    "OPAQUE_BACKGROUND": "不透明な背景",
+    "RUN_IN_XWAYLAND_MODE_BY_DEFAULT": "XWaylandモードでデフォルトで実行する",
+    "WLX_OVERLAY_S_SETTINGS": "WlxOverlay-Sの設定",
+    "HEADSET_SETTINGS": "ヘッドセット設定",
+    "BRIGHTNESS": "明るさ",
+    "WLX": {
+      "NOTIFICATIONS_ENABLED": "通知が有効",
+      "NOTIFICATIONS_SOUND_ENABLED": "通知音を有効にする",
+      "KEYBOARD_SOUND_ENABLED": "キーボード音を有効にする",
+      "BLOCK_GAME_INPUT": "ゲーム入力をブロック",
+      "SPACE_DRAG_MULTIPLIER": "スペースドラッグ乗数",
+      "SPACE_DRAG_ROTATION_ENABLED": "スペースドラッグでの回転を有効にする",
+      "SHOW_SKYBOX": "スカイボックスを表示",
+      "ENABLE_PASSTHROUGH": "Passthroughを有効にする"
+    },
+    "RESTART_SOFTWARE": "ソフトウェアを再起動"
+  },
+  "HELLO": "こんにちは！",
+  "AUDIO": {
+    "VOLUME": "音量",
+    "SETTINGS": "オーディオ設定",
+    "AUTO_SWITCH_TO_VR_AUDIO": "VRオーディオに自動切り替え",
+    "SPEAKERS": "スピーカー",
+    "MICROPHONES": "マイク",
+    "CARDS": "カード",
+    "SELECT_AUDIO_CARD_PROFILE": "オーディオカードプロファイルを選択",
+    "NO_VR_SPEAKERS_FOUND_SWITCH_MANUALLY": "VRスピーカーが見つかりませんでした。手動で切り替えてください。",
+    "NO_VR_MICROPHONE_SWITCH_MANUALLY": "VRマイクが見つかりませんでした。手動で切り替えてください。",
+    "FAILED_TO_SWITCH_MICROPHONE": "マイクの切り替えに失敗しました",
+    "MICROPHONE_SET_SUCCESSFULLY": "マイクの設定が完了しました",
+    "SPEAKERS_SET_SUCCESSFULLY": "スピーカーを設定しました",
+    "DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED": "デバイスが見つかり、初期化されましたが、切り替えられていません"
+  },
+  "ACTIONS": {
+    "RECENTER_PLAYSPACE": "プレイスペースを再中央"
+  }
+}

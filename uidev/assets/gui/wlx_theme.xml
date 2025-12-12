@@ -1,0 +1,8 @@
+<layout>
+  <!-- TODO: deprecate this in favor of theme.xml -->
+  <theme>
+    <var key="color_bg" value="#24273a" />
+    <var key="color_bg_active" value="#44475a" />
+    <var key="text_color" value="#dddddd" />
+  </theme>
+</layout>

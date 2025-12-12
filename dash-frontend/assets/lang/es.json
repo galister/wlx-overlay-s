@@ -1,0 +1,49 @@
+{
+  "HOME_SCREEN": "Inicio",
+  "MONADO_RUNTIME": "„Monado” tiempo de ejecución",
+  "APPLICATIONS": "Aplicaciones",
+  "GAMES": "Juegos",
+  "SETTINGS": "Ajustes",
+  "PROCESSES": "Procesos",
+  "HELLO_USER": "¡Hola, {USER}!",
+  "GENERAL_SETTINGS": "Ajustes generales",
+  "APPLICATION_LAUNCHER": "Lanzador de aplicaciones",
+  "APP_SETTINGS": {
+    "HIDE_USERNAME": "Ocultar nombre de usuario",
+    "OPAQUE_BACKGROUND": "Fondo opaco",
+    "RUN_IN_XWAYLAND_MODE_BY_DEFAULT": "Ejecutar en modo XWayland por defecto",
+    "WLX_OVERLAY_S_SETTINGS": "Configuración de WlxOverlay-S",
+    "HEADSET_SETTINGS": "Configuración del casco",
+    "BRIGHTNESS": "Brillo",
+    "WLX": {
+      "NOTIFICATIONS_ENABLED": "Notificaciones activadas",
+      "NOTIFICATIONS_SOUND_ENABLED": "Sonido de notificaciones activado",
+      "KEYBOARD_SOUND_ENABLED": "Sonido del teclado activado",
+      "BLOCK_GAME_INPUT": "Bloquear entrada del juego",
+      "SPACE_DRAG_MULTIPLIER": "Multiplicador de movimiento por arrastre",
+      "SPACE_DRAG_ROTATION_ENABLED": "Habilitar rotación en space-drag",
+      "SHOW_SKYBOX": "Mostrar cielo",
+      "ENABLE_PASSTHROUGH": "Habilitar Passthrough"
+    },
+    "RESTART_SOFTWARE": "Reiniciar software"
+  },
+  "HELLO": "¡Hola!",
+  "AUDIO": {
+    "VOLUME": "Volumen",
+    "SETTINGS": "Configuración de audio",
+    "AUTO_SWITCH_TO_VR_AUDIO": "Conmutar automáticamente al audio VR",
+    "SPEAKERS": "Altavoces",
+    "MICROPHONES": "Micrófonos",
+    "CARDS": "Tarjetas",
+    "SELECT_AUDIO_CARD_PROFILE": "Seleccionar perfil de tarjeta de audio",
+    "NO_VR_SPEAKERS_FOUND_SWITCH_MANUALLY": "No se encontraron altavoces VR. Actívelos manualmente.",
+    "NO_VR_MICROPHONE_SWITCH_MANUALLY": "No se encontró micrófono VR. Actívelo manualmente.",
+    "FAILED_TO_SWITCH_MICROPHONE": "No se pudo cambiar el micrófono",
+    "MICROPHONE_SET_SUCCESSFULLY": "Micrófono configurado correctamente",
+    "SPEAKERS_SET_SUCCESSFULLY": "Altavoces configurados correctamente",
+    "DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED": "Dispositivo encontrado e inicializado, pero no cambiado"
+  },
+  "ACTIONS": {
+    "RECENTER_PLAYSPACE": "Re-centrar espacio de juego"
+  }
+}

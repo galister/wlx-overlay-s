@@ -19,10 +19,18 @@ Questions/issues specific to WlxOverlay-S will be handled in the `wlxoverlay` ch
 
 ## Setup
 
+### Installation
+
+There are multiple ways to install WlxOverlay-S:
+1. AppImage: Download from [Releases](https://github.com/galister/wlx-overlay-s/releases)
+1. AUR package: [wlx-overlay-s-git](https://aur.archlinux.org/packages/wlx-overlay-s-git)
+1. Homebrew:
+  1. Add AtomicXR tap: `brew tap matrixfurry.com/atomicxr https://tangled.sh/@matrixfurry.com/homebrew-atomicxr`
+  1. Install WlxOverlay-S: `brew install wlx-overlay-s`
+1. [Building from source](https://github.com/galister/wlx-overlay-s/wiki/Building-from-Source).
+
 ### General Setup
 
-1. Grab the latest AppImage from [Releases](https://github.com/galister/wlx-overlay-s/releases).
-1. `chmod +x WlxOverlay-S-*.AppImage`
 1. Start Monado, WiVRn or SteamVR.
 1. Run the overlay
 
@@ -41,29 +49,24 @@ For users specifically running **SteamVR via Steam Flatpak**, follow these steps
 1. Start SteamVR.
 1. `flatpak run --command='/path/to/squashfs-root/AppRun' com.valvesoftware.Steam`
 
-### Install via Homebrew
-
-1. Add AtomicXR tap `brew tap matrixfurry.com/atomicxr https://tangled.sh/@matrixfurry.com/homebrew-atomicxr`
-2. Install WlxOverlay-S: `brew install wlx-overlay-s`
-
-AUR package is [wlx-overlay-s-git](https://aur.archlinux.org/packages/wlx-overlay-s-git).
-
-You may also want to [build from source](https://github.com/galister/wlx-overlay-s/wiki/Building-from-Source).
 
 ## First Start
 
-**When the screen share pop-up appears, check the terminal and select the screens in the order it requests.**
+**When the screen share pop-up appears, check your notifications or the terminal and select the screens in the order it requests.**
 
 In case screens were selected in the wrong order:
 
 - `rm ~/.config/wlxoverlay/conf.d/pw_tokens.yaml` then restart
 
-**SteamVR users**: WlxOverlay-S will register itself for auto-start, so there is no need to start it every time.
+
+**WiVRn users**: Select WlxOverlay-S from the `Application` drop-down. If there's no such entry, select `Custom` and browse to your WlxOverlay-S executable or AppImage.
 
 **Envision users**: Go to the Plugins menu and select the WlxOverlay-S plugin. This will download and run the AppImage version of the overlay.
-In order to run a standalone installation (for instance from the AUR), create a bash script containing `wlx-overlay-s --openxr --show` and then select this bash script as a custom Envision plugin.
+In order to run a standalone installation (for instance from the AUR), create a bash script containing `wlx-overlay-s --openxr --show` and then set this bash script as a custom Envision plugin.
 
 This will show a home environment with headset passthrough by default or a [customizable background](https://github.com/galister/wlx-overlay-s/wiki/OpenXR-Skybox)!
+
+**SteamVR users**: WlxOverlay-S will register itself for auto-start, so there is no need to start it every time. Disclaimer: SteamVR will sometimes disregard this and not start Wlx anyway.
 
 **Please continue reading the guide below.**
 
@@ -76,9 +79,10 @@ The working set consists of all currently selected overlays; screens, mirrors, k
 The working set appears in front of the headset when shown, and can be re-centered by hiding and showing again.
 
 Show and hide the working set using:
-
 - Non-vive controller: double-tap B or Y on the left controller.
 - Vive controller: double-tap the menu button on the left controller (for SteamVR, the `showhide` binding must be bound)
+
+See the [bindings](#default-bindings) section on how to grab, move and resize overlay windows.
 
 ### Pointer Modes AKA Laser Colors
 
@@ -93,26 +97,32 @@ Please see the bindings section below on how to activate these modes.
 
 The guide here uses the colors for ease of getting started.
 
-### The Watch
+### The watch
 
 Check your left wrist for the watch. The watch is the primary tool for controlling the app.
 
+The top of the watch shows device batteries, and the bottom shows your overlay controls.
+
+Enter edit mode (leftmost button on bottom) to edit your overlay sets.
+
+While in edit mode, the watch can also be grabbed, and passed between your hands.
+
+After grabbing, the watch will automatically attach to the hand that's opposite from the one that held it.
+
+In edit mode, try hovering other overlays to see their advanced options!
+
 ![Watch usage guide](https://github.com/galister/wlx-overlay-s/blob/guide/wlx-watch.png)
 
-### The Screens
+### The screens
 
 Hovering a pointer over a screen will move the mouse. If there are more than one pointers hovering a screen, the pointer that was last used to click will take precedence.
 
-The click depends on the laser color:
+The click type depends on the laser color:
 
 - Blue laser: Left click
 - Orange laser: Right click
 - Purple laser: Middle click
 - Stick up/down: Scroll wheel
-
-To **curve a screen**, grab it with one hand. Then, using the other hand, hover the laser over the screen and use the scroll action.
-
-See the [bindings](#default-bindings) section on how to grab, move and resize screens.
 
 ### The keyboard
 
@@ -123,7 +133,7 @@ Typing
 
 - Use the BLUE laser when typing regularly.
 - While using ORANGE laser, all keystrokes will have SHIFT applied.
-- Purple laser has no effect as of now.
+- Purple laser is customizable via the `keyboard.yaml`'s `alt_modifier` settings.
 
 **Modifier Keys** are sticky. They will remain pressed until a non-modifier key is pressed, the modifier gets toggled off, or the keyboard gets hidden.
 
@@ -150,9 +160,10 @@ Check [here](https://github.com/galister/wlx-overlay-s/wiki/Troubleshooting) for
 
 ### Mouse is not where it should be
 
-Niri users: use on Niri 0.1.7 or later.
-
-X11 users might be dealing with a [Phantom Monitor](https://wiki.archlinux.org/title/Xrandr#Disabling_phantom_monitor).
+X11 users:
+- Might be dealing with a [Phantom Monitor](https://wiki.archlinux.org/title/Xrandr#Disabling_phantom_monitor).
+- DPI scaling is not supported and will mess with the mouse.
+- Upright screens are not supported and will mess with the mouse.
 
 Other desktops: The screens may have been selected in the wrong order, see [First Start](#first-start).
 
@@ -168,17 +179,13 @@ echo 'capture_method: pw_fallback' > ~/.config/wlxoverlay/conf.d/pw_fallback.yam
 
 Without DMA-buf capture, capturing screens takes CPU power, so let's try and not show too many screens at the same time.
 
-### Space-drag crashes SteamVR
+### Modifiers get stuck, mouse clicks stop working on KDE Plasma
 
-This has been idenfitied as an issue with SteamVR versions 2.5.5 and above (latest tested 2.7.2). One way to avoid the crash is by switching to the `temp-v1.27.5` branch of SteamVR (via beta selection) and selecting [Steam-Play-None](https://github.com/Scrumplex/Steam-Play-None) under the compatibility tab.
-
-### Modifiers get stuck in weird ways
-
-This is a rare issue that can make KDE Plasma not react to click or keys due to what seems to be a race condition with modifiers. Restarting the overlay fixes this.
+We are not sure what causes this, but it only happens on KDE Plasma. Restarting the overlay fixes this.
 
 ### X11 limitations
 
-- X11 capture can generally seem slow. This is because zero-copy GPU capture is not supported on the general X11 desktop. Consider trying Wayland or Picom.
+- X11 capture can generally seem slow. This is because zero-copy GPU capture is not supported on the general X11 desktop. Consider trying Wayland.
 - DPI scaling is not supported and may cause the mouse to not follow the laser properly.
-- Upright screens are not supported and can cause the mouse to act weirdly.
+- Upright screens are not supported and can cause the mouse to not follow the laser properly.
 - Screen changes (connecting / disconnecting a display, resolution changes, etc) are not handled at runtime. Restart the overlay for these to take effect.
