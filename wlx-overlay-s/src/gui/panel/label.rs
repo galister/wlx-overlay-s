@@ -17,8 +17,8 @@ use wgui::{
     event::{self, EventCallback},
     i18n::Translation,
     layout::Layout,
-    parser::{parse_color_hex, CustomAttribsInfoOwned},
-    widget::{label::WidgetLabel, EventResult},
+    parser::{CustomAttribsInfoOwned, parse_color_hex},
+    widget::{EventResult, label::WidgetLabel},
 };
 
 use crate::{gui::panel::helper::PipeReaderThread, state::AppState};

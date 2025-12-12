@@ -4,8 +4,8 @@ use std::{
     io::{BufRead, BufReader, Read},
     process::Child,
     sync::{
-        mpsc::{self, Receiver},
         Arc, LazyLock,
+        mpsc::{self, Receiver},
     },
     thread::JoinHandle,
 };
