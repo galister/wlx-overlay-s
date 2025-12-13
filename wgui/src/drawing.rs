@@ -9,7 +9,7 @@ use crate::{
 	event::EventAlterables,
 	globals::Globals,
 	layout::Widget,
-	renderer_vk::text::{TextShadow, custom_glyph::CustomGlyph},
+	renderer_vk::text::{custom_glyph::CustomGlyph, TextShadow},
 	stack::{self, ScissorBoundary, ScissorStack, TransformStack},
 	widget::{self, ScrollbarInfo, WidgetState},
 };
@@ -124,6 +124,25 @@ impl Color {
 	// pretty-print ansi escape code color
 	pub fn debug_ansi_block(&self) -> String {
 		format!("{}███{}", self.debug_ansi_format(), ANSI_RESET_CODE)
+	}
+
+	#[must_use]
+	pub fn with_alpha(&self, n: f32) -> Self {
+		Self {
+			r: self.r,
+			g: self.g,
+			b: self.b,
+			a: n,
+		}
+	}
+
+	#[must_use]
+	pub fn to_hex(&self) -> String {
+		let r = (self.r.clamp(0.0, 1.0) * 255.0).round() as u8;
+		let g = (self.g.clamp(0.0, 1.0) * 255.0).round() as u8;
+		let b = (self.b.clamp(0.0, 1.0) * 255.0).round() as u8;
+		let a = (self.a.clamp(0.0, 1.0) * 255.0).round() as u8;
+		format!("#{r:02X}{g:02X}{b:02X}{a:02X}")
 	}
 }
 

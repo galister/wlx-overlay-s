@@ -1,9 +1,5 @@
 <layout>
-  <include src="theme.xml" />
-
   <theme>
-    <var key="border" value="2" />
-    <var key="kbd_color" value="#a6da95" />
     <var key="set_color" value="#cad3f5" />
 
     <var key="clock0_color" value="#cad3f5" />

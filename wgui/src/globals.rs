@@ -21,6 +21,8 @@ pub struct Defaults {
 	pub button_color: drawing::Color,
 	pub accent_color: drawing::Color,
 	pub danger_color: drawing::Color,
+	pub faded_color: drawing::Color,
+	pub translucent_alpha: f32,
 }
 
 impl Default for Defaults {
@@ -31,6 +33,8 @@ impl Default for Defaults {
 			button_color: drawing::Color::new(1.0, 1.0, 1.0, 0.05),
 			accent_color: drawing::Color::new(0.0, 0.54, 1.0, 1.0),
 			danger_color: drawing::Color::new(0.8, 0.0, 0.0, 1.0),
+			faded_color: drawing::Color::new(0.4, 0.5, 0.6, 1.0),
+			translucent_alpha: 0.25,
 		}
 	}
 }

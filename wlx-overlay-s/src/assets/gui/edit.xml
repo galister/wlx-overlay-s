@@ -1,6 +1,4 @@
 <layout>
-  <include src="theme.xml" />
-
   <macro name="button_style"
     margin="2" overflow="hidden" box_sizing="border_box"
     border_color="~color_accent_translucent" border="2" round="8" color="~color_accent_5" color2="~color_accent_1" gradient="vertical"
