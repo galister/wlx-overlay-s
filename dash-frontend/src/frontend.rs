@@ -13,7 +13,7 @@ use wgui::{
 	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
 	windowing::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra, WguiWindowPlacement},
 };
-use wlx_common::timestep::Timestep;
+use wlx_common::{dash_interface, timestep::Timestep};
 
 use crate::{
 	assets, settings,
@@ -41,6 +41,7 @@ pub struct Frontend {
 	globals: WguiGlobals,
 
 	pub settings: Box<dyn settings::SettingsIO>,
+	pub interface: Box<dyn dash_interface::DashInterface>,
 
 	#[allow(dead_code)]
 	state: ParserState,
@@ -62,6 +63,7 @@ pub struct Frontend {
 
 pub struct InitParams {
 	pub settings: Box<dyn settings::SettingsIO>,
+	pub interface: Box<dyn dash_interface::DashInterface>,
 }
 
 pub type RcFrontend = Rc<RefCell<Frontend>>;
@@ -139,6 +141,7 @@ impl Frontend {
 			},
 			timestep,
 			settings: params.settings,
+			interface: params.interface,
 			popup_manager,
 			toast_manager,
 			window_audio_settings: WguiWindow::default(),

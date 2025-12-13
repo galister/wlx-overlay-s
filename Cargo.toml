@@ -34,3 +34,4 @@ vulkano = { version = "0.35.2", default-features = false, features = [
 ] }
 vulkano-shaders = "0.35.0"
 wayland-client = { version = "0.31.11" }
+wayvr_ipc = { git = "https://github.com/olekolek1000/wayvr-ipc.git", rev = "a72587d23f3bb8624d9aeb1f13c0a21e65350f51", default-features = false }
