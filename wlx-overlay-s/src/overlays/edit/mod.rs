@@ -9,7 +9,7 @@ use std::{
 use glam::vec2;
 use slotmap::Key;
 use wgui::{
-    components::{checkbox::ComponentCheckbox, slider::ComponentSlider},
+    components::{button::ComponentButton, checkbox::ComponentCheckbox, slider::ComponentSlider},
     event::{CallbackDataCommon, EventAlterables, EventCallback},
     parser::Fetchable,
     widget::EventResult,
@@ -340,6 +340,11 @@ fn reset_panel(
         alterables: &mut alterables,
         state: &panel.layout.state,
     };
+
+    let c = panel
+        .parser_state
+        .fetch_component_as::<ComponentButton>("top_grab")?;
+    c.set_sticky_state(&mut common, !state.grabbable);
 
     let c = panel
         .parser_state
