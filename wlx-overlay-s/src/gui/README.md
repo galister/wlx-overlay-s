@@ -1,28 +1,4 @@
-# WayVR GUI Customization
-
-When customizing the watch, keyboard, dashboard, etc; place custom XML files under ~/.config/wlxoverlay/theme/gui
-
-## Custom timezones, 12 vs 24-hour clock
-
-These are not done via the GUI system, but via the regular config.
-
-Create `~/.config/wlxoverlay/conf.d/clock.yaml` as such:
-
-```yaml
-timezones:
-- "Europe/Oslo"
-- "America/New_York"
-
-clock_12h: false
-```
-
-Once this file is created, the various settings in custom UI that accept the `_timezone` property will use these custom alternate timezones (instead of the default set, which are selected as major ones on different continents from your current actual timezone).
-
-The first timezone is selected with `_timezone="0"`, the second with `_timezone="1"`, and so on.
-
-There is usually no need to specify your own local timezone in here; omitting `_timezone` from a `_source="clock"` Label will display local time.
-
-## Custom UI Elements
+# Custom UI Elements
 
 ### Labels
 
@@ -148,6 +124,12 @@ Available argument value types (case insensitive):
 ##### `::ShutDown`
 
 Gracefully shuts down WlxOverlay-S. Useful when using an auto-restart script.
+
+##### `::SendKey <VirtualKey> <UP|DOWN>`
+
+Sends a key using the virtual keyboard. If WayVR is focused, the key is sent to the WayVR app.
+
+Supported VirtualKey values are listed [here](https://github.com/galister/wlx-overlay-s/blob/f2bd169c2217d51cd2de862a6429444bf326f471/wlx-overlay-s/src/subsystem/hid/mod.rs#L336).
 
 ##### `::PlayspaceReset`
 

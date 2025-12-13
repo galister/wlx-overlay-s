@@ -2,6 +2,7 @@ use std::{
     cell::RefCell,
     process::{Command, Stdio},
     rc::Rc,
+    str::FromStr,
     sync::{Arc, atomic::Ordering},
     time::{Duration, Instant},
 };
@@ -23,6 +24,7 @@ use crate::{
     gui::panel::helper::PipeReaderThread,
     overlays::toast::Toast,
     state::AppState,
+    subsystem::hid::VirtualKey,
     windowing::OverlaySelector,
 };
 
@@ -140,6 +142,24 @@ pub(super) fn setup_custom_button<S: 'static>(
                 RUNNING.store(false, Ordering::Relaxed);
                 Ok(EventResult::Consumed)
             }),
+            "::SendKey" => {
+                let Some(key) = args.next().and_then(|s| VirtualKey::from_str(s).ok()) else {
+                    log::error!("{command} has bad/missing arguments");
+                    return;
+                };
+                let Some(down) = args.next().and_then(|s| match s.to_lowercase().as_str() {
+                    "down" => Some(true),
+                    "up" => Some(false),
+                    _ => None,
+                }) else {
+                    log::error!("{command} has bad/missing arguments");
+                    return;
+                };
+                Box::new(move |_common, _data, app, _| {
+                    app.hid_provider.send_key_routed(key, down);
+                    Ok(EventResult::Consumed)
+                })
+            }
             "::ShellExec" => {
                 let state = Rc::new(ShellButtonState {
                     button: button.clone(),
