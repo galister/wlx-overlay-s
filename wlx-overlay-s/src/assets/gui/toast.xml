@@ -1,6 +1,4 @@
 <layout>
-  <include src="theme.xml" />
-
   <elements>
     <div interactable="0" >
       <rectangle max_width="500" max_height="400" padding="4" box_sizing="content_box" flex_wrap="wrap" flex_direction="row" gap="4" color="#000000c0" border_color="~color_accent" border="2" round="8" justify_content="space_between">

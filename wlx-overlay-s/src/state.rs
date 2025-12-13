@@ -1,9 +1,10 @@
 use glam::Affine3A;
 use idmap::IdMap;
 use smallvec::{SmallVec, smallvec};
-use std::sync::Arc;
+use smithay::backend::renderer::Texture;
+use std::{ops::Not, sync::Arc};
 use wgui::{
-    font_config::WguiFontConfig, gfx::WGfx, globals::WguiGlobals,
+    font_config::WguiFontConfig, gfx::WGfx, globals::WguiGlobals, parser::parse_color_hex,
     renderer_vk::context::SharedContext as WSharedContext,
 };
 use wlx_common::{
@@ -87,6 +88,28 @@ impl AppState {
         let wgui_shared = WSharedContext::new(gfx.clone())?;
         let theme = session.config.theme_path.clone();
 
+        let mut defaults = wgui::globals::Defaults::default();
+        defaults.accent_color = session
+            .config
+            .color_accent
+            .as_ref()
+            .and_then(|c| parse_color_hex(&c))
+            .unwrap_or(defaults.accent_color);
+
+        defaults.danger_color = session
+            .config
+            .color_danger
+            .as_ref()
+            .and_then(|c| parse_color_hex(&c))
+            .unwrap_or(defaults.danger_color);
+
+        defaults.faded_color = session
+            .config
+            .color_faded
+            .as_ref()
+            .and_then(|c| parse_color_hex(&c))
+            .unwrap_or(defaults.faded_color);
+
         Ok(Self {
             session,
             tasks,
@@ -102,7 +125,7 @@ impl AppState {
             toast_sound: toast_sound_wav,
             wgui_globals: WguiGlobals::new(
                 Box::new(gui::asset::GuiAsset {}),
-                wgui::globals::Defaults::default(),
+                defaults,
                 &WguiFontConfig::default(),
                 get_config_file_path(&theme),
             )?,

@@ -377,6 +377,30 @@ impl ParserContext<'_> {
 			log::warn!("duplicate widget ID \"{id}\" in the same layout file!");
 		}
 	}
+
+	fn populate_theme_variables(&mut self) {
+		let def = self.doc_params.globals.defaults();
+
+		macro_rules! insert_color_vars {
+			($self:expr, $name:literal, $field:expr, $alpha:expr) => {
+				$self.insert_var(concat!("color_", $name), &$field.to_hex());
+				$self.insert_var(
+					concat!("color_", $name, "_translucent"),
+					&$field.with_alpha($alpha).to_hex(),
+				);
+				$self.insert_var(concat!("color_", $name, "_50"), &$field.mult_rgb(0.50).to_hex());
+				$self.insert_var(concat!("color_", $name, "_20"), &$field.mult_rgb(0.20).to_hex());
+				$self.insert_var(concat!("color_", $name, "_10"), &$field.mult_rgb(0.10).to_hex());
+				$self.insert_var(concat!("color_", $name, "_5"), &$field.mult_rgb(0.05).to_hex());
+				$self.insert_var(concat!("color_", $name, "_1"), &$field.mult_rgb(0.01).to_hex());
+			};
+		}
+
+		insert_color_vars!(self, "text", def.text_color, def.translucent_alpha);
+		insert_color_vars!(self, "accent", def.accent_color, def.translucent_alpha);
+		insert_color_vars!(self, "danger", def.danger_color, def.translucent_alpha);
+		insert_color_vars!(self, "faded", def.faded_color, def.translucent_alpha);
+	}
 }
 
 // Parses a color from a HTML hex string
@@ -1030,6 +1054,8 @@ pub fn parse_from_assets(
 ) -> anyhow::Result<ParserState> {
 	let parser_data = ParserData::default();
 	let mut ctx = create_default_context(doc_params, layout, &parser_data);
+	ctx.populate_theme_variables();
+
 	let (file, node_layout) = get_doc_from_asset_path(&ctx, doc_params.path)?;
 	parse_document_root(&file, &mut ctx, parent_id, node_layout)?;
 
