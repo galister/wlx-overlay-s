@@ -43,6 +43,7 @@ impl Positioning {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct OverlayWindowState {
+	#[serde(skip_serializing, skip_deserializing)]
 	pub transform: Affine3A,
 	pub alpha: f32,
 	pub grabbable: bool,
@@ -50,7 +51,6 @@ pub struct OverlayWindowState {
 	pub positioning: Positioning,
 	pub curvature: Option<f32>,
 	pub additive: bool,
-	#[serde(skip_serializing, skip_deserializing)]
 	pub saved_transform: Option<Affine3A>,
 }
 

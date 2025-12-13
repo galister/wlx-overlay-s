@@ -294,9 +294,6 @@ impl<T> OverlayWindowManager<T> {
             let Some(mut state) = o.config.active_state.clone() else {
                 break;
             };
-            if let Some(transform) = state.saved_transform.as_ref() {
-                state.transform = *transform;
-            }
             app.session
                 .config
                 .global_set
@@ -348,9 +345,7 @@ impl<T> OverlayWindowManager<T> {
         // global overlays
         for oid in &[self.watch_id] {
             if let Some(o) = self.mut_by_id(*oid) {
-                if let Some(mut state) = app.session.config.global_set.get(&*o.config.name).cloned()
-                {
-                    state.saved_transform = Some(state.transform);
+                if let Some(state) = app.session.config.global_set.get(&*o.config.name).cloned() {
                     o.config.active_state = Some(state);
                     o.config.reset(app, false);
                     log::debug!("global set: loaded state for {}", o.config.name);
@@ -499,7 +494,6 @@ impl<T> OverlayWindowManager<T> {
                 };
                 if self.current_set == Some(i) {
                     let o = &mut self.overlays[oid];
-                    state.saved_transform = Some(state.transform);
                     o.config.active_state = Some(state);
                     o.config.reset(app, false);
                     shown = true;
@@ -540,12 +534,7 @@ impl<T> OverlayWindowManager<T> {
             let ws = &mut self.sets[*current_set];
             ws.overlays.clear();
             for (id, data) in self.overlays.iter_mut().filter(|(_, d)| !d.config.global) {
-                if let Some(mut state) = data.config.active_state.take() {
-                    if let Some(transform) = state.saved_transform {
-                        state.transform = transform;
-                    } else {
-                        state.transform = Affine3A::ZERO;
-                    }
+                if let Some(state) = data.config.active_state.take() {
                     log::debug!("{}: active_state → ws{}", data.config.name, current_set);
                     ws.overlays.insert(id, state);
                 }
@@ -560,11 +549,7 @@ impl<T> OverlayWindowManager<T> {
 
             let ws = &mut self.sets[new_set];
             for (id, data) in self.overlays.iter_mut().filter(|(_, d)| !d.config.global) {
-                if let Some(mut state) = ws.overlays.remove(id) {
-                    if state.transform.x_axis.length_squared() > f32::EPSILON {
-                        state.saved_transform = Some(state.transform);
-                    }
-                    state.transform = Affine3A::IDENTITY;
+                if let Some(state) = ws.overlays.remove(id) {
                     log::debug!("{}: ws{} → active_state", data.config.name, new_set);
                     data.config.active_state = Some(state);
                     data.config.reset(app, false);
