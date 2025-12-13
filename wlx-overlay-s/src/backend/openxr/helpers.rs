@@ -61,7 +61,7 @@ pub(super) fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
 
     let Ok(xr_instance) = entry.create_instance(
         &xr::ApplicationInfo {
-            api_version: Version::new(1, 1, 37),
+            api_version: Version::new(1, 0, 32),
             application_name: "wlx-overlay-s",
             application_version: 0,
             engine_name: "wlx-overlay-s",
