@@ -38,4 +38,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: WlxOverlay-S-Full-${{ github.ref_name }}-x86_64.AppImage
-          path: ./WlxOverlay-S-Full-x86_64.AppImage
+          path: ./wlx-overlay-s/WlxOverlay-S-Full-x86_64.AppImage
