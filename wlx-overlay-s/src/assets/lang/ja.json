@@ -24,6 +24,7 @@
     "HINT_POINT_WINDOW": "ウィンドウをタップしてそのパラメータを変更します。\n完了したら、右側のボタンで編集モードを終了してください。",
     "LEAVE": "編集モードを終了",
     "LOCK_INTERACTION": "インタラクションをロック",
+    "DISABLE_GRAB": "グラブを無効化",
     "MOVE_PRESS_AND_DRAG": "移動（押してドラッグ）",
     "OPACITY": "不透明度",
     "POSITIONING": "位置調整",

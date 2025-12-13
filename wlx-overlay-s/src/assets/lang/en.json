@@ -24,6 +24,7 @@
     "HINT_POINT_WINDOW": "Point at a window to change its parameters.\nOnce done, leave edit mode using the button on the right.",
     "LEAVE": "Leave edit mode",
     "LOCK_INTERACTION": "Lock interaction",
+    "DISABLE_GRAB": "Disable grab",
     "MOVE_PRESS_AND_DRAG": "Move (press & drag)",
     "OPACITY": "Opacity",
     "POSITIONING": "Positioning",

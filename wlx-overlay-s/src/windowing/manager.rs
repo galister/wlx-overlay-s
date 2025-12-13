@@ -291,7 +291,7 @@ impl<T> OverlayWindowManager<T> {
             let Some(o) = self.get_by_id(*oid) else {
                 break;
             };
-            let Some(mut state) = o.config.active_state.clone() else {
+            let Some(state) = o.config.active_state.clone() else {
                 break;
             };
             app.session
@@ -489,7 +489,7 @@ impl<T> OverlayWindowManager<T> {
 
         if !global {
             for (i, set) in self.sets.iter_mut().enumerate() {
-                let Some(mut state) = set.inactive_overlays.arc_rm(&name) else {
+                let Some(state) = set.inactive_overlays.arc_rm(&name) else {
                     continue;
                 };
                 if self.current_set == Some(i) {

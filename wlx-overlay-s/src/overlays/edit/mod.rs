@@ -251,6 +251,17 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
                         .enqueue(TaskType::Overlay(OverlayTask::Modify(sel, task)));
                     Ok(EventResult::Consumed)
                 }),
+                "::EditModeToggleGrab" => Box::new(move |_common, _data, app, state| {
+                    let sel = OverlaySelector::Id(*state.id.borrow());
+                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
+                        sel,
+                        Box::new(|_app, owc| {
+                            let state = owc.active_state.as_mut().unwrap(); //want panic
+                            state.grabbable = !state.grabbable;
+                        }),
+                    )));
+                    Ok(EventResult::Consumed)
+                }),
                 "::EditModeTab" => {
                     let tab_name = args.next().unwrap().to_owned();
                     Box::new(move |common, _data, _app, state| {

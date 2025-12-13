@@ -24,6 +24,7 @@
 		"HINT_POINT_WINDOW": "Wskaż na okno, aby zmienić jego parametry.\nPo zakończeniu wyjdź z trybu edycji za pomocą przycisku po prawej stronie.",
 		"LEAVE": "Wyjdź z trybu edycji",
 		"LOCK_INTERACTION": "Zablokuj interakcję",
+    "DISABLE_GRAB": "Wyłącz chwytanie",
 		"MOVE_PRESS_AND_DRAG": "Przesuń (naciśnij i przeciągnij)",
 		"OPACITY": "Przezroczystość",
 		"POSITIONING": "Pozycjonowanie",

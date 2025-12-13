@@ -1,6 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 
-use glam::{vec2, vec3, Affine3A, FloatExt, Mat4, Quat, Vec2, Vec3};
+use glam::{Affine3A, FloatExt, Mat4, Quat, Vec2, Vec3, vec2, vec3};
 use wgui::{
     animation::{Animation, AnimationEasing},
     assets::AssetPath,
@@ -11,10 +11,10 @@ use wgui::{
     renderer_vk::util,
     taffy::{self, prelude::length},
     widget::{
+        EventResult,
         div::WidgetDiv,
         rectangle::{WidgetRectangle, WidgetRectangleParams},
         util::WLength,
-        EventResult,
     },
 };
 use wlx_common::windowing::{OverlayWindowState, Positioning};
@@ -22,14 +22,14 @@ use wlx_common::windowing::{OverlayWindowState, Positioning};
 use crate::{
     gui::panel::GuiPanel,
     state::AppState,
-    subsystem::hid::{XkbKeymap, ALT, CTRL, META, SHIFT, SUPER},
+    subsystem::hid::{ALT, CTRL, META, SHIFT, SUPER, XkbKeymap},
     windowing::window::OverlayWindowConfig,
 };
 
 use super::{
-    handle_press, handle_release,
+    KEYBOARD_NAME, KeyButtonData, KeyState, KeyboardBackend, KeyboardState, handle_press,
+    handle_release,
     layout::{self, AltModifier, KeyCapType},
-    KeyButtonData, KeyState, KeyboardBackend, KeyboardState, KEYBOARD_NAME,
 };
 
 const BACKGROUND_PADDING: f32 = 16.0;

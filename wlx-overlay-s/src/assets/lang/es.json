@@ -24,6 +24,7 @@
     "HINT_POINT_WINDOW": "Pulsa sobre una ventana para cambiar sus parámetros.\nUna vez terminado, sal del modo de edición usando el botón de la derecha.",
     "LEAVE": "Salir del modo edición",
     "LOCK_INTERACTION": "Bloquear interacción",
+    "DISABLE_GRAB": "Desactivar agarre",
     "MOVE_PRESS_AND_DRAG": "Mover (presionar y arrastrar)",
     "OPACITY": "Opacidad",
     "POSITIONING": "Posicionamiento",
