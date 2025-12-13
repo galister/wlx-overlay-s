@@ -1,6 +1,6 @@
 use std::{f32::consts::PI, sync::Arc};
 
-use glam::{Affine3A, Quat, Vec3, vec3};
+use glam::{vec3, Affine3A, Quat, Vec3};
 use wlx_capture::frame::Transform;
 use wlx_common::windowing::{OverlayWindowState, Positioning};
 
@@ -50,7 +50,7 @@ fn create_screen_from_backend(
             transform: Affine3A::from_scale_rotation_translation(
                 Vec3::ONE * 1.5 * session.config.desktop_view_scale,
                 Quat::from_rotation_z(angle),
-                vec3(0.0, 0.2, -0.5),
+                vec3(0.0, 0.0, -0.5),
             ),
             ..OverlayWindowState::default()
         },
