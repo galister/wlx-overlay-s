@@ -6,8 +6,8 @@ use taffy::{
 use crate::{
 	drawing,
 	parser::{
-		AttribPair, is_percent, parse_color_hex, parse_f32, parse_percent, parse_size_unit, parse_val,
-		print_invalid_attrib, print_invalid_value,
+		is_percent, parse_color_hex, parse_f32, parse_percent, parse_size_unit, parse_val, print_invalid_attrib,
+		print_invalid_value, AttribPair,
 	},
 	renderer_vk::text::{FontWeight, HorizontalAlign, TextStyle},
 	widget::util::WLength,
@@ -94,6 +94,13 @@ pub fn parse_text_style(attribs: &[AttribPair]) -> TextStyle {
 			"shadow_y" => {
 				if let Ok(y) = value.parse::<f32>() {
 					style.shadow.get_or_insert_default().y = y;
+				} else {
+					print_invalid_attrib(key, value);
+				}
+			}
+			"wrap" => {
+				if let Ok(y) = value.parse::<i32>() {
+					style.wrap = y == 1;
 				} else {
 					print_invalid_attrib(key, value);
 				}
