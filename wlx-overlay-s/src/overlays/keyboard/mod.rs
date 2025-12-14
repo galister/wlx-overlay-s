@@ -17,6 +17,7 @@ use crate::{
         window::OverlayWindowConfig,
     },
 };
+use dbus::message::MatchRule;
 use glam::{Affine3A, Quat, Vec3, vec3};
 use slotmap::{SlotMap, new_key_type};
 use wgui::{
@@ -64,6 +65,7 @@ pub fn create_keyboard(
     };
 
     backend.active_keymap = backend.add_new_keymap(keymap.as_ref(), app)?;
+    backend.watch_dbus(app);
 
     Ok(OverlayWindowConfig {
         name: KEYBOARD_NAME.into(),
@@ -110,6 +112,27 @@ impl KeyboardBackend {
             log::error!("XKB keymap without a layout!");
         };
         Ok(id)
+    }
+
+    fn watch_dbus(&mut self, app: &mut AppState) {
+        let rules = [
+            MatchRule::new()
+                .with_member("CurrentInputMethod")
+                .with_interface("org.fcitx.Fcitx.Controller1")
+                .with_path("/controller")
+                .with_sender("org.fcitx.Fcitx5"),
+            MatchRule::new_signal("org.kde.KeyboardLayouts", "layoutChanged").with_path("/Layouts"),
+        ];
+
+        for rule in rules {
+            let _ = app.dbus.add_match(
+                rule,
+                Box::new(move |(), _, msg| {
+                    log::warn!("new keymap: {msg:?}");
+                    true
+                }),
+            );
+        }
     }
 
     fn switch_keymap(&mut self, keymap: &XkbKeymap, app: &mut AppState) -> anyhow::Result<()> {

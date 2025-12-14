@@ -96,7 +96,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
     let mut lines = LinePool::new(&app)?;
 
     let mut notifications = NotificationManager::new();
-    notifications.run_dbus();
+    notifications.run_dbus(&mut app.dbus);
     notifications.run_udp();
 
     let mut delete_queue = vec![];
@@ -480,6 +480,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
         )?;
         // End layer submit
 
+        app.dbus.tick();
         notifications.submit_pending(&mut app);
 
         app.tasks.retrieve_due(&mut due_tasks);

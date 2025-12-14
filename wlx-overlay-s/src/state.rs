@@ -27,7 +27,7 @@ use crate::{
     config_io::{self, get_config_file_path},
     graphics::WGfxExtras,
     gui,
-    subsystem::{audio::AudioOutput, input::HidWrapper},
+    subsystem::{audio::AudioOutput, dbus::DbusConnector, input::HidWrapper},
 };
 
 pub struct AppState {
@@ -48,6 +48,8 @@ pub struct AppState {
     pub toast_sound: &'static [u8],
 
     pub wgui_globals: WguiGlobals,
+
+    pub dbus: DbusConnector,
 
     #[cfg(feature = "osc")]
     pub osc_sender: Option<OscSender>,
@@ -109,6 +111,8 @@ impl AppState {
             .and_then(|c| parse_color_hex(&c))
             .unwrap_or(defaults.faded_color);
 
+        let dbus = DbusConnector::default();
+
         Ok(Self {
             session,
             tasks,
@@ -128,6 +132,7 @@ impl AppState {
                 &WguiFontConfig::default(),
                 get_config_file_path(&theme),
             )?,
+            dbus,
 
             #[cfg(feature = "osc")]
             osc_sender,
