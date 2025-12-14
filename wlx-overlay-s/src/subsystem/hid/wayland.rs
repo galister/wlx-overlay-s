@@ -117,6 +117,11 @@ impl Dispatch<WlKeyboard, ()> for WlKeymapHandler {
 
                     match maybe_keymap {
                         Ok(Some(keymap)) => {
+                            for l in keymap.layouts() {
+                                log::info!("wayland keymap: {l}");
+                                break;
+                            }
+
                             state.keymap = Some(XkbKeymap { keymap });
                         }
                         Ok(None) => {

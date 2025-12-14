@@ -32,6 +32,7 @@ use smithay::{
         selection::data_device::DataDeviceState,
         shell::xdg::{ToplevelSurface, XdgShellState},
         shm::ShmState,
+        xwayland_keyboard_grab::XWaylandKeyboardGrabHandler,
     },
 };
 use std::{
@@ -42,6 +43,7 @@ use std::{
 };
 use time::get_millis;
 use wayvr_ipc::{packet_client, packet_server};
+use xkbcommon::xkb;
 
 use crate::{
     state::AppState,
@@ -517,6 +519,10 @@ impl WayVRState {
 
     pub fn send_key(&mut self, virtual_key: u32, down: bool) {
         self.manager.send_key(virtual_key, down);
+    }
+
+    pub fn set_keymap(&mut self, keymap: &xkb::Keymap) -> anyhow::Result<()> {
+        self.manager.set_keymap(keymap)
     }
 
     pub fn set_modifiers(&mut self, modifiers: u8) {
