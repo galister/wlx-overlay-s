@@ -10,17 +10,16 @@ use crate::{
     overlays::keyboard::{builder::create_keyboard_panel, layout::AltModifier},
     state::AppState,
     subsystem::hid::{
-        wayland::WlKeymapMonitor, KeyModifier, VirtualKey, WheelDelta, XkbKeymap, ALT, CTRL, META,
-        SHIFT, SUPER,
+        ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey, WheelDelta, XkbKeymap,
+        wayland::WlKeymapMonitor,
     },
     windowing::{
         backend::{FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender},
         window::OverlayWindowConfig,
     },
 };
-use dbus::message::MatchRule;
-use glam::{vec3, Affine3A, Quat, Vec3};
-use slotmap::{new_key_type, SlotMap};
+use glam::{Affine3A, Quat, Vec3, vec3};
+use slotmap::{SlotMap, new_key_type};
 use wgui::{
     drawing,
     event::{InternalStateChangeEvent, MouseButton, MouseButtonIndex},
@@ -50,6 +49,10 @@ pub fn create_keyboard(
         },
         processes: vec![],
     };
+
+    if let Some(keymap) = keymap.as_ref() {
+        app.hid_provider.keymap_changed(keymap);
+    }
 
     if !layout.auto_labels.unwrap_or(true) {
         keymap = None;
@@ -117,6 +120,10 @@ impl KeyboardBackend {
     }
 
     fn switch_keymap(&mut self, keymap: &XkbKeymap, app: &mut AppState) -> anyhow::Result<bool> {
+        if !self.layout.auto_labels.unwrap_or(true) {
+            return Ok(false);
+        }
+
         let Some(layout_name) = keymap.inner.layouts().next() else {
             log::error!("XKB keymap without a layout!");
             return Ok(false);
@@ -161,6 +168,7 @@ impl OverlayBackend for KeyboardBackend {
     }
     fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
         if let Some(keymap) = self.wkm.check() {
+            app.hid_provider.keymap_changed(&keymap);
             if self.switch_keymap(&keymap, app)? {
                 return Ok(match self.panel().should_render(app)? {
                     ShouldRender::Should | ShouldRender::Can => ShouldRender::Should,
