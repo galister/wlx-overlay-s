@@ -10,7 +10,8 @@ use crate::{
     overlays::keyboard::{builder::create_keyboard_panel, layout::AltModifier},
     state::AppState,
     subsystem::hid::{
-        ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey, WheelDelta, XkbKeymap,
+        wayland::WlKeymapMonitor, KeyModifier, VirtualKey, WheelDelta, XkbKeymap, ALT, CTRL, META,
+        SHIFT, SUPER,
     },
     windowing::{
         backend::{FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender},
@@ -18,8 +19,8 @@ use crate::{
     },
 };
 use dbus::message::MatchRule;
-use glam::{Affine3A, Quat, Vec3, vec3};
-use slotmap::{SlotMap, new_key_type};
+use glam::{vec3, Affine3A, Quat, Vec3};
+use slotmap::{new_key_type, SlotMap};
 use wgui::{
     drawing,
     event::{InternalStateChangeEvent, MouseButton, MouseButtonIndex},
@@ -62,10 +63,10 @@ pub fn create_keyboard(
         active_keymap: KeyboardPanelKey::default(),
         default_state,
         layout,
+        wkm: WlKeymapMonitor::new()?,
     };
 
     backend.active_keymap = backend.add_new_keymap(keymap.as_ref(), app)?;
-    backend.watch_dbus(app);
 
     Ok(OverlayWindowConfig {
         name: KEYBOARD_NAME.into(),
@@ -95,6 +96,7 @@ struct KeyboardBackend {
     active_keymap: KeyboardPanelKey,
     default_state: KeyboardState,
     layout: layout::Layout,
+    wkm: WlKeymapMonitor,
 }
 
 impl KeyboardBackend {
@@ -114,43 +116,22 @@ impl KeyboardBackend {
         Ok(id)
     }
 
-    fn watch_dbus(&mut self, app: &mut AppState) {
-        let rules = [
-            MatchRule::new()
-                .with_member("CurrentInputMethod")
-                .with_interface("org.fcitx.Fcitx.Controller1")
-                .with_path("/controller")
-                .with_sender("org.fcitx.Fcitx5"),
-            MatchRule::new_signal("org.kde.KeyboardLayouts", "layoutChanged").with_path("/Layouts"),
-        ];
-
-        for rule in rules {
-            let _ = app.dbus.add_match(
-                rule,
-                Box::new(move |(), _, msg| {
-                    log::warn!("new keymap: {msg:?}");
-                    true
-                }),
-            );
-        }
-    }
-
-    fn switch_keymap(&mut self, keymap: &XkbKeymap, app: &mut AppState) -> anyhow::Result<()> {
+    fn switch_keymap(&mut self, keymap: &XkbKeymap, app: &mut AppState) -> anyhow::Result<bool> {
         let Some(layout_name) = keymap.inner.layouts().next() else {
             log::error!("XKB keymap without a layout!");
-            return Ok(());
+            return Ok(false);
         };
 
         if let Some(new_key) = self.keymap_ids.get(layout_name) {
             if self.active_keymap.eq(new_key) {
-                return Ok(());
+                return Ok(false);
             }
             self.internal_switch_keymap(*new_key);
         } else {
             let new_key = self.add_new_keymap(Some(keymap), app)?;
             self.internal_switch_keymap(new_key);
         }
-        Ok(())
+        Ok(true)
     }
 
     fn internal_switch_keymap(&mut self, new_key: KeyboardPanelKey) {
@@ -179,6 +160,14 @@ impl OverlayBackend for KeyboardBackend {
         self.panel().init(app)
     }
     fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
+        if let Some(keymap) = self.wkm.check() {
+            if self.switch_keymap(&keymap, app)? {
+                return Ok(match self.panel().should_render(app)? {
+                    ShouldRender::Should | ShouldRender::Can => ShouldRender::Should,
+                    ShouldRender::Unable => ShouldRender::Unable,
+                });
+            }
+        }
         self.panel().should_render(app)
     }
     fn render(&mut self, app: &mut AppState, rdr: &mut RenderResources) -> anyhow::Result<()> {

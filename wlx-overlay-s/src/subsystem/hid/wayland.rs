@@ -1,24 +1,81 @@
 use anyhow::Context;
+use wayland_client::{globals::GlobalList, EventQueue};
 use wlx_capture::wayland::wayland_client::{
-    Connection, Dispatch, Proxy, QueueHandle,
-    globals::{GlobalListContents, registry_queue_init},
+    globals::{registry_queue_init, GlobalListContents},
     protocol::{
         wl_keyboard::{self, WlKeyboard},
         wl_registry::WlRegistry,
         wl_seat::{self, Capability, WlSeat},
     },
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 use xkbcommon::xkb;
 
 use super::XkbKeymap;
 
-struct WlKeymapHandler {
+pub struct WlKeymapMonitor {
+    connection: Connection,
+    globals: GlobalList,
+    queue: EventQueue<MonitorState>,
+    state: MonitorState,
+}
+
+impl WlKeymapMonitor {
+    pub fn new() -> anyhow::Result<Self> {
+        let connection = Connection::connect_to_env()?;
+        let (globals, mut queue) = registry_queue_init::<MonitorState>(&connection)?;
+        let qh = queue.handle();
+        let seat: WlSeat = globals
+            .bind(&qh, 4..=9, ())
+            .unwrap_or_else(|_| panic!("{}", WlSeat::interface().name));
+
+        let mut state = MonitorState {
+            seat,
+            keyboard: None,
+            keymap: None,
+        };
+
+        // this gets us the wl_seat
+        let _ = queue.blocking_dispatch(&mut state);
+
+        // this gets us the wl_keyboard
+        let _ = queue.blocking_dispatch(&mut state);
+
+        Ok(Self {
+            connection,
+            globals,
+            queue,
+            state,
+        })
+    }
+
+    pub fn check(&mut self) -> Option<XkbKeymap> {
+        let Some(read_guard) = self.connection.prepare_read() else {
+            return None;
+        };
+        read_guard
+            .read()
+            .context("could not read wayland events")
+            .inspect_err(|e| log::warn!("{e:?}"))
+            .ok()?;
+
+        self.queue.dispatch_pending(&mut self.state).ok()?;
+
+        self.take_keymap()
+    }
+
+    pub fn take_keymap(&mut self) -> Option<XkbKeymap> {
+        self.state.keymap.take()
+    }
+}
+
+struct MonitorState {
     seat: WlSeat,
     keyboard: Option<WlKeyboard>,
     keymap: Option<XkbKeymap>,
 }
 
-impl Drop for WlKeymapHandler {
+impl Drop for MonitorState {
     fn drop(&mut self) {
         if let Some(keyboard) = &self.keyboard {
             keyboard.release();
@@ -29,13 +86,13 @@ impl Drop for WlKeymapHandler {
 
 pub fn get_keymap_wl() -> anyhow::Result<XkbKeymap> {
     let connection = Connection::connect_to_env()?;
-    let (globals, mut queue) = registry_queue_init::<WlKeymapHandler>(&connection)?;
+    let (globals, mut queue) = registry_queue_init::<MonitorState>(&connection)?;
     let qh = queue.handle();
     let seat: WlSeat = globals
         .bind(&qh, 4..=9, ())
         .unwrap_or_else(|_| panic!("{}", WlSeat::interface().name));
 
-    let mut me = WlKeymapHandler {
+    let mut me = MonitorState {
         seat,
         keyboard: None,
         keymap: None,
@@ -50,7 +107,7 @@ pub fn get_keymap_wl() -> anyhow::Result<XkbKeymap> {
     me.keymap.take().context("could not load keymap")
 }
 
-impl Dispatch<WlRegistry, GlobalListContents> for WlKeymapHandler {
+impl Dispatch<WlRegistry, GlobalListContents> for MonitorState {
     fn event(
         _state: &mut Self,
         _proxy: &WlRegistry,
@@ -62,7 +119,7 @@ impl Dispatch<WlRegistry, GlobalListContents> for WlKeymapHandler {
     }
 }
 
-impl Dispatch<WlSeat, ()> for WlKeymapHandler {
+impl Dispatch<WlSeat, ()> for MonitorState {
     fn event(
         state: &mut Self,
         proxy: &WlSeat,
@@ -88,7 +145,7 @@ impl Dispatch<WlSeat, ()> for WlKeymapHandler {
     }
 }
 
-impl Dispatch<WlKeyboard, ()> for WlKeymapHandler {
+impl Dispatch<WlKeyboard, ()> for MonitorState {
     fn event(
         state: &mut Self,
         _proxy: &WlKeyboard,
