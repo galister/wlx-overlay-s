@@ -32,10 +32,14 @@ pub(super) fn initialize() -> Box<dyn HidProvider> {
         return Box::new(uinput);
     }
     log::error!("Could not create uinput provider. Keyboard/Mouse input will not work!");
-    log::error!("To check if you're in input group, run: id -nG");
+    log::error!("Check if the uinput kernel module is loaded: lsmod | grep uinput");
+    log::error!(
+        " - If not loaded, follow your distro's instructions to load the uinput kernel module."
+    );
+    log::error!("Check if you're in input group, run: id -nG");
     if let Ok(user) = std::env::var("USER") {
-        log::error!("To add yourself to the input group, run: sudo usermod -aG input {user}");
-        log::error!("After adding yourself to the input group, you will need to reboot.");
+        log::error!(" - To add yourself to the input group, run: sudo usermod -aG input {user}");
+        log::error!(" - After adding yourself to the input group, you will need to reboot.");
     }
     Box::new(DummyProvider {})
 }
