@@ -20,12 +20,13 @@ impl ScreenBackend {
     pub fn new_pw(
         output: &WlxOutput,
         token: Option<&str>,
-        app: &AppState,
+        app: &mut AppState,
     ) -> anyhow::Result<(Self, Option<String> /* pipewire restore token */)> {
         let name = output.name.clone();
         let embed_mouse = !app.session.config.double_cursor_fix;
 
         let select_screen_result = select_pw_screen(
+            app,
             &format!(
                 "Now select: {} {} {} @ {},{}",
                 &output.name,
@@ -56,6 +57,7 @@ impl ScreenBackend {
 
 #[allow(clippy::fn_params_excessive_bools)]
 pub(super) fn select_pw_screen(
+    app: &mut AppState,
     instructions: &str,
     token: Option<&str>,
     embed_mouse: bool,
@@ -63,7 +65,6 @@ pub(super) fn select_pw_screen(
     persist: bool,
     multiple: bool,
 ) -> Result<PipewireSelectScreenResult, wlx_capture::pipewire::AshpdError> {
-    use crate::subsystem::notifications::DbusNotificationSender;
     use std::time::Duration;
     use wlx_capture::pipewire::pipewire_select_screen;
 
@@ -80,10 +81,8 @@ pub(super) fn select_pw_screen(
                 task::Poll::Pending => {
                     if Instant::now() >= print_at {
                         log::info!("{instructions}");
-                        if let Ok(sender) = DbusNotificationSender::new()
-                            && let Ok(id) = sender.notify_send(instructions, "", 2, 0, 0, true)
-                        {
-                            notify = Some((sender, id));
+                        if let Ok(id) = app.dbus.notify_send(instructions, "", 2, 30, 0, true) {
+                            notify = Some(id);
                         }
                         break;
                     }
@@ -96,8 +95,9 @@ pub(super) fn select_pw_screen(
         }
 
         let result = f.await;
-        if let Some((sender, id)) = notify {
-            let _ = sender.notify_close(id);
+        if let Some(id) = notify {
+            //safe unwrap; checked above
+            let _ = app.dbus.notify_close(id);
         }
         result
     };

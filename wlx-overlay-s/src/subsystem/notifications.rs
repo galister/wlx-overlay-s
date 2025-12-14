@@ -1,14 +1,5 @@
-#[allow(clippy::all)]
-mod notifications_dbus;
-
 use anyhow::Context;
-use dbus::{
-    arg::{PropMap, Variant},
-    blocking::Connection,
-    channel::MatchingReceiver,
-    message::MatchRule,
-};
-use notifications_dbus::OrgFreedesktopNotifications;
+use dbus::message::MatchRule;
 use serde::Deserialize;
 use std::{
     sync::{
@@ -20,12 +11,11 @@ use std::{
 };
 use wlx_common::overlays::ToastTopic;
 
-use crate::{overlays::toast::Toast, state::AppState};
+use crate::{overlays::toast::Toast, state::AppState, subsystem::dbus::DbusConnector};
 
 pub struct NotificationManager {
     rx_toast: mpsc::Receiver<Toast>,
     tx_toast: mpsc::SyncSender<Toast>,
-    dbus_data: Option<Connection>,
     running: Arc<AtomicBool>,
 }
 
@@ -35,16 +25,11 @@ impl NotificationManager {
         Self {
             rx_toast,
             tx_toast,
-            dbus_data: None,
             running: Arc::new(AtomicBool::new(true)),
         }
     }
 
     pub fn submit_pending(&self, app: &mut AppState) {
-        if let Some(c) = &self.dbus_data {
-            let _ = c.process(Duration::ZERO);
-        }
-
         if app.session.config.notifications_enabled {
             self.rx_toast.try_iter().for_each(|toast| {
                 toast.submit(app);
@@ -55,78 +40,47 @@ impl NotificationManager {
         }
     }
 
-    pub fn run_dbus(&mut self) {
-        let Ok(conn) = Connection::new_session().context(
-            "Failed to connect to dbus. Desktop notifications and keymap changes will not work.",
-        ) else {
-            return;
-        };
+    pub fn run_dbus(&mut self, dbus: &mut DbusConnector) {
+        let rule = MatchRule::new_method_call()
+            .with_member("Notify")
+            .with_interface("org.freedesktop.Notifications")
+            .with_path("/org/freedesktop/Notifications");
 
-        let mut rule = MatchRule::new_method_call();
-        rule.member = Some("Notify".into());
-        rule.interface = Some("org.freedesktop.Notifications".into());
-        rule.path = Some("/org/freedesktop/Notifications".into());
-        rule.eavesdrop = true;
-
-        let proxy = conn.with_proxy(
-            "org.freedesktop.DBus",
-            "/org/freedesktop/DBus",
-            Duration::from_millis(5000),
-        );
-        let result: Result<(), dbus::Error> = proxy.method_call(
-            "org.freedesktop.DBus.Monitoring",
-            "BecomeMonitor",
-            (vec![rule.match_str()], 0u32),
-        );
-
-        if matches!(result, Ok(())) {
-            let sender = self.tx_toast.clone();
-            conn.start_receive(
-                rule,
+        let sender = self.tx_toast.clone();
+        if let Ok(_) = dbus
+            .become_monitor(
+                rule.clone(),
                 Box::new(move |msg, _| {
                     if let Ok(toast) = parse_dbus(&msg) {
-                        match sender.try_send(toast) {
-                            Ok(()) => {}
-                            Err(e) => {
-                                log::error!("Failed to send notification: {e:?}");
-                            }
-                        }
+                        let _ = sender
+                            .try_send(toast)
+                            .inspect_err(|e| log::error!("Failed to send notification: {e:?}"));
                     }
                     true
                 }),
-            );
-            log::info!("Listening to DBus notifications via BecomeMonitor.");
-        } else {
-            let rule_with_eavesdrop = {
-                let mut rule = rule.clone();
-                rule.eavesdrop = true;
-                rule
-            };
-
-            let sender2 = self.tx_toast.clone();
-            let result = conn.add_match(rule_with_eavesdrop, move |(): (), _, msg| {
-                if let Ok(toast) = parse_dbus(msg) {
-                    match sender2.try_send(toast) {
-                        Ok(()) => {}
-                        Err(e) => {
-                            log::error!("Failed to send notification: {e:?}");
-                        }
-                    }
-                }
-                true
-            });
-
-            match result {
-                Ok(_) => {
-                    log::info!("Listening to DBus notifications via eavesdrop.");
-                }
-                Err(_) => {
-                    log::error!("Failed to add DBus match. Desktop notifications will not work.",);
-                }
-            }
+            )
+            .context("Could not register BecomeMonitor")
+            .inspect_err(|e| log::warn!("{e:?}"))
+        {
+            log::info!("Listening to D-Bus notifications via BecomeMonitor.");
+            return;
         }
 
-        self.dbus_data = Some(conn);
+        let sender = self.tx_toast.clone();
+        let _ = dbus
+            .add_match(
+                rule.with_eavesdrop(),
+                Box::new(move |(), _, msg| {
+                    if let Ok(toast) = parse_dbus(msg) {
+                        let _ = sender
+                            .try_send(toast)
+                            .inspect_err(|e| log::error!("Failed to send notification: {e:?}"));
+                    }
+                    true
+                }),
+            )
+            .context("Failed to register D-Bus notifications. Desktop notifications won't work.")
+            .inspect_err(|e| log::warn!("{e:?}"));
     }
 
     pub fn run_udp(&mut self) {
@@ -192,60 +146,6 @@ impl NotificationManager {
 impl Drop for NotificationManager {
     fn drop(&mut self) {
         self.running.store(false, Ordering::Relaxed);
-    }
-}
-
-pub struct DbusNotificationSender {
-    connection: Connection,
-}
-
-impl DbusNotificationSender {
-    pub fn new() -> anyhow::Result<Self> {
-        Ok(Self {
-            connection: Connection::new_session()?,
-        })
-    }
-
-    pub fn notify_send(
-        &self,
-        summary: &str,
-        body: &str,
-        urgency: u8,
-        timeout: i32,
-        replaces_id: u32,
-        transient: bool,
-    ) -> anyhow::Result<u32> {
-        let proxy = self.connection.with_proxy(
-            "org.freedesktop.Notifications",
-            "/org/freedesktop/Notifications",
-            Duration::from_millis(1000),
-        );
-
-        let mut hints = PropMap::new();
-        hints.insert("urgency".to_string(), Variant(Box::new(urgency)));
-        hints.insert("transient".to_string(), Variant(Box::new(transient)));
-
-        Ok(proxy.notify(
-            "WlxOverlay-S",
-            replaces_id,
-            "",
-            summary,
-            body,
-            vec![],
-            hints,
-            timeout,
-        )?)
-    }
-
-    pub fn notify_close(&self, id: u32) -> anyhow::Result<()> {
-        let proxy = self.connection.with_proxy(
-            "org.freedesktop.Notifications",
-            "/org/freedesktop/Notifications",
-            Duration::from_millis(1000),
-        );
-
-        proxy.close_notification(id)?;
-        Ok(())
     }
 }
 

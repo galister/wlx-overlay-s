@@ -37,10 +37,11 @@ use std::{
 };
 
 use clap::Parser;
-use subsystem::notifications::DbusNotificationSender;
 use sysinfo::Pid;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
+
+use crate::subsystem::dbus::DbusConnector;
 
 pub static FRAME_COUNTER: AtomicUsize = AtomicUsize::new(0);
 pub static RUNNING: AtomicBool = AtomicBool::new(true);
@@ -168,8 +169,7 @@ fn auto_run(args: Args) {
 
     let instructions = format!("Could not connect to runtime.\n{instructions}");
 
-    let _ = DbusNotificationSender::new()
-        .and_then(|s| s.notify_send("WlxOverlay-S", &instructions, 1, 0, 0, false));
+    let _ = DbusConnector::default().notify_send("WlxOverlay-S", &instructions, 1, 0, 0, false);
 
     #[cfg(not(any(feature = "openvr", feature = "openxr")))]
     compile_error!("No VR support! Enable either openvr or openxr features!");

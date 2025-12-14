@@ -45,7 +45,7 @@ pub fn create_screen_renderer_wl(
     has_wlr_dmabuf: bool,
     has_wlr_screencopy: bool,
     pw_token_store: &mut PwTokenMap,
-    app: &AppState,
+    app: &mut AppState,
 ) -> Option<ScreenBackend> {
     let mut capture: Option<ScreenBackend> = None;
     if (&*app.session.config.capture_method == "wlr-dmabuf") && has_wlr_dmabuf {

@@ -115,7 +115,7 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
 
     let mut overlays = OverlayWindowManager::<OpenVrOverlayData>::new(&mut app, headless)?;
     let mut notifications = NotificationManager::new();
-    notifications.run_dbus();
+    notifications.run_dbus(&mut app.dbus);
     notifications.run_udp();
 
     let mut playspace = playspace::PlayspaceMover::new();
@@ -198,6 +198,7 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             next_device_update = Instant::now() + Duration::from_secs(30);
         }
 
+        app.dbus.tick();
         notifications.submit_pending(&mut app);
 
         app.tasks.retrieve_due(&mut due_tasks);
