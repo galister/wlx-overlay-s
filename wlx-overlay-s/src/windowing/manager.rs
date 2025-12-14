@@ -15,7 +15,7 @@ use crate::{
     FRAME_COUNTER,
     backend::task::OverlayTask,
     overlays::{
-        anchor::create_anchor, edit::EditWrapperManager, keyboard::builder::create_keyboard,
+        anchor::create_anchor, edit::EditWrapperManager, keyboard::create_keyboard,
         screen::create_screens, toast::Toast, watch::create_watch,
     },
     state::AppState,
