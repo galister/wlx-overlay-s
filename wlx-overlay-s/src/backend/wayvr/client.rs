@@ -1,11 +1,13 @@
 use std::{io::Read, os::unix::net::UnixStream, path::PathBuf, sync::Arc};
 
+use anyhow::Context;
 use smithay::{
     backend::input::Keycode,
     input::{keyboard::KeyboardHandle, pointer::PointerHandle},
     reexports::wayland_server,
     utils::SerialCounter,
 };
+use xkbcommon::xkb::{self, KEYMAP_FORMAT_USE_ORIGINAL};
 
 use crate::backend::wayvr::{ExternalProcessRequest, WayVRTask};
 
@@ -206,6 +208,16 @@ impl WayVRCompositor {
             0,
             |_, _, _| smithay::input::keyboard::FilterResult::Forward,
         );
+    }
+
+    pub fn set_keymap(&mut self, keymap: &xkb::Keymap) -> anyhow::Result<()> {
+        // Smithay only accepts keymaps in a string form due to thread safety concerns
+        self.seat_keyboard
+            .set_keymap_from_string(
+                &mut self.state,
+                keymap.get_as_string(xkb::KEYMAP_FORMAT_USE_ORIGINAL),
+            )
+            .context("Failed to set keymap")
     }
 }
 
