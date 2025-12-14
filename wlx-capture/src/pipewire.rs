@@ -138,6 +138,7 @@ struct StreamData {
     stream: Option<Stream>,
 }
 
+#[derive(Debug)]
 pub enum PwChangeRequest {
     Pause,
     Resume,
@@ -513,16 +514,19 @@ where
     let _receiver = receiver.attach(main_loop.loop_(), {
         let name = name.clone();
         let main_loop = main_loop.clone();
-        move |req| match req {
-            PwChangeRequest::Pause => {
-                let _ = stream.set_active(false);
-            }
-            PwChangeRequest::Resume => {
-                let _ = stream.set_active(true);
-            }
-            PwChangeRequest::Stop => {
-                main_loop.quit();
-                log::info!("{}: stopping pipewire loop", &name);
+
+        move |req| {
+            log::debug!("{name}: request pipewire stream to {req:?}");
+            match req {
+                PwChangeRequest::Pause => {
+                    let _ = stream.set_active(false);
+                }
+                PwChangeRequest::Resume => {
+                    let _ = stream.set_active(true);
+                }
+                PwChangeRequest::Stop => {
+                    main_loop.quit();
+                }
             }
         }
     });
