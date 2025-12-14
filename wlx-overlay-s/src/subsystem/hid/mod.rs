@@ -1,5 +1,5 @@
 use glam::Vec2;
-use idmap::{IdMap, idmap};
+use idmap::{idmap, IdMap};
 use idmap_derive::IntegerId;
 use input_linux::{
     AbsoluteAxis, AbsoluteInfo, AbsoluteInfoSetup, EventKind, InputId, Key, RelativeAxis,
@@ -14,7 +14,7 @@ use strum::{EnumIter, EnumString, IntoEnumIterator};
 use xkbcommon::xkb;
 
 #[cfg(feature = "wayland")]
-mod wayland;
+pub mod wayland;
 
 #[cfg(feature = "x11")]
 mod x11;
