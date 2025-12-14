@@ -122,7 +122,7 @@ impl Dispatch<WlKeyboard, ()> for WlKeymapHandler {
                                 break;
                             }
 
-                            state.keymap = Some(XkbKeymap { keymap });
+                            state.keymap = Some(XkbKeymap { inner: keymap });
                         }
                         Ok(None) => {
                             log::error!("Could not load keymap: no keymap");

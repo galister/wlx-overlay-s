@@ -1,6 +1,7 @@
 use std::{collections::HashMap, rc::Rc};
 
-use glam::{Affine3A, FloatExt, Mat4, Quat, Vec2, Vec3, vec2, vec3};
+use crate::{gui::panel::GuiPanel, state::AppState, subsystem::hid::XkbKeymap};
+use glam::{FloatExt, Mat4, Vec2, Vec3, vec2};
 use wgui::{
     animation::{Animation, AnimationEasing},
     assets::AssetPath,
@@ -17,43 +18,22 @@ use wgui::{
         util::WLength,
     },
 };
-use wlx_common::windowing::{OverlayWindowState, Positioning};
-
-use crate::{
-    gui::panel::GuiPanel,
-    state::AppState,
-    subsystem::hid::{ALT, CTRL, META, SHIFT, SUPER, XkbKeymap},
-    windowing::window::OverlayWindowConfig,
-};
 
 use super::{
-    KEYBOARD_NAME, KeyButtonData, KeyState, KeyboardBackend, KeyboardState, handle_press,
-    handle_release,
-    layout::{self, AltModifier, KeyCapType},
+    KeyButtonData, KeyState, KeyboardState, handle_press, handle_release,
+    layout::{self, KeyCapType},
 };
 
 const BACKGROUND_PADDING: f32 = 16.0;
 const PIXELS_PER_UNIT: f32 = 80.;
 
 #[allow(clippy::too_many_lines, clippy::significant_drop_tightening)]
-pub fn create_keyboard(
+pub(super) fn create_keyboard_panel(
     app: &mut AppState,
-    mut keymap: Option<XkbKeymap>,
-) -> anyhow::Result<OverlayWindowConfig> {
-    let layout = layout::Layout::load_from_disk();
-    let state = KeyboardState {
-        modifiers: 0,
-        alt_modifier: match layout.alt_modifier {
-            AltModifier::Shift => SHIFT,
-            AltModifier::Ctrl => CTRL,
-            AltModifier::Alt => ALT,
-            AltModifier::Super => SUPER,
-            AltModifier::Meta => META,
-            _ => 0,
-        },
-        processes: vec![],
-    };
-
+    keymap: Option<&XkbKeymap>,
+    state: KeyboardState,
+    layout: &layout::Layout,
+) -> anyhow::Result<GuiPanel<KeyboardState>> {
     let mut panel = GuiPanel::new_blank(app, state, Default::default())?;
 
     let globals = app.wgui_globals.clone();
@@ -75,11 +55,7 @@ pub fn create_keyboard(
         },
     )?;
 
-    let has_altgr = keymap.as_ref().is_some_and(XkbKeymap::has_altgr);
-
-    if !layout.auto_labels.unwrap_or(true) {
-        keymap = None;
-    }
+    let has_altgr = keymap.as_ref().is_some_and(|m| XkbKeymap::has_altgr(*m));
 
     let parse_doc_params = wgui::parser::ParseDocumentParams {
         globals,
@@ -111,7 +87,7 @@ pub fn create_keyboard(
                 height: length(PIXELS_PER_UNIT),
             };
 
-            let Some(key) = layout.get_key_data(keymap.as_ref(), has_altgr, col, row) else {
+            let Some(key) = layout.get_key_data(keymap, has_altgr, col, row) else {
                 let _ = panel.layout.add_child(
                     div.id,
                     WidgetDiv::create(),
@@ -273,24 +249,7 @@ pub fn create_keyboard(
     panel.layout.update(vec2(2048., 2048.), 0.0)?;
     panel.parser_state = gui_state_key;
 
-    let width = layout.row_size * 0.05 * app.session.config.keyboard_scale;
-
-    Ok(OverlayWindowConfig {
-        name: KEYBOARD_NAME.into(),
-        default_state: OverlayWindowState {
-            grabbable: true,
-            positioning: Positioning::Anchored,
-            interactable: true,
-            curvature: Some(0.15),
-            transform: Affine3A::from_scale_rotation_translation(
-                Vec3::ONE * width,
-                Quat::from_rotation_x(-10f32.to_radians()),
-                vec3(0.0, -0.65, -0.5),
-            ),
-            ..OverlayWindowState::default()
-        },
-        ..OverlayWindowConfig::from_backend(Box::new(KeyboardBackend { panel }))
-    })
+    Ok(panel)
 }
 
 const BUTTON_HOVER_SCALE: f32 = 0.1;

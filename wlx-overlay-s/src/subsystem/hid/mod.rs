@@ -574,12 +574,12 @@ pub const fn get_key_type(key: VirtualKey) -> KeyType {
 }
 
 pub struct XkbKeymap {
-    pub keymap: xkb::Keymap,
+    pub inner: xkb::Keymap,
 }
 
 impl XkbKeymap {
     pub fn label_for_key(&self, key: VirtualKey, modifier: KeyModifier) -> String {
-        let mut state = xkb::State::new(&self.keymap);
+        let mut state = xkb::State::new(&self.inner);
         if modifier > 0
             && let Some(mod_key) = MODS_TO_KEYS.get(modifier)
         {
@@ -592,8 +592,8 @@ impl XkbKeymap {
     }
 
     pub fn has_altgr(&self) -> bool {
-        let state0 = xkb::State::new(&self.keymap);
-        let mut state1 = xkb::State::new(&self.keymap);
+        let state0 = xkb::State::new(&self.inner);
+        let mut state1 = xkb::State::new(&self.inner);
         state1.update_key(
             xkb::Keycode::from(VirtualKey::Meta as u32),
             xkb::KeyDirection::Down,

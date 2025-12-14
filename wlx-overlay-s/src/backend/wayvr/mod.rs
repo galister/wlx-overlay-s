@@ -32,7 +32,6 @@ use smithay::{
         selection::data_device::DataDeviceState,
         shell::xdg::{ToplevelSurface, XdgShellState},
         shm::ShmState,
-        xwayland_keyboard_grab::XWaylandKeyboardGrabHandler,
     },
 };
 use std::{

@@ -1,8 +1,7 @@
 use glam::Affine3A;
 use idmap::IdMap;
 use smallvec::{SmallVec, smallvec};
-use smithay::backend::renderer::Texture;
-use std::{ops::Not, sync::Arc};
+use std::sync::Arc;
 use wgui::{
     font_config::WguiFontConfig, gfx::WGfx, globals::WguiGlobals, parser::parse_color_hex,
     renderer_vk::context::SharedContext as WSharedContext,

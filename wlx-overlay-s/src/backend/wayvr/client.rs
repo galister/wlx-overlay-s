@@ -7,7 +7,7 @@ use smithay::{
     reexports::wayland_server,
     utils::SerialCounter,
 };
-use xkbcommon::xkb::{self, KEYMAP_FORMAT_USE_ORIGINAL};
+use xkbcommon::xkb;
 
 use crate::backend::wayvr::{ExternalProcessRequest, WayVRTask};
 
