@@ -1,6 +1,7 @@
 #[allow(clippy::all)]
 mod notifications_dbus;
 
+use anyhow::Context;
 use dbus::{
     arg::{PropMap, Variant},
     blocking::Connection,
@@ -55,14 +56,10 @@ impl NotificationManager {
     }
 
     pub fn run_dbus(&mut self) {
-        let c = match Connection::new_session() {
-            Ok(c) => c,
-            Err(e) => {
-                log::error!(
-                    "Failed to connect to dbus. Desktop notifications will not work. Cause: {e:?}"
-                );
-                return;
-            }
+        let Ok(conn) = Connection::new_session().context(
+            "Failed to connect to dbus. Desktop notifications and keymap changes will not work.",
+        ) else {
+            return;
         };
 
         let mut rule = MatchRule::new_method_call();
@@ -71,7 +68,7 @@ impl NotificationManager {
         rule.path = Some("/org/freedesktop/Notifications".into());
         rule.eavesdrop = true;
 
-        let proxy = c.with_proxy(
+        let proxy = conn.with_proxy(
             "org.freedesktop.DBus",
             "/org/freedesktop/DBus",
             Duration::from_millis(5000),
@@ -84,7 +81,7 @@ impl NotificationManager {
 
         if matches!(result, Ok(())) {
             let sender = self.tx_toast.clone();
-            c.start_receive(
+            conn.start_receive(
                 rule,
                 Box::new(move |msg, _| {
                     if let Ok(toast) = parse_dbus(&msg) {
@@ -107,7 +104,7 @@ impl NotificationManager {
             };
 
             let sender2 = self.tx_toast.clone();
-            let result = c.add_match(rule_with_eavesdrop, move |(): (), _, msg| {
+            let result = conn.add_match(rule_with_eavesdrop, move |(): (), _, msg| {
                 if let Ok(toast) = parse_dbus(msg) {
                     match sender2.try_send(toast) {
                         Ok(()) => {}
@@ -129,7 +126,7 @@ impl NotificationManager {
             }
         }
 
-        self.dbus_data = Some(c);
+        self.dbus_data = Some(conn);
     }
 
     pub fn run_udp(&mut self) {
