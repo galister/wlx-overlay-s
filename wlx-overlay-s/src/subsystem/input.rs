@@ -1,9 +1,8 @@
 use super::hid::{self, HidProvider, VirtualKey};
 
-use xkbcommon::xkb;
-
 #[cfg(feature = "wayvr")]
 use crate::overlays::wayvr::WayVRData;
+use crate::subsystem::hid::XkbKeymap;
 #[cfg(feature = "wayvr")]
 use std::{cell::RefCell, rc::Rc};
 
@@ -50,20 +49,20 @@ impl HidWrapper {
         }
     }
 
-    pub fn keymap_changed(&self, keymap: &xkb::Keymap) {
+    pub fn keymap_changed(&self, keymap: &XkbKeymap) {
         #[cfg(feature = "wayvr")]
         if let Some(wayvr) = &self.wayvr {
             let _ = wayvr
                 .borrow_mut()
                 .data
                 .state
-                .set_keymap(keymap)
+                .set_keymap(&keymap.inner)
                 .inspect_err(|e| log::error!("Could not set WayVR keymap: {e:?}"));
         }
 
         log::info!(
             "Keymap changed: {}",
-            keymap.layouts().next().unwrap_or("Unknown")
+            keymap.inner.layouts().next().unwrap_or("Unknown")
         );
     }
 
