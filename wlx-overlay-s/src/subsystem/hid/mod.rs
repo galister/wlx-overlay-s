@@ -584,6 +584,10 @@ impl XkbKeymap {
             .map(|inner| XkbKeymap { inner })
     }
 
+    pub fn get_name(&self) -> Option<&str> {
+        self.inner.layouts().next()
+    }
+
     pub fn label_for_key(&self, key: VirtualKey, modifier: KeyModifier) -> String {
         let mut state = xkb::State::new(&self.inner);
         if modifier > 0

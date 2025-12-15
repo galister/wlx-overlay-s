@@ -33,10 +33,11 @@ mod layout;
 
 pub const KEYBOARD_NAME: &str = "kbd";
 const AUTO_RELEASE_MODS: [KeyModifier; 5] = [SHIFT, CTRL, ALT, SUPER, META];
+const SYSTEM_LAYOUT_ALIASES: [&str; 5] = ["mozc", "pinyin", "hangul", "sayura", "unikey"];
 
 pub fn create_keyboard(
     app: &mut AppState,
-    mut keymap: Option<XkbKeymap>,
+    keymap: Option<XkbKeymap>,
 ) -> anyhow::Result<OverlayWindowConfig> {
     let layout = layout::Layout::load_from_disk();
     let default_state = KeyboardState {
@@ -56,21 +57,28 @@ pub fn create_keyboard(
         app.hid_provider.keymap_changed(keymap);
     }
 
-    if !layout.auto_labels.unwrap_or(true) {
-        keymap = None;
-    }
+    let effective_keymap = if layout.auto_labels.unwrap_or(true) {
+        keymap.as_ref()
+    } else {
+        None
+    };
 
     let width = layout.row_size * 0.05 * app.session.config.keyboard_scale;
 
     let mut backend = KeyboardBackend {
-        keymap_panels: SlotMap::default(),
-        keymap_ids: HashMap::default(),
-        active_keymap: KeyboardPanelKey::default(),
+        layout_panels: SlotMap::default(),
+        layout_ids: HashMap::default(),
+        active_layout: KeyboardPanelKey::default(),
+        default_layout: KeyboardPanelKey::default(),
         default_state,
-        layout,
+        default_keymap: None,
+        wlx_layout: layout,
     };
 
-    backend.active_keymap = backend.add_new_keymap(keymap.as_ref(), app)?;
+    backend.active_layout = backend.add_new_keymap(effective_keymap, app)?;
+    backend.default_layout = backend.active_layout;
+
+    backend.default_keymap = keymap;
 
     Ok(OverlayWindowConfig {
         name: KEYBOARD_NAME.into(),
@@ -95,11 +103,13 @@ new_key_type! {
 }
 
 struct KeyboardBackend {
-    keymap_panels: SlotMap<KeyboardPanelKey, GuiPanel<KeyboardState>>,
-    keymap_ids: HashMap<String, KeyboardPanelKey>,
-    active_keymap: KeyboardPanelKey,
+    layout_panels: SlotMap<KeyboardPanelKey, GuiPanel<KeyboardState>>,
+    layout_ids: HashMap<String, KeyboardPanelKey>,
+    active_layout: KeyboardPanelKey,
+    default_layout: KeyboardPanelKey,
     default_state: KeyboardState,
-    layout: layout::Layout,
+    default_keymap: Option<XkbKeymap>,
+    wlx_layout: layout::Layout,
 }
 
 impl KeyboardBackend {
@@ -108,11 +118,12 @@ impl KeyboardBackend {
         keymap: Option<&XkbKeymap>,
         app: &mut AppState,
     ) -> anyhow::Result<KeyboardPanelKey> {
-        let panel = create_keyboard_panel(app, keymap, self.default_state.take(), &self.layout)?;
+        let panel =
+            create_keyboard_panel(app, keymap, self.default_state.take(), &self.wlx_layout)?;
 
-        let id = self.keymap_panels.insert(panel);
-        if let Some(layout_name) = keymap.and_then(|k| k.inner.layouts().next()) {
-            self.keymap_ids.insert(layout_name.into(), id);
+        let id = self.layout_panels.insert(panel);
+        if let Some(layout_name) = keymap.and_then(|k| k.get_name()) {
+            self.layout_ids.insert(layout_name.into(), id);
         } else {
             log::error!("XKB keymap without a layout!");
         };
@@ -120,17 +131,17 @@ impl KeyboardBackend {
     }
 
     fn switch_keymap(&mut self, keymap: &XkbKeymap, app: &mut AppState) -> anyhow::Result<bool> {
-        if !self.layout.auto_labels.unwrap_or(true) {
+        if !self.wlx_layout.auto_labels.unwrap_or(true) {
             return Ok(false);
         }
 
-        let Some(layout_name) = keymap.inner.layouts().next() else {
+        let Some(layout_name) = keymap.get_name() else {
             log::error!("XKB keymap without a layout!");
             return Ok(false);
         };
 
-        if let Some(new_key) = self.keymap_ids.get(layout_name) {
-            if self.active_keymap.eq(new_key) {
+        if let Some(new_key) = self.layout_ids.get(layout_name) {
+            if self.active_layout.eq(new_key) {
                 return Ok(false);
             }
             self.internal_switch_keymap(*new_key);
@@ -143,22 +154,51 @@ impl KeyboardBackend {
 
     fn internal_switch_keymap(&mut self, new_key: KeyboardPanelKey) {
         let state_from = self
-            .keymap_panels
-            .get_mut(self.active_keymap)
+            .layout_panels
+            .get_mut(self.active_layout)
             .unwrap()
             .state
             .take();
 
-        self.active_keymap = new_key;
+        self.active_layout = new_key;
 
-        self.keymap_panels
-            .get_mut(self.active_keymap)
+        self.layout_panels
+            .get_mut(self.active_layout)
             .unwrap()
             .state = state_from;
     }
 
+    fn switch_to_fcitx_keymap(&mut self, app: &mut AppState) -> anyhow::Result<bool> {
+        let fcitx_layout = app
+            .dbus
+            .fcitx_keymap()
+            .context("Could not fetch Fcitx5 keymap")
+            .inspect_err(|e| log::warn!("{e:?}"))?;
+
+        if fcitx_layout.starts_with("keyboard-") {
+            let keymap = XkbKeymap::from_layout_str(&fcitx_layout[9..])
+                .context("Could not load Fcitx5 keymap")
+                .inspect_err(|e| log::warn!("fcitx layout {fcitx_layout}: {e:?}"))?;
+            app.hid_provider.keymap_changed(&keymap);
+            self.switch_keymap(&keymap, app)
+        } else if SYSTEM_LAYOUT_ALIASES.contains(&fcitx_layout.as_str()) {
+            if let Some(keymap) = self.default_keymap.as_ref() {
+                app.hid_provider.keymap_changed(&keymap);
+            }
+            log::debug!("{fcitx_layout} is an IME, switching to system layout.");
+            if self.active_layout == self.default_layout {
+                Ok(false)
+            } else {
+                self.internal_switch_keymap(self.default_layout);
+                Ok(true)
+            }
+        } else {
+            anyhow::bail!("Unknown layout or IME: {fcitx_layout}");
+        }
+    }
+
     fn panel(&mut self) -> &mut GuiPanel<KeyboardState> {
-        self.keymap_panels.get_mut(self.active_keymap).unwrap() // want panic
+        self.layout_panels.get_mut(self.active_layout).unwrap() // want panic
     }
 }
 
@@ -168,22 +208,11 @@ impl OverlayBackend for KeyboardBackend {
     }
     fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
         while KEYMAP_CHANGE.swap(false, Ordering::Relaxed) {
-            let keymap: XkbKeymap;
-            if let Ok(fcitx_layout) = app
-                .dbus
-                .fcitx_keymap()
-                .context("Could not fetch Fcitx5 keymap")
+            if self
+                .switch_to_fcitx_keymap(app)
                 .inspect_err(|e| log::warn!("{e:?}"))
-                && fcitx_layout.starts_with("keyboard-")
-                && let Some(fcitx_keymap) = XkbKeymap::from_layout_str(&fcitx_layout[9..])
+                .unwrap_or(false)
             {
-                keymap = fcitx_keymap;
-            } else {
-                break;
-            }
-
-            app.hid_provider.keymap_changed(&keymap);
-            if self.switch_keymap(&keymap, app)? {
                 let panel = self.panel();
                 if !panel.initialized {
                     panel.init(app)?;
