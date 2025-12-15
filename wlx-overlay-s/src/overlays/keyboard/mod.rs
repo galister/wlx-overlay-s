@@ -2,22 +2,24 @@ use std::{
     cell::Cell,
     collections::HashMap,
     process::{Child, Command},
+    sync::atomic::Ordering,
 };
 
 use crate::{
+    KEYMAP_CHANGE,
     backend::input::{HoverResult, PointerHit},
     gui::panel::GuiPanel,
     overlays::keyboard::{builder::create_keyboard_panel, layout::AltModifier},
     state::AppState,
     subsystem::hid::{
         ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey, WheelDelta, XkbKeymap,
-        wayland::WlKeymapMonitor,
     },
     windowing::{
         backend::{FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender},
         window::OverlayWindowConfig,
     },
 };
+use anyhow::Context;
 use glam::{Affine3A, Quat, Vec3, vec3};
 use slotmap::{SlotMap, new_key_type};
 use wgui::{
@@ -66,7 +68,6 @@ pub fn create_keyboard(
         active_keymap: KeyboardPanelKey::default(),
         default_state,
         layout,
-        wkm: WlKeymapMonitor::new()?,
     };
 
     backend.active_keymap = backend.add_new_keymap(keymap.as_ref(), app)?;
@@ -99,7 +100,6 @@ struct KeyboardBackend {
     active_keymap: KeyboardPanelKey,
     default_state: KeyboardState,
     layout: layout::Layout,
-    wkm: WlKeymapMonitor,
 }
 
 impl KeyboardBackend {
@@ -167,10 +167,28 @@ impl OverlayBackend for KeyboardBackend {
         self.panel().init(app)
     }
     fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
-        if let Some(keymap) = self.wkm.check() {
+        while KEYMAP_CHANGE.swap(false, Ordering::Relaxed) {
+            let keymap: XkbKeymap;
+            if let Ok(fcitx_layout) = app
+                .dbus
+                .fcitx_keymap()
+                .context("Could not fetch Fcitx5 keymap")
+                .inspect_err(|e| log::warn!("{e:?}"))
+                && fcitx_layout.starts_with("keyboard-")
+                && let Some(fcitx_keymap) = XkbKeymap::from_layout_str(&fcitx_layout[9..])
+            {
+                keymap = fcitx_keymap;
+            } else {
+                break;
+            }
+
             app.hid_provider.keymap_changed(&keymap);
             if self.switch_keymap(&keymap, app)? {
-                return Ok(match self.panel().should_render(app)? {
+                let panel = self.panel();
+                if !panel.initialized {
+                    panel.init(app)?;
+                }
+                return Ok(match panel.should_render(app)? {
                     ShouldRender::Should | ShouldRender::Can => ShouldRender::Should,
                     ShouldRender::Unable => ShouldRender::Unable,
                 });
