@@ -36,7 +36,10 @@ use std::{
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
+use anyhow::Context;
 use clap::Parser;
+use libc::{SIGINT, SIGTERM, SIGUSR1};
+use signal_hook::iterator::Signals;
 use sysinfo::Pid;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
@@ -45,6 +48,7 @@ use crate::subsystem::dbus::DbusConnector;
 
 pub static FRAME_COUNTER: AtomicUsize = AtomicUsize::new(0);
 pub static RUNNING: AtomicBool = AtomicBool::new(true);
+pub static KEYMAP_CHANGE: AtomicBool = AtomicBool::new(false);
 
 /// The lightweight desktop overlay for OpenVR and OpenXR
 #[derive(Default, Parser, Debug)]
@@ -114,11 +118,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    let _ = ctrlc::set_handler({
-        || {
-            RUNNING.store(false, Ordering::Relaxed);
-        }
-    });
+    setup_signal_hooks()?;
 
     auto_run(args);
 
@@ -198,6 +198,27 @@ const fn args_get_openxr(args: &Args) -> bool {
     let ret = false;
 
     ret
+}
+
+fn setup_signal_hooks() -> anyhow::Result<()> {
+    let mut signals = Signals::new([SIGINT, SIGTERM, SIGUSR1])?;
+
+    std::thread::spawn(move || {
+        for signal in signals.forever() {
+            match signal {
+                SIGUSR1 => {
+                    log::info!("SIGUSR1 received (keymap changed)");
+                    KEYMAP_CHANGE.store(true, Ordering::Relaxed);
+                    continue;
+                }
+                _ => {
+                    RUNNING.store(false, Ordering::Relaxed);
+                    break;
+                }
+            }
+        }
+    });
+    Ok(())
 }
 
 fn logging_init(args: &mut Args) {

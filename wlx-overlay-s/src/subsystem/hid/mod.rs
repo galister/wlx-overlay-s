@@ -578,6 +578,12 @@ pub struct XkbKeymap {
 }
 
 impl XkbKeymap {
+    pub fn from_layout_str(layout: &str) -> Option<Self> {
+        let context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
+        xkb::Keymap::new_from_names(&context, "", "", layout, "", None, xkb::COMPILE_NO_FLAGS)
+            .map(|inner| XkbKeymap { inner })
+    }
+
     pub fn label_for_key(&self, key: VirtualKey, modifier: KeyModifier) -> String {
         let mut state = xkb::State::new(&self.inner);
         if modifier > 0

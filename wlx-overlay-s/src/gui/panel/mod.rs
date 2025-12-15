@@ -50,6 +50,7 @@ pub struct GuiPanel<S> {
     pub max_size: Vec2,
     pub gui_scale: f32,
     pub on_notify: Option<OnNotifyFunc<S>>,
+    pub initialized: bool,
     interaction_transform: Option<Affine2>,
     context: WguiContext,
     timestep: Timestep,
@@ -165,6 +166,7 @@ impl<S: 'static> GuiPanel<S> {
             interaction_transform: None,
             on_notify: None,
             gui_scale: params.gui_scale,
+            initialized: false,
         })
     }
 
@@ -194,6 +196,7 @@ impl<S: 'static> GuiPanel<S> {
             on_notify: None,
             interaction_transform: None,
             gui_scale: params.gui_scale,
+            initialized: false,
         })
     }
 
@@ -230,6 +233,7 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
                 self.layout.content_size.x as _,
                 self.layout.content_size.y as _,
             ]));
+            self.initialized = true;
         }
         Ok(())
     }

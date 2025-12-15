@@ -9,8 +9,11 @@ use dbus::{
     message::MatchRule,
 };
 
-use crate::subsystem::dbus::notifications::OrgFreedesktopNotifications;
+use crate::subsystem::dbus::{
+    fcitx5::OrgFcitxFcitxController1, notifications::OrgFreedesktopNotifications,
+};
 
+mod fcitx5;
 mod notifications;
 
 pub type DbusReceiveCallback = Box<dyn FnMut(Message, &Connection) -> bool + Send>;
@@ -74,6 +77,20 @@ impl DbusConnector {
         Ok(())
     }
 
+    pub fn fcitx_keymap(&mut self) -> anyhow::Result<String> {
+        let connection = Connection::new_session()?;
+        let proxy = connection.with_proxy(
+            "org.fcitx.Fcitx5",
+            "/controller",
+            Duration::from_millis(500),
+        );
+
+        let result = proxy
+            .current_input_method()
+            .context("Could not get D-Bus response");
+        result
+    }
+
     pub fn notify_send(
         &mut self,
         summary: &str,
@@ -83,16 +100,12 @@ impl DbusConnector {
         replaces_id: u32,
         transient: bool,
     ) -> anyhow::Result<u32> {
-        let connection = self
-            .connection
-            .take()
-            .context("Not connected")
-            .or_else(|_| Connection::new_session())?;
+        let connection = Connection::new_session()?;
 
         let proxy = connection.with_proxy(
             "org.freedesktop.Notifications",
             "/org/freedesktop/Notifications",
-            Duration::from_millis(1000),
+            Duration::from_millis(500),
         );
 
         let mut hints = PropMap::new();
@@ -109,25 +122,19 @@ impl DbusConnector {
             hints,
             timeout,
         )?;
-        self.connection = Some(connection);
-
         Ok(retval)
     }
 
     pub fn notify_close(&mut self, id: u32) -> anyhow::Result<()> {
-        let connection = self
-            .connection
-            .take()
-            .context("Not connected")
-            .or_else(|_| Connection::new_session())?;
+        let connection = Connection::new_session()?;
+
         let proxy = connection.with_proxy(
             "org.freedesktop.Notifications",
             "/org/freedesktop/Notifications",
-            Duration::from_millis(1000),
+            Duration::from_millis(500),
         );
 
         proxy.close_notification(id)?;
-        self.connection = Some(connection);
         Ok(())
     }
 }
