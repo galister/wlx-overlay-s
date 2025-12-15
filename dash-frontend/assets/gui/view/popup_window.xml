@@ -25,7 +25,7 @@
         <div gap="16" align_items="center">
           <!-- Back button -->
           <Button id="but_back" width="48" height="48" color="#ffffff00" border_color="#ffffff00">
-            <sprite src="dashboard/back.svg" width="24" height="24" />
+            <sprite src_builtin="dashboard/back.svg" width="24" height="24" />
           </Button>
 
           <!-- Title -->

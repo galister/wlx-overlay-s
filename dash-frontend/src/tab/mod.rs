@@ -2,8 +2,9 @@ use wgui::{
 	globals::WguiGlobals,
 	layout::{Layout, WidgetID},
 };
+use wlx_common::dash_interface;
 
-use crate::frontend::RcFrontend;
+use crate::frontend::{FrontendTasks, RcFrontend};
 
 pub mod apps;
 pub mod games;
@@ -28,9 +29,21 @@ pub struct TabParams<'a> {
 	pub parent_id: WidgetID,
 	pub frontend: &'a RcFrontend,
 	pub settings: &'a mut crate::settings::Settings,
+	pub frontend_tasks: &'a FrontendTasks,
+}
+
+pub struct TabUpdateParams<'a> {
+	pub globals: &'a WguiGlobals,
+	pub frontend_tasks: &'a FrontendTasks,
+	pub layout: &'a mut Layout,
+	pub interface: &'a mut Box<dyn dash_interface::DashInterface>,
 }
 
 pub trait Tab {
 	#[allow(dead_code)]
 	fn get_type(&self) -> TabType;
+
+	fn update(&mut self, _params: TabUpdateParams) -> anyhow::Result<()> {
+		Ok(())
+	}
 }

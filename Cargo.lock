@@ -1479,6 +1479,7 @@ dependencies = [
  "rust-embed",
  "serde",
  "serde_json",
+ "wayvr_ipc",
  "wgui",
  "wlx-common",
 ]

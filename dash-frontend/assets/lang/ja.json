@@ -45,5 +45,12 @@
   },
   "ACTIONS": {
     "RECENTER_PLAYSPACE": "プレイスペースを再中央"
+  },
+  "LIST_OF_DISPLAYS": "ディスプレイリスト",
+  "LIST_OF_PROCESSES": "プロセスのリスト",
+  "NO_DISPLAYS_FOUND": "ディスプレイが見つかりません",
+  "ADD_DISPLAY": "ディスプレイを追加",
+  "POPUP_ADD_DISPLAY": {
+    "RESOLUTION": "解像度"
   }
 }

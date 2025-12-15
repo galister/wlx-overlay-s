@@ -66,16 +66,12 @@ impl TabHome {
 		let btn_processes = state.fetch_component_as::<ComponentButton>("btn_processes")?;
 		let btn_settings = state.fetch_component_as::<ComponentButton>("btn_settings")?;
 
-		let frontend = params.frontend;
-		Frontend::register_button_task(frontend.clone(), &btn_apps, FrontendTask::SetTab(TabType::Apps));
-		Frontend::register_button_task(frontend.clone(), &btn_games, FrontendTask::SetTab(TabType::Games));
-		Frontend::register_button_task(frontend.clone(), &btn_monado, FrontendTask::SetTab(TabType::Monado));
-		Frontend::register_button_task(
-			frontend.clone(),
-			&btn_processes,
-			FrontendTask::SetTab(TabType::Processes),
-		);
-		Frontend::register_button_task(frontend.clone(), &btn_settings, FrontendTask::SetTab(TabType::Settings));
+		let tasks = params.frontend_tasks;
+		tasks.handle_button(btn_apps, FrontendTask::SetTab(TabType::Apps));
+		tasks.handle_button(btn_games, FrontendTask::SetTab(TabType::Games));
+		tasks.handle_button(btn_monado, FrontendTask::SetTab(TabType::Monado));
+		tasks.handle_button(btn_processes, FrontendTask::SetTab(TabType::Processes));
+		tasks.handle_button(btn_settings, FrontendTask::SetTab(TabType::Settings));
 
 		Ok(Self { state })
 	}

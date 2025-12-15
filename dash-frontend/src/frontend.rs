@@ -18,8 +18,8 @@ use wlx_common::{dash_interface, timestep::Timestep};
 use crate::{
 	assets, settings,
 	tab::{
-		Tab, TabParams, TabType, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses,
-		settings::TabSettings,
+		Tab, TabParams, TabType, TabUpdateParams, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado,
+		processes::TabProcesses, settings::TabSettings,
 	},
 	task::Tasks,
 	util::{
@@ -166,6 +166,17 @@ impl Frontend {
 			self.process_task(rc_this, task)?;
 		}
 
+		if let Some(tab) = &mut self.current_tab {
+			let mut layout = self.layout.borrow_mut();
+
+			tab.update(TabUpdateParams {
+				globals: &self.globals,
+				frontend_tasks: &self.tasks,
+				layout: &mut layout,
+				interface: &mut self.interface,
+			})?;
+		}
+
 		self.tick(width, height, timestep_alpha)?;
 		self.ticks += 1;
 
@@ -292,6 +303,7 @@ impl Frontend {
 			frontend: rc_this,
 			//frontend_widgets: &self.widgets,
 			settings: self.settings.get_mut(),
+			frontend_tasks: &self.tasks,
 		};
 
 		let tab: Box<dyn Tab> = match tab_type {
@@ -308,15 +320,6 @@ impl Frontend {
 		Ok(())
 	}
 
-	pub fn register_button_task(this_rc: RcFrontend, btn: &Rc<ComponentButton>, task: FrontendTask) {
-		btn.on_click({
-			Box::new(move |_common, _evt| {
-				this_rc.borrow_mut().tasks.push(task.clone());
-				Ok(())
-			})
-		});
-	}
-
 	fn register_widgets(rc_this: &RcFrontend) -> anyhow::Result<()> {
 		let this = rc_this.borrow_mut();
 
@@ -325,44 +328,38 @@ impl Frontend {
 		// ################################
 
 		// "Home" side button
-		Frontend::register_button_task(
-			rc_this.clone(),
-			&this.state.fetch_component_as::<ComponentButton>("btn_side_home")?,
+		this.tasks.handle_button(
+			this.state.fetch_component_as::<ComponentButton>("btn_side_home")?,
 			FrontendTask::SetTab(TabType::Home),
 		);
 
 		// "Apps" side button
-		Frontend::register_button_task(
-			rc_this.clone(),
-			&this.state.fetch_component_as::<ComponentButton>("btn_side_apps")?,
+		this.tasks.handle_button(
+			this.state.fetch_component_as::<ComponentButton>("btn_side_apps")?,
 			FrontendTask::SetTab(TabType::Apps),
 		);
 
 		// "Games" side button
-		Frontend::register_button_task(
-			rc_this.clone(),
-			&this.state.fetch_component_as::<ComponentButton>("btn_side_games")?,
+		this.tasks.handle_button(
+			this.state.fetch_component_as::<ComponentButton>("btn_side_games")?,
 			FrontendTask::SetTab(TabType::Games),
 		);
 
 		// "Monado side button"
-		Frontend::register_button_task(
-			rc_this.clone(),
-			&this.state.fetch_component_as::<ComponentButton>("btn_side_monado")?,
+		this.tasks.handle_button(
+			this.state.fetch_component_as::<ComponentButton>("btn_side_monado")?,
 			FrontendTask::SetTab(TabType::Monado),
 		);
 
 		// "Processes" side button
-		Frontend::register_button_task(
-			rc_this.clone(),
-			&this.state.fetch_component_as::<ComponentButton>("btn_side_processes")?,
+		this.tasks.handle_button(
+			this.state.fetch_component_as::<ComponentButton>("btn_side_processes")?,
 			FrontendTask::SetTab(TabType::Processes),
 		);
 
 		// "Settings" side button
-		Frontend::register_button_task(
-			rc_this.clone(),
-			&this.state.fetch_component_as::<ComponentButton>("btn_side_settings")?,
+		this.tasks.handle_button(
+			this.state.fetch_component_as::<ComponentButton>("btn_side_settings")?,
 			FrontendTask::SetTab(TabType::Settings),
 		);
 
@@ -371,16 +368,14 @@ impl Frontend {
 		// ################################
 
 		// "Audio" bottom bar button
-		Frontend::register_button_task(
-			rc_this.clone(),
-			&this.state.fetch_component_as::<ComponentButton>("btn_audio")?,
+		this.tasks.handle_button(
+			this.state.fetch_component_as::<ComponentButton>("btn_audio")?,
 			FrontendTask::ShowAudioSettings,
 		);
 
 		// "Recenter playspace" bottom bar button
-		Frontend::register_button_task(
-			rc_this.clone(),
-			&this.state.fetch_component_as::<ComponentButton>("btn_recenter")?,
+		this.tasks.handle_button(
+			this.state.fetch_component_as::<ComponentButton>("btn_recenter")?,
 			FrontendTask::RecenterPlayspace,
 		);
 

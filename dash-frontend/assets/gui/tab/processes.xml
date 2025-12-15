@@ -2,6 +2,8 @@
   <include src="t_tab_title.xml" />
 
   <elements>
-    <TabTitle translation="PROCESSES" icon="dashboard/window.svg" />
+    <TabTitle translation="LIST_OF_DISPLAYS" icon="dashboard/window.svg" />
+    <div id="display_list_parent" />
+    <TabTitle translation="LIST_OF_PROCESSES" icon="dashboard/cpu.svg" />
   </elements>
 </layout>

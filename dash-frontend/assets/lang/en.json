@@ -1,49 +1,56 @@
 {
-	"HOME_SCREEN": "Home",
-	"MONADO_RUNTIME": "„Monado” runtime",
-	"APPLICATIONS": "Applications",
-	"GAMES": "Games",
-	"SETTINGS": "Settings",
-	"PROCESSES": "Processes",
-	"HELLO_USER": "Hello, {USER}!",
-	"HELLO": "Hello!",
-	"GENERAL_SETTINGS": "General settings",
-	"APPLICATION_LAUNCHER": "Application launcher",
-	"APP_SETTINGS": {
-		"RESTART_SOFTWARE": "Restart software",
-		"HIDE_USERNAME": "Hide username",
-		"OPAQUE_BACKGROUND": "Opaque background",
-		"RUN_IN_XWAYLAND_MODE_BY_DEFAULT": "Run in XWayland mode by default",
-		"WLX_OVERLAY_S_SETTINGS": "WlxOverlay-S settings",
-		"HEADSET_SETTINGS": "Headset settings",
-		"BRIGHTNESS": "Brightness",
-		"WLX": {
-			"NOTIFICATIONS_ENABLED": "Notifications enabled",
-			"NOTIFICATIONS_SOUND_ENABLED": "Notifications sound enabled",
-			"KEYBOARD_SOUND_ENABLED": "Keyboard sound enabled",
-			"BLOCK_GAME_INPUT": "Block game input",
-			"SPACE_DRAG_MULTIPLIER": "Space-drag multiplier",
-			"SPACE_DRAG_ROTATION_ENABLED": "Enable rotation in space-drag",
-			"SHOW_SKYBOX": "Show skybox",
-			"ENABLE_PASSTHROUGH": "Enable passthrough"
-		}
-	},
-	"AUDIO": {
-		"SELECT_AUDIO_CARD_PROFILE": "Select audio card profile",
-		"SETTINGS": "Audio settings",
-		"VOLUME": "Volume",
-		"AUTO_SWITCH_TO_VR_AUDIO": "Auto-switch to VR audio",
-		"SPEAKERS": "Speakers",
-		"MICROPHONES": "Microphones",
-		"CARDS": "Cards",
-		"NO_VR_SPEAKERS_FOUND_SWITCH_MANUALLY": "No VR speakers found. Switch them manually.",
-		"NO_VR_MICROPHONE_SWITCH_MANUALLY": "No VR microphone found. Switch it manually.",
-		"FAILED_TO_SWITCH_MICROPHONE": "Failed to switch microphone",
-		"MICROPHONE_SET_SUCCESSFULLY": "Microphone set successfully",
-		"SPEAKERS_SET_SUCCESSFULLY": "Speakers set successfully",
-		"DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED": "Device found and initialized, but not switched"
-	},
 	"ACTIONS": {
 		"RECENTER_PLAYSPACE": "Re-center playspace"
-	}
+	},
+	"POPUP_ADD_DISPLAY": {
+		"RESOLUTION": "Resolution"
+	},
+	"ADD_DISPLAY": "Add display",
+	"APP_SETTINGS": {
+		"BRIGHTNESS": "Brightness",
+		"HEADSET_SETTINGS": "Headset settings",
+		"HIDE_USERNAME": "Hide username",
+		"OPAQUE_BACKGROUND": "Opaque background",
+		"RESTART_SOFTWARE": "Restart software",
+		"RUN_IN_XWAYLAND_MODE_BY_DEFAULT": "Run in XWayland mode by default",
+		"WLX": {
+			"BLOCK_GAME_INPUT": "Block game input",
+			"ENABLE_PASSTHROUGH": "Enable passthrough",
+			"KEYBOARD_SOUND_ENABLED": "Keyboard sound enabled",
+			"NOTIFICATIONS_ENABLED": "Notifications enabled",
+			"NOTIFICATIONS_SOUND_ENABLED": "Notifications sound enabled",
+			"SHOW_SKYBOX": "Show skybox",
+			"SPACE_DRAG_MULTIPLIER": "Space-drag multiplier",
+			"SPACE_DRAG_ROTATION_ENABLED": "Enable rotation in space-drag"
+		},
+		"WLX_OVERLAY_S_SETTINGS": "WlxOverlay-S settings"
+	},
+	"APPLICATION_LAUNCHER": "Application launcher",
+	"APPLICATIONS": "Applications",
+	"AUDIO": {
+		"AUTO_SWITCH_TO_VR_AUDIO": "Auto-switch to VR audio",
+		"CARDS": "Cards",
+		"DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED": "Device found and initialized, but not switched",
+		"FAILED_TO_SWITCH_MICROPHONE": "Failed to switch microphone",
+		"MICROPHONE_SET_SUCCESSFULLY": "Microphone set successfully",
+		"MICROPHONES": "Microphones",
+		"NO_VR_MICROPHONE_SWITCH_MANUALLY": "No VR microphone found. Switch it manually.",
+		"NO_VR_SPEAKERS_FOUND_SWITCH_MANUALLY": "No VR speakers found. Switch them manually.",
+		"SELECT_AUDIO_CARD_PROFILE": "Select audio card profile",
+		"SETTINGS": "Audio settings",
+		"SPEAKERS": "Speakers",
+		"SPEAKERS_SET_SUCCESSFULLY": "Speakers set successfully",
+		"VOLUME": "Volume"
+	},
+	"GAMES": "Games",
+	"GENERAL_SETTINGS": "General settings",
+	"HELLO": "Hello!",
+	"HELLO_USER": "Hello, {USER}!",
+	"HOME_SCREEN": "Home",
+	"LIST_OF_DISPLAYS": "Display list",
+	"LIST_OF_PROCESSES": "Process list",
+	"MONADO_RUNTIME": "„Monado” runtime",
+	"NO_DISPLAYS_FOUND": "No displays found",
+	"PROCESSES": "Processes",
+	"SETTINGS": "Settings"
 }

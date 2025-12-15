@@ -1,11 +1,16 @@
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
-#[derive(Clone)]
-pub struct Tasks<TaskType>(Rc<RefCell<VecDeque<TaskType>>>)
-where
-	TaskType: Clone;
+use wgui::components::button::ComponentButton;
 
-impl<TaskType: Clone + 'static> Tasks<TaskType> {
+pub struct Tasks<TaskType>(Rc<RefCell<VecDeque<TaskType>>>);
+
+impl<T> Clone for Tasks<T> {
+	fn clone(&self) -> Self {
+		Self(self.0.clone())
+	}
+}
+
+impl<TaskType: 'static> Tasks<TaskType> {
 	pub fn new() -> Self {
 		Self(Rc::new(RefCell::new(VecDeque::new())))
 	}
@@ -20,8 +25,27 @@ impl<TaskType: Clone + 'static> Tasks<TaskType> {
 	}
 }
 
-impl<TaskType: Clone + 'static> Default for Tasks<TaskType> {
+impl<TaskType: 'static> Default for Tasks<TaskType> {
 	fn default() -> Self {
 		Self::new()
+	}
+}
+
+impl<TaskType: Clone + 'static> Tasks<TaskType> {
+	pub fn handle_button(&self, button: Rc<ComponentButton>, task: TaskType) {
+		button.on_click({
+			let this = self.clone();
+			Box::new(move |_, _| {
+				this.push(task.clone());
+				Ok(())
+			})
+		});
+	}
+
+	pub fn make_callback(&self, task: TaskType) -> Rc<dyn Fn()> {
+		let this = self.clone();
+		Rc::new(move || {
+			this.push(task.clone());
+		})
 	}
 }

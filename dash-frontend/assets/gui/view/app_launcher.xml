@@ -27,7 +27,7 @@
         <CheckBox text="Run in Wayland mode" checked="1" />
         <Separator />
         <Button color="#44ce22FF" padding_top="4" padding_bottom="4" round="8" padding_right="12">
-          <sprite src="dashboard/play.svg" width="32" height="32" />
+          <sprite src_builtin="dashboard/play.svg" width="32" height="32" />
           <label text="Launch embedded" weight="bold" size="17" shadow="#00000099" />
         </Button>
         <Separator />

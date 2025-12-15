@@ -1,49 +1,56 @@
 {
-	"HOME_SCREEN": "Ekran główny",
-	"MONADO_RUNTIME": "Środowisko Monado",
-	"APPLICATIONS": "Aplikacje",
-	"GAMES": "Gry",
-	"SETTINGS": "Ustawienia",
-	"PROCESSES": "Procesy",
-	"HELLO_USER": "Witaj, {USER}!",
-	"GENERAL_SETTINGS": "Ustawienia ogólne",
-	"APPLICATION_LAUNCHER": "Uruchamiacz aplikacji",
-	"APP_SETTINGS": {
-		"HIDE_USERNAME": "Ukryj nazwę użytkownika",
-		"OPAQUE_BACKGROUND": "Nieprzezroczyste tło",
-		"RUN_IN_XWAYLAND_MODE_BY_DEFAULT": "Uruchom domyślnie w trybie XWayland",
-		"WLX_OVERLAY_S_SETTINGS": "Ustawienia wlx-overlay-s",
-		"HEADSET_SETTINGS": "Ustawienia HMD",
-		"BRIGHTNESS": "Jasność",
-		"WLX": {
-			"NOTIFICATIONS_ENABLED": "Powiadomienia",
-			"NOTIFICATIONS_SOUND_ENABLED": "Dźwięk powiadomień",
-			"KEYBOARD_SOUND_ENABLED": "Dźwięki klawiatury",
-			"BLOCK_GAME_INPUT": "Zablokuj sterowanie grą podczas używania Wlx",
-			"SPACE_DRAG_MULTIPLIER": "Mnożnik space-drag",
-			"SPACE_DRAG_ROTATION_ENABLED": "Włącz rotację w space-drag",
-			"SHOW_SKYBOX": "Pokaż skybox",
-			"ENABLE_PASSTHROUGH": "Włącz passthrough"
-		},
-		"RESTART_SOFTWARE": "Uruchom ponownie oprogramowanie"
-	},
-	"HELLO": "Witaj!",
-	"AUDIO": {
-		"VOLUME": "Głośność",
-		"SETTINGS": "Ustawienia dźwięku",
-		"AUTO_SWITCH_TO_VR_AUDIO": "Automatyczne przełączanie na dźwięk VR",
-		"SPEAKERS": "Głośniki",
-		"MICROPHONES": "Mikrofony",
-		"CARDS": "Karty",
-		"SELECT_AUDIO_CARD_PROFILE": "Wybierz profil karty dźwiękowej",
-		"NO_VR_SPEAKERS_FOUND_SWITCH_MANUALLY": "Brak głośników VR. Włącz je ręcznie.",
-		"NO_VR_MICROPHONE_SWITCH_MANUALLY": "Brak mikrofonu VR. Włącz go ręcznie.",
-		"FAILED_TO_SWITCH_MICROPHONE": "Nie udało się przełączyć mikrofon",
-		"MICROPHONE_SET_SUCCESSFULLY": "Mikrofon ustawiono pomyślnie",
-		"SPEAKERS_SET_SUCCESSFULLY": "Głośniki ustawiono pomyślnie",
-		"DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED": "Urządzenie znalezione i zainicjalizowane, ale nie przełączone"
-	},
-	"ACTIONS": {
-		"RECENTER_PLAYSPACE": "Wycentruj przestrzeń"
-	}
+  "HOME_SCREEN": "Ekran główny",
+  "MONADO_RUNTIME": "Środowisko Monado",
+  "APPLICATIONS": "Aplikacje",
+  "GAMES": "Gry",
+  "SETTINGS": "Ustawienia",
+  "PROCESSES": "Procesy",
+  "HELLO_USER": "Witaj, {USER}!",
+  "GENERAL_SETTINGS": "Ustawienia ogólne",
+  "APPLICATION_LAUNCHER": "Uruchamiacz aplikacji",
+  "APP_SETTINGS": {
+    "HIDE_USERNAME": "Ukryj nazwę użytkownika",
+    "OPAQUE_BACKGROUND": "Nieprzezroczyste tło",
+    "RUN_IN_XWAYLAND_MODE_BY_DEFAULT": "Uruchom domyślnie w trybie XWayland",
+    "WLX_OVERLAY_S_SETTINGS": "Ustawienia wlx-overlay-s",
+    "HEADSET_SETTINGS": "Ustawienia HMD",
+    "BRIGHTNESS": "Jasność",
+    "WLX": {
+      "NOTIFICATIONS_ENABLED": "Powiadomienia",
+      "NOTIFICATIONS_SOUND_ENABLED": "Dźwięk powiadomień",
+      "KEYBOARD_SOUND_ENABLED": "Dźwięki klawiatury",
+      "BLOCK_GAME_INPUT": "Zablokuj sterowanie grą podczas używania Wlx",
+      "SPACE_DRAG_MULTIPLIER": "Mnożnik space-drag",
+      "SPACE_DRAG_ROTATION_ENABLED": "Włącz rotację w space-drag",
+      "SHOW_SKYBOX": "Pokaż skybox",
+      "ENABLE_PASSTHROUGH": "Włącz passthrough"
+    },
+    "RESTART_SOFTWARE": "Uruchom ponownie oprogramowanie"
+  },
+  "HELLO": "Witaj!",
+  "AUDIO": {
+    "VOLUME": "Głośność",
+    "SETTINGS": "Ustawienia dźwięku",
+    "AUTO_SWITCH_TO_VR_AUDIO": "Automatyczne przełączanie na dźwięk VR",
+    "SPEAKERS": "Głośniki",
+    "MICROPHONES": "Mikrofony",
+    "CARDS": "Karty",
+    "SELECT_AUDIO_CARD_PROFILE": "Wybierz profil karty dźwiękowej",
+    "NO_VR_SPEAKERS_FOUND_SWITCH_MANUALLY": "Brak głośników VR. Włącz je ręcznie.",
+    "NO_VR_MICROPHONE_SWITCH_MANUALLY": "Brak mikrofonu VR. Włącz go ręcznie.",
+    "FAILED_TO_SWITCH_MICROPHONE": "Nie udało się przełączyć mikrofon",
+    "MICROPHONE_SET_SUCCESSFULLY": "Mikrofon ustawiono pomyślnie",
+    "SPEAKERS_SET_SUCCESSFULLY": "Głośniki ustawiono pomyślnie",
+    "DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED": "Urządzenie znalezione i zainicjalizowane, ale nie przełączone"
+  },
+  "ACTIONS": {
+    "RECENTER_PLAYSPACE": "Wycentruj przestrzeń"
+  },
+  "LIST_OF_DISPLAYS": "Lista wyświetlaczy",
+  "LIST_OF_PROCESSES": "Lista procesów",
+  "NO_DISPLAYS_FOUND": "Brak monitorów",
+  "ADD_DISPLAY": "Dodaj monitor",
+  "POPUP_ADD_DISPLAY": {
+    "RESOLUTION": "Rozdzielczość"
+  }
 }

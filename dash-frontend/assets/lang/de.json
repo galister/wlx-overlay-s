@@ -45,5 +45,12 @@
   },
   "ACTIONS": {
     "RECENTER_PLAYSPACE": "Playspace neu zentrieren"
+  },
+  "LIST_OF_DISPLAYS": "Anzeigeliste",
+  "LIST_OF_PROCESSES": "Prozessliste",
+  "NO_DISPLAYS_FOUND": "Keine Displays gefunden",
+  "ADD_DISPLAY": "Bildschirm hinzufügen",
+  "POPUP_ADD_DISPLAY": {
+    "RESOLUTION": "Auflösung"
   }
 }

@@ -45,5 +45,12 @@
   },
   "ACTIONS": {
     "RECENTER_PLAYSPACE": "Re-centrar espacio de juego"
+  },
+  "LIST_OF_DISPLAYS": "Lista de pantallas",
+  "LIST_OF_PROCESSES": "Lista de procesos",
+  "NO_DISPLAYS_FOUND": "No se encontraron pantallas",
+  "ADD_DISPLAY": "Agregar pantalla",
+  "POPUP_ADD_DISPLAY": {
+    "RESOLUTION": "Resolución"
   }
 }

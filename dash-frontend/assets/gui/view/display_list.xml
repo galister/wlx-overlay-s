@@ -1,0 +1,10 @@
+<layout>
+  <include src="../t_group_box.xml" />
+
+  <elements>
+    <rectangle macro="group_box" flex_direction="row">
+      <div id="list_parent" />
+      <Button id="btn_add" sprite_src_builtin="dashboard/add.svg" tooltip="ADD_DISPLAY" height="100%" width="32" />
+    </rectangle>
+  </elements>
+</layout>
