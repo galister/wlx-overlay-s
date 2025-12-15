@@ -6,22 +6,23 @@ use std::{
 };
 
 use crate::{
-    KEYMAP_CHANGE,
     backend::input::{HoverResult, PointerHit},
     gui::panel::GuiPanel,
     overlays::keyboard::{builder::create_keyboard_panel, layout::AltModifier},
     state::AppState,
     subsystem::hid::{
-        ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey, WheelDelta, XkbKeymap,
+        get_keymap_wl, get_keymap_x11, KeyModifier, VirtualKey, WheelDelta, XkbKeymap, ALT, CTRL,
+        META, SHIFT, SUPER,
     },
     windowing::{
         backend::{FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender},
         window::OverlayWindowConfig,
     },
+    KEYMAP_CHANGE,
 };
 use anyhow::Context;
-use glam::{Affine3A, Quat, Vec3, vec3};
-use slotmap::{SlotMap, new_key_type};
+use glam::{vec3, Affine3A, Quat, Vec3};
+use slotmap::{new_key_type, SlotMap};
 use wgui::{
     drawing,
     event::{InternalStateChangeEvent, MouseButton, MouseButtonIndex},
@@ -35,10 +36,7 @@ pub const KEYBOARD_NAME: &str = "kbd";
 const AUTO_RELEASE_MODS: [KeyModifier; 5] = [SHIFT, CTRL, ALT, SUPER, META];
 const SYSTEM_LAYOUT_ALIASES: [&str; 5] = ["mozc", "pinyin", "hangul", "sayura", "unikey"];
 
-pub fn create_keyboard(
-    app: &mut AppState,
-    keymap: Option<XkbKeymap>,
-) -> anyhow::Result<OverlayWindowConfig> {
+pub fn create_keyboard(app: &mut AppState, wayland: bool) -> anyhow::Result<OverlayWindowConfig> {
     let layout = layout::Layout::load_from_disk();
     let default_state = KeyboardState {
         modifiers: 0,
@@ -53,15 +51,7 @@ pub fn create_keyboard(
         processes: vec![],
     };
 
-    if let Some(keymap) = keymap.as_ref() {
-        app.hid_provider.keymap_changed(keymap);
-    }
-
-    let effective_keymap = if layout.auto_labels.unwrap_or(true) {
-        keymap.as_ref()
-    } else {
-        None
-    };
+    let auto_labels = layout.auto_labels.unwrap_or(true);
 
     let width = layout.row_size * 0.05 * app.session.config.keyboard_scale;
 
@@ -69,16 +59,25 @@ pub fn create_keyboard(
         layout_panels: SlotMap::default(),
         layout_ids: HashMap::default(),
         active_layout: KeyboardPanelKey::default(),
-        default_layout: KeyboardPanelKey::default(),
         default_state,
-        default_keymap: None,
         wlx_layout: layout,
+        wayland,
     };
 
-    backend.active_layout = backend.add_new_keymap(effective_keymap, app)?;
-    backend.default_layout = backend.active_layout;
+    let mut maybe_keymap = backend
+        .get_system_keymap()
+        .inspect_err(|e| log::warn!("{e:?}"))
+        .ok();
 
-    backend.default_keymap = keymap;
+    if let Some(keymap) = maybe_keymap.as_ref() {
+        app.hid_provider.keymap_changed(keymap);
+    }
+
+    if !auto_labels {
+        maybe_keymap = None;
+    }
+
+    backend.active_layout = backend.add_new_keymap(maybe_keymap.as_ref(), app)?;
 
     Ok(OverlayWindowConfig {
         name: KEYBOARD_NAME.into(),
@@ -106,10 +105,9 @@ struct KeyboardBackend {
     layout_panels: SlotMap<KeyboardPanelKey, GuiPanel<KeyboardState>>,
     layout_ids: HashMap<String, KeyboardPanelKey>,
     active_layout: KeyboardPanelKey,
-    default_layout: KeyboardPanelKey,
     default_state: KeyboardState,
-    default_keymap: Option<XkbKeymap>,
     wlx_layout: layout::Layout,
+    wayland: bool,
 }
 
 impl KeyboardBackend {
@@ -168,6 +166,20 @@ impl KeyboardBackend {
             .state = state_from;
     }
 
+    fn get_system_keymap(&mut self) -> anyhow::Result<XkbKeymap> {
+        #[cfg(feature = "wayland")]
+        if self.wayland {
+            return get_keymap_wl();
+        }
+
+        #[cfg(feature = "x11")]
+        if !self.wayland {
+            return get_keymap_x11();
+        }
+
+        unreachable!();
+    }
+
     fn switch_to_fcitx_keymap(&mut self, app: &mut AppState) -> anyhow::Result<bool> {
         let fcitx_layout = app
             .dbus
@@ -182,16 +194,10 @@ impl KeyboardBackend {
             app.hid_provider.keymap_changed(&keymap);
             self.switch_keymap(&keymap, app)
         } else if SYSTEM_LAYOUT_ALIASES.contains(&fcitx_layout.as_str()) {
-            if let Some(keymap) = self.default_keymap.as_ref() {
-                app.hid_provider.keymap_changed(&keymap);
-            }
             log::debug!("{fcitx_layout} is an IME, switching to system layout.");
-            if self.active_layout == self.default_layout {
-                Ok(false)
-            } else {
-                self.internal_switch_keymap(self.default_layout);
-                Ok(true)
-            }
+            let keymap = self.get_system_keymap()?;
+            app.hid_provider.keymap_changed(&keymap);
+            self.switch_keymap(&keymap, app)
         } else {
             anyhow::bail!("Unknown layout or IME: {fcitx_layout}");
         }

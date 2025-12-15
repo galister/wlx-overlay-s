@@ -12,7 +12,6 @@ use wlx_common::{
 };
 
 use crate::{
-    FRAME_COUNTER,
     backend::task::OverlayTask,
     overlays::{
         anchor::create_anchor, edit::EditWrapperManager, keyboard::create_keyboard,
@@ -20,12 +19,13 @@ use crate::{
     },
     state::AppState,
     windowing::{
-        OverlayID, OverlaySelector,
         backend::{OverlayEventData, OverlayMeta},
         set::OverlayWindowSet,
         snap_upright,
         window::{OverlayCategory, OverlayWindowData},
+        OverlayID, OverlaySelector,
     },
+    FRAME_COUNTER,
 };
 
 pub const MAX_OVERLAY_SETS: usize = 7;
@@ -50,8 +50,6 @@ where
     T: Default,
 {
     pub fn new(app: &mut AppState, headless: bool) -> anyhow::Result<Self> {
-        let mut maybe_keymap = None;
-
         let mut me = Self {
             wrappers: EditWrapperManager::default(),
             overlays: HopSlotMap::with_key(),
@@ -64,6 +62,8 @@ where
             dropped_overlays: VecDeque::with_capacity(8),
         };
 
+        let mut wayland = false;
+
         if headless {
             log::info!("Running in headless mode; keyboard will be en-US");
         } else {
@@ -71,7 +71,7 @@ where
             // this is the default and would be overwritten by
             // OverlayWindowManager::restore_layout down below
             match create_screens(app) {
-                Ok((data, keymap)) => {
+                Ok((data, is_wayland)) => {
                     let last_idx = data.screens.len() - 1;
                     for (idx, (meta, mut config)) in data.screens.into_iter().enumerate() {
                         config.show_on_spawn = true;
@@ -84,13 +84,13 @@ where
                         app.screens.push(meta);
                     }
 
-                    maybe_keymap = keymap;
+                    wayland = is_wayland;
                 }
                 Err(e) => log::error!("Unable to initialize screens: {e:?}"),
             }
         }
 
-        let mut keyboard = OverlayWindowData::from_config(create_keyboard(app, maybe_keymap)?);
+        let mut keyboard = OverlayWindowData::from_config(create_keyboard(app, wayland)?);
         keyboard.config.show_on_spawn = true;
         let keyboard_id = me.add(keyboard, app);
 

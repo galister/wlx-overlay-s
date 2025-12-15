@@ -1,6 +1,6 @@
 use std::{f32::consts::PI, sync::Arc};
 
-use glam::{Affine3A, Quat, Vec3, vec3};
+use glam::{vec3, Affine3A, Quat, Vec3};
 use wlx_capture::frame::Transform;
 use wlx_common::windowing::{OverlayWindowState, Positioning};
 
@@ -63,35 +63,27 @@ pub struct ScreenCreateData {
     pub screens: Vec<(ScreenMeta, OverlayWindowConfig)>,
 }
 
-pub fn create_screens(app: &mut AppState) -> anyhow::Result<(ScreenCreateData, Option<XkbKeymap>)> {
+pub fn create_screens(app: &mut AppState) -> anyhow::Result<(ScreenCreateData, bool)> {
     app.screens.clear();
 
     #[cfg(feature = "wayland")]
     {
         if let Some(mut wl) = wlx_capture::wayland::WlxClient::new() {
             log::info!("Wayland detected.");
-            let keymap = crate::subsystem::hid::get_keymap_wl()
-                .map_err(|f| log::warn!("Could not load keyboard layout: {f}"))
-                .ok();
-
-            return Ok((wl::create_screens_wayland(&mut wl, app), keymap));
+            return Ok((wl::create_screens_wayland(&mut wl, app), true));
         }
         log::info!("Wayland not detected, assuming X11.");
     }
 
     #[cfg(feature = "x11")]
     {
-        let keymap = crate::subsystem::hid::get_keymap_x11()
-            .map_err(|f| log::warn!("Could not load keyboard layout: {f}"))
-            .ok();
-
         #[cfg(feature = "pipewire")]
         match x11::create_screens_x11pw(app) {
-            Ok(data) => return Ok((data, keymap)),
+            Ok(data) => return Ok((data, false)),
             Err(e) => log::info!("Will not use X11 PipeWire capture: {e:?}"),
         }
 
-        Ok((x11::create_screens_xshm(app)?, keymap))
+        Ok((x11::create_screens_xshm(app)?, false))
     }
     #[cfg(not(feature = "x11"))]
     anyhow::bail!("No backends left to try.")
