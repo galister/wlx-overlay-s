@@ -36,7 +36,6 @@ use std::{
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
-use anyhow::Context;
 use clap::Parser;
 use libc::{SIGINT, SIGTERM, SIGUSR1};
 use signal_hook::iterator::Signals;
