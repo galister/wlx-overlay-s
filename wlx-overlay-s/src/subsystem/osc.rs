@@ -61,7 +61,7 @@ impl OscSender {
     where
         D: Default,
     {
-        // send overlay data every 0.1 seconds
+        // send overlay parameters every 0.1 seconds
         if self.last_sent_overlay.elapsed().as_millis() >= 100 {
             self.last_sent_overlay = Instant::now();
 
@@ -112,7 +112,7 @@ impl OscSender {
             )?;
         }
 
-        // send battery levels every 10 seconds
+        // send device/battery parameters every 10 seconds
         if self.last_sent_battery.elapsed().as_millis() >= 10000 {
             self.last_sent_battery = Instant::now();
 
@@ -162,7 +162,7 @@ impl OscSender {
                 )?;
             }
 
-            // send average controller and tracker battery parameters
+            // send controller- and tracker-specific battery parameters
             self.send_message(
                 String::from("/avatar/parameters/averageControllerBattery"),
                 vec![OscType::Float(
@@ -175,6 +175,10 @@ impl OscSender {
             )?;
             self.send_message(
                 String::from("/avatar/parameters/LowestBattery"),
+                vec![OscType::Float(lowest_battery)],
+            )?;
+            self.send_message(
+                String::from("/avatar/parameters/lowestBattery"),
                 vec![OscType::Float(lowest_battery)],
             )?;
         }
