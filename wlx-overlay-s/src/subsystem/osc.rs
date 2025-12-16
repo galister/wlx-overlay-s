@@ -77,6 +77,12 @@ impl OscSender {
                 let Some(state) = o.config.active_state.as_ref() else {
                     continue;
                 };
+
+                // skip overlays that are fully transparent; e.g. the watch when not looking at it
+                if state.alpha <= 0f32 {
+                    continue;
+                }
+
                 match o.config.name.as_ref() {
                     WATCH_NAME => has_wrist = true,
                     KEYBOARD_NAME => has_keyboard = true,
