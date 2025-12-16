@@ -10,23 +10,25 @@ In comparison to similar overlays, WlxOverlay-S aims to run alongside VR games a
 
 ## Join the Linux VR Community
 
-We are available on either:
+We are available on either **Discord** or **Matrix space**:
 
-- Discord: <https://discord.gg/gHwJ2vwSWV>
-- Matrix Space: `#linux-vr-adventures:matrix.org`
+[![LVRA Discord](https://img.shields.io/discord/1065291958328758352?style=for-the-badge&logo=discord)](https://discord.gg/EHAYe3tTYa) [![LVRA Matrix](https://img.shields.io/matrix/linux-vr-adventures:matrix.org?logo=matrix&style=for-the-badge)](https://matrix.to/#/#linux-vr-adventures:matrix.org)
 
-Questions/issues specific to WlxOverlay-S will be handled in the `wlxoverlay` chat room.
+Questions/issues specific to WlxOverlay-S will be handled in the `wlxoverlay` chat room. Feel free to ask anything.
 
 ## Setup
 
 ### Installation
 
 There are multiple ways to install WlxOverlay-S:
+
 1. AppImage: Download from [Releases](https://github.com/galister/wlx-overlay-s/releases)
 1. AUR package: [wlx-overlay-s-git](https://aur.archlinux.org/packages/wlx-overlay-s-git)
 1. Homebrew:
-  - Add AtomicXR tap: `brew tap matrixfurry.com/atomicxr https://tangled.sh/@matrixfurry.com/homebrew-atomicxr`
-  - Install WlxOverlay-S: `brew install wlx-overlay-s`
+
+- Add AtomicXR tap: `brew tap matrixfurry.com/atomicxr https://tangled.sh/@matrixfurry.com/homebrew-atomicxr`
+- Install WlxOverlay-S: `brew install wlx-overlay-s`
+
 1. [Building from source](https://github.com/galister/wlx-overlay-s/wiki/Building-from-Source).
 
 ### General Setup
@@ -49,7 +51,6 @@ For users specifically running **SteamVR via Steam Flatpak**, follow these steps
 1. Start SteamVR.
 1. `flatpak run --command='/path/to/squashfs-root/AppRun' com.valvesoftware.Steam`
 
-
 ## First Start
 
 **When the screen share pop-up appears, check your notifications or the terminal and select the screens in the order it requests.**
@@ -57,7 +58,6 @@ For users specifically running **SteamVR via Steam Flatpak**, follow these steps
 In case screens were selected in the wrong order:
 
 - `rm ~/.config/wlxoverlay/conf.d/pw_tokens.yaml` then restart
-
 
 **WiVRn users**: Select WlxOverlay-S from the `Application` drop-down. If there's no such entry, select `Custom` and browse to your WlxOverlay-S executable or AppImage.
 
@@ -79,6 +79,7 @@ The working set consists of all currently selected overlays; screens, mirrors, k
 The working set appears in front of the headset when shown, and can be re-centered by hiding and showing again.
 
 Show and hide the working set using:
+
 - Non-vive controller: double-tap B or Y on the left controller.
 - Vive controller: double-tap the menu button on the left controller (for SteamVR, the `showhide` binding must be bound)
 
@@ -161,6 +162,7 @@ Check [here](https://github.com/galister/wlx-overlay-s/wiki/Troubleshooting) for
 ### Mouse is not where it should be
 
 X11 users:
+
 - Might be dealing with a [Phantom Monitor](https://wiki.archlinux.org/title/Xrandr#Disabling_phantom_monitor).
 - DPI scaling is not supported and will mess with the mouse.
 - Upright screens are not supported and will mess with the mouse.
@@ -169,7 +171,7 @@ Other desktops: The screens may have been selected in the wrong order, see [Firs
 
 ### Crashes, blank screens
 
-There are some driver-desktop combinations that don't play nice with DMA-buf capture. 
+There are some driver-desktop combinations that don't play nice with DMA-buf capture.
 
 Disabling DMA-buf capture is a good first step to try when encountering an app crash or gpu driver reset.
 
