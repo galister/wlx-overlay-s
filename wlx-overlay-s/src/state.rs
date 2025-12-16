@@ -1,6 +1,6 @@
 use glam::Affine3A;
 use idmap::IdMap;
-use smallvec::{SmallVec, smallvec};
+use smallvec::{smallvec, SmallVec};
 use std::sync::Arc;
 use wgui::{
     font_config::WguiFontConfig, gfx::WGfx, globals::WguiGlobals, parser::parse_color_hex,
@@ -22,7 +22,7 @@ use {
 use crate::subsystem::osc::OscSender;
 
 use crate::{
-    backend::{input::InputState, task::TaskContainer},
+    backend::{input::InputState, task::TaskContainer, XrBackend},
     config::load_general_config,
     config_io::{self, get_config_file_path},
     graphics::WGfxExtras,
@@ -51,6 +51,8 @@ pub struct AppState {
 
     pub dbus: DbusConnector,
 
+    pub xr_backend: XrBackend,
+
     #[cfg(feature = "osc")]
     pub osc_sender: Option<OscSender>,
 
@@ -60,7 +62,11 @@ pub struct AppState {
 
 #[allow(unused_mut)]
 impl AppState {
-    pub fn from_graphics(gfx: Arc<WGfx>, gfx_extras: WGfxExtras) -> anyhow::Result<Self> {
+    pub fn from_graphics(
+        gfx: Arc<WGfx>,
+        gfx_extras: WGfxExtras,
+        xr_backend: XrBackend,
+    ) -> anyhow::Result<Self> {
         // insert shared resources
         let mut tasks = TaskContainer::new();
 
@@ -133,6 +139,7 @@ impl AppState {
                 get_config_file_path(&theme),
             )?,
             dbus,
+            xr_backend,
 
             #[cfg(feature = "osc")]
             osc_sender,

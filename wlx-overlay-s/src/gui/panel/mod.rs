@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use button::setup_custom_button;
-use glam::{Affine2, Vec2, vec2};
+use glam::{vec2, Affine2, Vec2};
 use label::setup_custom_label;
 use wgui::{
     assets::AssetPath,
@@ -16,7 +16,7 @@ use wgui::{
     layout::{Layout, LayoutParams, WidgetID},
     parser::{CustomAttribsInfoOwned, Fetchable, ParserState},
     renderer_vk::context::Context as WguiContext,
-    widget::{EventResult, label::WidgetLabel},
+    widget::{label::WidgetLabel, EventResult},
 };
 use wlx_common::timestep::Timestep;
 
@@ -25,7 +25,8 @@ use crate::{
     state::AppState,
     subsystem::hid::WheelDelta,
     windowing::backend::{
-        FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender, ui_transform,
+        ui_transform, BackendAttrib, BackendAttribValue, FrameMeta, OverlayBackend,
+        OverlayEventData, RenderResources, ShouldRender,
     },
 };
 
@@ -290,7 +291,7 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
         self.context.draw(
             &globals.font_system,
             &mut app.wgui_shared,
-            &mut rdr.cmd_buf,
+            &mut rdr.cmd_buf_single(),
             &primitives,
         )?;
         Ok(())
@@ -379,5 +380,11 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
 
     fn get_interaction_transform(&mut self) -> Option<Affine2> {
         self.interaction_transform
+    }
+    fn get_attrib(&self, _attrib: BackendAttrib) -> Option<BackendAttribValue> {
+        None
+    }
+    fn set_attrib(&mut self, _app: &mut AppState, _value: BackendAttribValue) -> bool {
+        false
     }
 }

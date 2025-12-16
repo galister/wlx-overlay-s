@@ -5,40 +5,41 @@ use std::{
     time::{Duration, Instant},
 };
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use ovr_overlay::{
-    TrackedDeviceIndex,
     sys::{ETrackedDeviceProperty, EVRApplicationType, EVREventType},
+    TrackedDeviceIndex,
 };
-use vulkano::{Handle, VulkanObject, device::physical::PhysicalDevice};
+use smallvec::smallvec;
+use vulkano::{device::physical::PhysicalDevice, Handle, VulkanObject};
 use wlx_common::overlays::ToastTopic;
 
 use crate::{
-    RUNNING,
     backend::{
-        BackendError,
         input::interact,
         openvr::{
             helpers::adjust_gain,
-            input::{OpenVrInputSource, set_action_manifest},
+            input::{set_action_manifest, OpenVrInputSource},
             lines::LinePool,
             manifest::{install_manifest, uninstall_manifest},
             overlay::OpenVrOverlayData,
         },
         task::{OpenVrTask, OverlayTask, TaskType},
+        BackendError, XrBackend,
     },
     config::save_state,
-    graphics::{GpuFutures, init_openvr_graphics},
+    graphics::{init_openvr_graphics, GpuFutures},
     overlays::{
         toast::Toast,
-        watch::{WATCH_NAME, watch_fade},
+        watch::{watch_fade, WATCH_NAME},
     },
     state::AppState,
     subsystem::notifications::NotificationManager,
     windowing::{
-        backend::{RenderResources, ShouldRender},
+        backend::{RenderResources, RenderTarget, ShouldRender, StereoMode},
         manager::OverlayWindowManager,
     },
+    RUNNING,
 };
 
 #[cfg(feature = "wayvr")]
@@ -93,7 +94,7 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
 
     let mut app = {
         let (gfx, gfx_extras) = init_openvr_graphics(instance_extensions, device_extensions_fn)?;
-        AppState::from_graphics(gfx, gfx_extras)?
+        AppState::from_graphics(gfx, gfx_extras, XrBackend::OpenVR)?
     };
 
     if show_by_default {
@@ -303,11 +304,13 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                     continue;
                 };
                 let meta = o.config.backend.frame_meta().unwrap();
-                let tgt = o.ensure_staging_image(&mut app, meta.extent)?;
+                let tgt = RenderTarget {
+                    views: smallvec![o.ensure_staging_image(&mut app, meta.extent)?],
+                };
                 let mut rdr = RenderResources::new(app.gfx.clone(), tgt, &meta, 1.0)?;
                 o.render(&mut app, &mut rdr)?;
                 o.data.image_dirty = true;
-                futures.execute(rdr.end()?)?;
+                futures.execute_results(rdr.end()?)?;
             }
         }
 

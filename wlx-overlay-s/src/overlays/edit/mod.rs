@@ -8,6 +8,7 @@ use std::{
 
 use glam::vec2;
 use slotmap::Key;
+use smallvec::smallvec;
 use wgui::{
     components::{button::ComponentButton, checkbox::ComponentCheckbox, slider::ComponentSlider},
     event::{CallbackDataCommon, EventAlterables, EventCallback},
@@ -16,25 +17,35 @@ use wgui::{
 };
 
 use crate::{
+    attrib_value,
     backend::{
         input::HoverResult,
         task::{OverlayTask, TaskContainer, TaskType},
     },
-    gui::panel::{GuiPanel, NewGuiPanelParams, OnCustomAttribFunc, button::BUTTON_EVENTS},
+    gui::panel::{button::BUTTON_EVENTS, GuiPanel, NewGuiPanelParams, OnCustomAttribFunc},
     overlays::edit::{
-        lock::InteractLockHandler, pos::PositioningHandler, tab::ButtonPaneTabSwitcher,
+        lock::InteractLockHandler,
+        pos::{new_pos_tab_handler, PosTabState},
+        sprite_tab::SpriteTabHandler,
+        stereo::new_stereo_tab_handler,
+        tab::ButtonPaneTabSwitcher,
     },
     state::AppState,
     subsystem::hid::WheelDelta,
     windowing::{
-        OverlayID, OverlaySelector,
-        backend::{DummyBackend, OverlayBackend, OverlayEventData, RenderResources, ShouldRender},
+        backend::{
+            BackendAttrib, BackendAttribValue, DummyBackend, OverlayBackend, OverlayEventData,
+            RenderResources, ShouldRender, StereoMode,
+        },
         window::OverlayWindowConfig,
+        OverlayID, OverlaySelector,
     },
 };
 
 mod lock;
 mod pos;
+mod sprite_tab;
+mod stereo;
 pub mod tab;
 
 pub(super) struct LongPressButtonState {
@@ -54,7 +65,8 @@ struct EditModeState {
     delete: LongPressButtonState,
     tabs: ButtonPaneTabSwitcher,
     lock: InteractLockHandler,
-    pos: PositioningHandler,
+    pos: SpriteTabHandler<PosTabState>,
+    stereo: SpriteTabHandler<StereoMode>,
 }
 
 type EditModeWrapPanel = GuiPanel<EditModeState>;
@@ -77,13 +89,14 @@ impl EditWrapperManager {
         }
 
         log::debug!("EditMode wrap on {}", owc.name);
-        let inner = mem::replace(&mut owc.backend, Box::new(DummyBackend {}));
         let mut panel = self.panel_pool.pop();
         if panel.is_none() {
             panel = Some(make_edit_panel(app)?);
         }
         let mut panel = panel.unwrap();
         reset_panel(&mut panel, id, owc)?;
+
+        let inner = mem::replace(&mut owc.backend, Box::new(DummyBackend {}));
 
         owc.backend = Box::new(EditModeBackendWrapper {
             inner: ManuallyDrop::new(inner),
@@ -178,7 +191,16 @@ impl OverlayBackend for EditModeBackendWrapper {
         rdr: &mut RenderResources,
     ) -> anyhow::Result<()> {
         self.inner.render(app, rdr)?;
-        self.panel.render(app, rdr)
+
+        self.panel.render(app, rdr)?;
+        // `GuiPanel` is not stereo-aware, so just render the same pass twice
+        if rdr.cmd_bufs.len() > 1 {
+            rdr.cmd_bufs.reverse();
+            self.panel.render(app, rdr)?;
+            rdr.cmd_bufs.reverse();
+        }
+
+        Ok(())
     }
     fn frame_meta(&mut self) -> Option<crate::windowing::backend::FrameMeta> {
         self.inner.frame_meta()
@@ -218,6 +240,12 @@ impl OverlayBackend for EditModeBackendWrapper {
     fn get_interaction_transform(&mut self) -> Option<glam::Affine2> {
         self.inner.get_interaction_transform()
     }
+    fn get_attrib(&self, attrib: BackendAttrib) -> Option<BackendAttribValue> {
+        self.inner.get_attrib(attrib)
+    }
+    fn set_attrib(&mut self, app: &mut AppState, value: BackendAttribValue) -> bool {
+        self.inner.set_attrib(app, value)
+    }
 }
 
 fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
@@ -229,7 +257,8 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
         },
         tabs: ButtonPaneTabSwitcher::default(),
         lock: InteractLockHandler::default(),
-        pos: PositioningHandler::default(),
+        pos: SpriteTabHandler::default(),
+        stereo: SpriteTabHandler::default(),
     };
 
     let on_custom_attrib: OnCustomAttribFunc = Box::new(move |layout, attribs, _app| {
@@ -270,10 +299,20 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
                     })
                 }
                 "::EditModeSetPos" => {
-                    let pos_key = args.next().unwrap().to_owned();
+                    let key = args.next().unwrap().to_owned();
                     Box::new(move |common, _data, app, state| {
                         let sel = OverlaySelector::Id(*state.id.borrow());
-                        let task = state.pos.pos_button_clicked(common, &pos_key);
+                        let task = state.pos.button_clicked(common, &key);
+                        app.tasks
+                            .enqueue(TaskType::Overlay(OverlayTask::Modify(sel, task)));
+                        Ok(EventResult::Consumed)
+                    })
+                }
+                "::EditModeSetStereo" => {
+                    let key = args.next().unwrap().to_owned();
+                    Box::new(move |common, _data, app, state| {
+                        let sel = OverlaySelector::Id(*state.id.borrow());
+                        let task = state.stereo.button_clicked(common, &key);
                         app.tasks
                             .enqueue(TaskType::Overlay(OverlayTask::Modify(sel, task)));
                         Ok(EventResult::Consumed)
@@ -315,9 +354,11 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
         },
     )?;
 
-    panel.state.pos = PositioningHandler::new(&mut panel)?;
+    panel.state.pos = new_pos_tab_handler(&mut panel)?;
+    panel.state.stereo = new_stereo_tab_handler(&mut panel)?;
     panel.state.lock = InteractLockHandler::new(&mut panel)?;
-    panel.state.tabs = ButtonPaneTabSwitcher::new(&mut panel, &["none", "pos", "alpha", "curve"])?;
+    panel.state.tabs =
+        ButtonPaneTabSwitcher::new(&mut panel, &["none", "pos", "alpha", "curve", "stereo"])?;
 
     set_up_checkbox(&mut panel, "additive_box", cb_assign_additive)?;
     set_up_slider(&mut panel, "lerp_slider", cb_assign_lerp)?;
@@ -366,9 +407,28 @@ fn reset_panel(
         .fetch_component_as::<ComponentCheckbox>("additive_box")?;
     c.set_checked(&mut common, state.additive);
 
-    panel.state.pos.reset(&mut common, state.positioning);
+    panel
+        .state
+        .pos
+        .reset(&mut common, &state.positioning.into());
     panel.state.lock.reset(&mut common, state.interactable);
     panel.state.tabs.reset(&mut common);
+
+    if let Some(stereo) = attrib_value!(
+        owc.backend.get_attrib(BackendAttrib::Stereo),
+        BackendAttribValue::Stereo
+    ) {
+        panel
+            .state
+            .tabs
+            .set_tab_visible(&mut common, "stereo", true);
+        panel.state.stereo.reset(&mut common, &stereo);
+    } else {
+        panel
+            .state
+            .tabs
+            .set_tab_visible(&mut common, "stereo", false);
+    }
 
     panel.layout.process_alterables(alterables)?;
 

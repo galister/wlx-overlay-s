@@ -1,22 +1,18 @@
 use glam::{Affine2, Affine3A, Vec2};
+use smallvec::SmallVec;
 use std::{any::Any, sync::Arc};
-use vulkano::{
-    command_buffer::{CommandBufferUsage, PrimaryAutoCommandBuffer},
-    device::Queue,
-    format::Format,
-    image::view::ImageView,
-};
+use vulkano::{command_buffer::CommandBufferUsage, format::Format, image::view::ImageView};
 use wgui::gfx::{
-    WGfx,
     cmd::{GfxCommandBuffer, WGfxClearMode},
+    WGfx,
 };
 
 use crate::{
     backend::input::{HoverResult, PointerHit},
-    graphics::ExtentExt,
+    graphics::{ExtentExt, RenderResult},
     state::AppState,
     subsystem::hid::WheelDelta,
-    windowing::{OverlayID, window::OverlayCategory},
+    windowing::{window::OverlayCategory, OverlayID},
 };
 
 #[derive(Default, Clone, Copy)]
@@ -36,33 +32,90 @@ pub enum ShouldRender {
     Unable,
 }
 
+#[derive(Default, Debug, Clone, Copy)]
+pub enum StereoMode {
+    #[default]
+    None,
+    LeftRight,
+    RightLeft,
+    TopBottom,
+    BottomTop,
+}
+
+pub struct RenderTarget {
+    pub views: SmallVec<[Arc<ImageView>; 2]>,
+}
+
 pub struct RenderResources {
     pub alpha: f32,
-    pub cmd_buf: GfxCommandBuffer,
+    pub cmd_bufs: SmallVec<[GfxCommandBuffer; 2]>,
     pub extent: [u32; 2],
 }
 
 impl RenderResources {
     pub fn new(
         gfx: Arc<WGfx>,
-        tgt: Arc<ImageView>,
+        target: RenderTarget,
         meta: &FrameMeta,
         alpha: f32,
     ) -> anyhow::Result<Self> {
-        let mut cmd_buf = gfx.create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
-        cmd_buf.begin_rendering(tgt, meta.clear)?;
+        let mut cmd_bufs = SmallVec::new_const();
+
+        for tgt in target.views {
+            let mut cmd_buf = gfx.create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
+
+            cmd_buf.begin_rendering(tgt, meta.clear)?;
+            cmd_bufs.push(cmd_buf);
+        }
 
         Ok(Self {
-            cmd_buf,
+            cmd_bufs,
             alpha,
             extent: meta.extent.extent_u32arr(),
         })
     }
 
-    pub fn end(mut self) -> anyhow::Result<(Arc<Queue>, Arc<PrimaryAutoCommandBuffer>)> {
-        self.cmd_buf.end_rendering()?;
-        Ok((self.cmd_buf.queue.clone(), self.cmd_buf.build()?))
+    pub fn cmd_buf_single(&mut self) -> &mut GfxCommandBuffer {
+        self.cmd_bufs.first_mut().unwrap() // first must always be populated
     }
+
+    pub fn is_stereo(&self) -> bool {
+        self.cmd_bufs.len() > 1
+    }
+
+    pub fn end(self) -> anyhow::Result<SmallVec<[RenderResult; 2]>> {
+        let mut ret_val = SmallVec::new_const();
+
+        for mut buf in self.cmd_bufs {
+            buf.end_rendering()?;
+            ret_val.push(RenderResult {
+                queue: buf.queue.clone(),
+                cmd_buf: buf.build()?,
+            });
+        }
+
+        Ok(ret_val)
+    }
+}
+
+#[macro_export]
+macro_rules! attrib_value {
+    ($opt:expr, $variant:path) => {
+        $opt.and_then(|e| match e {
+            $variant(inner) => Some(inner),
+            _ => None,
+        })
+    };
+}
+
+#[derive(Clone, Copy)]
+pub enum BackendAttrib {
+    Stereo,
+}
+
+#[derive(Debug, Clone)]
+pub enum BackendAttribValue {
+    Stereo(StereoMode),
 }
 
 pub struct OverlayMeta {
@@ -105,6 +158,8 @@ pub trait OverlayBackend: Any {
     fn on_pointer(&mut self, app: &mut AppState, hit: &PointerHit, pressed: bool);
     fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta: WheelDelta);
     fn get_interaction_transform(&mut self) -> Option<Affine2>;
+    fn get_attrib(&self, attrib: BackendAttrib) -> Option<BackendAttribValue>;
+    fn set_attrib(&mut self, app: &mut AppState, value: BackendAttribValue) -> bool;
 }
 
 pub fn ui_transform(extent: [u32; 2]) -> Affine2 {
@@ -155,5 +210,11 @@ impl OverlayBackend for DummyBackend {
     fn on_scroll(&mut self, _: &mut AppState, _: &PointerHit, _: WheelDelta) {}
     fn get_interaction_transform(&mut self) -> Option<glam::Affine2> {
         None
+    }
+    fn get_attrib(&self, _attrib: BackendAttrib) -> Option<BackendAttribValue> {
+        None
+    }
+    fn set_attrib(&mut self, _: &mut AppState, _value: BackendAttribValue) -> bool {
+        false
     }
 }

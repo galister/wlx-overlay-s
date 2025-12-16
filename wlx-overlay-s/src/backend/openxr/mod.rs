@@ -1,7 +1,7 @@
 use std::{
     collections::VecDeque,
     ops::Add,
-    sync::{Arc, atomic::Ordering},
+    sync::{atomic::Ordering, Arc},
     time::{Duration, Instant},
 };
 
@@ -14,25 +14,25 @@ use vulkano::{Handle, VulkanObject};
 use wlx_common::overlays::ToastTopic;
 
 use crate::{
-    FRAME_COUNTER, RUNNING,
     backend::{
-        BackendError,
         input::interact,
         openxr::{lines::LinePool, overlay::OpenXrOverlayData},
         task::{OverlayTask, TaskType},
+        BackendError, XrBackend,
     },
     config::save_state,
-    graphics::{GpuFutures, init_openxr_graphics},
+    graphics::{init_openxr_graphics, GpuFutures},
     overlays::{
         toast::Toast,
-        watch::{WATCH_NAME, watch_fade},
+        watch::{watch_fade, WATCH_NAME},
     },
     state::AppState,
     subsystem::notifications::NotificationManager,
     windowing::{
-        backend::{RenderResources, ShouldRender},
+        backend::{RenderResources, RenderTarget, ShouldRender},
         manager::OverlayWindowManager,
     },
+    FRAME_COUNTER, RUNNING,
 };
 
 #[cfg(feature = "wayvr")]
@@ -70,7 +70,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
 
     let mut app = {
         let (gfx, gfx_extras) = init_openxr_graphics(xr_instance.clone(), system)?;
-        AppState::from_graphics(gfx, gfx_extras)?
+        AppState::from_graphics(gfx, gfx_extras, XrBackend::OpenXR)?
     };
 
     let environment_blend_mode = {
@@ -403,11 +403,12 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
 
             if should_render {
                 let meta = o.config.backend.frame_meta().unwrap(); // want panic
-                let tgt = o.ensure_swapchain_acquire(&app, &xr_state, meta.extent)?;
+                let wsi = o.ensure_swapchain_acquire(&app, &xr_state, meta.extent)?;
+                let tgt = RenderTarget { views: wsi.views };
                 let mut rdr = RenderResources::new(app.gfx.clone(), tgt, &meta, alpha)?;
                 o.render(&mut app, &mut rdr)?;
                 o.data.last_alpha = alpha;
-                futures.execute(rdr.end()?)?;
+                futures.execute_results(rdr.end()?)?;
             } else if o.data.swapchain.is_none() {
                 continue;
             }
@@ -439,18 +440,13 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                 o.data.swapchain.as_mut().unwrap().ensure_image_released()?;
                 continue;
             }
-            let maybe_layer = o.present(&xr_state)?;
-            if matches!(maybe_layer, CompositionLayer::None) {
-                continue;
+            for layer in o.present(&xr_state)? {
+                layers.push((dist_sq, layer));
             }
-            layers.push((dist_sq, maybe_layer));
         }
 
-        for maybe_layer in lines.present(&xr_state)? {
-            if matches!(maybe_layer, CompositionLayer::None) {
-                continue;
-            }
-            layers.push((0.0, maybe_layer));
+        for layer in lines.present(&xr_state)? {
+            layers.push((0.0, layer));
         }
         // End layer composition
 
@@ -468,7 +464,6 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                 CompositionLayer::Quad(ref l) => l as &xr::CompositionLayerBase<xr::Vulkan>,
                 CompositionLayer::Cylinder(ref l) => l as &xr::CompositionLayerBase<xr::Vulkan>,
                 CompositionLayer::Equirect2(ref l) => l as &xr::CompositionLayerBase<xr::Vulkan>,
-                CompositionLayer::None => unreachable!(),
             })
             .collect::<Vec<_>>();
 
@@ -523,7 +518,6 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
 }
 
 pub(super) enum CompositionLayer<'a> {
-    None,
     Quad(xr::CompositionLayerQuad<'a, xr::Vulkan>),
     Cylinder(xr::CompositionLayerCylinderKHR<'a, xr::Vulkan>),
     Equirect2(xr::CompositionLayerEquirect2KHR<'a, xr::Vulkan>),

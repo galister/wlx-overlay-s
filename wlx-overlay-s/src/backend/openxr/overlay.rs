@@ -1,12 +1,12 @@
 use glam::Vec3A;
 use openxr::{self as xr, CompositionLayerFlags};
-use std::{f32::consts::PI, sync::Arc};
-use vulkano::image::view::ImageView;
+use smallvec::{smallvec, SmallVec};
+use std::f32::consts::PI;
 use xr::EyeVisibility;
 
-use super::{CompositionLayer, XrState, helpers, swapchain::WlxSwapchain};
+use super::{helpers, swapchain::WlxSwapchain, CompositionLayer, XrState};
 use crate::{
-    backend::openxr::swapchain::{SwapchainOpts, create_swapchain},
+    backend::openxr::swapchain::{create_swapchain, SwapchainOpts, WlxSwapchainImage},
     state::AppState,
     windowing::window::OverlayWindowData,
 };
@@ -26,7 +26,7 @@ impl OverlayWindowData<OpenXrOverlayData> {
         app: &AppState,
         xr: &'a XrState,
         extent: [u32; 3],
-    ) -> anyhow::Result<Arc<ImageView>> {
+    ) -> anyhow::Result<WlxSwapchainImage> {
         if let Some(swapchain) = self.data.swapchain.as_mut()
             && swapchain.extent == extent
         {
@@ -34,10 +34,11 @@ impl OverlayWindowData<OpenXrOverlayData> {
         }
 
         log::debug!(
-            "{}: recreating swapchain at {}x{}",
+            "{}: recreating swapchain at {}x{}x{}",
             self.config.name,
             extent[0],
             extent[1],
+            extent[2],
         );
         let mut swapchain = create_swapchain(xr, app.gfx.clone(), extent, SwapchainOpts::new())?;
         let tgt = swapchain.acquire_wait_image()?;
@@ -48,21 +49,31 @@ impl OverlayWindowData<OpenXrOverlayData> {
     pub(super) fn present<'a>(
         &'a mut self,
         xr: &'a XrState,
-    ) -> anyhow::Result<CompositionLayer<'a>> {
+    ) -> anyhow::Result<SmallVec<[CompositionLayer<'a>; 2]>> {
+        let mut layers = SmallVec::new_const();
+
         let Some(swapchain) = self.data.swapchain.as_mut() else {
-            log::warn!("{}: swapchain not ready", self.config.name);
-            return Ok(CompositionLayer::None);
+            log::trace!("{}: no swapchain", self.config.name);
+            return Ok(layers);
         };
         if !swapchain.ever_acquired {
             log::warn!("{}: swapchain not rendered", self.config.name);
-            return Ok(CompositionLayer::None);
+            return Ok(layers);
         }
         swapchain.ensure_image_released()?;
 
         // overlays without active_state don't get queued for present
         let state = self.config.active_state.as_ref().unwrap();
 
-        let sub_image = swapchain.get_subimage();
+        let sub_images: SmallVec<[_; 2]> = if swapchain.extent[2] > 1 {
+            smallvec![
+                (swapchain.get_subimage(0), EyeVisibility::LEFT),
+                (swapchain.get_subimage(1), EyeVisibility::RIGHT),
+            ]
+        } else {
+            smallvec![(swapchain.get_subimage(0), EyeVisibility::BOTH),]
+        };
+
         let transform = state.transform * self.config.backend.frame_meta().unwrap().transform; // contract
 
         let aspect_ratio = swapchain.extent[1] as f32 / swapchain.extent[0] as f32;
@@ -89,30 +100,35 @@ impl OverlayWindowData<OpenXrOverlayData> {
             let posef = helpers::translation_rotation_to_posef(center_point, quat);
             let angle = 2.0 * (scale_x / (2.0 * radius));
 
-            let cylinder = xr::CompositionLayerCylinderKHR::new()
-                .layer_flags(flags)
-                .pose(posef)
-                .sub_image(sub_image)
-                .eye_visibility(EyeVisibility::BOTH)
-                .space(&xr.stage)
-                .radius(radius)
-                .central_angle(angle)
-                .aspect_ratio(aspect_ratio);
-            Ok(CompositionLayer::Cylinder(cylinder))
+            for sub_image in sub_images {
+                let cylinder = xr::CompositionLayerCylinderKHR::new()
+                    .layer_flags(flags)
+                    .pose(posef)
+                    .sub_image(sub_image.0)
+                    .eye_visibility(sub_image.1)
+                    .space(&xr.stage)
+                    .radius(radius)
+                    .central_angle(angle)
+                    .aspect_ratio(aspect_ratio);
+                layers.push(CompositionLayer::Cylinder(cylinder))
+            }
         } else {
             let posef = helpers::transform_to_posef(&transform);
-            let quad = xr::CompositionLayerQuad::new()
-                .layer_flags(flags)
-                .pose(posef)
-                .sub_image(sub_image)
-                .eye_visibility(EyeVisibility::BOTH)
-                .space(&xr.stage)
-                .size(xr::Extent2Df {
-                    width: scale_x,
-                    height: scale_y,
-                });
-            Ok(CompositionLayer::Quad(quad))
+            for sub_image in sub_images {
+                let quad = xr::CompositionLayerQuad::new()
+                    .layer_flags(flags)
+                    .pose(posef)
+                    .sub_image(sub_image.0)
+                    .eye_visibility(sub_image.1)
+                    .space(&xr.stage)
+                    .size(xr::Extent2Df {
+                        width: scale_x,
+                        height: scale_y,
+                    });
+                layers.push(CompositionLayer::Quad(quad))
+            }
         }
+        Ok(layers)
     }
 
     pub(super) fn after_input(&mut self, app: &mut AppState) -> anyhow::Result<()> {

@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 
 use ash::vk::SubmitInfo;
 use glam::{Affine3A, Vec3, Vec3A, Vec4};
@@ -8,7 +8,6 @@ use idmap::IdMap;
 use ovr_overlay::overlay::OverlayManager;
 use ovr_overlay::sys::ETrackingUniverseOrigin;
 use vulkano::{
-    VulkanObject,
     command_buffer::{
         CommandBufferBeginInfo, CommandBufferLevel, CommandBufferUsage, RecordingCommandBuffer,
     },
@@ -16,20 +15,22 @@ use vulkano::{
     image::view::ImageView,
     image::{Image, ImageLayout},
     sync::{
-        AccessFlags, DependencyInfo, ImageMemoryBarrier, PipelineStages,
         fence::{Fence, FenceCreateInfo},
+        AccessFlags, DependencyInfo, ImageMemoryBarrier, PipelineStages,
     },
+    VulkanObject,
 };
 use wgui::gfx::WGfx;
 
 use crate::backend::input::{HoverResult, PointerHit};
 use crate::state::AppState;
 use crate::subsystem::hid::WheelDelta;
-use crate::windowing::Z_ORDER_LINES;
 use crate::windowing::backend::{
-    FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
+    BackendAttrib, BackendAttribValue, FrameMeta, OverlayBackend, OverlayEventData,
+    RenderResources, ShouldRender,
 };
 use crate::windowing::window::{OverlayWindowConfig, OverlayWindowData};
+use crate::windowing::Z_ORDER_LINES;
 
 use super::overlay::OpenVrOverlayData;
 
@@ -216,6 +217,12 @@ impl OverlayBackend for LineBackend {
     fn on_scroll(&mut self, _: &mut AppState, _: &PointerHit, _delta: WheelDelta) {}
     fn get_interaction_transform(&mut self) -> Option<glam::Affine2> {
         None
+    }
+    fn get_attrib(&self, _attrib: BackendAttrib) -> Option<BackendAttribValue> {
+        None
+    }
+    fn set_attrib(&mut self, _: &mut AppState, _value: BackendAttribValue) -> bool {
+        false
     }
 }
 

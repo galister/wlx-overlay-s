@@ -6,13 +6,14 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use glam::{Vec2, vec2};
+use glam::{vec2, Vec2};
+use smallvec::SmallVec;
 use vulkano::{
     buffer::{BufferCreateInfo, BufferUsage},
     command_buffer::{CommandBufferUsage, PrimaryAutoCommandBuffer, PrimaryCommandBufferAbstract},
     image::view::ImageView,
     memory::allocator::{AllocationCreateInfo, MemoryTypeFilter},
-    sync::GpuFuture,
+    sync::{now, GpuFuture},
 };
 use wgui::gfx::WGfx;
 
@@ -26,11 +27,11 @@ use crate::shaders::{frag_color, frag_grid, frag_screen, frag_srgb, vert_quad};
 use {ash::vk, std::os::raw::c_void};
 
 use vulkano::{
-    self, VulkanObject,
+    self,
     buffer::{Buffer, BufferContents, IndexBuffer, Subbuffer},
     device::{
-        DeviceCreateInfo, DeviceExtensions, DeviceFeatures, Queue, QueueCreateInfo, QueueFlags,
         physical::{PhysicalDevice, PhysicalDeviceType},
+        DeviceCreateInfo, DeviceExtensions, DeviceFeatures, Queue, QueueCreateInfo, QueueFlags,
     },
     format::Format,
     instance::{Instance, InstanceCreateInfo, InstanceExtensions},
@@ -39,6 +40,7 @@ use vulkano::{
         vertex_input::Vertex,
     },
     shader::ShaderModule,
+    VulkanObject,
 };
 
 use dmabuf::get_drm_formats;
@@ -634,6 +636,11 @@ fn queue_families_priorities(
     }
 }
 
+pub struct RenderResult {
+    pub queue: Arc<Queue>,
+    pub cmd_buf: Arc<PrimaryAutoCommandBuffer>,
+}
+
 #[derive(Default)]
 pub struct GpuFutures {
     futures: Vec<Box<dyn GpuFuture>>,
@@ -642,12 +649,27 @@ pub struct GpuFutures {
 impl GpuFutures {
     pub fn execute(
         &mut self,
-        cmd: (Arc<Queue>, Arc<PrimaryAutoCommandBuffer>),
+        queue: Arc<Queue>,
+        cmd_buf: Arc<PrimaryAutoCommandBuffer>,
     ) -> anyhow::Result<()> {
-        self.futures.push(cmd.1.execute(cmd.0)?.boxed());
-
+        self.futures.push(cmd_buf.execute(queue)?.boxed());
         Ok(())
     }
+
+    pub fn execute_results(&mut self, results: SmallVec<[RenderResult; 2]>) -> anyhow::Result<()> {
+        for (i, res) in results.into_iter().enumerate() {
+            if i == 0 {
+                let future = res.cmd_buf.execute(res.queue)?;
+                self.futures.push(Box::new(future));
+            } else {
+                let future = self.futures.pop().unwrap();
+                let future = future.then_execute(res.queue, res.cmd_buf)?;
+                self.futures.push(Box::new(future));
+            }
+        }
+        Ok(())
+    }
+
     pub fn wait(self) -> anyhow::Result<()> {
         let mut it = self.futures.into_iter();
         let Some(mut all) = it.next() else {

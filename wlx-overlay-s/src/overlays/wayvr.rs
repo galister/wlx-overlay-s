@@ -1,18 +1,18 @@
 use anyhow::Context;
-use glam::{Affine2, Affine3A, Quat, Vec3, vec3};
+use glam::{vec3, Affine2, Affine3A, Quat, Vec3};
 use smallvec::smallvec;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 use vulkano::{
     buffer::{BufferUsage, Subbuffer},
     command_buffer::CommandBufferUsage,
     format::Format,
-    image::{Image, ImageTiling, SubresourceLayout, view::ImageView},
+    image::{view::ImageView, Image, ImageTiling, SubresourceLayout},
 };
 use wayvr_ipc::packet_server::{self, PacketServer, WvrStateChanged};
 use wgui::gfx::{
-    WGfx,
     pass::WGfxPass,
     pipeline::{WGfxPipeline, WPipelineCreateInfo},
+    WGfx,
 };
 use wlx_capture::frame::{DmabufFrame, FourCC, FrameFormat, FramePlane};
 use wlx_common::windowing::OverlayWindowState;
@@ -22,22 +22,23 @@ use crate::{
         input::{self, HoverResult},
         task::{OverlayTask, TaskType},
         wayvr::{
-            self, WayVR, WayVRAction, WayVRDisplayClickAction, display,
+            self, display,
             server_ipc::{gen_args_vec, gen_env_vec},
+            WayVR, WayVRAction, WayVRDisplayClickAction,
         },
     },
     config_wayvr,
-    graphics::{Vert2Uv, dmabuf::WGfxDmabuf},
+    graphics::{dmabuf::WGfxDmabuf, Vert2Uv},
     state::{self, AppState},
     subsystem::{hid::WheelDelta, input::KeyboardFocus},
     windowing::{
-        OverlayID, OverlaySelector, Z_ORDER_DASHBOARD,
         backend::{
-            FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
-            ui_transform,
+            ui_transform, BackendAttrib, BackendAttribValue, FrameMeta, OverlayBackend,
+            OverlayEventData, RenderResources, ShouldRender,
         },
         manager::OverlayWindowManager,
         window::{OverlayCategory, OverlayWindowConfig, OverlayWindowData},
+        OverlayID, OverlaySelector, Z_ORDER_DASHBOARD,
     },
 };
 
@@ -703,7 +704,7 @@ impl OverlayBackend for WayVRBackend {
         self.pass
             .update_sampler(0, image.vk_image_view.clone(), self.graphics.texture_filter)?;
         self.buf_alpha.write()?[0] = rdr.alpha;
-        rdr.cmd_buf.run_ref(&self.pass)?;
+        rdr.cmd_buf_single().run_ref(&self.pass)?;
         Ok(())
     }
 
@@ -781,6 +782,13 @@ impl OverlayBackend for WayVRBackend {
 
     fn get_interaction_transform(&mut self) -> Option<Affine2> {
         self.interaction_transform
+    }
+
+    fn get_attrib(&self, _attrib: BackendAttrib) -> Option<BackendAttribValue> {
+        None
+    }
+    fn set_attrib(&mut self, _app: &mut AppState, _value: BackendAttribValue) -> bool {
+        false
     }
 }
 

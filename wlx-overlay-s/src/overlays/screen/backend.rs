@@ -1,22 +1,26 @@
 use std::{
-    sync::{Arc, LazyLock, atomic::AtomicU64},
+    sync::{atomic::AtomicU64, Arc, LazyLock},
     time::Instant,
 };
 
-use glam::{Affine2, Vec2, vec2};
-use wlx_capture::{WlxCapture, frame::Transform};
+use glam::{vec2, Affine2, Vec2};
+use wlx_capture::{frame::Transform, WlxCapture};
 
 use crate::{
-    backend::input::{HoverResult, PointerHit, PointerMode},
+    backend::{
+        input::{HoverResult, PointerHit, PointerMode},
+        XrBackend,
+    },
     graphics::ExtentExt,
     state::AppState,
-    subsystem::hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT, WheelDelta},
+    subsystem::hid::{WheelDelta, MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT},
     windowing::backend::{
-        FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
+        BackendAttrib, BackendAttribValue, FrameMeta, OverlayBackend, OverlayEventData,
+        RenderResources, ShouldRender, StereoMode,
     },
 };
 
-use super::capture::{ScreenPipeline, WlxCaptureIn, WlxCaptureOut, receive_callback};
+use super::capture::{receive_callback, ScreenPipeline, WlxCaptureIn, WlxCaptureOut};
 
 const CURSOR_SIZE: f32 = 16. / 1440.;
 
@@ -42,6 +46,7 @@ pub struct ScreenBackend {
     meta: Option<FrameMeta>,
     mouse_transform: Affine2,
     interaction_transform: Option<Affine2>,
+    stereo: Option<StereoMode>,
 }
 
 impl ScreenBackend {
@@ -57,6 +62,7 @@ impl ScreenBackend {
             meta: None,
             mouse_transform: Affine2::ZERO,
             interaction_transform: None,
+            stereo: None,
         }
     }
 
@@ -103,7 +109,12 @@ impl ScreenBackend {
 }
 
 impl OverlayBackend for ScreenBackend {
-    fn init(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+    fn init(&mut self, app: &mut AppState) -> anyhow::Result<()> {
+        self.stereo = if matches!(app.xr_backend, XrBackend::OpenXR) {
+            Some(StereoMode::None)
+        } else {
+            None
+        };
         Ok(())
     }
     fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
@@ -155,10 +166,14 @@ impl OverlayBackend for ScreenBackend {
         }
 
         if let Some(frame) = self.capture.receive() {
-            let meta = frame.get_frame_meta(&app.session.config);
+            let mut meta = frame.get_frame_meta(&app.session.config);
 
             if let Some(pipeline) = self.pipeline.as_mut() {
-                if self.meta.is_some_and(|old| old.extent != meta.extent) {
+                meta.extent[2] = pipeline.get_depth();
+                if self
+                    .meta
+                    .is_some_and(|old| old.extent[..2] != meta.extent[..2])
+                {
                     pipeline.set_extent(app, [meta.extent[0] as _, meta.extent[1] as _])?;
                     self.set_interaction_transform(
                         meta.extent.extent_vec2(),
@@ -166,7 +181,10 @@ impl OverlayBackend for ScreenBackend {
                     );
                 }
             } else {
-                self.pipeline = Some(ScreenPipeline::new(&meta, app)?);
+                let pipeline =
+                    ScreenPipeline::new(&meta, app, self.stereo.unwrap_or(StereoMode::None))?;
+                meta.extent[2] = pipeline.get_depth();
+                self.pipeline = Some(pipeline);
                 self.set_interaction_transform(meta.extent.extent_vec2(), frame.get_transform());
             }
 
@@ -258,5 +276,30 @@ impl OverlayBackend for ScreenBackend {
 
     fn get_interaction_transform(&mut self) -> Option<Affine2> {
         self.interaction_transform
+    }
+    #[allow(unreachable_patterns)]
+    fn get_attrib(&self, attrib: BackendAttrib) -> Option<BackendAttribValue> {
+        match attrib {
+            BackendAttrib::Stereo => self.stereo.map(|s| BackendAttribValue::Stereo(s)),
+            _ => None,
+        }
+    }
+    #[allow(unreachable_patterns)]
+    fn set_attrib(&mut self, app: &mut AppState, value: BackendAttribValue) -> bool {
+        match value {
+            BackendAttribValue::Stereo(new) => {
+                if let Some(stereo) = self.stereo.as_mut() {
+                    log::debug!("{}: stereo: {stereo:?} → {new:?}", self.name);
+                    *stereo = new;
+                    if let Some(pipeline) = self.pipeline.as_mut() {
+                        pipeline.set_stereo(app, new).unwrap(); // only panics if gfx is dead
+                    }
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        }
     }
 }

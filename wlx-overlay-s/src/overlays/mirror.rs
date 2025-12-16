@@ -1,14 +1,14 @@
 use std::{
     sync::{
-        Arc,
         atomic::{AtomicUsize, Ordering},
+        Arc,
     },
     task::{Context, Poll},
 };
 
 use futures::{Future, FutureExt};
-use glam::{Affine2, Affine3A, Quat, Vec3, vec3};
-use wlx_capture::pipewire::{PipewireCapture, PipewireSelectScreenResult, pipewire_select_screen};
+use glam::{vec3, Affine2, Affine3A, Quat, Vec3};
+use wlx_capture::pipewire::{pipewire_select_screen, PipewireCapture, PipewireSelectScreenResult};
 use wlx_common::windowing::OverlayWindowState;
 
 use crate::{
@@ -19,12 +19,12 @@ use crate::{
     state::{AppSession, AppState},
     subsystem::hid::WheelDelta,
     windowing::{
-        OverlaySelector,
         backend::{
-            FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
-            ui_transform,
+            ui_transform, BackendAttrib, BackendAttribValue, FrameMeta, OverlayBackend,
+            OverlayEventData, RenderResources, ShouldRender,
         },
         window::{OverlayCategory, OverlayWindowConfig},
+        OverlaySelector,
     },
 };
 
@@ -151,6 +151,20 @@ impl OverlayBackend for MirrorBackend {
     fn on_scroll(&mut self, _: &mut AppState, _: &PointerHit, _delta: WheelDelta) {}
     fn get_interaction_transform(&mut self) -> Option<Affine2> {
         self.interaction_transform
+    }
+    fn get_attrib(&self, attrib: BackendAttrib) -> Option<BackendAttribValue> {
+        if let Some(renderer) = self.renderer.as_ref() {
+            renderer.get_attrib(attrib)
+        } else {
+            None
+        }
+    }
+    fn set_attrib(&mut self, app: &mut AppState, value: BackendAttribValue) -> bool {
+        if let Some(renderer) = self.renderer.as_mut() {
+            renderer.set_attrib(app, value)
+        } else {
+            false
+        }
     }
 }
 

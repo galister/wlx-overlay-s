@@ -6,24 +6,27 @@ use std::{
 };
 
 use crate::{
-    KEYMAP_CHANGE,
     backend::input::{HoverResult, PointerHit},
     gui::panel::GuiPanel,
     overlays::keyboard::{builder::create_keyboard_panel, layout::AltModifier},
     state::AppState,
     subsystem::hid::{
-        ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey, WheelDelta, XkbKeymap,
-        get_keymap_wl, get_keymap_x11,
+        get_keymap_wl, get_keymap_x11, KeyModifier, VirtualKey, WheelDelta, XkbKeymap, ALT, CTRL,
+        META, SHIFT, SUPER,
     },
     windowing::{
-        backend::{FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender},
+        backend::{
+            BackendAttrib, BackendAttribValue, FrameMeta, OverlayBackend, OverlayEventData,
+            RenderResources, ShouldRender,
+        },
         window::OverlayWindowConfig,
     },
+    KEYMAP_CHANGE,
 };
 use anyhow::Context;
-use glam::{Affine3A, Quat, Vec3, vec3};
+use glam::{vec3, Affine3A, Quat, Vec3};
 use regex::Regex;
-use slotmap::{SlotMap, new_key_type};
+use slotmap::{new_key_type, SlotMap};
 use wgui::{
     drawing,
     event::{InternalStateChangeEvent, MouseButton, MouseButtonIndex},
@@ -278,6 +281,12 @@ impl OverlayBackend for KeyboardBackend {
     }
     fn get_interaction_transform(&mut self) -> Option<glam::Affine2> {
         self.panel().get_interaction_transform()
+    }
+    fn get_attrib(&self, _attrib: BackendAttrib) -> Option<BackendAttribValue> {
+        None
+    }
+    fn set_attrib(&mut self, _app: &mut AppState, _value: BackendAttribValue) -> bool {
+        false
     }
 }
 

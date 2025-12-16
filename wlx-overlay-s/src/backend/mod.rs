@@ -15,6 +15,11 @@ pub mod task;
 
 use thiserror::Error;
 
+pub enum XrBackend {
+    OpenXR,
+    OpenVR,
+}
+
 #[derive(Error, Debug)]
 pub enum BackendError {
     #[error("backend not supported")]

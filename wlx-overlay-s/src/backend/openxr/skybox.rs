@@ -15,13 +15,13 @@ use wgui::gfx::{cmd::WGfxClearMode, pipeline::WPipelineCreateInfo};
 use crate::{
     backend::openxr::{helpers::translation_rotation_to_posef, swapchain::SwapchainOpts},
     config_io,
-    graphics::{ExtentExt, GpuFutures, dds::WlxCommandBufferDds},
+    graphics::{dds::WlxCommandBufferDds, ExtentExt, GpuFutures},
     state::AppState,
 };
 
 use super::{
+    swapchain::{create_swapchain, WlxSwapchain},
     CompositionLayer, XrState,
-    swapchain::{WlxSwapchain, create_swapchain},
 };
 
 pub(super) struct Skybox {
@@ -94,7 +94,12 @@ impl Skybox {
 
         let extent = self.view.image().extent();
         let mut swapchain = create_swapchain(xr, app.gfx.clone(), extent, opts)?;
-        let tgt = swapchain.acquire_wait_image()?;
+        let tgt = swapchain
+            .acquire_wait_image()?
+            .views
+            .into_iter()
+            .next()
+            .unwrap();
         let pipeline = app.gfx.create_pipeline(
             app.gfx_extras.shaders.get("vert_quad").unwrap(), // want panic
             app.gfx_extras.shaders.get("frag_srgb").unwrap(), // want panic
@@ -119,7 +124,7 @@ impl Skybox {
         cmd_buffer.run_ref(&pass)?;
         cmd_buffer.end_rendering()?;
 
-        futures.execute((cmd_buffer.queue.clone(), cmd_buffer.build()?))?;
+        futures.execute(cmd_buffer.queue.clone(), cmd_buffer.build()?)?;
 
         self.sky = Some(swapchain);
         Ok(())
@@ -148,7 +153,12 @@ impl Skybox {
             WPipelineCreateInfo::new(app.gfx.surface_format).use_blend(AttachmentBlend::alpha()),
         )?;
 
-        let tgt = swapchain.acquire_wait_image()?;
+        let tgt = swapchain
+            .acquire_wait_image()?
+            .views
+            .into_iter()
+            .next()
+            .unwrap();
         let pass = pipeline.create_pass(
             tgt.extent_f32(),
             app.gfx_extras.quad_verts.clone(),
@@ -165,7 +175,7 @@ impl Skybox {
         cmd_buffer.run_ref(&pass)?;
         cmd_buffer.end_rendering()?;
 
-        futures.execute((cmd_buffer.queue.clone(), cmd_buffer.build()?))?;
+        futures.execute(cmd_buffer.queue.clone(), cmd_buffer.build()?)?;
 
         self.grid = Some(swapchain);
         Ok(())
@@ -211,7 +221,7 @@ impl Skybox {
             .layer_flags(xr::CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA)
             .pose(pose)
             .radius(10.0)
-            .sub_image(self.sky.as_ref().unwrap().get_subimage())
+            .sub_image(self.sky.as_ref().unwrap().get_subimage(0))
             .eye_visibility(xr::EyeVisibility::BOTH)
             .space(&xr.stage)
             .central_horizontal_angle(HORIZ_ANGLE)
@@ -226,7 +236,7 @@ impl Skybox {
                 width: 10.0,
                 height: 10.0,
             })
-            .sub_image(self.grid.as_ref().unwrap().get_subimage())
+            .sub_image(self.grid.as_ref().unwrap().get_subimage(0))
             .eye_visibility(xr::EyeVisibility::BOTH)
             .space(&xr.stage);
 

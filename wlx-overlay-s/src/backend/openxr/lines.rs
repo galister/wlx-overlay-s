@@ -1,19 +1,20 @@
 use glam::{Affine3A, Vec3, Vec3A};
 use idmap::IdMap;
 use openxr as xr;
+use smallvec::SmallVec;
 use std::{
     f32::consts::PI,
     sync::{
-        Arc,
         atomic::{AtomicUsize, Ordering},
+        Arc,
     },
 };
 
 use wgui::gfx::{
-    WGfx,
     cmd::WGfxClearMode,
     pass::WGfxPass,
     pipeline::{WGfxPipeline, WPipelineCreateInfo},
+    WGfx,
 };
 
 use crate::{
@@ -27,8 +28,8 @@ use vulkano::{
 };
 
 use super::{
+    swapchain::{create_swapchain, SwapchainOpts, WlxSwapchain},
     CompositionLayer, XrState,
-    swapchain::{SwapchainOpts, WlxSwapchain, create_swapchain},
 };
 
 static LINE_AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(1);
@@ -156,7 +157,13 @@ impl LinePool {
     ) -> anyhow::Result<()> {
         for line in self.lines.values_mut() {
             if let Some(inner) = line.maybe_line.as_mut() {
-                let tgt = line.swapchain.acquire_wait_image()?;
+                let tgt = line
+                    .swapchain
+                    .acquire_wait_image()?
+                    .views
+                    .into_iter()
+                    .next()
+                    .unwrap();
 
                 self.buf_color.write()?[0..6].copy_from_slice(&COLORS[inner.color]);
 
@@ -167,7 +174,7 @@ impl LinePool {
                 cmd_buffer.run_ref(&self.pass)?;
                 cmd_buffer.end_rendering()?;
 
-                futures.execute((cmd_buffer.queue.clone(), cmd_buffer.build()?))?;
+                futures.execute(cmd_buffer.queue.clone(), cmd_buffer.build()?)?;
             }
         }
 
@@ -177,8 +184,8 @@ impl LinePool {
     pub(super) fn present<'a>(
         &'a mut self,
         xr: &'a XrState,
-    ) -> anyhow::Result<Vec<CompositionLayer<'a>>> {
-        let mut quads = Vec::new();
+    ) -> anyhow::Result<SmallVec<[CompositionLayer<'a>; 2]>> {
+        let mut quads = SmallVec::new_const();
 
         for line in self.lines.values_mut() {
             line.swapchain.ensure_image_released()?;
@@ -186,7 +193,7 @@ impl LinePool {
             if let Some(inner) = line.maybe_line.take() {
                 let quad = xr::CompositionLayerQuad::new()
                     .pose(inner.pose)
-                    .sub_image(line.swapchain.get_subimage())
+                    .sub_image(line.swapchain.get_subimage(0))
                     .eye_visibility(xr::EyeVisibility::BOTH)
                     .space(&xr.stage)
                     .size(xr::Extent2Df {

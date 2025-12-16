@@ -5,8 +5,12 @@ use openxr as xr;
 
 use smallvec::SmallVec;
 use vulkano::{
+    image::{
+        sys::RawImage,
+        view::{ImageView, ImageViewCreateInfo},
+        ImageCreateInfo, ImageUsage,
+    },
     Handle,
-    image::{ImageCreateInfo, ImageUsage, sys::RawImage, view::ImageView},
 };
 use wgui::gfx::WGfx;
 
@@ -47,7 +51,7 @@ pub(super) fn create_swapchain(
         width: extent[0],
         height: extent[1],
         face_count: 1,
-        array_size: 1,
+        array_size: extent[2],
         mip_count: 1,
     })?;
 
@@ -63,7 +67,8 @@ pub(super) fn create_swapchain(
                     vk_image,
                     ImageCreateInfo {
                         format: gfx.surface_format as _,
-                        extent,
+                        extent: [extent[0], extent[1], 1],
+                        array_layers: extent[2],
                         usage: ImageUsage::COLOR_ATTACHMENT,
                         ..Default::default()
                     },
@@ -71,9 +76,15 @@ pub(super) fn create_swapchain(
             };
             // SAFETY: OpenXR guarantees that the image is a swapchain image, thus has memory backing it.
             let image = Arc::new(unsafe { raw_image.assume_bound() });
-            Ok(ImageView::new_default(image)?)
+            let mut wsi = WlxSwapchainImage::default();
+            for d in 0..extent[2] {
+                let mut create_info = ImageViewCreateInfo::from_image(&*image);
+                create_info.subresource_range.array_layers = d..d + 1;
+                wsi.views.push(ImageView::new(image.clone(), create_info)?);
+            }
+            Ok(wsi)
         })
-        .collect::<anyhow::Result<SmallVec<[Arc<ImageView>; 4]>>>()?;
+        .collect::<anyhow::Result<SmallVec<[WlxSwapchainImage; 4]>>>()?;
 
     Ok(WlxSwapchain {
         acquired: false,
@@ -84,16 +95,21 @@ pub(super) fn create_swapchain(
     })
 }
 
+#[derive(Default, Clone)]
+pub(super) struct WlxSwapchainImage {
+    pub views: SmallVec<[Arc<ImageView>; 2]>,
+}
+
 pub(super) struct WlxSwapchain {
     acquired: bool,
     pub(super) ever_acquired: bool,
     pub(super) swapchain: xr::Swapchain<xr::Vulkan>,
     pub(super) extent: [u32; 3],
-    pub(super) images: SmallVec<[Arc<ImageView>; 4]>,
+    pub(super) images: SmallVec<[WlxSwapchainImage; 4]>,
 }
 
 impl WlxSwapchain {
-    pub(super) fn acquire_wait_image(&mut self) -> anyhow::Result<Arc<ImageView>> {
+    pub(super) fn acquire_wait_image(&mut self) -> anyhow::Result<WlxSwapchainImage> {
         let idx = self.swapchain.acquire_image()? as usize;
         self.swapchain.wait_image(xr::Duration::INFINITE)?;
         self.ever_acquired = true;
@@ -109,7 +125,7 @@ impl WlxSwapchain {
         Ok(())
     }
 
-    pub(super) fn get_subimage(&self) -> xr::SwapchainSubImage<'_, xr::Vulkan> {
+    pub(super) fn get_subimage(&self, array_index: u32) -> xr::SwapchainSubImage<'_, xr::Vulkan> {
         debug_assert!(self.ever_acquired, "swapchain was never acquired!");
         xr::SwapchainSubImage::new()
             .swapchain(&self.swapchain)
@@ -120,6 +136,6 @@ impl WlxSwapchain {
                     height: self.extent[1] as _,
                 },
             })
-            .image_array_index(0)
+            .image_array_index(array_index)
     }
 }

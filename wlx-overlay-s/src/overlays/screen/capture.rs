@@ -1,54 +1,58 @@
 use std::{f32::consts::PI, sync::Arc};
 
 use glam::{Affine3A, Vec3};
-use smallvec::smallvec;
+use smallvec::{smallvec, SmallVec};
 use vulkano::{
     buffer::{BufferUsage, Subbuffer},
     command_buffer::CommandBufferUsage,
     device::Queue,
     format::Format,
-    image::{Image, sampler::Filter, view::ImageView},
+    image::{sampler::Filter, view::ImageView, Image},
     pipeline::graphics::color_blend::AttachmentBlend,
 };
 use wgui::gfx::{
-    WGfx,
     cmd::WGfxClearMode,
     pass::WGfxPass,
     pipeline::{WGfxPipeline, WPipelineCreateInfo},
+    WGfx,
 };
 use wlx_capture::{
-    WlxCapture,
     frame::{self as wlx_frame, DrmFormat, FrameFormat, MouseMeta, Transform, WlxFrame},
+    WlxCapture,
 };
 use wlx_common::config::GeneralConfig;
 
 use crate::{
     graphics::{
-        Vert2Uv,
-        dmabuf::{WGfxDmabuf, fourcc_to_vk},
-        upload_quad_vertices,
+        dmabuf::{fourcc_to_vk, WGfxDmabuf},
+        upload_quad_vertices, Vert2Uv,
     },
     state::AppState,
-    windowing::backend::{FrameMeta, RenderResources},
+    windowing::backend::{FrameMeta, RenderResources, StereoMode},
 };
 
 const CURSOR_SIZE: f32 = 16. / 1440.;
 
-struct MousePass {
+struct BufPass {
     pass: WGfxPass<Vert2Uv>,
     buf_vert: Subbuffer<[Vert2Uv]>,
 }
 
 pub(super) struct ScreenPipeline {
-    mouse: MousePass,
+    mouse: BufPass,
+    pass: SmallVec<[BufPass; 2]>,
     pipeline: Arc<WGfxPipeline<Vert2Uv>>,
-    pass: WGfxPass<Vert2Uv>,
     buf_alpha: Subbuffer<[f32]>,
     extentf: [f32; 2],
+    stereo: StereoMode,
 }
 
 impl ScreenPipeline {
-    pub(super) fn new(meta: &FrameMeta, app: &mut AppState) -> anyhow::Result<Self> {
+    pub(super) fn new(
+        meta: &FrameMeta,
+        app: &mut AppState,
+        stereo: StereoMode,
+    ) -> anyhow::Result<Self> {
         let extentf = [meta.extent[0] as f32, meta.extent[1] as f32];
 
         let pipeline = app.gfx.create_pipeline(
@@ -63,17 +67,61 @@ impl ScreenPipeline {
             .gfx
             .empty_buffer(BufferUsage::TRANSFER_DST | BufferUsage::UNIFORM_BUFFER, 1)?;
 
-        Ok(Self {
-            pass: Self::create_pass(app, pipeline.clone(), extentf, buf_alpha.clone())?,
+        let mut me = Self {
+            pass: smallvec![Self::create_pass(
+                app,
+                pipeline.clone(),
+                extentf,
+                buf_alpha.clone()
+            )?],
             mouse: Self::create_mouse_pass(app, pipeline.clone(), extentf, buf_alpha.clone())?,
             pipeline,
             extentf,
             buf_alpha,
-        })
+            stereo,
+        };
+        me.set_stereo(app, stereo)?;
+        Ok(me)
+    }
+
+    pub fn set_stereo(&mut self, app: &mut AppState, stereo: StereoMode) -> anyhow::Result<()> {
+        let depth = if matches!(stereo, StereoMode::None) {
+            1
+        } else {
+            2
+        };
+
+        if self.pass.len() < depth {
+            self.pass.push(Self::create_pass(
+                app,
+                self.pipeline.clone(),
+                self.extentf,
+                self.buf_alpha.clone(),
+            )?);
+        }
+
+        if self.pass.len() > depth {
+            self.pass.pop();
+        }
+
+        for (eye, current) in self.pass.iter_mut().enumerate() {
+            let verts = stereo_mode_to_verts(stereo, eye);
+            current.buf_vert.write()?.copy_from_slice(&verts);
+        }
+        Ok(())
+    }
+
+    pub fn get_depth(&self) -> u32 {
+        self.pass.len() as _
     }
 
     pub fn set_extent(&mut self, app: &mut AppState, extentf: [f32; 2]) -> anyhow::Result<()> {
-        self.pass = Self::create_pass(app, self.pipeline.clone(), extentf, self.buf_alpha.clone())?;
+        for (eye, pass) in self.pass.iter_mut().enumerate() {
+            *pass = Self::create_pass(app, self.pipeline.clone(), extentf, self.buf_alpha.clone())?;
+            let verts = stereo_mode_to_verts(self.stereo, eye);
+            pass.buf_vert.write()?.copy_from_slice(&verts);
+        }
+
         self.mouse =
             Self::create_mouse_pass(app, self.pipeline.clone(), extentf, self.buf_alpha.clone())?;
         Ok(())
@@ -84,21 +132,27 @@ impl ScreenPipeline {
         pipeline: Arc<WGfxPipeline<Vert2Uv>>,
         extentf: [f32; 2],
         buf_alpha: Subbuffer<[f32]>,
-    ) -> anyhow::Result<WGfxPass<Vert2Uv>> {
+    ) -> anyhow::Result<BufPass> {
         let set0 = pipeline.uniform_sampler(
             0,
             app.gfx_extras.fallback_image.clone(),
             app.gfx.texture_filter,
         )?;
         let set1 = pipeline.buffer(1, buf_alpha)?;
-        pipeline.create_pass(
+        let buf_vert = app
+            .gfx
+            .empty_buffer(BufferUsage::TRANSFER_DST | BufferUsage::VERTEX_BUFFER, 4)?;
+
+        let pass = pipeline.create_pass(
             extentf,
-            app.gfx_extras.quad_verts.clone(),
+            buf_vert.clone(),
             0..4,
             0..1,
             vec![set0, set1],
             &Default::default(),
-        )
+        )?;
+
+        Ok(BufPass { pass, buf_vert })
     }
 
     fn create_mouse_pass(
@@ -106,7 +160,7 @@ impl ScreenPipeline {
         pipeline: Arc<WGfxPipeline<Vert2Uv>>,
         extentf: [f32; 2],
         buf_alpha: Subbuffer<[f32]>,
-    ) -> anyhow::Result<MousePass> {
+    ) -> anyhow::Result<BufPass> {
         #[rustfmt::skip]
         let mouse_bytes = [
             0x00, 0x00, 0x00, 0xff,  0x00, 0x00, 0x00, 0xff,  0x00, 0x00, 0x00, 0xff,  0x00, 0x00, 0x00, 0xff,
@@ -140,7 +194,7 @@ impl ScreenPipeline {
         )?;
 
         cmd_xfer.build_and_execute_now()?;
-        Ok(MousePass { pass, buf_vert })
+        Ok(BufPass { pass, buf_vert })
     }
 
     pub(super) fn render(
@@ -150,30 +204,100 @@ impl ScreenPipeline {
         rdr: &mut RenderResources,
     ) -> anyhow::Result<()> {
         let view = ImageView::new_default(capture.image.clone())?;
-
-        self.pass.update_sampler(0, view, app.gfx.texture_filter)?;
         self.buf_alpha.write()?[0] = rdr.alpha;
 
-        rdr.cmd_buf.run_ref(&self.pass)?;
+        for (eye, cmd_buf) in rdr.cmd_bufs.iter_mut().enumerate() {
+            let current = &mut self.pass[eye];
 
-        if let Some(mouse) = capture.mouse.as_ref() {
-            let size = CURSOR_SIZE * self.extentf[1];
-            let half_size = size * 0.5;
+            current
+                .pass
+                .update_sampler(0, view.clone(), app.gfx.texture_filter)?;
 
-            upload_quad_vertices(
-                &mut self.mouse.buf_vert,
-                self.extentf[0],
-                self.extentf[1],
-                mouse.x.mul_add(self.extentf[0], -half_size),
-                mouse.y.mul_add(self.extentf[1], -half_size),
-                size,
-                size,
-            )?;
+            cmd_buf.run_ref(&current.pass)?;
 
-            rdr.cmd_buf.run_ref(&self.mouse.pass)?;
+            if let Some(mouse) = capture.mouse.as_ref() {
+                let size = CURSOR_SIZE * self.extentf[1];
+                let half_size = size * 0.5;
+
+                upload_quad_vertices(
+                    &mut self.mouse.buf_vert,
+                    self.extentf[0],
+                    self.extentf[1],
+                    mouse.x.mul_add(self.extentf[0], -half_size),
+                    mouse.y.mul_add(self.extentf[1], -half_size),
+                    size,
+                    size,
+                )?;
+
+                cmd_buf.run_ref(&self.mouse.pass)?;
+            }
         }
 
         Ok(())
+    }
+}
+
+fn stereo_mode_to_verts(stereo: StereoMode, array_index: usize) -> [Vert2Uv; 4] {
+    let eye = match stereo {
+        StereoMode::RightLeft | StereoMode::BottomTop => (1 - array_index) as f32,
+        _ => array_index as f32,
+    };
+
+    match stereo {
+        StereoMode::None => [
+            Vert2Uv {
+                in_pos: [0., 0.],
+                in_uv: [0., 0.],
+            },
+            Vert2Uv {
+                in_pos: [1., 0.],
+                in_uv: [1., 0.],
+            },
+            Vert2Uv {
+                in_pos: [0., 1.],
+                in_uv: [0., 1.],
+            },
+            Vert2Uv {
+                in_pos: [1., 1.],
+                in_uv: [1., 1.],
+            },
+        ],
+        StereoMode::LeftRight | StereoMode::RightLeft => [
+            Vert2Uv {
+                in_pos: [0., 0.],
+                in_uv: [eye * 0.5, 0.],
+            },
+            Vert2Uv {
+                in_pos: [1., 0.],
+                in_uv: [0.5 + eye * 0.5, 0.],
+            },
+            Vert2Uv {
+                in_pos: [0., 1.],
+                in_uv: [eye * 0.5, 1.],
+            },
+            Vert2Uv {
+                in_pos: [1., 1.],
+                in_uv: [0.5 + eye * 0.5, 1.],
+            },
+        ],
+        StereoMode::TopBottom | StereoMode::BottomTop => [
+            Vert2Uv {
+                in_pos: [0., 0.],
+                in_uv: [0., eye * 0.5],
+            },
+            Vert2Uv {
+                in_pos: [1., 0.],
+                in_uv: [1., eye * 0.5],
+            },
+            Vert2Uv {
+                in_pos: [0., 1.],
+                in_uv: [0., 0.5 + eye * 0.5],
+            },
+            Vert2Uv {
+                in_pos: [1., 1.],
+                in_uv: [1., 0.5 + eye * 0.5],
+            },
+        ],
     }
 }
 

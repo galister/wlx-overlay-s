@@ -67,6 +67,22 @@ impl ButtonPaneTabSwitcher {
         self.active_tab = Some(data);
     }
 
+    pub fn set_tab_visible(&mut self, common: &mut CallbackDataCommon, tab: &str, visible: bool) {
+        let Some(data) = self.tabs[tab].button.as_ref() else {
+            return;
+        };
+
+        let display = if visible {
+            taffy::Display::Flex
+        } else {
+            taffy::Display::None
+        };
+
+        common
+            .alterables
+            .set_style(data.get_rect(), StyleSetRequest::Display(display));
+    }
+
     pub fn reset(&mut self, common: &mut CallbackDataCommon) {
         if let Some(data) = self.active_tab.take() {
             set_tab_active(common, &data, false);
