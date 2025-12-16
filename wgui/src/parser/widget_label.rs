@@ -2,7 +2,8 @@ use crate::{
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		AttribPair, ParserContext, ParserFile, parse_children, parse_widget_universal,
+		AttribPair, ParserContext, ParserFile, parse_check_i32, parse_children, parse_i32, parse_widget_universal,
+		print_invalid_attrib,
 		style::{parse_style, parse_text_style},
 	},
 	widget::label::{WidgetLabel, WidgetLabelParams},
@@ -23,6 +24,13 @@ pub fn parse_widget_label<'a>(
 	for pair in attribs {
 		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
 		match key {
+			"wrap" => {
+				if let Some(num) = parse_i32(value) {
+					params.style.wrap = num == 1;
+				} else {
+					print_invalid_attrib(key, value);
+				}
+			}
 			"text" => {
 				if !value.is_empty() {
 					params.content = Translation::from_raw_text(value);

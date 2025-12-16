@@ -1,40 +1,49 @@
 {
-  "ANCHOR": {
-    "CENTER": "Center"
-  },
-  "WATCH": {
-    "MIRROR": "Add a new mirror overlay",
-    "CLEANUP_MIRRORS": "Remove mirrors that are\nnot currently visible",
-    "RECENTER": "Recenter playspace",
-    "FIX_FLOOR": "Fix floor level",
-    "EDIT_MODE_EXPLANATION": "Overlays can now be moved and tuned individually.\nControl which overlays are visible on this set:",
-    "DASHBOARD": "Dashboard",
-    "EDIT_MODE": "Edit Mode",
-    "ADD_NEW_SET": "Add a new set",
-    "SWITCH_TO_SET": "Switch to set",
-    "TOGGLE_FOR_CURRENT_SET": "Toggle for current set",
-    "LONG_PRESS_TO_DELETE_SET": "Hold to delete"
-  },
-  "EDIT_MODE": {
-    "ADJUST_CURVATURE": "Adjust curvature",
-    "ALPHA_BLEND_MODE": "Alpha blend mode",
-    "BLENDING_ADDITIVE": "Additive blending",
-    "CURVATURE": "Curvature",
-    "DELETE": "Long press to remove from current set",
-    "HINT_POINT_WINDOW": "Point at a window to change its parameters.\nOnce done, leave edit mode using the button on the right.",
-    "LEAVE": "Leave edit mode",
-    "LOCK_INTERACTION": "Lock interaction",
-    "DISABLE_GRAB": "Disable grab",
-    "MOVE_PRESS_AND_DRAG": "Move (press & drag)",
-    "OPACITY": "Opacity",
-    "POSITIONING": "Positioning",
-    "RESIZE_PRESS_AND_DRAG": "Resize (press & drag)",
-    "POS_STATIC": "Static: Stay in place and never recenter.",
-    "POS_ANCHORED": "Anchored: Moves together with the rest of the set. Default.",
-    "POS_FLOATING": "Floating: Stay in place, recenter when shown.",
-    "POS_HMD": "Follow the HMD.",
-    "POS_HAND_L": "Follow the left hand.",
-    "POS_HAND_R": "Follow the right hand.",
-    "INTERPOLATION": "Interpolation"
-  }
+	"ANCHOR": {
+		"CENTER": "Center"
+	},
+	"DISABLED": "Disabled",
+	"EDIT_MODE": {
+		"ADJUST_CURVATURE": "Adjust curvature",
+		"ALPHA_BLEND_MODE": "Alpha blend mode",
+		"BLENDING_ADDITIVE": "Additive blending",
+		"CURVATURE": "Curvature",
+		"DELETE": "Long press to remove from current set",
+		"DISABLE_GRAB": "Disable grab",
+		"HINT_POINT_WINDOW": "Point at a window to change its parameters.\nOnce done, leave edit mode using the button on the right.",
+		"INTERPOLATION": "Interpolation",
+		"KEYBOARD": "Keyboard",
+		"LEAVE": "Leave edit mode",
+		"LOCK_INTERACTION": "Lock interaction",
+		"MOVE_PRESS_AND_DRAG": "Move (press & drag)",
+		"OPACITY": "Opacity",
+		"POS_ANCHORED": "Anchored: Moves together with the rest of the set. Default.",
+		"POS_FLOATING": "Floating: Stay in place, recenter when shown.",
+		"POS_HAND_L": "Follow the left hand.",
+		"POS_HAND_R": "Follow the right hand.",
+		"POS_HMD": "Follow the HMD.",
+		"POS_STATIC": "Static: Stay in place and never recenter.",
+		"POSITIONING": "Positioning",
+		"RESIZE_PRESS_AND_DRAG": "Resize (press & drag)",
+		"STEREO_3D_MODE": {
+			"SPLIT_BOTTOM_TOP": "BOTTOM→TOP",
+			"SPLIT_LEFT_RIGHT": "LEFT→RIGHT",
+			"SPLIT_RIGHT_LEFT": "RIGHT→LEFT",
+			"SPLIT_TOP_BOTTOM": "TOP→BOTTOM",
+			"TITLE": "3D Stereo Mode"
+		}
+	},
+	"WATCH": {
+		"ADD_NEW_SET": "Add a new set",
+		"CLEANUP_MIRRORS": "Remove mirrors that are\nnot currently visible",
+		"DASHBOARD": "Dashboard",
+		"EDIT_MODE": "Edit Mode",
+		"EDIT_MODE_EXPLANATION": "Overlays can now be moved and tuned individually.\nControl which overlays are visible on this set:",
+		"FIX_FLOOR": "Fix floor level",
+		"LONG_PRESS_TO_DELETE_SET": "Hold to delete",
+		"MIRROR": "Add a new mirror overlay",
+		"RECENTER": "Recenter playspace",
+		"SWITCH_TO_SET": "Switch to set",
+		"TOGGLE_FOR_CURRENT_SET": "Toggle for current set"
+	}
 }

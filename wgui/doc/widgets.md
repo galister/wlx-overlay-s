@@ -104,6 +104,10 @@ _Translated by key_
 
 _Text size in pixel units_
 
+`wrap`: "1" | "0" (default: "0")
+
+_Enable text wrapping?_
+
 `color`: #FFAABB | #FFAABBCC
 
 `align`: "left" | "right" | "center" | "justified" | "end"

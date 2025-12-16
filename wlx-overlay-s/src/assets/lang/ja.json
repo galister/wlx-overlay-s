@@ -35,6 +35,17 @@
     "POS_HMD": "HMD に追従する。",
     "POS_HAND_L": "左手に追従する。",
     "POS_HAND_R": "右手に追従する。",
-    "INTERPOLATION": "補間"
-  }
+    "INTERPOLATION": "補間",
+    "KEYBOARD": "キーボード",
+    "STEREO_3D_MODE_A": {},
+    "STEREO_3D_MODE": {
+      "TITLE": "ステレオ3Dモード",
+      "SPLIT_LEFT_RIGHT": "左→右",
+      "SPLIT_RIGHT_LEFT": "右→左",
+      "SPLIT_TOP_BOTTOM": "上→下",
+      "SPLIT_BOTTOM_TOP": "下→上"
+    },
+    "STEREO_3D_MODE_": {}
+  },
+  "DISABLED": "無効"
 }

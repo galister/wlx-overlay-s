@@ -44,7 +44,7 @@
                 <TopButton sticky="0" id="top_pos" src="edit/anchor.svg" tooltip="EDIT_MODE.POSITIONING" press="::EditModeTab pos" />
                 <TopButton sticky="0" id="top_alpha" src="edit/fade.svg" tooltip="EDIT_MODE.OPACITY" press="::EditModeTab alpha" />
                 <TopButton sticky="0" id="top_curve" src="edit/curve.svg" tooltip="EDIT_MODE.ADJUST_CURVATURE" press="::EditModeTab curve" />
-                <TopButton sticky="0" id="top_stereo" src="edit/3d.svg" tooltip="EDIT_MODE.STEREO_MODE" press="::EditModeTab stereo" />
+                <TopButton sticky="0" id="top_stereo" src="edit/3d.svg" tooltip="EDIT_MODE.STEREO_3D_MODE.TITLE" press="::EditModeTab stereo" />
                 <!-- TopButton sticky="0" id="top_move" src="edit/move-all.svg" tooltip="EDIT_MODE.MOVE_PRESS_AND_DRAG" / -->
                 <!-- TopButton sticky="0" id="top_resize" src="edit/resize.svg" tooltip="EDIT_MODE.RESIZE_PRESS_AND_DRAG" / -->
                 <TopButtonDanger src="edit/delete.svg" tooltip="EDIT_MODE.DELETE" press="::EditModeDeletePress" release="::EditModeDeleteRelease" />
@@ -52,7 +52,7 @@
                 <TopButtonFaded src="watch/edit.svg" tooltip="EDIT_MODE.LEAVE" press="::EditToggle" />
               </div>
               <div id="tab_none" display="none" height="100">
-                  <label align="center" translation="EDIT_MODE.HINT_POINT_WINDOW" />
+                <label align="center" translation="EDIT_MODE.HINT_POINT_WINDOW" />
               </div>
               <div id="tab_pos" display="none" height="100" flex_direction="column">
                 <div padding="8" gap="8" justify_content="center" align_items="center">
@@ -70,11 +70,11 @@
               </div>
               <div id="tab_stereo" display="none" height="100" flex_direction="column">
                 <div padding="8" gap="8" justify_content="center" align_items="center">
-                  <PosButton id="stereo_none" src="edit/3d.svg" tooltip="EDIT_MODE.STEREO_NONE" press="::EditModeSetStereo none" />
-                  <PosButton id="stereo_leftright" src="edit/3d_leftright.svg" tooltip="EDIT_MODE.STEREO_LEFTRIGHT" press="::EditModeSetStereo leftright" />
-                  <PosButton id="stereo_rightleft" src="edit/3d_rightleft.svg" tooltip="EDIT_MODE.STEREO_RIGHTLEFT" press="::EditModeSetStereo rightleft" />
-                  <PosButton id="stereo_topbottom" src="edit/3d_topbottom.svg" tooltip="EDIT_MODE.STEREO_TOPBOTTOM" press="::EditModeSetStereo topbottom" />
-                  <PosButton id="stereo_bottomtop" src="edit/3d_bottomtop.svg" tooltip="EDIT_MODE.STEREO_BOTTOMTOP" press="::EditModeSetStereo bottomtop" />
+                  <PosButton id="stereo_none" src="edit/close.svg" tooltip="DISABLED" press="::EditModeSetStereo none" />
+                  <PosButton id="stereo_leftright" src="edit/3d_leftright.svg" tooltip="EDIT_MODE.STEREO_3D_MODE.SPLIT_LEFT_RIGHT" press="::EditModeSetStereo leftright" />
+                  <PosButton id="stereo_rightleft" src="edit/3d_rightleft.svg" tooltip="EDIT_MODE.STEREO_3D_MODE.SPLIT_RIGHT_LEFT" press="::EditModeSetStereo rightleft" />
+                  <PosButton id="stereo_topbottom" src="edit/3d_topbottom.svg" tooltip="EDIT_MODE.STEREO_3D_MODE.SPLIT_TOP_BOTTOM" press="::EditModeSetStereo topbottom" />
+                  <PosButton id="stereo_bottomtop" src="edit/3d_bottomtop.svg" tooltip="EDIT_MODE.STEREO_3D_MODE.SPLIT_BOTTOM_TOP" press="::EditModeSetStereo bottomtop" />
                 </div>
               </div>
               <div id="tab_alpha" display="none" height="100" padding="8" gap="8" justify_content="center" align_items="center">
