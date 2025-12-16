@@ -16,7 +16,7 @@ use crate::backend::input::TrackedDeviceRole;
 
 pub struct OscSender {
     last_sent_overlay: Instant,
-    last_sent_battery: Instant,
+    last_sent_device: Instant,
     upstream: UdpSocket,
 }
 
@@ -35,7 +35,7 @@ impl OscSender {
         Ok(Self {
             upstream,
             last_sent_overlay: Instant::now(),
-            last_sent_battery: Instant::now(),
+            last_sent_device: Instant::now(),
         })
     }
 
@@ -55,7 +55,7 @@ impl OscSender {
     #[allow(clippy::too_many_lines)]
     pub fn send_params<D>(
         &mut self,
-        overlays: &OverlayWindowManager<D>,
+        overlay_manager: &OverlayWindowManager<D>,
         devices: &Vec<TrackedDevice>,
     ) -> anyhow::Result<()>
     where
@@ -65,11 +65,15 @@ impl OscSender {
         if self.last_sent_overlay.elapsed().as_millis() >= 100 {
             self.last_sent_overlay = Instant::now();
 
+            let edit_mode = overlay_manager.get_edit_mode();
+            let current_set = overlay_manager.get_current_set().unwrap_or(0) as i32;
+            let total_sets = overlay_manager.get_total_sets() as i32;
+
+            // check state of each active overlay and count them
             let mut num_overlays = 0;
             let mut has_keyboard = false;
             let mut has_wrist = false;
-
-            for o in overlays.values() {
+            for o in overlay_manager.values() {
                 let Some(state) = o.config.active_state.as_ref() else {
                     continue;
                 };
@@ -84,6 +88,7 @@ impl OscSender {
                 }
             }
 
+            // overlays
             self.send_message(
                 "/avatar/parameters/isOverlayOpen".into(),
                 vec![OscType::Bool(num_overlays > 0)],
@@ -92,7 +97,34 @@ impl OscSender {
                 "/avatar/parameters/ToggleWindows".into(),
                 vec![OscType::Bool(num_overlays > 0)],
             )?;
+            self.send_message(
+                "/avatar/parameters/openOverlayCount".into(),
+                vec![OscType::Int(num_overlays)],
+            )?;
 
+            // working sets
+            self.send_message(
+                "/avatar/parameters/isEditModeActive".into(),
+                vec![OscType::Bool(edit_mode)],
+            )?;
+            self.send_message(
+                "/avatar/parameters/ToggleEditMode".into(),
+                vec![OscType::Bool(edit_mode)],
+            )?;
+            self.send_message(
+                "/avatar/parameters/currentWorkingSet".into(),
+                vec![OscType::Int(current_set)],
+            )?;
+            self.send_message(
+                "/avatar/parameters/CurrentProfile".into(),
+                vec![OscType::Int(current_set)],
+            )?;
+            self.send_message(
+                "/avatar/parameters/totalWorkingSets".into(),
+                vec![OscType::Int(total_sets)],
+            )?;
+
+            // keyboard
             self.send_message(
                 "/avatar/parameters/isKeyboardOpen".into(),
                 vec![OscType::Bool(has_keyboard)],
@@ -102,19 +134,16 @@ impl OscSender {
                 vec![OscType::Bool(has_keyboard)],
             )?;
 
+            // watch
             self.send_message(
                 "/avatar/parameters/isWristVisible".into(),
                 vec![OscType::Bool(has_wrist)],
             )?;
-            self.send_message(
-                "/avatar/parameters/openOverlayCount".into(),
-                vec![OscType::Int(num_overlays)],
-            )?;
         }
 
-        // send device/battery parameters every 10 seconds
-        if self.last_sent_battery.elapsed().as_millis() >= 10000 {
-            self.last_sent_battery = Instant::now();
+        // send device parameters every 10 seconds
+        if self.last_sent_device.elapsed().as_millis() >= 10000 {
+            self.last_sent_device = Instant::now();
 
             let mut tracker_count: i8 = 0;
             let mut controller_count: i8 = 0;

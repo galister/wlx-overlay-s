@@ -362,6 +362,14 @@ impl<T> OverlayWindowManager<T> {
         self.edit_mode
     }
 
+    pub const fn get_current_set(&self) -> Option<usize> {
+        self.current_set
+    }
+
+    pub const fn get_total_sets(&self) -> usize {
+        self.sets.len()
+    }
+
     pub fn set_edit_mode(&mut self, enabled: bool, app: &mut AppState) -> anyhow::Result<()> {
         let changed = enabled != self.edit_mode;
         self.edit_mode = enabled;
