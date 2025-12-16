@@ -86,8 +86,8 @@ impl Drop for ComponentTooltip {
 	}
 }
 
-pub const TOOLTIP_COLOR: Color = Color::new(0.1, 0.1, 0.1, 0.9);
-pub const TOOLTIP_BORDER_COLOR: Color = Color::new(0.3, 0.3, 0.3, 1.0);
+pub const TOOLTIP_COLOR: Color = Color::new(0.02, 0.02, 0.02, 0.95);
+pub const TOOLTIP_BORDER_COLOR: Color = Color::new(0.4, 0.4, 0.4, 1.0);
 
 #[allow(clippy::too_many_lines)]
 pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Result<(WidgetPair, Rc<ComponentTooltip>)> {

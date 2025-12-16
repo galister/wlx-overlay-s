@@ -19,7 +19,12 @@ if (template_name === undefined) {
 }
 
 if (lang_path === undefined) {
-  console.log("LANG_PATH is not set. Try one of these:\n\nLANG_PATH=../../uidev/assets/lang/ ./run.sh\nLANG_PATH=../../dash-frontend/assets/lang/ ./run.sh\n");
+  console.log(
+    `LANG_PATH is not set.
+Try one of these:
+LANG_PATH=../../uidev/assets/lang/ ./run.sh
+LANG_PATH=../../dash-frontend/assets/lang/ ./run.sh
+LANG_PATH=../../wlx-overlay-s/src/assets/lang/ ./run.sh`);
   exit(-1);
 }
 

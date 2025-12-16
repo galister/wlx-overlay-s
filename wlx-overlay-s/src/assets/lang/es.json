@@ -35,6 +35,17 @@
     "POS_HMD": "Seguir el HMD.",
     "POS_HAND_L": "Seguir la mano izquierda.",
     "POS_HAND_R": "Seguir la mano derecha.",
-    "INTERPOLATION": "Interpolación"
-  }
+    "INTERPOLATION": "Interpolación",
+    "KEYBOARD": "Teclado",
+    "STEREO_3D_MODE_A": {},
+    "STEREO_3D_MODE": {
+      "TITLE": "Modo Estéreo 3D",
+      "SPLIT_LEFT_RIGHT": "IZQ→DER",
+      "SPLIT_RIGHT_LEFT": "DERECHA→IZQUIERDA",
+      "SPLIT_TOP_BOTTOM": "ARRIBA→ABAJO",
+      "SPLIT_BOTTOM_TOP": "ABAJO→ARRIBA"
+    },
+    "STEREO_3D_MODE_": {}
+  },
+  "DISABLED": "Deshabilitado"
 }
