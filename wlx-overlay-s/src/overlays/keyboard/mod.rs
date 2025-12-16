@@ -1,8 +1,8 @@
 use std::{
-    cell::Cell,
+    cell::{Cell, LazyCell},
     collections::HashMap,
     process::{Child, Command},
-    sync::atomic::Ordering,
+    sync::{LazyLock, atomic::Ordering},
 };
 
 use crate::{
@@ -22,6 +22,7 @@ use crate::{
 };
 use anyhow::Context;
 use glam::{Affine3A, Quat, Vec3, vec3};
+use regex::Regex;
 use slotmap::{SlotMap, new_key_type};
 use wgui::{
     drawing,
@@ -62,6 +63,7 @@ pub fn create_keyboard(app: &mut AppState, wayland: bool) -> anyhow::Result<Over
         default_state,
         wlx_layout: layout,
         wayland,
+        re_fcitx: Regex::new(r"^keyboard-([^-]+)(?:-([^-]+))?$").unwrap(),
     };
 
     let mut maybe_keymap = backend
@@ -108,6 +110,7 @@ struct KeyboardBackend {
     default_state: KeyboardState,
     wlx_layout: layout::Layout,
     wayland: bool,
+    re_fcitx: Regex,
 }
 
 impl KeyboardBackend {
@@ -192,10 +195,13 @@ impl KeyboardBackend {
             return self.switch_keymap(&keymap, app);
         };
 
-        if fcitx_layout.starts_with("keyboard-") {
-            let keymap = XkbKeymap::from_layout_str(&fcitx_layout[9..])
-                .context("layout is invalid")
-                .inspect_err(|e| log::warn!("fcitx layout {fcitx_layout}: {e:?}"))?;
+        if let Some(captures) = self.re_fcitx.captures(&fcitx_layout) {
+            let keymap = XkbKeymap::from_layout_variant(
+                captures.get(1).map(|g| g.as_str()).unwrap_or(""),
+                captures.get(2).map(|g| g.as_str()).unwrap_or(""),
+            )
+            .context("layout/variant is invalid")
+            .inspect_err(|e| log::warn!("fcitx layout {fcitx_layout}: {e:?}"))?;
             app.hid_provider.keymap_changed(&keymap);
             self.switch_keymap(&keymap, app)
         } else if SYSTEM_LAYOUT_ALIASES.contains(&fcitx_layout.as_str()) {

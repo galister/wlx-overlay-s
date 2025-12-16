@@ -578,10 +578,18 @@ pub struct XkbKeymap {
 }
 
 impl XkbKeymap {
-    pub fn from_layout_str(layout: &str) -> Option<Self> {
+    pub fn from_layout_variant(layout: &str, variant: &str) -> Option<Self> {
         let context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
-        xkb::Keymap::new_from_names(&context, "", "", layout, "", None, xkb::COMPILE_NO_FLAGS)
-            .map(|inner| XkbKeymap { inner })
+        xkb::Keymap::new_from_names(
+            &context,
+            "",
+            "",
+            layout,
+            variant,
+            None,
+            xkb::COMPILE_NO_FLAGS,
+        )
+        .map(|inner| XkbKeymap { inner })
     }
 
     pub fn get_name(&self) -> Option<&str> {
