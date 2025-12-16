@@ -1,8 +1,8 @@
 use std::{
-    cell::{Cell, LazyCell},
+    cell::Cell,
     collections::HashMap,
     process::{Child, Command},
-    sync::{LazyLock, atomic::Ordering},
+    sync::atomic::Ordering,
 };
 
 use crate::{
@@ -67,7 +67,7 @@ pub fn create_keyboard(app: &mut AppState, wayland: bool) -> anyhow::Result<Over
     };
 
     let mut maybe_keymap = backend
-        .get_system_keymap()
+        .get_effective_keymap(app)
         .inspect_err(|e| log::warn!("{e:?}"))
         .ok();
 
@@ -169,52 +169,43 @@ impl KeyboardBackend {
             .state = state_from;
     }
 
-    fn get_system_keymap(&mut self) -> anyhow::Result<XkbKeymap> {
-        #[cfg(feature = "wayland")]
-        if self.wayland {
-            return get_keymap_wl();
+    fn get_effective_keymap(&mut self, app: &mut AppState) -> anyhow::Result<XkbKeymap> {
+        fn get_system_keymap(wayland: bool) -> anyhow::Result<XkbKeymap> {
+            if wayland {
+                get_keymap_wl()
+            } else {
+                get_keymap_x11()
+            }
         }
 
-        #[cfg(feature = "x11")]
-        if !self.wayland {
-            return get_keymap_x11();
-        }
-
-        unreachable!();
-    }
-
-    fn auto_switch_keymap(&mut self, app: &mut AppState) -> anyhow::Result<bool> {
         let Ok(fcitx_layout) = app
             .dbus
             .fcitx_keymap()
             .context("Could not keymap via fcitx5, falling back to wayland")
             .inspect_err(|e| log::warn!("{e:?}"))
         else {
-            let keymap = self.get_system_keymap()?;
-            app.hid_provider.keymap_changed(&keymap);
-            return self.switch_keymap(&keymap, app);
+            return get_system_keymap(self.wayland);
         };
 
         if let Some(captures) = self.re_fcitx.captures(&fcitx_layout) {
-            let keymap = XkbKeymap::from_layout_variant(
+            XkbKeymap::from_layout_variant(
                 captures.get(1).map(|g| g.as_str()).unwrap_or(""),
                 captures.get(2).map(|g| g.as_str()).unwrap_or(""),
             )
             .context("layout/variant is invalid")
-            .inspect_err(|e| log::warn!("fcitx layout {fcitx_layout}: {e:?}"))?;
-            app.hid_provider.keymap_changed(&keymap);
-            self.switch_keymap(&keymap, app)
         } else if SYSTEM_LAYOUT_ALIASES.contains(&fcitx_layout.as_str()) {
             log::debug!("{fcitx_layout} is an IME, switching to system layout.");
-            let keymap = self.get_system_keymap()?;
-            app.hid_provider.keymap_changed(&keymap);
-            self.switch_keymap(&keymap, app)
+            get_system_keymap(self.wayland)
         } else {
             log::warn!("Unknown layout or IME '{fcitx_layout}', using system layout");
-            let keymap = self.get_system_keymap()?;
-            app.hid_provider.keymap_changed(&keymap);
-            return self.switch_keymap(&keymap, app);
+            get_system_keymap(self.wayland)
         }
+    }
+
+    fn auto_switch_keymap(&mut self, app: &mut AppState) -> anyhow::Result<bool> {
+        let keymap = self.get_effective_keymap(app)?;
+        app.hid_provider.keymap_changed(&keymap);
+        self.switch_keymap(&keymap, app)
     }
 
     fn panel(&mut self) -> &mut GuiPanel<KeyboardState> {

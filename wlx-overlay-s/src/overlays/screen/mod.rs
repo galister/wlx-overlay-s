@@ -6,7 +6,7 @@ use wlx_common::windowing::{OverlayWindowState, Positioning};
 
 use crate::{
     state::{AppSession, AppState, ScreenMeta},
-    subsystem::{hid::XkbKeymap, input::KeyboardFocus},
+    subsystem::input::KeyboardFocus,
     windowing::{
         backend::OverlayBackend,
         window::{OverlayCategory, OverlayWindowConfig},
