@@ -127,7 +127,7 @@ The click type depends on the laser color:
 
 ### The keyboard
 
-The keyboard is fully customizable via the [keyboard.yaml](https://raw.githubusercontent.com/galister/wlx-overlay-s/main/src/res/keyboard.yaml) file. \
+The keyboard is fully customizable via the [keyboard.yaml](https://raw.githubusercontent.com/galister/wlx-overlay-s/main/wlx-overlay-s/src/res/keyboard.yaml) file. \
 Download it into the `~/.config/wlxoverlay/` folder and edit it to your liking.
 
 Typing
