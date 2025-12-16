@@ -1,5 +1,5 @@
 use glam::Vec2;
-use idmap::{idmap, IdMap};
+use idmap::{IdMap, idmap};
 use idmap_derive::IntegerId;
 use input_linux::{
     AbsoluteAxis, AbsoluteInfo, AbsoluteInfoSetup, EventKind, InputId, Key, RelativeAxis,

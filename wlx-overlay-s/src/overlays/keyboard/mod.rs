@@ -6,23 +6,23 @@ use std::{
 };
 
 use crate::{
+    KEYMAP_CHANGE,
     backend::input::{HoverResult, PointerHit},
     gui::panel::GuiPanel,
     overlays::keyboard::{builder::create_keyboard_panel, layout::AltModifier},
     state::AppState,
     subsystem::hid::{
-        get_keymap_wl, get_keymap_x11, KeyModifier, VirtualKey, WheelDelta, XkbKeymap, ALT, CTRL,
-        META, SHIFT, SUPER,
+        ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey, WheelDelta, XkbKeymap,
+        get_keymap_wl, get_keymap_x11,
     },
     windowing::{
         backend::{FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender},
         window::OverlayWindowConfig,
     },
-    KEYMAP_CHANGE,
 };
 use anyhow::Context;
-use glam::{vec3, Affine3A, Quat, Vec3};
-use slotmap::{new_key_type, SlotMap};
+use glam::{Affine3A, Quat, Vec3, vec3};
+use slotmap::{SlotMap, new_key_type};
 use wgui::{
     drawing,
     event::{InternalStateChangeEvent, MouseButton, MouseButtonIndex},
@@ -180,16 +180,21 @@ impl KeyboardBackend {
         unreachable!();
     }
 
-    fn switch_to_fcitx_keymap(&mut self, app: &mut AppState) -> anyhow::Result<bool> {
-        let fcitx_layout = app
+    fn auto_switch_keymap(&mut self, app: &mut AppState) -> anyhow::Result<bool> {
+        let Ok(fcitx_layout) = app
             .dbus
             .fcitx_keymap()
-            .context("Could not fetch Fcitx5 keymap")
-            .inspect_err(|e| log::warn!("{e:?}"))?;
+            .context("Could not keymap via fcitx5, falling back to wayland")
+            .inspect_err(|e| log::warn!("{e:?}"))
+        else {
+            let keymap = self.get_system_keymap()?;
+            app.hid_provider.keymap_changed(&keymap);
+            return self.switch_keymap(&keymap, app);
+        };
 
         if fcitx_layout.starts_with("keyboard-") {
             let keymap = XkbKeymap::from_layout_str(&fcitx_layout[9..])
-                .context("Could not load Fcitx5 keymap")
+                .context("layout is invalid")
                 .inspect_err(|e| log::warn!("fcitx layout {fcitx_layout}: {e:?}"))?;
             app.hid_provider.keymap_changed(&keymap);
             self.switch_keymap(&keymap, app)
@@ -199,7 +204,10 @@ impl KeyboardBackend {
             app.hid_provider.keymap_changed(&keymap);
             self.switch_keymap(&keymap, app)
         } else {
-            anyhow::bail!("Unknown layout or IME: {fcitx_layout}");
+            log::warn!("Unknown layout or IME '{fcitx_layout}', using system layout");
+            let keymap = self.get_system_keymap()?;
+            app.hid_provider.keymap_changed(&keymap);
+            return self.switch_keymap(&keymap, app);
         }
     }
 
@@ -215,7 +223,7 @@ impl OverlayBackend for KeyboardBackend {
     fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
         while KEYMAP_CHANGE.swap(false, Ordering::Relaxed) {
             if self
-                .switch_to_fcitx_keymap(app)
+                .auto_switch_keymap(app)
                 .inspect_err(|e| log::warn!("{e:?}"))
                 .unwrap_or(false)
             {
