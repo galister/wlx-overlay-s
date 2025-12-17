@@ -410,7 +410,7 @@ impl<T> OverlayWindowManager<T> {
             return;
         };
 
-        if overlay.config.global {
+        if matches!(overlay.config.category, OverlayCategory::Internal) {
             // watch, anchor, toast, dashboard
             return;
         }
@@ -449,9 +449,12 @@ impl<T> OverlayWindowManager<T> {
         };
 
         let ret_val = self.overlays.remove(id);
-        let internal = ret_val
-            .as_ref()
-            .is_some_and(|o| matches!(o.config.category, OverlayCategory::Internal));
+        let internal = ret_val.as_ref().is_some_and(|o| {
+            matches!(
+                o.config.category,
+                OverlayCategory::Internal | OverlayCategory::Keyboard
+            )
+        });
 
         if !internal && let Err(e) = self.overlays_changed(app) {
             log::error!("Error while removing overlay: {e:?}");
@@ -502,7 +505,10 @@ impl<T> OverlayWindowManager<T> {
 
         let name = overlay.config.name.clone();
         let global = overlay.config.global;
-        let internal = matches!(overlay.config.category, OverlayCategory::Internal);
+        let internal = matches!(
+            overlay.config.category,
+            OverlayCategory::Internal | OverlayCategory::Keyboard
+        );
         let show_on_spawn = overlay.config.show_on_spawn;
 
         let oid = self.overlays.insert(overlay);
@@ -603,7 +609,10 @@ impl<T> OverlayWindowManager<T> {
     fn overlays_changed(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         let mut meta = Vec::with_capacity(self.overlays.len());
         for (id, data) in &self.overlays {
-            if matches!(data.config.category, OverlayCategory::Internal) {
+            if matches!(
+                data.config.category,
+                OverlayCategory::Internal | OverlayCategory::Keyboard
+            ) {
                 continue;
             }
             meta.push(OverlayMeta {

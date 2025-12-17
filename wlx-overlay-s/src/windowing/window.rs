@@ -53,6 +53,7 @@ impl<T> OverlayWindowData<T> {
 #[derive(Debug, Clone, Copy, IntegerId, PartialEq)]
 pub enum OverlayCategory {
     Internal,
+    Keyboard,
     Panel,
     Screen,
     Mirror,

@@ -20,7 +20,7 @@ use crate::{
             BackendAttrib, BackendAttribValue, FrameMeta, OverlayBackend, OverlayEventData,
             RenderResources, ShouldRender,
         },
-        window::OverlayWindowConfig,
+        window::{OverlayCategory, OverlayWindowConfig},
     },
 };
 use anyhow::Context;
@@ -86,6 +86,7 @@ pub fn create_keyboard(app: &mut AppState, wayland: bool) -> anyhow::Result<Over
 
     Ok(OverlayWindowConfig {
         name: KEYBOARD_NAME.into(),
+        category: OverlayCategory::Keyboard,
         default_state: OverlayWindowState {
             grabbable: true,
             positioning: Positioning::Anchored,
