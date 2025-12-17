@@ -1,7 +1,7 @@
 use crate::{
 	assets::AssetPath,
 	layout::WidgetID,
-	parser::{AttribPair, ParserContext, ParserFile, parse_children, parse_widget_universal, style::parse_style},
+	parser::{parse_children, parse_widget_universal, style::parse_style, AttribPair, ParserContext, ParserFile},
 	renderer_vk::text::custom_glyph::{CustomGlyphContent, CustomGlyphData},
 	widget::sprite::{WidgetSprite, WidgetSpriteParams},
 };

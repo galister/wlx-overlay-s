@@ -14,8 +14,8 @@ use wlx_common::{
 use crate::{
     backend::task::OverlayTask,
     overlays::{
-        anchor::create_anchor, edit::EditWrapperManager, keyboard::create_keyboard,
-        screen::create_screens, toast::Toast, watch::create_watch,
+        anchor::create_anchor, custom::create_custom, edit::EditWrapperManager,
+        keyboard::create_keyboard, screen::create_screens, toast::Toast, watch::create_watch,
     },
     state::AppState,
     windowing::{
@@ -113,6 +113,15 @@ where
 
         let watch = OverlayWindowData::from_config(create_watch(app)?);
         me.watch_id = me.add(watch, app);
+
+        let custom_panels = app.session.config.custom_panels.clone();
+        for name in custom_panels.into_iter() {
+            let Some(panel) = create_custom(app, name) else {
+                continue;
+            };
+            log::info!("Loaded custom panel '{}'", panel.name);
+            me.add(OverlayWindowData::from_config(panel), app);
+        }
 
         // overwrite default layout with saved layout, if exists
         me.restore_layout(app);
@@ -375,7 +384,7 @@ impl<T> OverlayWindowManager<T> {
         self.edit_mode = enabled;
         if !enabled {
             for o in self.overlays.values_mut() {
-                self.wrappers.unwrap_edit_mode(&mut o.config);
+                self.wrappers.unwrap_edit_mode(&mut o.config, app)?;
             }
         }
         if changed && let Some(watch) = self.mut_by_id(self.watch_id) {
@@ -412,7 +421,10 @@ impl<T> OverlayWindowManager<T> {
                 .inspect_err(|e| log::error!("{e:?}"))
                 .unwrap(); // FIXME: unwrap
         } else {
-            self.wrappers.unwrap_edit_mode(&mut overlay.config);
+            self.wrappers
+                .unwrap_edit_mode(&mut overlay.config, app)
+                .inspect_err(|e| log::error!("{e:?}"))
+                .unwrap(); // FIXME: unwrap
         }
     }
 

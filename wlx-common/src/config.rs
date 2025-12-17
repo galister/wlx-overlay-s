@@ -88,7 +88,7 @@ fn def_timezones() -> Vec<String> {
 	}
 }
 
-const fn def_screens() -> AStrSet {
+const fn def_astrset_empty() -> AStrSet {
 	AStrSet::new()
 }
 
@@ -187,7 +187,10 @@ pub struct GeneralConfig {
 	#[serde(default = "def_false")]
 	pub double_cursor_fix: bool,
 
-	#[serde(default = "def_screens")]
+	#[serde(default = "def_astrset_empty")]
+	pub custom_panels: AStrSet,
+
+	#[serde(default = "def_astrset_empty")]
 	pub show_screens: AStrSet,
 
 	#[serde(default = "def_curve_values")]

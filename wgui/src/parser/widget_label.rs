@@ -2,9 +2,9 @@ use crate::{
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		AttribPair, ParserContext, ParserFile, parse_check_i32, parse_children, parse_i32, parse_widget_universal,
-		print_invalid_attrib,
+		parse_children, parse_i32, parse_widget_universal, print_invalid_attrib,
 		style::{parse_style, parse_text_style},
+		AttribPair, ParserContext, ParserFile,
 	},
 	widget::label::{WidgetLabel, WidgetLabelParams},
 };

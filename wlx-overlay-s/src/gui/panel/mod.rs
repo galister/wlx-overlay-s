@@ -74,6 +74,7 @@ pub struct NewGuiPanelParams<S> {
     pub on_custom_id: Option<OnCustomIdFunc<S>>, // used only in `new_from_template`
     pub on_custom_attrib: Option<OnCustomAttribFunc>, // used only in `new_from_template`
     pub resize_to_parent: bool,
+    pub external_xml: bool,
     pub gui_scale: f32,
 }
 
@@ -83,6 +84,7 @@ impl<S> Default for NewGuiPanelParams<S> {
             on_custom_id: None,
             on_custom_attrib: None,
             resize_to_parent: false,
+            external_xml: false,
             gui_scale: 1.0,
         }
     }
@@ -99,7 +101,10 @@ impl<S: 'static> GuiPanel<S> {
 
         let doc_params = wgui::parser::ParseDocumentParams {
             globals: app.wgui_globals.clone(),
-            path: AssetPath::FileOrBuiltIn(path),
+            path: params
+                .external_xml
+                .then_some(AssetPath::File(path))
+                .unwrap_or(AssetPath::FileOrBuiltIn(path)),
             extra: wgui::parser::ParseDocumentExtra {
                 on_custom_attribs: Some(Box::new({
                     let custom_elems = custom_elems.clone();
@@ -244,6 +249,7 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
     }
 
     fn resume(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+        self.layout.needs_redraw = true;
         self.timestep.reset();
         Ok(())
     }

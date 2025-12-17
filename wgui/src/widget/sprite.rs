@@ -8,8 +8,8 @@ use crate::{
 	globals::Globals,
 	layout::WidgetID,
 	renderer_vk::text::{
-		DEFAULT_METRICS,
 		custom_glyph::{CustomGlyph, CustomGlyphData},
+		DEFAULT_METRICS,
 	},
 };
 
@@ -23,7 +23,7 @@ pub struct WidgetSpriteParams {
 
 #[derive(Debug, Default)]
 pub struct WidgetSprite {
-	pub params: WidgetSpriteParams,
+	params: WidgetSpriteParams,
 	id: WidgetID,
 }
 
@@ -33,6 +33,22 @@ impl WidgetSprite {
 			params,
 			id: WidgetID::null(),
 		}))
+	}
+
+	pub fn set_color(&mut self, color: drawing::Color) {
+		self.params.color = Some(color);
+	}
+
+	pub fn get_color(&self) -> Option<drawing::Color> {
+		self.params.color
+	}
+
+	pub fn set_content(&mut self, content: Option<CustomGlyphData>) {
+		self.params.glyph_data = content;
+	}
+
+	pub fn get_content(&self) -> Option<CustomGlyphData> {
+		self.params.glyph_data.clone()
 	}
 }
 

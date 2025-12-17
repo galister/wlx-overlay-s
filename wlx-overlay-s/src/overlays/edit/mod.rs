@@ -8,7 +8,6 @@ use std::{
 
 use glam::vec2;
 use slotmap::Key;
-use smallvec::smallvec;
 use wgui::{
     components::{button::ComponentButton, checkbox::ComponentCheckbox, slider::ComponentSlider},
     event::{CallbackDataCommon, EventAlterables, EventCallback},
@@ -107,9 +106,13 @@ impl EditWrapperManager {
         Ok(())
     }
 
-    pub fn unwrap_edit_mode(&mut self, owc: &mut OverlayWindowConfig) {
+    pub fn unwrap_edit_mode(
+        &mut self,
+        owc: &mut OverlayWindowConfig,
+        app: &mut AppState,
+    ) -> anyhow::Result<()> {
         if !owc.editing {
-            return;
+            return Ok(());
         }
 
         log::debug!("EditMode unwrap on {}", owc.name);
@@ -125,6 +128,8 @@ impl EditWrapperManager {
         let inner = unsafe { ManuallyDrop::take(&mut wrapper.inner) };
         owc.backend = inner;
         owc.editing = false;
+
+        owc.backend.resume(app)
 
         // wrapper is destroyed with nothing left inside
     }

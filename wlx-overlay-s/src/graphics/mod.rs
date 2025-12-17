@@ -13,7 +13,7 @@ use vulkano::{
     command_buffer::{CommandBufferUsage, PrimaryAutoCommandBuffer, PrimaryCommandBufferAbstract},
     image::view::ImageView,
     memory::allocator::{AllocationCreateInfo, MemoryTypeFilter},
-    sync::{now, GpuFuture},
+    sync::GpuFuture,
 };
 use wgui::gfx::WGfx;
 

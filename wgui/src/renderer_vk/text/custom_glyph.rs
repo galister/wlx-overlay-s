@@ -1,8 +1,8 @@
 use std::{
 	f32,
 	sync::{
-		Arc,
 		atomic::{AtomicUsize, Ordering},
+		Arc,
 	},
 };
 
@@ -14,6 +14,7 @@ use crate::{assets::AssetPath, globals::WguiGlobals};
 
 static AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(0);
 
+/// The raw content of a glyph.
 #[derive(Debug, Clone)]
 pub enum CustomGlyphContent {
 	Svg(Box<Tree>),
@@ -43,6 +44,8 @@ impl CustomGlyphContent {
 	}
 }
 
+/// The cached contents of a glyph.
+/// Clone and reuse this to avoid atlasing the same content twice.
 #[derive(Debug, Clone)]
 pub struct CustomGlyphData {
 	pub(super) id: usize,

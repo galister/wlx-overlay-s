@@ -1,35 +1,39 @@
 use std::sync::Arc;
 
-use glam::{Affine3A, Quat, Vec3, vec3};
+use glam::{vec3, Affine3A, Quat, Vec3};
 use wlx_common::windowing::OverlayWindowState;
 
 use crate::{
-    gui::panel::GuiPanel,
+    gui::panel::{GuiPanel, NewGuiPanelParams},
     state::AppState,
     windowing::window::{OverlayCategory, OverlayWindowConfig},
 };
 
-const SETTINGS_NAME: &str = "settings";
-
-#[allow(unreachable_code)]
-#[allow(unused_variables)]
-#[allow(dead_code)]
 pub fn create_custom(app: &mut AppState, name: Arc<str>) -> Option<OverlayWindowConfig> {
-    return None;
+    let params = NewGuiPanelParams {
+        external_xml: true,
+        ..NewGuiPanelParams::default()
+    };
 
-    unreachable!();
+    let mut panel = GuiPanel::new_from_template(app, &format!("gui/{name}.xml"), (), params)
+        .inspect_err(|e| log::warn!("Error creating '{name}': {e:?}"))
+        .ok()?;
 
-    let panel = GuiPanel::new_blank(app, (), Default::default()).ok()?;
-    panel.update_layout().ok()?;
+    panel
+        .update_layout()
+        .inspect_err(|e| log::warn!("Error layouting '{name}': {e:?}"))
+        .ok()?;
+
+    let scale = panel.layout.content_size.x / 40.0 * 0.05;
 
     Some(OverlayWindowConfig {
         name,
-        category: OverlayCategory::PanelCustom,
+        category: OverlayCategory::Panel,
         default_state: OverlayWindowState {
             interactable: true,
             grabbable: true,
             transform: Affine3A::from_scale_rotation_translation(
-                Vec3::ONE * 0.1, // TODO scale
+                Vec3::ONE * scale,
                 Quat::IDENTITY,
                 vec3(0.0, 0.0, -0.5),
             ),

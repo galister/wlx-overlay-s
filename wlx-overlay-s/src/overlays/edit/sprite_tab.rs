@@ -60,7 +60,7 @@ where
                     anyhow::anyhow!("Element with id=\"{sprite_id}\" must be a <sprite>")
                 })?;
 
-            let sprite = sprite_w.params.glyph_data.clone().ok_or_else(|| {
+            let sprite = sprite_w.get_content().ok_or_else(|| {
                 anyhow::anyhow!("Element with id=\"{sprite_id}\" must have a valid src!")
             })?;
 
@@ -107,7 +107,7 @@ where
             .widgets
             .get_as::<WidgetSprite>(self.top_sprite_id)
         {
-            sprite.params.glyph_data = Some(new.sprite.clone());
+            sprite.set_content(Some(new.sprite.clone()));
         }
     }
 

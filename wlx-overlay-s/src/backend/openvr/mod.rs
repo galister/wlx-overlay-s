@@ -36,7 +36,7 @@ use crate::{
     state::AppState,
     subsystem::notifications::NotificationManager,
     windowing::{
-        backend::{RenderResources, RenderTarget, ShouldRender, StereoMode},
+        backend::{RenderResources, RenderTarget, ShouldRender},
         manager::OverlayWindowManager,
     },
     RUNNING,

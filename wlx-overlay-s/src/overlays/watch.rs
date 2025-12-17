@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use glam::{Affine3A, Quat, Vec3, Vec3A, vec3};
+use glam::{vec3, Affine3A, Quat, Vec3, Vec3A};
 use idmap::DirectIdMap;
 use wgui::{
     components::button::ComponentButton,
@@ -14,7 +14,7 @@ use wgui::{
     parser::Fetchable,
     renderer_vk::text::custom_glyph::CustomGlyphData,
     taffy,
-    widget::{EventResult, sprite::WidgetSprite},
+    widget::{label::WidgetLabel, sprite::WidgetSprite, EventResult},
 };
 use wlx_common::{
     common::LeftRight,
@@ -27,16 +27,16 @@ use crate::{
         task::{OverlayTask, TaskType},
     },
     gui::{
-        panel::{GuiPanel, NewGuiPanelParams, OnCustomAttribFunc, button::BUTTON_EVENTS},
+        panel::{button::BUTTON_EVENTS, GuiPanel, NewGuiPanelParams, OnCustomAttribFunc},
         timer::GuiTimer,
     },
     overlays::edit::LongPressButtonState,
     state::AppState,
     windowing::{
-        OverlaySelector, Z_ORDER_WATCH,
         backend::{OverlayEventData, OverlayMeta},
         manager::MAX_OVERLAY_SETS,
-        window::{OverlayWindowConfig, OverlayWindowData},
+        window::{OverlayCategory, OverlayWindowConfig, OverlayWindowData},
+        OverlaySelector, Z_ORDER_WATCH,
     },
 };
 
@@ -47,15 +47,22 @@ const MAX_DEVICES: usize = 9;
 pub const WATCH_POS: Vec3 = vec3(-0.03, -0.01, 0.125);
 pub const WATCH_ROT: Quat = Quat::from_xyzw(-0.707_106_6, 0.000_796_361_8, 0.707_106_6, 0.0);
 
+struct OverlayButton {
+    button: Rc<ComponentButton>,
+    label: WidgetID,
+    sprite: WidgetID,
+}
+
 #[derive(Default)]
 struct WatchState {
     current_set: Option<usize>,
     set_buttons: Vec<Rc<ComponentButton>>,
-    overlay_buttons: Vec<Rc<ComponentButton>>,
+    overlay_buttons: Vec<OverlayButton>,
     overlay_metas: Vec<OverlayMeta>,
     edit_mode_widgets: Vec<(WidgetID, bool)>,
     edit_add_widget: WidgetID,
     device_role_icons: DirectIdMap<TrackedDeviceRole, CustomGlyphData>,
+    overlay_cat_icons: DirectIdMap<OverlayCategory, CustomGlyphData>,
     devices: Vec<(WidgetID, WidgetID)>,
     num_sets: usize,
     delete: LongPressButtonState,
@@ -159,22 +166,63 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                             state.set_buttons.push(comp);
                         }
                     } else if &*id == "toolbox" {
-                        let node = layout.state.nodes[widget];
-                        let num_children = layout.state.tree.children(node).iter().len() - 1; // -1 for keyboard
-
                         for idx in 0..MAX_TOOLBOX_BUTTONS {
-                            if idx >= num_children {
+                            let id_str = format!("overlay_{idx}");
+
+                            let button = if let Some(button) = parser_state
+                                .fetch_component_as::<ComponentButton>(&id_str)
+                                .ok()
+                            {
+                                button
+                            } else {
                                 let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
                                 params.insert("idx".into(), idx.to_string().into());
                                 parser_state.instantiate_template(
                                     doc_params, "Overlay", layout, widget, params,
                                 )?;
-                            }
+                                parser_state.fetch_component_as::<ComponentButton>(&id_str)?
+                            };
 
-                            let comp = parser_state
-                                .fetch_component_as::<ComponentButton>(&format!("overlay_{idx}"))?;
-                            state.overlay_buttons.push(comp);
+                            state.overlay_buttons.push(OverlayButton {
+                                button,
+                                label: parser_state
+                                    .get_widget_id(&format!("overlay_{idx}_label"))
+                                    .inspect_err(|e| log::warn!("{e:?}"))
+                                    .unwrap_or_default(),
+                                sprite: parser_state
+                                    .get_widget_id(&format!("overlay_{idx}_sprite"))
+                                    .inspect_err(|e| log::warn!("{e:?}"))
+                                    .unwrap_or_default(),
+                            });
                         }
+                    } else if id.starts_with("overlay_") && id.ends_with("_sprite") {
+                        // store device icons from xml
+                        let id_n = id
+                            .replace("overlay_", "")
+                            .replace("_sprite", "")
+                            .parse::<u64>()?;
+
+                        let category = match id_n {
+                            0 => OverlayCategory::Panel,
+                            1 => OverlayCategory::Screen,
+                            2 => OverlayCategory::Mirror,
+                            3 => OverlayCategory::WayVR,
+                            _ => return Ok(()), // not parsing the first 4 elems
+                        };
+
+                        let sprite = layout
+                            .state
+                            .widgets
+                            .get_as::<WidgetSprite>(widget)
+                            .ok_or_else(|| {
+                                anyhow::anyhow!("{id} is expected to be a sprite, but it isn't.")
+                            })?;
+
+                        let src = sprite.get_content().ok_or_else(|| {
+                            anyhow::anyhow!("{id} is expected to have a src, but it doesn't.")
+                        })?;
+
+                        state.overlay_cat_icons.insert(category, src);
                     } else if id.starts_with("dev_") && id.ends_with("_sprite") {
                         // store device icons from xml
                         let id_n = id
@@ -198,7 +246,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                                 anyhow::anyhow!("{id} is expected to be a sprite, but it isn't.")
                             })?;
 
-                        let src = sprite.params.glyph_data.clone().ok_or_else(|| {
+                        let src = sprite.get_content().ok_or_else(|| {
                             anyhow::anyhow!("{id} is expected to have a src, but it doesn't.")
                         })?;
 
@@ -293,14 +341,31 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                 panel.state.overlay_metas = metas;
                 for (idx, btn) in panel.state.overlay_buttons.iter().enumerate() {
                     let display = if let Some(meta) = panel.state.overlay_metas.get(idx) {
-                        btn.set_text(&mut com, Translation::from_raw_text(&meta.name));
-                        //TODO: add category icons
+                        if let Some(mut label) =
+                            panel.layout.state.widgets.get_as::<WidgetLabel>(btn.label)
+                        {
+                            label.set_text(&mut com, Translation::from_raw_text(&meta.name));
+                        } else {
+                            btn.button
+                                .set_text(&mut com, Translation::from_raw_text(&meta.name));
+                        }
+
+                        if let Some(mut sprite) = panel
+                            .layout
+                            .state
+                            .widgets
+                            .get_as::<WidgetSprite>(btn.sprite)
+                            && let Some(glyph) = panel.state.overlay_cat_icons.get(meta.category)
+                        {
+                            sprite.set_content(Some(glyph.clone()));
+                        }
+
                         taffy::Display::Flex
                     } else {
                         taffy::Display::None
                     };
                     com.alterables
-                        .set_style(btn.get_rect(), StyleSetRequest::Display(display));
+                        .set_style(btn.button.get_rect(), StyleSetRequest::Display(display));
                 }
             }
             OverlayEventData::DevicesChanged => {
@@ -309,7 +374,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                         && let Some(glyph) = panel.state.device_role_icons.get(dev.role)
                         && let Some(mut s) = panel.layout.state.widgets.get_as::<WidgetSprite>(*s)
                     {
-                        s.params.glyph_data = Some(glyph.clone());
+                        s.set_content(Some(glyph.clone()));
                         com.alterables
                             .set_style(*div, StyleSetRequest::Display(taffy::Display::Flex));
                     } else {

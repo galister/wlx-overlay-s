@@ -1,4 +1,5 @@
 use glam::{Affine3A, Mat3A, Quat, Vec3, Vec3A};
+use idmap_derive::IntegerId;
 use std::{f32::consts::PI, sync::Arc};
 use wlx_common::windowing::{OverlayWindowState, Positioning};
 
@@ -49,10 +50,10 @@ impl<T> OverlayWindowData<T> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, IntegerId, PartialEq)]
 pub enum OverlayCategory {
     Internal,
-    PanelCustom,
+    Panel,
     Screen,
     Mirror,
     WayVR,
