@@ -15,7 +15,7 @@ use vulkano::{Handle, VulkanObject, device::physical::PhysicalDevice};
 use wlx_common::overlays::ToastTopic;
 
 use crate::{
-    RUNNING,
+    FRAME_COUNTER, RUNNING,
     backend::{
         BackendError, XrBackend,
         input::interact,
@@ -155,6 +155,7 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             log::warn!("Received shutdown signal.");
             break 'main_loop;
         }
+        FRAME_COUNTER.fetch_add(1, Ordering::Relaxed);
 
         while let Some(event) = system_mgr.poll_next_event() {
             match event.event_type {
