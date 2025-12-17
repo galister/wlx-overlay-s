@@ -41,7 +41,7 @@
     "FAILED_TO_SWITCH_MICROPHONE": "Fehler beim Wechseln des Mikrofons",
     "MICROPHONE_SET_SUCCESSFULLY": "Mikrofon erfolgreich umgeschaltet",
     "SPEAKERS_SET_SUCCESSFULLY": "Lautsprecher erfolgreich umgeschaltet",
-    "DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED": "Gerät gefunden un, aber nicht umgeschaltet"
+    "DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED": "Gerät gefunden und initialisiert, aber nicht umgeschaltet"
   },
   "ACTIONS": {
     "RECENTER_PLAYSPACE": "Playspace neu zentrieren"
