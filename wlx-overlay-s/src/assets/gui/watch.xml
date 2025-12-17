@@ -119,7 +119,7 @@
             <label translation="WATCH.EDIT_MODE_EXPLANATION" align="center" />
           </div>
           <div flex_direction="column" align_items="center" justify_content="center">
-            <div id="toolbox" gap="8" width="100%" flex_direction="column" flex_wrap="wrap">
+            <div id="toolbox" gap="8" width="100%" max_width="400" flex_direction="row" flex_wrap="wrap">
               <Button height="40" macro="button_style" tooltip="WATCH.TOGGLE_FOR_CURRENT_SET" _press="::OverlayToggle kbd">
                 <sprite src_builtin="watch/keyboard.svg" width="32" height="32" />
                 <label translation="EDIT_MODE.KEYBOARD" size="18" />

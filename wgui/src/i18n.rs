@@ -26,6 +26,13 @@ impl Translation {
 		}
 	}
 
+	pub fn from_raw_text_rc(text: Rc<str>) -> Self {
+		Self {
+			text,
+			translated: false,
+		}
+	}
+
 	pub fn from_raw_text(text: &str) -> Self {
 		Self {
 			text: Rc::from(text),

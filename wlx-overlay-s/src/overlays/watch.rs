@@ -341,13 +341,14 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                 panel.state.overlay_metas = metas;
                 for (idx, btn) in panel.state.overlay_buttons.iter().enumerate() {
                     let display = if let Some(meta) = panel.state.overlay_metas.get(idx) {
+                        let name = sanitize_overlay_name(&meta.name);
                         if let Some(mut label) =
                             panel.layout.state.widgets.get_as::<WidgetLabel>(btn.label)
                         {
-                            label.set_text(&mut com, Translation::from_raw_text(&meta.name));
+                            label.set_text(&mut com, Translation::from_raw_text_rc(name));
                         } else {
                             btn.button
-                                .set_text(&mut com, Translation::from_raw_text(&meta.name));
+                                .set_text(&mut com, Translation::from_raw_text_rc(name));
                         }
 
                         if let Some(mut sprite) = panel
@@ -432,4 +433,8 @@ pub fn watch_fade<D>(app: &mut AppState, watch: &mut OverlayWindowData<D>) {
         / (app.session.config.watch_view_angle_max - app.session.config.watch_view_angle_min);
     state.alpha += 0.1;
     state.alpha = state.alpha.clamp(0., 1.);
+}
+
+fn sanitize_overlay_name(str: &str) -> Rc<str> {
+    str.replace("-wvr", "").into()
 }
