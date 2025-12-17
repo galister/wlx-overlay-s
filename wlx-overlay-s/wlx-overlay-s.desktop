@@ -5,3 +5,5 @@ Exec=wlx-overlay-s
 Icon=wlx-overlay-s
 Terminal=true
 Categories=Utility;X-WiVRn-VR;
+X-XR-Plugin=true
+X-XR-Plugin-Exec=wlx-overlay-s --openxr
