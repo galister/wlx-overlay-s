@@ -9,7 +9,7 @@ use crate::{
 	event::EventAlterables,
 	globals::Globals,
 	layout::Widget,
-	renderer_vk::text::{custom_glyph::CustomGlyph, TextShadow},
+	renderer_vk::text::{TextShadow, custom_glyph::CustomGlyph},
 	stack::{self, ScissorBoundary, ScissorStack, TransformStack},
 	widget::{self, ScrollbarInfo, WidgetState},
 };

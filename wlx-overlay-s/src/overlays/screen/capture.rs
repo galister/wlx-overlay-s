@@ -1,31 +1,32 @@
 use std::{f32::consts::PI, sync::Arc};
 
 use glam::{Affine3A, Vec3};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use vulkano::{
     buffer::{BufferUsage, Subbuffer},
     command_buffer::CommandBufferUsage,
     device::Queue,
     format::Format,
-    image::{sampler::Filter, view::ImageView, Image},
+    image::{Image, sampler::Filter, view::ImageView},
     pipeline::graphics::color_blend::AttachmentBlend,
 };
 use wgui::gfx::{
+    WGfx,
     cmd::WGfxClearMode,
     pass::WGfxPass,
     pipeline::{WGfxPipeline, WPipelineCreateInfo},
-    WGfx,
 };
 use wlx_capture::{
-    frame::{self as wlx_frame, DrmFormat, FrameFormat, MouseMeta, Transform, WlxFrame},
     WlxCapture,
+    frame::{self as wlx_frame, DrmFormat, FrameFormat, MouseMeta, Transform, WlxFrame},
 };
 use wlx_common::config::GeneralConfig;
 
 use crate::{
     graphics::{
-        dmabuf::{fourcc_to_vk, WGfxDmabuf},
-        upload_quad_vertices, Vert2Uv,
+        Vert2Uv,
+        dmabuf::{WGfxDmabuf, fourcc_to_vk},
+        upload_quad_vertices,
     },
     state::AppState,
     windowing::backend::{FrameMeta, RenderResources, StereoMode},

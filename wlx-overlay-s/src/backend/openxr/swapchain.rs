@@ -5,12 +5,12 @@ use openxr as xr;
 
 use smallvec::SmallVec;
 use vulkano::{
+    Handle,
     image::{
+        ImageCreateInfo, ImageUsage,
         sys::RawImage,
         view::{ImageView, ImageViewCreateInfo},
-        ImageCreateInfo, ImageUsage,
     },
-    Handle,
 };
 use wgui::gfx::WGfx;
 

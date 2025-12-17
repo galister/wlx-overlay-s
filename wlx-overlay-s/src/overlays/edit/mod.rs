@@ -21,10 +21,10 @@ use crate::{
         input::HoverResult,
         task::{OverlayTask, TaskContainer, TaskType},
     },
-    gui::panel::{button::BUTTON_EVENTS, GuiPanel, NewGuiPanelParams, OnCustomAttribFunc},
+    gui::panel::{GuiPanel, NewGuiPanelParams, OnCustomAttribFunc, button::BUTTON_EVENTS},
     overlays::edit::{
         lock::InteractLockHandler,
-        pos::{new_pos_tab_handler, PosTabState},
+        pos::{PosTabState, new_pos_tab_handler},
         sprite_tab::SpriteTabHandler,
         stereo::new_stereo_tab_handler,
         tab::ButtonPaneTabSwitcher,
@@ -32,12 +32,12 @@ use crate::{
     state::AppState,
     subsystem::hid::WheelDelta,
     windowing::{
+        OverlayID, OverlaySelector,
         backend::{
             BackendAttrib, BackendAttribValue, DummyBackend, OverlayBackend, OverlayEventData,
             RenderResources, ShouldRender, StereoMode,
         },
         window::OverlayWindowConfig,
-        OverlayID, OverlaySelector,
     },
 };
 

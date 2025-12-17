@@ -1,7 +1,7 @@
 use crate::{
     overlays::edit::{
-        sprite_tab::{SpriteTabHandler, SpriteTabKey},
         EditModeWrapPanel,
+        sprite_tab::{SpriteTabHandler, SpriteTabKey},
     },
     windowing::backend::{BackendAttribValue, StereoMode},
 };

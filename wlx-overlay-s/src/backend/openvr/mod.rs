@@ -5,33 +5,34 @@ use std::{
     time::{Duration, Instant},
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use ovr_overlay::{
-    sys::{ETrackedDeviceProperty, EVRApplicationType, EVREventType},
     TrackedDeviceIndex,
+    sys::{ETrackedDeviceProperty, EVRApplicationType, EVREventType},
 };
 use smallvec::smallvec;
-use vulkano::{device::physical::PhysicalDevice, Handle, VulkanObject};
+use vulkano::{Handle, VulkanObject, device::physical::PhysicalDevice};
 use wlx_common::overlays::ToastTopic;
 
 use crate::{
+    RUNNING,
     backend::{
+        BackendError, XrBackend,
         input::interact,
         openvr::{
             helpers::adjust_gain,
-            input::{set_action_manifest, OpenVrInputSource},
+            input::{OpenVrInputSource, set_action_manifest},
             lines::LinePool,
             manifest::{install_manifest, uninstall_manifest},
             overlay::OpenVrOverlayData,
         },
         task::{OpenVrTask, OverlayTask, TaskType},
-        BackendError, XrBackend,
     },
     config::save_state,
-    graphics::{init_openvr_graphics, GpuFutures},
+    graphics::{GpuFutures, init_openvr_graphics},
     overlays::{
         toast::Toast,
-        watch::{watch_fade, WATCH_NAME},
+        watch::{WATCH_NAME, watch_fade},
     },
     state::AppState,
     subsystem::notifications::NotificationManager,
@@ -39,7 +40,6 @@ use crate::{
         backend::{RenderResources, RenderTarget, ShouldRender},
         manager::OverlayWindowManager,
     },
-    RUNNING,
 };
 
 #[cfg(feature = "wayvr")]

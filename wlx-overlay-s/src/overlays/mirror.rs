@@ -1,14 +1,14 @@
 use std::{
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc,
+        atomic::{AtomicUsize, Ordering},
     },
     task::{Context, Poll},
 };
 
 use futures::{Future, FutureExt};
-use glam::{vec3, Affine2, Affine3A, Quat, Vec3};
-use wlx_capture::pipewire::{pipewire_select_screen, PipewireCapture, PipewireSelectScreenResult};
+use glam::{Affine2, Affine3A, Quat, Vec3, vec3};
+use wlx_capture::pipewire::{PipewireCapture, PipewireSelectScreenResult, pipewire_select_screen};
 use wlx_common::windowing::OverlayWindowState;
 
 use crate::{
@@ -19,12 +19,12 @@ use crate::{
     state::{AppSession, AppState},
     subsystem::hid::WheelDelta,
     windowing::{
+        OverlaySelector,
         backend::{
-            ui_transform, BackendAttrib, BackendAttribValue, FrameMeta, OverlayBackend,
-            OverlayEventData, RenderResources, ShouldRender,
+            BackendAttrib, BackendAttribValue, FrameMeta, OverlayBackend, OverlayEventData,
+            RenderResources, ShouldRender, ui_transform,
         },
         window::{OverlayCategory, OverlayWindowConfig},
-        OverlaySelector,
     },
 };
 

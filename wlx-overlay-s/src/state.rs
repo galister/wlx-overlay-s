@@ -1,6 +1,6 @@
 use glam::Affine3A;
 use idmap::IdMap;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use std::sync::Arc;
 use wgui::{
     font_config::WguiFontConfig, gfx::WGfx, globals::WguiGlobals, parser::parse_color_hex,
@@ -22,7 +22,7 @@ use {
 use crate::subsystem::osc::OscSender;
 
 use crate::{
-    backend::{input::InputState, task::TaskContainer, XrBackend},
+    backend::{XrBackend, input::InputState, task::TaskContainer},
     config::load_general_config,
     config_io::{self, get_config_file_path},
     graphics::WGfxExtras,

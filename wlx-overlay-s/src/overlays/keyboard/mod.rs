@@ -6,13 +6,14 @@ use std::{
 };
 
 use crate::{
+    KEYMAP_CHANGE,
     backend::input::{HoverResult, PointerHit},
     gui::panel::GuiPanel,
     overlays::keyboard::{builder::create_keyboard_panel, layout::AltModifier},
     state::AppState,
     subsystem::hid::{
-        get_keymap_wl, get_keymap_x11, KeyModifier, VirtualKey, WheelDelta, XkbKeymap, ALT, CTRL,
-        META, SHIFT, SUPER,
+        ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey, WheelDelta, XkbKeymap,
+        get_keymap_wl, get_keymap_x11,
     },
     windowing::{
         backend::{
@@ -21,12 +22,11 @@ use crate::{
         },
         window::OverlayWindowConfig,
     },
-    KEYMAP_CHANGE,
 };
 use anyhow::Context;
-use glam::{vec3, Affine3A, Quat, Vec3};
+use glam::{Affine3A, Quat, Vec3, vec3};
 use regex::Regex;
-use slotmap::{new_key_type, SlotMap};
+use slotmap::{SlotMap, new_key_type};
 use wgui::{
     drawing,
     event::{InternalStateChangeEvent, MouseButton, MouseButtonIndex},

@@ -1,12 +1,12 @@
 use glam::Vec3A;
 use openxr::{self as xr, CompositionLayerFlags};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use std::f32::consts::PI;
 use xr::EyeVisibility;
 
-use super::{helpers, swapchain::WlxSwapchain, CompositionLayer, XrState};
+use super::{CompositionLayer, XrState, helpers, swapchain::WlxSwapchain};
 use crate::{
-    backend::openxr::swapchain::{create_swapchain, SwapchainOpts, WlxSwapchainImage},
+    backend::openxr::swapchain::{SwapchainOpts, WlxSwapchainImage, create_swapchain},
     state::AppState,
     windowing::window::OverlayWindowData,
 };

@@ -3,8 +3,8 @@ use smallvec::SmallVec;
 use std::{any::Any, sync::Arc};
 use vulkano::{command_buffer::CommandBufferUsage, format::Format, image::view::ImageView};
 use wgui::gfx::{
-    cmd::{GfxCommandBuffer, WGfxClearMode},
     WGfx,
+    cmd::{GfxCommandBuffer, WGfxClearMode},
 };
 
 use crate::{
@@ -12,7 +12,7 @@ use crate::{
     graphics::{ExtentExt, RenderResult},
     state::AppState,
     subsystem::hid::WheelDelta,
-    windowing::{window::OverlayCategory, OverlayID},
+    windowing::{OverlayID, window::OverlayCategory},
 };
 
 #[derive(Default, Clone, Copy)]

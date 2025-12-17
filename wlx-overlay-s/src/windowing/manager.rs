@@ -12,6 +12,7 @@ use wlx_common::{
 };
 
 use crate::{
+    FRAME_COUNTER,
     backend::task::OverlayTask,
     overlays::{
         anchor::create_anchor, custom::create_custom, edit::EditWrapperManager,
@@ -19,13 +20,12 @@ use crate::{
     },
     state::AppState,
     windowing::{
+        OverlayID, OverlaySelector,
         backend::{OverlayEventData, OverlayMeta},
         set::OverlayWindowSet,
         snap_upright,
         window::{OverlayCategory, OverlayWindowData},
-        OverlayID, OverlaySelector,
     },
-    FRAME_COUNTER,
 };
 
 pub const MAX_OVERLAY_SETS: usize = 7;

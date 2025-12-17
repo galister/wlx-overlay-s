@@ -15,13 +15,13 @@ use wgui::gfx::{cmd::WGfxClearMode, pipeline::WPipelineCreateInfo};
 use crate::{
     backend::openxr::{helpers::translation_rotation_to_posef, swapchain::SwapchainOpts},
     config_io,
-    graphics::{dds::WlxCommandBufferDds, ExtentExt, GpuFutures},
+    graphics::{ExtentExt, GpuFutures, dds::WlxCommandBufferDds},
     state::AppState,
 };
 
 use super::{
-    swapchain::{create_swapchain, WlxSwapchain},
     CompositionLayer, XrState,
+    swapchain::{WlxSwapchain, create_swapchain},
 };
 
 pub(super) struct Skybox {

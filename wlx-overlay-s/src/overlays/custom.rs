@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use glam::{vec3, Affine3A, Quat, Vec3};
+use glam::{Affine3A, Quat, Vec3, vec3};
 use wlx_common::windowing::OverlayWindowState;
 
 use crate::{
