@@ -55,6 +55,7 @@ pub struct GuiPanel<S> {
     interaction_transform: Option<Affine2>,
     context: WguiContext,
     timestep: Timestep,
+    has_focus: [bool; 2],
 }
 
 pub type OnCustomIdFunc<S> = Box<
@@ -173,6 +174,7 @@ impl<S: 'static> GuiPanel<S> {
             on_notify: None,
             gui_scale: params.gui_scale,
             initialized: false,
+            has_focus: [false, false],
         })
     }
 
@@ -203,6 +205,7 @@ impl<S: 'static> GuiPanel<S> {
             interaction_transform: None,
             gui_scale: params.gui_scale,
             initialized: false,
+            has_focus: [false, false],
         })
     }
 
@@ -338,6 +341,9 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
             pos: hit.uv * self.layout.content_size,
             device: hit.pointer,
         });
+
+        self.has_focus[hit.pointer] = true;
+
         let result = self.push_event(app, e);
 
         HoverResult {
@@ -354,8 +360,8 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
     }
 
     fn on_left(&mut self, app: &mut AppState, pointer: usize) {
-        log::debug!("panel: on left");
         let e = WguiEvent::MouseLeave(MouseLeaveEvent { device: pointer });
+        self.has_focus[pointer] = false;
         self.push_event(app, &e);
     }
 
@@ -380,8 +386,20 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
                 device: hit.pointer,
             })
         };
-
         self.push_event(app, &e);
+
+        // released while off-panel → send mouse leave as well
+        if !pressed && !self.has_focus[hit.pointer] {
+            let e = WguiEvent::MouseMotion(MouseMotionEvent {
+                pos: vec2(-1., -1.),
+                device: hit.pointer,
+            });
+            self.push_event(app, &e);
+            let e = WguiEvent::MouseLeave(MouseLeaveEvent {
+                device: hit.pointer,
+            });
+            self.push_event(app, &e);
+        }
     }
 
     fn get_interaction_transform(&mut self) -> Option<Affine2> {
