@@ -148,6 +148,31 @@ where
             OverlayTask::ToggleSet(set) => {
                 self.switch_or_toggle_set(app, set);
             }
+            OverlayTask::SoftToggleOverlay(sel) => {
+                let Some(id) = self.id_by_selector(&sel) else {
+                    log::warn!("Overlay not found for task: {sel:?}");
+                    return Ok(());
+                };
+
+                let o = &mut self.overlays[id];
+                if let Some(active_state) = o.config.active_state.take() {
+                    log::debug!("{}: soft-toggle off", o.config.name);
+                    self.sets[self.restore_set]
+                        .overlays
+                        .insert(id, active_state);
+                } else if let Some(state) = self.sets[self.restore_set].overlays.remove(id) {
+                    let o = &mut self.overlays[id];
+                    log::debug!("{}: soft-toggle on", o.config.name);
+                    o.config.dirty = true;
+                    o.config.active_state = Some(state);
+                    o.config.reset(app, false);
+                } else {
+                    // no saved state
+                    o.config.activate(app);
+                }
+
+                return Ok(());
+            }
             OverlayTask::ToggleEditMode => {
                 self.set_edit_mode(!self.edit_mode, app)?;
             }
@@ -428,14 +453,19 @@ impl<T> OverlayWindowManager<T> {
         }
     }
 
+    pub fn id_by_selector(&self, selector: &OverlaySelector) -> Option<OverlayID> {
+        match selector {
+            OverlaySelector::Id(id) => Some(*id),
+            OverlaySelector::Name(name) => self.lookup(name),
+        }
+    }
+
     pub fn mut_by_selector(
         &mut self,
         selector: &OverlaySelector,
     ) -> Option<&mut OverlayWindowData<T>> {
-        match selector {
-            OverlaySelector::Id(id) => self.mut_by_id(*id),
-            OverlaySelector::Name(name) => self.lookup(name).and_then(|id| self.mut_by_id(id)),
-        }
+        self.id_by_selector(selector)
+            .and_then(|id| self.mut_by_id(id))
     }
 
     fn remove_by_selector(
@@ -559,7 +589,6 @@ impl<T> OverlayWindowManager<T> {
 
         if let Some(current_set) = self.current_set.as_ref() {
             let ws = &mut self.sets[*current_set];
-            ws.overlays.clear();
             for (id, data) in self.overlays.iter_mut().filter(|(_, d)| !d.config.global) {
                 if let Some(state) = data.config.active_state.take() {
                     log::debug!("{}: active_state → ws{}", data.config.name, current_set);
@@ -582,6 +611,7 @@ impl<T> OverlayWindowManager<T> {
                     data.config.reset(app, false);
                 }
             }
+            ws.overlays.clear();
             self.restore_set = new_set;
         }
         self.current_set = new_set;

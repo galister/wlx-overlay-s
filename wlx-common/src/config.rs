@@ -187,6 +187,9 @@ pub struct GeneralConfig {
 	#[serde(default = "def_false")]
 	pub double_cursor_fix: bool,
 
+	#[serde(default = "def_false")]
+	pub single_set_mode: bool,
+
 	#[serde(default = "def_astrset_empty")]
 	pub custom_panels: AStrSet,
 

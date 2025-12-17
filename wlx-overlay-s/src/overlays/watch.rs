@@ -51,6 +51,7 @@ struct OverlayButton {
     button: Rc<ComponentButton>,
     label: WidgetID,
     sprite: WidgetID,
+    condensed: bool,
 }
 
 #[derive(Default)]
@@ -126,6 +127,25 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                         Ok(EventResult::Consumed)
                     })
                 }
+                "::SingleSetOverlayToggle" => {
+                    let arg = args.next().unwrap_or_default();
+                    let Ok(idx) = arg.parse::<usize>() else {
+                        log::error!("{command} has invalid argument: \"{arg}\"");
+                        return;
+                    };
+                    Box::new(move |_common, _data, app, state| {
+                        let Some(overlay) = state.overlay_metas.get(idx) else {
+                            log::error!("No overlay at index {idx}.");
+                            return Ok(EventResult::Consumed);
+                        };
+
+                        app.tasks
+                            .enqueue(TaskType::Overlay(OverlayTask::SoftToggleOverlay(
+                                OverlaySelector::Id(overlay.id),
+                            )));
+                        Ok(EventResult::Consumed)
+                    })
+                }
                 _ => return,
             };
 
@@ -134,9 +154,16 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
         }
     });
 
+    let watch_xml = app
+        .session
+        .config
+        .single_set_mode
+        .then_some("gui/watch-noset.xml")
+        .unwrap_or("gui/watch.xml");
+
     let mut panel = GuiPanel::new_from_template(
         app,
-        "gui/watch.xml",
+        watch_xml,
         state,
         NewGuiPanelParams {
             on_custom_id: Some(Box::new(
@@ -165,7 +192,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                                 .fetch_component_as::<ComponentButton>(&format!("set_{idx}"))?;
                             state.set_buttons.push(comp);
                         }
-                    } else if &*id == "toolbox" {
+                    } else if &*id == "toolbox" || &*id == "toolbox-condensed" {
                         for idx in 0..MAX_TOOLBOX_BUTTONS {
                             let id_str = format!("overlay_{idx}");
 
@@ -193,6 +220,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                                     .get_widget_id(&format!("overlay_{idx}_sprite"))
                                     .inspect_err(|e| log::warn!("{e:?}"))
                                     .unwrap_or_default(),
+                                condensed: id.ends_with("-condensed"),
                             });
                         }
                     } else if id.starts_with("overlay_") && id.ends_with("_sprite") {
@@ -287,11 +315,15 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
 
         match event_data {
             OverlayEventData::ActiveSetChanged(current_set) => {
-                if let Some(old_set) = panel.state.current_set.take() {
-                    panel.state.set_buttons[old_set].set_sticky_state(&mut com, false);
+                if let Some(old_set) = panel.state.current_set.take()
+                    && let Some(old_set) = panel.state.set_buttons.get_mut(old_set)
+                {
+                    old_set.set_sticky_state(&mut com, false);
                 }
-                if let Some(new_set) = current_set {
-                    panel.state.set_buttons[new_set].set_sticky_state(&mut com, true);
+                if let Some(new_set) = current_set
+                    && let Some(new_set) = panel.state.set_buttons.get_mut(new_set)
+                {
+                    new_set.set_sticky_state(&mut com, true);
                 }
                 panel.state.current_set = current_set;
             }
@@ -341,7 +373,11 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                 panel.state.overlay_metas = metas;
                 for (idx, btn) in panel.state.overlay_buttons.iter().enumerate() {
                     let display = if let Some(meta) = panel.state.overlay_metas.get(idx) {
-                        let name = sanitize_overlay_name(&meta.name);
+                        let name = btn
+                            .condensed
+                            .then(|| condense_overlay_name(&meta.name))
+                            .unwrap_or_else(|| sanitize_overlay_name(&meta.name));
+
                         if let Some(mut label) =
                             panel.layout.state.widgets.get_as::<WidgetLabel>(btn.label)
                         {
@@ -437,4 +473,13 @@ pub fn watch_fade<D>(app: &mut AppState, watch: &mut OverlayWindowData<D>) {
 
 fn sanitize_overlay_name(str: &str) -> Rc<str> {
     str.replace("-wvr", "").into()
+}
+
+fn condense_overlay_name(str: &str) -> Rc<str> {
+    str.replace("DP-", "D")
+        .replace("HDMI-A-", "H")
+        .replace("WVR-wvr_", "W")
+        .replace("WVR-wvr", "W0")
+        .replace("Keyboard", "")
+        .into()
 }

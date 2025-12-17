@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 use std::process::{Child, Command};
-use std::{collections::VecDeque, time::Instant};
+use std::time::Instant;
 
 use glam::{Affine3A, Vec2, Vec3A, Vec3Swizzles};
 
@@ -192,7 +192,6 @@ pub struct InteractionState {
     pub grabbed: Option<GrabData>,
     pub clicked_id: Option<OverlayID>,
     pub hovered_id: Option<OverlayID>,
-    pub release_actions: VecDeque<Box<dyn Fn()>>,
     pub next_push: Instant,
     pub haptics: Option<f32>,
 }
@@ -204,7 +203,6 @@ impl Default for InteractionState {
             grabbed: None,
             clicked_id: None,
             hovered_id: None,
-            release_actions: VecDeque::new(),
             next_push: Instant::now(),
             haptics: None,
         }
