@@ -17,6 +17,7 @@ pub enum KeyboardFocus {
 pub struct HidWrapper {
     pub keyboard_focus: KeyboardFocus,
     pub inner: Box<dyn HidProvider>,
+    pub keymap: Option<XkbKeymap>,
     #[cfg(feature = "wayvr")]
     pub wayvr: Option<Rc<RefCell<WayVRData>>>, // Dynamically created if requested
 }
@@ -28,11 +29,20 @@ impl HidWrapper {
             inner: hid::initialize(),
             #[cfg(feature = "wayvr")]
             wayvr: None,
+            keymap: None,
         }
     }
 
     #[cfg(feature = "wayvr")]
     pub fn set_wayvr(&mut self, wayvr: Rc<RefCell<WayVRData>>) {
+        if let Some(keymap) = self.keymap.take() {
+            let _ = wayvr
+                .borrow_mut()
+                .data
+                .state
+                .set_keymap(&keymap.inner)
+                .inspect_err(|e| log::error!("Could not set WayVR keymap: {e:?}"));
+        }
         self.wayvr = Some(wayvr);
     }
 
@@ -49,7 +59,7 @@ impl HidWrapper {
         }
     }
 
-    pub fn keymap_changed(&self, keymap: &XkbKeymap) {
+    pub fn keymap_changed(&mut self, keymap: &XkbKeymap) {
         #[cfg(feature = "wayvr")]
         if let Some(wayvr) = &self.wayvr {
             let _ = wayvr
@@ -58,6 +68,8 @@ impl HidWrapper {
                 .state
                 .set_keymap(&keymap.inner)
                 .inspect_err(|e| log::error!("Could not set WayVR keymap: {e:?}"));
+        } else {
+            self.keymap = Some(keymap.clone());
         }
 
         log::info!(

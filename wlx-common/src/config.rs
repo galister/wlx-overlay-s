@@ -132,6 +132,7 @@ pub struct GeneralConfig {
 	pub color_accent: Option<String>,
 	pub color_danger: Option<String>,
 	pub color_faded: Option<String>,
+	pub default_keymap: Option<String>,
 
 	#[serde(default = "def_click_freeze_time_ms")]
 	pub click_freeze_time_ms: u32,

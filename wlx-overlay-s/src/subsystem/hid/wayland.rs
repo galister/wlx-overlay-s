@@ -104,7 +104,7 @@ impl Dispatch<WlKeyboard, ()> for MonitorState {
                     .unwrap_or(wl_keyboard::KeymapFormat::NoKeymap);
 
                 if matches!(format, wl_keyboard::KeymapFormat::XkbV1) {
-                    let context = xkb::Context::new(xkb::CONTEXT_NO_DEFAULT_INCLUDES);
+                    let context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
                     let maybe_keymap = unsafe {
                         xkb::Keymap::new_from_fd(
                             &context,

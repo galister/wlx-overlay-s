@@ -72,6 +72,18 @@ pub fn create_keyboard(app: &mut AppState, wayland: bool) -> anyhow::Result<Over
     let mut maybe_keymap = backend
         .get_effective_keymap(app)
         .inspect_err(|e| log::warn!("{e:?}"))
+        .or_else(|_| {
+            if let Some(layout_variant) = app.session.config.default_keymap.as_ref() {
+                let mut splat = layout_variant.split('-');
+                XkbKeymap::from_layout_variant(
+                    splat.next().unwrap_or(""),
+                    splat.next().unwrap_or(""),
+                )
+                .context("invalid value for default_keymap")
+            } else {
+                anyhow::bail!("no default_keymap set")
+            }
+        })
         .ok();
 
     if let Some(keymap) = maybe_keymap.as_ref() {
@@ -186,7 +198,7 @@ impl KeyboardBackend {
             .dbus
             .fcitx_keymap()
             .context("Could not keymap via fcitx5, falling back to wayland")
-            .inspect_err(|e| log::warn!("{e:?}"))
+            .inspect_err(|e| log::info!("{e:?}"))
         else {
             return get_system_keymap(self.wayland);
         };

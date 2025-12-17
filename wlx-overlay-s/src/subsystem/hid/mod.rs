@@ -573,6 +573,7 @@ pub const fn get_key_type(key: VirtualKey) -> KeyType {
     }
 }
 
+#[derive(Clone)]
 pub struct XkbKeymap {
     pub inner: xkb::Keymap,
 }
