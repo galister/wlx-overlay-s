@@ -38,7 +38,7 @@ impl PipeReaderThread {
         let handle = std::thread::spawn({
             move || {
                 let stdout = c.stdout.take().unwrap();
-                let mut reader = BufReader::new(stdout).take(BUF_LEN as _);
+                let mut reader = BufReader::new(stdout);
 
                 loop {
                     let mut buf = String::with_capacity(BUF_LEN);
@@ -75,7 +75,7 @@ impl PipeReaderThread {
                     .inspect_err(|e| {
                         log::warn!("Failed to open fifo: {e:?}");
                     })
-                    .map(|r| BufReader::new(r).take(BUF_LEN as _))
+                    .map(|r| BufReader::new(r))
                 else {
                     return false;
                 };
