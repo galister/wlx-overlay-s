@@ -343,16 +343,6 @@ fn register_event_mouse_release(
 				state.sticky_down = !state.sticky_down;
 			}
 
-			anim_hover(
-				rect,
-				event_data.widget_data,
-				&state.colors,
-				common.state.get_node_boundary(event_data.node_id),
-				1.0,
-				false,
-				state.sticky_down,
-			);
-
 			common.alterables.trigger_haptics();
 			common.alterables.mark_redraw();
 
@@ -362,6 +352,16 @@ fn register_event_mouse_release(
 				if state.hovered
 					&& let Some(on_click) = &state.on_click
 				{
+					anim_hover(
+						rect,
+						event_data.widget_data,
+						&state.colors,
+						common.state.get_node_boundary(event_data.node_id),
+						1.0,
+						false,
+						state.sticky_down,
+					);
+
 					on_click(common, ButtonClickEvent {})?;
 				}
 				Ok(EventResult::Consumed)
