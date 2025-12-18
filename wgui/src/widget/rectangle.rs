@@ -3,7 +3,7 @@ use slotmap::Key;
 use crate::{
 	drawing::{self, GradientMode, PrimitiveExtent},
 	layout::WidgetID,
-	widget::util::WLength,
+	widget::{WidgetStateFlags, util::WLength},
 };
 
 use super::{WidgetObj, WidgetState};
@@ -27,10 +27,13 @@ pub struct WidgetRectangle {
 
 impl WidgetRectangle {
 	pub fn create(params: WidgetRectangleParams) -> WidgetState {
-		WidgetState::new(Box::new(Self {
-			params,
-			id: WidgetID::null(),
-		}))
+		WidgetState::new(
+			WidgetStateFlags::default(),
+			Box::new(Self {
+				params,
+				id: WidgetID::null(),
+			}),
+		)
 	}
 }
 

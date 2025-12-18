@@ -11,6 +11,7 @@ use crate::{
 		DEFAULT_METRICS,
 		custom_glyph::{CustomGlyph, CustomGlyphData},
 	},
+	widget::WidgetStateFlags,
 };
 
 use super::{WidgetObj, WidgetState};
@@ -29,10 +30,13 @@ pub struct WidgetSprite {
 
 impl WidgetSprite {
 	pub fn create(params: WidgetSpriteParams) -> WidgetState {
-		WidgetState::new(Box::new(Self {
-			params,
-			id: WidgetID::null(),
-		}))
+		WidgetState::new(
+			WidgetStateFlags::default(),
+			Box::new(Self {
+				params,
+				id: WidgetID::null(),
+			}),
+		)
 	}
 
 	pub fn set_color(&mut self, color: drawing::Color) {

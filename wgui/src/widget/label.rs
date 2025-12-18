@@ -11,6 +11,7 @@ use crate::{
 	i18n::Translation,
 	layout::WidgetID,
 	renderer_vk::text::TextStyle,
+	widget::WidgetStateFlags,
 };
 
 use super::{WidgetObj, WidgetState};
@@ -53,12 +54,15 @@ impl WidgetLabel {
 			);
 		}
 
-		WidgetState::new(Box::new(Self {
-			params,
-			buffer: Rc::new(RefCell::new(buffer)),
-			last_boundary: Boundary::default(),
-			id: WidgetID::null(),
-		}))
+		WidgetState::new(
+			WidgetStateFlags::default(),
+			Box::new(Self {
+				params,
+				buffer: Rc::new(RefCell::new(buffer)),
+				last_boundary: Boundary::default(),
+				id: WidgetID::null(),
+			}),
+		)
 	}
 
 	// set text without layout/re-render update.

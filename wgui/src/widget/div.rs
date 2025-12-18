@@ -1,6 +1,6 @@
 use slotmap::Key;
 
-use crate::layout::WidgetID;
+use crate::{layout::WidgetID, widget::WidgetStateFlags};
 
 use super::{WidgetObj, WidgetState};
 
@@ -10,7 +10,7 @@ pub struct WidgetDiv {
 
 impl WidgetDiv {
 	pub fn create() -> WidgetState {
-		WidgetState::new(Box::new(Self { id: WidgetID::null() }))
+		WidgetState::new(WidgetStateFlags::default(), Box::new(Self { id: WidgetID::null() }))
 	}
 }
 

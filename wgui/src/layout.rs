@@ -11,7 +11,7 @@ use crate::{
 	drawing::{self, ANSI_BOLD_CODE, ANSI_RESET_CODE, Boundary, push_scissor_stack, push_transform_stack},
 	event::{self, CallbackDataCommon, EventAlterables},
 	globals::WguiGlobals,
-	widget::{self, EventParams, EventResult, WidgetObj, WidgetState, div::WidgetDiv},
+	widget::{self, EventParams, EventResult, WidgetObj, WidgetState, WidgetStateFlags, div::WidgetDiv},
 };
 
 use glam::{Vec2, vec2};
@@ -377,7 +377,6 @@ impl Layout {
 		event_result: &mut EventResult,
 		alterables: &mut EventAlterables,
 		user_data: &mut (&'a mut U1, &'a mut U2),
-		reverse: bool,
 	) -> anyhow::Result<()> {
 		let count = self.state.tree.child_count(parent_node_id);
 
@@ -387,17 +386,10 @@ impl Layout {
 			Ok(!event_result.can_propagate())
 		};
 
-		if reverse {
-			for idx in (0..count).rev() {
-				if iter(idx)? {
-					break;
-				}
-			}
-		} else {
-			for idx in 0..count {
-				if iter(idx)? {
-					break;
-				}
+		// reverse iter
+		for idx in (0..count).rev() {
+			if iter(idx)? {
+				break;
 			}
 		}
 
@@ -448,11 +440,8 @@ impl Layout {
 			style,
 		);
 
-		// topmost widgets are iterated in reverse order
-		let reverse_iter = is_root_node;
-
 		// check children first
-		self.push_event_children(node_id, event, event_result, alterables, user_data, reverse_iter)?;
+		self.push_event_children(node_id, event, event_result, alterables, user_data)?;
 
 		if event_result.can_propagate() {
 			let mut params = EventParams {
@@ -532,7 +521,10 @@ impl Layout {
 			&mut state.nodes,
 			None, // no parent
 			WidgetState {
-				interactable: false,
+				flags: WidgetStateFlags {
+					interactable: false,
+					..Default::default()
+				},
 				..WidgetDiv::create()
 			},
 			taffy::Style {
@@ -547,7 +539,10 @@ impl Layout {
 			&mut state.nodes,
 			Some(tree_root_node),
 			WidgetState {
-				interactable: false,
+				flags: WidgetStateFlags {
+					interactable: false,
+					..Default::default()
+				},
 				..WidgetDiv::create()
 			},
 			taffy::Style {

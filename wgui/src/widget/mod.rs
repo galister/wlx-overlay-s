@@ -76,12 +76,31 @@ impl WidgetData {
 	}
 }
 
+pub struct WidgetStateFlags {
+	pub interactable: bool,
+
+	// consume any incoming mouse event which is hovered at given widget
+	pub consume_mouse_events: bool,
+
+	// force a new render pass before rendering this widget
+	pub new_pass: bool,
+}
+
+impl Default for WidgetStateFlags {
+	fn default() -> Self {
+		Self {
+			interactable: true,
+			consume_mouse_events: false,
+			new_pass: false,
+		}
+	}
+}
+
 pub struct WidgetState {
 	pub data: WidgetData,
 	pub obj: Box<dyn WidgetObj>,
 	pub event_listeners: EventListenerCollection,
-	pub interactable: bool,
-	pub new_pass: bool, // force a new render pass
+	pub flags: WidgetStateFlags,
 }
 
 impl WidgetState {
@@ -91,7 +110,7 @@ impl WidgetState {
 		(data, obj)
 	}
 
-	fn new(obj: Box<dyn WidgetObj>) -> Self {
+	fn new(flags: WidgetStateFlags, obj: Box<dyn WidgetObj>) -> Self {
 		Self {
 			data: WidgetData {
 				hovered: 0,
@@ -104,8 +123,7 @@ impl WidgetState {
 			},
 			obj,
 			event_listeners: EventListenerCollection::default(),
-			interactable: true,
-			new_pass: false,
+			flags,
 		}
 	}
 }
@@ -241,13 +259,19 @@ struct InvokeData<'a, 'b, U1: 'static, U2: 'static> {
 	params: &'a mut EventParams<'a>,
 }
 
+#[must_use]
+enum InvokeListenersResult {
+	NobodyListened,
+	AtLeastOneCalled,
+}
+
 impl WidgetState {
 	fn invoke_listeners<U1: 'static, U2: 'static>(
 		&mut self,
 		call_data: &mut InvokeData<'_, '_, U1, U2>,
 		kind: event::EventListenerKind,
 		metadata: CallbackMetadata,
-	) -> anyhow::Result<()> {
+	) -> anyhow::Result<InvokeListenersResult> {
 		let mut data = CallbackData {
 			obj: self.obj.as_mut(),
 			widget_data: &mut self.data,
@@ -261,13 +285,17 @@ impl WidgetState {
 			alterables: call_data.params.alterables,
 		};
 
+		let mut res = InvokeListenersResult::NobodyListened;
+
 		for listener in self.event_listeners.iter_filtered::<U1, U2>(kind) {
 			let new_result = listener.call_with(&mut common, &mut data, call_data.user_data)?;
+			res = InvokeListenersResult::AtLeastOneCalled;
 			// Consider all listeners on this widget, even if we had a Consume.
 			// Store the highest value for return.
 			*call_data.event_result = call_data.event_result.merge(new_result);
 		}
-		Ok(())
+
+		Ok(res)
 	}
 
 	pub fn get_scroll_shift_smooth(&self, info: &ScrollbarInfo, l: &taffy::Layout, timestep_alpha: f32) -> (Vec2, bool) {
@@ -449,29 +477,31 @@ impl WidgetState {
 			params,
 		};
 
+		let mut res: Option<InvokeListenersResult> = None;
+
 		match &event {
 			Event::MouseDown(e) => {
 				if hovered && self.data.set_device_pressed(e.device, true) {
-					self.invoke_listeners(
+					res = Some(self.invoke_listeners(
 						&mut invoke_data,
 						EventListenerKind::MousePress,
 						CallbackMetadata::MouseButton(event::MouseButton {
 							index: e.index,
 							pos: e.pos,
 						}),
-					)?;
+					)?);
 				}
 			}
 			Event::MouseUp(e) => {
 				if self.data.set_device_pressed(e.device, false) {
-					self.invoke_listeners(
+					res = Some(self.invoke_listeners(
 						&mut invoke_data,
 						EventListenerKind::MouseRelease,
 						CallbackMetadata::MouseButton(event::MouseButton {
 							index: e.index,
 							pos: e.pos,
 						}),
-					)?;
+					)?);
 				}
 			}
 			Event::MouseMotion(e) => {
@@ -479,18 +509,20 @@ impl WidgetState {
 
 				if hover_state_changed {
 					if self.data.is_hovered() {
-						self.invoke_listeners(&mut invoke_data, EventListenerKind::MouseEnter, CallbackMetadata::None)?;
+						res =
+							Some(self.invoke_listeners(&mut invoke_data, EventListenerKind::MouseEnter, CallbackMetadata::None)?);
 					} else {
-						self.invoke_listeners(&mut invoke_data, EventListenerKind::MouseLeave, CallbackMetadata::None)?;
+						res =
+							Some(self.invoke_listeners(&mut invoke_data, EventListenerKind::MouseLeave, CallbackMetadata::None)?);
 					}
-				} else if hovered {
-					self.invoke_listeners(
+				} else {
+					res = Some(self.invoke_listeners(
 						&mut invoke_data,
 						EventListenerKind::MouseMotion,
 						CallbackMetadata::MousePosition(event::MousePosition { pos: e.pos }),
-					)?;
+					)?);
 
-					if self.interactable {
+					if self.flags.interactable {
 						*invoke_data.event_result = invoke_data.event_result.merge(EventResult::Pass);
 					}
 				}
@@ -503,17 +535,29 @@ impl WidgetState {
 			}
 			Event::MouseLeave(e) => {
 				if self.data.set_device_hovered(e.device, false) {
-					self.invoke_listeners(&mut invoke_data, MouseLeave, CallbackMetadata::None)?;
+					res = Some(self.invoke_listeners(&mut invoke_data, MouseLeave, CallbackMetadata::None)?);
 				}
 			}
 			Event::InternalStateChange(e) => {
-				self.invoke_listeners(
+				res = Some(self.invoke_listeners(
 					&mut invoke_data,
 					InternalStateChange,
 					CallbackMetadata::Custom(e.metadata),
-				)?;
+				)?);
 			}
 		}
+
+		if let Some(res) = res {
+			match res {
+				InvokeListenersResult::NobodyListened => {
+					if hovered && self.flags.consume_mouse_events {
+						*invoke_data.event_result = EventResult::Consumed;
+					}
+				}
+				InvokeListenersResult::AtLeastOneCalled => {}
+			}
+		}
+
 		Ok(())
 	}
 }

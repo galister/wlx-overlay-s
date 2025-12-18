@@ -3,6 +3,7 @@
 
   <elements>
     <div
+      consume_mouse_events="1"
       id="root"
       new_pass="1"
       width="100%"
