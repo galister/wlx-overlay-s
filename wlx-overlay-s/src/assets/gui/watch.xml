@@ -59,7 +59,7 @@
       padding="32" interactable="0"
       flex_direction="column" gap="8">
       <!-- Top elements (device battery levels) -->
-      <div flex_direction="row" id="devices" interactable="0" gap="8">
+      <div id="devices" interactable="0" gap="6" width="100%" max_width="400" flex_direction="row" flex_wrap="wrap">
         <!-- Src here may be changed, but maintain `TrackedDeviceRole` order: HMD, Left, Right, Tracker -->
         <Device src="watch/hmd.svg" idx="0" />
         <Device src="watch/controller_l.svg" idx="1" />

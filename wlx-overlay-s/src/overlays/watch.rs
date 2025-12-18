@@ -42,7 +42,7 @@ use crate::{
 
 pub const WATCH_NAME: &str = "watch";
 const MAX_TOOLBOX_BUTTONS: usize = 16;
-const MAX_DEVICES: usize = 9;
+const MAX_DEVICES: usize = 12;
 
 pub const WATCH_POS: Vec3 = vec3(-0.03, -0.01, 0.125);
 pub const WATCH_ROT: Quat = Quat::from_xyzw(-0.707_106_6, 0.000_796_361_8, 0.707_106_6, 0.0);
