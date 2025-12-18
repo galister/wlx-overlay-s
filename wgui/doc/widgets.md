@@ -66,6 +66,10 @@ _They can be used in any widget/component._
 
 _Set to 0 if you want to exclude this widget from altering the event state_
 
+`consume_mouse_events`: "1" | "0"
+
+_Used in case of overlapping pop-ups or windows, most notably applied to various backgrounds_
+
 `new_pass`: "1" | "0"
 
 _Set to 1 if you want to render overlapping pop-ups to properly render your widgets in order. Wgui renders with as few Vulkan drawcalls as possible, so this is your responsibility._

@@ -6,6 +6,7 @@
       and WINDOW_DECORATION_HEADER_HEIGHT in the source code accordingly
     -->
     <rectangle
+      consume_mouse_events="1"
       flex_direction="column"
       round="16"
       border="2"

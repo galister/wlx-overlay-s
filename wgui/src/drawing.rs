@@ -127,7 +127,7 @@ impl Color {
 	}
 
 	#[must_use]
-	pub fn with_alpha(&self, n: f32) -> Self {
+	pub const fn with_alpha(&self, n: f32) -> Self {
 		Self {
 			r: self.r,
 			g: self.g,
@@ -267,7 +267,7 @@ fn draw_widget(
 
 	let mut widget_state = widget.state();
 
-	if widget_state.new_pass {
+	if widget_state.flags.new_pass {
 		state.primitives.push(RenderPrimitive::NewPass);
 	}
 
