@@ -5,7 +5,7 @@ use std::time::Instant;
 use glam::{Affine3A, Vec2, Vec3A, Vec3Swizzles};
 
 use idmap_derive::IntegerId;
-use smallvec::{SmallVec, smallvec};
+use smallvec::{smallvec, SmallVec};
 use wlx_common::common::LeftRight;
 use wlx_common::windowing::{OverlayWindowState, Positioning};
 
@@ -16,7 +16,7 @@ use crate::state::{AppSession, AppState};
 use crate::subsystem::hid::WheelDelta;
 use crate::subsystem::input::KeyboardFocus;
 use crate::windowing::manager::OverlayWindowManager;
-use crate::windowing::window::{self, OverlayWindowData, realign};
+use crate::windowing::window::{self, realign, OverlayWindowData};
 use crate::windowing::{OverlayID, OverlaySelector};
 
 use super::task::TaskType;
@@ -787,12 +787,17 @@ fn raycast_plane(
     let ray_dir = source.transform_vector3a(source_fwd);
 
     let d = plane.translation.dot(-plane_normal);
-    let dist = -(d + source.translation.dot(plane_normal)) / ray_dir.dot(plane_normal);
+    let mut dist = -(d + source.translation.dot(plane_normal)) / ray_dir.dot(plane_normal);
 
     let hit_local = plane
         .inverse()
         .transform_point3a(source.translation + ray_dir * dist)
         .xy();
+
+    // hitting the backside of the plane, make the hit invalid
+    if ray_dir.dot(plane_normal) < 0.0 && dist.is_sign_positive() {
+        dist = -dist;
+    }
 
     (dist, hit_local)
 }
@@ -833,7 +838,7 @@ fn raycast_cylinder(
     let t1 = (-l_pos - sqrt_d) / l_dir;
     let t2 = (-l_pos + sqrt_d) / l_dir;
 
-    let t = t1.max(t2);
+    let mut t = t1.max(t2);
 
     if t < f32::EPSILON {
         return None;
@@ -843,6 +848,12 @@ fn raycast_cylinder(
     if hit_local.z > 0.0 {
         // hitting the opposite half of the cylinder
         return None;
+    }
+
+    let normal = Vec3A::new(hit_local.x, 0.0, hit_local.z).normalize();
+    // If hitting from the outside, flip t
+    if ray_dir.dot(normal) < 0.0 && t.is_sign_positive() {
+        t = -t;
     }
 
     let max_angle = 2.0 * (size / (2.0 * radius));
