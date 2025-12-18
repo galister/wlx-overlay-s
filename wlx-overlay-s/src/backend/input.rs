@@ -5,7 +5,7 @@ use std::time::Instant;
 use glam::{Affine3A, Vec2, Vec3A, Vec3Swizzles};
 
 use idmap_derive::IntegerId;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use wlx_common::common::LeftRight;
 use wlx_common::windowing::{OverlayWindowState, Positioning};
 
@@ -16,7 +16,7 @@ use crate::state::{AppSession, AppState};
 use crate::subsystem::hid::WheelDelta;
 use crate::subsystem::input::KeyboardFocus;
 use crate::windowing::manager::OverlayWindowManager;
-use crate::windowing::window::{self, realign, OverlayWindowData};
+use crate::windowing::window::{self, OverlayWindowData, realign};
 use crate::windowing::{OverlayID, OverlaySelector};
 
 use super::task::TaskType;

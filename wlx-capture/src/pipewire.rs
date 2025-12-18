@@ -519,10 +519,14 @@ where
             log::debug!("{name}: request pipewire stream to {req:?}");
             match req {
                 PwChangeRequest::Pause => {
-                    let _ = stream.set_active(false).inspect_err(|e| log::warn!("Could not {req:?} pipewire stream: {e:?}"));
+                    let _ = stream
+                        .set_active(false)
+                        .inspect_err(|e| log::warn!("Could not {req:?} pipewire stream: {e:?}"));
                 }
                 PwChangeRequest::Resume => {
-                    let _ = stream.set_active(true).inspect_err(|e| log::warn!("Could not {req:?} pipewire stream: {e:?}"));
+                    let _ = stream
+                        .set_active(true)
+                        .inspect_err(|e| log::warn!("Could not {req:?} pipewire stream: {e:?}"));
                 }
                 PwChangeRequest::Stop => {
                     main_loop.quit();
