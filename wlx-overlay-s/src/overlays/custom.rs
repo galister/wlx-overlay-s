@@ -1,10 +1,13 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use glam::{Affine3A, Quat, Vec3, vec3};
 use wlx_common::windowing::OverlayWindowState;
 
 use crate::{
-    gui::panel::{GuiPanel, NewGuiPanelParams},
+    gui::{
+        panel::{GuiPanel, NewGuiPanelParams},
+        timer::GuiTimer,
+    },
     state::AppState,
     windowing::window::{OverlayCategory, OverlayWindowConfig},
 };
@@ -23,6 +26,10 @@ pub fn create_custom(app: &mut AppState, name: Arc<str>) -> Option<OverlayWindow
         .update_layout()
         .inspect_err(|e| log::warn!("Error layouting '{name}': {e:?}"))
         .ok()?;
+
+    panel
+        .timers
+        .push(GuiTimer::new(Duration::from_millis(100), 0));
 
     let scale = panel.layout.content_size.x / 40.0 * 0.05;
 
