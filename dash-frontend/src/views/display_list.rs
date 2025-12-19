@@ -1,18 +1,24 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use wayvr_ipc::packet_server::WvrDisplay;
+use wayvr_ipc::{
+	packet_client::{AttachTo, WvrDisplayCreateParams},
+	packet_server::WvrDisplay,
+};
 use wgui::{
 	assets::AssetPath,
-	components::button::ComponentButton,
+	components::{self, button::ComponentButton},
+	drawing::Color,
 	globals::WguiGlobals,
 	i18n::Translation,
 	layout::{Layout, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
-	renderer_vk::text::{FontWeight, TextStyle},
-	taffy,
+	renderer_vk::text::{FontWeight, HorizontalAlign, TextStyle},
+	taffy::{self, prelude::length},
 	widget::{
+		ConstructEssentials,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
+		util::WLength,
 	},
 };
 use wlx_common::dash_interface;
@@ -28,7 +34,7 @@ use crate::{
 #[derive(Clone)]
 enum Task {
 	AddDisplay,
-	AddDisplayFinish,
+	AddDisplayFinish(add_display::Result),
 	Refresh,
 }
 
@@ -68,7 +74,6 @@ impl View {
 
 		let btn_add = parser_state.fetch_component_as::<ComponentButton>("btn_add")?;
 		tasks.handle_button(btn_add, Task::AddDisplay);
-
 		tasks.push(Task::Refresh);
 
 		let state = Rc::new(RefCell::new(State { view_add_display: None }));
@@ -96,7 +101,7 @@ impl View {
 			for task in tasks {
 				match task {
 					Task::AddDisplay => self.add_display(),
-					Task::AddDisplayFinish => self.add_display_finish()?,
+					Task::AddDisplayFinish(result) => self.add_display_finish(interface, result)?,
 					Task::Refresh => self.refresh(layout, interface)?,
 				}
 			}
@@ -104,7 +109,7 @@ impl View {
 
 		let mut state = self.state.borrow_mut();
 		if let Some((_, view)) = &mut state.view_add_display {
-			view.update()?;
+			view.update(layout)?;
 		}
 
 		Ok(())
@@ -113,20 +118,39 @@ impl View {
 
 fn fill_display_list(
 	globals: &WguiGlobals,
-	parent: WidgetID,
-	layout: &mut Layout,
+	ess: &mut ConstructEssentials,
 	list: Vec<WvrDisplay>,
 ) -> anyhow::Result<()> {
+	let accent_color = globals.defaults().accent_color;
+
 	for entry in list {
-		let (rect, _) = layout.add_child(
-			parent,
-			WidgetRectangle::create(WidgetRectangleParams { ..Default::default() }),
-			taffy::Style {
-				align_items: Some(taffy::AlignItems::Center),
-				justify_content: Some(taffy::JustifyContent::Center),
+		let aspect = entry.width as f32 / entry.height as f32;
+
+		let height = 96.0;
+		let width = height * aspect;
+
+		let (widget_button, button) = components::button::construct(
+			ess,
+			components::button::Params {
+				color: Some(accent_color.with_alpha(0.2)),
+				border_color: Some(accent_color),
+				style: taffy::Style {
+					align_items: Some(taffy::AlignItems::Center),
+					justify_content: Some(taffy::JustifyContent::Center),
+					size: taffy::Size {
+						width: length(width),
+						height: length(height),
+					},
+					..Default::default()
+				},
 				..Default::default()
 			},
 		)?;
+
+		button.on_click(Box::new(move |_, _| {
+			log::error!("display options todo");
+			Ok(())
+		}));
 
 		let label_name = WidgetLabel::create(
 			&mut globals.get(),
@@ -134,6 +158,8 @@ fn fill_display_list(
 				content: Translation::from_raw_text(&entry.name),
 				style: TextStyle {
 					weight: Some(FontWeight::Bold),
+					wrap: true,
+					align: Some(HorizontalAlign::Center),
 					..Default::default()
 				},
 			},
@@ -147,8 +173,10 @@ fn fill_display_list(
 			},
 		);
 
-		layout.add_child(rect.id, label_name, Default::default())?;
-		layout.add_child(rect.id, label_resolution, Default::default())?;
+		ess.layout.add_child(widget_button.id, label_name, Default::default())?;
+		ess
+			.layout
+			.add_child(widget_button.id, label_resolution, Default::default())?;
 	}
 
 	Ok(())
@@ -162,7 +190,14 @@ impl View {
 				let frontend_tasks = self.frontend_tasks.clone();
 				let globals = self.globals.clone();
 				let state = self.state.clone();
-				let tasks = self.tasks.clone();
+
+				let on_submit = {
+					let tasks = self.tasks.clone();
+					Rc::new(move |result| {
+						tasks.push(Task::AddDisplayFinish(result));
+						tasks.push(Task::Refresh);
+					})
+				};
 
 				Rc::new(move |data| {
 					state.borrow_mut().view_add_display = Some((
@@ -172,7 +207,7 @@ impl View {
 							globals: globals.clone(),
 							layout: data.layout,
 							parent_id: data.id_content,
-							on_submit: tasks.make_callback(Task::AddDisplayFinish),
+							on_submit: on_submit.clone(),
 						})?,
 					));
 					Ok(())
@@ -181,7 +216,18 @@ impl View {
 		}));
 	}
 
-	fn add_display_finish(&mut self) -> anyhow::Result<()> {
+	fn add_display_finish(
+		&mut self,
+		interface: &mut Box<dyn dash_interface::DashInterface>,
+		result: add_display::Result,
+	) -> anyhow::Result<()> {
+		interface.display_create(WvrDisplayCreateParams {
+			width: result.width,
+			height: result.height,
+			name: result.display_name,
+			attach_to: AttachTo::None,
+			scale: None,
+		})?;
 		self.state.borrow_mut().view_add_display = None;
 		Ok(())
 	}
@@ -199,7 +245,14 @@ impl View {
 				if list.is_empty() {
 					text = Some(Translation::from_translation_key("NO_DISPLAYS_FOUND"))
 				} else {
-					fill_display_list(&self.globals, self.id_list_parent, layout, list)?
+					fill_display_list(
+						&self.globals,
+						&mut ConstructEssentials {
+							layout,
+							parent: self.id_list_parent,
+						},
+						list,
+					)?
 				}
 			}
 			Err(e) => text = Some(Translation::from_raw_text(&format!("Error: {:?}", e))),

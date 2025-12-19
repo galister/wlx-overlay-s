@@ -52,5 +52,8 @@
   "ADD_DISPLAY": "Agregar pantalla",
   "POPUP_ADD_DISPLAY": {
     "RESOLUTION": "Resolución"
-  }
+  },
+  "WIDTH": "Ancho",
+  "HEIGHT": "Altura",
+  "DISPLAY_PORTRAIT_MODE": "Modo retrato"
 }

@@ -2,10 +2,8 @@
 	"ACTIONS": {
 		"RECENTER_PLAYSPACE": "Re-center playspace"
 	},
-	"POPUP_ADD_DISPLAY": {
-		"RESOLUTION": "Resolution"
-	},
 	"ADD_DISPLAY": "Add display",
+	"DISPLAY_PORTRAIT_MODE": "Portrait mode",
 	"APP_SETTINGS": {
 		"BRIGHTNESS": "Brightness",
 		"HEADSET_SETTINGS": "Headset settings",
@@ -44,6 +42,7 @@
 	},
 	"GAMES": "Games",
 	"GENERAL_SETTINGS": "General settings",
+	"HEIGHT": "Height",
 	"HELLO": "Hello!",
 	"HELLO_USER": "Hello, {USER}!",
 	"HOME_SCREEN": "Home",
@@ -51,6 +50,10 @@
 	"LIST_OF_PROCESSES": "Process list",
 	"MONADO_RUNTIME": "„Monado” runtime",
 	"NO_DISPLAYS_FOUND": "No displays found",
+	"POPUP_ADD_DISPLAY": {
+		"RESOLUTION": "Resolution"
+	},
 	"PROCESSES": "Processes",
-	"SETTINGS": "Settings"
+	"SETTINGS": "Settings",
+	"WIDTH": "Width"
 }

@@ -63,7 +63,7 @@ impl Default for Params<'_> {
 }
 
 pub struct ButtonClickEvent {}
-pub type ButtonClickCallback = Box<dyn FnMut(&mut CallbackDataCommon, ButtonClickEvent) -> anyhow::Result<()>>;
+pub type ButtonClickCallback = Box<dyn Fn(&mut CallbackDataCommon, ButtonClickEvent) -> anyhow::Result<()>>;
 
 pub struct Colors {
 	pub color: drawing::Color,
@@ -351,7 +351,7 @@ fn register_event_mouse_release(
 				state.down = false;
 
 				if state.hovered
-					&& let Some(on_click) = &mut state.on_click
+					&& let Some(on_click) = &state.on_click
 				{
 					anim_hover(
 						rect,

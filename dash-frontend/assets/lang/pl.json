@@ -46,11 +46,14 @@
   "ACTIONS": {
     "RECENTER_PLAYSPACE": "Wycentruj przestrzeń"
   },
-  "LIST_OF_DISPLAYS": "Lista wyświetlaczy",
+  "LIST_OF_DISPLAYS": "Lista monitorów",
   "LIST_OF_PROCESSES": "Lista procesów",
   "NO_DISPLAYS_FOUND": "Brak monitorów",
   "ADD_DISPLAY": "Dodaj monitor",
   "POPUP_ADD_DISPLAY": {
     "RESOLUTION": "Rozdzielczość"
-  }
+  },
+  "WIDTH": "Szerokość",
+  "HEIGHT": "Wysokość",
+  "DISPLAY_PORTRAIT_MODE": "Tryb pionowy"
 }

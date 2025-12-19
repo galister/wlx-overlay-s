@@ -52,5 +52,8 @@
   "ADD_DISPLAY": "Bildschirm hinzufügen",
   "POPUP_ADD_DISPLAY": {
     "RESOLUTION": "Auflösung"
-  }
+  },
+  "WIDTH": "Breite",
+  "HEIGHT": "Höhe",
+  "DISPLAY_PORTRAIT_MODE": "Porträtmodus"
 }
