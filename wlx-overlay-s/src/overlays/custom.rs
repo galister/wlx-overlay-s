@@ -12,15 +12,18 @@ use crate::{
     windowing::window::{OverlayCategory, OverlayWindowConfig},
 };
 
+struct CustomPanelState {}
+
 pub fn create_custom(app: &mut AppState, name: Arc<str>) -> Option<OverlayWindowConfig> {
     let params = NewGuiPanelParams {
         external_xml: true,
         ..NewGuiPanelParams::default()
     };
 
-    let mut panel = GuiPanel::new_from_template(app, &format!("gui/{name}.xml"), (), params)
-        .inspect_err(|e| log::warn!("Error creating '{name}': {e:?}"))
-        .ok()?;
+    let mut panel =
+        GuiPanel::new_from_template(app, &format!("gui/{name}.xml"), CustomPanelState {}, params)
+            .inspect_err(|e| log::warn!("Error creating '{name}': {e:?}"))
+            .ok()?;
 
     panel
         .update_layout()
