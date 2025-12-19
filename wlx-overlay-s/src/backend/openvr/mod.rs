@@ -157,24 +157,37 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
         }
         FRAME_COUNTER.fetch_add(1, Ordering::Relaxed);
 
+        // extremely cursed
+        const VREVENT_QUIT: u32 = EVREventType::VREvent_Quit as u32;
+        const VREVENT_TRACKED_ACTIVATED: u32 = EVREventType::VREvent_TrackedDeviceActivated as u32;
+        const VREVENT_TRACKED_DEACTIVATED: u32 =
+            EVREventType::VREvent_TrackedDeviceDeactivated as u32;
+        const VREVENT_TRACKED_UPDATED: u32 = EVREventType::VREvent_TrackedDeviceUpdated as u32;
+        const VREVENT_SEATED_ZERO: u32 = EVREventType::VREvent_SeatedZeroPoseReset as u32;
+        const VREVENT_STANDING_ZERO: u32 = EVREventType::VREvent_StandingZeroPoseReset as u32;
+        const VREVENT_CHAPERONE_CHANGED: u32 =
+            EVREventType::VREvent_ChaperoneUniverseHasChanged as u32;
+        const VREVENT_SCENE_APP_CHANGED: u32 = EVREventType::VREvent_SceneApplicationChanged as u32;
+        const VREVENT_IPD_CHANGED: u32 = EVREventType::VREvent_IpdChanged as u32;
+
         while let Some(event) = system_mgr.poll_next_event() {
             match event.event_type {
-                EVREventType::VREvent_Quit => {
+                VREVENT_QUIT => {
                     log::warn!("Received quit event, shutting down.");
                     break 'main_loop;
                 }
-                EVREventType::VREvent_TrackedDeviceActivated
-                | EVREventType::VREvent_TrackedDeviceDeactivated
-                | EVREventType::VREvent_TrackedDeviceUpdated => {
+                VREVENT_TRACKED_ACTIVATED
+                | VREVENT_TRACKED_DEACTIVATED
+                | VREVENT_TRACKED_UPDATED => {
                     next_device_update = Instant::now();
                 }
-                EVREventType::VREvent_SeatedZeroPoseReset
-                | EVREventType::VREvent_StandingZeroPoseReset
-                | EVREventType::VREvent_ChaperoneUniverseHasChanged
-                | EVREventType::VREvent_SceneApplicationChanged => {
+                VREVENT_SEATED_ZERO
+                | VREVENT_STANDING_ZERO
+                | VREVENT_CHAPERONE_CHANGED
+                | VREVENT_SCENE_APP_CHANGED => {
                     playspace.playspace_changed(&mut compositor_mgr, &mut chaperone_mgr);
                 }
-                EVREventType::VREvent_IpdChanged => {
+                VREVENT_IPD_CHANGED => {
                     if let Ok(ipd) = system_mgr.get_tracked_device_property::<f32>(
                         TrackedDeviceIndex::HMD,
                         ETrackedDeviceProperty::Prop_UserIpdMeters_Float,

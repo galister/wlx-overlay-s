@@ -43,7 +43,7 @@ openxr = { git = "https://github.com/Ralith/openxrs", rev = "d0afdd3365bc1e14de2
 ovr_overlay = { features = [
   "ovr_input",
   "ovr_system",
-], git = "https://github.com/galister/ovr_overlay_oyasumi", rev = "3cfe4930accad9cf38cd9784bf78505584de4cd8", optional = true }
+], git = "https://github.com/galister/ovr_overlay_oyasumi", rev = "8d62c73d5f17e4210d6d0cd52e7f3953eb9b481a", optional = true }
 regex = { workspace = true }
 rodio = { version = "0.21.1", default-features = false, features = [
   "playback",
