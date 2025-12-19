@@ -1,7 +1,7 @@
 use crate::{
 	components::{Component, slider},
 	layout::WidgetID,
-	parser::{AttribPair, ParserContext, parse_check_f32, process_component, style::parse_style},
+	parser::{AttribPair, ParserContext, parse_check_f32, parse_check_i32, process_component, style::parse_style},
 	widget::ConstructEssentials,
 };
 
@@ -14,6 +14,7 @@ pub fn parse_component_slider(
 	let mut max_value = 1.0;
 	let mut initial_value = 0.5;
 	let mut step = 1.0;
+	let mut show_value = 1;
 
 	let style = parse_style(attribs);
 
@@ -32,6 +33,9 @@ pub fn parse_component_slider(
 			"step" => {
 				parse_check_f32(value, &mut step);
 			}
+			"show_value" => {
+				parse_check_i32(value, &mut show_value);
+			}
 			_ => {}
 		}
 	}
@@ -49,6 +53,7 @@ pub fn parse_component_slider(
 				value: initial_value,
 				step,
 			},
+			show_value: show_value != 0,
 		},
 	)?;
 
