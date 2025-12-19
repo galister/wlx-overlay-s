@@ -229,7 +229,7 @@ impl PlayspaceMover {
 
     pub fn recenter(&mut self, chaperone_mgr: &mut ChaperoneSetupManager, input: &InputState) {
         let Some(mut mat) = get_working_copy(&self.universe, chaperone_mgr) else {
-            log::warn!("Can't fix floor - failed to get zero pose");
+            log::warn!("Can't recenter - failed to get zero pose");
             return;
         };
 
@@ -240,11 +240,11 @@ impl PlayspaceMover {
         chaperone_mgr.commit_working_copy(EChaperoneConfigFile::EChaperoneConfigFile_Live);
 
         if self.drag.is_some() {
-            log::info!("Space drag interrupted by fix floor");
+            log::info!("Space drag interrupted by recenter");
             self.drag = None;
         }
         if self.rotate.is_some() {
-            log::info!("Space rotate interrupted by fix floor");
+            log::info!("Space rotate interrupted by recenter");
             self.rotate = None;
         }
     }
