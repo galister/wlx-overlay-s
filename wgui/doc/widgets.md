@@ -250,6 +250,10 @@ _Needs to be bigger than `min_value`_
 
 _Initial slider value_
 
+`show_value`: "1" | "0"
+
+_Set to 0 if you don't want to display value text in the slider handle_
+
 ---
 
 ## Checkbox component

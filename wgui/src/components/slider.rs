@@ -69,6 +69,7 @@ impl ValuesMinMax {
 pub struct Params {
 	pub style: taffy::Style,
 	pub values: ValuesMinMax,
+	pub show_value: bool,
 }
 
 struct State {
@@ -80,8 +81,8 @@ struct State {
 
 struct Data {
 	body_node: taffy::NodeId,
-	slider_handle_rect_id: WidgetID, // Rectangle
-	slider_text_id: WidgetID,        // Text
+	slider_handle_rect_id: WidgetID,  // Rectangle
+	slider_text_id: Option<WidgetID>, // Text
 	slider_handle_id: WidgetID,
 	slider_handle_node_id: taffy::NodeId,
 }
@@ -226,7 +227,9 @@ impl State {
 		common.alterables.mark_dirty(data.slider_handle_node_id);
 		common.alterables.mark_redraw();
 
-		if let Some(mut label) = common.state.widgets.get_as::<WidgetLabel>(data.slider_text_id) {
+		if let Some(slider_text_id) = data.slider_text_id
+			&& let Some(mut label) = common.state.widgets.get_as::<WidgetLabel>(slider_text_id)
+		{
 			Self::update_text(common, &mut label, self.values.value);
 		}
 
@@ -469,29 +472,34 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 
 	let globals = ess.layout.state.globals.clone();
 
-	let (slider_text, _) = ess.layout.add_child(
-		slider_handle.id,
-		WidgetLabel::create(
-			&mut globals.get(),
-			WidgetLabelParams {
-				content: Translation::default(),
-				style: TextStyle {
-					color: Some(drawing::Color::new(0.0, 0.0, 0.0, 0.75)), // always black
-					weight: Some(FontWeight::Bold),
-					align: Some(HorizontalAlign::Center),
-					..Default::default()
+	let slider_text: Option<(WidgetPair, taffy::NodeId)> = if params.show_value {
+		let pair = ess.layout.add_child(
+			slider_handle.id,
+			WidgetLabel::create(
+				&mut globals.get(),
+				WidgetLabelParams {
+					content: Translation::default(),
+					style: TextStyle {
+						color: Some(drawing::Color::new(0.0, 0.0, 0.0, 0.75)), // always black
+						weight: Some(FontWeight::Bold),
+						align: Some(HorizontalAlign::Center),
+						..Default::default()
+					},
 				},
-			},
-		),
-		Default::default(),
-	)?;
+			),
+			Default::default(),
+		)?;
+		Some(pair)
+	} else {
+		None
+	};
 
 	let data = Rc::new(Data {
 		slider_handle_rect_id: slider_handle_rect.id,
 		body_node: slider_body_node,
 		slider_handle_id: slider_handle.id,
 		slider_handle_node_id,
-		slider_text_id: slider_text.id,
+		slider_text_id: slider_text.map(|s| s.0.id),
 	});
 
 	let state = Rc::new(RefCell::new(state));
