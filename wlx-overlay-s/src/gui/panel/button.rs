@@ -177,7 +177,7 @@ pub(super) fn setup_custom_button<S: 'static>(
                         let state = state.clone();
                         move |common, _data, _, _| {
                             shell_on_tick(&state, common, piped);
-                            Ok(EventResult::Consumed)
+                            Ok(EventResult::Pass)
                         }
                     }),
                 );
