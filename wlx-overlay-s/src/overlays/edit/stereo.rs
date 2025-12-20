@@ -45,7 +45,7 @@ impl SpriteTabKey for StereoMode {
             "topbottom" => StereoMode::TopBottom,
             "bottomtop" => StereoMode::BottomTop,
             _ => {
-                panic!("cannot translate to positioning: {key}")
+                panic!("cannot translate to stereo mode: {key}")
             }
         }
     }

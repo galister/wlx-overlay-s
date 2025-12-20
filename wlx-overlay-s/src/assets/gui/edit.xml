@@ -45,6 +45,7 @@
                 <TopButton sticky="0" id="top_alpha" src="edit/fade.svg" tooltip="EDIT_MODE.OPACITY" press="::EditModeTab alpha" />
                 <TopButton sticky="0" id="top_curve" src="edit/curve.svg" tooltip="EDIT_MODE.ADJUST_CURVATURE" press="::EditModeTab curve" />
                 <TopButton sticky="0" id="top_stereo" src="edit/3d.svg" tooltip="EDIT_MODE.STEREO_3D_MODE.TITLE" press="::EditModeTab stereo" />
+                <TopButton sticky="0" id="top_mouse" src="edit/normal.svg" tooltip="EDIT_MODE.MOUSE.TITLE" press="::EditModeTab mouse" />
                 <!-- TopButton sticky="0" id="top_move" src="edit/move-all.svg" tooltip="EDIT_MODE.MOVE_PRESS_AND_DRAG" / -->
                 <!-- TopButton sticky="0" id="top_resize" src="edit/resize.svg" tooltip="EDIT_MODE.RESIZE_PRESS_AND_DRAG" / -->
                 <TopButtonDanger src="edit/delete.svg" tooltip="EDIT_MODE.DELETE" press="::EditModeDeletePress" release="::EditModeDeleteRelease" />
@@ -75,6 +76,19 @@
                   <PosButton id="stereo_rightleft" src="edit/3d_rightleft.svg" tooltip="EDIT_MODE.STEREO_3D_MODE.SPLIT_RIGHT_LEFT" press="::EditModeSetStereo rightleft" />
                   <PosButton id="stereo_topbottom" src="edit/3d_topbottom.svg" tooltip="EDIT_MODE.STEREO_3D_MODE.SPLIT_TOP_BOTTOM" press="::EditModeSetStereo topbottom" />
                   <PosButton id="stereo_bottomtop" src="edit/3d_bottomtop.svg" tooltip="EDIT_MODE.STEREO_3D_MODE.SPLIT_BOTTOM_TOP" press="::EditModeSetStereo bottomtop" />
+                </div>
+              </div>
+              <div id="tab_mouse" display="none" height="100" flex_direction="column">
+                <div padding="8" gap="8" justify_content="center" align_items="center">
+                  <PosButton id="mouse_default" src="edit/close.svg" tooltip="DEFAULT" press="::EditModeSetMouse default" />
+                  <PosButton id="mouse_normal" src="edit/normal.svg" tooltip="EDIT_MODE.MOUSE.NORMAL" press="::EditModeSetMouse normal" />
+                  <PosButton id="mouse_rotate90" src="edit/rotate90.svg" tooltip="EDIT_MODE.MOUSE.ROTATE90" press="::EditModeSetMouse rotate90" />
+                  <PosButton id="mouse_rotate180" src="edit/rotate180.svg" tooltip="EDIT_MODE.MOUSE.ROTATE180" press="::EditModeSetMouse rotate180" />
+                  <PosButton id="mouse_rotate270" src="edit/rotate270.svg" tooltip="EDIT_MODE.MOUSE.ROTATE270" press="::EditModeSetMouse rotate270" />
+                  <PosButton id="mouse_flipped" src="edit/flipped.svg" tooltip="EDIT_MODE.MOUSE.FLIPPED" press="::EditModeSetMouse flipped" />
+                  <PosButton id="mouse_flip90" src="edit/flip90.svg" tooltip="EDIT_MODE.MOUSE.FLIP90" press="::EditModeSetMouse flip90" />
+                  <PosButton id="mouse_flip180" src="edit/flip180.svg" tooltip="EDIT_MODE.MOUSE.FLIP180" press="::EditModeSetMouse flip180" />
+                  <PosButton id="mouse_flip270" src="edit/flip270.svg" tooltip="EDIT_MODE.MOUSE.FLIP270" press="::EditModeSetMouse flip270" />
                 </div>
               </div>
               <div id="tab_alpha" display="none" height="100" padding="8" gap="8" justify_content="center" align_items="center">

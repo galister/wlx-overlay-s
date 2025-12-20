@@ -103,11 +103,9 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
                 ),
             );
 
-            backend.set_mouse_transform(
-                vec2(m.monitor.x() as f32, m.monitor.y() as f32),
-                vec2(m.monitor.width() as f32, m.monitor.height() as f32),
-                Transform::Normal,
-            );
+            backend.logical_pos = vec2(m.monitor.x() as f32, m.monitor.y() as f32);
+            backend.logical_size = vec2(m.monitor.width() as f32, m.monitor.height() as f32);
+            backend.apply_mouse_transform_with_override(Transform::Undefined);
 
             let window_data = create_screen_from_backend(
                 m.name.clone(),
@@ -188,11 +186,9 @@ pub fn create_screens_xshm(app: &mut AppState) -> anyhow::Result<ScreenCreateDat
                 pos,
             );
 
-            backend.set_mouse_transform(
-                vec2(s.monitor.x() as f32, s.monitor.y() as f32),
-                vec2(size.0 as f32, size.1 as f32),
-                Transform::Normal,
-            );
+            backend.logical_pos = vec2(s.monitor.x() as f32, s.monitor.y() as f32);
+            backend.logical_size = vec2(size.0 as f32, size.1 as f32);
+            backend.apply_mouse_transform_with_override(Transform::Undefined);
 
             let window_data = create_screen_from_backend(
                 s.name.clone(),

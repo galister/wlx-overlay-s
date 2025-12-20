@@ -1,6 +1,7 @@
 use glam::vec2;
 use wlx_capture::{
     WlxCapture,
+    frame::Transform,
     wayland::{WlxClient, WlxOutput},
     wlr_dmabuf::WlrDmabufCapture,
     wlr_screencopy::WlrScreencopyCapture,
@@ -124,15 +125,14 @@ pub fn create_screens_wayland(wl: &mut WlxClient, app: &mut AppState) -> ScreenC
             &mut pw_tokens,
             app,
         ) {
-            let logical_pos = vec2(output.logical_pos.0 as f32, output.logical_pos.1 as f32);
-            let logical_size = vec2(output.logical_size.0 as f32, output.logical_size.1 as f32);
-            let transform = output.transform;
-
-            backend.set_mouse_transform(logical_pos, logical_size, transform);
+            backend.logical_pos = vec2(output.logical_pos.0 as f32, output.logical_pos.1 as f32);
+            backend.logical_size = vec2(output.logical_size.0 as f32, output.logical_size.1 as f32);
+            backend.mouse_transform_original = output.transform;
+            backend.apply_mouse_transform_with_override(Transform::Undefined);
 
             let window_config = create_screen_from_backend(
                 output.name.clone(),
-                transform,
+                output.transform,
                 &app.session,
                 Box::new(backend),
             );

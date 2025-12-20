@@ -1,7 +1,7 @@
 use regex::Regex;
 use std::{
     fs,
-    io::{BufRead, BufReader, Read},
+    io::{BufRead, BufReader},
     process::Child,
     sync::{
         Arc, LazyLock,

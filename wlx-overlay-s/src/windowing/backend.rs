@@ -6,6 +6,7 @@ use wgui::gfx::{
     WGfx,
     cmd::{GfxCommandBuffer, WGfxClearMode},
 };
+use wlx_capture::frame::Transform;
 
 use crate::{
     backend::input::{HoverResult, PointerHit},
@@ -111,11 +112,13 @@ macro_rules! attrib_value {
 #[derive(Clone, Copy)]
 pub enum BackendAttrib {
     Stereo,
+    MouseTransform,
 }
 
 #[derive(Debug, Clone)]
 pub enum BackendAttribValue {
     Stereo(StereoMode),
+    MouseTransform(Transform),
 }
 
 pub struct OverlayMeta {

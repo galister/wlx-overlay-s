@@ -16,7 +16,7 @@ use crate::{
     subsystem::hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT, WheelDelta},
     windowing::backend::{
         BackendAttrib, BackendAttribValue, FrameMeta, OverlayBackend, OverlayEventData,
-        RenderResources, ShouldRender, StereoMode,
+        RenderResources, ShouldRender, StereoMode, ui_transform,
     },
 };
 
@@ -47,6 +47,10 @@ pub struct ScreenBackend {
     mouse_transform: Affine2,
     interaction_transform: Option<Affine2>,
     stereo: Option<StereoMode>,
+    pub(super) logical_pos: Vec2,
+    pub(super) logical_size: Vec2,
+    pub(super) mouse_transform_original: Transform,
+    mouse_transform_override: Transform,
 }
 
 impl ScreenBackend {
@@ -63,48 +67,60 @@ impl ScreenBackend {
             mouse_transform: Affine2::ZERO,
             interaction_transform: None,
             stereo: None,
+            logical_pos: Vec2::ZERO,
+            logical_size: Vec2::ZERO,
+            mouse_transform_original: Transform::Undefined,
+            mouse_transform_override: Transform::Undefined,
         }
     }
 
-    pub(super) fn set_mouse_transform(&mut self, pos: Vec2, size: Vec2, transform: Transform) {
+    pub(super) fn apply_mouse_transform_with_override(&mut self, override_transform: Transform) {
+        let size = self.logical_size;
+        let pos = self.logical_pos;
+
+        let transform = match override_transform {
+            Transform::Undefined => self.mouse_transform_original,
+            other => other,
+        };
+
         self.mouse_transform = match transform {
-            Transform::Rotated90 | Transform::Flipped90 => Affine2::from_cols(
+            Transform::Normal | Transform::Undefined => {
+                Affine2::from_cols(vec2(size.x, 0.), vec2(0., size.y), pos)
+            }
+            Transform::Rotated90 => Affine2::from_cols(
                 vec2(0., size.y),
                 vec2(-size.x, 0.),
                 vec2(pos.x + size.x, pos.y),
             ),
-            Transform::Rotated180 | Transform::Flipped180 => Affine2::from_cols(
+            Transform::Rotated180 => Affine2::from_cols(
                 vec2(-size.x, 0.),
                 vec2(0., -size.y),
                 vec2(pos.x + size.x, pos.y + size.y),
             ),
-            Transform::Rotated270 | Transform::Flipped270 => Affine2::from_cols(
+            Transform::Rotated270 => Affine2::from_cols(
                 vec2(0., -size.y),
                 vec2(size.x, 0.),
                 vec2(pos.x, pos.y + size.y),
             ),
-            _ => Affine2::from_cols(vec2(size.x, 0.), vec2(0., size.y), pos),
+            Transform::Flipped => Affine2::from_cols(
+                vec2(-size.x, 0.),
+                vec2(0., size.y),
+                vec2(pos.x + size.x, pos.y),
+            ),
+            Transform::Flipped90 => {
+                Affine2::from_cols(vec2(0., size.y), vec2(size.x, 0.), vec2(pos.x, pos.y))
+            }
+            Transform::Flipped180 => Affine2::from_cols(
+                vec2(size.x, 0.),
+                vec2(0., -size.y),
+                vec2(pos.x, pos.y + size.y),
+            ),
+            Transform::Flipped270 => Affine2::from_cols(
+                vec2(0., -size.y),
+                vec2(-size.x, 0.),
+                vec2(pos.x + size.x, pos.y + size.y),
+            ),
         };
-    }
-
-    pub(super) fn set_interaction_transform(&mut self, res: Vec2, transform: Transform) {
-        let center = Vec2 { x: 0.5, y: 0.5 };
-        self.interaction_transform = Some(match transform {
-            Transform::Rotated90 | Transform::Flipped90 => {
-                Affine2::from_cols(Vec2::NEG_Y * (res.x / res.y), Vec2::NEG_X, center)
-            }
-            Transform::Rotated180 | Transform::Flipped180 => {
-                Affine2::from_cols(Vec2::NEG_X, Vec2::NEG_Y * (-res.x / res.y), center)
-            }
-            Transform::Rotated270 | Transform::Flipped270 => {
-                Affine2::from_cols(Vec2::Y * (res.x / res.y), Vec2::X, center)
-            }
-            _ if res.y > res.x => {
-                // Xorg upright screens
-                Affine2::from_cols(Vec2::X * (res.y / res.x), Vec2::NEG_Y, center)
-            }
-            _ => Affine2::from_cols(Vec2::X, Vec2::NEG_Y * (res.x / res.y), center),
-        });
     }
 }
 
@@ -175,17 +191,14 @@ impl OverlayBackend for ScreenBackend {
                     .is_some_and(|old| old.extent[..2] != meta.extent[..2])
                 {
                     pipeline.set_extent(app, [meta.extent[0] as _, meta.extent[1] as _])?;
-                    self.set_interaction_transform(
-                        meta.extent.extent_vec2(),
-                        frame.get_transform(),
-                    );
+                    self.interaction_transform = Some(ui_transform(meta.extent.extent_u32arr()));
                 }
             } else {
                 let pipeline =
                     ScreenPipeline::new(&meta, app, self.stereo.unwrap_or(StereoMode::None))?;
                 meta.extent[2] = pipeline.get_depth();
                 self.pipeline = Some(pipeline);
-                self.set_interaction_transform(meta.extent.extent_vec2(), frame.get_transform());
+                self.interaction_transform = Some(ui_transform(meta.extent.extent_u32arr()));
             }
 
             self.meta = Some(meta);
@@ -281,6 +294,9 @@ impl OverlayBackend for ScreenBackend {
     fn get_attrib(&self, attrib: BackendAttrib) -> Option<BackendAttribValue> {
         match attrib {
             BackendAttrib::Stereo => self.stereo.map(|s| BackendAttribValue::Stereo(s)),
+            BackendAttrib::MouseTransform => Some(BackendAttribValue::MouseTransform(
+                self.mouse_transform_override,
+            )),
             _ => None,
         }
     }
@@ -298,6 +314,11 @@ impl OverlayBackend for ScreenBackend {
                 } else {
                     false
                 }
+            }
+            BackendAttribValue::MouseTransform(new) => {
+                self.mouse_transform_override = new;
+                self.apply_mouse_transform_with_override(new);
+                true
             }
             _ => false,
         }

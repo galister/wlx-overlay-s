@@ -14,6 +14,7 @@ use wgui::{
     parser::Fetchable,
     widget::EventResult,
 };
+use wlx_capture::frame::Transform;
 
 use crate::{
     attrib_value,
@@ -24,6 +25,7 @@ use crate::{
     gui::panel::{GuiPanel, NewGuiPanelParams, OnCustomAttribFunc, button::BUTTON_EVENTS},
     overlays::edit::{
         lock::InteractLockHandler,
+        mouse::new_mouse_tab_handler,
         pos::{PosTabState, new_pos_tab_handler},
         sprite_tab::SpriteTabHandler,
         stereo::new_stereo_tab_handler,
@@ -42,6 +44,7 @@ use crate::{
 };
 
 mod lock;
+mod mouse;
 mod pos;
 mod sprite_tab;
 mod stereo;
@@ -66,6 +69,7 @@ struct EditModeState {
     lock: InteractLockHandler,
     pos: SpriteTabHandler<PosTabState>,
     stereo: SpriteTabHandler<StereoMode>,
+    mouse: SpriteTabHandler<Transform>,
 }
 
 type EditModeWrapPanel = GuiPanel<EditModeState>;
@@ -264,6 +268,7 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
         lock: InteractLockHandler::default(),
         pos: SpriteTabHandler::default(),
         stereo: SpriteTabHandler::default(),
+        mouse: SpriteTabHandler::default(),
     };
 
     let on_custom_attrib: OnCustomAttribFunc = Box::new(move |layout, attribs, _app| {
@@ -323,6 +328,16 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
                         Ok(EventResult::Consumed)
                     })
                 }
+                "::EditModeSetMouse" => {
+                    let key = args.next().unwrap().to_owned();
+                    Box::new(move |common, _data, app, state| {
+                        let sel = OverlaySelector::Id(*state.id.borrow());
+                        let task = state.mouse.button_clicked(common, &key);
+                        app.tasks
+                            .enqueue(TaskType::Overlay(OverlayTask::Modify(sel, task)));
+                        Ok(EventResult::Consumed)
+                    })
+                }
                 "::EditModeDeletePress" => Box::new(move |_common, _data, _app, state| {
                     state.delete.pressed = Instant::now();
                     // TODO: animate to light up button after 2s
@@ -361,9 +376,12 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
 
     panel.state.pos = new_pos_tab_handler(&mut panel)?;
     panel.state.stereo = new_stereo_tab_handler(&mut panel)?;
+    panel.state.mouse = new_mouse_tab_handler(&mut panel)?;
     panel.state.lock = InteractLockHandler::new(&mut panel)?;
-    panel.state.tabs =
-        ButtonPaneTabSwitcher::new(&mut panel, &["none", "pos", "alpha", "curve", "stereo"])?;
+    panel.state.tabs = ButtonPaneTabSwitcher::new(
+        &mut panel,
+        &["none", "pos", "alpha", "curve", "stereo", "mouse"],
+    )?;
 
     set_up_checkbox(&mut panel, "additive_box", cb_assign_additive)?;
     set_up_slider(&mut panel, "lerp_slider", cb_assign_lerp)?;
@@ -433,6 +451,19 @@ fn reset_panel(
             .state
             .tabs
             .set_tab_visible(&mut common, "stereo", false);
+    }
+
+    if let Some(mouse) = attrib_value!(
+        owc.backend.get_attrib(BackendAttrib::MouseTransform),
+        BackendAttribValue::MouseTransform
+    ) {
+        panel.state.tabs.set_tab_visible(&mut common, "mouse", true);
+        panel.state.mouse.reset(&mut common, &mouse);
+    } else {
+        panel
+            .state
+            .tabs
+            .set_tab_visible(&mut common, "mouse", false);
     }
 
     panel.layout.process_alterables(alterables)?;

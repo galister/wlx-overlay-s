@@ -56,6 +56,7 @@ pub struct GuiPanel<S> {
     context: WguiContext,
     timestep: Timestep,
     has_focus: [bool; 2],
+    last_content_size: Vec2,
 }
 
 pub type OnCustomIdFunc<S> = Box<
@@ -175,6 +176,7 @@ impl<S: 'static> GuiPanel<S> {
             gui_scale: params.gui_scale,
             initialized: false,
             has_focus: [false, false],
+            last_content_size: Vec2::ZERO,
         })
     }
 
@@ -206,6 +208,7 @@ impl<S: 'static> GuiPanel<S> {
             gui_scale: params.gui_scale,
             initialized: false,
             has_focus: [false, false],
+            last_content_size: Vec2::ZERO,
         })
     }
 
@@ -238,7 +241,6 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
         if self.layout.content_size.x * self.layout.content_size.y != 0.0 {
             self.update_layout()?;
             self.interaction_transform = Some(ui_transform([
-                //TODO: dynamic
                 self.layout.content_size.x as _,
                 self.layout.content_size.y as _,
             ]));
@@ -273,6 +275,17 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
         if self.layout.content_size.x * self.layout.content_size.y == 0.0 {
             log::trace!("Unable to render: content size 0");
             return Ok(ShouldRender::Unable);
+        }
+
+        if !self
+            .last_content_size
+            .abs_diff_eq(self.layout.content_size, 0.1 /* pixels */)
+        {
+            self.interaction_transform = Some(ui_transform([
+                self.layout.content_size.x as _,
+                self.layout.content_size.y as _,
+            ]));
+            self.last_content_size = self.layout.content_size;
         }
 
         Ok(if self.layout.check_toggle_needs_redraw() {
