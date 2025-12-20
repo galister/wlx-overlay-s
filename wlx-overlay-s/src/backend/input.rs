@@ -744,6 +744,14 @@ where
                         x => x,
                     };
                 }
+            } else if overlay.config.global {
+                if let Some(active_state) = overlay.config.active_state.as_ref() {
+                    let cur_scale = overlay.config.default_state.transform.x_axis.length();
+                    let tgt_scale = active_state.transform.x_axis.length();
+
+                    let mat = &mut overlay.config.default_state.transform.matrix3;
+                    *mat = mat.mul_scalar(tgt_scale / cur_scale);
+                }
             }
             overlay.config.pause_movement = false;
             if let Some(overlay_state) = overlay.config.active_state.as_mut() {
