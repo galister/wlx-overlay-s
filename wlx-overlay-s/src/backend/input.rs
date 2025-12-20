@@ -679,10 +679,13 @@ where
         if grab_anchor {
             if pointer.now.click {
                 pointer.interaction.mode = PointerMode::Special;
-                handle_scale(&mut app.anchor, pointer.now.scroll_y);
+                let grab_dist = grab_data.offset.translation.length().clamp(0.5, 5.0) * 0.2 + 0.4;
+                handle_scale(&mut app.anchor, pointer.now.scroll_y * grab_dist);
             } else if app.session.config.allow_sliding && pointer.now.scroll_y.is_finite() {
                 // single grab push/pull
-                grab_data.offset.translation.z -= pointer.now.scroll_y * 0.05;
+                let grab_dist = grab_data.offset.translation.length().clamp(0.5, 5.0);
+                grab_data.offset.translation.z -= pointer.now.scroll_y * 0.02 * grab_dist;
+                grab_data.offset.translation.z = grab_data.offset.translation.z.min(-0.05);
             }
             if pointer.now.click_modifier_right {
                 app.anchor = pointer.pose * grab_data.offset;
@@ -695,10 +698,16 @@ where
             // single grab resize
             if pointer.now.click {
                 pointer.interaction.mode = PointerMode::Special;
-                handle_scale(&mut overlay_state.transform, pointer.now.scroll_y);
+                let grab_dist = grab_data.offset.translation.length().clamp(0.5, 5.0) * 0.2 + 0.4;
+                handle_scale(
+                    &mut overlay_state.transform,
+                    pointer.now.scroll_y * grab_dist,
+                );
             } else if app.session.config.allow_sliding && pointer.now.scroll_y.is_finite() {
                 // single grab push/pull
-                grab_data.offset.translation.z -= pointer.now.scroll_y * 0.05;
+                let grab_dist = grab_data.offset.translation.length().clamp(0.5, 5.0);
+                grab_data.offset.translation.z -= pointer.now.scroll_y * 0.02 * grab_dist;
+                grab_data.offset.translation.z = grab_data.offset.translation.z.min(-0.05);
             }
             if pointer.now.click_modifier_right {
                 overlay_state.transform = pointer.pose * grab_data.offset;

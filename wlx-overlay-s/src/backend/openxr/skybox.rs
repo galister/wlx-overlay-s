@@ -220,7 +220,7 @@ impl Skybox {
         let sky = xr::CompositionLayerEquirect2KHR::new()
             .layer_flags(xr::CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA)
             .pose(pose)
-            .radius(10.0)
+            .radius(100.0)
             .sub_image(self.sky.as_ref().unwrap().get_subimage(0))
             .eye_visibility(xr::EyeVisibility::BOTH)
             .space(&xr.stage)
