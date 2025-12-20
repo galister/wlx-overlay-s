@@ -26,11 +26,13 @@ pub enum MouseButtonIndex {
 pub struct MouseButton {
 	pub index: MouseButtonIndex,
 	pub pos: Vec2,
+	pub device: usize,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct MousePosition {
 	pub pos: Vec2,
+	pub device: usize,
 }
 
 pub struct MouseDownEvent {

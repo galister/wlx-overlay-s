@@ -7,7 +7,10 @@ use crate::{
 	animation::{Animation, AnimationEasing},
 	components::{Component, ComponentBase, ComponentTrait, RefreshData},
 	drawing::{self},
-	event::{self, CallbackDataCommon, EventAlterables, EventListenerCollection, EventListenerKind, StyleSetRequest},
+	event::{
+		self, CallbackDataCommon, CallbackMetadata, EventAlterables, EventListenerCollection, EventListenerKind,
+		StyleSetRequest,
+	},
 	i18n::Translation,
 	layout::{WidgetID, WidgetPair},
 	renderer_vk::{
@@ -69,7 +72,7 @@ pub struct Params {
 }
 
 struct State {
-	dragging: bool,
+	dragged_by: Option<usize>,
 	hovered: bool,
 	values: ValuesMinMax,
 	on_value_changed: Option<SliderValueChangedCallback>,
@@ -330,7 +333,11 @@ fn register_event_mouse_motion(
 		Box::new(move |common, event_data, (), ()| {
 			let mut state = state.borrow_mut();
 
-			if state.dragging {
+			let CallbackMetadata::MousePosition(pos) = event_data.metadata else {
+				unreachable!();
+			};
+
+			if state.dragged_by.is_some_and(|device| device == pos.device) {
 				state.update_value_to_mouse(event_data, &data, common);
 				Ok(EventResult::Consumed)
 			} else {
@@ -351,8 +358,12 @@ fn register_event_mouse_press(
 			common.alterables.trigger_haptics();
 			let mut state = state.borrow_mut();
 
+			let CallbackMetadata::MouseButton(btn) = event_data.metadata else {
+				unreachable!();
+			};
+
 			if state.hovered {
-				state.dragging = true;
+				state.dragged_by = Some(btn.device);
 				state.update_value_to_mouse(event_data, &data, common);
 				Ok(EventResult::Consumed)
 			} else {
@@ -372,8 +383,8 @@ fn register_event_mouse_release(
 			common.alterables.trigger_haptics();
 
 			let mut state = state.borrow_mut();
-			if state.dragging {
-				state.dragging = false;
+			if state.dragged_by.is_some() {
+				state.dragged_by = None;
 				Ok(EventResult::Consumed)
 			} else {
 				Ok(EventResult::Pass)
@@ -450,7 +461,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	)?;
 
 	let state = State {
-		dragging: false,
+		dragged_by: None,
 		hovered: false,
 		values: params.values,
 		on_value_changed: None,

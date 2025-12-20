@@ -488,6 +488,7 @@ impl WidgetState {
 						CallbackMetadata::MouseButton(event::MouseButton {
 							index: e.index,
 							pos: e.pos,
+							device: e.device,
 						}),
 					)?);
 				}
@@ -500,6 +501,7 @@ impl WidgetState {
 						CallbackMetadata::MouseButton(event::MouseButton {
 							index: e.index,
 							pos: e.pos,
+							device: e.device,
 						}),
 					)?);
 				}
@@ -519,7 +521,10 @@ impl WidgetState {
 					res = Some(self.invoke_listeners(
 						&mut invoke_data,
 						EventListenerKind::MouseMotion,
-						CallbackMetadata::MousePosition(event::MousePosition { pos: e.pos }),
+						CallbackMetadata::MousePosition(event::MousePosition {
+							pos: e.pos,
+							device: e.device,
+						}),
 					)?);
 
 					if self.flags.interactable {
