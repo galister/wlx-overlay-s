@@ -1,8 +1,8 @@
 use std::{
 	f32,
 	sync::{
-		Arc,
 		atomic::{AtomicUsize, Ordering},
+		Arc,
 	},
 };
 
@@ -23,7 +23,12 @@ pub enum CustomGlyphContent {
 
 impl CustomGlyphContent {
 	pub fn from_bin_svg(data: &[u8]) -> anyhow::Result<Self> {
-		let tree = Tree::from_data(data, &Options::default())?;
+		let options = Options {
+			style_sheet: Some("svg { color: white }".into()),
+			..Options::default()
+		};
+
+		let tree = Tree::from_data(data, &options)?;
 		Ok(Self::Svg(Box::new(tree)))
 	}
 
