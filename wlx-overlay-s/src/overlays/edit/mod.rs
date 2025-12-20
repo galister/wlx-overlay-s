@@ -168,12 +168,12 @@ impl OverlayBackend for EditModeBackendWrapper {
             let (width_px, height_px) = (frame_meta.extent[0], frame_meta.extent[1]);
 
             let new_size = vec2(width_px as _, height_px as _);
-            if self.panel.max_size != new_size {
+            if !self.panel.max_size.abs_diff_eq(new_size, 0.1) {
                 log::debug!("EditWrapperGui size {} → {new_size}", self.panel.max_size);
                 self.panel.max_size = new_size;
 
-                let gui_scale = width_px.min(height_px) as f32 / 550.0;
-                self.panel.gui_scale = gui_scale;
+                let gui_scale = (new_size.x / 750.0).min(new_size.y / 300.0);
+                self.panel.gui_scale = (gui_scale * 4.0).round() / 4.0;
                 self.panel.update_layout()?;
             }
         } else {
