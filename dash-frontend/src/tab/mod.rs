@@ -2,7 +2,7 @@ use wgui::{
 	globals::WguiGlobals,
 	layout::{Layout, WidgetID},
 };
-use wlx_common::dash_interface;
+use wlx_common::dash_interface::BoxDashInterface;
 
 use crate::frontend::{FrontendTasks, RcFrontend};
 
@@ -36,7 +36,7 @@ pub struct TabUpdateParams<'a> {
 	pub globals: &'a WguiGlobals,
 	pub frontend_tasks: &'a FrontendTasks,
 	pub layout: &'a mut Layout,
-	pub interface: &'a mut Box<dyn dash_interface::DashInterface>,
+	pub interface: &'a mut BoxDashInterface,
 }
 
 pub trait Tab {

@@ -13,7 +13,10 @@ use wgui::{
 	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
 	windowing::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra, WguiWindowPlacement},
 };
-use wlx_common::{dash_interface, timestep::Timestep};
+use wlx_common::{
+	dash_interface::{self, BoxDashInterface},
+	timestep::Timestep,
+};
 
 use crate::{
 	assets, settings,
@@ -41,7 +44,7 @@ pub struct Frontend {
 	globals: WguiGlobals,
 
 	pub settings: Box<dyn settings::SettingsIO>,
-	pub interface: Box<dyn dash_interface::DashInterface>,
+	pub interface: BoxDashInterface,
 
 	#[allow(dead_code)]
 	state: ParserState,
@@ -63,7 +66,7 @@ pub struct Frontend {
 
 pub struct InitParams {
 	pub settings: Box<dyn settings::SettingsIO>,
-	pub interface: Box<dyn dash_interface::DashInterface>,
+	pub interface: BoxDashInterface,
 }
 
 pub type RcFrontend = Rc<RefCell<Frontend>>;

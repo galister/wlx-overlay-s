@@ -55,5 +55,9 @@
   },
   "WIDTH": "幅",
   "HEIGHT": "高さ",
-  "DISPLAY_PORTRAIT_MODE": "縦向きモード"
+  "DISPLAY_PORTRAIT_MODE": "縦向きモード",
+  "HIDE": "隠す",
+  "REMOVE": "削除",
+  "SHOW": "表示",
+  "DISPLAY_OPTIONS": "表示オプション"
 }

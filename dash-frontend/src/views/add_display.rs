@@ -10,10 +10,10 @@ use wgui::{
 	layout::{Layout, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
 	taffy::prelude::length,
-	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
+	widget::label::WidgetLabel,
 };
 
-use crate::{frontend::FrontendTasks, task::Tasks};
+use crate::task::Tasks;
 
 #[derive(Clone)]
 enum Task {
@@ -27,7 +27,6 @@ pub struct View {
 	#[allow(dead_code)]
 	pub state: ParserState,
 	tasks: Tasks<Task>,
-	frontend_tasks: FrontendTasks,
 	on_submit: Rc<dyn Fn(Result)>,
 
 	cur_raw_width: u16,
@@ -51,7 +50,6 @@ pub struct Result {
 
 pub struct Params<'a> {
 	pub globals: WguiGlobals,
-	pub frontend_tasks: FrontendTasks,
 	pub layout: &'a mut Layout,
 	pub parent_id: WidgetID,
 	pub on_submit: Rc<dyn Fn(Result)>,
@@ -114,7 +112,6 @@ impl View {
 		let mut res = Self {
 			state,
 			tasks,
-			frontend_tasks: params.frontend_tasks,
 			on_submit: params.on_submit,
 			cur_raw_width: RES_WIDTHS[2],
 			cur_raw_height: RES_HEIGHTS[2],

@@ -23,3 +23,5 @@ pub trait DashInterface {
 	fn process_terminate(&mut self, handle: WvrProcessHandle) -> anyhow::Result<()>;
 	fn window_set_visible(&mut self, handle: WvrWindowHandle, visible: bool) -> anyhow::Result<()>;
 }
+
+pub type BoxDashInterface = Box<dyn DashInterface>;

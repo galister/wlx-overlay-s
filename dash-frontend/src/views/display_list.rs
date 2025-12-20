@@ -1,40 +1,38 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
 use wayvr_ipc::{
-	packet_client::{AttachTo, WvrDisplayCreateParams},
-	packet_server::WvrDisplay,
+	packet_client::{self},
+	packet_server::{self},
 };
 use wgui::{
 	assets::AssetPath,
 	components::{self, button::ComponentButton},
-	drawing::Color,
 	globals::WguiGlobals,
 	i18n::Translation,
-	layout::{Layout, WidgetID},
+	layout::{Layout, WidgetID, WidgetPair},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
 	renderer_vk::text::{FontWeight, HorizontalAlign, TextStyle},
 	taffy::{self, prelude::length},
 	widget::{
 		ConstructEssentials,
 		label::{WidgetLabel, WidgetLabelParams},
-		rectangle::{WidgetRectangle, WidgetRectangleParams},
-		util::WLength,
 	},
 };
-use wlx_common::dash_interface;
+use wlx_common::dash_interface::BoxDashInterface;
 
 use crate::{
 	frontend::{FrontendTask, FrontendTasks},
-	tab::TabUpdateParams,
 	task::Tasks,
 	util::popup_manager::{MountPopupParams, PopupHandle},
-	views::add_display,
+	views::{add_display, display_options},
 };
 
 #[derive(Clone)]
 enum Task {
 	AddDisplay,
 	AddDisplayFinish(add_display::Result),
+	DisplayOptions(packet_server::WvrDisplay),
+	DisplayOptionsFinish,
 	Refresh,
 }
 
@@ -47,6 +45,7 @@ pub struct Params<'a> {
 
 struct State {
 	view_add_display: Option<(PopupHandle, add_display::View)>,
+	view_display_options: Option<(PopupHandle, display_options::View)>,
 }
 
 pub struct View {
@@ -76,7 +75,10 @@ impl View {
 		tasks.handle_button(btn_add, Task::AddDisplay);
 		tasks.push(Task::Refresh);
 
-		let state = Rc::new(RefCell::new(State { view_add_display: None }));
+		let state = Rc::new(RefCell::new(State {
+			view_add_display: None,
+			view_display_options: None,
+		}));
 
 		Ok(Self {
 			parser_state,
@@ -88,11 +90,7 @@ impl View {
 		})
 	}
 
-	pub fn update(
-		&mut self,
-		layout: &mut Layout,
-		interface: &mut Box<dyn dash_interface::DashInterface>,
-	) -> anyhow::Result<()> {
+	pub fn update(&mut self, layout: &mut Layout, interface: &mut BoxDashInterface) -> anyhow::Result<()> {
 		loop {
 			let tasks = self.tasks.drain();
 			if tasks.is_empty() {
@@ -102,7 +100,9 @@ impl View {
 				match task {
 					Task::AddDisplay => self.add_display(),
 					Task::AddDisplayFinish(result) => self.add_display_finish(interface, result)?,
+					Task::DisplayOptionsFinish => self.display_options_finish(),
 					Task::Refresh => self.refresh(layout, interface)?,
+					Task::DisplayOptions(display) => self.display_options(display)?,
 				}
 			}
 		}
@@ -112,71 +112,87 @@ impl View {
 			view.update(layout)?;
 		}
 
+		if let Some((_, view)) = &mut state.view_display_options {
+			view.update(layout, interface)?;
+		}
+
 		Ok(())
 	}
+}
+
+pub fn construct_display_button(
+	ess: &mut ConstructEssentials,
+	globals: &WguiGlobals,
+	display: &packet_server::WvrDisplay,
+) -> anyhow::Result<(WidgetPair, Rc<ComponentButton>)> {
+	let aspect = display.width as f32 / display.height as f32;
+	let height = 96.0;
+	let width = height * aspect;
+	let accent_color = globals.defaults().accent_color;
+
+	let (widget_button, button) = components::button::construct(
+		ess,
+		components::button::Params {
+			color: Some(accent_color.with_alpha(0.2)),
+			border_color: Some(accent_color),
+			style: taffy::Style {
+				align_items: Some(taffy::AlignItems::Center),
+				justify_content: Some(taffy::JustifyContent::Center),
+				size: taffy::Size {
+					width: length(width),
+					height: length(height),
+				},
+				..Default::default()
+			},
+			..Default::default()
+		},
+	)?;
+
+	let label_name = WidgetLabel::create(
+		&mut globals.get(),
+		WidgetLabelParams {
+			content: Translation::from_raw_text(&display.name),
+			style: TextStyle {
+				weight: Some(FontWeight::Bold),
+				wrap: true,
+				align: Some(HorizontalAlign::Center),
+				..Default::default()
+			},
+		},
+	);
+
+	let label_resolution = WidgetLabel::create(
+		&mut globals.get(),
+		WidgetLabelParams {
+			content: Translation::from_raw_text(""),
+			..Default::default()
+		},
+	);
+
+	ess.layout.add_child(widget_button.id, label_name, Default::default())?;
+	ess
+		.layout
+		.add_child(widget_button.id, label_resolution, Default::default())?;
+
+	Ok((widget_button, button))
 }
 
 fn fill_display_list(
 	globals: &WguiGlobals,
 	ess: &mut ConstructEssentials,
-	list: Vec<WvrDisplay>,
+	list: Vec<packet_server::WvrDisplay>,
+	tasks: &Tasks<Task>,
 ) -> anyhow::Result<()> {
-	let accent_color = globals.defaults().accent_color;
-
 	for entry in list {
-		let aspect = entry.width as f32 / entry.height as f32;
+		let (_, button) = construct_display_button(ess, globals, &entry)?;
 
-		let height = 96.0;
-		let width = height * aspect;
-
-		let (widget_button, button) = components::button::construct(
-			ess,
-			components::button::Params {
-				color: Some(accent_color.with_alpha(0.2)),
-				border_color: Some(accent_color),
-				style: taffy::Style {
-					align_items: Some(taffy::AlignItems::Center),
-					justify_content: Some(taffy::JustifyContent::Center),
-					size: taffy::Size {
-						width: length(width),
-						height: length(height),
-					},
-					..Default::default()
-				},
-				..Default::default()
-			},
-		)?;
-
-		button.on_click(Box::new(move |_, _| {
-			log::error!("display options todo");
-			Ok(())
-		}));
-
-		let label_name = WidgetLabel::create(
-			&mut globals.get(),
-			WidgetLabelParams {
-				content: Translation::from_raw_text(&entry.name),
-				style: TextStyle {
-					weight: Some(FontWeight::Bold),
-					wrap: true,
-					align: Some(HorizontalAlign::Center),
-					..Default::default()
-				},
-			},
-		);
-
-		let label_resolution = WidgetLabel::create(
-			&mut globals.get(),
-			WidgetLabelParams {
-				content: Translation::from_raw_text(""),
-				..Default::default()
-			},
-		);
-
-		ess.layout.add_child(widget_button.id, label_name, Default::default())?;
-		ess
-			.layout
-			.add_child(widget_button.id, label_resolution, Default::default())?;
+		button.on_click({
+			let tasks = tasks.clone();
+			Box::new(move |_, _| {
+				tasks.push(Task::DisplayOptions(entry.clone()));
+				Ok(())
+			})
+		});
 	}
 
 	Ok(())
@@ -187,7 +203,6 @@ impl View {
 		self.frontend_tasks.push(FrontendTask::MountPopup(MountPopupParams {
 			title: Translation::from_translation_key("ADD_DISPLAY"),
 			on_content: {
-				let frontend_tasks = self.frontend_tasks.clone();
 				let globals = self.globals.clone();
 				let state = self.state.clone();
 
@@ -203,7 +218,6 @@ impl View {
 					state.borrow_mut().view_add_display = Some((
 						data.handle,
 						add_display::View::new(add_display::Params {
-							frontend_tasks: frontend_tasks.clone(),
 							globals: globals.clone(),
 							layout: data.layout,
 							parent_id: data.id_content,
@@ -218,25 +232,26 @@ impl View {
 
 	fn add_display_finish(
 		&mut self,
-		interface: &mut Box<dyn dash_interface::DashInterface>,
+		interface: &mut BoxDashInterface,
 		result: add_display::Result,
 	) -> anyhow::Result<()> {
-		interface.display_create(WvrDisplayCreateParams {
+		interface.display_create(packet_client::WvrDisplayCreateParams {
 			width: result.width,
 			height: result.height,
 			name: result.display_name,
-			attach_to: AttachTo::None,
+			attach_to: packet_client::AttachTo::None,
 			scale: None,
 		})?;
 		self.state.borrow_mut().view_add_display = None;
 		Ok(())
 	}
 
-	fn refresh(
-		&mut self,
-		layout: &mut Layout,
-		interface: &mut Box<dyn dash_interface::DashInterface>,
-	) -> anyhow::Result<()> {
+	fn display_options_finish(&mut self) {
+		self.state.borrow_mut().view_display_options = None;
+		self.tasks.push(Task::Refresh);
+	}
+
+	fn refresh(&mut self, layout: &mut Layout, interface: &mut BoxDashInterface) -> anyhow::Result<()> {
 		layout.remove_children(self.id_list_parent);
 
 		let mut text: Option<Translation> = None;
@@ -252,6 +267,7 @@ impl View {
 							parent: self.id_list_parent,
 						},
 						list,
+						&self.tasks,
 					)?
 				}
 			}
@@ -271,6 +287,35 @@ impl View {
 				Default::default(),
 			)?;
 		}
+
+		Ok(())
+	}
+
+	fn display_options(&mut self, display: packet_server::WvrDisplay) -> anyhow::Result<()> {
+		self.frontend_tasks.push(FrontendTask::MountPopup(MountPopupParams {
+			title: Translation::from_translation_key("DISPLAY_OPTIONS"),
+			on_content: {
+				let frontend_tasks = self.frontend_tasks.clone();
+				let globals = self.globals.clone();
+				let state = self.state.clone();
+				let tasks = self.tasks.clone();
+
+				Rc::new(move |data| {
+					state.borrow_mut().view_display_options = Some((
+						data.handle,
+						display_options::View::new(display_options::Params {
+							globals: globals.clone(),
+							layout: data.layout,
+							parent_id: data.id_content,
+							on_submit: tasks.make_callback(Task::DisplayOptionsFinish),
+							display: display.clone(),
+							frontend_tasks: frontend_tasks.clone(),
+						})?,
+					));
+					Ok(())
+				})
+			},
+		}));
 
 		Ok(())
 	}

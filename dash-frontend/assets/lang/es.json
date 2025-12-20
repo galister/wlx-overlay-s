@@ -55,5 +55,9 @@
   },
   "WIDTH": "Ancho",
   "HEIGHT": "Altura",
-  "DISPLAY_PORTRAIT_MODE": "Modo retrato"
+  "DISPLAY_PORTRAIT_MODE": "Modo retrato",
+  "HIDE": "Ocultar",
+  "REMOVE": "Eliminar",
+  "SHOW": "Mostrar",
+  "DISPLAY_OPTIONS": "Opciones de pantalla"
 }

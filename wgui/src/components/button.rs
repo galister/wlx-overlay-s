@@ -383,7 +383,6 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	style.justify_content = Some(JustifyContent::Center);
 	style.overflow.x = taffy::Overflow::Hidden;
 	style.overflow.y = taffy::Overflow::Hidden;
-	style.gap = length(8.0);
 
 	// update colors to default ones if they are not specified
 	let color = if let Some(color) = params.color {
@@ -434,6 +433,13 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		(color.r + color.g + color.b) * mult < 1.5
 	};
 
+	let default_margin = taffy::Rect {
+		top: length(4.0),
+		bottom: length(4.0),
+		left: length(4.0),
+		right: length(4.0),
+	};
+
 	if let Some(sprite_path) = params.sprite_src {
 		let sprite = WidgetSprite::create(WidgetSpriteParams {
 			glyph_data: Some(CustomGlyphData::new(CustomGlyphContent::from_assets(
@@ -451,12 +457,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 					width: length(20.0),
 					height: length(20.0),
 				},
-				margin: taffy::Rect {
-					top: length(4.0),
-					bottom: length(4.0),
-					left: length(0.0),
-					right: length(0.0),
-				},
+				margin: default_margin.clone(),
 				..Default::default()
 			},
 		)?;
@@ -480,7 +481,10 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 					},
 				},
 			),
-			Default::default(),
+			taffy::Style {
+				margin: default_margin,
+				..Default::default()
+			},
 		)?;
 		label.id
 	} else {

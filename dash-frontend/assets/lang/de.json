@@ -55,5 +55,9 @@
   },
   "WIDTH": "Breite",
   "HEIGHT": "Höhe",
-  "DISPLAY_PORTRAIT_MODE": "Porträtmodus"
+  "DISPLAY_PORTRAIT_MODE": "Porträtmodus",
+  "HIDE": "Verbergen",
+  "REMOVE": "Entfernen",
+  "SHOW": "Anzeigen",
+  "DISPLAY_OPTIONS": "Anzeigeeinstellungen"
 }

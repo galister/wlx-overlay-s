@@ -3,7 +3,6 @@
 		"RECENTER_PLAYSPACE": "Re-center playspace"
 	},
 	"ADD_DISPLAY": "Add display",
-	"DISPLAY_PORTRAIT_MODE": "Portrait mode",
 	"APP_SETTINGS": {
 		"BRIGHTNESS": "Brightness",
 		"HEADSET_SETTINGS": "Headset settings",
@@ -40,11 +39,14 @@
 		"SPEAKERS_SET_SUCCESSFULLY": "Speakers set successfully",
 		"VOLUME": "Volume"
 	},
+	"DISPLAY_OPTIONS": "Display options",
+	"DISPLAY_PORTRAIT_MODE": "Portrait mode",
 	"GAMES": "Games",
 	"GENERAL_SETTINGS": "General settings",
 	"HEIGHT": "Height",
 	"HELLO": "Hello!",
 	"HELLO_USER": "Hello, {USER}!",
+	"HIDE": "Hide",
 	"HOME_SCREEN": "Home",
 	"LIST_OF_DISPLAYS": "Display list",
 	"LIST_OF_PROCESSES": "Process list",
@@ -54,6 +56,8 @@
 		"RESOLUTION": "Resolution"
 	},
 	"PROCESSES": "Processes",
+	"REMOVE": "Remove",
 	"SETTINGS": "Settings",
+	"SHOW": "Show",
 	"WIDTH": "Width"
 }
