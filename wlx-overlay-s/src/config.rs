@@ -3,7 +3,11 @@ use config::{Config, File};
 use log::error;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use wlx_common::config::{GeneralConfig, SerializedWindowSet, SerializedWindowStates};
+use wlx_common::{
+    astr_containers::AStrMap,
+    config::{GeneralConfig, SerializedWindowSet, SerializedWindowStates},
+    overlays::BackendAttribValue,
+};
 
 const FALLBACKS: [&str; 2] = [
     include_str!("res/keyboard.yaml"),
@@ -140,6 +144,7 @@ pub struct AutoState {
     pub sets: Vec<SerializedWindowSet>,
     pub global_set: SerializedWindowStates,
     pub last_set: u32,
+    pub attribs: AStrMap<Vec<BackendAttribValue>>,
 }
 
 fn get_state_path() -> PathBuf {
@@ -153,6 +158,7 @@ pub fn save_state(config: &GeneralConfig) -> anyhow::Result<()> {
         sets: config.sets.clone(),
         last_set: config.last_set,
         global_set: config.global_set.clone(),
+        attribs: config.attribs.clone(),
     };
 
     let json = serde_json::to_string_pretty(&conf).unwrap(); // want panic

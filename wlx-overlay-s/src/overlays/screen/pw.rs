@@ -49,7 +49,7 @@ impl ScreenBackend {
             PipewireCapture::new(name, node_id)
         );
         Ok((
-            Self::new_raw(output.name.clone(), capture),
+            Self::new_raw(output.name.clone(), app.xr_backend, capture),
             select_screen_result.restore_token,
         ))
     }

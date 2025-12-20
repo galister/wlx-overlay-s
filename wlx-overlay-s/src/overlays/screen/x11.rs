@@ -27,7 +27,7 @@ impl ScreenBackend {
             app.gfx_extras.queue_capture,
             XshmCapture::new(screen.clone())
         );
-        Self::new_raw(screen.name.clone(), capture)
+        Self::new_raw(screen.name.clone(), app.xr_backend, capture)
     }
 }
 
@@ -97,6 +97,7 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
 
             let mut backend = ScreenBackend::new_raw(
                 m.name.clone(),
+                app.xr_backend,
                 new_wlx_capture!(
                     app.gfx_extras.queue_capture,
                     PipewireCapture::new(m.name.clone(), s.node_id)

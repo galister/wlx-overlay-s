@@ -15,6 +15,7 @@ pub mod task;
 
 use thiserror::Error;
 
+#[derive(Clone, Copy)]
 pub enum XrBackend {
     OpenXR,
     OpenVR,

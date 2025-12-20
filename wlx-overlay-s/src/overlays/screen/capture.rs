@@ -20,7 +20,7 @@ use wlx_capture::{
     WlxCapture,
     frame::{self as wlx_frame, DrmFormat, FrameFormat, MouseMeta, Transform, WlxFrame},
 };
-use wlx_common::config::GeneralConfig;
+use wlx_common::{config::GeneralConfig, overlays::StereoMode};
 
 use crate::{
     graphics::{
@@ -29,7 +29,7 @@ use crate::{
         upload_quad_vertices,
     },
     state::AppState,
-    windowing::backend::{FrameMeta, RenderResources, StereoMode},
+    windowing::backend::{FrameMeta, RenderResources},
 };
 
 const CURSOR_SIZE: f32 = 16. / 1440.;

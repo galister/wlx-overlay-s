@@ -1,10 +1,8 @@
-use crate::{
-    overlays::edit::{
-        EditModeWrapPanel,
-        sprite_tab::{SpriteTabHandler, SpriteTabKey},
-    },
-    windowing::backend::{BackendAttribValue, StereoMode},
+use crate::overlays::edit::{
+    EditModeWrapPanel,
+    sprite_tab::{SpriteTabHandler, SpriteTabKey},
 };
+use wlx_common::overlays::{BackendAttribValue, StereoMode};
 
 static STEREO_NAMES: [&str; 5] = ["none", "leftright", "rightleft", "topbottom", "bottomtop"];
 

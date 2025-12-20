@@ -15,6 +15,7 @@ use wgui::gfx::{
     pipeline::{WGfxPipeline, WPipelineCreateInfo},
 };
 use wlx_capture::frame::{DmabufFrame, FourCC, FrameFormat, FramePlane};
+use wlx_common::overlays::{BackendAttrib, BackendAttribValue};
 use wlx_common::windowing::OverlayWindowState;
 
 use crate::{
@@ -33,8 +34,8 @@ use crate::{
     windowing::{
         OverlayID, OverlaySelector, Z_ORDER_DASHBOARD,
         backend::{
-            BackendAttrib, BackendAttribValue, FrameMeta, OverlayBackend, OverlayEventData,
-            RenderResources, ShouldRender, ui_transform,
+            FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
+            ui_transform,
         },
         manager::OverlayWindowManager,
         window::{OverlayCategory, OverlayWindowConfig, OverlayWindowData},

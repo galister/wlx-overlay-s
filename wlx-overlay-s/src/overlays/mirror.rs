@@ -9,7 +9,10 @@ use std::{
 use futures::{Future, FutureExt};
 use glam::{Affine2, Affine3A, Quat, Vec3, vec3};
 use wlx_capture::pipewire::{PipewireCapture, PipewireSelectScreenResult, pipewire_select_screen};
-use wlx_common::windowing::OverlayWindowState;
+use wlx_common::{
+    overlays::{BackendAttrib, BackendAttribValue},
+    windowing::OverlayWindowState,
+};
 
 use crate::{
     backend::{
@@ -21,8 +24,8 @@ use crate::{
     windowing::{
         OverlaySelector,
         backend::{
-            BackendAttrib, BackendAttribValue, FrameMeta, OverlayBackend, OverlayEventData,
-            RenderResources, ShouldRender, ui_transform,
+            FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
+            ui_transform,
         },
         window::{OverlayCategory, OverlayWindowConfig},
     },
@@ -76,8 +79,11 @@ impl OverlayBackend for MirrorBackend {
                     let node_id = pw_result.streams.first().unwrap().node_id; // streams guaranteed to have at least one element
                     log::info!("{}: PipeWire node selected: {}", self.name.clone(), node_id);
                     let capture = PipewireCapture::new(self.name.clone(), node_id);
-                    self.renderer =
-                        Some(ScreenBackend::new_raw(self.name.clone(), Box::new(capture)));
+                    self.renderer = Some(ScreenBackend::new_raw(
+                        self.name.clone(),
+                        app.xr_backend,
+                        Box::new(capture),
+                    ));
                     app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
                         OverlaySelector::Name(self.name.clone()),
                         Box::new(|app, o| {

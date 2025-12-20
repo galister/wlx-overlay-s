@@ -15,10 +15,10 @@ use crate::{
     state::AppState,
     subsystem::hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT, WheelDelta},
     windowing::backend::{
-        BackendAttrib, BackendAttribValue, FrameMeta, OverlayBackend, OverlayEventData,
-        RenderResources, ShouldRender, StereoMode, ui_transform,
+        FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender, ui_transform,
     },
 };
+use wlx_common::overlays::{BackendAttrib, BackendAttribValue, MouseTransform, StereoMode};
 
 use super::capture::{ScreenPipeline, WlxCaptureIn, WlxCaptureOut, receive_callback};
 
@@ -50,12 +50,13 @@ pub struct ScreenBackend {
     pub(super) logical_pos: Vec2,
     pub(super) logical_size: Vec2,
     pub(super) mouse_transform_original: Transform,
-    mouse_transform_override: Transform,
+    mouse_transform_override: MouseTransform,
 }
 
 impl ScreenBackend {
     pub fn new_raw(
         name: Arc<str>,
+        xr_backend: XrBackend,
         capture: Box<dyn WlxCapture<WlxCaptureIn, WlxCaptureOut>>,
     ) -> Self {
         Self {
@@ -66,11 +67,15 @@ impl ScreenBackend {
             meta: None,
             mouse_transform: Affine2::ZERO,
             interaction_transform: None,
-            stereo: None,
+            stereo: if matches!(xr_backend, XrBackend::OpenXR) {
+                Some(StereoMode::None)
+            } else {
+                None
+            },
             logical_pos: Vec2::ZERO,
             logical_size: Vec2::ZERO,
             mouse_transform_original: Transform::Undefined,
-            mouse_transform_override: Transform::Undefined,
+            mouse_transform_override: MouseTransform::Default,
         }
     }
 
@@ -125,12 +130,7 @@ impl ScreenBackend {
 }
 
 impl OverlayBackend for ScreenBackend {
-    fn init(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        self.stereo = if matches!(app.xr_backend, XrBackend::OpenXR) {
-            Some(StereoMode::None)
-        } else {
-            None
-        };
+    fn init(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
         Ok(())
     }
     fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
@@ -317,7 +317,18 @@ impl OverlayBackend for ScreenBackend {
             }
             BackendAttribValue::MouseTransform(new) => {
                 self.mouse_transform_override = new;
-                self.apply_mouse_transform_with_override(new);
+                let frame_transform = match new {
+                    MouseTransform::Default => Transform::Undefined,
+                    MouseTransform::Normal => Transform::Normal,
+                    MouseTransform::Rotated90 => Transform::Rotated90,
+                    MouseTransform::Rotated180 => Transform::Rotated180,
+                    MouseTransform::Rotated270 => Transform::Rotated270,
+                    MouseTransform::Flipped => Transform::Flipped,
+                    MouseTransform::Flipped90 => Transform::Flipped90,
+                    MouseTransform::Flipped180 => Transform::Flipped180,
+                    MouseTransform::Flipped270 => Transform::Flipped270,
+                };
+                self.apply_mouse_transform_with_override(frame_transform);
                 true
             }
             _ => false,

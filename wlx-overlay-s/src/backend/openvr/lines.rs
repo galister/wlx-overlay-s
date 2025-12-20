@@ -21,14 +21,14 @@ use vulkano::{
     },
 };
 use wgui::gfx::WGfx;
+use wlx_common::overlays::{BackendAttrib, BackendAttribValue};
 
 use crate::backend::input::{HoverResult, PointerHit};
 use crate::state::AppState;
 use crate::subsystem::hid::WheelDelta;
 use crate::windowing::Z_ORDER_LINES;
 use crate::windowing::backend::{
-    BackendAttrib, BackendAttribValue, FrameMeta, OverlayBackend, OverlayEventData,
-    RenderResources, ShouldRender,
+    FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
 };
 use crate::windowing::window::{OverlayWindowConfig, OverlayWindowData};
 

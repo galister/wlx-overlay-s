@@ -1,13 +1,12 @@
 use std::{collections::HashMap, sync::Arc};
 
 use chrono::Offset;
-use glam::Affine3A;
 use idmap::IdMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
 	astr_containers::{AStrMap, AStrSet},
-	overlays::{ToastDisplayMethod, ToastTopic},
+	overlays::{BackendAttribValue, ToastDisplayMethod, ToastTopic},
 	windowing::OverlayWindowState,
 };
 
@@ -92,11 +91,7 @@ const fn def_astrset_empty() -> AStrSet {
 	AStrSet::new()
 }
 
-const fn def_curve_values() -> AStrMap<f32> {
-	AStrMap::new()
-}
-
-const fn def_transforms() -> AStrMap<Affine3A> {
+const fn def_attribs() -> AStrMap<Vec<BackendAttribValue>> {
 	AStrMap::new()
 }
 
@@ -133,6 +128,9 @@ pub struct GeneralConfig {
 	pub color_danger: Option<String>,
 	pub color_faded: Option<String>,
 	pub default_keymap: Option<String>,
+
+	#[serde(default = "def_attribs")]
+	pub attribs: AStrMap<Vec<BackendAttribValue>>,
 
 	#[serde(default = "def_click_freeze_time_ms")]
 	pub click_freeze_time_ms: u32,
@@ -193,15 +191,6 @@ pub struct GeneralConfig {
 
 	#[serde(default = "def_astrset_empty")]
 	pub custom_panels: AStrSet,
-
-	#[serde(default = "def_astrset_empty")]
-	pub show_screens: AStrSet,
-
-	#[serde(default = "def_curve_values")]
-	pub curve_values: AStrMap<f32>,
-
-	#[serde(default = "def_transforms")]
-	pub transform_values: AStrMap<Affine3A>,
 
 	#[serde(default = "def_auto")]
 	pub capture_method: Arc<str>,

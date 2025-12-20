@@ -8,7 +8,7 @@ use slotmap::{HopSlotMap, Key, SecondaryMap};
 use wlx_common::{
     astr_containers::{AStrMap, AStrMapExt},
     config::SerializedWindowSet,
-    overlays::ToastTopic,
+    overlays::{BackendAttrib, ToastTopic},
 };
 
 use crate::{
@@ -277,6 +277,8 @@ where
     }
 }
 
+const SAVED_ATTRIBS: [BackendAttrib; 2] = [BackendAttrib::Stereo, BackendAttrib::MouseTransform];
+
 impl<T> OverlayWindowManager<T> {
     pub fn pop_dropped(&mut self) -> Option<OverlayWindowData<T>> {
         self.dropped_overlays.pop_front()
@@ -334,6 +336,17 @@ impl<T> OverlayWindowManager<T> {
                 .insert(o.config.name.clone(), state.clone());
         }
 
+        // BackendAttrib
+        for o in self.overlays.values() {
+            app.session.config.attribs.arc_set(
+                o.config.name.clone(),
+                SAVED_ATTRIBS
+                    .iter()
+                    .filter_map(|a| o.config.backend.get_attrib(*a))
+                    .collect(),
+            );
+        }
+
         if restore_after {
             self.switch_to_set(app, Some(self.restore_set));
         }
@@ -386,6 +399,19 @@ impl<T> OverlayWindowManager<T> {
                 } else {
                     log::debug!("global set: no state for {}", o.config.name);
                 }
+            }
+        }
+
+        for (name, attribs) in &app.session.config.attribs.clone() {
+            let Some(oid) = self.lookup(&*name) else {
+                continue;
+            };
+            let Some(o) = self.mut_by_id(oid) else {
+                continue;
+            };
+
+            for value in attribs {
+                o.config.backend.set_attrib(app, value.clone());
             }
         }
 

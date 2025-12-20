@@ -27,7 +27,7 @@ impl ScreenBackend {
             app.gfx_extras.queue_capture,
             WlrDmabufCapture::new(client, output.id)
         );
-        Some(Self::new_raw(output.name.clone(), capture))
+        Some(Self::new_raw(output.name.clone(), app.xr_backend, capture))
     }
 
     pub fn new_wlr_screencopy(output: &WlxOutput, app: &AppState) -> Option<Self> {
@@ -36,7 +36,7 @@ impl ScreenBackend {
             app.gfx_extras.queue_capture,
             WlrScreencopyCapture::new(client, output.id)
         );
-        Some(Self::new_raw(output.name.clone(), capture))
+        Some(Self::new_raw(output.name.clone(), app.xr_backend, capture))
     }
 }
 

@@ -1,12 +1,8 @@
-use wlx_capture::frame::Transform;
-
-use crate::{
-    overlays::edit::{
-        EditModeWrapPanel,
-        sprite_tab::{SpriteTabHandler, SpriteTabKey},
-    },
-    windowing::backend::BackendAttribValue,
+use crate::overlays::edit::{
+    EditModeWrapPanel,
+    sprite_tab::{SpriteTabHandler, SpriteTabKey},
 };
+use wlx_common::overlays::{BackendAttribValue, MouseTransform};
 
 static MOUSE_NAMES: [&str; 9] = [
     "default",
@@ -22,7 +18,7 @@ static MOUSE_NAMES: [&str; 9] = [
 
 pub fn new_mouse_tab_handler(
     panel: &mut EditModeWrapPanel,
-) -> anyhow::Result<SpriteTabHandler<Transform>> {
+) -> anyhow::Result<SpriteTabHandler<MouseTransform>> {
     SpriteTabHandler::new(
         panel,
         "mouse",
@@ -38,32 +34,32 @@ pub fn new_mouse_tab_handler(
     )
 }
 
-impl SpriteTabKey for Transform {
+impl SpriteTabKey for MouseTransform {
     fn to_tab_key(&self) -> &'static str {
         match self {
-            Transform::Undefined => "default",
-            Transform::Normal => "normal",
-            Transform::Rotated90 => "rotate90",
-            Transform::Rotated180 => "rotate180",
-            Transform::Rotated270 => "rotate270",
-            Transform::Flipped => "flipped",
-            Transform::Flipped90 => "flip90",
-            Transform::Flipped180 => "flip180",
-            Transform::Flipped270 => "flip270",
+            MouseTransform::Default => "default",
+            MouseTransform::Normal => "normal",
+            MouseTransform::Rotated90 => "rotate90",
+            MouseTransform::Rotated180 => "rotate180",
+            MouseTransform::Rotated270 => "rotate270",
+            MouseTransform::Flipped => "flipped",
+            MouseTransform::Flipped90 => "flip90",
+            MouseTransform::Flipped180 => "flip180",
+            MouseTransform::Flipped270 => "flip270",
         }
     }
 
     fn from_tab_key(key: &str) -> Self {
         match key {
-            "default" => Transform::Undefined,
-            "normal" => Transform::Normal,
-            "rotate90" => Transform::Rotated90,
-            "rotate180" => Transform::Rotated180,
-            "rotate270" => Transform::Rotated270,
-            "flipped" => Transform::Flipped,
-            "flip90" => Transform::Flipped90,
-            "flip180" => Transform::Flipped180,
-            "flip270" => Transform::Flipped270,
+            "default" => MouseTransform::Default,
+            "normal" => MouseTransform::Normal,
+            "rotate90" => MouseTransform::Rotated90,
+            "rotate180" => MouseTransform::Rotated180,
+            "rotate270" => MouseTransform::Rotated270,
+            "flipped" => MouseTransform::Flipped,
+            "flip90" => MouseTransform::Flipped90,
+            "flip180" => MouseTransform::Flipped180,
+            "flip270" => MouseTransform::Flipped270,
             _ => {
                 panic!("cannot translate to mouse transform: {key}")
             }

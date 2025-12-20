@@ -6,7 +6,7 @@ use wgui::gfx::{
     WGfx,
     cmd::{GfxCommandBuffer, WGfxClearMode},
 };
-use wlx_capture::frame::Transform;
+use wlx_common::overlays::{BackendAttrib, BackendAttribValue};
 
 use crate::{
     backend::input::{HoverResult, PointerHit},
@@ -31,16 +31,6 @@ pub enum ShouldRender {
     Can,
     /// The overlay is not ready to be rendered.
     Unable,
-}
-
-#[derive(Default, Debug, Clone, Copy)]
-pub enum StereoMode {
-    #[default]
-    None,
-    LeftRight,
-    RightLeft,
-    TopBottom,
-    BottomTop,
 }
 
 pub struct RenderTarget {
@@ -107,18 +97,6 @@ macro_rules! attrib_value {
             _ => None,
         })
     };
-}
-
-#[derive(Clone, Copy)]
-pub enum BackendAttrib {
-    Stereo,
-    MouseTransform,
-}
-
-#[derive(Debug, Clone)]
-pub enum BackendAttribValue {
-    Stereo(StereoMode),
-    MouseTransform(Transform),
 }
 
 pub struct OverlayMeta {

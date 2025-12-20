@@ -16,10 +16,7 @@ use crate::{
         get_keymap_wl, get_keymap_x11,
     },
     windowing::{
-        backend::{
-            BackendAttrib, BackendAttribValue, FrameMeta, OverlayBackend, OverlayEventData,
-            RenderResources, ShouldRender,
-        },
+        backend::{FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender},
         window::{OverlayCategory, OverlayWindowConfig},
     },
 };
@@ -31,6 +28,7 @@ use wgui::{
     drawing,
     event::{InternalStateChangeEvent, MouseButton, MouseButtonIndex},
 };
+use wlx_common::overlays::{BackendAttrib, BackendAttribValue};
 use wlx_common::windowing::{OverlayWindowState, Positioning};
 
 pub mod builder;

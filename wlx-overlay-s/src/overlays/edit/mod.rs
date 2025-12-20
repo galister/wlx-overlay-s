@@ -14,7 +14,7 @@ use wgui::{
     parser::Fetchable,
     widget::EventResult,
 };
-use wlx_capture::frame::Transform;
+use wlx_common::overlays::{BackendAttrib, BackendAttribValue, MouseTransform, StereoMode};
 
 use crate::{
     attrib_value,
@@ -35,10 +35,7 @@ use crate::{
     subsystem::hid::WheelDelta,
     windowing::{
         OverlayID, OverlaySelector,
-        backend::{
-            BackendAttrib, BackendAttribValue, DummyBackend, OverlayBackend, OverlayEventData,
-            RenderResources, ShouldRender, StereoMode,
-        },
+        backend::{DummyBackend, OverlayBackend, OverlayEventData, RenderResources, ShouldRender},
         window::OverlayWindowConfig,
     },
 };
@@ -69,7 +66,7 @@ struct EditModeState {
     lock: InteractLockHandler,
     pos: SpriteTabHandler<PosTabState>,
     stereo: SpriteTabHandler<StereoMode>,
-    mouse: SpriteTabHandler<Transform>,
+    mouse: SpriteTabHandler<MouseTransform>,
 }
 
 type EditModeWrapPanel = GuiPanel<EditModeState>;
