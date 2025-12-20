@@ -364,8 +364,11 @@ where
             }
             log::debug!("{} on_left (focus changed)", old_hovered.config.name);
             old_hovered.config.backend.on_left(app, idx);
+            old_hovered.hover_pointers[idx] = false;
+            if !old_hovered.hover_pointers.iter().any(|x| *x) {
+                overlays.edit_overlay(hovered_id, false, app);
+            }
         }
-        overlays.edit_overlay(hovered_id, false, app);
     }
 
     overlays.edit_overlay(hit.overlay, true, app);
@@ -377,6 +380,7 @@ where
     };
     pointer = &mut app.input_state.pointers[idx];
     pointer.interaction.hovered_id = Some(hit.overlay);
+    hovered.hover_pointers[idx] = true;
 
     if let Some(primary_pointer) = hovered.primary_pointer {
         if hit.pointer <= primary_pointer {
@@ -446,8 +450,11 @@ fn handle_no_hit<O>(
         if let Some(hovered) = overlays.mut_by_id(hovered_id) {
             log::debug!("{} on_left (no hit)", hovered.config.name);
             hovered.config.backend.on_left(app, pointer_idx);
+            hovered.hover_pointers[pointer_idx] = false;
+            if !hovered.hover_pointers.iter().any(|x| *x) {
+                overlays.edit_overlay(hovered_id, false, app);
+            }
         }
-        overlays.edit_overlay(hovered_id, false, app);
     }
 
     // in case click released while not aiming at anything
