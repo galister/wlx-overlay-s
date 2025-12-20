@@ -14,6 +14,7 @@ use wlx_common::{
 use crate::{
     FRAME_COUNTER,
     backend::task::OverlayTask,
+    config::save_state,
     overlays::{
         anchor::create_anchor, custom::create_custom, edit::EditWrapperManager,
         keyboard::create_keyboard, screen::create_screens, toast::Toast, watch::create_watch,
@@ -436,6 +437,13 @@ impl<T> OverlayWindowManager<T> {
         if !enabled {
             for o in self.overlays.values_mut() {
                 self.wrappers.unwrap_edit_mode(&mut o.config, app)?;
+            }
+
+            if changed {
+                self.persist_layout(app);
+                if let Err(e) = save_state(&app.session.config) {
+                    log::error!("Could not save state: {e:?}");
+                }
             }
         }
         if changed && let Some(watch) = self.mut_by_id(self.watch_id) {
