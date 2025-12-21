@@ -51,6 +51,7 @@ pub struct ScreenBackend {
     pub(super) logical_size: Vec2,
     pub(super) mouse_transform_original: Transform,
     mouse_transform_override: MouseTransform,
+    just_resumed: bool,
 }
 
 impl ScreenBackend {
@@ -76,6 +77,7 @@ impl ScreenBackend {
             logical_size: Vec2::ZERO,
             mouse_transform_original: Transform::Undefined,
             mouse_transform_override: MouseTransform::Default,
+            just_resumed: false,
         }
     }
 
@@ -203,17 +205,22 @@ impl OverlayBackend for ScreenBackend {
 
             self.meta = Some(meta);
             self.cur_frame = Some(frame);
-        }
 
-        if self.cur_frame.is_some() {
             Ok(ShouldRender::Should)
+        } else if self.cur_frame.is_some() {
+            if self.just_resumed {
+                self.just_resumed = false;
+                Ok(ShouldRender::Should)
+            } else {
+                Ok(ShouldRender::Can)
+            }
         } else {
             Ok(ShouldRender::Unable)
         }
     }
     fn render(&mut self, app: &mut AppState, rdr: &mut RenderResources) -> anyhow::Result<()> {
         // want panic; must be some if should_render was not Unable
-        let capture = self.cur_frame.take().unwrap();
+        let capture = self.cur_frame.as_ref().unwrap();
 
         // want panic; must be Some if cur_frame is also Some
         self.pipeline.as_mut().unwrap().render(&capture, app, rdr)?;
@@ -225,6 +232,7 @@ impl OverlayBackend for ScreenBackend {
         Ok(())
     }
     fn resume(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+        self.just_resumed = true;
         self.capture.resume();
         Ok(())
     }

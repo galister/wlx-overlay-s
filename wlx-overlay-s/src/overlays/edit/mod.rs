@@ -101,6 +101,8 @@ impl EditWrapperManager {
         owc.backend = Box::new(EditModeBackendWrapper {
             inner: ManuallyDrop::new(inner),
             panel: ManuallyDrop::new(panel),
+            last_render: Instant::now(),
+            can_render_inner: false,
         });
         owc.editing = true;
 
@@ -139,6 +141,9 @@ impl EditWrapperManager {
 pub struct EditModeBackendWrapper {
     panel: ManuallyDrop<EditModeWrapPanel>,
     inner: ManuallyDrop<Box<dyn OverlayBackend>>,
+
+    last_render: Instant,
+    can_render_inner: bool,
 }
 
 impl OverlayBackend for EditModeBackendWrapper {
@@ -160,9 +165,9 @@ impl OverlayBackend for EditModeBackendWrapper {
             app.tasks.transfer_from(&mut local_tasks);
         }
 
-        let i = self.inner.should_render(app)?;
+        let inner = self.inner.should_render(app)?;
 
-        if !matches!(i, ShouldRender::Unable)
+        if !matches!(inner, ShouldRender::Unable)
             && let Some(ref frame_meta) = self.inner.frame_meta()
         {
             let (width_px, height_px) = (frame_meta.extent[0], frame_meta.extent[1]);
@@ -176,18 +181,25 @@ impl OverlayBackend for EditModeBackendWrapper {
                 self.panel.gui_scale = (gui_scale * 4.0).round() / 4.0;
                 self.panel.update_layout()?;
             }
+
+            self.can_render_inner = true;
         } else {
-            return Ok(ShouldRender::Unable);
+            self.can_render_inner = false;
+            if self.last_render.elapsed() < Duration::from_millis(100) {
+                return Ok(ShouldRender::Unable);
+            }
         }
 
-        let p = self.panel.should_render(app)?;
+        let panel = self.panel.should_render(app)?;
 
         #[allow(clippy::match_same_arms)]
-        Ok(match (i, p) {
+        Ok(match (inner, panel) {
             (ShouldRender::Should, ShouldRender::Should) => ShouldRender::Should,
             (ShouldRender::Should, ShouldRender::Can) => ShouldRender::Should,
             (ShouldRender::Can, ShouldRender::Should) => ShouldRender::Should,
             (ShouldRender::Can, ShouldRender::Can) => ShouldRender::Can,
+            // only if last render was more than 100ms ago.
+            (ShouldRender::Unable, ShouldRender::Should) => ShouldRender::Should,
             _ => ShouldRender::Unable,
         })
     }
@@ -196,7 +208,9 @@ impl OverlayBackend for EditModeBackendWrapper {
         app: &mut crate::state::AppState,
         rdr: &mut RenderResources,
     ) -> anyhow::Result<()> {
-        self.inner.render(app, rdr)?;
+        if self.can_render_inner {
+            self.inner.render(app, rdr)?;
+        }
 
         self.panel.render(app, rdr)?;
         // `GuiPanel` is not stereo-aware, so just render the same pass twice
