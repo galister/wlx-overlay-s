@@ -34,7 +34,7 @@ All overlays are listed on bottom row.
   </template>
 
   <template name="Overlay">
-    <Button macro="button_style" id="overlay_${idx}"
+    <Button macro="button_style" id="overlay_${idx}" sticky="1"
       tooltip="WATCH.TOGGLE_FOR_CURRENT_SET" _press="::SingleSetOverlayToggle ${idx}"
       align_items="center"
       height="40">
@@ -111,13 +111,13 @@ All overlays are listed on bottom row.
 
         <!-- Bottom buttons -->
         <div id="toolbox-condensed" gap="6" width="100%" max_width="400" flex_direction="row" flex_wrap="wrap">
-          <Button height="40" macro="button_style" _press="::DashToggle" tooltip="WATCH.DASHBOARD" tooltip_side="top">
+          <Button id="btn_dashboard" height="40" macro="button_style" _press="::DashToggle" tooltip="WATCH.DASHBOARD" tooltip_side="top" sticky="1" >
             <sprite color="~set_color" width="32" height="32" src="watch/wayvr_dashboard_mono.svg" />
           </Button>
           <Button id="btn_edit_mode" height="40" macro="button_style" _press="::EditToggle" tooltip="WATCH.EDIT_MODE" tooltip_side="top">
             <sprite color="~set_color" width="32" height="32" src="watch/edit.svg" />
           </Button>
-          <Button height="40" macro="button_style" tooltip="WATCH.TOGGLE_FOR_CURRENT_SET" _press="::OverlayToggle kbd">
+          <Button id="btn_keyboard" height="40" macro="button_style" tooltip="WATCH.TOGGLE_FOR_CURRENT_SET" _press="::OverlayToggle kbd" sticky="1" >
             <sprite src_builtin="watch/keyboard.svg" width="32" height="32" />
           </Button>
           <!-- Src here may be changed, but maintain `OverlayCategory` order: Panel, Screen, Mirror, WayVR -->

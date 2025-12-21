@@ -106,6 +106,7 @@ pub struct OverlayMeta {
     pub id: OverlayID,
     pub name: Arc<str>,
     pub category: OverlayCategory,
+    pub visible: bool,
 }
 
 #[allow(clippy::enum_variant_names)]
@@ -114,6 +115,7 @@ pub enum OverlayEventData {
     NumSetsChanged(usize),
     EditModeChanged(bool),
     OverlaysChanged(Vec<OverlayMeta>),
+    VisibleOverlaysChanged(Vec<OverlayID>),
     DevicesChanged,
     OverlayGrabbed {
         name: Arc<str>,

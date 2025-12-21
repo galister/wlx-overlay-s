@@ -56,6 +56,7 @@ impl<T> OverlayWindowData<T> {
 pub enum OverlayCategory {
     Internal,
     Keyboard,
+    Dashboard,
     Panel,
     Screen,
     Mirror,

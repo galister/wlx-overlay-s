@@ -5,7 +5,8 @@ use std::{
 };
 
 use glam::{Affine3A, Quat, Vec3, Vec3A, vec3};
-use idmap::DirectIdMap;
+use idmap::{DirectIdMap, ordered::Keys};
+use slotmap::SecondaryMap;
 use wgui::{
     components::button::ComponentButton,
     event::{CallbackDataCommon, EventAlterables, EventCallback, StyleSetRequest},
@@ -33,7 +34,7 @@ use crate::{
     overlays::edit::LongPressButtonState,
     state::AppState,
     windowing::{
-        OverlaySelector, Z_ORDER_WATCH,
+        OverlayID, OverlaySelector, Z_ORDER_WATCH,
         backend::{OverlayEventData, OverlayMeta},
         manager::MAX_OVERLAY_SETS,
         window::{OverlayCategory, OverlayWindowConfig, OverlayWindowData},
@@ -60,11 +61,14 @@ struct WatchState {
     set_buttons: Vec<Rc<ComponentButton>>,
     overlay_buttons: Vec<OverlayButton>,
     overlay_metas: Vec<OverlayMeta>,
+    overlay_indices: SecondaryMap<OverlayID, usize>,
     edit_mode_widgets: Vec<(WidgetID, bool)>,
     edit_add_widget: WidgetID,
     device_role_icons: DirectIdMap<TrackedDeviceRole, CustomGlyphData>,
     overlay_cat_icons: DirectIdMap<OverlayCategory, CustomGlyphData>,
     devices: Vec<(WidgetID, WidgetID)>,
+    keyboard_oid: OverlayID,
+    dashboard_oid: OverlayID,
     num_sets: usize,
     delete: LongPressButtonState,
 }
@@ -310,6 +314,14 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
         .parser_state
         .fetch_component_as::<ComponentButton>("btn_edit_mode")
         .ok();
+    let btn_keyboard = panel
+        .parser_state
+        .fetch_component_as::<ComponentButton>("btn_keyboard")
+        .ok();
+    let btn_dashboard = panel
+        .parser_state
+        .fetch_component_as::<ComponentButton>("btn_dashboard")
+        .ok();
 
     panel.on_notify = Some(Box::new(move |panel, app, event_data| {
         let mut alterables = EventAlterables::default();
@@ -379,7 +391,31 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                 }
             }
             OverlayEventData::OverlaysChanged(metas) => {
-                panel.state.overlay_metas = metas;
+                panel.state.overlay_metas.clear();
+                for meta in metas {
+                    match meta.category {
+                        OverlayCategory::Keyboard => {
+                            panel.state.keyboard_oid = meta.id;
+                            if let Some(btn_keyboard) = btn_keyboard.as_ref() {
+                                btn_keyboard.set_sticky_state(&mut com, meta.visible);
+                            }
+                        }
+                        OverlayCategory::Dashboard => {
+                            if let Some(btn_dashboard) = btn_dashboard.as_ref() {
+                                btn_dashboard.set_sticky_state(&mut com, meta.visible);
+                            }
+                            panel.state.dashboard_oid = meta.id
+                        }
+                        OverlayCategory::Internal => {}
+                        _ => panel.state.overlay_metas.push(meta),
+                    }
+                }
+
+                panel.state.overlay_indices.clear();
+                for (idx, meta) in panel.state.overlay_metas.iter().enumerate() {
+                    panel.state.overlay_indices.insert(meta.id, idx);
+                }
+
                 for (idx, btn) in panel.state.overlay_buttons.iter().enumerate() {
                     let display = if let Some(meta) = panel.state.overlay_metas.get(idx) {
                         let name = btn
@@ -406,12 +442,47 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                             sprite.set_content(Some(glyph.clone()));
                         }
 
+                        btn.button.set_sticky_state(&mut com, meta.visible);
+
                         taffy::Display::Flex
                     } else {
                         taffy::Display::None
                     };
                     com.alterables
                         .set_style(btn.button.get_rect(), StyleSetRequest::Display(display));
+                }
+            }
+            OverlayEventData::VisibleOverlaysChanged(overlays) => {
+                for meta in panel.state.overlay_metas.iter_mut() {
+                    meta.visible = false;
+                }
+
+                let mut keyboard_visible = false;
+                let mut dashboard_visible = false;
+
+                for visible in overlays.iter() {
+                    if let Some(idx) = panel.state.overlay_indices.get(*visible)
+                        && let Some(o) = panel.state.overlay_metas.get_mut(*idx)
+                    {
+                        o.visible = true;
+                    } else if panel.state.keyboard_oid == *visible {
+                        keyboard_visible = true;
+                    } else if panel.state.dashboard_oid == *visible {
+                        dashboard_visible = true;
+                    }
+                }
+
+                for (idx, btn) in panel.state.overlay_buttons.iter().enumerate() {
+                    let Some(meta) = panel.state.overlay_metas.get(idx) else {
+                        continue;
+                    };
+                    btn.button.set_sticky_state(&mut com, meta.visible);
+                }
+                if let Some(btn_keyboard) = btn_keyboard.as_ref() {
+                    btn_keyboard.set_sticky_state(&mut com, keyboard_visible);
+                }
+                if let Some(btn_dashboard) = btn_dashboard.as_ref() {
+                    btn_dashboard.set_sticky_state(&mut com, dashboard_visible);
                 }
             }
             OverlayEventData::DevicesChanged => {

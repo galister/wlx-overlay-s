@@ -248,7 +248,12 @@ where
             }
             OverlayTask::Modify(sel, f) => {
                 if let Some(o) = self.mut_by_selector(&sel) {
+                    let was_visible = o.config.is_active();
                     f(app, &mut o.config);
+
+                    if was_visible != o.config.is_active() {
+                        let _ = self.visible_overlays_changed(app);
+                    }
                 } else {
                     log::warn!("Overlay not found for task: {sel:?}");
                 }
@@ -477,7 +482,10 @@ impl<T> OverlayWindowManager<T> {
             return;
         };
 
-        if matches!(overlay.config.category, OverlayCategory::Internal) {
+        if matches!(
+            overlay.config.category,
+            OverlayCategory::Internal | OverlayCategory::Dashboard
+        ) {
             // watch, anchor, toast, dashboard
             return;
         }
@@ -524,7 +532,7 @@ impl<T> OverlayWindowManager<T> {
         let internal = ret_val.as_ref().is_some_and(|o| {
             matches!(
                 o.config.category,
-                OverlayCategory::Internal | OverlayCategory::Keyboard
+                OverlayCategory::Internal | OverlayCategory::Keyboard | OverlayCategory::Dashboard
             )
         });
 
@@ -577,10 +585,7 @@ impl<T> OverlayWindowManager<T> {
 
         let name = overlay.config.name.clone();
         let global = overlay.config.global;
-        let internal = matches!(
-            overlay.config.category,
-            OverlayCategory::Internal | OverlayCategory::Keyboard
-        );
+        let internal = matches!(overlay.config.category, OverlayCategory::Internal);
         let show_on_spawn = overlay.config.show_on_spawn;
 
         let oid = self.overlays.insert(overlay);
@@ -609,6 +614,9 @@ impl<T> OverlayWindowManager<T> {
             self.overlays[oid].config.activate(app);
         }
         if !internal && let Err(e) = self.overlays_changed(app) {
+            log::error!("Error while adding overlay: {e:?}");
+        }
+        if !internal && let Err(e) = self.visible_overlays_changed(app) {
             log::error!("Error while adding overlay: {e:?}");
         }
         oid
@@ -671,6 +679,10 @@ impl<T> OverlayWindowManager<T> {
                 .backend
                 .notify(app, OverlayEventData::ActiveSetChanged(new_set))
                 .unwrap(); // TODO: handle this
+
+            let _ = self
+                .visible_overlays_changed(app)
+                .inspect_err(|e| log::error!("VisibleOverlaysChanged: {e:?}"));
         }
     }
 
@@ -683,21 +695,23 @@ impl<T> OverlayWindowManager<T> {
         } else {
             self.switch_to_set(app, None, false);
         }
+
+        let _ = self
+            .visible_overlays_changed(app)
+            .inspect_err(|e| log::error!("VisibleOverlaysChanged: {e:?}"));
     }
 
     fn overlays_changed(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         let mut meta = Vec::with_capacity(self.overlays.len());
         for (id, data) in &self.overlays {
-            if matches!(
-                data.config.category,
-                OverlayCategory::Internal | OverlayCategory::Keyboard
-            ) {
+            if matches!(data.config.category, OverlayCategory::Internal) {
                 continue;
             }
             meta.push(OverlayMeta {
                 id,
                 name: data.config.name.clone(),
                 category: data.config.category,
+                visible: data.config.is_active(),
             });
         }
 
@@ -706,6 +720,28 @@ impl<T> OverlayWindowManager<T> {
                 .config
                 .backend
                 .notify(app, OverlayEventData::OverlaysChanged(meta))?;
+        }
+
+        Ok(())
+    }
+
+    fn visible_overlays_changed(&mut self, app: &mut AppState) -> anyhow::Result<()> {
+        let mut vis = Vec::with_capacity(self.overlays.len());
+
+        for (id, data) in &self.overlays {
+            if data.config.active_state.is_none()
+                || matches!(data.config.category, OverlayCategory::Internal)
+            {
+                continue;
+            }
+            vis.push(id);
+        }
+
+        if let Some(watch) = self.mut_by_id(self.watch_id) {
+            watch
+                .config
+                .backend
+                .notify(app, OverlayEventData::VisibleOverlaysChanged(vis))?;
         }
 
         Ok(())

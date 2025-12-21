@@ -811,7 +811,7 @@ pub fn create_wayvr_display_overlay(
     )?);
 
     let category = if name == DASHBOARD_DISPLAY_NAME {
-        OverlayCategory::Internal
+        OverlayCategory::Dashboard
     } else {
         OverlayCategory::WayVR
     };
