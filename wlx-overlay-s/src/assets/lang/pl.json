@@ -49,10 +49,13 @@
       "TITLE": "Naprawa myszy",
       "WRONG_SCREEN_SELECTION_HELP": "Jeśli kursor porusza się na zupełnie innym ekranie,\nekrany zostały prawdopodobnie nieprawidłowo wybrane. Zobacz dokument README.",
       "NORMAL": "Normalny",
-      "ROTATE90": "Odwrócone o 90°",
+      "ROTATE90": "Obrócony o 90°",
       "ROTATE180": "Obrócony o 180°",
-      "ROTATE270": "Odwrócone o 270°",
-      "FLIPPED": "Odwrócone"
+      "ROTATE270": "Obrócony o 270°",
+      "FLIPPED": "Odwrócony",
+      "FLIP90": "Odwrócony o 90°",
+      "FLIP180": "Odwrócony o 180°",
+      "FLIP270": "Odwrócony o 270°"
     }
   },
   "DISABLED": "Wyłączone",
