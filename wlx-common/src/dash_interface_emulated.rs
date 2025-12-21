@@ -61,10 +61,25 @@ pub struct DashInterfaceEmulated {
 
 impl DashInterfaceEmulated {
 	pub fn new() -> Self {
-		Self {
-			displays: EmuDisplayVec::new(),
-			processes: EmuProcessVec::new(),
-		}
+		let mut displays = EmuDisplayVec::new();
+		let disp_handle = displays.add(EmuDisplay {
+			width: 1280,
+			height: 720,
+			layout: WvrDisplayWindowLayout::Tiling,
+			name: String::from("Emulated display"),
+			visible: true,
+		});
+
+		let mut processes = EmuProcessVec::new();
+		processes.add(EmuProcess {
+			display_handle: WvrDisplayHandle {
+				idx: disp_handle.idx,
+				generation: disp_handle.generation,
+			},
+			name: String::from("Emulated process"),
+		});
+
+		Self { displays, processes }
 	}
 }
 
@@ -167,6 +182,11 @@ impl DashInterface for DashInterfaceEmulated {
 	}
 
 	fn window_set_visible(&mut self, _handle: WvrWindowHandle, _visible: bool) -> anyhow::Result<()> {
+		// stub!
+		Ok(())
+	}
+
+	fn recenter_playspace(&mut self) -> anyhow::Result<()> {
 		// stub!
 		Ok(())
 	}

@@ -59,5 +59,9 @@
   "HIDE": "Ocultar",
   "REMOVE": "Eliminar",
   "SHOW": "Mostrar",
-  "DISPLAY_OPTIONS": "Opciones de pantalla"
+  "DISPLAY_OPTIONS": "Opciones de pantalla",
+  "PROCESS_LIST": {
+    "NO_PROCESSES_FOUND": "No se encontraron procesos",
+    "LOCATED_ON": "en"
+  }
 }

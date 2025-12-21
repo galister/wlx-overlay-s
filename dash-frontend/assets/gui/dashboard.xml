@@ -19,7 +19,7 @@
       tooltip="${tooltip}"
       tooltip_side="${tooltip_side}"
     >
-      <sprite src="${src}" width="~side_sprite_size" height="~side_sprite_size" />
+      <sprite src_builtin="${src_builtin}" width="~side_sprite_size" height="~side_sprite_size" />
     </Button>
   </template>
 
@@ -46,13 +46,13 @@
           align_items="center"
           gap="4"
         >
-          <SideButton id="btn_side_home" src="dashboard/wayvr_dashboard_mono.svg" tooltip="HOME_SCREEN" tooltip_side="right" />
-          <SideButton id="btn_side_apps" src="dashboard/apps.svg" tooltip="APPLICATIONS" tooltip_side="right" />
-          <SideButton id="btn_side_games" src="dashboard/games.svg" tooltip="GAMES" tooltip_side="right" />
-          <SideButton id="btn_side_monado" src="dashboard/monado.svg" tooltip="MONADO_RUNTIME" tooltip_side="right" />
-          <SideButton id="btn_side_processes" src="dashboard/window.svg" tooltip="PROCESSES" tooltip_side="right" />
+          <SideButton id="btn_side_home" src_builtin="dashboard/wayvr_dashboard_mono.svg" tooltip="HOME_SCREEN" tooltip_side="right" />
+          <SideButton id="btn_side_apps" src_builtin="dashboard/apps.svg" tooltip="APPLICATIONS" tooltip_side="right" />
+          <SideButton id="btn_side_games" src_builtin="dashboard/games.svg" tooltip="GAMES" tooltip_side="right" />
+          <SideButton id="btn_side_monado" src_builtin="dashboard/monado.svg" tooltip="MONADO_RUNTIME" tooltip_side="right" />
+          <SideButton id="btn_side_processes" src_builtin="dashboard/window.svg" tooltip="PROCESSES" tooltip_side="right" />
           <rectangle height="2" color="#FFFFFF33" width="~side_sprite_size" />
-          <SideButton id="btn_side_settings" src="dashboard/settings.svg" tooltip="SETTINGS" tooltip_side="right" />
+          <SideButton id="btn_side_settings" src_builtin="dashboard/settings.svg" tooltip="SETTINGS" tooltip_side="right" />
         </rectangle>
       </div>
       <!-- REST -->
@@ -130,10 +130,10 @@
           <!-- Left bottom side -->
           <div margin_left="8">
             <Button id="btn_audio" color="#FFFFFF00" border_color="#FFFFFF00" tooltip="AUDIO.VOLUME" tooltip_side="top">
-              <sprite src="dashboard/volume.svg" width="24" height="24" margin="8" />
+              <sprite src_builtin="dashboard/volume.svg" width="24" height="24" margin="8" />
             </Button>
             <Button id="btn_recenter" color="#FFFFFF00" border_color="#FFFFFF00" tooltip="ACTIONS.RECENTER_PLAYSPACE" tooltip_side="top">
-              <sprite src="dashboard/recenter.svg" width="24" height="24" margin="8" />
+              <sprite src_builtin="dashboard/recenter.svg" width="24" height="24" margin="8" />
             </Button>
           </div>
 

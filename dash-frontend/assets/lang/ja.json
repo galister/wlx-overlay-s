@@ -59,5 +59,9 @@
   "HIDE": "隠す",
   "REMOVE": "削除",
   "SHOW": "表示",
-  "DISPLAY_OPTIONS": "表示オプション"
+  "DISPLAY_OPTIONS": "表示オプション",
+  "PROCESS_LIST": {
+    "NO_PROCESSES_FOUND": "プロセスが見つかりませんでした",
+    "LOCATED_ON": "に"
+  }
 }

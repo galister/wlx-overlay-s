@@ -32,7 +32,7 @@ pub fn parse_widget_sprite<'a>(
 				};
 
 				if !value.is_empty() {
-					glyph = match CustomGlyphContent::from_assets(&mut ctx.layout.state.globals, asset_path) {
+					glyph = match CustomGlyphContent::from_assets(&ctx.layout.state.globals, asset_path) {
 						Ok(glyph) => Some(glyph),
 						Err(e) => {
 							log::warn!("failed to load {value}: {e}");

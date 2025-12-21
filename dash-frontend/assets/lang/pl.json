@@ -59,5 +59,9 @@
   "SETTINGS": "Ustawienia",
   "SHOW": "Pokaż",
   "WIDTH": "Szerokość",
-  "PROCESSES": "Procesy"
+  "PROCESSES": "Procesy",
+  "PROCESS_LIST": {
+    "NO_PROCESSES_FOUND": "Nie znaleziono procesów",
+    "LOCATED_ON": "na"
+  }
 }

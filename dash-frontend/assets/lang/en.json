@@ -55,6 +55,11 @@
 	"POPUP_ADD_DISPLAY": {
 		"RESOLUTION": "Resolution"
 	},
+	"PROCESS_LIST": {
+		"LOCATED_ON": "on",
+		"NO_PROCESSES_FOUND": "No processes found",
+		"TERMINATE_PROCESS_NAMED_X": "Terminate process \"{PROCESS_NAME}\""
+	},
 	"PROCESSES": "Processes",
 	"REMOVE": "Remove",
 	"SETTINGS": "Settings",

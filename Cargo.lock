@@ -6301,7 +6301,7 @@ dependencies = [
 [[package]]
 name = "wayvr_ipc"
 version = "0.1.0"
-source = "git+https://github.com/olekolek1000/wayvr-ipc.git?rev=a72587d23f3bb8624d9aeb1f13c0a21e65350f51#a72587d23f3bb8624d9aeb1f13c0a21e65350f51"
+source = "git+https://github.com/olekolek1000/wayvr-ipc.git?rev=6d253ef9e36db0f181566030a4990454ecb60395#6d253ef9e36db0f181566030a4990454ecb60395"
 dependencies = [
  "anyhow",
  "bytes",

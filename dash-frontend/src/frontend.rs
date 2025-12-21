@@ -429,7 +429,7 @@ impl Frontend {
 	}
 
 	fn action_recenter_playspace(&mut self) -> anyhow::Result<()> {
-		log::info!("todo");
+		self.interface.recenter_playspace()?;
 		Ok(())
 	}
 }

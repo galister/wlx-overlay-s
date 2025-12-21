@@ -22,6 +22,7 @@ pub trait DashInterface {
 	fn process_list(&mut self) -> anyhow::Result<Vec<WvrProcess>>;
 	fn process_terminate(&mut self, handle: WvrProcessHandle) -> anyhow::Result<()>;
 	fn window_set_visible(&mut self, handle: WvrWindowHandle, visible: bool) -> anyhow::Result<()>;
+	fn recenter_playspace(&mut self) -> anyhow::Result<()>;
 }
 
 pub type BoxDashInterface = Box<dyn DashInterface>;

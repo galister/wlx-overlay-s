@@ -5,37 +5,36 @@
   <elements>
     <TabTitle translation="SETTINGS" icon="dashboard/settings.svg" />
 
-
     <div flex_wrap="wrap" justify_content="stretch" gap="4">
       <!-- Home screen -->
       <rectangle macro="group_box">
-        <GroupBoxTitle translation="HOME_SCREEN" src="dashboard/wayvr_dashboard.svg" />
+        <GroupBoxTitle translation="HOME_SCREEN" src_builtin="dashboard/wayvr_dashboard.svg" />
         <CheckBox id="cb_hide_username" translation="APP_SETTINGS.HIDE_USERNAME" />
       </rectangle>
 
       <!-- General settings -->
       <rectangle macro="group_box">
-        <GroupBoxTitle translation="GENERAL_SETTINGS" src="dashboard/settings.svg" />
+        <GroupBoxTitle translation="GENERAL_SETTINGS" src_builtin="dashboard/settings.svg" />
         <CheckBox id="cb_am_pm_clock" text="AM/PM clock" />
         <CheckBox id="cb_opaque_background" translation="APP_SETTINGS.OPAQUE_BACKGROUND" />
       </rectangle>
 
       <!-- Application launcher -->
       <rectangle macro="group_box">
-        <GroupBoxTitle translation="APPLICATION_LAUNCHER" src="dashboard/apps.svg" />
+        <GroupBoxTitle translation="APPLICATION_LAUNCHER" src_builtin="dashboard/apps.svg" />
         <CheckBox id="cb_xwayland_by_default" translation="APP_SETTINGS.RUN_IN_XWAYLAND_MODE_BY_DEFAULT" />
       </rectangle>
 
       <!-- headset settings -->
       <rectangle macro="group_box">
-        <GroupBoxTitle translation="APP_SETTINGS.HEADSET_SETTINGS" src="dashboard/vr.svg" />
+        <GroupBoxTitle translation="APP_SETTINGS.HEADSET_SETTINGS" src_builtin="dashboard/vr.svg" />
         <label translation="APP_SETTINGS.BRIGHTNESS" />
         <Slider width="100" height="24" min_value="0.0" max_value="100.0" />
       </rectangle>
 
       <!-- wlx-overlay-s settings -->
       <rectangle macro="group_box">
-        <GroupBoxTitle translation="APP_SETTINGS.WLX_OVERLAY_S_SETTINGS" src="dashboard/vr.svg" />
+        <GroupBoxTitle translation="APP_SETTINGS.WLX_OVERLAY_S_SETTINGS" src_builtin="dashboard/vr.svg" />
         <CheckBox translation="APP_SETTINGS.WLX.NOTIFICATIONS_ENABLED" />
         <CheckBox translation="APP_SETTINGS.WLX.NOTIFICATIONS_SOUND_ENABLED" />
         <CheckBox translation="APP_SETTINGS.WLX.KEYBOARD_SOUND_ENABLED" />
@@ -49,13 +48,7 @@
     </div>
 
     <div>
-      <!-- TODO: icon support in buttons -->
-      <Button color="#AA3333" height="32">
-        <div margin_left="8" margin_right="8" gap="4" align_items="center">
-          <sprite src="dashboard/refresh.svg" width="24" height="24" />
-          <label weight="bold" translation="APP_SETTINGS.RESTART_SOFTWARE" />
-        </div>
-      </Button>
+      <Button color="#AA3333" height="32" sprite_src_builtin="dashboard/refresh.svg" translation="APP_SETTINGS.RESTART_SOFTWARE" />
     </div>
   </elements>
 </layout>

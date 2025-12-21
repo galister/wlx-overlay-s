@@ -5,5 +5,6 @@
     <TabTitle translation="LIST_OF_DISPLAYS" icon="dashboard/window.svg" />
     <div id="display_list_parent" />
     <TabTitle translation="LIST_OF_PROCESSES" icon="dashboard/cpu.svg" />
+    <div id="process_list_parent" />
   </elements>
 </layout>

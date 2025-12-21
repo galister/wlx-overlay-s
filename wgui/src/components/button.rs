@@ -443,7 +443,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	if let Some(sprite_path) = params.sprite_src {
 		let sprite = WidgetSprite::create(WidgetSpriteParams {
 			glyph_data: Some(CustomGlyphData::new(CustomGlyphContent::from_assets(
-				&mut globals,
+				&globals,
 				sprite_path,
 			)?)),
 			..Default::default()
@@ -457,7 +457,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 					width: length(20.0),
 					height: length(20.0),
 				},
-				margin: default_margin.clone(),
+				margin: default_margin,
 				..Default::default()
 			},
 		)?;

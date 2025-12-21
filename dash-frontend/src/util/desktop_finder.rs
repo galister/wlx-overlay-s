@@ -1,5 +1,16 @@
 use gio::prelude::{AppInfoExt, IconExt};
 use gtk::traits::IconThemeExt;
+use serde::{Deserialize, Serialize};
+
+// compatibility with wayvr-ipc
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DesktopFile {
+	pub name: String,
+	pub icon: Option<String>,
+	pub exec_path: String,
+	pub exec_args: Vec<String>,
+	pub categories: Vec<String>,
+}
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)] // TODO: remove this
