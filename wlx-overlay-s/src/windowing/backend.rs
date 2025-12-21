@@ -6,7 +6,10 @@ use wgui::gfx::{
     WGfx,
     cmd::{GfxCommandBuffer, WGfxClearMode},
 };
-use wlx_common::overlays::{BackendAttrib, BackendAttribValue};
+use wlx_common::{
+    overlays::{BackendAttrib, BackendAttribValue},
+    windowing::Positioning,
+};
 
 use crate::{
     backend::input::{HoverResult, PointerHit},
@@ -112,6 +115,11 @@ pub enum OverlayEventData {
     EditModeChanged(bool),
     OverlaysChanged(Vec<OverlayMeta>),
     DevicesChanged,
+    OverlayGrabbed {
+        name: Arc<str>,
+        pos: Positioning,
+        editing: bool,
+    },
 }
 
 pub trait OverlayBackend: Any {

@@ -2,23 +2,37 @@
   <elements>
     <div interactable="0">
       <rectangle
-        max_width="500"
+        max_width="600"
         padding="16"
         flex_direction="column"
         gap="8"
         color="#000000c0" border_color="~color_accent" border="2" round="8">
 
-        <div flex_direction="row" align_items="center" gap="8">
-          <sprite src="grab-help/controller-grip-joy.svg" min_width="128" min_height="128" max_width="128" max_height="128" flex_grow="1" />
-          <label wrap="1" size="25" padding_left="16" padding_right="16" translation="GRAB.ADJUST_DISTANCE" />
+        <div flex_direction="row" padding="8" justify_content="space_between">
+          <div flex_direction="column" align_items="center" gap="8" max_width="160" min_width="160">
+            <sprite src="grab-help/controller-grip-joy.svg" min_width="128" min_height="128" max_width="128" max_height="128" flex_grow="1" />
+            <label wrap="1" size="25" padding_left="16" padding_right="16" translation="GRAB.ADJUST_DISTANCE" align="center" />
+          </div>
+          <div flex_direction="column" align_items="center" gap="8" max_width="160" min_width="160">
+            <sprite src="grab-help/controller-grip-trigger-joy.svg" min_width="128" min_height="128" max_width="128" max_height="128" flex_grow="1" />
+            <label wrap="1" size="25" padding_left="16" padding_right="16" translation="GRAB.ADJUST_SIZE" align="center" />
+          </div>
+          <div flex_direction="column" align_items="center" gap="8" max_width="160" min_width="160">
+            <sprite src="grab-help/controller-grip-b.svg" min_width="128" min_height="128" max_width="128" max_height="128" flex_grow="1" />
+            <label wrap="1" size="25" padding_left="16" padding_right="16" translation="GRAB.UNRESTRICTED_MOVEMENT" align="center" />
+          </div>
         </div>
-        <div flex_direction="row" align_items="center" gap="8">
-          <sprite src="grab-help/controller-grip-trigger-joy.svg" min_width="128" min_height="128" max_width="128" max_height="128" flex_grow="1" />
-          <label wrap="1" size="25" padding_left="16" padding_right="16" translation="GRAB.ADJUST_SIZE" />
-        </div>
-        <div flex_direction="row" align_items="center" gap="8">
-          <sprite src="grab-help/controller-grip-b.svg" min_width="128" min_height="128" max_width="128" max_height="128" flex_grow="1" />
-          <label wrap="1" size="25" padding_left="16" padding_right="16" translation="GRAB.UNRESTRICTED_MOVEMENT" />
+
+        <!-- A simple separator -->
+        <rectangle width="100%" height="2" color="~color_accent" />
+
+        <div align_items="center" padding="8" >
+          <label display="none" id="grabbing_watch" wrap="1" size="20" padding_right="16" translation="GRAB.GRABBING_WATCH" />
+          <label display="none" id="grabbing_static" wrap="1" size="20" padding_left="16" padding_right="16" translation="GRAB.GRABBING_STATIC" />
+          <label display="none" id="grabbing_anchored" wrap="1" size="20" padding_left="16" padding_right="16" translation="GRAB.GRABBING_ANCHORED" />
+          <label display="none" id="grabbing_anchored_edit" wrap="1" size="20" padding_left="16" padding_right="16" translation="GRAB.GRABBING_ANCHORED_EDIT" />
+          <label display="none" id="grabbing_floating" wrap="1" size="20" padding_left="16" padding_right="16" translation="GRAB.GRABBING_FLOATING" />
+          <label display="none" id="grabbing_follow" wrap="1" size="20" padding_left="16" padding_right="16" translation="GRAB.GRABBING_FOLLOW" />
         </div>
 
       </rectangle>

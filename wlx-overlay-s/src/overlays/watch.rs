@@ -420,6 +420,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                     }
                 }
             }
+            _ => {}
         }
 
         panel.layout.process_alterables(alterables)?;

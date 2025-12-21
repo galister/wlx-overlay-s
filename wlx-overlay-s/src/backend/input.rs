@@ -1,5 +1,6 @@
 use std::f32::consts::PI;
 use std::process::{Child, Command};
+use std::sync::Arc;
 use std::time::Instant;
 
 use glam::{Affine3A, Vec2, Vec3A, Vec3Swizzles};
@@ -15,6 +16,7 @@ use crate::overlays::watch::WATCH_NAME;
 use crate::state::{AppSession, AppState};
 use crate::subsystem::hid::WheelDelta;
 use crate::subsystem::input::KeyboardFocus;
+use crate::windowing::backend::OverlayEventData;
 use crate::windowing::manager::OverlayWindowManager;
 use crate::windowing::window::{self, OverlayWindowData, realign};
 use crate::windowing::{OverlayID, OverlaySelector};
@@ -403,7 +405,15 @@ where
             &mut app.hid_provider.keyboard_focus,
             hovered.config.keyboard_focus,
         );
-        start_grab(idx, hit.overlay, hovered_state, app, edit_mode);
+        start_grab(
+            idx,
+            hit.overlay,
+            hovered.config.name.clone(),
+            hovered.config.editing,
+            hovered_state,
+            app,
+            edit_mode,
+        );
         log::debug!("Hand {}: grabbed {}", hit.pointer, hovered.config.name);
         return (
             hit.dist,
@@ -606,6 +616,8 @@ where
 fn start_grab(
     idx: usize,
     id: OverlayID,
+    name: Arc<str>,
+    editing: bool,
     state: &mut OverlayWindowState,
     app: &mut AppState,
     edit_mode: bool,
@@ -644,9 +656,15 @@ fn start_grab(
     )));
 
     if let Some(hand) = pointer.hand().clone() {
+        let pos = state.positioning;
         app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
             OverlaySelector::Name(GRAB_HELP_NAME.clone()),
             Box::new(move |app, o| {
+                let _ = o
+                    .backend
+                    .notify(app, OverlayEventData::OverlayGrabbed { name, pos, editing })
+                    .inspect_err(|e| log::warn!("Error during Notify OverlayGrabbed: {e:?}"));
+
                 o.default_state.positioning = Positioning::FollowHand {
                     hand,
                     lerp: 0.1,
