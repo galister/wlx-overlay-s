@@ -34,7 +34,7 @@ use crate::{
     },
 };
 
-pub const MAX_OVERLAY_SETS: usize = 7;
+pub const MAX_OVERLAY_SETS: usize = 6;
 
 pub struct OverlayWindowManager<T> {
     wrappers: EditWrapperManager,
