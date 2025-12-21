@@ -10,7 +10,9 @@ use std::{
 use anyhow::Context;
 use wgui::{
     components::button::ComponentButton,
-    event::{self, EventCallback, EventListenerKind},
+    event::{
+        self, CallbackData, CallbackMetadata, EventCallback, EventListenerKind, MouseButtonIndex,
+    },
     i18n::Translation,
     layout::Layout,
     parser::CustomAttribsInfoOwned,
@@ -31,10 +33,64 @@ use crate::{
 #[cfg(feature = "wayvr")]
 use crate::backend::wayvr::WayVRAction;
 
-pub const BUTTON_EVENTS: [(&str, EventListenerKind); 2] = [
-    ("_press", EventListenerKind::MousePress),
-    ("_release", EventListenerKind::MouseRelease),
+pub const BUTTON_EVENTS: [(&str, EventListenerKind, fn(&mut CallbackData) -> bool); 8] = [
+    ("_press", EventListenerKind::MousePress, any_button),
+    ("_release", EventListenerKind::MouseRelease, any_button),
+    ("_press_left", EventListenerKind::MousePress, left_button),
+    (
+        "_release_left",
+        EventListenerKind::MouseRelease,
+        left_button,
+    ),
+    ("_press_right", EventListenerKind::MousePress, right_button),
+    (
+        "_release_right",
+        EventListenerKind::MouseRelease,
+        right_button,
+    ),
+    (
+        "_press_middle",
+        EventListenerKind::MousePress,
+        middle_button,
+    ),
+    (
+        "_release_middle",
+        EventListenerKind::MouseRelease,
+        middle_button,
+    ),
 ];
+
+fn any_button(_: &mut CallbackData) -> bool {
+    true
+}
+
+fn left_button(data: &mut CallbackData) -> bool {
+    if let CallbackMetadata::MouseButton(b) = data.metadata
+        && let MouseButtonIndex::Left = b.index
+    {
+        true
+    } else {
+        false
+    }
+}
+fn right_button(data: &mut CallbackData) -> bool {
+    if let CallbackMetadata::MouseButton(b) = data.metadata
+        && let MouseButtonIndex::Right = b.index
+    {
+        true
+    } else {
+        false
+    }
+}
+fn middle_button(data: &mut CallbackData) -> bool {
+    if let CallbackMetadata::MouseButton(b) = data.metadata
+        && let MouseButtonIndex::Middle = b.index
+    {
+        true
+    } else {
+        false
+    }
+}
 
 pub(super) fn setup_custom_button<S: 'static>(
     layout: &mut Layout,
@@ -42,7 +98,7 @@ pub(super) fn setup_custom_button<S: 'static>(
     _app: &AppState,
     button: Rc<ComponentButton>,
 ) {
-    for (name, kind) in &BUTTON_EVENTS {
+    for (name, kind, test_btn) in &BUTTON_EVENTS {
         let Some(action) = attribs.get_value(name) else {
             continue;
         };
@@ -54,7 +110,11 @@ pub(super) fn setup_custom_button<S: 'static>(
 
         let callback: EventCallback<AppState, S> = match command {
             #[cfg(feature = "wayvr")]
-            "::DashToggle" => Box::new(move |_common, _data, app, _| {
+            "::DashToggle" => Box::new(move |_common, data, app, _| {
+                if !test_btn(data) {
+                    return Ok(EventResult::Pass);
+                }
+
                 app.tasks
                     .enqueue(TaskType::WayVR(WayVRAction::ToggleDashboard));
                 Ok(EventResult::Consumed)
@@ -65,7 +125,11 @@ pub(super) fn setup_custom_button<S: 'static>(
                     log::error!("{command} has invalid argument: \"{arg}\"");
                     return;
                 };
-                Box::new(move |_common, _data, app, _| {
+                Box::new(move |_common, data, app, _| {
+                    if !test_btn(data) {
+                        return Ok(EventResult::Pass);
+                    }
+
                     app.tasks
                         .enqueue(TaskType::Overlay(OverlayTask::ToggleSet(set_idx)));
                     Ok(EventResult::Consumed)
@@ -77,7 +141,11 @@ pub(super) fn setup_custom_button<S: 'static>(
                     return;
                 };
 
-                Box::new(move |_common, _data, app, _| {
+                Box::new(move |_common, data, app, _| {
+                    if !test_btn(data) {
+                        return Ok(EventResult::Pass);
+                    }
+
                     app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
                         OverlaySelector::Name(arg.clone()),
                         Box::new(move |app, owc| {
@@ -91,13 +159,21 @@ pub(super) fn setup_custom_button<S: 'static>(
                     Ok(EventResult::Consumed)
                 })
             }
-            "::EditToggle" => Box::new(move |_common, _data, app, _| {
+            "::EditToggle" => Box::new(move |_common, data, app, _| {
+                if !test_btn(data) {
+                    return Ok(EventResult::Pass);
+                }
+
                 app.tasks
                     .enqueue(TaskType::Overlay(OverlayTask::ToggleEditMode));
                 Ok(EventResult::Consumed)
             }),
             #[cfg(feature = "wayland")]
-            "::NewMirror" => Box::new(move |_common, _data, app, _| {
+            "::NewMirror" => Box::new(move |_common, data, app, _| {
+                if !test_btn(data) {
+                    return Ok(EventResult::Pass);
+                }
+
                 let name = crate::overlays::mirror::new_mirror_name();
                 app.tasks.enqueue(TaskType::Overlay(OverlayTask::Create(
                     OverlaySelector::Name(name.clone()),
@@ -107,21 +183,37 @@ pub(super) fn setup_custom_button<S: 'static>(
                 )));
                 Ok(EventResult::Consumed)
             }),
-            "::CleanupMirrors" => Box::new(move |_common, _data, app, _| {
+            "::CleanupMirrors" => Box::new(move |_common, data, app, _| {
+                if !test_btn(data) {
+                    return Ok(EventResult::Pass);
+                }
+
                 app.tasks
                     .enqueue(TaskType::Overlay(OverlayTask::CleanupMirrors));
                 Ok(EventResult::Consumed)
             }),
-            "::PlayspaceReset" => Box::new(move |_common, _data, app, _| {
+            "::PlayspaceReset" => Box::new(move |_common, data, app, _| {
+                if !test_btn(data) {
+                    return Ok(EventResult::Pass);
+                }
+
                 app.tasks.enqueue(TaskType::Playspace(PlayspaceTask::Reset));
                 Ok(EventResult::Consumed)
             }),
-            "::PlayspaceRecenter" => Box::new(move |_common, _data, app, _| {
+            "::PlayspaceRecenter" => Box::new(move |_common, data, app, _| {
+                if !test_btn(data) {
+                    return Ok(EventResult::Pass);
+                }
+
                 app.tasks
                     .enqueue(TaskType::Playspace(PlayspaceTask::Recenter));
                 Ok(EventResult::Consumed)
             }),
-            "::PlayspaceFixFloor" => Box::new(move |_common, _data, app, _| {
+            "::PlayspaceFixFloor" => Box::new(move |_common, data, app, _| {
+                if !test_btn(data) {
+                    return Ok(EventResult::Pass);
+                }
+
                 for i in 0..5 {
                     Toast::new(
                         ToastTopic::System,
@@ -138,7 +230,11 @@ pub(super) fn setup_custom_button<S: 'static>(
                 );
                 Ok(EventResult::Consumed)
             }),
-            "::Shutdown" => Box::new(move |_common, _data, _app, _| {
+            "::Shutdown" => Box::new(move |_common, data, _app, _| {
+                if !test_btn(data) {
+                    return Ok(EventResult::Pass);
+                }
+
                 RUNNING.store(false, Ordering::Relaxed);
                 Ok(EventResult::Consumed)
             }),
@@ -155,7 +251,11 @@ pub(super) fn setup_custom_button<S: 'static>(
                     log::error!("{command} has bad/missing arguments");
                     return;
                 };
-                Box::new(move |_common, _data, app, _| {
+                Box::new(move |_common, data, app, _| {
+                    if !test_btn(data) {
+                        return Ok(EventResult::Pass);
+                    }
+
                     app.hid_provider.send_key_routed(key, down);
                     Ok(EventResult::Consumed)
                 })
@@ -182,7 +282,11 @@ pub(super) fn setup_custom_button<S: 'static>(
                     }),
                 );
 
-                Box::new(move |_common, _data, _app, _| {
+                Box::new(move |_common, data, _app, _| {
+                    if !test_btn(data) {
+                        return Ok(EventResult::Pass);
+                    }
+
                     let _ = shell_on_action(&state).inspect_err(|e| log::error!("{e:?}"));
                     Ok(EventResult::Consumed)
                 })
@@ -206,7 +310,11 @@ pub(super) fn setup_custom_button<S: 'static>(
                     osc_args.push(osc_arg);
                 }
 
-                Box::new(move |_common, _data, app, _| {
+                Box::new(move |_common, data, app, _| {
+                    if !test_btn(data) {
+                        return Ok(EventResult::Pass);
+                    }
+
                     let Some(sender) = app.osc_sender.as_mut() else {
                         log::error!("OscSend: sender is not available.");
                         return Ok(EventResult::Consumed);

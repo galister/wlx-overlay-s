@@ -283,7 +283,7 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
     };
 
     let on_custom_attrib: OnCustomAttribFunc = Box::new(move |layout, attribs, _app| {
-        for (name, kind) in &BUTTON_EVENTS {
+        for (name, kind, test_btn) in &BUTTON_EVENTS {
             let Some(action) = attribs.get_value(name) else {
                 continue;
             };
@@ -294,14 +294,22 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
             };
 
             let callback: EventCallback<AppState, EditModeState> = match command {
-                "::EditModeToggleLock" => Box::new(move |common, _data, app, state| {
+                "::EditModeToggleLock" => Box::new(move |common, data, app, state| {
+                    if !test_btn(data) {
+                        return Ok(EventResult::Pass);
+                    }
+
                     let sel = OverlaySelector::Id(*state.id.borrow());
                     let task = state.lock.toggle(common, app);
                     app.tasks
                         .enqueue(TaskType::Overlay(OverlayTask::Modify(sel, task)));
                     Ok(EventResult::Consumed)
                 }),
-                "::EditModeToggleGrab" => Box::new(move |_common, _data, app, state| {
+                "::EditModeToggleGrab" => Box::new(move |_common, data, app, state| {
+                    if !test_btn(data) {
+                        return Ok(EventResult::Pass);
+                    }
+
                     let sel = OverlaySelector::Id(*state.id.borrow());
                     app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
                         sel,
@@ -314,14 +322,22 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
                 }),
                 "::EditModeTab" => {
                     let tab_name = args.next().unwrap().to_owned();
-                    Box::new(move |common, _data, _app, state| {
+                    Box::new(move |common, data, _app, state| {
+                        if !test_btn(data) {
+                            return Ok(EventResult::Pass);
+                        }
+
                         state.tabs.tab_button_clicked(common, &tab_name);
                         Ok(EventResult::Consumed)
                     })
                 }
                 "::EditModeSetPos" => {
                     let key = args.next().unwrap().to_owned();
-                    Box::new(move |common, _data, app, state| {
+                    Box::new(move |common, data, app, state| {
+                        if !test_btn(data) {
+                            return Ok(EventResult::Pass);
+                        }
+
                         let sel = OverlaySelector::Id(*state.id.borrow());
                         let task = state.pos.button_clicked(common, &key);
                         app.tasks
@@ -331,7 +347,11 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
                 }
                 "::EditModeSetStereo" => {
                     let key = args.next().unwrap().to_owned();
-                    Box::new(move |common, _data, app, state| {
+                    Box::new(move |common, data, app, state| {
+                        if !test_btn(data) {
+                            return Ok(EventResult::Pass);
+                        }
+
                         let sel = OverlaySelector::Id(*state.id.borrow());
                         let task = state.stereo.button_clicked(common, &key);
                         app.tasks
@@ -341,7 +361,11 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
                 }
                 "::EditModeSetMouse" => {
                     let key = args.next().unwrap().to_owned();
-                    Box::new(move |common, _data, app, state| {
+                    Box::new(move |common, data, app, state| {
+                        if !test_btn(data) {
+                            return Ok(EventResult::Pass);
+                        }
+
                         let sel = OverlaySelector::Id(*state.id.borrow());
                         let task = state.mouse.button_clicked(common, &key);
                         app.tasks
@@ -349,12 +373,20 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
                         Ok(EventResult::Consumed)
                     })
                 }
-                "::EditModeDeletePress" => Box::new(move |_common, _data, _app, state| {
+                "::EditModeDeletePress" => Box::new(move |_common, data, _app, state| {
+                    if !test_btn(data) {
+                        return Ok(EventResult::Pass);
+                    }
+
                     state.delete.pressed = Instant::now();
                     // TODO: animate to light up button after 2s
                     Ok(EventResult::Consumed)
                 }),
-                "::EditModeDeleteRelease" => Box::new(move |_common, _data, app, state| {
+                "::EditModeDeleteRelease" => Box::new(move |_common, data, app, state| {
+                    if !test_btn(data) {
+                        return Ok(EventResult::Pass);
+                    }
+
                     if state.delete.pressed.elapsed() < Duration::from_secs(1) {
                         return Ok(EventResult::Pass);
                     }

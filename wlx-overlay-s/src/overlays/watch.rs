@@ -5,7 +5,7 @@ use std::{
 };
 
 use glam::{Affine3A, Quat, Vec3, Vec3A, vec3};
-use idmap::{DirectIdMap, ordered::Keys};
+use idmap::DirectIdMap;
 use slotmap::SecondaryMap;
 use wgui::{
     components::button::ComponentButton,
@@ -79,7 +79,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
     let state = WatchState::default();
 
     let on_custom_attrib: OnCustomAttribFunc = Box::new(move |layout, attribs, _app| {
-        for (name, kind) in &BUTTON_EVENTS {
+        for (name, kind, test_btn) in &BUTTON_EVENTS {
             let Some(action) = attribs.get_value(name) else {
                 continue;
             };
@@ -90,11 +90,19 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
             };
 
             let callback: EventCallback<AppState, WatchState> = match command {
-                "::EditModeDeleteDown" => Box::new(move |_common, _data, _app, state| {
+                "::EditModeDeleteDown" => Box::new(move |_common, data, _app, state| {
+                    if !test_btn(data) {
+                        return Ok(EventResult::Pass);
+                    }
+
                     state.delete.pressed = Instant::now();
                     Ok(EventResult::Consumed)
                 }),
-                "::EditModeDeleteUp" => Box::new(move |_common, _data, app, state| {
+                "::EditModeDeleteUp" => Box::new(move |_common, data, app, state| {
+                    if !test_btn(data) {
+                        return Ok(EventResult::Pass);
+                    }
+
                     if state.delete.pressed.elapsed() < Duration::from_secs(1) {
                         return Ok(EventResult::Consumed);
                     }
@@ -102,7 +110,11 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                         .enqueue(TaskType::Overlay(OverlayTask::DeleteActiveSet));
                     Ok(EventResult::Consumed)
                 }),
-                "::EditModeAddSet" => Box::new(move |_common, _data, app, _state| {
+                "::EditModeAddSet" => Box::new(move |_common, data, app, _state| {
+                    if !test_btn(data) {
+                        return Ok(EventResult::Pass);
+                    }
+
                     app.tasks.enqueue(TaskType::Overlay(OverlayTask::AddSet));
                     Ok(EventResult::Consumed)
                 }),
@@ -112,7 +124,11 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                         log::error!("{command} has invalid argument: \"{arg}\"");
                         return;
                     };
-                    Box::new(move |_common, _data, app, state| {
+                    Box::new(move |_common, data, app, state| {
+                        if !test_btn(data) {
+                            return Ok(EventResult::Pass);
+                        }
+
                         let Some(overlay) = state.overlay_metas.get(idx) else {
                             log::error!("No overlay at index {idx}.");
                             return Ok(EventResult::Consumed);
@@ -137,7 +153,11 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                         log::error!("{command} has invalid argument: \"{arg}\"");
                         return;
                     };
-                    Box::new(move |_common, _data, app, state| {
+                    Box::new(move |_common, data, app, state| {
+                        if !test_btn(data) {
+                            return Ok(EventResult::Pass);
+                        }
+
                         let Some(overlay) = state.overlay_metas.get(idx) else {
                             log::error!("No overlay at index {idx}.");
                             return Ok(EventResult::Consumed);
