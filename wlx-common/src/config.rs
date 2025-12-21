@@ -142,9 +142,6 @@ pub struct GeneralConfig {
 	#[serde(default = "def_point7")]
 	pub watch_view_angle_max: f32,
 
-	#[serde(default = "def_one")]
-	pub long_press_duration: f32,
-
 	#[serde(default = "def_osc_port")]
 	pub osc_out_port: u16,
 
@@ -167,28 +164,13 @@ pub struct GeneralConfig {
 	pub capture_method: Arc<str>,
 
 	#[serde(default = "def_point7")]
-	pub xr_grab_sensitivity: f32,
-
-	#[serde(default = "def_point7")]
 	pub xr_click_sensitivity: f32,
-
-	#[serde(default = "def_point7")]
-	pub xr_alt_click_sensitivity: f32,
-
-	#[serde(default = "def_half")]
-	pub xr_grab_sensitivity_release: f32,
 
 	#[serde(default = "def_half")]
 	pub xr_click_sensitivity_release: f32,
 
-	#[serde(default = "def_half")]
-	pub xr_alt_click_sensitivity_release: f32,
-
 	#[serde(default = "def_true")]
 	pub allow_sliding: bool,
-
-	#[serde(default = "def_true")]
-	pub realign_on_showhide: bool,
 
 	#[serde(default = "def_false")]
 	pub focus_follows_mouse_mode: bool,

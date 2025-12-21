@@ -109,7 +109,6 @@ pub struct AutoSettings {
     pub watch_view_angle_max: f32,
     pub notifications_enabled: bool,
     pub notifications_sound_enabled: bool,
-    pub realign_on_showhide: bool,
     pub allow_sliding: bool,
     pub space_drag_multiplier: f32,
 }
@@ -126,7 +125,6 @@ pub fn save_settings(config: &GeneralConfig) -> anyhow::Result<()> {
         watch_view_angle_max: config.watch_view_angle_max,
         notifications_enabled: config.notifications_enabled,
         notifications_sound_enabled: config.notifications_sound_enabled,
-        realign_on_showhide: config.realign_on_showhide,
         allow_sliding: config.allow_sliding,
         space_drag_multiplier: config.space_drag_multiplier,
     };
