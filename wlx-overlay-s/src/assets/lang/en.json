@@ -36,14 +36,15 @@
 		},
 		"MOUSE": {
 			"TITLE": "Mouse fixes",
-			"EDIT_MODE.MOUSE.NORMAL": "Normal",
-			"EDIT_MODE.MOUSE.ROTATE90": "Rotated 90°",
-			"EDIT_MODE.MOUSE.ROTATE180": "Rotated 170°",
-			"EDIT_MODE.MOUSE.ROTATE270": "Rotated 270°",
-			"EDIT_MODE.MOUSE.FLIPPED": "Flipped",
-			"EDIT_MODE.MOUSE.ROTATE90": "Flipped 90°",
-			"EDIT_MODE.MOUSE.ROTATE180": "Flipped 170°",
-			"EDIT_MODE.MOUSE.ROTATE270": "Flipped 270°"
+			"WRONG_SCREEN_SELECTION_HELP": "If the cursor moves on a completely different screen,\nthe screens were likely selected wrong. See readme.",
+			"NORMAL": "Normal",
+			"ROTATE90": "Rotated 90°",
+			"ROTATE180": "Rotated 170°",
+			"ROTATE270": "Rotated 270°",
+			"FLIPPED": "Flipped",
+			"ROTATE90": "Flipped 90°",
+			"ROTATE180": "Flipped 170°",
+			"ROTATE270": "Flipped 270°"
 		}
 	},
 	"GRAB": {

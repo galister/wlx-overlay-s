@@ -84,7 +84,7 @@
                 </div>
               </div>
               <div id="tab_mouse" display="none" height="100" flex_direction="column">
-                <div padding="8" gap="8" justify_content="center" align_items="center">
+                <div padding_left="8" padding_right="8" gap="8" justify_content="center" align_items="center">
                   <PosButton id="mouse_default" src="edit/close.svg" tooltip="DEFAULT" press="::EditModeSetMouse default" />
                   <PosButton id="mouse_normal" src="edit/normal.svg" tooltip="EDIT_MODE.MOUSE.NORMAL" press="::EditModeSetMouse normal" />
                   <PosButton id="mouse_rotate90" src="edit/rotate90.svg" tooltip="EDIT_MODE.MOUSE.ROTATE90" press="::EditModeSetMouse rotate90" />
@@ -94,6 +94,9 @@
                   <PosButton id="mouse_flip90" src="edit/flip90.svg" tooltip="EDIT_MODE.MOUSE.FLIP90" press="::EditModeSetMouse flip90" />
                   <PosButton id="mouse_flip180" src="edit/flip180.svg" tooltip="EDIT_MODE.MOUSE.FLIP180" press="::EditModeSetMouse flip180" />
                   <PosButton id="mouse_flip270" src="edit/flip270.svg" tooltip="EDIT_MODE.MOUSE.FLIP270" press="::EditModeSetMouse flip270" />
+                </div>
+                <div justify_content="center" align_items="center">
+                  <label align="center" translation="EDIT_MODE.MOUSE.WRONG_SCREEN_SELECTION_HELP" />
                 </div>
               </div>
               <div id="tab_alpha" display="none" height="100" padding="8" gap="8" justify_content="center" align_items="center">
