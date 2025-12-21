@@ -157,6 +157,9 @@ pub struct GeneralConfig {
 	#[serde(default = "def_false")]
 	pub single_set_mode: bool,
 
+	#[serde(default = "def_false")]
+	pub hide_grab_help: bool,
+
 	#[serde(default)]
 	pub custom_panels: AStrSet,
 

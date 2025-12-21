@@ -655,7 +655,9 @@ fn start_grab(
         }),
     )));
 
-    if let Some(hand) = pointer.hand().clone() {
+    if let Some(hand) = pointer.hand().clone()
+        && !app.session.config.hide_grab_help
+    {
         let pos = state.positioning;
         app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
             OverlaySelector::Name(GRAB_HELP_NAME.clone()),
