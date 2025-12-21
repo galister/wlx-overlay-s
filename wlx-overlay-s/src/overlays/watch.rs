@@ -306,7 +306,12 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
         },
     )?;
 
-    panel.on_notify = Some(Box::new(|panel, app, event_data| {
+    let btn_edit_mode = panel
+        .parser_state
+        .fetch_component_as::<ComponentButton>("btn_edit_mode")
+        .ok();
+
+    panel.on_notify = Some(Box::new(move |panel, app, event_data| {
         let mut alterables = EventAlterables::default();
         let mut com = CallbackDataCommon {
             alterables: &mut alterables,
@@ -368,6 +373,10 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                     panel.state.edit_add_widget,
                     StyleSetRequest::Display(display),
                 );
+
+                if let Some(btn) = btn_edit_mode.as_ref() {
+                    btn.set_sticky_state(&mut com, edit_mode);
+                }
             }
             OverlayEventData::OverlaysChanged(metas) => {
                 panel.state.overlay_metas = metas;

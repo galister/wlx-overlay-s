@@ -153,7 +153,7 @@
               <sprite color="~set_color" width="40" height="40" src="edit/add.svg" />
             </Button>
           </div>
-          <Button macro="button_style" _press="::EditToggle" tooltip="WATCH.EDIT_MODE" tooltip_side="top">
+          <Button id="btn_edit_mode" macro="button_style" _press="::EditToggle" tooltip="WATCH.EDIT_MODE" tooltip_side="top">
             <sprite color="~set_color" width="40" height="40" src="watch/edit.svg" />
           </Button>
         </div>
