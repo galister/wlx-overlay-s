@@ -51,10 +51,13 @@
       "TITLE": "Correcciones del ratón",
       "WRONG_SCREEN_SELECTION_HELP": "Si el cursor se mueve en una pantalla completamente diferente,\nes probable que las pantallas se hayan seleccionado incorrectamente. Consulta el archivo readme.",
       "NORMAL": "Normal",
-      "ROTATE90": "Girar 90° volteado",
-      "ROTATE180": "Invertido 180°",
-      "ROTATE270": "Invertido 270°",
-      "FLIPPED": "Invertido"
+      "FLIPPED": "Invertido",
+      "FLIP90": "Girado 90°",
+      "FLIP180": "Invertido 180°",
+      "FLIP270": "Invertido 270°",
+      "ROTATE90": "Rotado 90°",
+      "ROTATE180": "Rotado 180°",
+      "ROTATE270": "Rotado 270°"
     }
   },
   "DISABLED": "Deshabilitado",
