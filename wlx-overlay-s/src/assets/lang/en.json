@@ -42,9 +42,9 @@
 			"ROTATE180": "Rotated 180°",
 			"ROTATE270": "Rotated 270°",
 			"FLIPPED": "Flipped",
-			"ROTATE90": "Flipped 90°",
-			"ROTATE180": "Flipped 180°",
-			"ROTATE270": "Flipped 270°"
+			"FLIP90": "Flipped 90°",
+			"FLIP180": "Flipped 180°",
+			"FLIP270": "Flipped 270°"
 		}
 	},
 	"GRAB": {
