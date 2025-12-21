@@ -2,6 +2,7 @@
 	"ANCHOR": {
 		"CENTER": "Center"
 	},
+	"DEFAULT": "Default",
 	"DISABLED": "Disabled",
 	"EDIT_MODE": {
 		"ADJUST_CURVATURE": "Adjust curvature",
@@ -12,6 +13,7 @@
 		"DISABLE_GRAB": "Disable grab",
 		"HINT_POINT_WINDOW": "Point at a window to change its parameters.\nOnce done, leave edit mode using the button on the right.",
 		"INTERPOLATION": "Interpolation",
+		"ALIGN_TO_HMD": "Align to HMD",
 		"KEYBOARD": "Keyboard",
 		"LEAVE": "Leave edit mode",
 		"LOCK_INTERACTION": "Lock interaction",
@@ -31,7 +33,23 @@
 			"SPLIT_RIGHT_LEFT": "RIGHT→LEFT",
 			"SPLIT_TOP_BOTTOM": "TOP→BOTTOM",
 			"TITLE": "3D Stereo Mode"
+		},
+		"MOUSE": {
+			"TITLE": "Mouse fixes",
+			"EDIT_MODE.MOUSE.NORMAL": "Normal",
+			"EDIT_MODE.MOUSE.ROTATE90": "Rotated 90°",
+			"EDIT_MODE.MOUSE.ROTATE180": "Rotated 170°",
+			"EDIT_MODE.MOUSE.ROTATE270": "Rotated 270°",
+			"EDIT_MODE.MOUSE.FLIPPED": "Flipped",
+			"EDIT_MODE.MOUSE.ROTATE90": "Flipped 90°",
+			"EDIT_MODE.MOUSE.ROTATE180": "Flipped 170°",
+			"EDIT_MODE.MOUSE.ROTATE270": "Flipped 270°"
 		}
+	},
+	"GRAB": {
+		"ADJUST_DISTANCE": "Adjust distance",
+		"ADJUST_SIZE": "Adjust size",
+		"UNRESTRICTED_MOVEMENT": "Unrestricted movement"
 	},
 	"WATCH": {
 		"ADD_NEW_SET": "Add a new set",

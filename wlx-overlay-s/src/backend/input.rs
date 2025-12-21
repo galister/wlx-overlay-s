@@ -10,7 +10,7 @@ use wlx_common::common::LeftRight;
 use wlx_common::windowing::{OverlayWindowState, Positioning};
 
 use crate::backend::task::OverlayTask;
-use crate::overlays::anchor::ANCHOR_NAME;
+use crate::overlays::anchor::{ANCHOR_NAME, GRAB_HELP_NAME};
 use crate::overlays::watch::WATCH_NAME;
 use crate::state::{AppSession, AppState};
 use crate::subsystem::hid::WheelDelta;
@@ -642,6 +642,20 @@ fn start_grab(
             o.activate(app);
         }),
     )));
+
+    if let Some(hand) = pointer.hand().clone() {
+        app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
+            OverlaySelector::Name(GRAB_HELP_NAME.clone()),
+            Box::new(move |app, o| {
+                o.default_state.positioning = Positioning::FollowHand {
+                    hand,
+                    lerp: 0.1,
+                    align_to_hmd: true,
+                };
+                o.activate(app);
+            }),
+        )));
+    }
 }
 
 fn handle_scale(transform: &mut Affine3A, scroll_y: f32) {
@@ -730,16 +744,26 @@ where
                 // watch special: when dropped, follow the hand that wasn't grabbing
                 if let Some(overlay_state) = overlay.config.active_state.as_mut() {
                     overlay_state.positioning = match overlay_state.positioning {
-                        Positioning::FollowHand { hand, lerp } => match pointer.hand() {
+                        Positioning::FollowHand {
+                            hand,
+                            lerp,
+                            align_to_hmd,
+                        } => match pointer.hand() {
                             Some(LeftRight::Left) => Positioning::FollowHand {
                                 hand: LeftRight::Right,
                                 lerp,
+                                align_to_hmd,
                             },
                             Some(LeftRight::Right) => Positioning::FollowHand {
                                 hand: LeftRight::Left,
                                 lerp,
+                                align_to_hmd,
                             },
-                            _ => Positioning::FollowHand { hand, lerp },
+                            _ => Positioning::FollowHand {
+                                hand,
+                                lerp,
+                                align_to_hmd,
+                            },
                         },
                         x => x,
                     };
@@ -762,6 +786,12 @@ where
         // Hide anchor
         app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
             OverlaySelector::Name(ANCHOR_NAME.clone()),
+            Box::new(|_app, o| {
+                o.deactivate();
+            }),
+        )));
+        app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
+            OverlaySelector::Name(GRAB_HELP_NAME.clone()),
             Box::new(|_app, o| {
                 o.deactivate();
             }),

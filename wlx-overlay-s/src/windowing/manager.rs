@@ -16,8 +16,13 @@ use crate::{
     backend::task::OverlayTask,
     config::save_state,
     overlays::{
-        anchor::create_anchor, custom::create_custom, edit::EditWrapperManager,
-        keyboard::create_keyboard, screen::create_screens, toast::Toast, watch::create_watch,
+        anchor::{create_anchor, create_grab_help},
+        custom::create_custom,
+        edit::EditWrapperManager,
+        keyboard::create_keyboard,
+        screen::create_screens,
+        toast::Toast,
+        watch::create_watch,
     },
     state::AppState,
     windowing::{
@@ -114,6 +119,9 @@ where
 
         let watch = OverlayWindowData::from_config(create_watch(app)?);
         me.watch_id = me.add(watch, app);
+
+        let grab_help = OverlayWindowData::from_config(create_grab_help(app)?);
+        me.add(grab_help, app);
 
         let custom_panels = app.session.config.custom_panels.clone();
         for name in custom_panels.into_iter() {

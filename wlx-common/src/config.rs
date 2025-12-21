@@ -59,22 +59,6 @@ const fn def_osc_port() -> u16 {
 	9000
 }
 
-const fn def_empty_vec_string() -> Vec<String> {
-	Vec::new()
-}
-
-const fn def_sets() -> Vec<SerializedWindowSet> {
-	Vec::new()
-}
-
-fn def_global_set() -> SerializedWindowStates {
-	HashMap::new()
-}
-
-const fn def_zero_u32() -> u32 {
-	0
-}
-
 fn def_timezones() -> Vec<String> {
 	const EMEA: i32 = -60 * 60; // UTC-1
 	const APAC: i32 = 5 * 60 * 60; // UTC+5
@@ -87,14 +71,6 @@ fn def_timezones() -> Vec<String> {
 	}
 }
 
-const fn def_astrset_empty() -> AStrSet {
-	AStrSet::new()
-}
-
-const fn def_attribs() -> AStrMap<Vec<BackendAttribValue>> {
-	AStrMap::new()
-}
-
 fn def_auto() -> Arc<str> {
 	"auto".into()
 }
@@ -105,14 +81,6 @@ fn def_empty() -> Arc<str> {
 
 fn def_theme_path() -> Arc<str> {
 	"theme".into()
-}
-
-fn def_toast_topics() -> IdMap<ToastTopic, ToastDisplayMethod> {
-	IdMap::new()
-}
-
-fn def_font() -> Arc<str> {
-	"LiberationSans:style=Bold".into()
 }
 
 const fn def_max_height() -> u16 {
@@ -129,7 +97,7 @@ pub struct GeneralConfig {
 	pub color_faded: Option<String>,
 	pub default_keymap: Option<String>,
 
-	#[serde(default = "def_attribs")]
+	#[serde(default)]
 	pub attribs: AStrMap<Vec<BackendAttribValue>>,
 
 	#[serde(default = "def_click_freeze_time_ms")]
@@ -153,7 +121,7 @@ pub struct GeneralConfig {
 	#[serde(default = "def_true")]
 	pub notifications_sound_enabled: bool,
 
-	#[serde(default = "def_toast_topics")]
+	#[serde(default)]
 	pub notification_topics: IdMap<ToastTopic, ToastDisplayMethod>,
 
 	#[serde(default = "def_empty")]
@@ -189,7 +157,7 @@ pub struct GeneralConfig {
 	#[serde(default = "def_false")]
 	pub single_set_mode: bool,
 
-	#[serde(default = "def_astrset_empty")]
+	#[serde(default)]
 	pub custom_panels: AStrSet,
 
 	#[serde(default = "def_auto")]
@@ -231,9 +199,6 @@ pub struct GeneralConfig {
 	#[serde(default = "def_true")]
 	pub block_game_input_ignore_watch: bool,
 
-	#[serde(default = "def_font")]
-	pub primary_font: Arc<str>,
-
 	#[serde(default = "def_one")]
 	pub space_drag_multiplier: f32,
 
@@ -258,10 +223,10 @@ pub struct GeneralConfig {
 	#[serde(default = "def_false")]
 	pub space_rotate_unlocked: bool,
 
-	#[serde(default = "def_empty_vec_string")]
+	#[serde(default)]
 	pub alt_click_down: Vec<String>,
 
-	#[serde(default = "def_empty_vec_string")]
+	#[serde(default)]
 	pub alt_click_up: Vec<String>,
 
 	#[serde(default = "def_timezones")]
@@ -270,12 +235,12 @@ pub struct GeneralConfig {
 	#[serde(default = "def_false")]
 	pub clock_12h: bool,
 
-	#[serde(default = "def_sets")]
+	#[serde(default)]
 	pub sets: Vec<SerializedWindowSet>,
 
-	#[serde(default = "def_global_set")]
+	#[serde(default)]
 	pub global_set: SerializedWindowStates,
 
-	#[serde(default = "def_zero_u32")]
+	#[serde(default)]
 	pub last_set: u32,
 }

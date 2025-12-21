@@ -40,10 +40,12 @@ impl AttachTo {
             Self::HandLeft => Positioning::FollowHand {
                 hand: LeftRight::Left,
                 lerp: 1.0,
+                align_to_hmd: false,
             },
             Self::HandRight => Positioning::FollowHand {
                 hand: LeftRight::Right,
                 lerp: 1.0,
+                align_to_hmd: false,
             },
             Self::Stage => Positioning::Static,
             Self::Head => Positioning::FollowHead { lerp: 1.0 },

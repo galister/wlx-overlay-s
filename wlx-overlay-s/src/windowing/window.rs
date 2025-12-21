@@ -145,12 +145,18 @@ impl OverlayWindowConfig {
             .saved_transform
             .unwrap_or(self.default_state.transform);
 
-        let (parent_transform, lerp) = match state.positioning {
-            Positioning::FollowHead { lerp } => (app.input_state.hmd, lerp),
-            Positioning::FollowHand { hand, lerp } => {
-                (app.input_state.pointers[hand as usize].pose, lerp)
-            }
-            Positioning::Anchored => (app.anchor, 1.0),
+        let (parent_transform, lerp, align_to_hmd) = match state.positioning {
+            Positioning::FollowHead { lerp } => (app.input_state.hmd, lerp, false),
+            Positioning::FollowHand {
+                hand,
+                lerp,
+                align_to_hmd,
+            } => (
+                app.input_state.pointers[hand as usize].pose,
+                lerp,
+                align_to_hmd,
+            ),
+            Positioning::Anchored => (app.anchor, 1.0, false),
             _ => return,
         };
 
@@ -177,6 +183,11 @@ impl OverlayWindowConfig {
                 )
             }
         };
+
+        if align_to_hmd {
+            realign(&mut state.transform, &app.input_state.hmd);
+        }
+
         self.dirty = true;
     }
 
@@ -190,10 +201,12 @@ impl OverlayWindowConfig {
             .saved_transform
             .unwrap_or(self.default_state.transform);
 
-        let parent_transform = match state.positioning {
-            Positioning::Floating | Positioning::FollowHead { .. } => app.input_state.hmd,
-            Positioning::FollowHand { hand, .. } => app.input_state.pointers[hand as usize].pose,
-            Positioning::Anchored => app.anchor,
+        let (parent_transform, align_to_hmd) = match state.positioning {
+            Positioning::Floating | Positioning::FollowHead { .. } => (app.input_state.hmd, false),
+            Positioning::FollowHand {
+                hand, align_to_hmd, ..
+            } => (app.input_state.pointers[hand as usize].pose, align_to_hmd),
+            Positioning::Anchored => (app.anchor, false),
             Positioning::Static => return,
         };
 
@@ -203,7 +216,7 @@ impl OverlayWindowConfig {
 
         state.transform = parent_transform * cur_transform;
 
-        if state.grabbable && hard_reset {
+        if align_to_hmd || (state.grabbable && hard_reset) {
             realign(&mut state.transform, &app.input_state.hmd);
         }
         self.dirty = true;

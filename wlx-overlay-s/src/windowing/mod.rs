@@ -17,7 +17,8 @@ pub enum OverlaySelector {
     Name(Arc<str>),
 }
 
-pub const Z_ORDER_TOAST: u32 = 70;
+pub const Z_ORDER_TOAST: u32 = 71;
+pub const Z_ORDER_HELP: u32 = 70;
 pub const Z_ORDER_LINES: u32 = 69;
 pub const Z_ORDER_WATCH: u32 = 68;
 pub const Z_ORDER_ANCHOR: u32 = 67;

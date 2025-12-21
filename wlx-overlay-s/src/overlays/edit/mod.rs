@@ -381,6 +381,7 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
     )?;
 
     set_up_checkbox(&mut panel, "additive_box", cb_assign_additive)?;
+    set_up_checkbox(&mut panel, "align_box", cb_assign_align)?;
     set_up_slider(&mut panel, "lerp_slider", cb_assign_lerp)?;
     set_up_slider(&mut panel, "alpha_slider", cb_assign_alpha)?;
     set_up_slider(&mut panel, "curve_slider", cb_assign_curve)?;
@@ -426,6 +427,11 @@ fn reset_panel(
         .parser_state
         .fetch_component_as::<ComponentCheckbox>("additive_box")?;
     c.set_checked(&mut common, state.additive);
+
+    let c = panel
+        .parser_state
+        .fetch_component_as::<ComponentCheckbox>("align_box")?;
+    c.set_checked(&mut common, state.positioning.get_align().unwrap_or(false));
 
     panel
         .state
@@ -491,6 +497,12 @@ fn cb_assign_curve(_app: &mut AppState, owc: &mut OverlayWindowConfig, curvature
 const fn cb_assign_additive(_app: &mut AppState, owc: &mut OverlayWindowConfig, additive: bool) {
     owc.dirty = true;
     owc.active_state.as_mut().unwrap().additive = additive;
+}
+
+const fn cb_assign_align(_app: &mut AppState, owc: &mut OverlayWindowConfig, align: bool) {
+    owc.dirty = true;
+    let active_state = owc.active_state.as_mut().unwrap();
+    active_state.positioning = active_state.positioning.with_align(align);
 }
 
 fn set_up_slider(

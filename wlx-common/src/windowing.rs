@@ -13,9 +13,18 @@ pub enum Positioning {
 	/// Stays in place, no recentering
 	Static,
 	/// Following HMD
-	FollowHead { lerp: f32 },
+	FollowHead {
+		#[serde(default)]
+		lerp: f32,
+	},
 	/// Following hand
-	FollowHand { hand: LeftRight, lerp: f32 },
+	FollowHand {
+		hand: LeftRight,
+		#[serde(default)]
+		lerp: f32,
+		#[serde(default)]
+		align_to_hmd: bool,
+	},
 }
 
 impl Positioning {
@@ -34,6 +43,21 @@ impl Positioning {
 			Self::FollowHead { ref mut lerp } => *lerp = value,
 			Self::FollowHand { ref mut lerp, .. } => *lerp = value,
 			Self::Floating | Self::Anchored | Self::Static => {}
+		}
+		self
+	}
+	pub const fn get_align(self) -> Option<bool> {
+		match self {
+			Self::FollowHand { align_to_hmd, .. } => Some(align_to_hmd),
+			Self::FollowHead { .. } | Self::Floating | Self::Anchored | Self::Static => None,
+		}
+	}
+	pub const fn with_align(mut self, value: bool) -> Self {
+		match self {
+			Self::FollowHand {
+				ref mut align_to_hmd, ..
+			} => *align_to_hmd = value,
+			Self::FollowHead { .. } | Self::Floating | Self::Anchored | Self::Static => {}
 		}
 		self
 	}

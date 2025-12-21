@@ -1,0 +1,27 @@
+<layout>
+  <elements>
+    <div interactable="0">
+      <rectangle
+        max_width="500"
+        padding="16"
+        flex_direction="column"
+        gap="8"
+        color="#000000c0" border_color="~color_accent" border="2" round="8">
+
+        <div flex_direction="row" align_items="center" gap="8">
+          <sprite src="grab-help/controller-grip-joy.svg" min_width="128" min_height="128" max_width="128" max_height="128" flex_grow="1" />
+          <label wrap="1" size="25" padding_left="16" padding_right="16" translation="GRAB.ADJUST_DISTANCE" />
+        </div>
+        <div flex_direction="row" align_items="center" gap="8">
+          <sprite src="grab-help/controller-grip-trigger-joy.svg" min_width="128" min_height="128" max_width="128" max_height="128" flex_grow="1" />
+          <label wrap="1" size="25" padding_left="16" padding_right="16" translation="GRAB.ADJUST_SIZE" />
+        </div>
+        <div flex_direction="row" align_items="center" gap="8">
+          <sprite src="grab-help/controller-grip-b.svg" min_width="128" min_height="128" max_width="128" max_height="128" flex_grow="1" />
+          <label wrap="1" size="25" padding_left="16" padding_right="16" translation="GRAB.UNRESTRICTED_MOVEMENT" />
+        </div>
+
+      </rectangle>
+    </div>
+  </elements>
+</layout>

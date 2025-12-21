@@ -128,6 +128,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<OverlayWindowConfig> {
                 LeftRight::Left =>*/ Positioning::FollowHand {
                     hand: LeftRight::Left,
                     lerp: 1.0,
+                    align_to_hmd: true,
                 /*
                 },
                 LeftRight::Right => {
