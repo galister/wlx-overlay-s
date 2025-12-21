@@ -85,7 +85,7 @@ where
 
                         if idx < last_idx {
                             me.sets.push(OverlayWindowSet::default());
-                            me.switch_to_set(app, Some(me.current_set.unwrap() + 1));
+                            me.switch_to_set(app, Some(me.current_set.unwrap() + 1), false);
                         }
                         app.screens.push(meta);
                     }
@@ -101,7 +101,7 @@ where
         let keyboard_id = me.add(keyboard, app);
 
         // is this needed?
-        me.switch_to_set(app, None);
+        me.switch_to_set(app, None, false);
 
         // copy keyboard to all sets
         let kbd_state = me
@@ -220,7 +220,7 @@ where
                     return Ok(());
                 }
 
-                self.switch_to_set(app, None);
+                self.switch_to_set(app, None, false);
                 self.sets.remove(set);
                 let len = self.sets.len();
                 if let Some(watch) = self.mut_by_id(self.watch_id) {
@@ -301,7 +301,7 @@ impl<T> OverlayWindowManager<T> {
 
         // only safe to save when current_set is None
         let restore_after = if self.current_set.is_some() {
-            self.switch_to_set(app, None);
+            self.switch_to_set(app, None, true);
             true
         } else {
             false
@@ -357,7 +357,7 @@ impl<T> OverlayWindowManager<T> {
         }
 
         if restore_after {
-            self.switch_to_set(app, Some(self.restore_set));
+            self.switch_to_set(app, Some(self.restore_set), true);
         }
     }
 
@@ -369,7 +369,7 @@ impl<T> OverlayWindowManager<T> {
 
         // only safe to load when current_set is None
         if self.current_set.is_some() {
-            self.switch_to_set(app, None);
+            self.switch_to_set(app, None, false);
         }
 
         self.sets.clear();
@@ -621,10 +621,15 @@ impl<T> OverlayWindowManager<T> {
             Some(set)
         };
 
-        self.switch_to_set(app, new_set);
+        self.switch_to_set(app, new_set, false);
     }
 
-    pub fn switch_to_set(&mut self, app: &mut AppState, new_set: Option<usize>) {
+    pub fn switch_to_set(
+        &mut self,
+        app: &mut AppState,
+        new_set: Option<usize>,
+        keep_transforms: bool,
+    ) {
         if new_set == self.current_set {
             return;
         }
@@ -650,7 +655,9 @@ impl<T> OverlayWindowManager<T> {
                 if let Some(state) = ws.overlays.remove(id) {
                     log::debug!("{}: ws{} → active_state", data.config.name, new_set);
                     data.config.active_state = Some(state);
-                    data.config.reset(app, false);
+                    if !keep_transforms {
+                        data.config.reset(app, false);
+                    }
                 }
             }
             ws.overlays.clear();
@@ -672,9 +679,9 @@ impl<T> OverlayWindowManager<T> {
             let hmd = snap_upright(app.input_state.hmd, Vec3A::Y);
             app.anchor = hmd * self.anchor_local;
 
-            self.switch_to_set(app, Some(self.restore_set));
+            self.switch_to_set(app, Some(self.restore_set), false);
         } else {
-            self.switch_to_set(app, None);
+            self.switch_to_set(app, None, false);
         }
     }
 
