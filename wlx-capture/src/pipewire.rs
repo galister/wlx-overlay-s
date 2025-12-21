@@ -1,4 +1,6 @@
 use std::any::Any;
+use std::rc::Rc;
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
@@ -12,6 +14,7 @@ use ashpd::desktop::{
 
 pub use ashpd::Error as AshpdError;
 
+use pipewire::stream::StreamState;
 use pipewire as pw;
 use pw::spa;
 
@@ -283,6 +286,8 @@ where
     let context = Context::new(&main_loop)?;
     let core = context.connect(None)?;
 
+    let want_active = Rc::new(AtomicBool::new(true));
+
     let stream = Stream::new(
         &core,
         &name,
@@ -297,8 +302,32 @@ where
         .add_local_listener_with_user_data(FrameFormat::default())
         .state_changed({
             let name = name.clone();
-            move |_, _, old, new| {
+            let want_active = want_active.clone();
+            let dmabuf_formats = dmabuf_formats.clone();
+            move |stream, _, old, new| {
                 log::info!("{}: stream state changed: {:?} -> {:?}", &name, old, new);
+               
+                if matches!((old, new), (StreamState::Streaming, StreamState::Paused)) && want_active.load(Ordering::Relaxed) {
+                    // the stream paused while we didn't request it
+                    let mut format_params: Vec<Vec<u8>> = dmabuf_formats
+                        .iter()
+                        .filter_map(|f| obj_to_bytes(get_format_params(Some(f))).ok())
+                        .collect();
+
+                    format_params.push(obj_to_bytes(get_format_params(None)).unwrap()); // known good values
+
+                    let mut params: Vec<&Pod> = format_params
+                        .iter()
+                        .filter_map(|bytes| Pod::from_bytes(bytes))
+                        .collect();
+
+                    let _ = stream.connect(
+                        spa::utils::Direction::Input,
+                        Some(node_id),
+                        StreamFlags::AUTOCONNECT | StreamFlags::MAP_BUFFERS,
+                        params.as_mut_slice(),
+                    ).inspect_err(|e| log::error!("Could not auto-reconnect pipewire stream: {e:?}"));
+                }
             }
         })
         .param_changed({
@@ -496,8 +525,7 @@ where
         .filter_map(|f| obj_to_bytes(get_format_params(Some(f))).ok())
         .collect();
 
-    format_params.push(obj_to_bytes(get_format_params(None)).unwrap()); // safe unwrap: known
-    // good values
+    format_params.push(obj_to_bytes(get_format_params(None)).unwrap()); // known good values
 
     let mut params: Vec<&Pod> = format_params
         .iter()
@@ -519,16 +547,19 @@ where
             log::debug!("{name}: request pipewire stream to {req:?}");
             match req {
                 PwChangeRequest::Pause => {
+                    want_active.store(false, Ordering::Relaxed);
                     let _ = stream
                         .set_active(false)
                         .inspect_err(|e| log::warn!("Could not {req:?} pipewire stream: {e:?}"));
                 }
                 PwChangeRequest::Resume => {
+                    want_active.store(true, Ordering::Relaxed);
                     let _ = stream
                         .set_active(true)
                         .inspect_err(|e| log::warn!("Could not {req:?} pipewire stream: {e:?}"));
                 }
                 PwChangeRequest::Stop => {
+                    want_active.store(false, Ordering::Relaxed);
                     main_loop.quit();
                 }
             }
