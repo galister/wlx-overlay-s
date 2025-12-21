@@ -45,7 +45,29 @@
       "SPLIT_TOP_BOTTOM": "上→下",
       "SPLIT_BOTTOM_TOP": "下→上"
     },
-    "STEREO_3D_MODE_": {}
+    "STEREO_3D_MODE_": {},
+    "ALIGN_TO_HMD": "HMDに合わせる",
+    "MOUSE": {
+      "TITLE": "マウスの修正",
+      "WRONG_SCREEN_SELECTION_HELP": "カーソルが全く別のスクリーンに移動する場合、\nスクリーンが正しく選択されていない可能性があります。\nreadme を参照してください。",
+      "NORMAL": "通常",
+      "ROTATE90": "90°回転",
+      "ROTATE180": "180度反転",
+      "ROTATE270": "180度反転",
+      "FLIPPED": "反転"
+    }
   },
-  "DISABLED": "無効"
+  "DISABLED": "無効",
+  "DEFAULT": "デフォルト",
+  "GRAB": {
+    "ADJUST_DISTANCE": "距離を調整",
+    "ADJUST_SIZE": "サイズ調整",
+    "UNRESTRICTED_MOVEMENT": "自由な動き",
+    "GRABBING_WATCH": "手を入れ替えるには、時計を前に移動させて、もう一方の手で掴んでください。",
+    "GRABBING_STATIC": "このオーバーレイは静的であり、リセンターを無視してその場にとどまります。",
+    "GRABBING_ANCHORED": "アンカーされたオーバーレイはすべて一緒に移動します。もう一方の手で掴んでアンカーを掴んだまま、単一のウィンドウを分離します。",
+    "GRABBING_ANCHORED_EDIT": "このオーバーレイは、センターマーカーに固定されたままになります。",
+    "GRABBING_FLOATING": "このオーバーレイは浮いているため、位置が再調整されるまでその場所に留まります。",
+    "GRABBING_FOLLOW": "このオーバーレイは、接続されているデバイスに追従します。"
+  }
 }

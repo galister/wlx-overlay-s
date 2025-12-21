@@ -43,7 +43,29 @@
       "SPLIT_RIGHT_LEFT": "PRAWO→LEWO",
       "SPLIT_TOP_BOTTOM": "GÓRA→DÓŁ",
       "TITLE": "Tryb stereoskopowy 3D"
+    },
+    "ALIGN_TO_HMD": "Dopasuj do HMD",
+    "MOUSE": {
+      "TITLE": "Naprawa myszy",
+      "WRONG_SCREEN_SELECTION_HELP": "Jeśli kursor porusza się na zupełnie innym ekranie,\nekrany zostały prawdopodobnie nieprawidłowo wybrane. Zobacz dokument README.",
+      "NORMAL": "Normalny",
+      "ROTATE90": "Odwrócone o 90°",
+      "ROTATE180": "Obrócony o 180°",
+      "ROTATE270": "Odwrócone o 270°",
+      "FLIPPED": "Odwrócone"
     }
   },
-  "DISABLED": "Wyłączone"
+  "DISABLED": "Wyłączone",
+  "DEFAULT": "Domyślny",
+  "GRAB": {
+    "ADJUST_DISTANCE": "Dostosuj odległość",
+    "ADJUST_SIZE": "Dostosuj rozmiar",
+    "UNRESTRICTED_MOVEMENT": "Nieograniczony ruch",
+    "GRABBING_WATCH": "Aby zamienić ręce, przenieś zegarek na przód i chwyć go drugą ręką.",
+    "GRABBING_STATIC": "Ta nakładka jest statyczna i pozostanie na swoim miejscu, ignorując centrowanie.",
+    "GRABBING_ANCHORED": "Przymocowane nakładki poruszają się razem. Aby oddzielić pojedyncze okno, chwyć je drugą ręką, podczas gdy nadal trzymasz kotwicę.",
+    "GRABBING_ANCHORED_EDIT": "Ta nakładka pozostanie zakotwiczona do znacznika centralnego.",
+    "GRABBING_FLOATING": "Ta nakładka jest zawieszony i pozostanie na miejscu, chyba że zostanie wycentrowany.",
+    "GRABBING_FOLLOW": "Ta nakładka będzie śledzić urządzenie, do którego jest dołączona."
+  }
 }

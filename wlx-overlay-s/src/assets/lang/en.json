@@ -39,11 +39,11 @@
 			"WRONG_SCREEN_SELECTION_HELP": "If the cursor moves on a completely different screen,\nthe screens were likely selected wrong. See readme.",
 			"NORMAL": "Normal",
 			"ROTATE90": "Rotated 90°",
-			"ROTATE180": "Rotated 170°",
+			"ROTATE180": "Rotated 180°",
 			"ROTATE270": "Rotated 270°",
 			"FLIPPED": "Flipped",
 			"ROTATE90": "Flipped 90°",
-			"ROTATE180": "Flipped 170°",
+			"ROTATE180": "Flipped 180°",
 			"ROTATE270": "Flipped 270°"
 		}
 	},
