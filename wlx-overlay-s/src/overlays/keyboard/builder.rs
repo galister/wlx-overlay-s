@@ -1,7 +1,7 @@
 use std::{collections::HashMap, rc::Rc};
 
 use crate::{gui::panel::GuiPanel, state::AppState, subsystem::hid::XkbKeymap};
-use glam::{FloatExt, Mat4, Vec2, Vec3, vec2};
+use glam::{FloatExt, Mat4, Vec2, vec2, vec3};
 use wgui::{
     animation::{Animation, AnimationEasing},
     assets::AssetPath,
@@ -171,6 +171,8 @@ pub(super) fn create_keyboard_panel(
                     })
                 };
 
+                let width_mul = 1. / my_size_f32;
+
                 panel.add_event_listener(
                     widget_id,
                     EventListenerKind::MouseEnter,
@@ -178,7 +180,14 @@ pub(super) fn create_keyboard_panel(
                         let k = key_state.clone();
                         move |common, data, _app, _state| {
                             common.alterables.trigger_haptics();
-                            on_enter_anim(k.clone(), common, data, accent_color, anim_mult);
+                            on_enter_anim(
+                                k.clone(),
+                                common,
+                                data,
+                                accent_color,
+                                anim_mult,
+                                width_mul,
+                            );
                             Ok(EventResult::Pass)
                         }
                     }),
@@ -190,7 +199,14 @@ pub(super) fn create_keyboard_panel(
                         let k = key_state.clone();
                         move |common, data, _app, _state| {
                             common.alterables.trigger_haptics();
-                            on_leave_anim(k.clone(), common, data, accent_color, anim_mult);
+                            on_leave_anim(
+                                k.clone(),
+                                common,
+                                data,
+                                accent_color,
+                                anim_mult,
+                                width_mul,
+                            );
                             Ok(EventResult::Pass)
                         }
                     }),
@@ -256,11 +272,14 @@ pub(super) fn create_keyboard_panel(
 
 const BUTTON_HOVER_SCALE: f32 = 0.1;
 
-fn get_anim_transform(pos: f32, widget_size: Vec2) -> Mat4 {
-    util::centered_matrix(
-        widget_size,
-        &Mat4::from_scale(Vec3::splat(BUTTON_HOVER_SCALE.mul_add(pos, 1.0))),
-    )
+fn get_anim_transform(pos: f32, widget_size: Vec2, width_mult: f32) -> Mat4 {
+    let scale = vec3(
+        (BUTTON_HOVER_SCALE * width_mult).mul_add(pos, 1.0),
+        BUTTON_HOVER_SCALE.mul_add(pos, 1.0),
+        1.0,
+    );
+
+    util::centered_matrix(widget_size, &Mat4::from_scale(scale))
 }
 
 fn set_anim_color(
@@ -294,6 +313,7 @@ fn on_enter_anim(
     data: &event::CallbackData,
     accent_color: drawing::Color,
     anim_mult: f32,
+    width_mult: f32,
 ) {
     common.alterables.animate(Animation::new(
         data.widget_id,
@@ -302,7 +322,8 @@ fn on_enter_anim(
         Box::new(move |common, data| {
             let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
             set_anim_color(&key_state, rect, data.pos, accent_color);
-            data.data.transform = get_anim_transform(data.pos, data.widget_boundary.size);
+            data.data.transform =
+                get_anim_transform(data.pos, data.widget_boundary.size, width_mult);
             common.alterables.mark_redraw();
         }),
     ));
@@ -314,6 +335,7 @@ fn on_leave_anim(
     data: &event::CallbackData,
     accent_color: drawing::Color,
     anim_mult: f32,
+    width_mult: f32,
 ) {
     common.alterables.animate(Animation::new(
         data.widget_id,
@@ -322,7 +344,8 @@ fn on_leave_anim(
         Box::new(move |common, data| {
             let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
             set_anim_color(&key_state, rect, 1.0 - data.pos, accent_color);
-            data.data.transform = get_anim_transform(1.0 - data.pos, data.widget_boundary.size);
+            data.data.transform =
+                get_anim_transform(1.0 - data.pos, data.widget_boundary.size, width_mult);
             common.alterables.mark_redraw();
         }),
     ));
