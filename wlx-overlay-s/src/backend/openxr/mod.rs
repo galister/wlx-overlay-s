@@ -238,6 +238,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
 
         if !session_running {
             std::thread::sleep(Duration::from_millis(100));
+            log::trace!("session not running: continue");
             continue 'main_loop;
         }
 
@@ -387,10 +388,12 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
         for o in overlays.values_mut() {
             o.data.cur_visible = false;
             let Some(alpha) = o.config.active_state.as_ref().map(|x| x.alpha) else {
+                log::trace!("{}: hidden, skip render", o.config.name);
                 continue;
             };
 
             if !o.data.init {
+                log::trace!("{}: init", o.config.name);
                 o.init(&mut app)?;
                 o.data.init = true;
             }
@@ -400,8 +403,10 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                 ShouldRender::Can => (o.data.last_alpha - alpha).abs() > f32::EPSILON,
                 ShouldRender::Unable => false, //try show old image if exists
             };
+            log::trace!("{}: should_render returned: {should_render}", o.config.name);
 
             if should_render {
+                log::trace!("{}: render new frame", o.config.name);
                 let meta = o.config.backend.frame_meta().unwrap(); // want panic
                 let wsi = o.ensure_swapchain_acquire(&app, &xr_state, meta.extent)?;
                 let tgt = RenderTarget { views: wsi.views };
@@ -410,7 +415,10 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                 o.data.last_alpha = alpha;
                 futures.execute_results(rdr.end()?)?;
             } else if o.data.swapchain.is_none() {
+                log::trace!("{}: not showing due to missing swapchain", o.config.name);
                 continue;
+            } else {
+                log::trace!("{}: showing stale frame", o.config.name);
             }
             o.data.cur_visible = true;
         }

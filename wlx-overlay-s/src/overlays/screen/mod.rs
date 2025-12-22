@@ -15,6 +15,8 @@ use crate::{
 
 pub mod backend;
 mod capture;
+#[cfg(feature = "wayland")]
+pub mod mirror;
 #[cfg(feature = "pipewire")]
 pub mod pw;
 #[cfg(feature = "wayland")]

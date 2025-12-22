@@ -42,6 +42,12 @@ impl ScreenBackend {
             false,
         )?;
 
+        log::debug!(
+            "{}: PipeWire result streams: {:?}",
+            output.name,
+            &select_screen_result.streams
+        );
+
         let node_id = select_screen_result.streams.first().unwrap().node_id; // streams guaranteed to have at least one element
 
         let capture = new_wlx_capture!(

@@ -174,11 +174,14 @@ pub(super) fn setup_custom_button<S: 'static>(
                     return Ok(EventResult::Pass);
                 }
 
-                let name = crate::overlays::mirror::new_mirror_name();
+                let name = crate::overlays::screen::mirror::new_mirror_name();
                 app.tasks.enqueue(TaskType::Overlay(OverlayTask::Create(
                     OverlaySelector::Name(name.clone()),
                     Box::new(move |app| {
-                        Some(crate::overlays::mirror::new_mirror(name, &app.session))
+                        Some(crate::overlays::screen::mirror::new_mirror(
+                            name,
+                            &app.session,
+                        ))
                     }),
                 )));
                 Ok(EventResult::Consumed)
