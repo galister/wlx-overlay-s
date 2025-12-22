@@ -11,7 +11,6 @@ use std::{
 };
 
 use wgui::gfx::{
-    WGfx,
     cmd::WGfxClearMode,
     pass::WGfxPass,
     pipeline::{WGfxPipeline, WPipelineCreateInfo},
@@ -49,8 +48,6 @@ static COLORS: [[f32; 6]; 5] = {
 pub(super) struct LinePool {
     lines: IdMap<usize, LineContainer>,
     pipeline: Arc<WGfxPipeline<Vert2Uv>>,
-    pass: WGfxPass<Vert2Uv>,
-    buf_color: Subbuffer<[f32]>,
 }
 
 impl LinePool {
@@ -61,13 +58,22 @@ impl LinePool {
             WPipelineCreateInfo::new(app.gfx.surface_format),
         )?;
 
+        Ok(Self {
+            lines: IdMap::new(),
+            pipeline,
+        })
+    }
+
+    pub(super) fn allocate(&mut self, xr: &XrState, app: &AppState) -> anyhow::Result<usize> {
+        let id = LINE_AUTO_INCREMENT.fetch_add(1, Ordering::Relaxed);
+
         let buf_color = app
             .gfx
             .empty_buffer(BufferUsage::TRANSFER_DST | BufferUsage::UNIFORM_BUFFER, 6)?;
 
-        let set0 = pipeline.buffer(0, buf_color.clone())?;
+        let set0 = self.pipeline.buffer(0, buf_color.clone())?;
 
-        let pass = pipeline.create_pass(
+        let pass = self.pipeline.create_pass(
             [1.0, 1.0],
             app.gfx_extras.quad_verts.clone(),
             0..4,
@@ -76,22 +82,13 @@ impl LinePool {
             &Default::default(),
         )?;
 
-        Ok(Self {
-            lines: IdMap::new(),
-            pipeline,
-            pass,
-            buf_color,
-        })
-    }
-
-    pub(super) fn allocate(&mut self, xr: &XrState, gfx: Arc<WGfx>) -> anyhow::Result<usize> {
-        let id = LINE_AUTO_INCREMENT.fetch_add(1, Ordering::Relaxed);
-
-        let srd = create_swapchain(xr, gfx, [1, 1, 1], SwapchainOpts::new())?;
+        let srd = create_swapchain(xr, app.gfx.clone(), [1, 1, 1], SwapchainOpts::new())?;
         self.lines.insert(
             id,
             LineContainer {
                 swapchain: srd,
+                buf_color,
+                pass,
                 maybe_line: None,
             },
         );
@@ -165,13 +162,13 @@ impl LinePool {
                     .next()
                     .unwrap();
 
-                self.buf_color.write()?[0..6].copy_from_slice(&COLORS[inner.color]);
+                line.buf_color.write()?[0..6].copy_from_slice(&COLORS[inner.color]);
 
                 let mut cmd_buffer = app
                     .gfx
                     .create_gfx_command_buffer(CommandBufferUsage::OneTimeSubmit)?;
                 cmd_buffer.begin_rendering(tgt, WGfxClearMode::DontCare)?;
-                cmd_buffer.run_ref(&self.pass)?;
+                cmd_buffer.run_ref(&line.pass)?;
                 cmd_buffer.end_rendering()?;
 
                 futures.execute(cmd_buffer.queue.clone(), cmd_buffer.build()?)?;
@@ -217,5 +214,7 @@ pub(super) struct Line {
 
 struct LineContainer {
     swapchain: WlxSwapchain,
+    buf_color: Subbuffer<[f32]>,
+    pass: WGfxPass<Vert2Uv>,
     maybe_line: Option<Line>,
 }

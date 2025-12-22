@@ -149,8 +149,8 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
     };
 
     let pointer_lines = [
-        lines.allocate(&xr_state, app.gfx.clone())?,
-        lines.allocate(&xr_state, app.gfx.clone())?,
+        lines.allocate(&xr_state, &mut app)?,
+        lines.allocate(&xr_state, &mut app)?,
     ];
 
     let watch_id = overlays.lookup(WATCH_NAME).unwrap(); // want panic
