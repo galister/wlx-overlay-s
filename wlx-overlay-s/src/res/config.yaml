@@ -28,8 +28,12 @@
 ## How fast to drag when the space drag feature is activated
 #space_drag_multiplier: 1.0
 
-## When enabled, the space_rotate binding can be used
-## to rotate in any axis. Imagine horizon mode².
+## Setting this to false will make space_drag
+## only affect the vertical axis (Y).
+#space_drag_unlocked: true
+
+## Monado/WiVRn only. When enabled, the space_rotate binding
+## can rotate in any axis. Imagine horizon mode².
 #space_rotate_unlocked: false
 
 ## Monado/WiVRn only. Use passthrough camera if the headset supports it.

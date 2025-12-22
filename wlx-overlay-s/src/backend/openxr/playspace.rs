@@ -1,4 +1,4 @@
-use glam::{Affine3A, Quat, Vec3A};
+use glam::{Affine3A, Quat, Vec3A, vec3a};
 use libmonado::{Monado, Pose, ReferenceSpaceType};
 
 use crate::{
@@ -60,10 +60,10 @@ impl PlayspaceMover {
     pub fn update(
         &mut self,
         overlays: &mut OverlayWindowManager<OpenXrOverlayData>,
-        state: &AppState,
+        app: &AppState,
         monado: &mut Monado,
     ) {
-        for pointer in &state.input_state.pointers {
+        for pointer in &app.input_state.pointers {
             if pointer.now.space_reset {
                 if !pointer.before.space_reset {
                     log::info!("Space reset");
@@ -74,7 +74,7 @@ impl PlayspaceMover {
         }
 
         if let Some(mut data) = self.rotate.take() {
-            let pointer = &state.input_state.pointers[data.hand];
+            let pointer = &app.input_state.pointers[data.hand];
             if !pointer.now.space_rotate {
                 self.last_transform = data.pose;
                 log::info!("End space rotate");
@@ -82,10 +82,10 @@ impl PlayspaceMover {
             }
 
             let new_hand =
-                Quat::from_affine3(&(data.pose * state.input_state.pointers[data.hand].raw_pose));
+                Quat::from_affine3(&(data.pose * app.input_state.pointers[data.hand].raw_pose));
 
             let dq = new_hand * data.hand_pose.conjugate();
-            let mut space_transform = if state.session.config.space_rotate_unlocked {
+            let mut space_transform = if app.session.config.space_rotate_unlocked {
                 Affine3A::from_quat(dq)
             } else {
                 let rel_y = f32::atan2(
@@ -95,8 +95,8 @@ impl PlayspaceMover {
 
                 Affine3A::from_rotation_y(rel_y)
             };
-            let offset = (space_transform.transform_vector3a(state.input_state.hmd.translation)
-                - state.input_state.hmd.translation)
+            let offset = (space_transform.transform_vector3a(app.input_state.hmd.translation)
+                - app.input_state.hmd.translation)
                 * -1.0;
 
             space_transform.translation = offset;
@@ -107,7 +107,7 @@ impl PlayspaceMover {
             apply_offset(data.pose, monado);
             self.rotate = Some(data);
         } else {
-            for (i, pointer) in state.input_state.pointers.iter().enumerate() {
+            for (i, pointer) in app.input_state.pointers.iter().enumerate() {
                 if pointer.now.space_rotate {
                     let hand_pose = Quat::from_affine3(&(self.last_transform * pointer.raw_pose));
                     self.rotate = Some(MoverData {
@@ -123,7 +123,7 @@ impl PlayspaceMover {
         }
 
         if let Some(mut data) = self.drag.take() {
-            let pointer = &state.input_state.pointers[data.hand];
+            let pointer = &app.input_state.pointers[data.hand];
             if !pointer.now.space_drag {
                 self.last_transform = data.pose;
                 log::info!("End space drag");
@@ -132,9 +132,13 @@ impl PlayspaceMover {
 
             let new_hand = data
                 .pose
-                .transform_point3a(state.input_state.pointers[data.hand].raw_pose.translation);
-            let relative_pos =
-                (new_hand - data.hand_pose) * state.session.config.space_drag_multiplier;
+                .transform_point3a(app.input_state.pointers[data.hand].raw_pose.translation);
+
+            let relative_pos = if app.session.config.space_drag_unlocked {
+                new_hand - data.hand_pose
+            } else {
+                vec3a(0., new_hand.y - data.hand_pose.y, 0.)
+            } * app.session.config.space_drag_multiplier;
 
             if relative_pos.length_squared() > 1000.0 {
                 log::warn!("Space drag too fast, ignoring");
@@ -159,7 +163,7 @@ impl PlayspaceMover {
             apply_offset(data.pose, monado);
             self.drag = Some(data);
         } else {
-            for (i, pointer) in state.input_state.pointers.iter().enumerate() {
+            for (i, pointer) in app.input_state.pointers.iter().enumerate() {
                 if pointer.now.space_drag {
                     let hand_pos = self
                         .last_transform
