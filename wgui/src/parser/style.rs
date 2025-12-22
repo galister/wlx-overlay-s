@@ -16,7 +16,7 @@ use crate::{
 pub fn parse_round(value: &str, round: &mut WLength, multiplier: f32) {
 	if is_percent(value) {
 		if let Some(val) = parse_percent(value) {
-			*round = WLength::Percent((val * multiplier).clamp(0., 1.));
+			*round = WLength::Percent(val);
 		} else {
 			print_invalid_value(value);
 		}
