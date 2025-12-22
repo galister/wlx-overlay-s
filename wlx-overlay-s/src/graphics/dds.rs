@@ -75,6 +75,7 @@ pub fn dds_to_vk(dds_fmt: ImageFormat) -> anyhow::Result<Format> {
         ImageFormat::Rgba8UnormSrgb => Ok(Format::R8G8B8A8_SRGB),
         ImageFormat::Rgba16Float => Ok(Format::R16G16B16A16_SFLOAT),
         ImageFormat::Rgba32Float => Ok(Format::R32G32B32A32_SFLOAT),
+        ImageFormat::Bgr8Unorm => Ok(Format::B8G8R8_UNORM),
         ImageFormat::Bgra8Unorm => Ok(Format::B8G8R8A8_UNORM),
         ImageFormat::Bgra8UnormSrgb => Ok(Format::B8G8R8A8_SRGB),
         // DXT1
