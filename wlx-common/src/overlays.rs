@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, IntegerId, Serialize, Deserialize)]
 pub enum ToastTopic {
 	System,
+	Error,
 	DesktopNotification,
 	XSNotification,
 	IpdChange,

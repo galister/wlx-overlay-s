@@ -58,6 +58,17 @@
 		"GRABBING_FLOATING": "This overlay is Floating and will stay in place, unless recentered.",
 		"GRABBING_FOLLOW": "This overlay will follow the device it is attached to."
 	},
+	"TOAST": {
+		"DEFAULT_TITLE": "Notification",
+		"ERROR": "Error",
+		"CANNOT_REMOVE_SET": "Cannot remove set!",
+		"NO_SET_SELECTED": "No set is selected.",
+		"LAST_EXISTING_SET": "This is the last existing set.",
+		"EMPTY_SET": "Empty set!",
+		"LETS_ADD_OVERLAYS": "Let's add some overlays from the watch!",
+		"FIXING_FLOOR": "Fixing floor in 5 seconds...",
+		"ONE_CONTROLLER_ON_FLOOR": "Place one controller on the floor!"
+	},
 	"WATCH": {
 		"ADD_NEW_SET": "Add a new set",
 		"CLEANUP_MIRRORS": "Remove mirrors that are\nnot currently visible",

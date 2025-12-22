@@ -16,7 +16,6 @@ use wlx_common::{
 use crate::{
     backend::task::{OverlayTask, TaskType},
     gui::panel::{GuiPanel, NewGuiPanelParams, OnCustomIdFunc},
-    overlays::watch::{WATCH_POS, WATCH_ROT},
     state::AppState,
     windowing::{OverlaySelector, Z_ORDER_TOAST, window::OverlayWindowConfig},
 };
@@ -121,33 +120,27 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<OverlayWindowConfig> {
             Positioning::FollowHead { lerp: 0.1 },
         ),
         ToastDisplayMethod::Watch => {
-            //FIXME: properly follow watch
-            let watch_pos = WATCH_POS + vec3(-0.005, -0.05, 0.02);
-            let watch_rot = WATCH_ROT;
-            let relative_to = /*match app.session.config.watch_hand {
-                LeftRight::Left =>*/ Positioning::FollowHand {
-                    hand: LeftRight::Left,
-                    lerp: 1.0,
-                    align_to_hmd: true,
-                /*
-                },
-                LeftRight::Right => {
-                    watch_pos.x = -watch_pos.x;
-                    watch_rot = watch_rot * Quat::from_rotation_x(PI) * Quat::from_rotation_z(PI);
-                    Positioning::FollowHand {
-                        hand: LeftRight::Right,
-                        lerp: 1.0,
-                    }
-                }*/
+            let relative_to = Positioning::FollowHand {
+                hand: LeftRight::Left,
+                lerp: 0.1,
+                align_to_hmd: true,
             };
-            (watch_pos, watch_rot, relative_to)
+            (vec3(0., 0., 0.), Quat::IDENTITY, relative_to)
         }
     };
 
     let title = if toast.title.is_empty() {
         Translation::from_translation_key("TOAST.DEFAULT_TITLE")
+    } else if matches!(toast.topic, ToastTopic::System | ToastTopic::Error) {
+        Translation::from_translation_key(&toast.title)
     } else {
         Translation::from_raw_text(&toast.title)
+    };
+
+    let body = if matches!(toast.topic, ToastTopic::System) {
+        Translation::from_translation_key(&toast.body)
+    } else {
+        Translation::from_raw_text(&toast.body)
     };
 
     let on_custom_id: OnCustomIdFunc<()> =
@@ -168,7 +161,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<OverlayWindowConfig> {
                     .get_as::<WidgetLabel>(widget)
                     .context("toast.xml: missing element with id: toast_body")?;
                 let mut globals = layout.state.globals.get();
-                label.set_text_simple(&mut globals, Translation::from_raw_text(&toast.body));
+                label.set_text_simple(&mut globals, body.clone());
             }
             Ok(())
         });
@@ -206,7 +199,7 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<OverlayWindowConfig> {
 }
 
 fn msg_err(app: &mut AppState, message: &str) {
-    Toast::new(ToastTopic::System, "Error".into(), message.into())
+    Toast::new(ToastTopic::Error, "TOAST.ERROR".into(), message.into())
         .with_timeout(3.)
         .submit(app);
 }

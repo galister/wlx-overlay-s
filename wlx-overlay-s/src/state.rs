@@ -200,6 +200,7 @@ impl AppSession {
 
         let mut toast_topics = IdMap::new();
         toast_topics.insert(ToastTopic::System, ToastDisplayMethod::Center);
+        toast_topics.insert(ToastTopic::Error, ToastDisplayMethod::Center);
         toast_topics.insert(ToastTopic::DesktopNotification, ToastDisplayMethod::Center);
         toast_topics.insert(ToastTopic::XSNotification, ToastDisplayMethod::Center);
 

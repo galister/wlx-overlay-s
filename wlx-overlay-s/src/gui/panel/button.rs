@@ -306,16 +306,15 @@ pub(super) fn setup_custom_button<S: 'static>(
                     return Ok(EventResult::Pass);
                 }
 
-                for i in 0..5 {
-                    Toast::new(
-                        ToastTopic::System,
-                        format!("Fixing floor in {}", 5 - i),
-                        "Touch your controller to the floor!".into(),
-                    )
-                    .with_timeout(1.)
-                    .with_sound(true)
-                    .submit_at(app, Instant::now() + Duration::from_secs(i));
-                }
+                Toast::new(
+                    ToastTopic::System,
+                    "TOAST.FIXING_FLOOR".into(),
+                    "TOAST.ONE_CONTROLLER_ON_FLOOR".into(),
+                )
+                .with_timeout(5.)
+                .with_sound(true)
+                .submit(app);
+
                 app.tasks.enqueue_at(
                     TaskType::Playspace(PlayspaceTask::FixFloor),
                     Instant::now() + Duration::from_secs(5),

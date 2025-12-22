@@ -238,7 +238,7 @@ impl PlayspaceMover {
 
         let y1 = input.pointers[0].raw_pose.translation.y;
         let y2 = input.pointers[1].raw_pose.translation.y;
-        let delta = y1.min(y2) - 0.03;
+        let delta = y1.min(y2) - 0.05;
 
         pose.position.y += delta;
 
