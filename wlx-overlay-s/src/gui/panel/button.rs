@@ -33,38 +33,115 @@ use crate::{
 #[cfg(feature = "wayvr")]
 use crate::backend::wayvr::WayVRAction;
 
-pub const BUTTON_EVENTS: [(&str, EventListenerKind, fn(&mut CallbackData) -> bool); 8] = [
-    ("_press", EventListenerKind::MousePress, any_button),
-    ("_release", EventListenerKind::MouseRelease, any_button),
-    ("_press_left", EventListenerKind::MousePress, left_button),
+pub const BUTTON_EVENTS: [(
+    &str,
+    EventListenerKind,
+    fn(&mut CallbackData) -> bool,
+    fn(&ComponentButton, &AppState) -> bool,
+); 16] = [
+    (
+        "_press",
+        EventListenerKind::MousePress,
+        button_any,
+        short_duration,
+    ),
+    (
+        "_release",
+        EventListenerKind::MouseRelease,
+        button_any,
+        ignore_duration,
+    ),
+    (
+        "_press_left",
+        EventListenerKind::MousePress,
+        button_left,
+        ignore_duration,
+    ),
     (
         "_release_left",
         EventListenerKind::MouseRelease,
-        left_button,
+        button_left,
+        ignore_duration,
     ),
-    ("_press_right", EventListenerKind::MousePress, right_button),
+    (
+        "_press_right",
+        EventListenerKind::MousePress,
+        button_right,
+        ignore_duration,
+    ),
     (
         "_release_right",
         EventListenerKind::MouseRelease,
-        right_button,
+        button_right,
+        ignore_duration,
     ),
     (
         "_press_middle",
         EventListenerKind::MousePress,
-        middle_button,
+        button_middle,
+        ignore_duration,
     ),
     (
         "_release_middle",
         EventListenerKind::MouseRelease,
-        middle_button,
+        button_middle,
+        ignore_duration,
+    ),
+    (
+        "_short_release",
+        EventListenerKind::MouseRelease,
+        button_any,
+        short_duration,
+    ),
+    (
+        "_short_release_left",
+        EventListenerKind::MouseRelease,
+        button_left,
+        short_duration,
+    ),
+    (
+        "_short_release_right",
+        EventListenerKind::MouseRelease,
+        button_right,
+        short_duration,
+    ),
+    (
+        "_short_release_middle",
+        EventListenerKind::MouseRelease,
+        button_middle,
+        short_duration,
+    ),
+    (
+        "_long_release",
+        EventListenerKind::MouseRelease,
+        button_any,
+        long_duration,
+    ),
+    (
+        "_long_release_left",
+        EventListenerKind::MouseRelease,
+        button_left,
+        long_duration,
+    ),
+    (
+        "_long_release_right",
+        EventListenerKind::MouseRelease,
+        button_right,
+        long_duration,
+    ),
+    (
+        "_long_release_middle",
+        EventListenerKind::MouseRelease,
+        button_middle,
+        long_duration,
     ),
 ];
 
-fn any_button(_: &mut CallbackData) -> bool {
+fn button_any(_: &mut CallbackData) -> bool {
     true
 }
 
-fn left_button(data: &mut CallbackData) -> bool {
+fn button_left(data: &mut CallbackData) -> bool {
     if let CallbackMetadata::MouseButton(b) = data.metadata
         && let MouseButtonIndex::Left = b.index
     {
@@ -73,7 +150,7 @@ fn left_button(data: &mut CallbackData) -> bool {
         false
     }
 }
-fn right_button(data: &mut CallbackData) -> bool {
+fn button_right(data: &mut CallbackData) -> bool {
     if let CallbackMetadata::MouseButton(b) = data.metadata
         && let MouseButtonIndex::Right = b.index
     {
@@ -82,7 +159,7 @@ fn right_button(data: &mut CallbackData) -> bool {
         false
     }
 }
-fn middle_button(data: &mut CallbackData) -> bool {
+fn button_middle(data: &mut CallbackData) -> bool {
     if let CallbackMetadata::MouseButton(b) = data.metadata
         && let MouseButtonIndex::Middle = b.index
     {
@@ -92,13 +169,23 @@ fn middle_button(data: &mut CallbackData) -> bool {
     }
 }
 
+fn ignore_duration(_btn: &ComponentButton, _app: &AppState) -> bool {
+    true
+}
+fn long_duration(btn: &ComponentButton, app: &AppState) -> bool {
+    btn.get_time_since_last_pressed().as_secs_f32() > app.session.config.long_press_duration
+}
+fn short_duration(btn: &ComponentButton, app: &AppState) -> bool {
+    btn.get_time_since_last_pressed().as_secs_f32() < app.session.config.long_press_duration
+}
+
 pub(super) fn setup_custom_button<S: 'static>(
     layout: &mut Layout,
     attribs: &CustomAttribsInfoOwned,
     _app: &AppState,
     button: Rc<ComponentButton>,
 ) {
-    for (name, kind, test_btn) in &BUTTON_EVENTS {
+    for (name, kind, test_button, test_duration) in &BUTTON_EVENTS {
         let Some(action) = attribs.get_value(name) else {
             continue;
         };
@@ -108,10 +195,12 @@ pub(super) fn setup_custom_button<S: 'static>(
             continue;
         };
 
+        let button = button.clone();
+
         let callback: EventCallback<AppState, S> = match command {
             #[cfg(feature = "wayvr")]
             "::DashToggle" => Box::new(move |_common, data, app, _| {
-                if !test_btn(data) {
+                if !test_button(data) || !test_duration(&button, app) {
                     return Ok(EventResult::Pass);
                 }
 
@@ -126,7 +215,7 @@ pub(super) fn setup_custom_button<S: 'static>(
                     return;
                 };
                 Box::new(move |_common, data, app, _| {
-                    if !test_btn(data) {
+                    if !test_button(data) || !test_duration(&button, app) {
                         return Ok(EventResult::Pass);
                     }
 
@@ -142,7 +231,7 @@ pub(super) fn setup_custom_button<S: 'static>(
                 };
 
                 Box::new(move |_common, data, app, _| {
-                    if !test_btn(data) {
+                    if !test_button(data) || !test_duration(&button, app) {
                         return Ok(EventResult::Pass);
                     }
 
@@ -160,7 +249,7 @@ pub(super) fn setup_custom_button<S: 'static>(
                 })
             }
             "::EditToggle" => Box::new(move |_common, data, app, _| {
-                if !test_btn(data) {
+                if !test_button(data) || !test_duration(&button, app) {
                     return Ok(EventResult::Pass);
                 }
 
@@ -170,7 +259,7 @@ pub(super) fn setup_custom_button<S: 'static>(
             }),
             #[cfg(feature = "wayland")]
             "::NewMirror" => Box::new(move |_common, data, app, _| {
-                if !test_btn(data) {
+                if !test_button(data) || !test_duration(&button, app) {
                     return Ok(EventResult::Pass);
                 }
 
@@ -187,7 +276,7 @@ pub(super) fn setup_custom_button<S: 'static>(
                 Ok(EventResult::Consumed)
             }),
             "::CleanupMirrors" => Box::new(move |_common, data, app, _| {
-                if !test_btn(data) {
+                if !test_button(data) || !test_duration(&button, app) {
                     return Ok(EventResult::Pass);
                 }
 
@@ -196,7 +285,7 @@ pub(super) fn setup_custom_button<S: 'static>(
                 Ok(EventResult::Consumed)
             }),
             "::PlayspaceReset" => Box::new(move |_common, data, app, _| {
-                if !test_btn(data) {
+                if !test_button(data) || !test_duration(&button, app) {
                     return Ok(EventResult::Pass);
                 }
 
@@ -204,7 +293,7 @@ pub(super) fn setup_custom_button<S: 'static>(
                 Ok(EventResult::Consumed)
             }),
             "::PlayspaceRecenter" => Box::new(move |_common, data, app, _| {
-                if !test_btn(data) {
+                if !test_button(data) || !test_duration(&button, app) {
                     return Ok(EventResult::Pass);
                 }
 
@@ -213,7 +302,7 @@ pub(super) fn setup_custom_button<S: 'static>(
                 Ok(EventResult::Consumed)
             }),
             "::PlayspaceFixFloor" => Box::new(move |_common, data, app, _| {
-                if !test_btn(data) {
+                if !test_button(data) || !test_duration(&button, app) {
                     return Ok(EventResult::Pass);
                 }
 
@@ -233,8 +322,8 @@ pub(super) fn setup_custom_button<S: 'static>(
                 );
                 Ok(EventResult::Consumed)
             }),
-            "::Shutdown" => Box::new(move |_common, data, _app, _| {
-                if !test_btn(data) {
+            "::Shutdown" => Box::new(move |_common, data, app, _| {
+                if !test_button(data) || !test_duration(&button, app) {
                     return Ok(EventResult::Pass);
                 }
 
@@ -255,7 +344,7 @@ pub(super) fn setup_custom_button<S: 'static>(
                     return;
                 };
                 Box::new(move |_common, data, app, _| {
-                    if !test_btn(data) {
+                    if !test_button(data) || !test_duration(&button, app) {
                         return Ok(EventResult::Pass);
                     }
 
@@ -285,8 +374,8 @@ pub(super) fn setup_custom_button<S: 'static>(
                     }),
                 );
 
-                Box::new(move |_common, data, _app, _| {
-                    if !test_btn(data) {
+                Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
                         return Ok(EventResult::Pass);
                     }
 
@@ -314,7 +403,7 @@ pub(super) fn setup_custom_button<S: 'static>(
                 }
 
                 Box::new(move |_common, data, app, _| {
-                    if !test_btn(data) {
+                    if !test_button(data) || !test_duration(&button, app) {
                         return Ok(EventResult::Pass);
                     }
 

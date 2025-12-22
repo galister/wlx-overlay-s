@@ -205,7 +205,11 @@ impl EventResult {
 
 	#[must_use]
 	pub fn merge(self, other: Self) -> Self {
-		if self > other { self } else { other }
+		if self > other {
+			self
+		} else {
+			other
+		}
 	}
 }
 

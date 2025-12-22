@@ -1,8 +1,4 @@
-use std::{
-    collections::HashMap,
-    rc::Rc,
-    time::{Duration, Instant},
-};
+use std::{collections::HashMap, rc::Rc, time::Duration};
 
 use glam::{Affine3A, Quat, Vec3, Vec3A, vec3};
 use idmap::DirectIdMap;
@@ -31,7 +27,6 @@ use crate::{
         panel::{GuiPanel, NewGuiPanelParams, OnCustomAttribFunc, button::BUTTON_EVENTS},
         timer::GuiTimer,
     },
-    overlays::edit::LongPressButtonState,
     state::AppState,
     windowing::{
         OverlayID, OverlaySelector, Z_ORDER_WATCH,
@@ -70,7 +65,6 @@ struct WatchState {
     keyboard_oid: OverlayID,
     dashboard_oid: OverlayID,
     num_sets: usize,
-    delete: LongPressButtonState,
 }
 
 #[allow(clippy::significant_drop_tightening)]
@@ -78,8 +72,14 @@ struct WatchState {
 pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
     let state = WatchState::default();
 
-    let on_custom_attrib: OnCustomAttribFunc = Box::new(move |layout, attribs, _app| {
-        for (name, kind, test_btn) in &BUTTON_EVENTS {
+    let on_custom_attrib: OnCustomAttribFunc = Box::new(move |layout, parser, attribs, _app| {
+        let Ok(button) =
+            parser.fetch_component_from_widget_id_as::<ComponentButton>(attribs.widget_id)
+        else {
+            return;
+        };
+
+        for (name, kind, test_button, test_duration) in &BUTTON_EVENTS {
             let Some(action) = attribs.get_value(name) else {
                 continue;
             };
@@ -89,29 +89,20 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                 continue;
             };
 
+            let button = button.clone();
+
             let callback: EventCallback<AppState, WatchState> = match command {
-                "::EditModeDeleteDown" => Box::new(move |_common, data, _app, state| {
-                    if !test_btn(data) {
+                "::EditModeDeleteSet" => Box::new(move |_common, data, app, _state| {
+                    if !test_button(data) || !test_duration(&button, app) {
                         return Ok(EventResult::Pass);
                     }
 
-                    state.delete.pressed = Instant::now();
-                    Ok(EventResult::Consumed)
-                }),
-                "::EditModeDeleteUp" => Box::new(move |_common, data, app, state| {
-                    if !test_btn(data) {
-                        return Ok(EventResult::Pass);
-                    }
-
-                    if state.delete.pressed.elapsed() < Duration::from_secs(1) {
-                        return Ok(EventResult::Consumed);
-                    }
                     app.tasks
                         .enqueue(TaskType::Overlay(OverlayTask::DeleteActiveSet));
                     Ok(EventResult::Consumed)
                 }),
                 "::EditModeAddSet" => Box::new(move |_common, data, app, _state| {
-                    if !test_btn(data) {
+                    if !test_button(data) || !test_duration(&button, app) {
                         return Ok(EventResult::Pass);
                     }
 
@@ -125,7 +116,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                         return;
                     };
                     Box::new(move |_common, data, app, state| {
-                        if !test_btn(data) {
+                        if !test_button(data) || !test_duration(&button, app) {
                             return Ok(EventResult::Pass);
                         }
 
@@ -154,7 +145,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                         return;
                     };
                     Box::new(move |_common, data, app, state| {
-                        if !test_btn(data) {
+                        if !test_button(data) || !test_duration(&button, app) {
                             return Ok(EventResult::Pass);
                         }
 
@@ -167,6 +158,29 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                             .enqueue(TaskType::Overlay(OverlayTask::SoftToggleOverlay(
                                 OverlaySelector::Id(overlay.id),
                             )));
+                        Ok(EventResult::Consumed)
+                    })
+                }
+                "::SingleSetOverlayReset" => {
+                    let arg = args.next().unwrap_or_default();
+                    let Ok(idx) = arg.parse::<usize>() else {
+                        log::error!("{command} has invalid argument: \"{arg}\"");
+                        return;
+                    };
+                    Box::new(move |_common, data, app, state| {
+                        if !test_button(data) || !test_duration(&button, app) {
+                            return Ok(EventResult::Pass);
+                        }
+
+                        let Some(overlay) = state.overlay_metas.get(idx) else {
+                            log::error!("No overlay at index {idx}.");
+                            return Ok(EventResult::Consumed);
+                        };
+
+                        app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
+                            OverlaySelector::Id(overlay.id),
+                            Box::new(|app, owc| owc.activate(app)),
+                        )));
                         Ok(EventResult::Consumed)
                     })
                 }

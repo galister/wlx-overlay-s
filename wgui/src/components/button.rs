@@ -23,7 +23,11 @@ use crate::{
 	},
 };
 use glam::{Mat4, Vec3};
-use std::{cell::RefCell, rc::Rc};
+use std::{
+	cell::RefCell,
+	rc::Rc,
+	time::{Duration, Instant},
+};
 use taffy::{prelude::length, AlignItems, JustifyContent};
 
 pub struct Params<'a> {
@@ -42,6 +46,7 @@ pub struct Params<'a> {
 	/// until "un-clicked". this is visual only.
 	/// set the initial state using `set_sticky_state`
 	pub sticky: bool,
+	pub long_press_time: f32,
 }
 
 impl Default for Params<'_> {
@@ -59,6 +64,7 @@ impl Default for Params<'_> {
 			text_style: TextStyle::default(),
 			tooltip: None,
 			sticky: false,
+			long_press_time: 0.0,
 		}
 	}
 }
@@ -80,6 +86,7 @@ struct State {
 	on_click: Option<ButtonClickCallback>,
 	active_tooltip: Option<Rc<ComponentTooltip>>,
 	colors: Colors,
+	last_pressed: Instant,
 }
 
 struct Data {
@@ -150,6 +157,10 @@ impl ComponentButton {
 
 		rect.params.color = color;
 		rect.params.color2 = get_color2(&color);
+	}
+
+	pub fn get_time_since_last_pressed(&self) -> Duration {
+		self.state.borrow().last_pressed.elapsed()
 	}
 
 	pub fn on_click(&self, func: ButtonClickCallback) {
@@ -329,6 +340,7 @@ fn register_event_mouse_press(state: Rc<RefCell<State>>, listeners: &mut EventLi
 
 			if state.hovered {
 				state.down = true;
+				state.last_pressed = Instant::now();
 				Ok(EventResult::Consumed)
 			} else {
 				Ok(EventResult::Pass)
@@ -357,7 +369,6 @@ fn register_event_mouse_release(
 
 			if state.down {
 				state.down = false;
-
 				if state.hovered
 					&& let Some(on_click) = &state.on_click
 				{
@@ -507,6 +518,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		on_click: None,
 		active_tooltip: None,
 		sticky_down: false,
+		last_pressed: Instant::now(),
 		colors: Colors {
 			color,
 			border_color,

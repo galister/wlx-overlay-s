@@ -15,7 +15,7 @@
   </template>
 
   <template name="TopButtonDanger">
-    <Button macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" border_color="~color_danger_translucent" color="~color_danger_5" color2="~color_danger_1">
+    <Button macro="button_style" tooltip="${tooltip}" _long_release="${long_release}" border_color="~color_danger_translucent" color="~color_danger_5" color2="~color_danger_1">
       <sprite width="48" height="48" src="${src}" />
     </Button>
   </template>
@@ -48,7 +48,7 @@
                 <TopButton sticky="0" id="top_mouse" src="edit/normal.svg" tooltip="EDIT_MODE.MOUSE.TITLE" press="::EditModeTab mouse" />
                 <!-- TopButton sticky="0" id="top_move" src="edit/move-all.svg" tooltip="EDIT_MODE.MOVE_PRESS_AND_DRAG" / -->
                 <!-- TopButton sticky="0" id="top_resize" src="edit/resize.svg" tooltip="EDIT_MODE.RESIZE_PRESS_AND_DRAG" / -->
-                <TopButtonDanger src="edit/delete.svg" tooltip="EDIT_MODE.DELETE" press="::EditModeDeletePress" release="::EditModeDeleteRelease" />
+                <TopButtonDanger src="edit/delete.svg" tooltip="EDIT_MODE.DELETE" long_release="::EditModeDelete" />
                 <div width="8" height="100%" />
                 <TopButtonFaded src="watch/edit.svg" tooltip="EDIT_MODE.LEAVE" press="::EditToggle" />
               </div>

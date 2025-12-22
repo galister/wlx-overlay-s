@@ -140,7 +140,7 @@
             <sprite color="~set_color" width="40" height="40" src="watch/wayvr_dashboard_mono.svg" />
           </Button>
           <div id="edit_delete" display="none">
-            <Button macro="button_style" _press="::EditModeDeleteDown" _release="::EditModeDeleteUp" tooltip="WATCH.LONG_PRESS_TO_DELETE_SET" tooltip_side="top" border_color="~color_danger_translucent" color="~color_danger_5" color2="~color_danger_1">
+            <Button macro="button_style" _long_release="::EditModeDeleteSet" tooltip="WATCH.LONG_PRESS_TO_DELETE_SET" tooltip_side="top" border_color="~color_danger_translucent" color="~color_danger_5" color2="~color_danger_1">
               <sprite color="~set_color" width="40" height="40" src="edit/delete.svg" />
             </Button>
           </div>

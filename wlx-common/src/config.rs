@@ -121,6 +121,9 @@ pub struct GeneralConfig {
 	#[serde(default = "def_one")]
 	pub scroll_speed: f32,
 
+	#[serde(default = "def_one")]
+	pub long_press_duration: f32,
+
 	#[serde(default = "def_mouse_move_interval_ms")]
 	pub mouse_move_interval_ms: u32,
 
