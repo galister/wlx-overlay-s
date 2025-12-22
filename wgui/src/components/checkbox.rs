@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 use taffy::{
-	AlignItems,
 	prelude::{length, percent},
+	AlignItems,
 };
 
 use crate::{
@@ -13,10 +13,10 @@ use crate::{
 	layout::{self, WidgetID, WidgetPair},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
-		ConstructEssentials, EventResult,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
+		ConstructEssentials, EventResult,
 	},
 };
 
@@ -120,10 +120,10 @@ fn anim_hover(rect: &mut WidgetRectangle, pos: f32, pressed: bool) {
 	}
 }
 
-fn anim_hover_in(state: Rc<RefCell<State>>, widget_id: WidgetID) -> Animation {
+fn anim_hover_in(state: Rc<RefCell<State>>, widget_id: WidgetID, anim_mult: f32) -> Animation {
 	Animation::new(
 		widget_id,
-		5,
+		(5. * anim_mult) as _,
 		AnimationEasing::OutQuad,
 		Box::new(move |common, anim_data| {
 			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
@@ -133,10 +133,10 @@ fn anim_hover_in(state: Rc<RefCell<State>>, widget_id: WidgetID) -> Animation {
 	)
 }
 
-fn anim_hover_out(state: Rc<RefCell<State>>, widget_id: WidgetID) -> Animation {
+fn anim_hover_out(state: Rc<RefCell<State>>, widget_id: WidgetID, anim_mult: f32) -> Animation {
 	Animation::new(
 		widget_id,
-		8,
+		(8. * anim_mult) as _,
 		AnimationEasing::OutQuad,
 		Box::new(move |common, anim_data| {
 			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
@@ -146,28 +146,36 @@ fn anim_hover_out(state: Rc<RefCell<State>>, widget_id: WidgetID) -> Animation {
 	)
 }
 
-fn register_event_mouse_enter(state: Rc<RefCell<State>>, listeners: &mut EventListenerCollection) -> EventListenerID {
+fn register_event_mouse_enter(
+	state: Rc<RefCell<State>>,
+	listeners: &mut EventListenerCollection,
+	anim_mult: f32,
+) -> EventListenerID {
 	listeners.register(
 		EventListenerKind::MouseEnter,
 		Box::new(move |common, event_data, (), ()| {
 			common.alterables.trigger_haptics();
 			common
 				.alterables
-				.animate(anim_hover_in(state.clone(), event_data.widget_id));
+				.animate(anim_hover_in(state.clone(), event_data.widget_id, anim_mult));
 			state.borrow_mut().hovered = true;
 			Ok(EventResult::Pass)
 		}),
 	)
 }
 
-fn register_event_mouse_leave(state: Rc<RefCell<State>>, listeners: &mut EventListenerCollection) -> EventListenerID {
+fn register_event_mouse_leave(
+	state: Rc<RefCell<State>>,
+	listeners: &mut EventListenerCollection,
+	anim_mult: f32,
+) -> EventListenerID {
 	listeners.register(
 		EventListenerKind::MouseLeave,
 		Box::new(move |common, event_data, (), ()| {
 			common.alterables.trigger_haptics();
 			common
 				.alterables
-				.animate(anim_hover_out(state.clone(), event_data.widget_id));
+				.animate(anim_hover_out(state.clone(), event_data.widget_id, anim_mult));
 			state.borrow_mut().hovered = false;
 			Ok(EventResult::Pass)
 		}),
@@ -341,9 +349,10 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		id: root.id,
 		lhandles: {
 			let mut widget = ess.layout.state.widgets.get(id_container).unwrap().state();
+			let anim_mult = ess.layout.state.globals.defaults().animation_mult;
 			vec![
-				register_event_mouse_enter(state.clone(), &mut widget.event_listeners),
-				register_event_mouse_leave(state.clone(), &mut widget.event_listeners),
+				register_event_mouse_enter(state.clone(), &mut widget.event_listeners, anim_mult),
+				register_event_mouse_leave(state.clone(), &mut widget.event_listeners, anim_mult),
 				register_event_mouse_press(state.clone(), &mut widget.event_listeners),
 				register_event_mouse_release(data.clone(), state.clone(), &mut widget.event_listeners),
 			]

@@ -1,29 +1,30 @@
 use crate::{
 	animation::{Animation, AnimationEasing},
 	assets::AssetPath,
-	components::{self, Component, ComponentBase, ComponentTrait, RefreshData, tooltip::ComponentTooltip},
+	components::{self, tooltip::ComponentTooltip, Component, ComponentBase, ComponentTrait, RefreshData},
 	drawing::{self, Boundary, Color},
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerID, EventListenerKind},
 	i18n::Translation,
 	layout::{LayoutTask, WidgetID, WidgetPair},
 	renderer_vk::{
 		text::{
-			FontWeight, TextStyle,
 			custom_glyph::{CustomGlyphContent, CustomGlyphData},
+			FontWeight, TextStyle,
 		},
 		util::centered_matrix,
 	},
 	widget::{
-		self, ConstructEssentials, EventResult, WidgetData,
+		self,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		sprite::{WidgetSprite, WidgetSpriteParams},
 		util::WLength,
+		ConstructEssentials, EventResult, WidgetData,
 	},
 };
 use glam::{Mat4, Vec3};
 use std::{cell::RefCell, rc::Rc};
-use taffy::{AlignItems, JustifyContent, prelude::length};
+use taffy::{prelude::length, AlignItems, JustifyContent};
 
 pub struct Params<'a> {
 	pub text: Option<Translation>, // if unset, label will not be populated
@@ -170,10 +171,13 @@ impl ComponentButton {
 			return;
 		}
 
+		let anim_mult = common.state.globals.defaults().animation_mult;
+		let anim_ticks = if sticky_down { 5. } else { 10. };
+
 		let state = self.state.clone();
 		let anim = Animation::new(
 			self.data.id_rect,
-			if sticky_down { 5 } else { 10 },
+			(anim_ticks * anim_mult) as _,
 			AnimationEasing::OutCubic,
 			Box::new(move |common, anim_data| {
 				let rect = anim_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
@@ -227,10 +231,10 @@ fn anim_hover(
 	rect.params.border_color = init_border_color.lerp(&colors.hover_border_color, mult);
 }
 
-fn anim_hover_create(state: Rc<RefCell<State>>, widget_id: WidgetID, fade_in: bool) -> Animation {
+fn anim_hover_create(state: Rc<RefCell<State>>, widget_id: WidgetID, fade_in: bool, anim_mult: f32) -> Animation {
 	Animation::new(
 		widget_id,
-		if fade_in { 5 } else { 10 },
+		((if fade_in { 5. } else { 10. }) * anim_mult) as _,
 		AnimationEasing::OutCubic,
 		Box::new(move |common, anim_data| {
 			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
@@ -254,6 +258,7 @@ fn register_event_mouse_enter(
 	state: Rc<RefCell<State>>,
 	listeners: &mut EventListenerCollection,
 	info: Option<components::tooltip::TooltipInfo>,
+	anim_mult: f32,
 ) -> EventListenerID {
 	listeners.register(
 		EventListenerKind::MouseEnter,
@@ -262,7 +267,7 @@ fn register_event_mouse_enter(
 			common.alterables.mark_redraw();
 			common
 				.alterables
-				.animate(anim_hover_create(state.clone(), event_data.widget_id, true));
+				.animate(anim_hover_create(state.clone(), event_data.widget_id, true, anim_mult));
 
 			if let Some(info) = info.clone() {
 				common.alterables.tasks.push(LayoutTask::ModifyLayoutState({
@@ -282,14 +287,18 @@ fn register_event_mouse_enter(
 	)
 }
 
-fn register_event_mouse_leave(state: Rc<RefCell<State>>, listeners: &mut EventListenerCollection) -> EventListenerID {
+fn register_event_mouse_leave(
+	state: Rc<RefCell<State>>,
+	listeners: &mut EventListenerCollection,
+	anim_mult: f32,
+) -> EventListenerID {
 	listeners.register(
 		EventListenerKind::MouseLeave,
 		Box::new(move |common, event_data, (), ()| {
 			common.alterables.trigger_haptics();
 			common
 				.alterables
-				.animate(anim_hover_create(state.clone(), event_data.widget_id, false));
+				.animate(anim_hover_create(state.clone(), event_data.widget_id, false, anim_mult));
 			let mut state = state.borrow_mut();
 			state.active_tooltip = None;
 			state.hovered = false;
@@ -510,9 +519,16 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		id: root.id,
 		lhandles: {
 			let mut widget = ess.layout.state.widgets.get(id_rect).unwrap().state();
+			let anim_mult = ess.layout.state.globals.defaults().animation_mult;
 			vec![
-				register_event_mouse_enter(data.clone(), state.clone(), &mut widget.event_listeners, params.tooltip),
-				register_event_mouse_leave(state.clone(), &mut widget.event_listeners),
+				register_event_mouse_enter(
+					data.clone(),
+					state.clone(),
+					&mut widget.event_listeners,
+					params.tooltip,
+					anim_mult,
+				),
+				register_event_mouse_leave(state.clone(), &mut widget.event_listeners, anim_mult),
 				register_event_mouse_press(state.clone(), &mut widget.event_listeners),
 				register_event_mouse_release(data.clone(), state.clone(), &mut widget.event_listeners),
 			]

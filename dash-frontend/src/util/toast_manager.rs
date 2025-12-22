@@ -124,7 +124,7 @@ impl ToastManager {
 		// show-up animation
 		layout.animations.add(Animation::new(
 			rect.id,
-			160,
+			160, // does not use anim_mult
 			AnimationEasing::Linear,
 			Box::new(move |common, data| {
 				let pos_showup = AnimationEasing::OutQuint.interpolate((data.pos * 4.0).min(1.0));

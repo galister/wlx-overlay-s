@@ -2,8 +2,9 @@ use crate::{
 	drawing::GradientMode,
 	layout::WidgetID,
 	parser::{
-		AttribPair, ParserContext, ParserFile, parse_children, parse_widget_universal, print_invalid_attrib,
+		parse_children, parse_widget_universal, print_invalid_attrib,
 		style::{parse_color, parse_round, parse_style},
+		AttribPair, ParserContext, ParserFile,
 	},
 	widget::rectangle::{WidgetRectangle, WidgetRectangleParams},
 };
@@ -40,7 +41,11 @@ pub fn parse_widget_rectangle<'a>(
 				}
 			}
 			"round" => {
-				parse_round(value, &mut params.round);
+				parse_round(
+					value,
+					&mut params.round,
+					ctx.doc_params.globals.get().defaults.rounding_mult,
+				);
 			}
 			"border" => {
 				params.border = value.parse().unwrap_or_else(|_| {

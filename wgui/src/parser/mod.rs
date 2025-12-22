@@ -8,7 +8,7 @@ mod widget_rectangle;
 mod widget_sprite;
 
 use crate::{
-	assets::{AssetPath, AssetPathOwned, normalize_path},
+	assets::{normalize_path, AssetPath, AssetPathOwned},
 	components::{Component, ComponentWeak},
 	drawing::{self},
 	globals::WguiGlobals,
@@ -400,6 +400,7 @@ impl ParserContext<'_> {
 		insert_color_vars!(self, "accent", def.accent_color, def.translucent_alpha);
 		insert_color_vars!(self, "danger", def.danger_color, def.translucent_alpha);
 		insert_color_vars!(self, "faded", def.faded_color, def.translucent_alpha);
+		insert_color_vars!(self, "bg", def.bg_color, def.translucent_alpha);
 	}
 }
 

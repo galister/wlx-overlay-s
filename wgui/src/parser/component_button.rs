@@ -1,13 +1,13 @@
 use crate::{
 	assets::AssetPath,
-	components::{Component, button, tooltip},
+	components::{button, tooltip, Component},
 	drawing::Color,
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		AttribPair, ParserContext, ParserFile, parse_check_f32, parse_check_i32, parse_children, print_invalid_attrib,
-		process_component,
+		parse_check_f32, parse_check_i32, parse_children, print_invalid_attrib, process_component,
 		style::{parse_color_opt, parse_round, parse_style, parse_text_style},
+		AttribPair, ParserContext, ParserFile,
 	},
 	widget::util::WLength,
 };
@@ -45,7 +45,7 @@ pub fn parse_component_button<'a>(
 				translation = Some(Translation::from_translation_key(value));
 			}
 			"round" => {
-				parse_round(value, &mut round);
+				parse_round(value, &mut round, ctx.doc_params.globals.get().defaults.rounding_mult);
 			}
 			"color" => {
 				parse_color_opt(value, &mut color);

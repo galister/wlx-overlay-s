@@ -39,11 +39,13 @@ pub(super) fn create_keyboard_panel(
     let globals = app.wgui_globals.clone();
     let accent_color = globals.get().defaults.accent_color;
 
+    let anim_mult = globals.defaults().animation_mult;
+
     let (background, _) = panel.layout.add_child(
         panel.layout.content_root_widget,
         WidgetRectangle::create(WidgetRectangleParams {
-            color: wgui::drawing::Color::new(0., 0., 0., 0.75),
-            round: WLength::Units(16.0),
+            color: globals.defaults().bg_color,
+            round: WLength::Units((16.0 * globals.defaults().rounding_mult).max(0.)),
             border: 2.0,
             border_color: accent_color,
             ..Default::default()
@@ -176,7 +178,7 @@ pub(super) fn create_keyboard_panel(
                         let k = key_state.clone();
                         move |common, data, _app, _state| {
                             common.alterables.trigger_haptics();
-                            on_enter_anim(k.clone(), common, data, accent_color);
+                            on_enter_anim(k.clone(), common, data, accent_color, anim_mult);
                             Ok(EventResult::Pass)
                         }
                     }),
@@ -188,7 +190,7 @@ pub(super) fn create_keyboard_panel(
                         let k = key_state.clone();
                         move |common, data, _app, _state| {
                             common.alterables.trigger_haptics();
-                            on_leave_anim(k.clone(), common, data, accent_color);
+                            on_leave_anim(k.clone(), common, data, accent_color, anim_mult);
                             Ok(EventResult::Pass)
                         }
                     }),
@@ -291,10 +293,11 @@ fn on_enter_anim(
     common: &mut event::CallbackDataCommon,
     data: &event::CallbackData,
     accent_color: drawing::Color,
+    anim_mult: f32,
 ) {
     common.alterables.animate(Animation::new(
         data.widget_id,
-        10,
+        (10. * anim_mult) as _,
         AnimationEasing::OutBack,
         Box::new(move |common, data| {
             let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
@@ -310,10 +313,11 @@ fn on_leave_anim(
     common: &mut event::CallbackDataCommon,
     data: &event::CallbackData,
     accent_color: drawing::Color,
+    anim_mult: f32,
 ) {
     common.alterables.animate(Animation::new(
         data.widget_id,
-        15,
+        (15. * anim_mult) as _,
         AnimationEasing::OutQuad,
         Box::new(move |common, data| {
             let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();

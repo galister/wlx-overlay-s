@@ -15,7 +15,7 @@
   <template name="KeySpecial">
     <div macro="keycap_div">
       <rectangle id="${id}" macro="keycap_rect">
-        <sprite width="32" height="32" src="keyboard/${text}.svg" />
+        <sprite color="~color_text" width="32" height="32" src="keyboard/${text}.svg" />
       </rectangle>
     </div>
   </template>

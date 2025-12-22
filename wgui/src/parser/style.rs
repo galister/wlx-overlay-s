@@ -6,22 +6,22 @@ use taffy::{
 use crate::{
 	drawing,
 	parser::{
-		AttribPair, is_percent, parse_color_hex, parse_f32, parse_percent, parse_size_unit, parse_val,
-		print_invalid_attrib, print_invalid_value,
+		is_percent, parse_color_hex, parse_f32, parse_percent, parse_size_unit, parse_val, print_invalid_attrib,
+		print_invalid_value, AttribPair,
 	},
 	renderer_vk::text::{FontWeight, HorizontalAlign, TextStyle},
 	widget::util::WLength,
 };
 
-pub fn parse_round(value: &str, round: &mut WLength) {
+pub fn parse_round(value: &str, round: &mut WLength, multiplier: f32) {
 	if is_percent(value) {
 		if let Some(val) = parse_percent(value) {
-			*round = WLength::Percent(val);
+			*round = WLength::Percent((val * multiplier).clamp(0., 1.));
 		} else {
 			print_invalid_value(value);
 		}
 	} else if let Some(val) = parse_f32(value) {
-		*round = WLength::Units(val);
+		*round = WLength::Units((val * multiplier).max(0.));
 	} else {
 		print_invalid_value(value);
 	}

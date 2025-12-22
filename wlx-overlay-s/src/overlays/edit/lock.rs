@@ -54,6 +54,7 @@ impl InteractLockHandler {
         &mut self,
         common: &mut CallbackDataCommon,
         app: &mut AppState,
+        anim_mult: f32,
     ) -> Box<ModifyOverlayTask> {
         let defaults = app.wgui_globals.get().defaults.clone();
         let rect_color = self.color;
@@ -63,7 +64,7 @@ impl InteractLockHandler {
         let anim = if self.interactable {
             Animation::new(
                 self.id,
-                10,
+                (10. * anim_mult) as _,
                 AnimationEasing::OutQuad,
                 Box::new(move |common, data| {
                     let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
@@ -79,7 +80,7 @@ impl InteractLockHandler {
         } else {
             Animation::new(
                 self.id,
-                10,
+                (10. * anim_mult) as _,
                 AnimationEasing::OutBack,
                 Box::new(move |common, data| {
                     let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();

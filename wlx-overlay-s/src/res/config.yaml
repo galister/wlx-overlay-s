@@ -91,9 +91,17 @@
 #theme_path: "theme"
 
 ## These can be used to control the color theme of WlxOverlay-S.
+#color_text: "#ffffff"
 #color_accent: "#008cff"
 #color_danger: "#ff3300"
 #color_faded: "#668299"
+#color_background: "#010206",
+
+## Multiplier for animation speed. 2.0 → double speed, 0.5 → half speed
+#animation_speed: 1.0
+
+## Adjust this between 0..1 for a more rectangular feel.
+#round_multiplier: 1.0
 
 ## Path to custom skybox texture, relative to `~/.config/wlxoverlay`
 #skybox_texture: ""

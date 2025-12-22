@@ -92,9 +92,18 @@ pub struct GeneralConfig {
 	#[serde(default = "def_theme_path")]
 	pub theme_path: Arc<str>,
 
+	pub color_text: Option<String>,
 	pub color_accent: Option<String>,
 	pub color_danger: Option<String>,
 	pub color_faded: Option<String>,
+	pub color_background: Option<String>,
+
+	#[serde(default = "def_one")]
+	pub animation_speed: f32,
+
+	#[serde(default = "def_one")]
+	pub round_multiplier: f32,
+
 	pub default_keymap: Option<String>,
 
 	#[serde(default)]
