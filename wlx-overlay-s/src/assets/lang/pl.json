@@ -70,5 +70,16 @@
     "GRABBING_ANCHORED_EDIT": "Ta nakładka pozostanie zakotwiczona do znacznika centralnego.",
     "GRABBING_FLOATING": "Ta nakładka jest zawieszony i pozostanie na miejscu, chyba że zostanie wycentrowany.",
     "GRABBING_FOLLOW": "Ta nakładka będzie śledzić urządzenie, do którego jest dołączona."
+  },
+  "TOAST": {
+    "DEFAULT_TITLE": "Powiadomienie",
+    "ERROR": "Błąd",
+    "CANNOT_REMOVE_SET": "Nie można usunąć zestawu!",
+    "NO_SET_SELECTED": "Nie wybrano żadnego zestawu.",
+    "LAST_EXISTING_SET": "To jest ostatni istniejący zestaw.",
+    "EMPTY_SET": "Pusty zestaw!",
+    "LETS_ADD_OVERLAYS": "Dodajmy kilka nakładek z zegarka!",
+    "FIXING_FLOOR": "Naprawianie podłogi za 5 sekund...",
+    "ONE_CONTROLLER_ON_FLOOR": "Umieść jeden kontroler na podłodze!"
   }
 }

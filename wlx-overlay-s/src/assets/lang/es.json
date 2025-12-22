@@ -72,5 +72,16 @@
     "GRABBING_ANCHORED_EDIT": "Esta superposición permanecerá anclada al marcador central.",
     "GRABBING_FLOATING": "Esta superposición es flotante y permanecerá en su lugar a menos que se recentre.",
     "GRABBING_FOLLOW": "Esta superposición seguirá el dispositivo al que está adjunta."
+  },
+  "TOAST": {
+    "DEFAULT_TITLE": "Notificación",
+    "ERROR": "Error",
+    "CANNOT_REMOVE_SET": "¡No se puede eliminar el conjunto!",
+    "NO_SET_SELECTED": "No se ha seleccionado ningún conjunto.",
+    "LAST_EXISTING_SET": "Este es el último conjunto existente.",
+    "EMPTY_SET": "¡Conjunto vacío!",
+    "LETS_ADD_OVERLAYS": "¡Añadamos algunos overlays desde el reloj!",
+    "FIXING_FLOOR": "Fijando el suelo en 5 segundos...",
+    "ONE_CONTROLLER_ON_FLOOR": "¡Coloca un mando en el suelo!"
   }
 }

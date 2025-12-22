@@ -72,5 +72,16 @@
     "GRABBING_ANCHORED_EDIT": "Diese Overlay-Darstellung bleibt an der Mittelmarkierung verankert.",
     "GRABBING_FLOATING": "Diese Overlay-Darstellung ist frei schwebend und bleibt an Ort und Stelle, es sei denn, sie wird neu zentriert.",
     "GRABBING_FOLLOW": "Dieses Overlay wird dem Gerät folgen, an das es angehängt ist."
+  },
+  "TOAST": {
+    "DEFAULT_TITLE": "Benachrichtigung",
+    "ERROR": "Fehler",
+    "CANNOT_REMOVE_SET": "Satz kann nicht entfernt werden!",
+    "NO_SET_SELECTED": "Kein Set ausgewählt.",
+    "LAST_EXISTING_SET": "Dies ist das letzte vorhandene Set.",
+    "EMPTY_SET": "Leeres Set!",
+    "LETS_ADD_OVERLAYS": "Lass uns ein paar Overlays von der Uhr hinzufügen!",
+    "FIXING_FLOOR": "Boden wird in 5 Sekunden fixiert...",
+    "ONE_CONTROLLER_ON_FLOOR": "Lege einen Controller auf den Boden!"
   }
 }
