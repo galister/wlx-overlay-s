@@ -479,6 +479,35 @@ impl Connection {
         ));
     }
 
+    fn handle_wlx_custom(params: &mut TickParams, custom_params: packet_client::WlxCustomParams) {
+        use crate::backend::task::{OverlayCustomCommand, OverlayCustomTask};
+
+        params
+            .state
+            .signals
+            .send(super::WayVRSignal::CustomTask(OverlayCustomTask {
+                overlay: custom_params.overlay,
+                element: custom_params.element,
+                command: match custom_params.command {
+                    packet_client::WlxCustomCommand::SetText(text) => {
+                        OverlayCustomCommand::SetText(text)
+                    }
+                    packet_client::WlxCustomCommand::SetSprite(sprite) => {
+                        OverlayCustomCommand::SetSprite(sprite)
+                    }
+                    packet_client::WlxCustomCommand::SetStickyState(sticky) => {
+                        OverlayCustomCommand::SetStickyState(sticky)
+                    }
+                    packet_client::WlxCustomCommand::SetVisible(visible) => {
+                        OverlayCustomCommand::SetVisible(visible)
+                    }
+                    packet_client::WlxCustomCommand::SetColor(color) => {
+                        OverlayCustomCommand::SetColor(color)
+                    }
+                },
+            }));
+    }
+
     fn process_payload(&mut self, params: &mut TickParams, payload: Payload) -> anyhow::Result<()> {
         let packet: PacketClient = ipc::data_decode(&payload)?;
 
@@ -530,6 +559,9 @@ impl Connection {
             }
             PacketClient::WlxHaptics(haptics_params) => {
                 Self::handle_wlx_haptics(params, haptics_params);
+            }
+            PacketClient::WlxCustom(custom_params) => {
+                Self::handle_wlx_custom(params, custom_params);
             }
         }
 

@@ -5,11 +5,12 @@ use slotmap::Key;
 
 use crate::{
 	drawing::{self, PrimitiveExtent},
+	event::CallbackDataCommon,
 	globals::Globals,
 	layout::WidgetID,
 	renderer_vk::text::{
-		DEFAULT_METRICS,
 		custom_glyph::{CustomGlyph, CustomGlyphData},
+		DEFAULT_METRICS,
 	},
 	widget::WidgetStateFlags,
 };
@@ -39,16 +40,18 @@ impl WidgetSprite {
 		)
 	}
 
-	pub fn set_color(&mut self, color: drawing::Color) {
+	pub fn set_color(&mut self, common: &mut CallbackDataCommon, color: drawing::Color) {
 		self.params.color = Some(color);
+		common.mark_widget_dirty(self.id);
 	}
 
 	pub fn get_color(&self) -> Option<drawing::Color> {
 		self.params.color
 	}
 
-	pub fn set_content(&mut self, content: Option<CustomGlyphData>) {
+	pub fn set_content(&mut self, common: &mut CallbackDataCommon, content: Option<CustomGlyphData>) {
 		self.params.glyph_data = content;
+		common.mark_widget_dirty(self.id);
 	}
 
 	pub fn get_content(&self) -> Option<CustomGlyphData> {

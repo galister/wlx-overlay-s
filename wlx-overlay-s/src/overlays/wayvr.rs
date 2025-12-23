@@ -461,6 +461,10 @@ where
             wayvr::WayVRSignal::Haptics(haptics) => {
                 wayvr.pending_haptics = Some(haptics);
             }
+            wayvr::WayVRSignal::CustomTask(custom_task) => {
+                app.tasks
+                    .enqueue(TaskType::Overlay(OverlayTask::Custom(custom_task)));
+            }
         }
     }
 

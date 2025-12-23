@@ -290,6 +290,27 @@ where
                     self.dropped_overlays.push_back(o);
                 }
             }
+            OverlayTask::Custom(task) => {
+                if let Some(oid) = self.lookup(&task.overlay)
+                    && let Some(o) = self.mut_by_id(oid)
+                {
+                    if !matches!(o.config.category, OverlayCategory::Panel) {
+                        log::warn!(
+                            "Received command for '{}', but this overlay does not support commands",
+                            &task.overlay
+                        );
+                        return Ok(());
+                    }
+
+                    o.config.backend.notify(
+                        app,
+                        OverlayEventData::CustomCommand {
+                            element: task.element,
+                            command: task.command,
+                        },
+                    )?;
+                }
+            }
         }
         Ok(())
     }

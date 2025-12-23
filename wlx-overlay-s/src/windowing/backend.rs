@@ -12,7 +12,10 @@ use wlx_common::{
 };
 
 use crate::{
-    backend::input::{HoverResult, PointerHit},
+    backend::{
+        input::{HoverResult, PointerHit},
+        task::OverlayCustomCommand,
+    },
     graphics::{ExtentExt, RenderResult},
     state::AppState,
     subsystem::hid::WheelDelta,
@@ -122,6 +125,10 @@ pub enum OverlayEventData {
         name: Arc<str>,
         pos: Positioning,
         editing: bool,
+    },
+    CustomCommand {
+        element: String,
+        command: OverlayCustomCommand,
     },
 }
 

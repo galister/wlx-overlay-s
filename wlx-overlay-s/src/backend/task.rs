@@ -54,6 +54,22 @@ pub enum PlayspaceTask {
     FixFloor,
 }
 
+#[derive(Debug, Clone)]
+pub enum OverlayCustomCommand {
+    SetText(String),
+    SetColor(String),
+    SetSprite(String),
+    SetVisible(bool),
+    SetStickyState(bool),
+}
+
+#[derive(Debug, Clone)]
+pub struct OverlayCustomTask {
+    pub overlay: String,
+    pub element: String,
+    pub command: OverlayCustomCommand,
+}
+
 pub type ModifyOverlayTask = dyn FnOnce(&mut AppState, &mut OverlayWindowConfig) + Send;
 pub type CreateOverlayTask = dyn FnOnce(&mut AppState) -> Option<OverlayWindowConfig> + Send;
 pub enum OverlayTask {
@@ -66,6 +82,7 @@ pub enum OverlayTask {
     CleanupMirrors,
     Modify(OverlaySelector, Box<ModifyOverlayTask>),
     Create(OverlaySelector, Box<CreateOverlayTask>),
+    Custom(OverlayCustomTask),
     Drop(OverlaySelector),
 }
 

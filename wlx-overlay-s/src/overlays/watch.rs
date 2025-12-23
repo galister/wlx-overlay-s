@@ -473,7 +473,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                             .get_as::<WidgetSprite>(btn.sprite)
                             && let Some(glyph) = panel.state.overlay_cat_icons.get(meta.category)
                         {
-                            sprite.set_content(Some(glyph.clone()));
+                            sprite.set_content(&mut com, Some(glyph.clone()));
                         }
 
                         btn.button.set_sticky_state(&mut com, meta.visible);
@@ -525,7 +525,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                         && let Some(glyph) = panel.state.device_role_icons.get(dev.role)
                         && let Some(mut s) = panel.layout.state.widgets.get_as::<WidgetSprite>(*s)
                     {
-                        s.set_content(Some(glyph.clone()));
+                        s.set_content(&mut com, Some(glyph.clone()));
                         com.alterables
                             .set_style(*div, StyleSetRequest::Display(taffy::Display::Flex));
                     } else {
