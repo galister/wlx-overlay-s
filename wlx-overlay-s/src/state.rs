@@ -27,6 +27,7 @@ use crate::{
     config_io::{self, get_config_file_path},
     graphics::WGfxExtras,
     gui,
+    ipc::{event_queue::SyncEventQueue, ipc_server, signal::WayVRSignal},
     subsystem::{audio::AudioOutput, dbus::DbusConnector, input::HidWrapper},
 };
 
@@ -53,11 +54,16 @@ pub struct AppState {
 
     pub xr_backend: XrBackend,
 
+    pub ipc_server: ipc_server::WayVRServer,
+    pub wayvr_signals: SyncEventQueue<WayVRSignal>,
+
     #[cfg(feature = "osc")]
     pub osc_sender: Option<OscSender>,
 
+    // wayland server
+    // TODO: rename to wayland_server?
     #[cfg(feature = "wayvr")]
-    pub wayvr: Option<Rc<RefCell<WayVRData>>>, // Dynamically created if requested
+    pub wayvr: Rc<RefCell<WayVRData>>,
 }
 
 #[allow(unused_mut)]
@@ -71,18 +77,18 @@ impl AppState {
         let mut tasks = TaskContainer::new();
 
         let session = AppSession::load();
+        let wayvr_signals = SyncEventQueue::new();
 
         #[cfg(feature = "wayvr")]
-        let wayvr = session
-            .wayvr_config
-            .post_load(&session.config, &mut tasks)?;
+        let wayvr =
+            session
+                .wayvr_config
+                .post_load(&session.config, &mut tasks, wayvr_signals.clone())?;
 
         let mut hid_provider = HidWrapper::new();
 
         #[cfg(feature = "wayvr")]
-        if let Some(wayvr) = wayvr.as_ref() {
-            hid_provider.set_wayvr(wayvr.clone());
-        }
+        hid_provider.set_wayvr(wayvr.clone());
 
         #[cfg(feature = "osc")]
         let osc_sender = crate::subsystem::osc::OscSender::new(session.config.osc_out_port).ok();
@@ -114,6 +120,8 @@ impl AppState {
 
         let dbus = DbusConnector::default();
 
+        let ipc_server = ipc_server::WayVRServer::new()?;
+
         Ok(Self {
             session,
             tasks,
@@ -135,6 +143,8 @@ impl AppState {
             )?,
             dbus,
             xr_backend,
+            ipc_server,
+            wayvr_signals,
 
             #[cfg(feature = "osc")]
             osc_sender,
@@ -142,21 +152,6 @@ impl AppState {
             #[cfg(feature = "wayvr")]
             wayvr,
         })
-    }
-
-    #[cfg(feature = "wayvr")]
-    #[allow(dead_code)]
-    pub fn get_wayvr(&mut self) -> anyhow::Result<Rc<RefCell<WayVRData>>> {
-        if let Some(wvr) = &self.wayvr {
-            Ok(wvr.clone())
-        } else {
-            let wayvr = Rc::new(RefCell::new(WayVRData::new(
-                WayVRConfig::get_wayvr_config(&self.session.config, &self.session.wayvr_config)?,
-            )?));
-            self.hid_provider.set_wayvr(wayvr.clone());
-            self.wayvr = Some(wayvr.clone());
-            Ok(wayvr)
-        }
     }
 
     pub fn try_load_bytes(path: &str, fallback_data: &'static [u8]) -> &'static [u8] {
@@ -187,7 +182,7 @@ pub struct AppSession {
     pub config: GeneralConfig,
 
     #[cfg(feature = "wayvr")]
-    pub wayvr_config: WayVRConfig,
+    pub wayvr_config: WayVRConfig, // TODO: rename to "wayland_server_config"
 
     pub toast_topics: IdMap<ToastTopic, ToastDisplayMethod>,
 }

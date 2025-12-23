@@ -19,6 +19,7 @@ use crate::{
     },
     config::load_config_with_conf_d,
     config_io,
+    ipc::{event_queue::SyncEventQueue, signal::WayVRSignal},
     overlays::wayvr::{WayVRData, executable_exists_in_path},
 };
 
@@ -135,9 +136,6 @@ pub struct WayVRDashboard {
 
 #[derive(Deserialize, Serialize)]
 pub struct WayVRConfig {
-    #[serde(default = "def_true")]
-    pub run_compositor_at_start: bool,
-
     #[serde(default = "Default::default")]
     pub catalogs: HashMap<String, WayVRCatalog>,
 
@@ -203,7 +201,8 @@ impl WayVRConfig {
         &self,
         config: &GeneralConfig,
         tasks: &mut TaskContainer,
-    ) -> anyhow::Result<Option<Rc<RefCell<WayVRData>>>> {
+        signals: SyncEventQueue<WayVRSignal>,
+    ) -> anyhow::Result<Rc<RefCell<WayVRData>>> {
         let primary_count = self
             .displays
             .iter()
@@ -212,10 +211,6 @@ impl WayVRConfig {
 
         if primary_count > 1 {
             anyhow::bail!("Number of primary displays is more than 1")
-        } else if primary_count == 0 {
-            log::warn!(
-                "No primary display specified. External Wayland applications will not be attached."
-            );
         }
 
         for (catalog_name, catalog) in &self.catalogs {
@@ -231,15 +226,10 @@ impl WayVRConfig {
             }
         }
 
-        if self.run_compositor_at_start {
-            // Start Wayland server instantly
-            Ok(Some(Rc::new(RefCell::new(WayVRData::new(
-                Self::get_wayvr_config(config, self)?,
-            )?))))
-        } else {
-            // Lazy-init WayVR later if the user requested
-            Ok(None)
-        }
+        Ok(Rc::new(RefCell::new(WayVRData::new(
+            Self::get_wayvr_config(config, self)?,
+            signals,
+        )?)))
     }
 }
 

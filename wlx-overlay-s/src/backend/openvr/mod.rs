@@ -303,11 +303,10 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             let _ = sender.send_params(&overlays, &app.input_state.devices);
         }
 
-        #[cfg(feature = "wayvr")]
         if let Err(e) =
-            crate::overlays::wayvr::tick_events::<OpenVrOverlayData>(&mut app, &mut overlays)
+            crate::ipc::events::tick_events::<OpenVrOverlayData>(&mut app, &mut overlays)
         {
-            log::error!("WayVR tick_events failed: {e:?}");
+            log::error!("WayVR IPC tick_events failed: {e:?}");
         }
 
         log::trace!("Rendering frame");
@@ -336,9 +335,7 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             .for_each(|o| o.after_render(universe.clone(), &mut overlay_mgr, &app.gfx));
 
         #[cfg(feature = "wayvr")]
-        if let Some(wayvr) = &app.wayvr {
-            wayvr.borrow_mut().data.tick_finish()?;
-        }
+        app.wayvr.borrow_mut().data.tick_finish()?;
 
         // chaperone
     } // main_loop

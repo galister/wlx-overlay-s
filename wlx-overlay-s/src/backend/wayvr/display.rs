@@ -17,12 +17,13 @@ use smithay::{
 use wayvr_ipc::packet_server;
 
 use crate::{
-    backend::wayvr::time::get_millis, gen_id, subsystem::hid::WheelDelta, windowing::OverlayID,
+    backend::wayvr::time::get_millis, gen_id, ipc::event_queue::SyncEventQueue,
+    subsystem::hid::WheelDelta, windowing::OverlayID,
 };
 
 use super::{
     BlitMethod, WayVRSignal, client::WayVRCompositor, comp::send_frames_surface_tree, egl_data,
-    event_queue::SyncEventQueue, process, smithay_wrapper, time, window,
+    process, smithay_wrapper, time, window,
 };
 
 fn generate_auth_key() -> String {
