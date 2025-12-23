@@ -8,7 +8,10 @@ use std::{
 
 use futures::{Future, FutureExt};
 use glam::{Affine2, Affine3A, Quat, Vec3, vec3};
-use wlx_capture::pipewire::{PipewireCapture, PipewireSelectScreenResult, pipewire_select_screen};
+use wlx_capture::{
+    WlxCapture,
+    pipewire::{PipewireCapture, PipewireSelectScreenResult, pipewire_select_screen},
+};
 use wlx_common::{
     overlays::{BackendAttrib, BackendAttribValue},
     windowing::OverlayWindowState,
@@ -19,6 +22,7 @@ use crate::{
         input::{HoverResult, PointerHit},
         task::{OverlayTask, TaskType},
     },
+    overlays::screen::capture::{MainThreadWlxCapture, new_wlx_capture},
     state::{AppSession, AppState},
     subsystem::hid::WheelDelta,
     windowing::{
@@ -31,7 +35,7 @@ use crate::{
     },
 };
 
-use super::screen::backend::ScreenBackend;
+use super::backend::ScreenBackend;
 type PinnedSelectorFuture = core::pin::Pin<
     Box<dyn Future<Output = Result<PipewireSelectScreenResult, wlx_capture::pipewire::AshpdError>>>,
 >;
@@ -76,13 +80,21 @@ impl OverlayBackend for MirrorBackend {
 
             match maybe_pw_result {
                 Ok(pw_result) => {
+                    log::debug!(
+                        "{}: PipeWire result streams: {:?}",
+                        self.name,
+                        &pw_result.streams
+                    );
                     let node_id = pw_result.streams.first().unwrap().node_id; // streams guaranteed to have at least one element
-                    log::info!("{}: PipeWire node selected: {}", self.name.clone(), node_id);
-                    let capture = PipewireCapture::new(self.name.clone(), node_id);
+                    log::info!("{}: PipeWire node selected: {}", self.name, node_id);
+                    let capture = new_wlx_capture!(
+                        app.gfx_extras.queue_capture,
+                        PipewireCapture::new(self.name.clone(), node_id)
+                    );
                     self.renderer = Some(ScreenBackend::new_raw(
                         self.name.clone(),
                         app.xr_backend,
-                        Box::new(capture),
+                        capture,
                     ));
                     app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
                         OverlaySelector::Name(self.name.clone()),

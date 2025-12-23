@@ -81,6 +81,17 @@ Supported events:
 <button _press="..." _release="..." />
 ```
 
+Laser-color-specific variants are also available
+- `_press_left` & `_release_left` for blue laser
+- `_press_right` & `_release_right` for orange laser
+- `_press_middle` & `_release_middle` for purple laser
+
+Release after short/long press (length controlled by config `long_press_duration`)
+- `_short_release` & `_long_release` for any laser
+- `_short_release_left` & `_long_release_left` for blue laser
+- `_short_release_right` & `_long_release_right` for orange laser
+- `_short_release_middle` & `_long_release_middle` for purple laser
+
 #### Supported button actions
 
 ##### `::ShellExec <command> [args ..]`

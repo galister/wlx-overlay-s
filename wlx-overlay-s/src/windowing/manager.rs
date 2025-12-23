@@ -34,7 +34,7 @@ use crate::{
     },
 };
 
-pub const MAX_OVERLAY_SETS: usize = 7;
+pub const MAX_OVERLAY_SETS: usize = 6;
 
 pub struct OverlayWindowManager<T> {
     wrappers: EditWrapperManager,
@@ -49,6 +49,7 @@ pub struct OverlayWindowManager<T> {
     watch_id: OverlayID,
     edit_mode: bool,
     dropped_overlays: VecDeque<OverlayWindowData<T>>,
+    initialized: bool,
 }
 
 impl<T> OverlayWindowManager<T>
@@ -66,6 +67,7 @@ where
             watch_id: OverlayID::null(), // set down below
             edit_mode: false,
             dropped_overlays: VecDeque::with_capacity(8),
+            initialized: false,
         };
 
         let mut wayland = false;
@@ -148,6 +150,8 @@ where
                 .notify(app, ev)?;
         }
 
+        me.initialized = true;
+
         Ok(me)
     }
 
@@ -199,8 +203,8 @@ where
                 let Some(set) = self.current_set else {
                     Toast::new(
                         ToastTopic::System,
-                        "Can't remove set".into(),
-                        "No set is selected!".into(),
+                        "TOAST.CANNOT_REMOVE_SET".into(),
+                        "TOAST.NO_SET_SELECTED".into(),
                     )
                     .with_timeout(5.)
                     .with_sound(true)
@@ -211,8 +215,8 @@ where
                 if self.sets.len() <= 1 {
                     Toast::new(
                         ToastTopic::System,
-                        "Can't remove set".into(),
-                        "This is the last existing set!".into(),
+                        "TOAST.CANNOT_REMOVE_SET".into(),
+                        "TOAST.LAST_EXISTING_SET".into(),
                     )
                     .with_timeout(5.)
                     .with_sound(true)
@@ -658,6 +662,7 @@ impl<T> OverlayWindowManager<T> {
                 return;
             }
 
+            let mut num_overlays = 0;
             let ws = &mut self.sets[new_set];
             for (id, data) in self.overlays.iter_mut().filter(|(_, d)| !d.config.global) {
                 if let Some(state) = ws.overlays.remove(id) {
@@ -666,10 +671,28 @@ impl<T> OverlayWindowManager<T> {
                     if !keep_transforms {
                         data.config.reset(app, false);
                     }
+                    if !matches!(
+                        data.config.category,
+                        OverlayCategory::Internal
+                            | OverlayCategory::Keyboard
+                            | OverlayCategory::Dashboard
+                    ) {
+                        num_overlays += 1;
+                    }
                 }
             }
             ws.overlays.clear();
             self.restore_set = new_set;
+
+            if !self.edit_mode && self.initialized && num_overlays < 1 {
+                Toast::new(
+                    ToastTopic::System,
+                    "TOAST.EMPTY_SET".into(),
+                    "TOAST.LETS_ADD_OVERLAYS".into(),
+                )
+                .with_timeout(3.)
+                .submit(app);
+            }
         }
         self.current_set = new_set;
 

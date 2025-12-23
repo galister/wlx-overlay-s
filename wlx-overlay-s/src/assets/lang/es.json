@@ -45,7 +45,43 @@
       "SPLIT_TOP_BOTTOM": "ARRIBA→ABAJO",
       "SPLIT_BOTTOM_TOP": "ABAJO→ARRIBA"
     },
-    "STEREO_3D_MODE_": {}
+    "STEREO_3D_MODE_": {},
+    "ALIGN_TO_HMD": "Alinear al HMD",
+    "MOUSE": {
+      "TITLE": "Correcciones del ratón",
+      "WRONG_SCREEN_SELECTION_HELP": "Si el cursor se mueve en una pantalla completamente diferente,\nes probable que las pantallas se hayan seleccionado incorrectamente. Consulta el archivo readme.",
+      "NORMAL": "Normal",
+      "FLIPPED": "Invertido",
+      "FLIP90": "Girado 90°",
+      "FLIP180": "Invertido 180°",
+      "FLIP270": "Invertido 270°",
+      "ROTATE90": "Rotado 90°",
+      "ROTATE180": "Rotado 180°",
+      "ROTATE270": "Rotado 270°"
+    }
   },
-  "DISABLED": "Deshabilitado"
+  "DISABLED": "Deshabilitado",
+  "DEFAULT": "Por defecto",
+  "GRAB": {
+    "ADJUST_DISTANCE": "Ajustar distancia",
+    "ADJUST_SIZE": "Ajustar tamaño",
+    "UNRESTRICTED_MOVEMENT": "Movimiento sin restricciones",
+    "GRABBING_WATCH": "Para intercambiar las manos, mueve el reloj al frente y agrárralo con la otra mano.",
+    "GRABBING_STATIC": "Esta superposición es estática y permanecerá en su lugar, ignorando el recentrado.",
+    "GRABBING_ANCHORED": "Las superposiciones ancladas se mueven todas juntas. Separa una ventana individual agarrándola con la otra mano mientras aún sujetas el ancla.",
+    "GRABBING_ANCHORED_EDIT": "Esta superposición permanecerá anclada al marcador central.",
+    "GRABBING_FLOATING": "Esta superposición es flotante y permanecerá en su lugar a menos que se recentre.",
+    "GRABBING_FOLLOW": "Esta superposición seguirá el dispositivo al que está adjunta."
+  },
+  "TOAST": {
+    "DEFAULT_TITLE": "Notificación",
+    "ERROR": "Error",
+    "CANNOT_REMOVE_SET": "¡No se puede eliminar el conjunto!",
+    "NO_SET_SELECTED": "No se ha seleccionado ningún conjunto.",
+    "LAST_EXISTING_SET": "Este es el último conjunto existente.",
+    "EMPTY_SET": "¡Conjunto vacío!",
+    "LETS_ADD_OVERLAYS": "¡Añadamos algunos overlays desde el reloj!",
+    "FIXING_FLOOR": "Fijando el suelo en 5 segundos...",
+    "ONE_CONTROLLER_ON_FLOOR": "¡Coloca un mando en el suelo!"
+  }
 }

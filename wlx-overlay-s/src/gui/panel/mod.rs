@@ -70,7 +70,8 @@ pub type OnCustomIdFunc<S> = Box<
     ) -> anyhow::Result<()>,
 >;
 
-pub type OnCustomAttribFunc = Box<dyn Fn(&mut Layout, &CustomAttribsInfoOwned, &AppState)>;
+pub type OnCustomAttribFunc =
+    Box<dyn Fn(&mut Layout, &ParserState, &CustomAttribsInfoOwned, &AppState)>;
 
 pub struct NewGuiPanelParams<S> {
     pub on_custom_id: Option<OnCustomIdFunc<S>>, // used only in `new_from_template`
@@ -155,7 +156,7 @@ impl<S: 'static> GuiPanel<S> {
             }
 
             if let Some(on_custom_attrib) = &params.on_custom_attrib {
-                on_custom_attrib(&mut layout, elem, app);
+                on_custom_attrib(&mut layout, &parser_state, elem, app);
             }
         }
 

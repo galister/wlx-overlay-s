@@ -43,7 +43,43 @@
       "SPLIT_RIGHT_LEFT": "PRAWO→LEWO",
       "SPLIT_TOP_BOTTOM": "GÓRA→DÓŁ",
       "TITLE": "Tryb stereoskopowy 3D"
+    },
+    "ALIGN_TO_HMD": "Dopasuj do HMD",
+    "MOUSE": {
+      "TITLE": "Naprawa myszy",
+      "WRONG_SCREEN_SELECTION_HELP": "Jeśli kursor porusza się na zupełnie innym ekranie,\nekrany zostały prawdopodobnie nieprawidłowo wybrane. Zobacz dokument README.",
+      "NORMAL": "Normalny",
+      "ROTATE90": "Obrócony o 90°",
+      "ROTATE180": "Obrócony o 180°",
+      "ROTATE270": "Obrócony o 270°",
+      "FLIPPED": "Odwrócony",
+      "FLIP90": "Odwrócony o 90°",
+      "FLIP180": "Odwrócony o 180°",
+      "FLIP270": "Odwrócony o 270°"
     }
   },
-  "DISABLED": "Wyłączone"
+  "DISABLED": "Wyłączone",
+  "DEFAULT": "Domyślny",
+  "GRAB": {
+    "ADJUST_DISTANCE": "Dostosuj odległość",
+    "ADJUST_SIZE": "Dostosuj rozmiar",
+    "UNRESTRICTED_MOVEMENT": "Nieograniczony ruch",
+    "GRABBING_WATCH": "Aby zamienić ręce, przenieś zegarek na przód i chwyć go drugą ręką.",
+    "GRABBING_STATIC": "Ta nakładka jest statyczna i pozostanie na swoim miejscu, ignorując centrowanie.",
+    "GRABBING_ANCHORED": "Przymocowane nakładki poruszają się razem. Aby oddzielić pojedyncze okno, chwyć je drugą ręką, podczas gdy nadal trzymasz kotwicę.",
+    "GRABBING_ANCHORED_EDIT": "Ta nakładka pozostanie zakotwiczona do znacznika centralnego.",
+    "GRABBING_FLOATING": "Ta nakładka jest zawieszony i pozostanie na miejscu, chyba że zostanie wycentrowany.",
+    "GRABBING_FOLLOW": "Ta nakładka będzie śledzić urządzenie, do którego jest dołączona."
+  },
+  "TOAST": {
+    "DEFAULT_TITLE": "Powiadomienie",
+    "ERROR": "Błąd",
+    "CANNOT_REMOVE_SET": "Nie można usunąć zestawu!",
+    "NO_SET_SELECTED": "Nie wybrano żadnego zestawu.",
+    "LAST_EXISTING_SET": "To jest ostatni istniejący zestaw.",
+    "EMPTY_SET": "Pusty zestaw!",
+    "LETS_ADD_OVERLAYS": "Dodajmy kilka nakładek z zegarka!",
+    "FIXING_FLOOR": "Naprawianie podłogi za 5 sekund...",
+    "ONE_CONTROLLER_ON_FLOOR": "Umieść jeden kontroler na podłodze!"
+  }
 }

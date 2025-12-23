@@ -92,9 +92,18 @@ pub struct GeneralConfig {
 	#[serde(default = "def_theme_path")]
 	pub theme_path: Arc<str>,
 
+	pub color_text: Option<String>,
 	pub color_accent: Option<String>,
 	pub color_danger: Option<String>,
 	pub color_faded: Option<String>,
+	pub color_background: Option<String>,
+
+	#[serde(default = "def_one")]
+	pub animation_speed: f32,
+
+	#[serde(default = "def_one")]
+	pub round_multiplier: f32,
+
 	pub default_keymap: Option<String>,
 
 	#[serde(default)]
@@ -111,6 +120,9 @@ pub struct GeneralConfig {
 
 	#[serde(default = "def_one")]
 	pub scroll_speed: f32,
+
+	#[serde(default = "def_one")]
+	pub long_press_duration: f32,
 
 	#[serde(default = "def_mouse_move_interval_ms")]
 	pub mouse_move_interval_ms: u32,
@@ -204,6 +216,9 @@ pub struct GeneralConfig {
 
 	#[serde(default = "def_point3")]
 	pub pointer_lerp_factor: f32,
+
+	#[serde(default = "def_true")]
+	pub space_drag_unlocked: bool,
 
 	#[serde(default = "def_false")]
 	pub space_rotate_unlocked: bool,

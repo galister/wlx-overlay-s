@@ -27,6 +27,7 @@ pub struct FrameMeta {
     pub clear: WGfxClearMode,
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum ShouldRender {
     /// The overlay is dirty and needs to be rendered.
     Should,

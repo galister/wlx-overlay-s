@@ -45,7 +45,43 @@
       "SPLIT_TOP_BOTTOM": "OBEN→UNTEN",
       "SPLIT_BOTTOM_TOP": "UNTEN→OBEN"
     },
-    "STEREO_3D_MODE_": {}
+    "STEREO_3D_MODE_": {},
+    "ALIGN_TO_HMD": "An HMD ausrichten",
+    "MOUSE": {
+      "TITLE": "Mauskorrekturen",
+      "WRONG_SCREEN_SELECTION_HELP": "Wenn der Cursor auf einem völlig anderen Bildschirm verschwindet,\nwurden die Bildschirme wahrscheinlich falsch ausgewählt. Siehe Lesezeichen.",
+      "NORMAL": "Normal",
+      "FLIPPED": "Umgedreht",
+      "FLIP90": "Um 90° gedreht",
+      "FLIP180": "Um 180° gedreht",
+      "FLIP270": "Um 270° gedreht",
+      "ROTATE90": "Um 90° gedreht",
+      "ROTATE180": "Um 180° gedreht",
+      "ROTATE270": "Um 270° gedreht"
+    }
   },
-  "DISABLED": "Deaktiviert"
+  "DISABLED": "Deaktiviert",
+  "DEFAULT": "Standard",
+  "GRAB": {
+    "ADJUST_DISTANCE": "Entfernung anpassen",
+    "ADJUST_SIZE": "Größe anpassen",
+    "UNRESTRICTED_MOVEMENT": "Unbeschränkte Bewegung",
+    "GRABBING_WATCH": "Um die Hände zu vertauschen, bewegen Sie die Uhr vor sich und greifen Sie sie mit der anderen Hand.",
+    "GRABBING_STATIC": "Dieses Overlay ist statisch und bleibt an Ort und Stelle, ignoriert die Neu-Zentrierung.",
+    "GRABBING_ANCHORED": "Festgelegte Overlays bewegen sich alle zusammen. Trennen Sie ein einzelnes Fenster, indem Sie es mit der anderen Hand greifen, während Sie den Anker weiterhin greifen.",
+    "GRABBING_ANCHORED_EDIT": "Diese Overlay-Darstellung bleibt an der Mittelmarkierung verankert.",
+    "GRABBING_FLOATING": "Diese Overlay-Darstellung ist frei schwebend und bleibt an Ort und Stelle, es sei denn, sie wird neu zentriert.",
+    "GRABBING_FOLLOW": "Dieses Overlay wird dem Gerät folgen, an das es angehängt ist."
+  },
+  "TOAST": {
+    "DEFAULT_TITLE": "Benachrichtigung",
+    "ERROR": "Fehler",
+    "CANNOT_REMOVE_SET": "Satz kann nicht entfernt werden!",
+    "NO_SET_SELECTED": "Kein Set ausgewählt.",
+    "LAST_EXISTING_SET": "Dies ist das letzte vorhandene Set.",
+    "EMPTY_SET": "Leeres Set!",
+    "LETS_ADD_OVERLAYS": "Lass uns ein paar Overlays von der Uhr hinzufügen!",
+    "FIXING_FLOOR": "Boden wird in 5 Sekunden fixiert...",
+    "ONE_CONTROLLER_ON_FLOOR": "Lege einen Controller auf den Boden!"
+  }
 }

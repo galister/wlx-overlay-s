@@ -215,6 +215,7 @@ impl OverlayBackend for ScreenBackend {
                 Ok(ShouldRender::Can)
             }
         } else {
+            log::trace!("{}: backend ready, but no image received.", self.name);
             Ok(ShouldRender::Unable)
         }
     }

@@ -97,6 +97,7 @@ uuid = { version = "1.19.0", features = ["v4", "fast-rng"], optional = true }
 wayland-client = { workspace = true, optional = true }
 wayland-egl = { version = "0.32.8", optional = true }
 bytes = { version = "1.11.0", optional = true }
+wayvr-ipc = { path = "../wayvr-ipc", default-features = false, optional = true }
 rust-embed = { workspace = true }
 signal-hook = "0.3.18"
 ################################
@@ -121,5 +122,6 @@ wayvr = [
   "dep:wayland-client",
   "dep:wayland-egl",
   "dep:bytes",
+  "dep:wayvr-ipc",
 ]
 as-raw-xcb-connection = []

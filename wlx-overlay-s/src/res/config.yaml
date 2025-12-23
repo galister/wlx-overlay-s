@@ -28,8 +28,12 @@
 ## How fast to drag when the space drag feature is activated
 #space_drag_multiplier: 1.0
 
-## When enabled, the space_rotate binding can be used
-## to rotate in any axis. Imagine horizon mode².
+## Setting this to false will make space_drag
+## only affect the vertical axis (Y).
+#space_drag_unlocked: true
+
+## Monado/WiVRn only. When enabled, the space_rotate binding
+## can rotate in any axis. Imagine horizon mode².
 #space_rotate_unlocked: false
 
 ## Monado/WiVRn only. Use passthrough camera if the headset supports it.
@@ -87,9 +91,17 @@
 #theme_path: "theme"
 
 ## These can be used to control the color theme of WlxOverlay-S.
+#color_text: "#ffffff"
 #color_accent: "#008cff"
 #color_danger: "#ff3300"
 #color_faded: "#668299"
+#color_background: "#010206"
+
+## Multiplier for animation speed. 2.0 → double speed, 0.5 → half speed
+#animation_speed: 1.0
+
+## Adjust this between 0..1 for a more rectangular feel.
+#round_multiplier: 1.0
 
 ## Path to custom skybox texture, relative to `~/.config/wlxoverlay`
 #skybox_texture: ""
@@ -162,6 +174,10 @@
 ## when using OpenXR (WiVRn, Monado)
 #xr_click_sensitivity: 0.7
 #xr_click_sensitivity_release: 0.5
+
+## How many seconds to buttons need to be held
+## before it's considered a long press
+#long_press_duration: 1.0
 
 ## Change speed of scrolling
 # 0.5 → half the speed

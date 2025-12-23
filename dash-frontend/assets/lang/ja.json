@@ -16,14 +16,14 @@
     "HEADSET_SETTINGS": "ヘッドセット設定",
     "BRIGHTNESS": "明るさ",
     "WLX": {
-      "NOTIFICATIONS_ENABLED": "通知が有効",
-      "NOTIFICATIONS_SOUND_ENABLED": "通知音を有効にする",
-      "KEYBOARD_SOUND_ENABLED": "キーボード音を有効にする",
+      "NOTIFICATIONS_ENABLED": "通知",
+      "NOTIFICATIONS_SOUND_ENABLED": "通知音",
+      "KEYBOARD_SOUND_ENABLED": "キーボード音",
       "BLOCK_GAME_INPUT": "ゲーム入力をブロック",
       "SPACE_DRAG_MULTIPLIER": "スペースドラッグ乗数",
-      "SPACE_DRAG_ROTATION_ENABLED": "スペースドラッグでの回転を有効にする",
-      "SHOW_SKYBOX": "スカイボックスを表示",
-      "ENABLE_PASSTHROUGH": "Passthroughを有効にする"
+      "SPACE_DRAG_ROTATION_ENABLED": "スペースドラッグでの回転",
+      "SHOW_SKYBOX": "スカイボックス",
+      "ENABLE_PASSTHROUGH": "パススルー"
     },
     "RESTART_SOFTWARE": "ソフトウェアを再起動"
   },

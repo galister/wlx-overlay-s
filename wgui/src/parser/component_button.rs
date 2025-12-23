@@ -1,13 +1,13 @@
 use crate::{
 	assets::AssetPath,
-	components::{Component, button, tooltip},
+	components::{button, tooltip, Component},
 	drawing::Color,
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		AttribPair, ParserContext, ParserFile, parse_check_f32, parse_check_i32, parse_children, print_invalid_attrib,
-		process_component,
+		parse_check_f32, parse_check_i32, parse_children, parse_f32, print_invalid_attrib, process_component,
 		style::{parse_color_opt, parse_round, parse_style, parse_text_style},
+		AttribPair, ParserContext, ParserFile,
 	},
 	widget::util::WLength,
 };
@@ -28,6 +28,7 @@ pub fn parse_component_button<'a>(
 	let mut tooltip: Option<String> = None;
 	let mut tooltip_side: Option<tooltip::TooltipSide> = None;
 	let mut sticky: bool = false;
+	let mut long_press_time = 0.0;
 	let mut sprite_src: Option<AssetPath> = None;
 
 	let mut translation: Option<Translation> = None;
@@ -45,7 +46,7 @@ pub fn parse_component_button<'a>(
 				translation = Some(Translation::from_translation_key(value));
 			}
 			"round" => {
-				parse_round(value, &mut round);
+				parse_round(value, &mut round, ctx.doc_params.globals.get().defaults.rounding_mult);
 			}
 			"color" => {
 				parse_color_opt(value, &mut color);
@@ -92,6 +93,9 @@ pub fn parse_component_button<'a>(
 				let mut sticky_i32 = 0;
 				sticky = parse_check_i32(value, &mut sticky_i32) && sticky_i32 == 1;
 			}
+			"long_press_time" => {
+				long_press_time = parse_f32(value).unwrap_or(long_press_time);
+			}
 			_ => {}
 		}
 	}
@@ -113,6 +117,7 @@ pub fn parse_component_button<'a>(
 				text: Translation::from_translation_key(&t),
 			}),
 			sticky,
+			long_press_time,
 			sprite_src,
 		},
 	)?;

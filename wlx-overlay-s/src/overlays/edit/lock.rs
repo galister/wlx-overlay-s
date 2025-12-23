@@ -1,7 +1,10 @@
+use std::rc::Rc;
+
 use anyhow::Context;
 use glam::FloatExt;
 use wgui::{
     animation::{Animation, AnimationEasing},
+    components::button::ComponentButton,
     event::CallbackDataCommon,
     layout::WidgetID,
     parser::Fetchable,
@@ -15,6 +18,7 @@ pub(super) struct InteractLockHandler {
     id: WidgetID,
     color: wgui::drawing::Color,
     interactable: bool,
+    button: Option<Rc<ComponentButton>>,
 }
 
 impl InteractLockHandler {
@@ -27,10 +31,13 @@ impl InteractLockHandler {
             .get_as::<WidgetRectangle>(id)
             .context("Element with id=\"shadow\" must be a <rectangle>")?;
 
+        let button = panel.parser_state.fetch_component_as("top_lock")?;
+
         Ok(Self {
             id,
             color: shadow_rect.params.color,
             interactable: true,
+            button: Some(button),
         })
     }
 
@@ -41,6 +48,10 @@ impl InteractLockHandler {
             .widgets
             .get_as::<WidgetRectangle>(self.id)
             .unwrap(); // can only fail if set_up_rect has issues
+
+        if let Some(button) = self.button.as_ref() {
+            button.set_sticky_state(common, !interactable);
+        }
 
         let globals = common.state.globals.get();
         if interactable {
@@ -54,16 +65,20 @@ impl InteractLockHandler {
         &mut self,
         common: &mut CallbackDataCommon,
         app: &mut AppState,
+        anim_mult: f32,
     ) -> Box<ModifyOverlayTask> {
         let defaults = app.wgui_globals.get().defaults.clone();
         let rect_color = self.color;
 
         self.interactable = !self.interactable;
+        if let Some(button) = self.button.as_ref() {
+            button.set_sticky_state(common, !self.interactable);
+        }
 
         let anim = if self.interactable {
             Animation::new(
                 self.id,
-                10,
+                (10. * anim_mult) as _,
                 AnimationEasing::OutQuad,
                 Box::new(move |common, data| {
                     let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
@@ -79,7 +94,7 @@ impl InteractLockHandler {
         } else {
             Animation::new(
                 self.id,
-                10,
+                (10. * anim_mult) as _,
                 AnimationEasing::OutBack,
                 Box::new(move |common, data| {
                     let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();

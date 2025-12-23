@@ -39,12 +39,12 @@
 			"WRONG_SCREEN_SELECTION_HELP": "If the cursor moves on a completely different screen,\nthe screens were likely selected wrong. See readme.",
 			"NORMAL": "Normal",
 			"ROTATE90": "Rotated 90°",
-			"ROTATE180": "Rotated 170°",
+			"ROTATE180": "Rotated 180°",
 			"ROTATE270": "Rotated 270°",
 			"FLIPPED": "Flipped",
-			"ROTATE90": "Flipped 90°",
-			"ROTATE180": "Flipped 170°",
-			"ROTATE270": "Flipped 270°"
+			"FLIP90": "Flipped 90°",
+			"FLIP180": "Flipped 180°",
+			"FLIP270": "Flipped 270°"
 		}
 	},
 	"GRAB": {
@@ -57,6 +57,17 @@
 		"GRABBING_ANCHORED_EDIT": "This overlay will stay anchored to the center marker.",
 		"GRABBING_FLOATING": "This overlay is Floating and will stay in place, unless recentered.",
 		"GRABBING_FOLLOW": "This overlay will follow the device it is attached to."
+	},
+	"TOAST": {
+		"DEFAULT_TITLE": "Notification",
+		"ERROR": "Error",
+		"CANNOT_REMOVE_SET": "Cannot remove set!",
+		"NO_SET_SELECTED": "No set is selected.",
+		"LAST_EXISTING_SET": "This is the last existing set.",
+		"EMPTY_SET": "Empty set!",
+		"LETS_ADD_OVERLAYS": "Let's add some overlays from the watch!",
+		"FIXING_FLOOR": "Fixing floor in 5 seconds...",
+		"ONE_CONTROLLER_ON_FLOOR": "Place one controller on the floor!"
 	},
 	"WATCH": {
 		"ADD_NEW_SET": "Add a new set",

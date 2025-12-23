@@ -18,11 +18,11 @@ use crate::{
 		util,
 	},
 	widget::{
-		ConstructEssentials, EventResult,
 		div::WidgetDiv,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
+		ConstructEssentials, EventResult,
 	},
 };
 
@@ -266,10 +266,10 @@ fn anim_rect(rect: &mut WidgetRectangle, pos: f32) {
 	rect.params.border_color = drawing::Color::lerp(&HANDLE_BORDER_COLOR, &HANDLE_BORDER_COLOR_HOVERED, pos);
 }
 
-fn on_enter_anim(common: &mut event::CallbackDataCommon, handle_id: WidgetID) {
+fn on_enter_anim(common: &mut event::CallbackDataCommon, handle_id: WidgetID, anim_mult: f32) {
 	common.alterables.animate(Animation::new(
 		handle_id,
-		20,
+		(20. * anim_mult) as _,
 		AnimationEasing::OutBack,
 		Box::new(move |common, data| {
 			let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
@@ -280,10 +280,10 @@ fn on_enter_anim(common: &mut event::CallbackDataCommon, handle_id: WidgetID) {
 	));
 }
 
-fn on_leave_anim(common: &mut event::CallbackDataCommon, handle_id: WidgetID) {
+fn on_leave_anim(common: &mut event::CallbackDataCommon, handle_id: WidgetID, anim_mult: f32) {
 	common.alterables.animate(Animation::new(
 		handle_id,
-		10,
+		(10. * anim_mult) as _,
 		AnimationEasing::OutQuad,
 		Box::new(move |common, data| {
 			let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
@@ -298,13 +298,14 @@ fn register_event_mouse_enter(
 	data: Rc<Data>,
 	state: Rc<RefCell<State>>,
 	listeners: &mut EventListenerCollection,
+	anim_mult: f32,
 ) -> event::EventListenerID {
 	listeners.register(
 		EventListenerKind::MouseEnter,
 		Box::new(move |common, _data, (), ()| {
 			common.alterables.trigger_haptics();
 			state.borrow_mut().hovered = true;
-			on_enter_anim(common, data.slider_handle_rect_id);
+			on_enter_anim(common, data.slider_handle_rect_id, anim_mult);
 			Ok(EventResult::Pass)
 		}),
 	)
@@ -314,13 +315,14 @@ fn register_event_mouse_leave(
 	data: Rc<Data>,
 	state: Rc<RefCell<State>>,
 	listeners: &mut EventListenerCollection,
+	anim_mult: f32,
 ) -> event::EventListenerID {
 	listeners.register(
 		EventListenerKind::MouseLeave,
 		Box::new(move |common, _data, (), ()| {
 			common.alterables.trigger_haptics();
 			state.borrow_mut().hovered = false;
-			on_leave_anim(common, data.slider_handle_rect_id);
+			on_leave_anim(common, data.slider_handle_rect_id, anim_mult);
 			Ok(EventResult::Pass)
 		}),
 	)
@@ -508,12 +510,12 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		id: root.id,
 		lhandles: {
 			let mut widget = ess.layout.state.widgets.get(body_id).unwrap().state();
+			let anim_mult = ess.layout.state.globals.defaults().animation_mult;
 			vec![
-				register_event_mouse_enter(data.clone(), state.clone(), &mut widget.event_listeners),
-				register_event_mouse_leave(data.clone(), state.clone(), &mut widget.event_listeners),
+				register_event_mouse_enter(data.clone(), state.clone(), &mut widget.event_listeners, anim_mult),
+				register_event_mouse_leave(data.clone(), state.clone(), &mut widget.event_listeners, anim_mult),
 				register_event_mouse_motion(data.clone(), state.clone(), &mut widget.event_listeners),
 				register_event_mouse_press(data.clone(), state.clone(), &mut widget.event_listeners),
-				register_event_mouse_leave(data.clone(), state.clone(), &mut widget.event_listeners),
 				register_event_mouse_release(state.clone(), &mut widget.event_listeners),
 			]
 		},

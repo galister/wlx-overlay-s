@@ -47,12 +47,14 @@ use crate::frame::Transform;
 use crate::frame::WlxFrame;
 use crate::frame::{DmabufFrame, FramePlane, MemFdFrame, MemPtrFrame};
 
+#[derive(Debug, Clone)]
 pub struct PipewireStream {
     pub node_id: u32,
     pub position: Option<(i32, i32)>,
     pub size: Option<(i32, i32)>,
 }
 
+#[derive(Debug, Clone)]
 pub struct PipewireSelectScreenResult {
     pub streams: Vec<PipewireStream>,
     pub restore_token: Option<String>,
@@ -279,6 +281,7 @@ where
     U: Any,
     R: Any,
 {
+    log::debug!("{}: pipewire main_loop start", &name);
     let main_loop = MainLoop::new(None)?;
     let context = Context::new(&main_loop)?;
     let core = context.connect(None)?;

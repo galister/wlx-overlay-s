@@ -4,7 +4,7 @@ cd "$(dirname "$0")"
 
 bun install
 
-export MODEL="gemma3:12b"
+export MODEL="gemma3:27b"
 
 TEMPLATE="pl" bun main.ts
 TEMPLATE="de" bun main.ts

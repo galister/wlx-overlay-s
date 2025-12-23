@@ -22,7 +22,11 @@ use crate::{
 	},
 };
 use glam::{Mat4, Vec3};
-use std::{cell::RefCell, rc::Rc};
+use std::{
+	cell::RefCell,
+	rc::Rc,
+	time::{Duration, Instant},
+};
 use taffy::{AlignItems, JustifyContent, prelude::length};
 
 pub struct Params<'a> {
@@ -41,6 +45,7 @@ pub struct Params<'a> {
 	/// until "un-clicked". this is visual only.
 	/// set the initial state using `set_sticky_state`
 	pub sticky: bool,
+	pub long_press_time: f32,
 }
 
 impl Default for Params<'_> {
@@ -58,6 +63,7 @@ impl Default for Params<'_> {
 			text_style: TextStyle::default(),
 			tooltip: None,
 			sticky: false,
+			long_press_time: 0.0,
 		}
 	}
 }
@@ -79,6 +85,7 @@ struct State {
 	on_click: Option<ButtonClickCallback>,
 	active_tooltip: Option<Rc<ComponentTooltip>>,
 	colors: Colors,
+	last_pressed: Instant,
 }
 
 struct Data {
@@ -151,6 +158,10 @@ impl ComponentButton {
 		rect.params.color2 = get_color2(&color);
 	}
 
+	pub fn get_time_since_last_pressed(&self) -> Duration {
+		self.state.borrow().last_pressed.elapsed()
+	}
+
 	pub fn on_click(&self, func: ButtonClickCallback) {
 		self.state.borrow_mut().on_click = Some(func);
 	}
@@ -170,10 +181,13 @@ impl ComponentButton {
 			return;
 		}
 
+		let anim_mult = common.state.globals.defaults().animation_mult;
+		let anim_ticks = if sticky_down { 5. } else { 10. };
+
 		let state = self.state.clone();
 		let anim = Animation::new(
 			self.data.id_rect,
-			if sticky_down { 5 } else { 10 },
+			(anim_ticks * anim_mult) as _,
 			AnimationEasing::OutCubic,
 			Box::new(move |common, anim_data| {
 				let rect = anim_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
@@ -227,10 +241,10 @@ fn anim_hover(
 	rect.params.border_color = init_border_color.lerp(&colors.hover_border_color, mult);
 }
 
-fn anim_hover_create(state: Rc<RefCell<State>>, widget_id: WidgetID, fade_in: bool) -> Animation {
+fn anim_hover_create(state: Rc<RefCell<State>>, widget_id: WidgetID, fade_in: bool, anim_mult: f32) -> Animation {
 	Animation::new(
 		widget_id,
-		if fade_in { 5 } else { 10 },
+		((if fade_in { 5. } else { 10. }) * anim_mult) as _,
 		AnimationEasing::OutCubic,
 		Box::new(move |common, anim_data| {
 			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
@@ -254,6 +268,7 @@ fn register_event_mouse_enter(
 	state: Rc<RefCell<State>>,
 	listeners: &mut EventListenerCollection,
 	info: Option<components::tooltip::TooltipInfo>,
+	anim_mult: f32,
 ) -> EventListenerID {
 	listeners.register(
 		EventListenerKind::MouseEnter,
@@ -262,7 +277,7 @@ fn register_event_mouse_enter(
 			common.alterables.mark_redraw();
 			common
 				.alterables
-				.animate(anim_hover_create(state.clone(), event_data.widget_id, true));
+				.animate(anim_hover_create(state.clone(), event_data.widget_id, true, anim_mult));
 
 			if let Some(info) = info.clone() {
 				common.alterables.tasks.push(LayoutTask::ModifyLayoutState({
@@ -282,14 +297,18 @@ fn register_event_mouse_enter(
 	)
 }
 
-fn register_event_mouse_leave(state: Rc<RefCell<State>>, listeners: &mut EventListenerCollection) -> EventListenerID {
+fn register_event_mouse_leave(
+	state: Rc<RefCell<State>>,
+	listeners: &mut EventListenerCollection,
+	anim_mult: f32,
+) -> EventListenerID {
 	listeners.register(
 		EventListenerKind::MouseLeave,
 		Box::new(move |common, event_data, (), ()| {
 			common.alterables.trigger_haptics();
 			common
 				.alterables
-				.animate(anim_hover_create(state.clone(), event_data.widget_id, false));
+				.animate(anim_hover_create(state.clone(), event_data.widget_id, false, anim_mult));
 			let mut state = state.borrow_mut();
 			state.active_tooltip = None;
 			state.hovered = false;
@@ -320,7 +339,7 @@ fn register_event_mouse_press(state: Rc<RefCell<State>>, listeners: &mut EventLi
 
 			if state.hovered {
 				state.down = true;
-				state.active_tooltip = None;
+				state.last_pressed = Instant::now();
 				Ok(EventResult::Consumed)
 			} else {
 				Ok(EventResult::Pass)
@@ -349,7 +368,6 @@ fn register_event_mouse_release(
 
 			if state.down {
 				state.down = false;
-
 				if state.hovered
 					&& let Some(on_click) = &state.on_click
 				{
@@ -503,6 +521,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		on_click: None,
 		active_tooltip: None,
 		sticky_down: false,
+		last_pressed: Instant::now(),
 		colors: Colors {
 			color,
 			border_color,
@@ -515,9 +534,16 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		id: root.id,
 		lhandles: {
 			let mut widget = ess.layout.state.widgets.get(id_rect).unwrap().state();
+			let anim_mult = ess.layout.state.globals.defaults().animation_mult;
 			vec![
-				register_event_mouse_enter(data.clone(), state.clone(), &mut widget.event_listeners, params.tooltip),
-				register_event_mouse_leave(state.clone(), &mut widget.event_listeners),
+				register_event_mouse_enter(
+					data.clone(),
+					state.clone(),
+					&mut widget.event_listeners,
+					params.tooltip,
+					anim_mult,
+				),
+				register_event_mouse_leave(state.clone(), &mut widget.event_listeners, anim_mult),
 				register_event_mouse_press(state.clone(), &mut widget.event_listeners),
 				register_event_mouse_release(data.clone(), state.clone(), &mut widget.event_listeners),
 			]
