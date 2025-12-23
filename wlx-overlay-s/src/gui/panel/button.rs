@@ -10,10 +10,7 @@ use std::{
 use anyhow::Context;
 use wgui::{
     components::button::ComponentButton,
-    event::{
-        self, CallbackData, CallbackMetadata, EventCallback, EventListenerKind, MouseButtonIndex,
-    },
-    i18n::Translation,
+    event::{CallbackData, CallbackMetadata, EventCallback, EventListenerKind, MouseButtonIndex},
     layout::Layout,
     parser::CustomAttribsInfoOwned,
     widget::EventResult,
@@ -23,7 +20,6 @@ use wlx_common::overlays::ToastTopic;
 use crate::{
     RUNNING,
     backend::task::{OverlayTask, PlayspaceTask, TaskType},
-    gui::panel::helper::PipeReaderThread,
     overlays::toast::Toast,
     state::AppState,
     subsystem::hid::VirtualKey,
