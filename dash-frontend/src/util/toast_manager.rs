@@ -9,12 +9,12 @@ use wgui::{
 	i18n::Translation,
 	layout::{Layout, LayoutTask, LayoutTasks, WidgetID},
 	renderer_vk::{
-		text::{FontWeight, TextStyle},
+		text::{FontWeight, HorizontalAlign, TextStyle},
 		util::centered_matrix,
 	},
 	taffy::{
 		self,
-		prelude::{length, percent},
+		prelude::{auto, length, percent},
 	},
 	widget::{
 		div::WidgetDiv,
@@ -102,6 +102,10 @@ impl ToastManager {
 					top: length(8.0),
 					bottom: length(8.0),
 				},
+				max_size: taffy::Size {
+					width: length(400.0),
+					height: auto(),
+				},
 				..Default::default()
 			},
 		)?;
@@ -114,6 +118,8 @@ impl ToastManager {
 					content,
 					style: TextStyle {
 						weight: Some(FontWeight::Bold),
+						align: Some(HorizontalAlign::Center),
+						wrap: true,
 						..Default::default()
 					},
 				},

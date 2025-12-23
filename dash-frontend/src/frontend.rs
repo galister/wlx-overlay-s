@@ -13,10 +13,7 @@ use wgui::{
 	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
 	windowing::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra, WguiWindowPlacement},
 };
-use wlx_common::{
-	dash_interface::{self, BoxDashInterface},
-	timestep::Timestep,
-};
+use wlx_common::{dash_interface::BoxDashInterface, timestep::Timestep};
 
 use crate::{
 	assets, settings,
@@ -173,8 +170,6 @@ impl Frontend {
 			let mut layout = self.layout.borrow_mut();
 
 			tab.update(TabUpdateParams {
-				globals: &self.globals,
-				frontend_tasks: &self.tasks,
 				layout: &mut layout,
 				interface: &mut self.interface,
 			})?;

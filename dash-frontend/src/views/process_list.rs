@@ -22,7 +22,6 @@ use wgui::{
 use wlx_common::dash_interface::BoxDashInterface;
 
 use crate::{
-	frontend::FrontendTasks,
 	task::Tasks,
 	util::{
 		self,
@@ -39,7 +38,6 @@ enum Task {
 
 pub struct Params<'a> {
 	pub globals: WguiGlobals,
-	pub frontend_tasks: FrontendTasks,
 	pub layout: &'a mut Layout,
 	pub parent_id: WidgetID,
 }
@@ -48,7 +46,6 @@ pub struct View {
 	#[allow(dead_code)]
 	pub parser_state: ParserState,
 	tasks: Tasks<Task>,
-	frontend_tasks: FrontendTasks,
 	globals: WguiGlobals,
 	id_list_parent: WidgetID,
 }
@@ -71,7 +68,6 @@ impl View {
 		Ok(Self {
 			parser_state,
 			tasks,
-			frontend_tasks: params.frontend_tasks,
 			globals: params.globals,
 			id_list_parent: list_parent.id,
 		})

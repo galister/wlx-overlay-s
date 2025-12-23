@@ -393,7 +393,7 @@ fn register_event_mouse_release(
 
 #[allow(clippy::too_many_lines)]
 pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Result<(WidgetPair, Rc<ComponentButton>)> {
-	let mut globals = ess.layout.state.globals.clone();
+	let globals = ess.layout.state.globals.clone();
 	let mut style = params.style;
 
 	// force-override style

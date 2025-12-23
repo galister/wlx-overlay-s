@@ -39,11 +39,11 @@ impl WidgetSprite {
 		)
 	}
 
-	pub fn set_color(&mut self, color: drawing::Color) {
+	pub const fn set_color(&mut self, color: drawing::Color) {
 		self.params.color = Some(color);
 	}
 
-	pub fn get_color(&self) -> Option<drawing::Color> {
+	pub const fn get_color(&self) -> Option<drawing::Color> {
 		self.params.color
 	}
 

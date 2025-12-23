@@ -83,6 +83,12 @@ impl DashInterfaceEmulated {
 	}
 }
 
+impl Default for DashInterfaceEmulated {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl DashInterface for DashInterfaceEmulated {
 	fn display_create(&mut self, params: WvrDisplayCreateParams) -> anyhow::Result<WvrDisplayHandle> {
 		let res = self.displays.add(EmuDisplay {
@@ -108,10 +114,16 @@ impl DashInterface for DashInterfaceEmulated {
 		Ok(self.displays.iter().map(|(handle, disp)| disp.to(handle)).collect())
 	}
 
-	fn display_remove(&mut self, handle: WvrDisplayHandle) -> anyhow::Result<()> {
-		self
-			.displays
-			.remove(&EmuDisplayHandle::new(handle.idx, handle.generation));
+	fn display_remove(&mut self, wvr_handle: WvrDisplayHandle) -> anyhow::Result<()> {
+		let handle = EmuDisplayHandle::new(wvr_handle.idx, wvr_handle.generation);
+
+		for (_, process) in self.processes.iter() {
+			if process.display_handle == wvr_handle {
+				anyhow::bail!("Cannot remove display: stop {} process first.", process.name);
+			}
+		}
+
+		self.displays.remove(&handle);
 		Ok(())
 	}
 

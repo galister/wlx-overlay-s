@@ -33,8 +33,6 @@ pub struct TabParams<'a> {
 }
 
 pub struct TabUpdateParams<'a> {
-	pub globals: &'a WguiGlobals,
-	pub frontend_tasks: &'a FrontendTasks,
 	pub layout: &'a mut Layout,
 	pub interface: &'a mut BoxDashInterface,
 }

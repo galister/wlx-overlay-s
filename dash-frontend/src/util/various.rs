@@ -17,6 +17,8 @@ use wlx_common::dash_interface::BoxDashInterface;
 
 use crate::util::desktop_finder;
 
+// the compiler wants to scream
+#[allow(irrefutable_let_patterns)]
 pub fn get_desktop_file_icon_path(desktop_file: &desktop_finder::DesktopFile) -> AssetPathOwned {
 	/*
 		FIXME: why is the compiler complaining about trailing irrefutable patterns there?!?!

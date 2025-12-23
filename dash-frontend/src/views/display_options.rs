@@ -1,19 +1,15 @@
 use std::rc::Rc;
-
-use anyhow::Context;
 use wayvr_ipc::packet_server;
 use wgui::{
 	assets::AssetPath,
-	components::{button::ComponentButton, checkbox::ComponentCheckbox, slider::ComponentSlider},
-	event::StyleSetRequest,
+	components::button::ComponentButton,
 	globals::WguiGlobals,
 	i18n::Translation,
 	layout::{Layout, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
-	taffy::prelude::length,
-	widget::{ConstructEssentials, label::WidgetLabel, rectangle::WidgetRectangle},
+	widget::ConstructEssentials,
 };
-use wlx_common::dash_interface::{self, BoxDashInterface};
+use wlx_common::dash_interface::BoxDashInterface;
 
 use crate::{
 	frontend::{FrontendTask, FrontendTasks},
@@ -91,7 +87,7 @@ impl View {
 		})
 	}
 
-	pub fn update(&mut self, layout: &mut Layout, interface: &mut BoxDashInterface) -> anyhow::Result<()> {
+	pub fn update(&mut self, _layout: &mut Layout, interface: &mut BoxDashInterface) -> anyhow::Result<()> {
 		for task in self.tasks.drain() {
 			match task {
 				Task::SetVisible(v) => self.action_set_visible(interface, v),

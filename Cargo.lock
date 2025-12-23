@@ -6376,6 +6376,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "wayvr_ipc"
+version = "0.1.0"
+source = "git+https://github.com/olekolek1000/wayvr-ipc.git?rev=6d253ef9e36db0f181566030a4990454ecb60395#6d253ef9e36db0f181566030a4990454ecb60395"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "log",
+ "serde",
+ "serde_json",
+ "smallvec",
+]
+
+[[package]]
 name = "web-sys"
 version = "0.3.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7042,6 +7055,7 @@ dependencies = [
  "wayland-client",
  "wayland-egl",
  "wayvr-ipc",
+ "wayvr_ipc",
  "wgui",
  "winit",
  "wlx-capture",

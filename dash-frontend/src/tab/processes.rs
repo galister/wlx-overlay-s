@@ -51,7 +51,6 @@ impl TabProcesses {
 				layout: params.layout,
 				parent_id: state.get_widget_id("process_list_parent")?,
 				globals: params.globals.clone(),
-				frontend_tasks: params.frontend_tasks.clone(),
 			})?,
 			state,
 		})

@@ -9,7 +9,7 @@ use wgui::{
 };
 
 use crate::{
-	frontend::{Frontend, FrontendTask},
+	frontend::FrontendTask,
 	settings,
 	tab::{Tab, TabParams, TabType},
 	various,
