@@ -17,6 +17,7 @@ members = [
   "wlx-overlay-s",
   "wlx-capture",
   "dash-frontend",
+  "wayvr-ipc",
 ]
 resolver = "3"
 
