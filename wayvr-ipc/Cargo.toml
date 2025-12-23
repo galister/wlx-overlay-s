@@ -12,7 +12,7 @@ log = "0.4.22"
 
 # client-only deps
 interprocess = { version = "2.2.2", features = ["tokio"], optional = true }
-tokio = { version = "1.42.0", features = ["macros"], optional = true }
+tokio = { version = "1.43.1", features = ["macros"], optional = true }
 tokio-util = { version = "0.7.13", optional = true }
 serde_json = "1.0.135"
 
