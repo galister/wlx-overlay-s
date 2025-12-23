@@ -50,6 +50,10 @@ impl WidgetSprite {
 	}
 
 	pub fn set_content(&mut self, common: &mut CallbackDataCommon, content: Option<CustomGlyphData>) {
+		if self.params.glyph_data == content {
+			return;
+		}
+
 		self.params.glyph_data = content;
 		common.mark_widget_dirty(self.id);
 	}

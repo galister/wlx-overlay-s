@@ -2,21 +2,22 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use cosmic_text::Buffer;
 use glam::{Mat4, Vec2, Vec3};
-use slotmap::{SlotMap, new_key_type};
+use slotmap::{new_key_type, SlotMap};
 use vulkano::pipeline::graphics::viewport;
 
 use crate::{
 	drawing::{self},
 	font_config,
-	gfx::{WGfx, cmd::GfxCommandBuffer},
+	gfx::{cmd::GfxCommandBuffer, WGfx},
+	renderer_vk::image::{ImagePipeline, ImageRenderer},
 };
 
 use super::{
 	rect::{RectPipeline, RectRenderer},
 	text::{
-		DEFAULT_METRICS, SWASH_CACHE, TextArea, TextBounds,
 		text_atlas::{TextAtlas, TextPipeline},
 		text_renderer::TextRenderer,
+		TextArea, TextBounds, DEFAULT_METRICS, SWASH_CACHE,
 	},
 	viewport::Viewport,
 };
@@ -26,6 +27,7 @@ struct RendererPass<'a> {
 	text_areas: Vec<TextArea<'a>>,
 	text_renderer: TextRenderer,
 	rect_renderer: RectRenderer,
+	image_renderer: ImageRenderer,
 	scissor: Option<drawing::Boundary>,
 	pixel_scale: f32,
 }
@@ -34,16 +36,19 @@ impl RendererPass<'_> {
 	fn new(
 		text_atlas: &mut TextAtlas,
 		rect_pipeline: RectPipeline,
+		image_pipeline: ImagePipeline,
 		scissor: Option<drawing::Boundary>,
 		pixel_scale: f32,
 	) -> anyhow::Result<Self> {
 		let text_renderer = TextRenderer::new(text_atlas)?;
 		let rect_renderer = RectRenderer::new(rect_pipeline)?;
+		let image_renderer = ImageRenderer::new(image_pipeline)?;
 
 		Ok(Self {
 			submitted: false,
 			text_renderer,
 			rect_renderer,
+			image_renderer,
 			text_areas: Vec::new(),
 			scissor,
 			pixel_scale,
@@ -90,6 +95,7 @@ impl RendererPass<'_> {
 
 		self.submitted = true;
 		self.rect_renderer.render(gfx, viewport, &vk_scissor, cmd_buf)?;
+		self.image_renderer.render(gfx, viewport, &vk_scissor, cmd_buf)?;
 
 		{
 			let mut font_system = font_system.system.lock();
@@ -119,18 +125,21 @@ pub struct SharedContext {
 	atlas_map: SlotMap<SharedContextKey, SharedAtlas>,
 	rect_pipeline: RectPipeline,
 	text_pipeline: TextPipeline,
+	image_pipeline: ImagePipeline,
 }
 
 impl SharedContext {
 	pub fn new(gfx: Arc<WGfx>) -> anyhow::Result<Self> {
 		let rect_pipeline = RectPipeline::new(gfx.clone(), gfx.surface_format)?;
 		let text_pipeline = TextPipeline::new(gfx.clone(), gfx.surface_format)?;
+		let image_pipeline = ImagePipeline::new(gfx.clone(), gfx.surface_format)?;
 
 		Ok(Self {
 			gfx,
 			atlas_map: SlotMap::with_key(),
 			rect_pipeline,
 			text_pipeline,
+			image_pipeline,
 		})
 	}
 
@@ -237,6 +246,7 @@ impl Context {
 				passes.push(RendererPass::new(
 					&mut atlas.text_atlas,
 					shared.rect_pipeline.clone(),
+					shared.image_pipeline.clone(),
 					next_scissor,
 					self.pixel_scale,
 				)?);
@@ -292,6 +302,11 @@ impl Context {
 						override_color: None,
 						transform: extent.transform,
 					});
+				}
+				drawing::RenderPrimitive::Image(extent, image) => {
+					pass
+						.image_renderer
+						.add_image(extent.boundary, image.clone(), &extent.transform);
 				}
 				drawing::RenderPrimitive::ScissorSet(boundary) => {
 					next_scissor = Some(boundary.0);

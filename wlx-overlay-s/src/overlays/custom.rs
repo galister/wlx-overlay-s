@@ -9,7 +9,9 @@ use wgui::{
     parser::{Fetchable, parse_color_hex},
     renderer_vk::text::custom_glyph::{CustomGlyphContent, CustomGlyphData},
     taffy,
-    widget::{label::WidgetLabel, rectangle::WidgetRectangle, sprite::WidgetSprite},
+    widget::{
+        image::WidgetImage, label::WidgetLabel, rectangle::WidgetRectangle, sprite::WidgetSprite,
+    },
 };
 use wlx_common::windowing::OverlayWindowState;
 
@@ -111,23 +113,26 @@ fn apply_custom_command(
             }
         }
         ModifyPanelCommand::SetSprite(path) => {
-            let mut widget = panel
+            if let Ok(pair) = panel
                 .parser_state
-                .fetch_widget_as::<WidgetSprite>(&panel.layout.state, element)
-                .context("No <sprite> with such id.")?;
-
-            if path == "none" {
-                widget.set_content(&mut com, None);
-            } else {
+                .fetch_widget(&panel.layout.state, element)
+            {
                 let content = CustomGlyphContent::from_assets(
                     &mut app.wgui_globals,
                     wgui::assets::AssetPath::File(&path),
                 )
                 .context("Could not load content from supplied path.")?;
-
                 let data = CustomGlyphData::new(content);
 
-                widget.set_content(&mut com, Some(data));
+                if let Some(mut sprite) = pair.widget.get_as_mut::<WidgetSprite>() {
+                    sprite.set_content(&mut com, Some(data));
+                } else if let Some(mut image) = pair.widget.get_as_mut::<WidgetImage>() {
+                    image.set_content(&mut com, Some(data));
+                } else {
+                    anyhow::bail!("No <sprite> or <image> with such id.");
+                }
+            } else {
+                anyhow::bail!("No <sprite> or <image> with such id.");
             }
         }
         ModifyPanelCommand::SetColor(color) => {

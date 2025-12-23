@@ -8,7 +8,7 @@ use vulkano::{
 
 use crate::{
 	gfx,
-	renderer_vk::{rect::RectPipeline, text::text_atlas::TextPipeline},
+	renderer_vk::{image::ImagePipeline, rect::RectPipeline, text::text_atlas::TextPipeline},
 };
 
 pub struct ModelBuffer {
@@ -19,6 +19,8 @@ pub struct ModelBuffer {
 	buffer_capacity_f32: u32,
 
 	rect_descriptor: Option<Arc<DescriptorSet>>,
+	text_descriptor: Option<Arc<DescriptorSet>>,
+	image_descriptor: Option<Arc<DescriptorSet>>,
 }
 
 impl ModelBuffer {
@@ -40,6 +42,8 @@ impl ModelBuffer {
 			buffer,
 			buffer_capacity_f32: INITIAL_CAPACITY_F32,
 			rect_descriptor: None,
+			text_descriptor: None,
+			image_descriptor: None,
 		})
 	}
 
@@ -109,8 +113,15 @@ impl ModelBuffer {
 
 	pub fn get_text_descriptor(&mut self, pipeline: &TextPipeline) -> Arc<DescriptorSet> {
 		self
-			.rect_descriptor
+			.text_descriptor
 			.get_or_insert_with(|| pipeline.inner.buffer(3, self.buffer.clone()).unwrap())
+			.clone()
+	}
+
+	pub fn get_image_descriptor(&mut self, pipeline: &ImagePipeline) -> Arc<DescriptorSet> {
+		self
+			.image_descriptor
+			.get_or_insert_with(|| pipeline.inner.buffer(1, self.buffer.clone()).unwrap())
 			.clone()
 	}
 }

@@ -17,6 +17,7 @@ use crate::{
 };
 
 pub mod div;
+pub mod image;
 pub mod label;
 pub mod rectangle;
 pub mod sprite;

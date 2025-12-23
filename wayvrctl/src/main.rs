@@ -265,7 +265,7 @@ enum SubcommandPanelModify {
         /// Color in HTML hex format (#rrggbb or #rrggbbaa)
         hex_color: String,
     },
-    /// Set the content of a sprite
+    /// Set the content of a <sprite> or <image>. Max size for <sprite> is 256x256.
     SetSprite {
         /// Absolute path to a svg, gif, png, jpeg or webp image.
         absolute_path: String,

@@ -1,24 +1,26 @@
 use crate::{
 	assets::AssetPath,
 	layout::WidgetID,
-	parser::{parse_children, parse_widget_universal, style::parse_style, AttribPair, ParserContext, ParserFile},
+	parser::{
+		parse_children, parse_widget_universal, print_invalid_attrib,
+		style::{parse_color, parse_round, parse_style},
+		AttribPair, ParserContext, ParserFile,
+	},
 	renderer_vk::text::custom_glyph::{CustomGlyphContent, CustomGlyphData},
-	widget::sprite::{WidgetSprite, WidgetSpriteParams},
+	widget::image::{WidgetImage, WidgetImageParams},
 };
 
-use super::{parse_color_hex, print_invalid_attrib};
-
-pub fn parse_widget_sprite<'a>(
-	file: &'a ParserFile,
+pub fn parse_widget_image<'a>(
+	file: &ParserFile,
 	ctx: &mut ParserContext,
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 	attribs: &[AttribPair],
 ) -> anyhow::Result<WidgetID> {
-	let mut params = WidgetSpriteParams::default();
+	let mut params = WidgetImageParams::default();
 	let style = parse_style(attribs);
-
 	let mut glyph = None;
+
 	for pair in attribs {
 		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
 		match key {
@@ -41,12 +43,21 @@ pub fn parse_widget_sprite<'a>(
 					}
 				}
 			}
-			"color" => {
-				if let Some(color) = parse_color_hex(value) {
-					params.color = Some(color);
-				} else {
+			"round" => {
+				parse_round(
+					value,
+					&mut params.round,
+					ctx.doc_params.globals.get().defaults.rounding_mult,
+				);
+			}
+			"border" => {
+				params.border = value.parse().unwrap_or_else(|_| {
 					print_invalid_attrib(key, value);
-				}
+					0.0
+				});
+			}
+			"border_color" => {
+				parse_color(value, &mut params.border_color);
 			}
 			_ => {}
 		}
@@ -55,10 +66,10 @@ pub fn parse_widget_sprite<'a>(
 	if let Some(glyph) = glyph {
 		params.glyph_data = Some(CustomGlyphData::new(glyph));
 	} else {
-		log::warn!("No source for sprite node!");
+		log::warn!("No source for image node!");
 	}
 
-	let (widget, _) = ctx.layout.add_child(parent_id, WidgetSprite::create(params), style)?;
+	let (widget, _) = ctx.layout.add_child(parent_id, WidgetImage::create(params), style)?;
 
 	parse_widget_universal(ctx, &widget, attribs);
 	parse_children(file, ctx, node, widget.id)?;

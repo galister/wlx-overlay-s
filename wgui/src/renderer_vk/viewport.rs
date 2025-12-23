@@ -5,7 +5,10 @@ use vulkano::{
 	descriptor_set::DescriptorSet,
 };
 
-use crate::{gfx::WGfx, renderer_vk::util::WMat4};
+use crate::{
+	gfx::WGfx,
+	renderer_vk::{image::ImagePipeline, util::WMat4},
+};
 
 use super::{rect::RectPipeline, text::text_atlas::TextPipeline};
 
@@ -16,6 +19,7 @@ pub struct Viewport {
 	params_buffer: Subbuffer<[Params]>,
 	text_descriptor: Option<Arc<DescriptorSet>>,
 	rect_descriptor: Option<Arc<DescriptorSet>>,
+	image_descriptor: Option<Arc<DescriptorSet>>,
 }
 
 impl Viewport {
@@ -36,6 +40,7 @@ impl Viewport {
 			params_buffer,
 			text_descriptor: None,
 			rect_descriptor: None,
+			image_descriptor: None,
 		})
 	}
 
@@ -53,6 +58,15 @@ impl Viewport {
 			.rect_descriptor
 			.get_or_insert_with(|| {
 				pipeline.color_rect.buffer(0, self.params_buffer.clone()).unwrap() // safe unwrap
+			})
+			.clone()
+	}
+
+	pub fn get_image_descriptor(&mut self, pipeline: &ImagePipeline) -> Arc<DescriptorSet> {
+		self
+			.image_descriptor
+			.get_or_insert_with(|| {
+				pipeline.inner.buffer(0, self.params_buffer.clone()).unwrap() // safe unwrap
 			})
 			.clone()
 	}

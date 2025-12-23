@@ -53,8 +53,8 @@ impl CustomGlyphContent {
 /// Clone and reuse this to avoid atlasing the same content twice.
 #[derive(Debug, Clone)]
 pub struct CustomGlyphData {
-	pub(super) id: usize,
-	pub(super) content: Arc<CustomGlyphContent>,
+	pub(crate) id: usize,
+	pub(crate) content: Arc<CustomGlyphContent>,
 }
 
 impl CustomGlyphData {
@@ -157,7 +157,7 @@ pub struct RasterizedCustomGlyph {
 }
 
 impl RasterizedCustomGlyph {
-	pub(super) fn try_from(input: &RasterizeCustomGlyphRequest) -> Option<Self> {
+	pub(crate) fn try_from(input: &RasterizeCustomGlyphRequest) -> Option<Self> {
 		match input.data.content.as_ref() {
 			CustomGlyphContent::Svg(tree) => rasterize_svg(tree, input),
 			CustomGlyphContent::Image(data) => Some(rasterize_image(data)),
