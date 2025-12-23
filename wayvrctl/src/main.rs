@@ -175,7 +175,7 @@ async fn run_once(state: &mut WayVRClientState, args: Args) -> anyhow::Result<()
         } => {
             let command = match command {
                 SubcommandPanelModify::SetText { text } => {
-                    packet_client::WlxModifyPanelCommand::SetText(text)
+                    packet_client::WlxModifyPanelCommand::SetText(text.join(" "))
                 }
                 SubcommandPanelModify::SetColor { hex_color } => {
                     packet_client::WlxModifyPanelCommand::SetColor(hex_color)
@@ -307,7 +307,8 @@ enum SubcommandPanelModify {
     /// Set the text of a <label> or <Button>
     SetText {
         /// Text that needs to be set
-        text: String,
+        #[arg(num_args = 1.., action = clap::ArgAction::Append)]
+        text: Vec<String>,
     },
     /// Set the color of a <rectangle> or <label> or monochrome <sprite>
     SetColor {
