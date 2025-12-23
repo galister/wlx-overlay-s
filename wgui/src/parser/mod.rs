@@ -3,6 +3,7 @@ mod component_checkbox;
 mod component_slider;
 mod style;
 mod widget_div;
+mod widget_image;
 mod widget_label;
 mod widget_rectangle;
 mod widget_sprite;
@@ -15,8 +16,8 @@ use crate::{
 	layout::{Layout, LayoutParams, LayoutState, Widget, WidgetID, WidgetMap, WidgetPair},
 	parser::{
 		component_button::parse_component_button, component_checkbox::parse_component_checkbox,
-		component_slider::parse_component_slider, widget_div::parse_widget_div, widget_label::parse_widget_label,
-		widget_rectangle::parse_widget_rectangle, widget_sprite::parse_widget_sprite,
+		component_slider::parse_component_slider, widget_div::parse_widget_div, widget_image::parse_widget_image,
+		widget_label::parse_widget_label, widget_rectangle::parse_widget_rectangle, widget_sprite::parse_widget_sprite,
 	},
 	widget::ConstructEssentials,
 };
@@ -897,6 +898,9 @@ fn parse_child<'a>(
 		}
 		"sprite" => {
 			new_widget_id = Some(parse_widget_sprite(file, ctx, child_node, parent_id, &attribs)?);
+		}
+		"image" => {
+			new_widget_id = Some(parse_widget_image(file, ctx, child_node, parent_id, &attribs)?);
 		}
 		"Button" => {
 			new_widget_id = Some(parse_component_button(file, ctx, child_node, parent_id, &attribs)?);

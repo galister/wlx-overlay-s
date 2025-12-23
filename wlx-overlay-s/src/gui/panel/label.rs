@@ -1,17 +1,7 @@
-use std::{
-    cell::RefCell,
-    fs,
-    os::unix::fs::FileTypeExt,
-    process::{Command, Stdio},
-    rc::Rc,
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::rc::Rc;
 
-use anyhow::Context;
 use chrono::Local;
 use chrono_tz::Tz;
-use interprocess::os::unix::fifo_file::create_fifo;
 use wgui::{
     drawing,
     event::{self, EventCallback},
@@ -21,9 +11,7 @@ use wgui::{
     widget::{EventResult, label::WidgetLabel},
 };
 
-use crate::{gui::panel::helper::PipeReaderThread, state::AppState};
-
-use super::helper::expand_env_vars;
+use crate::state::AppState;
 
 #[allow(clippy::too_many_lines)]
 pub(super) fn setup_custom_label<S: 'static>(
@@ -37,42 +25,6 @@ pub(super) fn setup_custom_label<S: 'static>(
     };
 
     let callback: EventCallback<AppState, S> = match source {
-        "shell" => {
-            let Some(exec) = attribs.get_value("_exec") else {
-                log::warn!("label with shell source but no exec attribute!");
-                return;
-            };
-            let state = ShellLabelState {
-                exec: exec.to_string(),
-                mut_state: RefCell::new(PipeLabelMutableState {
-                    reader: None,
-                    next_try: Instant::now(),
-                }),
-                carry_over: RefCell::new(None),
-            };
-            Box::new(move |common, data, _, _| {
-                let _ = shell_on_tick(&state, common, data).inspect_err(|e| log::error!("{e:?}"));
-                Ok(EventResult::Pass)
-            })
-        }
-        "fifo" => {
-            let Some(path) = attribs.get_value("_path") else {
-                log::warn!("label with fifo source but no path attribute!");
-                return;
-            };
-            let state = FifoLabelState {
-                path: expand_env_vars(path).into(),
-                carry_over: RefCell::new(None),
-                mut_state: RefCell::new(PipeLabelMutableState {
-                    reader: None,
-                    next_try: Instant::now(),
-                }),
-            };
-            Box::new(move |common, data, _, _| {
-                fifo_on_tick(&state, common, data);
-                Ok(EventResult::Pass)
-            })
-        }
         "battery" => {
             let Some(device) = attribs
                 .get_value("_device")
@@ -184,126 +136,6 @@ pub(super) fn setup_custom_label<S: 'static>(
         wgui::event::EventListenerKind::InternalStateChange,
         callback,
     );
-}
-
-struct PipeLabelMutableState {
-    reader: Option<PipeReaderThread>,
-    next_try: Instant,
-}
-
-struct ShellLabelState {
-    exec: String,
-    mut_state: RefCell<PipeLabelMutableState>,
-    carry_over: RefCell<Option<String>>,
-}
-
-fn shell_on_tick(
-    state: &ShellLabelState,
-    common: &mut event::CallbackDataCommon,
-    data: &mut event::CallbackData,
-) -> anyhow::Result<()> {
-    let mut mut_state = state.mut_state.borrow_mut();
-
-    if let Some(reader) = mut_state.reader.as_mut() {
-        if let Some(text) = reader.get_last_line() {
-            let label = data.obj.get_as_mut::<WidgetLabel>().unwrap();
-            label.set_text(common, Translation::from_raw_text(&text));
-        }
-
-        if reader.is_finished() && !mut_state.reader.take().unwrap().check_success() {
-            mut_state.next_try = Instant::now() + Duration::from_secs(15);
-        }
-        return Ok(());
-    } else if mut_state.next_try > Instant::now() {
-        return Ok(());
-    }
-
-    let child = Command::new("sh")
-        .arg("-c")
-        .arg(&state.exec)
-        .stdout(Stdio::piped())
-        .spawn()
-        .with_context(|| format!("Failed to run shell script: '{}'", &state.exec))?;
-
-    mut_state.reader = Some(PipeReaderThread::new_from_child(child));
-
-    Ok(())
-}
-
-struct FifoLabelState {
-    path: Arc<str>,
-    mut_state: RefCell<PipeLabelMutableState>,
-    carry_over: RefCell<Option<String>>,
-}
-
-impl FifoLabelState {
-    fn try_remove_fifo(&self) -> anyhow::Result<()> {
-        let meta = match fs::metadata(&*self.path) {
-            Ok(meta) => meta,
-            Err(e) => {
-                if fs::exists(&*self.path).unwrap_or(true) {
-                    anyhow::bail!("Could not stat existing file at {}: {e:?}", &self.path);
-                }
-                return Ok(());
-            }
-        };
-
-        if !meta.file_type().is_fifo() {
-            anyhow::bail!("Existing file at {} is not a FIFO", &self.path);
-        }
-
-        if let Err(e) = fs::remove_file(&*self.path) {
-            anyhow::bail!("Unable to remove existing FIFO at {}: {e:?}", &self.path);
-        }
-
-        Ok(())
-    }
-}
-
-impl Drop for FifoLabelState {
-    fn drop(&mut self) {
-        if let Err(e) = self.try_remove_fifo() {
-            log::debug!("{e:?}");
-        }
-    }
-}
-
-fn fifo_on_tick(
-    state: &FifoLabelState,
-    common: &mut event::CallbackDataCommon,
-    data: &mut event::CallbackData,
-) {
-    let mut mut_state = state.mut_state.borrow_mut();
-
-    let Some(reader) = mut_state.reader.as_mut() else {
-        if mut_state.next_try > Instant::now() {
-            return;
-        }
-
-        if let Err(e) = state.try_remove_fifo() {
-            mut_state.next_try = Instant::now() + Duration::from_secs(15);
-            log::warn!("Requested FIFO path is taken: {e:?}");
-            return;
-        }
-
-        if let Err(e) = create_fifo(&*state.path, 0o777) {
-            mut_state.next_try = Instant::now() + Duration::from_secs(15);
-            log::warn!("Failed to create FIFO: {e:?}");
-            return;
-        }
-
-        mut_state.reader = Some(PipeReaderThread::new_from_fifo(state.path.clone()));
-        return;
-    };
-
-    if let Some(text) = reader.get_last_line() {
-        let label = data.obj.get_as_mut::<WidgetLabel>().unwrap();
-        label.set_text(common, Translation::from_raw_text(&text));
-    }
-
-    if reader.is_finished() && !mut_state.reader.take().unwrap().check_success() {
-        mut_state.next_try = Instant::now() + Duration::from_secs(15);
-    }
 }
 
 const BAT_LOW: drawing::Color = drawing::Color::new(0.69, 0.38, 0.38, 1.);

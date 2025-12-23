@@ -1,8 +1,7 @@
 use bytes::BufMut;
 use interprocess::local_socket::{
-	self,
-	tokio::{prelude::*, Stream},
-	GenericNamespaced,
+	self, GenericNamespaced,
+	tokio::{Stream, prelude::*},
 };
 use serde::Serialize;
 use smallvec::SmallVec;
@@ -484,6 +483,14 @@ impl WayVRClient {
 		params: packet_client::WlxHapticsParams,
 	) -> anyhow::Result<()> {
 		send_only!(client, &PacketClient::WlxHaptics(params));
+		Ok(())
+	}
+
+	pub async fn fn_wlx_modify_panel(
+		client: WayVRClientMutex,
+		params: packet_client::WlxModifyPanelParams,
+	) -> anyhow::Result<()> {
+		send_only!(client, &PacketClient::WlxModifyPanel(params));
 		Ok(())
 	}
 }

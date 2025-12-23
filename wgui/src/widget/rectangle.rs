@@ -2,6 +2,7 @@ use slotmap::Key;
 
 use crate::{
 	drawing::{self, GradientMode, PrimitiveExtent},
+	event::CallbackDataCommon,
 	layout::WidgetID,
 	widget::{WidgetStateFlags, util::WLength},
 };
@@ -34,6 +35,10 @@ impl WidgetRectangle {
 				id: WidgetID::null(),
 			}),
 		)
+	}
+	pub fn set_color(&mut self, common: &mut CallbackDataCommon, color: drawing::Color) {
+		self.params.color = color;
+		common.mark_widget_dirty(self.id);
 	}
 }
 

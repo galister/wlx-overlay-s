@@ -9,7 +9,10 @@ use crate::{
 	event::EventAlterables,
 	globals::Globals,
 	layout::Widget,
-	renderer_vk::text::{TextShadow, custom_glyph::CustomGlyph},
+	renderer_vk::text::{
+		TextShadow,
+		custom_glyph::{CustomGlyph, CustomGlyphData},
+	},
 	stack::{self, ScissorBoundary, ScissorStack, TransformStack},
 	widget::{self, ScrollbarInfo, WidgetState},
 };
@@ -175,6 +178,17 @@ pub struct Rectangle {
 	pub round_units: u8,
 }
 
+#[derive(Clone)]
+pub struct ImagePrimitive {
+	pub content: CustomGlyphData,
+	pub content_key: usize,
+
+	pub border: f32, // width in pixels
+	pub border_color: Color,
+
+	pub round_units: u8,
+}
+
 pub struct PrimitiveExtent {
 	pub(super) boundary: Boundary,
 	pub(super) transform: Mat4,
@@ -185,6 +199,7 @@ pub enum RenderPrimitive {
 	Rectangle(PrimitiveExtent, Rectangle),
 	Text(PrimitiveExtent, Rc<RefCell<Buffer>>, Option<TextShadow>),
 	Sprite(PrimitiveExtent, Option<CustomGlyph>), //option because we want as_slice
+	Image(PrimitiveExtent, ImagePrimitive),
 	ScissorSet(ScissorBoundary),
 }
 

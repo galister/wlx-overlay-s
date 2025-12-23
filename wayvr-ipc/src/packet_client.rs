@@ -48,6 +48,22 @@ pub struct WlxHapticsParams {
 	pub frequency: f32,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum WlxModifyPanelCommand {
+	SetText(String),
+	SetColor(String),
+	SetImage(String),
+	SetVisible(bool),
+	SetStickyState(bool),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct WlxModifyPanelParams {
+	pub overlay: String,
+	pub element: String,
+	pub command: WlxModifyPanelCommand,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum PacketClient {
 	Handshake(Handshake),
@@ -68,4 +84,5 @@ pub enum PacketClient {
 	WvrProcessTerminate(packet_server::WvrProcessHandle),
 	WlxHaptics(WlxHapticsParams),
 	WlxInputState(Serial),
+	WlxModifyPanel(WlxModifyPanelParams),
 }

@@ -33,7 +33,6 @@ use crate::{
 use super::timer::GuiTimer;
 
 pub mod button;
-mod helper;
 mod label;
 
 const DEFAULT_MAX_SIZE: f32 = 2048.0;

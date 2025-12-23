@@ -41,7 +41,10 @@ use std::{
     sync::Arc,
 };
 use time::get_millis;
-use wayvr_ipc::{packet_client, packet_server};
+use wayvr_ipc::{
+    packet_client::{self},
+    packet_server,
+};
 use xkbcommon::xkb;
 
 use crate::{
@@ -94,6 +97,7 @@ pub enum WayVRSignal {
     BroadcastStateChanged(packet_server::WvrStateChanged),
     DropOverlay(crate::windowing::OverlayID),
     Haptics(super::input::Haptics),
+    CustomTask(crate::backend::task::ModifyPanelTask),
 }
 
 pub enum BlitMethod {

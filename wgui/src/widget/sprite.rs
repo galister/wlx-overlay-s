@@ -5,6 +5,7 @@ use slotmap::Key;
 
 use crate::{
 	drawing::{self, PrimitiveExtent},
+	event::CallbackDataCommon,
 	globals::Globals,
 	layout::WidgetID,
 	renderer_vk::text::{
@@ -39,16 +40,22 @@ impl WidgetSprite {
 		)
 	}
 
-	pub const fn set_color(&mut self, color: drawing::Color) {
+	pub fn set_color(&mut self, common: &mut CallbackDataCommon, color: drawing::Color) {
 		self.params.color = Some(color);
+		common.mark_widget_dirty(self.id);
 	}
 
 	pub const fn get_color(&self) -> Option<drawing::Color> {
 		self.params.color
 	}
 
-	pub fn set_content(&mut self, content: Option<CustomGlyphData>) {
+	pub fn set_content(&mut self, common: &mut CallbackDataCommon, content: Option<CustomGlyphData>) {
+		if self.params.glyph_data == content {
+			return;
+		}
+
 		self.params.glyph_data = content;
+		common.mark_widget_dirty(self.id);
 	}
 
 	pub fn get_content(&self) -> Option<CustomGlyphData> {

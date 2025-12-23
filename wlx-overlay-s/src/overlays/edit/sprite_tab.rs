@@ -107,7 +107,7 @@ where
             .widgets
             .get_as::<WidgetSprite>(self.top_sprite_id)
         {
-            sprite.set_content(Some(new.sprite.clone()));
+            sprite.set_content(common, Some(new.sprite.clone()));
         }
     }
 
