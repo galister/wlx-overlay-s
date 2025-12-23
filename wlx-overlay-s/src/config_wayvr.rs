@@ -135,7 +135,7 @@ pub struct WayVRDashboard {
 
 #[derive(Deserialize, Serialize)]
 pub struct WayVRConfig {
-    #[serde(default = "def_false")]
+    #[serde(default = "def_true")]
     pub run_compositor_at_start: bool,
 
     #[serde(default = "Default::default")]
