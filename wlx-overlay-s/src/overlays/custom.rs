@@ -14,7 +14,7 @@ use wgui::{
 use wlx_common::windowing::OverlayWindowState;
 
 use crate::{
-    backend::task::OverlayCustomCommand,
+    backend::task::ModifyPanelCommand,
     gui::{
         panel::{GuiPanel, NewGuiPanelParams},
         timer::GuiTimer,
@@ -86,7 +86,7 @@ fn apply_custom_command(
     panel: &mut GuiPanel<CustomPanelState>,
     app: &mut AppState,
     element: &str,
-    command: &OverlayCustomCommand,
+    command: &ModifyPanelCommand,
 ) -> anyhow::Result<()> {
     let mut alterables = EventAlterables::default();
     let mut com = CallbackDataCommon {
@@ -95,7 +95,7 @@ fn apply_custom_command(
     };
 
     match command {
-        OverlayCustomCommand::SetText(text) => {
+        ModifyPanelCommand::SetText(text) => {
             if let Ok(mut label) = panel
                 .parser_state
                 .fetch_widget_as::<WidgetLabel>(&panel.layout.state, element)
@@ -110,7 +110,7 @@ fn apply_custom_command(
                 anyhow::bail!("No <label> or <Button> with such id.");
             }
         }
-        OverlayCustomCommand::SetSprite(path) => {
+        ModifyPanelCommand::SetSprite(path) => {
             let mut widget = panel
                 .parser_state
                 .fetch_widget_as::<WidgetSprite>(&panel.layout.state, element)
@@ -130,7 +130,7 @@ fn apply_custom_command(
                 widget.set_content(&mut com, Some(data));
             }
         }
-        OverlayCustomCommand::SetColor(color) => {
+        ModifyPanelCommand::SetColor(color) => {
             let color = parse_color_hex(&color)
                 .context("Invalid color format, must be a html hex color!")?;
 
@@ -151,7 +151,7 @@ fn apply_custom_command(
                 anyhow::bail!("No <rectangle> or <label> or <sprite> with such id.");
             }
         }
-        OverlayCustomCommand::SetVisible(visible) => {
+        ModifyPanelCommand::SetVisible(visible) => {
             let wid = panel
                 .parser_state
                 .get_widget_id(&element)
@@ -166,7 +166,7 @@ fn apply_custom_command(
             com.alterables
                 .set_style(wid, wgui::event::StyleSetRequest::Display(display));
         }
-        OverlayCustomCommand::SetStickyState(sticky_down) => {
+        ModifyPanelCommand::SetStickyState(sticky_down) => {
             let button = panel
                 .parser_state
                 .fetch_component_as::<ComponentButton>(element)

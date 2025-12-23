@@ -479,30 +479,33 @@ impl Connection {
         ));
     }
 
-    fn handle_wlx_custom(params: &mut TickParams, custom_params: packet_client::WlxCustomParams) {
-        use crate::backend::task::{OverlayCustomCommand, OverlayCustomTask};
+    fn handle_wlx_panel(
+        params: &mut TickParams,
+        custom_params: packet_client::WlxModifyPanelParams,
+    ) {
+        use crate::backend::task::{ModifyPanelCommand, ModifyPanelTask};
 
         params
             .state
             .signals
-            .send(super::WayVRSignal::CustomTask(OverlayCustomTask {
+            .send(super::WayVRSignal::CustomTask(ModifyPanelTask {
                 overlay: custom_params.overlay,
                 element: custom_params.element,
                 command: match custom_params.command {
-                    packet_client::WlxCustomCommand::SetText(text) => {
-                        OverlayCustomCommand::SetText(text)
+                    packet_client::WlxModifyPanelCommand::SetText(text) => {
+                        ModifyPanelCommand::SetText(text)
                     }
-                    packet_client::WlxCustomCommand::SetSprite(sprite) => {
-                        OverlayCustomCommand::SetSprite(sprite)
+                    packet_client::WlxModifyPanelCommand::SetSprite(sprite) => {
+                        ModifyPanelCommand::SetSprite(sprite)
                     }
-                    packet_client::WlxCustomCommand::SetStickyState(sticky) => {
-                        OverlayCustomCommand::SetStickyState(sticky)
+                    packet_client::WlxModifyPanelCommand::SetStickyState(sticky) => {
+                        ModifyPanelCommand::SetStickyState(sticky)
                     }
-                    packet_client::WlxCustomCommand::SetVisible(visible) => {
-                        OverlayCustomCommand::SetVisible(visible)
+                    packet_client::WlxModifyPanelCommand::SetVisible(visible) => {
+                        ModifyPanelCommand::SetVisible(visible)
                     }
-                    packet_client::WlxCustomCommand::SetColor(color) => {
-                        OverlayCustomCommand::SetColor(color)
+                    packet_client::WlxModifyPanelCommand::SetColor(color) => {
+                        ModifyPanelCommand::SetColor(color)
                     }
                 },
             }));
@@ -560,8 +563,8 @@ impl Connection {
             PacketClient::WlxHaptics(haptics_params) => {
                 Self::handle_wlx_haptics(params, haptics_params);
             }
-            PacketClient::WlxCustom(custom_params) => {
-                Self::handle_wlx_custom(params, custom_params);
+            PacketClient::WlxModifyPanel(custom_params) => {
+                Self::handle_wlx_panel(params, custom_params);
             }
         }
 

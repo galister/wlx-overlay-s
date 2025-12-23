@@ -486,6 +486,14 @@ impl WayVRClient {
 		send_only!(client, &PacketClient::WlxHaptics(params));
 		Ok(())
 	}
+
+	pub async fn fn_wlx_modify_panel(
+		client: WayVRClientMutex,
+		params: packet_client::WlxModifyPanelParams,
+	) -> anyhow::Result<()> {
+		send_only!(client, &PacketClient::WlxModifyPanel(params));
+		Ok(())
+	}
 }
 
 impl Drop for WayVRClient {

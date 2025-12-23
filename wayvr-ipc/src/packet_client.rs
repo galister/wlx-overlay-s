@@ -49,7 +49,7 @@ pub struct WlxHapticsParams {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum WlxCustomCommand {
+pub enum WlxModifyPanelCommand {
 	SetText(String),
 	SetColor(String),
 	SetSprite(String),
@@ -58,10 +58,10 @@ pub enum WlxCustomCommand {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct WlxCustomParams {
+pub struct WlxModifyPanelParams {
 	pub overlay: String,
 	pub element: String,
-	pub command: WlxCustomCommand,
+	pub command: WlxModifyPanelCommand,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -84,5 +84,5 @@ pub enum PacketClient {
 	WvrProcessTerminate(packet_server::WvrProcessHandle),
 	WlxHaptics(WlxHapticsParams),
 	WlxInputState(Serial),
-	WlxCustom(WlxCustomParams),
+	WlxModifyPanel(WlxModifyPanelParams),
 }

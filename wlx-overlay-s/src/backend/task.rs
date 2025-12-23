@@ -55,7 +55,7 @@ pub enum PlayspaceTask {
 }
 
 #[derive(Debug, Clone)]
-pub enum OverlayCustomCommand {
+pub enum ModifyPanelCommand {
     SetText(String),
     SetColor(String),
     SetSprite(String),
@@ -64,10 +64,10 @@ pub enum OverlayCustomCommand {
 }
 
 #[derive(Debug, Clone)]
-pub struct OverlayCustomTask {
+pub struct ModifyPanelTask {
     pub overlay: String,
     pub element: String,
-    pub command: OverlayCustomCommand,
+    pub command: ModifyPanelCommand,
 }
 
 pub type ModifyOverlayTask = dyn FnOnce(&mut AppState, &mut OverlayWindowConfig) + Send;
@@ -82,7 +82,7 @@ pub enum OverlayTask {
     CleanupMirrors,
     Modify(OverlaySelector, Box<ModifyOverlayTask>),
     Create(OverlaySelector, Box<CreateOverlayTask>),
-    Custom(OverlayCustomTask),
+    ModifyPanel(ModifyPanelTask),
     Drop(OverlaySelector),
 }
 

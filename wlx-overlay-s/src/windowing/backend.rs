@@ -14,7 +14,7 @@ use wlx_common::{
 use crate::{
     backend::{
         input::{HoverResult, PointerHit},
-        task::OverlayCustomCommand,
+        task::ModifyPanelCommand,
     },
     graphics::{ExtentExt, RenderResult},
     state::AppState,
@@ -128,7 +128,7 @@ pub enum OverlayEventData {
     },
     CustomCommand {
         element: String,
-        command: OverlayCustomCommand,
+        command: ModifyPanelCommand,
     },
 }
 

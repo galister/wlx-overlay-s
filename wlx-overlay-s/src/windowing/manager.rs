@@ -290,7 +290,7 @@ where
                     self.dropped_overlays.push_back(o);
                 }
             }
-            OverlayTask::Custom(task) => {
+            OverlayTask::ModifyPanel(task) => {
                 if let Some(oid) = self.lookup(&task.overlay)
                     && let Some(o) = self.mut_by_id(oid)
                 {

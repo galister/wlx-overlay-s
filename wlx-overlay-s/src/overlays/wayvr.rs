@@ -463,7 +463,7 @@ where
             }
             wayvr::WayVRSignal::CustomTask(custom_task) => {
                 app.tasks
-                    .enqueue(TaskType::Overlay(OverlayTask::Custom(custom_task)));
+                    .enqueue(TaskType::Overlay(OverlayTask::ModifyPanel(custom_task)));
             }
         }
     }

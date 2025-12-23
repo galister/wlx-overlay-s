@@ -97,7 +97,7 @@ pub enum WayVRSignal {
     BroadcastStateChanged(packet_server::WvrStateChanged),
     DropOverlay(crate::windowing::OverlayID),
     Haptics(super::input::Haptics),
-    CustomTask(crate::backend::task::OverlayCustomTask),
+    CustomTask(crate::backend::task::ModifyPanelTask),
 }
 
 pub enum BlitMethod {
