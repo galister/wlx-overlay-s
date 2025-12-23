@@ -1,4 +1,4 @@
-use std::{collections::HashMap, process::{self, ExitCode}};
+use std::{collections::HashMap, process::{self, ExitCode}, time::Duration};
 
 use anyhow::Context;
 use clap::Parser;
@@ -33,6 +33,8 @@ async fn main() -> ExitCode {
     if let Err(e) = maybe_err{
         log::error!("{e:?}");
         return ExitCode::FAILURE;
+    } else {
+        std::thread::sleep(Duration::from_millis(20));
     }
 
     ExitCode::SUCCESS
