@@ -10,8 +10,9 @@ use wgui::{
 };
 
 use crate::{
-	frontend::{FrontendTask, RcFrontend},
+	frontend::{FrontendTask, FrontendTasks, RcFrontend},
 	tab::{Tab, TabParams, TabType},
+	task::Tasks,
 	util::{
 		self,
 		desktop_finder::DesktopEntry,
@@ -19,6 +20,10 @@ use crate::{
 	},
 	views::{self, app_launcher},
 };
+
+enum Task {
+	CloseLauncher,
+}
 
 struct State {
 	launcher: Option<(PopupHandle, views::app_launcher::View)>,
@@ -35,11 +40,28 @@ pub struct TabApps {
 	entries: Vec<DesktopEntry>,
 	#[allow(dead_code)]
 	app_list: AppList,
+
+	tasks: Tasks<Task>,
 }
 
 impl Tab for TabApps {
 	fn get_type(&self) -> TabType {
 		TabType::Apps
+	}
+
+	fn update(&mut self, params: super::TabUpdateParams) -> anyhow::Result<()> {
+		let mut state = self.state.borrow_mut();
+
+		for task in self.tasks.drain() {
+			match task {
+				Task::CloseLauncher => state.launcher = None,
+			}
+		}
+
+		if let Some((_, launcher)) = &mut state.launcher {
+			launcher.update(params.layout, params.interface)?;
+		}
+		Ok(())
 	}
 }
 
@@ -51,9 +73,11 @@ struct AppList {
 // called after the user clicks any desktop entry
 fn on_app_click(
 	frontend: RcFrontend,
+	frontend_tasks: FrontendTasks,
 	globals: WguiGlobals,
 	entry: DesktopEntry,
 	state: Rc<RefCell<State>>,
+	tasks: Tasks<Task>,
 ) -> ButtonClickCallback {
 	Box::new(move |_common, _evt| {
 		frontend
@@ -62,15 +86,27 @@ fn on_app_click(
 			.push(FrontendTask::MountPopup(MountPopupParams {
 				title: Translation::from_raw_text(&entry.app_name),
 				on_content: {
+					// this is awful
 					let state = state.clone();
 					let entry = entry.clone();
 					let globals = globals.clone();
+					let frontend_tasks = frontend_tasks.clone();
+					let tasks = tasks.clone();
+
 					Rc::new(move |data| {
+						let on_launched = {
+							let tasks = tasks.clone();
+							Box::new(move || tasks.push(Task::CloseLauncher))
+						};
+
 						let view = app_launcher::View::new(app_launcher::Params {
 							entry: entry.clone(),
-							globals: globals.clone(),
+							globals: &globals,
 							layout: data.layout,
 							parent_id: data.id_content,
+							frontend_tasks: &frontend_tasks,
+							settings: data.settings,
+							on_launched,
 						})?;
 
 						state.borrow_mut().launcher = Some((data.handle, view));
@@ -93,9 +129,11 @@ impl TabApps {
 		gtk::init()?;
 		let entries = util::desktop_finder::find_entries()?;
 
+		let frontend_tasks = tab_params.frontend_tasks.clone();
 		let frontend = tab_params.frontend.clone();
 		let globals = tab_params.globals.clone();
 
+		let tasks = Tasks::new();
 		let state = Rc::new(RefCell::new(State { launcher: None }));
 
 		let mut parser_state = wgui::parser::parse_from_assets(doc_params, tab_params.layout, tab_params.parent_id)?;
@@ -111,9 +149,11 @@ impl TabApps {
 				// Set up the click handler for the app button
 				button.on_click(on_app_click(
 					frontend.clone(),
+					frontend_tasks.clone(),
 					globals.clone(),
 					entry.clone(),
 					state.clone(),
+					tasks.clone(),
 				));
 			},
 		)?;
@@ -123,6 +163,7 @@ impl TabApps {
 			parser_state,
 			entries,
 			state,
+			tasks,
 		})
 	}
 }

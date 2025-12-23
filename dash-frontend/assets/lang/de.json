@@ -62,6 +62,9 @@
   "DISPLAY_OPTIONS": "Anzeigeeinstellungen",
   "PROCESS_LIST": {
     "NO_PROCESSES_FOUND": "Keine Prozesse gefunden",
-    "LOCATED_ON": "auf"
-  }
+    "LOCATED_ON": "auf",
+    "TERMINATE_PROCESS_NAMED_X": "Prozess \"{PROCESS_NAME}\" beenden"
+  },
+  "FAILED_TO_LAUNCH_APPLICATION": "Fehler beim Starten der Anwendung:",
+  "APPLICATION_LAUNCHED_ON": "Anwendung wurde auf {DISPLAY_NAME} gestartet."
 }

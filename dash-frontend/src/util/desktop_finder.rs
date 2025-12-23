@@ -3,6 +3,7 @@ use gtk::traits::IconThemeExt;
 use serde::{Deserialize, Serialize};
 
 // compatibility with wayvr-ipc
+// TODO: remove this after we're done with the old wayvr-dashboard and use DesktopEntry instead
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DesktopFile {
 	pub name: String,
@@ -13,7 +14,6 @@ pub struct DesktopFile {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)] // TODO: remove this
 pub struct DesktopEntry {
 	pub exec_path: String,
 	pub exec_args: Vec<String>,
@@ -139,4 +139,16 @@ pub fn find_entries() -> anyhow::Result<Vec<DesktopEntry>> {
 	}
 
 	Ok(res)
+}
+
+impl DesktopEntry {
+	pub fn to_desktop_file(&self) -> DesktopFile {
+		DesktopFile {
+			categories: self.categories.clone(),
+			exec_args: self.exec_args.clone(),
+			exec_path: self.exec_path.clone(),
+			icon: self.icon_path.clone(),
+			name: self.app_name.clone(),
+		}
+	}
 }

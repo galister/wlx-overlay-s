@@ -22,6 +22,7 @@
 		},
 		"WLX_OVERLAY_S_SETTINGS": "WlxOverlay-S settings"
 	},
+	"APPLICATION_LAUNCHED_ON": "Application launched on {DISPLAY_NAME}.",
 	"APPLICATION_LAUNCHER": "Application launcher",
 	"APPLICATIONS": "Applications",
 	"AUDIO": {
@@ -41,6 +42,7 @@
 	},
 	"DISPLAY_OPTIONS": "Display options",
 	"DISPLAY_PORTRAIT_MODE": "Portrait mode",
+	"FAILED_TO_LAUNCH_APPLICATION": "Failed to launcha application:",
 	"GAMES": "Games",
 	"GENERAL_SETTINGS": "General settings",
 	"HEIGHT": "Height",

@@ -62,6 +62,9 @@
   "DISPLAY_OPTIONS": "表示オプション",
   "PROCESS_LIST": {
     "NO_PROCESSES_FOUND": "プロセスが見つかりませんでした",
-    "LOCATED_ON": "に"
-  }
+    "LOCATED_ON": "に",
+    "TERMINATE_PROCESS_NAMED_X": "プロセス \"{PROCESS_NAME}\" を終了します"
+  },
+  "FAILED_TO_LAUNCH_APPLICATION": "アプリケーションの起動に失敗しました：",
+  "APPLICATION_LAUNCHED_ON": "{DISPLAY_NAME}でアプリケーションが起動しました。"
 }

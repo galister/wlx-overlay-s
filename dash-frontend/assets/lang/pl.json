@@ -62,6 +62,9 @@
   "PROCESSES": "Procesy",
   "PROCESS_LIST": {
     "NO_PROCESSES_FOUND": "Nie znaleziono procesów",
-    "LOCATED_ON": "na"
-  }
+    "LOCATED_ON": "na",
+    "TERMINATE_PROCESS_NAMED_X": "Zakończ proces \"{PROCESS_NAME}\""
+  },
+  "FAILED_TO_LAUNCH_APPLICATION": "Nie udało się uruchomić aplikacji:",
+  "APPLICATION_LAUNCHED_ON": "Aplikacja uruchomiona na {DISPLAY_NAME}."
 }

@@ -15,7 +15,10 @@ use wgui::{
 	widget::label::WidgetLabel,
 };
 
-use crate::frontend::{FrontendTask, FrontendTasks};
+use crate::{
+	frontend::{FrontendTask, FrontendTasks},
+	settings::SettingsIO,
+};
 
 pub struct PopupManagerParams {
 	pub parent_id: WidgetID,
@@ -55,6 +58,7 @@ pub struct PopupManager {
 
 pub struct PopupContentFuncData<'a> {
 	pub layout: &'a mut Layout,
+	pub settings: &'a dyn SettingsIO,
 	pub handle: PopupHandle,
 	pub id_content: WidgetID,
 }
@@ -119,6 +123,7 @@ impl PopupManager {
 	pub fn mount_popup(
 		&mut self,
 		globals: WguiGlobals,
+		settings: &dyn SettingsIO,
 		layout: &mut Layout,
 		frontend_tasks: FrontendTasks,
 		params: MountPopupParams,
@@ -175,6 +180,7 @@ impl PopupManager {
 			layout,
 			handle: popup_handle.clone(),
 			id_content,
+			settings,
 		})?;
 
 		Ok(())

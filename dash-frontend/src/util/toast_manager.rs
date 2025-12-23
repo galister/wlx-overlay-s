@@ -130,7 +130,7 @@ impl ToastManager {
 		// show-up animation
 		layout.animations.add(Animation::new(
 			rect.id,
-			160, // does not use anim_mult
+			(120.0 * globals.defaults.animation_mult) as u32,
 			AnimationEasing::Linear,
 			Box::new(move |common, data| {
 				let pos_showup = AnimationEasing::OutQuint.interpolate((data.pos * 4.0).min(1.0));
@@ -138,7 +138,7 @@ impl ToastManager {
 				let scale = AnimationEasing::OutBack.interpolate((data.pos * 4.0).min(1.0));
 
 				{
-					let mtx = Mat4::from_translation(Vec3::new(0.0, (1.0 - pos_showup) * 100.0, 0.0))
+					let mtx = Mat4::from_translation(Vec3::new(0.0, (1.0 - pos_showup) * 20.0, 0.0))
 						* Mat4::from_scale(Vec3::new(scale, scale, 1.0));
 					data.data.transform = centered_matrix(data.widget_boundary.size, &mtx);
 				}

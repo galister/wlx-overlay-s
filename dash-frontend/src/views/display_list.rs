@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use wayvr_ipc::{
 	packet_client::{self},
-	packet_server::{self},
+	packet_server::{self, WvrDisplayHandle},
 };
 use wgui::{
 	assets::AssetPath,
@@ -31,16 +31,17 @@ use crate::{
 enum Task {
 	AddDisplay,
 	AddDisplayFinish(add_display::Result),
-	DisplayOptions(packet_server::WvrDisplay),
+	DisplayClicked(packet_server::WvrDisplay),
 	DisplayOptionsFinish,
 	Refresh,
 }
 
 pub struct Params<'a> {
-	pub globals: WguiGlobals,
+	pub globals: &'a WguiGlobals,
 	pub frontend_tasks: FrontendTasks,
 	pub layout: &'a mut Layout,
 	pub parent_id: WidgetID,
+	pub on_click: Option<Box<dyn Fn(WvrDisplayHandle)>>,
 }
 
 struct State {
@@ -56,6 +57,7 @@ pub struct View {
 	globals: WguiGlobals,
 	state: Rc<RefCell<State>>,
 	id_list_parent: WidgetID,
+	on_click: Option<Box<dyn Fn(WvrDisplayHandle)>>,
 }
 
 impl View {
@@ -84,9 +86,10 @@ impl View {
 			parser_state,
 			tasks,
 			frontend_tasks: params.frontend_tasks,
-			globals: params.globals,
+			globals: params.globals.clone(),
 			state,
 			id_list_parent: list_parent.id,
+			on_click: params.on_click,
 		})
 	}
 
@@ -98,11 +101,11 @@ impl View {
 			}
 			for task in tasks {
 				match task {
-					Task::AddDisplay => self.add_display(),
-					Task::AddDisplayFinish(result) => self.add_display_finish(interface, result)?,
-					Task::DisplayOptionsFinish => self.display_options_finish(),
+					Task::AddDisplay => self.action_add_display(),
+					Task::AddDisplayFinish(result) => self.action_add_display_finish(interface, result)?,
+					Task::DisplayOptionsFinish => self.action_display_options_finish(),
 					Task::Refresh => self.refresh(layout, interface)?,
-					Task::DisplayOptions(display) => self.display_options(display)?,
+					Task::DisplayClicked(display) => self.action_display_clicked(display)?,
 				}
 			}
 		}
@@ -189,7 +192,7 @@ fn fill_display_list(
 		button.on_click({
 			let tasks = tasks.clone();
 			Box::new(move |_, _| {
-				tasks.push(Task::DisplayOptions(entry.clone()));
+				tasks.push(Task::DisplayClicked(entry.clone()));
 				Ok(())
 			})
 		});
@@ -199,7 +202,7 @@ fn fill_display_list(
 }
 
 impl View {
-	fn add_display(&mut self) {
+	fn action_add_display(&mut self) {
 		self.frontend_tasks.push(FrontendTask::MountPopup(MountPopupParams {
 			title: Translation::from_translation_key("ADD_DISPLAY"),
 			on_content: {
@@ -230,7 +233,7 @@ impl View {
 		}));
 	}
 
-	fn add_display_finish(
+	fn action_add_display_finish(
 		&mut self,
 		interface: &mut BoxDashInterface,
 		result: add_display::Result,
@@ -246,7 +249,7 @@ impl View {
 		Ok(())
 	}
 
-	fn display_options_finish(&mut self) {
+	fn action_display_options_finish(&mut self) {
 		self.state.borrow_mut().view_display_options = None;
 		self.tasks.push(Task::Refresh);
 	}
@@ -291,31 +294,35 @@ impl View {
 		Ok(())
 	}
 
-	fn display_options(&mut self, display: packet_server::WvrDisplay) -> anyhow::Result<()> {
-		self.frontend_tasks.push(FrontendTask::MountPopup(MountPopupParams {
-			title: Translation::from_translation_key("DISPLAY_OPTIONS"),
-			on_content: {
-				let frontend_tasks = self.frontend_tasks.clone();
-				let globals = self.globals.clone();
-				let state = self.state.clone();
-				let tasks = self.tasks.clone();
+	fn action_display_clicked(&mut self, display: packet_server::WvrDisplay) -> anyhow::Result<()> {
+		if let Some(on_click) = &mut self.on_click {
+			(*on_click)(display.handle);
+		} else {
+			self.frontend_tasks.push(FrontendTask::MountPopup(MountPopupParams {
+				title: Translation::from_translation_key("DISPLAY_OPTIONS"),
+				on_content: {
+					let frontend_tasks = self.frontend_tasks.clone();
+					let globals = self.globals.clone();
+					let state = self.state.clone();
+					let tasks = self.tasks.clone();
 
-				Rc::new(move |data| {
-					state.borrow_mut().view_display_options = Some((
-						data.handle,
-						display_options::View::new(display_options::Params {
-							globals: globals.clone(),
-							layout: data.layout,
-							parent_id: data.id_content,
-							on_submit: tasks.make_callback(Task::DisplayOptionsFinish),
-							display: display.clone(),
-							frontend_tasks: frontend_tasks.clone(),
-						})?,
-					));
-					Ok(())
-				})
-			},
-		}));
+					Rc::new(move |data| {
+						state.borrow_mut().view_display_options = Some((
+							data.handle,
+							display_options::View::new(display_options::Params {
+								globals: globals.clone(),
+								layout: data.layout,
+								parent_id: data.id_content,
+								on_submit: tasks.make_callback(Task::DisplayOptionsFinish),
+								display: display.clone(),
+								frontend_tasks: frontend_tasks.clone(),
+							})?,
+						));
+						Ok(())
+					})
+				},
+			}));
+		}
 
 		Ok(())
 	}

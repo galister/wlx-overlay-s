@@ -82,7 +82,7 @@ impl View {
 			for task in tasks {
 				match task {
 					Task::Refresh => self.refresh(layout, interface)?,
-					Task::TerminateProcess(process) => self.terminate_process(interface, process)?,
+					Task::TerminateProcess(process) => self.action_terminate_process(interface, process)?,
 				}
 			}
 		}
@@ -100,7 +100,7 @@ fn get_desktop_file_from_process(
 			continue;
 		}
 
-		// TODO: refactor this after we ditch wayvr-ipc completely
+		// TODO: refactor this after we ditch old wayvr-dashboard completely
 		let Some(dfile_str) = process.userdata.get("desktop_file") else {
 			continue;
 		};
@@ -294,7 +294,7 @@ impl View {
 		Ok(())
 	}
 
-	fn terminate_process(
+	fn action_terminate_process(
 		&mut self,
 		interface: &mut BoxDashInterface,
 		process: packet_server::WvrProcess,

@@ -44,8 +44,9 @@ impl TabProcesses {
 			view_display_list: display_list::View::new(display_list::Params {
 				layout: params.layout,
 				parent_id: state.get_widget_id("display_list_parent")?,
-				globals: params.globals.clone(),
+				globals: params.globals,
 				frontend_tasks: params.frontend_tasks.clone(),
+				on_click: None,
 			})?,
 			view_process_list: process_list::View::new(process_list::Params {
 				layout: params.layout,

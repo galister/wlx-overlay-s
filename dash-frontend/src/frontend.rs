@@ -232,9 +232,13 @@ impl Frontend {
 
 	fn mount_popup(&mut self, params: MountPopupParams) -> anyhow::Result<()> {
 		let mut layout = self.layout.borrow_mut();
-		self
-			.popup_manager
-			.mount_popup(self.globals.clone(), &mut layout, self.tasks.clone(), params)?;
+		self.popup_manager.mount_popup(
+			self.globals.clone(),
+			self.settings.as_ref(),
+			&mut layout,
+			self.tasks.clone(),
+			params,
+		)?;
 		Ok(())
 	}
 
