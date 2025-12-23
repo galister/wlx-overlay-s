@@ -9,7 +9,7 @@ mod widget_rectangle;
 mod widget_sprite;
 
 use crate::{
-	assets::{normalize_path, AssetPath, AssetPathOwned},
+	assets::{AssetPath, AssetPathOwned, normalize_path},
 	components::{Component, ComponentWeak},
 	drawing::{self},
 	globals::WguiGlobals,

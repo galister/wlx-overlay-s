@@ -1,8 +1,8 @@
 use std::{
 	f32,
 	sync::{
-		atomic::{AtomicUsize, Ordering},
 		Arc,
+		atomic::{AtomicUsize, Ordering},
 	},
 };
 

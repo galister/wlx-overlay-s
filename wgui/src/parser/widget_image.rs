@@ -2,9 +2,8 @@ use crate::{
 	assets::AssetPath,
 	layout::WidgetID,
 	parser::{
-		parse_children, parse_widget_universal, print_invalid_attrib,
+		AttribPair, ParserContext, ParserFile, parse_children, parse_widget_universal, print_invalid_attrib,
 		style::{parse_color, parse_round, parse_style},
-		AttribPair, ParserContext, ParserFile,
 	},
 	renderer_vk::text::custom_glyph::{CustomGlyphContent, CustomGlyphData},
 	widget::image::{WidgetImage, WidgetImageParams},

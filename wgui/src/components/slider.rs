@@ -18,11 +18,11 @@ use crate::{
 		util,
 	},
 	widget::{
+		ConstructEssentials, EventResult,
 		div::WidgetDiv,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
-		ConstructEssentials, EventResult,
 	},
 };
 

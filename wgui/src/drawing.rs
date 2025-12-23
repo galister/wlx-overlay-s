@@ -10,8 +10,8 @@ use crate::{
 	globals::Globals,
 	layout::Widget,
 	renderer_vk::text::{
-		custom_glyph::{CustomGlyph, CustomGlyphData},
 		TextShadow,
+		custom_glyph::{CustomGlyph, CustomGlyphData},
 	},
 	stack::{self, ScissorBoundary, ScissorStack, TransformStack},
 	widget::{self, ScrollbarInfo, WidgetState},

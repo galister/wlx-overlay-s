@@ -1,14 +1,22 @@
-use std::{collections::HashMap, process::{self, ExitCode}, time::Duration};
+use std::{
+    collections::HashMap,
+    process::{self, ExitCode},
+    time::Duration,
+};
 
 use anyhow::Context;
 use clap::Parser;
 use env_logger::Env;
-use wayvr_ipc::{client::WayVRClient, ipc, packet_client, };
+use wayvr_ipc::{client::WayVRClient, ipc, packet_client};
 
-use crate::helper::{wlx_haptics, wlx_input_state, wlx_panel_modify, wvr_display_create, wvr_display_get, wvr_display_list, wvr_display_remove, wvr_display_set_visible, wvr_display_window_list, wvr_process_get, wvr_process_launch, wvr_process_list, wvr_process_terminate, wvr_window_set_visible, WayVRClientState};
+use crate::helper::{
+    WayVRClientState, wlx_haptics, wlx_input_state, wlx_panel_modify, wvr_display_create,
+    wvr_display_get, wvr_display_list, wvr_display_remove, wvr_display_set_visible,
+    wvr_display_window_list, wvr_process_get, wvr_process_launch, wvr_process_list,
+    wvr_process_terminate, wvr_window_set_visible,
+};
 
 mod helper;
-
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
@@ -16,21 +24,24 @@ async fn main() -> ExitCode {
     let args = Args::parse();
 
     let mut state = WayVRClientState {
-        wayvr_client : WayVRClient::new(&format!("wayvrctl-{}", process::id())).await.inspect_err(|e| {
-            log::error!("Failed to initialize WayVR connection: {e:?}");
-            process::exit(1);
-        }).unwrap(),
+        wayvr_client: WayVRClient::new(&format!("wayvrctl-{}", process::id()))
+            .await
+            .inspect_err(|e| {
+                log::error!("Failed to initialize WayVR connection: {e:?}");
+                process::exit(1);
+            })
+            .unwrap(),
         serial_generator: ipc::SerialGenerator::new(),
         pretty_print: args.pretty,
     };
 
-    let maybe_err = if let Subcommands::Batch {fail_fast} = args.command {
+    let maybe_err = if let Subcommands::Batch { fail_fast } = args.command {
         run_batch(&mut state, fail_fast).await
     } else {
         run_once(&mut state, args).await
-     };
+    };
 
-    if let Err(e) = maybe_err{
+    if let Err(e) = maybe_err {
         log::error!("{e:?}");
         return ExitCode::FAILURE;
     } else {
@@ -50,30 +61,30 @@ async fn run_batch(state: &mut WayVRClientState, fail_fast: bool) -> anyhow::Res
             continue;
         }
 
-        if let Err(e) = parse_run_line(state, &line).await.with_context(|| format!("error on line {}", line_no + 1)) {
+        if let Err(e) = parse_run_line(state, &line)
+            .await
+            .with_context(|| format!("error on line {}", line_no + 1))
+        {
             if fail_fast {
-                return Err(e)
+                return Err(e);
             } else {
                 log::error!("{e:?}");
             }
         }
-
     }
     Ok(())
 }
 
 async fn parse_run_line(state: &mut WayVRClientState, line: &str) -> anyhow::Result<()> {
-            let mut argv = shell_words::split(&line)
-            .with_context(|| format!("parse error"))
-            ?;
+    let mut argv = shell_words::split(&line).with_context(|| format!("parse error"))?;
 
-        // clap expects argv[0] to be the binary name
-        argv.insert(0, env!("CARGO_PKG_NAME").to_string());
+    // clap expects argv[0] to be the binary name
+    argv.insert(0, env!("CARGO_PKG_NAME").to_string());
 
-        let args = Args::try_parse_from(argv).with_context(|| format!("invalid arguments"))?;
-        run_once(state, args).await?;
+    let args = Args::try_parse_from(argv).with_context(|| format!("invalid arguments"))?;
+    run_once(state, args).await?;
 
-        Ok(())
+    Ok(())
 }
 
 async fn run_once(state: &mut WayVRClientState, args: Args) -> anyhow::Result<()> {
@@ -84,8 +95,21 @@ async fn run_once(state: &mut WayVRClientState, args: Args) -> anyhow::Result<()
         Subcommands::InputState => {
             wlx_input_state(state).await;
         }
-        Subcommands::DisplayCreate { width, height, name, scale } => {
-            wvr_display_create(state, width, height, name, scale, packet_client::AttachTo::None).await;
+        Subcommands::DisplayCreate {
+            width,
+            height,
+            name,
+            scale,
+        } => {
+            wvr_display_create(
+                state,
+                width,
+                height,
+                name,
+                scale,
+                packet_client::AttachTo::None,
+            )
+            .await;
         }
         Subcommands::DisplayList => {
             wvr_display_list(state).await;
@@ -102,11 +126,17 @@ async fn run_once(state: &mut WayVRClientState, args: Args) -> anyhow::Result<()
             let handle = serde_json::from_str(&handle).context("Invalid handle")?;
             wvr_display_remove(state, handle).await;
         }
-        Subcommands::DisplaySetVisible { handle, visible_0_or_1 } => {
+        Subcommands::DisplaySetVisible {
+            handle,
+            visible_0_or_1,
+        } => {
             let handle = serde_json::from_str(&handle).context("Invalid handle")?;
             wvr_display_set_visible(state, handle, visible_0_or_1 != 0).await;
         }
-        Subcommands::WindowSetVisible { handle, visible_0_or_1 } => {
+        Subcommands::WindowSetVisible {
+            handle,
+            visible_0_or_1,
+        } => {
             let handle = serde_json::from_str(&handle).context("Invalid handle")?;
             wvr_window_set_visible(state, handle, visible_0_or_1 != 0).await;
         }
@@ -121,28 +151,51 @@ async fn run_once(state: &mut WayVRClientState, args: Args) -> anyhow::Result<()
             let handle = serde_json::from_str(&handle).context("Invalid handle")?;
             wvr_process_terminate(state, handle).await;
         }
-        Subcommands::ProcessLaunch { exec, name, env, target_display, args } => {
+        Subcommands::ProcessLaunch {
+            exec,
+            name,
+            env,
+            target_display,
+            args,
+        } => {
             let handle = serde_json::from_str(&target_display).context("Invalid target_display")?;
             wvr_process_launch(state, exec, name, env, handle, args, HashMap::new()).await;
         }
-        Subcommands::Haptics { intensity, duration, frequency } => {
+        Subcommands::Haptics {
+            intensity,
+            duration,
+            frequency,
+        } => {
             wlx_haptics(state, intensity, duration, frequency).await;
         }
-        Subcommands::PanelModify { overlay, element, command } => {
+        Subcommands::PanelModify {
+            overlay,
+            element,
+            command,
+        } => {
             let command = match command {
-                SubcommandPanelModify::SetText { text } => packet_client::WlxModifyPanelCommand::SetText(text),
-                SubcommandPanelModify::SetColor { hex_color } => packet_client::WlxModifyPanelCommand::SetColor(hex_color),
-                SubcommandPanelModify::SetImage { absolute_path } => packet_client::WlxModifyPanelCommand::SetImage(absolute_path),
-                SubcommandPanelModify::SetVisible { visible_0_or_1 } => packet_client::WlxModifyPanelCommand::SetVisible(visible_0_or_1 != 0),
-                SubcommandPanelModify::SetStickyState { sticky_state_0_or_1 } => packet_client::WlxModifyPanelCommand::SetStickyState(sticky_state_0_or_1 != 0),
+                SubcommandPanelModify::SetText { text } => {
+                    packet_client::WlxModifyPanelCommand::SetText(text)
+                }
+                SubcommandPanelModify::SetColor { hex_color } => {
+                    packet_client::WlxModifyPanelCommand::SetColor(hex_color)
+                }
+                SubcommandPanelModify::SetImage { absolute_path } => {
+                    packet_client::WlxModifyPanelCommand::SetImage(absolute_path)
+                }
+                SubcommandPanelModify::SetVisible { visible_0_or_1 } => {
+                    packet_client::WlxModifyPanelCommand::SetVisible(visible_0_or_1 != 0)
+                }
+                SubcommandPanelModify::SetStickyState {
+                    sticky_state_0_or_1,
+                } => packet_client::WlxModifyPanelCommand::SetStickyState(sticky_state_0_or_1 != 0),
             };
-            
+
             wlx_panel_modify(state, overlay, element, command).await;
         }
     }
     Ok(())
 }
-
 
 /// A command-line interface for WayVR IPC
 #[derive(clap::Parser, Debug)]
@@ -161,96 +214,92 @@ struct Args {
 enum Subcommands {
     /// Read commands from stdout, one per line.
     Batch {
-    /// Stop on the first error
-    #[arg(short, long)]
-      fail_fast: bool,  
+        /// Stop on the first error
+        #[arg(short, long)]
+        fail_fast: bool,
     },
     /// Get the positions of HMD & controllers
     InputState,
     /// Create a new WayVR display
-    DisplayCreate{
-    	width: u16,
-    	height: u16,
-    	name: String,
+    DisplayCreate {
+        width: u16,
+        height: u16,
+        name: String,
         #[arg(short, long)]
-    	scale: Option<f32>,
-
-    	//attach_to: packet_client::AttachTo,
+        scale: Option<f32>,
+        //attach_to: packet_client::AttachTo,
     },
     /// List WayVR displays
     DisplayList,
     /// Retrieve information about a single WayVR display
     DisplayGet {
         /// A display handle JSON returned by DisplayList or DisplayCreate
-    	handle: String,
+        handle: String,
     },
     /// List windows attached to a WayVR display
     DisplayWindowList {
         /// A display handle JSON returned by DisplayList or DisplayCreate
-    	handle: String,
+        handle: String,
     },
     /// Delete a WayVR display
     DisplayRemove {
         /// A display handle JSON returned by DisplayList or DisplayCreate
-    	handle: String,
+        handle: String,
     },
     /// Change the visibility of a WayVR display
     DisplaySetVisible {
         /// A display handle JSON returned by DisplayList or DisplayCreate
-    	handle: String,
-    	visible_0_or_1: u8,
+        handle: String,
+        visible_0_or_1: u8,
     },
 
     // DisplaySetLayout skipped
- 
     /// Change the visibility of a window on a WayVR display
     WindowSetVisible {
         /// A JSON window handle returned by DisplayWindowList
-    	handle: String,
-    	visible_0_or_1: u8,
+        handle: String,
+        visible_0_or_1: u8,
     },
     /// Retrieve information about a WayVR-managed process
     ProcessGet {
-    /// A JSON process handle returned by ProcessList or ProcessLaunch
-	handle: String,
-
+        /// A JSON process handle returned by ProcessList or ProcessLaunch
+        handle: String,
     },
     /// List all processes managed by WayVR
     ProcessList,
     /// Terminate a WayVR-managed process
     ProcessTerminate {
         /// A JSON process handle returned by ProcessList or ProcessLaunch
-    	handle: String,
+        handle: String,
     },
     /// Launch a new process inside WayVR
     ProcessLaunch {
-    	exec: String,
-    	name: String,
-    	env: Vec<String>,
+        exec: String,
+        name: String,
+        env: Vec<String>,
         /// A display handle JSON returned by DisplayList or DisplayCreate
-    	target_display: String,
-    	args: String,
+        target_display: String,
+        args: String,
     },
     /// Trigger haptics on the user's controller
     Haptics {
         #[arg(short, long, default_value = "0.25")]
-    	intensity: f32,
-        #[arg(short, long , default_value = "0.1")]
-    	duration: f32,
+        intensity: f32,
         #[arg(short, long, default_value = "0.1")]
-    	frequency: f32,
+        duration: f32,
+        #[arg(short, long, default_value = "0.1")]
+        frequency: f32,
     },
     /// Apply a modification to a panel element
     PanelModify {
         /// The name of the overlay (XML file name without extension)
-    	overlay: String,
+        overlay: String,
         /// The id of the element to modify, as set in the XML
-    	element: String,
+        element: String,
         /// Command to execute
         #[command(subcommand)]
-    	command: SubcommandPanelModify,
-    }
-
+        command: SubcommandPanelModify,
+    },
 }
 
 #[derive(clap::Parser, Debug)]
@@ -271,11 +320,7 @@ enum SubcommandPanelModify {
         absolute_path: String,
     },
     /// Set the visibility of a <div>, <rectangle>, <label>, <sprite> or <image>
-    SetVisible {
-        visible_0_or_1: u8,
-    },
+    SetVisible { visible_0_or_1: u8 },
     /// Set the sticky state of a <Button>. Intended for buttons without `sticky="1"`.
-    SetStickyState {
-        sticky_state_0_or_1: u8,
-    }
+    SetStickyState { sticky_state_0_or_1: u8 },
 }

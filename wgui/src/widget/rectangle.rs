@@ -4,7 +4,7 @@ use crate::{
 	drawing::{self, GradientMode, PrimitiveExtent},
 	event::CallbackDataCommon,
 	layout::WidgetID,
-	widget::{util::WLength, WidgetStateFlags},
+	widget::{WidgetStateFlags, util::WLength},
 };
 
 use super::{WidgetObj, WidgetState};

@@ -9,8 +9,8 @@ use crate::{
 	globals::Globals,
 	layout::WidgetID,
 	renderer_vk::text::{
-		custom_glyph::{CustomGlyph, CustomGlyphData},
 		DEFAULT_METRICS,
+		custom_glyph::{CustomGlyph, CustomGlyphData},
 	},
 	widget::WidgetStateFlags,
 };

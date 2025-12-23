@@ -1,8 +1,7 @@
 use bytes::BufMut;
 use interprocess::local_socket::{
-	self,
-	tokio::{prelude::*, Stream},
-	GenericNamespaced,
+	self, GenericNamespaced,
+	tokio::{Stream, prelude::*},
 };
 use serde::Serialize;
 use smallvec::SmallVec;

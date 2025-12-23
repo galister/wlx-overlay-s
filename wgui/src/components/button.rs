@@ -1,25 +1,24 @@
 use crate::{
 	animation::{Animation, AnimationEasing},
 	assets::AssetPath,
-	components::{self, tooltip::ComponentTooltip, Component, ComponentBase, ComponentTrait, RefreshData},
+	components::{self, Component, ComponentBase, ComponentTrait, RefreshData, tooltip::ComponentTooltip},
 	drawing::{self, Boundary, Color},
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerID, EventListenerKind},
 	i18n::Translation,
 	layout::{LayoutTask, WidgetID, WidgetPair},
 	renderer_vk::{
 		text::{
-			custom_glyph::{CustomGlyphContent, CustomGlyphData},
 			FontWeight, TextStyle,
+			custom_glyph::{CustomGlyphContent, CustomGlyphData},
 		},
 		util::centered_matrix,
 	},
 	widget::{
-		self,
+		self, ConstructEssentials, EventResult, WidgetData,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		sprite::{WidgetSprite, WidgetSpriteParams},
 		util::WLength,
-		ConstructEssentials, EventResult, WidgetData,
 	},
 };
 use glam::{Mat4, Vec3};
@@ -28,7 +27,7 @@ use std::{
 	rc::Rc,
 	time::{Duration, Instant},
 };
-use taffy::{prelude::length, AlignItems, JustifyContent};
+use taffy::{AlignItems, JustifyContent, prelude::length};
 
 pub struct Params<'a> {
 	pub text: Option<Translation>, // if unset, label will not be populated

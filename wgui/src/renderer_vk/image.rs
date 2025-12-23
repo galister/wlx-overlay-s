@@ -14,10 +14,10 @@ use vulkano::{
 use crate::{
 	drawing::{Boundary, ImagePrimitive},
 	gfx::{
+		BLEND_ALPHA, WGfx,
 		cmd::GfxCommandBuffer,
 		pass::WGfxPass,
 		pipeline::{WGfxPipeline, WPipelineCreateInfo},
-		WGfx, BLEND_ALPHA,
 	},
 	renderer_vk::{
 		model_buffer::ModelBuffer,
