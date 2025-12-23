@@ -1,6 +1,10 @@
-use crate::state::AppState;
+#[cfg(feature = "wayvr")]
+use crate::backend::wayvr::{self, WayVRState};
 
-use super::{TickTask, WayVRSignal, display, process, window};
+use crate::{
+    backend::input::InputState,
+    ipc::{event_queue::SyncEventQueue, signal::WayVRSignal},
+};
 use bytes::BufMut;
 use glam::Vec3A;
 use interprocess::local_socket::{self, ToNsName, traits::Listener};
@@ -71,9 +75,12 @@ fn read_payload(conn: &mut local_socket::Stream, size: u32) -> Option<Payload> {
 }
 
 pub struct TickParams<'a> {
-    pub state: &'a mut super::WayVRState,
-    pub tasks: &'a mut Vec<TickTask>,
-    pub app: &'a AppState,
+    #[cfg(feature = "wayvr")]
+    pub wayland_state: &'a mut WayVRState,
+    #[cfg(feature = "wayvr")]
+    pub tasks: &'a mut Vec<wayvr::TickTask>,
+    pub signals: &'a SyncEventQueue<WayVRSignal>,
+    pub input_state: &'a InputState,
 }
 
 pub fn gen_args_vec(input: &str) -> Vec<&str> {
@@ -149,13 +156,14 @@ impl Connection {
         Ok(())
     }
 
+    #[cfg(feature = "wayvr")]
     fn handle_wvr_display_list(
         &mut self,
         params: &TickParams,
         serial: ipc::Serial,
     ) -> anyhow::Result<()> {
         let list: Vec<packet_server::WvrDisplay> = params
-            .state
+            .wayland_state
             .displays
             .vec
             .iter()
@@ -165,7 +173,10 @@ impl Connection {
                     return None;
                 };
                 let display = &cell.obj;
-                Some(display.as_packet(display::DisplayHandle::new(idx as u32, cell.generation)))
+                Some(display.as_packet(wayvr::display::DisplayHandle::new(
+                    idx as u32,
+                    cell.generation,
+                )))
             })
             .collect();
 
@@ -185,8 +196,6 @@ impl Connection {
         params: &TickParams,
         serial: ipc::Serial,
     ) -> anyhow::Result<()> {
-        let input_state = &params.app.input_state;
-
         let to_arr = |vec: &Vec3A| -> [f32; 3] { [vec.x, vec.y, vec.z] };
 
         send_packet(
@@ -194,12 +203,12 @@ impl Connection {
             &ipc::data_encode(&PacketServer::WlxInputStateResponse(
                 serial,
                 packet_server::WlxInputState {
-                    hmd_pos: to_arr(&input_state.hmd.translation),
+                    hmd_pos: to_arr(&params.input_state.hmd.translation),
                     left: WlxInputStatePointer {
-                        pos: to_arr(&input_state.pointers[0].raw_pose.translation),
+                        pos: to_arr(&params.input_state.pointers[0].raw_pose.translation),
                     },
                     right: WlxInputStatePointer {
-                        pos: to_arr(&input_state.pointers[0].raw_pose.translation),
+                        pos: to_arr(&params.input_state.pointers[0].raw_pose.translation),
                     },
                 },
             )),
@@ -208,22 +217,24 @@ impl Connection {
         Ok(())
     }
 
+    #[cfg(feature = "wayvr")]
     fn handle_wvr_display_create(
         &mut self,
         params: &mut TickParams,
         serial: ipc::Serial,
         packet_params: packet_client::WvrDisplayCreateParams,
     ) -> anyhow::Result<()> {
-        let display_handle = params.state.create_display(
+        let display_handle = params.wayland_state.create_display(
             packet_params.width,
             packet_params.height,
             &packet_params.name,
             false,
         )?;
 
-        params
-            .tasks
-            .push(TickTask::NewDisplay(packet_params, Some(display_handle)));
+        params.tasks.push(wayvr::TickTask::NewDisplay(
+            packet_params,
+            Some(display_handle),
+        ));
 
         send_packet(
             &mut self.conn,
@@ -235,6 +246,7 @@ impl Connection {
         Ok(())
     }
 
+    #[cfg(feature = "wayvr")]
     fn handle_wvr_display_remove(
         &mut self,
         params: &mut TickParams,
@@ -242,8 +254,8 @@ impl Connection {
         handle: packet_server::WvrDisplayHandle,
     ) -> anyhow::Result<()> {
         let res = params
-            .state
-            .destroy_display(display::DisplayHandle::from_packet(handle))
+            .wayland_state
+            .destroy_display(wayvr::display::DisplayHandle::from_packet(handle))
             .map_err(|e| format!("{e:?}"));
 
         send_packet(
@@ -253,28 +265,31 @@ impl Connection {
         Ok(())
     }
 
+    #[cfg(feature = "wayvr")]
     fn handle_wvr_display_set_visible(
         params: &mut TickParams,
         handle: packet_server::WvrDisplayHandle,
         visible: bool,
     ) {
-        params.state.signals.send(WayVRSignal::DisplayVisibility(
-            display::DisplayHandle::from_packet(handle),
+        params.signals.send(WayVRSignal::DisplayVisibility(
+            wayvr::display::DisplayHandle::from_packet(handle),
             visible,
         ));
     }
 
+    #[cfg(feature = "wayvr")]
     fn handle_wvr_display_set_window_layout(
         params: &mut TickParams,
         handle: packet_server::WvrDisplayHandle,
         layout: packet_server::WvrDisplayWindowLayout,
     ) {
-        params.state.signals.send(WayVRSignal::DisplayWindowLayout(
-            display::DisplayHandle::from_packet(handle),
+        params.signals.send(WayVRSignal::DisplayWindowLayout(
+            wayvr::display::DisplayHandle::from_packet(handle),
             layout,
         ));
     }
 
+    #[cfg(feature = "wayvr")]
     fn handle_wvr_display_window_list(
         &mut self,
         params: &mut TickParams,
@@ -288,10 +303,13 @@ impl Connection {
             )
         };
 
-        let Some(display) = params
-            .state
-            .displays
-            .get(&display::DisplayHandle::from_packet(display_handle.clone()))
+        let Some(display) =
+            params
+                .wayland_state
+                .displays
+                .get(&wayvr::display::DisplayHandle::from_packet(
+                    display_handle.clone(),
+                ))
         else {
             return send(None);
         };
@@ -302,14 +320,14 @@ impl Connection {
                 .iter()
                 .filter_map(|disp_win| {
                     params
-                        .state
+                        .wayland_state
                         .wm
                         .borrow_mut()
                         .windows
                         .get(&disp_win.window_handle)
                         .map(|win| packet_server::WvrWindow {
-                            handle: window::WindowHandle::as_packet(&disp_win.window_handle),
-                            process_handle: process::ProcessHandle::as_packet(
+                            handle: wayvr::window::WindowHandle::as_packet(&disp_win.window_handle),
+                            process_handle: wayvr::process::ProcessHandle::as_packet(
                                 &disp_win.process_handle,
                             ),
                             pos_x: win.pos_x,
@@ -324,17 +342,18 @@ impl Connection {
         }))
     }
 
+    #[cfg(feature = "wayvr")]
     fn handle_wvr_window_set_visible(
         params: &mut TickParams,
         handle: packet_server::WvrWindowHandle,
         visible: bool,
     ) {
         let to_resize = if let Some(window) = params
-            .state
+            .wayland_state
             .wm
             .borrow_mut()
             .windows
-            .get_mut(&window::WindowHandle::from_packet(handle))
+            .get_mut(&wayvr::window::WindowHandle::from_packet(handle))
         {
             window.visible = visible;
             Some(window.display_handle)
@@ -343,13 +362,14 @@ impl Connection {
         };
 
         if let Some(to_resize) = to_resize
-            && let Some(display) = params.state.displays.get_mut(&to_resize)
+            && let Some(display) = params.wayland_state.displays.get_mut(&to_resize)
         {
             display.reposition_windows();
             display.trigger_rerender();
         }
     }
 
+    #[cfg(feature = "wayvr")]
     fn handle_wvr_process_launch(
         &mut self,
         params: &mut TickParams,
@@ -359,8 +379,8 @@ impl Connection {
         let args_vec = gen_args_vec(&packet_params.args);
         let env_vec = gen_env_vec(&packet_params.env);
 
-        let res = params.state.spawn_process(
-            super::display::DisplayHandle::from_packet(packet_params.target_display),
+        let res = params.wayland_state.spawn_process(
+            wayvr::display::DisplayHandle::from_packet(packet_params.target_display),
             &packet_params.exec,
             &args_vec,
             &env_vec,
@@ -378,15 +398,16 @@ impl Connection {
         Ok(())
     }
 
+    #[cfg(feature = "wayvr")]
     fn handle_wvr_display_get(
         &mut self,
         params: &TickParams,
         serial: ipc::Serial,
         display_handle: packet_server::WvrDisplayHandle,
     ) -> anyhow::Result<()> {
-        let native_handle = &display::DisplayHandle::from_packet(display_handle);
+        let native_handle = &wayvr::display::DisplayHandle::from_packet(display_handle);
         let disp = params
-            .state
+            .wayland_state
             .displays
             .get(native_handle)
             .map(|disp| disp.as_packet(*native_handle));
@@ -399,13 +420,14 @@ impl Connection {
         Ok(())
     }
 
+    #[cfg(feature = "wayvr")]
     fn handle_wvr_process_list(
         &mut self,
         params: &TickParams,
         serial: ipc::Serial,
     ) -> anyhow::Result<()> {
         let list: Vec<packet_server::WvrProcess> = params
-            .state
+            .wayland_state
             .processes
             .vec
             .iter()
@@ -415,7 +437,10 @@ impl Connection {
                     return None;
                 };
                 let process = &cell.obj;
-                Some(process.to_packet(process::ProcessHandle::new(idx as u32, cell.generation)))
+                Some(process.to_packet(wayvr::process::ProcessHandle::new(
+                    idx as u32,
+                    cell.generation,
+                )))
             })
             .collect();
 
@@ -431,12 +456,13 @@ impl Connection {
     }
 
     // This request doesn't return anything to the client
+    #[cfg(feature = "wayvr")]
     fn handle_wvr_process_terminate(
         params: &mut TickParams,
         process_handle: packet_server::WvrProcessHandle,
     ) {
-        let native_handle = &process::ProcessHandle::from_packet(process_handle);
-        let process = params.state.processes.get_mut(native_handle);
+        let native_handle = &wayvr::process::ProcessHandle::from_packet(process_handle);
+        let process = params.wayland_state.processes.get_mut(native_handle);
 
         let Some(process) = process else {
             return;
@@ -445,15 +471,16 @@ impl Connection {
         process.terminate();
     }
 
+    #[cfg(feature = "wayvr")]
     fn handle_wvr_process_get(
         &mut self,
         params: &TickParams,
         serial: ipc::Serial,
         process_handle: packet_server::WvrProcessHandle,
     ) -> anyhow::Result<()> {
-        let native_handle = &process::ProcessHandle::from_packet(process_handle);
+        let native_handle = &wayvr::process::ProcessHandle::from_packet(process_handle);
         let process = params
-            .state
+            .wayland_state
             .processes
             .get(native_handle)
             .map(|process| process.to_packet(*native_handle));
@@ -466,17 +493,18 @@ impl Connection {
         Ok(())
     }
 
+    #[cfg(feature = "wayvr")]
     fn handle_wlx_haptics(
         params: &mut TickParams,
         haptics_params: packet_client::WlxHapticsParams,
     ) {
-        params.state.signals.send(super::WayVRSignal::Haptics(
-            crate::backend::input::Haptics {
+        params
+            .signals
+            .send(WayVRSignal::Haptics(crate::backend::input::Haptics {
                 duration: haptics_params.duration,
                 frequency: haptics_params.frequency,
                 intensity: haptics_params.intensity,
-            },
-        ));
+            }));
     }
 
     fn handle_wlx_panel(
@@ -486,9 +514,8 @@ impl Connection {
         use crate::backend::task::{ModifyPanelCommand, ModifyPanelTask};
 
         params
-            .state
             .signals
-            .send(super::WayVRSignal::CustomTask(ModifyPanelTask {
+            .send(WayVRSignal::CustomTask(ModifyPanelTask {
                 overlay: custom_params.overlay,
                 element: custom_params.element,
                 command: match custom_params.command {
@@ -511,6 +538,9 @@ impl Connection {
             }));
     }
 
+    // FIXME: we should probably respond an error to the client in case if wayland server feature is disabled
+    //        fix this after we're done with the webkit-based wayvr-dashboard
+    #[allow(unused_variables)]
     fn process_payload(&mut self, params: &mut TickParams, payload: Payload) -> anyhow::Result<()> {
         let packet: PacketClient = ipc::data_decode(&payload)?;
 
@@ -525,42 +555,55 @@ impl Connection {
                 self.handle_wlx_input_state(params, serial)?;
             }
             PacketClient::WvrDisplayList(serial) => {
+                #[cfg(feature = "wayvr")]
                 self.handle_wvr_display_list(params, serial)?;
             }
             PacketClient::WvrDisplayGet(serial, display_handle) => {
+                #[cfg(feature = "wayvr")]
                 self.handle_wvr_display_get(params, serial, display_handle)?;
             }
             PacketClient::WvrDisplayRemove(serial, display_handle) => {
+                #[cfg(feature = "wayvr")]
                 self.handle_wvr_display_remove(params, serial, display_handle)?;
             }
             PacketClient::WvrDisplaySetVisible(display_handle, visible) => {
+                #[cfg(feature = "wayvr")]
                 Self::handle_wvr_display_set_visible(params, display_handle, visible);
             }
             PacketClient::WvrDisplaySetWindowLayout(display_handle, layout) => {
+                #[cfg(feature = "wayvr")]
                 Self::handle_wvr_display_set_window_layout(params, display_handle, layout);
             }
             PacketClient::WvrDisplayWindowList(serial, display_handle) => {
+                #[cfg(feature = "wayvr")]
                 self.handle_wvr_display_window_list(params, serial, display_handle)?;
             }
             PacketClient::WvrWindowSetVisible(window_handle, visible) => {
+                #[cfg(feature = "wayvr")]
                 Self::handle_wvr_window_set_visible(params, window_handle, visible);
             }
             PacketClient::WvrProcessGet(serial, process_handle) => {
+                #[cfg(feature = "wayvr")]
                 self.handle_wvr_process_get(params, serial, process_handle)?;
             }
             PacketClient::WvrProcessList(serial) => {
+                #[cfg(feature = "wayvr")]
                 self.handle_wvr_process_list(params, serial)?;
             }
             PacketClient::WvrProcessLaunch(serial, packet_params) => {
+                #[cfg(feature = "wayvr")]
                 self.handle_wvr_process_launch(params, serial, packet_params)?;
             }
             PacketClient::WvrDisplayCreate(serial, packet_params) => {
+                #[cfg(feature = "wayvr")]
                 self.handle_wvr_display_create(params, serial, packet_params)?;
             }
             PacketClient::WvrProcessTerminate(process_handle) => {
+                #[cfg(feature = "wayvr")]
                 Self::handle_wvr_process_terminate(params, process_handle);
             }
             PacketClient::WlxHaptics(haptics_params) => {
+                #[cfg(feature = "wayvr")]
                 Self::handle_wlx_haptics(params, haptics_params);
             }
             PacketClient::WlxModifyPanel(custom_params) => {

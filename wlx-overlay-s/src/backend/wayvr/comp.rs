@@ -37,8 +37,9 @@ use wayland_server::Client;
 use wayland_server::backend::{ClientData, ClientId, DisconnectReason};
 use wayland_server::protocol::wl_surface::WlSurface;
 
+use crate::ipc::event_queue::SyncEventQueue;
+
 use super::WayVRTask;
-use super::event_queue::SyncEventQueue;
 
 pub struct Application {
     pub gles_renderer: GlesRenderer,

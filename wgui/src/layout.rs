@@ -382,7 +382,7 @@ impl Layout {
 
 		let mut iter = |idx: usize| -> anyhow::Result<bool> {
 			let child_id = self.state.tree.get_child_id(parent_node_id, idx);
-			self.push_event_widget(child_id, event, event_result, alterables, user_data, false)?;
+			self.push_event_widget(child_id, event, event_result, alterables, user_data)?;
 			Ok(!event_result.can_propagate())
 		};
 
@@ -403,7 +403,6 @@ impl Layout {
 		event_result: &mut EventResult,
 		alterables: &mut EventAlterables,
 		user_data: &mut (&'a mut U1, &'a mut U2),
-		is_root_node: bool,
 	) -> anyhow::Result<()> {
 		let l = self.state.tree.layout(node_id)?;
 		let Some(widget_id) = self.state.tree.get_node_context(node_id).copied() else {
@@ -495,7 +494,6 @@ impl Layout {
 			&mut event_result,
 			&mut alterables,
 			&mut (user1, user2),
-			true,
 		)?;
 		self.process_alterables(alterables)?;
 		Ok(event_result)

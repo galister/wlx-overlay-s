@@ -373,9 +373,9 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
 
         #[cfg(feature = "wayvr")]
         if let Err(e) =
-            crate::overlays::wayvr::tick_events::<OpenXrOverlayData>(&mut app, &mut overlays)
+            crate::ipc::events::tick_events::<OpenXrOverlayData>(&mut app, &mut overlays)
         {
-            log::error!("WayVR tick_events failed: {e:?}");
+            log::error!("WayVR IPC tick_events failed: {e:?}");
         }
 
         // Begin rendering
@@ -459,9 +459,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
         // End layer composition
 
         #[cfg(feature = "wayvr")]
-        if let Some(wayvr) = &app.wayvr {
-            wayvr.borrow_mut().data.tick_finish()?;
-        }
+        app.wayvr.borrow_mut().data.tick_finish()?;
 
         // Begin layer submit
         layers.sort_by(|a, b| b.0.total_cmp(&a.0));

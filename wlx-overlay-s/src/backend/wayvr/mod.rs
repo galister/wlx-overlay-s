@@ -3,20 +3,16 @@ mod comp;
 pub mod display;
 pub mod egl_data;
 mod egl_ex;
-pub mod event_queue;
 mod handle;
-mod process;
-pub mod server_ipc;
+pub mod process;
 mod smithay_wrapper;
 mod time;
-mod window;
+pub mod window;
 use anyhow::Context;
 use comp::Application;
 use display::{Display, DisplayInitParams, DisplayVec};
-use event_queue::SyncEventQueue;
 use process::ProcessVec;
 use serde::Deserialize;
-use server_ipc::WayVRServer;
 use smallvec::SmallVec;
 use smithay::{
     backend::{
@@ -48,6 +44,7 @@ use wayvr_ipc::{
 use xkbcommon::xkb;
 
 use crate::{
+    ipc::{event_queue::SyncEventQueue, ipc_server, signal::WayVRSignal},
     state::AppState,
     subsystem::hid::{MODS_TO_KEYS, WheelDelta},
 };
@@ -87,19 +84,6 @@ pub enum WayVRTask {
     ProcessTerminationRequest(process::ProcessHandle),
 }
 
-#[derive(Clone)]
-pub enum WayVRSignal {
-    DisplayVisibility(display::DisplayHandle, bool),
-    DisplayWindowLayout(
-        display::DisplayHandle,
-        packet_server::WvrDisplayWindowLayout,
-    ),
-    BroadcastStateChanged(packet_server::WvrStateChanged),
-    DropOverlay(crate::windowing::OverlayID),
-    Haptics(super::input::Haptics),
-    CustomTask(crate::backend::task::ModifyPanelTask),
-}
-
 pub enum BlitMethod {
     Dmabuf,
     Software,
@@ -127,20 +111,19 @@ pub struct WayVRState {
     time_start: u64,
     pub displays: display::DisplayVec,
     pub manager: client::WayVRCompositor,
-    wm: Rc<RefCell<window::WindowManager>>,
+    pub wm: Rc<RefCell<window::WindowManager>>,
     egl_data: Rc<egl_data::EGLData>,
     pub processes: process::ProcessVec,
     pub config: Config,
     dashboard_display: Option<display::DisplayHandle>,
     pub tasks: SyncEventQueue<WayVRTask>,
-    pub signals: SyncEventQueue<WayVRSignal>,
     ticks: u64,
     cur_modifiers: u8,
+    signals: SyncEventQueue<WayVRSignal>,
 }
 
 pub struct WayVR {
     pub state: WayVRState,
-    pub ipc_server: WayVRServer,
 }
 
 pub enum MouseIndex {
@@ -159,7 +142,7 @@ pub enum TickTask {
 
 impl WayVR {
     #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
-    pub fn new(config: Config) -> anyhow::Result<Self> {
+    pub fn new(config: Config, signals: SyncEventQueue<WayVRSignal>) -> anyhow::Result<Self> {
         log::info!("Initializing WayVR");
         let display: wayland_server::Display<Application> = wayland_server::Display::new()?;
         let dh = display.handle();
@@ -264,8 +247,6 @@ impl WayVR {
 
         let time_start = get_millis();
 
-        let ipc_server = WayVRServer::new()?;
-
         let state = WayVRState {
             time_start,
             manager: client::WayVRCompositor::new(state, display, seat_keyboard, seat_pointer)?,
@@ -277,11 +258,11 @@ impl WayVR {
             dashboard_display: None,
             ticks: 0,
             tasks,
-            signals: SyncEventQueue::new(),
             cur_modifiers: 0,
+            signals,
         };
 
-        Ok(Self { state, ipc_server })
+        Ok(Self { state })
     }
 
     pub fn render_display(&mut self, display: display::DisplayHandle) -> anyhow::Result<bool> {
@@ -312,13 +293,14 @@ impl WayVR {
     }
 
     #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
-    pub fn tick_events(&mut self, app: &AppState) -> anyhow::Result<Vec<TickTask>> {
+    pub fn tick_events(&mut self, app: &mut AppState) -> anyhow::Result<Vec<TickTask>> {
         let mut tasks: Vec<TickTask> = Vec::new();
 
-        self.ipc_server.tick(&mut server_ipc::TickParams {
-            state: &mut self.state,
+        app.ipc_server.tick(&mut ipc_server::TickParams {
+            wayland_state: &mut self.state,
+            input_state: &app.input_state,
             tasks: &mut tasks,
-            app,
+            signals: &app.wayvr_signals,
         });
 
         // Check for redraw events
@@ -357,11 +339,11 @@ impl WayVR {
         }
 
         for (handle, display) in self.state.displays.iter_mut() {
-            display.tick(&self.state.config, &handle, &mut self.state.signals);
+            display.tick(&self.state.config, &handle, &mut app.wayvr_signals);
         }
 
         if !to_remove.is_empty() {
-            self.state.signals.send(WayVRSignal::BroadcastStateChanged(
+            app.wayvr_signals.send(WayVRSignal::BroadcastStateChanged(
                 packet_server::WvrStateChanged::ProcessRemoved,
             ));
         }
@@ -402,7 +384,7 @@ impl WayVR {
                         };
 
                         display.add_window(window_handle, process_handle, &toplevel);
-                        self.state.signals.send(WayVRSignal::BroadcastStateChanged(
+                        app.wayvr_signals.send(WayVRSignal::BroadcastStateChanged(
                             packet_server::WvrStateChanged::WindowCreated,
                         ));
                     }
