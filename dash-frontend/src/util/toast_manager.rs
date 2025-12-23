@@ -162,14 +162,13 @@ impl ToastManager {
 	}
 
 	pub fn tick(&mut self, globals: &WguiGlobals, layout: &mut Layout) -> anyhow::Result<()> {
-		if !self.needs_tick {
-			return Ok(());
-		}
-
 		let mut state = self.state.borrow_mut();
-
 		if state.timeout > 0 {
 			state.timeout -= 1;
+		}
+
+		if !self.needs_tick {
+			return Ok(());
 		}
 
 		if state.timeout == 0 {

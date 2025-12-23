@@ -96,6 +96,7 @@ pub fn init_window(
 			enabled_extensions: my_extensions,
 			enabled_features: DeviceFeatures {
 				dynamic_rendering: true,
+				descriptor_binding_sampled_image_update_after_bind: true,
 				..DeviceFeatures::empty()
 			},
 			queue_create_infos: queue_families
