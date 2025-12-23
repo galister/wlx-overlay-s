@@ -52,7 +52,7 @@ pub struct WlxHapticsParams {
 pub enum WlxModifyPanelCommand {
 	SetText(String),
 	SetColor(String),
-	SetSprite(String),
+	SetImage(String),
 	SetVisible(bool),
 	SetStickyState(bool),
 }

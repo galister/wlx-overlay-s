@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    process::{Command, Stdio},
+    process::{Child, Command, Stdio},
     rc::Rc,
     str::FromStr,
     sync::{Arc, atomic::Ordering},
@@ -359,15 +359,13 @@ pub(super) fn setup_custom_button<S: 'static>(
                     carry_over: RefCell::new(None),
                 });
 
-                let piped = attribs.get_value("_update_label").is_some_and(|s| s == "1");
-
                 layout.add_event_listener::<AppState, S>(
                     attribs.widget_id,
                     EventListenerKind::InternalStateChange,
                     Box::new({
                         let state = state.clone();
-                        move |common, _data, _, _| {
-                            shell_on_tick(&state, common, piped);
+                        move |_, _, _, _| {
+                            shell_on_tick(&state);
                             Ok(EventResult::Pass)
                         }
                     }),
@@ -429,8 +427,7 @@ pub(super) fn setup_custom_button<S: 'static>(
 
 #[derive(Default)]
 struct ShellButtonMutableState {
-    reader: Option<PipeReaderThread>,
-    pid: Option<u32>,
+    child: Option<Child>,
 }
 
 struct ShellButtonState {
@@ -443,17 +440,18 @@ struct ShellButtonState {
 fn shell_on_action(state: &ShellButtonState) -> anyhow::Result<()> {
     let mut mut_state = state.mut_state.borrow_mut();
 
-    if mut_state.reader.as_ref().is_some_and(|r| !r.is_finished())
-        && let Some(pid) = mut_state.pid.as_ref()
+    if let Some(child) = mut_state.child.as_mut()
+        && let Ok(None) = child.try_wait()
     {
         log::info!("ShellExec triggered while child is still running; sending SIGUSR1");
         let _ = Command::new("kill")
             .arg("-s")
             .arg("USR1")
-            .arg(pid.to_string())
+            .arg(child.id().to_string())
             .spawn()
             .unwrap()
             .wait();
+
         return Ok(());
     }
 
@@ -464,26 +462,19 @@ fn shell_on_action(state: &ShellButtonState) -> anyhow::Result<()> {
         .spawn()
         .with_context(|| format!("Failed to run shell script: '{}'", &state.exec))?;
 
-    mut_state.pid = Some(child.id());
-    mut_state.reader = Some(PipeReaderThread::new_from_child(child));
+    mut_state.child = Some(child);
 
     Ok(())
 }
 
-fn shell_on_tick(state: &ShellButtonState, common: &mut event::CallbackDataCommon, piped: bool) {
+fn shell_on_tick(state: &ShellButtonState) {
     let mut mut_state = state.mut_state.borrow_mut();
 
-    let Some(reader) = mut_state.reader.as_mut() else {
+    let Some(child) = mut_state.child.as_mut() else {
         return;
     };
 
-    if piped && let Some(text) = reader.get_last_line() {
-        state
-            .button
-            .set_text(common, Translation::from_raw_text(&text));
-    }
-
-    if reader.is_finished() {
-        mut_state.reader = None;
+    if let Ok(Some(_)) = child.try_wait() {
+        mut_state.child = None;
     }
 }

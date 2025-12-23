@@ -58,7 +58,7 @@ pub enum PlayspaceTask {
 pub enum ModifyPanelCommand {
     SetText(String),
     SetColor(String),
-    SetSprite(String),
+    SetImage(String),
     SetVisible(bool),
     SetStickyState(bool),
 }

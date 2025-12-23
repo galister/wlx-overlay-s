@@ -1,5 +1,9 @@
 # Custom UI Elements
 
+Elements on custom panels may be modified at runtime using `wayvrctl`.
+
+For more, refer to: `wayvrctl panel-modify --help`
+
 ### Labels
 
 #### Clock label
@@ -12,43 +16,6 @@ See the Custom Timezones section for more info on timezones. Skip `_timezone` to
 
 ```xml
 <label _source="clock" _display="time" _timezone="0" [...] />
-```
-
-#### Fifo label
-
-Fifo label creates a fifo on your system that other programs can pipe output into.
-
-- The label will look for the last complete line to use as its text.
-- If the pipe breaks due to an IO error, re-creation is attempted after 15 seconds.
-- `_path` supports environment variables, but not `~`!
-
-```xml
-<label _source="fifo" _path="$XDG_RUNTIME_DIR/my-test-label" [...] />
-```
-
-Example script to test with:
-```bash
-for i in {0..99}; do echo "i is $i" > $XDG_RUNTIME_DIR/my-test-label; sleep 1; done
-```
-
-#### Shell Exec label
-
-This label executes a shell script using the `sh` shell.
-
-- Write lines to the script's stdout to update the label text.
-- The label will look for the last complete line to use as its text.
-- Long-running scripts are allowed, but the label is only updated while the HMD is active.
-- If the script exits successfully (code 0), it will be re-ran on the next frame. Otherwise, it will be re-ran in 15s.
-- Control the pacing from inside the script itself. For example, adding a sleep 5 will make the script execute at most once per 5 seconds.
-- `_exec` supports everything that `sh` supports!
-
-```xml
-<label _source="shell" _exec="$HOME/.local/bin/my-test-script.sh" [...] />
-```
-
-```bash
-#!/usr/bin/bash
-echo "This is my script's output!"
 ```
 
 #### Battery label

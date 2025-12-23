@@ -112,7 +112,7 @@ fn apply_custom_command(
                 anyhow::bail!("No <label> or <Button> with such id.");
             }
         }
-        ModifyPanelCommand::SetSprite(path) => {
+        ModifyPanelCommand::SetImage(path) => {
             if let Ok(pair) = panel
                 .parser_state
                 .fetch_widget(&panel.layout.state, element)

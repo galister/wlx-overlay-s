@@ -132,7 +132,7 @@ async fn run_once(state: &mut WayVRClientState, args: Args) -> anyhow::Result<()
             let command = match command {
                 SubcommandPanelModify::SetText { text } => packet_client::WlxModifyPanelCommand::SetText(text),
                 SubcommandPanelModify::SetColor { hex_color } => packet_client::WlxModifyPanelCommand::SetColor(hex_color),
-                SubcommandPanelModify::SetSprite { absolute_path } => packet_client::WlxModifyPanelCommand::SetSprite(absolute_path),
+                SubcommandPanelModify::SetImage { absolute_path } => packet_client::WlxModifyPanelCommand::SetImage(absolute_path),
                 SubcommandPanelModify::SetVisible { visible_0_or_1 } => packet_client::WlxModifyPanelCommand::SetVisible(visible_0_or_1 != 0),
                 SubcommandPanelModify::SetStickyState { sticky_state_0_or_1 } => packet_client::WlxModifyPanelCommand::SetStickyState(sticky_state_0_or_1 != 0),
             };
@@ -266,11 +266,11 @@ enum SubcommandPanelModify {
         hex_color: String,
     },
     /// Set the content of a <sprite> or <image>. Max size for <sprite> is 256x256.
-    SetSprite {
+    SetImage {
         /// Absolute path to a svg, gif, png, jpeg or webp image.
         absolute_path: String,
     },
-    /// Set the visibility of a <div>, <rectangle>, <label> or <sprite>
+    /// Set the visibility of a <div>, <rectangle>, <label>, <sprite> or <image>
     SetVisible {
         visible_0_or_1: u8,
     },

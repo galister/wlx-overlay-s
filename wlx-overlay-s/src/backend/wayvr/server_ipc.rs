@@ -495,8 +495,8 @@ impl Connection {
                     packet_client::WlxModifyPanelCommand::SetText(text) => {
                         ModifyPanelCommand::SetText(text)
                     }
-                    packet_client::WlxModifyPanelCommand::SetSprite(sprite) => {
-                        ModifyPanelCommand::SetSprite(sprite)
+                    packet_client::WlxModifyPanelCommand::SetImage(sprite) => {
+                        ModifyPanelCommand::SetImage(sprite)
                     }
                     packet_client::WlxModifyPanelCommand::SetStickyState(sticky) => {
                         ModifyPanelCommand::SetStickyState(sticky)
