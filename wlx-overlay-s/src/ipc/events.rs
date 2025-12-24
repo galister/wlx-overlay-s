@@ -111,6 +111,7 @@ pub fn tick_events<O>(
 where
     O: Default,
 {
+    #[cfg(feature = "wayvr")]
     let wayland_server = app.wayland_server.clone();
 
     while let Some(signal) = app.wayvr_signals.read() {
@@ -193,7 +194,8 @@ where
 
     #[cfg(not(feature = "wayvr"))]
     {
-        app.ipc_server.tick(&mut ipc_server::TickParams {
+        use super::ipc_server::TickParams;
+        app.ipc_server.tick(&mut TickParams {
             input_state: &app.input_state,
             signals: &app.wayvr_signals,
         });
