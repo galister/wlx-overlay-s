@@ -335,7 +335,9 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             .for_each(|o| o.after_render(universe.clone(), &mut overlay_mgr, &app.gfx));
 
         #[cfg(feature = "wayvr")]
-        app.wayvr.borrow_mut().data.tick_finish()?;
+        if let Some(wayland_server) = app.wayland_server.as_ref() {
+            wayland_server.borrow_mut().data.tick_finish()?;
+        }
 
         // chaperone
     } // main_loop

@@ -1,6 +1,5 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::ipc::ipc_server;
 use wayvr_ipc::packet_server;
 
 #[cfg(feature = "wayvr")]
@@ -112,18 +111,17 @@ pub fn tick_events<O>(
 where
     O: Default,
 {
-    #[cfg(feature = "wayvr")]
-    let r_wayvr = app.wayvr.clone();
-    #[cfg(feature = "wayvr")]
-    let mut wayvr = r_wayvr.borrow_mut();
+    let wayland_server = app.wayland_server.clone();
 
     while let Some(signal) = app.wayvr_signals.read() {
         match signal {
             #[cfg(feature = "wayvr")]
             WayVRSignal::DisplayVisibility(display_handle, visible) => {
-                if let Some(overlay_id) = wayvr.display_handle_map.get(&display_handle) {
+                if let Some(mut wayland_server) = wayland_server.as_ref().map(|r| r.borrow_mut())
+                    && let Some(overlay_id) = wayland_server.display_handle_map.get(&display_handle)
+                {
                     let overlay_id = *overlay_id;
-                    wayvr
+                    wayland_server
                         .data
                         .state
                         .set_display_visible(display_handle, visible);
@@ -144,7 +142,12 @@ where
             }
             #[cfg(feature = "wayvr")]
             WayVRSignal::DisplayWindowLayout(display_handle, layout) => {
-                wayvr.data.state.set_display_layout(display_handle, layout);
+                if let Some(mut wayland_server) = wayland_server.as_ref().map(|r| r.borrow_mut()) {
+                    wayland_server
+                        .data
+                        .state
+                        .set_display_layout(display_handle, layout);
+                }
             }
             #[cfg(feature = "wayvr")]
             WayVRSignal::BroadcastStateChanged(packet) => {
@@ -153,7 +156,9 @@ where
             }
             #[cfg(feature = "wayvr")]
             WayVRSignal::Haptics(haptics) => {
-                wayvr.pending_haptics = Some(haptics);
+                if let Some(mut wayland_server) = wayland_server.as_ref().map(|r| r.borrow_mut()) {
+                    wayland_server.pending_haptics = Some(haptics);
+                }
             }
             WayVRSignal::DropOverlay(overlay_id) => {
                 app.tasks
@@ -170,8 +175,16 @@ where
 
     #[cfg(feature = "wayvr")]
     {
-        let tick_tasks = wayvr.data.tick_events(app)?;
-        process_tick_tasks(app, tick_tasks, &r_wayvr)?;
+        if let Some(wayland_server) = wayland_server {
+            let tick_tasks = wayland_server.borrow_mut().data.tick_events(app)?;
+            process_tick_tasks(app, tick_tasks, &wayland_server)?;
+
+            overlays::wayvr::create_queued_displays(
+                app,
+                &mut wayland_server.borrow_mut(),
+                overlays,
+            )?;
+        }
     }
 
     #[cfg(not(feature = "wayvr"))]
@@ -181,9 +194,6 @@ where
             signals: &app.wayvr_signals,
         });
     }
-
-    #[cfg(feature = "wayvr")]
-    overlays::wayvr::create_queued_displays(app, &mut wayvr, overlays)?;
 
     Ok(())
 }

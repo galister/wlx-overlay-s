@@ -60,10 +60,8 @@ pub struct AppState {
     #[cfg(feature = "osc")]
     pub osc_sender: Option<OscSender>,
 
-    // wayland server
-    // TODO: rename to wayland_server?
     #[cfg(feature = "wayvr")]
-    pub wayvr: Rc<RefCell<WayVRData>>,
+    pub wayland_server: Option<Rc<RefCell<WayVRData>>>,
 }
 
 #[allow(unused_mut)]
@@ -80,15 +78,18 @@ impl AppState {
         let wayvr_signals = SyncEventQueue::new();
 
         #[cfg(feature = "wayvr")]
-        let wayvr =
-            session
-                .wayvr_config
-                .post_load(&session.config, &mut tasks, wayvr_signals.clone())?;
+        let wayland_server = session
+            .wayvr_config
+            .post_load(&session.config, &mut tasks, wayvr_signals.clone())
+            .inspect_err(|e| log::error!("Could not initialize wayland server: {e:?}"))
+            .ok();
 
         let mut hid_provider = HidWrapper::new();
 
         #[cfg(feature = "wayvr")]
-        hid_provider.set_wayvr(wayvr.clone());
+        if let Some(wayland_server) = wayland_server.as_ref() {
+            hid_provider.set_wayvr(wayland_server.clone());
+        }
 
         #[cfg(feature = "osc")]
         let osc_sender = crate::subsystem::osc::OscSender::new(session.config.osc_out_port).ok();
@@ -150,7 +151,7 @@ impl AppState {
             osc_sender,
 
             #[cfg(feature = "wayvr")]
-            wayvr,
+            wayland_server,
         })
     }
 
