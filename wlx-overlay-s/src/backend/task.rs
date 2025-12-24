@@ -8,6 +8,7 @@ use std::{
 use serde::Deserialize;
 
 use crate::{
+    backend::input,
     state::AppState,
     windowing::{OverlaySelector, window::OverlayWindowConfig},
 };
@@ -41,6 +42,13 @@ impl Ord for AppTask {
             .then(self.id.cmp(&other.id))
             .reverse()
     }
+}
+
+pub enum InputTask {
+    Haptics {
+        device: usize,
+        haptics: input::Haptics,
+    },
 }
 
 #[cfg(feature = "openvr")]
@@ -87,6 +95,7 @@ pub enum OverlayTask {
 }
 
 pub enum TaskType {
+    Input(InputTask),
     Overlay(OverlayTask),
     Playspace(PlayspaceTask),
     #[cfg(feature = "openvr")]

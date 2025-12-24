@@ -214,15 +214,17 @@ pub async fn wvr_process_launch(
     )
 }
 
-pub async fn wlx_haptics(
+pub async fn wlx_device_haptics(
     state: &mut WayVRClientState,
+    device: usize,
     intensity: f32,
     duration: f32,
     frequency: f32,
 ) {
     handle_empty_result(
-        WayVRClient::fn_wlx_haptics(
+        WayVRClient::fn_wlx_device_haptics(
             state.wayvr_client.clone(),
+            device,
             packet_client::WlxHapticsParams {
                 intensity,
                 duration,
