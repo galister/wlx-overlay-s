@@ -8,7 +8,7 @@ use vulkano::{
     format::Format,
     image::{Image, ImageTiling, SubresourceLayout, view::ImageView},
 };
-use wayvr_ipc::packet_server::{self, PacketServer, WvrStateChanged};
+use wayvr_ipc::packet_server::{PacketServer, WvrStateChanged};
 use wgui::gfx::{
     WGfx,
     pass::WGfxPass,
@@ -658,11 +658,15 @@ pub fn create_wayvr_display_overlay(
     display_scale: f32,
     name: &str,
 ) -> anyhow::Result<OverlayWindowConfig> {
-    let wayvr = app.wayvr.clone();
+    let wayland_server = app
+        .wayland_server
+        .as_ref()
+        .map(|r| r.clone())
+        .context("wayland_server unavailable")?;
 
     let backend = Box::new(WayVRBackend::new(
         app,
-        wayvr,
+        wayland_server,
         display_handle,
         [display_width, display_height],
     )?);
@@ -719,7 +723,11 @@ fn action_app_click<O>(
 where
     O: Default,
 {
-    let wayvr = app.wayvr.clone();
+    let wayland_server = app
+        .wayland_server
+        .as_ref()
+        .map(|r| r.clone())
+        .context("wayland_server unavailable")?;
 
     let catalog = app
         .session
@@ -729,7 +737,7 @@ where
         .clone();
 
     if let Some(app_entry) = catalog.get_app(app_name) {
-        let mut wayvr = wayvr.borrow_mut();
+        let mut wayvr = wayland_server.borrow_mut();
 
         let disp_handle = get_or_create_display_by_name(
             app,
@@ -783,8 +791,11 @@ pub fn action_display_click<O>(
 where
     O: Default,
 {
-    let wayvr = app.wayvr.clone();
-    let mut wayvr = wayvr.borrow_mut();
+    let wayland_server = app
+        .wayland_server
+        .clone()
+        .context("wayland_server unavailable")?;
+    let mut wayvr = wayland_server.borrow_mut();
 
     let Some(handle) = WayVR::get_display_by_name(&wayvr.data.state.displays, display_name) else {
         return Ok(());
@@ -843,10 +854,10 @@ pub fn wayvr_action<O>(
             }
         }
         WayVRAction::ToggleDashboard => {
-            let wayvr = app.wayvr.clone();
-            let mut wayvr = wayvr.borrow_mut();
-
-            if let Err(e) = toggle_dashboard::<O>(app, overlays, &mut wayvr) {
+            if let Some(wayland_server) = app.wayland_server.as_ref().map(|r| r.clone())
+                && let Err(e) =
+                    toggle_dashboard::<O>(app, overlays, &mut wayland_server.borrow_mut())
+            {
                 error_toast(app, "toggle_dashboard failed", e);
             }
         }

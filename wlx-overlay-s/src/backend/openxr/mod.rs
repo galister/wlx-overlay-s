@@ -459,7 +459,9 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
         // End layer composition
 
         #[cfg(feature = "wayvr")]
-        app.wayvr.borrow_mut().data.tick_finish()?;
+        if let Some(wayland_server) = app.wayland_server.as_ref() {
+            wayland_server.borrow_mut().data.tick_finish()?;
+        }
 
         // Begin layer submit
         layers.sort_by(|a, b| b.0.total_cmp(&a.0));
