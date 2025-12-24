@@ -87,17 +87,13 @@ wayvr-ipc = { path = "../wayvr-ipc", default-features = false }
 ################################
 # Wayland Server deps
 ################################
-khronos-egl = { version = "6.0.0", features = ["static"], optional = true }
 smithay = { version = "0.7.0", default-features = false, features = [
-  "renderer_gl",
-  "backend_egl",
-  "backend_drm",
+  "backend_vulkan",
   "xwayland",
   "wayland_frontend",
 ], optional = true }
 uuid = { version = "1.19.0", features = ["v4", "fast-rng"], optional = true }
 wayland-client = { workspace = true, optional = true }
-wayland-egl = { version = "0.32.8", optional = true }
 rust-embed = { workspace = true }
 signal-hook = "0.3.18"
 ################################
@@ -117,10 +113,8 @@ pipewire = ["wlx-capture/pipewire"]
 uidev = ["dep:winit"]
 xcb = ["dep:xcb"]
 wayvr = [
-  "dep:khronos-egl",
   "dep:smithay",
   "dep:uuid",
   "dep:wayland-client",
-  "dep:wayland-egl",
 ]
 as-raw-xcb-connection = []
