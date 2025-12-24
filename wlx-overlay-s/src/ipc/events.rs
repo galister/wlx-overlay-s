@@ -10,7 +10,7 @@ use crate::{
 use crate::{
     backend::{
         self,
-        task::{OverlayTask, TaskType},
+        task::{InputTask, OverlayTask, TaskType},
     },
     ipc::signal::WayVRSignal,
     overlays::{self},
@@ -159,6 +159,10 @@ where
                 if let Some(mut wayland_server) = wayland_server.as_ref().map(|r| r.borrow_mut()) {
                     wayland_server.pending_haptics = Some(haptics);
                 }
+            }
+            WayVRSignal::DeviceHaptics(device, haptics) => {
+                app.tasks
+                    .enqueue(TaskType::Input(InputTask::Haptics { device, haptics }));
             }
             WayVRSignal::DropOverlay(overlay_id) => {
                 app.tasks

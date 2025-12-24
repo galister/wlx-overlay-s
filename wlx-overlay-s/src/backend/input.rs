@@ -10,7 +10,7 @@ use smallvec::{SmallVec, smallvec};
 use wlx_common::common::LeftRight;
 use wlx_common::windowing::{OverlayWindowState, Positioning};
 
-use crate::backend::task::OverlayTask;
+use crate::backend::task::{InputTask, OverlayTask};
 use crate::overlays::anchor::{ANCHOR_NAME, GRAB_HELP_NAME};
 use crate::overlays::watch::WATCH_NAME;
 use crate::state::{AppSession, AppState};
@@ -62,6 +62,18 @@ impl InputState {
             pointers: [Pointer::new(0), Pointer::new(1)],
             devices: Vec::new(),
             processes: Vec::new(),
+        }
+    }
+
+    pub fn handle_task(&mut self, task: InputTask) {
+        match task {
+            InputTask::Haptics { device, haptics } => {
+                if let Some(pointer) = self.pointers.get_mut(device) {
+                    pointer.pending_haptics = Some(haptics);
+                } else {
+                    log::warn!("Can't trigger haptics on non-existing device: {device}");
+                }
+            }
         }
     }
 
@@ -218,6 +230,7 @@ pub struct Pointer {
     pub now: PointerState,
     pub before: PointerState,
     pub last_click: Instant,
+    pub pending_haptics: Option<Haptics>,
     pub(super) interaction: InteractionState,
 }
 
@@ -231,6 +244,7 @@ impl Pointer {
             now: PointerState::default(),
             before: PointerState::default(),
             last_click: Instant::now(),
+            pending_haptics: None,
             interaction: InteractionState::default(),
         }
     }
@@ -340,6 +354,8 @@ where
 {
     // already grabbing, ignore everything else
     let mut pointer = &mut app.input_state.pointers[idx];
+    let pending_haptics = pointer.pending_haptics.take();
+
     if let Some(grab_data) = pointer.interaction.grabbed {
         if let Some(grabbed) = overlays.mut_by_id(grab_data.grabbed_id) {
             handle_grabbed(idx, grabbed, app);
@@ -347,13 +363,13 @@ where
             log::warn!("Grabbed overlay {:?} does not exist", grab_data.grabbed_id);
             pointer.interaction.grabbed = None;
         }
-        return (0.1, None);
+        return (0.1, pending_haptics);
     }
 
     let hovered_id = pointer.interaction.hovered_id.take();
     let (Some(mut hit), haptics) = get_nearest_hit(idx, overlays, app) else {
         handle_no_hit(idx, hovered_id, overlays, app);
-        return (0.0, None); // no hit
+        return (0.0, pending_haptics); // no hit
     };
 
     // focus change
@@ -378,7 +394,7 @@ where
 
     let Some(hovered) = overlays.mut_by_id(hit.overlay) else {
         log::warn!("Hit overlay {:?} does not exist", hit.overlay);
-        return (0.0, None); // no hit
+        return (0.0, pending_haptics); // no hit
     };
     pointer = &mut app.input_state.pointers[idx];
     pointer.interaction.hovered_id = Some(hit.overlay);
@@ -447,7 +463,7 @@ where
         }
     }
 
-    (hit.dist, haptics)
+    (hit.dist, haptics.or(pending_haptics))
 }
 
 fn handle_no_hit<O>(

@@ -14,6 +14,7 @@ pub enum WayVRSignal {
     BroadcastStateChanged(wayvr_ipc::packet_server::WvrStateChanged),
     #[cfg(feature = "wayvr")]
     Haptics(crate::backend::input::Haptics),
+    DeviceHaptics(usize, crate::backend::input::Haptics),
     DropOverlay(crate::windowing::OverlayID),
     CustomTask(crate::backend::task::ModifyPanelTask),
 }

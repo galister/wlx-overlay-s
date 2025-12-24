@@ -26,7 +26,7 @@ use crate::{
             manifest::{install_manifest, uninstall_manifest},
             overlay::OpenVrOverlayData,
         },
-        task::{OpenVrTask, OverlayTask, TaskType},
+        task::{InputTask, OpenVrTask, OverlayTask, TaskType},
     },
     config::save_state,
     graphics::{GpuFutures, init_openvr_graphics},
@@ -220,6 +220,9 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
 
         while let Some(task) = due_tasks.pop_front() {
             match task {
+                TaskType::Input(task) => {
+                    app.input_state.handle_task(task);
+                }
                 TaskType::Overlay(task) => {
                     overlays.handle_task(&mut app, task)?;
                 }

@@ -489,6 +489,9 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
         app.tasks.retrieve_due(&mut due_tasks);
         while let Some(task) = due_tasks.pop_front() {
             match task {
+                TaskType::Input(task) => {
+                    app.input_state.handle_task(task);
+                }
                 TaskType::Overlay(task) => {
                     overlays.handle_task(&mut app, task)?;
                 }

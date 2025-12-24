@@ -486,6 +486,15 @@ impl WayVRClient {
 		Ok(())
 	}
 
+	pub async fn fn_wlx_device_haptics(
+		client: WayVRClientMutex,
+		device: usize,
+		params: packet_client::WlxHapticsParams,
+	) -> anyhow::Result<()> {
+		send_only!(client, &PacketClient::WlxDeviceHaptics(device, params));
+		Ok(())
+	}
+
 	pub async fn fn_wlx_modify_panel(
 		client: WayVRClientMutex,
 		params: packet_client::WlxModifyPanelParams,

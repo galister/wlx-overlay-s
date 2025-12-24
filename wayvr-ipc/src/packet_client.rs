@@ -85,4 +85,5 @@ pub enum PacketClient {
 	WlxHaptics(WlxHapticsParams),
 	WlxInputState(Serial),
 	WlxModifyPanel(WlxModifyPanelParams),
+	WlxDeviceHaptics(usize, WlxHapticsParams),
 }

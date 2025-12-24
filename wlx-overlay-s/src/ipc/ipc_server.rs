@@ -507,6 +507,21 @@ impl Connection {
             }));
     }
 
+    fn handle_wlx_device_haptics(
+        params: &mut TickParams,
+        device: usize,
+        haptics_params: packet_client::WlxHapticsParams,
+    ) {
+        params.signals.send(WayVRSignal::DeviceHaptics(
+            device,
+            crate::backend::input::Haptics {
+                duration: haptics_params.duration,
+                frequency: haptics_params.frequency,
+                intensity: haptics_params.intensity,
+            },
+        ));
+    }
+
     fn handle_wlx_panel(
         params: &mut TickParams,
         custom_params: packet_client::WlxModifyPanelParams,
@@ -605,6 +620,9 @@ impl Connection {
             PacketClient::WlxHaptics(haptics_params) => {
                 #[cfg(feature = "wayvr")]
                 Self::handle_wlx_haptics(params, haptics_params);
+            }
+            PacketClient::WlxDeviceHaptics(device, haptics_params) => {
+                Self::handle_wlx_device_haptics(params, device, haptics_params);
             }
             PacketClient::WlxModifyPanel(custom_params) => {
                 Self::handle_wlx_panel(params, custom_params);
