@@ -80,7 +80,13 @@ impl AppState {
         #[cfg(feature = "wayvr")]
         let wayland_server = session
             .wayvr_config
-            .post_load(&session.config, &mut tasks, wayvr_signals.clone())
+            .post_load(
+                gfx.clone(),
+                &gfx_extras,
+                &session.config,
+                &mut tasks,
+                wayvr_signals.clone(),
+            )
             .inspect_err(|e| log::error!("Could not initialize wayland server: {e:?}"))
             .ok();
 

@@ -37,102 +37,16 @@ fn handle_result<T: Serialize>(pretty_print: bool, result: anyhow::Result<T>) {
     }
 }
 
-pub async fn wvr_display_create(
-    state: &mut WayVRClientState,
-    width: u16,
-    height: u16,
-    name: String,
-    scale: Option<f32>,
-    attach_to: packet_client::AttachTo,
-) {
+pub async fn wvr_window_list(state: &mut WayVRClientState) {
     handle_result(
         state.pretty_print,
-        WayVRClient::fn_wvr_display_create(
+        WayVRClient::fn_wvr_window_list(
             state.wayvr_client.clone(),
             state.serial_generator.increment_get(),
-            packet_client::WvrDisplayCreateParams {
-                width,
-                height,
-                name,
-                scale,
-                attach_to,
-            },
-        )
-        .await
-        .context("failed to create display"),
-    );
-}
-
-pub async fn wvr_display_list(state: &mut WayVRClientState) {
-    handle_result(
-        state.pretty_print,
-        WayVRClient::fn_wvr_display_list(
-            state.wayvr_client.clone(),
-            state.serial_generator.increment_get(),
-        )
-        .await
-        .context("failed to fetch displays"),
-    );
-}
-
-pub async fn wvr_display_get(
-    state: &mut WayVRClientState,
-    handle: packet_server::WvrDisplayHandle,
-) {
-    handle_result(
-        state.pretty_print,
-        WayVRClient::fn_wvr_display_get(
-            state.wayvr_client.clone(),
-            state.serial_generator.increment_get(),
-            handle,
-        )
-        .await
-        .context("failed to fetch display"),
-    );
-}
-
-pub async fn wvr_display_window_list(
-    state: &mut WayVRClientState,
-    handle: packet_server::WvrDisplayHandle,
-) {
-    handle_result(
-        state.pretty_print,
-        WayVRClient::fn_wvr_display_window_list(
-            state.wayvr_client.clone(),
-            state.serial_generator.increment_get(),
-            handle,
         )
         .await
         .context("failed to list window displays"),
     );
-}
-
-pub async fn wvr_display_remove(
-    state: &mut WayVRClientState,
-    handle: packet_server::WvrDisplayHandle,
-) {
-    handle_result(
-        state.pretty_print,
-        WayVRClient::fn_wvr_display_remove(
-            state.wayvr_client.clone(),
-            state.serial_generator.increment_get(),
-            handle,
-        )
-        .await
-        .context("failed to remove display"),
-    );
-}
-
-pub async fn wvr_display_set_visible(
-    state: &mut WayVRClientState,
-    handle: packet_server::WvrDisplayHandle,
-    visible: bool,
-) {
-    handle_empty_result(
-        WayVRClient::fn_wvr_display_set_visible(state.wayvr_client.clone(), handle, visible)
-            .await
-            .context("failed to set display visibility"),
-    )
 }
 
 pub async fn wvr_window_set_visible(

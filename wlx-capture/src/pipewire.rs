@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
@@ -12,6 +13,9 @@ use ashpd::desktop::{
 
 pub use ashpd::Error as AshpdError;
 
+use drm_fourcc::DrmFormat;
+use drm_fourcc::DrmFourcc;
+use drm_fourcc::DrmModifier;
 use pipewire as pw;
 use pw::spa;
 
@@ -33,14 +37,6 @@ use spa::utils::ChoiceEnum;
 use spa::utils::ChoiceFlags;
 
 use crate::WlxCapture;
-use crate::frame::DRM_FORMAT_ABGR8888;
-use crate::frame::DRM_FORMAT_ABGR2101010;
-use crate::frame::DRM_FORMAT_ARGB8888;
-use crate::frame::DRM_FORMAT_XBGR8888;
-use crate::frame::DRM_FORMAT_XBGR2101010;
-use crate::frame::DRM_FORMAT_XRGB8888;
-use crate::frame::DrmFormat;
-use crate::frame::FourCC;
 use crate::frame::FrameFormat;
 use crate::frame::MouseMeta;
 use crate::frame::Transform;
@@ -297,7 +293,15 @@ where
     )?;
 
     let _listener = stream
-        .add_local_listener_with_user_data(FrameFormat::default())
+        .add_local_listener_with_user_data(FrameFormat {
+            width: 0,
+            height: 0,
+            drm_format: DrmFormat {
+            code: DrmFourcc::Argb8888,
+            modifier: DrmModifier::Invalid,
+        },
+        transform: Transform::Undefined,
+        })
         .state_changed({
             let name = name.clone();
             move |_, _, old, new| {
@@ -320,10 +324,10 @@ where
 
                 format.width = info.size().width;
                 format.height = info.size().height;
-                format.fourcc = spa_to_fourcc(info.format());
-                format.modifier = info.modifier();
+                format.drm_format.code = spa_to_fourcc(info.format());
+                format.drm_format.modifier = DrmModifier::from(info.modifier());
 
-                let kind = if format.modifier != 0 {
+                let kind = if info.modifier() != 0 {
                     "DMA-buf"
                 } else {
                     "SHM"
@@ -425,7 +429,7 @@ where
                                 format: *format,
                                 num_planes: planes.len(),
                                 mouse: mouse_meta,
-                                ..Default::default()
+                                planes: Default::default(),
                             };
                             dmabuf.planes[..planes.len()].copy_from_slice(&planes[..planes.len()]);
 
@@ -494,7 +498,17 @@ where
         })
         .register()?;
 
-    let mut format_params: Vec<Vec<u8>> = dmabuf_formats
+    let mut fourcc_mods: HashMap<DrmFourcc, Vec<DrmModifier>> = HashMap::new();
+
+    for f in dmabuf_formats.iter() {
+        if let Some(v) = fourcc_mods.get_mut(&f.code) {
+            v.push(f.modifier);
+        } else {
+            fourcc_mods.insert(f.code, vec![f.modifier]);
+        }
+    }
+
+    let mut format_params: Vec<Vec<u8>> = fourcc_mods
         .iter()
         .filter_map(|f| obj_to_bytes(get_format_params(Some(f))).ok())
         .collect();
@@ -591,7 +605,7 @@ fn get_meta_object(key: u32, size: usize) -> Object {
     )
 }
 
-fn get_format_params(fmt: Option<&DrmFormat>) -> Object {
+fn get_format_params(fmt: Option<(&DrmFourcc, &Vec<DrmModifier>)>) -> Object {
     let mut obj = spa::pod::object!(
         spa::utils::SpaTypes::ObjectParamFormat,
         spa::param::ParamType::EnumFormat,
@@ -638,7 +652,7 @@ fn get_format_params(fmt: Option<&DrmFormat>) -> Object {
     );
 
     if let Some(fmt) = fmt {
-        let spa_fmt = fourcc_to_spa(fmt.fourcc);
+        let spa_fmt = fourcc_to_spa(*fmt.0);
 
         let prop = spa::pod::property!(
             spa::param::format::FormatProperties::VideoFormat,
@@ -657,8 +671,8 @@ fn get_format_params(fmt: Option<&DrmFormat>) -> Object {
             value: Value::Choice(ChoiceValue::Long(Choice(
                 ChoiceFlags::empty(),
                 ChoiceEnum::Enum {
-                    default: fmt.modifiers[0] as _,
-                    alternatives: fmt.modifiers.iter().map(|m| *m as _).collect(),
+                    default: u64::from(fmt.1[0]) as _,
+                    alternatives: fmt.1.iter().map(|m| u64::from(*m) as _).collect(),
                 },
             ))),
         };
@@ -683,27 +697,27 @@ fn get_format_params(fmt: Option<&DrmFormat>) -> Object {
     obj
 }
 
-fn fourcc_to_spa(fourcc: FourCC) -> VideoFormat {
-    match fourcc.value {
-        DRM_FORMAT_ARGB8888 => VideoFormat::BGRA,
-        DRM_FORMAT_ABGR8888 => VideoFormat::RGBA,
-        DRM_FORMAT_XRGB8888 => VideoFormat::BGRx,
-        DRM_FORMAT_XBGR8888 => VideoFormat::RGBx,
-        DRM_FORMAT_ABGR2101010 => VideoFormat::ABGR_210LE,
-        DRM_FORMAT_XBGR2101010 => VideoFormat::xBGR_210LE,
+fn fourcc_to_spa(fourcc: DrmFourcc) -> VideoFormat {
+        match fourcc{
+        DrmFourcc::Argb8888 => VideoFormat::BGRA,
+        DrmFourcc::Abgr8888 => VideoFormat::RGBA,
+        DrmFourcc::Xrgb8888 => VideoFormat::BGRx,
+        DrmFourcc::Xbgr8888 => VideoFormat::RGBx,
+        DrmFourcc::Abgr2101010 => VideoFormat::ABGR_210LE,
+        DrmFourcc::Xbgr2101010 => VideoFormat::xBGR_210LE,
         _ => panic!("Unsupported format"),
     }
 }
 
 #[allow(non_upper_case_globals)]
-fn spa_to_fourcc(spa: VideoFormat) -> FourCC {
+fn spa_to_fourcc(spa: VideoFormat) -> DrmFourcc {
     match spa {
-        VideoFormat::BGRA => DRM_FORMAT_ARGB8888.into(),
-        VideoFormat::RGBA => DRM_FORMAT_ABGR8888.into(),
-        VideoFormat::BGRx => DRM_FORMAT_XRGB8888.into(),
-        VideoFormat::RGBx => DRM_FORMAT_XBGR8888.into(),
-        VideoFormat::ABGR_210LE => DRM_FORMAT_ABGR2101010.into(),
-        VideoFormat::xBGR_210LE => DRM_FORMAT_XBGR2101010.into(),
+        VideoFormat::BGRA => DrmFourcc::Argb8888,
+        VideoFormat::RGBA => DrmFourcc::Abgr8888,
+        VideoFormat::BGRx => DrmFourcc::Xrgb8888,
+        VideoFormat::RGBx => DrmFourcc::Xbgr8888,
+        VideoFormat::ABGR_210LE => DrmFourcc::Abgr2101010,
+        VideoFormat::xBGR_210LE => DrmFourcc::Xbgr2101010,
         _ => panic!("Unsupported format"),
     }
 }

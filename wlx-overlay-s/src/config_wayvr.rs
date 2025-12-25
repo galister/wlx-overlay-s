@@ -10,6 +10,7 @@ use std::{
 
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
+use wgui::gfx::WGfx;
 use wlx_common::{common::LeftRight, config::GeneralConfig, windowing::Positioning};
 
 use crate::{
@@ -19,8 +20,9 @@ use crate::{
     },
     config::load_config_with_conf_d,
     config_io,
+    graphics::WGfxExtras,
     ipc::{event_queue::SyncEventQueue, signal::WayVRSignal},
-    overlays::wayvr::{WayVRData, executable_exists_in_path},
+    overlays::wayvr::WayVRData,
 };
 
 // Flat version of RelativeTo
@@ -199,6 +201,8 @@ impl WayVRConfig {
 
     pub fn post_load(
         &self,
+        gfx: Arc<WGfx>,
+        gfx_extras: &WGfxExtras,
         config: &GeneralConfig,
         tasks: &mut TaskContainer,
         signals: SyncEventQueue<WayVRSignal>,
@@ -227,6 +231,8 @@ impl WayVRConfig {
         }
 
         Ok(Rc::new(RefCell::new(WayVRData::new(
+            gfx,
+            gfx_extras,
             Self::get_wayvr_config(config, self)?,
             signals,
         )?)))
@@ -246,6 +252,19 @@ fn get_default_dashboard_exec() -> (
         }
     }
     (String::from("wayvr-dashboard"), None)
+}
+
+pub fn executable_exists_in_path(command: &str) -> bool {
+    let Ok(path) = std::env::var("PATH") else {
+        return false; // very unlikely to happen
+    };
+    for dir in path.split(':') {
+        let exec_path = std::path::PathBuf::from(dir).join(command);
+        if exec_path.exists() && exec_path.is_file() {
+            return true; // executable found
+        }
+    }
+    false
 }
 
 pub fn load_wayvr() -> WayVRConfig {

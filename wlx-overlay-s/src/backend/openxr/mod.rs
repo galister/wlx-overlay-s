@@ -35,9 +35,6 @@ use crate::{
     },
 };
 
-#[cfg(feature = "wayvr")]
-use crate::{backend::wayvr::WayVRAction, overlays::wayvr::wayvr_action};
-
 mod blocker;
 mod helpers;
 mod input;
@@ -149,8 +146,8 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
     };
 
     let pointer_lines = [
-        lines.allocate(&xr_state, &mut app)?,
-        lines.allocate(&xr_state, &mut app)?,
+        lines.allocate(&xr_state, &app)?,
+        lines.allocate(&xr_state, &app)?,
     ];
 
     let watch_id = overlays.lookup(WATCH_NAME).unwrap(); // want panic
@@ -303,9 +300,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             .pointers
             .iter()
             .any(|p| p.now.toggle_dashboard && !p.before.toggle_dashboard)
-        {
-            wayvr_action(&mut app, &mut overlays, &WayVRAction::ToggleDashboard);
-        }
+        { /* TODO */ }
 
         watch_fade(&mut app, overlays.mut_by_id(watch_id).unwrap()); // want panic
         if let Some(ref mut space_mover) = playspace {
@@ -458,11 +453,6 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
         }
         // End layer composition
 
-        #[cfg(feature = "wayvr")]
-        if let Some(wayland_server) = app.wayland_server.as_ref() {
-            wayland_server.borrow_mut().data.tick_finish()?;
-        }
-
         // Begin layer submit
         layers.sort_by(|a, b| b.0.total_cmp(&a.0));
 
@@ -502,10 +492,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                 }
                 #[cfg(feature = "openvr")]
                 TaskType::OpenVR(_) => {}
-                #[cfg(feature = "wayvr")]
-                TaskType::WayVR(action) => {
-                    wayvr_action(&mut app, &mut overlays, &action);
-                }
+                TaskType::WayVR(_action) => { /* TODO */ }
             }
         }
 
