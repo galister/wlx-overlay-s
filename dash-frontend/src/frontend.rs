@@ -25,6 +25,7 @@ use crate::{
 	util::{
 		popup_manager::{MountPopupParams, PopupManager, PopupManagerParams},
 		toast_manager::ToastManager,
+		various::AsyncExecutor,
 	},
 	views,
 };
@@ -42,6 +43,9 @@ pub struct Frontend {
 
 	pub settings: Box<dyn settings::SettingsIO>,
 	pub interface: BoxDashInterface,
+
+	// async runtime executor
+	pub executor: AsyncExecutor,
 
 	#[allow(dead_code)]
 	state: ParserState,
@@ -146,6 +150,7 @@ impl Frontend {
 			toast_manager,
 			window_audio_settings: WguiWindow::default(),
 			view_audio_settings: None,
+			executor: Rc::new(smol::LocalExecutor::new()),
 		};
 
 		// init some things first
@@ -172,8 +177,12 @@ impl Frontend {
 			tab.update(TabUpdateParams {
 				layout: &mut layout,
 				interface: &mut self.interface,
+				executor: &mut self.executor,
 			})?;
 		}
+
+		// process async runtime tasks
+		while self.executor.try_tick() {}
 
 		self.tick(width, height, timestep_alpha)?;
 		self.ticks += 1;

@@ -17,19 +17,25 @@ fn get_cache_root() -> PathBuf {
 	CACHE_ROOT_PATH.clone()
 }
 
-fn ensure_dir(cache_root_path: &PathBuf) {
-	let _ = std::fs::create_dir(cache_root_path);
-}
-
-pub fn get_data(data_path: &str) -> Option<Vec<u8>> {
-	let mut path = get_cache_root();
-	ensure_dir(&path);
-	path.push(data_path);
-	std::fs::read(path).ok()
-}
-
-pub fn set_data(data_path: &str, data: &[u8]) -> std::io::Result<()> {
+// todo: mutex
+pub async fn get_data(data_path: &str) -> Option<Vec<u8>> {
 	let mut path = get_cache_root();
 	path.push(data_path);
-	std::fs::write(path, data)
+	smol::fs::read(path).await.ok()
+}
+
+// todo: mutex
+pub async fn set_data(data_path: &str, data: &[u8]) -> std::io::Result<()> {
+	let mut path = get_cache_root();
+	path.push(data_path);
+	log::debug!(
+		"Writing cache data ({} bytes) to path {}",
+		data.len(),
+		path.to_string_lossy()
+	);
+
+	let mut dir_path = path.clone();
+	dir_path.pop();
+	smol::fs::create_dir_all(dir_path).await?; // make sure directory is available
+	smol::fs::write(path, data).await
 }

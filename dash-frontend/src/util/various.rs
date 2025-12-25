@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{path::PathBuf, rc::Rc, str::FromStr};
 use wgui::{
 	assets::{AssetPath, AssetPathOwned},
 	globals::WguiGlobals,
@@ -11,6 +11,8 @@ use wgui::{
 		sprite::{WidgetSprite, WidgetSpriteParams},
 	},
 };
+
+pub type AsyncExecutor = Rc<smol::LocalExecutor<'static>>;
 
 use crate::util::desktop_finder;
 

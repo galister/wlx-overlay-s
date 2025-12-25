@@ -21,7 +21,7 @@ impl Tab for TabGames {
 	}
 
 	fn update(&mut self, params: super::TabUpdateParams) -> anyhow::Result<()> {
-		self.view_game_list.update(params.layout, params.interface)?;
+		self.view_game_list.update(params.layout, params.executor)?;
 
 		Ok(())
 	}

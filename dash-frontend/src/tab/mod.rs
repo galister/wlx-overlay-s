@@ -4,7 +4,10 @@ use wgui::{
 };
 use wlx_common::dash_interface::BoxDashInterface;
 
-use crate::frontend::{FrontendTasks, RcFrontend};
+use crate::{
+	frontend::{FrontendTasks, RcFrontend},
+	util::various::AsyncExecutor,
+};
 
 pub mod apps;
 pub mod games;
@@ -35,6 +38,7 @@ pub struct TabParams<'a> {
 pub struct TabUpdateParams<'a> {
 	pub layout: &'a mut Layout,
 	pub interface: &'a mut BoxDashInterface,
+	pub executor: &'a mut AsyncExecutor,
 }
 
 pub trait Tab {

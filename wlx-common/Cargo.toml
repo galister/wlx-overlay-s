@@ -14,3 +14,4 @@ wayvr-ipc = { path = "../wayvr-ipc", default-features = false }
 anyhow = { workspace = true }
 xdg = "3.0"
 log = { workspace = true }
+smol = "2.0.2"
