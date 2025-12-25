@@ -42,7 +42,7 @@ impl Window {
         self.size_y = size_y;
     }
 
-    pub fn send_mouse_move(&self, manager: &mut WayVRCompositor, x: u32, y: u32) {
+    pub(super) fn send_mouse_move(&self, manager: &mut WayVRCompositor, x: u32, y: u32) {
         let surf = self.toplevel.wl_surface().clone();
         let point = Point::<f64, Logical>::from((f64::from(x as i32), f64::from(y as i32)));
 
@@ -67,7 +67,11 @@ impl Window {
         }
     }
 
-    pub fn send_mouse_down(&mut self, manager: &mut WayVRCompositor, index: super::MouseIndex) {
+    pub(super) fn send_mouse_down(
+        &mut self,
+        manager: &mut WayVRCompositor,
+        index: super::MouseIndex,
+    ) {
         let surf = self.toplevel.wl_surface().clone();
 
         // Change keyboard focus to pressed window
@@ -90,7 +94,7 @@ impl Window {
         manager.seat_pointer.frame(&mut manager.state);
     }
 
-    pub fn send_mouse_up(manager: &mut WayVRCompositor, index: super::MouseIndex) {
+    pub(super) fn send_mouse_up(manager: &mut WayVRCompositor, index: super::MouseIndex) {
         manager.seat_pointer.button(
             &mut manager.state,
             &input::pointer::ButtonEvent {
@@ -104,7 +108,7 @@ impl Window {
         manager.seat_pointer.frame(&mut manager.state);
     }
 
-    pub fn send_mouse_scroll(manager: &mut WayVRCompositor, delta: WheelDelta) {
+    pub(super) fn send_mouse_scroll(manager: &mut WayVRCompositor, delta: WheelDelta) {
         manager.seat_pointer.axis(
             &mut manager.state,
             input::pointer::AxisFrame {
@@ -124,14 +128,23 @@ impl Window {
 }
 
 #[derive(Debug)]
+pub struct MouseState {
+    pub hover_window: WindowHandle,
+    pub x: u32,
+    pub y: u32,
+}
+
+#[derive(Debug)]
 pub struct WindowManager {
     pub windows: WindowVec,
+    pub mouse: Option<MouseState>,
 }
 
 impl WindowManager {
     pub const fn new() -> Self {
         Self {
             windows: WindowVec::new(),
+            mouse: None,
         }
     }
 

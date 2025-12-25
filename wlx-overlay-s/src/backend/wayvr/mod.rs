@@ -398,7 +398,15 @@ impl WayVRState {
         }
         if let Some(window) = self.wm.windows.get_mut(&handle) {
             window.send_mouse_move(&mut self.manager, x, y);
+        } else {
+            return;
         }
+        self.mouse_freeze = Instant::now() + Duration::from_millis(1); // prevent other pointer from moving the mouse on the same frame
+        self.wm.mouse = Some(window::MouseState {
+            hover_window: handle.clone(),
+            x,
+            y,
+        });
     }
 
     pub fn send_mouse_down(&mut self, handle: window::WindowHandle, index: MouseIndex) {

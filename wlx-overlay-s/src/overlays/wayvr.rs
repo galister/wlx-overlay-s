@@ -3,6 +3,7 @@ use smithay::wayland::compositor::with_states;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 use vulkano::image::view::ImageView;
 use wgui::gfx::WGfx;
+use wlx_capture::frame::MouseMeta;
 use wlx_common::{
     overlays::{BackendAttrib, BackendAttribValue, StereoMode},
     windowing::{OverlayWindowState, Positioning},
@@ -80,7 +81,6 @@ pub fn create_wl_window_overlay(
 pub struct WayVRBackend {
     name: Arc<str>,
     pipeline: Option<ScreenPipeline>,
-    mouse_transform: Affine2,
     interaction_transform: Option<Affine2>,
     window: wayvr::window::WindowHandle,
     wayvr: Rc<RefCell<WayVRData>>,
@@ -102,7 +102,6 @@ impl WayVRBackend {
             pipeline: None,
             wayvr,
             window,
-            mouse_transform: Affine2::IDENTITY,
             interaction_transform: None,
             just_resumed: false,
             meta: None,
@@ -195,13 +194,27 @@ impl OverlayBackend for WayVRBackend {
         app: &mut state::AppState,
         rdr: &mut RenderResources,
     ) -> anyhow::Result<()> {
-        let mouse = None; //TODO: mouse cursor
         let image = self.cur_image.as_ref().unwrap().clone();
+
+        let wayvr = &self.wayvr.borrow().data;
+        let mouse = wayvr
+            .state
+            .wm
+            .mouse
+            .as_ref()
+            .filter(|m| m.hover_window == self.window)
+            .map(|m| {
+                let extent = image.extent_f32();
+                MouseMeta {
+                    x: (m.x as f32) / (extent[0] as f32),
+                    y: (m.y as f32) / (extent[1] as f32),
+                }
+            });
 
         self.pipeline
             .as_mut()
             .unwrap()
-            .render(image, mouse, app, rdr)?;
+            .render(image, mouse.as_ref(), app, rdr)?;
 
         Ok(())
     }
@@ -220,12 +233,10 @@ impl OverlayBackend for WayVRBackend {
 
     fn on_hover(&mut self, _app: &mut state::AppState, hit: &input::PointerHit) -> HoverResult {
         let wayvr = &mut self.wayvr.borrow_mut().data;
-        if let Some((x, y)) = wayvr.state.wm.windows.get(&self.window).map(|window| {
-            let pos = self.mouse_transform.transform_point2(hit.uv);
-            let x = ((pos.x * (window.size_x as f32)) as u32).max(0);
-            let y = ((pos.y * (window.size_y as f32)) as u32).max(0);
-            (x, y)
-        }) {
+
+        if let Some(meta) = self.meta.as_ref() {
+            let x = ((hit.uv.x * (meta.extent[0] as f32)) as u32).max(0);
+            let y = ((hit.uv.y * (meta.extent[1] as f32)) as u32).max(0);
             wayvr.state.send_mouse_move(self.window, x, y);
         }
 
