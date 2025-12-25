@@ -105,7 +105,6 @@ pub async fn wvr_process_launch(
     exec: String,
     name: String,
     env: Vec<String>,
-    target_display: packet_server::WvrDisplayHandle,
     args: String,
     userdata: HashMap<String, String>,
 ) {
@@ -118,7 +117,6 @@ pub async fn wvr_process_launch(
                 env,
                 exec,
                 name,
-                target_display,
                 args,
                 userdata,
             },

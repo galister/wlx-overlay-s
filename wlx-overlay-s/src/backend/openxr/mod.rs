@@ -492,6 +492,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                 }
                 #[cfg(feature = "openvr")]
                 TaskType::OpenVR(_) => {}
+                #[cfg(feature = "wayvr")]
                 TaskType::WayVR(_action) => { /* TODO */ }
             }
         }

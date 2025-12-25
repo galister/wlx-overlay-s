@@ -532,6 +532,7 @@ impl<T> OverlayWindowManager<T> {
         match selector {
             OverlaySelector::Id(id) => Some(*id),
             OverlaySelector::Name(name) => self.lookup(name),
+            _ => None,
         }
     }
 
@@ -551,6 +552,7 @@ impl<T> OverlayWindowManager<T> {
         let id = match selector {
             OverlaySelector::Id(id) => *id,
             OverlaySelector::Name(name) => self.lookup(name)?,
+            _ => return None,
         };
 
         let ret_val = self.overlays.remove(id);

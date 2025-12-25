@@ -26,19 +26,9 @@ pub enum AttachTo {
 pub struct WvrProcessLaunchParams {
 	pub name: String,
 	pub exec: String,
-	pub target_display: packet_server::WvrDisplayHandle,
 	pub env: Vec<String>,
 	pub args: String,
 	pub userdata: HashMap<String, String>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct WvrDisplayCreateParams {
-	pub width: u16,
-	pub height: u16,
-	pub name: String,
-	pub scale: Option<f32>,
-	pub attach_to: AttachTo,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

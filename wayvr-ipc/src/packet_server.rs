@@ -20,12 +20,6 @@ pub struct Disconnect {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-pub struct WvrDisplayHandle {
-	pub idx: u32,
-	pub generation: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct WvrProcessHandle {
 	pub idx: u32,
 	pub generation: u64,
@@ -38,26 +32,12 @@ pub struct WvrWindowHandle {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WvrDisplay {
-	pub width: u16,
-	pub height: u16,
-	pub name: String,
-	pub visible: bool,
-	pub handle: WvrDisplayHandle,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WvrWindow {
 	pub size_x: u32,
 	pub size_y: u32,
 	pub visible: bool,
 	pub handle: WvrWindowHandle,
 	pub process_handle: WvrProcessHandle,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WvrDisplayList {
-	pub list: Vec<WvrDisplay>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,12 +69,6 @@ pub struct Margins {
 pub struct StackingOptions {
 	pub margins_first: Margins,
 	pub margins_rest: Margins,
-}
-
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-pub enum WvrDisplayWindowLayout {
-	Tiling,
-	Stacking(StackingOptions),
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
