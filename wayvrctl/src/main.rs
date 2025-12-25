@@ -208,11 +208,15 @@ enum Subcommands {
     },
     /// Launch a new process inside WayVR
     ProcessLaunch {
-        exec: String,
+        /// Name for the overlay
+        #[arg(short, long, default_value = "")]
         name: String,
         /// Enviroment variables, separated by comma
-        #[arg(default_value = "")]
+        #[arg(short, long, default_value = "")]
         env: String,
+        /// Executable to run
+        exec: String,
+        /// Arguments to pass to executable
         #[arg(default_value = "")]
         args: String,
     },
