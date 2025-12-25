@@ -64,5 +64,10 @@
   "NO_WINDOWS_FOUND": "ウィンドウが見つかりませんでした",
   "WINDOW_OPTIONS": "ウィンドウオプション",
   "APPLICATION_STARTED": "アプリケーションが起動しました",
-  "LIST_OF_WINDOWS": "ウィンドウ一覧"
+  "LIST_OF_WINDOWS": "ウィンドウ一覧",
+  "CLOSE_WINDOW": "ウィンドウを閉じる",
+  "GAME_LIST": {
+    "NO_GAMES_FOUND": "ゲームが見つかりませんでした"
+  },
+  "TERMINATE_PROCESS": "プロセスを終了する"
 }

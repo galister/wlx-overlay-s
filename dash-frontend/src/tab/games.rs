@@ -1,18 +1,29 @@
 use wgui::{
 	assets::AssetPath,
-	parser::{ParseDocumentParams, ParserState},
+	parser::{Fetchable, ParseDocumentParams, ParserState},
 };
 
-use crate::tab::{Tab, TabParams, TabType};
+use crate::{
+	tab::{Tab, TabParams, TabType},
+	views::game_list,
+};
 
 pub struct TabGames {
 	#[allow(dead_code)]
 	pub state: ParserState,
+
+	view_game_list: game_list::View,
 }
 
 impl Tab for TabGames {
 	fn get_type(&self) -> TabType {
 		TabType::Games
+	}
+
+	fn update(&mut self, params: super::TabUpdateParams) -> anyhow::Result<()> {
+		self.view_game_list.update(params.layout, params.interface)?;
+
+		Ok(())
 	}
 }
 
@@ -28,6 +39,15 @@ impl TabGames {
 			params.parent_id,
 		)?;
 
-		Ok(Self { state })
+		let game_list_parent = state.get_widget_id("game_list_parent")?;
+
+		let view_game_list = game_list::View::new(game_list::Params {
+			frontend_tasks: params.frontend_tasks.clone(),
+			globals: params.globals,
+			layout: params.layout,
+			parent_id: game_list_parent,
+		})?;
+
+		Ok(Self { state, view_game_list })
 	}
 }

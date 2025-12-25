@@ -64,5 +64,10 @@
   "NO_WINDOWS_FOUND": "Nie znaleziono okien",
   "WINDOW_OPTIONS": "Opcje okna",
   "APPLICATION_STARTED": "Aplikacja uruchomiona",
-  "LIST_OF_WINDOWS": "Lista okien"
+  "LIST_OF_WINDOWS": "Lista okien",
+  "CLOSE_WINDOW": "Zamknij okno",
+  "GAME_LIST": {
+    "NO_GAMES_FOUND": "Nie znaleziono gier"
+  },
+  "TERMINATE_PROCESS": "Zakończ proces"
 }

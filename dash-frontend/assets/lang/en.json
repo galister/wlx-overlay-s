@@ -41,6 +41,9 @@
 	},
 	"CLOSE_WINDOW": "Close window",
 	"FAILED_TO_LAUNCH_APPLICATION": "Failed to launcha application:",
+	"GAME_LIST": {
+		"NO_GAMES_FOUND": "No games found"
+	},
 	"GAMES": "Games",
 	"GENERAL_SETTINGS": "General settings",
 	"HEIGHT": "Height",

@@ -16,3 +16,6 @@ serde.workspace = true
 serde_json.workspace = true
 wlx-common = { path = "../wlx-common" }
 wayvr-ipc = { path = "../wayvr-ipc", default-features = false }
+base64 = "0.22.1"
+keyvalues-parser = { git = "https://github.com/CosmicHorrorDev/vdf-rs.git", rev = "fc6dcbea9eb13cacb98dea40063f6f56cde6e145" }
+steam_shortcuts_util = "1.1.8"

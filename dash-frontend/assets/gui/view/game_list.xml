@@ -1,0 +1,7 @@
+<layout>
+  <include src="../t_group_box.xml" />
+
+  <elements>
+    <div id="list_parent" gap="8" flex_direction="row" flex_wrap="wrap" justify_content="center" />
+  </elements>
+</layout>
