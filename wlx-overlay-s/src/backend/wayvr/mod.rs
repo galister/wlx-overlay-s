@@ -14,7 +14,7 @@ use smallvec::SmallVec;
 use smithay::{
     input::{SeatState, keyboard::XkbConfig},
     output::{Mode, Output},
-    reexports::wayland_server::{self, backend::ClientId, protocol::wl_buffer},
+    reexports::wayland_server::{self, backend::ClientId},
     wayland::{
         compositor::{self, SurfaceData, with_states},
         dmabuf::{DmabufFeedbackBuilder, DmabufState},
@@ -26,8 +26,6 @@ use smithay::{
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
-    mem::MaybeUninit,
-    rc::Rc,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -112,7 +110,7 @@ pub struct Config {
 pub struct WayVRState {
     time_start: u64,
     pub manager: client::WayVRCompositor,
-    pub wm: Rc<RefCell<window::WindowManager>>,
+    pub wm: window::WindowManager,
     pub processes: process::ProcessVec,
     pub config: Config,
     pub tasks: SyncEventQueue<WayVRTask>,
@@ -241,7 +239,7 @@ impl WayVR {
             time_start,
             manager: client::WayVRCompositor::new(state, display, seat_keyboard, seat_pointer)?,
             processes: ProcessVec::new(),
-            wm: Rc::new(RefCell::new(window::WindowManager::new())),
+            wm: window::WindowManager::new(),
             config,
             ticks: 0,
             tasks,
@@ -307,11 +305,7 @@ impl WayVR {
                             continue;
                         };
 
-                        let window_handle = self
-                            .state
-                            .wm
-                            .borrow_mut()
-                            .create_window(&toplevel, process_handle);
+                        let window_handle = self.state.wm.create_window(&toplevel, process_handle);
 
                         let title: Arc<str> = with_states(toplevel.wl_surface(), |states| {
                             states
@@ -353,8 +347,8 @@ impl WayVR {
                             continue;
                         }
 
-                        let mut wm = self.state.wm.borrow_mut();
-                        let Some(window_handle) = wm.find_window_handle(&toplevel) else {
+                        let Some(window_handle) = self.state.wm.find_window_handle(&toplevel)
+                        else {
                             log::warn!("DropToplevel: Couldn't find matching window handle");
                             continue;
                         };
@@ -365,9 +359,7 @@ impl WayVR {
                             )));
                         }
 
-                        wm.remove_window(window_handle);
-
-                        drop(wm);
+                        self.state.wm.remove_window(window_handle);
                     }
                 }
                 WayVRTask::ProcessTerminationRequest(process_handle) => {
@@ -404,7 +396,7 @@ impl WayVRState {
         if self.mouse_freeze > Instant::now() {
             return;
         }
-        if let Some(window) = self.wm.borrow_mut().windows.get_mut(&handle) {
+        if let Some(window) = self.wm.windows.get_mut(&handle) {
             window.send_mouse_move(&mut self.manager, x, y);
         }
     }
@@ -413,7 +405,7 @@ impl WayVRState {
         self.mouse_freeze =
             Instant::now() + Duration::from_millis(self.config.click_freeze_time_ms as _);
 
-        if let Some(window) = self.wm.borrow_mut().windows.get_mut(&handle) {
+        if let Some(window) = self.wm.windows.get_mut(&handle) {
             window.send_mouse_down(&mut self.manager, index);
         }
     }
@@ -563,10 +555,10 @@ struct SurfaceBufWithImageContainer {
 
 #[derive(Clone)]
 pub struct SurfaceBufWithImage {
-    buffer: wl_buffer::WlBuffer,
     pub image: Arc<ImageView>,
     pub transform: Transform,
     pub scale: i32,
+    pub dmabuf: bool,
 }
 
 impl SurfaceBufWithImage {
@@ -575,7 +567,11 @@ impl SurfaceBufWithImage {
         if let Some(container) = surface_data.data_map.get::<SurfaceBufWithImageContainer>() {
             container.inner.replace(self);
         } else {
-            surface_data.data_map.insert_if_missing(|| self);
+            surface_data
+                .data_map
+                .insert_if_missing(|| SurfaceBufWithImageContainer {
+                    inner: RefCell::new(self),
+                });
         }
     }
 

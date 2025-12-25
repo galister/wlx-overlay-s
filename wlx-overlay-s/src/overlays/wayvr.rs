@@ -12,7 +12,7 @@ use crate::{
     backend::{
         XrBackend,
         input::{self, HoverResult},
-        wayvr::{self, SurfaceBufWithImage, WayVR, window::WindowManager},
+        wayvr::{self, SurfaceBufWithImage, WayVR},
     },
     graphics::{ExtentExt, WGfxExtras},
     ipc::{event_queue::SyncEventQueue, signal::WayVRSignal},
@@ -84,7 +84,6 @@ pub struct WayVRBackend {
     interaction_transform: Option<Affine2>,
     window: wayvr::window::WindowHandle,
     wayvr: Rc<RefCell<WayVRData>>,
-    wm: Rc<RefCell<WindowManager>>,
     just_resumed: bool,
     meta: Option<FrameMeta>,
     stereo: Option<StereoMode>,
@@ -98,12 +97,10 @@ impl WayVRBackend {
         wayvr: Rc<RefCell<WayVRData>>,
         window: wayvr::window::WindowHandle,
     ) -> anyhow::Result<Self> {
-        let wm = wayvr.borrow().data.state.wm.clone();
         Ok(Self {
             name,
             pipeline: None,
             wayvr,
-            wm,
             window,
             mouse_transform: Affine2::IDENTITY,
             interaction_transform: None,
@@ -134,8 +131,8 @@ impl OverlayBackend for WayVRBackend {
     }
 
     fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
-        let wm = self.wm.borrow();
-        let Some(window) = wm.windows.get(&self.window) else {
+        let wayvr = &self.wayvr.borrow().data;
+        let Some(window) = wayvr.state.wm.windows.get(&self.window) else {
             log::debug!(
                 "{:?}: WayVR overlay without matching window entry",
                 self.name
@@ -175,12 +172,19 @@ impl OverlayBackend for WayVRBackend {
                     .as_ref()
                     .is_none_or(|i| *i.image() != *surf.image.image())
                 {
+                    log::trace!(
+                        "{}: new {} image",
+                        self.name,
+                        surf.dmabuf.then_some("DMA-buf").unwrap_or("SHM")
+                    );
                     self.cur_image = Some(surf.image);
                     Ok(ShouldRender::Should)
                 } else {
+                    log::trace!("{}: no new image", self.name);
                     Ok(ShouldRender::Can)
                 }
             } else {
+                log::trace!("{}: no buffer for wl_surface", self.name);
                 Ok(ShouldRender::Unable)
             }
         })
@@ -215,12 +219,13 @@ impl OverlayBackend for WayVRBackend {
     }
 
     fn on_hover(&mut self, _app: &mut state::AppState, hit: &input::PointerHit) -> HoverResult {
-        if let Some(window) = self.wm.borrow().windows.get(&self.window) {
+        let wayvr = &mut self.wayvr.borrow_mut().data;
+        if let Some((x, y)) = wayvr.state.wm.windows.get(&self.window).map(|window| {
             let pos = self.mouse_transform.transform_point2(hit.uv);
             let x = ((pos.x * (window.size_x as f32)) as u32).max(0);
             let y = ((pos.y * (window.size_y as f32)) as u32).max(0);
-
-            let wayvr = &mut self.wayvr.borrow_mut().data;
+            (x, y)
+        }) {
             wayvr.state.send_mouse_move(self.window, x, y);
         }
 

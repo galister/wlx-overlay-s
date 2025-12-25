@@ -4,7 +4,7 @@ use smithay::input::{Seat, SeatHandler, SeatState};
 use smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel;
 use smithay::reexports::wayland_server;
 use smithay::reexports::wayland_server::Resource;
-use smithay::reexports::wayland_server::protocol::{wl_buffer, wl_output, wl_seat, wl_surface};
+use smithay::reexports::wayland_server::protocol::{wl_buffer, wl_output, wl_seat};
 use smithay::wayland::buffer::BufferHandler;
 use smithay::wayland::dmabuf::{
     DmabufFeedback, DmabufGlobal, DmabufHandler, DmabufState, ImportNotifier, get_dmabuf,
@@ -21,9 +21,7 @@ use std::os::fd::OwnedFd;
 use std::sync::{Arc, Mutex};
 
 use smithay::utils::Serial;
-use smithay::wayland::compositor::{
-    self, BufferAssignment, SurfaceAttributes, TraversalAction, with_surface_tree_downward,
-};
+use smithay::wayland::compositor::{self, BufferAssignment, SurfaceAttributes};
 
 use smithay::wayland::selection::SelectionHandler;
 use smithay::wayland::selection::data_device::{
@@ -36,8 +34,8 @@ use wayland_server::Client;
 use wayland_server::backend::{ClientData, ClientId, DisconnectReason};
 use wayland_server::protocol::wl_surface::WlSurface;
 
-use crate::backend::wayvr::SurfaceBufWithImage;
 use crate::backend::wayvr::image_importer::ImageImporter;
+use crate::backend::wayvr::{SurfaceBufWithImage, time};
 use crate::ipc::event_queue::SyncEventQueue;
 
 use super::WayVRTask;
@@ -83,65 +81,80 @@ impl compositor::CompositorHandler for Application {
 
             match attrs.buffer.take() {
                 Some(BufferAssignment::NewBuffer(buffer)) => {
-                    let current = SurfaceBufWithImage::get_from_surface(states);
-
-                    if current.is_none_or(|c| c.buffer != buffer) {
-                        match buffer_type(&buffer) {
-                            Some(BufferType::Dma) => {
-                                let dmabuf = get_dmabuf(&buffer).unwrap(); // always Ok due to buffer_type
-                                if let Ok(image) =
-                                    self.image_importer.get_or_import_dmabuf(dmabuf.clone())
+                    match buffer_type(&buffer) {
+                        Some(BufferType::Dma) => {
+                            let dmabuf = get_dmabuf(&buffer).unwrap(); // always Ok due to buffer_type
+                            if let Ok(image) = self
+                                .image_importer
+                                .get_or_import_dmabuf(dmabuf.clone())
+                                .inspect_err(|e| {
+                                    log::warn!("wayland_server failed to import DMA-buf: {e:?}")
+                                })
+                            {
+                                let sbwi = SurfaceBufWithImage {
+                                    image,
+                                    transform: wl_transform_to_frame_transform(
+                                        attrs.buffer_transform,
+                                    ),
+                                    scale: attrs.buffer_scale,
+                                    dmabuf: true,
+                                };
+                                sbwi.apply_to_surface(states);
+                            }
+                        }
+                        Some(BufferType::Shm) => {
+                            let _ = with_buffer_contents(&buffer, |data, size, buf| {
+                                if let Ok(image) = self
+                                    .image_importer
+                                    .import_shm(data, size, buf)
+                                    .inspect_err(|e| {
+                                        log::warn!("wayland_server failed to import SHM: {e:?}")
+                                    })
                                 {
                                     let sbwi = SurfaceBufWithImage {
                                         image,
-                                        buffer,
                                         transform: wl_transform_to_frame_transform(
                                             attrs.buffer_transform,
                                         ),
                                         scale: attrs.buffer_scale,
+                                        dmabuf: false,
                                     };
                                     sbwi.apply_to_surface(states);
                                 }
-                            }
-                            Some(BufferType::Shm) => {
-                                let _ = with_buffer_contents(&buffer, |data, size, buf| {
-                                    if let Ok(image) =
-                                        self.image_importer.import_shm(data, size, buf)
-                                    {
-                                        let sbwi = SurfaceBufWithImage {
-                                            image,
-                                            buffer: buffer.clone(),
-                                            transform: wl_transform_to_frame_transform(
-                                                attrs.buffer_transform,
-                                            ),
-                                            scale: attrs.buffer_scale,
-                                        };
-                                        sbwi.apply_to_surface(states);
-                                    }
-                                });
-                            }
-                            Some(BufferType::SinglePixel) => {
-                                let spb = get_single_pixel_buffer(&buffer).unwrap(); // always Ok
-                                if let Ok(image) = self.image_importer.import_spb(spb) {
-                                    let sbwi = SurfaceBufWithImage {
-                                        image,
-                                        buffer,
-                                        transform: wl_transform_to_frame_transform(
-                                            // does this even matter
-                                            attrs.buffer_transform,
-                                        ),
-                                        scale: attrs.buffer_scale,
-                                    };
-                                    sbwi.apply_to_surface(states);
-                                }
-                            }
-                            Some(other) => log::warn!("Unsupported wl_buffer format: {other:?}"),
-                            None => { /* don't draw anything */ }
+                            });
                         }
+                        Some(BufferType::SinglePixel) => {
+                            let spb = get_single_pixel_buffer(&buffer).unwrap(); // always Ok
+                            if let Ok(image) =
+                                self.image_importer.import_spb(spb).inspect_err(|e| {
+                                    log::warn!("wayland_server failed to import SPB: {e:?}")
+                                })
+                            {
+                                let sbwi = SurfaceBufWithImage {
+                                    image,
+                                    transform: wl_transform_to_frame_transform(
+                                        // does this even matter
+                                        attrs.buffer_transform,
+                                    ),
+                                    scale: attrs.buffer_scale,
+                                    dmabuf: false,
+                                };
+                                sbwi.apply_to_surface(states);
+                            }
+                        }
+                        Some(other) => log::warn!("Unsupported wl_buffer format: {other:?}"),
+                        None => { /* don't draw anything */ }
                     }
+                    buffer.release();
                 }
                 Some(BufferAssignment::Removed) => {}
                 None => {}
+            }
+
+            let t = time::get_millis() as u32;
+            let callbacks = std::mem::take(&mut attrs.frame_callbacks);
+            for cb in callbacks {
+                cb.done(t);
             }
         });
 
@@ -285,28 +298,6 @@ delegate_shm!(Application);
 delegate_seat!(Application);
 delegate_data_device!(Application);
 delegate_output!(Application);
-
-pub fn send_frames_surface_tree(surface: &wl_surface::WlSurface, time: u32) {
-    with_surface_tree_downward(
-        surface,
-        (),
-        |_, _, &()| TraversalAction::DoChildren(()),
-        |_surf, states, &()| {
-            // the surface may not have any user_data if it is a subsurface and has not
-            // yet been committed
-            for callback in states
-                .cached_state
-                .get::<SurfaceAttributes>()
-                .current()
-                .frame_callbacks
-                .drain(..)
-            {
-                callback.done(time);
-            }
-        },
-        |_, _, &()| true,
-    );
-}
 
 fn wl_transform_to_frame_transform(
     transform: wl_output::Transform,

@@ -199,7 +199,6 @@ impl Connection {
             list: params
                 .wayland_state
                 .wm
-                .borrow_mut()
                 .windows
                 .iter()
                 .map(|(handle, win)| packet_server::WvrWindow {
@@ -222,7 +221,6 @@ impl Connection {
         if let Some(window) = params
             .wayland_state
             .wm
-            .borrow_mut()
             .windows
             .get_mut(&wayvr::window::WindowHandle::from_packet(handle))
         {
