@@ -7035,8 +7035,10 @@ dependencies = [
  "glam",
  "idmap",
  "idmap-derive",
+ "log",
  "serde",
  "wayvr-ipc",
+ "xdg 3.0.0",
 ]
 
 [[package]]

@@ -12,3 +12,5 @@ idmap = { workspace = true, features = ["serde"] }
 idmap-derive = { workspace = true }
 wayvr-ipc = { path = "../wayvr-ipc", default-features = false }
 anyhow = { workspace = true }
+xdg = "3.0"
+log = { workspace = true }

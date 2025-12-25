@@ -1,4 +1,5 @@
 pub mod astr_containers;
+pub mod cache_dir;
 pub mod common;
 pub mod config;
 pub mod dash_interface;
