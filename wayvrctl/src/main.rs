@@ -119,11 +119,10 @@ async fn run_once(state: &mut WayVRClientState, args: Args) -> anyhow::Result<()
             exec,
             name,
             env,
-            target_display,
             args,
         } => {
-            let handle = serde_json::from_str(&target_display).context("Invalid target_display")?;
-            wvr_process_launch(state, exec, name, env, handle, args, HashMap::new()).await;
+            let env = env.split(",").map(|s| s.to_string()).collect::<Vec<_>>();
+            wvr_process_launch(state, exec, name, env, args, HashMap::new()).await;
         }
         Subcommands::Haptics {
             device,
@@ -211,9 +210,10 @@ enum Subcommands {
     ProcessLaunch {
         exec: String,
         name: String,
-        env: Vec<String>,
-        /// A display handle JSON returned by DisplayList or DisplayCreate
-        target_display: String,
+        /// Enviroment variables, separated by comma
+        #[arg(default_value = "")]
+        env: String,
+        #[arg(default_value = "")]
         args: String,
     },
     /// Trigger haptics on the user's controller

@@ -55,7 +55,7 @@ pub struct ScreenBackend {
 }
 
 impl ScreenBackend {
-    pub fn new_raw(
+    pub(super) fn new_raw(
         name: Arc<str>,
         xr_backend: XrBackend,
         capture: Box<dyn WlxCapture<WlxCaptureIn, WlxCaptureOut>>,

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 
-use wayvr_ipc::{packet_client::WvrProcessLaunchParams, packet_server::WvrDisplayHandle};
+use wayvr_ipc::packet_client::WvrProcessLaunchParams;
 use wgui::{
 	assets::AssetPath,
 	components::{button::ComponentButton, checkbox::ComponentCheckbox},
@@ -246,10 +246,6 @@ impl View {
 			env,
 			exec: String::from(exec),
 			name: desktop_file.name,
-			target_display: WvrDisplayHandle {
-				generation: 12345, // stub
-				idx: 12345,
-			},
 			args,
 			userdata,
 		})?;

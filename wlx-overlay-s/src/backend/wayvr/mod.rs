@@ -16,10 +16,10 @@ use smithay::{
     output::{Mode, Output},
     reexports::wayland_server::{self, backend::ClientId, protocol::wl_buffer},
     wayland::{
-        compositor::{self, SurfaceData},
+        compositor::{self, SurfaceData, with_states},
         dmabuf::{DmabufFeedbackBuilder, DmabufState},
         selection::data_device::DataDeviceState,
-        shell::xdg::{ToplevelSurface, XdgShellState},
+        shell::xdg::{ToplevelSurface, XdgShellState, XdgToplevelSurfaceData},
         shm::ShmState,
     },
 };
@@ -45,6 +45,7 @@ use crate::{
     },
     graphics::WGfxExtras,
     ipc::{event_queue::SyncEventQueue, ipc_server, signal::WayVRSignal},
+    overlays::wayvr::create_wl_window_overlay,
     state::AppState,
     subsystem::hid::{MODS_TO_KEYS, WheelDelta},
     windowing::{OverlayID, OverlaySelector},
@@ -312,7 +313,34 @@ impl WayVR {
                             .borrow_mut()
                             .create_window(&toplevel, process_handle);
 
-                        //TODO: create overlay
+                        let title: Arc<str> = with_states(toplevel.wl_surface(), |states| {
+                            states
+                                .data_map
+                                .get::<XdgToplevelSurfaceData>()
+                                .and_then(|t| t.lock().unwrap().title.clone())
+                                .map(|t| t.into())
+                                .unwrap_or_else(|| format!("P{}", client.pid).into())
+                        });
+
+                        app.tasks.enqueue(TaskType::Overlay(OverlayTask::Create(
+                            OverlaySelector::Nothing,
+                            Box::new(move |app: &mut AppState| {
+                                Some(
+                                    create_wl_window_overlay(
+                                        title,
+                                        app.xr_backend,
+                                        app.wayland_server.as_ref().unwrap().clone(),
+                                        window_handle,
+                                    )
+                                    .inspect_err(|e| {
+                                        log::error!("Could not add wayland client overlay: {e:?}")
+                                    })
+                                    .ok()?,
+                                )
+                            }),
+                        )));
+
+                        //TODO: populate window_to_overlay
 
                         app.wayvr_signals.send(WayVRSignal::BroadcastStateChanged(
                             packet_server::WvrStateChanged::WindowCreated,
@@ -346,6 +374,8 @@ impl WayVR {
                     if let Some(process) = self.state.processes.get_mut(&process_handle) {
                         process.terminate();
                     }
+
+                    //TODO: force drop related overlays
                 }
             }
         }
@@ -540,9 +570,11 @@ pub struct SurfaceBufWithImage {
 }
 
 impl SurfaceBufWithImage {
+    #[allow(invalid_value)]
     fn apply_to_surface(self, surface_data: &SurfaceData) {
         let container = surface_data.data_map.get_or_insert(|| unsafe {
             SurfaceBufWithImageContainer {
+                // safe because we're replacing right after
                 inner: RefCell::new(MaybeUninit::uninit().assume_init()),
             }
         });

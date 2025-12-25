@@ -104,7 +104,7 @@ impl compositor::CompositorHandler for Application {
                                 }
                             }
                             Some(BufferType::Shm) => {
-                                with_buffer_contents(&buffer, |data, size, buf| {
+                                let _ = with_buffer_contents(&buffer, |data, size, buf| {
                                     if let Ok(image) =
                                         self.image_importer.import_shm(data, size, buf)
                                     {

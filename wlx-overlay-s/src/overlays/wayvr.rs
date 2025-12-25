@@ -3,7 +3,10 @@ use smithay::wayland::compositor::with_states;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 use vulkano::image::view::ImageView;
 use wgui::gfx::WGfx;
-use wlx_common::overlays::{BackendAttrib, BackendAttribValue, StereoMode};
+use wlx_common::{
+    overlays::{BackendAttrib, BackendAttribValue, StereoMode},
+    windowing::{OverlayWindowState, Positioning},
+};
 
 use crate::{
     backend::{
@@ -15,13 +18,14 @@ use crate::{
     ipc::{event_queue::SyncEventQueue, signal::WayVRSignal},
     overlays::screen::capture::ScreenPipeline,
     state::{self, AppState},
-    subsystem::hid::WheelDelta,
+    subsystem::{hid::WheelDelta, input::KeyboardFocus},
     windowing::{
         OverlayID,
         backend::{
             FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
             ui_transform,
         },
+        window::{OverlayCategory, OverlayWindowConfig},
     },
 };
 
@@ -44,6 +48,35 @@ impl WayVRData {
     }
 }
 
+pub fn create_wl_window_overlay(
+    name: Arc<str>,
+    xr_backend: XrBackend,
+    wayvr: Rc<RefCell<WayVRData>>,
+    window: wayvr::window::WindowHandle,
+) -> anyhow::Result<OverlayWindowConfig> {
+    Ok(OverlayWindowConfig {
+        name: name.clone(),
+        default_state: OverlayWindowState {
+            grabbable: true,
+            interactable: true,
+            positioning: Positioning::Floating,
+            curvature: Some(0.15),
+            transform: Affine3A::from_scale_rotation_translation(
+                Vec3::ONE,
+                Quat::IDENTITY,
+                vec3(0.0, 0.0, -0.4),
+            ),
+            ..OverlayWindowState::default()
+        },
+        keyboard_focus: Some(KeyboardFocus::WayVR),
+        category: OverlayCategory::WayVR,
+        show_on_spawn: true,
+        ..OverlayWindowConfig::from_backend(Box::new(WayVRBackend::new(
+            name, xr_backend, wayvr, window,
+        )?))
+    })
+}
+
 pub struct WayVRBackend {
     name: Arc<str>,
     pipeline: Option<ScreenPipeline>,
@@ -59,7 +92,7 @@ pub struct WayVRBackend {
 }
 
 impl WayVRBackend {
-    pub fn new(
+    fn new(
         name: Arc<str>,
         xr_backend: XrBackend,
         wayvr: Rc<RefCell<WayVRData>>,
