@@ -10,6 +10,7 @@ use std::{
 
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
+use wgui::gfx::WGfx;
 use wlx_common::{common::LeftRight, config::GeneralConfig, windowing::Positioning};
 
 use crate::{
@@ -19,7 +20,9 @@ use crate::{
     },
     config::load_config_with_conf_d,
     config_io,
-    overlays::wayvr::{WayVRData, executable_exists_in_path},
+    graphics::WGfxExtras,
+    ipc::{event_queue::SyncEventQueue, signal::WayVRSignal},
+    overlays::wayvr::WayVRData,
 };
 
 // Flat version of RelativeTo
@@ -135,9 +138,6 @@ pub struct WayVRDashboard {
 
 #[derive(Deserialize, Serialize)]
 pub struct WayVRConfig {
-    #[serde(default = "def_true")]
-    pub run_compositor_at_start: bool,
-
     #[serde(default = "Default::default")]
     pub catalogs: HashMap<String, WayVRCatalog>,
 
@@ -201,9 +201,12 @@ impl WayVRConfig {
 
     pub fn post_load(
         &self,
+        gfx: Arc<WGfx>,
+        gfx_extras: &WGfxExtras,
         config: &GeneralConfig,
         tasks: &mut TaskContainer,
-    ) -> anyhow::Result<Option<Rc<RefCell<WayVRData>>>> {
+        signals: SyncEventQueue<WayVRSignal>,
+    ) -> anyhow::Result<Rc<RefCell<WayVRData>>> {
         let primary_count = self
             .displays
             .iter()
@@ -212,10 +215,6 @@ impl WayVRConfig {
 
         if primary_count > 1 {
             anyhow::bail!("Number of primary displays is more than 1")
-        } else if primary_count == 0 {
-            log::warn!(
-                "No primary display specified. External Wayland applications will not be attached."
-            );
         }
 
         for (catalog_name, catalog) in &self.catalogs {
@@ -231,15 +230,12 @@ impl WayVRConfig {
             }
         }
 
-        if self.run_compositor_at_start {
-            // Start Wayland server instantly
-            Ok(Some(Rc::new(RefCell::new(WayVRData::new(
-                Self::get_wayvr_config(config, self)?,
-            )?))))
-        } else {
-            // Lazy-init WayVR later if the user requested
-            Ok(None)
-        }
+        Ok(Rc::new(RefCell::new(WayVRData::new(
+            gfx,
+            gfx_extras,
+            Self::get_wayvr_config(config, self)?,
+            signals,
+        )?)))
     }
 }
 
@@ -256,6 +252,19 @@ fn get_default_dashboard_exec() -> (
         }
     }
     (String::from("wayvr-dashboard"), None)
+}
+
+pub fn executable_exists_in_path(command: &str) -> bool {
+    let Ok(path) = std::env::var("PATH") else {
+        return false; // very unlikely to happen
+    };
+    for dir in path.split(':') {
+        let exec_path = std::path::PathBuf::from(dir).join(command);
+        if exec_path.exists() && exec_path.is_file() {
+            return true; // executable found
+        }
+    }
+    false
 }
 
 pub fn load_wayvr() -> WayVRConfig {

@@ -17,8 +17,8 @@ use wgui::gfx::{
     pipeline::{WGfxPipeline, WPipelineCreateInfo},
 };
 use wlx_capture::{
-    WlxCapture,
-    frame::{self as wlx_frame, DrmFormat, FrameFormat, MouseMeta, Transform, WlxFrame},
+    DrmFormat, WlxCapture,
+    frame::{self as wlx_frame, FrameFormat, MouseMeta, WlxFrame},
 };
 use wlx_common::{config::GeneralConfig, overlays::StereoMode};
 
@@ -39,7 +39,8 @@ struct BufPass {
     buf_vert: Subbuffer<[Vert2Uv]>,
 }
 
-pub(super) struct ScreenPipeline {
+/// A render pipeline that supports mouse + stereo
+pub struct ScreenPipeline {
     mouse: BufPass,
     pass: SmallVec<[BufPass; 2]>,
     pipeline: Arc<WGfxPipeline<Vert2Uv>>,
@@ -49,11 +50,7 @@ pub(super) struct ScreenPipeline {
 }
 
 impl ScreenPipeline {
-    pub(super) fn new(
-        meta: &FrameMeta,
-        app: &mut AppState,
-        stereo: StereoMode,
-    ) -> anyhow::Result<Self> {
+    pub fn new(meta: &FrameMeta, app: &mut AppState, stereo: StereoMode) -> anyhow::Result<Self> {
         let extentf = [meta.extent[0] as f32, meta.extent[1] as f32];
 
         let pipeline = app.gfx.create_pipeline(
@@ -198,13 +195,13 @@ impl ScreenPipeline {
         Ok(BufPass { pass, buf_vert })
     }
 
-    pub(super) fn render(
+    pub fn render(
         &mut self,
-        capture: &WlxCaptureOut,
+        image: Arc<ImageView>,
+        mouse: Option<&MouseMeta>,
         app: &mut AppState,
         rdr: &mut RenderResources,
     ) -> anyhow::Result<()> {
-        let view = ImageView::new_default(capture.image.clone())?;
         self.buf_alpha.write()?[0] = rdr.alpha;
 
         for (eye, cmd_buf) in rdr.cmd_bufs.iter_mut().enumerate() {
@@ -212,11 +209,11 @@ impl ScreenPipeline {
 
             current
                 .pass
-                .update_sampler(0, view.clone(), app.gfx.texture_filter)?;
+                .update_sampler(0, image.clone(), app.gfx.texture_filter)?;
 
             cmd_buf.run_ref(&current.pass)?;
 
-            if let Some(mouse) = capture.mouse.as_ref() {
+            if let Some(mouse) = mouse.as_ref() {
                 let size = CURSOR_SIZE * self.extentf[1];
                 let half_size = size * 0.5;
 
@@ -325,10 +322,10 @@ impl WlxCaptureIn {
 }
 
 #[derive(Clone)]
-pub struct WlxCaptureOut {
-    image: Arc<Image>,
-    format: FrameFormat,
-    mouse: Option<MouseMeta>,
+pub(super) struct WlxCaptureOut {
+    pub(super) image: Arc<ImageView>,
+    pub(super) format: FrameFormat,
+    pub(super) mouse: Option<MouseMeta>,
 }
 
 impl WlxCaptureOut {
@@ -339,10 +336,6 @@ impl WlxCaptureOut {
             transform: affine_from_format(&self.format),
             format: self.image.format(),
         }
-    }
-
-    pub(super) const fn get_transform(&self) -> Transform {
-        self.format.transform
     }
 }
 
@@ -390,7 +383,7 @@ pub(super) fn receive_callback(me: &WlxCaptureIn, frame: WlxFrame) -> Option<Wlx
             let format = frame.format;
             match me.gfx.dmabuf_texture(frame) {
                 Ok(image) => Some(WlxCaptureOut {
-                    image,
+                    image: ImageView::new_default(image).ok()?,
                     format,
                     mouse: None,
                 }),
@@ -406,7 +399,7 @@ pub(super) fn receive_callback(me: &WlxCaptureIn, frame: WlxFrame) -> Option<Wlx
                 return None;
             };
 
-            let format = match fourcc_to_vk(frame.format.fourcc) {
+            let format = match fourcc_to_vk(frame.format.drm_format.code) {
                 Ok(x) => x,
                 Err(e) => {
                     log::error!("{}: {}", me.name, e);
@@ -439,7 +432,7 @@ pub(super) fn receive_callback(me: &WlxCaptureIn, frame: WlxFrame) -> Option<Wlx
             }?;
 
             Some(WlxCaptureOut {
-                image,
+                image: ImageView::new_default(image).ok()?,
                 format: frame.format,
                 mouse: None,
             })
@@ -447,7 +440,7 @@ pub(super) fn receive_callback(me: &WlxCaptureIn, frame: WlxFrame) -> Option<Wlx
         WlxFrame::MemPtr(frame) => {
             log::trace!("{}: New MemPtr frame", me.name);
 
-            let format = match fourcc_to_vk(frame.format.fourcc) {
+            let format = match fourcc_to_vk(frame.format.drm_format.code) {
                 Ok(x) => x,
                 Err(e) => {
                     log::error!("{}: {}", me.name, e);
@@ -459,7 +452,7 @@ pub(super) fn receive_callback(me: &WlxCaptureIn, frame: WlxFrame) -> Option<Wlx
             let image = upload_image(me, frame.format.width, frame.format.height, format, data)?;
 
             Some(WlxCaptureOut {
-                image,
+                image: ImageView::new_default(image).ok()?,
                 format: frame.format,
                 mouse: frame.mouse,
             })

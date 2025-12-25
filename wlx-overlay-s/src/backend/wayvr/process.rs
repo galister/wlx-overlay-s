@@ -4,14 +4,11 @@ use wayvr_ipc::packet_server;
 
 use crate::gen_id;
 
-use super::display;
-
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct WayVRProcess {
     pub auth_key: String,
     pub child: std::process::Child,
-    pub display_handle: display::DisplayHandle,
 
     pub exec_path: String,
     pub args: Vec<String>,
@@ -24,7 +21,6 @@ pub struct WayVRProcess {
 #[derive(Debug)]
 pub struct ExternalProcess {
     pub pid: u32,
-    pub display_handle: display::DisplayHandle,
 }
 
 #[derive(Debug)]
@@ -34,13 +30,6 @@ pub enum Process {
 }
 
 impl Process {
-    pub const fn display_handle(&self) -> display::DisplayHandle {
-        match self {
-            Self::Managed(p) => p.display_handle,
-            Self::External(p) => p.display_handle,
-        }
-    }
-
     pub fn is_running(&mut self) -> bool {
         match self {
             Self::Managed(p) => p.is_running(),
@@ -67,13 +56,11 @@ impl Process {
             Self::Managed(p) => packet_server::WvrProcess {
                 name: p.get_name().unwrap_or_else(|| String::from("unknown")),
                 userdata: p.userdata.clone(),
-                display_handle: p.display_handle.as_packet(),
                 handle: handle.as_packet(),
             },
             Self::External(p) => packet_server::WvrProcess {
                 name: p.get_name().unwrap_or_else(|| String::from("unknown")),
                 userdata: HashMap::default(),
-                display_handle: p.display_handle.as_packet(),
                 handle: handle.as_packet(),
             },
         }

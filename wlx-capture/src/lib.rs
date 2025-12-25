@@ -1,7 +1,8 @@
 #![allow(dead_code)]
 #![allow(clippy::expect_fun_call)]
 
-use frame::{DrmFormat, WlxFrame};
+pub use drm_fourcc::{DrmFormat, DrmFourcc, DrmModifier};
+use frame::WlxFrame;
 
 pub mod frame;
 

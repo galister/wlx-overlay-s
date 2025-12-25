@@ -67,22 +67,13 @@ pub struct WlxModifyPanelParams {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum PacketClient {
 	Handshake(Handshake),
-	WvrDisplayCreate(Serial, WvrDisplayCreateParams),
-	WvrDisplayGet(Serial, packet_server::WvrDisplayHandle),
-	WvrDisplayList(Serial),
-	WvrDisplayRemove(Serial, packet_server::WvrDisplayHandle),
-	WvrDisplaySetVisible(packet_server::WvrDisplayHandle, bool),
-	WvrDisplayWindowList(Serial, packet_server::WvrDisplayHandle),
-	WvrDisplaySetWindowLayout(
-		packet_server::WvrDisplayHandle,
-		packet_server::WvrDisplayWindowLayout,
-	),
+	WvrWindowList(Serial),
 	WvrWindowSetVisible(packet_server::WvrWindowHandle, bool),
 	WvrProcessGet(Serial, packet_server::WvrProcessHandle),
 	WvrProcessLaunch(Serial, WvrProcessLaunchParams),
 	WvrProcessList(Serial),
 	WvrProcessTerminate(packet_server::WvrProcessHandle),
-	WlxHaptics(WlxHapticsParams),
 	WlxInputState(Serial),
 	WlxModifyPanel(WlxModifyPanelParams),
+	WlxDeviceHaptics(usize, WlxHapticsParams),
 }

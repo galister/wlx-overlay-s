@@ -22,6 +22,7 @@ mod config;
 mod config_io;
 mod graphics;
 mod gui;
+mod ipc;
 mod overlays;
 mod shaders;
 mod state;

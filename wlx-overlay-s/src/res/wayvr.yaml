@@ -12,11 +12,6 @@ version: 1
 # "software": Read pixel data to memory via glReadPixels() every time a content has been updated. Minor performance impact on large resolutions
 blit_method: "dmabuf"
 
-# Set to true if you want to make Wyland server instantly available.
-# By default, WayVR starts only when it's needed.
-# (this option is primarily used for remote starting external processes and development purposes)
-run_compositor_at_start: false 
-
 # Automatically close overlays with zero window count?
 auto_hide: true
 

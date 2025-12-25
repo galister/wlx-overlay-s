@@ -10,10 +10,9 @@ use env_logger::Env;
 use wayvr_ipc::{client::WayVRClient, ipc, packet_client};
 
 use crate::helper::{
-    WayVRClientState, wlx_haptics, wlx_input_state, wlx_panel_modify, wvr_display_create,
-    wvr_display_get, wvr_display_list, wvr_display_remove, wvr_display_set_visible,
-    wvr_display_window_list, wvr_process_get, wvr_process_launch, wvr_process_list,
-    wvr_process_terminate, wvr_window_set_visible,
+    WayVRClientState, wlx_device_haptics, wlx_input_state, wlx_panel_modify, wvr_process_get,
+    wvr_process_launch, wvr_process_list, wvr_process_terminate, wvr_window_list,
+    wvr_window_set_visible,
 };
 
 mod helper;
@@ -76,12 +75,12 @@ async fn run_batch(state: &mut WayVRClientState, fail_fast: bool) -> anyhow::Res
 }
 
 async fn parse_run_line(state: &mut WayVRClientState, line: &str) -> anyhow::Result<()> {
-    let mut argv = shell_words::split(&line).with_context(|| format!("parse error"))?;
+    let mut argv = shell_words::split(line).context("parse error")?;
 
     // clap expects argv[0] to be the binary name
     argv.insert(0, env!("CARGO_PKG_NAME").to_string());
 
-    let args = Args::try_parse_from(argv).with_context(|| format!("invalid arguments"))?;
+    let args = Args::try_parse_from(argv).context("invalid arguments")?;
     run_once(state, args).await?;
 
     Ok(())
@@ -95,43 +94,8 @@ async fn run_once(state: &mut WayVRClientState, args: Args) -> anyhow::Result<()
         Subcommands::InputState => {
             wlx_input_state(state).await;
         }
-        Subcommands::DisplayCreate {
-            width,
-            height,
-            name,
-            scale,
-        } => {
-            wvr_display_create(
-                state,
-                width,
-                height,
-                name,
-                scale,
-                packet_client::AttachTo::None,
-            )
-            .await;
-        }
-        Subcommands::DisplayList => {
-            wvr_display_list(state).await;
-        }
-        Subcommands::DisplayGet { handle } => {
-            let handle = serde_json::from_str(&handle).context("Invalid handle")?;
-            wvr_display_get(state, handle).await;
-        }
-        Subcommands::DisplayWindowList { handle } => {
-            let handle = serde_json::from_str(&handle).context("Invalid handle")?;
-            wvr_display_window_list(state, handle).await;
-        }
-        Subcommands::DisplayRemove { handle } => {
-            let handle = serde_json::from_str(&handle).context("Invalid handle")?;
-            wvr_display_remove(state, handle).await;
-        }
-        Subcommands::DisplaySetVisible {
-            handle,
-            visible_0_or_1,
-        } => {
-            let handle = serde_json::from_str(&handle).context("Invalid handle")?;
-            wvr_display_set_visible(state, handle, visible_0_or_1 != 0).await;
+        Subcommands::WindowList => {
+            wvr_window_list(state).await;
         }
         Subcommands::WindowSetVisible {
             handle,
@@ -162,11 +126,12 @@ async fn run_once(state: &mut WayVRClientState, args: Args) -> anyhow::Result<()
             wvr_process_launch(state, exec, name, env, handle, args, HashMap::new()).await;
         }
         Subcommands::Haptics {
+            device,
             intensity,
             duration,
             frequency,
         } => {
-            wlx_haptics(state, intensity, duration, frequency).await;
+            wlx_device_haptics(state, device, intensity, duration, frequency).await;
         }
         Subcommands::PanelModify {
             overlay,
@@ -220,39 +185,9 @@ enum Subcommands {
     },
     /// Get the positions of HMD & controllers
     InputState,
-    /// Create a new WayVR display
-    DisplayCreate {
-        width: u16,
-        height: u16,
-        name: String,
-        #[arg(short, long)]
-        scale: Option<f32>,
-        //attach_to: packet_client::AttachTo,
-    },
-    /// List WayVR displays
-    DisplayList,
-    /// Retrieve information about a single WayVR display
-    DisplayGet {
-        /// A display handle JSON returned by DisplayList or DisplayCreate
-        handle: String,
-    },
-    /// List windows attached to a WayVR display
-    DisplayWindowList {
-        /// A display handle JSON returned by DisplayList or DisplayCreate
-        handle: String,
-    },
+    /// List WayVR windows
+    WindowList,
     /// Delete a WayVR display
-    DisplayRemove {
-        /// A display handle JSON returned by DisplayList or DisplayCreate
-        handle: String,
-    },
-    /// Change the visibility of a WayVR display
-    DisplaySetVisible {
-        /// A display handle JSON returned by DisplayList or DisplayCreate
-        handle: String,
-        visible_0_or_1: u8,
-    },
-
     // DisplaySetLayout skipped
     /// Change the visibility of a window on a WayVR display
     WindowSetVisible {
@@ -283,6 +218,8 @@ enum Subcommands {
     },
     /// Trigger haptics on the user's controller
     Haptics {
+        /// 0 for left, 1 for right controller
+        device: usize,
         #[arg(short, long, default_value = "0.25")]
         intensity: f32,
         #[arg(short, long, default_value = "0.1")]

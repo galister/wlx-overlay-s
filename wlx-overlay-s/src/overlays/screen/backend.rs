@@ -222,9 +222,13 @@ impl OverlayBackend for ScreenBackend {
     fn render(&mut self, app: &mut AppState, rdr: &mut RenderResources) -> anyhow::Result<()> {
         // want panic; must be some if should_render was not Unable
         let capture = self.cur_frame.as_ref().unwrap();
+        let image = capture.image.clone();
 
         // want panic; must be Some if cur_frame is also Some
-        self.pipeline.as_mut().unwrap().render(&capture, app, rdr)?;
+        self.pipeline
+            .as_mut()
+            .unwrap()
+            .render(image, capture.mouse.as_ref(), app, rdr)?;
         self.capture.request_new_frame();
         Ok(())
     }

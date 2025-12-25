@@ -42,9 +42,6 @@ use crate::{
     },
 };
 
-#[cfg(feature = "wayvr")]
-use crate::{backend::wayvr::WayVRAction, overlays::wayvr::wayvr_action};
-
 pub mod helpers;
 pub mod input;
 pub mod lines;
@@ -157,51 +154,50 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
         }
         FRAME_COUNTER.fetch_add(1, Ordering::Relaxed);
 
-        // extremely cursed
-        const VREVENT_QUIT: u32 = EVREventType::VREvent_Quit as u32;
-        const VREVENT_TRACKED_ACTIVATED: u32 = EVREventType::VREvent_TrackedDeviceActivated as u32;
-        const VREVENT_TRACKED_DEACTIVATED: u32 =
-            EVREventType::VREvent_TrackedDeviceDeactivated as u32;
-        const VREVENT_TRACKED_UPDATED: u32 = EVREventType::VREvent_TrackedDeviceUpdated as u32;
-        const VREVENT_SEATED_ZERO: u32 = EVREventType::VREvent_SeatedZeroPoseReset as u32;
-        const VREVENT_STANDING_ZERO: u32 = EVREventType::VREvent_StandingZeroPoseReset as u32;
-        const VREVENT_CHAPERONE_CHANGED: u32 =
-            EVREventType::VREvent_ChaperoneUniverseHasChanged as u32;
-        const VREVENT_SCENE_APP_CHANGED: u32 = EVREventType::VREvent_SceneApplicationChanged as u32;
-        const VREVENT_IPD_CHANGED: u32 = EVREventType::VREvent_IpdChanged as u32;
+        {
+            // extremely cursed
+            const EV_QUIT: u32 = EVREventType::VREvent_Quit as u32;
+            const EV_DEV_ACTIVATED: u32 = EVREventType::VREvent_TrackedDeviceActivated as u32;
+            const EV_DEV_DEACTIVATED: u32 = EVREventType::VREvent_TrackedDeviceDeactivated as u32;
+            const EV_DEV_UPDATED: u32 = EVREventType::VREvent_TrackedDeviceUpdated as u32;
+            const EV_SEAT_ZERO: u32 = EVREventType::VREvent_SeatedZeroPoseReset as u32;
+            const EV_STAND_ZERO: u32 = EVREventType::VREvent_StandingZeroPoseReset as u32;
+            const EV_CHAP_CHANGED: u32 = EVREventType::VREvent_ChaperoneUniverseHasChanged as u32;
+            const EV_SCENE_CHANGED: u32 = EVREventType::VREvent_SceneApplicationChanged as u32;
+            const EV_IPD_CHANGED: u32 = EVREventType::VREvent_IpdChanged as u32;
 
-        while let Some(event) = system_mgr.poll_next_event() {
-            match event.event_type {
-                VREVENT_QUIT => {
-                    log::warn!("Received quit event, shutting down.");
-                    break 'main_loop;
-                }
-                VREVENT_TRACKED_ACTIVATED
-                | VREVENT_TRACKED_DEACTIVATED
-                | VREVENT_TRACKED_UPDATED => {
-                    next_device_update = Instant::now();
-                }
-                VREVENT_SEATED_ZERO
-                | VREVENT_STANDING_ZERO
-                | VREVENT_CHAPERONE_CHANGED
-                | VREVENT_SCENE_APP_CHANGED => {
-                    playspace.playspace_changed(&mut compositor_mgr, &mut chaperone_mgr);
-                }
-                VREVENT_IPD_CHANGED => {
-                    if let Ok(ipd) = system_mgr.get_tracked_device_property::<f32>(
-                        TrackedDeviceIndex::HMD,
-                        ETrackedDeviceProperty::Prop_UserIpdMeters_Float,
-                    ) {
-                        let ipd = (ipd * 1000.0).round();
-                        if (ipd - app.input_state.ipd).abs() > 0.05 {
-                            log::info!("IPD: {:.1} mm -> {:.1} mm", app.input_state.ipd, ipd);
-                            Toast::new(ToastTopic::IpdChange, "IPD".into(), format!("{ipd:.1} mm"))
-                                .submit(&mut app);
-                        }
-                        app.input_state.ipd = ipd;
+            while let Some(event) = system_mgr.poll_next_event() {
+                match event.event_type {
+                    EV_QUIT => {
+                        log::warn!("Received quit event, shutting down.");
+                        break 'main_loop;
                     }
+                    EV_DEV_ACTIVATED | EV_DEV_DEACTIVATED | EV_DEV_UPDATED => {
+                        next_device_update = Instant::now();
+                    }
+                    EV_SEAT_ZERO | EV_STAND_ZERO | EV_CHAP_CHANGED | EV_SCENE_CHANGED => {
+                        playspace.playspace_changed(&mut compositor_mgr, &mut chaperone_mgr);
+                    }
+                    EV_IPD_CHANGED => {
+                        if let Ok(ipd) = system_mgr.get_tracked_device_property::<f32>(
+                            TrackedDeviceIndex::HMD,
+                            ETrackedDeviceProperty::Prop_UserIpdMeters_Float,
+                        ) {
+                            let ipd = (ipd * 1000.0).round();
+                            if (ipd - app.input_state.ipd).abs() > 0.05 {
+                                log::info!("IPD: {:.1} mm -> {:.1} mm", app.input_state.ipd, ipd);
+                                Toast::new(
+                                    ToastTopic::IpdChange,
+                                    "IPD".into(),
+                                    format!("{ipd:.1} mm"),
+                                )
+                                .submit(&mut app);
+                            }
+                            app.input_state.ipd = ipd;
+                        }
+                    }
+                    _ => {}
                 }
-                _ => {}
             }
         }
 
@@ -220,6 +216,9 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
 
         while let Some(task) = due_tasks.pop_front() {
             match task {
+                TaskType::Input(task) => {
+                    app.input_state.handle_task(task);
+                }
                 TaskType::Overlay(task) => {
                     overlays.handle_task(&mut app, task)?;
                 }
@@ -232,9 +231,7 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                     }
                 },
                 #[cfg(feature = "wayvr")]
-                TaskType::WayVR(action) => {
-                    wayvr_action(&mut app, &mut overlays, &action);
-                }
+                TaskType::WayVR(_action) => { /* TODO */ }
             }
         }
 
@@ -264,9 +261,7 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             .pointers
             .iter()
             .any(|p| p.now.toggle_dashboard && !p.before.toggle_dashboard)
-        {
-            wayvr_action(&mut app, &mut overlays, &WayVRAction::ToggleDashboard);
-        }
+        { /* TODO */ }
 
         overlays
             .values_mut()
@@ -303,11 +298,10 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             let _ = sender.send_params(&overlays, &app.input_state.devices);
         }
 
-        #[cfg(feature = "wayvr")]
         if let Err(e) =
-            crate::overlays::wayvr::tick_events::<OpenVrOverlayData>(&mut app, &mut overlays)
+            crate::ipc::events::tick_events::<OpenVrOverlayData>(&mut app, &mut overlays)
         {
-            log::error!("WayVR tick_events failed: {e:?}");
+            log::error!("WayVR IPC tick_events failed: {e:?}");
         }
 
         log::trace!("Rendering frame");
@@ -334,11 +328,6 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
         overlays
             .values_mut()
             .for_each(|o| o.after_render(universe.clone(), &mut overlay_mgr, &app.gfx));
-
-        #[cfg(feature = "wayvr")]
-        if let Some(wayvr) = &app.wayvr {
-            wayvr.borrow_mut().data.tick_finish()?;
-        }
 
         // chaperone
     } // main_loop

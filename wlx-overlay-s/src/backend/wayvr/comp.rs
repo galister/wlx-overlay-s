@@ -1,18 +1,17 @@
 use smithay::backend::allocator::dmabuf::Dmabuf;
-use smithay::backend::renderer::ImportDma;
-use smithay::backend::renderer::gles::GlesRenderer;
-use smithay::backend::renderer::utils::on_commit_buffer_handler;
+use smithay::backend::renderer::{BufferType, buffer_type};
 use smithay::input::{Seat, SeatHandler, SeatState};
 use smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel;
 use smithay::reexports::wayland_server;
 use smithay::reexports::wayland_server::Resource;
-use smithay::reexports::wayland_server::protocol::{wl_buffer, wl_seat, wl_surface};
+use smithay::reexports::wayland_server::protocol::{wl_buffer, wl_output, wl_seat, wl_surface};
 use smithay::wayland::buffer::BufferHandler;
 use smithay::wayland::dmabuf::{
-    DmabufFeedback, DmabufGlobal, DmabufHandler, DmabufState, ImportNotifier,
+    DmabufFeedback, DmabufGlobal, DmabufHandler, DmabufState, ImportNotifier, get_dmabuf,
 };
 use smithay::wayland::output::OutputHandler;
-use smithay::wayland::shm::{ShmHandler, ShmState};
+use smithay::wayland::shm::{ShmHandler, ShmState, with_buffer_contents};
+use smithay::wayland::single_pixel_buffer::get_single_pixel_buffer;
 use smithay::{
     delegate_compositor, delegate_data_device, delegate_dmabuf, delegate_output, delegate_seat,
     delegate_shm, delegate_xdg_shell,
@@ -23,7 +22,7 @@ use std::sync::{Arc, Mutex};
 
 use smithay::utils::Serial;
 use smithay::wayland::compositor::{
-    self, SurfaceAttributes, TraversalAction, with_surface_tree_downward,
+    self, BufferAssignment, SurfaceAttributes, TraversalAction, with_surface_tree_downward,
 };
 
 use smithay::wayland::selection::SelectionHandler;
@@ -37,11 +36,14 @@ use wayland_server::Client;
 use wayland_server::backend::{ClientData, ClientId, DisconnectReason};
 use wayland_server::protocol::wl_surface::WlSurface;
 
+use crate::backend::wayvr::SurfaceBufWithImage;
+use crate::backend::wayvr::image_importer::ImageImporter;
+use crate::ipc::event_queue::SyncEventQueue;
+
 use super::WayVRTask;
-use super::event_queue::SyncEventQueue;
 
 pub struct Application {
-    pub gles_renderer: GlesRenderer,
+    pub image_importer: ImageImporter,
     pub dmabuf_state: (DmabufState, DmabufGlobal, Option<DmabufFeedback>),
     pub compositor: compositor::CompositorState,
     pub xdg_shell: XdgShellState,
@@ -55,6 +57,10 @@ pub struct Application {
 impl Application {
     pub fn check_redraw(&mut self, surface: &WlSurface) -> bool {
         self.redraw_requests.remove(&surface.id())
+    }
+
+    pub fn cleanup(&mut self) {
+        self.image_importer.cleanup();
     }
 }
 
@@ -71,7 +77,74 @@ impl compositor::CompositorHandler for Application {
     }
 
     fn commit(&mut self, surface: &WlSurface) {
-        on_commit_buffer_handler::<Self>(surface);
+        smithay::wayland::compositor::with_states(surface, |states| {
+            let mut guard = states.cached_state.get::<SurfaceAttributes>();
+            let attrs = guard.current();
+
+            match attrs.buffer.take() {
+                Some(BufferAssignment::NewBuffer(buffer)) => {
+                    let current = SurfaceBufWithImage::get_from_surface(states);
+
+                    if current.is_none_or(|c| c.buffer != buffer) {
+                        match buffer_type(&buffer) {
+                            Some(BufferType::Dma) => {
+                                let dmabuf = get_dmabuf(&buffer).unwrap(); // always Ok due to buffer_type
+                                if let Ok(image) =
+                                    self.image_importer.get_or_import_dmabuf(dmabuf.clone())
+                                {
+                                    let sbwi = SurfaceBufWithImage {
+                                        image,
+                                        buffer,
+                                        transform: wl_transform_to_frame_transform(
+                                            attrs.buffer_transform,
+                                        ),
+                                        scale: attrs.buffer_scale,
+                                    };
+                                    sbwi.apply_to_surface(states);
+                                }
+                            }
+                            Some(BufferType::Shm) => {
+                                with_buffer_contents(&buffer, |data, size, buf| {
+                                    if let Ok(image) =
+                                        self.image_importer.import_shm(data, size, buf)
+                                    {
+                                        let sbwi = SurfaceBufWithImage {
+                                            image,
+                                            buffer: buffer.clone(),
+                                            transform: wl_transform_to_frame_transform(
+                                                attrs.buffer_transform,
+                                            ),
+                                            scale: attrs.buffer_scale,
+                                        };
+                                        sbwi.apply_to_surface(states);
+                                    }
+                                });
+                            }
+                            Some(BufferType::SinglePixel) => {
+                                let spb = get_single_pixel_buffer(&buffer).unwrap(); // always Ok
+                                if let Ok(image) = self.image_importer.import_spb(spb) {
+                                    let sbwi = SurfaceBufWithImage {
+                                        image,
+                                        buffer,
+                                        transform: wl_transform_to_frame_transform(
+                                            // does this even matter
+                                            attrs.buffer_transform,
+                                        ),
+                                        scale: attrs.buffer_scale,
+                                    };
+                                    sbwi.apply_to_surface(states);
+                                }
+                            }
+                            Some(other) => log::warn!("Unsupported wl_buffer format: {other:?}"),
+                            None => { /* don't draw anything */ }
+                        }
+                    }
+                }
+                Some(BufferAssignment::Removed) => {}
+                None => {}
+            }
+        });
+
         self.redraw_requests.insert(surface.id());
     }
 }
@@ -197,7 +270,7 @@ impl DmabufHandler for Application {
         dmabuf: Dmabuf,
         notifier: ImportNotifier,
     ) {
-        if self.gles_renderer.import_dmabuf(&dmabuf, None).is_ok() {
+        if self.image_importer.get_or_import_dmabuf(dmabuf).is_ok() {
             let _ = notifier.successful::<Self>();
         } else {
             notifier.failed();
@@ -233,4 +306,20 @@ pub fn send_frames_surface_tree(surface: &wl_surface::WlSurface, time: u32) {
         },
         |_, _, &()| true,
     );
+}
+
+fn wl_transform_to_frame_transform(
+    transform: wl_output::Transform,
+) -> wlx_capture::frame::Transform {
+    match transform {
+        wl_output::Transform::Normal => wlx_capture::frame::Transform::Normal,
+        wl_output::Transform::_90 => wlx_capture::frame::Transform::Rotated90,
+        wl_output::Transform::_180 => wlx_capture::frame::Transform::Rotated180,
+        wl_output::Transform::_270 => wlx_capture::frame::Transform::Rotated270,
+        wl_output::Transform::Flipped => wlx_capture::frame::Transform::Flipped,
+        wl_output::Transform::Flipped90 => wlx_capture::frame::Transform::Flipped90,
+        wl_output::Transform::Flipped180 => wlx_capture::frame::Transform::Flipped180,
+        wl_output::Transform::Flipped270 => wlx_capture::frame::Transform::Flipped270,
+        _ => wlx_capture::frame::Transform::Undefined,
+    }
 }

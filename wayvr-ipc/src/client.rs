@@ -315,93 +315,16 @@ impl WayVRClient {
 		}
 	}
 
-	pub async fn fn_wvr_display_list(
+	pub async fn fn_wvr_window_list(
 		client: WayVRClientMutex,
 		serial: Serial,
-	) -> anyhow::Result<Vec<packet_server::WvrDisplay>> {
-		Ok(
-			send_and_wait!(
-				client,
-				serial,
-				&PacketClient::WvrDisplayList(serial),
-				WvrDisplayListResponse
-			)
-			.list,
-		)
-	}
-
-	pub async fn fn_wvr_display_get(
-		client: WayVRClientMutex,
-		serial: Serial,
-		handle: packet_server::WvrDisplayHandle,
-	) -> anyhow::Result<Option<packet_server::WvrDisplay>> {
-		Ok(send_and_wait!(
-			client,
-			serial,
-			&PacketClient::WvrDisplayGet(serial, handle),
-			WvrDisplayGetResponse
-		))
-	}
-
-	pub async fn fn_wvr_display_remove(
-		client: WayVRClientMutex,
-		serial: Serial,
-		handle: packet_server::WvrDisplayHandle,
-	) -> anyhow::Result<()> {
-		send_and_wait!(
-			client,
-			serial,
-			&PacketClient::WvrDisplayRemove(serial, handle),
-			WvrDisplayRemoveResponse
-		)
-		.map_err(|e| anyhow::anyhow!("{}", e))
-	}
-
-	pub async fn fn_wvr_display_create(
-		client: WayVRClientMutex,
-		serial: Serial,
-		params: packet_client::WvrDisplayCreateParams,
-	) -> anyhow::Result<packet_server::WvrDisplayHandle> {
-		Ok(send_and_wait!(
-			client,
-			serial,
-			&PacketClient::WvrDisplayCreate(serial, params),
-			WvrDisplayCreateResponse
-		))
-	}
-
-	pub async fn fn_wvr_display_set_visible(
-		client: WayVRClientMutex,
-		handle: packet_server::WvrDisplayHandle,
-		visible: bool,
-	) -> anyhow::Result<()> {
-		send_only!(client, &PacketClient::WvrDisplaySetVisible(handle, visible));
-		Ok(())
-	}
-
-	pub async fn fn_wvr_display_set_layout(
-		client: WayVRClientMutex,
-		handle: packet_server::WvrDisplayHandle,
-		layout: packet_server::WvrDisplayWindowLayout,
-	) -> anyhow::Result<()> {
-		send_only!(
-			client,
-			&PacketClient::WvrDisplaySetWindowLayout(handle, layout)
-		);
-		Ok(())
-	}
-
-	pub async fn fn_wvr_display_window_list(
-		client: WayVRClientMutex,
-		serial: Serial,
-		handle: packet_server::WvrDisplayHandle,
 	) -> anyhow::Result<Option<Vec<packet_server::WvrWindow>>> {
 		Ok(
 			send_and_wait!(
 				client,
 				serial,
-				&PacketClient::WvrDisplayWindowList(serial, handle),
-				WvrDisplayWindowListResponse
+				&PacketClient::WvrWindowList(serial),
+				WvrWindowListResponse
 			)
 			.map(|res| res.list),
 		)
@@ -478,11 +401,12 @@ impl WayVRClient {
 		))
 	}
 
-	pub async fn fn_wlx_haptics(
+	pub async fn fn_wlx_device_haptics(
 		client: WayVRClientMutex,
+		device: usize,
 		params: packet_client::WlxHapticsParams,
 	) -> anyhow::Result<()> {
-		send_only!(client, &PacketClient::WlxHaptics(params));
+		send_only!(client, &PacketClient::WlxDeviceHaptics(device, params));
 		Ok(())
 	}
 
