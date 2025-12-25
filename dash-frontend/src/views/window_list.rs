@@ -1,9 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use wayvr_ipc::{
-	packet_client::{self},
-	packet_server::{self, WvrDisplayHandle},
-};
+use wayvr_ipc::packet_server::{self, WvrWindowHandle};
 use wgui::{
 	assets::AssetPath,
 	components::{self, button::ComponentButton},
@@ -24,15 +21,13 @@ use crate::{
 	frontend::{FrontendTask, FrontendTasks},
 	task::Tasks,
 	util::popup_manager::{MountPopupParams, PopupHandle},
-	views::{add_display, display_options},
+	views::window_options,
 };
 
 #[derive(Clone)]
 enum Task {
-	AddDisplay,
-	AddDisplayFinish(add_display::Result),
-	DisplayClicked(packet_server::WvrDisplay),
-	DisplayOptionsFinish,
+	WindowClicked(packet_server::WvrWindow),
+	WindowOptionsFinish,
 	Refresh,
 }
 
@@ -41,12 +36,11 @@ pub struct Params<'a> {
 	pub frontend_tasks: FrontendTasks,
 	pub layout: &'a mut Layout,
 	pub parent_id: WidgetID,
-	pub on_click: Option<Box<dyn Fn(WvrDisplayHandle)>>,
+	pub on_click: Option<Box<dyn Fn(WvrWindowHandle)>>,
 }
 
 struct State {
-	view_add_display: Option<(PopupHandle, add_display::View)>,
-	view_display_options: Option<(PopupHandle, display_options::View)>,
+	view_window_options: Option<(PopupHandle, window_options::View)>,
 }
 
 pub struct View {
@@ -57,14 +51,14 @@ pub struct View {
 	globals: WguiGlobals,
 	state: Rc<RefCell<State>>,
 	id_list_parent: WidgetID,
-	on_click: Option<Box<dyn Fn(WvrDisplayHandle)>>,
+	on_click: Option<Box<dyn Fn(WvrWindowHandle)>>,
 }
 
 impl View {
 	pub fn new(params: Params) -> anyhow::Result<Self> {
 		let doc_params = &ParseDocumentParams {
 			globals: params.globals.clone(),
-			path: AssetPath::BuiltIn("gui/view/display_list.xml"),
+			path: AssetPath::BuiltIn("gui/view/window_list.xml"),
 			extra: Default::default(),
 		};
 
@@ -73,13 +67,10 @@ impl View {
 
 		let tasks = Tasks::new();
 
-		let btn_add = parser_state.fetch_component_as::<ComponentButton>("btn_add")?;
-		tasks.handle_button(btn_add, Task::AddDisplay);
 		tasks.push(Task::Refresh);
 
 		let state = Rc::new(RefCell::new(State {
-			view_add_display: None,
-			view_display_options: None,
+			view_window_options: None,
 		}));
 
 		Ok(Self {
@@ -101,21 +92,15 @@ impl View {
 			}
 			for task in tasks {
 				match task {
-					Task::AddDisplay => self.action_add_display(),
-					Task::AddDisplayFinish(result) => self.action_add_display_finish(interface, result)?,
-					Task::DisplayOptionsFinish => self.action_display_options_finish(),
+					Task::WindowClicked(display) => self.action_window_clicked(display)?,
+					Task::WindowOptionsFinish => self.action_window_options_finish(),
 					Task::Refresh => self.refresh(layout, interface)?,
-					Task::DisplayClicked(display) => self.action_display_clicked(display)?,
 				}
 			}
 		}
 
 		let mut state = self.state.borrow_mut();
-		if let Some((_, view)) = &mut state.view_add_display {
-			view.update(layout)?;
-		}
-
-		if let Some((_, view)) = &mut state.view_display_options {
+		if let Some((_, view)) = &mut state.view_window_options {
 			view.update(layout, interface)?;
 		}
 
@@ -123,12 +108,13 @@ impl View {
 	}
 }
 
-pub fn construct_display_button(
+pub fn construct_window_button(
 	ess: &mut ConstructEssentials,
+	interface: &mut BoxDashInterface,
 	globals: &WguiGlobals,
-	display: &packet_server::WvrDisplay,
+	window: &packet_server::WvrWindow,
 ) -> anyhow::Result<(WidgetPair, Rc<ComponentButton>)> {
-	let aspect = display.width as f32 / display.height as f32;
+	let aspect = window.size_x as f32 / window.size_y as f32;
 	let height = 96.0;
 	let width = height * aspect;
 	let accent_color = globals.defaults().accent_color;
@@ -151,10 +137,15 @@ pub fn construct_display_button(
 		},
 	)?;
 
+	let process_name = match interface.process_get(window.process_handle.clone()) {
+		Some(process) => process.name.clone(),
+		None => String::from("Unknown"),
+	};
+
 	let label_name = WidgetLabel::create(
 		&mut globals.get(),
 		WidgetLabelParams {
-			content: Translation::from_raw_text(&display.name),
+			content: Translation::from_raw_text(&process_name),
 			style: TextStyle {
 				weight: Some(FontWeight::Bold),
 				wrap: true,
@@ -180,19 +171,20 @@ pub fn construct_display_button(
 	Ok((widget_button, button))
 }
 
-fn fill_display_list(
+fn fill_window_list(
 	globals: &WguiGlobals,
 	ess: &mut ConstructEssentials,
-	list: Vec<packet_server::WvrDisplay>,
+	interface: &mut BoxDashInterface,
+	list: Vec<packet_server::WvrWindow>,
 	tasks: &Tasks<Task>,
 ) -> anyhow::Result<()> {
 	for entry in list {
-		let (_, button) = construct_display_button(ess, globals, &entry)?;
+		let (_, button) = construct_window_button(ess, interface, globals, &entry)?;
 
 		button.on_click({
 			let tasks = tasks.clone();
 			Box::new(move |_, _| {
-				tasks.push(Task::DisplayClicked(entry.clone()));
+				tasks.push(Task::WindowClicked(entry.clone()));
 				Ok(())
 			})
 		});
@@ -202,55 +194,8 @@ fn fill_display_list(
 }
 
 impl View {
-	fn action_add_display(&mut self) {
-		self.frontend_tasks.push(FrontendTask::MountPopup(MountPopupParams {
-			title: Translation::from_translation_key("ADD_DISPLAY"),
-			on_content: {
-				let globals = self.globals.clone();
-				let state = self.state.clone();
-
-				let on_submit = {
-					let tasks = self.tasks.clone();
-					Rc::new(move |result| {
-						tasks.push(Task::AddDisplayFinish(result));
-						tasks.push(Task::Refresh);
-					})
-				};
-
-				Rc::new(move |data| {
-					state.borrow_mut().view_add_display = Some((
-						data.handle,
-						add_display::View::new(add_display::Params {
-							globals: globals.clone(),
-							layout: data.layout,
-							parent_id: data.id_content,
-							on_submit: on_submit.clone(),
-						})?,
-					));
-					Ok(())
-				})
-			},
-		}));
-	}
-
-	fn action_add_display_finish(
-		&mut self,
-		interface: &mut BoxDashInterface,
-		result: add_display::Result,
-	) -> anyhow::Result<()> {
-		interface.display_create(packet_client::WvrDisplayCreateParams {
-			width: result.width,
-			height: result.height,
-			name: result.display_name,
-			attach_to: packet_client::AttachTo::None,
-			scale: None,
-		})?;
-		self.state.borrow_mut().view_add_display = None;
-		Ok(())
-	}
-
-	fn action_display_options_finish(&mut self) {
-		self.state.borrow_mut().view_display_options = None;
+	fn action_window_options_finish(&mut self) {
+		self.state.borrow_mut().view_window_options = None;
 		self.tasks.push(Task::Refresh);
 	}
 
@@ -258,17 +203,18 @@ impl View {
 		layout.remove_children(self.id_list_parent);
 
 		let mut text: Option<Translation> = None;
-		match interface.display_list() {
+		match interface.window_list() {
 			Ok(list) => {
 				if list.is_empty() {
-					text = Some(Translation::from_translation_key("NO_DISPLAYS_FOUND"))
+					text = Some(Translation::from_translation_key("NO_WINDOWS_FOUND"))
 				} else {
-					fill_display_list(
+					fill_window_list(
 						&self.globals,
 						&mut ConstructEssentials {
 							layout,
 							parent: self.id_list_parent,
 						},
+						interface,
 						list,
 						&self.tasks,
 					)?
@@ -294,12 +240,12 @@ impl View {
 		Ok(())
 	}
 
-	fn action_display_clicked(&mut self, display: packet_server::WvrDisplay) -> anyhow::Result<()> {
+	fn action_window_clicked(&mut self, window: packet_server::WvrWindow) -> anyhow::Result<()> {
 		if let Some(on_click) = &mut self.on_click {
-			(*on_click)(display.handle);
+			(*on_click)(window.handle);
 		} else {
 			self.frontend_tasks.push(FrontendTask::MountPopup(MountPopupParams {
-				title: Translation::from_translation_key("DISPLAY_OPTIONS"),
+				title: Translation::from_translation_key("WINDOW_OPTIONS"),
 				on_content: {
 					let frontend_tasks = self.frontend_tasks.clone();
 					let globals = self.globals.clone();
@@ -307,15 +253,16 @@ impl View {
 					let tasks = self.tasks.clone();
 
 					Rc::new(move |data| {
-						state.borrow_mut().view_display_options = Some((
+						state.borrow_mut().view_window_options = Some((
 							data.handle,
-							display_options::View::new(display_options::Params {
+							window_options::View::new(window_options::Params {
 								globals: globals.clone(),
 								layout: data.layout,
 								parent_id: data.id_content,
-								on_submit: tasks.make_callback(Task::DisplayOptionsFinish),
-								display: display.clone(),
+								on_submit: tasks.make_callback(Task::WindowOptionsFinish),
+								window: window.clone(),
 								frontend_tasks: frontend_tasks.clone(),
+								interface: data.interface,
 							})?,
 						));
 						Ok(())

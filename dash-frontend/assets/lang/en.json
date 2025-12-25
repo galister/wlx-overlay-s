@@ -2,7 +2,6 @@
 	"ACTIONS": {
 		"RECENTER_PLAYSPACE": "Re-center playspace"
 	},
-	"ADD_DISPLAY": "Add display",
 	"APP_SETTINGS": {
 		"BRIGHTNESS": "Brightness",
 		"HEADSET_SETTINGS": "Headset settings",
@@ -22,8 +21,8 @@
 		},
 		"WLX_OVERLAY_S_SETTINGS": "WlxOverlay-S settings"
 	},
-	"APPLICATION_LAUNCHED_ON": "Application launched on {DISPLAY_NAME}.",
 	"APPLICATION_LAUNCHER": "Application launcher",
+	"APPLICATION_STARTED": "Application started",
 	"APPLICATIONS": "Applications",
 	"AUDIO": {
 		"AUTO_SWITCH_TO_VR_AUDIO": "Auto-switch to VR audio",
@@ -40,8 +39,7 @@
 		"SPEAKERS_SET_SUCCESSFULLY": "Speakers set successfully",
 		"VOLUME": "Volume"
 	},
-	"DISPLAY_OPTIONS": "Display options",
-	"DISPLAY_PORTRAIT_MODE": "Portrait mode",
+	"CLOSE_WINDOW": "Close window",
 	"FAILED_TO_LAUNCH_APPLICATION": "Failed to launcha application:",
 	"GAMES": "Games",
 	"GENERAL_SETTINGS": "General settings",
@@ -50,10 +48,10 @@
 	"HELLO_USER": "Hello, {USER}!",
 	"HIDE": "Hide",
 	"HOME_SCREEN": "Home",
-	"LIST_OF_DISPLAYS": "Display list",
 	"LIST_OF_PROCESSES": "Process list",
+	"LIST_OF_WINDOWS": "Window list",
 	"MONADO_RUNTIME": "„Monado” runtime",
-	"NO_DISPLAYS_FOUND": "No displays found",
+	"NO_WINDOWS_FOUND": "No windows found",
 	"POPUP_ADD_DISPLAY": {
 		"RESOLUTION": "Resolution"
 	},
@@ -66,5 +64,7 @@
 	"REMOVE": "Remove",
 	"SETTINGS": "Settings",
 	"SHOW": "Show",
-	"WIDTH": "Width"
+	"TERMINATE_PROCESS": "Terminate process",
+	"WIDTH": "Width",
+	"WINDOW_OPTIONS": "Window options"
 }

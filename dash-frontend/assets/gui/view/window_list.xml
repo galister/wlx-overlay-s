@@ -4,7 +4,6 @@
   <elements>
     <rectangle macro="group_box" flex_direction="row" align_items="center">
       <div id="list_parent" gap="8" flex_direction="row" flex_wrap="wrap" flex_grow="1" />
-      <Button id="btn_add" sprite_src_builtin="dashboard/add.svg" tooltip="ADD_DISPLAY" height="100%" min_width="32" />
     </rectangle>
   </elements>
 </layout>

@@ -1,22 +1,18 @@
 use wayvr_ipc::{
-	packet_client::{WvrDisplayCreateParams, WvrProcessLaunchParams},
-	packet_server::{
-		WvrDisplay, WvrDisplayHandle, WvrDisplayWindowLayout, WvrProcess, WvrProcessHandle, WvrWindow, WvrWindowHandle,
-	},
+	packet_client::WvrProcessLaunchParams,
+	packet_server::{WvrProcess, WvrProcessHandle, WvrWindow, WvrWindowHandle},
 };
 
 use crate::{dash_interface::DashInterface, gen_id};
 
 #[derive(Debug)]
 pub struct EmuProcess {
-	display_handle: WvrDisplayHandle,
 	name: String,
 }
 
 impl EmuProcess {
 	fn to(&self, handle: EmuProcessHandle) -> WvrProcess {
 		WvrProcess {
-			display_handle: self.display_handle.clone(),
 			handle: WvrProcessHandle {
 				generation: handle.generation,
 				idx: handle.idx,
@@ -28,58 +24,52 @@ impl EmuProcess {
 }
 
 #[derive(Debug)]
-pub struct EmuDisplay {
-	width: u16,
-	height: u16,
-	name: String,
+pub struct EmuWindow {
 	visible: bool,
-	layout: WvrDisplayWindowLayout,
+	process_handle: EmuProcessHandle,
 }
 
-impl EmuDisplay {
-	fn to(&self, handle: EmuDisplayHandle) -> WvrDisplay {
-		WvrDisplay {
-			width: self.width,
-			height: self.height,
-			name: self.name.clone(),
-			visible: self.visible,
-			handle: WvrDisplayHandle {
+impl EmuWindow {
+	fn to(&self, handle: EmuWindowHandle) -> WvrWindow {
+		WvrWindow {
+			size_x: 1280, /* stub */
+			size_y: 720,  /* stub */
+			visible: true,
+			handle: WvrWindowHandle {
 				generation: handle.generation,
 				idx: handle.idx,
+			},
+			process_handle: WvrProcessHandle {
+				generation: self.process_handle.generation,
+				idx: self.process_handle.idx,
 			},
 		}
 	}
 }
 
-gen_id!(EmuDisplayVec, EmuDisplay, EmuDisplayCell, EmuDisplayHandle);
+gen_id!(EmuWindowVec, EmuWindow, EmuWindowCell, EmuWindowHandle);
+
 gen_id!(EmuProcessVec, EmuProcess, EmuProcessCell, EmuProcessHandle);
 
 pub struct DashInterfaceEmulated {
-	displays: EmuDisplayVec,
 	processes: EmuProcessVec,
+	windows: EmuWindowVec,
 }
 
 impl DashInterfaceEmulated {
 	pub fn new() -> Self {
-		let mut displays = EmuDisplayVec::new();
-		let disp_handle = displays.add(EmuDisplay {
-			width: 1280,
-			height: 720,
-			layout: WvrDisplayWindowLayout::Tiling,
-			name: String::from("Emulated display"),
+		let mut processes = EmuProcessVec::new();
+		let process_handle = processes.add(EmuProcess {
+			name: String::from("My app"),
+		});
+
+		let mut windows = EmuWindowVec::new();
+		windows.add(EmuWindow {
+			process_handle,
 			visible: true,
 		});
 
-		let mut processes = EmuProcessVec::new();
-		processes.add(EmuProcess {
-			display_handle: WvrDisplayHandle {
-				idx: disp_handle.idx,
-				generation: disp_handle.generation,
-			},
-			name: String::from("Emulated process"),
-		});
-
-		Self { displays, processes }
+		Self { processes, windows }
 	}
 }
 
@@ -90,74 +80,16 @@ impl Default for DashInterfaceEmulated {
 }
 
 impl DashInterface for DashInterfaceEmulated {
-	fn display_create(&mut self, params: WvrDisplayCreateParams) -> anyhow::Result<WvrDisplayHandle> {
-		let res = self.displays.add(EmuDisplay {
-			width: params.width,
-			height: params.height,
-			name: params.name,
-			visible: true,
-			layout: WvrDisplayWindowLayout::Tiling,
+	fn window_list(&mut self) -> anyhow::Result<Vec<WvrWindow>> {
+		Ok(self.windows.iter().map(|(handle, w)| w.to(handle)).collect())
+	}
+
+	fn window_request_close(&mut self, handle: WvrWindowHandle) -> anyhow::Result<()> {
+		self.windows.remove(&EmuWindowHandle {
+			generation: handle.generation,
+			idx: handle.idx,
 		});
-
-		Ok(WvrDisplayHandle {
-			generation: res.generation,
-			idx: res.idx,
-		})
-	}
-
-	fn display_get(&mut self, handle: WvrDisplayHandle) -> Option<WvrDisplay> {
-		let emu_handle = EmuDisplayHandle::new(handle.idx, handle.generation);
-		self.displays.get(&emu_handle).map(|disp| disp.to(emu_handle))
-	}
-
-	fn display_list(&mut self) -> anyhow::Result<Vec<WvrDisplay>> {
-		Ok(self.displays.iter().map(|(handle, disp)| disp.to(handle)).collect())
-	}
-
-	fn display_remove(&mut self, wvr_handle: WvrDisplayHandle) -> anyhow::Result<()> {
-		let handle = EmuDisplayHandle::new(wvr_handle.idx, wvr_handle.generation);
-
-		for (_, process) in self.processes.iter() {
-			if process.display_handle == wvr_handle {
-				anyhow::bail!("Cannot remove display: stop {} process first.", process.name);
-			}
-		}
-
-		self.displays.remove(&handle);
 		Ok(())
-	}
-
-	fn display_set_visible(&mut self, handle: WvrDisplayHandle, visible: bool) -> anyhow::Result<()> {
-		let Some(disp) = self
-			.displays
-			.get_mut(&EmuDisplayHandle::new(handle.idx, handle.generation))
-		else {
-			anyhow::bail!("Display not found");
-		};
-
-		disp.visible = visible;
-		Ok(())
-	}
-
-	fn display_set_window_layout(
-		&mut self,
-		handle: WvrDisplayHandle,
-		layout: WvrDisplayWindowLayout,
-	) -> anyhow::Result<()> {
-		let Some(disp) = self
-			.displays
-			.get_mut(&EmuDisplayHandle::new(handle.idx, handle.generation))
-		else {
-			anyhow::bail!("Display not found");
-		};
-
-		disp.layout = layout;
-		Ok(())
-	}
-
-	fn display_window_list(&mut self, _handle: WvrDisplayHandle) -> anyhow::Result<Vec<WvrWindow>> {
-		// stub!
-		Ok(Vec::new())
 	}
 
 	fn process_get(&mut self, handle: WvrProcessHandle) -> Option<WvrProcess> {
@@ -166,10 +98,13 @@ impl DashInterface for DashInterfaceEmulated {
 	}
 
 	fn process_launch(&mut self, params: WvrProcessLaunchParams) -> anyhow::Result<WvrProcessHandle> {
-		let res = self.processes.add(EmuProcess {
-			display_handle: params.target_display,
-			name: params.name,
+		let res = self.processes.add(EmuProcess { name: params.name });
+
+		self.windows.add(EmuWindow {
+			process_handle: res,
+			visible: true,
 		});
+
 		Ok(WvrProcessHandle {
 			generation: res.generation,
 			idx: res.idx,
@@ -187,15 +122,35 @@ impl DashInterface for DashInterfaceEmulated {
 	}
 
 	fn process_terminate(&mut self, handle: WvrProcessHandle) -> anyhow::Result<()> {
+		let mut to_remove = None;
+
+		for (wh, w) in self.windows.iter() {
+			if w.process_handle == EmuProcessHandle::new(handle.idx, handle.generation) {
+				to_remove = Some(wh);
+			}
+		}
+
+		if let Some(wh) = to_remove {
+			self.windows.remove(&wh);
+		}
+
 		self
 			.processes
 			.remove(&EmuProcessHandle::new(handle.idx, handle.generation));
 		Ok(())
 	}
 
-	fn window_set_visible(&mut self, _handle: WvrWindowHandle, _visible: bool) -> anyhow::Result<()> {
-		// stub!
-		Ok(())
+	fn window_set_visible(&mut self, handle: WvrWindowHandle, visible: bool) -> anyhow::Result<()> {
+		match self.windows.get_mut(&EmuWindowHandle {
+			generation: handle.generation,
+			idx: handle.idx,
+		}) {
+			Some(w) => {
+				w.visible = visible;
+				Ok(())
+			}
+			None => anyhow::bail!("Window not found"),
+		}
 	}
 
 	fn recenter_playspace(&mut self) -> anyhow::Result<()> {

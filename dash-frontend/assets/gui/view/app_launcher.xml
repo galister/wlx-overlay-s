@@ -26,13 +26,10 @@
         <CheckBox id="cb_cage_mode" text="Run in X11 mode (cage)" />
         <CheckBox id="cb_wayland_mode" text="Run in Wayland mode" checked="1" />
         <Separator />
-        <Button align_self="baseline" color="#44ce22FF" padding_top="4" padding_bottom="4" round="8" padding_right="12" min_height="40">
+        <Button id="btn_launch" align_self="baseline" color="#44ce22FF" padding_top="4" padding_bottom="4" round="8" padding_right="12" min_height="40">
           <sprite src_builtin="dashboard/play.svg" width="32" height="32" />
-          <label text="Launch embedded (todo)" weight="bold" size="17" shadow="#00000099" />
+          <label text="Launch" weight="bold" size="17" shadow="#00000099" />
         </Button>
-        <Separator />
-        <label size="16" weight="bold" text="Or launch it detached" />
-        <div id="display_list_parent" />
       </div>
     </div>
   </elements>

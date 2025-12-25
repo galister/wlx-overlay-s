@@ -1,6 +1,4 @@
 use std::{path::PathBuf, str::FromStr};
-
-use wayvr_ipc::packet_server;
 use wgui::{
 	assets::{AssetPath, AssetPathOwned},
 	globals::WguiGlobals,
@@ -13,7 +11,6 @@ use wgui::{
 		sprite::{WidgetSprite, WidgetSpriteParams},
 	},
 };
-use wlx_common::dash_interface::BoxDashInterface;
 
 use crate::util::desktop_finder;
 
@@ -31,22 +28,6 @@ pub fn get_desktop_file_icon_path(desktop_file: &desktop_finder::DesktopFile) ->
 	}
 
 	AssetPathOwned::BuiltIn(PathBuf::from_str("dashboard/terminal.svg").unwrap())
-}
-
-pub fn get_all_windows(interface: &mut BoxDashInterface) -> anyhow::Result<Vec<packet_server::WvrWindow>> {
-	let mut windows = Vec::<packet_server::WvrWindow>::new();
-
-	for display in interface.display_list()? {
-		let Ok(window_list) = interface.display_window_list(display.handle) else {
-			continue;
-		};
-
-		for window in window_list {
-			windows.push(window)
-		}
-	}
-
-	Ok(windows)
 }
 
 pub fn mount_simple_label(

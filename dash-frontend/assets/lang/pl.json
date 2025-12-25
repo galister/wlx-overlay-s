@@ -2,7 +2,6 @@
   "ACTIONS": {
     "RECENTER_PLAYSPACE": "Wycentruj przestrzeń"
   },
-  "ADD_DISPLAY": "Dodaj monitor",
   "APP_SETTINGS": {
     "BRIGHTNESS": "Jasność",
     "HEADSET_SETTINGS": "Ustawienia HMD",
@@ -39,8 +38,6 @@
     "SPEAKERS_SET_SUCCESSFULLY": "Głośniki ustawiono pomyślnie",
     "VOLUME": "Głośność"
   },
-  "DISPLAY_OPTIONS": "Opcje monitora",
-  "DISPLAY_PORTRAIT_MODE": "Tryb pionowy",
   "GAMES": "Gry",
   "GENERAL_SETTINGS": "Ustawienia ogólne",
   "HEIGHT": "Wysokość",
@@ -48,10 +45,8 @@
   "HELLO_USER": "Witaj, {USER}!",
   "HIDE": "Ukryj",
   "HOME_SCREEN": "Ekran główny",
-  "LIST_OF_DISPLAYS": "Lista monitorów",
   "LIST_OF_PROCESSES": "Lista procesów",
   "MONADO_RUNTIME": "Środowisko Monado",
-  "NO_DISPLAYS_FOUND": "Brak monitorów",
   "POPUP_ADD_DISPLAY": {
     "RESOLUTION": "Rozdzielczość"
   },
@@ -66,5 +61,8 @@
     "TERMINATE_PROCESS_NAMED_X": "Zakończ proces \"{PROCESS_NAME}\""
   },
   "FAILED_TO_LAUNCH_APPLICATION": "Nie udało się uruchomić aplikacji:",
-  "APPLICATION_LAUNCHED_ON": "Aplikacja uruchomiona na {DISPLAY_NAME}."
+  "NO_WINDOWS_FOUND": "Nie znaleziono okien",
+  "WINDOW_OPTIONS": "Opcje okna",
+  "APPLICATION_STARTED": "Aplikacja uruchomiona",
+  "LIST_OF_WINDOWS": "Lista okien"
 }

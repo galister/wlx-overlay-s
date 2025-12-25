@@ -236,6 +236,7 @@ impl Frontend {
 			self.globals.clone(),
 			self.settings.as_ref(),
 			&mut layout,
+			&mut self.interface,
 			self.tasks.clone(),
 			params,
 		)?;

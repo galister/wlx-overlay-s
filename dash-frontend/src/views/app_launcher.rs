@@ -1,10 +1,9 @@
 use std::{collections::HashMap, rc::Rc};
 
-use anyhow::Context;
 use wayvr_ipc::{packet_client::WvrProcessLaunchParams, packet_server::WvrDisplayHandle};
 use wgui::{
 	assets::AssetPath,
-	components::checkbox::ComponentCheckbox,
+	components::{button::ComponentButton, checkbox::ComponentCheckbox},
 	globals::WguiGlobals,
 	i18n::Translation,
 	layout::{Layout, WidgetID},
@@ -18,7 +17,6 @@ use crate::{
 	settings::SettingsIO,
 	task::Tasks,
 	util::desktop_finder::DesktopEntry,
-	views::display_list,
 };
 
 #[derive(Clone, Eq, PartialEq)]
@@ -27,13 +25,13 @@ enum RunMode {
 	Wayland,
 }
 
+#[derive(Clone)]
 enum Task {
 	SetRunMode(RunMode),
-	DisplayClick(WvrDisplayHandle),
+	Launch,
 }
 
 struct LaunchParams<'a> {
-	display_handle: WvrDisplayHandle,
 	application: &'a DesktopEntry,
 	run_mode: RunMode,
 	globals: &'a WguiGlobals,
@@ -46,7 +44,6 @@ pub struct View {
 	#[allow(dead_code)]
 	state: ParserState,
 	entry: DesktopEntry,
-	view_display_list: display_list::View,
 	tasks: Tasks<Task>,
 	frontend_tasks: FrontendTasks,
 	globals: WguiGlobals,
@@ -80,6 +77,7 @@ impl View {
 
 		let cb_cage_mode = state.fetch_component_as::<ComponentCheckbox>("cb_cage_mode")?;
 		let cb_wayland_mode = state.fetch_component_as::<ComponentCheckbox>("cb_wayland_mode")?;
+		let btn_launch = state.fetch_component_as::<ComponentButton>("btn_launch")?;
 
 		{
 			let mut label_exec = state.fetch_widget_as::<WidgetLabel>(&params.layout.state, "label_exec")?;
@@ -96,24 +94,9 @@ impl View {
 			);
 		}
 
-		let display_list_parent = state.fetch_widget(&params.layout.state, "display_list_parent")?.id;
-
 		let tasks = Tasks::new();
 
-		let on_display_click = {
-			let tasks = tasks.clone();
-			Box::new(move |disp_handle: WvrDisplayHandle| {
-				tasks.push(Task::DisplayClick(disp_handle));
-			})
-		};
-
-		let view_display_list = display_list::View::new(display_list::Params {
-			frontend_tasks: params.frontend_tasks.clone(),
-			globals: params.globals,
-			layout: params.layout,
-			parent_id: display_list_parent,
-			on_click: Some(on_display_click),
-		})?;
+		tasks.handle_button(btn_launch, Task::Launch);
 
 		let id_icon_parent = state.get_widget_id("icon_parent")?;
 
@@ -163,7 +146,6 @@ impl View {
 
 		Ok(Self {
 			state,
-			view_display_list,
 			tasks,
 			cb_cage_mode,
 			cb_wayland_mode,
@@ -184,12 +166,10 @@ impl View {
 			for task in tasks {
 				match task {
 					Task::SetRunMode(run_mode) => self.action_set_run_mode(layout, run_mode)?,
-					Task::DisplayClick(disp_handle) => self.action_display_click(disp_handle, interface),
+					Task::Launch => self.action_launch(interface),
 				}
 			}
 		}
-
-		self.view_display_list.update(layout, interface)?;
 
 		Ok(())
 	}
@@ -208,10 +188,9 @@ impl View {
 		Ok(())
 	}
 
-	fn action_display_click(&mut self, handle: WvrDisplayHandle, interface: &mut BoxDashInterface) {
+	fn action_launch(&mut self, interface: &mut BoxDashInterface) {
 		View::try_launch(LaunchParams {
 			application: &self.entry,
-			display_handle: handle,
 			frontend_tasks: &self.frontend_tasks,
 			globals: &self.globals,
 			run_mode: self.run_mode.clone(),
@@ -253,10 +232,6 @@ impl View {
 
 		let exec_args_str = desktop_file.exec_args.join(" ");
 
-		params
-			.interface
-			.display_set_visible(params.display_handle.clone(), true)?;
-
 		let args = match params.run_mode {
 			RunMode::Cage => format!("-- {} {}", desktop_file.exec_path, exec_args_str),
 			RunMode::Wayland => exec_args_str,
@@ -267,29 +242,22 @@ impl View {
 			RunMode::Wayland => &desktop_file.name,
 		};
 
-		let display = params
-			.interface
-			.display_get(params.display_handle.clone())
-			.context("Display not found")?;
-
 		params.interface.process_launch(WvrProcessLaunchParams {
 			env,
 			exec: String::from(exec),
 			name: desktop_file.name,
-			target_display: params.display_handle,
+			target_display: WvrDisplayHandle {
+				generation: 12345, // stub
+				idx: 12345,
+			},
 			args,
 			userdata,
 		})?;
 
-		let str_launched_on = params
-			.globals
-			.i18n()
-			.translate_and_replace("APPLICATION_LAUNCHED_ON", ("{DISPLAY_NAME}", &display.name));
-
 		params
 			.frontend_tasks
-			.push(FrontendTask::PushToast(Translation::from_raw_text_string(
-				str_launched_on,
+			.push(FrontendTask::PushToast(Translation::from_translation_key(
+				"APPLICATION_STARTED",
 			)));
 
 		(*params.on_launched)();

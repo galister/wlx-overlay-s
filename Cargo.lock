@@ -1479,7 +1479,7 @@ dependencies = [
  "rust-embed",
  "serde",
  "serde_json",
- "wayvr_ipc",
+ "wayvr-ipc",
  "wgui",
  "wlx-common",
 ]
@@ -6990,7 +6990,7 @@ dependencies = [
  "idmap",
  "idmap-derive",
  "serde",
- "wayvr_ipc",
+ "wayvr-ipc",
 ]
 
 [[package]]

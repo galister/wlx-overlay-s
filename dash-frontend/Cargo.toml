@@ -15,4 +15,4 @@ gtk = "0.18.2"
 serde.workspace = true
 serde_json.workspace = true
 wlx-common = { path = "../wlx-common" }
-wayvr_ipc = { workspace = true }
+wayvr-ipc = { path = "../wayvr-ipc", default-features = false }

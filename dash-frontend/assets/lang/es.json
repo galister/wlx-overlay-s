@@ -46,25 +46,23 @@
   "ACTIONS": {
     "RECENTER_PLAYSPACE": "Re-centrar espacio de juego"
   },
-  "LIST_OF_DISPLAYS": "Lista de pantallas",
   "LIST_OF_PROCESSES": "Lista de procesos",
-  "NO_DISPLAYS_FOUND": "No se encontraron pantallas",
-  "ADD_DISPLAY": "Agregar pantalla",
   "POPUP_ADD_DISPLAY": {
     "RESOLUTION": "Resolución"
   },
   "WIDTH": "Ancho",
   "HEIGHT": "Altura",
-  "DISPLAY_PORTRAIT_MODE": "Modo retrato",
   "HIDE": "Ocultar",
   "REMOVE": "Eliminar",
   "SHOW": "Mostrar",
-  "DISPLAY_OPTIONS": "Opciones de pantalla",
   "PROCESS_LIST": {
     "NO_PROCESSES_FOUND": "No se encontraron procesos",
     "LOCATED_ON": "en",
     "TERMINATE_PROCESS_NAMED_X": "Terminar proceso \"{PROCESS_NAME}\""
   },
   "FAILED_TO_LAUNCH_APPLICATION": "No se pudo iniciar la aplicación:",
-  "APPLICATION_LAUNCHED_ON": "Aplicación iniciada en {DISPLAY_NAME}."
+  "NO_WINDOWS_FOUND": "No se encontraron ventanas",
+  "WINDOW_OPTIONS": "Opciones de ventana",
+  "APPLICATION_STARTED": "Aplicación iniciada",
+  "LIST_OF_WINDOWS": "Lista de ventanas"
 }

@@ -1,3 +1,4 @@
+use anyhow::Context;
 use std::rc::Rc;
 use wayvr_ipc::packet_server;
 use wgui::{
@@ -14,13 +15,14 @@ use wlx_common::dash_interface::BoxDashInterface;
 use crate::{
 	frontend::{FrontendTask, FrontendTasks},
 	task::Tasks,
-	views::display_list::construct_display_button,
+	views::window_list::construct_window_button,
 };
 
 #[derive(Clone)]
 enum Task {
 	SetVisible(bool),
-	Remove,
+	Kill,
+	Close,
 }
 
 pub struct View {
@@ -28,7 +30,7 @@ pub struct View {
 	pub state: ParserState,
 	tasks: Tasks<Task>,
 	frontend_tasks: FrontendTasks,
-	display: packet_server::WvrDisplay,
+	window: packet_server::WvrWindow,
 	on_submit: Rc<dyn Fn()>,
 }
 
@@ -38,14 +40,15 @@ pub struct Params<'a> {
 	pub layout: &'a mut Layout,
 	pub parent_id: WidgetID,
 	pub on_submit: Rc<dyn Fn()>,
-	pub display: packet_server::WvrDisplay,
+	pub window: packet_server::WvrWindow,
+	pub interface: &'a mut BoxDashInterface,
 }
 
 impl View {
 	pub fn new(params: Params) -> anyhow::Result<Self> {
 		let doc_params = &ParseDocumentParams {
 			globals: params.globals.clone(),
-			path: AssetPath::BuiltIn("gui/view/display_options.xml"),
+			path: AssetPath::BuiltIn("gui/view/window_options.xml"),
 			extra: Default::default(),
 		};
 
@@ -53,35 +56,38 @@ impl View {
 
 		let tasks = Tasks::new();
 
-		let display_parent = state.get_widget_id("display_parent")?;
-		let btn_remove = state.fetch_component_as::<ComponentButton>("btn_remove")?;
+		let window_parent = state.get_widget_id("window_parent")?;
+		let btn_close = state.fetch_component_as::<ComponentButton>("btn_close")?;
+		let btn_kill = state.fetch_component_as::<ComponentButton>("btn_kill")?;
 		let btn_show_hide = state.fetch_component_as::<ComponentButton>("btn_show_hide")?;
 
-		construct_display_button(
+		construct_window_button(
 			&mut ConstructEssentials {
 				layout: params.layout,
-				parent: display_parent,
+				parent: window_parent,
 			},
+			params.interface,
 			&params.globals,
-			&params.display,
+			&params.window,
 		)?;
 
 		{
 			let mut c = params.layout.start_common();
 			btn_show_hide.set_text(
 				&mut c.common(),
-				Translation::from_translation_key(if params.display.visible { "HIDE" } else { "SHOW" }),
+				Translation::from_translation_key(if params.window.visible { "HIDE" } else { "SHOW" }),
 			);
 			c.finish()?;
 		}
 
-		tasks.handle_button(btn_remove, Task::Remove);
-		tasks.handle_button(btn_show_hide, Task::SetVisible(!params.display.visible));
+		tasks.handle_button(btn_close, Task::Close);
+		tasks.handle_button(btn_kill, Task::Kill);
+		tasks.handle_button(btn_show_hide, Task::SetVisible(!params.window.visible));
 
 		Ok(Self {
 			state,
 			tasks,
-			display: params.display,
+			window: params.window,
 			frontend_tasks: params.frontend_tasks,
 			on_submit: params.on_submit,
 		})
@@ -91,7 +97,8 @@ impl View {
 		for task in self.tasks.drain() {
 			match task {
 				Task::SetVisible(v) => self.action_set_visible(interface, v),
-				Task::Remove => self.action_remove(interface),
+				Task::Close => self.action_close(interface),
+				Task::Kill => self.action_kill(interface),
 			}
 		}
 		Ok(())
@@ -100,11 +107,11 @@ impl View {
 
 impl View {
 	fn action_set_visible(&mut self, interface: &mut BoxDashInterface, visible: bool) {
-		if let Err(e) = interface.display_set_visible(self.display.handle.clone(), visible) {
+		if let Err(e) = interface.window_set_visible(self.window.handle.clone(), visible) {
 			self
 				.frontend_tasks
 				.push(FrontendTask::PushToast(Translation::from_raw_text_string(format!(
-					"Failed to remove display: {:?}",
+					"Failed to set window visibility: {:?}",
 					e
 				))));
 		};
@@ -112,12 +119,33 @@ impl View {
 		(*self.on_submit)();
 	}
 
-	fn action_remove(&mut self, interface: &mut BoxDashInterface) {
-		if let Err(e) = interface.display_remove(self.display.handle.clone()) {
+	fn action_close(&mut self, interface: &mut BoxDashInterface) {
+		if let Err(e) = interface.window_request_close(self.window.handle.clone()) {
 			self
 				.frontend_tasks
 				.push(FrontendTask::PushToast(Translation::from_raw_text_string(format!(
-					"Failed to remove display: {:?}",
+					"Failed to close window: {:?}",
+					e
+				))));
+		};
+
+		(*self.on_submit)();
+	}
+
+	fn action_kill_process(&mut self, interface: &mut BoxDashInterface) -> anyhow::Result<()> {
+		let process = interface
+			.process_get(self.window.process_handle.clone())
+			.context("Process not found")?;
+		interface.process_terminate(process.handle)?;
+		Ok(())
+	}
+
+	fn action_kill(&mut self, interface: &mut BoxDashInterface) {
+		if let Err(e) = self.action_kill_process(interface) {
+			self
+				.frontend_tasks
+				.push(FrontendTask::PushToast(Translation::from_raw_text_string(format!(
+					"Failed to kill process: {:?}",
 					e
 				))));
 		};

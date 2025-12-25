@@ -1,70 +1,68 @@
 {
-	"HOME_SCREEN": "ホーム",
-	"MONADO_RUNTIME": "「Monado」ランタイム",
-	"APPLICATIONS": "アプリケーション",
-	"GAMES": "ゲーム",
-	"SETTINGS": "設定",
-	"PROCESSES": "プロセス",
-	"HELLO_USER": "こんにちは、{USER}！",
-	"GENERAL_SETTINGS": "全般設定",
-	"APPLICATION_LAUNCHER": "アプリケーションランチャー",
-	"APP_SETTINGS": {
-		"HIDE_USERNAME": "ユーザー名を表示しない",
-		"OPAQUE_BACKGROUND": "不透明な背景",
-		"RUN_IN_XWAYLAND_MODE_BY_DEFAULT": "XWaylandモードでデフォルトで実行する",
-		"WLX_OVERLAY_S_SETTINGS": "WlxOverlay-Sの設定",
-		"HEADSET_SETTINGS": "ヘッドセット設定",
-		"BRIGHTNESS": "明るさ",
-		"WLX": {
-			"NOTIFICATIONS_ENABLED": "通知",
-			"NOTIFICATIONS_SOUND_ENABLED": "通知音",
-			"KEYBOARD_SOUND_ENABLED": "キーボード音",
-			"BLOCK_GAME_INPUT": "ゲーム入力をブロック",
-			"SPACE_DRAG_MULTIPLIER": "スペースドラッグ乗数",
-			"SPACE_DRAG_ROTATION_ENABLED": "スペースドラッグでの回転",
-			"SHOW_SKYBOX": "スカイボックス",
-			"ENABLE_PASSTHROUGH": "パススルー"
-		},
-		"RESTART_SOFTWARE": "ソフトウェアを再起動"
-	},
-	"HELLO": "こんにちは！",
-	"AUDIO": {
-		"VOLUME": "音量",
-		"SETTINGS": "オーディオ設定",
-		"AUTO_SWITCH_TO_VR_AUDIO": "VRオーディオに自動切り替え",
-		"SPEAKERS": "スピーカー",
-		"MICROPHONES": "マイク",
-		"CARDS": "カード",
-		"SELECT_AUDIO_CARD_PROFILE": "オーディオカードプロファイルを選択",
-		"NO_VR_SPEAKERS_FOUND_SWITCH_MANUALLY": "VRスピーカーが見つかりませんでした。手動で切り替えてください。",
-		"NO_VR_MICROPHONE_SWITCH_MANUALLY": "VRマイクが見つかりませんでした。手動で切り替えてください。",
-		"FAILED_TO_SWITCH_MICROPHONE": "マイクの切り替えに失敗しました",
-		"MICROPHONE_SET_SUCCESSFULLY": "マイクの設定が完了しました",
-		"SPEAKERS_SET_SUCCESSFULLY": "スピーカーを設定しました",
-		"DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED": "デバイスが見つかり、初期化されましたが、切り替えられていません"
-	},
-	"ACTIONS": {
-		"RECENTER_PLAYSPACE": "プレイスペースを再中央"
-	},
-	"LIST_OF_DISPLAYS": "ディスプレイリスト",
-	"LIST_OF_PROCESSES": "プロセスのリスト",
-	"NO_DISPLAYS_FOUND": "ディスプレイが見つかりません",
-	"ADD_DISPLAY": "ディスプレイを追加",
-	"POPUP_ADD_DISPLAY": {
-		"RESOLUTION": "解像度"
-	},
-	"WIDTH": "幅",
-	"HEIGHT": "高さ",
-	"DISPLAY_PORTRAIT_MODE": "縦向きモード",
-	"HIDE": "隠す",
-	"REMOVE": "削除",
-	"SHOW": "表示",
-	"DISPLAY_OPTIONS": "表示オプション",
-	"PROCESS_LIST": {
-		"NO_PROCESSES_FOUND": "プロセスが見つかりませんでした",
-		"LOCATED_ON": "に",
-		"TERMINATE_PROCESS_NAMED_X": "プロセス \"{PROCESS_NAME}\" を終了します"
-	},
-	"FAILED_TO_LAUNCH_APPLICATION": "アプリケーションの起動に失敗しました：",
-	"APPLICATION_LAUNCHED_ON": "{DISPLAY_NAME}でアプリケーションが起動しました。"
+  "HOME_SCREEN": "ホーム",
+  "MONADO_RUNTIME": "「Monado」ランタイム",
+  "APPLICATIONS": "アプリケーション",
+  "GAMES": "ゲーム",
+  "SETTINGS": "設定",
+  "PROCESSES": "プロセス",
+  "HELLO_USER": "こんにちは、{USER}！",
+  "GENERAL_SETTINGS": "全般設定",
+  "APPLICATION_LAUNCHER": "アプリケーションランチャー",
+  "APP_SETTINGS": {
+    "HIDE_USERNAME": "ユーザー名を表示しない",
+    "OPAQUE_BACKGROUND": "不透明な背景",
+    "RUN_IN_XWAYLAND_MODE_BY_DEFAULT": "XWaylandモードでデフォルトで実行する",
+    "WLX_OVERLAY_S_SETTINGS": "WlxOverlay-Sの設定",
+    "HEADSET_SETTINGS": "ヘッドセット設定",
+    "BRIGHTNESS": "明るさ",
+    "WLX": {
+      "NOTIFICATIONS_ENABLED": "通知",
+      "NOTIFICATIONS_SOUND_ENABLED": "通知音",
+      "KEYBOARD_SOUND_ENABLED": "キーボード音",
+      "BLOCK_GAME_INPUT": "ゲーム入力をブロック",
+      "SPACE_DRAG_MULTIPLIER": "スペースドラッグ乗数",
+      "SPACE_DRAG_ROTATION_ENABLED": "スペースドラッグでの回転",
+      "SHOW_SKYBOX": "スカイボックス",
+      "ENABLE_PASSTHROUGH": "パススルー"
+    },
+    "RESTART_SOFTWARE": "ソフトウェアを再起動"
+  },
+  "HELLO": "こんにちは！",
+  "AUDIO": {
+    "VOLUME": "音量",
+    "SETTINGS": "オーディオ設定",
+    "AUTO_SWITCH_TO_VR_AUDIO": "VRオーディオに自動切り替え",
+    "SPEAKERS": "スピーカー",
+    "MICROPHONES": "マイク",
+    "CARDS": "カード",
+    "SELECT_AUDIO_CARD_PROFILE": "オーディオカードプロファイルを選択",
+    "NO_VR_SPEAKERS_FOUND_SWITCH_MANUALLY": "VRスピーカーが見つかりませんでした。手動で切り替えてください。",
+    "NO_VR_MICROPHONE_SWITCH_MANUALLY": "VRマイクが見つかりませんでした。手動で切り替えてください。",
+    "FAILED_TO_SWITCH_MICROPHONE": "マイクの切り替えに失敗しました",
+    "MICROPHONE_SET_SUCCESSFULLY": "マイクの設定が完了しました",
+    "SPEAKERS_SET_SUCCESSFULLY": "スピーカーを設定しました",
+    "DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED": "デバイスが見つかり、初期化されましたが、切り替えられていません"
+  },
+  "ACTIONS": {
+    "RECENTER_PLAYSPACE": "プレイスペースを再中央"
+  },
+  "LIST_OF_PROCESSES": "プロセスのリスト",
+  "POPUP_ADD_DISPLAY": {
+    "RESOLUTION": "解像度"
+  },
+  "WIDTH": "幅",
+  "HEIGHT": "高さ",
+  "HIDE": "隠す",
+  "REMOVE": "削除",
+  "SHOW": "表示",
+  "PROCESS_LIST": {
+    "NO_PROCESSES_FOUND": "プロセスが見つかりませんでした",
+    "LOCATED_ON": "に",
+    "TERMINATE_PROCESS_NAMED_X": "プロセス \"{PROCESS_NAME}\" を終了します"
+  },
+  "FAILED_TO_LAUNCH_APPLICATION": "アプリケーションの起動に失敗しました：",
+  "NO_WINDOWS_FOUND": "ウィンドウが見つかりませんでした",
+  "WINDOW_OPTIONS": "ウィンドウオプション",
+  "APPLICATION_STARTED": "アプリケーションが起動しました",
+  "LIST_OF_WINDOWS": "ウィンドウ一覧"
 }

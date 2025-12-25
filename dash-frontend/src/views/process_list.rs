@@ -91,29 +91,18 @@ impl View {
 	}
 }
 
-fn get_desktop_file_from_process(
-	windows: &Vec<packet_server::WvrWindow>,
-	process: &packet_server::WvrProcess,
-) -> Option<desktop_finder::DesktopFile> {
-	for window in windows {
-		if window.process_handle != process.handle {
-			continue;
-		}
+fn get_desktop_file_from_process(process: &packet_server::WvrProcess) -> Option<desktop_finder::DesktopFile> {
+	// TODO: refactor this after we ditch old wayvr-dashboard completely
+	let Some(dfile_str) = process.userdata.get("desktop_file") else {
+		return None;
+	};
 
-		// TODO: refactor this after we ditch old wayvr-dashboard completely
-		let Some(dfile_str) = process.userdata.get("desktop_file") else {
-			continue;
-		};
+	let Ok(desktop_file) = serde_json::from_str::<desktop_finder::DesktopFile>(dfile_str) else {
+		debug_assert!(false); // invalid json???
+		return None;
+	};
 
-		let Ok(desktop_file) = serde_json::from_str::<desktop_finder::DesktopFile>(dfile_str) else {
-			debug_assert!(false); // invalid json???
-			continue;
-		};
-
-		return Some(desktop_file);
-	}
-
-	None
+	Some(desktop_file)
 }
 
 struct ProcessEntryResult {
@@ -124,8 +113,6 @@ fn construct_process_entry(
 	ess: &mut ConstructEssentials,
 	globals: &WguiGlobals,
 	process: &packet_server::WvrProcess,
-	display: Option<&packet_server::WvrDisplay>,
-	all_windows: &Vec<packet_server::WvrWindow>,
 ) -> anyhow::Result<ProcessEntryResult> {
 	let (cell, _) = ess.layout.add_child(
 		ess.parent,
@@ -159,7 +146,7 @@ fn construct_process_entry(
 		},
 	)?;
 
-	if let Some(desktop_file) = get_desktop_file_from_process(all_windows, process) {
+	if let Some(desktop_file) = get_desktop_file_from_process(process) {
 		// desktop file icon and process name
 		util::various::mount_simple_sprite_square(
 			globals,
@@ -185,35 +172,6 @@ fn construct_process_entry(
 		)?;
 	}
 
-	if let Some(display) = display {
-		// show display icon if available
-
-		// "on" text
-		util::various::mount_simple_label(
-			globals,
-			ess.layout,
-			cell.id,
-			Translation::from_translation_key("PROCESS_LIST.LOCATED_ON"),
-		)?;
-
-		// "display" icon
-		util::various::mount_simple_sprite_square(
-			globals,
-			ess.layout,
-			cell.id,
-			24.0,
-			AssetPath::BuiltIn("dashboard/display.svg"),
-		)?;
-
-		// display name itself
-		util::various::mount_simple_label(
-			globals,
-			ess.layout,
-			cell.id,
-			Translation::from_raw_text_string(display.name.clone()),
-		)?;
-	}
-
 	Ok(ProcessEntryResult { btn_terminate })
 }
 
@@ -222,18 +180,9 @@ fn fill_process_list(
 	ess: &mut ConstructEssentials,
 	tasks: &Tasks<Task>,
 	list: &Vec<packet_server::WvrProcess>,
-	displays: &Vec<packet_server::WvrDisplay>,
-	all_windows: &Vec<packet_server::WvrWindow>,
 ) -> anyhow::Result<()> {
 	for process_entry in list {
-		let mut matching_display = None;
-		for display in displays {
-			if process_entry.display_handle == display.handle {
-				matching_display = Some(display);
-			}
-		}
-
-		let entry_res = construct_process_entry(ess, globals, process_entry, matching_display, all_windows)?;
+		let entry_res = construct_process_entry(ess, globals, process_entry)?;
 
 		entry_res.btn_terminate.on_click({
 			let tasks = tasks.clone();
@@ -252,9 +201,6 @@ impl View {
 	fn refresh(&mut self, layout: &mut Layout, interface: &mut BoxDashInterface) -> anyhow::Result<()> {
 		layout.remove_children(self.id_list_parent);
 
-		let displays = interface.display_list()?;
-		let all_windows = util::various::get_all_windows(interface)?;
-
 		let mut text: Option<Translation> = None;
 		match interface.process_list() {
 			Ok(list) => {
@@ -269,8 +215,6 @@ impl View {
 						},
 						&self.tasks,
 						&list,
-						&displays,
-						&all_windows,
 					)?;
 				}
 			}
