@@ -572,14 +572,11 @@ pub struct SurfaceBufWithImage {
 impl SurfaceBufWithImage {
     #[allow(invalid_value)]
     fn apply_to_surface(self, surface_data: &SurfaceData) {
-        let container = surface_data.data_map.get_or_insert(|| unsafe {
-            SurfaceBufWithImageContainer {
-                // safe because we're replacing right after
-                inner: RefCell::new(MaybeUninit::uninit().assume_init()),
-            }
-        });
-
-        container.inner.replace(self);
+        if let Some(container) = surface_data.data_map.get::<SurfaceBufWithImageContainer>() {
+            container.inner.replace(self);
+        } else {
+            surface_data.data_map.insert_if_missing(|| self);
+        }
     }
 
     pub fn get_from_surface(surface_data: &SurfaceData) -> Option<Self> {
