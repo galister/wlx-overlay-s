@@ -20,7 +20,7 @@ use wlx_common::overlays::ToastTopic;
 use crate::{
     RUNNING,
     backend::task::{OverlayTask, PlayspaceTask, TaskType},
-    overlays::toast::Toast,
+    overlays::{dashboard::DASH_NAME, toast::Toast},
     state::AppState,
     subsystem::hid::VirtualKey,
     windowing::OverlaySelector,
@@ -191,13 +191,21 @@ pub(super) fn setup_custom_button<S: 'static>(
         let button = button.clone();
 
         let callback: EventCallback<AppState, S> = match command {
-            #[cfg(feature = "wayvr")]
             "::DashToggle" => Box::new(move |_common, data, app, _| {
                 if !test_button(data) || !test_duration(&button, app) {
                     return Ok(EventResult::Pass);
                 }
 
-                //FIXME
+                app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
+                    OverlaySelector::Name(DASH_NAME.into()),
+                    Box::new(move |app, owc| {
+                        if owc.active_state.is_none() {
+                            owc.activate(app);
+                        } else {
+                            owc.deactivate();
+                        }
+                    }),
+                )));
                 Ok(EventResult::Consumed)
             }),
             "::SetToggle" => {

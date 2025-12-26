@@ -43,7 +43,7 @@ pub fn create_wl_window_overlay(
             transform: Affine3A::from_scale_rotation_translation(
                 Vec3::ONE,
                 Quat::IDENTITY,
-                vec3(0.0, 0.0, -0.4),
+                vec3(0.0, 0.0, -0.95),
             ),
             ..OverlayWindowState::default()
         },

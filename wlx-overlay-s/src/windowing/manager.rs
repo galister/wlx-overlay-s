@@ -18,6 +18,7 @@ use crate::{
     overlays::{
         anchor::{create_anchor, create_grab_help},
         custom::create_custom,
+        dashboard::create_dash_frontend,
         edit::EditWrapperManager,
         keyboard::create_keyboard,
         screen::create_screens,
@@ -121,6 +122,9 @@ where
 
         let watch = OverlayWindowData::from_config(create_watch(app)?);
         me.watch_id = me.add(watch, app);
+
+        let dash_frontend = OverlayWindowData::from_config(create_dash_frontend(app)?);
+        me.add(dash_frontend, app);
 
         let grab_help = OverlayWindowData::from_config(create_grab_help(app)?);
         me.add(grab_help, app);
