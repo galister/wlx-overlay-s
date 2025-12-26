@@ -8,13 +8,13 @@ use wgui::{
 	i18n::Translation,
 	layout::{Layout, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
+	task::Tasks,
 	widget::ConstructEssentials,
 };
 use wlx_common::dash_interface::BoxDashInterface;
 
 use crate::{
 	frontend::{FrontendTask, FrontendTasks},
-	task::Tasks,
 	views::window_list::construct_window_button,
 };
 
@@ -80,9 +80,9 @@ impl View {
 			c.finish()?;
 		}
 
-		tasks.handle_button(btn_close, Task::Close);
-		tasks.handle_button(btn_kill, Task::Kill);
-		tasks.handle_button(btn_show_hide, Task::SetVisible(!params.window.visible));
+		tasks.handle_button(&btn_close, Task::Close);
+		tasks.handle_button(&btn_kill, Task::Kill);
+		tasks.handle_button(&btn_show_hide, Task::SetVisible(!params.window.visible));
 
 		Ok(Self {
 			state,

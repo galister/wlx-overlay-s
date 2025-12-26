@@ -10,6 +10,7 @@ use wgui::{
 	i18n::Translation,
 	layout::{Layout, LayoutParams, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
+	task::Tasks,
 	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
 	windowing::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra, WguiWindowPlacement},
 };
@@ -18,10 +19,9 @@ use wlx_common::{dash_interface::BoxDashInterface, timestep::Timestep};
 use crate::{
 	assets, settings,
 	tab::{
-		apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses, settings::TabSettings,
-		Tab, TabType,
+		Tab, TabType, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses,
+		settings::TabSettings,
 	},
-	task::Tasks,
 	util::{
 		popup_manager::{MountPopupParams, PopupManager, PopupManagerParams},
 		toast_manager::ToastManager,
@@ -308,37 +308,37 @@ impl Frontend {
 
 		// "Home" side button
 		self.tasks.handle_button(
-			self.state.fetch_component_as::<ComponentButton>("btn_side_home")?,
+			&self.state.fetch_component_as::<ComponentButton>("btn_side_home")?,
 			FrontendTask::SetTab(TabType::Home),
 		);
 
 		// "Apps" side button
 		self.tasks.handle_button(
-			self.state.fetch_component_as::<ComponentButton>("btn_side_apps")?,
+			&self.state.fetch_component_as::<ComponentButton>("btn_side_apps")?,
 			FrontendTask::SetTab(TabType::Apps),
 		);
 
 		// "Games" side button
 		self.tasks.handle_button(
-			self.state.fetch_component_as::<ComponentButton>("btn_side_games")?,
+			&self.state.fetch_component_as::<ComponentButton>("btn_side_games")?,
 			FrontendTask::SetTab(TabType::Games),
 		);
 
 		// "Monado side button"
 		self.tasks.handle_button(
-			self.state.fetch_component_as::<ComponentButton>("btn_side_monado")?,
+			&self.state.fetch_component_as::<ComponentButton>("btn_side_monado")?,
 			FrontendTask::SetTab(TabType::Monado),
 		);
 
 		// "Processes" side button
 		self.tasks.handle_button(
-			self.state.fetch_component_as::<ComponentButton>("btn_side_processes")?,
+			&self.state.fetch_component_as::<ComponentButton>("btn_side_processes")?,
 			FrontendTask::SetTab(TabType::Processes),
 		);
 
 		// "Settings" side button
 		self.tasks.handle_button(
-			self.state.fetch_component_as::<ComponentButton>("btn_side_settings")?,
+			&self.state.fetch_component_as::<ComponentButton>("btn_side_settings")?,
 			FrontendTask::SetTab(TabType::Settings),
 		);
 
@@ -348,13 +348,13 @@ impl Frontend {
 
 		// "Audio" bottom bar button
 		self.tasks.handle_button(
-			self.state.fetch_component_as::<ComponentButton>("btn_audio")?,
+			&self.state.fetch_component_as::<ComponentButton>("btn_audio")?,
 			FrontendTask::ShowAudioSettings,
 		);
 
 		// "Recenter playspace" bottom bar button
 		self.tasks.handle_button(
-			self.state.fetch_component_as::<ComponentButton>("btn_recenter")?,
+			&self.state.fetch_component_as::<ComponentButton>("btn_recenter")?,
 			FrontendTask::RecenterPlayspace,
 		);
 

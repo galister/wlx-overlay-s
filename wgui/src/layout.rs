@@ -163,8 +163,6 @@ pub struct Layout {
 	pub animations: Animations,
 }
 
-pub type RcLayout = Rc<RefCell<Layout>>;
-
 #[derive(Default)]
 pub struct LayoutParams {
 	pub resize_to_parent: bool,
@@ -224,10 +222,6 @@ impl Layout {
 			alterables: EventAlterables::default(),
 			layout: self,
 		}
-	}
-
-	pub fn as_rc(self) -> RcLayout {
-		Rc::new(RefCell::new(self))
 	}
 
 	pub fn add_topmost_child(

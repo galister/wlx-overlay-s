@@ -12,12 +12,12 @@ use wgui::{
 	i18n::Translation,
 	layout::{Layout, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
+	task::Tasks,
 	widget::ConstructEssentials,
 };
 
 use crate::{
 	frontend::{FrontendTask, FrontendTasks},
-	task::Tasks,
 	util::pactl_wrapper,
 };
 

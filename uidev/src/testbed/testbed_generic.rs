@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::VecDeque, path::PathBuf, rc::Rc};
+use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use crate::{
 	assets,
@@ -17,9 +17,10 @@ use wgui::{
 	font_config::WguiFontConfig,
 	globals::WguiGlobals,
 	i18n::Translation,
-	layout::{Layout, LayoutParams, RcLayout, Widget},
+	layout::{Layout, LayoutParams, Widget},
 	parser::{Fetchable, ParseDocumentExtra, ParseDocumentParams, ParserState},
 	taffy,
+	task::Tasks,
 	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
 	windowing::{WguiWindow, WguiWindowParams},
 };
@@ -29,16 +30,15 @@ pub enum TestbedTask {
 }
 
 struct Data {
-	tasks: VecDeque<TestbedTask>,
 	#[allow(dead_code)]
 	state: ParserState,
 
 	popup_window: WguiWindow,
 }
 
-#[derive(Clone)]
 pub struct TestbedGeneric {
-	pub layout: RcLayout,
+	pub layout: Layout,
+	tasks: Tasks<TestbedTask>,
 
 	globals: WguiGlobals,
 	data: Rc<RefCell<Data>>,
@@ -168,19 +168,19 @@ impl TestbedGeneric {
 		}));
 
 		let testbed = Self {
-			layout: layout.as_rc(),
+			layout,
+			tasks: Default::default(),
 			globals: globals.clone(),
 			data: Rc::new(RefCell::new(Data {
 				state,
-				tasks: Default::default(),
 				popup_window: WguiWindow::default(),
 			})),
 		};
 
 		button_popup.on_click({
-			let testbed = testbed.clone();
+			let tasks = testbed.tasks.clone();
 			Box::new(move |_, _| {
-				testbed.push_task(TestbedTask::ShowPopup);
+				tasks.push(TestbedTask::ShowPopup);
 				Ok(())
 			})
 		});
@@ -188,19 +188,14 @@ impl TestbedGeneric {
 		Ok(testbed)
 	}
 
-	fn push_task(&self, task: TestbedTask) {
-		self.data.borrow_mut().tasks.push_back(task);
-	}
-
 	fn process_task(
 		&mut self,
 		task: &TestbedTask,
 		params: &mut TestbedUpdateParams,
-		layout: &mut Layout,
 		data: &mut Data,
 	) -> anyhow::Result<()> {
 		match task {
-			TestbedTask::ShowPopup => self.show_popup(params, layout, data)?,
+			TestbedTask::ShowPopup => self.show_popup(params, data)?,
 		}
 
 		Ok(())
@@ -209,13 +204,12 @@ impl TestbedGeneric {
 	fn show_popup(
 		&mut self,
 		_params: &mut TestbedUpdateParams,
-		layout: &mut Layout,
 		data: &mut Data,
 	) -> anyhow::Result<()> {
 		data.popup_window.open(&mut WguiWindowParams {
 			globals: self.globals.clone(),
 			position: Vec2::new(128.0, 128.0),
-			layout,
+			layout: &mut self.layout,
 			title: Translation::from_raw_text("foo"),
 			extra: Default::default(),
 		})?;
@@ -226,25 +220,22 @@ impl TestbedGeneric {
 
 impl Testbed for TestbedGeneric {
 	fn update(&mut self, mut params: TestbedUpdateParams) -> anyhow::Result<()> {
-		let layout = self.layout.clone();
 		let data = self.data.clone();
-
-		let mut layout = layout.borrow_mut();
 		let mut data = data.borrow_mut();
 
-		layout.update(
+		self.layout.update(
 			Vec2::new(params.width, params.height),
 			params.timestep_alpha,
 		)?;
 
-		while let Some(task) = data.tasks.pop_front() {
-			self.process_task(&task, &mut params, &mut layout, &mut data)?;
+		for task in self.tasks.drain() {
+			self.process_task(&task, &mut params, &mut data)?;
 		}
 
 		Ok(())
 	}
 
-	fn layout(&self) -> &RcLayout {
-		&self.layout
+	fn layout(&mut self) -> &mut Layout {
+		&mut self.layout
 	}
 }

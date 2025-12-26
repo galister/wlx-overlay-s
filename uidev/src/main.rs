@@ -131,7 +131,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				MouseScrollDelta::LineDelta(x, y) => {
 					testbed
 						.layout()
-						.borrow_mut()
 						.push_event(
 							&wgui::event::Event::MouseWheel(MouseWheelEvent {
 								delta: Vec2::new(x, y),
@@ -146,7 +145,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				MouseScrollDelta::PixelDelta(pos) => {
 					testbed
 						.layout()
-						.borrow_mut()
 						.push_event(
 							&wgui::event::Event::MouseWheel(MouseWheelEvent {
 								delta: Vec2::new(pos.x as f32 / 5.0, pos.y as f32 / 5.0),
@@ -167,7 +165,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 					if matches!(state, winit::event::ElementState::Pressed) {
 						testbed
 							.layout()
-							.borrow_mut()
 							.push_event(
 								&wgui::event::Event::MouseDown(MouseDownEvent {
 									pos: mouse / scale,
@@ -181,7 +178,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 					} else {
 						testbed
 							.layout()
-							.borrow_mut()
 							.push_event(
 								&wgui::event::Event::MouseUp(MouseUpEvent {
 									pos: mouse / scale,
@@ -202,7 +198,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				mouse = vec2(position.x as _, position.y as _);
 				testbed
 					.layout()
-					.borrow_mut()
 					.push_event(
 						&wgui::event::Event::MouseMotion(MouseMotionEvent {
 							pos: mouse / scale,
@@ -225,11 +220,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 								"Debug draw enabled\n\tAqua: widget boundary\n\tMagenta: Scissoring (separate render pass)"
 							);
 						}
-						testbed.layout().borrow_mut().mark_redraw();
+						testbed.layout().mark_redraw();
 					}
 
 					if event.physical_key == PhysicalKey::Code(KeyCode::F11) {
-						testbed.layout().borrow_mut().print_tree();
+						testbed.layout().print_tree();
 					}
 
 					if event.physical_key == PhysicalKey::Code(KeyCode::Equal) {
@@ -290,7 +285,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				}
 
 				while timestep.on_tick() {
-					testbed.layout().borrow_mut().tick().unwrap();
+					testbed.layout().tick().unwrap();
 				}
 
 				testbed
@@ -301,7 +296,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 					})
 					.unwrap();
 
-				if !render_context.dirty && !testbed.layout().borrow_mut().check_toggle_needs_redraw() {
+				if !render_context.dirty && !testbed.layout().check_toggle_needs_redraw() {
 					// no need to redraw
 					std::thread::sleep(std::time::Duration::from_millis(5)); // dirty fix to prevent cpu burning precious cycles doing a busy loop
 					return;
@@ -336,19 +331,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 						.begin_rendering(tgt, WGfxClearMode::Clear([0.0, 0.0, 0.0, 0.1]))
 						.unwrap();
 
-					let mut layout = testbed.layout().borrow_mut();
+					let layout = testbed.layout();
 					let globals = layout.state.globals.clone();
 					let mut globals = globals.get();
 
 					let mut draw_params = wgui::drawing::DrawParams {
 						globals: &mut globals,
-						layout: &mut layout,
+						layout,
 						debug_draw: debug_draw_enabled,
 						timestep_alpha: timestep.alpha,
 					};
 
 					let primitives = wgui::drawing::draw(&mut draw_params).unwrap();
-					drop(layout);
 
 					let draw_result = render_context
 						.draw(

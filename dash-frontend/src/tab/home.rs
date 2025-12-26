@@ -67,11 +67,11 @@ impl TabHome {
 		let btn_settings = state.fetch_component_as::<ComponentButton>("btn_settings")?;
 
 		let tasks = &mut frontend.tasks;
-		tasks.handle_button(btn_apps, FrontendTask::SetTab(TabType::Apps));
-		tasks.handle_button(btn_games, FrontendTask::SetTab(TabType::Games));
-		tasks.handle_button(btn_monado, FrontendTask::SetTab(TabType::Monado));
-		tasks.handle_button(btn_processes, FrontendTask::SetTab(TabType::Processes));
-		tasks.handle_button(btn_settings, FrontendTask::SetTab(TabType::Settings));
+		tasks.handle_button(&btn_apps, FrontendTask::SetTab(TabType::Apps));
+		tasks.handle_button(&btn_games, FrontendTask::SetTab(TabType::Games));
+		tasks.handle_button(&btn_monado, FrontendTask::SetTab(TabType::Monado));
+		tasks.handle_button(&btn_processes, FrontendTask::SetTab(TabType::Processes));
+		tasks.handle_button(&btn_settings, FrontendTask::SetTab(TabType::Settings));
 
 		Ok(Self { state })
 	}

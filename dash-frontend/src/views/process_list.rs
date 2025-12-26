@@ -13,6 +13,7 @@ use wgui::{
 	layout::{Layout, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
 	taffy::{self, prelude::length},
+	task::Tasks,
 	widget::{
 		ConstructEssentials,
 		div::WidgetDiv,
@@ -21,13 +22,10 @@ use wgui::{
 };
 use wlx_common::dash_interface::BoxDashInterface;
 
-use crate::{
-	task::Tasks,
-	util::{
-		self,
-		desktop_finder::{self},
-		various::get_desktop_file_icon_path,
-	},
+use crate::util::{
+	self,
+	desktop_finder::{self},
+	various::get_desktop_file_icon_path,
 };
 
 #[derive(Clone)]

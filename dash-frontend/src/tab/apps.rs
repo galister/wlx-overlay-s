@@ -7,12 +7,12 @@ use wgui::{
 	i18n::Translation,
 	layout::{WidgetID, WidgetPair},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
+	task::Tasks,
 };
 
 use crate::{
 	frontend::{Frontend, FrontendTask, FrontendTasks},
 	tab::{Tab, TabType},
-	task::Tasks,
 	util::{
 		self,
 		desktop_finder::DesktopEntry,

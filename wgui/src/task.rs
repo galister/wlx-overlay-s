@@ -1,6 +1,5 @@
+use crate::components::button::ComponentButton;
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
-
-use wgui::components::button::ComponentButton;
 
 pub struct Tasks<TaskType>(Rc<RefCell<VecDeque<TaskType>>>);
 
@@ -32,7 +31,7 @@ impl<TaskType: 'static> Default for Tasks<TaskType> {
 }
 
 impl<TaskType: Clone + 'static> Tasks<TaskType> {
-	pub fn handle_button(&self, button: Rc<ComponentButton>, task: TaskType) {
+	pub fn handle_button(&self, button: &Rc<ComponentButton>, task: TaskType) {
 		button.on_click({
 			let this = self.clone();
 			Box::new(move |_, _| {

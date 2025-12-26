@@ -8,6 +8,7 @@ use wgui::{
 	i18n::Translation,
 	layout::{Layout, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
+	task::Tasks,
 	widget::label::WidgetLabel,
 };
 use wlx_common::dash_interface::BoxDashInterface;
@@ -15,7 +16,6 @@ use wlx_common::dash_interface::BoxDashInterface;
 use crate::{
 	frontend::{FrontendTask, FrontendTasks},
 	settings::SettingsIO,
-	task::Tasks,
 	util::desktop_finder::DesktopEntry,
 };
 
@@ -96,7 +96,7 @@ impl View {
 
 		let tasks = Tasks::new();
 
-		tasks.handle_button(btn_launch, Task::Launch);
+		tasks.handle_button(&btn_launch, Task::Launch);
 
 		let id_icon_parent = state.get_widget_id("icon_parent")?;
 

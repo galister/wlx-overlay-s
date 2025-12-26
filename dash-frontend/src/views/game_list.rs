@@ -17,6 +17,7 @@ use wgui::{
 		self,
 		prelude::{length, percent},
 	},
+	task::Tasks,
 	widget::{
 		ConstructEssentials,
 		div::WidgetDiv,
@@ -29,7 +30,6 @@ use wgui::{
 
 use crate::{
 	frontend::{FrontendTask, FrontendTasks},
-	task::Tasks,
 	util::{
 		cover_art_fetcher::{self, CoverArt},
 		popup_manager::MountPopupParams,

@@ -5,6 +5,7 @@ use wgui::{
 	components::checkbox::ComponentCheckbox,
 	layout::WidgetID,
 	parser::{Fetchable, ParseDocumentParams, ParserState},
+	task::Tasks,
 };
 
 use crate::{
@@ -13,37 +14,71 @@ use crate::{
 	tab::{Tab, TabType},
 };
 
+enum Task {
+	ToggleSetting(SettingType, bool),
+}
+
 pub struct TabSettings {
 	#[allow(dead_code)]
 	pub state: ParserState,
+
+	tasks: Tasks<Task>,
 }
 
 impl Tab for TabSettings {
 	fn get_type(&self) -> TabType {
 		TabType::Settings
 	}
+
+	fn update(&mut self, frontend: &mut Frontend) -> anyhow::Result<()> {
+		for task in self.tasks.drain() {
+			match task {
+				Task::ToggleSetting(setting, n) => self.toggle_setting(frontend, setting, n),
+			}
+		}
+		Ok(())
+	}
+}
+
+#[allow(clippy::enum_variant_names)]
+#[derive(Clone)]
+enum SettingType {
+	DashHideUsername,
+	DashAmPmClock,
+	DashOpaqueBackground,
+	DashXwaylandByDefault,
+}
+
+impl SettingType {
+	fn get_bool<'a>(&self, settings: &'a mut settings::Settings) -> &'a mut bool {
+		match self {
+			SettingType::DashHideUsername => &mut settings.home_screen.hide_username,
+			SettingType::DashAmPmClock => &mut settings.general.am_pm_clock,
+			SettingType::DashOpaqueBackground => &mut settings.general.opaque_background,
+			SettingType::DashXwaylandByDefault => &mut settings.tweaks.xwayland_by_default,
+		}
+	}
 }
 
 fn init_setting_checkbox(
 	frontend: &mut Frontend,
+	tasks: &Tasks<Task>,
 	checkbox: Rc<ComponentCheckbox>,
-	fetch_callback: fn(&mut settings::Settings) -> &mut bool,
-	change_callback: Option<fn(&mut Frontend, bool)>,
+	setting: SettingType,
+	additional_frontend_task: Option<FrontendTask>,
 ) -> anyhow::Result<()> {
 	let mut c = frontend.layout.start_common();
+	checkbox.set_checked(&mut c.common(), *setting.get_bool(frontend.settings.get_mut()));
 
-	checkbox.set_checked(&mut c.common(), *fetch_callback(params.settings));
-	let rc_frontend = params.frontend.clone();
+	let tasks = tasks.clone();
+	let frontend_tasks = frontend.tasks.clone();
+
 	checkbox.on_toggle(Box::new(move |_common, e| {
-		let mut frontend = rc_frontend.borrow_mut();
-		*fetch_callback(frontend.settings.get_mut()) = e.checked;
+		tasks.push(Task::ToggleSetting(setting.clone(), e.checked));
 
-		if let Some(change_callback) = &change_callback {
-			change_callback(&mut frontend, e.checked);
+		if let Some(task) = &additional_frontend_task {
+			frontend_tasks.push(task.clone());
 		}
-
-		frontend.settings.mark_as_dirty();
-
 		Ok(())
 	}));
 
@@ -63,42 +98,56 @@ impl TabSettings {
 			parent_id,
 		)?;
 
+		let tasks = Tasks::new();
+
 		init_setting_checkbox(
 			frontend,
+			&tasks,
 			state.data.fetch_component_as::<ComponentCheckbox>("cb_hide_username")?,
-			|settings| &mut settings.home_screen.hide_username,
+			SettingType::DashHideUsername,
 			None,
 		)?;
 
 		init_setting_checkbox(
 			frontend,
+			&tasks,
 			state.data.fetch_component_as::<ComponentCheckbox>("cb_am_pm_clock")?,
-			|settings| &mut settings.general.am_pm_clock,
-			Some(|frontend, _| {
-				frontend.tasks.push(FrontendTask::RefreshClock);
-			}),
+			SettingType::DashAmPmClock,
+			None,
 		)?;
 
 		init_setting_checkbox(
 			frontend,
+			&tasks,
+			state.data.fetch_component_as::<ComponentCheckbox>("cb_am_pm_clock")?,
+			SettingType::DashAmPmClock,
+			Some(FrontendTask::RefreshClock),
+		)?;
+
+		init_setting_checkbox(
+			frontend,
+			&tasks,
 			state
 				.data
 				.fetch_component_as::<ComponentCheckbox>("cb_opaque_background")?,
-			|settings| &mut settings.general.opaque_background,
-			Some(|frontend, _| {
-				frontend.tasks.push(FrontendTask::RefreshBackground);
-			}),
+			SettingType::DashOpaqueBackground,
+			Some(FrontendTask::RefreshBackground),
 		)?;
 
 		init_setting_checkbox(
 			frontend,
+			&tasks,
 			state
 				.data
 				.fetch_component_as::<ComponentCheckbox>("cb_xwayland_by_default")?,
-			|settings| &mut settings.tweaks.xwayland_by_default,
+			SettingType::DashXwaylandByDefault,
 			None,
 		)?;
 
-		Ok(Self { state })
+		Ok(Self { state, tasks })
+	}
+
+	fn toggle_setting(&mut self, frontend: &mut Frontend, setting: SettingType, state: bool) {
+		*setting.get_bool(frontend.settings.get_mut()) = state;
 	}
 }
