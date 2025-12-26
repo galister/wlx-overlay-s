@@ -14,10 +14,10 @@ use vulkano::{
 use crate::{
 	drawing::{Boundary, ImagePrimitive},
 	gfx::{
-		BLEND_ALPHA, WGfx,
 		cmd::GfxCommandBuffer,
 		pass::WGfxPass,
 		pipeline::{WGfxPipeline, WPipelineCreateInfo},
+		WGfx, BLEND_ALPHA,
 	},
 	renderer_vk::{
 		model_buffer::ModelBuffer,
@@ -202,7 +202,7 @@ impl ImageRenderer {
 						[res[0] as _, res[1] as _],
 						vert_buffer.clone(),
 						0..4,
-						0..self.image_verts.len() as _,
+						0..1,
 						vec![set0, set1, set2],
 						vk_scissor,
 					)?;
