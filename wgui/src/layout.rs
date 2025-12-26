@@ -683,8 +683,10 @@ impl Layout {
 
 		self.process_tasks()?;
 
-		for node in alterables.dirty_nodes {
-			self.state.tree.mark_dirty(node)?;
+		for dirty_widget_id in alterables.dirty_widgets {
+			if let Some(dirty_node_id) = self.state.nodes.get(dirty_widget_id) {
+				self.state.tree.mark_dirty(*dirty_node_id)?;
+			}
 		}
 
 		if alterables.needs_redraw {

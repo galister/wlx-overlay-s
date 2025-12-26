@@ -104,7 +104,7 @@ pub enum StyleSetRequest {
 // alterables which will be dispatched in the next loop iteration phase
 #[derive(Default)]
 pub struct EventAlterables {
-	pub dirty_nodes: Vec<taffy::NodeId>,
+	pub dirty_widgets: Vec<WidgetID>,
 	pub style_set_requests: Vec<(WidgetID, StyleSetRequest)>,
 	pub animations: Vec<animation::Animation>,
 	pub widgets_to_tick: HashSet<WidgetID>, // widgets which needs to be ticked in the next `Layout::update()` fn
@@ -125,8 +125,8 @@ impl EventAlterables {
 		self.style_set_requests.push((widget_id, request));
 	}
 
-	pub fn mark_dirty(&mut self, node_id: taffy::NodeId) {
-		self.dirty_nodes.push(node_id);
+	pub fn mark_dirty(&mut self, widget_id: WidgetID) {
+		self.dirty_widgets.push(widget_id);
 	}
 
 	pub fn mark_tick(&mut self, widget_id: WidgetID) {
@@ -154,9 +154,7 @@ impl CallbackDataCommon<'_> {
 
 	// helper function
 	pub fn mark_widget_dirty(&mut self, id: WidgetID) {
-		if let Some(node_id) = self.state.nodes.get(id) {
-			self.alterables.mark_dirty(*node_id);
-		}
+		self.alterables.mark_dirty(id);
 		self.alterables.mark_redraw();
 	}
 }

@@ -37,7 +37,7 @@ use crate::{
 
 pub const DASH_NAME: &str = "Dashboard";
 
-const DASH_RES_U32A: [u32; 2] = [1280, 720];
+const DASH_RES_U32A: [u32; 2] = [1920, 1080];
 const DASH_RES_VEC2: Vec2 = vec2(DASH_RES_U32A[0] as _, DASH_RES_U32A[1] as _);
 
 //FIXME: replace with proper impl
@@ -86,6 +86,8 @@ pub struct DashFrontend {
     context: WguiContext,
 }
 
+const GUI_SCALE: f32 = 2.0;
+
 impl DashFrontend {
     fn new(app: &mut AppState) -> anyhow::Result<Self> {
         let settings = SimpleSettingsIO::new();
@@ -100,15 +102,18 @@ impl DashFrontend {
             inner: frontend,
             initialized: false,
             interaction_transform: None,
-            timestep: Timestep::new(),
+            timestep: Timestep::new(60.0),
             has_focus: [false, false],
             context,
         })
     }
 
-    fn update(&mut self) -> anyhow::Result<()> {
-        log::info!("update layout");
-        self.inner.update(DASH_RES_VEC2.x, DASH_RES_VEC2.y, 0.0)
+    fn update(&mut self, timestep_alpha: f32) -> anyhow::Result<()> {
+        self.inner.update(
+            DASH_RES_VEC2.x / GUI_SCALE,
+            DASH_RES_VEC2.y / GUI_SCALE,
+            timestep_alpha,
+        )
     }
 
     fn push_event(&mut self, event: &WguiEvent) -> EventResult {
@@ -125,11 +130,11 @@ impl DashFrontend {
 impl OverlayBackend for DashFrontend {
     fn init(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         self.context
-            .update_viewport(&mut app.wgui_shared, DASH_RES_U32A, 1.0)?;
+            .update_viewport(&mut app.wgui_shared, DASH_RES_U32A, GUI_SCALE)?;
         self.interaction_transform = Some(ui_transform(DASH_RES_U32A));
 
         if self.inner.layout.content_size.x * self.inner.layout.content_size.y != 0.0 {
-            self.update()?;
+            self.update(0.0)?;
             self.initialized = true;
         }
         Ok(())
@@ -150,6 +155,10 @@ impl OverlayBackend for DashFrontend {
             self.inner.layout.tick()?;
         }
 
+        if let Err(e) = self.update(self.timestep.alpha) {
+            log::error!("uncaught exception: {e:?}");
+        }
+
         Ok(if self.inner.layout.check_toggle_needs_redraw() {
             ShouldRender::Should
         } else {
@@ -158,14 +167,6 @@ impl OverlayBackend for DashFrontend {
     }
 
     fn render(&mut self, app: &mut AppState, rdr: &mut RenderResources) -> anyhow::Result<()> {
-        self.inner
-            .layout
-            .update(DASH_RES_VEC2, self.timestep.alpha)?;
-
-        if let Err(e) = self.update() {
-            log::error!("uncaught exception: {e:?}");
-        }
-
         let globals = self.inner.layout.state.globals.clone(); // sorry
         let mut globals = globals.get();
 

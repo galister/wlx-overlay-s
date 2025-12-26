@@ -47,7 +47,7 @@ impl Drop for MountedToast {
 	}
 }
 
-const TOAST_DURATION_TICKS: u32 = 90;
+const TOAST_DURATION_TICKS: u32 = 150;
 
 impl ToastManager {
 	pub fn new() -> Self {
@@ -130,7 +130,7 @@ impl ToastManager {
 		// show-up animation
 		layout.animations.add(Animation::new(
 			rect.id,
-			(120.0 * globals.defaults.animation_mult) as u32,
+			(TOAST_DURATION_TICKS as f32 * globals.defaults.animation_mult) as u32,
 			AnimationEasing::Linear,
 			Box::new(move |common, data| {
 				let pos_showup = AnimationEasing::OutQuint.interpolate((data.pos * 4.0).min(1.0));

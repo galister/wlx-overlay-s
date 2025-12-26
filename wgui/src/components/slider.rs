@@ -18,11 +18,11 @@ use crate::{
 		util,
 	},
 	widget::{
+		ConstructEssentials, EventResult,
 		div::WidgetDiv,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
-		ConstructEssentials, EventResult,
 	},
 };
 
@@ -224,7 +224,7 @@ impl State {
 			return; // nothing changed visually
 		}
 
-		common.alterables.mark_dirty(data.slider_handle_node_id);
+		common.alterables.mark_dirty(data.slider_handle_id);
 		common.alterables.mark_redraw();
 
 		if let Some(slider_text_id) = data.slider_text_id

@@ -125,8 +125,7 @@ impl Frontend {
 		let id_label_time = state.get_widget_id("label_time")?;
 		let id_rect_content = state.get_widget_id("rect_content")?;
 
-		let mut timestep = Timestep::new();
-		timestep.set_tps(30.0); // 30 ticks per second
+		let timestep = Timestep::new(60.0);
 
 		let mut frontend = Self {
 			layout,

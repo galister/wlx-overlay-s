@@ -160,8 +160,7 @@ impl<S: 'static> GuiPanel<S> {
         }
 
         let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
-        let mut timestep = Timestep::new();
-        timestep.set_tps(60.0);
+        let timestep = Timestep::new(60.0);
 
         Ok(Self {
             layout,
@@ -192,8 +191,7 @@ impl<S: 'static> GuiPanel<S> {
             },
         )?;
         let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
-        let mut timestep = Timestep::new();
-        timestep.set_tps(60.0);
+        let timestep = Timestep::new(60.0);
 
         Ok(Self {
             layout,

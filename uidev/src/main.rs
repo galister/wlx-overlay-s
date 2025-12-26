@@ -1,7 +1,6 @@
 use glam::{Vec2, vec2};
 use std::sync::Arc;
 use testbed::{Testbed, testbed_any::TestbedAny};
-use timestep::Timestep;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::layer::SubscriberExt;
@@ -28,6 +27,7 @@ use winit::{
 	event_loop::ControlFlow,
 	keyboard::{KeyCode, PhysicalKey},
 };
+use wlx_common::timestep::Timestep;
 
 use crate::{
 	rate_limiter::RateLimiter,
@@ -40,7 +40,6 @@ mod assets;
 mod profiler;
 mod rate_limiter;
 mod testbed;
-mod timestep;
 mod vulkan;
 
 fn init_logging() {
@@ -114,8 +113,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let mut profiler = profiler::Profiler::new(1000);
 	let mut frame_index: u64 = 0;
 
-	let mut timestep = Timestep::new();
-	timestep.set_tps(60.0);
+	let mut timestep = Timestep::new(60.0);
 
 	let mut limiter = RateLimiter::new();
 
