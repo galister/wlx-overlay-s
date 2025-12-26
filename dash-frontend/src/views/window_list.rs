@@ -11,8 +11,8 @@ use wgui::{
 	renderer_vk::text::{FontWeight, HorizontalAlign, TextStyle},
 	taffy::{self, prelude::length},
 	widget::{
-		ConstructEssentials,
 		label::{WidgetLabel, WidgetLabelParams},
+		ConstructEssentials,
 	},
 };
 use wlx_common::dash_interface::BoxDashInterface;
@@ -32,7 +32,7 @@ enum Task {
 }
 
 pub struct Params<'a> {
-	pub globals: &'a WguiGlobals,
+	pub globals: WguiGlobals,
 	pub frontend_tasks: FrontendTasks,
 	pub layout: &'a mut Layout,
 	pub parent_id: WidgetID,

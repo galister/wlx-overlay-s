@@ -3,15 +3,15 @@ use wgui::{
 	components::button::ComponentButton,
 	event::CallbackDataCommon,
 	i18n::Translation,
-	layout::Widget,
+	layout::{Widget, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
 	widget::label::WidgetLabel,
 };
 
 use crate::{
-	frontend::FrontendTask,
+	frontend::{Frontend, FrontendTask},
 	settings,
-	tab::{Tab, TabParams, TabType},
+	tab::{Tab, TabType},
 	various,
 };
 
@@ -45,20 +45,20 @@ fn configure_label_hello(common: &mut CallbackDataCommon, label_hello: Widget, s
 }
 
 impl TabHome {
-	pub fn new(params: TabParams) -> anyhow::Result<Self> {
+	pub fn new(frontend: &mut Frontend, parent_id: WidgetID) -> anyhow::Result<Self> {
 		let state = wgui::parser::parse_from_assets(
 			&ParseDocumentParams {
-				globals: params.globals.clone(),
+				globals: frontend.layout.state.globals.clone(),
 				path: AssetPath::BuiltIn("gui/tab/home.xml"),
 				extra: Default::default(),
 			},
-			params.layout,
-			params.parent_id,
+			&mut frontend.layout,
+			parent_id,
 		)?;
 
-		let mut c = params.layout.start_common();
+		let mut c = frontend.layout.start_common();
 		let widget_label = state.fetch_widget(&c.layout.state, "label_hello")?.widget;
-		configure_label_hello(&mut c.common(), widget_label, params.settings);
+		configure_label_hello(&mut c.common(), widget_label, frontend.settings.get_mut());
 
 		let btn_apps = state.fetch_component_as::<ComponentButton>("btn_apps")?;
 		let btn_games = state.fetch_component_as::<ComponentButton>("btn_games")?;
@@ -66,7 +66,7 @@ impl TabHome {
 		let btn_processes = state.fetch_component_as::<ComponentButton>("btn_processes")?;
 		let btn_settings = state.fetch_component_as::<ComponentButton>("btn_settings")?;
 
-		let tasks = params.frontend_tasks;
+		let tasks = &mut frontend.tasks;
 		tasks.handle_button(btn_apps, FrontendTask::SetTab(TabType::Apps));
 		tasks.handle_button(btn_games, FrontendTask::SetTab(TabType::Games));
 		tasks.handle_button(btn_monado, FrontendTask::SetTab(TabType::Monado));

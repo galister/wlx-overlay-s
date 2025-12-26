@@ -1,9 +1,13 @@
 use wgui::{
 	assets::AssetPath,
+	layout::WidgetID,
 	parser::{ParseDocumentParams, ParserState},
 };
 
-use crate::tab::{Tab, TabParams, TabType};
+use crate::{
+	frontend::Frontend,
+	tab::{Tab, TabType},
+};
 
 pub struct TabMonado {
 	#[allow(dead_code)]
@@ -17,15 +21,15 @@ impl Tab for TabMonado {
 }
 
 impl TabMonado {
-	pub fn new(params: TabParams) -> anyhow::Result<Self> {
+	pub fn new(frontend: &mut Frontend, parent_id: WidgetID) -> anyhow::Result<Self> {
 		let state = wgui::parser::parse_from_assets(
 			&ParseDocumentParams {
-				globals: params.globals.clone(),
+				globals: frontend.layout.state.globals.clone(),
 				path: AssetPath::BuiltIn("gui/tab/monado.xml"),
 				extra: Default::default(),
 			},
-			params.layout,
-			params.parent_id,
+			&mut frontend.layout,
+			parent_id,
 		)?;
 
 		Ok(Self { state })

@@ -1,10 +1,12 @@
 use wgui::{
 	assets::AssetPath,
+	layout::WidgetID,
 	parser::{Fetchable, ParseDocumentParams, ParserState},
 };
 
 use crate::{
-	tab::{Tab, TabParams, TabType},
+	frontend::Frontend,
+	tab::{Tab, TabType},
 	views::game_list,
 };
 
@@ -20,31 +22,33 @@ impl Tab for TabGames {
 		TabType::Games
 	}
 
-	fn update(&mut self, params: super::TabUpdateParams) -> anyhow::Result<()> {
-		self.view_game_list.update(params.layout, params.executor)?;
+	fn update(&mut self, frontend: &mut Frontend) -> anyhow::Result<()> {
+		self
+			.view_game_list
+			.update(&mut frontend.layout, &mut frontend.executor)?;
 
 		Ok(())
 	}
 }
 
 impl TabGames {
-	pub fn new(params: TabParams) -> anyhow::Result<Self> {
+	pub fn new(frontend: &mut Frontend, parent_id: WidgetID) -> anyhow::Result<Self> {
 		let state = wgui::parser::parse_from_assets(
 			&ParseDocumentParams {
-				globals: params.globals.clone(),
+				globals: frontend.layout.state.globals.clone(),
 				path: AssetPath::BuiltIn("gui/tab/games.xml"),
 				extra: Default::default(),
 			},
-			params.layout,
-			params.parent_id,
+			&mut frontend.layout,
+			parent_id,
 		)?;
 
 		let game_list_parent = state.get_widget_id("game_list_parent")?;
 
 		let view_game_list = game_list::View::new(game_list::Params {
-			frontend_tasks: params.frontend_tasks.clone(),
-			globals: params.globals,
-			layout: params.layout,
+			frontend_tasks: frontend.tasks.clone(),
+			globals: frontend.layout.state.globals.clone(),
+			layout: &mut frontend.layout,
 			parent_id: game_list_parent,
 		})?;
 

@@ -3,13 +3,14 @@ use std::rc::Rc;
 use wgui::{
 	assets::AssetPath,
 	components::checkbox::ComponentCheckbox,
+	layout::WidgetID,
 	parser::{Fetchable, ParseDocumentParams, ParserState},
 };
 
 use crate::{
 	frontend::{Frontend, FrontendTask},
 	settings,
-	tab::{Tab, TabParams, TabType},
+	tab::{Tab, TabType},
 };
 
 pub struct TabSettings {
@@ -24,12 +25,12 @@ impl Tab for TabSettings {
 }
 
 fn init_setting_checkbox(
-	params: &mut TabParams,
+	frontend: &mut Frontend,
 	checkbox: Rc<ComponentCheckbox>,
 	fetch_callback: fn(&mut settings::Settings) -> &mut bool,
 	change_callback: Option<fn(&mut Frontend, bool)>,
 ) -> anyhow::Result<()> {
-	let mut c = params.layout.start_common();
+	let mut c = frontend.layout.start_common();
 
 	checkbox.set_checked(&mut c.common(), *fetch_callback(params.settings));
 	let rc_frontend = params.frontend.clone();
@@ -51,26 +52,26 @@ fn init_setting_checkbox(
 }
 
 impl TabSettings {
-	pub fn new(mut params: TabParams) -> anyhow::Result<Self> {
+	pub fn new(frontend: &mut Frontend, parent_id: WidgetID) -> anyhow::Result<Self> {
 		let state = wgui::parser::parse_from_assets(
 			&ParseDocumentParams {
-				globals: params.globals.clone(),
+				globals: frontend.layout.state.globals.clone(),
 				path: AssetPath::BuiltIn("gui/tab/settings.xml"),
 				extra: Default::default(),
 			},
-			params.layout,
-			params.parent_id,
+			&mut frontend.layout,
+			parent_id,
 		)?;
 
 		init_setting_checkbox(
-			&mut params,
+			frontend,
 			state.data.fetch_component_as::<ComponentCheckbox>("cb_hide_username")?,
 			|settings| &mut settings.home_screen.hide_username,
 			None,
 		)?;
 
 		init_setting_checkbox(
-			&mut params,
+			frontend,
 			state.data.fetch_component_as::<ComponentCheckbox>("cb_am_pm_clock")?,
 			|settings| &mut settings.general.am_pm_clock,
 			Some(|frontend, _| {
@@ -79,7 +80,7 @@ impl TabSettings {
 		)?;
 
 		init_setting_checkbox(
-			&mut params,
+			frontend,
 			state
 				.data
 				.fetch_component_as::<ComponentCheckbox>("cb_opaque_background")?,
@@ -90,7 +91,7 @@ impl TabSettings {
 		)?;
 
 		init_setting_checkbox(
-			&mut params,
+			frontend,
 			state
 				.data
 				.fetch_component_as::<ComponentCheckbox>("cb_xwayland_by_default")?,
