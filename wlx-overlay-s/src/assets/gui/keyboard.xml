@@ -1,7 +1,7 @@
 <layout>
   <macro name="keycap_rect"
     margin="2" width="100%" overflow="hidden" box_sizing="border_box"
-    border_color="~color_accent_translucent" border="2" round="8" color="~color_accent_5" color2="~color_accent_1" gradient="vertical"
+    border_color="~color_accent_translucent" border="2" round="8" color="~color_accent_40" color2="~color_accent_10" gradient="vertical"
     align_items="center" justify_content="center" />
 
   <macro name="keycap_div"

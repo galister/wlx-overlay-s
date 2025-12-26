@@ -1,9 +1,5 @@
 <layout>
   <theme>
-    <var key="set_color" value="#cad3f5" />
-    <var key="bgcolor" value="#010206d5" />
-
-    <var key="clock0_color" value="#cad3f5" />
     <var key="clock0_size" value="46" />
     <var key="clock0_date_size" value="16" />
     <var key="clock0_dow_size" value="16" />
@@ -14,12 +10,12 @@
   </theme>
 
   <macro name="decorative_rect"
-    padding="8" color="~bgcolor"
+    padding="8" color="~color_bg"
     border="2" border_color="~color_accent" round="8" />
 
   <macro name="button_style"
     padding="8"
-    border_color="~color_accent_translucent" border="2" round="8" color="~color_accent_5" color2="~color_accent_1" gradient="vertical"
+    border_color="~color_accent_translucent" border="2" round="8" color="~color_accent_40" color2="~color_accent_10" gradient="vertical"
     align_items="center" justify_content="center" />
 
   <template name="Device">
@@ -41,7 +37,7 @@
 
   <template name="Set">
     <Button macro="button_style" id="set_${idx}" _press="::SetToggle ${idx}" tooltip="WATCH.SWITCH_TO_SET" tooltip_side="top">
-      <sprite width="40" height="40" color="~set_color" src_builtin="watch/set2.svg" />
+      <sprite width="40" height="40" color="~text_color" src_builtin="watch/set2.svg" />
       <div position="absolute" margin_top="9">
         <label text="${display}" size="24" color="#00050F" weight="bold" />
       </div>
@@ -74,7 +70,7 @@
           <!-- Clock, date and various timezones -->
           <div gap="8">
             <div flex_direction="column">
-              <label text="23:59" _source="clock" _display="time" color="~clock0_color" size="~clock0_size" weight="bold" />
+              <label text="23:59" _source="clock" _display="time" color="~text_color" size="~clock0_size" weight="bold" />
               <div padding="2" gap="2" flex_direction="column">
                 <label text="22/2/2022" _source="clock" _display="date" color="~clock0_color" size="~clock0_date_size" weight="bold" />
                 <label text="Tuesday" _source="clock" _display="dow" color="~clock0_color" size="~clock0_dow_size" weight="bold" />
@@ -97,18 +93,18 @@
           <div flex_direction="column" gap="8">
             <div gap="8">
               <Button macro="button_style" _press="::NewMirror" tooltip="WATCH.MIRROR" tooltip_side="left">
-                <sprite width="40" height="40" color="~set_color" src="edit/mirror.svg" />
+                <sprite width="40" height="40" color="~text_color" src="edit/mirror.svg" />
               </Button>
               <Button macro="button_style" _press="::CleanupMirrors" tooltip="WATCH.CLEANUP_MIRRORS" tooltip_side="left">
-                <sprite width="40" height="40" color="~set_color" src="watch/mirror-off.svg" />
+                <sprite width="40" height="40" color="~text_color" src="watch/mirror-off.svg" />
               </Button>
             </div>
             <div gap="8">
               <Button macro="button_style" _press="::PlayspaceRecenter" tooltip="WATCH.RECENTER" tooltip_side="left">
-                <sprite width="40" height="40" color="~set_color" src="watch/recenter.svg" />
+                <sprite width="40" height="40" color="~text_color" src="watch/recenter.svg" />
               </Button>
               <Button macro="button_style" _press="::PlayspaceFixFloor" tooltip="WATCH.FIX_FLOOR" tooltip_side="left">
-                <sprite width="40" height="40" color="~set_color" src="watch/fix-floor.svg" />
+                <sprite width="40" height="40" color="~text_color" src="watch/fix-floor.svg" />
               </Button>
             </div>
           </div>
@@ -137,11 +133,11 @@
         <!-- Bottom buttons -->
         <div flex_direction="row" gap="4">
           <Button id="btn_dashboard" macro="button_style" _press="::DashToggle" tooltip="WATCH.DASHBOARD" tooltip_side="top" >
-            <sprite color="~set_color" width="40" height="40" src="watch/wayvr_dashboard_mono.svg" />
+            <sprite color="~text_color" width="40" height="40" src="watch/wayvr_dashboard_mono.svg" />
           </Button>
           <div id="edit_delete" display="none">
-            <Button macro="button_style" _long_release="::EditModeDeleteSet" tooltip="WATCH.LONG_PRESS_TO_DELETE_SET" tooltip_side="top" border_color="~color_danger_translucent" color="~color_danger_5" color2="~color_danger_1">
-              <sprite color="~set_color" width="40" height="40" src="edit/delete.svg" />
+            <Button macro="button_style" _long_release="::EditModeDeleteSet" tooltip="WATCH.LONG_PRESS_TO_DELETE_SET" tooltip_side="top" border_color="~color_danger_translucent" color="~color_danger_40" color2="~color_danger_10">
+              <sprite color="~text_color" width="40" height="40" src="edit/delete.svg" />
             </Button>
           </div>
           <div id="sets">
@@ -150,11 +146,11 @@
           </div>
           <div id="edit_add" display="none">
             <Button macro="button_style" _press="::EditModeAddSet" tooltip="WATCH.ADD_NEW_SET" tooltip_side="top">
-              <sprite color="~set_color" width="40" height="40" src="edit/add.svg" />
+              <sprite color="~text_color" width="40" height="40" src="edit/add.svg" />
             </Button>
           </div>
           <Button id="btn_edit_mode" macro="button_style" _press="::EditToggle" tooltip="WATCH.EDIT_MODE" tooltip_side="top">
-            <sprite color="~set_color" width="40" height="40" src="watch/edit.svg" />
+            <sprite color="~text_color" width="40" height="40" src="watch/edit.svg" />
           </Button>
         </div>
       </div>
