@@ -12,10 +12,13 @@ use wgui::{
 	i18n::Translation,
 	layout::{Layout, WidgetID, WidgetPair},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
-	renderer_vk::text::custom_glyph::{CustomGlyphContent, CustomGlyphData},
+	renderer_vk::text::{
+		FontWeight, HorizontalAlign, TextShadow, TextStyle,
+		custom_glyph::{CustomGlyphContent, CustomGlyphData},
+	},
 	taffy::{
-		self,
-		prelude::{length, percent},
+		self, AlignItems, AlignSelf, JustifyContent, JustifySelf,
+		prelude::{auto, length, percent},
 	},
 	task::Tasks,
 	widget::{
@@ -33,7 +36,7 @@ use crate::{
 	util::{
 		cover_art_fetcher::{self, CoverArt},
 		popup_manager::MountPopupParams,
-		steam_utils::{self, AppID, SteamUtils},
+		steam_utils::{self, AppID, AppManifest, SteamUtils},
 		various::AsyncExecutor,
 	},
 };
@@ -54,6 +57,7 @@ pub struct Params<'a> {
 
 struct Cell {
 	image_parent: WidgetID,
+	manifest: AppManifest,
 }
 
 pub struct View {
@@ -66,6 +70,7 @@ pub struct View {
 	steam_utils: steam_utils::SteamUtils,
 
 	cells: HashMap<AppID, Cell>,
+	img_placeholder: Option<CustomGlyphData>,
 }
 
 impl View {
@@ -93,6 +98,7 @@ impl View {
 			id_list_parent: list_parent.id,
 			steam_utils,
 			cells: HashMap::new(),
+			img_placeholder: None,
 		})
 	}
 
@@ -180,6 +186,8 @@ fn construct_game_cover(
 				height: percent(1.0),
 			},
 			padding: taffy::Rect::length(2.0),
+			align_items: Some(AlignItems::Center),
+			justify_content: Some(JustifyContent::Center),
 			..Default::default()
 		},
 	)?;
@@ -257,6 +265,7 @@ fn construct_game_cover(
 		button,
 		Cell {
 			image_parent: image_parent.id,
+			manifest: manifest.clone(),
 		},
 	))
 }
@@ -353,36 +362,22 @@ impl View {
 		Ok(())
 	}
 
-	fn action_set_cover_art(
-		&mut self,
-		layout: &mut Layout,
-		app_id: &AppID,
-		cover_art: Rc<CoverArt>,
-	) -> anyhow::Result<()> {
-		if cover_art.compressed_image_data.is_empty() {
-			return Ok(()); // do nothing
+	fn get_placeholder_image(&mut self) -> anyhow::Result<&CustomGlyphData> {
+		if self.img_placeholder.is_none() {
+			let c = CustomGlyphData::new(CustomGlyphContent::from_assets(
+				&self.globals,
+				AssetPath::BuiltIn("dashboard/placeholder_cover.png"),
+			)?);
+			self.img_placeholder = Some(c);
 		}
 
-		let Some(cell) = self.cells.get(app_id) else {
-			debug_assert!(false); // this shouldn't happen
-			return Ok(());
-		};
+		Ok(self.img_placeholder.as_ref().unwrap()) // safe
+	}
 
-		let glyph_content = match CustomGlyphContent::from_bin_raster(&cover_art.compressed_image_data) {
-			Ok(c) => c,
-			Err(e) => {
-				log::warn!(
-					"failed to decode cover art image for AppID {} ({:?}), skipping",
-					app_id,
-					e
-				);
-				return Ok(());
-			}
-		};
-
+	fn mount_image(layout: &mut Layout, cell: &Cell, glyph: &CustomGlyphData) -> anyhow::Result<()> {
 		let image = WidgetImage::create(WidgetImageParams {
 			round: WLength::Units(12.0),
-			glyph_data: Some(CustomGlyphData::new(glyph_content)),
+			glyph_data: Some(glyph.clone()),
 			..Default::default()
 		});
 
@@ -398,6 +393,92 @@ impl View {
 			},
 		)?;
 		a.widget.state().flags.new_pass = true;
+
+		Ok(())
+	}
+
+	fn mount_placeholder_text(
+		globals: &WguiGlobals,
+		layout: &mut Layout,
+		parent: WidgetID,
+		text: &str,
+	) -> anyhow::Result<()> {
+		let label = WidgetLabel::create(
+			&mut globals.get(),
+			WidgetLabelParams {
+				content: Translation::from_raw_text(text),
+				style: TextStyle {
+					weight: Some(FontWeight::Bold),
+					wrap: true,
+					size: Some(16.0),
+					align: Some(HorizontalAlign::Center),
+					shadow: Some(TextShadow {
+						color: drawing::Color::new(0.0, 0.0, 0.0, 0.5),
+						x: 2.0,
+						y: 2.0,
+					}),
+					..Default::default()
+				},
+			},
+		);
+
+		layout.add_child(
+			parent,
+			label,
+			taffy::Style {
+				position: taffy::Position::Absolute,
+				align_self: Some(AlignSelf::Baseline),
+				justify_self: Some(JustifySelf::Center),
+				margin: taffy::Rect {
+					top: length(32.0),
+					bottom: auto(),
+					left: auto(),
+					right: auto(),
+				},
+				..Default::default()
+			},
+		)?;
+		Ok(())
+	}
+
+	fn action_set_cover_art(
+		&mut self,
+		layout: &mut Layout,
+		app_id: &AppID,
+		cover_art: Rc<CoverArt>,
+	) -> anyhow::Result<()> {
+		if cover_art.compressed_image_data.is_empty() {
+			// mount placeholder
+			let img = self.get_placeholder_image()?.clone();
+
+			let Some(cell) = self.cells.get(app_id) else {
+				debug_assert!(false); // this shouldn't happen
+				return Ok(());
+			};
+
+			View::mount_image(layout, cell, &img)?;
+			View::mount_placeholder_text(&self.globals, layout, cell.image_parent, &cell.manifest.name)?;
+		} else {
+			// mount image
+
+			let Some(cell) = self.cells.get(app_id) else {
+				debug_assert!(false); // this shouldn't happen
+				return Ok(());
+			};
+
+			let glyph = match CustomGlyphContent::from_bin_raster(&cover_art.compressed_image_data) {
+				Ok(c) => c,
+				Err(e) => {
+					log::warn!(
+						"failed to decode cover art image for AppID {} ({:?}), skipping",
+						app_id,
+						e
+					);
+					return Ok(());
+				}
+			};
+			View::mount_image(layout, cell, &CustomGlyphData::new(glyph))?;
+		}
 
 		Ok(())
 	}
