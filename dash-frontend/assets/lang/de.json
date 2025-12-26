@@ -40,8 +40,7 @@
     "NO_VR_MICROPHONE_SWITCH_MANUALLY": "Kein VR-Mikrofon gefunden. Schalten Sie es manuell um.",
     "FAILED_TO_SWITCH_MICROPHONE": "Fehler beim Wechseln des Mikrofons",
     "MICROPHONE_SET_SUCCESSFULLY": "Mikrofon erfolgreich umgeschaltet",
-    "SPEAKERS_SET_SUCCESSFULLY": "Lautsprecher erfolgreich umgeschaltet",
-    "DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED": "Gerät gefunden und initialisiert, aber nicht umgeschaltet"
+    "SPEAKERS_SET_SUCCESSFULLY": "Lautsprecher erfolgreich umgeschaltet"
   },
   "ACTIONS": {
     "RECENTER_PLAYSPACE": "Playspace neu zentrieren"

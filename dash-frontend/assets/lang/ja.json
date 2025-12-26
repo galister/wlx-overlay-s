@@ -40,8 +40,7 @@
     "NO_VR_MICROPHONE_SWITCH_MANUALLY": "VRマイクが見つかりませんでした。手動で切り替えてください。",
     "FAILED_TO_SWITCH_MICROPHONE": "マイクの切り替えに失敗しました",
     "MICROPHONE_SET_SUCCESSFULLY": "マイクの設定が完了しました",
-    "SPEAKERS_SET_SUCCESSFULLY": "スピーカーを設定しました",
-    "DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED": "デバイスが見つかり、初期化されましたが、切り替えられていません"
+    "SPEAKERS_SET_SUCCESSFULLY": "スピーカーを設定しました"
   },
   "ACTIONS": {
     "RECENTER_PLAYSPACE": "プレイスペースを再中央"

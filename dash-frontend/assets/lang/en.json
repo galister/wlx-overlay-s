@@ -27,7 +27,6 @@
 	"AUDIO": {
 		"AUTO_SWITCH_TO_VR_AUDIO": "Auto-switch to VR audio",
 		"CARDS": "Cards",
-		"DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED": "Device found and initialized, but not switched",
 		"FAILED_TO_SWITCH_MICROPHONE": "Failed to switch microphone",
 		"MICROPHONE_SET_SUCCESSFULLY": "Microphone set successfully",
 		"MICROPHONES": "Microphones",

@@ -26,7 +26,6 @@
   "AUDIO": {
     "AUTO_SWITCH_TO_VR_AUDIO": "Automatyczne przełączanie na dźwięk VR",
     "CARDS": "Karty",
-    "DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED": "Urządzenie znalezione i zainicjalizowane, ale nie przełączone",
     "FAILED_TO_SWITCH_MICROPHONE": "Nie udało się przełączyć mikrofon",
     "MICROPHONE_SET_SUCCESSFULLY": "Mikrofon ustawiono pomyślnie",
     "MICROPHONES": "Mikrofony",
