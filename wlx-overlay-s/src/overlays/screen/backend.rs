@@ -246,7 +246,7 @@ impl OverlayBackend for ScreenBackend {
     }
 
     fn notify(&mut self, _app: &mut AppState, _event_data: OverlayEventData) -> anyhow::Result<()> {
-        todo!();
+        Ok(())
     }
 
     fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> HoverResult {
