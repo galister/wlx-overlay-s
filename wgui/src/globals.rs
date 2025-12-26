@@ -33,7 +33,7 @@ impl Default for Defaults {
 		Self {
 			dark_mode: true,
 			text_color: drawing::Color::new(1.0, 1.0, 1.0, 1.0),
-			button_color: drawing::Color::new(1.0, 1.0, 1.0, 0.05),
+			button_color: drawing::Color::new(1.0, 1.0, 1.0, 0.02),
 			accent_color: drawing::Color::new(0.13, 0.68, 1.0, 1.0),
 			danger_color: drawing::Color::new(0.9, 0.0, 0.0, 1.0),
 			faded_color: drawing::Color::new(0.67, 0.74, 0.80, 1.0),

@@ -119,14 +119,6 @@ impl TabSettings {
 		init_setting_checkbox(
 			frontend,
 			&tasks,
-			state.data.fetch_component_as::<ComponentCheckbox>("cb_am_pm_clock")?,
-			SettingType::DashAmPmClock,
-			Some(FrontendTask::RefreshClock),
-		)?;
-
-		init_setting_checkbox(
-			frontend,
-			&tasks,
 			state
 				.data
 				.fetch_component_as::<ComponentCheckbox>("cb_opaque_background")?,

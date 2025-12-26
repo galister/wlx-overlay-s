@@ -118,7 +118,7 @@ pub fn init_window(
 		device,
 		queue_gfx,
 		queue_xfer,
-		vulkano::format::Format::B8G8R8A8_UNORM,
+		vulkano::format::Format::R8G8B8A8_SRGB,
 	);
 	Ok((me, event_loop, window, surface))
 }

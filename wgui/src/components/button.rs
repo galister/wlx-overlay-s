@@ -412,13 +412,13 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	let border_color = if let Some(border_color) = params.border_color {
 		border_color
 	} else {
-		Color::new(color.r, color.g, color.b, color.a + 0.4)
+		Color::new(color.r, color.g, color.b, color.a + 0.25)
 	};
 
 	let hover_color = if let Some(hover_color) = params.hover_color {
 		hover_color
 	} else {
-		Color::new(color.r + 0.25, color.g + 0.25, color.g + 0.25, color.a + 0.25)
+		Color::new(color.r + 0.25, color.g + 0.25, color.g + 0.25, color.a + 0.15)
 	};
 
 	let hover_border_color = if let Some(hover_border_color) = params.hover_border_color {

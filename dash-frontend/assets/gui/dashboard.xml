@@ -15,6 +15,7 @@
       height="~side_button_size"
       color="#44444400"
       hover_color="#333333ff"
+      border_color="#00000000"
       hover_border_color="#555555ff"
       tooltip="${tooltip}"
       tooltip_side="${tooltip_side}"
@@ -24,11 +25,8 @@
   </template>
 
   <elements>
-    <!-- background for testing -->
-    <!-- <rectangle position="absolute" color="#333333" width="100%" height="100%" /> -->
-
     <!-- left/right separator (menu and rest) -->
-    <div flex_direction="row" gap="8" width="100%" height="100%">
+    <div flex_direction="row" gap="8" width="100%" height="100%" padding="4" interactable="0">
       <!-- LEFT MENU -->
       <div id="menu"
         width="~size_size"
@@ -69,7 +67,7 @@
         <rectangle
           id="rect_content"
           color2="#0d131a00"
-          color="#24417900"
+          color="#252f5300"
           gradient="vertical"
           round="8"
           flex_grow="1"
@@ -79,7 +77,7 @@
           <!-- radial gradient -->
           <rectangle
             position="absolute" width="100%" height="100%"
-            gradient="radial" color="#44BBFF22" color2="#00000000" />
+            gradient="radial" color="#44BBFF11" color2="#00000000" />
 
           <div
             id="content"
@@ -124,7 +122,7 @@
 
           <!-- top shine -->
           <div position="absolute" width="100%" height="100%" justify_content="center">
-            <rectangle position="absolute" width="99%" height="2" color="#FFFFFF66" round="4" />
+            <rectangle position="absolute" width="99%" height="2" color="#FFFFFF22" round="4" />
           </div>
 
           <!-- Left bottom side -->

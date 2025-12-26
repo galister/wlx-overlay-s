@@ -125,7 +125,7 @@ pub struct Games {
 	manifests: Vec<steam_utils::AppManifest>,
 }
 
-const BORDER_COLOR_DEFAULT: drawing::Color = drawing::Color::new(1.0, 1.0, 1.0, 0.3);
+const BORDER_COLOR_DEFAULT: drawing::Color = drawing::Color::new(0.0, 0.0, 0.0, 0.35);
 const BORDER_COLOR_HOVERED: drawing::Color = drawing::Color::new(1.0, 1.0, 1.0, 1.0);
 
 const GAME_COVER_SIZE_X: f32 = 140.0;
@@ -153,7 +153,7 @@ fn construct_game_cover(
 	let (widget_button, button) = components::button::construct(
 		ess,
 		components::button::Params {
-			color: Some(drawing::Color::new(1.0, 1.0, 1.0, 0.1)),
+			color: Some(drawing::Color::new(1.0, 1.0, 1.0, 0.0)),
 			border_color: Some(BORDER_COLOR_DEFAULT),
 			hover_border_color: Some(BORDER_COLOR_HOVERED),
 			round: WLength::Units(12.0),
@@ -216,8 +216,8 @@ fn construct_game_cover(
 	let (top_shine, _) = ess.layout.add_child(
 		widget_button.id,
 		rect_gradient(
-			drawing::Color::new(1.0, 1.0, 1.0, 0.25),
-			drawing::Color::new(1.0, 1.0, 1.0, 0.0),
+			drawing::Color::new(1.0, 1.0, 1.0, 0.2),
+			drawing::Color::new(1.0, 1.0, 1.0, 0.02),
 		),
 		rect_gradient_style(taffy::AlignSelf::Baseline, 0.05),
 	)?;
@@ -229,7 +229,7 @@ fn construct_game_cover(
 	ess.layout.add_child(
 		widget_button.id,
 		rect_gradient(
-			drawing::Color::new(1.0, 1.0, 1.0, 0.2),
+			drawing::Color::new(1.0, 1.0, 1.0, 0.15),
 			drawing::Color::new(1.0, 1.0, 1.0, 0.0),
 		),
 		rect_gradient_style(taffy::AlignSelf::Baseline, 0.5),
@@ -249,10 +249,10 @@ fn construct_game_cover(
 	ess.layout.add_child(
 		widget_button.id,
 		rect_gradient(
-			drawing::Color::new(0.0, 0.0, 0.0, 0.0),
-			drawing::Color::new(0.0, 0.0, 0.0, 0.5),
+			drawing::Color::new(0.0, 0.0, 0.0, 0.1),
+			drawing::Color::new(0.0, 0.0, 0.0, 0.9),
 		),
-		rect_gradient_style(taffy::AlignSelf::End, 0.1),
+		rect_gradient_style(taffy::AlignSelf::End, 0.05),
 	)?;
 
 	// request cover image data from the internet or disk cache
@@ -376,7 +376,7 @@ impl View {
 
 	fn mount_image(layout: &mut Layout, cell: &Cell, glyph: &CustomGlyphData) -> anyhow::Result<()> {
 		let image = WidgetImage::create(WidgetImageParams {
-			round: WLength::Units(12.0),
+			round: WLength::Units(10.0),
 			glyph_data: Some(glyph.clone()),
 			..Default::default()
 		});
@@ -413,7 +413,7 @@ impl View {
 					size: Some(16.0),
 					align: Some(HorizontalAlign::Center),
 					shadow: Some(TextShadow {
-						color: drawing::Color::new(0.0, 0.0, 0.0, 0.5),
+						color: drawing::Color::new(0.0, 0.0, 0.0, 1.0),
 						x: 2.0,
 						y: 2.0,
 					}),
