@@ -226,8 +226,12 @@ impl OverlayBackend for WayVRBackend {
     fn notify(
         &mut self,
         _app: &mut state::AppState,
-        _event_data: OverlayEventData,
+        event_data: OverlayEventData,
     ) -> anyhow::Result<()> {
+        if let OverlayEventData::IdAssigned(oid) = event_data {
+            let wayvr = &mut self.wayvr.borrow_mut().data;
+            wayvr.overlay_added(oid, self.window.clone());
+        }
         Ok(())
     }
 

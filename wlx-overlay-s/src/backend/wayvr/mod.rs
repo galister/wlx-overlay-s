@@ -353,10 +353,11 @@ impl WayVR {
                             continue;
                         };
 
-                        if let Some(oid) = self.state.window_to_overlay.get(&window_handle) {
+                        if let Some(oid) = self.state.window_to_overlay.remove(&window_handle) {
                             app.tasks.enqueue(TaskType::Overlay(OverlayTask::Drop(
-                                OverlaySelector::Id(*oid),
+                                OverlaySelector::Id(oid),
                             )));
+                            self.state.overlay_to_window.remove(oid);
                         }
 
                         self.state.wm.remove_window(window_handle);
@@ -388,6 +389,11 @@ impl WayVR {
         self.state
             .tasks
             .send(WayVRTask::ProcessTerminationRequest(process_handle));
+    }
+
+    pub fn overlay_added(&mut self, oid: OverlayID, window: window::WindowHandle) {
+        self.state.overlay_to_window.insert(oid, window);
+        self.state.window_to_overlay.insert(window, oid);
     }
 }
 

@@ -636,6 +636,12 @@ impl<T> OverlayWindowManager<T> {
             }
         }
 
+        self.overlays[oid]
+            .config
+            .backend
+            .notify(app, OverlayEventData::IdAssigned(oid))
+            .unwrap(); // IdAssigned not expected to fail
+
         if !shown && show_on_spawn {
             log::debug!("activating {name} due to show_on_spawn");
             self.overlays[oid].config.activate(app);
