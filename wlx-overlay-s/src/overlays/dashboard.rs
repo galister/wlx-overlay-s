@@ -106,7 +106,8 @@ impl DashFrontend {
         })
     }
 
-    fn update_layout(&mut self) -> anyhow::Result<()> {
+    fn update(&mut self) -> anyhow::Result<()> {
+        log::info!("update layout");
         self.inner.update(DASH_RES_VEC2.x, DASH_RES_VEC2.y, 0.0)
     }
 
@@ -128,7 +129,7 @@ impl OverlayBackend for DashFrontend {
         self.interaction_transform = Some(ui_transform(DASH_RES_U32A));
 
         if self.inner.layout.content_size.x * self.inner.layout.content_size.y != 0.0 {
-            self.update_layout()?;
+            self.update()?;
             self.initialized = true;
         }
         Ok(())
@@ -161,6 +162,10 @@ impl OverlayBackend for DashFrontend {
             .layout
             .update(DASH_RES_VEC2, self.timestep.alpha)?;
 
+        if let Err(e) = self.update() {
+            log::error!("uncaught exception: {e:?}");
+        }
+
         let globals = self.inner.layout.state.globals.clone(); // sorry
         let mut globals = globals.get();
 
@@ -173,7 +178,7 @@ impl OverlayBackend for DashFrontend {
         self.context.draw(
             &globals.font_system,
             &mut app.wgui_shared,
-            &mut rdr.cmd_buf_single(),
+            rdr.cmd_buf_single(),
             &primitives,
         )?;
         Ok(())
