@@ -100,6 +100,9 @@ uuid = { version = "1.19.0", features = ["v4", "fast-rng"], optional = true }
 wayland-client = { workspace = true, optional = true }
 ################################
 
+[build-dependencies]
+regex.workspace = true
+
 # TODO: rename "wayvr" feature to "wayland-server"
 [features]
 default = ["openvr", "openxr", "osc", "x11", "wayland", "wayvr"]
