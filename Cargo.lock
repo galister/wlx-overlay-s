@@ -7272,6 +7272,7 @@ dependencies = [
  "chrono-tz",
  "clap",
  "config",
+ "dash-frontend",
  "dbus",
  "futures",
  "glam",
