@@ -230,8 +230,6 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                         let _ = adjust_gain(&mut settings_mgr, channel, value);
                     }
                 },
-                #[cfg(feature = "wayvr")]
-                TaskType::WayVR(_action) => { /* TODO */ }
             }
         }
 

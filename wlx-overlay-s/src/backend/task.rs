@@ -13,9 +13,6 @@ use crate::{
     windowing::{OverlaySelector, window::OverlayWindowConfig},
 };
 
-#[cfg(feature = "wayvr")]
-use crate::backend::wayvr::WayVRAction;
-
 static TASK_AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(0);
 
 struct AppTask {
@@ -100,8 +97,6 @@ pub enum TaskType {
     Playspace(PlayspaceTask),
     #[cfg(feature = "openvr")]
     OpenVR(OpenVrTask),
-    #[cfg(feature = "wayvr")]
-    WayVR(WayVRAction),
 }
 
 #[derive(Deserialize, Clone, Copy)]

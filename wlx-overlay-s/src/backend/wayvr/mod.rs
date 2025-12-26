@@ -8,7 +8,6 @@ pub mod window;
 use anyhow::Context;
 use comp::Application;
 use process::ProcessVec;
-use serde::Deserialize;
 use slotmap::SecondaryMap;
 use smallvec::SmallVec;
 use smithay::{
@@ -122,10 +121,6 @@ pub struct WayVRState {
     overlay_to_window: SecondaryMap<OverlayID, window::WindowHandle>,
 }
 
-pub struct WayVR {
-    pub state: WayVRState,
-}
-
 pub enum MouseIndex {
     Left,
     Center,
@@ -136,7 +131,7 @@ pub enum TickTask {
     NewExternalProcess(ExternalProcessRequest), // Call WayVRCompositor::add_client after receiving this message
 }
 
-impl WayVR {
+impl WayVRState {
     #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
     pub fn new(
         gfx: Arc<WGfx>,
@@ -144,7 +139,7 @@ impl WayVR {
         config: Config,
         signals: SyncEventQueue<WayVRSignal>,
     ) -> anyhow::Result<Self> {
-        log::info!("Initializing WayVR");
+        log::info!("Initializing WayVR server");
         let display: wayland_server::Display<Application> = wayland_server::Display::new()?;
         let dh = display.handle();
         let compositor = compositor::CompositorState::new::<Application>(&dh);
@@ -235,7 +230,7 @@ impl WayVR {
 
         let time_start = get_millis();
 
-        let state = WayVRState {
+        Ok(WayVRState {
             time_start,
             manager: client::WayVRCompositor::new(state, display, seat_keyboard, seat_pointer)?,
             processes: ProcessVec::new(),
@@ -248,9 +243,7 @@ impl WayVR {
             mouse_freeze: Instant::now(),
             window_to_overlay: HashMap::new(),
             overlay_to_window: SecondaryMap::new(),
-        };
-
-        Ok(Self { state })
+        })
     }
 
     #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
@@ -258,7 +251,7 @@ impl WayVR {
         let mut tasks: Vec<TickTask> = Vec::new();
 
         app.ipc_server.tick(&mut ipc_server::TickParams {
-            wayland_state: &mut self.state,
+            wayland_state: self,
             input_state: &app.input_state,
             tasks: &mut tasks,
             signals: &app.wayvr_signals,
@@ -267,14 +260,14 @@ impl WayVR {
         // Tick all child processes
         let mut to_remove: SmallVec<[process::ProcessHandle; 2]> = SmallVec::new();
 
-        for (handle, process) in self.state.processes.iter_mut() {
+        for (handle, process) in self.processes.iter_mut() {
             if !process.is_running() {
                 to_remove.push(handle);
             }
         }
 
         for p_handle in &to_remove {
-            self.state.processes.remove(p_handle);
+            self.processes.remove(p_handle);
         }
 
         if !to_remove.is_empty() {
@@ -283,20 +276,20 @@ impl WayVR {
             ));
         }
 
-        while let Some(task) = self.state.tasks.read() {
+        while let Some(task) = self.tasks.read() {
             match task {
                 WayVRTask::NewExternalProcess(req) => {
                     tasks.push(TickTask::NewExternalProcess(req));
                 }
                 WayVRTask::NewToplevel(client_id, toplevel) => {
                     // Attach newly created toplevel surfaces to displays
-                    for client in &self.state.manager.clients {
+                    for client in &self.manager.clients {
                         if client.client.id() != client_id {
                             continue;
                         }
 
                         let Some(process_handle) =
-                            process::find_by_pid(&self.state.processes, client.pid)
+                            process::find_by_pid(&self.processes, client.pid)
                         else {
                             log::error!(
                                 "WayVR window creation failed: Unexpected process ID {}. It wasn't registered before.",
@@ -305,7 +298,7 @@ impl WayVR {
                             continue;
                         };
 
-                        let window_handle = self.state.wm.create_window(&toplevel, process_handle);
+                        let window_handle = self.wm.create_window(&toplevel, process_handle);
 
                         let title: Arc<str> = with_states(toplevel.wl_surface(), |states| {
                             states
@@ -323,7 +316,7 @@ impl WayVR {
                                     create_wl_window_overlay(
                                         title,
                                         app.xr_backend,
-                                        app.wayland_server.as_ref().unwrap().clone(),
+                                        app.wayvr_server.as_ref().unwrap().clone(),
                                         window_handle,
                                     )
                                     .inspect_err(|e| {
@@ -334,37 +327,34 @@ impl WayVR {
                             }),
                         )));
 
-                        //TODO: populate window_to_overlay
-
                         app.wayvr_signals.send(WayVRSignal::BroadcastStateChanged(
                             packet_server::WvrStateChanged::WindowCreated,
                         ));
                     }
                 }
                 WayVRTask::DropToplevel(client_id, toplevel) => {
-                    for client in &self.state.manager.clients {
+                    for client in &self.manager.clients {
                         if client.client.id() != client_id {
                             continue;
                         }
 
-                        let Some(window_handle) = self.state.wm.find_window_handle(&toplevel)
-                        else {
+                        let Some(window_handle) = self.wm.find_window_handle(&toplevel) else {
                             log::warn!("DropToplevel: Couldn't find matching window handle");
                             continue;
                         };
 
-                        if let Some(oid) = self.state.window_to_overlay.remove(&window_handle) {
+                        if let Some(oid) = self.window_to_overlay.remove(&window_handle) {
                             app.tasks.enqueue(TaskType::Overlay(OverlayTask::Drop(
                                 OverlaySelector::Id(oid),
                             )));
-                            self.state.overlay_to_window.remove(oid);
+                            self.overlay_to_window.remove(oid);
                         }
 
-                        self.state.wm.remove_window(window_handle);
+                        self.wm.remove_window(window_handle);
                     }
                 }
                 WayVRTask::ProcessTerminationRequest(process_handle) => {
-                    if let Some(process) = self.state.processes.get_mut(&process_handle) {
+                    if let Some(process) = self.processes.get_mut(&process_handle) {
                         process.terminate();
                     }
 
@@ -373,31 +363,28 @@ impl WayVR {
             }
         }
 
-        self.state.manager.tick_wayland(&mut self.state.processes)?;
+        self.manager.tick_wayland(&mut self.processes)?;
 
-        if self.state.ticks.is_multiple_of(200) {
-            self.state.manager.cleanup_clients();
-            self.state.manager.cleanup_handles();
+        if self.ticks.is_multiple_of(200) {
+            self.manager.cleanup_clients();
+            self.manager.cleanup_handles();
         }
 
-        self.state.ticks += 1;
+        self.ticks += 1;
 
         Ok(tasks)
     }
 
     pub fn terminate_process(&mut self, process_handle: process::ProcessHandle) {
-        self.state
-            .tasks
+        self.tasks
             .send(WayVRTask::ProcessTerminationRequest(process_handle));
     }
 
     pub fn overlay_added(&mut self, oid: OverlayID, window: window::WindowHandle) {
-        self.state.overlay_to_window.insert(oid, window);
-        self.state.window_to_overlay.insert(window, oid);
+        self.overlay_to_window.insert(oid, window);
+        self.window_to_overlay.insert(window, oid);
     }
-}
 
-impl WayVRState {
     pub fn send_mouse_move(&mut self, handle: window::WindowHandle, x: u32, y: u32) {
         if self.mouse_freeze > Instant::now() {
             return;
@@ -542,25 +529,6 @@ fn generate_auth_key() -> String {
 pub struct SpawnProcessResult {
     pub auth_key: String,
     pub child: std::process::Child,
-}
-
-#[derive(Deserialize, Clone)]
-pub enum WayVRDisplayClickAction {
-    ToggleVisibility,
-    Reset,
-}
-
-#[derive(Deserialize, Clone)]
-pub enum WayVRAction {
-    AppClick {
-        catalog_name: Arc<str>,
-        app_name: Arc<str>,
-    },
-    DisplayClick {
-        display_name: Arc<str>,
-        action: WayVRDisplayClickAction,
-    },
-    ToggleDashboard,
 }
 
 struct SurfaceBufWithImageContainer {

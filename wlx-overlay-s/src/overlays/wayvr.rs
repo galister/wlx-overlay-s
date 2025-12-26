@@ -1,8 +1,7 @@
 use glam::{Affine2, Affine3A, Quat, Vec3, vec3};
 use smithay::wayland::compositor::with_states;
-use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 use vulkano::image::view::ImageView;
-use wgui::gfx::WGfx;
 use wlx_capture::frame::MouseMeta;
 use wlx_common::{
     overlays::{BackendAttrib, BackendAttribValue, StereoMode},
@@ -13,15 +12,13 @@ use crate::{
     backend::{
         XrBackend,
         input::{self, HoverResult},
-        wayvr::{self, SurfaceBufWithImage, WayVR},
+        wayvr::{self, SurfaceBufWithImage, WayVRState},
     },
-    graphics::{ExtentExt, WGfxExtras},
-    ipc::{event_queue::SyncEventQueue, signal::WayVRSignal},
+    graphics::ExtentExt,
     overlays::screen::capture::ScreenPipeline,
     state::{self, AppState},
     subsystem::{hid::WheelDelta, input::KeyboardFocus},
     windowing::{
-        OverlayID,
         backend::{
             FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
             ui_transform,
@@ -30,29 +27,10 @@ use crate::{
     },
 };
 
-pub struct WayVRData {
-    pub window_handle_map: HashMap<wayvr::window::WindowHandle, OverlayID>,
-    pub data: WayVR,
-}
-
-impl WayVRData {
-    pub fn new(
-        gfx: Arc<WGfx>,
-        gfx_extras: &WGfxExtras,
-        config: wayvr::Config,
-        signals: SyncEventQueue<WayVRSignal>,
-    ) -> anyhow::Result<Self> {
-        Ok(Self {
-            window_handle_map: HashMap::default(),
-            data: WayVR::new(gfx, &gfx_extras, config, signals)?,
-        })
-    }
-}
-
 pub fn create_wl_window_overlay(
     name: Arc<str>,
     xr_backend: XrBackend,
-    wayvr: Rc<RefCell<WayVRData>>,
+    wayvr: Rc<RefCell<WayVRState>>,
     window: wayvr::window::WindowHandle,
 ) -> anyhow::Result<OverlayWindowConfig> {
     Ok(OverlayWindowConfig {
@@ -83,7 +61,7 @@ pub struct WayVRBackend {
     pipeline: Option<ScreenPipeline>,
     interaction_transform: Option<Affine2>,
     window: wayvr::window::WindowHandle,
-    wayvr: Rc<RefCell<WayVRData>>,
+    wayvr: Rc<RefCell<WayVRState>>,
     just_resumed: bool,
     meta: Option<FrameMeta>,
     stereo: Option<StereoMode>,
@@ -94,7 +72,7 @@ impl WayVRBackend {
     fn new(
         name: Arc<str>,
         xr_backend: XrBackend,
-        wayvr: Rc<RefCell<WayVRData>>,
+        wayvr: Rc<RefCell<WayVRState>>,
         window: wayvr::window::WindowHandle,
     ) -> anyhow::Result<Self> {
         Ok(Self {
@@ -130,8 +108,8 @@ impl OverlayBackend for WayVRBackend {
     }
 
     fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
-        let wayvr = &self.wayvr.borrow().data;
-        let Some(window) = wayvr.state.wm.windows.get(&self.window) else {
+        let wayvr = &self.wayvr.borrow();
+        let Some(window) = wayvr.wm.windows.get(&self.window) else {
             log::debug!(
                 "{:?}: WayVR overlay without matching window entry",
                 self.name
@@ -196,9 +174,8 @@ impl OverlayBackend for WayVRBackend {
     ) -> anyhow::Result<()> {
         let image = self.cur_image.as_ref().unwrap().clone();
 
-        let wayvr = &self.wayvr.borrow().data;
+        let wayvr = &self.wayvr.borrow();
         let mouse = wayvr
-            .state
             .wm
             .mouse
             .as_ref()
@@ -229,19 +206,19 @@ impl OverlayBackend for WayVRBackend {
         event_data: OverlayEventData,
     ) -> anyhow::Result<()> {
         if let OverlayEventData::IdAssigned(oid) = event_data {
-            let wayvr = &mut self.wayvr.borrow_mut().data;
+            let wayvr = &mut self.wayvr.borrow_mut();
             wayvr.overlay_added(oid, self.window.clone());
         }
         Ok(())
     }
 
     fn on_hover(&mut self, _app: &mut state::AppState, hit: &input::PointerHit) -> HoverResult {
-        let wayvr = &mut self.wayvr.borrow_mut().data;
+        let wayvr = &mut self.wayvr.borrow_mut();
 
         if let Some(meta) = self.meta.as_ref() {
             let x = ((hit.uv.x * (meta.extent[0] as f32)) as u32).max(0);
             let y = ((hit.uv.y * (meta.extent[1] as f32)) as u32).max(0);
-            wayvr.state.send_mouse_move(self.window, x, y);
+            wayvr.send_mouse_move(self.window, x, y);
         }
 
         HoverResult {
@@ -264,11 +241,11 @@ impl OverlayBackend for WayVRBackend {
                 None
             }
         } {
-            let wayvr = &mut self.wayvr.borrow_mut().data;
+            let wayvr = &mut self.wayvr.borrow_mut();
             if pressed {
-                wayvr.state.send_mouse_down(self.window, index);
+                wayvr.send_mouse_down(self.window, index);
             } else {
-                wayvr.state.send_mouse_up(index);
+                wayvr.send_mouse_up(index);
             }
         }
     }
@@ -279,7 +256,7 @@ impl OverlayBackend for WayVRBackend {
         _hit: &input::PointerHit,
         delta: WheelDelta,
     ) {
-        self.wayvr.borrow_mut().data.state.send_mouse_scroll(delta);
+        self.wayvr.borrow_mut().send_mouse_scroll(delta);
     }
 
     fn get_interaction_transform(&mut self) -> Option<Affine2> {

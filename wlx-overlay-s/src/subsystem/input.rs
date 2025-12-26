@@ -1,7 +1,7 @@
 use super::hid::{self, HidProvider, VirtualKey};
 
 #[cfg(feature = "wayvr")]
-use crate::overlays::wayvr::WayVRData;
+use crate::backend::wayvr::WayVRState;
 use crate::subsystem::hid::XkbKeymap;
 #[cfg(feature = "wayvr")]
 use std::{cell::RefCell, rc::Rc};
@@ -19,7 +19,7 @@ pub struct HidWrapper {
     pub inner: Box<dyn HidProvider>,
     pub keymap: Option<XkbKeymap>,
     #[cfg(feature = "wayvr")]
-    pub wayvr: Option<Rc<RefCell<WayVRData>>>, // Dynamically created if requested
+    pub wayvr: Option<Rc<RefCell<WayVRState>>>, // Dynamically created if requested
 }
 
 impl HidWrapper {
@@ -34,12 +34,10 @@ impl HidWrapper {
     }
 
     #[cfg(feature = "wayvr")]
-    pub fn set_wayvr(&mut self, wayvr: Rc<RefCell<WayVRData>>) {
+    pub fn set_wayvr(&mut self, wayvr: Rc<RefCell<WayVRState>>) {
         if let Some(keymap) = self.keymap.take() {
             let _ = wayvr
                 .borrow_mut()
-                .data
-                .state
                 .set_keymap(&keymap.inner)
                 .inspect_err(|e| log::error!("Could not set WayVR keymap: {e:?}"));
         }
@@ -53,7 +51,7 @@ impl HidWrapper {
             {
                 #[cfg(feature = "wayvr")]
                 if let Some(wayvr) = &self.wayvr {
-                    wayvr.borrow_mut().data.state.send_key(key as u32, down);
+                    wayvr.borrow_mut().send_key(key as u32, down);
                 }
             }
         }
@@ -64,8 +62,6 @@ impl HidWrapper {
         if let Some(wayvr) = &self.wayvr {
             let _ = wayvr
                 .borrow_mut()
-                .data
-                .state
                 .set_keymap(&keymap.inner)
                 .inspect_err(|e| log::error!("Could not set WayVR keymap: {e:?}"));
         } else {
@@ -85,7 +81,7 @@ impl HidWrapper {
             {
                 #[cfg(feature = "wayvr")]
                 if let Some(wayvr) = &self.wayvr {
-                    wayvr.borrow_mut().data.state.set_modifiers(mods);
+                    wayvr.borrow_mut().set_modifiers(mods);
                 }
             }
         }

@@ -26,9 +26,6 @@ use crate::{
     windowing::OverlaySelector,
 };
 
-#[cfg(feature = "wayvr")]
-use crate::backend::wayvr::WayVRAction;
-
 pub const BUTTON_EVENTS: [(
     &str,
     EventListenerKind,
@@ -200,8 +197,7 @@ pub(super) fn setup_custom_button<S: 'static>(
                     return Ok(EventResult::Pass);
                 }
 
-                app.tasks
-                    .enqueue(TaskType::WayVR(WayVRAction::ToggleDashboard));
+                //FIXME
                 Ok(EventResult::Consumed)
             }),
             "::SetToggle" => {

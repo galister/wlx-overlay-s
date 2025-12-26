@@ -15,14 +15,13 @@ use wlx_common::{common::LeftRight, config::GeneralConfig, windowing::Positionin
 
 use crate::{
     backend::{
-        task::{TaskContainer, TaskType},
-        wayvr::{self, WayVRAction},
+        task::TaskContainer,
+        wayvr::{self, WayVRState},
     },
     config::load_config_with_conf_d,
     config_io,
     graphics::WGfxExtras,
     ipc::{event_queue::SyncEventQueue, signal::WayVRSignal},
-    overlays::wayvr::WayVRData,
 };
 
 // Flat version of RelativeTo
@@ -206,7 +205,7 @@ impl WayVRConfig {
         config: &GeneralConfig,
         tasks: &mut TaskContainer,
         signals: SyncEventQueue<WayVRSignal>,
-    ) -> anyhow::Result<Rc<RefCell<WayVRData>>> {
+    ) -> anyhow::Result<Rc<RefCell<WayVRState>>> {
         let primary_count = self
             .displays
             .iter()
@@ -222,15 +221,12 @@ impl WayVRConfig {
                 if let Some(b) = app.shown_at_start
                     && b
                 {
-                    tasks.enqueue(TaskType::WayVR(WayVRAction::AppClick {
-                        catalog_name: Arc::from(catalog_name.as_str()),
-                        app_name: Arc::from(app.name.as_str()),
-                    }));
+                    //CLEANUP: is this needed?
                 }
             }
         }
 
-        Ok(Rc::new(RefCell::new(WayVRData::new(
+        Ok(Rc::new(RefCell::new(WayVRState::new(
             gfx,
             gfx_extras,
             Self::get_wayvr_config(config, self)?,
