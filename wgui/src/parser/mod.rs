@@ -9,7 +9,7 @@ mod widget_rectangle;
 mod widget_sprite;
 
 use crate::{
-	assets::{normalize_path, AssetPath, AssetPathOwned},
+	assets::{AssetPath, AssetPathOwned, normalize_path},
 	components::{Component, ComponentWeak},
 	drawing::{self},
 	globals::WguiGlobals,
@@ -183,7 +183,7 @@ impl Fetchable for ParserData {
 			.ok_or_else(|| anyhow::anyhow!("fetch_widget_as({id}): widget not found"))?;
 
 		let casted = widget
-			.get_as_mut::<T>()
+			.get_as::<T>()
 			.ok_or_else(|| anyhow::anyhow!("fetch_widget_as({id}): failed to cast"))?;
 
 		Ok(casted)
@@ -1002,7 +1002,7 @@ impl CustomAttribsInfo<'_> {
 	}
 
 	pub fn get_widget_as<T: 'static>(&self) -> Option<RefMut<'_, T>> {
-		self.widgets.get(self.widget_id)?.get_as_mut::<T>()
+		self.widgets.get(self.widget_id)?.get_as::<T>()
 	}
 
 	pub fn get_value(&self, attrib_name: &str) -> Option<Rc<str>> {

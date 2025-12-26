@@ -14,6 +14,7 @@ use crate::{
 	widget::{self, EventParams, EventResult, WidgetObj, WidgetState, WidgetStateFlags, div::WidgetDiv},
 };
 
+use anyhow::Context;
 use glam::{Vec2, vec2};
 use slotmap::{HopSlotMap, SecondaryMap, new_key_type};
 use taffy::{NodeId, TaffyTree, TraversePartialTree};
@@ -31,8 +32,12 @@ impl Widget {
 		Self(Rc::new(RefCell::new(widget_state)))
 	}
 
-	pub fn get_as_mut<T: 'static>(&self) -> Option<RefMut<'_, T>> {
+	pub fn get_as<T: 'static>(&self) -> Option<RefMut<'_, T>> {
 		RefMut::filter_map(self.0.borrow_mut(), |w| w.obj.get_as_mut::<T>()).ok()
+	}
+
+	pub fn cast<T: 'static>(&self) -> anyhow::Result<RefMut<'_, T>> {
+		self.get_as().context("Widget cast failed")
 	}
 
 	pub fn downgrade(&self) -> WeakWidget {
@@ -65,7 +70,7 @@ impl WidgetMap {
 	}
 
 	pub fn get_as<T: 'static>(&self, handle: WidgetID) -> Option<RefMut<'_, T>> {
-		self.0.get(handle)?.get_as_mut::<T>()
+		self.0.get(handle)?.get_as::<T>()
 	}
 
 	pub fn get(&self, handle: WidgetID) -> Option<&Widget> {
@@ -97,7 +102,7 @@ impl WidgetMap {
 			return;
 		};
 
-		if let Some(mut casted) = widget.get_as_mut::<WIDGET>() {
+		if let Some(mut casted) = widget.get_as::<WIDGET>() {
 			func(&mut casted);
 		}
 	}

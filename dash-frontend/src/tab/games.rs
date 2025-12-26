@@ -23,10 +23,7 @@ impl Tab for TabGames {
 	}
 
 	fn update(&mut self, frontend: &mut Frontend) -> anyhow::Result<()> {
-		self
-			.view_game_list
-			.update(&mut frontend.layout, &mut frontend.executor)?;
-
+		self.view_game_list.update(&mut frontend.layout, &frontend.executor)?;
 		Ok(())
 	}
 }
@@ -46,6 +43,7 @@ impl TabGames {
 		let game_list_parent = state.get_widget_id("game_list_parent")?;
 
 		let view_game_list = game_list::View::new(game_list::Params {
+			executor: frontend.executor.clone(),
 			frontend_tasks: frontend.tasks.clone(),
 			globals: frontend.layout.state.globals.clone(),
 			layout: &mut frontend.layout,

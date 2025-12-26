@@ -40,7 +40,7 @@ fn configure_label_hello(common: &mut CallbackDataCommon, label_hello: Widget, s
 		common.i18n().translate("HELLO").to_string()
 	};
 
-	let mut label_hello = label_hello.get_as_mut::<WidgetLabel>().unwrap();
+	let mut label_hello = label_hello.get_as::<WidgetLabel>().unwrap();
 	label_hello.set_text(common, Translation::from_raw_text(&translated));
 }
 

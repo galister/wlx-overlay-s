@@ -14,7 +14,6 @@
       <rectangle
         position="relative"
         color="#000000"
-        round="4"
         width="100%" height="48"
       >
 

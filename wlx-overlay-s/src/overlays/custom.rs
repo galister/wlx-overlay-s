@@ -105,7 +105,7 @@ fn apply_custom_command(
                 label.set_text(&mut com, Translation::from_raw_text(text));
             } else if let Ok(button) = panel
                 .parser_state
-                .fetch_component_as::<ComponentButton>(&element)
+                .fetch_component_as::<ComponentButton>(element)
             {
                 button.set_text(&mut com, Translation::from_raw_text(text));
             } else {
@@ -118,15 +118,15 @@ fn apply_custom_command(
                 .fetch_widget(&panel.layout.state, element)
             {
                 let content = CustomGlyphContent::from_assets(
-                    &mut app.wgui_globals,
-                    wgui::assets::AssetPath::File(&path),
+                    &app.wgui_globals,
+                    wgui::assets::AssetPath::File(path),
                 )
                 .context("Could not load content from supplied path.")?;
                 let data = CustomGlyphData::new(content);
 
-                if let Some(mut sprite) = pair.widget.get_as_mut::<WidgetSprite>() {
+                if let Some(mut sprite) = pair.widget.get_as::<WidgetSprite>() {
                     sprite.set_content(&mut com, Some(data));
-                } else if let Some(mut image) = pair.widget.get_as_mut::<WidgetImage>() {
+                } else if let Some(mut image) = pair.widget.get_as::<WidgetImage>() {
                     image.set_content(&mut com, Some(data));
                 } else {
                     anyhow::bail!("No <sprite> or <image> with such id.");
@@ -136,18 +136,18 @@ fn apply_custom_command(
             }
         }
         ModifyPanelCommand::SetColor(color) => {
-            let color = parse_color_hex(&color)
+            let color = parse_color_hex(color)
                 .context("Invalid color format, must be a html hex color!")?;
 
             if let Ok(pair) = panel
                 .parser_state
                 .fetch_widget(&panel.layout.state, element)
             {
-                if let Some(mut rect) = pair.widget.get_as_mut::<WidgetRectangle>() {
+                if let Some(mut rect) = pair.widget.get_as::<WidgetRectangle>() {
                     rect.set_color(&mut com, color);
-                } else if let Some(mut label) = pair.widget.get_as_mut::<WidgetLabel>() {
+                } else if let Some(mut label) = pair.widget.get_as::<WidgetLabel>() {
                     label.set_color(&mut com, color, true);
-                } else if let Some(mut sprite) = pair.widget.get_as_mut::<WidgetSprite>() {
+                } else if let Some(mut sprite) = pair.widget.get_as::<WidgetSprite>() {
                     sprite.set_color(&mut com, color);
                 } else {
                     anyhow::bail!("No <rectangle> or <label> or <sprite> with such id.");
@@ -159,7 +159,7 @@ fn apply_custom_command(
         ModifyPanelCommand::SetVisible(visible) => {
             let wid = panel
                 .parser_state
-                .get_widget_id(&element)
+                .get_widget_id(element)
                 .context("No widget with such id.")?;
 
             let display = if *visible {

@@ -340,6 +340,7 @@ fn register_event_mouse_press(state: Rc<RefCell<State>>, listeners: &mut EventLi
 			if state.hovered {
 				state.down = true;
 				state.last_pressed = Instant::now();
+				state.active_tooltip = None;
 				Ok(EventResult::Consumed)
 			} else {
 				Ok(EventResult::Pass)

@@ -26,21 +26,16 @@ enum Task {
 }
 
 struct State {
-	launcher: Option<(PopupHandle, views::app_launcher::View)>,
+	view_launcher: Option<(PopupHandle, views::app_launcher::View)>,
 }
 
 pub struct TabApps {
 	#[allow(dead_code)]
-	pub parser_state: ParserState,
+	parser_state: ParserState,
 
-	#[allow(dead_code)]
 	state: Rc<RefCell<State>>,
-
-	#[allow(dead_code)]
 	entries: Vec<DesktopEntry>,
-	#[allow(dead_code)]
 	app_list: AppList,
-
 	tasks: Tasks<Task>,
 }
 
@@ -54,11 +49,11 @@ impl Tab for TabApps {
 
 		for task in self.tasks.drain() {
 			match task {
-				Task::CloseLauncher => state.launcher = None,
+				Task::CloseLauncher => state.view_launcher = None,
 			}
 		}
 
-		if let Some((_, launcher)) = &mut state.launcher {
+		if let Some((_, launcher)) = &mut state.view_launcher {
 			launcher.update(&mut frontend.layout, &mut frontend.interface)?;
 		}
 		Ok(())
@@ -105,7 +100,7 @@ fn on_app_click(
 						on_launched,
 					})?;
 
-					state.borrow_mut().launcher = Some((data.handle, view));
+					state.borrow_mut().view_launcher = Some((data.handle, view));
 					Ok(())
 				})
 			},
@@ -129,7 +124,7 @@ impl TabApps {
 		let globals = frontend.layout.state.globals.clone();
 
 		let tasks = Tasks::new();
-		let state = Rc::new(RefCell::new(State { launcher: None }));
+		let state = Rc::new(RefCell::new(State { view_launcher: None }));
 
 		let mut parser_state = wgui::parser::parse_from_assets(doc_params, &mut frontend.layout, parent_id)?;
 		let app_list_parent = parser_state.fetch_widget(&frontend.layout.state, "app_list_parent")?;

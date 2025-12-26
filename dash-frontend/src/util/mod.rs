@@ -1,4 +1,4 @@
-pub mod cover_art_fetcher;
+pub mod cached_fetcher;
 pub mod desktop_finder;
 pub mod http_client;
 pub mod pactl_wrapper;

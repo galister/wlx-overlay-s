@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use wgui::{
 	assets::AssetPath,
@@ -34,43 +34,51 @@ use wgui::{
 use crate::{
 	frontend::{FrontendTask, FrontendTasks},
 	util::{
-		cover_art_fetcher::{self, CoverArt},
-		popup_manager::MountPopupParams,
+		cached_fetcher::{self, CoverArt},
+		popup_manager::{MountPopupParams, PopupHandle},
 		steam_utils::{self, AppID, AppManifest, SteamUtils},
 		various::AsyncExecutor,
 	},
+	views::{self, game_launcher},
 };
 
 #[derive(Clone)]
 enum Task {
 	AppManifestClicked(steam_utils::AppManifest),
 	SetCoverArt((AppID, Rc<CoverArt>)),
+	CloseLauncher,
 	Refresh,
 }
 
 pub struct Params<'a> {
 	pub globals: WguiGlobals,
+	pub executor: AsyncExecutor,
 	pub frontend_tasks: FrontendTasks,
 	pub layout: &'a mut Layout,
 	pub parent_id: WidgetID,
 }
 
-struct Cell {
+pub struct Cell {
 	image_parent: WidgetID,
 	manifest: AppManifest,
 }
 
+struct State {
+	view_launcher: Option<(PopupHandle, views::game_launcher::View)>,
+}
+
 pub struct View {
 	#[allow(dead_code)]
-	pub parser_state: ParserState,
+	parser_state: ParserState,
 	tasks: Tasks<Task>,
 	frontend_tasks: FrontendTasks,
 	globals: WguiGlobals,
 	id_list_parent: WidgetID,
 	steam_utils: steam_utils::SteamUtils,
-
 	cells: HashMap<AppID, Cell>,
 	img_placeholder: Option<CustomGlyphData>,
+	executor: AsyncExecutor,
+	state: Rc<RefCell<State>>,
 }
 
 impl View {
@@ -99,6 +107,8 @@ impl View {
 			steam_utils,
 			cells: HashMap::new(),
 			img_placeholder: None,
+			state: Rc::new(RefCell::new(State { view_launcher: None })),
+			executor: params.executor,
 		})
 	}
 
@@ -113,8 +123,14 @@ impl View {
 					Task::Refresh => self.refresh(layout, executor)?,
 					Task::AppManifestClicked(manifest) => self.action_app_manifest_clicked(manifest)?,
 					Task::SetCoverArt((app_id, cover_art)) => self.action_set_cover_art(layout, &app_id, cover_art)?,
+					Task::CloseLauncher => self.state.borrow_mut().view_launcher = None,
 				}
 			}
+		}
+
+		let mut state = self.state.borrow_mut();
+		if let Some((_, view)) = &mut state.view_launcher {
+			view.update(layout)?;
 		}
 
 		Ok(())
@@ -131,8 +147,12 @@ const BORDER_COLOR_HOVERED: drawing::Color = drawing::Color::new(1.0, 1.0, 1.0, 
 const GAME_COVER_SIZE_X: f32 = 140.0;
 const GAME_COVER_SIZE_Y: f32 = 210.0;
 
-async fn request_cover_image(executor: AsyncExecutor, manifest: steam_utils::AppManifest, tasks: Tasks<Task>) {
-	let cover_art = match cover_art_fetcher::request_image(executor, manifest.app_id.clone()).await {
+async fn request_cover_image(
+	executor: AsyncExecutor,
+	manifest: steam_utils::AppManifest,
+	on_loaded: Box<dyn FnOnce(CoverArt)>,
+) {
+	let cover_art = match cached_fetcher::request_image(executor, manifest.app_id.clone()).await {
 		Ok(cover_art) => cover_art,
 		Err(e) => {
 			log::error!("request_cover_image failed: {:?}", e);
@@ -140,15 +160,15 @@ async fn request_cover_image(executor: AsyncExecutor, manifest: steam_utils::App
 		}
 	};
 
-	tasks.push(Task::SetCoverArt((manifest.app_id, Rc::from(cover_art))));
+	on_loaded(cover_art)
 }
 
-fn construct_game_cover(
+pub fn construct_game_cover(
 	ess: &mut ConstructEssentials,
 	executor: &AsyncExecutor,
-	tasks: &Tasks<Task>,
 	_globals: &WguiGlobals,
 	manifest: &steam_utils::AppManifest,
+	on_loaded: Box<dyn FnOnce(CoverArt)>,
 ) -> anyhow::Result<(WidgetPair, Rc<ComponentButton>, Cell)> {
 	let (widget_button, button) = components::button::construct(
 		ess,
@@ -257,7 +277,7 @@ fn construct_game_cover(
 
 	// request cover image data from the internet or disk cache
 	executor
-		.spawn(request_cover_image(executor.clone(), manifest.clone(), tasks.clone()))
+		.spawn(request_cover_image(executor.clone(), manifest.clone(), on_loaded))
 		.detach();
 
 	Ok((
@@ -279,7 +299,15 @@ fn fill_game_list(
 	tasks: &Tasks<Task>,
 ) -> anyhow::Result<()> {
 	for manifest in &games.manifests {
-		let (_, button, cell) = construct_game_cover(ess, executor, tasks, globals, manifest)?;
+		let on_loaded = {
+			let app_id = manifest.app_id.clone();
+			let tasks = tasks.clone();
+			move |cover_art: CoverArt| {
+				tasks.push(Task::SetCoverArt((app_id, Rc::from(cover_art))));
+			}
+		};
+
+		let (_, button, cell) = construct_game_cover(ess, executor, globals, manifest, Box::new(on_loaded))?;
 
 		button.on_click({
 			let tasks = tasks.clone();
@@ -352,8 +380,29 @@ impl View {
 		self.frontend_tasks.push(FrontendTask::MountPopup(MountPopupParams {
 			title: Translation::from_raw_text(&manifest.name),
 			on_content: {
-				Rc::new(move |_data| {
-					// todo
+				let state = self.state.clone();
+				let tasks = self.tasks.clone();
+				let executor = self.executor.clone();
+				let globals = self.globals.clone();
+				let frontend_tasks = self.frontend_tasks.clone();
+
+				Rc::new(move |data| {
+					let on_launched = {
+						let tasks = tasks.clone();
+						Box::new(move || tasks.push(Task::CloseLauncher))
+					};
+
+					let view = game_launcher::View::new(game_launcher::Params {
+						manifest: manifest.clone(),
+						executor: executor.clone(),
+						globals: &globals,
+						layout: data.layout,
+						parent_id: data.id_content,
+						frontend_tasks: &frontend_tasks,
+						on_launched,
+					})?;
+
+					state.borrow_mut().view_launcher = Some((data.handle, view));
 					Ok(())
 				})
 			},
