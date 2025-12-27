@@ -1995,7 +1995,7 @@ dependencies = [
 [[package]]
 name = "freedesktop"
 version = "0.0.3"
-source = "git+https://github.com/galister/freedesktop.git?rev=2c1e653#2c1e653afcd025c3254a25dcdd5e8750e263eebf"
+source = "git+https://github.com/galister/freedesktop.git?rev=8dd020d#8dd020df81770872065a48b922413471db5606f0"
 dependencies = [
  "freedesktop-apps",
  "freedesktop-core",
@@ -2004,7 +2004,7 @@ dependencies = [
 [[package]]
 name = "freedesktop-apps"
 version = "0.0.3"
-source = "git+https://github.com/galister/freedesktop.git?rev=2c1e653#2c1e653afcd025c3254a25dcdd5e8750e263eebf"
+source = "git+https://github.com/galister/freedesktop.git?rev=8dd020d#8dd020df81770872065a48b922413471db5606f0"
 dependencies = [
  "freedesktop-core",
  "libc",
@@ -2014,7 +2014,7 @@ dependencies = [
 [[package]]
 name = "freedesktop-core"
 version = "0.0.3"
-source = "git+https://github.com/galister/freedesktop.git?rev=2c1e653#2c1e653afcd025c3254a25dcdd5e8750e263eebf"
+source = "git+https://github.com/galister/freedesktop.git?rev=8dd020d#8dd020df81770872065a48b922413471db5606f0"
 dependencies = [
  "dirs",
 ]
@@ -2737,9 +2737,9 @@ dependencies = [
 
 [[package]]
 name = "itoa"
-version = "1.0.16"
+version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ee5b5339afb4c41626dde77b7a611bd4f2c202b897852b4bcf5d03eddc61010"
+checksum = "92ecc6618181def0457392ccd0ee51198e065e016d1d527a7ac1b6dc7c1f09d2"
 
 [[package]]
 name = "jiff"
@@ -2933,13 +2933,13 @@ dependencies = [
 
 [[package]]
 name = "libredox"
-version = "0.1.11"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df15f6eac291ed1cf25865b1ee60399f57e7c227e7f51bdbd4c5270396a9ed50"
+checksum = "3d0b95e02c851351f877147b7deea7b1afb1df71b63aa5f8270716e0c5720616"
 dependencies = [
  "bitflags 2.10.0",
  "libc",
- "redox_syscall 0.6.0",
+ "redox_syscall 0.7.0",
 ]
 
 [[package]]
@@ -4441,9 +4441,9 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec96166dafa0886eb81fe1c0a388bece180fbef2135f97c1e2cf8302e74b43b5"
+checksum = "49f3fe0889e69e2ae9e41f4d6c4c0181701d00e4697b356fb1f74173a5e0ee27"
 dependencies = [
  "bitflags 2.10.0",
 ]
@@ -4687,9 +4687,9 @@ dependencies = [
 
 [[package]]
 name = "ryu"
-version = "1.0.21"
+version = "1.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62049b2877bf12821e8f9ad256ee38fdc31db7387ec2d3b3f403024de2034aea"
+checksum = "a50f4cf475b65d88e057964e0e9bb1f0aa9bbb2036dc65c64596b42932536984"
 
 [[package]]
 name = "same-file"
@@ -4819,9 +4819,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.147"
+version = "1.0.148"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6af14725505314343e673e9ecb7cd7e8a36aa9791eb936235a3567cc31447ae4"
+checksum = "3084b546a1dd6289475996f182a22aba973866ea8e8b02c51d9f46b1336a22da"
 dependencies = [
  "itoa",
  "memchr",
@@ -7271,9 +7271,9 @@ dependencies = [
 
 [[package]]
 name = "zmij"
-version = "0.1.10"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4af59da1029247450b54ba43e0b62c8e376582464bbe5504dd525fe521e7e8fd"
+checksum = "e6d6085d62852e35540689d1f97ad663e3971fc19cf5eceab364d62c646ea167"
 
 [[package]]
 name = "zune-core"

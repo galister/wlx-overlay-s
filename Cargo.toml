@@ -26,7 +26,7 @@ resolver = "3"
 anyhow = "1.0.100"
 glam = { version = "0.30.9", features = ["mint", "serde"] }
 clap = { version = "4.5.53", features = ["derive"] }
-freedesktop = { git = "https://github.com/galister/freedesktop.git", rev = "2c1e653", default-features = false, features = ["core"] }
+freedesktop = { git = "https://github.com/galister/freedesktop.git", rev = "8dd020d", default-features = false, features = ["core"] }
 # freedesktop = { version = "0.0.3", default-features = false, features = ["core"] }
 idmap = "0.2.2"
 idmap-derive = "0.2.22"
