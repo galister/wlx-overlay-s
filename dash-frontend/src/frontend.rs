@@ -130,6 +130,9 @@ impl Frontend {
 
 		let timestep = Timestep::new(60.0);
 
+		let mut desktop_finder = DesktopFinder::new();
+		desktop_finder.refresh();
+
 		let mut frontend = Self {
 			layout,
 			state,
@@ -149,7 +152,7 @@ impl Frontend {
 			window_audio_settings: WguiWindow::default(),
 			view_audio_settings: None,
 			executor: Rc::new(smol::LocalExecutor::new()),
-			desktop_finder: DesktopFinder::new(),
+			desktop_finder,
 		};
 
 		// init some things first

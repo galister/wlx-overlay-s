@@ -1,7 +1,14 @@
-use std::{collections::HashMap, ffi::OsStr, rc::Rc};
+use std::{collections::HashMap, ffi::OsStr, rc::Rc, sync::Arc, thread::JoinHandle, time::Instant};
 
 use freedesktop::{xdg_data_dirs, xdg_data_home, ApplicationEntry};
 use serde::{Deserialize, Serialize};
+
+struct DesktopEntryOwned {
+	exec_path: String,
+	exec_args: String,
+	app_name: String,
+	icon_path: Option<String>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DesktopEntry {
@@ -11,6 +18,17 @@ pub struct DesktopEntry {
 	pub icon_path: Option<Rc<str>>,
 }
 
+impl From<DesktopEntryOwned> for DesktopEntry {
+	fn from(value: DesktopEntryOwned) -> Self {
+		Self {
+			exec_path: value.exec_path.into(),
+			exec_args: value.exec_args.into(),
+			app_name: value.app_name.into(),
+			icon_path: value.icon_path.map(|x| x.into()),
+		}
+	}
+}
+
 const CMD_BLACKLIST: [&str; 1] = [
 	"lsp-plugins", // LSP Plugins collection. They clutter the application list a lot
 ];
@@ -18,9 +36,10 @@ const CMD_BLACKLIST: [&str; 1] = [
 const CATEGORY_TYPE_BLACKLIST: [&str; 5] = ["GTK", "Qt", "X-XFCE", "X-Bluetooth", "ConsoleOnly"];
 
 pub struct DesktopFinder {
-	size_preferences: Vec<&'static OsStr>,
-	icon_cache: HashMap<String, Rc<str>>,
-	icon_folders: Vec<String>,
+	size_preferences: Arc<[&'static OsStr]>,
+	icon_folders: Arc<[String]>,
+	entry_cache: Vec<DesktopEntry>,
+	bg_task: Option<JoinHandle<Vec<DesktopEntryOwned>>>,
 }
 
 impl DesktopFinder {
@@ -48,60 +67,25 @@ impl DesktopFinder {
 			icon_folders.push(data_dir.to_string_lossy().to_string());
 		}
 
-		let size_preferences = ["scalable", "128x128", "96x96", "72x72", "64x64", "48x48", "32x32"]
+		let icon_folders: Arc<[String]> = icon_folders.into_iter().collect();
+
+		let size_preferences: Arc<[&'static OsStr]> = ["scalable", "128x128", "96x96", "72x72", "64x64", "48x48", "32x32"]
 			.into_iter()
 			.map(OsStr::new)
 			.collect();
 
 		Self {
-			icon_folders,
-			icon_cache: HashMap::new(),
 			size_preferences,
+			icon_folders,
+			entry_cache: Vec::new(),
+			bg_task: None,
 		}
 	}
 
-	fn find_icon(&mut self, icon_name: &str) -> Option<Rc<str>> {
-		if let Some(icon_path) = self.icon_cache.get(icon_name) {
-			return Some(icon_path.clone());
-		}
+	fn build_cache(icon_folders: Arc<[String]>, size_preferences: Arc<[&'static OsStr]>) -> Vec<DesktopEntryOwned> {
+		let start = Instant::now();
 
-		for folder in &self.icon_folders {
-			let pattern = format!("{}/*/apps/*/{}.*", folder, icon_name);
-
-			let mut entries: Vec<_> = glob::glob(&pattern)
-				.expect("Bad glob pattern!")
-				.filter_map(Result::ok)
-				.collect();
-
-			log::warn!("Looking for '{pattern}' resulted in {} entries.", entries.len());
-
-			// sort by SIZE_PREFERENCES
-			entries.sort_by_key(|path| {
-				path
-					.components()
-					.rev()
-					.nth(1) // ← <THEME>/apps/<*SIZE*>/filename.ext
-					.map(|c| c.as_os_str())
-					.and_then(|size| {
-						log::warn!("looking for {size:?} in size preferences.");
-						self.size_preferences.iter().position(|&p| p == size)
-					})
-					.unwrap_or(usize::MAX)
-			});
-
-			if let Some(first) = entries.into_iter().next() {
-				let rc: Rc<str> = first.to_string_lossy().into();
-				log::warn!("Found icon for {icon_name} at {rc}");
-				self.icon_cache.insert(icon_name.to_string(), rc.clone());
-				return Some(rc);
-			}
-		}
-		None
-	}
-
-	pub fn find_entries(&mut self) -> anyhow::Result<Vec<DesktopEntry>> {
-		let mut res = Vec::<DesktopEntry>::new();
-
+		let mut res = Vec::<DesktopEntryOwned>::new();
 		'app_entries: for app_entry in ApplicationEntry::all() {
 			let Some(app_entry_id) = app_entry.id() else {
 				log::warn!(
@@ -111,7 +95,7 @@ impl DesktopFinder {
 				continue;
 			};
 
-			let Some(name) = app_entry.name() else {
+			let Some(app_name) = app_entry.name() else {
 				log::warn!("No Name on desktop entry {}", app_entry_id);
 				continue;
 			};
@@ -136,7 +120,9 @@ impl DesktopFinder {
 				None => (exec.into(), "".into()),
 			};
 
-			let icon_path = app_entry.icon().and_then(|icon_name| self.find_icon(&icon_name));
+			let icon_path = app_entry
+				.icon()
+				.and_then(|icon_name| Self::find_icon(&icon_folders, &size_preferences, &icon_name));
 
 			for cat in app_entry.categories().unwrap_or_default() {
 				if CATEGORY_TYPE_BLACKLIST.contains(&cat.as_str()) {
@@ -144,8 +130,8 @@ impl DesktopFinder {
 				}
 			}
 
-			let entry = DesktopEntry {
-				app_name: name.into(),
+			let entry = DesktopEntryOwned {
+				app_name,
 				exec_path,
 				exec_args,
 				icon_path,
@@ -153,7 +139,64 @@ impl DesktopFinder {
 
 			res.push(entry);
 		}
+		log::error!("App entry cache rebuild took {:?}", start.elapsed());
 
-		Ok(res)
+		res
+	}
+
+	fn find_icon(icon_folders: &[String], size_preferences: &[&'static OsStr], icon_name: &str) -> Option<String> {
+		for folder in icon_folders {
+			let pattern = format!("{}/hicolor/*/apps/{}.*", folder, icon_name);
+
+			let mut entries: Vec<_> = glob::glob(&pattern)
+				.expect("Bad glob pattern!")
+				.filter_map(Result::ok)
+				.collect();
+
+			// sort by SIZE_PREFERENCES
+			entries.sort_by_key(|path| {
+				path
+					.components()
+					.rev()
+					.nth(2) // ← hicolor/<*SIZE*>/apps/filename.ext
+					.map(|c| c.as_os_str())
+					.and_then(|size| size_preferences.iter().position(|&p| p == size))
+					.unwrap_or(usize::MAX)
+			});
+
+			if let Some(first) = entries.into_iter().next() {
+				return Some(first.to_string_lossy().into());
+			}
+		}
+		None
+	}
+
+	fn wait_for_entries(&mut self) {
+		let Some(bg_task) = self.bg_task.take() else {
+			return;
+		};
+
+		let Ok(entries) = bg_task.join() else {
+			return;
+		};
+
+		self.entry_cache.clear();
+		for entry in entries {
+			self.entry_cache.push(entry.into());
+		}
+	}
+
+	pub fn find_entries(&mut self) -> Vec<DesktopEntry> {
+		self.wait_for_entries();
+		self.entry_cache.clone()
+	}
+
+	pub fn refresh(&mut self) {
+		let bg_task = std::thread::spawn({
+			let icon_folders = self.icon_folders.clone();
+			let size_preferences = self.size_preferences.clone();
+			move || Self::build_cache(icon_folders, size_preferences)
+		});
+		self.bg_task = Some(bg_task);
 	}
 }

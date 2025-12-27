@@ -116,7 +116,7 @@ impl TabApps {
 			extra: Default::default(),
 		};
 
-		let entries = frontend.desktop_finder.find_entries()?;
+		let entries = frontend.desktop_finder.find_entries();
 
 		let frontend_tasks = frontend.tasks.clone();
 		let globals = frontend.layout.state.globals.clone();
