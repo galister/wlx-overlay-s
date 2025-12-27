@@ -24,11 +24,21 @@ pub struct HashedAsset {
 
 pub struct CustomGlyphCache {
 	inner: HashMap<HashedAsset, CustomGlyphDataWeak>,
+	next_cleanup: i32,
 }
 
 impl CustomGlyphCache {
+	const CLEANUP_INTERVAL: i32 = 100;
+
 	pub(crate) fn new() -> Self {
-		Self { inner: HashMap::new() }
+		Self {
+			inner: HashMap::new(),
+			next_cleanup: Self::CLEANUP_INTERVAL,
+		}
+	}
+
+	fn cleanup(&mut self) {
+		self.inner.retain(|_, v| v.content.strong_count() > 0);
 	}
 
 	fn get(&self, path: &str, bytes: &[u8]) -> Result<CustomGlyphData, HashedAsset> {
@@ -50,6 +60,11 @@ impl CustomGlyphCache {
 	}
 
 	fn insert(&mut self, hashed_asset: HashedAsset, data: &CustomGlyphData) {
+		if self.next_cleanup <= 0 {
+			self.cleanup();
+			self.next_cleanup = Self::CLEANUP_INTERVAL;
+		}
+
 		self.inner.insert(hashed_asset, data.clone_weak());
 	}
 }
