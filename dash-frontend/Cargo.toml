@@ -4,18 +4,19 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow.workspace = true
+wayvr-ipc = { path = "../wayvr-ipc", default-features = false }
 wgui = { path = "../wgui/" }
+wlx-common = { path = "../wlx-common" }
+
+anyhow.workspace = true
+freedesktop = { workspace = true, features = ["apps", "icon"] }
 glam = { workspace = true, features = ["mint", "serde"] }
 log.workspace = true
 rust-embed.workspace = true
-chrono = "0.4.42"
-gio = "0.21.5"
-gtk = "0.18.2"
 serde.workspace = true
 serde_json.workspace = true
-wlx-common = { path = "../wlx-common" }
-wayvr-ipc = { path = "../wayvr-ipc", default-features = false }
+
+chrono = "0.4.42"
 keyvalues-parser = { git = "https://github.com/CosmicHorrorDev/vdf-rs.git", rev = "fc6dcbea9eb13cacb98dea40063f6f56cde6e145" }
 smol = "2.0.2"
 hyper = { version = "1.8.1", features = ["client", "http1", "http2"] }

@@ -117,7 +117,6 @@ impl TabApps {
 			extra: Default::default(),
 		};
 
-		gtk::init()?;
 		let entries = util::desktop_finder::find_entries()?;
 
 		let frontend_tasks = frontend.tasks.clone();

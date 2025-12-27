@@ -1,3 +1,4 @@
+use freedesktop::xdg_config_home;
 use log::error;
 use std::{path::PathBuf, sync::LazyLock};
 
@@ -10,13 +11,10 @@ pub enum ConfigRoot {
 const FALLBACK_CONFIG_PATH: &str = "/tmp/wlxoverlay";
 
 static CONFIG_ROOT_PATH: LazyLock<PathBuf> = LazyLock::new(|| {
-    if let Some(mut dir) = xdg::BaseDirectories::new().get_config_home() {
-        dir.push("wlxoverlay");
-        return dir;
-    }
-    //Return fallback config path
-    error!("Err: Failed to find config path, using {FALLBACK_CONFIG_PATH}");
-    PathBuf::from(FALLBACK_CONFIG_PATH)
+    // Panics if $XDG_CONFIG_HOME and $HOME are both unset.
+    let mut dir = xdg_config_home();
+    dir.push("wlxoverlay");
+    return dir;
 });
 
 pub fn get_config_root() -> PathBuf {

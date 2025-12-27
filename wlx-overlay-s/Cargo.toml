@@ -28,6 +28,7 @@ wlx-common = { path = "../wlx-common" }
 
 anyhow.workspace = true
 clap.workspace = true
+freedesktop.workspace = true
 glam = { workspace = true, features = ["mint", "serde"] }
 idmap = { workspace = true, features = ["serde"] }
 idmap-derive. workspace = true
@@ -85,7 +86,6 @@ winit = { version = "0.30.12", optional = true }
 xcb = { version = "1.6.0", optional = true, features = [
   "as-raw-xcb-connection",
 ] }
-xdg = "3.0"
 xkbcommon = { version = "0.9.0" }
 
 ################################
