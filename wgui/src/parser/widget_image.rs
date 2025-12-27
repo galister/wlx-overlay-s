@@ -2,10 +2,11 @@ use crate::{
 	assets::AssetPath,
 	layout::WidgetID,
 	parser::{
-		AttribPair, ParserContext, ParserFile, parse_children, parse_widget_universal, print_invalid_attrib,
+		parse_children, parse_widget_universal, print_invalid_attrib,
 		style::{parse_color, parse_round, parse_style},
+		AttribPair, ParserContext, ParserFile,
 	},
-	renderer_vk::text::custom_glyph::{CustomGlyphContent, CustomGlyphData},
+	renderer_vk::text::custom_glyph::CustomGlyphData,
 	widget::image::{WidgetImage, WidgetImageParams},
 };
 
@@ -33,7 +34,7 @@ pub fn parse_widget_image<'a>(
 				};
 
 				if !value.is_empty() {
-					glyph = match CustomGlyphContent::from_assets(&mut ctx.layout.state.globals, asset_path) {
+					glyph = match CustomGlyphData::from_assets(&mut ctx.layout.state.globals, asset_path) {
 						Ok(glyph) => Some(glyph),
 						Err(e) => {
 							log::warn!("failed to load {value}: {e}");
@@ -63,7 +64,7 @@ pub fn parse_widget_image<'a>(
 	}
 
 	if let Some(glyph) = glyph {
-		params.glyph_data = Some(CustomGlyphData::new(glyph));
+		params.glyph_data = Some(glyph);
 	} else {
 		log::warn!("No source for image node!");
 	}

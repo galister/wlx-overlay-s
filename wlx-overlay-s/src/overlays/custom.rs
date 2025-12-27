@@ -7,7 +7,7 @@ use wgui::{
     event::{CallbackDataCommon, EventAlterables},
     i18n::Translation,
     parser::{Fetchable, parse_color_hex},
-    renderer_vk::text::custom_glyph::{CustomGlyphContent, CustomGlyphData},
+    renderer_vk::text::custom_glyph::CustomGlyphData,
     taffy,
     widget::{
         image::WidgetImage, label::WidgetLabel, rectangle::WidgetRectangle, sprite::WidgetSprite,
@@ -117,12 +117,11 @@ fn apply_custom_command(
                 .parser_state
                 .fetch_widget(&panel.layout.state, element)
             {
-                let content = CustomGlyphContent::from_assets(
+                let data = CustomGlyphData::from_assets(
                     &app.wgui_globals,
                     wgui::assets::AssetPath::File(path),
                 )
                 .context("Could not load content from supplied path.")?;
-                let data = CustomGlyphData::new(content);
 
                 if let Some(mut sprite) = pair.widget.get_as::<WidgetSprite>() {
                     sprite.set_content(&mut com, Some(data));

@@ -14,7 +14,7 @@ use wgui::{
 	parser::{Fetchable, ParseDocumentParams, ParserState},
 	renderer_vk::text::{
 		FontWeight, HorizontalAlign, TextShadow, TextStyle,
-		custom_glyph::{CustomGlyphContent, CustomGlyphData},
+		custom_glyph::{ CustomGlyphData},
 	},
 	taffy::{
 		self, AlignItems, AlignSelf, JustifyContent, JustifySelf,
@@ -413,10 +413,10 @@ impl View {
 
 	fn get_placeholder_image(&mut self) -> anyhow::Result<&CustomGlyphData> {
 		if self.img_placeholder.is_none() {
-			let c = CustomGlyphData::new(CustomGlyphContent::from_assets(
+			let c = CustomGlyphData::from_assets(
 				&self.globals,
 				AssetPath::BuiltIn("dashboard/placeholder_cover.png"),
-			)?);
+			)?;
 			self.img_placeholder = Some(c);
 		}
 
@@ -515,7 +515,8 @@ impl View {
 				return Ok(());
 			};
 
-			let glyph = match CustomGlyphContent::from_bin_raster(&cover_art.compressed_image_data) {
+			let path = format!("app:{app_id:?}");
+			let glyph = match CustomGlyphData::from_bytes_raster(&self.globals, &path ,&cover_art.compressed_image_data) {
 				Ok(c) => c,
 				Err(e) => {
 					log::warn!(
@@ -526,7 +527,7 @@ impl View {
 					return Ok(());
 				}
 			};
-			View::mount_image(layout, cell, &CustomGlyphData::new(glyph))?;
+			View::mount_image(layout, cell, &glyph)?;
 		}
 
 		Ok(())

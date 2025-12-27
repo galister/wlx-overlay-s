@@ -4,7 +4,7 @@ use wgui::{
 	globals::WguiGlobals,
 	i18n::Translation,
 	layout::{Layout, WidgetID},
-	renderer_vk::text::custom_glyph::{CustomGlyphContent, CustomGlyphData},
+	renderer_vk::text::custom_glyph::CustomGlyphData,
 	taffy::{self, prelude::length},
 	widget::{
 		label::{WidgetLabel, WidgetLabelParams},
@@ -62,7 +62,7 @@ pub fn mount_simple_sprite_square(
 	layout.add_child(
 		parent_id,
 		WidgetSprite::create(WidgetSpriteParams {
-			glyph_data: Some(CustomGlyphData::new(CustomGlyphContent::from_assets(globals, path)?)),
+			glyph_data: Some(CustomGlyphData::from_assets(globals, path)?),
 			..Default::default()
 		}),
 		taffy::Style {

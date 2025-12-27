@@ -1,24 +1,22 @@
 use crate::{
 	animation::{Animation, AnimationEasing},
 	assets::AssetPath,
-	components::{self, Component, ComponentBase, ComponentTrait, RefreshData, tooltip::ComponentTooltip},
+	components::{self, tooltip::ComponentTooltip, Component, ComponentBase, ComponentTrait, RefreshData},
 	drawing::{self, Boundary, Color},
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerID, EventListenerKind},
 	i18n::Translation,
 	layout::{LayoutTask, WidgetID, WidgetPair},
 	renderer_vk::{
-		text::{
-			FontWeight, TextStyle,
-			custom_glyph::{CustomGlyphContent, CustomGlyphData},
-		},
+		text::{custom_glyph::CustomGlyphData, FontWeight, TextStyle},
 		util::centered_matrix,
 	},
 	widget::{
-		self, ConstructEssentials, EventResult, WidgetData,
+		self,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		sprite::{WidgetSprite, WidgetSpriteParams},
 		util::WLength,
+		ConstructEssentials, EventResult, WidgetData,
 	},
 };
 use glam::{Mat4, Vec3};
@@ -27,7 +25,7 @@ use std::{
 	rc::Rc,
 	time::{Duration, Instant},
 };
-use taffy::{AlignItems, JustifyContent, prelude::length};
+use taffy::{prelude::length, AlignItems, JustifyContent};
 
 pub struct Params<'a> {
 	pub text: Option<Translation>, // if unset, label will not be populated
@@ -461,10 +459,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 
 	if let Some(sprite_path) = params.sprite_src {
 		let sprite = WidgetSprite::create(WidgetSpriteParams {
-			glyph_data: Some(CustomGlyphData::new(CustomGlyphContent::from_assets(
-				&globals,
-				sprite_path,
-			)?)),
+			glyph_data: Some(CustomGlyphData::from_assets(&globals, sprite_path)?),
 			..Default::default()
 		});
 

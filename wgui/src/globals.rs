@@ -12,6 +12,7 @@ use crate::{
 	assets_internal, drawing,
 	font_config::{WguiFontConfig, WguiFontSystem},
 	i18n::I18n,
+	renderer_vk::text::custom_glyph::CustomGlyphCache,
 };
 
 #[derive(Clone)]
@@ -52,6 +53,7 @@ pub struct Globals {
 	pub i18n_builtin: I18n,
 	pub defaults: Defaults,
 	pub font_system: WguiFontSystem,
+	pub custom_glyph_cache: CustomGlyphCache,
 }
 
 #[derive(Clone)]
@@ -74,6 +76,7 @@ impl WguiGlobals {
 			defaults,
 			asset_folder,
 			font_system: WguiFontSystem::new(font_config),
+			custom_glyph_cache: CustomGlyphCache::new(),
 		}))))
 	}
 

@@ -1,8 +1,8 @@
 use crate::{
 	assets::AssetPath,
 	layout::WidgetID,
-	parser::{AttribPair, ParserContext, ParserFile, parse_children, parse_widget_universal, style::parse_style},
-	renderer_vk::text::custom_glyph::{CustomGlyphContent, CustomGlyphData},
+	parser::{parse_children, parse_widget_universal, style::parse_style, AttribPair, ParserContext, ParserFile},
+	renderer_vk::text::custom_glyph::CustomGlyphData,
 	widget::sprite::{WidgetSprite, WidgetSpriteParams},
 };
 
@@ -32,7 +32,7 @@ pub fn parse_widget_sprite<'a>(
 				};
 
 				if !value.is_empty() {
-					glyph = match CustomGlyphContent::from_assets(&ctx.layout.state.globals, asset_path) {
+					glyph = match CustomGlyphData::from_assets(&ctx.layout.state.globals, asset_path) {
 						Ok(glyph) => Some(glyph),
 						Err(e) => {
 							log::warn!("failed to load {value}: {e}");
@@ -53,7 +53,7 @@ pub fn parse_widget_sprite<'a>(
 	}
 
 	if let Some(glyph) = glyph {
-		params.glyph_data = Some(CustomGlyphData::new(glyph));
+		params.glyph_data = Some(glyph);
 	} else {
 		log::warn!("No source for sprite node!");
 	}
