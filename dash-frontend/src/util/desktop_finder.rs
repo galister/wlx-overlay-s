@@ -139,7 +139,7 @@ impl DesktopFinder {
 
 			res.push(entry);
 		}
-		log::error!("App entry cache rebuild took {:?}", start.elapsed());
+		log::debug!("App entry cache rebuild took {:?}", start.elapsed());
 
 		res
 	}
