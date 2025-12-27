@@ -11,9 +11,12 @@ use crate::{
     gui::panel::GuiPanel,
     overlays::keyboard::{builder::create_keyboard_panel, layout::AltModifier},
     state::AppState,
-    subsystem::hid::{
-        ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey, WheelDelta, XkbKeymap,
-        get_keymap_wl, get_keymap_x11,
+    subsystem::{
+        dbus::DbusConnector,
+        hid::{
+            ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey, WheelDelta, XkbKeymap,
+            get_keymap_wl, get_keymap_x11,
+        },
     },
     windowing::{
         backend::{FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender},
@@ -68,7 +71,7 @@ pub fn create_keyboard(app: &mut AppState, wayland: bool) -> anyhow::Result<Over
     };
 
     let mut maybe_keymap = backend
-        .get_effective_keymap(app)
+        .get_effective_keymap()
         .inspect_err(|e| log::warn!("{e:?}"))
         .or_else(|_| {
             if let Some(layout_variant) = app.session.config.default_keymap.as_ref() {
@@ -85,7 +88,8 @@ pub fn create_keyboard(app: &mut AppState, wayland: bool) -> anyhow::Result<Over
         .ok();
 
     if let Some(keymap) = maybe_keymap.as_ref() {
-        app.hid_provider.keymap_changed(keymap);
+        app.hid_provider
+            .keymap_changed(app.wvr_server.as_mut(), keymap);
     }
 
     if !auto_labels {
@@ -141,7 +145,7 @@ impl KeyboardBackend {
             self.layout_ids.insert(layout_name.into(), id);
         } else {
             log::error!("XKB keymap without a layout!");
-        };
+        }
         Ok(id)
     }
 
@@ -183,7 +187,7 @@ impl KeyboardBackend {
             .state = state_from;
     }
 
-    fn get_effective_keymap(&mut self, app: &mut AppState) -> anyhow::Result<XkbKeymap> {
+    fn get_effective_keymap(&mut self) -> anyhow::Result<XkbKeymap> {
         fn get_system_keymap(wayland: bool) -> anyhow::Result<XkbKeymap> {
             if wayland {
                 get_keymap_wl()
@@ -192,9 +196,7 @@ impl KeyboardBackend {
             }
         }
 
-        let Ok(fcitx_layout) = app
-            .dbus
-            .fcitx_keymap()
+        let Ok(fcitx_layout) = DbusConnector::fcitx_keymap()
             .context("Could not keymap via fcitx5, falling back to wayland")
             .inspect_err(|e| log::info!("{e:?}"))
         else {
@@ -203,8 +205,8 @@ impl KeyboardBackend {
 
         if let Some(captures) = self.re_fcitx.captures(&fcitx_layout) {
             XkbKeymap::from_layout_variant(
-                captures.get(1).map(|g| g.as_str()).unwrap_or(""),
-                captures.get(2).map(|g| g.as_str()).unwrap_or(""),
+                captures.get(1).map_or("", |g| g.as_str()),
+                captures.get(2).map_or("", |g| g.as_str()),
             )
             .context("layout/variant is invalid")
         } else if SYSTEM_LAYOUT_ALIASES.contains(&fcitx_layout.as_str()) {
@@ -217,8 +219,9 @@ impl KeyboardBackend {
     }
 
     fn auto_switch_keymap(&mut self, app: &mut AppState) -> anyhow::Result<bool> {
-        let keymap = self.get_effective_keymap(app)?;
-        app.hid_provider.keymap_changed(&keymap);
+        let keymap = self.get_effective_keymap()?;
+        app.hid_provider
+            .keymap_changed(app.wvr_server.as_mut(), &keymap);
         self.switch_keymap(&keymap, app)
     }
 
@@ -258,7 +261,8 @@ impl OverlayBackend for KeyboardBackend {
     }
     fn pause(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         self.panel().state.modifiers = 0;
-        app.hid_provider.set_modifiers_routed(0);
+        app.hid_provider
+            .set_modifiers_routed(app.wvr_server.as_mut(), 0);
         self.panel().pause(app)
     }
     fn resume(&mut self, app: &mut AppState) -> anyhow::Result<()> {
@@ -308,7 +312,7 @@ struct KeyboardState {
 }
 
 impl KeyboardState {
-    fn take(&mut self) -> Self {
+    const fn take(&mut self) -> Self {
         Self {
             modifiers: self.modifiers,
             alt_modifier: self.alt_modifier,
@@ -371,20 +375,24 @@ fn handle_press(
                 _ => 0,
             };
 
-            app.hid_provider.set_modifiers_routed(keyboard.modifiers);
-            app.hid_provider.send_key_routed(*vk, true);
+            app.hid_provider
+                .set_modifiers_routed(app.wvr_server.as_mut(), keyboard.modifiers);
+            app.hid_provider
+                .send_key_routed(app.wvr_server.as_mut(), *vk, true);
             pressed.set(true);
             play_key_click(app);
         }
         KeyButtonData::Modifier { modifier, sticky } => {
             sticky.set(keyboard.modifiers & *modifier == 0);
             keyboard.modifiers |= *modifier;
-            app.hid_provider.set_modifiers_routed(keyboard.modifiers);
+            app.hid_provider
+                .set_modifiers_routed(app.wvr_server.as_mut(), keyboard.modifiers);
             play_key_click(app);
         }
         KeyButtonData::Macro { verbs } => {
             for (vk, press) in verbs {
-                app.hid_provider.send_key_routed(*vk, *press);
+                app.hid_provider
+                    .send_key_routed(app.wvr_server.as_mut(), *vk, *press);
             }
             play_key_click(app);
         }
@@ -412,8 +420,10 @@ fn handle_release(app: &mut AppState, key: &KeyState, keyboard: &mut KeyboardSta
                     keyboard.modifiers &= !*m;
                 }
             }
-            app.hid_provider.send_key_routed(*vk, false);
-            app.hid_provider.set_modifiers_routed(keyboard.modifiers);
+            app.hid_provider
+                .send_key_routed(app.wvr_server.as_mut(), *vk, false);
+            app.hid_provider
+                .set_modifiers_routed(app.wvr_server.as_mut(), keyboard.modifiers);
             true
         }
         KeyButtonData::Modifier { modifier, sticky } => {
@@ -421,7 +431,8 @@ fn handle_release(app: &mut AppState, key: &KeyState, keyboard: &mut KeyboardSta
                 false
             } else {
                 keyboard.modifiers &= !*modifier;
-                app.hid_provider.set_modifiers_routed(keyboard.modifiers);
+                app.hid_provider
+                    .set_modifiers_routed(app.wvr_server.as_mut(), keyboard.modifiers);
                 true
             }
         }

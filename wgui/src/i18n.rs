@@ -26,9 +26,16 @@ impl Translation {
 		}
 	}
 
-	pub fn from_raw_text_rc(text: Rc<str>) -> Self {
+	pub const fn from_raw_text_rc(text: Rc<str>) -> Self {
 		Self {
 			text,
+			translated: false,
+		}
+	}
+
+	pub fn from_raw_text_string(text: String) -> Self {
+		Self {
+			text: text.into(),
 			translated: false,
 		}
 	}

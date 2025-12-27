@@ -9,12 +9,12 @@ use wgui::{
 	i18n::Translation,
 	layout::{Layout, LayoutTask, LayoutTasks, WidgetID},
 	renderer_vk::{
-		text::{FontWeight, TextStyle},
+		text::{FontWeight, HorizontalAlign, TextStyle},
 		util::centered_matrix,
 	},
 	taffy::{
 		self,
-		prelude::{length, percent},
+		prelude::{auto, length, percent},
 	},
 	widget::{
 		div::WidgetDiv,
@@ -47,7 +47,7 @@ impl Drop for MountedToast {
 	}
 }
 
-const TOAST_DURATION_TICKS: u32 = 90;
+const TOAST_DURATION_TICKS: u32 = 150;
 
 impl ToastManager {
 	pub fn new() -> Self {
@@ -102,6 +102,10 @@ impl ToastManager {
 					top: length(8.0),
 					bottom: length(8.0),
 				},
+				max_size: taffy::Size {
+					width: length(400.0),
+					height: auto(),
+				},
 				..Default::default()
 			},
 		)?;
@@ -114,6 +118,8 @@ impl ToastManager {
 					content,
 					style: TextStyle {
 						weight: Some(FontWeight::Bold),
+						align: Some(HorizontalAlign::Center),
+						wrap: true,
 						..Default::default()
 					},
 				},
@@ -124,7 +130,7 @@ impl ToastManager {
 		// show-up animation
 		layout.animations.add(Animation::new(
 			rect.id,
-			160, // does not use anim_mult
+			(TOAST_DURATION_TICKS as f32 * globals.defaults.animation_mult) as u32,
 			AnimationEasing::Linear,
 			Box::new(move |common, data| {
 				let pos_showup = AnimationEasing::OutQuint.interpolate((data.pos * 4.0).min(1.0));
@@ -132,7 +138,7 @@ impl ToastManager {
 				let scale = AnimationEasing::OutBack.interpolate((data.pos * 4.0).min(1.0));
 
 				{
-					let mtx = Mat4::from_translation(Vec3::new(0.0, (1.0 - pos_showup) * 100.0, 0.0))
+					let mtx = Mat4::from_translation(Vec3::new(0.0, (1.0 - pos_showup) * 20.0, 0.0))
 						* Mat4::from_scale(Vec3::new(scale, scale, 1.0));
 					data.data.transform = centered_matrix(data.widget_boundary.size, &mtx);
 				}
@@ -156,14 +162,13 @@ impl ToastManager {
 	}
 
 	pub fn tick(&mut self, globals: &WguiGlobals, layout: &mut Layout) -> anyhow::Result<()> {
-		if !self.needs_tick {
-			return Ok(());
-		}
-
 		let mut state = self.state.borrow_mut();
-
 		if state.timeout > 0 {
 			state.timeout -= 1;
+		}
+
+		if !self.needs_tick {
+			return Ok(());
 		}
 
 		if state.timeout == 0 {

@@ -6,8 +6,8 @@ use taffy::{
 use crate::{
 	drawing,
 	parser::{
-		AttribPair, is_percent, parse_color_hex, parse_f32, parse_percent, parse_size_unit, parse_val,
-		print_invalid_attrib, print_invalid_value,
+		is_percent, parse_color_hex, parse_f32, parse_percent, parse_size_unit, parse_val, print_invalid_attrib,
+		print_invalid_value, AttribPair,
 	},
 	renderer_vk::text::{FontWeight, HorizontalAlign, TextStyle},
 	widget::util::WLength,

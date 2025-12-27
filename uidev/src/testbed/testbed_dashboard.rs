@@ -3,7 +3,8 @@ use dash_frontend::{
 	frontend,
 	settings::{self, SettingsIO},
 };
-use wgui::layout::RcLayout;
+use wgui::layout::Layout;
+use wlx_common::dash_interface_emulated::DashInterfaceEmulated;
 
 struct SimpleSettingsIO {
 	settings: settings::Settings,
@@ -52,33 +53,30 @@ impl settings::SettingsIO for SimpleSettingsIO {
 }
 
 pub struct TestbedDashboard {
-	layout: RcLayout,
-	frontend: frontend::RcFrontend,
+	frontend: frontend::Frontend,
 }
 
 impl TestbedDashboard {
 	pub fn new() -> anyhow::Result<Self> {
 		let settings = SimpleSettingsIO::new();
+		let interface = DashInterfaceEmulated::new();
 
-		let (frontend, layout) = frontend::Frontend::new(frontend::InitParams {
+		let frontend = frontend::Frontend::new(frontend::InitParams {
 			settings: Box::new(settings),
+			interface: Box::new(interface),
 		})?;
-		Ok(Self { frontend, layout })
+		Ok(Self { frontend })
 	}
 }
 
 impl Testbed for TestbedDashboard {
 	fn update(&mut self, params: TestbedUpdateParams) -> anyhow::Result<()> {
-		let mut frontend = self.frontend.borrow_mut();
-		frontend.update(
-			&self.frontend,
-			params.width,
-			params.height,
-			params.timestep_alpha,
-		)
+		self
+			.frontend
+			.update(params.width, params.height, params.timestep_alpha)
 	}
 
-	fn layout(&self) -> &RcLayout {
-		&self.layout
+	fn layout(&mut self) -> &mut Layout {
+		&mut self.frontend.layout
 	}
 }

@@ -14,7 +14,7 @@ pub fn new_stereo_tab_handler(
         "stereo",
         &STEREO_NAMES,
         Box::new(|_common, state| {
-            let stereo = state.clone();
+            let stereo = *state;
             Box::new(move |app, owc| {
                 owc.backend
                     .set_attrib(app, BackendAttribValue::Stereo(stereo));
@@ -27,21 +27,21 @@ pub fn new_stereo_tab_handler(
 impl SpriteTabKey for StereoMode {
     fn to_tab_key(&self) -> &'static str {
         match self {
-            StereoMode::None => "none",
-            StereoMode::LeftRight => "leftright",
-            StereoMode::RightLeft => "rightleft",
-            StereoMode::TopBottom => "topbottom",
-            StereoMode::BottomTop => "bottomtop",
+            Self::None => "none",
+            Self::LeftRight => "leftright",
+            Self::RightLeft => "rightleft",
+            Self::TopBottom => "topbottom",
+            Self::BottomTop => "bottomtop",
         }
     }
 
     fn from_tab_key(key: &str) -> Self {
         match key {
-            "none" => StereoMode::None,
-            "leftright" => StereoMode::LeftRight,
-            "rightleft" => StereoMode::RightLeft,
-            "topbottom" => StereoMode::TopBottom,
-            "bottomtop" => StereoMode::BottomTop,
+            "none" => Self::None,
+            "leftright" => Self::LeftRight,
+            "rightleft" => Self::RightLeft,
+            "topbottom" => Self::TopBottom,
+            "bottomtop" => Self::BottomTop,
             _ => {
                 panic!("cannot translate to stereo mode: {key}")
             }

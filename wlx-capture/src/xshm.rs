@@ -8,11 +8,12 @@ use std::{
     },
 };
 
+use drm_fourcc::{DrmFormat, DrmFourcc, DrmModifier};
 use rxscreen::monitor::Monitor;
 
 use crate::{
     WlxCapture,
-    frame::{DRM_FORMAT_XRGB8888, DrmFormat, FrameFormat, MemPtrFrame, MouseMeta, WlxFrame},
+    frame::{FrameFormat, MemPtrFrame, MouseMeta, Transform, WlxFrame},
 };
 
 pub struct XshmScreen {
@@ -101,8 +102,11 @@ where
                                     format: FrameFormat {
                                         width: image.width() as _,
                                         height: image.height() as _,
-                                        fourcc: DRM_FORMAT_XRGB8888.into(),
-                                        ..Default::default()
+                                        drm_format: DrmFormat {
+                                            code: DrmFourcc::Xrgb8888,
+                                            modifier: DrmModifier::Invalid,
+                                        },
+                                        transform: Transform::Normal,
                                     },
                                     ptr: unsafe { image.as_ptr() as _ },
                                     size,

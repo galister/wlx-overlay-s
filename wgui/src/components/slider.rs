@@ -224,7 +224,7 @@ impl State {
 			return; // nothing changed visually
 		}
 
-		common.alterables.mark_dirty(data.slider_handle_node_id);
+		common.alterables.mark_dirty(data.slider_handle_id);
 		common.alterables.mark_redraw();
 
 		if let Some(slider_text_id) = data.slider_text_id
@@ -482,7 +482,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 				WidgetLabelParams {
 					content: Translation::default(),
 					style: TextStyle {
-						color: Some(drawing::Color::new(0.0, 0.0, 0.0, 0.75)), // always black
+						color: Some(drawing::Color::new(0.0, 0.0, 0.0, 1.0)), // always black
 						weight: Some(FontWeight::Bold),
 						align: Some(HorizontalAlign::Center),
 						..Default::default()

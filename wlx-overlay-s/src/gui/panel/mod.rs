@@ -103,10 +103,11 @@ impl<S: 'static> GuiPanel<S> {
 
         let doc_params = wgui::parser::ParseDocumentParams {
             globals: app.wgui_globals.clone(),
-            path: params
-                .external_xml
-                .then_some(AssetPath::File(path))
-                .unwrap_or(AssetPath::FileOrBuiltIn(path)),
+            path: if params.external_xml {
+                AssetPath::File(path)
+            } else {
+                AssetPath::FileOrBuiltIn(path)
+            },
             extra: wgui::parser::ParseDocumentExtra {
                 on_custom_attribs: Some(Box::new({
                     let custom_elems = custom_elems.clone();
@@ -160,8 +161,7 @@ impl<S: 'static> GuiPanel<S> {
         }
 
         let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
-        let mut timestep = Timestep::new();
-        timestep.set_tps(60.0);
+        let timestep = Timestep::new(60.0);
 
         Ok(Self {
             layout,
@@ -192,8 +192,7 @@ impl<S: 'static> GuiPanel<S> {
             },
         )?;
         let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
-        let mut timestep = Timestep::new();
-        timestep.set_tps(60.0);
+        let timestep = Timestep::new(60.0);
 
         Ok(Self {
             layout,
@@ -313,7 +312,7 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
         self.context.draw(
             &globals.font_system,
             &mut app.wgui_shared,
-            &mut rdr.cmd_buf_single(),
+            rdr.cmd_buf_single(),
             &primitives,
         )?;
         Ok(())

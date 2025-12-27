@@ -590,7 +590,7 @@ impl XkbKeymap {
             None,
             xkb::COMPILE_NO_FLAGS,
         )
-        .map(|inner| XkbKeymap { inner })
+        .map(|inner| Self { inner })
     }
 
     pub fn get_name(&self) -> Option<&str> {

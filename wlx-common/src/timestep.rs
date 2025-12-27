@@ -18,13 +18,14 @@ pub struct Timestep {
 }
 
 impl Timestep {
-	pub fn new() -> Self {
+	pub fn new(ticks_per_second: f32) -> Self {
 		let mut timestep = Self {
 			speed: 1.0,
 			..Default::default()
 		};
 
 		timestep.reset();
+		timestep.set_tps(ticks_per_second);
 		timestep
 	}
 

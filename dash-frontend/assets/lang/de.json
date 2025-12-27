@@ -40,10 +40,33 @@
     "NO_VR_MICROPHONE_SWITCH_MANUALLY": "Kein VR-Mikrofon gefunden. Schalten Sie es manuell um.",
     "FAILED_TO_SWITCH_MICROPHONE": "Fehler beim Wechseln des Mikrofons",
     "MICROPHONE_SET_SUCCESSFULLY": "Mikrofon erfolgreich umgeschaltet",
-    "SPEAKERS_SET_SUCCESSFULLY": "Lautsprecher erfolgreich umgeschaltet",
-    "DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED": "Gerät gefunden und initialisiert, aber nicht umgeschaltet"
+    "SPEAKERS_SET_SUCCESSFULLY": "Lautsprecher erfolgreich umgeschaltet"
   },
   "ACTIONS": {
     "RECENTER_PLAYSPACE": "Playspace neu zentrieren"
-  }
+  },
+  "LIST_OF_PROCESSES": "Prozessliste",
+  "POPUP_ADD_DISPLAY": {
+    "RESOLUTION": "Auflösung"
+  },
+  "WIDTH": "Breite",
+  "HEIGHT": "Höhe",
+  "HIDE": "Verbergen",
+  "REMOVE": "Entfernen",
+  "SHOW": "Anzeigen",
+  "PROCESS_LIST": {
+    "NO_PROCESSES_FOUND": "Keine Prozesse gefunden",
+    "LOCATED_ON": "auf",
+    "TERMINATE_PROCESS_NAMED_X": "Prozess \"{PROCESS_NAME}\" beenden"
+  },
+  "FAILED_TO_LAUNCH_APPLICATION": "Fehler beim Starten der Anwendung:",
+  "NO_WINDOWS_FOUND": "Keine Fenster gefunden",
+  "WINDOW_OPTIONS": "Fensteroptionen",
+  "APPLICATION_STARTED": "Anwendung gestartet",
+  "LIST_OF_WINDOWS": "Fensterliste",
+  "CLOSE_WINDOW": "Fenster schließen",
+  "GAME_LIST": {
+    "NO_GAMES_FOUND": "Keine Spiele gefunden"
+  },
+  "TERMINATE_PROCESS": "Prozess beenden"
 }

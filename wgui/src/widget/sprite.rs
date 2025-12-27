@@ -45,7 +45,7 @@ impl WidgetSprite {
 		common.mark_widget_dirty(self.id);
 	}
 
-	pub fn get_color(&self) -> Option<drawing::Color> {
+	pub const fn get_color(&self) -> Option<drawing::Color> {
 		self.params.color
 	}
 

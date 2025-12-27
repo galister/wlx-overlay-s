@@ -31,6 +31,7 @@ impl SwapchainOpts {
     }
 }
 
+#[allow(clippy::range_plus_one)]
 pub(super) fn create_swapchain(
     xr: &XrState,
     gfx: Arc<WGfx>,
@@ -78,7 +79,7 @@ pub(super) fn create_swapchain(
             let image = Arc::new(unsafe { raw_image.assume_bound() });
             let mut wsi = WlxSwapchainImage::default();
             for d in 0..extent[2] {
-                let mut create_info = ImageViewCreateInfo::from_image(&*image);
+                let mut create_info = ImageViewCreateInfo::from_image(&image);
                 create_info.subresource_range.array_layers = d..d + 1;
                 wsi.views.push(ImageView::new(image.clone(), create_info)?);
             }

@@ -9,12 +9,12 @@ use wgui::{
 	assets::AssetPath,
 	font_config::WguiFontConfig,
 	globals::WguiGlobals,
-	layout::{LayoutParams, RcLayout},
+	layout::{Layout, LayoutParams},
 	parser::{ParseDocumentParams, ParserState},
 };
 
 pub struct TestbedAny {
-	pub layout: RcLayout,
+	pub layout: Layout,
 
 	#[allow(dead_code)]
 	state: ParserState,
@@ -43,23 +43,20 @@ impl TestbedAny {
 			},
 			&LayoutParams::default(),
 		)?;
-		Ok(Self {
-			layout: layout.as_rc(),
-			state,
-		})
+		Ok(Self { layout, state })
 	}
 }
 
 impl Testbed for TestbedAny {
 	fn update(&mut self, params: TestbedUpdateParams) -> anyhow::Result<()> {
-		self.layout.borrow_mut().update(
+		self.layout.update(
 			Vec2::new(params.width, params.height),
 			params.timestep_alpha,
 		)?;
 		Ok(())
 	}
 
-	fn layout(&self) -> &RcLayout {
-		&self.layout
+	fn layout(&mut self) -> &mut Layout {
+		&mut self.layout
 	}
 }

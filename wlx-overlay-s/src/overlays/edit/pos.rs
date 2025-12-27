@@ -92,27 +92,27 @@ impl SpriteTabKey for PosTabState {
 
     fn from_tab_key(key: &str) -> Self {
         match key {
-            "static" => PosTabState {
+            "static" => Self {
                 pos: Positioning::Static,
                 has_lerp: false,
                 has_align: false,
             },
-            "anchored" => PosTabState {
+            "anchored" => Self {
                 pos: Positioning::Anchored,
                 has_lerp: false,
                 has_align: false,
             },
-            "floating" => PosTabState {
+            "floating" => Self {
                 pos: Positioning::Floating,
                 has_lerp: false,
                 has_align: false,
             },
-            "hmd" => PosTabState {
+            "hmd" => Self {
                 pos: Positioning::FollowHead { lerp: 1.0 },
                 has_lerp: true,
                 has_align: false,
             },
-            "hand_l" => PosTabState {
+            "hand_l" => Self {
                 pos: Positioning::FollowHand {
                     hand: LeftRight::Left,
                     lerp: 1.0,
@@ -121,7 +121,7 @@ impl SpriteTabKey for PosTabState {
                 has_lerp: true,
                 has_align: true,
             },
-            "hand_r" => PosTabState {
+            "hand_r" => Self {
                 pos: Positioning::FollowHand {
                     hand: LeftRight::Right,
                     lerp: 1.0,

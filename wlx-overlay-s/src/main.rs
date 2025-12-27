@@ -169,7 +169,7 @@ fn auto_run(args: Args) {
 
     let instructions = format!("Could not connect to runtime.\n{instructions}");
 
-    let _ = DbusConnector::default().notify_send("WlxOverlay-S", &instructions, 1, 0, 0, false);
+    let _ = DbusConnector::notify_send("WlxOverlay-S", &instructions, 1, 0, 0, false);
 
     #[cfg(not(any(feature = "openvr", feature = "openxr")))]
     compile_error!("No VR support! Enable either openvr or openxr features!");
@@ -200,6 +200,7 @@ const fn args_get_openxr(args: &Args) -> bool {
     ret
 }
 
+#[allow(clippy::single_match_else)]
 fn setup_signal_hooks() -> anyhow::Result<()> {
     let mut signals = Signals::new([SIGINT, SIGTERM, SIGUSR1])?;
 
@@ -209,7 +210,6 @@ fn setup_signal_hooks() -> anyhow::Result<()> {
                 SIGUSR1 => {
                     log::info!("SIGUSR1 received (keymap changed)");
                     KEYMAP_CHANGE.store(true, Ordering::Relaxed);
-                    continue;
                 }
                 _ => {
                     RUNNING.store(false, Ordering::Relaxed);

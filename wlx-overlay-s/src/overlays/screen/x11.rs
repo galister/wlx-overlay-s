@@ -54,7 +54,6 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
     let embed_mouse = !app.session.config.double_cursor_fix;
 
     let select_screen_result = select_pw_screen(
-        app,
         "Select ALL screens on the screencast pop-up!",
         token,
         embed_mouse,

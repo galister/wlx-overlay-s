@@ -1,3 +1,4 @@
+use drm_fourcc::{DrmFormat, DrmFourcc, DrmModifier};
 use libc::{O_CREAT, O_RDWR, S_IRUSR, S_IWUSR};
 use std::{
     any::Any,
@@ -18,10 +19,7 @@ use smithay_client_toolkit::reexports::protocols_wlr::screencopy::v1::client::zw
 
 use crate::{
     WlxCapture,
-    frame::{
-        DRM_FORMAT_ARGB8888, DRM_FORMAT_XRGB8888, DrmFormat, FourCC, FrameFormat, FramePlane,
-        MemFdFrame, WlxFrame,
-    },
+    frame::{FrameFormat, FramePlane, MemFdFrame, WlxFrame},
     wayland::WlxClient,
 };
 
@@ -44,7 +42,7 @@ impl Drop for BufData {
 enum ScreenCopyEvent {
     Buffer {
         data: BufData,
-        fourcc: FourCC,
+        drm_format: DrmFormat,
         width: u32,
         height: u32,
         stride: u32,
@@ -213,7 +211,7 @@ where
             match event {
                 ScreenCopyEvent::Buffer {
                     data,
-                    fourcc,
+                    drm_format,
                     width,
                     height,
                     stride,
@@ -222,16 +220,15 @@ where
                         format: FrameFormat {
                             width,
                             height,
-                            fourcc,
+                            drm_format,
                             transform,
-                            ..Default::default()
                         },
                         plane: FramePlane {
                             fd: Some(data.fd),
                             offset: 0,
                             stride: stride as _,
                         },
-                        ..Default::default()
+                        mouse: None,
                     };
                     log::trace!("{}: Received screencopy buffer, copying", name.as_ref());
                     if wait_for_damage {
@@ -331,7 +328,10 @@ impl Dispatch<ZwlrScreencopyFrameV1, SyncSender<ScreenCopyEvent>> for WlxClient 
                         wl_pool,
                         fd,
                     },
-                    fourcc,
+                    drm_format: DrmFormat {
+                        code: fourcc,
+                        modifier: DrmModifier::Invalid,
+                    },
                     width,
                     height,
                     stride,
@@ -346,12 +346,12 @@ impl Dispatch<ZwlrScreencopyFrameV1, SyncSender<ScreenCopyEvent>> for WlxClient 
     }
 }
 
-fn fourcc_from_wlshm(shm_format: Format) -> Option<FourCC> {
+fn fourcc_from_wlshm(shm_format: Format) -> Option<DrmFourcc> {
     match shm_format {
-        Format::Argb8888 => Some(FourCC::from(DRM_FORMAT_ARGB8888)),
-        Format::Xrgb8888 => Some(FourCC::from(DRM_FORMAT_XRGB8888)),
-        Format::Abgr8888 => Some(FourCC::from(DRM_FORMAT_ARGB8888)),
-        Format::Xbgr8888 => Some(FourCC::from(DRM_FORMAT_XRGB8888)),
+        Format::Argb8888 => Some(DrmFourcc::Argb8888),
+        Format::Xrgb8888 => Some(DrmFourcc::Xrgb8888),
+        Format::Abgr8888 => Some(DrmFourcc::Abgr8888),
+        Format::Xbgr8888 => Some(DrmFourcc::Xbgr8888),
         _ => None,
     }
 }

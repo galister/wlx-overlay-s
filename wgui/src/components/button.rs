@@ -340,6 +340,7 @@ fn register_event_mouse_press(state: Rc<RefCell<State>>, listeners: &mut EventLi
 			if state.hovered {
 				state.down = true;
 				state.last_pressed = Instant::now();
+				state.active_tooltip = None;
 				Ok(EventResult::Consumed)
 			} else {
 				Ok(EventResult::Pass)
@@ -393,7 +394,7 @@ fn register_event_mouse_release(
 
 #[allow(clippy::too_many_lines)]
 pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Result<(WidgetPair, Rc<ComponentButton>)> {
-	let mut globals = ess.layout.state.globals.clone();
+	let globals = ess.layout.state.globals.clone();
 	let mut style = params.style;
 
 	// force-override style
@@ -401,7 +402,6 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	style.justify_content = Some(JustifyContent::Center);
 	style.overflow.x = taffy::Overflow::Hidden;
 	style.overflow.y = taffy::Overflow::Hidden;
-	style.gap = length(8.0);
 
 	// update colors to default ones if they are not specified
 	let color = if let Some(color) = params.color {
@@ -413,13 +413,13 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	let border_color = if let Some(border_color) = params.border_color {
 		border_color
 	} else {
-		Color::new(color.r, color.g, color.b, color.a + 0.4)
+		Color::new(color.r, color.g, color.b, color.a + 0.25)
 	};
 
 	let hover_color = if let Some(hover_color) = params.hover_color {
 		hover_color
 	} else {
-		Color::new(color.r + 0.25, color.g + 0.25, color.g + 0.25, color.a + 0.25)
+		Color::new(color.r + 0.25, color.g + 0.25, color.g + 0.25, color.a + 0.15)
 	};
 
 	let hover_border_color = if let Some(hover_border_color) = params.hover_border_color {
@@ -452,10 +452,17 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		(color.r + color.g + color.b) * mult < 1.5
 	};
 
+	let default_margin = taffy::Rect {
+		top: length(4.0),
+		bottom: length(4.0),
+		left: length(4.0),
+		right: length(4.0),
+	};
+
 	if let Some(sprite_path) = params.sprite_src {
 		let sprite = WidgetSprite::create(WidgetSpriteParams {
 			glyph_data: Some(CustomGlyphData::new(CustomGlyphContent::from_assets(
-				&mut globals,
+				&globals,
 				sprite_path,
 			)?)),
 			..Default::default()
@@ -469,12 +476,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 					width: length(20.0),
 					height: length(20.0),
 				},
-				margin: taffy::Rect {
-					top: length(4.0),
-					bottom: length(4.0),
-					left: length(0.0),
-					right: length(0.0),
-				},
+				margin: default_margin,
 				..Default::default()
 			},
 		)?;
@@ -498,7 +500,10 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 					},
 				},
 			),
-			Default::default(),
+			taffy::Style {
+				margin: default_margin,
+				..Default::default()
+			},
 		)?;
 		label.id
 	} else {

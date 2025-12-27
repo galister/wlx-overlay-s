@@ -15,7 +15,7 @@
         align_items="center"
         justify_content="center"
         flex_direction="column">
-        <sprite src="${icon}" width="32" height="32" />
+        <sprite src_builtin="${icon}" width="32" height="32" />
         <label weight="bold" size="18" text="${text}" translation="${translation}" />
       </div>
     </Button>

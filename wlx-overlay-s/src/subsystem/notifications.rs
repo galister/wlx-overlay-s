@@ -47,7 +47,7 @@ impl NotificationManager {
             .with_path("/org/freedesktop/Notifications");
 
         let sender = self.tx_toast.clone();
-        if let Ok(_) = dbus
+        if dbus
             .become_monitor(
                 rule.clone(),
                 Box::new(move |msg, _| {
@@ -61,6 +61,7 @@ impl NotificationManager {
             )
             .context("Could not register BecomeMonitor")
             .inspect_err(|e| log::warn!("{e:?}"))
+            .is_ok()
         {
             log::info!("Listening to D-Bus notifications via BecomeMonitor.");
             return;

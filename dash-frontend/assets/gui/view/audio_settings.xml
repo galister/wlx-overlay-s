@@ -29,7 +29,7 @@
   <template name="SelectAudioProfileText">
     <div align_items="center" gap="8">
       <Button width="48" height="32" id="btn_back">
-        <sprite src="dashboard/back.svg" width="24" height="24" />
+        <sprite src_builtin="dashboard/back.svg" width="24" height="24" />
       </Button>
       <label translation="AUDIO.SELECT_AUDIO_CARD_PROFILE" size="14" weight="bold" />
     </div>
@@ -54,15 +54,15 @@
     <div flex_direction="row" gap="4">
       <Button
         id="btn_auto"
-        sprite_src="dashboard/magic_wand.svg"
+        sprite_src_builtin="dashboard/magic_wand.svg"
         min_width="32"
         tooltip="AUDIO.AUTO_SWITCH_TO_VR_AUDIO"
         color="~color_accent"
         tooltip_side="right" />
 
-      <BottomButton id="btn_sinks" src="dashboard/volume.svg" translation="AUDIO.SPEAKERS" />
-      <BottomButton id="btn_sources" src="dashboard/microphone.svg" translation="AUDIO.MICROPHONES" />
-      <BottomButton id="btn_cards" src="dashboard/cpu.svg" translation="AUDIO.CARDS" />
+      <BottomButton id="btn_sinks" src_builtin="dashboard/volume.svg" translation="AUDIO.SPEAKERS" />
+      <BottomButton id="btn_sources" src_builtin="dashboard/microphone.svg" translation="AUDIO.MICROPHONES" />
+      <BottomButton id="btn_cards" src_builtin="dashboard/cpu.svg" translation="AUDIO.CARDS" />
     </div>
   </elements>
 </layout>

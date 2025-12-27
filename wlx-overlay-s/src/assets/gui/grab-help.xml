@@ -6,7 +6,7 @@
         padding="16"
         flex_direction="column"
         gap="8"
-        color="#000000c0" border_color="~color_accent" border="2" round="8">
+        color="~color_bg" border_color="~color_accent" border="2" round="8">
 
         <div flex_direction="row" padding="8" justify_content="space_between">
           <div flex_direction="column" align_items="center" gap="8" max_width="160" min_width="160">

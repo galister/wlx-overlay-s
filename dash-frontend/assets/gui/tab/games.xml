@@ -3,5 +3,6 @@
 
   <elements>
     <TabTitle translation="GAMES" icon="dashboard/games.svg" />
+    <div id="game_list_parent" align_items="center" />
   </elements>
 </layout>

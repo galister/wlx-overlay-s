@@ -35,6 +35,7 @@ pub mod layout;
 pub mod parser;
 pub mod renderer_vk;
 pub mod stack;
+pub mod task;
 pub mod widget;
 pub mod windowing;
 

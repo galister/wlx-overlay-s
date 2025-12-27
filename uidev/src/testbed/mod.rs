@@ -1,4 +1,4 @@
-use wgui::layout::RcLayout;
+use wgui::layout::Layout;
 
 pub mod testbed_any;
 pub mod testbed_dashboard;
@@ -12,5 +12,5 @@ pub struct TestbedUpdateParams {
 
 pub trait Testbed {
 	fn update(&mut self, params: TestbedUpdateParams) -> anyhow::Result<()>;
-	fn layout(&self) -> &RcLayout;
+	fn layout(&mut self) -> &mut Layout;
 }

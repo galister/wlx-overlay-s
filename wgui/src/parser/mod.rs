@@ -183,7 +183,7 @@ impl Fetchable for ParserData {
 			.ok_or_else(|| anyhow::anyhow!("fetch_widget_as({id}): widget not found"))?;
 
 		let casted = widget
-			.get_as_mut::<T>()
+			.get_as::<T>()
 			.ok_or_else(|| anyhow::anyhow!("fetch_widget_as({id}): failed to cast"))?;
 
 		Ok(casted)
@@ -390,10 +390,10 @@ impl ParserContext<'_> {
 					&$field.with_alpha($alpha).to_hex(),
 				);
 				$self.insert_var(concat!("color_", $name, "_50"), &$field.mult_rgb(0.50).to_hex());
+				$self.insert_var(concat!("color_", $name, "_40"), &$field.mult_rgb(0.40).to_hex());
+				$self.insert_var(concat!("color_", $name, "_30"), &$field.mult_rgb(0.30).to_hex());
 				$self.insert_var(concat!("color_", $name, "_20"), &$field.mult_rgb(0.20).to_hex());
 				$self.insert_var(concat!("color_", $name, "_10"), &$field.mult_rgb(0.10).to_hex());
-				$self.insert_var(concat!("color_", $name, "_5"), &$field.mult_rgb(0.05).to_hex());
-				$self.insert_var(concat!("color_", $name, "_1"), &$field.mult_rgb(0.01).to_hex());
 			};
 		}
 
@@ -1002,7 +1002,7 @@ impl CustomAttribsInfo<'_> {
 	}
 
 	pub fn get_widget_as<T: 'static>(&self) -> Option<RefMut<'_, T>> {
-		self.widgets.get(self.widget_id)?.get_as_mut::<T>()
+		self.widgets.get(self.widget_id)?.get_as::<T>()
 	}
 
 	pub fn get_value(&self, attrib_name: &str) -> Option<Rc<str>> {

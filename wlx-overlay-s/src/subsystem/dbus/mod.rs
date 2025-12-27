@@ -77,7 +77,7 @@ impl DbusConnector {
         Ok(())
     }
 
-    pub fn fcitx_keymap(&mut self) -> anyhow::Result<String> {
+    pub fn fcitx_keymap() -> anyhow::Result<String> {
         let connection = Connection::new_session()?;
         let proxy = connection.with_proxy(
             "org.fcitx.Fcitx5",
@@ -85,14 +85,12 @@ impl DbusConnector {
             Duration::from_millis(500),
         );
 
-        let result = proxy
+        proxy
             .current_input_method()
-            .context("Could not get D-Bus response");
-        result
+            .context("Could not get D-Bus response")
     }
 
     pub fn notify_send(
-        &mut self,
         summary: &str,
         body: &str,
         urgency: u8,
@@ -125,7 +123,7 @@ impl DbusConnector {
         Ok(retval)
     }
 
-    pub fn notify_close(&mut self, id: u32) -> anyhow::Result<()> {
+    pub fn notify_close(id: u32) -> anyhow::Result<()> {
         let connection = Connection::new_session()?;
 
         let proxy = connection.with_proxy(

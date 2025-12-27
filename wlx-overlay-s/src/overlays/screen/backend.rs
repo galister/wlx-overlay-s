@@ -55,7 +55,7 @@ pub struct ScreenBackend {
 }
 
 impl ScreenBackend {
-    pub fn new_raw(
+    pub(super) fn new_raw(
         name: Arc<str>,
         xr_backend: XrBackend,
         capture: Box<dyn WlxCapture<WlxCaptureIn, WlxCaptureOut>>,
@@ -222,9 +222,13 @@ impl OverlayBackend for ScreenBackend {
     fn render(&mut self, app: &mut AppState, rdr: &mut RenderResources) -> anyhow::Result<()> {
         // want panic; must be some if should_render was not Unable
         let capture = self.cur_frame.as_ref().unwrap();
+        let image = capture.image.clone();
 
         // want panic; must be Some if cur_frame is also Some
-        self.pipeline.as_mut().unwrap().render(&capture, app, rdr)?;
+        self.pipeline
+            .as_mut()
+            .unwrap()
+            .render(image, capture.mouse.as_ref(), app, rdr)?;
         self.capture.request_new_frame();
         Ok(())
     }
@@ -242,7 +246,7 @@ impl OverlayBackend for ScreenBackend {
     }
 
     fn notify(&mut self, _app: &mut AppState, _event_data: OverlayEventData) -> anyhow::Result<()> {
-        todo!();
+        Ok(())
     }
 
     fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> HoverResult {
@@ -302,7 +306,7 @@ impl OverlayBackend for ScreenBackend {
     #[allow(unreachable_patterns)]
     fn get_attrib(&self, attrib: BackendAttrib) -> Option<BackendAttribValue> {
         match attrib {
-            BackendAttrib::Stereo => self.stereo.map(|s| BackendAttribValue::Stereo(s)),
+            BackendAttrib::Stereo => self.stereo.map(BackendAttribValue::Stereo),
             BackendAttrib::MouseTransform => Some(BackendAttribValue::MouseTransform(
                 self.mouse_transform_override,
             )),

@@ -2,25 +2,24 @@
 compile_error!("WayVR feature is not enabled");
 
 use std::{
-    cell::RefCell,
     collections::{BTreeMap, HashMap},
-    rc::Rc,
     sync::Arc,
 };
 
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
+use wgui::gfx::WGfx;
 use wlx_common::{common::LeftRight, config::GeneralConfig, windowing::Positioning};
 
 use crate::{
     backend::{
-        task::{TaskContainer, TaskType},
-        wayvr::{self, WayVRAction},
+        task::TaskContainer,
+        wayvr::{self, WvrServerState},
     },
     config::load_config_with_conf_d,
     config_io,
+    graphics::WGfxExtras,
     ipc::{event_queue::SyncEventQueue, signal::WayVRSignal},
-    overlays::wayvr::{WayVRData, executable_exists_in_path},
 };
 
 // Flat version of RelativeTo
@@ -199,10 +198,12 @@ impl WayVRConfig {
 
     pub fn post_load(
         &self,
+        gfx: Arc<WGfx>,
+        gfx_extras: &WGfxExtras,
         config: &GeneralConfig,
-        tasks: &mut TaskContainer,
+        _tasks: &mut TaskContainer,
         signals: SyncEventQueue<WayVRSignal>,
-    ) -> anyhow::Result<Rc<RefCell<WayVRData>>> {
+    ) -> anyhow::Result<WvrServerState> {
         let primary_count = self
             .displays
             .iter()
@@ -213,23 +214,22 @@ impl WayVRConfig {
             anyhow::bail!("Number of primary displays is more than 1")
         }
 
-        for (catalog_name, catalog) in &self.catalogs {
+        for (_catalog_name, catalog) in &self.catalogs {
             for app in &catalog.apps {
                 if let Some(b) = app.shown_at_start
                     && b
                 {
-                    tasks.enqueue(TaskType::WayVR(WayVRAction::AppClick {
-                        catalog_name: Arc::from(catalog_name.as_str()),
-                        app_name: Arc::from(app.name.as_str()),
-                    }));
+                    //CLEANUP: is this needed?
                 }
             }
         }
 
-        Ok(Rc::new(RefCell::new(WayVRData::new(
+        WvrServerState::new(
+            gfx,
+            gfx_extras,
             Self::get_wayvr_config(config, self)?,
             signals,
-        )?)))
+        )
     }
 }
 
@@ -246,6 +246,19 @@ fn get_default_dashboard_exec() -> (
         }
     }
     (String::from("wayvr-dashboard"), None)
+}
+
+pub fn executable_exists_in_path(command: &str) -> bool {
+    let Ok(path) = std::env::var("PATH") else {
+        return false; // very unlikely to happen
+    };
+    for dir in path.split(':') {
+        let exec_path = std::path::PathBuf::from(dir).join(command);
+        if exec_path.exists() && exec_path.is_file() {
+            return true; // executable found
+        }
+    }
+    false
 }
 
 pub fn load_wayvr() -> WayVRConfig {

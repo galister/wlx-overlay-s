@@ -1,47 +1,6 @@
-use std::{fmt::Display, os::fd::RawFd};
+use std::os::fd::RawFd;
 
-#[derive(Debug, Clone, Copy, Default)]
-pub struct FourCC {
-    pub value: u32,
-}
-
-impl PartialEq for FourCC {
-    fn eq(&self, other: &Self) -> bool {
-        self.value == other.value
-    }
-}
-
-impl From<u32> for FourCC {
-    fn from(value: u32) -> Self {
-        Self { value }
-    }
-}
-
-impl From<FourCC> for u32 {
-    fn from(fourcc: FourCC) -> Self {
-        fourcc.value
-    }
-}
-
-impl Display for FourCC {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for i in 0..4 {
-            if let Some(c) = char::from_u32((self.value >> (i * 8)) & 0xFF) {
-                write!(f, "{c}")?
-            } else {
-                write!(f, "?")?
-            }
-        }
-        Ok(())
-    }
-}
-
-pub const DRM_FORMAT_ARGB8888: u32 = 0x34325241; // AR24
-pub const DRM_FORMAT_ABGR8888: u32 = 0x34324241; // AB24
-pub const DRM_FORMAT_XRGB8888: u32 = 0x34325258; // XR24
-pub const DRM_FORMAT_XBGR8888: u32 = 0x34324258; // XB24
-pub const DRM_FORMAT_ABGR2101010: u32 = 0x30334241; // AB30
-pub const DRM_FORMAT_XBGR2101010: u32 = 0x30334258; // XB30
+use drm_fourcc::{DrmFormat, DrmModifier};
 
 #[cfg(feature = "egl")]
 #[rustfmt::skip]
@@ -73,24 +32,27 @@ pub enum Transform {
     Flipped270,
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct FrameFormat {
     pub width: u32,
     pub height: u32,
-    pub fourcc: FourCC,
-    pub modifier: u64,
+    pub drm_format: DrmFormat,
     pub transform: Transform,
 }
 
 impl FrameFormat {
+    #[must_use]
     pub fn get_mod_hi(&self) -> u32 {
-        (self.modifier >> 32) as _
+        let m = u64::from(self.drm_format.modifier);
+        (m >> 32) as _
     }
+    #[must_use]
     pub fn get_mod_lo(&self) -> u32 {
-        (self.modifier & 0xFFFFFFFF) as _
+        let m = u64::from(self.drm_format.modifier);
+        (m & 0xFFFFFFFF) as _
     }
     pub fn set_mod(&mut self, mod_hi: u32, mod_low: u32) {
-        self.modifier = ((mod_hi as u64) << 32) + mod_low as u64;
+        self.drm_format.modifier = DrmModifier::from(((mod_hi as u64) << 32) + mod_low as u64);
     }
 }
 
@@ -101,13 +63,6 @@ pub struct FramePlane {
     pub stride: i32,
 }
 
-#[derive(Default, Clone)]
-pub struct DrmFormat {
-    pub fourcc: FourCC,
-    pub modifiers: Vec<u64>,
-}
-
-#[derive(Default)]
 pub struct DmabufFrame {
     pub format: FrameFormat,
     pub num_planes: usize,
@@ -126,7 +81,7 @@ impl DmabufFrame {
             0x3056, // HEIGHT
             self.format.height as _,
             0x3271, // LINUX_DRM_FOURCC_EXT,
-            self.format.fourcc.value as _,
+            self.format.drm_format.code as _,
         ];
 
         for i in 0..self.num_planes {
@@ -162,14 +117,12 @@ impl DmabufFrame {
     }
 }
 
-#[derive(Default)]
 pub struct MemFdFrame {
     pub format: FrameFormat,
     pub plane: FramePlane,
     pub mouse: Option<MouseMeta>,
 }
 
-#[derive(Default)]
 pub struct MemPtrFrame {
     pub format: FrameFormat,
     pub ptr: usize,

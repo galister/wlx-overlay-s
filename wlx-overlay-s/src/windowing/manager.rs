@@ -18,6 +18,7 @@ use crate::{
     overlays::{
         anchor::{create_anchor, create_grab_help},
         custom::create_custom,
+        dashboard::create_dash_frontend,
         edit::EditWrapperManager,
         keyboard::create_keyboard,
         screen::create_screens,
@@ -122,11 +123,14 @@ where
         let watch = OverlayWindowData::from_config(create_watch(app)?);
         me.watch_id = me.add(watch, app);
 
+        let dash_frontend = OverlayWindowData::from_config(create_dash_frontend(app)?);
+        me.add(dash_frontend, app);
+
         let grab_help = OverlayWindowData::from_config(create_grab_help(app)?);
         me.add(grab_help, app);
 
         let custom_panels = app.session.config.custom_panels.clone();
-        for name in custom_panels.into_iter() {
+        for name in custom_panels {
             let Some(panel) = create_custom(app, name) else {
                 continue;
             };
@@ -155,6 +159,7 @@ where
         Ok(me)
     }
 
+    #[allow(clippy::too_many_lines)]
     pub fn handle_task(&mut self, app: &mut AppState, task: OverlayTask) -> anyhow::Result<()> {
         match task {
             OverlayTask::ShowHide => self.show_hide(app),
@@ -442,7 +447,7 @@ impl<T> OverlayWindowManager<T> {
         }
 
         for (name, attribs) in &app.session.config.attribs.clone() {
-            let Some(oid) = self.lookup(&*name) else {
+            let Some(oid) = self.lookup(name) else {
                 continue;
             };
             let Some(o) = self.mut_by_id(oid) else {
@@ -532,6 +537,7 @@ impl<T> OverlayWindowManager<T> {
         match selector {
             OverlaySelector::Id(id) => Some(*id),
             OverlaySelector::Name(name) => self.lookup(name),
+            _ => None,
         }
     }
 
@@ -551,6 +557,7 @@ impl<T> OverlayWindowManager<T> {
         let id = match selector {
             OverlaySelector::Id(id) => *id,
             OverlaySelector::Name(name) => self.lookup(name)?,
+            _ => return None,
         };
 
         let ret_val = self.overlays.remove(id);
@@ -633,6 +640,12 @@ impl<T> OverlayWindowManager<T> {
                 }
             }
         }
+
+        self.overlays[oid]
+            .config
+            .backend
+            .notify(app, OverlayEventData::IdAssigned(oid))
+            .unwrap(); // IdAssigned not expected to fail
 
         if !shown && show_on_spawn {
             log::debug!("activating {name} due to show_on_spawn");

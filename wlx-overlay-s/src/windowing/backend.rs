@@ -115,6 +115,8 @@ pub struct OverlayMeta {
 
 #[allow(clippy::enum_variant_names)]
 pub enum OverlayEventData {
+    /// Notifies a newly added overlay of its ID, even before the overlay is shown.
+    IdAssigned(OverlayID),
     ActiveSetChanged(Option<usize>),
     NumSetsChanged(usize),
     EditModeChanged(bool),

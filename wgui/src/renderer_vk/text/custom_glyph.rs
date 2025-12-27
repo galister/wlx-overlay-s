@@ -38,7 +38,7 @@ impl CustomGlyphContent {
 	}
 
 	#[allow(clippy::case_sensitive_file_extension_comparisons)]
-	pub fn from_assets(globals: &mut WguiGlobals, path: AssetPath) -> anyhow::Result<Self> {
+	pub fn from_assets(globals: &WguiGlobals, path: AssetPath) -> anyhow::Result<Self> {
 		let path_str = path.get_str();
 		let data = globals.get_asset(path)?;
 		if path_str.ends_with(".svg") || path_str.ends_with(".svgz") {

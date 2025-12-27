@@ -14,12 +14,11 @@ use crate::backend::wayvr::{ExternalProcessRequest, WayVRTask};
 use super::{
     ProcessWayVREnv,
     comp::{self, ClientState},
-    display, process,
+    process,
 };
 
 pub struct WayVRClient {
     pub client: wayland_server::Client,
-    pub display_handle: display::DisplayHandle,
     pub pid: u32,
 }
 
@@ -103,10 +102,13 @@ impl WayVRCompositor {
         });
     }
 
+    pub fn cleanup_handles(&mut self) {
+        self.state.cleanup();
+    }
+
     fn accept_connection(
         &mut self,
         stream: UnixStream,
-        displays: &mut display::DisplayVec,
         processes: &mut process::ProcessVec,
     ) -> anyhow::Result<()> {
         let client = self
@@ -126,16 +128,12 @@ impl WayVRCompositor {
             {
                 // Find process with matching auth key
                 if process.auth_key.as_str() == auth_key {
-                    // Check if display handle is valid
-                    if displays.get(&process.display_handle).is_some() {
-                        // Add client
-                        self.add_client(WayVRClient {
-                            client,
-                            display_handle: process.display_handle,
-                            pid: creds.pid as u32,
-                        });
-                        return Ok(());
-                    }
+                    // Add client
+                    self.add_client(WayVRClient {
+                        client,
+                        pid: creds.pid as u32,
+                    });
+                    return Ok(());
                 }
             }
         }
@@ -158,13 +156,9 @@ impl WayVRCompositor {
         Ok(())
     }
 
-    fn accept_connections(
-        &mut self,
-        displays: &mut display::DisplayVec,
-        processes: &mut process::ProcessVec,
-    ) -> anyhow::Result<()> {
+    fn accept_connections(&mut self, processes: &mut process::ProcessVec) -> anyhow::Result<()> {
         if let Some(stream) = self.listener.accept()?
-            && let Err(e) = self.accept_connection(stream, displays, processes)
+            && let Err(e) = self.accept_connection(stream, processes)
         {
             log::error!("Failed to accept connection: {e}");
         }
@@ -172,12 +166,8 @@ impl WayVRCompositor {
         Ok(())
     }
 
-    pub fn tick_wayland(
-        &mut self,
-        displays: &mut display::DisplayVec,
-        processes: &mut process::ProcessVec,
-    ) -> anyhow::Result<()> {
-        if let Err(e) = self.accept_connections(displays, processes) {
+    pub fn tick_wayland(&mut self, processes: &mut process::ProcessVec) -> anyhow::Result<()> {
+        if let Err(e) = self.accept_connections(processes) {
             log::error!("accept_connections failed: {e}");
         }
 
