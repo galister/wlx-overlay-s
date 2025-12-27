@@ -25,6 +25,7 @@ use smithay::{
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
+    rc::Rc,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -106,7 +107,7 @@ pub struct Config {
     pub blit_method: BlitMethod,
 }
 
-pub struct WayVRState {
+pub struct WvrServerState {
     time_start: u64,
     pub manager: client::WayVRCompositor,
     pub wm: window::WindowManager,
@@ -131,8 +132,7 @@ pub enum TickTask {
     NewExternalProcess(ExternalProcessRequest), // Call WayVRCompositor::add_client after receiving this message
 }
 
-impl WayVRState {
-    #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
+impl WvrServerState {
     pub fn new(
         gfx: Arc<WGfx>,
         gfx_extras: &WGfxExtras,
@@ -180,8 +180,8 @@ impl WayVRState {
         // this will throw a compile-time error if smithay's drm-fourcc is out of sync with wlx-capture's
         let mut formats: Vec<smithay::backend::allocator::Format> = vec![];
 
-        for f in gfx_extras.drm_formats.iter() {
-            formats.push(f.clone());
+        for f in &gfx_extras.drm_formats {
+            formats.push(*f);
         }
 
         let dmabuf_state = DmabufFeedbackBuilder::new(main_device, formats.clone())
@@ -230,7 +230,7 @@ impl WayVRState {
 
         let time_start = get_millis();
 
-        Ok(WayVRState {
+        Ok(Self {
             time_start,
             manager: client::WayVRCompositor::new(state, display, seat_keyboard, seat_pointer)?,
             processes: ProcessVec::new(),
@@ -246,12 +246,16 @@ impl WayVRState {
         })
     }
 
-    #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
-    pub fn tick_events(&mut self, app: &mut AppState) -> anyhow::Result<Vec<TickTask>> {
+    #[allow(clippy::too_many_lines)]
+    pub fn tick_events(app: &mut AppState) -> anyhow::Result<Vec<TickTask>> {
         let mut tasks: Vec<TickTask> = Vec::new();
 
+        let Some(wvr_server) = app.wvr_server.as_mut() else {
+            return Ok(tasks);
+        };
+
         app.ipc_server.tick(&mut ipc_server::TickParams {
-            wayland_state: self,
+            wvr_server,
             input_state: &app.input_state,
             tasks: &mut tasks,
             signals: &app.wayvr_signals,
@@ -260,14 +264,14 @@ impl WayVRState {
         // Tick all child processes
         let mut to_remove: SmallVec<[process::ProcessHandle; 2]> = SmallVec::new();
 
-        for (handle, process) in self.processes.iter_mut() {
+        for (handle, process) in wvr_server.processes.iter_mut() {
             if !process.is_running() {
                 to_remove.push(handle);
             }
         }
 
         for p_handle in &to_remove {
-            self.processes.remove(p_handle);
+            wvr_server.processes.remove(p_handle);
         }
 
         if !to_remove.is_empty() {
@@ -276,20 +280,22 @@ impl WayVRState {
             ));
         }
 
-        while let Some(task) = self.tasks.read() {
+        while let Some(task) = wvr_server.tasks.read() {
             match task {
                 WayVRTask::NewExternalProcess(req) => {
                     tasks.push(TickTask::NewExternalProcess(req));
                 }
                 WayVRTask::NewToplevel(client_id, toplevel) => {
+                    let toplevel = Rc::new(toplevel);
+
                     // Attach newly created toplevel surfaces to displays
-                    for client in &self.manager.clients {
+                    for client in &wvr_server.manager.clients {
                         if client.client.id() != client_id {
                             continue;
                         }
 
                         let Some(process_handle) =
-                            process::find_by_pid(&self.processes, client.pid)
+                            process::find_by_pid(&wvr_server.processes, client.pid)
                         else {
                             log::error!(
                                 "WayVR window creation failed: Unexpected process ID {}. It wasn't registered before.",
@@ -298,32 +304,26 @@ impl WayVRState {
                             continue;
                         };
 
-                        let window_handle = self.wm.create_window(&toplevel, process_handle);
+                        let window_handle = wvr_server
+                            .wm
+                            .create_window(toplevel.clone(), process_handle);
 
                         let title: Arc<str> = with_states(toplevel.wl_surface(), |states| {
                             states
                                 .data_map
                                 .get::<XdgToplevelSurfaceData>()
                                 .and_then(|t| t.lock().unwrap().title.clone())
-                                .map(|t| t.into())
-                                .unwrap_or_else(|| format!("P{}", client.pid).into())
+                                .map_or_else(|| format!("P{}", client.pid).into(), String::into)
                         });
 
                         app.tasks.enqueue(TaskType::Overlay(OverlayTask::Create(
                             OverlaySelector::Nothing,
                             Box::new(move |app: &mut AppState| {
-                                Some(
-                                    create_wl_window_overlay(
-                                        title,
-                                        app.xr_backend,
-                                        app.wayvr_server.as_ref().unwrap().clone(),
-                                        window_handle,
-                                    )
-                                    .inspect_err(|e| {
-                                        log::error!("Could not add wayland client overlay: {e:?}")
-                                    })
-                                    .ok()?,
-                                )
+                                Some(create_wl_window_overlay(
+                                    title,
+                                    app.xr_backend,
+                                    window_handle,
+                                ))
                             }),
                         )));
 
@@ -333,28 +333,29 @@ impl WayVRState {
                     }
                 }
                 WayVRTask::DropToplevel(client_id, toplevel) => {
-                    for client in &self.manager.clients {
+                    for client in &wvr_server.manager.clients {
                         if client.client.id() != client_id {
                             continue;
                         }
 
-                        let Some(window_handle) = self.wm.find_window_handle(&toplevel) else {
+                        let Some(window_handle) = wvr_server.wm.find_window_handle(&toplevel)
+                        else {
                             log::warn!("DropToplevel: Couldn't find matching window handle");
                             continue;
                         };
 
-                        if let Some(oid) = self.window_to_overlay.remove(&window_handle) {
+                        if let Some(oid) = wvr_server.window_to_overlay.remove(&window_handle) {
                             app.tasks.enqueue(TaskType::Overlay(OverlayTask::Drop(
                                 OverlaySelector::Id(oid),
                             )));
-                            self.overlay_to_window.remove(oid);
+                            wvr_server.overlay_to_window.remove(oid);
                         }
 
-                        self.wm.remove_window(window_handle);
+                        wvr_server.wm.remove_window(window_handle);
                     }
                 }
                 WayVRTask::ProcessTerminationRequest(process_handle) => {
-                    if let Some(process) = self.processes.get_mut(&process_handle) {
+                    if let Some(process) = wvr_server.processes.get_mut(&process_handle) {
                         process.terminate();
                     }
 
@@ -363,14 +364,14 @@ impl WayVRState {
             }
         }
 
-        self.manager.tick_wayland(&mut self.processes)?;
+        wvr_server.manager.tick_wayland(&mut wvr_server.processes)?;
 
-        if self.ticks.is_multiple_of(200) {
-            self.manager.cleanup_clients();
-            self.manager.cleanup_handles();
+        if wvr_server.ticks.is_multiple_of(200) {
+            wvr_server.manager.cleanup_clients();
+            wvr_server.manager.cleanup_handles();
         }
 
-        self.ticks += 1;
+        wvr_server.ticks += 1;
 
         Ok(tasks)
     }
@@ -396,7 +397,7 @@ impl WayVRState {
         }
         self.mouse_freeze = Instant::now() + Duration::from_millis(1); // prevent other pointer from moving the mouse on the same frame
         self.wm.mouse = Some(window::MouseState {
-            hover_window: handle.clone(),
+            hover_window: handle,
             x,
             y,
         });

@@ -85,7 +85,8 @@ pub fn create_keyboard(app: &mut AppState, wayland: bool) -> anyhow::Result<Over
         .ok();
 
     if let Some(keymap) = maybe_keymap.as_ref() {
-        app.hid_provider.keymap_changed(keymap);
+        app.hid_provider
+            .keymap_changed(app.wvr_server.as_mut(), keymap);
     }
 
     if !auto_labels {
@@ -218,7 +219,8 @@ impl KeyboardBackend {
 
     fn auto_switch_keymap(&mut self, app: &mut AppState) -> anyhow::Result<bool> {
         let keymap = self.get_effective_keymap(app)?;
-        app.hid_provider.keymap_changed(&keymap);
+        app.hid_provider
+            .keymap_changed(app.wvr_server.as_mut(), &keymap);
         self.switch_keymap(&keymap, app)
     }
 
@@ -258,7 +260,8 @@ impl OverlayBackend for KeyboardBackend {
     }
     fn pause(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         self.panel().state.modifiers = 0;
-        app.hid_provider.set_modifiers_routed(0);
+        app.hid_provider
+            .set_modifiers_routed(app.wvr_server.as_mut(), 0);
         self.panel().pause(app)
     }
     fn resume(&mut self, app: &mut AppState) -> anyhow::Result<()> {
@@ -371,20 +374,24 @@ fn handle_press(
                 _ => 0,
             };
 
-            app.hid_provider.set_modifiers_routed(keyboard.modifiers);
-            app.hid_provider.send_key_routed(*vk, true);
+            app.hid_provider
+                .set_modifiers_routed(app.wvr_server.as_mut(), keyboard.modifiers);
+            app.hid_provider
+                .send_key_routed(app.wvr_server.as_mut(), *vk, true);
             pressed.set(true);
             play_key_click(app);
         }
         KeyButtonData::Modifier { modifier, sticky } => {
             sticky.set(keyboard.modifiers & *modifier == 0);
             keyboard.modifiers |= *modifier;
-            app.hid_provider.set_modifiers_routed(keyboard.modifiers);
+            app.hid_provider
+                .set_modifiers_routed(app.wvr_server.as_mut(), keyboard.modifiers);
             play_key_click(app);
         }
         KeyButtonData::Macro { verbs } => {
             for (vk, press) in verbs {
-                app.hid_provider.send_key_routed(*vk, *press);
+                app.hid_provider
+                    .send_key_routed(app.wvr_server.as_mut(), *vk, *press);
             }
             play_key_click(app);
         }
@@ -412,8 +419,10 @@ fn handle_release(app: &mut AppState, key: &KeyState, keyboard: &mut KeyboardSta
                     keyboard.modifiers &= !*m;
                 }
             }
-            app.hid_provider.send_key_routed(*vk, false);
-            app.hid_provider.set_modifiers_routed(keyboard.modifiers);
+            app.hid_provider
+                .send_key_routed(app.wvr_server.as_mut(), *vk, false);
+            app.hid_provider
+                .set_modifiers_routed(app.wvr_server.as_mut(), keyboard.modifiers);
             true
         }
         KeyButtonData::Modifier { modifier, sticky } => {
@@ -421,7 +430,8 @@ fn handle_release(app: &mut AppState, key: &KeyState, keyboard: &mut KeyboardSta
                 false
             } else {
                 keyboard.modifiers &= !*modifier;
-                app.hid_provider.set_modifiers_routed(keyboard.modifiers);
+                app.hid_provider
+                    .set_modifiers_routed(app.wvr_server.as_mut(), keyboard.modifiers);
                 true
             }
         }

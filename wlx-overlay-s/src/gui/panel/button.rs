@@ -347,7 +347,8 @@ pub(super) fn setup_custom_button<S: 'static>(
                         return Ok(EventResult::Pass);
                     }
 
-                    app.hid_provider.send_key_routed(key, down);
+                    app.hid_provider
+                        .send_key_routed(app.wvr_server.as_mut(), key, down);
                     Ok(EventResult::Consumed)
                 })
             }

@@ -12,13 +12,10 @@ use wlx_common::{
 };
 
 #[cfg(feature = "wayvr")]
-use {
-    crate::config_wayvr::{self, WayVRConfig},
-    std::{cell::RefCell, rc::Rc},
-};
+use crate::config_wayvr::{self, WayVRConfig};
 
 #[cfg(feature = "wayvr")]
-use crate::backend::wayvr::WayVRState;
+use crate::backend::wayvr::WvrServerState;
 #[cfg(feature = "osc")]
 use crate::subsystem::osc::OscSender;
 
@@ -62,7 +59,7 @@ pub struct AppState {
     pub osc_sender: Option<OscSender>,
 
     #[cfg(feature = "wayvr")]
-    pub wayvr_server: Option<Rc<RefCell<WayVRState>>>,
+    pub wvr_server: Option<WvrServerState>,
 }
 
 #[allow(unused_mut)]
@@ -92,11 +89,6 @@ impl AppState {
             .ok();
 
         let mut hid_provider = HidWrapper::new();
-
-        #[cfg(feature = "wayvr")]
-        if let Some(wayland_server) = wayvr_server.as_ref() {
-            hid_provider.set_wayvr(wayland_server.clone());
-        }
 
         #[cfg(feature = "osc")]
         let osc_sender = crate::subsystem::osc::OscSender::new(session.config.osc_out_port).ok();
@@ -158,7 +150,7 @@ impl AppState {
             osc_sender,
 
             #[cfg(feature = "wayvr")]
-            wayvr_server,
+            wvr_server: wayvr_server,
         })
     }
 

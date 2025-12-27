@@ -1,6 +1,6 @@
 use glam::{Affine2, Affine3A, Quat, Vec3, vec3};
 use smithay::wayland::compositor::with_states;
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::sync::Arc;
 use vulkano::image::view::ImageView;
 use wlx_capture::frame::MouseMeta;
 use wlx_common::{
@@ -12,7 +12,7 @@ use crate::{
     backend::{
         XrBackend,
         input::{self, HoverResult},
-        wayvr::{self, SurfaceBufWithImage, WayVRState},
+        wayvr::{self, SurfaceBufWithImage},
     },
     graphics::ExtentExt,
     overlays::screen::capture::ScreenPipeline,
@@ -30,10 +30,9 @@ use crate::{
 pub fn create_wl_window_overlay(
     name: Arc<str>,
     xr_backend: XrBackend,
-    wayvr: Rc<RefCell<WayVRState>>,
     window: wayvr::window::WindowHandle,
-) -> anyhow::Result<OverlayWindowConfig> {
-    Ok(OverlayWindowConfig {
+) -> OverlayWindowConfig {
+    OverlayWindowConfig {
         name: name.clone(),
         default_state: OverlayWindowState {
             grabbable: true,
@@ -50,35 +49,32 @@ pub fn create_wl_window_overlay(
         keyboard_focus: Some(KeyboardFocus::WayVR),
         category: OverlayCategory::WayVR,
         show_on_spawn: true,
-        ..OverlayWindowConfig::from_backend(Box::new(WayVRBackend::new(
-            name, xr_backend, wayvr, window,
-        )?))
-    })
+        ..OverlayWindowConfig::from_backend(Box::new(WvrWindowBackend::new(
+            name, xr_backend, window,
+        )))
+    }
 }
 
-pub struct WayVRBackend {
+pub struct WvrWindowBackend {
     name: Arc<str>,
     pipeline: Option<ScreenPipeline>,
     interaction_transform: Option<Affine2>,
     window: wayvr::window::WindowHandle,
-    wayvr: Rc<RefCell<WayVRState>>,
     just_resumed: bool,
     meta: Option<FrameMeta>,
     stereo: Option<StereoMode>,
     cur_image: Option<Arc<ImageView>>,
 }
 
-impl WayVRBackend {
-    fn new(
+impl WvrWindowBackend {
+    const fn new(
         name: Arc<str>,
         xr_backend: XrBackend,
-        wayvr: Rc<RefCell<WayVRState>>,
         window: wayvr::window::WindowHandle,
-    ) -> anyhow::Result<Self> {
-        Ok(Self {
+    ) -> Self {
+        Self {
             name,
             pipeline: None,
-            wayvr,
             window,
             interaction_transform: None,
             just_resumed: false,
@@ -89,11 +85,11 @@ impl WayVRBackend {
                 None
             },
             cur_image: None,
-        })
+        }
     }
 }
 
-impl OverlayBackend for WayVRBackend {
+impl OverlayBackend for WvrWindowBackend {
     fn init(&mut self, _app: &mut state::AppState) -> anyhow::Result<()> {
         Ok(())
     }
@@ -108,8 +104,12 @@ impl OverlayBackend for WayVRBackend {
     }
 
     fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
-        let wayvr = &self.wayvr.borrow();
-        let Some(window) = wayvr.wm.windows.get(&self.window) else {
+        let Some(toplevel) = app
+            .wvr_server
+            .as_ref()
+            .and_then(|sv| sv.wm.windows.get(&self.window))
+            .map(|win| win.toplevel.clone())
+        else {
             log::debug!(
                 "{:?}: WayVR overlay without matching window entry",
                 self.name
@@ -117,7 +117,7 @@ impl OverlayBackend for WayVRBackend {
             return Ok(ShouldRender::Unable);
         };
 
-        with_states(window.toplevel.wl_surface(), |states| {
+        with_states(toplevel.wl_surface(), |states| {
             if let Some(surf) = SurfaceBufWithImage::get_from_surface(states) {
                 let mut meta = FrameMeta {
                     extent: surf.image.image().extent(),
@@ -174,8 +174,8 @@ impl OverlayBackend for WayVRBackend {
     ) -> anyhow::Result<()> {
         let image = self.cur_image.as_ref().unwrap().clone();
 
-        let wayvr = &self.wayvr.borrow();
-        let mouse = wayvr
+        let wvr_server = app.wvr_server.as_mut().unwrap(); //never None
+        let mouse = wvr_server
             .wm
             .mouse
             .as_ref()
@@ -202,23 +202,23 @@ impl OverlayBackend for WayVRBackend {
 
     fn notify(
         &mut self,
-        _app: &mut state::AppState,
+        app: &mut state::AppState,
         event_data: OverlayEventData,
     ) -> anyhow::Result<()> {
         if let OverlayEventData::IdAssigned(oid) = event_data {
-            let wayvr = &mut self.wayvr.borrow_mut();
-            wayvr.overlay_added(oid, self.window.clone());
+            let wvr_server = app.wvr_server.as_mut().unwrap(); //never None
+            wvr_server.overlay_added(oid, self.window.clone());
         }
         Ok(())
     }
 
-    fn on_hover(&mut self, _app: &mut state::AppState, hit: &input::PointerHit) -> HoverResult {
-        let wayvr = &mut self.wayvr.borrow_mut();
-
+    fn on_hover(&mut self, app: &mut state::AppState, hit: &input::PointerHit) -> HoverResult {
         if let Some(meta) = self.meta.as_ref() {
             let x = ((hit.uv.x * (meta.extent[0] as f32)) as u32).max(0);
             let y = ((hit.uv.y * (meta.extent[1] as f32)) as u32).max(0);
-            wayvr.send_mouse_move(self.window, x, y);
+
+            let wvr_server = app.wvr_server.as_mut().unwrap(); //never None
+            wvr_server.send_mouse_move(self.window, x, y);
         }
 
         HoverResult {
@@ -231,7 +231,7 @@ impl OverlayBackend for WayVRBackend {
         // Ignore event
     }
 
-    fn on_pointer(&mut self, _app: &mut state::AppState, hit: &input::PointerHit, pressed: bool) {
+    fn on_pointer(&mut self, app: &mut state::AppState, hit: &input::PointerHit, pressed: bool) {
         if let Some(index) = match hit.mode {
             input::PointerMode::Left => Some(wayvr::MouseIndex::Left),
             input::PointerMode::Middle => Some(wayvr::MouseIndex::Center),
@@ -241,22 +241,23 @@ impl OverlayBackend for WayVRBackend {
                 None
             }
         } {
-            let wayvr = &mut self.wayvr.borrow_mut();
+            let wvr_server = app.wvr_server.as_mut().unwrap(); //never None
             if pressed {
-                wayvr.send_mouse_down(self.window, index);
+                wvr_server.send_mouse_down(self.window, index);
             } else {
-                wayvr.send_mouse_up(index);
+                wvr_server.send_mouse_up(index);
             }
         }
     }
 
     fn on_scroll(
         &mut self,
-        _app: &mut state::AppState,
+        app: &mut state::AppState,
         _hit: &input::PointerHit,
         delta: WheelDelta,
     ) {
-        self.wayvr.borrow_mut().send_mouse_scroll(delta);
+        let wvr_server = app.wvr_server.as_mut().unwrap(); //never None
+        wvr_server.send_mouse_scroll(delta);
     }
 
     fn get_interaction_transform(&mut self) -> Option<Affine2> {

@@ -1,5 +1,5 @@
 #[cfg(feature = "wayvr")]
-use crate::backend::wayvr::{self, WayVRState};
+use crate::backend::wayvr::{self, WvrServerState};
 
 use crate::{
     backend::input::InputState,
@@ -76,7 +76,7 @@ fn read_payload(conn: &mut local_socket::Stream, size: u32) -> Option<Payload> {
 
 pub struct TickParams<'a> {
     #[cfg(feature = "wayvr")]
-    pub wayland_state: &'a mut WayVRState,
+    pub wvr_server: &'a mut WvrServerState,
     #[cfg(feature = "wayvr")]
     pub tasks: &'a mut Vec<wayvr::TickTask>,
     pub signals: &'a SyncEventQueue<WayVRSignal>,
@@ -197,7 +197,7 @@ impl Connection {
 
         send(Some(packet_server::WvrWindowList {
             list: params
-                .wayland_state
+                .wvr_server
                 .wm
                 .windows
                 .iter()
@@ -219,7 +219,7 @@ impl Connection {
         visible: bool,
     ) {
         if let Some(window) = params
-            .wayland_state
+            .wvr_server
             .wm
             .windows
             .get_mut(&wayvr::window::WindowHandle::from_packet(handle))
@@ -238,7 +238,7 @@ impl Connection {
         let args_vec = gen_args_vec(&packet_params.args);
         let env_vec = gen_env_vec(&packet_params.env);
 
-        let res = params.wayland_state.spawn_process(
+        let res = params.wvr_server.spawn_process(
             &packet_params.exec,
             &args_vec,
             &env_vec,
@@ -263,7 +263,7 @@ impl Connection {
         serial: ipc::Serial,
     ) -> anyhow::Result<()> {
         let list: Vec<packet_server::WvrProcess> = params
-            .wayland_state
+            .wvr_server
             .processes
             .vec
             .iter()
@@ -298,7 +298,7 @@ impl Connection {
         process_handle: packet_server::WvrProcessHandle,
     ) {
         let native_handle = &wayvr::process::ProcessHandle::from_packet(process_handle);
-        let process = params.wayland_state.processes.get_mut(native_handle);
+        let process = params.wvr_server.processes.get_mut(native_handle);
 
         let Some(process) = process else {
             return;
@@ -316,7 +316,7 @@ impl Connection {
     ) -> anyhow::Result<()> {
         let native_handle = &wayvr::process::ProcessHandle::from_packet(process_handle);
         let process = params
-            .wayland_state
+            .wvr_server
             .processes
             .get(native_handle)
             .map(|process| process.to_packet(*native_handle));

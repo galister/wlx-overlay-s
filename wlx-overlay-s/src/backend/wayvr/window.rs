@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use smithay::{
     input,
     utils::{Logical, Point},
@@ -16,17 +18,17 @@ pub struct Window {
     pub size_x: u32,
     pub size_y: u32,
     pub visible: bool,
-    pub toplevel: ToplevelSurface,
+    pub toplevel: Rc<ToplevelSurface>,
     pub process: process::ProcessHandle,
 }
 
 impl Window {
-    fn new(toplevel: &ToplevelSurface, process: process::ProcessHandle) -> Self {
+    const fn new(toplevel: Rc<ToplevelSurface>, process: process::ProcessHandle) -> Self {
         Self {
             size_x: 0,
             size_y: 0,
             visible: true,
-            toplevel: toplevel.clone(),
+            toplevel,
             process,
         }
     }
@@ -152,7 +154,7 @@ impl WindowManager {
         for (idx, cell) in self.windows.vec.iter().enumerate() {
             if let Some(cell) = cell {
                 let window = &cell.obj;
-                if window.toplevel == *toplevel {
+                if *window.toplevel == *toplevel {
                     return Some(WindowVec::get_handle(cell, idx));
                 }
             }
@@ -162,7 +164,7 @@ impl WindowManager {
 
     pub fn create_window(
         &mut self,
-        toplevel: &ToplevelSurface,
+        toplevel: Rc<ToplevelSurface>,
         process: process::ProcessHandle,
     ) -> WindowHandle {
         self.windows.add(Window::new(toplevel, process))

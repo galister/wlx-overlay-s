@@ -74,6 +74,7 @@ impl compositor::CompositorHandler for Application {
         &client.get_data::<ClientState>().unwrap().compositor_state
     }
 
+    #[allow(clippy::significant_drop_tightening)]
     fn commit(&mut self, surface: &WlSurface) {
         smithay::wayland::compositor::with_states(surface, |states| {
             let mut guard = states.cached_state.get::<SurfaceAttributes>();
@@ -88,7 +89,7 @@ impl compositor::CompositorHandler for Application {
                                 .image_importer
                                 .get_or_import_dmabuf(dmabuf.clone())
                                 .inspect_err(|e| {
-                                    log::warn!("wayland_server failed to import DMA-buf: {e:?}")
+                                    log::warn!("wayland_server failed to import DMA-buf: {e:?}");
                                 })
                             {
                                 let sbwi = SurfaceBufWithImage {
@@ -108,7 +109,7 @@ impl compositor::CompositorHandler for Application {
                                     .image_importer
                                     .import_shm(data, size, buf)
                                     .inspect_err(|e| {
-                                        log::warn!("wayland_server failed to import SHM: {e:?}")
+                                        log::warn!("wayland_server failed to import SHM: {e:?}");
                                     })
                                 {
                                     let sbwi = SurfaceBufWithImage {
@@ -127,7 +128,7 @@ impl compositor::CompositorHandler for Application {
                             let spb = get_single_pixel_buffer(&buffer).unwrap(); // always Ok
                             if let Ok(image) =
                                 self.image_importer.import_spb(spb).inspect_err(|e| {
-                                    log::warn!("wayland_server failed to import SPB: {e:?}")
+                                    log::warn!("wayland_server failed to import SPB: {e:?}");
                                 })
                             {
                                 let sbwi = SurfaceBufWithImage {
@@ -147,8 +148,7 @@ impl compositor::CompositorHandler for Application {
                     }
                     buffer.release();
                 }
-                Some(BufferAssignment::Removed) => {}
-                None => {}
+                Some(BufferAssignment::Removed) | None => {}
             }
 
             let t = time::get_millis() as u32;
@@ -299,7 +299,7 @@ delegate_seat!(Application);
 delegate_data_device!(Application);
 delegate_output!(Application);
 
-fn wl_transform_to_frame_transform(
+const fn wl_transform_to_frame_transform(
     transform: wl_output::Transform,
 ) -> wlx_capture::frame::Transform {
     match transform {

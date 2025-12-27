@@ -1,9 +1,7 @@
-use std::{cell::RefCell, rc::Rc};
-
 use wayvr_ipc::packet_server;
 
 #[cfg(feature = "wayvr")]
-use crate::backend::wayvr::{self, WayVRState};
+use crate::backend::wayvr::{self, WvrServerState};
 
 use crate::{
     backend::{
@@ -18,18 +16,14 @@ use crate::{
 #[cfg(feature = "wayvr")]
 fn process_tick_tasks(
     tick_tasks: Vec<backend::wayvr::TickTask>,
-    r_wayvr: &Rc<RefCell<WayVRState>>,
+    server_state: &mut WvrServerState,
 ) -> anyhow::Result<()> {
     for tick_task in tick_tasks {
         match tick_task {
             backend::wayvr::TickTask::NewExternalProcess(request) => {
-                let mut wayvr = r_wayvr.borrow_mut();
-
                 log::info!("Registering external process with PID {}", request.pid);
-
-                wayvr.add_external_process(request.pid);
-
-                wayvr.manager.add_client(wayvr::client::WayVRClient {
+                server_state.add_external_process(request.pid);
+                server_state.manager.add_client(wayvr::client::WayVRClient {
                     client: request.client,
                     pid: request.pid,
                 });
@@ -47,9 +41,6 @@ pub fn tick_events<O>(
 where
     O: Default,
 {
-    #[cfg(feature = "wayvr")]
-    let wayvr_server = app.wayvr_server.clone();
-
     while let Some(signal) = app.wayvr_signals.read() {
         match signal {
             #[cfg(feature = "wayvr")]
@@ -76,9 +67,9 @@ where
 
     #[cfg(feature = "wayvr")]
     {
-        if let Some(wayvr_server) = wayvr_server {
-            let tick_tasks = wayvr_server.borrow_mut().tick_events(app)?;
-            process_tick_tasks(tick_tasks, &wayvr_server)?;
+        let tick_tasks = WvrServerState::tick_events(app)?;
+        if let Some(wayvr_server) = app.wvr_server.as_mut() {
+            process_tick_tasks(tick_tasks, wayvr_server)?;
         }
     }
 

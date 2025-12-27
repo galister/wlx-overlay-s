@@ -2,9 +2,7 @@
 compile_error!("WayVR feature is not enabled");
 
 use std::{
-    cell::RefCell,
     collections::{BTreeMap, HashMap},
-    rc::Rc,
     sync::Arc,
 };
 
@@ -16,7 +14,7 @@ use wlx_common::{common::LeftRight, config::GeneralConfig, windowing::Positionin
 use crate::{
     backend::{
         task::TaskContainer,
-        wayvr::{self, WayVRState},
+        wayvr::{self, WvrServerState},
     },
     config::load_config_with_conf_d,
     config_io,
@@ -203,9 +201,9 @@ impl WayVRConfig {
         gfx: Arc<WGfx>,
         gfx_extras: &WGfxExtras,
         config: &GeneralConfig,
-        tasks: &mut TaskContainer,
+        _tasks: &mut TaskContainer,
         signals: SyncEventQueue<WayVRSignal>,
-    ) -> anyhow::Result<Rc<RefCell<WayVRState>>> {
+    ) -> anyhow::Result<WvrServerState> {
         let primary_count = self
             .displays
             .iter()
@@ -216,7 +214,7 @@ impl WayVRConfig {
             anyhow::bail!("Number of primary displays is more than 1")
         }
 
-        for (catalog_name, catalog) in &self.catalogs {
+        for (_catalog_name, catalog) in &self.catalogs {
             for app in &catalog.apps {
                 if let Some(b) = app.shown_at_start
                     && b
@@ -226,12 +224,12 @@ impl WayVRConfig {
             }
         }
 
-        Ok(Rc::new(RefCell::new(WayVRState::new(
+        WvrServerState::new(
             gfx,
             gfx_extras,
             Self::get_wayvr_config(config, self)?,
             signals,
-        )?)))
+        )
     }
 }
 
