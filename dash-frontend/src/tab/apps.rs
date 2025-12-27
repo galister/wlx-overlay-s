@@ -14,7 +14,6 @@ use crate::{
 	frontend::{Frontend, FrontendTask, FrontendTasks},
 	tab::{Tab, TabType},
 	util::{
-		self,
 		desktop_finder::DesktopEntry,
 		popup_manager::{MountPopupParams, PopupHandle},
 	},
@@ -117,7 +116,7 @@ impl TabApps {
 			extra: Default::default(),
 		};
 
-		let entries = util::desktop_finder::find_entries()?;
+		let entries = frontend.desktop_finder.find_entries()?;
 
 		let frontend_tasks = frontend.tasks.clone();
 		let globals = frontend.layout.state.globals.clone();
@@ -173,7 +172,7 @@ impl AppList {
 			entry
 				.icon_path
 				.as_ref()
-				.map_or_else(|| Rc::from(""), |icon_path| Rc::from(icon_path.as_str())),
+				.map_or_else(|| Rc::from(""), |icon_path| icon_path.clone()),
 		);
 
 		// entry fallback (question mark) icon
@@ -186,7 +185,7 @@ impl AppList {
 			},
 		);
 
-		template_params.insert(Rc::from("name"), Rc::from(entry.app_name.as_str()));
+		template_params.insert(Rc::from("name"), entry.app_name.clone());
 
 		let data = parser_state.parse_template(
 			doc_params,

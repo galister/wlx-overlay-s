@@ -1429,6 +1429,7 @@ dependencies = [
  "chrono",
  "freedesktop",
  "glam",
+ "glob",
  "http-body-util",
  "hyper",
  "keyvalues-parser",
@@ -1998,7 +1999,6 @@ source = "git+https://github.com/galister/freedesktop.git?rev=2c1e653#2c1e653afc
 dependencies = [
  "freedesktop-apps",
  "freedesktop-core",
- "freedesktop-icon",
 ]
 
 [[package]]
@@ -2017,15 +2017,6 @@ version = "0.0.3"
 source = "git+https://github.com/galister/freedesktop.git?rev=2c1e653#2c1e653afcd025c3254a25dcdd5e8750e263eebf"
 dependencies = [
  "dirs",
-]
-
-[[package]]
-name = "freedesktop-icon"
-version = "0.0.3"
-source = "git+https://github.com/galister/freedesktop.git?rev=2c1e653#2c1e653afcd025c3254a25dcdd5e8750e263eebf"
-dependencies = [
- "freedesktop-core",
- "rust-ini",
 ]
 
 [[package]]

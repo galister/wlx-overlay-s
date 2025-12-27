@@ -15,9 +15,9 @@ use wgui::{
 	taffy::{self, prelude::length},
 	task::Tasks,
 	widget::{
-		ConstructEssentials,
 		div::WidgetDiv,
 		label::{WidgetLabel, WidgetLabelParams},
+		ConstructEssentials,
 	},
 };
 use wlx_common::dash_interface::BoxDashInterface;
@@ -89,13 +89,13 @@ impl View {
 	}
 }
 
-fn get_desktop_file_from_process(process: &packet_server::WvrProcess) -> Option<desktop_finder::DesktopFile> {
+fn get_desktop_entry_from_process(process: &packet_server::WvrProcess) -> Option<desktop_finder::DesktopEntry> {
 	// TODO: refactor this after we ditch old wayvr-dashboard completely
-	let Some(dfile_str) = process.userdata.get("desktop_file") else {
+	let Some(dfile_str) = process.userdata.get("desktop-entry") else {
 		return None;
 	};
 
-	let Ok(desktop_file) = serde_json::from_str::<desktop_finder::DesktopFile>(dfile_str) else {
+	let Ok(desktop_file) = serde_json::from_str::<desktop_finder::DesktopEntry>(dfile_str) else {
 		debug_assert!(false); // invalid json???
 		return None;
 	};
@@ -144,7 +144,7 @@ fn construct_process_entry(
 		},
 	)?;
 
-	if let Some(desktop_file) = get_desktop_file_from_process(process) {
+	if let Some(desktop_file) = get_desktop_entry_from_process(process) {
 		// desktop file icon and process name
 		util::various::mount_simple_sprite_square(
 			globals,
@@ -158,7 +158,7 @@ fn construct_process_entry(
 			globals,
 			ess.layout,
 			cell.id,
-			Translation::from_raw_text_string(desktop_file.name.clone()),
+			Translation::from_raw_text_rc(desktop_file.app_name.clone()),
 		)?;
 	} else {
 		// just show a process name

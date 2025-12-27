@@ -19,10 +19,11 @@ use wlx_common::{dash_interface::BoxDashInterface, timestep::Timestep};
 use crate::{
 	assets, settings,
 	tab::{
-		Tab, TabType, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses,
-		settings::TabSettings,
+		apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses, settings::TabSettings,
+		Tab, TabType,
 	},
 	util::{
+		desktop_finder::DesktopFinder,
 		popup_manager::{MountPopupParams, PopupManager, PopupManagerParams},
 		toast_manager::ToastManager,
 		various::AsyncExecutor,
@@ -63,6 +64,8 @@ pub struct Frontend {
 
 	window_audio_settings: WguiWindow,
 	view_audio_settings: Option<views::audio_settings::View>,
+
+	pub(crate) desktop_finder: DesktopFinder,
 }
 
 pub struct InitParams {
@@ -146,6 +149,7 @@ impl Frontend {
 			window_audio_settings: WguiWindow::default(),
 			view_audio_settings: None,
 			executor: Rc::new(smol::LocalExecutor::new()),
+			desktop_finder: DesktopFinder::new(),
 		};
 
 		// init some things first

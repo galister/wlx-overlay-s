@@ -85,12 +85,12 @@ impl View {
 
 			label_exec.set_text_simple(
 				&mut params.globals.get(),
-				Translation::from_raw_text_string(params.entry.app_name.clone()),
+				Translation::from_raw_text_rc(params.entry.app_name.clone()),
 			);
 
 			label_args.set_text_simple(
 				&mut params.globals.get(),
-				Translation::from_raw_text_string(params.entry.exec_args.join(" ")),
+				Translation::from_raw_text_rc(params.entry.exec_args.clone()),
 			);
 		}
 
@@ -103,7 +103,7 @@ impl View {
 		// app icon
 		if let Some(icon_path) = &params.entry.icon_path {
 			let mut template_params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
-			template_params.insert("path".into(), icon_path.as_str().into());
+			template_params.insert("path".into(), icon_path.clone());
 			state.instantiate_template(
 				doc_params,
 				"ApplicationIcon",
@@ -225,27 +225,23 @@ impl View {
 			env.push("ELECTRON_OZONE_PLATFORM_HINT=wayland".into());
 		}
 
-		// TODO: refactor this after we ditch old wayvr-dashboard completely
-		let desktop_file = params.application.to_desktop_file();
-		let mut userdata = HashMap::<String, String>::new();
-		userdata.insert("desktop_file".into(), serde_json::to_string(&desktop_file)?);
-
-		let exec_args_str = desktop_file.exec_args.join(" ");
-
 		let args = match params.run_mode {
-			RunMode::Cage => format!("-- {} {}", desktop_file.exec_path, exec_args_str),
-			RunMode::Wayland => exec_args_str,
+			RunMode::Cage => format!("-- {} {}", params.application.exec_path, params.application.exec_args),
+			RunMode::Wayland => params.application.exec_args.to_string(),
 		};
 
 		let exec = match params.run_mode {
-			RunMode::Cage => "cage",
-			RunMode::Wayland => &desktop_file.name,
+			RunMode::Cage => "cage".to_string(),
+			RunMode::Wayland => params.application.exec_path.to_string(),
 		};
+
+		let mut userdata = HashMap::new();
+		userdata.insert("desktop-entry".to_string(), serde_json::to_string(params.application)?);
 
 		params.interface.process_launch(WvrProcessLaunchParams {
 			env,
-			exec: String::from(exec),
-			name: desktop_file.name,
+			exec,
+			name: params.application.app_name.to_string(),
 			args,
 			userdata,
 		})?;

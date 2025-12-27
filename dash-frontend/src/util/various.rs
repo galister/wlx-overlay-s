@@ -18,12 +18,12 @@ use crate::util::desktop_finder;
 
 // the compiler wants to scream
 #[allow(irrefutable_let_patterns)]
-pub fn get_desktop_file_icon_path(desktop_file: &desktop_finder::DesktopFile) -> AssetPathOwned {
+pub fn get_desktop_file_icon_path(desktop_file: &desktop_finder::DesktopEntry) -> AssetPathOwned {
 	/*
 		FIXME: why is the compiler complaining about trailing irrefutable patterns there?!?!
 		looking at the PathBuf::from_str implementation, it always returns Ok() and it's inline, maybe that's why.
 	*/
-	if let Some(icon) = &desktop_file.icon
+	if let Some(icon) = &desktop_file.icon_path
 		&& let Ok(path) = PathBuf::from_str(icon)
 	{
 		return AssetPathOwned::File(path);
