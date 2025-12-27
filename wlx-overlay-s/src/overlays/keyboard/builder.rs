@@ -57,7 +57,7 @@ pub(super) fn create_keyboard_panel(
         },
     )?;
 
-    let has_altgr = keymap.as_ref().is_some_and(|m| XkbKeymap::has_altgr(*m));
+    let has_altgr = keymap.as_ref().is_some_and(|m| XkbKeymap::has_altgr(m));
 
     let parse_doc_params = wgui::parser::ParseDocumentParams {
         globals,

@@ -103,17 +103,20 @@ impl AppState {
 
         let mut defaults = wgui::globals::Defaults::default();
 
-        fn apply_color(default: &mut drawing::Color, value: &Option<String>) {
-            if let Some(parsed) = value.as_ref().and_then(|c| parse_color_hex(c)) {
-                *default = parsed;
+        {
+            #[allow(clippy::ref_option)]
+            fn apply_color(default: &mut drawing::Color, value: &Option<String>) {
+                if let Some(parsed) = value.as_ref().and_then(|c| parse_color_hex(c)) {
+                    *default = parsed;
+                }
             }
-        }
 
-        apply_color(&mut defaults.text_color, &session.config.color_text);
-        apply_color(&mut defaults.accent_color, &session.config.color_accent);
-        apply_color(&mut defaults.danger_color, &session.config.color_danger);
-        apply_color(&mut defaults.faded_color, &session.config.color_faded);
-        apply_color(&mut defaults.bg_color, &session.config.color_background);
+            apply_color(&mut defaults.text_color, &session.config.color_text);
+            apply_color(&mut defaults.accent_color, &session.config.color_accent);
+            apply_color(&mut defaults.danger_color, &session.config.color_danger);
+            apply_color(&mut defaults.faded_color, &session.config.color_faded);
+            apply_color(&mut defaults.bg_color, &session.config.color_background);
+        }
 
         defaults.animation_mult = 1. / session.config.animation_speed;
         defaults.rounding_mult = session.config.round_multiplier;

@@ -306,7 +306,7 @@ impl OverlayBackend for ScreenBackend {
     #[allow(unreachable_patterns)]
     fn get_attrib(&self, attrib: BackendAttrib) -> Option<BackendAttribValue> {
         match attrib {
-            BackendAttrib::Stereo => self.stereo.map(|s| BackendAttribValue::Stereo(s)),
+            BackendAttrib::Stereo => self.stereo.map(BackendAttribValue::Stereo),
             BackendAttrib::MouseTransform => Some(BackendAttribValue::MouseTransform(
                 self.mouse_transform_override,
             )),

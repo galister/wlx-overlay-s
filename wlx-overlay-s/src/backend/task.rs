@@ -60,6 +60,7 @@ pub enum PlayspaceTask {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::enum_variant_names)]
 pub enum ModifyPanelCommand {
     SetText(String),
     SetColor(String),

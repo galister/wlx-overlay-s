@@ -69,6 +69,7 @@ struct WatchState {
 
 #[allow(clippy::significant_drop_tightening)]
 #[allow(clippy::too_many_lines)]
+#[allow(clippy::cognitive_complexity)]
 pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
     let state = WatchState::default();
 
@@ -192,12 +193,11 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
         }
     });
 
-    let watch_xml = app
-        .session
-        .config
-        .single_set_mode
-        .then_some("gui/watch-noset.xml")
-        .unwrap_or("gui/watch.xml");
+    let watch_xml = if app.session.config.single_set_mode {
+        "gui/watch-noset.xml"
+    } else {
+        "gui/watch.xml"
+    };
 
     let mut panel = GuiPanel::new_from_template(
         app,
@@ -234,9 +234,8 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                         for idx in 0..MAX_TOOLBOX_BUTTONS {
                             let id_str = format!("overlay_{idx}");
 
-                            let button = if let Some(button) = parser_state
-                                .fetch_component_as::<ComponentButton>(&id_str)
-                                .ok()
+                            let button = if let Ok(button) =
+                                parser_state.fetch_component_as::<ComponentButton>(&id_str)
                             {
                                 button
                             } else {
@@ -438,7 +437,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                             if let Some(btn_dashboard) = btn_dashboard.as_ref() {
                                 btn_dashboard.set_sticky_state(&mut com, meta.visible);
                             }
-                            panel.state.dashboard_oid = meta.id
+                            panel.state.dashboard_oid = meta.id;
                         }
                         OverlayCategory::Internal => {}
                         _ => panel.state.overlay_metas.push(meta),
@@ -452,10 +451,11 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
 
                 for (idx, btn) in panel.state.overlay_buttons.iter().enumerate() {
                     let display = if let Some(meta) = panel.state.overlay_metas.get(idx) {
-                        let name = btn
-                            .condensed
-                            .then(|| condense_overlay_name(&meta.name))
-                            .unwrap_or_else(|| sanitize_overlay_name(&meta.name));
+                        let name = if btn.condensed {
+                            condense_overlay_name(&meta.name)
+                        } else {
+                            sanitize_overlay_name(&meta.name)
+                        };
 
                         if let Some(mut label) =
                             panel.layout.state.widgets.get_as::<WidgetLabel>(btn.label)
@@ -487,14 +487,14 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                 }
             }
             OverlayEventData::VisibleOverlaysChanged(overlays) => {
-                for meta in panel.state.overlay_metas.iter_mut() {
+                for meta in &mut panel.state.overlay_metas {
                     meta.visible = false;
                 }
 
                 let mut keyboard_visible = false;
                 let mut dashboard_visible = false;
 
-                for visible in overlays.iter() {
+                for visible in &overlays {
                     if let Some(idx) = panel.state.overlay_indices.get(*visible)
                         && let Some(o) = panel.state.overlay_metas.get_mut(*idx)
                     {

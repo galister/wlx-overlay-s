@@ -103,10 +103,11 @@ impl<S: 'static> GuiPanel<S> {
 
         let doc_params = wgui::parser::ParseDocumentParams {
             globals: app.wgui_globals.clone(),
-            path: params
-                .external_xml
-                .then_some(AssetPath::File(path))
-                .unwrap_or(AssetPath::FileOrBuiltIn(path)),
+            path: if params.external_xml {
+                AssetPath::File(path)
+            } else {
+                AssetPath::FileOrBuiltIn(path)
+            },
             extra: wgui::parser::ParseDocumentExtra {
                 on_custom_attribs: Some(Box::new({
                     let custom_elems = custom_elems.clone();
@@ -311,7 +312,7 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
         self.context.draw(
             &globals.font_system,
             &mut app.wgui_shared,
-            &mut rdr.cmd_buf_single(),
+            rdr.cmd_buf_single(),
             &primitives,
         )?;
         Ok(())

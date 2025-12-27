@@ -119,7 +119,6 @@ impl Dispatch<WlKeyboard, ()> for MonitorState {
                         Ok(Some(keymap)) => {
                             for l in keymap.layouts() {
                                 log::info!("wayland keymap: {l}");
-                                break;
                             }
 
                             state.keymap = Some(XkbKeymap { inner: keymap });

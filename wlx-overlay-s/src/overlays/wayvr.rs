@@ -152,7 +152,7 @@ impl OverlayBackend for WvrWindowBackend {
                     log::trace!(
                         "{}: new {} image",
                         self.name,
-                        surf.dmabuf.then_some("DMA-buf").unwrap_or("SHM")
+                        if surf.dmabuf { "DMA-buf" } else { "SHM" }
                     );
                     self.cur_image = Some(surf.image);
                     Ok(ShouldRender::Should)
@@ -183,8 +183,8 @@ impl OverlayBackend for WvrWindowBackend {
             .map(|m| {
                 let extent = image.extent_f32();
                 MouseMeta {
-                    x: (m.x as f32) / (extent[0] as f32),
-                    y: (m.y as f32) / (extent[1] as f32),
+                    x: (m.x as f32) / extent[0],
+                    y: (m.y as f32) / extent[1],
                 }
             });
 
@@ -207,15 +207,15 @@ impl OverlayBackend for WvrWindowBackend {
     ) -> anyhow::Result<()> {
         if let OverlayEventData::IdAssigned(oid) = event_data {
             let wvr_server = app.wvr_server.as_mut().unwrap(); //never None
-            wvr_server.overlay_added(oid, self.window.clone());
+            wvr_server.overlay_added(oid, self.window);
         }
         Ok(())
     }
 
     fn on_hover(&mut self, app: &mut state::AppState, hit: &input::PointerHit) -> HoverResult {
         if let Some(meta) = self.meta.as_ref() {
-            let x = ((hit.uv.x * (meta.extent[0] as f32)) as u32).max(0);
-            let y = ((hit.uv.y * (meta.extent[1] as f32)) as u32).max(0);
+            let x = (hit.uv.x * (meta.extent[0] as f32)) as u32;
+            let y = (hit.uv.y * (meta.extent[1] as f32)) as u32;
 
             let wvr_server = app.wvr_server.as_mut().unwrap(); //never None
             wvr_server.send_mouse_move(self.window, x, y);
@@ -266,7 +266,7 @@ impl OverlayBackend for WvrWindowBackend {
 
     fn get_attrib(&self, attrib: BackendAttrib) -> Option<BackendAttribValue> {
         match attrib {
-            BackendAttrib::Stereo => self.stereo.map(|s| BackendAttribValue::Stereo(s)),
+            BackendAttrib::Stereo => self.stereo.map(BackendAttribValue::Stereo),
             _ => None,
         }
     }

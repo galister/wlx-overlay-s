@@ -11,9 +11,12 @@ use crate::{
     gui::panel::GuiPanel,
     overlays::keyboard::{builder::create_keyboard_panel, layout::AltModifier},
     state::AppState,
-    subsystem::hid::{
-        ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey, WheelDelta, XkbKeymap,
-        get_keymap_wl, get_keymap_x11,
+    subsystem::{
+        dbus::DbusConnector,
+        hid::{
+            ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey, WheelDelta, XkbKeymap,
+            get_keymap_wl, get_keymap_x11,
+        },
     },
     windowing::{
         backend::{FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender},
@@ -68,7 +71,7 @@ pub fn create_keyboard(app: &mut AppState, wayland: bool) -> anyhow::Result<Over
     };
 
     let mut maybe_keymap = backend
-        .get_effective_keymap(app)
+        .get_effective_keymap()
         .inspect_err(|e| log::warn!("{e:?}"))
         .or_else(|_| {
             if let Some(layout_variant) = app.session.config.default_keymap.as_ref() {
@@ -142,7 +145,7 @@ impl KeyboardBackend {
             self.layout_ids.insert(layout_name.into(), id);
         } else {
             log::error!("XKB keymap without a layout!");
-        };
+        }
         Ok(id)
     }
 
@@ -184,7 +187,7 @@ impl KeyboardBackend {
             .state = state_from;
     }
 
-    fn get_effective_keymap(&mut self, app: &mut AppState) -> anyhow::Result<XkbKeymap> {
+    fn get_effective_keymap(&mut self) -> anyhow::Result<XkbKeymap> {
         fn get_system_keymap(wayland: bool) -> anyhow::Result<XkbKeymap> {
             if wayland {
                 get_keymap_wl()
@@ -193,9 +196,7 @@ impl KeyboardBackend {
             }
         }
 
-        let Ok(fcitx_layout) = app
-            .dbus
-            .fcitx_keymap()
+        let Ok(fcitx_layout) = DbusConnector::fcitx_keymap()
             .context("Could not keymap via fcitx5, falling back to wayland")
             .inspect_err(|e| log::info!("{e:?}"))
         else {
@@ -204,8 +205,8 @@ impl KeyboardBackend {
 
         if let Some(captures) = self.re_fcitx.captures(&fcitx_layout) {
             XkbKeymap::from_layout_variant(
-                captures.get(1).map(|g| g.as_str()).unwrap_or(""),
-                captures.get(2).map(|g| g.as_str()).unwrap_or(""),
+                captures.get(1).map_or("", |g| g.as_str()),
+                captures.get(2).map_or("", |g| g.as_str()),
             )
             .context("layout/variant is invalid")
         } else if SYSTEM_LAYOUT_ALIASES.contains(&fcitx_layout.as_str()) {
@@ -218,7 +219,7 @@ impl KeyboardBackend {
     }
 
     fn auto_switch_keymap(&mut self, app: &mut AppState) -> anyhow::Result<bool> {
-        let keymap = self.get_effective_keymap(app)?;
+        let keymap = self.get_effective_keymap()?;
         app.hid_provider
             .keymap_changed(app.wvr_server.as_mut(), &keymap);
         self.switch_keymap(&keymap, app)
@@ -311,7 +312,7 @@ struct KeyboardState {
 }
 
 impl KeyboardState {
-    fn take(&mut self) -> Self {
+    const fn take(&mut self) -> Self {
         Self {
             modifiers: self.modifiers,
             alt_modifier: self.alt_modifier,

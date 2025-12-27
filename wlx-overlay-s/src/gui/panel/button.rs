@@ -26,6 +26,7 @@ use crate::{
     windowing::OverlaySelector,
 };
 
+#[allow(clippy::type_complexity)]
 pub const BUTTON_EVENTS: [(
     &str,
     EventListenerKind,
@@ -130,31 +131,31 @@ pub const BUTTON_EVENTS: [(
     ),
 ];
 
-fn button_any(_: &mut CallbackData) -> bool {
+const fn button_any(_: &mut CallbackData) -> bool {
     true
 }
 
-fn button_left(data: &mut CallbackData) -> bool {
+const fn button_left(data: &mut CallbackData) -> bool {
     if let CallbackMetadata::MouseButton(b) = data.metadata
-        && let MouseButtonIndex::Left = b.index
+        && matches!(b.index, MouseButtonIndex::Left)
     {
         true
     } else {
         false
     }
 }
-fn button_right(data: &mut CallbackData) -> bool {
+const fn button_right(data: &mut CallbackData) -> bool {
     if let CallbackMetadata::MouseButton(b) = data.metadata
-        && let MouseButtonIndex::Right = b.index
+        && matches!(b.index, MouseButtonIndex::Right)
     {
         true
     } else {
         false
     }
 }
-fn button_middle(data: &mut CallbackData) -> bool {
+const fn button_middle(data: &mut CallbackData) -> bool {
     if let CallbackMetadata::MouseButton(b) = data.metadata
-        && let MouseButtonIndex::Middle = b.index
+        && matches!(b.index, MouseButtonIndex::Middle)
     {
         true
     } else {
@@ -162,7 +163,7 @@ fn button_middle(data: &mut CallbackData) -> bool {
     }
 }
 
-fn ignore_duration(_btn: &ComponentButton, _app: &AppState) -> bool {
+const fn ignore_duration(_btn: &ComponentButton, _app: &AppState) -> bool {
     true
 }
 fn long_duration(btn: &ComponentButton, app: &AppState) -> bool {
@@ -172,6 +173,7 @@ fn short_duration(btn: &ComponentButton, app: &AppState) -> bool {
     btn.get_time_since_last_pressed().as_secs_f32() < app.session.config.long_press_duration
 }
 
+#[allow(clippy::too_many_lines)]
 pub(super) fn setup_custom_button<S: 'static>(
     layout: &mut Layout,
     attribs: &CustomAttribsInfoOwned,
@@ -442,7 +444,7 @@ fn shell_on_action(state: &ShellButtonState) -> anyhow::Result<()> {
     let mut mut_state = state.mut_state.borrow_mut();
 
     if let Some(child) = mut_state.child.as_mut()
-        && let Ok(None) = child.try_wait()
+        && matches!(child.try_wait(), Ok(None))
     {
         log::info!("ShellExec triggered while child is still running; sending SIGUSR1");
         let _ = Command::new("kill")

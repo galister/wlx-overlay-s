@@ -17,7 +17,7 @@ use crate::{
 fn process_tick_tasks(
     tick_tasks: Vec<backend::wayvr::TickTask>,
     server_state: &mut WvrServerState,
-) -> anyhow::Result<()> {
+) {
     for tick_task in tick_tasks {
         match tick_task {
             backend::wayvr::TickTask::NewExternalProcess(request) => {
@@ -30,8 +30,6 @@ fn process_tick_tasks(
             }
         }
     }
-
-    Ok(())
 }
 
 pub fn tick_events<O>(
@@ -69,7 +67,7 @@ where
     {
         let tick_tasks = WvrServerState::tick_events(app)?;
         if let Some(wayvr_server) = app.wvr_server.as_mut() {
-            process_tick_tasks(tick_tasks, wayvr_server)?;
+            process_tick_tasks(tick_tasks, wayvr_server);
         }
     }
 

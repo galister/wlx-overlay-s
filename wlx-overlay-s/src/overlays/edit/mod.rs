@@ -256,6 +256,7 @@ impl OverlayBackend for EditModeBackendWrapper {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
     let state = EditModeState {
         id: Rc::new(RefCell::new(OverlayID::null())),

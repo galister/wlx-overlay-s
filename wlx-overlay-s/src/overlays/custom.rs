@@ -61,7 +61,7 @@ pub fn create_custom(app: &mut AppState, name: Arc<str>) -> Option<OverlayWindow
 
             if let Err(e) = apply_custom_command(panel, app, &element, &command) {
                 log::warn!("Could not apply {command:?} on {name}/{element}: {e:?}");
-            };
+            }
 
             Ok(())
         }

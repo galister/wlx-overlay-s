@@ -8,7 +8,7 @@ use wlx_capture::{
 };
 use wlx_common::config::{PwTokenMap, def_pw_tokens};
 
-use crate::{config_io, state::AppState};
+use crate::{config_io, state::AppState, subsystem::dbus::DbusConnector};
 
 use super::{
     backend::ScreenBackend,
@@ -26,7 +26,6 @@ impl ScreenBackend {
         let embed_mouse = !app.session.config.double_cursor_fix;
 
         let select_screen_result = select_pw_screen(
-            app,
             &format!(
                 "Now select: {} {} {} @ {},{}",
                 &output.name,
@@ -63,7 +62,6 @@ impl ScreenBackend {
 
 #[allow(clippy::fn_params_excessive_bools)]
 pub(super) fn select_pw_screen(
-    app: &mut AppState,
     instructions: &str,
     token: Option<&str>,
     embed_mouse: bool,
@@ -87,7 +85,8 @@ pub(super) fn select_pw_screen(
                 task::Poll::Pending => {
                     if Instant::now() >= print_at {
                         log::info!("{instructions}");
-                        if let Ok(id) = app.dbus.notify_send(instructions, "", 2, 30, 0, true) {
+                        if let Ok(id) = DbusConnector::notify_send(instructions, "", 2, 30, 0, true)
+                        {
                             notify = Some(id);
                         }
                         break;
@@ -103,7 +102,7 @@ pub(super) fn select_pw_screen(
         let result = f.await;
         if let Some(id) = notify {
             //safe unwrap; checked above
-            let _ = app.dbus.notify_close(id);
+            let _ = DbusConnector::notify_close(id);
         }
         result
     };
