@@ -87,7 +87,7 @@ pub(super) fn select_pw_screen(
                 task::Poll::Pending => {
                     if Instant::now() >= print_at {
                         log::info!("{instructions}");
-                        if let Ok(id) = app.dbus.notify_send(instructions, "", 2, 30, 0, true) {
+                        if let Ok(id) = app.dbus.notify_send(instructions, "", 1, 60, 0, true) {
                             notify = Some(id);
                         }
                         break;
