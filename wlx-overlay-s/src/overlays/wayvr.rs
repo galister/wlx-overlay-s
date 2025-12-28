@@ -62,6 +62,7 @@ pub struct WvrWindowBackend {
     window: wayvr::window::WindowHandle,
     just_resumed: bool,
     meta: Option<FrameMeta>,
+    mouse: Option<MouseMeta>,
     stereo: Option<StereoMode>,
     cur_image: Option<Arc<ImageView>>,
 }
@@ -79,6 +80,7 @@ impl WvrWindowBackend {
             interaction_transform: None,
             just_resumed: false,
             meta: None,
+            mouse: None,
             stereo: if matches!(xr_backend, XrBackend::OpenXR) {
                 Some(StereoMode::None)
             } else {
@@ -143,6 +145,21 @@ impl OverlayBackend for WvrWindowBackend {
                     self.interaction_transform = Some(ui_transform(meta.extent.extent_u32arr()));
                 }
 
+                let mouse = app
+                    .wvr_server
+                    .as_ref()
+                    .unwrap()
+                    .wm
+                    .mouse
+                    .as_ref()
+                    .filter(|m| m.hover_window == self.window)
+                    .map(|m| MouseMeta {
+                        x: (m.x as f32) / (meta.extent[0] as f32),
+                        y: (m.y as f32) / (meta.extent[1] as f32),
+                    });
+
+                let mouse_dirty = self.mouse != mouse;
+                self.mouse = mouse;
                 self.meta = Some(meta);
                 if self
                     .cur_image
@@ -156,8 +173,9 @@ impl OverlayBackend for WvrWindowBackend {
                     );
                     self.cur_image = Some(surf.image);
                     Ok(ShouldRender::Should)
+                } else if mouse_dirty {
+                    Ok(ShouldRender::Should)
                 } else {
-                    log::trace!("{}: no new image", self.name);
                     Ok(ShouldRender::Can)
                 }
             } else {
@@ -174,24 +192,10 @@ impl OverlayBackend for WvrWindowBackend {
     ) -> anyhow::Result<()> {
         let image = self.cur_image.as_ref().unwrap().clone();
 
-        let wvr_server = app.wvr_server.as_mut().unwrap(); //never None
-        let mouse = wvr_server
-            .wm
-            .mouse
-            .as_ref()
-            .filter(|m| m.hover_window == self.window)
-            .map(|m| {
-                let extent = image.extent_f32();
-                MouseMeta {
-                    x: (m.x as f32) / extent[0],
-                    y: (m.y as f32) / extent[1],
-                }
-            });
-
         self.pipeline
             .as_mut()
             .unwrap()
-            .render(image, mouse.as_ref(), app, rdr)?;
+            .render(image, self.mouse.as_ref(), app, rdr)?;
 
         Ok(())
     }

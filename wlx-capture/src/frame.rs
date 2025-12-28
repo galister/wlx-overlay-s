@@ -130,7 +130,7 @@ pub struct MemPtrFrame {
     pub mouse: Option<MouseMeta>,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, PartialEq)]
 pub struct MouseMeta {
     pub x: f32,
     pub y: f32,
