@@ -85,7 +85,7 @@ impl View {
 
 			label_exec.set_text_simple(
 				&mut params.globals.get(),
-				Translation::from_raw_text_rc(params.entry.app_name.clone()),
+				Translation::from_raw_text_rc(params.entry.exec_path.clone()),
 			);
 
 			label_args.set_text_simple(
