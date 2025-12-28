@@ -3,3 +3,4 @@
 .vscode
 .cargo
 scripts/translator/node_modules
+*/Cargo.lock
