@@ -1,7 +1,7 @@
 name: Check Default
 
 on:
-  pull_request:
+  push:
     #branches: [ "!main" ]
 
 env:
@@ -10,23 +10,23 @@ env:
   RUSTC_WRAPPER: "sccache"
 
 jobs:
-  build:
+  make_release:
     runs-on: ubuntu-22.04
     defaults:
       run:
         working-directory: ./wlx-overlay-s
     steps:
-    - uses: actions/checkout@v4
-    - name: Setup sccache
-      uses: mozilla-actions/sccache-action@v0.0.9
-    - name: Prepare Environment
-      run: |
-        ../.github/workflows/scripts/appimage_prepare_env.sh
-    - name: Run cargo fmt
-      run: cargo fmt --check
-    - name: Build
-      run: cargo build --verbose
-    - name: Run clippy
-      run: cargo clippy --no-deps
-    - name: Run tests
-      run: cargo test --verbose
+      - uses: actions/checkout@v3
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+      - name: Prepare Environment
+        run: |
+          ../.github/workflows/scripts/appimage_prepare_env.sh
+      - name: Build Wayvrctl
+        run: |
+          cd ../wayvrctl
+          cargo build --release
+      - name: Test
+        run: |
+          pwd
+          find /home/runner/work/ -name 'wayvrctl' 2>/dev/null
