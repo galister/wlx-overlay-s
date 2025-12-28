@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, marker::PhantomData, rc::Rc};
 
 use wgui::{
 	assets::AssetPath,
@@ -28,7 +28,7 @@ struct State {
 	view_launcher: Option<(PopupHandle, views::app_launcher::View)>,
 }
 
-pub struct TabApps {
+pub struct TabApps<T> {
 	#[allow(dead_code)]
 	parser_state: ParserState,
 
@@ -36,14 +36,15 @@ pub struct TabApps {
 	entries: Vec<DesktopEntry>,
 	app_list: AppList,
 	tasks: Tasks<Task>,
+	marker: PhantomData<T>,
 }
 
-impl Tab for TabApps {
+impl<T> Tab<T> for TabApps<T> {
 	fn get_type(&self) -> TabType {
 		TabType::Apps
 	}
 
-	fn update(&mut self, frontend: &mut Frontend) -> anyhow::Result<()> {
+	fn update(&mut self, frontend: &mut Frontend<T>, data: &mut T) -> anyhow::Result<()> {
 		let mut state = self.state.borrow_mut();
 
 		for task in self.tasks.drain() {
@@ -53,7 +54,7 @@ impl Tab for TabApps {
 		}
 
 		if let Some((_, launcher)) = &mut state.view_launcher {
-			launcher.update(&mut frontend.layout, &mut frontend.interface)?;
+			launcher.update(&mut frontend.layout, &mut frontend.interface, data)?;
 		}
 		Ok(())
 	}
@@ -108,8 +109,8 @@ fn on_app_click(
 	})
 }
 
-impl TabApps {
-	pub fn new(frontend: &mut Frontend, parent_id: WidgetID) -> anyhow::Result<Self> {
+impl<T> TabApps<T> {
+	pub fn new(frontend: &mut Frontend<T>, parent_id: WidgetID) -> anyhow::Result<Self> {
 		let doc_params = &ParseDocumentParams {
 			globals: frontend.layout.state.globals.clone(),
 			path: AssetPath::BuiltIn("gui/tab/apps.xml"),
@@ -151,14 +152,15 @@ impl TabApps {
 			entries,
 			state,
 			tasks,
+			marker: PhantomData,
 		})
 	}
 }
 
 impl AppList {
-	fn mount_entry(
+	fn mount_entry<T>(
 		&mut self,
-		frontend: &mut Frontend,
+		frontend: &mut Frontend<T>,
 		parser_state: &mut ParserState,
 		doc_params: &ParseDocumentParams,
 		list_parent: &WidgetPair,
@@ -197,9 +199,9 @@ impl AppList {
 		data.fetch_component_as::<ComponentButton>("button")
 	}
 
-	fn mount_entries(
+	fn mount_entries<T>(
 		&mut self,
-		frontend: &mut Frontend,
+		frontend: &mut Frontend<T>,
 		entries: &[DesktopEntry],
 		parser_state: &mut ParserState,
 		doc_params: &ParseDocumentParams,

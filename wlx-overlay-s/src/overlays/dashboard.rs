@@ -3,6 +3,11 @@ use dash_frontend::{
     settings::{self, SettingsIO},
 };
 use glam::{Affine2, Affine3A, Vec2, vec2, vec3};
+use tracing::instrument::WithSubscriber;
+use wayvr_ipc::{
+    packet_client::WvrProcessLaunchParams,
+    packet_server::{WvrProcess, WvrProcessHandle, WvrWindow, WvrWindowHandle},
+};
 use wgui::{
     event::{
         Event as WguiEvent, MouseButtonIndex, MouseDownEvent, MouseLeaveEvent, MouseMotionEvent,
@@ -13,7 +18,7 @@ use wgui::{
     widget::EventResult,
 };
 use wlx_common::{
-    dash_interface_emulated::DashInterfaceEmulated,
+    dash_interface::DashInterface,
     overlays::{BackendAttrib, BackendAttribValue},
 };
 use wlx_common::{
@@ -22,11 +27,16 @@ use wlx_common::{
 };
 
 use crate::{
-    backend::input::{Haptics, HoverResult, PointerHit, PointerMode},
+    backend::{
+        input::{Haptics, HoverResult, PointerHit, PointerMode},
+        task::{OverlayTask, PlayspaceTask, TaskType},
+        wayvr::{process::ProcessHandle, window::WindowHandle},
+    },
+    ipc::ipc_server::{gen_args_vec, gen_env_vec},
     state::AppState,
     subsystem::hid::WheelDelta,
     windowing::{
-        Z_ORDER_DASHBOARD,
+        OverlaySelector, Z_ORDER_DASHBOARD,
         backend::{
             FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender,
             ui_transform,
@@ -78,7 +88,7 @@ impl settings::SettingsIO for SimpleSettingsIO {
 }
 
 pub struct DashFrontend {
-    inner: frontend::Frontend,
+    inner: frontend::Frontend<AppState>,
     initialized: bool,
     interaction_transform: Option<Affine2>,
     timestep: Timestep,
@@ -91,7 +101,7 @@ const GUI_SCALE: f32 = 2.0;
 impl DashFrontend {
     fn new(app: &mut AppState) -> anyhow::Result<Self> {
         let settings = SimpleSettingsIO::new();
-        let interface = DashInterfaceEmulated::new();
+        let interface = DashInterfaceLive::new();
 
         let frontend = frontend::Frontend::new(frontend::InitParams {
             settings: Box::new(settings),
@@ -108,8 +118,9 @@ impl DashFrontend {
         })
     }
 
-    fn update(&mut self, timestep_alpha: f32) -> anyhow::Result<()> {
+    fn update(&mut self, app: &mut AppState, timestep_alpha: f32) -> anyhow::Result<()> {
         self.inner.update(
+            app,
             DASH_RES_VEC2.x / GUI_SCALE,
             DASH_RES_VEC2.y / GUI_SCALE,
             timestep_alpha,
@@ -134,7 +145,7 @@ impl OverlayBackend for DashFrontend {
         self.interaction_transform = Some(ui_transform(DASH_RES_U32A));
 
         if self.inner.layout.content_size.x * self.inner.layout.content_size.y != 0.0 {
-            self.update(0.0)?;
+            self.update(app, 0.0)?;
             self.initialized = true;
         }
         Ok(())
@@ -150,12 +161,12 @@ impl OverlayBackend for DashFrontend {
         Ok(())
     }
 
-    fn should_render(&mut self, _app: &mut AppState) -> anyhow::Result<ShouldRender> {
+    fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
         while self.timestep.on_tick() {
             self.inner.layout.tick()?;
         }
 
-        if let Err(e) = self.update(self.timestep.alpha) {
+        if let Err(e) = self.update(app, self.timestep.alpha) {
             log::error!("uncaught exception: {e:?}");
         }
 
@@ -300,4 +311,114 @@ pub fn create_dash_frontend(app: &mut AppState) -> anyhow::Result<OverlayWindowC
         global: true,
         ..OverlayWindowConfig::from_backend(Box::new(DashFrontend::new(app)?))
     })
+}
+pub struct DashInterfaceLive {}
+
+impl DashInterfaceLive {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl DashInterface<AppState> for DashInterfaceLive {
+    fn window_list(&mut self, app: &mut AppState) -> anyhow::Result<Vec<WvrWindow>> {
+        let wvr_server = app.wvr_server.as_mut().unwrap();
+        Ok(wvr_server
+            .wm
+            .windows
+            .iter()
+            .map(|(handle, win)| WvrWindow {
+                handle: WindowHandle::as_packet(&handle),
+                process_handle: ProcessHandle::as_packet(&win.process),
+                size_x: win.size_x,
+                size_y: win.size_y,
+                visible: win.visible,
+            })
+            .collect())
+    }
+
+    fn window_request_close(
+        &mut self,
+        app: &mut AppState,
+        handle: WvrWindowHandle,
+    ) -> anyhow::Result<()> {
+        let wvr_server = app.wvr_server.as_mut().unwrap();
+        wvr_server
+            .wm
+            .remove_window(WindowHandle::from_packet(handle));
+        Ok(())
+    }
+
+    fn process_get(&mut self, app: &mut AppState, handle: WvrProcessHandle) -> Option<WvrProcess> {
+        let wvr_server = app.wvr_server.as_mut().unwrap();
+        let handle = ProcessHandle::from_packet(handle);
+        wvr_server
+            .processes
+            .get(&handle)
+            .map(|x| x.to_packet(handle))
+    }
+
+    fn process_launch(
+        &mut self,
+        app: &mut AppState,
+        params: WvrProcessLaunchParams,
+    ) -> anyhow::Result<WvrProcessHandle> {
+        let wvr_server = app.wvr_server.as_mut().unwrap();
+
+        let args_vec = gen_args_vec(&params.args);
+        let env_vec = gen_env_vec(&params.env);
+
+        wvr_server
+            .spawn_process(&params.exec, &args_vec, &env_vec, None, params.userdata)
+            .map(|x| x.as_packet())
+    }
+
+    fn process_list(&mut self, app: &mut AppState) -> anyhow::Result<Vec<WvrProcess>> {
+        let wvr_server = app.wvr_server.as_mut().unwrap();
+        Ok(wvr_server
+            .processes
+            .iter()
+            .map(|(hnd, p)| p.to_packet(hnd))
+            .collect())
+    }
+
+    fn process_terminate(
+        &mut self,
+        app: &mut AppState,
+        handle: WvrProcessHandle,
+    ) -> anyhow::Result<()> {
+        let wvr_server = app.wvr_server.as_mut().unwrap();
+        wvr_server.terminate_process(ProcessHandle::from_packet(handle));
+        Ok(())
+    }
+
+    fn window_set_visible(
+        &mut self,
+        app: &mut AppState,
+        handle: WvrWindowHandle,
+        visible: bool,
+    ) -> anyhow::Result<()> {
+        let wvr_server = app.wvr_server.as_mut().unwrap();
+        let Some(oid) = wvr_server.get_overlay_id(WindowHandle::from_packet(handle)) else {
+            return Ok(());
+        };
+
+        app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
+            OverlaySelector::Id(oid),
+            Box::new(move |app, owc| {
+                if visible && !owc.is_active() {
+                    owc.activate(app);
+                } else if !visible && owc.is_active() {
+                    owc.deactivate();
+                }
+            }),
+        )));
+        Ok(())
+    }
+
+    fn recenter_playspace(&mut self, app: &mut AppState) -> anyhow::Result<()> {
+        app.tasks
+            .enqueue(TaskType::Playspace(PlayspaceTask::Recenter));
+        Ok(())
+    }
 }

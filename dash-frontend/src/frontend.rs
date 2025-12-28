@@ -38,12 +38,12 @@ pub struct FrontendWidgets {
 
 pub type FrontendTasks = Tasks<FrontendTask>;
 
-pub struct Frontend {
+pub struct Frontend<T> {
 	pub layout: Layout,
 	globals: WguiGlobals,
 
 	pub settings: Box<dyn settings::SettingsIO>,
-	pub interface: BoxDashInterface,
+	pub interface: BoxDashInterface<T>,
 
 	// async runtime executor
 	pub executor: AsyncExecutor,
@@ -51,7 +51,7 @@ pub struct Frontend {
 	#[allow(dead_code)]
 	state: ParserState,
 
-	current_tab: Option<Box<dyn Tab>>,
+	current_tab: Option<Box<dyn Tab<T>>>,
 
 	pub tasks: FrontendTasks,
 
@@ -68,9 +68,9 @@ pub struct Frontend {
 	pub(crate) desktop_finder: DesktopFinder,
 }
 
-pub struct InitParams {
+pub struct InitParams<T> {
 	pub settings: Box<dyn settings::SettingsIO>,
-	pub interface: BoxDashInterface,
+	pub interface: BoxDashInterface<T>,
 }
 
 #[derive(Clone)]
@@ -86,8 +86,8 @@ pub enum FrontendTask {
 	PushToast(Translation),
 }
 
-impl Frontend {
-	pub fn new(params: InitParams) -> anyhow::Result<Frontend> {
+impl<T: 'static> Frontend<T> {
+	pub fn new(params: InitParams<T>) -> anyhow::Result<Frontend<T>> {
 		let mut assets = Box::new(assets::Asset {});
 
 		let font_binary_bold = assets.load_from_path_gzip("Quicksand-Bold.ttf.gz")?;
@@ -164,15 +164,15 @@ impl Frontend {
 		Ok(frontend)
 	}
 
-	pub fn update(&mut self, width: f32, height: f32, timestep_alpha: f32) -> anyhow::Result<()> {
+	pub fn update(&mut self, data: &mut T, width: f32, height: f32, timestep_alpha: f32) -> anyhow::Result<()> {
 		let mut tasks = self.tasks.drain();
 
 		while let Some(task) = tasks.pop_front() {
-			self.process_task(task)?;
+			self.process_task(data, task)?;
 		}
 
 		if let Some(mut tab) = self.current_tab.take() {
-			tab.update(self)?;
+			tab.update(self, data)?;
 
 			self.current_tab = Some(tab);
 		}
@@ -237,7 +237,6 @@ impl Frontend {
 			self.globals.clone(),
 			self.settings.as_ref(),
 			&mut self.layout,
-			&mut self.interface,
 			self.tasks.clone(),
 			params,
 		)?;
@@ -273,7 +272,7 @@ impl Frontend {
 		Ok(())
 	}
 
-	fn process_task(&mut self, task: FrontendTask) -> anyhow::Result<()> {
+	fn process_task(&mut self, data: &mut T, task: FrontendTask) -> anyhow::Result<()> {
 		match task {
 			FrontendTask::SetTab(tab_type) => self.set_tab(tab_type)?,
 			FrontendTask::RefreshClock => self.update_time()?,
@@ -282,7 +281,7 @@ impl Frontend {
 			FrontendTask::RefreshPopupManager => self.refresh_popup_manager()?,
 			FrontendTask::ShowAudioSettings => self.action_show_audio_settings()?,
 			FrontendTask::UpdateAudioSettingsView => self.action_update_audio_settings()?,
-			FrontendTask::RecenterPlayspace => self.action_recenter_playspace()?,
+			FrontendTask::RecenterPlayspace => self.action_recenter_playspace(data)?,
 			FrontendTask::PushToast(content) => self.toast_manager.push(content),
 		};
 		Ok(())
@@ -293,7 +292,7 @@ impl Frontend {
 		let widget_content = self.state.fetch_widget(&self.layout.state, "content")?;
 		self.layout.remove_children(widget_content.id);
 
-		let tab: Box<dyn Tab> = match tab_type {
+		let tab: Box<dyn Tab<T>> = match tab_type {
 			TabType::Home => Box::new(TabHome::new(self, widget_content.id)?),
 			TabType::Apps => Box::new(TabApps::new(self, widget_content.id)?),
 			TabType::Games => Box::new(TabGames::new(self, widget_content.id)?),
@@ -407,8 +406,8 @@ impl Frontend {
 		Ok(())
 	}
 
-	fn action_recenter_playspace(&mut self) -> anyhow::Result<()> {
-		self.interface.recenter_playspace()?;
+	fn action_recenter_playspace(&mut self, data: &mut T) -> anyhow::Result<()> {
+		self.interface.recenter_playspace(data)?;
 		Ok(())
 	}
 }

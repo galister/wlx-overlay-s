@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use wgui::{
 	assets::AssetPath,
 	layout::WidgetID,
@@ -10,26 +12,27 @@ use crate::{
 	views::game_list,
 };
 
-pub struct TabGames {
+pub struct TabGames<T> {
 	#[allow(dead_code)]
 	pub state: ParserState,
 
 	view_game_list: game_list::View,
+	marker: PhantomData<T>,
 }
 
-impl Tab for TabGames {
+impl<T> Tab<T> for TabGames<T> {
 	fn get_type(&self) -> TabType {
 		TabType::Games
 	}
 
-	fn update(&mut self, frontend: &mut Frontend) -> anyhow::Result<()> {
+	fn update(&mut self, frontend: &mut Frontend<T>, _data: &mut T) -> anyhow::Result<()> {
 		self.view_game_list.update(&mut frontend.layout, &frontend.executor)?;
 		Ok(())
 	}
 }
 
-impl TabGames {
-	pub fn new(frontend: &mut Frontend, parent_id: WidgetID) -> anyhow::Result<Self> {
+impl<T> TabGames<T> {
+	pub fn new(frontend: &mut Frontend<T>, parent_id: WidgetID) -> anyhow::Result<Self> {
 		let state = wgui::parser::parse_from_assets(
 			&ParseDocumentParams {
 				globals: frontend.layout.state.globals.clone(),
@@ -50,6 +53,10 @@ impl TabGames {
 			parent_id: game_list_parent,
 		})?;
 
-		Ok(Self { state, view_game_list })
+		Ok(Self {
+			state,
+			view_game_list,
+			marker: PhantomData,
+		})
 	}
 }

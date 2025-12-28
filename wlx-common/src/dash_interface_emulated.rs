@@ -79,12 +79,12 @@ impl Default for DashInterfaceEmulated {
 	}
 }
 
-impl DashInterface for DashInterfaceEmulated {
-	fn window_list(&mut self) -> anyhow::Result<Vec<WvrWindow>> {
+impl DashInterface<()> for DashInterfaceEmulated {
+	fn window_list(&mut self, _: &mut ()) -> anyhow::Result<Vec<WvrWindow>> {
 		Ok(self.windows.iter().map(|(handle, w)| w.to(handle)).collect())
 	}
 
-	fn window_request_close(&mut self, handle: WvrWindowHandle) -> anyhow::Result<()> {
+	fn window_request_close(&mut self, _: &mut (), handle: WvrWindowHandle) -> anyhow::Result<()> {
 		self.windows.remove(&EmuWindowHandle {
 			generation: handle.generation,
 			idx: handle.idx,
@@ -92,12 +92,12 @@ impl DashInterface for DashInterfaceEmulated {
 		Ok(())
 	}
 
-	fn process_get(&mut self, handle: WvrProcessHandle) -> Option<WvrProcess> {
+	fn process_get(&mut self, _: &mut (), handle: WvrProcessHandle) -> Option<WvrProcess> {
 		let emu_handle = EmuProcessHandle::new(handle.idx, handle.generation);
 		self.processes.get(&emu_handle).map(|process| process.to(emu_handle))
 	}
 
-	fn process_launch(&mut self, params: WvrProcessLaunchParams) -> anyhow::Result<WvrProcessHandle> {
+	fn process_launch(&mut self, _: &mut (), params: WvrProcessLaunchParams) -> anyhow::Result<WvrProcessHandle> {
 		let res = self.processes.add(EmuProcess { name: params.name });
 
 		self.windows.add(EmuWindow {
@@ -111,7 +111,7 @@ impl DashInterface for DashInterfaceEmulated {
 		})
 	}
 
-	fn process_list(&mut self) -> anyhow::Result<Vec<WvrProcess>> {
+	fn process_list(&mut self, _: &mut ()) -> anyhow::Result<Vec<WvrProcess>> {
 		Ok(
 			self
 				.processes
@@ -121,7 +121,7 @@ impl DashInterface for DashInterfaceEmulated {
 		)
 	}
 
-	fn process_terminate(&mut self, handle: WvrProcessHandle) -> anyhow::Result<()> {
+	fn process_terminate(&mut self, _: &mut (), handle: WvrProcessHandle) -> anyhow::Result<()> {
 		let mut to_remove = None;
 
 		for (wh, w) in self.windows.iter() {
@@ -140,7 +140,7 @@ impl DashInterface for DashInterfaceEmulated {
 		Ok(())
 	}
 
-	fn window_set_visible(&mut self, handle: WvrWindowHandle, visible: bool) -> anyhow::Result<()> {
+	fn window_set_visible(&mut self, _: &mut (), handle: WvrWindowHandle, visible: bool) -> anyhow::Result<()> {
 		match self.windows.get_mut(&EmuWindowHandle {
 			generation: handle.generation,
 			idx: handle.idx,
@@ -153,7 +153,7 @@ impl DashInterface for DashInterfaceEmulated {
 		}
 	}
 
-	fn recenter_playspace(&mut self) -> anyhow::Result<()> {
+	fn recenter_playspace(&mut self, _: &mut ()) -> anyhow::Result<()> {
 		// stub!
 		Ok(())
 	}

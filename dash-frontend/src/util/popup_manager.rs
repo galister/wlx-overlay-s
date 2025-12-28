@@ -14,7 +14,6 @@ use wgui::{
 	taffy::Display,
 	widget::label::WidgetLabel,
 };
-use wlx_common::dash_interface::BoxDashInterface;
 
 use crate::{
 	frontend::{FrontendTask, FrontendTasks},
@@ -61,7 +60,6 @@ pub struct PopupContentFuncData<'a> {
 	pub layout: &'a mut Layout,
 	pub settings: &'a dyn SettingsIO,
 	pub handle: PopupHandle,
-	pub interface: &'a mut BoxDashInterface,
 	pub id_content: WidgetID,
 }
 
@@ -127,7 +125,6 @@ impl PopupManager {
 		globals: WguiGlobals,
 		settings: &dyn SettingsIO,
 		layout: &mut Layout,
-		interface: &mut BoxDashInterface,
 		frontend_tasks: FrontendTasks,
 		params: MountPopupParams,
 	) -> anyhow::Result<()> {
@@ -184,7 +181,6 @@ impl PopupManager {
 			handle: popup_handle.clone(),
 			id_content,
 			settings,
-			interface,
 		})?;
 
 		Ok(())

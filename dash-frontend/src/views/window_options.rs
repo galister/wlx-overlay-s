@@ -34,18 +34,19 @@ pub struct View {
 	on_submit: Rc<dyn Fn()>,
 }
 
-pub struct Params<'a> {
+pub struct Params<'a, T> {
 	pub globals: WguiGlobals,
 	pub frontend_tasks: FrontendTasks,
 	pub layout: &'a mut Layout,
 	pub parent_id: WidgetID,
 	pub on_submit: Rc<dyn Fn()>,
 	pub window: packet_server::WvrWindow,
-	pub interface: &'a mut BoxDashInterface,
+	pub interface: &'a mut BoxDashInterface<T>,
+	pub data: &'a mut T,
 }
 
 impl View {
-	pub fn new(params: Params) -> anyhow::Result<Self> {
+	pub fn new<T>(params: Params<T>) -> anyhow::Result<Self> {
 		let doc_params = &ParseDocumentParams {
 			globals: params.globals.clone(),
 			path: AssetPath::BuiltIn("gui/view/window_options.xml"),
@@ -67,6 +68,7 @@ impl View {
 				parent: window_parent,
 			},
 			params.interface,
+			params.data,
 			&params.globals,
 			&params.window,
 		)?;
@@ -93,12 +95,17 @@ impl View {
 		})
 	}
 
-	pub fn update(&mut self, _layout: &mut Layout, interface: &mut BoxDashInterface) -> anyhow::Result<()> {
+	pub fn update<T>(
+		&mut self,
+		_layout: &mut Layout,
+		interface: &mut BoxDashInterface<T>,
+		data: &mut T,
+	) -> anyhow::Result<()> {
 		for task in self.tasks.drain() {
 			match task {
-				Task::SetVisible(v) => self.action_set_visible(interface, v),
-				Task::Close => self.action_close(interface),
-				Task::Kill => self.action_kill(interface),
+				Task::SetVisible(v) => self.action_set_visible(interface, data, v),
+				Task::Close => self.action_close(interface, data),
+				Task::Kill => self.action_kill(interface, data),
 			}
 		}
 		Ok(())
@@ -106,8 +113,8 @@ impl View {
 }
 
 impl View {
-	fn action_set_visible(&mut self, interface: &mut BoxDashInterface, visible: bool) {
-		if let Err(e) = interface.window_set_visible(self.window.handle.clone(), visible) {
+	fn action_set_visible<T>(&mut self, interface: &mut BoxDashInterface<T>, data: &mut T, visible: bool) {
+		if let Err(e) = interface.window_set_visible(data, self.window.handle.clone(), visible) {
 			self
 				.frontend_tasks
 				.push(FrontendTask::PushToast(Translation::from_raw_text_string(format!(
@@ -119,8 +126,8 @@ impl View {
 		(*self.on_submit)();
 	}
 
-	fn action_close(&mut self, interface: &mut BoxDashInterface) {
-		if let Err(e) = interface.window_request_close(self.window.handle.clone()) {
+	fn action_close<T>(&mut self, interface: &mut BoxDashInterface<T>, data: &mut T) {
+		if let Err(e) = interface.window_request_close(data, self.window.handle.clone()) {
 			self
 				.frontend_tasks
 				.push(FrontendTask::PushToast(Translation::from_raw_text_string(format!(
@@ -132,16 +139,16 @@ impl View {
 		(*self.on_submit)();
 	}
 
-	fn action_kill_process(&mut self, interface: &mut BoxDashInterface) -> anyhow::Result<()> {
+	fn action_kill_process<T>(&mut self, interface: &mut BoxDashInterface<T>, data: &mut T) -> anyhow::Result<()> {
 		let process = interface
-			.process_get(self.window.process_handle.clone())
+			.process_get(data, self.window.process_handle.clone())
 			.context("Process not found")?;
-		interface.process_terminate(process.handle)?;
+		interface.process_terminate(data, process.handle)?;
 		Ok(())
 	}
 
-	fn action_kill(&mut self, interface: &mut BoxDashInterface) {
-		if let Err(e) = self.action_kill_process(interface) {
+	fn action_kill<T>(&mut self, interface: &mut BoxDashInterface<T>, data: &mut T) {
+		if let Err(e) = self.action_kill_process(interface, data) {
 			self
 				.frontend_tasks
 				.push(FrontendTask::PushToast(Translation::from_raw_text_string(format!(

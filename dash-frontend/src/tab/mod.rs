@@ -17,11 +17,11 @@ pub enum TabType {
 	Settings,
 }
 
-pub trait Tab {
+pub trait Tab<T> {
 	#[allow(dead_code)]
 	fn get_type(&self) -> TabType;
 
-	fn update(&mut self, _: &mut Frontend) -> anyhow::Result<()> {
+	fn update(&mut self, _: &mut Frontend<T>, _: &mut T) -> anyhow::Result<()> {
 		Ok(())
 	}
 }

@@ -71,7 +71,12 @@ impl View {
 		})
 	}
 
-	pub fn update(&mut self, layout: &mut Layout, interface: &mut BoxDashInterface) -> anyhow::Result<()> {
+	pub fn update<T>(
+		&mut self,
+		layout: &mut Layout,
+		interface: &mut BoxDashInterface<T>,
+		data: &mut T,
+	) -> anyhow::Result<()> {
 		loop {
 			let tasks = self.tasks.drain();
 			if tasks.is_empty() {
@@ -79,8 +84,8 @@ impl View {
 			}
 			for task in tasks {
 				match task {
-					Task::Refresh => self.refresh(layout, interface)?,
-					Task::TerminateProcess(process) => self.action_terminate_process(interface, process)?,
+					Task::Refresh => self.refresh(layout, interface, data)?,
+					Task::TerminateProcess(process) => self.action_terminate_process(interface, data, process)?,
 				}
 			}
 		}
@@ -196,11 +201,16 @@ fn fill_process_list(
 }
 
 impl View {
-	fn refresh(&mut self, layout: &mut Layout, interface: &mut BoxDashInterface) -> anyhow::Result<()> {
+	fn refresh<T>(
+		&mut self,
+		layout: &mut Layout,
+		interface: &mut BoxDashInterface<T>,
+		data: &mut T,
+	) -> anyhow::Result<()> {
 		layout.remove_children(self.id_list_parent);
 
 		let mut text: Option<Translation> = None;
-		match interface.process_list() {
+		match interface.process_list(data) {
 			Ok(list) => {
 				if list.is_empty() {
 					text = Some(Translation::from_translation_key("PROCESS_LIST.NO_PROCESSES_FOUND"))
@@ -236,12 +246,13 @@ impl View {
 		Ok(())
 	}
 
-	fn action_terminate_process(
+	fn action_terminate_process<T>(
 		&mut self,
-		interface: &mut BoxDashInterface,
+		interface: &mut BoxDashInterface<T>,
+		data: &mut T,
 		process: packet_server::WvrProcess,
 	) -> anyhow::Result<()> {
-		interface.process_terminate(process.handle)?;
+		interface.process_terminate(data, process.handle)?;
 		self.tasks.push(Task::Refresh);
 		Ok(())
 	}
