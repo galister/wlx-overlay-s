@@ -66,7 +66,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.RELEASE_KEY }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ../target/release/wlx-overlay-s
+          asset_path: ./target/release/wlx-overlay-s
           asset_name: wlx-overlay-s
           asset_content_type: application/octet-stream
 
@@ -76,7 +76,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.RELEASE_KEY }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ../target/release/wayvrctl
+          asset_path: ./target/release/wayvrctl
           asset_name: wayvrctl
           asset_content_type: application/octet-stream
 
