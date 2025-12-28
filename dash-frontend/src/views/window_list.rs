@@ -12,8 +12,8 @@ use wgui::{
 	taffy::{self, prelude::length},
 	task::Tasks,
 	widget::{
-		ConstructEssentials,
 		label::{WidgetLabel, WidgetLabelParams},
+		ConstructEssentials,
 	},
 };
 use wlx_common::dash_interface::BoxDashInterface;
@@ -84,7 +84,12 @@ impl View {
 		})
 	}
 
-	pub fn update(&mut self, layout: &mut Layout, interface: &mut BoxDashInterface) -> anyhow::Result<()> {
+	pub fn update<T>(
+		&mut self,
+		layout: &mut Layout,
+		interface: &mut BoxDashInterface<T>,
+		data: &mut T,
+	) -> anyhow::Result<()> {
 		loop {
 			let tasks = self.tasks.drain();
 			if tasks.is_empty() {
@@ -94,23 +99,24 @@ impl View {
 				match task {
 					Task::WindowClicked(display) => self.action_window_clicked(display)?,
 					Task::WindowOptionsFinish => self.action_window_options_finish(),
-					Task::Refresh => self.refresh(layout, interface)?,
+					Task::Refresh => self.refresh(layout, interface, data)?,
 				}
 			}
 		}
 
 		let mut state = self.state.borrow_mut();
 		if let Some((_, view)) = &mut state.view_window_options {
-			view.update(layout, interface)?;
+			view.update(layout, interface, data)?;
 		}
 
 		Ok(())
 	}
 }
 
-pub fn construct_window_button(
+pub fn construct_window_button<T>(
 	ess: &mut ConstructEssentials,
-	interface: &mut BoxDashInterface,
+	interface: &mut BoxDashInterface<T>,
+	data: &mut T,
 	globals: &WguiGlobals,
 	window: &packet_server::WvrWindow,
 ) -> anyhow::Result<(WidgetPair, Rc<ComponentButton>)> {
@@ -137,7 +143,7 @@ pub fn construct_window_button(
 		},
 	)?;
 
-	let process_name = match interface.process_get(window.process_handle.clone()) {
+	let process_name = match interface.process_get(data, window.process_handle.clone()) {
 		Some(process) => process.name.clone(),
 		None => String::from("Unknown"),
 	};
@@ -171,15 +177,16 @@ pub fn construct_window_button(
 	Ok((widget_button, button))
 }
 
-fn fill_window_list(
+fn fill_window_list<T>(
 	globals: &WguiGlobals,
 	ess: &mut ConstructEssentials,
-	interface: &mut BoxDashInterface,
+	interface: &mut BoxDashInterface<T>,
+	data: &mut T,
 	list: Vec<packet_server::WvrWindow>,
 	tasks: &Tasks<Task>,
 ) -> anyhow::Result<()> {
 	for entry in list {
-		let (_, button) = construct_window_button(ess, interface, globals, &entry)?;
+		let (_, button) = construct_window_button(ess, interface, data, globals, &entry)?;
 
 		button.on_click({
 			let tasks = tasks.clone();
@@ -199,11 +206,16 @@ impl View {
 		self.tasks.push(Task::Refresh);
 	}
 
-	fn refresh(&mut self, layout: &mut Layout, interface: &mut BoxDashInterface) -> anyhow::Result<()> {
+	fn refresh<T>(
+		&mut self,
+		layout: &mut Layout,
+		interface: &mut BoxDashInterface<T>,
+		data: &mut T,
+	) -> anyhow::Result<()> {
 		layout.remove_children(self.id_list_parent);
 
 		let mut text: Option<Translation> = None;
-		match interface.window_list() {
+		match interface.window_list(data) {
 			Ok(list) => {
 				if list.is_empty() {
 					text = Some(Translation::from_translation_key("NO_WINDOWS_FOUND"))
@@ -215,6 +227,7 @@ impl View {
 							parent: self.id_list_parent,
 						},
 						interface,
+						data,
 						list,
 						&self.tasks,
 					)?
@@ -252,19 +265,20 @@ impl View {
 					let state = self.state.clone();
 					let tasks = self.tasks.clone();
 
+					//TODO
+
 					Rc::new(move |data| {
-						state.borrow_mut().view_window_options = Some((
-							data.handle,
-							window_options::View::new(window_options::Params {
-								globals: globals.clone(),
-								layout: data.layout,
-								parent_id: data.id_content,
-								on_submit: tasks.make_callback(Task::WindowOptionsFinish),
-								window: window.clone(),
-								frontend_tasks: frontend_tasks.clone(),
-								interface: data.interface,
-							})?,
-						));
+						// state.borrow_mut().view_window_options = Some((
+						// 	data.handle,
+						// 	window_options::View::new(window_options::Params {
+						// 		globals: globals.clone(),
+						// 		layout: data.layout,
+						// 		parent_id: data.id_content,
+						// 		on_submit: tasks.make_callback(Task::WindowOptionsFinish),
+						// 		window: window.clone(),
+						// 		frontend_tasks: frontend_tasks.clone(),
+						// 	})?,
+						// ));
 						Ok(())
 					})
 				},

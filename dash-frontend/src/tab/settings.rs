@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{marker::PhantomData, rc::Rc};
 
 use wgui::{
 	assets::AssetPath,
@@ -18,19 +18,20 @@ enum Task {
 	ToggleSetting(SettingType, bool),
 }
 
-pub struct TabSettings {
+pub struct TabSettings<T> {
 	#[allow(dead_code)]
 	pub state: ParserState,
 
 	tasks: Tasks<Task>,
+	marker: PhantomData<T>,
 }
 
-impl Tab for TabSettings {
+impl<T> Tab<T> for TabSettings<T> {
 	fn get_type(&self) -> TabType {
 		TabType::Settings
 	}
 
-	fn update(&mut self, frontend: &mut Frontend) -> anyhow::Result<()> {
+	fn update(&mut self, frontend: &mut Frontend<T>, _data: &mut T) -> anyhow::Result<()> {
 		for task in self.tasks.drain() {
 			match task {
 				Task::ToggleSetting(setting, n) => self.toggle_setting(frontend, setting, n),
@@ -60,8 +61,8 @@ impl SettingType {
 	}
 }
 
-fn init_setting_checkbox(
-	frontend: &mut Frontend,
+fn init_setting_checkbox<T>(
+	frontend: &mut Frontend<T>,
 	tasks: &Tasks<Task>,
 	checkbox: Rc<ComponentCheckbox>,
 	setting: SettingType,
@@ -86,8 +87,8 @@ fn init_setting_checkbox(
 	Ok(())
 }
 
-impl TabSettings {
-	pub fn new(frontend: &mut Frontend, parent_id: WidgetID) -> anyhow::Result<Self> {
+impl<T> TabSettings<T> {
+	pub fn new(frontend: &mut Frontend<T>, parent_id: WidgetID) -> anyhow::Result<Self> {
 		let state = wgui::parser::parse_from_assets(
 			&ParseDocumentParams {
 				globals: frontend.layout.state.globals.clone(),
@@ -136,10 +137,14 @@ impl TabSettings {
 			None,
 		)?;
 
-		Ok(Self { state, tasks })
+		Ok(Self {
+			state,
+			tasks,
+			marker: PhantomData,
+		})
 	}
 
-	fn toggle_setting(&mut self, frontend: &mut Frontend, setting: SettingType, state: bool) {
+	fn toggle_setting(&mut self, frontend: &mut Frontend<T>, setting: SettingType, state: bool) {
 		*setting.get_bool(frontend.settings.get_mut()) = state;
 	}
 }

@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use wgui::{
 	assets::AssetPath,
 	layout::WidgetID,
@@ -10,32 +12,33 @@ use crate::{
 	views::{process_list, window_list},
 };
 
-pub struct TabProcesses {
+pub struct TabProcesses<T> {
 	#[allow(dead_code)]
 	pub state: ParserState,
 
 	view_window_list: window_list::View,
 	view_process_list: process_list::View,
+	marker: PhantomData<T>,
 }
 
-impl Tab for TabProcesses {
+impl<T> Tab<T> for TabProcesses<T> {
 	fn get_type(&self) -> TabType {
 		TabType::Games
 	}
 
-	fn update(&mut self, frontend: &mut Frontend) -> anyhow::Result<()> {
+	fn update(&mut self, frontend: &mut Frontend<T>, data: &mut T) -> anyhow::Result<()> {
 		self
 			.view_window_list
-			.update(&mut frontend.layout, &mut frontend.interface)?;
+			.update(&mut frontend.layout, &mut frontend.interface, data)?;
 		self
 			.view_process_list
-			.update(&mut frontend.layout, &mut frontend.interface)?;
+			.update(&mut frontend.layout, &mut frontend.interface, data)?;
 		Ok(())
 	}
 }
 
-impl TabProcesses {
-	pub fn new(frontend: &mut Frontend, parent_id: WidgetID) -> anyhow::Result<Self> {
+impl<T> TabProcesses<T> {
+	pub fn new(frontend: &mut Frontend<T>, parent_id: WidgetID) -> anyhow::Result<Self> {
 		let globals = frontend.layout.state.globals.clone();
 		let state = wgui::parser::parse_from_assets(
 			&ParseDocumentParams {
@@ -61,6 +64,7 @@ impl TabProcesses {
 				globals,
 			})?,
 			state,
+			marker: PhantomData,
 		})
 	}
 }

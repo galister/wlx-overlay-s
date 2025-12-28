@@ -386,6 +386,10 @@ impl WvrServerState {
         self.window_to_overlay.insert(window, oid);
     }
 
+    pub fn get_overlay_id(&self, window: window::WindowHandle) -> Option<OverlayID> {
+        self.window_to_overlay.get(&window).cloned()
+    }
+
     pub fn send_mouse_move(&mut self, handle: window::WindowHandle, x: u32, y: u32) {
         if self.mouse_freeze > Instant::now() {
             return;

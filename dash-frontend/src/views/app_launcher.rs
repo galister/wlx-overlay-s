@@ -31,12 +31,13 @@ enum Task {
 	Launch,
 }
 
-struct LaunchParams<'a> {
+struct LaunchParams<'a, T> {
 	application: &'a DesktopEntry,
 	run_mode: RunMode,
 	globals: &'a WguiGlobals,
 	frontend_tasks: &'a FrontendTasks,
-	interface: &'a mut BoxDashInterface,
+	interface: &'a mut BoxDashInterface<T>,
+	data: &'a mut T,
 	on_launched: &'a dyn Fn(),
 }
 
@@ -157,7 +158,12 @@ impl View {
 		})
 	}
 
-	pub fn update(&mut self, layout: &mut Layout, interface: &mut BoxDashInterface) -> anyhow::Result<()> {
+	pub fn update<T>(
+		&mut self,
+		layout: &mut Layout,
+		interface: &mut BoxDashInterface<T>,
+		data: &mut T,
+	) -> anyhow::Result<()> {
 		loop {
 			let tasks = self.tasks.drain();
 			if tasks.is_empty() {
@@ -166,7 +172,7 @@ impl View {
 			for task in tasks {
 				match task {
 					Task::SetRunMode(run_mode) => self.action_set_run_mode(layout, run_mode)?,
-					Task::Launch => self.action_launch(interface),
+					Task::Launch => self.action_launch(interface, data),
 				}
 			}
 		}
@@ -188,18 +194,19 @@ impl View {
 		Ok(())
 	}
 
-	fn action_launch(&mut self, interface: &mut BoxDashInterface) {
+	fn action_launch<T>(&mut self, interface: &mut BoxDashInterface<T>, data: &mut T) {
 		View::try_launch(LaunchParams {
 			application: &self.entry,
 			frontend_tasks: &self.frontend_tasks,
 			globals: &self.globals,
 			run_mode: self.run_mode.clone(),
 			interface,
+			data,
 			on_launched: &self.on_launched,
 		});
 	}
 
-	fn try_launch(params: LaunchParams) {
+	fn try_launch<T>(params: LaunchParams<T>) {
 		let globals = params.globals.clone();
 		let frontend_tasks = params.frontend_tasks.clone();
 
@@ -213,7 +220,7 @@ impl View {
 		))));
 	}
 
-	fn launch(params: LaunchParams) -> anyhow::Result<()> {
+	fn launch<T>(params: LaunchParams<T>) -> anyhow::Result<()> {
 		let mut env = Vec::<String>::new();
 
 		if params.run_mode == RunMode::Wayland {
@@ -238,13 +245,16 @@ impl View {
 		let mut userdata = HashMap::new();
 		userdata.insert("desktop-entry".to_string(), serde_json::to_string(params.application)?);
 
-		params.interface.process_launch(WvrProcessLaunchParams {
-			env,
-			exec,
-			name: params.application.app_name.to_string(),
-			args,
-			userdata,
-		})?;
+		params.interface.process_launch(
+			params.data,
+			WvrProcessLaunchParams {
+				env,
+				exec,
+				name: params.application.app_name.to_string(),
+				args,
+				userdata,
+			},
+		)?;
 
 		params
 			.frontend_tasks

@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use wgui::{
 	assets::AssetPath,
 	components::button::ComponentButton,
@@ -15,12 +17,13 @@ use crate::{
 	various,
 };
 
-pub struct TabHome {
+pub struct TabHome<T> {
 	#[allow(dead_code)]
 	pub state: ParserState,
+	marker: PhantomData<T>,
 }
 
-impl Tab for TabHome {
+impl<T> Tab<T> for TabHome<T> {
 	fn get_type(&self) -> TabType {
 		TabType::Home
 	}
@@ -44,8 +47,8 @@ fn configure_label_hello(common: &mut CallbackDataCommon, label_hello: Widget, s
 	label_hello.set_text(common, Translation::from_raw_text(&translated));
 }
 
-impl TabHome {
-	pub fn new(frontend: &mut Frontend, parent_id: WidgetID) -> anyhow::Result<Self> {
+impl<T> TabHome<T> {
+	pub fn new(frontend: &mut Frontend<T>, parent_id: WidgetID) -> anyhow::Result<Self> {
 		let state = wgui::parser::parse_from_assets(
 			&ParseDocumentParams {
 				globals: frontend.layout.state.globals.clone(),
@@ -73,6 +76,9 @@ impl TabHome {
 		tasks.handle_button(&btn_processes, FrontendTask::SetTab(TabType::Processes));
 		tasks.handle_button(&btn_settings, FrontendTask::SetTab(TabType::Settings));
 
-		Ok(Self { state })
+		Ok(Self {
+			state,
+			marker: PhantomData,
+		})
 	}
 }
