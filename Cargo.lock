@@ -1427,7 +1427,6 @@ dependencies = [
  "anyhow",
  "async-native-tls",
  "chrono",
- "freedesktop",
  "glam",
  "glob",
  "http-body-util",
@@ -1435,13 +1434,16 @@ dependencies = [
  "keyvalues-parser",
  "log",
  "rust-embed",
+ "rust-ini",
  "serde",
  "serde_json",
  "smol",
  "smol-hyper",
+ "walkdir",
  "wayvr-ipc",
  "wgui",
  "wlx-common",
+ "xdg 3.0.0",
 ]
 
 [[package]]
@@ -1509,27 +1511,6 @@ checksum = "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292"
 dependencies = [
  "block-buffer",
  "crypto-common",
-]
-
-[[package]]
-name = "dirs"
-version = "6.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3e8aa94d75141228480295a7d0e7feb620b1a5ad9f12bc40be62411e38cce4e"
-dependencies = [
- "dirs-sys",
-]
-
-[[package]]
-name = "dirs-sys"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e01a3366d27ee9890022452ee61b2b63a67e6f13f58900b651ff5665f0bb1fab"
-dependencies = [
- "libc",
- "option-ext",
- "redox_users",
- "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1990,33 +1971,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
 dependencies = [
  "percent-encoding",
-]
-
-[[package]]
-name = "freedesktop"
-version = "0.0.3"
-source = "git+https://github.com/galister/freedesktop.git?rev=8dd020d#8dd020df81770872065a48b922413471db5606f0"
-dependencies = [
- "freedesktop-apps",
- "freedesktop-core",
-]
-
-[[package]]
-name = "freedesktop-apps"
-version = "0.0.3"
-source = "git+https://github.com/galister/freedesktop.git?rev=8dd020d#8dd020df81770872065a48b922413471db5606f0"
-dependencies = [
- "freedesktop-core",
- "libc",
- "regex",
-]
-
-[[package]]
-name = "freedesktop-core"
-version = "0.0.3"
-source = "git+https://github.com/galister/freedesktop.git?rev=8dd020d#8dd020df81770872065a48b922413471db5606f0"
-dependencies = [
- "dirs",
 ]
 
 [[package]]
@@ -2928,7 +2882,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "xdg",
+ "xdg 2.5.2",
 ]
 
 [[package]]
@@ -3781,12 +3735,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "option-ext"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
-
-[[package]]
 name = "orbclient"
 version = "0.3.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4446,17 +4394,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49f3fe0889e69e2ae9e41f4d6c4c0181701d00e4697b356fb1f74173a5e0ee27"
 dependencies = [
  "bitflags 2.10.0",
-]
-
-[[package]]
-name = "redox_users"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4e608c6638b9c18977b00b475ac1f28d14e84b27d8d42f70e0bf1e3dec127ac"
-dependencies = [
- "getrandom 0.2.16",
- "libredox",
- "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -6872,7 +6809,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
- "freedesktop",
  "glam",
  "idmap",
  "idmap-derive",
@@ -6880,6 +6816,7 @@ dependencies = [
  "serde",
  "smol",
  "wayvr-ipc",
+ "xdg 3.0.0",
 ]
 
 [[package]]
@@ -6895,7 +6832,6 @@ dependencies = [
  "config",
  "dash-frontend",
  "dbus",
- "freedesktop",
  "futures",
  "glam",
  "idmap",
@@ -6939,6 +6875,7 @@ dependencies = [
  "wlx-capture",
  "wlx-common",
  "xcb",
+ "xdg 3.0.0",
  "xkbcommon 0.9.0",
 ]
 
@@ -7003,6 +6940,12 @@ name = "xdg"
 version = "2.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "213b7324336b53d2414b2db8537e56544d981803139155afa84f76eeebb7a546"
+
+[[package]]
+name = "xdg"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2fb433233f2df9344722454bc7e96465c9d03bff9d77c248f9e7523fe79585b5"
 
 [[package]]
 name = "xkbcommon"

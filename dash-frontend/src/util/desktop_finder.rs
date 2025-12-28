@@ -1,7 +1,11 @@
-use std::{collections::HashMap, ffi::OsStr, rc::Rc, sync::Arc, thread::JoinHandle, time::Instant};
+use std::{
+	collections::HashSet, ffi::OsStr, fmt::Debug, fs::exists, path::Path, rc::Rc, sync::Arc, thread::JoinHandle,
+	time::Instant,
+};
 
-use freedesktop::{xdg_data_dirs, xdg_data_home, ApplicationEntry};
+use ini::Ini;
 use serde::{Deserialize, Serialize};
+use walkdir::WalkDir;
 
 struct DesktopEntryOwned {
 	exec_path: String,
@@ -29,123 +33,206 @@ impl From<DesktopEntryOwned> for DesktopEntry {
 	}
 }
 
-const CMD_BLACKLIST: [&str; 1] = [
+const CMD_BLOCKLIST: [&str; 3] = [
 	"lsp-plugins", // LSP Plugins collection. They clutter the application list a lot
+	"vrmonitor",
+	"vrurlhandler",
 ];
 
-const CATEGORY_TYPE_BLACKLIST: [&str; 5] = ["GTK", "Qt", "X-XFCE", "X-Bluetooth", "ConsoleOnly"];
+const CATEGORY_TYPE_BLOCKLIST: [&str; 5] = ["GTK", "Qt", "X-XFCE", "X-Bluetooth", "ConsoleOnly"];
+
+struct DesktopFinderParams {
+	size_preferences: Vec<&'static OsStr>,
+	icon_folders: Vec<String>,
+	app_folders: Vec<String>,
+}
 
 pub struct DesktopFinder {
-	size_preferences: Arc<[&'static OsStr]>,
-	icon_folders: Arc<[String]>,
+	params: Arc<DesktopFinderParams>,
 	entry_cache: Vec<DesktopEntry>,
 	bg_task: Option<JoinHandle<Vec<DesktopEntryOwned>>>,
 }
 
 impl DesktopFinder {
 	pub fn new() -> Self {
-		let data_home = xdg_data_home();
+		let xdg = xdg::BaseDirectories::new();
 
-		let mut icon_folders = vec![
-			// XDG_DATA_HOME takes priority
-			{
-				let mut data_home_flatpak = data_home.clone();
-				data_home_flatpak.push("flatpak/exports/share/icons");
-				data_home_flatpak.to_string_lossy().to_string()
-			},
-			{
-				let mut data_home = data_home.clone();
-				data_home.push("icons");
-				data_home.to_string_lossy().to_string()
-			},
-			"/var/lib/flatpak/exports/share/icons".into(),
-		];
+		let mut app_folders = vec![];
+		let mut icon_folders = vec![];
 
-		let data_dirs = xdg_data_dirs();
-		for mut data_dir in data_dirs {
-			data_dir.push("icons");
-			icon_folders.push(data_dir.to_string_lossy().to_string());
+		if let Some(data_home) = xdg.get_data_home() {
+			app_folders.push(data_home.join("applications").to_string_lossy().to_string());
+			app_folders.push(
+				data_home
+					.join("flatpak/exports/share/applications")
+					.to_string_lossy()
+					.to_string(),
+			);
+			icon_folders.push(data_home.join("icons").to_string_lossy().to_string());
+			icon_folders.push(
+				data_home
+					.join("flatpak/exports/share/icons")
+					.to_string_lossy()
+					.to_string(),
+			);
 		}
 
-		let icon_folders: Arc<[String]> = icon_folders.into_iter().collect();
+		app_folders.push("/var/lib/flatpak/exports/share/applications".into());
+		icon_folders.push("/var/lib/flatpak/exports/share/icons".into());
 
-		let size_preferences: Arc<[&'static OsStr]> = ["scalable", "128x128", "96x96", "72x72", "64x64", "48x48", "32x32"]
+		// /usr/share and such
+		for data_dir in xdg.get_data_dirs() {
+			app_folders.push(data_dir.join("applications").to_string_lossy().to_string());
+			icon_folders.push(data_dir.join("icons").to_string_lossy().to_string());
+		}
+
+		let size_preferences: Vec<&'static OsStr> = ["scalable", "128x128", "96x96", "72x72", "64x64", "48x48", "32x32"]
 			.into_iter()
 			.map(OsStr::new)
 			.collect();
 
 		Self {
-			size_preferences,
-			icon_folders,
+			params: Arc::new(DesktopFinderParams {
+				app_folders,
+				icon_folders,
+				size_preferences,
+			}),
 			entry_cache: Vec::new(),
 			bg_task: None,
 		}
 	}
 
-	fn build_cache(icon_folders: Arc<[String]>, size_preferences: Arc<[&'static OsStr]>) -> Vec<DesktopEntryOwned> {
+	fn build_cache(params: Arc<DesktopFinderParams>) -> Vec<DesktopEntryOwned> {
 		let start = Instant::now();
 
-		let mut res = Vec::<DesktopEntryOwned>::new();
-		'app_entries: for app_entry in ApplicationEntry::all() {
-			let Some(app_entry_id) = app_entry.id() else {
-				log::warn!(
-					"No desktop entry id for application \"{}\"",
-					app_entry.name().as_deref().unwrap_or("")
-				);
-				continue;
-			};
+		let mut known_files = HashSet::new();
+		let mut entries = Vec::<DesktopEntryOwned>::new();
 
-			let Some(app_name) = app_entry.name() else {
-				log::warn!("No Name on desktop entry {}", app_entry_id);
-				continue;
-			};
+		for path in &params.app_folders {
+			log::debug!("Searching desktop entries in path {}", path);
 
-			let Some(exec) = app_entry.exec() else {
-				log::warn!("No Exec on desktop entry {}", app_entry_id);
-				continue;
-			};
+			'entries: for entry in WalkDir::new(path)
+				.into_iter()
+				.filter_map(|e| e.ok())
+				.filter(|e| !e.file_type().is_dir())
+			{
+				let Some(extension) = Path::new(entry.file_name()).extension() else {
+					continue;
+				};
 
-			if app_entry.no_display() || app_entry.is_hidden() || app_entry.terminal() {
-				continue;
-			}
-
-			for blacklisted in CMD_BLACKLIST {
-				if exec.contains(blacklisted) {
-					continue 'app_entries;
+				if extension != "desktop" {
+					continue; // ignore, go on
 				}
-			}
 
-			let (exec_path, exec_args) = match exec.split_once(" ") {
-				Some((left, right)) => (left.into(), right.into()),
-				None => (exec.into(), "".into()),
-			};
+				let file_name = entry.file_name().to_string_lossy();
 
-			let icon_path = app_entry
-				.icon()
-				.and_then(|icon_name| Self::find_icon(&icon_folders, &size_preferences, &icon_name));
-
-			for cat in app_entry.categories().unwrap_or_default() {
-				if CATEGORY_TYPE_BLACKLIST.contains(&cat.as_str()) {
-					continue 'app_entries;
+				if known_files.contains(file_name.as_ref()) {
+					// as per xdg spec, user entries of the same filename will override system entries
+					continue;
 				}
+
+				let file_path = format!("{}/{}", path, file_name);
+
+				let ini = match Ini::load_from_file(&file_path) {
+					Ok(ini) => ini,
+					Err(e) => {
+						log::debug!("Failed to read INI for .desktop file {}: {:?}, skipping", file_path, e);
+						continue;
+					}
+				};
+
+				let Some(section) = ini.section(Some("Desktop Entry")) else {
+					log::debug!("Failed to get [Desktop Entry] section for file {}, skipping", file_path);
+					continue;
+				};
+
+				if section.contains_key("OnlyShowIn") {
+					continue; // probably XFCE, KDE, GNOME or other DE-specific stuff
+				}
+
+				if let Some(x) = section.get("Terminal")
+					&& x == "true"
+				{
+					continue;
+				}
+
+				if let Some(x) = section.get("NoDisplay")
+					&& x.eq_ignore_ascii_case("true")
+				{
+					continue; // This application is hidden
+				}
+
+				if let Some(x) = section.get("Hidden")
+					&& x.eq_ignore_ascii_case("true")
+				{
+					continue; // This application is hidden
+				}
+
+				let Some(exec) = section.get("Exec") else {
+					log::debug!("Failed to get desktop entry Exec for file {}, skipping", file_path);
+					continue;
+				};
+
+				for entry in &CMD_BLOCKLIST {
+					if exec.contains(entry) {
+						continue 'entries;
+					}
+				}
+
+				let (exec_path, exec_args) = match exec.split_once(" ") {
+					Some((left, right)) => (
+						left,
+						right
+							.split(" ")
+							.filter(|arg| !arg.starts_with('%')) // exclude arguments like "%f"
+							.map(String::from)
+							.collect(),
+					),
+					None => (exec, Vec::new()),
+				};
+
+				let Some(app_name) = section.get("Name") else {
+					log::debug!(
+						"Failed to get desktop entry application name for file {}, skipping",
+						file_path
+					);
+					continue;
+				};
+
+				let icon_path = section
+					.get("Icon")
+					.and_then(|icon_name| Self::find_icon(&params, &icon_name));
+
+				if let Some(categories) = section.get("Categories") {
+					for cat in categories.split(";") {
+						if CATEGORY_TYPE_BLOCKLIST.contains(&cat) {
+							continue 'entries;
+						}
+					}
+				}
+
+				known_files.insert(file_name.to_string());
+
+				entries.push(DesktopEntryOwned {
+					app_name: String::from(app_name),
+					exec_path: String::from(exec_path),
+					exec_args: exec_args.join(" "),
+					icon_path,
+				});
 			}
-
-			let entry = DesktopEntryOwned {
-				app_name,
-				exec_path,
-				exec_args,
-				icon_path,
-			};
-
-			res.push(entry);
 		}
-		log::debug!("App entry cache rebuild took {:?}", start.elapsed());
 
-		res
+		log::debug!("Desktop entry & icon scan took {:?}", start.elapsed());
+
+		entries
 	}
 
-	fn find_icon(icon_folders: &[String], size_preferences: &[&'static OsStr], icon_name: &str) -> Option<String> {
-		for folder in icon_folders {
+	fn find_icon(params: &DesktopFinderParams, icon_name: &str) -> Option<String> {
+		if icon_name.starts_with("/") && exists(icon_name).unwrap_or(false) {
+			return Some(icon_name.to_string());
+		}
+
+		for folder in &params.icon_folders {
 			let pattern = format!("{}/hicolor/*/apps/{}.*", folder, icon_name);
 
 			let mut entries: Vec<_> = glob::glob(&pattern)
@@ -160,7 +247,7 @@ impl DesktopFinder {
 					.rev()
 					.nth(2) // ← hicolor/<*SIZE*>/apps/filename.ext
 					.map(|c| c.as_os_str())
-					.and_then(|size| size_preferences.iter().position(|&p| p == size))
+					.and_then(|size| params.size_preferences.iter().position(|&p| p == size))
 					.unwrap_or(usize::MAX)
 			});
 
@@ -193,9 +280,8 @@ impl DesktopFinder {
 
 	pub fn refresh(&mut self) {
 		let bg_task = std::thread::spawn({
-			let icon_folders = self.icon_folders.clone();
-			let size_preferences = self.size_preferences.clone();
-			move || Self::build_cache(icon_folders, size_preferences)
+			let params = self.params.clone();
+			move || Self::build_cache(params)
 		});
 		self.bg_task = Some(bg_task);
 	}

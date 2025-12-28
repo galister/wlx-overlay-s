@@ -9,9 +9,9 @@ wgui = { path = "../wgui/" }
 wlx-common = { path = "../wlx-common" }
 
 anyhow.workspace = true
-freedesktop = { workspace = true, features = ["apps"] }
 glam = { workspace = true, features = ["mint", "serde"] }
 log.workspace = true
+xdg.workspace = true
 rust-embed.workspace = true
 serde = { workspace = true, features = ["rc"] }
 serde_json.workspace = true
@@ -24,3 +24,5 @@ http-body-util = "0.1.3"
 async-native-tls = "0.5.0"
 smol-hyper = "0.1.1"
 glob = "0.3.3"
+walkdir = "2.5.0"
+rust-ini = "0.21.3"

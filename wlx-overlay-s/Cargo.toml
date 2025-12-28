@@ -28,7 +28,6 @@ wlx-common = { path = "../wlx-common" }
 
 anyhow.workspace = true
 clap.workspace = true
-freedesktop.workspace = true
 glam = { workspace = true, features = ["mint", "serde"] }
 idmap = { workspace = true, features = ["serde"] }
 idmap-derive. workspace = true
@@ -40,6 +39,7 @@ serde = { workspace = true, features = ["rc"] }
 serde_json.workspace = true
 vulkano.workspace = true
 vulkano-shaders.workspace = true
+xdg.workspace = true
 
 ash = "^0.38.0" # must match vulkano
 bytes = { version = "1.11.0" }
