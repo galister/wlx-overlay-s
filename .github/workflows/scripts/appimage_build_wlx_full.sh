@@ -1,4 +1,4 @@
 #!/bin/sh
-cargo build --release --no-default-features --features=openvr,openxr,wayland,x11,osc
+cargo build --release
 chmod +x ../target/release/wlx-overlay-s
 cp ../target/release/wlx-overlay-s ${APPDIR}/usr/bin
