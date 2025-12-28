@@ -68,5 +68,6 @@
   "GAME_LIST": {
     "NO_GAMES_FOUND": "Keine Spiele gefunden"
   },
-  "TERMINATE_PROCESS": "Prozess beenden"
+  "TERMINATE_PROCESS": "Prozess beenden",
+  "GAME_LAUNCHED": "Spiel gestartet"
 }

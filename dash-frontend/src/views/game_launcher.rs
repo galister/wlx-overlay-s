@@ -1,10 +1,13 @@
+use std::rc::Rc;
+
 use crate::{
 	frontend::{FrontendTask, FrontendTasks},
 	util::{
-		cached_fetcher::{self},
-		steam_utils::{AppID, AppManifest},
+		cached_fetcher::{self, CoverArt},
+		steam_utils::{self, AppID, AppManifest},
 		various::AsyncExecutor,
 	},
+	views::game_cover,
 };
 use wgui::{
 	assets::AssetPath,
@@ -14,12 +17,13 @@ use wgui::{
 	layout::{Layout, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
 	task::Tasks,
-	widget::label::WidgetLabel,
+	widget::{ConstructEssentials, label::WidgetLabel},
 };
 
 #[derive(Clone)]
 enum Task {
 	FillAppDetails(cached_fetcher::AppDetailsJSONData),
+	SetCoverArt(Rc<CoverArt>),
 	Launch,
 }
 
@@ -39,14 +43,9 @@ pub struct View {
 	on_launched: Box<dyn Fn()>,
 	frontend_tasks: FrontendTasks,
 
-	#[allow(dead_code)]
-	id_cover_art_parent: WidgetID,
-	#[allow(dead_code)]
-	executor: AsyncExecutor,
-	#[allow(dead_code)]
-	globals: WguiGlobals,
-	#[allow(dead_code)]
-	manifest: AppManifest,
+	game_cover_view_common: game_cover::ViewCommon,
+	view_cover: game_cover::View,
+	app_id: AppID,
 }
 
 impl View {
@@ -67,11 +66,13 @@ impl View {
 
 		let state = wgui::parser::parse_from_assets(doc_params, params.layout, params.parent_id)?;
 
-		let mut label_title = state.fetch_widget_as::<WidgetLabel>(&params.layout.state, "label_title")?;
-		label_title.set_text_simple(
-			&mut params.globals.get(),
-			Translation::from_raw_text(&params.manifest.name),
-		);
+		{
+			let mut label_title = state.fetch_widget_as::<WidgetLabel>(&params.layout.state, "label_title")?;
+			label_title.set_text_simple(
+				&mut params.globals.get(),
+				Translation::from_raw_text(&params.manifest.name),
+			);
+		}
 
 		let tasks = Tasks::new();
 
@@ -84,15 +85,30 @@ impl View {
 
 		tasks.handle_button(&btn_launch, Task::Launch);
 
+		let view_cover = game_cover::View::new(game_cover::Params {
+			ess: &mut ConstructEssentials {
+				layout: params.layout,
+				parent: id_cover_art_parent,
+			},
+			executor: &params.executor,
+			manifest: &params.manifest,
+			on_loaded: {
+				let tasks = tasks.clone();
+				Box::new(move |cover_art| {
+					tasks.push(Task::SetCoverArt(Rc::new(cover_art)));
+				})
+			},
+			scale: 1.5,
+		})?;
+
 		Ok(Self {
 			state,
 			tasks,
 			on_launched: params.on_launched,
-			id_cover_art_parent,
 			frontend_tasks: params.frontend_tasks.clone(),
-			executor: params.executor.clone(),
-			globals: params.globals.clone(),
-			manifest: params.manifest,
+			game_cover_view_common: game_cover::ViewCommon::new(params.globals.clone()),
+			view_cover,
+			app_id: params.manifest.app_id.clone(),
 		})
 	}
 
@@ -106,6 +122,11 @@ impl View {
 				match task {
 					Task::FillAppDetails(details) => self.action_fill_app_details(layout, details)?,
 					Task::Launch => self.action_launch(),
+					Task::SetCoverArt(cover_art) => {
+						let _ = self
+							.view_cover
+							.set_cover_art(&mut self.game_cover_view_common, layout, &cover_art);
+					}
 				}
 			}
 		}
@@ -150,9 +171,24 @@ impl View {
 	}
 
 	fn action_launch(&mut self) {
-		self
-			.frontend_tasks
-			.push(FrontendTask::PushToast(Translation::from_raw_text("Game launch TODO")));
+		match steam_utils::launch(&self.app_id) {
+			Ok(_) => {
+				self
+					.frontend_tasks
+					.push(FrontendTask::PushToast(Translation::from_translation_key(
+						"GAME_LAUNCHED",
+					)));
+			}
+			Err(e) => {
+				self
+					.frontend_tasks
+					.push(FrontendTask::PushToast(Translation::from_raw_text_string(format!(
+						"Failed to launch: {:?}",
+						e
+					))));
+			}
+		}
+
 		(*self.on_launched)();
 	}
 }

@@ -137,7 +137,7 @@ pub fn stop(app_id: AppID, force_kill: bool) -> anyhow::Result<()> {
 	Ok(())
 }
 
-pub fn launch(app_id: AppID) -> anyhow::Result<()> {
+pub fn launch(app_id: &AppID) -> anyhow::Result<()> {
 	log::info!("Launching Steam game with AppID {}", app_id);
 	call_steam(&format!("steam://rungameid/{}", app_id))?;
 	Ok(())
