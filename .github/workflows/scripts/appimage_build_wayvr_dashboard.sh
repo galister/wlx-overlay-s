@@ -1,7 +1,7 @@
 #!/bin/sh
 WAYVR_DASHBOARD_PATH="/tmp/wayvr-dashboard"
 
-WLX_DIR=$(realpath $(pwd))
+MAIN_DIR=$(realpath $(pwd))
 
 # built wayvr-dashboard binary executable path
 DASH_PATH="${WAYVR_DASHBOARD_PATH}/temp/wayvr-dashboard"
@@ -12,7 +12,7 @@ cd ${WAYVR_DASHBOARD_PATH}
 .github/workflows/build.sh
 
 # See https://github.com/olekolek1000/wayvr-dashboard/blob/master/.github/workflows/appimage.sh
-cd ..
+cd ${MAIN_DIR}
 cd ${APPDIR}
 
 # Fix webkit
@@ -30,7 +30,7 @@ TARGET_WEBKIT_SO="./usr/lib/libwebkit2gtk-4.1.so.0"
 cp /usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.1.so.0 ${TARGET_WEBKIT_SO}
 sed -i -e "s|/usr|././|g" "${TARGET_WEBKIT_SO}"
 
-cd ${WLX_DIR}
+cd ${MAIN_DIR}
 
 chmod +x ${DASH_PATH}
 
