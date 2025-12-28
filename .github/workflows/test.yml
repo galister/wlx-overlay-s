@@ -1,0 +1,34 @@
+name: Make Release
+
+on:
+  push:
+    branches: [ "!main" ]
+
+env:
+  APPDIR: WlxOverlay-S.AppDir
+  CARGO_TERM_COLOR: always
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+  
+jobs:
+  make_release:
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: ./wlx-overlay-s
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+      - name: Prepare Environment
+        run: |
+          ../.github/workflows/scripts/appimage_prepare_env.sh
+      - name: Build Wayvrctl
+        run: |
+          cd ../wayvrctl
+          cargo build --release
+      - name: Test
+        run: |
+          pwd
+          find /home/runner/work/ -name 'wayvrctl' 2>/dev/null
+
