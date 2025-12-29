@@ -53,7 +53,7 @@ impl settings::SettingsIO for SimpleSettingsIO {
 }
 
 pub struct TestbedDashboard {
-	frontend: frontend::Frontend,
+	frontend: frontend::Frontend<()>,
 }
 
 impl TestbedDashboard {
@@ -71,9 +71,12 @@ impl TestbedDashboard {
 
 impl Testbed for TestbedDashboard {
 	fn update(&mut self, params: TestbedUpdateParams) -> anyhow::Result<()> {
-		self
-			.frontend
-			.update(params.width, params.height, params.timestep_alpha)
+		self.frontend.update(
+			&mut (), /* nothing */
+			params.width,
+			params.height,
+			params.timestep_alpha,
+		)
 	}
 
 	fn layout(&mut self) -> &mut Layout {
