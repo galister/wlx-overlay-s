@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
-use chrono::Local;
 use chrono::DateTime;
+use chrono::Local;
 use chrono_tz::Tz;
 use wgui::{
     drawing,
@@ -222,12 +222,15 @@ fn timer_on_tick(
     common: &mut event::CallbackDataCommon,
     data: &mut event::CallbackData,
 ) {
-    let duration = Local::now().signed_duration_since(&state.start).num_seconds();
+    let duration = Local::now()
+        .signed_duration_since(&state.start)
+        .num_seconds();
 
-    let time = &state.format
-    .replace("%s", &format!("{:02}", (duration % 60)))
-    .replace("%m", &format!("{:02}", ((duration / 60) % 60)))
-    .replace("%h", &format!("{:02}", ((duration / 60) / 60)));
+    let time = &state
+        .format
+        .replace("%s", &format!("{:02}", (duration % 60)))
+        .replace("%m", &format!("{:02}", ((duration / 60) % 60)))
+        .replace("%h", &format!("{:02}", ((duration / 60) / 60)));
 
     let label = data.obj.get_as_mut::<WidgetLabel>().unwrap();
     label.set_text(common, Translation::from_raw_text(&time));
