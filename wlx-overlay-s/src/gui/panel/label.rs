@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use chrono::Local;
+use chrono::DateTime;
 use chrono_tz::Tz;
 use wgui::{
     drawing,
@@ -121,6 +122,19 @@ pub(super) fn setup_custom_label<S: 'static>(
                 Ok(EventResult::Pass)
             })
         }
+        "timer" => {
+            let format = attribs.get_value("_format").unwrap_or("%h:%m");
+
+            let state = TimerLabelState {
+                start: Local::now(),
+                format: format.into(),
+            };
+
+            Box::new(move |common, data, _, _| {
+                timer_on_tick(&state, common, data);
+                Ok(EventResult::Pass)
+            })
+        }
         "ipd" => Box::new(|common, data, app, _| {
             ipd_on_tick(common, data, app);
             Ok(EventResult::Pass)
@@ -196,6 +210,27 @@ fn clock_on_tick(
 
     let label = data.obj.get_as_mut::<WidgetLabel>().unwrap();
     label.set_text(common, Translation::from_raw_text(&date_time));
+}
+
+struct TimerLabelState {
+    start: DateTime<Local>,
+    format: Rc<str>,
+}
+
+fn timer_on_tick(
+    state: &TimerLabelState,
+    common: &mut event::CallbackDataCommon,
+    data: &mut event::CallbackData,
+) {
+    let duration = Local::now().signed_duration_since(&state.start).num_seconds();
+
+    let time = &state.format
+    .replace("%s", &format!("{:02}", (duration % 60)))
+    .replace("%m", &format!("{:02}", ((duration / 60) % 60)))
+    .replace("%h", &format!("{:02}", ((duration / 60) / 60)));
+
+    let label = data.obj.get_as_mut::<WidgetLabel>().unwrap();
+    label.set_text(common, Translation::from_raw_text(&time));
 }
 
 fn ipd_on_tick(
