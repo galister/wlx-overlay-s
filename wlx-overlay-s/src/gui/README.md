@@ -18,6 +18,16 @@ See the Custom Timezones section for more info on timezones. Skip `_timezone` to
 <label _source="clock" _display="time" _timezone="0" [...] />
 ```
 
+#### Timer label
+
+Instead of a clock, this label shows the amount of time since program start, (aka time in VR).
+
+Use `_format` to arrange `%h` hours, `%m` minutes, and `%s` seconds.
+
+```xml
+<label _source="timer" _format="%h:%m:%s" [...] />
+```
+
 #### Battery label
 
 This is a label type that's used internally to display battery states.
