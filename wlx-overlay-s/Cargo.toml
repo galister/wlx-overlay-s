@@ -30,7 +30,7 @@ anyhow.workspace = true
 clap.workspace = true
 glam = { workspace = true, features = ["mint", "serde"] }
 idmap = { workspace = true, features = ["serde"] }
-idmap-derive. workspace = true
+idmap-derive.workspace = true
 log.workspace = true
 rust-embed.workspace = true
 regex.workspace = true
@@ -68,11 +68,6 @@ ovr_overlay = { features = [
   "ovr_input",
   "ovr_system",
 ], git = "https://github.com/galister/ovr_overlay_oyasumi", rev = "8d62c73d5f17e4210d6d0cd52e7f3953eb9b481a", optional = true }
-rodio = { version = "0.21.1", default-features = false, features = [
-  "playback",
-  "wav",
-  "hound",
-] }
 rosc = { version = "0.11.4", optional = true }
 serde_json5 = "0.2.1"
 serde_yaml = "0.9.34"

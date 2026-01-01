@@ -7,6 +7,7 @@ use wgui::{
     renderer_vk::context::SharedContext as WSharedContext,
 };
 use wlx_common::{
+    audio,
     config::GeneralConfig,
     overlays::{ToastDisplayMethod, ToastTopic},
 };
@@ -26,7 +27,7 @@ use crate::{
     graphics::WGfxExtras,
     gui,
     ipc::{event_queue::SyncEventQueue, ipc_server, signal::WayVRSignal},
-    subsystem::{audio::AudioOutput, dbus::DbusConnector, input::HidWrapper},
+    subsystem::{dbus::DbusConnector, input::HidWrapper},
 };
 
 pub struct AppState {
@@ -36,7 +37,9 @@ pub struct AppState {
     pub gfx: Arc<WGfx>,
     pub gfx_extras: WGfxExtras,
     pub hid_provider: HidWrapper,
-    pub audio_provider: AudioOutput,
+
+    pub audio_system: audio::AudioSystem,
+    pub audio_sample_player: audio::SamplePlayer,
 
     pub wgui_shared: WSharedContext,
 
@@ -44,7 +47,6 @@ pub struct AppState {
     pub screens: SmallVec<[ScreenMeta; 8]>,
     pub anchor: Affine3A,
     pub anchor_grabbed: bool,
-    pub toast_sound: &'static [u8],
 
     pub wgui_globals: WguiGlobals,
 
@@ -93,13 +95,19 @@ impl AppState {
         #[cfg(feature = "osc")]
         let osc_sender = crate::subsystem::osc::OscSender::new(session.config.osc_out_port).ok();
 
-        let toast_sound_wav = Self::try_load_bytes(
-            &session.config.notification_sound,
-            include_bytes!("res/557297.wav"),
-        );
-
         let wgui_shared = WSharedContext::new(gfx.clone())?;
         let theme = session.config.theme_path.clone();
+
+        let mut audio_sample_player = audio::SamplePlayer::new();
+        audio_sample_player.register_sample(
+            "key_click",
+            audio::AudioSample::from_mp3(include_bytes!("res/key_click.mp3"))?,
+        );
+
+        audio_sample_player.register_sample(
+            "toast",
+            audio::AudioSample::from_mp3(include_bytes!("res/toast.mp3"))?,
+        );
 
         let mut defaults = wgui::globals::Defaults::default();
 
@@ -131,13 +139,13 @@ impl AppState {
             gfx,
             gfx_extras,
             hid_provider,
-            audio_provider: AudioOutput::new(),
+            audio_system: audio::AudioSystem::new(),
+            audio_sample_player,
             wgui_shared,
             input_state: InputState::new(),
             screens: smallvec![],
             anchor: Affine3A::IDENTITY,
             anchor_grabbed: false,
-            toast_sound: toast_sound_wav,
             wgui_globals: WguiGlobals::new(
                 Box::new(gui::asset::GuiAsset {}),
                 defaults,
@@ -155,29 +163,6 @@ impl AppState {
             #[cfg(feature = "wayvr")]
             wvr_server: wayvr_server,
         })
-    }
-
-    pub fn try_load_bytes(path: &str, fallback_data: &'static [u8]) -> &'static [u8] {
-        if path.is_empty() {
-            return fallback_data;
-        }
-
-        let real_path = config_io::get_config_root().join(path);
-
-        if std::fs::File::open(real_path.clone()).is_err() {
-            log::warn!("Could not open file at: {path}");
-            return fallback_data;
-        }
-
-        match std::fs::read(real_path) {
-            // Box is used here to work around `f`'s limited lifetime
-            Ok(f) => Box::leak(Box::new(f)).as_slice(),
-            Err(e) => {
-                log::warn!("Failed to read file at: {path}");
-                log::warn!("{e:?}");
-                fallback_data
-            }
-        }
     }
 }
 

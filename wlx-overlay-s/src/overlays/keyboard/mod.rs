@@ -325,10 +325,9 @@ impl KeyboardState {
     }
 }
 
-const KEY_AUDIO_WAV: &[u8] = include_bytes!("../../res/421581.wav");
-
 fn play_key_click(app: &mut AppState) {
-    app.audio_provider.play(KEY_AUDIO_WAV);
+    app.audio_sample_player
+        .play_sample(&mut app.audio_system, "key_click");
 }
 
 struct KeyState {
