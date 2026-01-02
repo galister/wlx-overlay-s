@@ -235,6 +235,7 @@ impl XdgShellHandler for Application {
         }
         surface.with_pending_state(|state| {
             state.states.set(xdg_toplevel::State::Activated);
+            state.states.set(xdg_toplevel::State::Fullscreen);
         });
         surface.send_configure();
     }
