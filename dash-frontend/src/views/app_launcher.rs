@@ -181,14 +181,16 @@ impl View {
 	}
 
 	fn action_set_run_mode(&mut self, layout: &mut Layout, run_mode: RunMode) -> anyhow::Result<()> {
-		let (n1, n2) = match run_mode {
-			RunMode::Cage => (true, false),
-			RunMode::Wayland => (false, true),
-		};
-
 		let mut c = layout.start_common();
-		self.cb_cage_mode.set_checked(&mut c.common(), n1);
-		self.cb_wayland_mode.set_checked(&mut c.common(), n2);
+
+		self
+			.cb_cage_mode
+			.set_checked(&mut c.common(), matches!(run_mode, RunMode::Cage));
+		self
+			.cb_wayland_mode
+			.set_checked(&mut c.common(), matches!(run_mode, RunMode::Wayland));
+
+		self.run_mode = run_mode;
 
 		c.finish()?;
 		Ok(())
