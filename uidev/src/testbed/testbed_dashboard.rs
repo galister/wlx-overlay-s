@@ -1,6 +1,6 @@
 use crate::testbed::{Testbed, TestbedUpdateParams};
 use dash_frontend::{
-	frontend,
+	frontend::{self, FrontendUpdateParams},
 	settings::{self, SettingsIO},
 };
 use wgui::layout::Layout;
@@ -70,13 +70,15 @@ impl TestbedDashboard {
 }
 
 impl Testbed for TestbedDashboard {
-	fn update(&mut self, params: TestbedUpdateParams) -> anyhow::Result<()> {
-		self.frontend.update(
-			&mut (), /* nothing */
-			params.width,
-			params.height,
-			params.timestep_alpha,
-		)
+	fn update(&mut self, mut params: TestbedUpdateParams) -> anyhow::Result<()> {
+		let res = self.frontend.update(FrontendUpdateParams {
+			data: &mut (), /* nothing */
+			width: params.width,
+			height: params.height,
+			timestep_alpha: params.timestep_alpha,
+		})?;
+		params.process_layout_result(res);
+		Ok(())
 	}
 
 	fn layout(&mut self) -> &mut Layout {

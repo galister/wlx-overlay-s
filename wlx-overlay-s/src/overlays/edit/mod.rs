@@ -167,7 +167,7 @@ impl OverlayBackend for EditModeBackendWrapper {
 
                 let gui_scale = (new_size.x / 750.0).min(new_size.y / 300.0);
                 self.panel.gui_scale = (gui_scale * 4.0).round() / 4.0;
-                self.panel.update_layout()?;
+                self.panel.update_layout(app)?;
             }
 
             self.can_render_inner = true;

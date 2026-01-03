@@ -10,6 +10,7 @@ use crate::{
 		text::{FontWeight, TextStyle, custom_glyph::CustomGlyphData},
 		util::centered_matrix,
 	},
+	sound::WguiSoundType,
 	widget::{
 		self, ConstructEssentials, EventResult, WidgetData,
 		label::{WidgetLabel, WidgetLabelParams},
@@ -270,6 +271,7 @@ fn register_event_mouse_enter(
 	listeners.register(
 		EventListenerKind::MouseEnter,
 		Box::new(move |common, event_data, (), ()| {
+			common.alterables.play_sound(WguiSoundType::ButtonMouseEnter);
 			common.alterables.trigger_haptics();
 			common.alterables.mark_redraw();
 			common
@@ -332,6 +334,7 @@ fn register_event_mouse_press(state: Rc<RefCell<State>>, listeners: &mut EventLi
 			);
 
 			common.alterables.trigger_haptics();
+			common.alterables.play_sound(WguiSoundType::ButtonPress);
 			common.alterables.mark_redraw();
 
 			if state.hovered {
@@ -362,6 +365,7 @@ fn register_event_mouse_release(
 			}
 
 			common.alterables.trigger_haptics();
+			common.alterables.play_sound(WguiSoundType::ButtonRelease);
 			common.alterables.mark_redraw();
 
 			if state.down {

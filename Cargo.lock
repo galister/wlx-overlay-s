@@ -6801,6 +6801,7 @@ dependencies = [
  "serde",
  "smol",
  "wayvr-ipc",
+ "wgui",
  "xdg 3.0.0",
 ]
 

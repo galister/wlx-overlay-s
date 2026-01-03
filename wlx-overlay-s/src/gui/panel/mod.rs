@@ -13,7 +13,7 @@ use wgui::{
         MouseMotionEvent, MouseUpEvent, MouseWheelEvent,
     },
     gfx::cmd::WGfxClearMode,
-    layout::{Layout, LayoutParams, WidgetID},
+    layout::{Layout, LayoutParams, LayoutUpdateParams, WidgetID},
     parser::{CustomAttribsInfoOwned, Fetchable, ParserState},
     renderer_vk::context::Context as WguiContext,
     widget::{EventResult, label::WidgetLabel},
@@ -22,6 +22,7 @@ use wlx_common::overlays::{BackendAttrib, BackendAttribValue};
 use wlx_common::timestep::Timestep;
 
 use crate::{
+    app_misc,
     backend::input::{Haptics, HoverResult, PointerHit, PointerMode},
     state::AppState,
     subsystem::hid::WheelDelta,
@@ -211,8 +212,15 @@ impl<S: 'static> GuiPanel<S> {
         })
     }
 
-    pub fn update_layout(&mut self) -> anyhow::Result<()> {
-        self.layout.update(self.max_size, 0.0)
+    pub fn update_layout(&mut self, app: &mut AppState) -> anyhow::Result<()> {
+        app_misc::process_layout_result(
+            app,
+            self.layout.update(&mut LayoutUpdateParams {
+                size: self.max_size / self.gui_scale,
+                timestep_alpha: self.timestep.alpha,
+            })?,
+        );
+        Ok(())
     }
 
     pub fn push_event(&mut self, app: &mut AppState, event: &WguiEvent) -> EventResult {
@@ -236,9 +244,9 @@ impl<S: 'static> GuiPanel<S> {
 }
 
 impl<S: 'static> OverlayBackend for GuiPanel<S> {
-    fn init(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+    fn init(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         if self.layout.content_size.x * self.layout.content_size.y != 0.0 {
-            self.update_layout()?;
+            self.update_layout(app)?;
             self.interaction_transform = Some(ui_transform([
                 self.layout.content_size.x as _,
                 self.layout.content_size.y as _,
@@ -297,9 +305,7 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
     fn render(&mut self, app: &mut AppState, rdr: &mut RenderResources) -> anyhow::Result<()> {
         self.context
             .update_viewport(&mut app.wgui_shared, rdr.extent, self.gui_scale)?;
-        self.layout
-            .update(self.max_size / self.gui_scale, self.timestep.alpha)?;
-
+        self.update_layout(app)?;
         let globals = self.layout.state.globals.clone(); // sorry
         let mut globals = globals.get();
 

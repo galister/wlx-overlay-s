@@ -8,19 +8,20 @@ use wgui::{
 	font_config::WguiFontConfig,
 	globals::WguiGlobals,
 	i18n::Translation,
-	layout::{Layout, LayoutParams, WidgetID},
+	layout::{Layout, LayoutParams, LayoutUpdateParams, LayoutUpdateResult, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
+	sound::WguiSoundType,
 	task::Tasks,
 	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
 	windowing::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra, WguiWindowPlacement},
 };
-use wlx_common::{dash_interface::BoxDashInterface, timestep::Timestep};
+use wlx_common::{audio, dash_interface::BoxDashInterface, timestep::Timestep};
 
 use crate::{
 	assets, settings,
 	tab::{
-		apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses, settings::TabSettings,
-		Tab, TabType,
+		Tab, TabType, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses,
+		settings::TabSettings,
 	},
 	util::{
 		desktop_finder::DesktopFinder,
@@ -66,6 +67,13 @@ pub struct Frontend<T> {
 	view_audio_settings: Option<views::audio_settings::View>,
 
 	pub(crate) desktop_finder: DesktopFinder,
+}
+
+pub struct FrontendUpdateParams<'a, T> {
+	pub data: &'a mut T,
+	pub width: f32,
+	pub height: f32,
+	pub timestep_alpha: f32,
 }
 
 pub struct InitParams<T> {
@@ -164,15 +172,27 @@ impl<T: 'static> Frontend<T> {
 		Ok(frontend)
 	}
 
-	pub fn update(&mut self, data: &mut T, width: f32, height: f32, timestep_alpha: f32) -> anyhow::Result<()> {
+	pub fn play_startup_sound(
+		&mut self,
+		audio_system: &mut audio::AudioSystem,
+		audio_sample_player: &mut audio::SamplePlayer,
+	) -> anyhow::Result<()> {
+		// play startup sound
+		let mut assets = self.globals.assets_builtin();
+		audio_sample_player.register_mp3_sample_from_assets("dash_startup", assets.as_mut(), "sound/startup.mp3")?;
+		audio_sample_player.play_sample(audio_system, "dash_startup");
+		Ok(())
+	}
+
+	pub fn update(&mut self, params: FrontendUpdateParams<T>) -> anyhow::Result<LayoutUpdateResult> {
 		let mut tasks = self.tasks.drain();
 
 		while let Some(task) = tasks.pop_front() {
-			self.process_task(data, task)?;
+			self.process_task(params.data, task)?;
 		}
 
 		if let Some(mut tab) = self.current_tab.take() {
-			tab.update(self, data)?;
+			tab.update(self, params.data)?;
 
 			self.current_tab = Some(tab);
 		}
@@ -180,13 +200,14 @@ impl<T: 'static> Frontend<T> {
 		// process async runtime tasks
 		while self.executor.try_tick() {}
 
-		self.tick(width, height, timestep_alpha)?;
+		let res = self.tick(params)?;
+
 		self.ticks += 1;
 
-		Ok(())
+		Ok(res)
 	}
 
-	fn tick(&mut self, width: f32, height: f32, timestep_alpha: f32) -> anyhow::Result<()> {
+	fn tick(&mut self, params: FrontendUpdateParams<T>) -> anyhow::Result<LayoutUpdateResult> {
 		// fixme: timer events instead of this thing
 		if self.ticks.is_multiple_of(1000) {
 			self.update_time()?;
@@ -197,11 +218,12 @@ impl<T: 'static> Frontend<T> {
 			while self.timestep.on_tick() {
 				self.toast_manager.tick(&self.globals, &mut self.layout)?;
 			}
-
-			self.layout.update(Vec2::new(width, height), timestep_alpha)?;
 		}
 
-		Ok(())
+		self.layout.update(&mut LayoutUpdateParams {
+			size: Vec2::new(params.width, params.height),
+			timestep_alpha: params.timestep_alpha,
+		})
 	}
 
 	fn update_time(&mut self) -> anyhow::Result<()> {

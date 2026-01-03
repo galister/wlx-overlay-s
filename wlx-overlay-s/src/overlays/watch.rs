@@ -551,7 +551,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
         align_to_hmd: false,
     };
 
-    panel.update_layout()?;
+    panel.update_layout(app)?;
 
     Ok(OverlayWindowConfig {
         name: WATCH_NAME.into(),

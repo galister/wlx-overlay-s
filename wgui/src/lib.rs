@@ -34,6 +34,7 @@ pub mod i18n;
 pub mod layout;
 pub mod parser;
 pub mod renderer_vk;
+pub mod sound;
 pub mod stack;
 pub mod task;
 pub mod widget;

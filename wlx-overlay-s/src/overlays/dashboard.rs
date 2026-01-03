@@ -1,5 +1,5 @@
 use dash_frontend::{
-    frontend,
+    frontend::{self, FrontendUpdateParams},
     settings::{self, SettingsIO},
 };
 use glam::{Affine2, Affine3A, Vec2, vec2, vec3};
@@ -27,6 +27,7 @@ use wlx_common::{
 };
 
 use crate::{
+    app_misc,
     backend::{
         input::{Haptics, HoverResult, PointerHit, PointerMode},
         task::{OverlayTask, PlayspaceTask, TaskType},
@@ -103,10 +104,13 @@ impl DashFrontend {
         let settings = SimpleSettingsIO::new();
         let interface = DashInterfaceLive::new();
 
-        let frontend = frontend::Frontend::new(frontend::InitParams {
+        let mut frontend = frontend::Frontend::new(frontend::InitParams {
             settings: Box::new(settings),
             interface: Box::new(interface),
         })?;
+
+        frontend.play_startup_sound(&mut app.audio_system, &mut app.audio_sample_player)?;
+
         let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
         Ok(Self {
             inner: frontend,
@@ -119,12 +123,14 @@ impl DashFrontend {
     }
 
     fn update(&mut self, app: &mut AppState, timestep_alpha: f32) -> anyhow::Result<()> {
-        self.inner.update(
-            app,
-            DASH_RES_VEC2.x / GUI_SCALE,
-            DASH_RES_VEC2.y / GUI_SCALE,
+        let res = self.inner.update(FrontendUpdateParams {
+            data: app,
+            width: DASH_RES_VEC2.x / GUI_SCALE,
+            height: DASH_RES_VEC2.y / GUI_SCALE,
             timestep_alpha,
-        )
+        })?;
+        app_misc::process_layout_result(app, res);
+        Ok(())
     }
 
     fn push_event(&mut self, event: &WguiEvent) -> EventResult {

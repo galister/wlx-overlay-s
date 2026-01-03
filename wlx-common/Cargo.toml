@@ -16,6 +16,7 @@ serde = { workspace = true, features = ["rc"] }
 xdg.workspace = true
 chrono = "0.4.42"
 smol = "2.0.2"
+wgui = { path = "../wgui/" }
 rodio = { version = "0.21.1", default-features = false, features = [
   "playback",
   "mp3",

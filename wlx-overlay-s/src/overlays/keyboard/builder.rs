@@ -1,13 +1,13 @@
 use std::{collections::HashMap, rc::Rc};
 
-use crate::{gui::panel::GuiPanel, state::AppState, subsystem::hid::XkbKeymap};
+use crate::{app_misc, gui::panel::GuiPanel, state::AppState, subsystem::hid::XkbKeymap};
 use glam::{FloatExt, Mat4, Vec2, vec2, vec3};
 use wgui::{
     animation::{Animation, AnimationEasing},
     assets::AssetPath,
     drawing::{self, Color},
     event::{self, CallbackMetadata, EventListenerKind},
-    layout::LayoutParams,
+    layout::{LayoutParams, LayoutUpdateParams},
     parser::Fetchable,
     renderer_vk::util,
     taffy::{self, prelude::length},
@@ -264,7 +264,13 @@ pub(super) fn create_keyboard_panel(
         }
     }
 
-    panel.layout.update(vec2(2048., 2048.), 0.0)?;
+    app_misc::process_layout_result(
+        app,
+        panel.layout.update(&mut LayoutUpdateParams {
+            size: vec2(2048., 2048.),
+            timestep_alpha: 0.0,
+        })?,
+    );
     panel.parser_state = gui_state_key;
 
     Ok(panel)

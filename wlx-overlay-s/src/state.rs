@@ -109,6 +109,9 @@ impl AppState {
             audio::AudioSample::from_mp3(include_bytes!("res/toast.mp3"))?,
         );
 
+        let mut assets = Box::new(gui::asset::GuiAsset {});
+        audio_sample_player.register_wgui_samples(assets.as_mut())?;
+
         let mut defaults = wgui::globals::Defaults::default();
 
         {
@@ -147,7 +150,7 @@ impl AppState {
             anchor: Affine3A::IDENTITY,
             anchor_grabbed: false,
             wgui_globals: WguiGlobals::new(
-                Box::new(gui::asset::GuiAsset {}),
+                assets,
                 defaults,
                 &WguiFontConfig::default(),
                 get_config_file_path(&theme),

@@ -9,7 +9,7 @@ use wgui::{
 	assets::AssetPath,
 	font_config::WguiFontConfig,
 	globals::WguiGlobals,
-	layout::{Layout, LayoutParams},
+	layout::{Layout, LayoutParams, LayoutUpdateParams},
 	parser::{ParseDocumentParams, ParserState},
 };
 
@@ -21,7 +21,7 @@ pub struct TestbedAny {
 }
 
 impl TestbedAny {
-	pub fn new(name: &str) -> anyhow::Result<Self> {
+	pub fn new(assets: Box<assets::Asset>, name: &str) -> anyhow::Result<Self> {
 		let path = if name.ends_with(".xml") {
 			AssetPath::FileOrBuiltIn(name)
 		} else {
@@ -29,7 +29,7 @@ impl TestbedAny {
 		};
 
 		let globals = WguiGlobals::new(
-			Box::new(assets::Asset {}),
+			assets,
 			wgui::globals::Defaults::default(),
 			&WguiFontConfig::default(),
 			PathBuf::new(), // cwd
@@ -48,11 +48,12 @@ impl TestbedAny {
 }
 
 impl Testbed for TestbedAny {
-	fn update(&mut self, params: TestbedUpdateParams) -> anyhow::Result<()> {
-		self.layout.update(
-			Vec2::new(params.width, params.height),
-			params.timestep_alpha,
-		)?;
+	fn update(&mut self, mut params: TestbedUpdateParams) -> anyhow::Result<()> {
+		let res = self.layout.update(&mut LayoutUpdateParams {
+			size: Vec2::new(params.width, params.height),
+			timestep_alpha: params.timestep_alpha,
+		})?;
+		params.process_layout_result(res);
 		Ok(())
 	}
 

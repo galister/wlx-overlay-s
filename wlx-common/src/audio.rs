@@ -1,6 +1,10 @@
 use std::{collections::HashMap, io::Cursor};
 
 use rodio::Source;
+use wgui::{
+	assets::{self, AssetProvider},
+	sound::WguiSoundType,
+};
 
 pub struct AudioSystem {
 	audio_stream: Option<rodio::OutputStream>,
@@ -15,6 +19,14 @@ pub struct SamplePlayer {
 	samples: HashMap<String, AudioSample>,
 }
 
+fn get_sample_name_from_wgui_sound_type(sound: WguiSoundType) -> &'static str {
+	match sound {
+		WguiSoundType::ButtonMouseEnter => "wgui_mouse_enter",
+		WguiSoundType::ButtonPress => "wgui_button_press",
+		WguiSoundType::ButtonRelease => "wgui_button_release",
+	}
+}
+
 impl SamplePlayer {
 	pub fn new() -> Self {
 		Self {
@@ -23,7 +35,37 @@ impl SamplePlayer {
 	}
 
 	pub fn register_sample(&mut self, sample_name: &str, sample: AudioSample) {
+		log::debug!("registering audio sample \"{sample_name}\"");
 		self.samples.insert(String::from(sample_name), sample);
+	}
+
+	pub fn register_mp3_sample_from_assets(
+		&mut self,
+		sample_name: &str,
+		assets: &mut dyn AssetProvider,
+		path: &str,
+	) -> anyhow::Result<()> {
+		// load only once
+		if self.samples.contains_key(sample_name) {
+			return Ok(());
+		}
+
+		let data = assets.load_from_path(path)?;
+		self.register_sample(sample_name, AudioSample::from_mp3(&data)?);
+
+		Ok(())
+	}
+
+	pub fn register_wgui_samples(&mut self, assets: &mut dyn AssetProvider) -> anyhow::Result<()> {
+		let mut load = |sound: WguiSoundType| -> anyhow::Result<()> {
+			let sample_name = get_sample_name_from_wgui_sound_type(sound);
+			self.register_mp3_sample_from_assets(sample_name, assets, &format!("sound/{}.mp3", sample_name))
+		};
+
+		load(WguiSoundType::ButtonPress)?;
+		load(WguiSoundType::ButtonRelease)?;
+		load(WguiSoundType::ButtonMouseEnter)?;
+		Ok(())
 	}
 
 	pub fn play_sample(&mut self, system: &mut AudioSystem, sample_name: &str) {
@@ -33,6 +75,12 @@ impl SamplePlayer {
 		};
 
 		system.play_sample(sample);
+	}
+
+	pub fn play_wgui_samples(&mut self, system: &mut AudioSystem, samples: Vec<WguiSoundType>) {
+		for sample in samples {
+			self.play_sample(system, get_sample_name_from_wgui_sound_type(sample));
+		}
 	}
 }
 

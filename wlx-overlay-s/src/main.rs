@@ -17,6 +17,7 @@
     clippy::cargo_common_metadata,
     clippy::option_if_let_else
 )]
+mod app_misc;
 mod backend;
 mod config;
 mod config_io;

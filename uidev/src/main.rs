@@ -18,6 +18,7 @@ use vulkano::{
 	sync::GpuFuture,
 };
 use wgui::{
+	assets::AssetProvider,
 	event::{MouseButtonIndex, MouseDownEvent, MouseMotionEvent, MouseUpEvent, MouseWheelEvent},
 	gfx::{WGfx, cmd::WGfxClearMode},
 	renderer_vk::{self},
@@ -27,7 +28,7 @@ use winit::{
 	event_loop::ControlFlow,
 	keyboard::{KeyCode, PhysicalKey},
 };
-use wlx_common::timestep::Timestep;
+use wlx_common::{audio, timestep::Timestep};
 
 use crate::{
 	rate_limiter::RateLimiter,
@@ -59,12 +60,15 @@ fn init_logging() {
 		.init();
 }
 
-fn load_testbed() -> anyhow::Result<Box<dyn Testbed>> {
+fn load_testbed(audio_sample_player: &mut audio::SamplePlayer) -> anyhow::Result<Box<dyn Testbed>> {
+	let mut assets = Box::new(assets::Asset {});
+	audio_sample_player.register_wgui_samples(assets.as_mut())?;
+
 	let name = std::env::var("TESTBED").unwrap_or_default();
 	Ok(match name.as_str() {
 		"dashboard" => Box::new(TestbedDashboard::new()?),
-		"" => Box::new(TestbedGeneric::new()?),
-		_ => Box::new(TestbedAny::new(&name)?),
+		"" => Box::new(TestbedGeneric::new(assets)?),
+		_ => Box::new(TestbedAny::new(assets, &name)?),
 	})
 }
 
@@ -98,7 +102,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let mut scale = window.scale_factor() as f32;
 
-	let mut testbed = load_testbed()?;
+	let mut audio_system = audio::AudioSystem::new();
+	let mut audio_sample_player = audio::SamplePlayer::new();
+	let mut testbed = load_testbed(&mut audio_sample_player)?;
 
 	let mut mouse = Vec2::ZERO;
 
@@ -291,6 +297,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 						width: (swapchain_size[0] as f32 / scale) as _,
 						height: (swapchain_size[1] as f32 / scale) as _,
 						timestep_alpha: timestep.alpha,
+						audio_system: &mut audio_system,
+						audio_sample_player: &mut audio_sample_player,
 					})
 					.unwrap();
 

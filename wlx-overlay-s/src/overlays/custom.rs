@@ -42,7 +42,7 @@ pub fn create_custom(app: &mut AppState, name: Arc<str>) -> Option<OverlayWindow
             .ok()?;
 
     panel
-        .update_layout()
+        .update_layout(app)
         .inspect_err(|e| log::warn!("Error layouting '{name}': {e:?}"))
         .ok()?;
 

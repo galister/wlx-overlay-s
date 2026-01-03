@@ -11,6 +11,7 @@ use crate::{
 	animation::{self, Animation},
 	i18n::I18n,
 	layout::{LayoutState, LayoutTask, WidgetID},
+	sound::WguiSoundType,
 	stack::{ScissorStack, Transform, TransformStack},
 	widget::{EventResult, WidgetData, WidgetObj},
 };
@@ -139,6 +140,10 @@ impl EventAlterables {
 
 	pub fn animate(&mut self, animation: Animation) {
 		self.animations.push(animation);
+	}
+
+	pub fn play_sound(&mut self, sound_type: WguiSoundType) {
+		self.tasks.push(LayoutTask::PlaySound(sound_type));
 	}
 }
 

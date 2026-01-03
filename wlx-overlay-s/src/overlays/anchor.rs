@@ -16,7 +16,7 @@ pub static ANCHOR_NAME: LazyLock<Arc<str>> = LazyLock::new(|| Arc::from("anchor"
 
 pub fn create_anchor(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
     let mut panel = GuiPanel::new_from_template(app, "gui/anchor.xml", (), Default::default())?;
-    panel.update_layout()?;
+    panel.update_layout(app)?;
 
     Ok(OverlayWindowConfig {
         name: ANCHOR_NAME.clone(),
@@ -41,7 +41,7 @@ pub static GRAB_HELP_NAME: LazyLock<Arc<str>> = LazyLock::new(|| Arc::from("grab
 
 pub fn create_grab_help(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
     let mut panel = GuiPanel::new_from_template(app, "gui/grab-help.xml", (), Default::default())?;
-    panel.update_layout()?;
+    panel.update_layout(app)?;
 
     let id_watch = panel.parser_state.data.get_widget_id("grabbing_watch")?;
     let id_static = panel.parser_state.data.get_widget_id("grabbing_static")?;

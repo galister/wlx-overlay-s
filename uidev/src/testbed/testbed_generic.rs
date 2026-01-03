@@ -17,7 +17,7 @@ use wgui::{
 	font_config::WguiFontConfig,
 	globals::WguiGlobals,
 	i18n::Translation,
-	layout::{Layout, LayoutParams, Widget},
+	layout::{Layout, LayoutParams, LayoutUpdateParams, Widget},
 	parser::{Fetchable, ParseDocumentExtra, ParseDocumentParams, ParserState},
 	taffy,
 	task::Tasks,
@@ -73,11 +73,11 @@ fn handle_button_click(button: Rc<ComponentButton>, label: Widget, text: &'stati
 }
 
 impl TestbedGeneric {
-	pub fn new() -> anyhow::Result<Self> {
+	pub fn new(assets: Box<assets::Asset>) -> anyhow::Result<Self> {
 		const XML_PATH: AssetPath = AssetPath::BuiltIn("gui/various_widgets.xml");
 
 		let globals = WguiGlobals::new(
-			Box::new(assets::Asset {}),
+			assets,
 			wgui::globals::Defaults::default(),
 			&WguiFontConfig::default(),
 			PathBuf::new(), // cwd
@@ -223,10 +223,12 @@ impl Testbed for TestbedGeneric {
 		let data = self.data.clone();
 		let mut data = data.borrow_mut();
 
-		self.layout.update(
-			Vec2::new(params.width, params.height),
-			params.timestep_alpha,
-		)?;
+		let res = self.layout.update(&mut LayoutUpdateParams {
+			size: Vec2::new(params.width, params.height),
+			timestep_alpha: params.timestep_alpha,
+		})?;
+
+		params.process_layout_result(res);
 
 		for task in self.tasks.drain() {
 			self.process_task(&task, &mut params, &mut data)?;

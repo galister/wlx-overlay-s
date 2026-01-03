@@ -179,7 +179,10 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<OverlayWindowConfig> {
     .inspect_err(|e| log::error!("Could not create toast: {e:?}"))
     .ok()?;
 
-    panel.update_layout().context("layout update failed").ok()?;
+    panel
+        .update_layout(app)
+        .context("layout update failed")
+        .ok()?;
 
     Some(OverlayWindowConfig {
         name: TOAST_NAME.clone(),
