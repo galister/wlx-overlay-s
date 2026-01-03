@@ -3,7 +3,7 @@ use smithay::{
     desktop::PopupManager,
     wayland::{compositor::with_states, shell::xdg::XdgPopupSurfaceData},
 };
-use std::sync::Arc;
+use std::{ops::RangeInclusive, sync::Arc};
 use vulkano::{
     buffer::BufferUsage, image::view::ImageView, pipeline::graphics::color_blend::AttachmentBlend,
 };
@@ -84,7 +84,9 @@ pub struct WvrWindowBackend {
     stereo: Option<StereoMode>,
     cur_image: Option<Arc<ImageView>>,
     panel: GuiPanel<()>,
+    inner_extent: [u32; 3],
     mouse_transform: Affine2,
+    uv_range: RangeInclusive<f32>,
 }
 
 impl WvrWindowBackend {
@@ -119,7 +121,7 @@ impl WvrWindowBackend {
             );
         }
 
-        panel.update_layout()?;
+        panel.update_layout(app)?;
 
         Ok(Self {
             name,
@@ -137,9 +139,28 @@ impl WvrWindowBackend {
                 None
             },
             cur_image: None,
+            inner_extent: [0, 0, 1],
             panel,
             mouse_transform: Affine2::ZERO,
+            uv_range: 0.0..=1.0,
         })
+    }
+
+    fn apply_extent(&mut self, meta: &FrameMeta) {
+        self.interaction_transform = Some(ui_transform(meta.extent.extent_u32arr()));
+
+        let scale = vec2(
+            ((meta.extent[0] + BORDER_SIZE * 2) as f32) / (meta.extent[0] as f32),
+            ((meta.extent[1] + BORDER_SIZE * 2 + BAR_SIZE) as f32) / (meta.extent[1] as f32),
+        );
+
+        let translation = vec2(
+            -(BORDER_SIZE as f32) / (meta.extent[0] as f32),
+            -((BORDER_SIZE + BAR_SIZE) as f32) / (meta.extent[1] as f32),
+        );
+
+        self.mouse_transform = Affine2::from_scale_angle_translation(scale, 0.0, translation);
+        self.uv_range = translation[0]..=(1.0 - translation[0]);
     }
 }
 
@@ -205,24 +226,20 @@ impl OverlayBackend for WvrWindowBackend {
                     clear: WGfxClearMode::Clear([0.0, 0.0, 0.0, 0.0]),
                     ..Default::default()
                 };
+                let inner_extent = meta.extent;
+                meta.extent[0] += BORDER_SIZE * 2;
+                meta.extent[1] += BORDER_SIZE * 2 + BAR_SIZE;
 
                 if let Some(pipeline) = self.pipeline.as_mut() {
-                    let inner_extent = meta.extent;
-
-                    meta.extent[0] += BORDER_SIZE * 2;
-                    meta.extent[1] += BORDER_SIZE * 2 + BAR_SIZE;
                     meta.extent[2] = pipeline.get_depth();
-                    if self
-                        .meta
-                        .is_some_and(|old| old.extent[..2] != meta.extent[..2])
-                    {
+                    if self.inner_extent[..2] != inner_extent[..2] {
                         pipeline.set_extent(
                             app,
                             [inner_extent[0] as _, inner_extent[1] as _],
                             [BORDER_SIZE as _, (BAR_SIZE + BORDER_SIZE) as _],
                         )?;
-                        self.interaction_transform =
-                            Some(ui_transform(meta.extent.extent_u32arr()));
+                        self.apply_extent(&meta);
+                        self.inner_extent = inner_extent;
                     }
                 } else {
                     let pipeline = ScreenPipeline::new(
@@ -231,11 +248,9 @@ impl OverlayBackend for WvrWindowBackend {
                         self.stereo.unwrap_or(StereoMode::None),
                         [BORDER_SIZE as _, (BAR_SIZE + BORDER_SIZE) as _],
                     )?;
-                    meta.extent[0] += BORDER_SIZE * 2;
-                    meta.extent[1] += BORDER_SIZE * 2 + BAR_SIZE;
                     meta.extent[2] = pipeline.get_depth();
+                    self.apply_extent(&meta);
                     self.pipeline = Some(pipeline);
-                    self.interaction_transform = Some(ui_transform(meta.extent.extent_u32arr()));
                 }
 
                 let mouse = app
@@ -247,8 +262,8 @@ impl OverlayBackend for WvrWindowBackend {
                     .as_ref()
                     .filter(|m| m.hover_window == self.window)
                     .map(|m| MouseMeta {
-                        x: (m.x as f32) / (meta.extent[0] as f32),
-                        y: (m.y as f32) / (meta.extent[1] as f32),
+                        x: (m.x as f32) / (inner_extent[0] as f32),
+                        y: (m.y as f32) / (inner_extent[1] as f32),
                     });
 
                 let dirty = self.mouse != mouse || self.popups != popups;
@@ -352,13 +367,19 @@ impl OverlayBackend for WvrWindowBackend {
     }
 
     fn on_hover(&mut self, app: &mut state::AppState, hit: &input::PointerHit) -> HoverResult {
-        if let Some(meta) = self.meta.as_ref() {
-            let x = (hit.uv.x * (meta.extent[0] as f32)) as u32;
-            let y = (hit.uv.y * (meta.extent[1] as f32)) as u32;
+        let transformed = self.mouse_transform.transform_point2(hit.uv);
 
-            let wvr_server = app.wvr_server.as_mut().unwrap(); //never None
-            wvr_server.send_mouse_move(self.window, x, y);
+        if !self.uv_range.contains(&transformed.x) || !self.uv_range.contains(&transformed.y) {
+            return self.panel.on_hover(app, hit);
         }
+
+        let clamped = transformed.clamp(Vec2::ZERO, Vec2::ONE);
+
+        let x = (clamped.x * (self.inner_extent[0] as f32)) as u32;
+        let y = (clamped.y * (self.inner_extent[1] as f32)) as u32;
+
+        let wvr_server = app.wvr_server.as_mut().unwrap(); //never None
+        wvr_server.send_mouse_move(self.window, x, y);
 
         HoverResult {
             haptics: None, // haptics are handled via task
