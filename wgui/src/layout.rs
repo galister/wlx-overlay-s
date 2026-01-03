@@ -265,6 +265,18 @@ impl Layout {
 		)
 	}
 
+	pub fn get_parent(&self, widget_id: WidgetID) -> Option<(WidgetID, taffy::NodeId)> {
+		let Some(node_id) = self.state.nodes.get(widget_id) else {
+			return None;
+		};
+
+		self.state.tree.parent(*node_id).map(|parent_id| {
+				let parent_widget_id = self.state.tree.get_node_context(parent_id).unwrap();
+				(*parent_widget_id, parent_id)
+			}
+		)
+	}
+
 	fn collect_children_ids_recursive(&self, widget_id: WidgetID, out: &mut Vec<(WidgetID, taffy::NodeId)>) {
 		let Some(node_id) = self.state.nodes.get(widget_id) else {
 			return;

@@ -1,5 +1,6 @@
 mod component_button;
 mod component_checkbox;
+mod component_radio_group;
 mod component_slider;
 mod style;
 mod widget_div;
@@ -9,15 +10,13 @@ mod widget_rectangle;
 mod widget_sprite;
 
 use crate::{
-	assets::{AssetPath, AssetPathOwned, normalize_path},
+	assets::{normalize_path, AssetPath, AssetPathOwned},
 	components::{Component, ComponentWeak},
 	drawing::{self},
 	globals::WguiGlobals,
 	layout::{Layout, LayoutParams, LayoutState, Widget, WidgetID, WidgetMap, WidgetPair},
 	parser::{
-		component_button::parse_component_button, component_checkbox::parse_component_checkbox,
-		component_slider::parse_component_slider, widget_div::parse_widget_div, widget_image::parse_widget_image,
-		widget_label::parse_widget_label, widget_rectangle::parse_widget_rectangle, widget_sprite::parse_widget_sprite,
+		component_button::parse_component_button, component_checkbox::{parse_component_checkbox, CheckboxKind}, component_radio_group::parse_component_radio_group, component_slider::parse_component_slider, widget_div::parse_widget_div, widget_image::parse_widget_image, widget_label::parse_widget_label, widget_rectangle::parse_widget_rectangle, widget_sprite::parse_widget_sprite
 	},
 	widget::ConstructEssentials,
 };
@@ -909,7 +908,13 @@ fn parse_child<'a>(
 			new_widget_id = Some(parse_component_slider(ctx, parent_id, &attribs)?);
 		}
 		"CheckBox" => {
-			new_widget_id = Some(parse_component_checkbox(ctx, parent_id, &attribs)?);
+			new_widget_id = Some(parse_component_checkbox(ctx, parent_id, &attribs, CheckboxKind::CheckBox)?);
+		}
+		"RadioBox" => {
+			new_widget_id = Some(parse_component_checkbox(ctx, parent_id, &attribs, CheckboxKind::RadioBox)?);
+		}
+		"RadioGroup" => {
+			new_widget_id = Some(parse_component_radio_group(file, ctx, child_node, parent_id, &attribs)?);
 		}
 		"" => { /* ignore */ }
 		other_tag_name => {

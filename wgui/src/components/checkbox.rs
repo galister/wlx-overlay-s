@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::{Rc, Weak}};
 use taffy::{
 	prelude::{length, percent},
 	AlignItems,
@@ -6,7 +6,7 @@ use taffy::{
 
 use crate::{
 	animation::{Animation, AnimationEasing},
-	components::{Component, ComponentBase, ComponentTrait, RefreshData},
+	components::{radio_group::ComponentRadioGroup, Component, ComponentBase, ComponentTrait, RefreshData},
 	drawing::Color,
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerID, EventListenerKind},
 	i18n::Translation,
@@ -25,6 +25,8 @@ pub struct Params {
 	pub style: taffy::Style,
 	pub box_size: f32,
 	pub checked: bool,
+	pub radio_group: Option<Rc<ComponentRadioGroup>>,
+	pub value: Option<Rc<str>>,
 }
 
 impl Default for Params {
@@ -34,12 +36,15 @@ impl Default for Params {
 			style: Default::default(),
 			box_size: 24.0,
 			checked: false,
+			radio_group: None,
+			value: None,
 		}
 	}
 }
 
 pub struct CheckboxToggleEvent {
 	pub checked: bool,
+	pub value: Option<Rc<str>>,
 }
 
 pub type CheckboxToggleCallback = Box<dyn Fn(&mut CallbackDataCommon, CheckboxToggleEvent) -> anyhow::Result<()>>;
@@ -49,6 +54,7 @@ struct State {
 	hovered: bool,
 	down: bool,
 	on_toggle: Option<CheckboxToggleCallback>,
+	self_ref: Weak<ComponentCheckbox>, 
 }
 
 #[allow(clippy::struct_field_names)]
@@ -59,6 +65,8 @@ struct Data {
 	//id_outer_box: WidgetID, // Rectangle, parent of container
 	id_inner_box: WidgetID, // Rectangle, parent of outer_box
 	id_label: WidgetID,     // Label, parent of container
+	value: Option<Rc<str>>, // arbitrary value assigned to the element
+	radio_group: Option<Weak<ComponentRadioGroup>>,
 }
 
 pub struct ComponentCheckbox {
@@ -100,10 +108,26 @@ impl ComponentCheckbox {
 	}
 
 	pub fn set_checked(&self, common: &mut CallbackDataCommon, checked: bool) {
-		self.state.borrow_mut().checked = checked;
+		{
+			let mut state = self.state.borrow_mut();
+			if state.checked == checked {
+				return;
+			}
+			state.checked = checked;
+		}
 		set_box_checked(&common.state.widgets, &self.data, checked);
 		common.alterables.mark_redraw();
 	}
+
+	pub fn get_value(&self) -> Option<Rc<str>> {
+		self.data.value.clone()
+	}
+
+	/// Set checked state without triggering visual changes.
+	pub(super) fn set_checked_internal(&self, checked: bool) {
+		self.state.borrow_mut().checked = checked;
+	}
+
 
 	pub fn on_toggle(&self, func: CheckboxToggleCallback) {
 		self.state.borrow_mut().on_toggle = Some(func);
@@ -222,13 +246,19 @@ fn register_event_mouse_release(
 			if state.down {
 				state.down = false;
 
-				state.checked = !state.checked;
+				if let Some(self_ref) = state.self_ref.upgrade() && let Some(radio) = data.radio_group.as_ref().and_then(|r| r.upgrade()) {
+					radio.set_selected_internal(common, &self_ref)?;
+					state.checked = true; // can't uncheck radiobox by clicking the checked box again
+				} else {
+					state.checked = !state.checked;
+				}				
+
 				set_box_checked(&common.state.widgets, &data, state.checked);
 
 				if state.hovered
 					&& let Some(on_toggle) = &state.on_toggle
 				{
-					on_toggle(common, CheckboxToggleEvent { checked: state.checked })?;
+					on_toggle(common, CheckboxToggleEvent { checked: state.checked, value: data.value.clone() })?;
 				}
 				Ok(EventResult::Consumed)
 			} else {
@@ -262,6 +292,12 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	};
 	//style.align_self = Some(taffy::AlignSelf::Start); // do not stretch self to the parent
 	style.gap = length(4.0);
+	
+	let (round_5, round_8) = if params.radio_group.is_some() {
+		(WLength::Percent(1.0), WLength::Percent(1.0))
+	} else {
+			(WLength::Units(5.0), WLength::Units(8.0))
+		};
 
 	let globals = ess.layout.state.globals.clone();
 
@@ -270,7 +306,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		WidgetRectangle::create(WidgetRectangleParams {
 			color: Color::new(1.0, 1.0, 1.0, 0.0),
 			border_color: Color::new(1.0, 1.0, 1.0, 0.0),
-			round: WLength::Units(5.0),
+			round: round_5,
 			..Default::default()
 		}),
 		style,
@@ -288,7 +324,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		WidgetRectangle::create(WidgetRectangleParams {
 			border: 2.0,
 			border_color: Color::new(1.0, 1.0, 1.0, 1.0),
-			round: WLength::Units(8.0),
+			round: round_8,
 			color: Color::new(1.0, 1.0, 1.0, 0.0),
 			..Default::default()
 		}),
@@ -304,7 +340,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	let (inner_box, _) = ess.layout.add_child(
 		outer_box.id,
 		WidgetRectangle::create(WidgetRectangleParams {
-			round: WLength::Units(5.0),
+			round: round_5,
 			color: if params.checked { COLOR_CHECKED } else { COLOR_UNCHECKED },
 			..Default::default()
 		}),
@@ -336,6 +372,8 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		id_container,
 		id_inner_box: inner_box.id,
 		id_label: label.id,
+		value: params.value,
+		radio_group: params.radio_group.as_ref().map(|x| Rc::downgrade(x)),
 	});
 
 	let state = Rc::new(RefCell::new(State {
@@ -343,6 +381,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		down: false,
 		hovered: false,
 		on_toggle: None,
+		self_ref: Weak::new(),
 	}));
 
 	let base = ComponentBase {
@@ -360,6 +399,11 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	};
 
 	let checkbox = Rc::new(ComponentCheckbox { base, data, state });
+
+	if let Some(radio) = params.radio_group.as_ref() {
+		radio.register_child(checkbox.clone(), params.checked);
+		checkbox.state.borrow_mut().self_ref = Rc::downgrade(&checkbox);
+	}
 
 	ess.layout.defer_component_refresh(Component(checkbox.clone()));
 	Ok((root, checkbox))
