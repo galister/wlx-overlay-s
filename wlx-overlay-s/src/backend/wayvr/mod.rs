@@ -11,16 +11,13 @@ use process::ProcessVec;
 use slotmap::SecondaryMap;
 use smallvec::SmallVec;
 use smithay::{
-    input::{SeatState, keyboard::XkbConfig},
-    output::{Mode, Output},
-    reexports::wayland_server::{self, backend::ClientId},
-    wayland::{
-        compositor::{self, SurfaceData, with_states},
+    desktop::PopupManager, input::{keyboard::XkbConfig, SeatState}, output::{Mode, Output}, reexports::wayland_server::{self, backend::ClientId}, wayland::{
+        compositor::{self, with_states, SurfaceData},
         dmabuf::{DmabufFeedbackBuilder, DmabufState},
         selection::data_device::DataDeviceState,
         shell::xdg::{ToplevelSurface, XdgShellState, XdgToplevelSurfaceData},
         shm::ShmState,
-    },
+    }
 };
 use std::{
     cell::RefCell,
@@ -226,6 +223,7 @@ impl WvrServerState {
             wayvr_tasks: tasks.clone(),
             redraw_requests: HashSet::new(),
             dmabuf_state,
+            popup_manager: PopupManager::default(),
         };
 
         let time_start = get_millis();
@@ -319,11 +317,11 @@ impl WvrServerState {
                         app.tasks.enqueue(TaskType::Overlay(OverlayTask::Create(
                             OverlaySelector::Nothing,
                             Box::new(move |app: &mut AppState| {
-                                Some(create_wl_window_overlay(
+                                create_wl_window_overlay(
                                     title,
-                                    app.xr_backend,
+                                    app,
                                     window_handle,
-                                ))
+                                ).context("Could not create WvrWindow overlay").inspect_err(|e| log::warn!("{e:?}")).ok()
                             }),
                         )));
 
@@ -549,7 +547,6 @@ pub struct SurfaceBufWithImage {
 }
 
 impl SurfaceBufWithImage {
-    #[allow(invalid_value)]
     fn apply_to_surface(self, surface_data: &SurfaceData) {
         if let Some(container) = surface_data.data_map.get::<SurfaceBufWithImageContainer>() {
             container.inner.replace(self);

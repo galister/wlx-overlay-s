@@ -1,5 +1,7 @@
+use anyhow::Context;
 use smithay::backend::allocator::dmabuf::Dmabuf;
 use smithay::backend::renderer::{BufferType, buffer_type};
+use smithay::desktop::{PopupKind, PopupManager};
 use smithay::input::{Seat, SeatHandler, SeatState};
 use smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel;
 use smithay::reexports::wayland_server;
@@ -9,6 +11,7 @@ use smithay::wayland::buffer::BufferHandler;
 use smithay::wayland::dmabuf::{
     DmabufFeedback, DmabufGlobal, DmabufHandler, DmabufState, ImportNotifier, get_dmabuf,
 };
+use smithay::wayland::fractional_scale::with_fractional_scale;
 use smithay::wayland::output::OutputHandler;
 use smithay::wayland::shm::{ShmHandler, ShmState, with_buffer_contents};
 use smithay::wayland::single_pixel_buffer::get_single_pixel_buffer;
@@ -21,7 +24,7 @@ use std::os::fd::OwnedFd;
 use std::sync::{Arc, Mutex};
 
 use smithay::utils::Serial;
-use smithay::wayland::compositor::{self, BufferAssignment, SurfaceAttributes};
+use smithay::wayland::compositor::{self, BufferAssignment, SurfaceAttributes, send_surface_state};
 
 use smithay::wayland::selection::SelectionHandler;
 use smithay::wayland::selection::data_device::{
@@ -50,6 +53,7 @@ pub struct Application {
     pub data_device: DataDeviceState,
     pub wayvr_tasks: SyncEventQueue<WayVRTask>,
     pub redraw_requests: HashSet<wayland_server::backend::ObjectId>,
+    pub popup_manager: PopupManager,
 }
 
 impl Application {
@@ -59,6 +63,34 @@ impl Application {
 
     pub fn cleanup(&mut self) {
         self.image_importer.cleanup();
+    }
+
+    fn popups_commit(&mut self, surface: &WlSurface) {
+        self.popup_manager.commit(surface);
+
+        if let Some(popup) = self.popup_manager.find_popup(surface) {
+            match popup {
+                PopupKind::Xdg(ref popup) => {
+                    if !popup.is_initial_configure_sent() {
+                        smithay::wayland::compositor::with_states(surface, |states| {
+                            send_surface_state(
+                                surface,
+                                states,
+                                1,
+                                smithay::utils::Transform::Normal,
+                            );
+                            with_fractional_scale(states, |fractional| {
+                                fractional.set_preferred_scale(1.0);
+                            });
+                        });
+                        popup.send_configure().expect("initial configure failed");
+                    }
+                }
+                PopupKind::InputMethod(_) => {
+                    // TODO?
+                }
+            }
+        }
     }
 }
 
@@ -76,6 +108,8 @@ impl compositor::CompositorHandler for Application {
 
     #[allow(clippy::significant_drop_tightening)]
     fn commit(&mut self, surface: &WlSurface) {
+        self.popups_commit(surface);
+
         smithay::wayland::compositor::with_states(surface, |states| {
             let mut guard = states.cached_state.get::<SurfaceAttributes>();
             let attrs = guard.current();
@@ -247,8 +281,16 @@ impl XdgShellHandler for Application {
         }
     }
 
-    fn new_popup(&mut self, _surface: PopupSurface, _positioner: PositionerState) {
-        // Handle popup creation here
+    fn new_popup(&mut self, surface: PopupSurface, _positioner: PositionerState) {
+        let _ = self
+            .popup_manager
+            .track_popup(PopupKind::Xdg(surface))
+            .context("Could not track xdg_popup")
+            .inspect_err(|e| log::warn!("{e:?}"));
+    }
+
+    fn popup_destroyed(&mut self, _surface: PopupSurface) {
+        self.popup_manager.cleanup();
     }
 
     fn grab(&mut self, _surface: PopupSurface, _seat: wl_seat::WlSeat, _serial: Serial) {

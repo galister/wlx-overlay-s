@@ -1,7 +1,13 @@
-use glam::{Affine2, Affine3A, Quat, Vec3, vec3};
-use smithay::wayland::compositor::with_states;
+use glam::{Affine2, Affine3A, Quat, Vec2, Vec3, vec2, vec3};
+use smithay::{
+    desktop::PopupManager,
+    wayland::{compositor::with_states, shell::xdg::XdgPopupSurfaceData},
+};
 use std::sync::Arc;
-use vulkano::image::view::ImageView;
+use vulkano::{
+    buffer::BufferUsage, image::view::ImageView, pipeline::graphics::color_blend::AttachmentBlend,
+};
+use wgui::gfx::pipeline::{WGfxPipeline, WPipelineCreateInfo};
 use wlx_capture::frame::MouseMeta;
 use wlx_common::{
     overlays::{BackendAttrib, BackendAttribValue, StereoMode},
@@ -14,7 +20,7 @@ use crate::{
         input::{self, HoverResult},
         wayvr::{self, SurfaceBufWithImage},
     },
-    graphics::ExtentExt,
+    graphics::{ExtentExt, Vert2Uv, upload_quad_vertices},
     overlays::screen::capture::ScreenPipeline,
     state::{self, AppState},
     subsystem::{hid::WheelDelta, input::KeyboardFocus},
@@ -29,10 +35,10 @@ use crate::{
 
 pub fn create_wl_window_overlay(
     name: Arc<str>,
-    xr_backend: XrBackend,
+    app: &AppState,
     window: wayvr::window::WindowHandle,
-) -> OverlayWindowConfig {
-    OverlayWindowConfig {
+) -> anyhow::Result<OverlayWindowConfig> {
+    Ok(OverlayWindowConfig {
         name: name.clone(),
         default_state: OverlayWindowState {
             grabbable: true,
@@ -49,17 +55,17 @@ pub fn create_wl_window_overlay(
         keyboard_focus: Some(KeyboardFocus::WayVR),
         category: OverlayCategory::WayVR,
         show_on_spawn: true,
-        ..OverlayWindowConfig::from_backend(Box::new(WvrWindowBackend::new(
-            name, xr_backend, window,
-        )))
-    }
+        ..OverlayWindowConfig::from_backend(Box::new(WvrWindowBackend::new(name, app, window)?))
+    })
 }
 
 pub struct WvrWindowBackend {
     name: Arc<str>,
     pipeline: Option<ScreenPipeline>,
+    popups_pipeline: Arc<WGfxPipeline<Vert2Uv>>,
     interaction_transform: Option<Affine2>,
     window: wayvr::window::WindowHandle,
+    popups: Vec<(Arc<ImageView>, Vec2)>,
     just_resumed: bool,
     meta: Option<FrameMeta>,
     mouse: Option<MouseMeta>,
@@ -68,26 +74,34 @@ pub struct WvrWindowBackend {
 }
 
 impl WvrWindowBackend {
-    const fn new(
+    fn new(
         name: Arc<str>,
-        xr_backend: XrBackend,
+        app: &AppState,
         window: wayvr::window::WindowHandle,
-    ) -> Self {
-        Self {
+    ) -> anyhow::Result<Self> {
+        let popups_pipeline = app.gfx.create_pipeline(
+            app.gfx_extras.shaders.get("vert_quad").unwrap(), // want panic
+            app.gfx_extras.shaders.get("frag_screen").unwrap(), // want panic
+            WPipelineCreateInfo::new(app.gfx.surface_format).use_blend(AttachmentBlend::default()),
+        )?;
+
+        Ok(Self {
             name,
             pipeline: None,
             window,
+            popups: vec![],
+            popups_pipeline,
             interaction_transform: None,
             just_resumed: false,
             meta: None,
             mouse: None,
-            stereo: if matches!(xr_backend, XrBackend::OpenXR) {
+            stereo: if matches!(app.xr_backend, XrBackend::OpenXR) {
                 Some(StereoMode::None)
             } else {
                 None
             },
             cur_image: None,
-        }
+        })
     }
 }
 
@@ -118,6 +132,30 @@ impl OverlayBackend for WvrWindowBackend {
             );
             return Ok(ShouldRender::Unable);
         };
+
+        let popups = PopupManager::popups_for_surface(toplevel.wl_surface())
+            .filter_map(|(popup, point)| {
+                with_states(popup.wl_surface(), |states| {
+                    if !states
+                        .data_map
+                        .get::<XdgPopupSurfaceData>()
+                        .unwrap()
+                        .lock()
+                        .unwrap()
+                        .configured
+                    {
+                        // not yet configured
+                        return None;
+                    }
+
+                    if let Some(surf) = SurfaceBufWithImage::get_from_surface(states) {
+                        Some((surf.image, vec2(point.x as _, point.y as _)))
+                    } else {
+                        None
+                    }
+                })
+            })
+            .collect::<Vec<_>>();
 
         with_states(toplevel.wl_surface(), |states| {
             if let Some(surf) = SurfaceBufWithImage::get_from_surface(states) {
@@ -158,8 +196,9 @@ impl OverlayBackend for WvrWindowBackend {
                         y: (m.y as f32) / (meta.extent[1] as f32),
                     });
 
-                let mouse_dirty = self.mouse != mouse;
+                let dirty = self.mouse != mouse || self.popups != popups;
                 self.mouse = mouse;
+                self.popups = popups;
                 self.meta = Some(meta);
                 if self
                     .cur_image
@@ -173,7 +212,7 @@ impl OverlayBackend for WvrWindowBackend {
                     );
                     self.cur_image = Some(surf.image);
                     Ok(ShouldRender::Should)
-                } else if mouse_dirty {
+                } else if dirty {
                     Ok(ShouldRender::Should)
                 } else {
                     Ok(ShouldRender::Can)
@@ -196,6 +235,44 @@ impl OverlayBackend for WvrWindowBackend {
             .as_mut()
             .unwrap()
             .render(image, self.mouse.as_ref(), app, rdr)?;
+
+        for (popup_img, point) in &self.popups {
+            let extentf = self.meta.as_ref().unwrap().extent.extent_f32();
+            let popup_extentf = popup_img.extent_f32();
+            let mut buf_vert = app
+                .gfx
+                .empty_buffer(BufferUsage::TRANSFER_DST | BufferUsage::VERTEX_BUFFER, 4)?;
+
+            upload_quad_vertices(
+                &mut buf_vert,
+                extentf[0],
+                extentf[1],
+                point.x,
+                point.y,
+                popup_extentf[0],
+                popup_extentf[1],
+            )?;
+
+            let set0 = self.popups_pipeline.uniform_sampler(
+                0,
+                popup_img.clone(),
+                app.gfx.texture_filter,
+            )?;
+            let set1 = self
+                .popups_pipeline
+                .buffer(1, self.pipeline.as_ref().unwrap().get_alpha_buf())?;
+
+            let pass = self.popups_pipeline.create_pass(
+                extentf,
+                buf_vert,
+                0..4,
+                0..1,
+                vec![set0, set1],
+                &Default::default(),
+            )?;
+
+            rdr.cmd_buf_single().run_ref(&pass)?;
+        }
 
         Ok(())
     }

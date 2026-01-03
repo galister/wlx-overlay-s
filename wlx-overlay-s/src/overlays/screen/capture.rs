@@ -233,6 +233,10 @@ impl ScreenPipeline {
 
         Ok(())
     }
+
+    pub fn get_alpha_buf(&self) -> Subbuffer<[f32]> {
+        self.buf_alpha.clone()
+    }
 }
 
 fn stereo_mode_to_verts(stereo: StereoMode, array_index: usize) -> [Vert2Uv; 4] {
