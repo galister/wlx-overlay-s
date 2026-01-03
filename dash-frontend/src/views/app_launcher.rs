@@ -158,7 +158,7 @@ impl View {
 		//radio_res.set_value(res_mode.as_ref())?;
 		//tasks.push(Task::SetRes(res_mode));
 
-		let orientation_mode = OrientationMode::SemiWide;
+		let orientation_mode = OrientationMode::Wide;
 		// TODO: configurable defaults ?
 		//radio_orientation.set_value(orientation_mode.as_ref())?;
 		//tasks.push(Task::SetOrientation(orientation_mode));
