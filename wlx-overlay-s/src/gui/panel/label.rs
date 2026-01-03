@@ -164,7 +164,7 @@ fn battery_on_tick(
         && let Some(soc) = device.soc
     {
         let soc = (soc * 100.).min(99.) as u32;
-        let text = soc.to_string();
+        let text = format!("{soc}%");
         let color = if device.charging {
             state.charging_color
         } else if soc < state.low_threshold {
