@@ -43,7 +43,7 @@ use crate::{
 };
 
 const BORDER_SIZE: u32 = 5;
-const BAR_SIZE: u32 = 40;
+const BAR_SIZE: u32 = 48;
 
 pub fn create_wl_window_overlay(
     name: Arc<str>,
@@ -117,7 +117,7 @@ impl WvrWindowBackend {
                 .fetch_widget_as::<WidgetLabel>(&panel.layout.state, "label_title")?;
             title.set_text_simple(
                 &mut app.wgui_globals.get(),
-                Translation::from_raw_text(&*name),
+                Translation::from_raw_text(&name),
             );
         }
 
@@ -162,7 +162,10 @@ impl WvrWindowBackend {
         self.mouse_transform = Affine2::from_scale_angle_translation(scale, 0.0, translation);
         self.uv_range = translation[0]..=(1.0 - translation[0]);
 
-        self.panel.max_size = vec2((meta.extent[0] + BORDER_SIZE * 2) as _, BAR_SIZE as _);
+        self.panel.max_size = vec2(
+            (meta.extent[0]/*  + BORDER_SIZE * 2 (disabled for now) */) as _,
+            BAR_SIZE as _,
+        );
         self.panel.update_layout(app)?;
 
         Ok(())
@@ -183,6 +186,7 @@ impl OverlayBackend for WvrWindowBackend {
         self.panel.resume(app)
     }
 
+    #[allow(clippy::too_many_lines)]
     fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
         let should_render_panel = self.panel.should_render(app)?;
 

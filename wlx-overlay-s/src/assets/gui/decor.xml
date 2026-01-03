@@ -1,23 +1,31 @@
 <layout>
+  <macro name="window_button" padding="4" align_items="center" />
+
   <elements>
+    <div flex_grow="1" height="48">
       <rectangle
-      width="100%" height="100%"
-      margin="4" box_sizing="border_box"
-      border_color="~color_faded" border="2"
-      round="50%" color="~color_faded"
-      justify_content="space_between">
+        flex_grow="1" height="48"
+        padding="8" border="2"
+        round="8"
+        align_items="center"
+        justify_content="space_between"
+        color="~color_background"
+        border_color="~color_accent"
+      >
+        <label id="label_title" margin_left="8" color="~color_text" size="22" weight="bold" />
+        <div gap="4">
+          <Button macro="window_button" tooltip="WATCH.EDIT_MODE" _press=""
+            border_color="~color_faded_translucent" color="~color_faded_50" color2="~color_faded_10">
+            <sprite width="28" height="28" src="watch/edit.svg" />
+          </Button>
 
-      <label id="label_title" color="~color_text" size="18" text="Test" weight="bold" />
+          <Button macro="window_button" tooltip="DECOR.CLOSE_WINDOW" _long_release=""
+            border_color="~color_danger_translucent" color="~color_danger_50" color2="~color_danger_10">
+            <sprite width="28" height="28" src="edit/close.svg" />
+          </Button>
+        </div>
 
-      
-      <Button macro="button_style" tooltip="WATCH.EDIT_MODE" _press="" border_color="~color_faded_translucent" color="~color_faded_50" color2="~color_faded_10">
-        <sprite width="24" height="24" src="watch/edit.svg" />
-      </Button>
-
-      <Button macro="button_style" tooltip="DECOR.CLOSE_WINDOW" _long_release="" border_color="~color_danger_translucent" color="~color_danger_50" color2="~color_danger_10">
-        <sprite width="24" height="24" src="edit/close.svg" />
-      </Button>
-
-    </rectangle>
+      </rectangle>
+    </div>
   </elements>
 </layout>
