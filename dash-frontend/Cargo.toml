@@ -15,6 +15,7 @@ xdg.workspace = true
 rust-embed.workspace = true
 serde = { workspace = true, features = ["rc"] }
 serde_json.workspace = true
+strum.workspace = true
 
 chrono = "0.4.42"
 keyvalues-parser = { git = "https://github.com/CosmicHorrorDev/vdf-rs.git", rev = "fc6dcbea9eb13cacb98dea40063f6f56cde6e145" }

@@ -1,9 +1,10 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, rc::Rc, str::FromStr};
 
+use strum::{AsRefStr, EnumString, VariantNames};
 use wayvr_ipc::packet_client::WvrProcessLaunchParams;
 use wgui::{
 	assets::AssetPath,
-	components::{button::ComponentButton, checkbox::ComponentCheckbox},
+	components::{button::ComponentButton, radio_group::ComponentRadioGroup},
 	globals::WguiGlobals,
 	i18n::Translation,
 	layout::{Layout, WidgetID},
@@ -19,21 +20,40 @@ use crate::{
 	util::desktop_finder::DesktopEntry,
 };
 
-#[derive(Clone, Eq, PartialEq)]
-enum RunMode {
+#[derive(Clone, Copy, Eq, PartialEq, EnumString, VariantNames, AsRefStr)]
+enum ResMode {
+	Res1440,
+	Res1080,
+	Res720,
+	Res480,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq, EnumString, VariantNames, AsRefStr)]
+enum OrientationMode {
+	Wide,
+	SemiWide,
+	Square,
+	SemiTall,
+	Tall,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq, EnumString, VariantNames, AsRefStr)]
+enum CompositorMode {
 	Cage,
-	Wayland,
+	Native,
 }
 
 #[derive(Clone)]
 enum Task {
-	SetRunMode(RunMode),
+	SetCompositor(CompositorMode),
+	SetRes(ResMode),
+	SetOrientation(OrientationMode),
 	Launch,
 }
 
 struct LaunchParams<'a, T> {
 	application: &'a DesktopEntry,
-	run_mode: RunMode,
+	run_mode: CompositorMode,
 	globals: &'a WguiGlobals,
 	frontend_tasks: &'a FrontendTasks,
 	interface: &'a mut BoxDashInterface<T>,
@@ -49,9 +69,16 @@ pub struct View {
 	frontend_tasks: FrontendTasks,
 	globals: WguiGlobals,
 
-	cb_cage_mode: Rc<ComponentCheckbox>,
-	cb_wayland_mode: Rc<ComponentCheckbox>,
-	run_mode: RunMode,
+	#[allow(dead_code)]
+	radio_compositor: Rc<ComponentRadioGroup>,
+	#[allow(dead_code)]
+	radio_res: Rc<ComponentRadioGroup>,
+	#[allow(dead_code)]
+	radio_orientation: Rc<ComponentRadioGroup>,
+
+	compositor_mode: CompositorMode,
+	res_mode: ResMode,
+	orientation_mode: OrientationMode,
 
 	on_launched: Box<dyn Fn()>,
 }
@@ -76,8 +103,10 @@ impl View {
 
 		let mut state = wgui::parser::parse_from_assets(doc_params, params.layout, params.parent_id)?;
 
-		let cb_cage_mode = state.fetch_component_as::<ComponentCheckbox>("cb_cage_mode")?;
-		let cb_wayland_mode = state.fetch_component_as::<ComponentCheckbox>("cb_wayland_mode")?;
+		let radio_compositor = state.fetch_component_as::<ComponentRadioGroup>("radio_compositor")?;
+		let radio_res = state.fetch_component_as::<ComponentRadioGroup>("radio_res")?;
+		let radio_orientation = state.fetch_component_as::<ComponentRadioGroup>("radio_orientation")?;
+
 		let btn_launch = state.fetch_component_as::<ComponentButton>("btn_launch")?;
 
 		{
@@ -114,26 +143,77 @@ impl View {
 			)?;
 		}
 
-		let run_mode = if params.settings.get().tweaks.xwayland_by_default {
-			RunMode::Cage
+		let compositor_mode = if params.settings.get().tweaks.xwayland_by_default {
+			CompositorMode::Cage
 		} else {
-			RunMode::Wayland
+			CompositorMode::Native
 		};
+		radio_compositor.set_value(compositor_mode.as_ref())?;
+		tasks.push(Task::SetCompositor(compositor_mode));
 
-		tasks.push(Task::SetRunMode(run_mode.clone()));
+		let res_mode = ResMode::Res1080;
+		// TODO: configurable defaults ?
+		//radio_res.set_value(res_mode.as_ref())?;
+		//tasks.push(Task::SetRes(res_mode));
 
-		cb_cage_mode.on_toggle({
+		let orientation_mode = OrientationMode::SemiWide;
+		// TODO: configurable defaults ?
+		//radio_orientation.set_value(orientation_mode.as_ref())?;
+		//tasks.push(Task::SetOrientation(orientation_mode));
+
+		radio_compositor.on_value_changed({
 			let tasks = tasks.clone();
-			Box::new(move |_, _| {
-				tasks.push(Task::SetRunMode(RunMode::Cage));
+			Box::new(move |_, ev| {
+				if let Some(mode) = ev.value.and_then(|v| {
+					CompositorMode::from_str(&*v)
+						.inspect_err(|_| {
+							log::error!(
+								"Invalid value for compositor: '{v}'. Valid values are: {:?}",
+								ResMode::VARIANTS
+							)
+						})
+						.ok()
+				}) {
+					tasks.push(Task::SetCompositor(mode));
+				}
 				Ok(())
 			})
 		});
 
-		cb_wayland_mode.on_toggle({
+		radio_res.on_value_changed({
 			let tasks = tasks.clone();
-			Box::new(move |_, _| {
-				tasks.push(Task::SetRunMode(RunMode::Wayland));
+			Box::new(move |_, ev| {
+				if let Some(mode) = ev.value.and_then(|v| {
+					ResMode::from_str(&*v)
+						.inspect_err(|_| {
+							log::error!(
+								"Invalid value for resolution: '{v}'. Valid values are: {:?}",
+								ResMode::VARIANTS
+							)
+						})
+						.ok()
+				}) {
+					tasks.push(Task::SetRes(mode));
+				}
+				Ok(())
+			})
+		});
+
+		radio_orientation.on_value_changed({
+			let tasks = tasks.clone();
+			Box::new(move |_, ev| {
+				if let Some(mode) = ev.value.and_then(|v| {
+					OrientationMode::from_str(&*v)
+						.inspect_err(|_| {
+							log::error!(
+								"Invalid value for orientation: '{v}'. Valid values are: {:?}",
+								OrientationMode::VARIANTS
+							)
+						})
+						.ok()
+				}) {
+					tasks.push(Task::SetOrientation(mode));
+				}
 				Ok(())
 			})
 		});
@@ -148,9 +228,12 @@ impl View {
 		Ok(Self {
 			state,
 			tasks,
-			cb_cage_mode,
-			cb_wayland_mode,
-			run_mode,
+			radio_compositor,
+			radio_res,
+			radio_orientation,
+			compositor_mode,
+			res_mode,
+			orientation_mode,
 			entry: params.entry,
 			frontend_tasks: params.frontend_tasks.clone(),
 			globals: params.globals.clone(),
@@ -158,12 +241,7 @@ impl View {
 		})
 	}
 
-	pub fn update<T>(
-		&mut self,
-		layout: &mut Layout,
-		interface: &mut BoxDashInterface<T>,
-		data: &mut T,
-	) -> anyhow::Result<()> {
+	pub fn update<T>(&mut self, interface: &mut BoxDashInterface<T>, data: &mut T) -> anyhow::Result<()> {
 		loop {
 			let tasks = self.tasks.drain();
 			if tasks.is_empty() {
@@ -171,7 +249,9 @@ impl View {
 			}
 			for task in tasks {
 				match task {
-					Task::SetRunMode(run_mode) => self.action_set_run_mode(layout, run_mode)?,
+					Task::SetCompositor(mode) => self.compositor_mode = mode,
+					Task::SetRes(mode) => self.res_mode = mode,
+					Task::SetOrientation(mode) => self.orientation_mode = mode,
 					Task::Launch => self.action_launch(interface, data),
 				}
 			}
@@ -180,28 +260,12 @@ impl View {
 		Ok(())
 	}
 
-	fn action_set_run_mode(&mut self, layout: &mut Layout, run_mode: RunMode) -> anyhow::Result<()> {
-		let mut c = layout.start_common();
-
-		self
-			.cb_cage_mode
-			.set_checked(&mut c.common(), matches!(run_mode, RunMode::Cage));
-		self
-			.cb_wayland_mode
-			.set_checked(&mut c.common(), matches!(run_mode, RunMode::Wayland));
-
-		self.run_mode = run_mode;
-
-		c.finish()?;
-		Ok(())
-	}
-
 	fn action_launch<T>(&mut self, interface: &mut BoxDashInterface<T>, data: &mut T) {
 		View::try_launch(LaunchParams {
 			application: &self.entry,
 			frontend_tasks: &self.frontend_tasks,
 			globals: &self.globals,
-			run_mode: self.run_mode.clone(),
+			run_mode: self.compositor_mode.clone(),
 			interface,
 			data,
 			on_launched: &self.on_launched,
@@ -225,7 +289,7 @@ impl View {
 	fn launch<T>(params: LaunchParams<T>) -> anyhow::Result<()> {
 		let mut env = Vec::<String>::new();
 
-		if params.run_mode == RunMode::Wayland {
+		if params.run_mode == CompositorMode::Native {
 			// This list could be larger, feel free to expand it
 			env.push("QT_QPA_PLATFORM=wayland".into());
 			env.push("GDK_BACKEND=wayland".into());
@@ -235,13 +299,13 @@ impl View {
 		}
 
 		let args = match params.run_mode {
-			RunMode::Cage => format!("-- {} {}", params.application.exec_path, params.application.exec_args),
-			RunMode::Wayland => params.application.exec_args.to_string(),
+			CompositorMode::Cage => format!("-- {} {}", params.application.exec_path, params.application.exec_args),
+			CompositorMode::Native => params.application.exec_args.to_string(),
 		};
 
 		let exec = match params.run_mode {
-			RunMode::Cage => "cage".to_string(),
-			RunMode::Wayland => params.application.exec_path.to_string(),
+			CompositorMode::Cage => "cage".to_string(),
+			CompositorMode::Native => params.application.exec_path.to_string(),
 		};
 
 		let mut userdata = HashMap::new();

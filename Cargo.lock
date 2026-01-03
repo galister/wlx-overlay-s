@@ -1439,6 +1439,7 @@ dependencies = [
  "serde_json",
  "smol",
  "smol-hyper",
+ "strum",
  "walkdir",
  "wayvr-ipc",
  "wgui",

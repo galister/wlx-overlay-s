@@ -37,6 +37,7 @@ regex.workspace = true
 slotmap.workspace = true
 serde = { workspace = true, features = ["rc"] }
 serde_json.workspace = true
+strum.workspace = true
 vulkano.workspace = true
 vulkano-shaders.workspace = true
 xdg.workspace = true
@@ -77,7 +78,6 @@ serde_json5 = "0.2.1"
 serde_yaml = "0.9.34"
 signal-hook = "0.3.18"
 smallvec = "1.15.1"
-strum = { version = "0.27.2", features = ["derive"] }
 sysinfo = { version = "0.37" }
 thiserror = "2.0"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }

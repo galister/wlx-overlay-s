@@ -23,9 +23,27 @@
         <Subtext title="Exec:" label_id="label_exec" />
         <Subtext title="Args:" label_id="label_args" />
         <Separator />
-        <CheckBox id="cb_cage_mode" text="Run in X11 mode (cage)" />
-        <CheckBox id="cb_wayland_mode" text="Run in Wayland mode" checked="1" />
+        <RadioGroup id="radio_compositor" flex_direction="row" gap="16">
+          <RadioBox text="Native mode" value="Native" checked="1" />
+          <RadioBox text="Compatibility mode" value="Cage"/> <!-- TODO: tooltips -->
+        </RadioGroup>
         <Separator />
+        <Separator />
+        <label text="Resolution" />
+        <RadioGroup id="radio_res" flex_direction="row" gap="16">
+          <RadioBox text="1440p" value="Res1440" />
+          <RadioBox text="1080p" value="Res1080" checked="1" />
+          <RadioBox text="720p" value="Res720" />
+          <RadioBox text="480p" value="Res480" />
+        </RadioGroup>
+        <label text="Orientation" />
+        <RadioGroup id="radio_orientation" flex_direction="row" gap="16">
+          <RadioBox text="Wide" value="Wide" tooltip="16:9" checked="1" />
+          <RadioBox text="Semi-Wide" value="SemiWide" tooltip="3:2" />
+          <RadioBox text="Square" value="Square" tooltip="1:1" />
+          <RadioBox text="Semi-Tall" value="SemiTall" tooltip="2:3" />
+          <RadioBox text="Tall" value="Tall" tooltip="9:16" />
+        </RadioGroup>
         <Button id="btn_launch" align_self="baseline" color="#44ce22FF" padding_top="4" padding_bottom="4" round="8" padding_right="12" min_height="40">
           <sprite src_builtin="dashboard/play.svg" width="32" height="32" />
           <label text="Launch" weight="bold" size="17" shadow="#00000099" />

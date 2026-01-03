@@ -54,7 +54,7 @@ impl<T> Tab<T> for TabApps<T> {
 		}
 
 		if let Some((_, launcher)) = &mut state.view_launcher {
-			launcher.update(&mut frontend.layout, &mut frontend.interface, data)?;
+			launcher.update(&mut frontend.interface, data)?;
 		}
 		Ok(())
 	}
