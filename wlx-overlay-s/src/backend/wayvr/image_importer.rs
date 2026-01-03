@@ -58,7 +58,7 @@ impl ImageImporter {
         )?;
 
         let fourcc = shm_format_to_fourcc(bd.format)
-            .with_context(|| format!("Could not conver {:?} to fourcc", bd.format))?;
+            .with_context(|| format!("Could not convert {:?} to fourcc", bd.format))?;
 
         let format = fourcc_to_vk(fourcc)
             .with_context(|| format!("Could not convert {fourcc} to vkFormat"))?;
