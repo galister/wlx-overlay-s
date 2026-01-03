@@ -36,7 +36,7 @@ use xkbcommon::xkb;
 use crate::{
     backend::{
         task::{OverlayTask, TaskType},
-        wayvr::{image_importer::ImageImporter, process::{Process, WayVRProcess}, window::Window},
+        wayvr::{image_importer::ImageImporter, process::{Process}, window::Window},
     },
     graphics::WGfxExtras,
     ipc::{event_queue::SyncEventQueue, ipc_server, signal::WayVRSignal},
@@ -146,14 +146,12 @@ impl WvrServerState {
         let data_device = DataDeviceState::new::<Application>(&dh);
         let mut seat = seat_state.new_wl_seat(&dh, "wayvr");
 
-        let dummy_width = 2560;
-        let dummy_height = 1440;
         let dummy_milli_hz = 60000; /* refresh rate in millihertz */
 
         let output = Output::new(
             String::from("wayvr_display"),
             smithay::output::PhysicalProperties {
-                size: (dummy_width, dummy_height).into(),
+                size: (530, 300).into(), //physical size in millimeters
                 subpixel: smithay::output::Subpixel::None,
                 make: String::from("Completely Legit"),
                 model: String::from("Virtual WayVR Display"),
@@ -162,7 +160,7 @@ impl WvrServerState {
 
         let mode = Mode {
             refresh: dummy_milli_hz,
-            size: (dummy_width, dummy_height).into(),
+            size: (2560, 1440).into(), //logical size in pixels
         };
 
         let _global = output.create_global::<Application>(&dh);
