@@ -14,6 +14,7 @@ pub struct WayVRProcess {
     pub args: Vec<String>,
     pub env: Vec<(String, String)>,
     pub working_dir: Option<String>,
+    pub resolution: [u32; 2],
 
     pub userdata: HashMap<String, String>,
 }

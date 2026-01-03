@@ -53,7 +53,9 @@ enum Task {
 
 struct LaunchParams<'a, T> {
 	application: &'a DesktopEntry,
-	run_mode: CompositorMode,
+	compositor_mode: CompositorMode,
+	res_mode: ResMode,
+	orientation_mode: OrientationMode,
 	globals: &'a WguiGlobals,
 	frontend_tasks: &'a FrontendTasks,
 	interface: &'a mut BoxDashInterface<T>,
@@ -265,7 +267,9 @@ impl View {
 			application: &self.entry,
 			frontend_tasks: &self.frontend_tasks,
 			globals: &self.globals,
-			run_mode: self.compositor_mode.clone(),
+			compositor_mode: self.compositor_mode,
+			res_mode: self.res_mode,
+			orientation_mode: self.orientation_mode,
 			interface,
 			data,
 			on_launched: &self.on_launched,
@@ -289,7 +293,7 @@ impl View {
 	fn launch<T>(params: LaunchParams<T>) -> anyhow::Result<()> {
 		let mut env = Vec::<String>::new();
 
-		if params.run_mode == CompositorMode::Native {
+		if params.compositor_mode == CompositorMode::Native {
 			// This list could be larger, feel free to expand it
 			env.push("QT_QPA_PLATFORM=wayland".into());
 			env.push("GDK_BACKEND=wayland".into());
@@ -298,18 +302,20 @@ impl View {
 			env.push("ELECTRON_OZONE_PLATFORM_HINT=wayland".into());
 		}
 
-		let args = match params.run_mode {
+		let args = match params.compositor_mode {
 			CompositorMode::Cage => format!("-- {} {}", params.application.exec_path, params.application.exec_args),
 			CompositorMode::Native => params.application.exec_args.to_string(),
 		};
 
-		let exec = match params.run_mode {
+		let exec = match params.compositor_mode {
 			CompositorMode::Cage => "cage".to_string(),
 			CompositorMode::Native => params.application.exec_path.to_string(),
 		};
 
 		let mut userdata = HashMap::new();
 		userdata.insert("desktop-entry".to_string(), serde_json::to_string(params.application)?);
+
+		let resolution = Self::calculate_resolution(params.res_mode, params.orientation_mode);
 
 		params.interface.process_launch(
 			params.data,
@@ -318,6 +324,7 @@ impl View {
 				exec,
 				name: params.application.app_name.to_string(),
 				args,
+				resolution,
 				userdata,
 			},
 		)?;
@@ -332,5 +339,29 @@ impl View {
 
 		// we're done!
 		Ok(())
+	}
+
+	fn calculate_resolution(res_mode: ResMode, orientation_mode: OrientationMode) -> [u32; 2] {
+		let total_pixels = match res_mode {
+			ResMode::Res1440 => 2560 * 1440,
+			ResMode::Res1080 => 1920 * 1080,
+			ResMode::Res720 => 1280 * 720,
+			ResMode::Res480 => 854 * 480,
+		};
+
+		let (ratio_w, ratio_h) = match orientation_mode {
+			OrientationMode::Wide => (16, 9),
+			OrientationMode::SemiWide => (3, 2),
+			OrientationMode::Square => (1, 1),
+			OrientationMode::SemiTall => (2, 3),
+			OrientationMode::Tall => (9, 16),
+		};
+
+		let k = ((total_pixels as f64) / (ratio_w * ratio_h) as f64).sqrt();
+
+		let width = (ratio_w as f64 * k).round() as u64;
+		let height = (ratio_h as f64 * k).round() as u64;
+
+		[width as u32, height as u32]
 	}
 }

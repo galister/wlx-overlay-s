@@ -369,7 +369,14 @@ impl DashInterface<AppState> for DashInterfaceLive {
         let env_vec = gen_env_vec(&params.env);
 
         wvr_server
-            .spawn_process(&params.exec, &args_vec, &env_vec, None, params.userdata)
+            .spawn_process(
+                &params.exec,
+                &args_vec,
+                &env_vec,
+                params.resolution,
+                None,
+                params.userdata,
+            )
             .map(|x| x.as_packet())
     }
 

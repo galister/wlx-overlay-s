@@ -242,6 +242,7 @@ impl Connection {
             &packet_params.exec,
             &args_vec,
             &env_vec,
+            packet_params.resolution,
             None,
             packet_params.userdata,
         );

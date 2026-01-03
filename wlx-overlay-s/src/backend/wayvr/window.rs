@@ -166,8 +166,12 @@ impl WindowManager {
         &mut self,
         toplevel: Rc<ToplevelSurface>,
         process: process::ProcessHandle,
+        size_x: u32,
+        size_y: u32,
     ) -> WindowHandle {
-        self.windows.add(Window::new(toplevel, process))
+        let mut window = Window::new(toplevel, process);
+        window.set_size(size_x, size_y);
+        self.windows.add(window)
     }
 
     pub fn remove_window(&mut self, window_handle: WindowHandle) {

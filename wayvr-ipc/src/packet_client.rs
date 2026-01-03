@@ -28,6 +28,7 @@ pub struct WvrProcessLaunchParams {
 	pub exec: String,
 	pub env: Vec<String>,
 	pub args: String,
+	pub resolution: [u32; 2],
 	pub userdata: HashMap<String, String>,
 }
 

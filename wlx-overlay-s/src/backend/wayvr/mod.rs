@@ -36,13 +36,13 @@ use xkbcommon::xkb;
 use crate::{
     backend::{
         task::{OverlayTask, TaskType},
-        wayvr::{image_importer::ImageImporter, window::Window},
+        wayvr::{image_importer::ImageImporter, process::{Process, WayVRProcess}, window::Window},
     },
     graphics::WGfxExtras,
     ipc::{event_queue::SyncEventQueue, ipc_server, signal::WayVRSignal},
     overlays::wayvr::create_wl_window_overlay,
     state::AppState,
-    subsystem::hid::{MODS_TO_KEYS, WheelDelta},
+    subsystem::hid::{WheelDelta, MODS_TO_KEYS},
     windowing::{OverlayID, OverlaySelector},
 };
 
@@ -146,8 +146,8 @@ impl WvrServerState {
         let data_device = DataDeviceState::new::<Application>(&dh);
         let mut seat = seat_state.new_wl_seat(&dh, "wayvr");
 
-        let dummy_width = 1920;
-        let dummy_height = 1080;
+        let dummy_width = 2560;
+        let dummy_height = 1440;
         let dummy_milli_hz = 60000; /* refresh rate in millihertz */
 
         let output = Output::new(
@@ -302,9 +302,14 @@ impl WvrServerState {
                             continue;
                         };
 
+                        let [size_x, size_y] = match wvr_server.processes.get(&process_handle) {
+                            Some(Process::Managed(p)) => p.resolution,
+                            _ => [1920, 1080],
+                        };
+
                         let window_handle = wvr_server
                             .wm
-                            .create_window(toplevel.clone(), process_handle);
+                            .create_window(toplevel.clone(), process_handle, size_x, size_y);
 
                         let title: Arc<str> = with_states(toplevel.wl_surface(), |states| {
                             states
@@ -474,6 +479,7 @@ impl WvrServerState {
         exec_path: &str,
         args: &[&str],
         env: &[(&str, &str)],
+        resolution: [u32; 2],
         working_dir: Option<&str>,
         userdata: HashMap<String, String>,
     ) -> anyhow::Result<process::ProcessHandle> {
@@ -505,6 +511,7 @@ impl WvrServerState {
                     .iter()
                     .map(|(a, b)| (String::from(*a), String::from(*b)))
                     .collect(),
+                resolution,
             }));
 
         self.signals.send(WayVRSignal::BroadcastStateChanged(
