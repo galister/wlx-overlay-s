@@ -200,6 +200,7 @@ impl ImageRenderer {
 
 					let pass = self.pipeline.inner.create_pass(
 						[res[0] as _, res[1] as _],
+						[0.0, 0.0],
 						vert_buffer.clone(),
 						0..4,
 						0..1,

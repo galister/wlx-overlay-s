@@ -13,12 +13,12 @@ use vulkano::{
 		view::ImageView,
 	},
 	pipeline::{
-		Pipeline, PipelineBindPoint,
 		graphics::{self, vertex_input::Vertex, viewport::Viewport},
+		Pipeline, PipelineBindPoint,
 	},
 };
 
-use super::{WGfx, pipeline::WGfxPipeline};
+use super::{pipeline::WGfxPipeline, WGfx};
 
 pub struct WGfxPass<V> {
 	pub command_buffer: Arc<SecondaryAutoCommandBuffer>,
@@ -34,6 +34,7 @@ where
 	pub(super) fn new(
 		pipeline: &Arc<WGfxPipeline<V>>,
 		dimensions: [f32; 2],
+		offset: [f32; 2],
 		vertex_buffer: Subbuffer<[V]>,
 		vertices: Range<u32>,
 		instances: Range<u32>,
@@ -41,7 +42,7 @@ where
 		vk_scissor: &graphics::viewport::Scissor,
 	) -> anyhow::Result<Self> {
 		let viewport = Viewport {
-			offset: [0.0, 0.0],
+			offset,
 			extent: dimensions,
 			depth_range: 0.0..=1.0,
 		};

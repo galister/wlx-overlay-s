@@ -46,11 +46,17 @@ pub struct ScreenPipeline {
     pipeline: Arc<WGfxPipeline<Vert2Uv>>,
     buf_alpha: Subbuffer<[f32]>,
     extentf: [f32; 2],
+    offsetf: [f32; 2],
     stereo: StereoMode,
 }
 
 impl ScreenPipeline {
-    pub fn new(meta: &FrameMeta, app: &mut AppState, stereo: StereoMode) -> anyhow::Result<Self> {
+    pub fn new(
+        meta: &FrameMeta,
+        app: &mut AppState,
+        stereo: StereoMode,
+        offsetf: [f32; 2],
+    ) -> anyhow::Result<Self> {
         let extentf = [meta.extent[0] as f32, meta.extent[1] as f32];
 
         let pipeline = app.gfx.create_pipeline(
@@ -70,11 +76,19 @@ impl ScreenPipeline {
                 app,
                 pipeline.clone(),
                 extentf,
+                offsetf,
                 buf_alpha.clone()
             )?],
-            mouse: Self::create_mouse_pass(app, pipeline.clone(), extentf, buf_alpha.clone())?,
+            mouse: Self::create_mouse_pass(
+                app,
+                pipeline.clone(),
+                extentf,
+                offsetf,
+                buf_alpha.clone(),
+            )?,
             pipeline,
             extentf,
+            offsetf,
             buf_alpha,
             stereo,
         };
@@ -94,6 +108,7 @@ impl ScreenPipeline {
                 app,
                 self.pipeline.clone(),
                 self.extentf,
+                self.offsetf,
                 self.buf_alpha.clone(),
             )?);
         }
@@ -113,15 +128,34 @@ impl ScreenPipeline {
         self.pass.len() as _
     }
 
-    pub fn set_extent(&mut self, app: &mut AppState, extentf: [f32; 2]) -> anyhow::Result<()> {
+    pub fn set_extent(
+        &mut self,
+        app: &mut AppState,
+        extentf: [f32; 2],
+        offsetf: [f32; 2],
+    ) -> anyhow::Result<()> {
+        self.extentf = extentf;
+        self.offsetf = offsetf;
+
         for (eye, pass) in self.pass.iter_mut().enumerate() {
-            *pass = Self::create_pass(app, self.pipeline.clone(), extentf, self.buf_alpha.clone())?;
+            *pass = Self::create_pass(
+                app,
+                self.pipeline.clone(),
+                extentf,
+                offsetf,
+                self.buf_alpha.clone(),
+            )?;
             let verts = stereo_mode_to_verts(self.stereo, eye);
             pass.buf_vert.write()?.copy_from_slice(&verts);
         }
 
-        self.mouse =
-            Self::create_mouse_pass(app, self.pipeline.clone(), extentf, self.buf_alpha.clone())?;
+        self.mouse = Self::create_mouse_pass(
+            app,
+            self.pipeline.clone(),
+            extentf,
+            offsetf,
+            self.buf_alpha.clone(),
+        )?;
         Ok(())
     }
 
@@ -129,6 +163,7 @@ impl ScreenPipeline {
         app: &mut AppState,
         pipeline: Arc<WGfxPipeline<Vert2Uv>>,
         extentf: [f32; 2],
+        offsetf: [f32; 2],
         buf_alpha: Subbuffer<[f32]>,
     ) -> anyhow::Result<BufPass> {
         let set0 = pipeline.uniform_sampler(
@@ -143,6 +178,7 @@ impl ScreenPipeline {
 
         let pass = pipeline.create_pass(
             extentf,
+            offsetf,
             buf_vert.clone(),
             0..4,
             0..1,
@@ -157,6 +193,7 @@ impl ScreenPipeline {
         app: &mut AppState,
         pipeline: Arc<WGfxPipeline<Vert2Uv>>,
         extentf: [f32; 2],
+        offsetf: [f32; 2],
         buf_alpha: Subbuffer<[f32]>,
     ) -> anyhow::Result<BufPass> {
         #[rustfmt::skip]
@@ -184,6 +221,7 @@ impl ScreenPipeline {
         let set1 = pipeline.buffer(1, buf_alpha)?;
         let pass = pipeline.create_pass(
             extentf,
+            offsetf,
             buf_vert.clone(),
             0..4,
             0..1,

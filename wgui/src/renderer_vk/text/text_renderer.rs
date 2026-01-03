@@ -4,9 +4,9 @@ use crate::{
 };
 
 use super::{
-	ContentType, FontSystem, GlyphDetails, GpuCacheStatus, SwashCache, TextArea,
 	custom_glyph::{CustomGlyphCacheKey, RasterizeCustomGlyphRequest, RasterizedCustomGlyph},
 	text_atlas::{GlyphVertex, TextAtlas, TextPipeline},
+	ContentType, FontSystem, GlyphDetails, GpuCacheStatus, SwashCache, TextArea,
 };
 use cosmic_text::{Color, SubpixelBin, SwashContent};
 use etagere::size2;
@@ -272,6 +272,7 @@ impl TextRenderer {
 
 				let pass = self.pipeline.inner.create_pass(
 					[res[0] as _, res[1] as _],
+					[0.0, 0.0],
 					self.vertex_buffer.clone(),
 					0..4,
 					0..self.glyph_vertices.len() as u32,

@@ -110,6 +110,7 @@ impl Skybox {
         let set1 = pipeline.uniform_buffer_upload(1, vec![1f32])?;
         let pass = pipeline.create_pass(
             tgt.extent_f32(),
+            [0.0, 0.0],
             app.gfx_extras.quad_verts.clone(),
             0..4,
             0..1,
@@ -161,6 +162,7 @@ impl Skybox {
             .unwrap();
         let pass = pipeline.create_pass(
             tgt.extent_f32(),
+            [0.0, 0.0],
             app.gfx_extras.quad_verts.clone(),
             0..4,
             0..1,

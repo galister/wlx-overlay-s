@@ -10,8 +10,8 @@ use crate::{
 	globals::Globals,
 	layout::Widget,
 	renderer_vk::text::{
-		TextShadow,
 		custom_glyph::{CustomGlyph, CustomGlyphData},
+		TextShadow,
 	},
 	stack::{self, ScissorBoundary, ScissorStack, TransformStack},
 	widget::{self, ScrollbarInfo, WidgetState},
@@ -146,6 +146,11 @@ impl Color {
 		let b = (self.b.clamp(0.0, 1.0) * 255.0).round() as u8;
 		let a = (self.a.clamp(0.0, 1.0) * 255.0).round() as u8;
 		format!("#{r:02X}{g:02X}{b:02X}{a:02X}")
+	}
+
+	#[must_use]
+	pub fn as_arr(&self) -> [f32; 4] {
+		[self.r, self.b, self.g, self.a]
 	}
 }
 

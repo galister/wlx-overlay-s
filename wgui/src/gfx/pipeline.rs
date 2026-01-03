@@ -1,14 +1,14 @@
 use std::{marker::PhantomData, ops::Range, sync::Arc};
 
-use smallvec::{SmallVec, smallvec};
+use smallvec::{smallvec, SmallVec};
 use vulkano::{
 	buffer::{
-		BufferContents, BufferUsage, Subbuffer,
 		allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo},
+		BufferContents, BufferUsage, Subbuffer,
 	},
 	descriptor_set::{
-		DescriptorSet, WriteDescriptorSet,
 		layout::{DescriptorBindingFlags, DescriptorSetLayoutCreateFlags},
+		DescriptorSet, WriteDescriptorSet,
 	},
 	format::Format,
 	image::{
@@ -17,9 +17,8 @@ use vulkano::{
 	},
 	memory::allocator::MemoryTypeFilter,
 	pipeline::{
-		DynamicState, GraphicsPipeline, Pipeline, PipelineLayout,
 		graphics::{
-			self, GraphicsPipelineCreateInfo,
+			self,
 			color_blend::{AttachmentBlend, ColorBlendAttachmentState, ColorBlendState},
 			input_assembly::{InputAssemblyState, PrimitiveTopology},
 			multisample::MultisampleState,
@@ -27,13 +26,15 @@ use vulkano::{
 			subpass::PipelineRenderingCreateInfo,
 			vertex_input::{Vertex, VertexDefinition, VertexInputState},
 			viewport::ViewportState,
+			GraphicsPipelineCreateInfo,
 		},
 		layout::PipelineDescriptorSetLayoutCreateInfo,
+		DynamicState, GraphicsPipeline, Pipeline, PipelineLayout,
 	},
 	shader::{EntryPoint, ShaderModule},
 };
 
-use super::{WGfx, pass::WGfxPass};
+use super::{pass::WGfxPass, WGfx};
 
 pub struct WGfxPipeline<V> {
 	pub graphics: Arc<WGfx>,
@@ -266,6 +267,7 @@ where
 	pub fn create_pass(
 		self: &Arc<Self>,
 		dimensions: [f32; 2],
+		offset: [f32; 2],
 		vertex_buffer: Subbuffer<[V]>,
 		vertices: Range<u32>,
 		instances: Range<u32>,
@@ -275,6 +277,7 @@ where
 		WGfxPass::new(
 			&self.clone(),
 			dimensions,
+			offset,
 			vertex_buffer,
 			vertices,
 			instances,

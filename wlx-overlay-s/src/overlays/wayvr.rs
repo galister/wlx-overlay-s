@@ -7,7 +7,15 @@ use std::sync::Arc;
 use vulkano::{
     buffer::BufferUsage, image::view::ImageView, pipeline::graphics::color_blend::AttachmentBlend,
 };
-use wgui::gfx::pipeline::{WGfxPipeline, WPipelineCreateInfo};
+use wgui::{
+    gfx::{
+        cmd::WGfxClearMode,
+        pipeline::{WGfxPipeline, WPipelineCreateInfo},
+    },
+    i18n::Translation,
+    parser::Fetchable,
+    widget::label::WidgetLabel,
+};
 use wlx_capture::frame::MouseMeta;
 use wlx_common::{
     overlays::{BackendAttrib, BackendAttribValue, StereoMode},
@@ -21,6 +29,7 @@ use crate::{
         wayvr::{self, SurfaceBufWithImage},
     },
     graphics::{ExtentExt, Vert2Uv, upload_quad_vertices},
+    gui::panel::{GuiPanel, NewGuiPanelParams},
     overlays::screen::capture::ScreenPipeline,
     state::{self, AppState},
     subsystem::{hid::WheelDelta, input::KeyboardFocus},
@@ -33,9 +42,12 @@ use crate::{
     },
 };
 
+const BORDER_SIZE: u32 = 5;
+const BAR_SIZE: u32 = 24;
+
 pub fn create_wl_window_overlay(
     name: Arc<str>,
-    app: &AppState,
+    app: &mut AppState,
     window: wayvr::window::WindowHandle,
 ) -> anyhow::Result<OverlayWindowConfig> {
     Ok(OverlayWindowConfig {
@@ -71,12 +83,14 @@ pub struct WvrWindowBackend {
     mouse: Option<MouseMeta>,
     stereo: Option<StereoMode>,
     cur_image: Option<Arc<ImageView>>,
+    panel: GuiPanel<()>,
+    mouse_transform: Affine2,
 }
 
 impl WvrWindowBackend {
     fn new(
         name: Arc<str>,
-        app: &AppState,
+        app: &mut AppState,
         window: wayvr::window::WindowHandle,
     ) -> anyhow::Result<Self> {
         let popups_pipeline = app.gfx.create_pipeline(
@@ -84,6 +98,28 @@ impl WvrWindowBackend {
             app.gfx_extras.shaders.get("frag_screen").unwrap(), // want panic
             WPipelineCreateInfo::new(app.gfx.surface_format).use_blend(AttachmentBlend::default()),
         )?;
+
+        let mut panel = GuiPanel::new_from_template(
+            app,
+            "gui/decor.xml",
+            (),
+            NewGuiPanelParams {
+                resize_to_parent: true,
+                ..Default::default()
+            },
+        )?;
+
+        {
+            let mut title = panel
+                .parser_state
+                .fetch_widget_as::<WidgetLabel>(&panel.layout.state, "label_title")?;
+            title.set_text_simple(
+                &mut app.wgui_globals.get(),
+                Translation::from_raw_text(&*name),
+            );
+        }
+
+        panel.update_layout()?;
 
         Ok(Self {
             name,
@@ -101,25 +137,29 @@ impl WvrWindowBackend {
                 None
             },
             cur_image: None,
+            panel,
+            mouse_transform: Affine2::ZERO,
         })
     }
 }
 
 impl OverlayBackend for WvrWindowBackend {
-    fn init(&mut self, _app: &mut state::AppState) -> anyhow::Result<()> {
-        Ok(())
+    fn init(&mut self, app: &mut state::AppState) -> anyhow::Result<()> {
+        self.panel.init(app)
     }
 
-    fn pause(&mut self, _app: &mut state::AppState) -> anyhow::Result<()> {
-        Ok(())
+    fn pause(&mut self, app: &mut state::AppState) -> anyhow::Result<()> {
+        self.panel.pause(app)
     }
 
-    fn resume(&mut self, _app: &mut state::AppState) -> anyhow::Result<()> {
+    fn resume(&mut self, app: &mut state::AppState) -> anyhow::Result<()> {
         self.just_resumed = true;
-        Ok(())
+        self.panel.resume(app)
     }
 
     fn should_render(&mut self, app: &mut AppState) -> anyhow::Result<ShouldRender> {
+        let should_render_panel = self.panel.should_render(app)?;
+
         let Some(toplevel) = app
             .wvr_server
             .as_ref()
@@ -162,22 +202,37 @@ impl OverlayBackend for WvrWindowBackend {
                 let mut meta = FrameMeta {
                     extent: surf.image.image().extent(),
                     format: surf.image.format(),
+                    clear: WGfxClearMode::Clear([0.0, 0.0, 0.0, 0.0]),
                     ..Default::default()
                 };
 
                 if let Some(pipeline) = self.pipeline.as_mut() {
+                    let inner_extent = meta.extent;
+
+                    meta.extent[0] += BORDER_SIZE * 2;
+                    meta.extent[1] += BORDER_SIZE * 2 + BAR_SIZE;
                     meta.extent[2] = pipeline.get_depth();
                     if self
                         .meta
                         .is_some_and(|old| old.extent[..2] != meta.extent[..2])
                     {
-                        pipeline.set_extent(app, [meta.extent[0] as _, meta.extent[1] as _])?;
+                        pipeline.set_extent(
+                            app,
+                            [inner_extent[0] as _, inner_extent[1] as _],
+                            [BORDER_SIZE as _, (BAR_SIZE + BORDER_SIZE) as _],
+                        )?;
                         self.interaction_transform =
                             Some(ui_transform(meta.extent.extent_u32arr()));
                     }
                 } else {
-                    let pipeline =
-                        ScreenPipeline::new(&meta, app, self.stereo.unwrap_or(StereoMode::None))?;
+                    let pipeline = ScreenPipeline::new(
+                        &meta,
+                        app,
+                        self.stereo.unwrap_or(StereoMode::None),
+                        [BORDER_SIZE as _, (BAR_SIZE + BORDER_SIZE) as _],
+                    )?;
+                    meta.extent[0] += BORDER_SIZE * 2;
+                    meta.extent[1] += BORDER_SIZE * 2 + BAR_SIZE;
                     meta.extent[2] = pipeline.get_depth();
                     self.pipeline = Some(pipeline);
                     self.interaction_transform = Some(ui_transform(meta.extent.extent_u32arr()));
@@ -215,7 +270,7 @@ impl OverlayBackend for WvrWindowBackend {
                 } else if dirty {
                     Ok(ShouldRender::Should)
                 } else {
-                    Ok(ShouldRender::Can)
+                    Ok(should_render_panel)
                 }
             } else {
                 log::trace!("{}: no buffer for wl_surface", self.name);
@@ -229,6 +284,8 @@ impl OverlayBackend for WvrWindowBackend {
         app: &mut state::AppState,
         rdr: &mut RenderResources,
     ) -> anyhow::Result<()> {
+        self.panel.render(app, rdr)?;
+
         let image = self.cur_image.as_ref().unwrap().clone();
 
         self.pipeline
@@ -264,6 +321,7 @@ impl OverlayBackend for WvrWindowBackend {
 
             let pass = self.popups_pipeline.create_pass(
                 extentf,
+                [BORDER_SIZE as _, (BAR_SIZE + BORDER_SIZE) as _],
                 buf_vert,
                 0..4,
                 0..1,
@@ -308,8 +366,8 @@ impl OverlayBackend for WvrWindowBackend {
         }
     }
 
-    fn on_left(&mut self, _app: &mut state::AppState, _pointer: usize) {
-        // Ignore event
+    fn on_left(&mut self, app: &mut state::AppState, pointer: usize) {
+        self.panel.on_left(app, pointer);
     }
 
     fn on_pointer(&mut self, app: &mut state::AppState, hit: &input::PointerHit, pressed: bool) {
