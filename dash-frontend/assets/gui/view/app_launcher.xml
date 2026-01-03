@@ -28,7 +28,6 @@
           <RadioBox text="Compatibility mode" value="Cage"/> <!-- TODO: tooltips -->
         </RadioGroup>
         <Separator />
-        <Separator />
         <label text="Resolution" />
         <RadioGroup id="radio_res" flex_direction="row" gap="16">
           <RadioBox text="1440p" value="Res1440" />
@@ -36,6 +35,7 @@
           <RadioBox text="720p" value="Res720" />
           <RadioBox text="480p" value="Res480" />
         </RadioGroup>
+        <Separator />
         <label text="Orientation" />
         <RadioGroup id="radio_orientation" flex_direction="row" gap="16">
           <RadioBox text="Wide" value="Wide" tooltip="16:9" checked="1" />
