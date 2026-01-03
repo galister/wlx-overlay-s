@@ -43,7 +43,7 @@ use crate::{
 };
 
 const BORDER_SIZE: u32 = 5;
-const BAR_SIZE: u32 = 24;
+const BAR_SIZE: u32 = 40;
 
 pub fn create_wl_window_overlay(
     name: Arc<str>,
@@ -146,7 +146,7 @@ impl WvrWindowBackend {
         })
     }
 
-    fn apply_extent(&mut self, meta: &FrameMeta) {
+    fn apply_extent(&mut self, app: &mut AppState, meta: &FrameMeta) -> anyhow::Result<()> {
         self.interaction_transform = Some(ui_transform(meta.extent.extent_u32arr()));
 
         let scale = vec2(
@@ -161,6 +161,11 @@ impl WvrWindowBackend {
 
         self.mouse_transform = Affine2::from_scale_angle_translation(scale, 0.0, translation);
         self.uv_range = translation[0]..=(1.0 - translation[0]);
+
+        self.panel.max_size = vec2((meta.extent[0] + BORDER_SIZE * 2) as _, BAR_SIZE as _);
+        self.panel.update_layout(app)?;
+
+        Ok(())
     }
 }
 
@@ -238,7 +243,7 @@ impl OverlayBackend for WvrWindowBackend {
                             [inner_extent[0] as _, inner_extent[1] as _],
                             [BORDER_SIZE as _, (BAR_SIZE + BORDER_SIZE) as _],
                         )?;
-                        self.apply_extent(&meta);
+                        self.apply_extent(app, &meta)?;
                         self.inner_extent = inner_extent;
                     }
                 } else {
@@ -249,7 +254,7 @@ impl OverlayBackend for WvrWindowBackend {
                         [BORDER_SIZE as _, (BAR_SIZE + BORDER_SIZE) as _],
                     )?;
                     meta.extent[2] = pipeline.get_depth();
-                    self.apply_extent(&meta);
+                    self.apply_extent(app, &meta)?;
                     self.pipeline = Some(pipeline);
                 }
 
@@ -392,6 +397,12 @@ impl OverlayBackend for WvrWindowBackend {
     }
 
     fn on_pointer(&mut self, app: &mut state::AppState, hit: &input::PointerHit, pressed: bool) {
+        let transformed = self.mouse_transform.transform_point2(hit.uv);
+
+        if !self.uv_range.contains(&transformed.x) || !self.uv_range.contains(&transformed.y) {
+            return self.panel.on_pointer(app, hit, pressed);
+        }
+
         if let Some(index) = match hit.mode {
             input::PointerMode::Left => Some(wayvr::MouseIndex::Left),
             input::PointerMode::Middle => Some(wayvr::MouseIndex::Center),
