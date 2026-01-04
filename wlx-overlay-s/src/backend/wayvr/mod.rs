@@ -325,6 +325,7 @@ impl WvrServerState {
                                     title,
                                     app,
                                     window_handle,
+                                    size_x.max(size_y),
                                 ).context("Could not create WvrWindow overlay").inspect_err(|e| log::warn!("{e:?}")).ok()
                             }),
                         )));

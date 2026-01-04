@@ -51,7 +51,10 @@ pub fn create_wl_window_overlay(
     name: Arc<str>,
     app: &mut AppState,
     window: wayvr::window::WindowHandle,
+    size_major: u32,
 ) -> anyhow::Result<OverlayWindowConfig> {
+    let scale = size_major as f32 / 1920.0;
+
     Ok(OverlayWindowConfig {
         name: name.clone(),
         default_state: OverlayWindowState {
@@ -60,7 +63,7 @@ pub fn create_wl_window_overlay(
             positioning: Positioning::Floating,
             curvature: Some(0.15),
             transform: Affine3A::from_scale_rotation_translation(
-                Vec3::ONE,
+                Vec3::ONE * scale,
                 Quat::IDENTITY,
                 vec3(0.0, 0.0, -0.95),
             ),

@@ -14,12 +14,12 @@
       >
         <label id="label_title" margin_left="8" color="~color_text" size="22" weight="bold" />
         <div gap="4">
-          <Button macro="window_button" tooltip="WATCH.EDIT_MODE" _release="::EditToggle"
+          <Button macro="window_button" _release="::EditToggle"
             border_color="~color_faded_translucent" color="~color_faded_50" color2="~color_faded_10">
             <sprite width="28" height="28" src="watch/edit.svg" />
           </Button>
 
-          <Button macro="window_button" tooltip="DECOR.CLOSE_WINDOW" _release="::DecorCloseWindow"
+          <Button macro="window_button" _release="::DecorCloseWindow"
             border_color="~color_danger_translucent" color="~color_danger_50" color2="~color_danger_10">
             <sprite width="32" height="32" src="edit/close.svg" />
           </Button>
