@@ -1,3 +1,4 @@
+use anyhow::Context;
 use glam::{Affine2, Affine3A, Quat, Vec2, Vec3, vec2, vec3};
 use smithay::{
     desktop::PopupManager,
@@ -87,6 +88,7 @@ pub struct WvrWindowBackend {
     inner_extent: [u32; 3],
     mouse_transform: Affine2,
     uv_range: RangeInclusive<f32>,
+    panel_hovered: bool,
 }
 
 impl WvrWindowBackend {
@@ -143,6 +145,7 @@ impl WvrWindowBackend {
             panel,
             mouse_transform: Affine2::ZERO,
             uv_range: 0.0..=1.0,
+            panel_hovered: false,
         })
     }
 
@@ -379,7 +382,17 @@ impl OverlayBackend for WvrWindowBackend {
         let transformed = self.mouse_transform.transform_point2(hit.uv);
 
         if !self.uv_range.contains(&transformed.x) || !self.uv_range.contains(&transformed.y) {
-            return self.panel.on_hover(app, hit);
+            let Some(meta) = self.meta.as_ref() else {
+                return HoverResult::default();
+            };
+
+            let mut hit2 = hit.clone();
+            hit2.uv.y *= meta.extent[1] as f32 / (meta.extent[1] - self.inner_extent[1]) as f32;
+            self.panel_hovered = true;
+            return self.panel.on_hover(app, &hit2);
+        } else if self.panel_hovered {
+            self.panel.on_left(app, hit.pointer);
+            self.panel_hovered = false;
         }
 
         let clamped = transformed.clamp(Vec2::ZERO, Vec2::ONE);
@@ -397,14 +410,24 @@ impl OverlayBackend for WvrWindowBackend {
     }
 
     fn on_left(&mut self, app: &mut state::AppState, pointer: usize) {
-        self.panel.on_left(app, pointer);
+        if self.panel_hovered {
+            self.panel.on_left(app, pointer);
+            self.panel_hovered = false;
+        }
     }
 
     fn on_pointer(&mut self, app: &mut state::AppState, hit: &input::PointerHit, pressed: bool) {
         let transformed = self.mouse_transform.transform_point2(hit.uv);
 
         if !self.uv_range.contains(&transformed.x) || !self.uv_range.contains(&transformed.y) {
-            return self.panel.on_pointer(app, hit, pressed);
+            let Some(meta) = self.meta.as_ref() else {
+                return;
+            };
+
+            let mut hit2 = hit.clone();
+            hit2.uv.y *= meta.extent[1] as f32 / (meta.extent[1] - self.inner_extent[1]) as f32;
+            self.panel_hovered = true;
+            return self.panel.on_pointer(app, &hit2, pressed);
         }
 
         if let Some(index) = match hit.mode {
