@@ -495,6 +495,13 @@ impl WayVRClient {
 		Ok(())
 	}
 
+	pub async fn fn_wlx_overlay_show_hide(
+		client: WayVRClientMutex,
+	) -> anyhow::Result<()> {
+		send_only!(client, &PacketClient::WlxShowHide);
+		Ok(())
+	}
+
 	pub async fn fn_wlx_modify_panel(
 		client: WayVRClientMutex,
 		params: packet_client::WlxModifyPanelParams,

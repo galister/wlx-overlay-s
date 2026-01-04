@@ -522,6 +522,12 @@ impl Connection {
         ));
     }
 
+    fn handle_wlx_overlay_show_hide(
+        params: &mut TickParams
+    ) {
+        params.signals.send(WayVRSignal::ShowHide);
+    }
+
     fn handle_wlx_panel(
         params: &mut TickParams,
         custom_params: packet_client::WlxModifyPanelParams,
@@ -623,6 +629,9 @@ impl Connection {
             }
             PacketClient::WlxDeviceHaptics(device, haptics_params) => {
                 Self::handle_wlx_device_haptics(params, device, haptics_params);
+            }
+            PacketClient::WlxShowHide => {
+                Self::handle_wlx_overlay_show_hide(params);
             }
             PacketClient::WlxModifyPanel(custom_params) => {
                 Self::handle_wlx_panel(params, custom_params);
