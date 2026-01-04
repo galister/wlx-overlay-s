@@ -425,7 +425,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
             }
             OverlayEventData::OverlaysChanged(metas) => {
                 panel.state.overlay_metas.clear();
-                for meta in metas {
+                for meta in &*metas {
                     match meta.category {
                         OverlayCategory::Keyboard => {
                             panel.state.keyboard_oid = meta.id;
@@ -440,7 +440,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                             panel.state.dashboard_oid = meta.id;
                         }
                         OverlayCategory::Internal => {}
-                        _ => panel.state.overlay_metas.push(meta),
+                        _ => panel.state.overlay_metas.push(meta.clone()),
                     }
                 }
 
@@ -494,7 +494,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                 let mut keyboard_visible = false;
                 let mut dashboard_visible = false;
 
-                for visible in &overlays {
+                for visible in &*overlays {
                     if let Some(idx) = panel.state.overlay_indices.get(*visible)
                         && let Some(o) = panel.state.overlay_metas.get_mut(*idx)
                     {

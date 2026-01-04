@@ -1,6 +1,6 @@
 use glam::{Affine2, Affine3A, Vec2};
 use smallvec::SmallVec;
-use std::{any::Any, sync::Arc};
+use std::{any::Any, rc::Rc, sync::Arc};
 use vulkano::{command_buffer::CommandBufferUsage, format::Format, image::view::ImageView};
 use wgui::gfx::{
     WGfx,
@@ -106,6 +106,7 @@ macro_rules! attrib_value {
     };
 }
 
+#[derive(Clone)]
 pub struct OverlayMeta {
     pub id: OverlayID,
     pub name: Arc<str>,
@@ -120,8 +121,8 @@ pub enum OverlayEventData {
     ActiveSetChanged(Option<usize>),
     NumSetsChanged(usize),
     EditModeChanged(bool),
-    OverlaysChanged(Vec<OverlayMeta>),
-    VisibleOverlaysChanged(Vec<OverlayID>),
+    OverlaysChanged(Rc<[OverlayMeta]>),
+    VisibleOverlaysChanged(Rc<[OverlayID]>),
     DevicesChanged,
     OverlayGrabbed {
         name: Arc<str>,

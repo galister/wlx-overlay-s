@@ -1,35 +1,24 @@
 use std::{
-    cell::Cell,
-    collections::HashMap,
-    process::{Child, Command},
-    sync::atomic::Ordering,
+    cell::Cell, collections::HashMap, process::{Child, Command}, rc::Rc, sync::atomic::Ordering
 };
 
 use crate::{
-    KEYMAP_CHANGE,
-    backend::input::{HoverResult, PointerHit},
-    gui::panel::GuiPanel,
-    overlays::keyboard::{builder::create_keyboard_panel, layout::AltModifier},
-    state::AppState,
-    subsystem::{
+    backend::input::{HoverResult, PointerHit}, gui::panel::GuiPanel, overlays::keyboard::{builder::create_keyboard_panel, layout::AltModifier}, state::AppState, subsystem::{
         dbus::DbusConnector,
         hid::{
-            ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey, WheelDelta, XkbKeymap,
-            get_keymap_wl, get_keymap_x11,
+            get_keymap_wl, get_keymap_x11, KeyModifier, VirtualKey, WheelDelta, XkbKeymap, ALT, CTRL, META, SHIFT, SUPER
         },
-    },
-    windowing::{
-        backend::{FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender},
-        window::{OverlayCategory, OverlayWindowConfig},
-    },
+    }, windowing::{
+        backend::{FrameMeta, OverlayBackend, OverlayEventData, OverlayMeta, RenderResources, ShouldRender},
+        window::{OverlayCategory, OverlayWindowConfig}, OverlayID,
+    }, KEYMAP_CHANGE
 };
 use anyhow::Context;
 use glam::{Affine3A, Quat, Vec3, vec3};
 use regex::Regex;
-use slotmap::{SlotMap, new_key_type};
+use slotmap::{new_key_type, SecondaryMap, SlotMap};
 use wgui::{
-    drawing,
-    event::{InternalStateChangeEvent, MouseButton, MouseButtonIndex},
+    components::button::ComponentButton, drawing, event::{InternalStateChangeEvent, MouseButton, MouseButtonIndex}
 };
 use wlx_common::overlays::{BackendAttrib, BackendAttribValue};
 use wlx_common::windowing::{OverlayWindowState, Positioning};
@@ -54,6 +43,10 @@ pub fn create_keyboard(app: &mut AppState, wayland: bool) -> anyhow::Result<Over
             _ => 0,
         },
         processes: vec![],
+        set_buttons: vec![],
+        overlay_buttons: SecondaryMap::new(),
+        overlay_metas: SecondaryMap::new(),
+        current_set: None,
     };
 
     let auto_labels = layout.auto_labels.unwrap_or(true);
@@ -309,10 +302,14 @@ struct KeyboardState {
     modifiers: KeyModifier,
     alt_modifier: KeyModifier,
     processes: Vec<Child>,
+    set_buttons: Vec<Rc<ComponentButton>>,
+    overlay_buttons: SecondaryMap<OverlayID, Rc<ComponentButton>>,
+    overlay_metas: SecondaryMap<OverlayID, OverlayMeta>,
+    current_set: Option<usize>,
 }
 
 impl KeyboardState {
-    const fn take(&mut self) -> Self {
+    fn take(&mut self) -> Self {
         Self {
             modifiers: self.modifiers,
             alt_modifier: self.alt_modifier,
@@ -321,6 +318,22 @@ impl KeyboardState {
                 std::mem::swap(&mut processes, &mut self.processes);
                 processes
             },
+            set_buttons: {
+                let mut set_buttons = vec![];
+                std::mem::swap(&mut set_buttons, &mut self.set_buttons);
+                set_buttons
+            },
+            overlay_buttons: {
+                let mut overlay_buttons = SecondaryMap::new();
+                std::mem::swap(&mut overlay_buttons, &mut self.overlay_buttons);
+                overlay_buttons
+            },
+            overlay_metas: {
+                let mut overlay_metas= SecondaryMap::new();
+                std::mem::swap(&mut overlay_metas, &mut self.overlay_metas);
+                overlay_metas
+            },
+            current_set: self.current_set.take(),
         }
     }
 }

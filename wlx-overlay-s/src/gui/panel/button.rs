@@ -248,7 +248,8 @@ pub(super) fn setup_custom_button<S: 'static>(
                 })
             }
             "::OverlayToggle" => {
-                let Some(arg): Option<Arc<str>> = args.next().map(Into::into) else {
+                let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
+                if arg.len() < 1 {
                     log::error!("{command} has missing arguments");
                     return;
                 };
@@ -267,6 +268,24 @@ pub(super) fn setup_custom_button<S: 'static>(
                                 owc.deactivate();
                             }
                         }),
+                    )));
+                    Ok(EventResult::Consumed)
+                })
+            }
+            "::OverlaySoftToggle" => {
+                let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
+                if arg.len() < 1 {
+                    log::error!("{command} has missing arguments");
+                    return;
+                };
+
+                Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::SoftToggleOverlay(
+                        OverlaySelector::Name(arg.clone()),
                     )));
                     Ok(EventResult::Consumed)
                 })

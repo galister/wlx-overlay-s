@@ -88,14 +88,14 @@
 
   <!-- An app with a single icon. -->
   <template name="App">
-    <Button macro="button_style" _press="" tooltip="${tooltip}" tooltip_side="bottom">
+    <Button macro="button_style" id="overlay_${idx}" _press="::OverlayToggle ${name}" tooltip="${name}" tooltip_side="bottom">
       <sprite width="56" height="56" color="~text_color" src_ext="${src}" />
     </Button>
   </template>
 
   <!-- A screen with a shortened connector name, e.g. "H1" for HDMI-A-1 or "D2" for DP-2 -->
   <template name="Screen">
-    <Button macro="button_style" tooltip="${tooltip}" tooltip_side="bottom">
+    <Button macro="button_style" id="overlay_${idx}" _press="::OverlayToggle ${name}" tooltip="${name}" tooltip_side="bottom">
       <sprite width="56" height="56" color="~text_color" src_builtin="edit/screen.svg" />
       <div position="absolute" margin_top="-10">
         <label text="${display}" size="26" color="~color_faded_20" weight="bold" />
@@ -104,13 +104,13 @@
   </template>
 
   <template name="Panel">
-    <Button macro="button_style" tooltip="${tooltip}" tooltip_side="bottom">
+    <Button macro="button_style" id="overlay_${idx}" _press="::OverlayToggle ${name}" tooltip="${name}" tooltip_side="bottom">
       <sprite width="56" height="56" color="~text_color" src_builtin="edit/panel.svg" />
     </Button>
   </template>
 
   <template name="Mirror">
-    <Button macro="button_style" _press="" tooltip="${tooltip}" tooltip_side="bottom">
+    <Button macro="button_style" id="overlay_${idx}" _press="::OverlayToggle ${name}" tooltip="${name}" tooltip_side="bottom">
       <sprite width="56" height="56" color="~text_color" src_builtin="edit/mirror.svg" />
       <div position="absolute" margin_top="7" margin_left="20">
         <label text="${display}" size="26" color="~color_faded_20" weight="bold" />
@@ -131,17 +131,17 @@
     <div flex_direction="column" interactable="0">
       <rectangle macro="bg_rect" padding="16" align_items="center" justify_content="space_between">
         <div gap="16">
-          <div id="panels_root_TODO" gap="8">
-            <Screen idx="0" display="H1" tooltip="Screen: HDMI-A-1" />
-            <Screen idx="1" display="D2" tooltip="Screen: DP-2" />
-            <Mirror idx="1" display="1" tooltip="Mirror: M-1" />
-            <Panel idx="1" display="Test" tooltip="Panel: Test" />
+          <div id="panels_root" gap="8">
+            <Screen idx="0" display="H1" name="HDMI-A-1" />
+            <Screen idx="1" display="D2" name="Screen: DP-2" />
+            <Mirror idx="1" display="1" name="M1" />
+            <Panel idx="1" display="Test" name="Test" />
           </div>
           <VerticalSeparator />
-          <div id="apps_root_TODO" gap="8">
-            <App id="test1" src="/usr/share/icons/hicolor/scalable/apps/blender-5.0.svg" tooltip="App: Blender" />
-            <App id="test2" src="/usr/share/icons/hicolor/scalable/apps/org.inkscape.Inkscape.svg" tooltip="App: Inkscape" />
-            <App id="test3" src="/usr/share/icons/hicolor/scalable/apps/gimp.svg" tooltip="App: GIMP" />
+          <div id="apps_root" gap="8">
+            <App id="test1" name="Blender" src="/usr/share/icons/hicolor/scalable/apps/blender-5.0.svg" />
+            <App id="test2" name="Inkscape" src="/usr/share/icons/hicolor/scalable/apps/org.inkscape.Inkscape.svg" />
+            <App id="test3" name="GIMP" src="/usr/share/icons/hicolor/scalable/apps/gimp.svg" />
           </div>
         </div>
         <div id="tray_root" flex_direction="row" gap="16">

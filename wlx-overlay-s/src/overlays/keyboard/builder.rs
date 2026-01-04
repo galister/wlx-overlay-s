@@ -1,28 +1,15 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::{HashMap}, rc::Rc, time::Duration};
 
 use crate::{
     app_misc,
-    gui::panel::{GuiPanel, NewGuiPanelParams},
+    gui::{panel::{GuiPanel, NewGuiPanelParams}, timer::GuiTimer},
     state::AppState,
-    subsystem::hid::XkbKeymap,
+    subsystem::hid::XkbKeymap, windowing::{backend::OverlayEventData, window::OverlayCategory},
 };
 use anyhow::Context;
 use glam::{FloatExt, Mat4, Vec2, vec2, vec3};
 use wgui::{
-    animation::{Animation, AnimationEasing},
-    assets::AssetPath,
-    drawing::{self, Color},
-    event::{self, CallbackMetadata, EventListenerKind},
-    layout::{LayoutParams, LayoutUpdateParams},
-    parser::{Fetchable, ParseDocumentExtra, ParseDocumentParams},
-    renderer_vk::util,
-    taffy::{self, prelude::length},
-    widget::{
-        EventResult,
-        div::WidgetDiv,
-        rectangle::{WidgetRectangle, WidgetRectangleParams},
-        util::WLength,
-    },
+    animation::{Animation, AnimationEasing}, assets::AssetPath, components::button::ComponentButton, drawing::{self, Color}, event::{self, CallbackDataCommon, CallbackMetadata, EventAlterables, EventListenerKind}, layout::LayoutUpdateParams, parser::{Fetchable, ParseDocumentExtra, ParseDocumentParams}, renderer_vk::util, taffy::{self, prelude::length}, widget::{div::WidgetDiv, rectangle::WidgetRectangle, EventResult}
 };
 
 use super::{
@@ -31,6 +18,14 @@ use super::{
 };
 
 const PIXELS_PER_UNIT: f32 = 80.;
+
+fn new_doc_params(panel: &mut GuiPanel<KeyboardState>) -> ParseDocumentParams<'static> {
+    ParseDocumentParams {
+        globals: panel.layout.state.globals.clone(),
+        path: AssetPath::FileOrBuiltIn("gui/keyboard.xml"),
+        extra: panel.doc_extra.take().unwrap_or_default(),
+    }
+}
 
 #[allow(clippy::too_many_lines, clippy::significant_drop_tightening)]
 pub(super) fn create_keyboard_panel(
@@ -42,11 +37,7 @@ pub(super) fn create_keyboard_panel(
     let mut panel =
         GuiPanel::new_from_template(app, "gui/keyboard.xml", state, NewGuiPanelParams::default())?;
 
-    let doc_params = ParseDocumentParams {
-        globals: app.wgui_globals.clone(),
-        path: AssetPath::FileOrBuiltIn("gui/keyboard.xml"),
-        extra: ParseDocumentExtra::default(),
-    };
+    let doc_params = new_doc_params(&mut panel);
 
     let globals = app.wgui_globals.clone();
     let accent_color = globals.get().defaults.accent_color;
@@ -255,6 +246,133 @@ pub(super) fn create_keyboard_panel(
             }
         }
     }
+
+    panel.on_notify = Some(Box::new(move |panel, app, event_data| {
+        let mut alterables = EventAlterables::default();
+
+        match event_data {
+            OverlayEventData::ActiveSetChanged(current_set) => {
+                let mut com = CallbackDataCommon {
+                    alterables: &mut alterables,
+                    state: &panel.layout.state,
+                };
+                if let Some(old_set) = panel.state.current_set.take()
+                    && let Some(old_set) = panel.state.set_buttons.get_mut(old_set)
+                {
+                    old_set.set_sticky_state(&mut com, false);
+                }
+                if let Some(new_set) = current_set
+                    && let Some(new_set) = panel.state.set_buttons.get_mut(new_set)
+                {
+                    new_set.set_sticky_state(&mut com, true);
+                }
+                panel.state.current_set = current_set;
+            }
+            OverlayEventData::NumSetsChanged(num_sets) => {
+                let sets_root = panel.parser_state.get_widget_id("sets_root")?;
+                panel.layout.remove_children(sets_root);
+                panel.state.set_buttons.clear();
+
+                for i in 0..num_sets {
+                    let mut params = HashMap::new();
+                    params.insert("idx".into(), i.to_string().into());
+                    params.insert("display".into(), (i+1).to_string().into());
+                    panel.parser_state.instantiate_template(
+                        &doc_params,
+                        "Set",
+                        &mut panel.layout,
+                        sets_root,
+                        params,
+                    )?;
+                    let set_button = panel.parser_state.fetch_component_as::<ComponentButton>(&format!("set_{i}"))?;
+                    if panel.state.current_set == Some(i) {
+                        let mut com = CallbackDataCommon {
+                            alterables: &mut alterables,
+                            state: &panel.layout.state,
+                        };
+                        set_button.set_sticky_state(&mut com, true);
+                    } 
+                    panel.state.set_buttons.push(set_button);
+                }
+                panel.process_custom_elems(app);
+            }
+            OverlayEventData::OverlaysChanged(metas) => {
+                let panels_root = panel.parser_state.get_widget_id("panels_root")?;
+                let apps_root = panel.parser_state.get_widget_id("apps_root")?;
+                panel.layout.remove_children(panels_root);
+                panel.layout.remove_children(apps_root);
+                panel.state.overlay_buttons.clear();
+
+                for (i, meta) in metas.iter().enumerate() {
+                    let mut params = HashMap::new();
+
+                    let (template, root) = match meta.category {
+                        OverlayCategory::Screen => {
+                            params.insert("display".into(), format!("{}{}", (*meta.name).chars().next().unwrap_or_default(), (*meta.name).chars().last().unwrap_or_default()).into());
+                            ("Screen", panels_root)
+                        },
+                        OverlayCategory::Mirror => {
+                            params.insert("display".into(), meta.name.as_ref().into());
+                            ("Mirror", panels_root)
+                        },
+                        OverlayCategory::Panel => {
+                            ("Panel", panels_root)
+                        },
+                        OverlayCategory::WayVR => {
+                            ("App", apps_root)
+                        },
+                        _ => continue
+                    };
+
+                    params.insert("idx".into(), i.to_string().into());
+                    params.insert("name".into(), meta.name.as_ref().into());
+                    panel.parser_state.instantiate_template(
+                        &doc_params,
+                        template,
+                        &mut panel.layout,
+                        root,
+                        params,
+                    )?;
+                    let overlay_buttons = panel.parser_state.fetch_component_as::<ComponentButton>(&format!("overlay_{i}"))?;
+                    if meta.visible {
+                        let mut com = CallbackDataCommon {
+                            alterables: &mut alterables,
+                            state: &panel.layout.state,
+                        };
+                        overlay_buttons.set_sticky_state(&mut com, true);
+                    } 
+                    panel.state.overlay_buttons.insert(meta.id, overlay_buttons);
+                }
+                panel.process_custom_elems(app);
+            }
+            OverlayEventData::VisibleOverlaysChanged(overlays) => {
+                let mut com = CallbackDataCommon {
+                    alterables: &mut alterables,
+                    state: &panel.layout.state,
+                };
+                let mut overlay_buttons = panel.state.overlay_buttons.clone();
+
+                for visible in &*overlays {
+                    if let Some(btn) = overlay_buttons.remove(*visible)
+                    {
+                        btn.set_sticky_state(&mut com, true);
+                    }
+                }
+
+                for btn in overlay_buttons.values() {
+                    btn.set_sticky_state(&mut com, false);
+                }
+            }
+            _ => {}
+        }
+
+        panel.layout.process_alterables(alterables)?;
+        Ok(())
+    }));
+
+    panel
+        .timers
+        .push(GuiTimer::new(Duration::from_millis(100), 0));
 
     app_misc::process_layout_result(
         app,

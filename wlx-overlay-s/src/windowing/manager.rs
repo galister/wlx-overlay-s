@@ -1,14 +1,12 @@
 use std::{
-    collections::{HashMap, VecDeque},
-    sync::atomic::Ordering,
+    collections::{HashMap, VecDeque}, rc::Rc, sync::atomic::Ordering
 };
 
+use anyhow::Context;
 use glam::{Affine3A, Vec3, Vec3A};
 use slotmap::{HopSlotMap, Key, SecondaryMap};
 use wlx_common::{
-    astr_containers::{AStrMap, AStrMapExt},
-    config::SerializedWindowSet,
-    overlays::{BackendAttrib, ToastTopic},
+    astr_containers::{AStrMap, AStrMapExt}, common::LogErr, config::SerializedWindowSet, overlays::{BackendAttrib, ToastTopic}
 };
 
 use crate::{
@@ -48,6 +46,7 @@ pub struct OverlayWindowManager<T> {
     restore_set: usize,
     anchor_local: Affine3A,
     watch_id: OverlayID,
+    keyboard_id: OverlayID,
     edit_mode: bool,
     dropped_overlays: VecDeque<OverlayWindowData<T>>,
     initialized: bool,
@@ -66,6 +65,7 @@ where
             sets: vec![OverlayWindowSet::default()],
             anchor_local: Affine3A::from_translation(Vec3::NEG_Z),
             watch_id: OverlayID::null(), // set down below
+            keyboard_id: OverlayID::null(), // set down below
             edit_mode: false,
             dropped_overlays: VecDeque::with_capacity(8),
             initialized: false,
@@ -101,7 +101,7 @@ where
 
         let mut keyboard = OverlayWindowData::from_config(create_keyboard(app, wayland)?);
         keyboard.config.show_on_spawn = true;
-        let keyboard_id = me.add(keyboard, app);
+        me.keyboard_id = me.add(keyboard, app);
 
         // is this needed?
         me.switch_to_set(app, None, false);
@@ -110,11 +110,11 @@ where
         let kbd_state = me
             .sets
             .last()
-            .and_then(|s| s.overlays.get(keyboard_id))
+            .and_then(|s| s.overlays.get(me.keyboard_id))
             .unwrap()
             .clone();
         for set in &mut me.sets {
-            set.overlays.insert(keyboard_id, kbd_state.clone());
+            set.overlays.insert(me.keyboard_id, kbd_state.clone());
         }
 
         let anchor = OverlayWindowData::from_config(create_anchor(app)?);
@@ -142,16 +142,18 @@ where
         me.restore_layout(app);
         me.overlays_changed(app)?;
 
-        for ev in [
-            OverlayEventData::NumSetsChanged(me.sets.len()),
-            OverlayEventData::EditModeChanged(false),
-            OverlayEventData::DevicesChanged,
-        ] {
-            me.mut_by_id(me.watch_id)
-                .unwrap()
-                .config
-                .backend
-                .notify(app, ev)?;
+        for id in [me.watch_id, me.keyboard_id] {
+            for ev in [
+                OverlayEventData::NumSetsChanged(me.sets.len()),
+                OverlayEventData::EditModeChanged(false),
+                OverlayEventData::DevicesChanged,
+            ] {
+                me.mut_by_id(id)
+                    .unwrap()
+                    .config
+                    .backend
+                    .notify(app, ev)?;
+            }
         }
 
         me.initialized = true;
@@ -191,6 +193,7 @@ where
                     // no saved state
                     o.config.activate(app);
                 }
+                self.visible_overlays_changed(app)?;
 
                 return Ok(());
             }
@@ -200,11 +203,12 @@ where
             OverlayTask::AddSet => {
                 self.sets.push(OverlayWindowSet::default());
                 let len = self.sets.len();
-                if let Some(watch) = self.mut_by_id(self.watch_id) {
-                    watch
+                for id in [self.watch_id, self.keyboard_id] {
+                    self.mut_by_id(id).and_then(|o| o
                         .config
                         .backend
-                        .notify(app, OverlayEventData::NumSetsChanged(len))?;
+                        .notify(app, OverlayEventData::NumSetsChanged(len)).log_err().ok())
+                        .context("Could not notify NumSetsChanged")?;
                 }
             }
             OverlayTask::DeleteActiveSet => {
@@ -235,11 +239,12 @@ where
                 self.switch_to_set(app, None, false);
                 self.sets.remove(set);
                 let len = self.sets.len();
-                if let Some(watch) = self.mut_by_id(self.watch_id) {
-                    watch
+                for id in [self.watch_id, self.keyboard_id] {
+                    self.mut_by_id(id).and_then(|o| o
                         .config
                         .backend
-                        .notify(app, OverlayEventData::NumSetsChanged(len))?;
+                        .notify(app, OverlayEventData::NumSetsChanged(len)).log_err().ok())
+                        .context("Could not notify NumSetsChanged")?;
                 }
             }
             OverlayTask::CleanupMirrors => {
@@ -733,12 +738,13 @@ impl<T> OverlayWindowManager<T> {
         }
         self.current_set = new_set;
 
-        if let Some(watch) = self.mut_by_id(self.watch_id) {
-            watch
-                .config
+        for id in [self.watch_id, self.keyboard_id] {
+            let _ = self.mut_by_id(id)
+                .context("Missing overlay")
+                .and_then(|o|
+                o.config
                 .backend
-                .notify(app, OverlayEventData::ActiveSetChanged(new_set))
-                .unwrap(); // TODO: handle this
+                .notify(app, OverlayEventData::ActiveSetChanged(new_set)));
 
             let _ = self
                 .visible_overlays_changed(app)
@@ -775,11 +781,14 @@ impl<T> OverlayWindowManager<T> {
             });
         }
 
-        if let Some(watch) = self.mut_by_id(self.watch_id) {
-            watch
+        let meta: Rc<[OverlayMeta]> = meta.into();
+        for id in [self.watch_id, self.keyboard_id] {
+            let _ = self.mut_by_id(id)
+                .context("Missing overlay")
+                .and_then(|o| o
                 .config
                 .backend
-                .notify(app, OverlayEventData::OverlaysChanged(meta))?;
+                .notify(app, OverlayEventData::OverlaysChanged(meta.clone())));
         }
 
         Ok(())
@@ -797,11 +806,14 @@ impl<T> OverlayWindowManager<T> {
             vis.push(id);
         }
 
-        if let Some(watch) = self.mut_by_id(self.watch_id) {
-            watch
+        let vis: Rc<[OverlayID]> = vis.into();
+        for id in [self.watch_id, self.keyboard_id] {
+            let _ = self.mut_by_id(id)
+                .context("Missing overlay")
+                .and_then(|o| o
                 .config
                 .backend
-                .notify(app, OverlayEventData::VisibleOverlaysChanged(vis))?;
+                .notify(app, OverlayEventData::VisibleOverlaysChanged(vis.clone())));
         }
 
         Ok(())
@@ -809,10 +821,10 @@ impl<T> OverlayWindowManager<T> {
 
     pub fn devices_changed(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         if let Some(watch) = self.mut_by_id(self.watch_id) {
-            watch
+            let _ = watch
                 .config
                 .backend
-                .notify(app, OverlayEventData::DevicesChanged)?;
+                .notify(app, OverlayEventData::DevicesChanged);
         }
 
         Ok(())

@@ -14,7 +14,7 @@ use wgui::{
     },
     gfx::cmd::WGfxClearMode,
     layout::{Layout, LayoutParams, LayoutUpdateParams, WidgetID},
-    parser::{CustomAttribsInfoOwned, Fetchable, ParserState},
+    parser::{CustomAttribsInfoOwned, Fetchable, ParseDocumentExtra, ParserState},
     renderer_vk::context::Context as WguiContext,
     widget::{EventResult, label::WidgetLabel},
 };
@@ -52,11 +52,14 @@ pub struct GuiPanel<S> {
     pub gui_scale: f32,
     pub on_notify: Option<OnNotifyFunc<S>>,
     pub initialized: bool,
+    pub doc_extra: Option<ParseDocumentExtra>,
     interaction_transform: Option<Affine2>,
     context: WguiContext,
     timestep: Timestep,
     has_focus: [bool; 2],
     last_content_size: Vec2,
+    custom_elems: Rc<RefCell<Vec<CustomAttribsInfoOwned>>>,
+    on_custom_attrib: Option<OnCustomAttribFunc>,
 }
 
 pub type OnCustomIdFunc<S> = Box<
@@ -142,29 +145,10 @@ impl<S: 'static> GuiPanel<S> {
             }
         }
 
-        for elem in custom_elems.borrow().iter() {
-            if layout
-                .state
-                .widgets
-                .get_as::<WidgetLabel>(elem.widget_id)
-                .is_some()
-            {
-                setup_custom_label::<S>(&mut layout, elem, app);
-            } else if let Ok(button) =
-                parser_state.fetch_component_from_widget_id_as::<ComponentButton>(elem.widget_id)
-            {
-                setup_custom_button::<S>(&mut layout, elem, app, button);
-            }
-
-            if let Some(on_custom_attrib) = &params.on_custom_attrib {
-                on_custom_attrib(&mut layout, &parser_state, elem, app);
-            }
-        }
-
         let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
         let timestep = Timestep::new(60.0);
 
-        Ok(Self {
+        let mut me = Self {
             layout,
             context,
             timestep,
@@ -178,38 +162,38 @@ impl<S: 'static> GuiPanel<S> {
             initialized: false,
             has_focus: [false, false],
             last_content_size: Vec2::ZERO,
-        })
+            doc_extra: Some(doc_params.extra),
+            custom_elems,
+            on_custom_attrib: params.on_custom_attrib,
+        };
+        me.process_custom_elems(app);
+
+        Ok(me)
     }
 
-    pub fn new_blank(
-        app: &mut AppState,
-        state: S,
-        params: NewGuiPanelParams<S>,
-    ) -> anyhow::Result<Self> {
-        let layout = Layout::new(
-            app.wgui_globals.clone(),
-            &LayoutParams {
-                resize_to_parent: params.resize_to_parent,
-            },
-        )?;
-        let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
-        let timestep = Timestep::new(60.0);
+    pub fn process_custom_elems(&mut self, app: &mut AppState) {
+        let mut elems = self.custom_elems.borrow_mut();
+        for elem in elems.iter() {
+            if self
+                .layout
+                .state
+                .widgets
+                .get_as::<WidgetLabel>(elem.widget_id)
+                .is_some()
+            {
+                setup_custom_label::<S>(&mut self.layout, elem, app);
+            } else if let Ok(button) = self
+                .parser_state
+                .fetch_component_from_widget_id_as::<ComponentButton>(elem.widget_id)
+            {
+                setup_custom_button::<S>(&mut self.layout, elem, app, button);
+            }
 
-        Ok(Self {
-            layout,
-            context,
-            timestep,
-            state,
-            parser_state: ParserState::default(),
-            max_size: vec2(DEFAULT_MAX_SIZE as _, DEFAULT_MAX_SIZE as _),
-            timers: vec![],
-            on_notify: None,
-            interaction_transform: None,
-            gui_scale: params.gui_scale,
-            initialized: false,
-            has_focus: [false, false],
-            last_content_size: Vec2::ZERO,
-        })
+            if let Some(on_custom_attrib) = &self.on_custom_attrib {
+                on_custom_attrib(&mut self.layout, &self.parser_state, elem, app);
+            }
+        }
+        elems.clear();
     }
 
     pub fn update_layout(&mut self, app: &mut AppState) -> anyhow::Result<()> {
