@@ -4,12 +4,20 @@
     border_color="~color_accent_translucent" border="2" round="8" color="~color_accent_40" color2="~color_accent_10" gradient="vertical"
     align_items="center" justify_content="center" />
 
+  <macro name="tray_rect"
+    margin="2" width="100%" overflow="hidden" box_sizing="border_box"
+    border_color="~color_accent_translucent" border="2" round="8" color="~color_bg" color2="~color_accent_10" gradient="vertical"
+    align_items="center" justify_content="center" />
+
   <macro name="keycap_div"
     width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}"
   />
 
+  <macro name="button_style" border="2" border_color="~color_accent_translucent" color="~color_bg" round="8"
+    align_items="center" justify_content="center" padding="8" width="80" height="80"/>
+
   <macro name="bg_rect" width="100%" color="~color_bg" round="16" border="2" border_color="~color_accent"/>
-  
+
   <!-- The keyboard is build from the xkb keymap. This file is for customizing the keycaps. -->
 
   <!-- Key cap with a single label. -->
@@ -75,24 +83,64 @@
 
   
   <!-- An app with a single icon. -->
-  <template name="AppIcon">
-    <div macro="keycap_div" width="80" height="80">
-      <rectangle id="${id}" macro="keycap_rect">
-        <sprite color="~color_text" width="32" height="32" src="${src}" />
-      </rectangle>
-    </div>
+  <template name="App">
+    <Button macro="button_style" _press="" tooltip="${tooltip}" tooltip_side="bottom">
+      <sprite width="56" height="56" color="~text_color" src_ext="${src}" />
+    </Button>
+  </template>
+
+  <!-- A screen with a shortened connector name, e.g. "H1" for HDMI-A-1 or "D2" for DP-2 -->
+  <template name="Screen">
+    <Button macro="button_style" tooltip="${tooltip}" tooltip_side="bottom">
+      <sprite width="56" height="56" color="~text_color" src_builtin="edit/screen.svg" />
+      <div position="absolute" margin_top="-10">
+        <label text="${display}" size="26" color="~color_faded_20" weight="bold" />
+      </div>
+    </Button>
+  </template>
+
+  <template name="Panel">
+    <Button macro="button_style" tooltip="${tooltip}" tooltip_side="bottom">
+      <sprite width="56" height="56" color="~text_color" src_builtin="edit/panel.svg" />
+    </Button>
+  </template>
+
+  <template name="Mirror">
+    <Button macro="button_style" _press="" tooltip="${tooltip}" tooltip_side="bottom">
+      <sprite width="56" height="56" color="~text_color" src_builtin="edit/mirror.svg" />
+      <div position="absolute" margin_top="7" margin_left="20">
+        <label text="${display}" size="26" color="~color_faded_20" weight="bold" />
+      </div>
+    </Button>
+  </template>
+
+  <template name="Set">
+    <Button macro="button_style" id="set_${idx}" _press="::SetSwitch ${idx}" tooltip="WATCH.SWITCH_TO_SET" tooltip_side="bottom">
+      <sprite width="56" height="56" color="~text_color" src_builtin="watch/set2.svg" />
+      <div position="absolute" margin_top="16" margin_left="-8">
+        <label text="${display}" size="26" color="~color_faded_20" weight="bold" />
+      </div>
+    </Button>
   </template>
 
   <elements>
     <div flex_direction="column" interactable="0">
       <rectangle macro="bg_rect" padding="16" align_items="center" justify_content="space_between">
-        <div id="bar_root">
-          <AppIcon id="test1" />
-          <AppIcon id="test2" />
-          <AppIcon id="test3" />
+        <div id="bar_root" gap="4">
+          <Screen idx="0" display="H1" tooltip="Screen: HDMI-A-1"/>
+          <Screen idx="1" display="D2" tooltip="Screen: DP-2"/>
+          <Mirror idx="1" display="1" tooltip="Mirror: M-1"/>
+          <Panel idx="1" display="Test" tooltip="Panel: Test"/>
+          <App id="test1" src="/usr/share/icons/hicolor/scalable/apps/blender-5.0.svg" tooltip="App: Blender" />
+          <App id="test2" src="/usr/share/icons/hicolor/scalable/apps/org.inkscape.Inkscape.svg" tooltip="App: Inkscape" />
+          <App id="test3" src="/usr/share/icons/hicolor/scalable/apps/gimp.svg" tooltip="App: GIMP" />
         </div>
-        <div id="tray_root">
-          <div align_items="center" flex_direction="column" gap="4">
+        <div id="tray_root" flex_direction="row" gap="8" padding_left="8" padding_right="8">
+          <div id="sets_root" flex_direction="row" gap="8">
+            <Set idx="0" display="1" />
+            <Set idx="1" display="2" />
+          </div>
+          <div align_items="center" flex_direction="column" gap="4" padding_left="8" padding_right="8">
             <label text="23:59" _source="clock" _display="time" size="28" />
             <label text="Tuesday" _source="clock" _display="dow" size="22" />
             <label text="22/2/2022" _source="clock" _display="date" size="22" />

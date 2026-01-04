@@ -81,6 +81,7 @@ pub type CreateOverlayTask = dyn FnOnce(&mut AppState) -> Option<OverlayWindowCo
 pub enum OverlayTask {
     AddSet,
     ToggleSet(usize),
+    SwitchSet(Option<usize>),
     SoftToggleOverlay(OverlaySelector),
     DeleteActiveSet,
     ToggleEditMode,

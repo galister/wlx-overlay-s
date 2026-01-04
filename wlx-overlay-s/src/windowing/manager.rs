@@ -166,6 +166,9 @@ where
             OverlayTask::ToggleSet(set) => {
                 self.switch_or_toggle_set(app, set);
             }
+            OverlayTask::SwitchSet(maybe_set) => {
+                self.switch_to_set(app, maybe_set, false);
+            }
             OverlayTask::SoftToggleOverlay(sel) => {
                 let Some(id) = self.id_by_selector(&sel) else {
                     log::warn!("Overlay not found for task: {sel:?}");

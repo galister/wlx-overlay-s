@@ -226,6 +226,27 @@ pub(super) fn setup_custom_button<S: 'static>(
                     Ok(EventResult::Consumed)
                 })
             }
+            "::SetSwitch" => {
+                let arg = args.next().unwrap_or_default();
+                let Ok(set_idx) = arg.parse::<i32>() else {
+                    log::error!("{command} has invalid argument: \"{arg}\"");
+                    return;
+                };
+                let maybe_set = if set_idx < 0 {
+                    None
+                } else {
+                    Some(set_idx as usize)
+                };
+                Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    app.tasks
+                        .enqueue(TaskType::Overlay(OverlayTask::SwitchSet(maybe_set)));
+                    Ok(EventResult::Consumed)
+                })
+            }
             "::OverlayToggle" => {
                 let Some(arg): Option<Arc<str>> = args.next().map(Into::into) else {
                     log::error!("{command} has missing arguments");
