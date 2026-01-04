@@ -10,7 +10,6 @@ use wgui::{
 	i18n::Translation,
 	layout::{Layout, LayoutParams, LayoutUpdateParams, LayoutUpdateResult, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
-	sound::WguiSoundType,
 	task::Tasks,
 	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
 	windowing::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra, WguiWindowPlacement},
@@ -172,15 +171,12 @@ impl<T: 'static> Frontend<T> {
 		Ok(frontend)
 	}
 
-	pub fn play_startup_sound(
-		&mut self,
-		audio_system: &mut audio::AudioSystem,
-		audio_sample_player: &mut audio::SamplePlayer,
-	) -> anyhow::Result<()> {
+	pub fn play_startup_sound(&mut self, audio_system: &mut audio::AudioSystem) -> anyhow::Result<()> {
 		// play startup sound
 		let mut assets = self.globals.assets_builtin();
-		audio_sample_player.register_mp3_sample_from_assets("dash_startup", assets.as_mut(), "sound/startup.mp3")?;
-		audio_sample_player.play_sample(audio_system, "dash_startup");
+
+		let sample_startup = audio::AudioSample::from_mp3(&assets.load_from_path("sound/startup.mp3")?)?;
+		audio_system.play_sample(&sample_startup);
 		Ok(())
 	}
 

@@ -1,10 +1,7 @@
 use std::{collections::HashMap, io::Cursor};
 
 use rodio::Source;
-use wgui::{
-	assets::{self, AssetProvider},
-	sound::WguiSoundType,
-};
+use wgui::{assets::AssetProvider, sound::WguiSoundType};
 
 pub struct AudioSystem {
 	audio_stream: Option<rodio::OutputStream>,

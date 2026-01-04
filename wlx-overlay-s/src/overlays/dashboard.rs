@@ -109,7 +109,7 @@ impl DashFrontend {
             interface: Box::new(interface),
         })?;
 
-        frontend.play_startup_sound(&mut app.audio_system, &mut app.audio_sample_player)?;
+        frontend.play_startup_sound(&mut app.audio_system)?;
 
         let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
         Ok(Self {
