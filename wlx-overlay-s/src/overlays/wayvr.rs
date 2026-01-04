@@ -148,7 +148,7 @@ impl WvrWindowBackend {
         let mut panel = GuiPanel::new_from_template(
             app,
             "gui/decor.xml",
-            window.clone(),
+            window,
             NewGuiPanelParams {
                 resize_to_parent: true,
                 on_custom_attrib: Some(on_custom_attrib),
@@ -429,7 +429,7 @@ impl OverlayBackend for WvrWindowBackend {
                 return HoverResult::default();
             };
 
-            let mut hit2 = hit.clone();
+            let mut hit2 = *hit;
             hit2.uv.y *= meta.extent[1] as f32 / (meta.extent[1] - self.inner_extent[1]) as f32;
             self.panel_hovered = true;
             return self.panel.on_hover(app, &hit2);

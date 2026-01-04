@@ -1,5 +1,6 @@
 use std::{
-	collections::HashSet, ffi::OsStr, fmt::Debug, fs::exists, io::Write, path::Path, rc::Rc, sync::Arc, thread::JoinHandle, time::Instant
+	collections::HashSet, ffi::OsStr, fmt::Debug, fs::exists, path::Path, rc::Rc, sync::Arc, thread::JoinHandle,
+	time::Instant,
 };
 
 use ini::Ini;
@@ -39,7 +40,7 @@ const CMD_BLOCKLIST: [&str; 3] = [
 	"vrurlhandler",
 ];
 
-const CATEGORY_TYPE_BLOCKLIST: [&str; 5] = ["GTK", "Qt", "X-XFCE", "X-Bluetooth", "ConsoleOnly"];
+const CATEGORY_TYPE_BLOCKLIST: [&str; 1] = ["ConsoleOnly"];
 
 struct DesktopFinderParams {
 	size_preferences: Vec<&'static OsStr>,
@@ -112,7 +113,7 @@ impl DesktopFinder {
 		if !std::fs::exists(&icons_folder).unwrap_or(false) {
 			let _ = std::fs::create_dir(&icons_folder);
 		}
-		
+
 		for path in &params.app_folders {
 			log::debug!("Searching desktop entries in path {}", path);
 
@@ -207,7 +208,7 @@ impl DesktopFinder {
 				let icon_path = section
 					.get("Icon")
 					.and_then(|icon_name| Self::find_icon(&params, &icon_name))
-				.or_else(|| Self::create_icon(&file_name).ok());
+					.or_else(|| Self::create_icon(&file_name).ok());
 
 				if let Some(categories) = section.get("Categories") {
 					for cat in categories.split(";") {
@@ -272,15 +273,13 @@ impl DesktopFinder {
 			return Ok(file_path);
 		}
 
-		let svg = identicons_svg::generate(
-			identicons_svg::IdenticonOptions {
-				background: identicons_svg::Background {
-					r: 64,
-					color: "rgba(0.9,0.9,0.9,0.5)".into()
-				},
-				..Default::default()
-			}
-		);
+		let svg = identicons_svg::generate(identicons_svg::IdenticonOptions {
+			background: identicons_svg::Background {
+				r: 64,
+				color: "rgba(0.9,0.9,0.9,0.5)".into(),
+			},
+			..Default::default()
+		});
 
 		std::fs::write(&file_path, svg)?;
 		Ok(file_path)

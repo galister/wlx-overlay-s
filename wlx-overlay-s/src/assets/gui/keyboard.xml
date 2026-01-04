@@ -14,9 +14,13 @@
   />
 
   <macro name="button_style" border="2" border_color="~color_accent_translucent" color="~color_bg" round="8"
-    align_items="center" justify_content="center" padding="8" width="80" height="80"/>
+    align_items="center" justify_content="center" padding="8" width="80" height="80" />
 
-  <macro name="bg_rect" width="100%" color="~color_bg" round="16" border="2" border_color="~color_accent"/>
+  <macro name="bg_rect" width="100%" color="~color_bg" round="16" border="2" border_color="~color_accent" />
+
+  <template name="VerticalSeparator">
+    <rectangle width="2" height="100%" color="~color_accent" />
+  </template>
 
   <!-- The keyboard is build from the xkb keymap. This file is for customizing the keycaps. -->
 
@@ -81,7 +85,7 @@
     </div>
   </template>
 
-  
+
   <!-- An app with a single icon. -->
   <template name="App">
     <Button macro="button_style" _press="" tooltip="${tooltip}" tooltip_side="bottom">
@@ -126,22 +130,30 @@
   <elements>
     <div flex_direction="column" interactable="0">
       <rectangle macro="bg_rect" padding="16" align_items="center" justify_content="space_between">
-        <div id="bar_root" gap="4">
-          <Screen idx="0" display="H1" tooltip="Screen: HDMI-A-1"/>
-          <Screen idx="1" display="D2" tooltip="Screen: DP-2"/>
-          <Mirror idx="1" display="1" tooltip="Mirror: M-1"/>
-          <Panel idx="1" display="Test" tooltip="Panel: Test"/>
-          <App id="test1" src="/usr/share/icons/hicolor/scalable/apps/blender-5.0.svg" tooltip="App: Blender" />
-          <App id="test2" src="/usr/share/icons/hicolor/scalable/apps/org.inkscape.Inkscape.svg" tooltip="App: Inkscape" />
-          <App id="test3" src="/usr/share/icons/hicolor/scalable/apps/gimp.svg" tooltip="App: GIMP" />
+        <div gap="16">
+          <div id="panels_root_TODO" gap="8">
+            <Screen idx="0" display="H1" tooltip="Screen: HDMI-A-1" />
+            <Screen idx="1" display="D2" tooltip="Screen: DP-2" />
+            <Mirror idx="1" display="1" tooltip="Mirror: M-1" />
+            <Panel idx="1" display="Test" tooltip="Panel: Test" />
+          </div>
+          <VerticalSeparator />
+          <div id="apps_root_TODO" gap="8">
+            <App id="test1" src="/usr/share/icons/hicolor/scalable/apps/blender-5.0.svg" tooltip="App: Blender" />
+            <App id="test2" src="/usr/share/icons/hicolor/scalable/apps/org.inkscape.Inkscape.svg" tooltip="App: Inkscape" />
+            <App id="test3" src="/usr/share/icons/hicolor/scalable/apps/gimp.svg" tooltip="App: GIMP" />
+          </div>
         </div>
-        <div id="tray_root" flex_direction="row" gap="8" padding_left="8" padding_right="8">
+        <div id="tray_root" flex_direction="row" gap="16">
           <div id="sets_root" flex_direction="row" gap="8">
             <Set idx="0" display="1" />
             <Set idx="1" display="2" />
           </div>
-          <div align_items="center" flex_direction="column" gap="4" padding_left="8" padding_right="8">
-            <label text="23:59" _source="clock" _display="time" size="28" />
+
+          <VerticalSeparator />
+
+          <div flex_direction="column" gap="4" align_items="center">
+            <label text="23:59" _source="clock" _display="time" size="32" weight="bold" />
             <label text="Tuesday" _source="clock" _display="dow" size="22" />
             <label text="22/2/2022" _source="clock" _display="date" size="22" />
           </div>
