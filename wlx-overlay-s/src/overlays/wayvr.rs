@@ -1,4 +1,3 @@
-use anyhow::Context;
 use glam::{Affine2, Affine3A, Quat, Vec2, Vec3, vec2, vec3};
 use smithay::{
     desktop::PopupManager,
@@ -9,13 +8,15 @@ use vulkano::{
     buffer::BufferUsage, image::view::ImageView, pipeline::graphics::color_blend::AttachmentBlend,
 };
 use wgui::{
+    components::button::ComponentButton,
+    event::EventCallback,
     gfx::{
         cmd::WGfxClearMode,
         pipeline::{WGfxPipeline, WPipelineCreateInfo},
     },
     i18n::Translation,
     parser::Fetchable,
-    widget::label::WidgetLabel,
+    widget::{EventResult, label::WidgetLabel},
 };
 use wlx_capture::frame::MouseMeta;
 use wlx_common::{
@@ -27,10 +28,10 @@ use crate::{
     backend::{
         XrBackend,
         input::{self, HoverResult},
-        wayvr::{self, SurfaceBufWithImage},
+        wayvr::{self, SurfaceBufWithImage, window::WindowHandle},
     },
     graphics::{ExtentExt, Vert2Uv, upload_quad_vertices},
-    gui::panel::{GuiPanel, NewGuiPanelParams},
+    gui::panel::{GuiPanel, NewGuiPanelParams, OnCustomAttribFunc, button::BUTTON_EVENTS},
     overlays::screen::capture::ScreenPipeline,
     state::{self, AppState},
     subsystem::{hid::WheelDelta, input::KeyboardFocus},
@@ -77,14 +78,14 @@ pub struct WvrWindowBackend {
     pipeline: Option<ScreenPipeline>,
     popups_pipeline: Arc<WGfxPipeline<Vert2Uv>>,
     interaction_transform: Option<Affine2>,
-    window: wayvr::window::WindowHandle,
+    window: WindowHandle,
     popups: Vec<(Arc<ImageView>, Vec2)>,
     just_resumed: bool,
     meta: Option<FrameMeta>,
     mouse: Option<MouseMeta>,
     stereo: Option<StereoMode>,
     cur_image: Option<Arc<ImageView>>,
-    panel: GuiPanel<()>,
+    panel: GuiPanel<WindowHandle>,
     inner_extent: [u32; 3],
     mouse_transform: Affine2,
     uv_range: RangeInclusive<f32>,
@@ -103,12 +104,51 @@ impl WvrWindowBackend {
             WPipelineCreateInfo::new(app.gfx.surface_format).use_blend(AttachmentBlend::default()),
         )?;
 
+        let on_custom_attrib: OnCustomAttribFunc =
+            Box::new(move |layout, parser, attribs, _app| {
+                let Ok(button) =
+                    parser.fetch_component_from_widget_id_as::<ComponentButton>(attribs.widget_id)
+                else {
+                    return;
+                };
+
+                for (name, kind, test_button, test_duration) in &BUTTON_EVENTS {
+                    let Some(action) = attribs.get_value(name) else {
+                        continue;
+                    };
+
+                    let mut args = action.split_whitespace();
+                    let Some(command) = args.next() else {
+                        continue;
+                    };
+
+                    let button = button.clone();
+
+                    let callback: EventCallback<AppState, WindowHandle> = match command {
+                        "::DecorCloseWindow" => Box::new(move |_common, data, app, state| {
+                            if !test_button(data) || !test_duration(&button, app) {
+                                return Ok(EventResult::Pass);
+                            }
+
+                            app.wvr_server.as_mut().unwrap().close_window(*state);
+
+                            Ok(EventResult::Consumed)
+                        }),
+                        _ => return,
+                    };
+
+                    let id = layout.add_event_listener(attribs.widget_id, *kind, callback);
+                    log::debug!("Registered {action} on {:?} as {id:?}", attribs.widget_id);
+                }
+            });
+
         let mut panel = GuiPanel::new_from_template(
             app,
             "gui/decor.xml",
-            (),
+            window.clone(),
             NewGuiPanelParams {
                 resize_to_parent: true,
+                on_custom_attrib: Some(on_custom_attrib),
                 ..Default::default()
             },
         )?;

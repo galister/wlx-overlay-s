@@ -79,6 +79,7 @@ pub enum WayVRTask {
     DropToplevel(ClientId, ToplevelSurface),
     NewExternalProcess(ExternalProcessRequest),
     ProcessTerminationRequest(process::ProcessHandle),
+    CloseWindowRequest(window::WindowHandle),
 }
 
 pub enum BlitMethod {
@@ -357,10 +358,29 @@ impl WvrServerState {
                 }
                 WayVRTask::ProcessTerminationRequest(process_handle) => {
                     if let Some(process) = wvr_server.processes.get_mut(&process_handle) {
-                        process.terminate();
+                                process.terminate();
                     }
 
-                    //TODO: force drop related overlays
+                    for (h,w) in wvr_server.wm.windows.iter() {
+                        if w.process != process_handle {
+                            continue;
+                        }
+                        
+                        let Some(oid) = wvr_server.window_to_overlay.get(&h) else {
+                            continue;
+                        };
+                            app.tasks.enqueue(TaskType::Overlay(OverlayTask::Drop(
+                                OverlaySelector::Id(*oid),
+                            )));
+                        }
+                }
+                WayVRTask::CloseWindowRequest(window_handle) => {
+                    if let Some(w) = wvr_server.wm.windows.get(&window_handle) {
+                        log::info!("Sending window close to {window_handle:?}");
+                        w.toplevel.send_close();
+                    } else {
+                        log::warn!("Could not close window - no such handle found: {window_handle:?}");
+                    }
                 }
             }
         }
@@ -380,6 +400,11 @@ impl WvrServerState {
     pub fn terminate_process(&mut self, process_handle: process::ProcessHandle) {
         self.tasks
             .send(WayVRTask::ProcessTerminationRequest(process_handle));
+    }
+    
+    pub fn close_window(&mut self, window_handle: window::WindowHandle) {
+        self.tasks
+            .send(WayVRTask::CloseWindowRequest(window_handle));
     }
 
     pub fn overlay_added(&mut self, oid: OverlayID, window: window::WindowHandle) {
