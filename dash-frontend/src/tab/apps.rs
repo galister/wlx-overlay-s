@@ -1,4 +1,9 @@
-use std::{cell::RefCell, collections::HashMap, marker::PhantomData, rc::Rc};
+use std::{
+	cell::RefCell,
+	collections::{HashMap, VecDeque},
+	marker::PhantomData,
+	rc::Rc,
+};
 
 use wgui::{
 	assets::AssetPath,
@@ -33,7 +38,6 @@ pub struct TabApps<T> {
 	parser_state: ParserState,
 
 	state: Rc<RefCell<State>>,
-	entries: Vec<DesktopEntry>,
 	app_list: AppList,
 	tasks: Tasks<Task>,
 	marker: PhantomData<T>,
@@ -53,6 +57,10 @@ impl<T> Tab<T> for TabApps<T> {
 			}
 		}
 
+		self
+			.app_list
+			.tick(frontend, &self.state, &self.tasks, &mut self.parser_state)?;
+
 		if let Some((_, launcher)) = &mut state.view_launcher {
 			launcher.update(&mut frontend.interface, data)?;
 		}
@@ -60,9 +68,10 @@ impl<T> Tab<T> for TabApps<T> {
 	}
 }
 
-#[derive(Default)]
 struct AppList {
 	//data: Vec<ParserData>,
+	entries_to_mount: VecDeque<DesktopEntry>,
+	list_parent: WidgetPair,
 }
 
 // called after the user clicks any desktop entry
@@ -109,47 +118,31 @@ fn on_app_click(
 	})
 }
 
+fn doc_params(globals: WguiGlobals) -> ParseDocumentParams<'static> {
+	ParseDocumentParams {
+		globals,
+		path: AssetPath::BuiltIn("gui/tab/apps.xml"),
+		extra: Default::default(),
+	}
+}
+
 impl<T> TabApps<T> {
 	pub fn new(frontend: &mut Frontend<T>, parent_id: WidgetID) -> anyhow::Result<Self> {
-		let doc_params = &ParseDocumentParams {
-			globals: frontend.layout.state.globals.clone(),
-			path: AssetPath::BuiltIn("gui/tab/apps.xml"),
-			extra: Default::default(),
-		};
-
-		let entries = frontend.desktop_finder.find_entries();
-
-		let frontend_tasks = frontend.tasks.clone();
 		let globals = frontend.layout.state.globals.clone();
-
 		let tasks = Tasks::new();
 		let state = Rc::new(RefCell::new(State { view_launcher: None }));
 
-		let mut parser_state = wgui::parser::parse_from_assets(doc_params, &mut frontend.layout, parent_id)?;
+		let mut entries = frontend.desktop_finder.find_entries();
+		let parser_state = wgui::parser::parse_from_assets(&doc_params(globals.clone()), &mut frontend.layout, parent_id)?;
 		let app_list_parent = parser_state.fetch_widget(&frontend.layout.state, "app_list_parent")?;
-		let mut app_list = AppList::default();
-		app_list.mount_entries(
-			frontend,
-			&entries,
-			&mut parser_state,
-			doc_params,
-			&app_list_parent,
-			|button, entry| {
-				// Set up the click handler for the app button
-				button.on_click(on_app_click(
-					frontend_tasks.clone(),
-					globals.clone(),
-					entry.clone(),
-					state.clone(),
-					tasks.clone(),
-				));
-			},
-		)?;
+		let app_list = AppList {
+			entries_to_mount: entries.drain(..).collect(),
+			list_parent: app_list_parent,
+		};
 
 		Ok(Self {
 			app_list,
 			parser_state,
-			entries,
 			state,
 			tasks,
 			marker: PhantomData,
@@ -163,7 +156,6 @@ impl AppList {
 		frontend: &mut Frontend<T>,
 		parser_state: &mut ParserState,
 		doc_params: &ParseDocumentParams,
-		list_parent: &WidgetPair,
 		entry: &DesktopEntry,
 	) -> anyhow::Result<Rc<ComponentButton>> {
 		let mut template_params = HashMap::new();
@@ -193,25 +185,32 @@ impl AppList {
 			doc_params,
 			"AppEntry",
 			&mut frontend.layout,
-			list_parent.id,
+			self.list_parent.id,
 			template_params,
 		)?;
 		data.fetch_component_as::<ComponentButton>("button")
 	}
 
-	fn mount_entries<T>(
+	fn tick<T>(
 		&mut self,
 		frontend: &mut Frontend<T>,
-		entries: &[DesktopEntry],
+		state: &Rc<RefCell<State>>,
+		tasks: &Tasks<Task>,
 		parser_state: &mut ParserState,
-		doc_params: &ParseDocumentParams,
-		list_parent: &WidgetPair,
-		on_button: impl Fn(Rc<ComponentButton>, &DesktopEntry),
 	) -> anyhow::Result<()> {
-		for entry in entries {
-			let button = self.mount_entry(frontend, parser_state, doc_params, list_parent, entry)?;
-			on_button(button, entry);
+		if let Some(entry) = self.entries_to_mount.pop_front() {
+			let globals = frontend.layout.state.globals.clone();
+			let button = self.mount_entry(frontend, parser_state, &doc_params(globals.clone()), &entry)?;
+
+			button.on_click(on_app_click(
+				frontend.tasks.clone(),
+				globals.clone(),
+				entry.clone(),
+				state.clone(),
+				tasks.clone(),
+			));
 		}
+
 		Ok(())
 	}
 }

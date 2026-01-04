@@ -26,7 +26,7 @@
   </template>
 
   <template name="Overlay">
-    <Button macro="button_style" id="overlay_${idx}" 
+    <Button macro="button_style" id="overlay_${idx}"
       tooltip="WATCH.TOGGLE_FOR_CURRENT_SET" _press="::EditModeOverlayToggle ${idx}"
       align_items="center"
       height="40">
@@ -42,6 +42,10 @@
         <label text="${display}" size="24" color="#00050F" weight="bold" />
       </div>
     </Button>
+  </template>
+
+  <template name="VerticalSeparator">
+    <rectangle width="2" height="100%" color="~color_accent" />
   </template>
 
   <!-- 
@@ -116,11 +120,11 @@
           </div>
           <div flex_direction="column" align_items="center" justify_content="center">
             <div id="toolbox" gap="8" width="100%" max_width="400" flex_direction="row" flex_wrap="wrap">
-              <Button id="btn_keyboard" height="40" macro="button_style" tooltip="WATCH.TOGGLE_FOR_CURRENT_SET" _press="::OverlayToggle kbd" >
+              <Button id="btn_keyboard" height="40" macro="button_style" tooltip="WATCH.TOGGLE_FOR_CURRENT_SET" _press="::OverlayToggle kbd">
                 <sprite src_builtin="watch/keyboard.svg" width="32" height="32" />
                 <label translation="EDIT_MODE.KEYBOARD" size="18" />
               </Button>
-              <!-- Src here may be changed, but maintain `OverlayCategor` order: Panel, Screen, Mirror, WayVR -->
+              <!-- Src here may be changed, but maintain `OverlayCategory` order: Panel, Screen, Mirror, WayVR -->
               <Overlay src="edit/panel.svg" idx="0" />
               <Overlay src="edit/screen.svg" idx="1" />
               <Overlay src="edit/mirror.svg" idx="2" />
@@ -131,27 +135,30 @@
         </rectangle>
 
         <!-- Bottom buttons -->
-        <div flex_direction="row" gap="4">
-          <Button id="btn_dashboard" macro="button_style" _press="::DashToggle" tooltip="WATCH.DASHBOARD" tooltip_side="top" >
-            <sprite color="~text_color" width="40" height="40" src="watch/wayvr_dashboard_mono.svg" />
-          </Button>
-          <div id="edit_delete" display="none">
-            <Button macro="button_style" _long_release="::EditModeDeleteSet" tooltip="WATCH.LONG_PRESS_TO_DELETE_SET" tooltip_side="top" border_color="~color_danger_translucent" color="~color_danger_40" color2="~color_danger_10">
-              <sprite color="~text_color" width="40" height="40" src="edit/delete.svg" />
+        <div flex_direction="row" gap="8">
+          <div gap="4">
+            <Button id="btn_dashboard" macro="button_style" _press="::DashToggle" tooltip="WATCH.DASHBOARD" tooltip_side="top">
+              <sprite color="~text_color" width="40" height="40" src="watch/wayvr_dashboard_mono.svg" />
             </Button>
+            <Button id="btn_edit_mode" macro="button_style" _press="::EditToggle" tooltip="WATCH.EDIT_MODE" tooltip_side="top">
+              <sprite color="~text_color" width="40" height="40" src="watch/edit.svg" />
+            </Button>
+            <div id="edit_delete" display="none">
+              <Button macro="button_style" _long_release="::EditModeDeleteSet" tooltip="WATCH.LONG_PRESS_TO_DELETE_SET" tooltip_side="top" border_color="~color_danger_translucent" color="~color_danger_40" color2="~color_danger_10">
+                <sprite color="~text_color" width="40" height="40" src="edit/delete.svg" />
+              </Button>
+            </div>
+            <div id="edit_add" display="none">
+              <Button macro="button_style" _press="::EditModeAddSet" tooltip="WATCH.ADD_NEW_SET" tooltip_side="top">
+                <sprite color="~text_color" width="40" height="40" src="edit/add.svg" />
+              </Button>
+            </div>
           </div>
-          <div id="sets">
+          <VerticalSeparator />
+          <div id="sets" gap="4">
             <Set idx="0" display="1" />
             <!-- Will populate additional <Set> tags at runtime -->
           </div>
-          <div id="edit_add" display="none">
-            <Button macro="button_style" _press="::EditModeAddSet" tooltip="WATCH.ADD_NEW_SET" tooltip_side="top">
-              <sprite color="~text_color" width="40" height="40" src="edit/add.svg" />
-            </Button>
-          </div>
-          <Button id="btn_edit_mode" macro="button_style" _press="::EditToggle" tooltip="WATCH.EDIT_MODE" tooltip_side="top">
-            <sprite color="~text_color" width="40" height="40" src="watch/edit.svg" />
-          </Button>
         </div>
       </div>
     </div>
