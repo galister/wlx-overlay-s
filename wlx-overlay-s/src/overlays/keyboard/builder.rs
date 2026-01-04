@@ -1,6 +1,12 @@
 use std::{collections::HashMap, rc::Rc};
 
-use crate::{app_misc, gui::panel::GuiPanel, state::AppState, subsystem::hid::XkbKeymap};
+use crate::{
+    app_misc,
+    gui::panel::{GuiPanel, NewGuiPanelParams},
+    state::AppState,
+    subsystem::hid::XkbKeymap,
+};
+use anyhow::Context;
 use glam::{FloatExt, Mat4, Vec2, vec2, vec3};
 use wgui::{
     animation::{Animation, AnimationEasing},
@@ -8,7 +14,7 @@ use wgui::{
     drawing::{self, Color},
     event::{self, CallbackMetadata, EventListenerKind},
     layout::{LayoutParams, LayoutUpdateParams},
-    parser::Fetchable,
+    parser::{Fetchable, ParseDocumentExtra, ParseDocumentParams},
     renderer_vk::util,
     taffy::{self, prelude::length},
     widget::{
@@ -24,7 +30,6 @@ use super::{
     layout::{self, KeyCapType},
 };
 
-const BACKGROUND_PADDING: f32 = 16.0;
 const PIXELS_PER_UNIT: f32 = 80.;
 
 #[allow(clippy::too_many_lines, clippy::significant_drop_tightening)]
@@ -34,43 +39,30 @@ pub(super) fn create_keyboard_panel(
     state: KeyboardState,
     layout: &layout::Layout,
 ) -> anyhow::Result<GuiPanel<KeyboardState>> {
-    let mut panel = GuiPanel::new_blank(app, state, Default::default())?;
+    let mut panel =
+        GuiPanel::new_from_template(app, "gui/keyboard.xml", state, NewGuiPanelParams::default())?;
+
+    let doc_params = ParseDocumentParams {
+        globals: app.wgui_globals.clone(),
+        path: AssetPath::FileOrBuiltIn("gui/keyboard.xml"),
+        extra: ParseDocumentExtra::default(),
+    };
 
     let globals = app.wgui_globals.clone();
     let accent_color = globals.get().defaults.accent_color;
 
     let anim_mult = globals.defaults().animation_mult;
 
-    let (background, _) = panel.layout.add_child(
-        panel.layout.content_root_widget,
-        WidgetRectangle::create(WidgetRectangleParams {
-            color: globals.defaults().bg_color,
-            round: WLength::Units((16.0 * globals.defaults().rounding_mult).max(0.)),
-            border: 2.0,
-            border_color: accent_color,
-            ..Default::default()
-        }),
-        taffy::Style {
-            flex_direction: taffy::FlexDirection::Column,
-            padding: length(BACKGROUND_PADDING),
-            ..Default::default()
-        },
-    )?;
+    let root = panel
+        .parser_state
+        .get_widget_id("keyboard_root")
+        .context("Element with id 'keyboard_root' not found; keyboard.xml may be out of date.")?;
 
     let has_altgr = keymap.as_ref().is_some_and(|m| XkbKeymap::has_altgr(m));
 
-    let parse_doc_params = wgui::parser::ParseDocumentParams {
-        globals,
-        path: AssetPath::FileOrBuiltIn("gui/keyboard.xml"),
-        extra: Default::default(),
-    };
-
-    let (_, mut gui_state_key) =
-        wgui::parser::new_layout_from_assets(&parse_doc_params, &LayoutParams::default())?;
-
     for row in 0..layout.key_sizes.len() {
         let (div, _) = panel.layout.add_child(
-            background.id,
+            root,
             WidgetDiv::create(),
             taffy::Style {
                 flex_direction: taffy::FlexDirection::Row,
@@ -144,15 +136,15 @@ pub(super) fn create_keyboard_panel(
             }
 
             let template_key = format!("Key{:?}", key.cap_type);
-            gui_state_key.instantiate_template(
-                &parse_doc_params,
+            panel.parser_state.instantiate_template(
+                &doc_params,
                 &template_key,
                 &mut panel.layout,
                 div.id,
                 params,
             )?;
 
-            if let Ok(widget_id) = gui_state_key.get_widget_id(&my_id) {
+            if let Ok(widget_id) = panel.parser_state.get_widget_id(&my_id) {
                 let key_state = {
                     let rect = panel
                         .layout
@@ -271,7 +263,6 @@ pub(super) fn create_keyboard_panel(
             timestep_alpha: 0.0,
         })?,
     );
-    panel.parser_state = gui_state_key;
 
     Ok(panel)
 }
