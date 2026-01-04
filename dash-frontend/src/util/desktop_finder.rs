@@ -1,11 +1,11 @@
 use std::{
-	collections::HashSet, ffi::OsStr, fmt::Debug, fs::exists, path::Path, rc::Rc, sync::Arc, thread::JoinHandle,
-	time::Instant,
+	collections::HashSet, ffi::OsStr, fmt::Debug, fs::exists, io::Write, path::Path, rc::Rc, sync::Arc, thread::JoinHandle, time::Instant
 };
 
 use ini::Ini;
 use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
+use wlx_common::cache_dir;
 
 struct DesktopEntryOwned {
 	exec_path: String,
@@ -108,6 +108,11 @@ impl DesktopFinder {
 		let mut known_files = HashSet::new();
 		let mut entries = Vec::<DesktopEntryOwned>::new();
 
+		let icons_folder = cache_dir::get_path("icons");
+		if !std::fs::exists(&icons_folder).unwrap_or(false) {
+			let _ = std::fs::create_dir(&icons_folder);
+		}
+		
 		for path in &params.app_folders {
 			log::debug!("Searching desktop entries in path {}", path);
 
@@ -201,7 +206,8 @@ impl DesktopFinder {
 
 				let icon_path = section
 					.get("Icon")
-					.and_then(|icon_name| Self::find_icon(&params, &icon_name));
+					.and_then(|icon_name| Self::find_icon(&params, &icon_name))
+				.or_else(|| Self::create_icon(&file_name).ok());
 
 				if let Some(categories) = section.get("Categories") {
 					for cat in categories.split(";") {
@@ -256,6 +262,28 @@ impl DesktopFinder {
 			}
 		}
 		None
+	}
+
+	fn create_icon(desktop_entry_name: &str) -> anyhow::Result<String> {
+		let relative_path = format!("icons/{}.svg", desktop_entry_name);
+		let file_path = cache_dir::get_path(&relative_path).to_string_lossy().to_string();
+
+		if std::fs::exists(&file_path).unwrap_or(false) {
+			return Ok(file_path);
+		}
+
+		let svg = identicons_svg::generate(
+			identicons_svg::IdenticonOptions {
+				background: identicons_svg::Background {
+					r: 64,
+					color: "rgba(0.9,0.9,0.9,0.5)".into()
+				},
+				..Default::default()
+			}
+		);
+
+		std::fs::write(&file_path, svg)?;
+		Ok(file_path)
 	}
 
 	fn wait_for_entries(&mut self) {

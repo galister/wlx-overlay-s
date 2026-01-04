@@ -17,6 +17,10 @@ fn get_cache_root() -> PathBuf {
 	CACHE_ROOT_PATH.clone()
 }
 
+pub fn get_path(data_path: &str) -> PathBuf {
+	get_cache_root().join(data_path)
+}
+
 // todo: mutex
 pub async fn get_data(data_path: &str) -> Option<Vec<u8>> {
 	let mut path = get_cache_root();
