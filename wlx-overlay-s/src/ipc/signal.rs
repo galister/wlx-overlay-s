@@ -16,5 +16,6 @@ pub enum WayVRSignal {
     Haptics(crate::backend::input::Haptics),
     DeviceHaptics(usize, crate::backend::input::Haptics),
     DropOverlay(crate::windowing::OverlayID),
+    ShowHide,
     CustomTask(crate::backend::task::ModifyPanelTask),
 }

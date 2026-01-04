@@ -10,7 +10,7 @@ use env_logger::Env;
 use wayvr_ipc::{client::WayVRClient, ipc, packet_client};
 
 use crate::helper::{
-    WayVRClientState, wlx_device_haptics, wlx_input_state, wlx_panel_modify, wvr_display_create,
+    WayVRClientState, wlx_overlay_show_hide, wlx_device_haptics, wlx_input_state, wlx_panel_modify, wvr_display_create,
     wvr_display_get, wvr_display_list, wvr_display_remove, wvr_display_set_visible,
     wvr_display_window_list, wvr_process_get, wvr_process_launch, wvr_process_list,
     wvr_process_terminate, wvr_window_set_visible,
@@ -169,6 +169,10 @@ async fn run_once(state: &mut WayVRClientState, args: Args) -> anyhow::Result<()
         } => {
             wlx_device_haptics(state, device, intensity, duration, frequency).await;
         }
+        Subcommands::ShowHide {
+        } => {
+            wlx_overlay_show_hide(state).await;
+        }
         Subcommands::PanelModify {
             overlay,
             element,
@@ -293,6 +297,8 @@ enum Subcommands {
         #[arg(short, long, default_value = "0.1")]
         frequency: f32,
     },
+    /// Toggle overlay show or hide
+    ShowHide,
     /// Apply a modification to a panel element
     PanelModify {
         /// The name of the overlay (XML file name without extension)

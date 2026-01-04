@@ -165,6 +165,10 @@ where
                 app.tasks
                     .enqueue(TaskType::Input(InputTask::Haptics { device, haptics }));
             }
+            WayVRSignal::ShowHide => {
+                app.tasks
+                    .enqueue(TaskType::Overlay(OverlayTask::ShowHide));
+            }
             WayVRSignal::DropOverlay(overlay_id) => {
                 app.tasks
                     .enqueue(TaskType::Overlay(OverlayTask::Drop(OverlaySelector::Id(
