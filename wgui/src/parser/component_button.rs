@@ -12,6 +12,7 @@ use crate::{
 	widget::util::WLength,
 };
 
+#[allow(clippy::too_many_lines)]
 pub fn parse_component_button<'a>(
 	file: &'a ParserFile,
 	ctx: &mut ParserContext,
@@ -25,7 +26,7 @@ pub fn parse_component_button<'a>(
 	let mut hover_color: Option<Color> = None;
 	let mut hover_border_color: Option<Color> = None;
 	let mut round = WLength::Units(4.0);
-	let mut tooltip: Option<String> = None;
+	let mut tooltip: Option<Translation> = None;
 	let mut tooltip_side: Option<tooltip::TooltipSide> = None;
 	let mut sticky: bool = false;
 	let mut long_press_time = 0.0;
@@ -76,7 +77,8 @@ pub fn parse_component_button<'a>(
 					sprite_src = Some(asset_path);
 				}
 			}
-			"tooltip" => tooltip = Some(String::from(value)),
+			"tooltip" => tooltip = Some(Translation::from_translation_key(value)),
+			"tooltip_str" => tooltip = Some(Translation::from_raw_text(value)),
 			"tooltip_side" => {
 				tooltip_side = match value {
 					"left" => Some(tooltip::TooltipSide::Left),
@@ -112,9 +114,9 @@ pub fn parse_component_button<'a>(
 			style,
 			text_style,
 			round,
-			tooltip: tooltip.map(|t| tooltip::TooltipInfo {
+			tooltip: tooltip.map(|text| tooltip::TooltipInfo {
 				side: tooltip_side.map_or(tooltip::TooltipSide::Top, |f| f),
-				text: Translation::from_translation_key(&t),
+				text,
 			}),
 			sticky,
 			long_press_time,

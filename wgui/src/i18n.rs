@@ -109,7 +109,11 @@ impl I18n {
 		})
 	}
 
-	pub fn translate(&mut self, translation_key: &str) -> Rc<str> {
+	pub fn translate(&mut self, translation_key_full: &str) -> Rc<str> {
+		let translation_key = translation_key_full
+			.split_once(';')
+			.map_or(translation_key_full, |(a, _)| a);
+
 		if let Some(translated) = find_translation(translation_key, &self.json_root_translated) {
 			return Rc::from(translated);
 		}
@@ -117,6 +121,11 @@ impl I18n {
 		if let Some(translated_fallback) = find_translation(translation_key, &self.json_root_fallback) {
 			log::warn!("missing translation for key \"{translation_key}\", using \"en\" instead");
 			return Rc::from(translated_fallback);
+		}
+
+		// not even found in fallback, check if the translation contains ";" (to be used as "MY_TRANSLATION_KEY;A fallback text")
+		if let Some((idx, _)) = translation_key_full.match_indices(';').next() {
+			return Rc::from(&translation_key_full[idx + 1..]);
 		}
 
 		log::error!("missing translation for key \"{translation_key}\"");

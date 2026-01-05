@@ -264,6 +264,10 @@ _Translated by key_
 
 _Tooltip text on hover, translated by key_
 
+`tooltip_str`: **string**
+
+_Tooltip text on hover, raw text (not translated)_
+
 `tooltip_side`: "top" | "bottom" | "left" | "right" (default: top)
 
 `sticky`: "1" | "0" (default: "0")
