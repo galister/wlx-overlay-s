@@ -51,9 +51,11 @@ pub fn create_wl_window_overlay(
     name: Arc<str>,
     app: &mut AppState,
     window: wayvr::window::WindowHandle,
-    size_major: u32,
+    icon: Arc<str>,
+    size: [u32; 2],
 ) -> anyhow::Result<OverlayWindowConfig> {
-    let scale = size_major as f32 / 1920.0;
+    let scale = size[0].max(size[1]) as f32 / 1920.0;
+    let curve_scale = size[0] as f32 / 1920.0;
 
     Ok(OverlayWindowConfig {
         name: name.clone(),
@@ -61,7 +63,7 @@ pub fn create_wl_window_overlay(
             grabbable: true,
             interactable: true,
             positioning: Positioning::Floating,
-            curvature: Some(0.15),
+            curvature: Some(0.15 * curve_scale),
             transform: Affine3A::from_scale_rotation_translation(
                 Vec3::ONE * scale,
                 Quat::IDENTITY,
@@ -72,12 +74,15 @@ pub fn create_wl_window_overlay(
         keyboard_focus: Some(KeyboardFocus::WayVR),
         category: OverlayCategory::WayVR,
         show_on_spawn: true,
-        ..OverlayWindowConfig::from_backend(Box::new(WvrWindowBackend::new(name, app, window)?))
+        ..OverlayWindowConfig::from_backend(Box::new(WvrWindowBackend::new(
+            name, app, window, icon,
+        )?))
     })
 }
 
 pub struct WvrWindowBackend {
     name: Arc<str>,
+    icon: Arc<str>,
     pipeline: Option<ScreenPipeline>,
     popups_pipeline: Arc<WGfxPipeline<Vert2Uv>>,
     interaction_transform: Option<Affine2>,
@@ -100,6 +105,7 @@ impl WvrWindowBackend {
         name: Arc<str>,
         app: &mut AppState,
         window: wayvr::window::WindowHandle,
+        icon: Arc<str>,
     ) -> anyhow::Result<Self> {
         let popups_pipeline = app.gfx.create_pipeline(
             app.gfx_extras.shaders.get("vert_quad").unwrap(), // want panic
@@ -170,6 +176,7 @@ impl WvrWindowBackend {
 
         Ok(Self {
             name,
+            icon,
             pipeline: None,
             window,
             popups: vec![],
@@ -508,6 +515,7 @@ impl OverlayBackend for WvrWindowBackend {
     fn get_attrib(&self, attrib: BackendAttrib) -> Option<BackendAttribValue> {
         match attrib {
             BackendAttrib::Stereo => self.stereo.map(BackendAttribValue::Stereo),
+            BackendAttrib::Icon => Some(BackendAttribValue::Icon(self.icon.clone())),
             _ => None,
         }
     }

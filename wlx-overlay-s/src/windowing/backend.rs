@@ -112,6 +112,7 @@ pub struct OverlayMeta {
     pub name: Arc<str>,
     pub category: OverlayCategory,
     pub visible: bool,
+    pub icon: Option<Arc<str>>,
 }
 
 #[allow(clippy::enum_variant_names)]

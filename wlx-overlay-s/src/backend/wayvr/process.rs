@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Read};
+use std::{collections::HashMap, io::Read, sync::Arc};
 
 use wayvr_ipc::packet_server;
 
@@ -9,12 +9,13 @@ use crate::gen_id;
 pub struct WayVRProcess {
     pub auth_key: String,
     pub child: std::process::Child,
-
+    pub app_name: String,
     pub exec_path: String,
     pub args: Vec<String>,
     pub env: Vec<(String, String)>,
     pub working_dir: Option<String>,
     pub resolution: [u32; 2],
+    pub icon: Option<Arc<str>>,
 
     pub userdata: HashMap<String, String>,
 }
@@ -47,8 +48,11 @@ impl Process {
 
     pub fn get_name(&self) -> String {
         match self {
-            Self::Managed(p) => p.get_name().unwrap_or_else(|| String::from("unknown")),
-            Self::External(p) => p.get_name().unwrap_or_else(|| String::from("unknown")),
+            Self::Managed(p) => p.get_name()
+                .or_else(|| p.exec_path.split('/').last().map(String::from))
+                .unwrap_or_else(|| String::from("unknown")),
+            Self::External(p) => p.get_name()
+                .unwrap_or_else(|| String::from("unknown")),
         }
     }
 
@@ -71,7 +75,8 @@ impl Process {
 impl Drop for WayVRProcess {
     fn drop(&mut self) {
         log::info!(
-            "Sending SIGTERM (graceful exit) to process {}",
+            "Sending SIGTERM (graceful exit) to process {} ({})",
+            self.child.id(),
             self.exec_path.as_str()
         );
         self.terminate();

@@ -32,6 +32,7 @@ pub mod gfx;
 pub mod globals;
 pub mod i18n;
 pub mod layout;
+pub mod log;
 pub mod parser;
 pub mod renderer_vk;
 pub mod sound;

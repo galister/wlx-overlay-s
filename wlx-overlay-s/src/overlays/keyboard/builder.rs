@@ -9,7 +9,7 @@ use crate::{
 use anyhow::Context;
 use glam::{FloatExt, Mat4, Vec2, vec2, vec3};
 use wgui::{
-    animation::{Animation, AnimationEasing}, assets::AssetPath, components::button::ComponentButton, drawing::{self, Color}, event::{self, CallbackDataCommon, CallbackMetadata, EventAlterables, EventListenerKind}, layout::LayoutUpdateParams, parser::{Fetchable, ParseDocumentExtra, ParseDocumentParams}, renderer_vk::util, taffy::{self, prelude::length}, widget::{div::WidgetDiv, rectangle::WidgetRectangle, EventResult}
+    animation::{Animation, AnimationEasing}, assets::AssetPath, components::button::ComponentButton, drawing::{self, Color}, event::{self, CallbackDataCommon, CallbackMetadata, EventAlterables, EventListenerKind}, layout::LayoutUpdateParams, parser::{Fetchable, ParseDocumentParams}, renderer_vk::util, taffy::{self, prelude::length}, widget::{div::WidgetDiv, rectangle::WidgetRectangle, EventResult}
 };
 
 use super::{
@@ -319,6 +319,7 @@ pub(super) fn create_keyboard_panel(
                             ("Panel", panels_root)
                         },
                         OverlayCategory::WayVR => {
+                            params.insert("icon".into(), meta.icon.as_ref().expect("WayVR overlay without Icon attribute!").as_ref().into());
                             ("App", apps_root)
                         },
                         _ => continue

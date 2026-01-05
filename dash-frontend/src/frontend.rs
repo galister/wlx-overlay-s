@@ -19,11 +19,10 @@ use wlx_common::{audio, dash_interface::BoxDashInterface, timestep::Timestep};
 use crate::{
 	assets, settings,
 	tab::{
-		Tab, TabType, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses,
-		settings::TabSettings,
+		apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses, settings::TabSettings,
+		Tab, TabType,
 	},
 	util::{
-		desktop_finder::DesktopFinder,
 		popup_manager::{MountPopupParams, PopupManager, PopupManagerParams},
 		toast_manager::ToastManager,
 		various::AsyncExecutor,
@@ -64,8 +63,6 @@ pub struct Frontend<T> {
 
 	window_audio_settings: WguiWindow,
 	view_audio_settings: Option<views::audio_settings::View>,
-
-	pub(crate) desktop_finder: DesktopFinder,
 }
 
 pub struct FrontendUpdateParams<'a, T> {
@@ -137,9 +134,6 @@ impl<T: 'static> Frontend<T> {
 
 		let timestep = Timestep::new(60.0);
 
-		let mut desktop_finder = DesktopFinder::new();
-		desktop_finder.refresh();
-
 		let mut frontend = Self {
 			layout,
 			state,
@@ -159,7 +153,6 @@ impl<T: 'static> Frontend<T> {
 			window_audio_settings: WguiWindow::default(),
 			view_audio_settings: None,
 			executor: Rc::new(smol::LocalExecutor::new()),
-			desktop_finder,
 		};
 
 		// init some things first
@@ -292,7 +285,7 @@ impl<T: 'static> Frontend<T> {
 
 	fn process_task(&mut self, data: &mut T, task: FrontendTask) -> anyhow::Result<()> {
 		match task {
-			FrontendTask::SetTab(tab_type) => self.set_tab(tab_type)?,
+			FrontendTask::SetTab(tab_type) => self.set_tab(data, tab_type)?,
 			FrontendTask::RefreshClock => self.update_time()?,
 			FrontendTask::RefreshBackground => self.update_background()?,
 			FrontendTask::MountPopup(params) => self.mount_popup(params)?,
@@ -305,14 +298,14 @@ impl<T: 'static> Frontend<T> {
 		Ok(())
 	}
 
-	fn set_tab(&mut self, tab_type: TabType) -> anyhow::Result<()> {
+	fn set_tab(&mut self, data: &mut T, tab_type: TabType) -> anyhow::Result<()> {
 		log::info!("Setting tab to {tab_type:?}");
 		let widget_content = self.state.fetch_widget(&self.layout.state, "content")?;
 		self.layout.remove_children(widget_content.id);
 
 		let tab: Box<dyn Tab<T>> = match tab_type {
 			TabType::Home => Box::new(TabHome::new(self, widget_content.id)?),
-			TabType::Apps => Box::new(TabApps::new(self, widget_content.id)?),
+			TabType::Apps => Box::new(TabApps::new(self, widget_content.id, data)?),
 			TabType::Games => Box::new(TabGames::new(self, widget_content.id)?),
 			TabType::Monado => Box::new(TabMonado::new(self, widget_content.id)?),
 			TabType::Processes => Box::new(TabProcesses::new(self, widget_content.id)?),

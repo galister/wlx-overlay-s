@@ -5,8 +5,9 @@ use std::{
 use anyhow::Context;
 use glam::{Affine3A, Vec3, Vec3A};
 use slotmap::{HopSlotMap, Key, SecondaryMap};
+use wgui::log::LogErr;
 use wlx_common::{
-    astr_containers::{AStrMap, AStrMapExt}, common::LogErr, config::SerializedWindowSet, overlays::{BackendAttrib, ToastTopic}
+    astr_containers::{AStrMap, AStrMapExt}, config::SerializedWindowSet, overlays::{BackendAttrib, BackendAttribValue, ToastTopic}
 };
 
 use crate::{
@@ -773,11 +774,18 @@ impl<T> OverlayWindowManager<T> {
             if matches!(data.config.category, OverlayCategory::Internal) {
                 continue;
             }
+            let icon = if let Some(BackendAttribValue::Icon(icon)) = data.config.backend.get_attrib(BackendAttrib::Icon) {
+                Some(icon)
+            } else {
+                None
+            };
+            
             meta.push(OverlayMeta {
                 id,
                 name: data.config.name.clone(),
                 category: data.config.category,
                 visible: data.config.is_active(),
+                icon,
             });
         }
 

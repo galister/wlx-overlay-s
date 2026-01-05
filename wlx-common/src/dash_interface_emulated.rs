@@ -3,7 +3,7 @@ use wayvr_ipc::{
 	packet_server::{WvrProcess, WvrProcessHandle, WvrWindow, WvrWindowHandle},
 };
 
-use crate::{dash_interface::DashInterface, gen_id};
+use crate::{dash_interface::DashInterface, desktop_finder::DesktopFinder, gen_id};
 
 #[derive(Debug)]
 pub struct EmuProcess {
@@ -54,6 +54,7 @@ gen_id!(EmuProcessVec, EmuProcess, EmuProcessCell, EmuProcessHandle);
 pub struct DashInterfaceEmulated {
 	processes: EmuProcessVec,
 	windows: EmuWindowVec,
+	desktop_finder: DesktopFinder,
 }
 
 impl DashInterfaceEmulated {
@@ -69,7 +70,14 @@ impl DashInterfaceEmulated {
 			visible: true,
 		});
 
-		Self { processes, windows }
+		let mut desktop_finder = DesktopFinder::new();
+		desktop_finder.refresh();
+
+		Self {
+			processes,
+			windows,
+			desktop_finder,
+		}
 	}
 }
 
@@ -156,5 +164,9 @@ impl DashInterface<()> for DashInterfaceEmulated {
 	fn recenter_playspace(&mut self, _: &mut ()) -> anyhow::Result<()> {
 		// stub!
 		Ok(())
+	}
+
+	fn desktop_finder<'a>(&'a mut self, _: &'a mut ()) -> &'a mut DesktopFinder {
+		&mut self.desktop_finder
 	}
 }

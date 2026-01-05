@@ -20,13 +20,9 @@ use wgui::{
 		ConstructEssentials,
 	},
 };
-use wlx_common::dash_interface::BoxDashInterface;
+use wlx_common::{dash_interface::BoxDashInterface, desktop_finder::DesktopEntry};
 
-use crate::util::{
-	self,
-	desktop_finder::{self},
-	various::get_desktop_file_icon_path,
-};
+use crate::util::{self, various::get_desktop_file_icon_path};
 
 #[derive(Clone)]
 enum Task {
@@ -94,13 +90,13 @@ impl View {
 	}
 }
 
-fn get_desktop_entry_from_process(process: &packet_server::WvrProcess) -> Option<desktop_finder::DesktopEntry> {
+fn get_desktop_entry_from_process(process: &packet_server::WvrProcess) -> Option<DesktopEntry> {
 	// TODO: refactor this after we ditch old wayvr-dashboard completely
 	let Some(dfile_str) = process.userdata.get("desktop-entry") else {
 		return None;
 	};
 
-	let Ok(desktop_file) = serde_json::from_str::<desktop_finder::DesktopEntry>(dfile_str) else {
+	let Ok(desktop_file) = serde_json::from_str::<DesktopEntry>(dfile_str) else {
 		debug_assert!(false); // invalid json???
 		return None;
 	};

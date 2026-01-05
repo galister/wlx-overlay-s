@@ -9,6 +9,7 @@ use wgui::{
 use wlx_common::{
     audio,
     config::GeneralConfig,
+    desktop_finder::DesktopFinder,
     overlays::{ToastDisplayMethod, ToastTopic},
 };
 
@@ -56,6 +57,8 @@ pub struct AppState {
 
     pub ipc_server: ipc_server::WayVRServer,
     pub wayvr_signals: SyncEventQueue<WayVRSignal>,
+
+    pub desktop_finder: DesktopFinder,
 
     #[cfg(feature = "osc")]
     pub osc_sender: Option<OscSender>,
@@ -136,6 +139,9 @@ impl AppState {
 
         let ipc_server = ipc_server::WayVRServer::new()?;
 
+        let mut desktop_finder = DesktopFinder::new();
+        desktop_finder.refresh();
+
         Ok(Self {
             session,
             tasks,
@@ -159,6 +165,7 @@ impl AppState {
             xr_backend,
             ipc_server,
             wayvr_signals,
+            desktop_finder,
 
             #[cfg(feature = "osc")]
             osc_sender,

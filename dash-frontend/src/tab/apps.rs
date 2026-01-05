@@ -14,14 +14,12 @@ use wgui::{
 	parser::{Fetchable, ParseDocumentParams, ParserState},
 	task::Tasks,
 };
+use wlx_common::desktop_finder::DesktopEntry;
 
 use crate::{
 	frontend::{Frontend, FrontendTask, FrontendTasks},
 	tab::{Tab, TabType},
-	util::{
-		desktop_finder::DesktopEntry,
-		popup_manager::{MountPopupParams, PopupHandle},
-	},
+	util::popup_manager::{MountPopupParams, PopupHandle},
 	views::{self, app_launcher},
 };
 
@@ -127,16 +125,16 @@ fn doc_params(globals: WguiGlobals) -> ParseDocumentParams<'static> {
 }
 
 impl<T> TabApps<T> {
-	pub fn new(frontend: &mut Frontend<T>, parent_id: WidgetID) -> anyhow::Result<Self> {
+	pub fn new(frontend: &mut Frontend<T>, parent_id: WidgetID, data: &mut T) -> anyhow::Result<Self> {
 		let globals = frontend.layout.state.globals.clone();
 		let tasks = Tasks::new();
 		let state = Rc::new(RefCell::new(State { view_launcher: None }));
 
-		let mut entries = frontend.desktop_finder.find_entries();
+		let mut entries = frontend.interface.desktop_finder(data).find_entries();
 		let parser_state = wgui::parser::parse_from_assets(&doc_params(globals.clone()), &mut frontend.layout, parent_id)?;
 		let app_list_parent = parser_state.fetch_widget(&frontend.layout.state, "app_list_parent")?;
 		let app_list = AppList {
-			entries_to_mount: entries.drain(..).collect(),
+			entries_to_mount: entries.into_values().collect(),
 			list_parent: app_list_parent,
 		};
 

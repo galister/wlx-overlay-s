@@ -5,6 +5,7 @@ pub mod common;
 pub mod config;
 pub mod dash_interface;
 pub mod dash_interface_emulated;
+pub mod desktop_finder;
 mod handle;
 pub mod overlays;
 pub mod timestep;

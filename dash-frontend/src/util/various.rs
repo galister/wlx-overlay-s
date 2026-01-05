@@ -11,10 +11,9 @@ use wgui::{
 		sprite::{WidgetSprite, WidgetSpriteParams},
 	},
 };
+use wlx_common::desktop_finder;
 
 pub type AsyncExecutor = Rc<smol::LocalExecutor<'static>>;
-
-use crate::util::desktop_finder;
 
 // the compiler wants to scream
 #[allow(irrefutable_let_patterns)]

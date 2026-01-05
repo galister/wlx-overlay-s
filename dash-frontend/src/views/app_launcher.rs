@@ -12,12 +12,11 @@ use wgui::{
 	task::Tasks,
 	widget::label::WidgetLabel,
 };
-use wlx_common::dash_interface::BoxDashInterface;
+use wlx_common::{dash_interface::BoxDashInterface, desktop_finder::DesktopEntry};
 
 use crate::{
 	frontend::{FrontendTask, FrontendTasks},
 	settings::SettingsIO,
-	util::desktop_finder::DesktopEntry,
 };
 
 #[derive(Clone, Copy, Eq, PartialEq, EnumString, VariantNames, AsRefStr)]
@@ -325,6 +324,7 @@ impl View {
 				name: params.application.app_name.to_string(),
 				args,
 				resolution,
+				icon: params.application.icon_path.as_ref().map(|x| x.as_ref().to_string()),
 				userdata,
 			},
 		)?;

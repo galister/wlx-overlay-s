@@ -88,14 +88,14 @@
 
   <!-- An app with a single icon. -->
   <template name="App">
-    <Button macro="button_style" id="overlay_${idx}" _press="::OverlayToggle ${name}" tooltip="${name}" tooltip_side="bottom">
-      <sprite width="56" height="56" color="~text_color" src_ext="${src}" />
+    <Button macro="button_style" id="overlay_${idx}" _short_release="::OverlayToggle ${name}" tooltip="OVERLAY_TOOLTIP.APP;${name}" tooltip_side="bottom">
+      <sprite width="56" height="56" color="~text_color" src_ext="${icon}" />
     </Button>
   </template>
 
   <!-- A screen with a shortened connector name, e.g. "H1" for HDMI-A-1 or "D2" for DP-2 -->
   <template name="Screen">
-    <Button macro="button_style" id="overlay_${idx}" _press="::OverlayToggle ${name}" tooltip="${name}" tooltip_side="bottom">
+    <Button macro="button_style" id="overlay_${idx}" _short_release="::OverlayToggle ${name}" tooltip="OVERLAY_TOOLTIP.SCREEN;${name}" tooltip_side="bottom">
       <sprite width="56" height="56" color="~text_color" src_builtin="edit/screen.svg" />
       <div position="absolute" margin_top="-10">
         <label text="${display}" size="26" color="~color_faded_20" weight="bold" />
@@ -104,13 +104,13 @@
   </template>
 
   <template name="Panel">
-    <Button macro="button_style" id="overlay_${idx}" _press="::OverlayToggle ${name}" tooltip="${name}" tooltip_side="bottom">
+    <Button macro="button_style" id="overlay_${idx}" _short_release="::OverlayToggle ${name}" tooltip="OVERLAY_TOOLTIP.PANEL;${name}" tooltip_side="bottom">
       <sprite width="56" height="56" color="~text_color" src_builtin="edit/panel.svg" />
     </Button>
   </template>
 
   <template name="Mirror">
-    <Button macro="button_style" id="overlay_${idx}" _press="::OverlayToggle ${name}" tooltip="${name}" tooltip_side="bottom">
+    <Button macro="button_style" id="overlay_${idx}" _short_release="::OverlayToggle ${name}" tooltip="OVERLAY_TOOLTIP.MIRROR;${name}" tooltip_side="bottom">
       <sprite width="56" height="56" color="~text_color" src_builtin="edit/mirror.svg" />
       <div position="absolute" margin_top="7" margin_left="20">
         <label text="${display}" size="26" color="~color_faded_20" weight="bold" />
@@ -119,7 +119,7 @@
   </template>
 
   <template name="Set">
-    <Button macro="button_style" id="set_${idx}" _press="::SetSwitch ${idx}" tooltip="WATCH.SWITCH_TO_SET" tooltip_side="bottom">
+    <Button macro="button_style" id="set_${idx}" _release="::SetSwitch ${idx}" tooltip="WATCH.SWITCH_TO_SET" tooltip_side="bottom">
       <sprite width="56" height="56" color="~text_color" src_builtin="watch/set2.svg" />
       <div position="absolute" margin_top="16" margin_left="-8">
         <label text="${display}" size="26" color="~color_faded_20" weight="bold" />
@@ -139,9 +139,9 @@
           </div>
           <VerticalSeparator />
           <div id="apps_root" gap="8">
-            <App id="test1" name="Blender" src="/usr/share/icons/hicolor/scalable/apps/blender-5.0.svg" />
-            <App id="test2" name="Inkscape" src="/usr/share/icons/hicolor/scalable/apps/org.inkscape.Inkscape.svg" />
-            <App id="test3" name="GIMP" src="/usr/share/icons/hicolor/scalable/apps/gimp.svg" />
+            <App id="test1" name="Blender" icon="/usr/share/icons/hicolor/scalable/apps/blender-5.0.svg" />
+            <App id="test2" name="Inkscape" icon="/usr/share/icons/hicolor/scalable/apps/org.inkscape.Inkscape.svg" />
+            <App id="test3" name="GIMP" icon="/usr/share/icons/hicolor/scalable/apps/gimp.svg" />
           </div>
         </div>
         <div id="tray_root" flex_direction="row" gap="16">

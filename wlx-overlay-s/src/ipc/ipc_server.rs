@@ -239,11 +239,13 @@ impl Connection {
         let env_vec = gen_env_vec(&packet_params.env);
 
         let res = params.wvr_server.spawn_process(
+            &packet_params.name,
             &packet_params.exec,
             &args_vec,
             &env_vec,
             packet_params.resolution,
             None,
+            packet_params.icon.as_deref(),
             packet_params.userdata,
         );
 

@@ -19,6 +19,7 @@ use smithay::{
         shm::ShmState,
     }
 };
+use wlx_common::desktop_finder::DesktopFinder;
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
@@ -301,23 +302,57 @@ impl WvrServerState {
                             continue;
                         };
 
-                        let [size_x, size_y] = match wvr_server.processes.get(&process_handle) {
-                            Some(Process::Managed(p)) => p.resolution,
-                            _ => [1920, 1080],
+                        // Size, icon & fallback title comes from process
+                        let ([size_x, size_y], fallback_title, icon, is_cage) = match wvr_server.processes.get(&process_handle) {
+                            Some(Process::Managed(p)) => (p.resolution, Some(p.app_name.clone()), p.icon.as_ref().cloned(), p.exec_path.ends_with("cage")),
+                            _ => ([1920, 1080], None, None, false)
                         };
 
                         let window_handle = wvr_server
                             .wm
                             .create_window(toplevel.clone(), process_handle, size_x, size_y);
 
-                        let title: Arc<str> = with_states(toplevel.wl_surface(), |states| {
-                            states
-                                .data_map
-                                .get::<XdgToplevelSurfaceData>()
-                                .and_then(|t| t.lock().unwrap().title.clone())
-                                .map_or_else(|| format!("P{}", client.pid).into(), String::into)
-                        });
+                        let mut title: Arc<str> = fallback_title.unwrap_or_else(|| format!("P{}", client.pid)).into();
+                        let mut icon = icon;
 
+                        // Try to get title from xdg_toplevel, unless it's running in cage
+                        if !is_cage {
+                            let mut needs_title = true;
+                            let (xdg_title, app_id): (Option<String>, Option<String>) = with_states(toplevel.wl_surface(), |states| {
+                                states
+                                    .data_map
+                                    .get::<XdgToplevelSurfaceData>()
+                                    .map(|t| {
+                                        let t = t.lock().unwrap();
+                                        (t.title.clone(), t.app_id.clone())
+                                    })
+                                    .unwrap_or((None, None))
+                            });
+                            if let Some(xdg_title) = xdg_title {
+                                needs_title = false;
+                                title = xdg_title.into();
+                            }
+
+                            // Try to get title & icon from desktop entry
+                            if let Some(app_id) = app_id
+                            && let Some(desktop_entry) = app.desktop_finder.get_cached_entry(&app_id) {
+                                if needs_title {
+                                    title = desktop_entry.app_name.as_ref().into();
+                                }
+                                if icon.is_none()
+                                && let Some(icon_path) = desktop_entry.icon_path.as_ref() {
+                                    icon = Some(icon_path.as_ref().into());
+                                }
+                            
+                            }
+                        }
+
+                        // Fall back to identicon
+                        let icon = match icon {
+                            Some(icon) => icon,
+                            None => DesktopFinder::create_icon(&*title)?.into(),
+                        };
+                        
                         app.tasks.enqueue(TaskType::Overlay(OverlayTask::Create(
                             OverlaySelector::Nothing,
                             Box::new(move |app: &mut AppState| {
@@ -325,7 +360,8 @@ impl WvrServerState {
                                     title,
                                     app,
                                     window_handle,
-                                    size_x.max(size_y),
+                                    icon,
+                                    [size_x, size_y],
                                 ).context("Could not create WvrWindow overlay").inspect_err(|e| log::warn!("{e:?}")).ok()
                             }),
                         )));
@@ -500,11 +536,13 @@ impl WvrServerState {
 
     pub fn spawn_process(
         &mut self,
+        app_name: &str,
         exec_path: &str,
         args: &[&str],
         env: &[(&str, &str)],
         resolution: [u32; 2],
         working_dir: Option<&str>,
+        icon: Option<&str>,
         userdata: HashMap<String, String>,
     ) -> anyhow::Result<process::ProcessHandle> {
         let auth_key = generate_auth_key();
@@ -528,6 +566,7 @@ impl WvrServerState {
                 auth_key,
                 child,
                 exec_path: String::from(exec_path),
+                app_name: String::from(app_name),
                 userdata,
                 args: args.iter().map(|x| String::from(*x)).collect(),
                 working_dir: working_dir.map(String::from),
@@ -535,6 +574,7 @@ impl WvrServerState {
                     .iter()
                     .map(|(a, b)| (String::from(*a), String::from(*b)))
                     .collect(),
+                icon: icon.map(Arc::from),
                 resolution,
             }));
 

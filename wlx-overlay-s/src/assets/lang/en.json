@@ -4,6 +4,12 @@
 	},
 	"DEFAULT": "Default",
 	"DISABLED": "Disabled",
+	"OVERLAY_TOOLTIP": {
+		"SCREEN": "Screen {}",
+		"MIRROR": "Mirror {}",
+		"PANEL": "Panel {}",
+		"APP": "{}"
+	},
 	"EDIT_MODE": {
 		"ADJUST_CURVATURE": "Adjust curvature",
 		"ALPHA_BLEND_MODE": "Alpha blend mode",

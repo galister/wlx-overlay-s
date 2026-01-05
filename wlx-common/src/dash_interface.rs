@@ -3,6 +3,8 @@ use wayvr_ipc::{
 	packet_server::{WvrProcess, WvrProcessHandle, WvrWindow, WvrWindowHandle},
 };
 
+use crate::desktop_finder::DesktopFinder;
+
 pub trait DashInterface<T> {
 	fn window_list(&mut self, data: &mut T) -> anyhow::Result<Vec<WvrWindow>>;
 	fn window_set_visible(&mut self, data: &mut T, handle: WvrWindowHandle, visible: bool) -> anyhow::Result<()>;
@@ -12,6 +14,7 @@ pub trait DashInterface<T> {
 	fn process_list(&mut self, data: &mut T) -> anyhow::Result<Vec<WvrProcess>>;
 	fn process_terminate(&mut self, data: &mut T, handle: WvrProcessHandle) -> anyhow::Result<()>;
 	fn recenter_playspace(&mut self, data: &mut T) -> anyhow::Result<()>;
+	fn desktop_finder<'a>(&'a mut self, data: &'a mut T) -> &'a mut DesktopFinder;
 }
 
 pub type BoxDashInterface<T> = Box<dyn DashInterface<T>>;

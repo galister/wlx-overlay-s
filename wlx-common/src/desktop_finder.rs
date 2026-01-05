@@ -1,12 +1,12 @@
 use std::{
-	collections::HashSet, ffi::OsStr, fmt::Debug, fs::exists, path::Path, rc::Rc, sync::Arc, thread::JoinHandle,
+	collections::{HashMap, HashSet}, ffi::OsStr, fmt::Debug, fs::exists, path::Path, rc::Rc, sync::Arc, thread::JoinHandle,
 	time::Instant,
 };
 
 use ini::Ini;
 use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
-use wlx_common::cache_dir;
+use crate::cache_dir;
 
 struct DesktopEntryOwned {
 	exec_path: String,
@@ -50,8 +50,8 @@ struct DesktopFinderParams {
 
 pub struct DesktopFinder {
 	params: Arc<DesktopFinderParams>,
-	entry_cache: Vec<DesktopEntry>,
-	bg_task: Option<JoinHandle<Vec<DesktopEntryOwned>>>,
+	entry_cache: HashMap<String,DesktopEntry>,
+	bg_task: Option<JoinHandle<HashMap<String,DesktopEntryOwned>>>,
 }
 
 impl DesktopFinder {
@@ -98,16 +98,16 @@ impl DesktopFinder {
 				icon_folders,
 				size_preferences,
 			}),
-			entry_cache: Vec::new(),
+			entry_cache: HashMap::new(),
 			bg_task: None,
 		}
 	}
 
-	fn build_cache(params: Arc<DesktopFinderParams>) -> Vec<DesktopEntryOwned> {
+	fn build_cache(params: Arc<DesktopFinderParams>) -> HashMap<String, DesktopEntryOwned> {
 		let start = Instant::now();
 
 		let mut known_files = HashSet::new();
-		let mut entries = Vec::<DesktopEntryOwned>::new();
+		let mut entries = HashMap::<String, DesktopEntryOwned>::new();
 
 		let icons_folder = cache_dir::get_path("icons");
 		if !std::fs::exists(&icons_folder).unwrap_or(false) {
@@ -131,6 +131,9 @@ impl DesktopFinder {
 				}
 
 				let file_name = entry.file_name().to_string_lossy();
+				let Some(app_id) = Path::new(entry.file_name()).file_stem().map(|x| x.to_string_lossy().to_string()) else {
+					continue;
+				};
 
 				if known_files.contains(file_name.as_ref()) {
 					// as per xdg spec, user entries of the same filename will override system entries
@@ -220,7 +223,7 @@ impl DesktopFinder {
 
 				known_files.insert(file_name.to_string());
 
-				entries.push(DesktopEntryOwned {
+				entries.insert(app_id, DesktopEntryOwned {
 					app_name: String::from(app_name),
 					exec_path: String::from(exec_path),
 					exec_args: exec_args.join(" "),
@@ -265,7 +268,7 @@ impl DesktopFinder {
 		None
 	}
 
-	fn create_icon(desktop_entry_name: &str) -> anyhow::Result<String> {
+	pub fn create_icon(desktop_entry_name: &str) -> anyhow::Result<String> {
 		let relative_path = format!("icons/{}.svg", desktop_entry_name);
 		let file_path = cache_dir::get_path(&relative_path).to_string_lossy().to_string();
 
@@ -295,12 +298,16 @@ impl DesktopFinder {
 		};
 
 		self.entry_cache.clear();
-		for entry in entries {
-			self.entry_cache.push(entry.into());
+		for (app_id, entry) in entries {
+			self.entry_cache.insert(app_id, entry.into());
 		}
 	}
 
-	pub fn find_entries(&mut self) -> Vec<DesktopEntry> {
+	pub fn get_cached_entry(&self, app_id: &str) -> Option<&DesktopEntry> {
+		self.entry_cache.get(app_id)
+	}
+
+	pub fn find_entries(&mut self) -> HashMap<String, DesktopEntry> {
 		self.wait_for_entries();
 		self.entry_cache.clone()
 	}

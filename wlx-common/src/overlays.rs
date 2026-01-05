@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use idmap_derive::IntegerId;
 use serde::{Deserialize, Serialize};
 
@@ -21,12 +23,15 @@ pub enum ToastDisplayMethod {
 pub enum BackendAttrib {
 	Stereo,
 	MouseTransform,
+	Icon,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BackendAttribValue {
 	Stereo(StereoMode),
 	MouseTransform(MouseTransform),
+	#[serde(skip_serializing, skip_deserializing)]
+	Icon(Arc<str>),
 }
 
 #[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]

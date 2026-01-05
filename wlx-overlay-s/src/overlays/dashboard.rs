@@ -3,7 +3,6 @@ use dash_frontend::{
     settings::{self, SettingsIO},
 };
 use glam::{Affine2, Affine3A, Vec2, vec2, vec3};
-use tracing::instrument::WithSubscriber;
 use wayvr_ipc::{
     packet_client::WvrProcessLaunchParams,
     packet_server::{WvrProcess, WvrProcessHandle, WvrWindow, WvrWindowHandle},
@@ -376,11 +375,13 @@ impl DashInterface<AppState> for DashInterfaceLive {
 
         wvr_server
             .spawn_process(
+                &params.name,
                 &params.exec,
                 &args_vec,
                 &env_vec,
                 params.resolution,
                 None,
+                params.icon.as_deref(),
                 params.userdata,
             )
             .map(|x| x.as_packet())
@@ -433,5 +434,12 @@ impl DashInterface<AppState> for DashInterfaceLive {
         app.tasks
             .enqueue(TaskType::Playspace(PlayspaceTask::Recenter));
         Ok(())
+    }
+
+    fn desktop_finder<'a>(
+        &'a mut self,
+        data: &'a mut AppState,
+    ) -> &'a mut wlx_common::desktop_finder::DesktopFinder {
+        &mut data.desktop_finder
     }
 }

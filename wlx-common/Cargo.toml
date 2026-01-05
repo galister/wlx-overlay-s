@@ -22,3 +22,7 @@ rodio = { version = "0.21.1", default-features = false, features = [
   "mp3",
   "hound",
 ] }
+glob = "0.3.3"
+walkdir = "2.5.0"
+rust-ini = "0.21.3"
+identicons-svg = "0.1.0"
