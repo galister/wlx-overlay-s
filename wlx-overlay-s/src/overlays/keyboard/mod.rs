@@ -1,6 +1,6 @@
 use std::{
     cell::Cell,
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     process::{Child, Command},
     rc::Rc,
     sync::atomic::Ordering,
@@ -35,8 +35,6 @@ use wgui::{
     components::button::ComponentButton,
     drawing,
     event::{InternalStateChangeEvent, MouseButton, MouseButtonIndex},
-    layout::{Layout, WidgetID},
-    parser::ParserState,
 };
 use wlx_common::overlays::{BackendAttrib, BackendAttribValue};
 use wlx_common::windowing::{OverlayWindowState, Positioning};

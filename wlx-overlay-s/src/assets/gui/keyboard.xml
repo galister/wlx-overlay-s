@@ -168,7 +168,7 @@
   </template>
 
   <template name="Set">
-    <Button macro="button_style" id="set_${idx}" _release="::SetSwitch ${idx}" tooltip="WATCH.SWITCH_TO_SET" tooltip_side="bottom">
+    <Button macro="button_style" id="set_${idx}" _press="::SetSwitch ${idx}" tooltip="WATCH.SWITCH_TO_SET" tooltip_side="bottom">
       <sprite width="56" height="56" color="~text_color" src_builtin="watch/set2.svg" />
       <div position="absolute" margin_top="16" margin_left="-8">
         <label text="${display}" size="26" color="~color_faded_20" weight="bold" />
@@ -180,6 +180,10 @@
     <div flex_direction="column" interactable="0">
       <rectangle macro="bg_rect" padding="16" align_items="center" justify_content="space_between">
         <div gap="16">
+          <Button macro="button_style" id="btn_dashboard" _press="::DashToggle">
+            <sprite width="56" height="56" color="~text_color" src="watch/wayvr_dashboard_mono.svg"  />
+          </Button>
+          <VerticalSeparator />
           <div id="panels_root" gap="8">
             <Screen idx="0" display="H1" name="HDMI-A-1" />
             <Screen idx="1" display="D2" name="Screen: DP-2" />

@@ -350,6 +350,23 @@ pub(super) fn create_keyboard_panel(
                             );
                             ("App", apps_root)
                         }
+                        OverlayCategory::Dashboard => {
+                            let overlay_button = panel
+                                .parser_state
+                                .fetch_component_as::<ComponentButton>("btn_dashboard")?;
+
+                            log::error!("Found dashboard at: {:?}", meta.id);
+
+                            if meta.visible {
+                                let mut com = CallbackDataCommon {
+                                    alterables: &mut alterables,
+                                    state: &panel.layout.state,
+                                };
+                                overlay_button.set_sticky_state(&mut com, true);
+                            }
+                            panel.state.overlay_buttons.insert(meta.id, overlay_button);
+                            continue;
+                        }
                         _ => continue,
                     };
 
@@ -362,7 +379,7 @@ pub(super) fn create_keyboard_panel(
                         root,
                         params,
                     )?;
-                    let overlay_buttons = panel
+                    let overlay_button = panel
                         .parser_state
                         .fetch_component_as::<ComponentButton>(&format!("overlay_{i}"))?;
                     if meta.visible {
@@ -370,9 +387,9 @@ pub(super) fn create_keyboard_panel(
                             alterables: &mut alterables,
                             state: &panel.layout.state,
                         };
-                        overlay_buttons.set_sticky_state(&mut com, true);
+                        overlay_button.set_sticky_state(&mut com, true);
                     }
-                    panel.state.overlay_buttons.insert(meta.id, overlay_buttons);
+                    panel.state.overlay_buttons.insert(meta.id, overlay_button);
                 }
                 panel.process_custom_elems(app);
             }
