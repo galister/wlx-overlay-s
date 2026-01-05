@@ -30,7 +30,10 @@ use crate::{
     backend::{
         input::{Haptics, HoverResult, PointerHit, PointerMode},
         task::{OverlayTask, PlayspaceTask, TaskType},
-        wayvr::{process::ProcessHandle, window::WindowHandle},
+        wayvr::{
+            process::{KillSignal, ProcessHandle},
+            window::WindowHandle,
+        },
     },
     ipc::ipc_server::{gen_args_vec, gen_env_vec},
     state::AppState,
@@ -402,7 +405,7 @@ impl DashInterface<AppState> for DashInterfaceLive {
         handle: WvrProcessHandle,
     ) -> anyhow::Result<()> {
         let wvr_server = app.wvr_server.as_mut().unwrap();
-        wvr_server.terminate_process(ProcessHandle::from_packet(handle));
+        wvr_server.terminate_process(ProcessHandle::from_packet(handle), KillSignal::Term);
         Ok(())
     }
 

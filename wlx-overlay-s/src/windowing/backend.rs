@@ -17,6 +17,7 @@ use crate::{
         task::ModifyPanelCommand,
     },
     graphics::{ExtentExt, RenderResult},
+    overlays::wayvr::WvrCommand,
     state::AppState,
     subsystem::hid::WheelDelta,
     windowing::{OverlayID, window::OverlayCategory},
@@ -134,6 +135,7 @@ pub enum OverlayEventData {
         element: String,
         command: ModifyPanelCommand,
     },
+    WvrCommand(WvrCommand),
 }
 
 pub trait OverlayBackend: Any {

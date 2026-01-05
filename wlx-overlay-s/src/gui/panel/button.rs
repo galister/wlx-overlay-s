@@ -10,20 +10,28 @@ use std::{
 use anyhow::Context;
 use wgui::{
     components::button::ComponentButton,
-    event::{CallbackData, CallbackMetadata, EventCallback, EventListenerKind, MouseButtonIndex},
+    event::{
+        CallbackData, CallbackMetadata, EventCallback, EventListenerKind, MouseButtonIndex,
+        StyleSetRequest,
+    },
     layout::Layout,
-    parser::CustomAttribsInfoOwned,
+    log::LogErr,
+    parser::{CustomAttribsInfoOwned, Fetchable, ParserState},
+    taffy,
     widget::EventResult,
 };
 use wlx_common::overlays::ToastTopic;
 
 use crate::{
     RUNNING,
-    backend::task::{OverlayTask, PlayspaceTask, TaskType},
-    overlays::{dashboard::DASH_NAME, toast::Toast},
+    backend::{
+        task::{OverlayTask, PlayspaceTask, TaskType},
+        wayvr::process::KillSignal,
+    },
+    overlays::{dashboard::DASH_NAME, toast::Toast, wayvr::WvrCommand},
     state::AppState,
     subsystem::hid::VirtualKey,
-    windowing::OverlaySelector,
+    windowing::{OverlaySelector, backend::OverlayEventData},
 };
 
 #[allow(clippy::type_complexity)]
@@ -176,6 +184,7 @@ fn short_duration(btn: &ComponentButton, app: &AppState) -> bool {
 #[allow(clippy::too_many_lines)]
 pub(super) fn setup_custom_button<S: 'static>(
     layout: &mut Layout,
+    parser_state: &ParserState,
     attribs: &CustomAttribsInfoOwned,
     _app: &AppState,
     button: Rc<ComponentButton>,
@@ -193,6 +202,37 @@ pub(super) fn setup_custom_button<S: 'static>(
         let button = button.clone();
 
         let callback: EventCallback<AppState, S> = match command {
+            "::ElementSetDisplay" => {
+                let (Some(id), Some(value)) = (args.next(), args.next()) else {
+                    log::warn!(
+                        "{command} has incorrect arguments. Should be: {command} <element_id> <display>"
+                    );
+                    return;
+                };
+
+                let Ok(widget_id) = parser_state.data.get_widget_id(id) else {
+                    log::warn!("{command}: no element exists with ID '{id}'");
+                    return;
+                };
+
+                let display = match value {
+                    "none" => taffy::Display::None,
+                    "flex" => taffy::Display::Flex,
+                    "block" => taffy::Display::Block,
+                    "grid" => taffy::Display::Grid,
+                    _ => {
+                        log::warn!("{command} has invalid display argument: '{value}'");
+                        return;
+                    }
+                };
+
+                Box::new(move |common, _data, _app, _| {
+                    common
+                        .alterables
+                        .set_style(widget_id, StyleSetRequest::Display(display));
+                    Ok(EventResult::Consumed)
+                })
+            }
             "::DashToggle" => Box::new(move |_common, data, app, _| {
                 if !test_button(data) || !test_duration(&button, app) {
                     return Ok(EventResult::Pass);
@@ -284,8 +324,84 @@ pub(super) fn setup_custom_button<S: 'static>(
                         return Ok(EventResult::Pass);
                     }
 
-                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::SoftToggleOverlay(
+                    app.tasks
+                        .enqueue(TaskType::Overlay(OverlayTask::SoftToggleOverlay(
+                            OverlaySelector::Name(arg.clone()),
+                        )));
+                    Ok(EventResult::Consumed)
+                })
+            }
+            "::OverlayDrop" => {
+                let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
+                if arg.len() < 1 {
+                    log::error!("{command} has missing arguments");
+                    return;
+                };
+
+                Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    app.tasks
+                        .enqueue(TaskType::Overlay(OverlayTask::Drop(OverlaySelector::Name(
+                            arg.clone(),
+                        ))));
+                    Ok(EventResult::Consumed)
+                })
+            }
+            "::WvrOverlayCloseWindow" => {
+                let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
+                if arg.len() < 1 {
+                    log::error!("{command} has missing arguments");
+                    return;
+                };
+                Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
                         OverlaySelector::Name(arg.clone()),
+                        Box::new(move |app, owc| {
+                            let _ = owc
+                                .backend
+                                .notify(app, OverlayEventData::WvrCommand(WvrCommand::CloseWindow))
+                                .log_warn("Could not close window");
+                        }),
+                    )));
+                    Ok(EventResult::Consumed)
+                })
+            }
+            "::WvrOverlayKillProcess" | "::WvrOverlayTermProcess" => {
+                let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
+                if arg.len() < 1 {
+                    log::error!("{command} has missing arguments");
+                    return;
+                };
+
+                let signal = if command == "::OverlayKillProcess" {
+                    KillSignal::Kill
+                } else {
+                    KillSignal::Term
+                };
+
+                Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
+                        OverlaySelector::Name(arg.clone()),
+                        Box::new(move |app, owc| {
+                            let _ = owc
+                                .backend
+                                .notify(
+                                    app,
+                                    OverlayEventData::WvrCommand(WvrCommand::KillProcess(signal)),
+                                )
+                                .log_warn("Could not kill process");
+                        }),
                     )));
                     Ok(EventResult::Consumed)
                 })

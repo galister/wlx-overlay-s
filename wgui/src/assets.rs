@@ -3,7 +3,7 @@ use std::ffi::OsStr;
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum AssetPath<'a> {
 	WguiInternal(&'a str),  // tied to internal wgui AssetProvider. Used internally
 	BuiltIn(&'a str),       // tied to user AssetProvider
@@ -12,7 +12,7 @@ pub enum AssetPath<'a> {
 }
 
 // see AssetPath above for documentation
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum AssetPathOwned {
 	WguiInternal(PathBuf),
 	BuiltIn(PathBuf),

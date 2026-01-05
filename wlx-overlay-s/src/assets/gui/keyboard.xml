@@ -13,11 +13,6 @@
     width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}"
   />
 
-  <macro name="button_style" border="2" border_color="~color_accent_translucent" color="~color_bg" round="8"
-    align_items="center" justify_content="center" padding="8" width="80" height="80" />
-
-  <macro name="bg_rect" width="100%" color="~color_bg" round="16" border="2" border_color="~color_accent" />
-
   <template name="VerticalSeparator">
     <rectangle width="2" height="100%" color="~color_accent" />
   </template>
@@ -85,37 +80,91 @@
     </div>
   </template>
 
+  <macro name="button_style" border="2" border_color="~color_accent_translucent" color="~color_bg" round="8"
+    align_items="center" justify_content="center" padding="8" width="80" height="80" overflow="visible"/>
+
+  <macro name="menu_button_style" border="2" border_color="~color_accent_translucent" color="~color_bg" round="8"
+    align_items="center" justify_content="center" padding="8" width="100%" height="60" />
+
+  <macro name="bg_rect" width="100%" color="~color_bg" round="16" border="2" border_color="~color_accent" />
+  <macro name="dropdown_root" new_pass="1" width="200" color="~color_bg" flex_direction="column" position="absolute" margin_top="80" display="none" />
+  <macro name="dropdown_title" color="~color_faded_50" width="100%" padding="16" overflow="hidden" />
+
+  <template name="MenuButton">
+    <Button macro="menu_button_style" _release="${action}">
+      <label translation="${translation}" size="24" />
+    </Button>
+  </template>
 
   <!-- An app with a single icon. -->
   <template name="App">
-    <Button macro="button_style" id="overlay_${idx}" _short_release="::OverlayToggle ${name}" tooltip="OVERLAY_TOOLTIP.APP;${name}" tooltip_side="bottom">
-      <sprite width="56" height="56" color="~text_color" src_ext="${icon}" />
-    </Button>
+    <div>
+      <Button macro="button_style" id="overlay_${idx}" _press="::OverlayToggle ${name}" _release="::ElementSetDisplay dropdown_${idx} none">
+        <sprite width="56" height="56" color="~text_color" src_ext="${icon}" />
+      </Button>
+      <div macro="dropdown_root" id="dropdown_${idx}">
+        <rectangle macro="dropdown_title">
+          <label text="${name}" weight="bold" size="24" />
+        </rectangle>
+        <MenuButton translation="BAR.TOGGLE_HIDE" action="::OverlaySoftToggle ${name}" />
+        <MenuButton translation="BAR.TOGGLE_IN_SET" action="::OverlayToggle ${name}" />
+        <MenuButton translation="BAR.CLOSE" action="::WvrOverlayTermProcess ${name}" />
+        <MenuButton translation="BAR.FORCE_CLOSE" action="::WvrOverlayKillProcess ${name}" />
+      </div>
+    </div>
   </template>
 
   <!-- A screen with a shortened connector name, e.g. "H1" for HDMI-A-1 or "D2" for DP-2 -->
   <template name="Screen">
-    <Button macro="button_style" id="overlay_${idx}" _short_release="::OverlayToggle ${name}" tooltip="OVERLAY_TOOLTIP.SCREEN;${name}" tooltip_side="bottom">
-      <sprite width="56" height="56" color="~text_color" src_builtin="edit/screen.svg" />
-      <div position="absolute" margin_top="-10">
-        <label text="${display}" size="26" color="~color_faded_20" weight="bold" />
+    <div>
+      <Button macro="button_style" id="overlay_${idx}" _press="::OverlayToggle ${name}" _release="::ElementSetDisplay dropdown_${idx} none">
+        <sprite width="56" height="56" color="~text_color" src_builtin="edit/screen.svg" />
+        <div position="absolute" margin_top="-10">
+          <label text="${display}" size="26" color="~color_faded_20" weight="bold" />
+        </div>
+      </Button>
+      <div macro="dropdown_root" id="dropdown_${idx}">
+        <rectangle macro="dropdown_title">
+          <label text="${name}" weight="bold" size="24" />
+        </rectangle>
+        <MenuButton translation="BAR.TOGGLE_HIDE" action="::OverlaySoftToggle ${name}" />
+        <MenuButton translation="BAR.TOGGLE_IN_SET" action="::OverlayToggle ${name}" />
       </div>
-    </Button>
+    </div>
   </template>
 
   <template name="Panel">
-    <Button macro="button_style" id="overlay_${idx}" _short_release="::OverlayToggle ${name}" tooltip="OVERLAY_TOOLTIP.PANEL;${name}" tooltip_side="bottom">
-      <sprite width="56" height="56" color="~text_color" src_builtin="edit/panel.svg" />
-    </Button>
+    <div>
+      <Button macro="button_style" id="overlay_${idx}" _press="::OverlayToggle ${name}" _release="::ElementSetDisplay dropdown_${idx} none">
+        <sprite width="56" height="56" color="~text_color" src_builtin="edit/panel.svg" />
+      </Button>
+      <div macro="dropdown_root" id="dropdown_${idx}">
+        <rectangle macro="dropdown_title">
+          <label text="${name}" weight="bold" size="24" />
+        </rectangle>
+        <MenuButton translation="BAR.TOGGLE_HIDE" action="::OverlaySoftToggle ${name}" />
+        <MenuButton translation="BAR.TOGGLE_IN_SET" action="::OverlayToggle ${name}" />
+      </div>
+    </div>
   </template>
 
   <template name="Mirror">
-    <Button macro="button_style" id="overlay_${idx}" _short_release="::OverlayToggle ${name}" tooltip="OVERLAY_TOOLTIP.MIRROR;${name}" tooltip_side="bottom">
-      <sprite width="56" height="56" color="~text_color" src_builtin="edit/mirror.svg" />
-      <div position="absolute" margin_top="7" margin_left="20">
-        <label text="${display}" size="26" color="~color_faded_20" weight="bold" />
+    <div>
+      <Button macro="button_style" id="overlay_${idx}" _press="::OverlayToggle ${name}" _release="::ElementSetDisplay dropdown_${idx} none">
+        <sprite width="56" height="56" color="~text_color" src_builtin="edit/mirror.svg" />
+        <div position="absolute" margin_top="7" margin_left="20">
+          <label text="${display}" size="26" color="~color_faded_20" weight="bold" />
+        </div>
+      </Button>
+      <div macro="dropdown_root" id="dropdown_${idx}">
+        <rectangle macro="dropdown_title">
+          <label text="${name}" weight="bold" size="24" />
+        </rectangle>
+        <MenuButton translation="BAR.TOGGLE_HIDE" action="::OverlaySoftToggle ${name}" />
+        <MenuButton translation="BAR.TOGGLE_IN_SET" action="::OverlayToggle ${name}" />
+        <MenuButton translation="BAR.CLOSE" action="::OverlayDrop ${name}" />
       </div>
-    </Button>
+    </div>
   </template>
 
   <template name="Set">

@@ -11,15 +11,18 @@ use process::ProcessVec;
 use slotmap::SecondaryMap;
 use smallvec::SmallVec;
 use smithay::{
-    desktop::PopupManager, input::{keyboard::XkbConfig, SeatState}, output::{Mode, Output}, reexports::wayland_server::{self, backend::ClientId}, wayland::{
-        compositor::{self, with_states, SurfaceData},
+    desktop::PopupManager,
+    input::{SeatState, keyboard::XkbConfig},
+    output::{Mode, Output},
+    reexports::wayland_server::{self, backend::ClientId},
+    wayland::{
+        compositor::{self, SurfaceData, with_states},
         dmabuf::{DmabufFeedbackBuilder, DmabufState},
         selection::data_device::DataDeviceState,
         shell::xdg::{ToplevelSurface, XdgShellState, XdgToplevelSurfaceData},
         shm::ShmState,
-    }
+    },
 };
-use wlx_common::desktop_finder::DesktopFinder;
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
@@ -32,18 +35,23 @@ use vulkano::image::view::ImageView;
 use wayvr_ipc::packet_server;
 use wgui::gfx::WGfx;
 use wlx_capture::frame::Transform;
+use wlx_common::desktop_finder::DesktopFinder;
 use xkbcommon::xkb;
 
 use crate::{
     backend::{
         task::{OverlayTask, TaskType},
-        wayvr::{image_importer::ImageImporter, process::{Process}, window::Window},
+        wayvr::{
+            image_importer::ImageImporter,
+            process::{KillSignal, Process},
+            window::Window,
+        },
     },
     graphics::WGfxExtras,
     ipc::{event_queue::SyncEventQueue, ipc_server, signal::WayVRSignal},
     overlays::wayvr::create_wl_window_overlay,
     state::AppState,
-    subsystem::hid::{WheelDelta, MODS_TO_KEYS},
+    subsystem::hid::{MODS_TO_KEYS, WheelDelta},
     windowing::{OverlayID, OverlaySelector},
 };
 
@@ -79,7 +87,7 @@ pub enum WayVRTask {
     NewToplevel(ClientId, ToplevelSurface),
     DropToplevel(ClientId, ToplevelSurface),
     NewExternalProcess(ExternalProcessRequest),
-    ProcessTerminationRequest(process::ProcessHandle),
+    ProcessTerminationRequest(process::ProcessHandle, KillSignal),
     CloseWindowRequest(window::WindowHandle),
 }
 
@@ -303,31 +311,43 @@ impl WvrServerState {
                         };
 
                         // Size, icon & fallback title comes from process
-                        let ([size_x, size_y], fallback_title, icon, is_cage) = match wvr_server.processes.get(&process_handle) {
-                            Some(Process::Managed(p)) => (p.resolution, Some(p.app_name.clone()), p.icon.as_ref().cloned(), p.exec_path.ends_with("cage")),
-                            _ => ([1920, 1080], None, None, false)
-                        };
+                        let ([size_x, size_y], fallback_title, icon, is_cage) =
+                            match wvr_server.processes.get(&process_handle) {
+                                Some(Process::Managed(p)) => (
+                                    p.resolution,
+                                    Some(p.app_name.clone()),
+                                    p.icon.as_ref().cloned(),
+                                    p.exec_path.ends_with("cage"),
+                                ),
+                                _ => ([1920, 1080], None, None, false),
+                            };
 
-                        let window_handle = wvr_server
-                            .wm
-                            .create_window(toplevel.clone(), process_handle, size_x, size_y);
+                        let window_handle = wvr_server.wm.create_window(
+                            toplevel.clone(),
+                            process_handle,
+                            size_x,
+                            size_y,
+                        );
 
-                        let mut title: Arc<str> = fallback_title.unwrap_or_else(|| format!("P{}", client.pid)).into();
+                        let mut title: Arc<str> = fallback_title
+                            .unwrap_or_else(|| format!("P{}", client.pid))
+                            .into();
                         let mut icon = icon;
 
                         // Try to get title from xdg_toplevel, unless it's running in cage
                         if !is_cage {
                             let mut needs_title = true;
-                            let (xdg_title, app_id): (Option<String>, Option<String>) = with_states(toplevel.wl_surface(), |states| {
-                                states
-                                    .data_map
-                                    .get::<XdgToplevelSurfaceData>()
-                                    .map(|t| {
-                                        let t = t.lock().unwrap();
-                                        (t.title.clone(), t.app_id.clone())
-                                    })
-                                    .unwrap_or((None, None))
-                            });
+                            let (xdg_title, app_id): (Option<String>, Option<String>) =
+                                with_states(toplevel.wl_surface(), |states| {
+                                    states
+                                        .data_map
+                                        .get::<XdgToplevelSurfaceData>()
+                                        .map(|t| {
+                                            let t = t.lock().unwrap();
+                                            (t.title.clone(), t.app_id.clone())
+                                        })
+                                        .unwrap_or((None, None))
+                                });
                             if let Some(xdg_title) = xdg_title {
                                 needs_title = false;
                                 title = xdg_title.into();
@@ -335,15 +355,17 @@ impl WvrServerState {
 
                             // Try to get title & icon from desktop entry
                             if let Some(app_id) = app_id
-                            && let Some(desktop_entry) = app.desktop_finder.get_cached_entry(&app_id) {
+                                && let Some(desktop_entry) =
+                                    app.desktop_finder.get_cached_entry(&app_id)
+                            {
                                 if needs_title {
                                     title = desktop_entry.app_name.as_ref().into();
                                 }
                                 if icon.is_none()
-                                && let Some(icon_path) = desktop_entry.icon_path.as_ref() {
+                                    && let Some(icon_path) = desktop_entry.icon_path.as_ref()
+                                {
                                     icon = Some(icon_path.as_ref().into());
                                 }
-                            
                             }
                         }
 
@@ -352,7 +374,7 @@ impl WvrServerState {
                             Some(icon) => icon,
                             None => DesktopFinder::create_icon(&*title)?.into(),
                         };
-                        
+
                         app.tasks.enqueue(TaskType::Overlay(OverlayTask::Create(
                             OverlaySelector::Nothing,
                             Box::new(move |app: &mut AppState| {
@@ -362,7 +384,10 @@ impl WvrServerState {
                                     window_handle,
                                     icon,
                                     [size_x, size_y],
-                                ).context("Could not create WvrWindow overlay").inspect_err(|e| log::warn!("{e:?}")).ok()
+                                )
+                                .context("Could not create WvrWindow overlay")
+                                .inspect_err(|e| log::warn!("{e:?}"))
+                                .ok()
                             }),
                         )));
 
@@ -393,30 +418,38 @@ impl WvrServerState {
                         wvr_server.wm.remove_window(window_handle);
                     }
                 }
-                WayVRTask::ProcessTerminationRequest(process_handle) => {
+                WayVRTask::ProcessTerminationRequest(process_handle, signal) => {
                     if let Some(process) = wvr_server.processes.get_mut(&process_handle) {
-                                process.terminate();
+                        process.kill(signal);
                     }
 
-                    for (h,w) in wvr_server.wm.windows.iter() {
+                    // Don't clean up all windows in case of SIGTERM,
+                    // the app might display a confirmation dialog, etc.
+                    if !matches!(signal, KillSignal::Kill) {
+                        continue;
+                    }
+
+                    for (h, w) in wvr_server.wm.windows.iter() {
                         if w.process != process_handle {
                             continue;
                         }
-                        
+
                         let Some(oid) = wvr_server.window_to_overlay.get(&h) else {
                             continue;
                         };
-                            app.tasks.enqueue(TaskType::Overlay(OverlayTask::Drop(
-                                OverlaySelector::Id(*oid),
-                            )));
-                        }
+                        app.tasks.enqueue(TaskType::Overlay(OverlayTask::Drop(
+                            OverlaySelector::Id(*oid),
+                        )));
+                    }
                 }
                 WayVRTask::CloseWindowRequest(window_handle) => {
                     if let Some(w) = wvr_server.wm.windows.get(&window_handle) {
                         log::info!("Sending window close to {window_handle:?}");
                         w.toplevel.send_close();
                     } else {
-                        log::warn!("Could not close window - no such handle found: {window_handle:?}");
+                        log::warn!(
+                            "Could not close window - no such handle found: {window_handle:?}"
+                        );
                     }
                 }
             }
@@ -434,11 +467,15 @@ impl WvrServerState {
         Ok(tasks)
     }
 
-    pub fn terminate_process(&mut self, process_handle: process::ProcessHandle) {
+    pub fn terminate_process(
+        &mut self,
+        process_handle: process::ProcessHandle,
+        signal: KillSignal,
+    ) {
         self.tasks
-            .send(WayVRTask::ProcessTerminationRequest(process_handle));
+            .send(WayVRTask::ProcessTerminationRequest(process_handle, signal));
     }
-    
+
     pub fn close_window(&mut self, window_handle: window::WindowHandle) {
         self.tasks
             .send(WayVRTask::CloseWindowRequest(window_handle));

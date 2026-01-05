@@ -186,7 +186,7 @@ impl<S: 'static> GuiPanel<S> {
                 .parser_state
                 .fetch_component_from_widget_id_as::<ComponentButton>(elem.widget_id)
             {
-                setup_custom_button::<S>(&mut self.layout, elem, app, button);
+                setup_custom_button::<S>(&mut self.layout, &self.parser_state, elem, app, button);
             }
 
             if let Some(on_custom_attrib) = &self.on_custom_attrib {

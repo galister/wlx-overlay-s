@@ -1,15 +1,28 @@
-use std::{collections::{HashMap}, rc::Rc, time::Duration};
+use std::{collections::HashMap, rc::Rc, time::Duration};
 
 use crate::{
     app_misc,
-    gui::{panel::{GuiPanel, NewGuiPanelParams}, timer::GuiTimer},
+    gui::{
+        panel::{GuiPanel, NewGuiPanelParams},
+        timer::GuiTimer,
+    },
     state::AppState,
-    subsystem::hid::XkbKeymap, windowing::{backend::OverlayEventData, window::OverlayCategory},
+    subsystem::hid::XkbKeymap,
+    windowing::{backend::OverlayEventData, window::OverlayCategory},
 };
 use anyhow::Context;
 use glam::{FloatExt, Mat4, Vec2, vec2, vec3};
 use wgui::{
-    animation::{Animation, AnimationEasing}, assets::AssetPath, components::button::ComponentButton, drawing::{self, Color}, event::{self, CallbackDataCommon, CallbackMetadata, EventAlterables, EventListenerKind}, layout::LayoutUpdateParams, parser::{Fetchable, ParseDocumentParams}, renderer_vk::util, taffy::{self, prelude::length}, widget::{div::WidgetDiv, rectangle::WidgetRectangle, EventResult}
+    animation::{Animation, AnimationEasing},
+    assets::AssetPath,
+    components::button::ComponentButton,
+    drawing::{self, Color},
+    event::{self, CallbackDataCommon, CallbackMetadata, EventAlterables, EventListenerKind},
+    layout::LayoutUpdateParams,
+    parser::{Fetchable, ParseDocumentParams},
+    renderer_vk::util,
+    taffy::{self, prelude::length},
+    widget::{EventResult, div::WidgetDiv, rectangle::WidgetRectangle},
 };
 
 use super::{
@@ -276,7 +289,7 @@ pub(super) fn create_keyboard_panel(
                 for i in 0..num_sets {
                     let mut params = HashMap::new();
                     params.insert("idx".into(), i.to_string().into());
-                    params.insert("display".into(), (i+1).to_string().into());
+                    params.insert("display".into(), (i + 1).to_string().into());
                     panel.parser_state.instantiate_template(
                         &doc_params,
                         "Set",
@@ -284,14 +297,16 @@ pub(super) fn create_keyboard_panel(
                         sets_root,
                         params,
                     )?;
-                    let set_button = panel.parser_state.fetch_component_as::<ComponentButton>(&format!("set_{i}"))?;
+                    let set_button = panel
+                        .parser_state
+                        .fetch_component_as::<ComponentButton>(&format!("set_{i}"))?;
                     if panel.state.current_set == Some(i) {
                         let mut com = CallbackDataCommon {
                             alterables: &mut alterables,
                             state: &panel.layout.state,
                         };
                         set_button.set_sticky_state(&mut com, true);
-                    } 
+                    }
                     panel.state.set_buttons.push(set_button);
                 }
                 panel.process_custom_elems(app);
@@ -308,21 +323,34 @@ pub(super) fn create_keyboard_panel(
 
                     let (template, root) = match meta.category {
                         OverlayCategory::Screen => {
-                            params.insert("display".into(), format!("{}{}", (*meta.name).chars().next().unwrap_or_default(), (*meta.name).chars().last().unwrap_or_default()).into());
+                            params.insert(
+                                "display".into(),
+                                format!(
+                                    "{}{}",
+                                    (*meta.name).chars().next().unwrap_or_default(),
+                                    (*meta.name).chars().last().unwrap_or_default()
+                                )
+                                .into(),
+                            );
                             ("Screen", panels_root)
-                        },
+                        }
                         OverlayCategory::Mirror => {
                             params.insert("display".into(), meta.name.as_ref().into());
                             ("Mirror", panels_root)
-                        },
-                        OverlayCategory::Panel => {
-                            ("Panel", panels_root)
-                        },
+                        }
+                        OverlayCategory::Panel => ("Panel", panels_root),
                         OverlayCategory::WayVR => {
-                            params.insert("icon".into(), meta.icon.as_ref().expect("WayVR overlay without Icon attribute!").as_ref().into());
+                            params.insert(
+                                "icon".into(),
+                                meta.icon
+                                    .as_ref()
+                                    .expect("WayVR overlay without Icon attribute!")
+                                    .as_ref()
+                                    .into(),
+                            );
                             ("App", apps_root)
-                        },
-                        _ => continue
+                        }
+                        _ => continue,
                     };
 
                     params.insert("idx".into(), i.to_string().into());
@@ -334,14 +362,16 @@ pub(super) fn create_keyboard_panel(
                         root,
                         params,
                     )?;
-                    let overlay_buttons = panel.parser_state.fetch_component_as::<ComponentButton>(&format!("overlay_{i}"))?;
+                    let overlay_buttons = panel
+                        .parser_state
+                        .fetch_component_as::<ComponentButton>(&format!("overlay_{i}"))?;
                     if meta.visible {
                         let mut com = CallbackDataCommon {
                             alterables: &mut alterables,
                             state: &panel.layout.state,
                         };
                         overlay_buttons.set_sticky_state(&mut com, true);
-                    } 
+                    }
                     panel.state.overlay_buttons.insert(meta.id, overlay_buttons);
                 }
                 panel.process_custom_elems(app);
@@ -354,8 +384,7 @@ pub(super) fn create_keyboard_panel(
                 let mut overlay_buttons = panel.state.overlay_buttons.clone();
 
                 for visible in &*overlays {
-                    if let Some(btn) = overlay_buttons.remove(*visible)
-                    {
+                    if let Some(btn) = overlay_buttons.remove(*visible) {
                         btn.set_sticky_state(&mut com, true);
                     }
                 }

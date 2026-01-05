@@ -28,7 +28,7 @@ use crate::{
     backend::{
         XrBackend,
         input::{self, HoverResult},
-        wayvr::{self, SurfaceBufWithImage, window::WindowHandle},
+        wayvr::{self, SurfaceBufWithImage, process::KillSignal, window::WindowHandle},
     },
     graphics::{ExtentExt, Vert2Uv, upload_quad_vertices},
     gui::panel::{GuiPanel, NewGuiPanelParams, OnCustomAttribFunc, button::BUTTON_EVENTS},
@@ -43,6 +43,11 @@ use crate::{
         window::{OverlayCategory, OverlayWindowConfig},
     },
 };
+
+pub enum WvrCommand {
+    CloseWindow,
+    KillProcess(KillSignal),
+}
 
 const BORDER_SIZE: u32 = 5;
 const BAR_SIZE: u32 = 48;
@@ -421,10 +426,24 @@ impl OverlayBackend for WvrWindowBackend {
         app: &mut state::AppState,
         event_data: OverlayEventData,
     ) -> anyhow::Result<()> {
-        if let OverlayEventData::IdAssigned(oid) = event_data {
-            let wvr_server = app.wvr_server.as_mut().unwrap(); //never None
-            wvr_server.overlay_added(oid, self.window);
+        match event_data {
+            OverlayEventData::IdAssigned(oid) => {
+                let wvr_server = app.wvr_server.as_mut().unwrap(); //never None
+                wvr_server.overlay_added(oid, self.window);
+            }
+            OverlayEventData::WvrCommand(WvrCommand::CloseWindow) => {
+                app.wvr_server.as_mut().unwrap().close_window(self.window);
+            }
+            OverlayEventData::WvrCommand(WvrCommand::KillProcess(signal)) => {
+                let wvr_server = app.wvr_server.as_mut().unwrap();
+                let Some(p) = wvr_server.wm.windows.get(&self.window) else {
+                    return Ok(());
+                };
+                wvr_server.terminate_process(p.process, signal);
+            }
+            _ => {}
         }
+
         Ok(())
     }
 

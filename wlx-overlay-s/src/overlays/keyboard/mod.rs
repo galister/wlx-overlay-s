@@ -1,24 +1,42 @@
 use std::{
-    cell::Cell, collections::HashMap, process::{Child, Command}, rc::Rc, sync::atomic::Ordering
+    cell::Cell,
+    collections::{HashMap, HashSet},
+    process::{Child, Command},
+    rc::Rc,
+    sync::atomic::Ordering,
 };
 
 use crate::{
-    backend::input::{HoverResult, PointerHit}, gui::panel::GuiPanel, overlays::keyboard::{builder::create_keyboard_panel, layout::AltModifier}, state::AppState, subsystem::{
+    KEYMAP_CHANGE,
+    backend::input::{HoverResult, PointerHit},
+    gui::panel::GuiPanel,
+    overlays::keyboard::{builder::create_keyboard_panel, layout::AltModifier},
+    state::AppState,
+    subsystem::{
         dbus::DbusConnector,
         hid::{
-            get_keymap_wl, get_keymap_x11, KeyModifier, VirtualKey, WheelDelta, XkbKeymap, ALT, CTRL, META, SHIFT, SUPER
+            ALT, CTRL, KeyModifier, META, SHIFT, SUPER, VirtualKey, WheelDelta, XkbKeymap,
+            get_keymap_wl, get_keymap_x11,
         },
-    }, windowing::{
-        backend::{FrameMeta, OverlayBackend, OverlayEventData, OverlayMeta, RenderResources, ShouldRender},
-        window::{OverlayCategory, OverlayWindowConfig}, OverlayID,
-    }, KEYMAP_CHANGE
+    },
+    windowing::{
+        OverlayID,
+        backend::{
+            FrameMeta, OverlayBackend, OverlayEventData, OverlayMeta, RenderResources, ShouldRender,
+        },
+        window::{OverlayCategory, OverlayWindowConfig},
+    },
 };
 use anyhow::Context;
 use glam::{Affine3A, Quat, Vec3, vec3};
 use regex::Regex;
-use slotmap::{new_key_type, SecondaryMap, SlotMap};
+use slotmap::{SecondaryMap, SlotMap, new_key_type};
 use wgui::{
-    components::button::ComponentButton, drawing, event::{InternalStateChangeEvent, MouseButton, MouseButtonIndex}
+    components::button::ComponentButton,
+    drawing,
+    event::{InternalStateChangeEvent, MouseButton, MouseButtonIndex},
+    layout::{Layout, WidgetID},
+    parser::ParserState,
 };
 use wlx_common::overlays::{BackendAttrib, BackendAttribValue};
 use wlx_common::windowing::{OverlayWindowState, Positioning};
@@ -329,7 +347,7 @@ impl KeyboardState {
                 overlay_buttons
             },
             overlay_metas: {
-                let mut overlay_metas= SecondaryMap::new();
+                let mut overlay_metas = SecondaryMap::new();
                 std::mem::swap(&mut overlay_metas, &mut self.overlay_metas);
                 overlay_metas
             },

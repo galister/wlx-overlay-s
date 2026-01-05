@@ -2,6 +2,12 @@
 	"ANCHOR": {
 		"CENTER": "Center"
 	},
+	"BAR": {
+		"HIDE": "Hide",
+		"TOGGLE_IN_SET": "Toggle in set",
+		"CLOSE": "Close",
+		"FORCE_CLOSE": "Force close"
+	},
 	"DEFAULT": "Default",
 	"DISABLED": "Disabled",
 	"OVERLAY_TOOLTIP": {

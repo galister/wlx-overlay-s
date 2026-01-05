@@ -300,6 +300,8 @@ impl Connection {
         params: &mut TickParams,
         process_handle: packet_server::WvrProcessHandle,
     ) {
+        use crate::backend::wayvr::process::KillSignal;
+
         let native_handle = &wayvr::process::ProcessHandle::from_packet(process_handle);
         let process = params.wvr_server.processes.get_mut(native_handle);
 
@@ -307,7 +309,7 @@ impl Connection {
             return;
         };
 
-        process.terminate();
+        process.kill(KillSignal::Term);
     }
 
     #[cfg(feature = "wayvr")]

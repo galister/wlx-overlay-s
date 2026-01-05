@@ -1,27 +1,17 @@
 use std::fmt::Debug;
 
 pub trait LogErr {
-	fn log_err(self) -> Self;
-	fn log_err_with(self, additional: &str) -> Self;
-	fn log_warn(self) -> Self;
-	fn log_warn_with(self, additional: &str) -> Self;
+	fn log_err(self, additional: &str) -> Self;
+	fn log_err_with<D: Debug>(self, additional: &D) -> Self;
+	fn log_warn(self, additional: &str) -> Self;
+	fn log_warn_with<D: Debug>(self, additional: &D) -> Self;
 }
 
 impl<T, E> LogErr for Result<T, E>
 where
 	E: Debug + Send + Sync + 'static,
 {
-	fn log_warn(self) -> Result<T, E> {
-		match self {
-			Ok(ok) => Ok(ok),
-			Err(error) => {
-				log::warn!("{error:?}");
-				Err(error)
-			}
-		}
-	}
-
-	fn log_warn_with(self, additional: &str) -> Result<T, E> {
+	fn log_warn(self, additional: &str) -> Result<T, E> {
 		match self {
 			Ok(ok) => Ok(ok),
 			Err(error) => {
@@ -31,21 +21,31 @@ where
 		}
 	}
 
-	fn log_err(self) -> Result<T, E> {
+	fn log_warn_with<D: Debug>(self, additional: &D) -> Result<T, E> {
 		match self {
 			Ok(ok) => Ok(ok),
 			Err(error) => {
-				log::error!("{error:?}");
+				log::warn!("{additional:?}: {error:?}");
 				Err(error)
 			}
 		}
 	}
 
-	fn log_err_with(self, additional: &str) -> Result<T, E> {
+	fn log_err(self, additional: &str) -> Result<T, E> {
 		match self {
 			Ok(ok) => Ok(ok),
 			Err(error) => {
 				log::error!("{additional}: {error:?}");
+				Err(error)
+			}
+		}
+	}
+
+	fn log_err_with<D: Debug>(self, additional: &D) -> Self {
+		match self {
+			Ok(ok) => Ok(ok),
+			Err(error) => {
+				log::error!("{additional:?}: {error:?}");
 				Err(error)
 			}
 		}

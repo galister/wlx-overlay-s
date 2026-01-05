@@ -31,6 +31,12 @@ pub enum Process {
     External(ExternalProcess), // External process not directly controlled by us
 }
 
+#[derive(Clone, Copy)]
+pub enum KillSignal {
+    Term,
+    Kill,
+}
+
 impl Process {
     pub fn is_running(&mut self) -> bool {
         match self {
@@ -39,20 +45,25 @@ impl Process {
         }
     }
 
-    pub fn terminate(&mut self) {
+    pub fn kill(&mut self, signal: KillSignal) {
+        let signal = match signal {
+            KillSignal::Term => libc::SIGTERM,
+            KillSignal::Kill => libc::SIGKILL,
+        };
+
         match self {
-            Self::Managed(p) => p.terminate(),
-            Self::External(p) => p.terminate(),
+            Self::Managed(p) => p.kill(signal),
+            Self::External(p) => p.kill(signal),
         }
     }
 
     pub fn get_name(&self) -> String {
         match self {
-            Self::Managed(p) => p.get_name()
+            Self::Managed(p) => p
+                .get_name()
                 .or_else(|| p.exec_path.split('/').last().map(String::from))
                 .unwrap_or_else(|| String::from("unknown")),
-            Self::External(p) => p.get_name()
-                .unwrap_or_else(|| String::from("unknown")),
+            Self::External(p) => p.get_name().unwrap_or_else(|| String::from("unknown")),
         }
     }
 
@@ -79,7 +90,7 @@ impl Drop for WayVRProcess {
             self.child.id(),
             self.exec_path.as_str()
         );
-        self.terminate();
+        self.kill(libc::SIGTERM);
     }
 }
 
@@ -113,10 +124,10 @@ impl WayVRProcess {
         }
     }
 
-    fn terminate(&mut self) {
+    fn kill(&mut self, signal: i32) {
         unsafe {
             // Gracefully stop process
-            libc::kill(self.child.id() as i32, libc::SIGTERM);
+            libc::kill(self.child.id() as i32, signal);
         }
     }
 
@@ -147,11 +158,11 @@ impl ExternalProcess {
         }
     }
 
-    fn terminate(&mut self) {
+    fn kill(&mut self, signal: i32) {
         if self.pid != 0 {
             unsafe {
                 // send SIGINT (^C)
-                libc::kill(self.pid as i32, libc::SIGINT);
+                libc::kill(self.pid as i32, signal);
             }
         }
         self.pid = 0;

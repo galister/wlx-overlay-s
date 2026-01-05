@@ -10,16 +10,11 @@ mod widget_rectangle;
 mod widget_sprite;
 
 use crate::{
-	assets::{normalize_path, AssetPath, AssetPathOwned},
-	components::{Component, ComponentWeak},
-	drawing::{self},
-	globals::WguiGlobals,
-	layout::{Layout, LayoutParams, LayoutState, Widget, WidgetID, WidgetMap, WidgetPair},
-	parser::{
+	assets::{normalize_path, AssetPath, AssetPathOwned}, components::{Component, ComponentWeak}, drawing::{self}, globals::WguiGlobals, layout::{Layout, LayoutParams, LayoutState, Widget, WidgetID, WidgetMap, WidgetPair}, log::LogErr, parser::{
 		component_button::parse_component_button, component_checkbox::{parse_component_checkbox, CheckboxKind}, component_radio_group::parse_component_radio_group, component_slider::parse_component_slider, widget_div::parse_widget_div, widget_image::parse_widget_image, widget_label::parse_widget_label, widget_rectangle::parse_widget_rectangle, widget_sprite::parse_widget_sprite
-	},
-	widget::ConstructEssentials,
+	}, widget::ConstructEssentials
 };
+use anyhow::Context;
 use ouroboros::self_referencing;
 use smallvec::SmallVec;
 use std::{cell::RefMut, collections::HashMap, path::Path, rc::Rc};
@@ -1109,7 +1104,7 @@ fn get_doc_from_asset_path(
 			allow_dtd: true,
 			..Default::default()
 		};
-		roxmltree::Document::parse_with_options(xml, opt).unwrap()
+		roxmltree::Document::parse_with_options(xml, opt).context("Unable to parse XML").log_err_with(&asset_path).unwrap()
 	}));
 
 	let root = document.borrow_doc().root();
