@@ -28,10 +28,10 @@ use crate::{
         task::{OverlayTask, PlayspaceTask, TaskType},
         wayvr::process::KillSignal,
     },
-    overlays::{dashboard::DASH_NAME, toast::Toast, wayvr::WvrCommand},
+    overlays::{custom::create_custom, dashboard::DASH_NAME, toast::Toast, wayvr::WvrCommand},
     state::AppState,
     subsystem::hid::VirtualKey,
-    windowing::{OverlaySelector, backend::OverlayEventData},
+    windowing::{OverlaySelector, backend::OverlayEventData, window::OverlayCategory},
 };
 
 #[allow(clippy::type_complexity)]
@@ -368,6 +368,37 @@ pub(super) fn setup_custom_button<S: 'static>(
                         .enqueue(TaskType::Overlay(OverlayTask::Drop(OverlaySelector::Name(
                             arg.clone(),
                         ))));
+                    Ok(EventResult::Consumed)
+                })
+            }
+            "::CustomOverlayReload" => {
+                let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
+                if arg.len() < 1 {
+                    log::error!("{command} has missing arguments");
+                    return;
+                };
+
+                Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
+                        OverlaySelector::Name(arg.clone()),
+                        Box::new(|app, owc| {
+                            if !matches!(owc.category, OverlayCategory::Panel) {
+                                return;
+                            }
+                            let name = owc.name.clone();
+                            app.tasks.enqueue(TaskType::Overlay(OverlayTask::Drop(
+                                OverlaySelector::Name(name.clone()),
+                            )));
+                            app.tasks.enqueue(TaskType::Overlay(OverlayTask::Create(
+                                OverlaySelector::Name(owc.name.clone()),
+                                Box::new(move |app| create_custom(app, name)),
+                            )));
+                        }),
+                    )));
                     Ok(EventResult::Consumed)
                 })
             }
