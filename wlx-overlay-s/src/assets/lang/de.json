@@ -51,13 +51,13 @@
       "TITLE": "Mauskorrekturen",
       "WRONG_SCREEN_SELECTION_HELP": "Wenn der Cursor auf einem völlig anderen Bildschirm verschwindet,\nwurden die Bildschirme wahrscheinlich falsch ausgewählt. Siehe Lesezeichen.",
       "NORMAL": "Normal",
-      "FLIPPED": "Umgedreht",
-      "FLIP90": "Um 90° gedreht",
-      "FLIP180": "Um 180° gedreht",
-      "FLIP270": "Um 270° gedreht",
-      "ROTATE90": "Um 90° gedreht",
-      "ROTATE180": "Um 180° gedreht",
-      "ROTATE270": "Um 270° gedreht"
+      "FLIPPED": "Gespiegelt",
+      "FLIP90": "90° gespiegelt",
+      "FLIP180": "180° gespiegelt",
+      "FLIP270": "270° gespiegelt",
+      "ROTATE90": "90° gedreht",
+      "ROTATE180": "180° gedreht",
+      "ROTATE270": "270° gedreht"
     }
   },
   "DISABLED": "Deaktiviert",

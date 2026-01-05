@@ -26,23 +26,29 @@ jobs:
           ../.github/workflows/scripts/appimage_prepare_env.sh
       - name: Cargo Build
         run: |
-          cargo build --release
-          cp ../target/release/wlx-overlay-s ${APPDIR}/usr/bin
-          chmod +x ${APPDIR}/usr/bin/wlx-overlay-s
-
+          ../.github/workflows/scripts/appimage_build_wlx.sh
       - name: Package AppImage
         run: |
-          export VERSION=$GITHUB_REF_NAME
-          ./linuxdeploy-x86_64.AppImage -dwlx-overlay-s.desktop -iwlx-overlay-s.png --appdir=${APPDIR} --output appimage --exclude-library '*libpipewire*'
-          mv WlxOverlay-S-$VERSION-x86_64.AppImage WlxOverlay-S-x86_64.AppImage
-
+          ../.github/workflows/scripts/appimage_package.sh
+      - name: Cargo Build Full
+        run: |
+          ../.github/workflows/scripts/appimage_build_wlx_full.sh
+      - name: Build WayVR Dashboard
+        run: |
+          ../.github/workflows/scripts/appimage_build_wayvr_dashboard.sh
+      - name: Package AppImage
+        run: |
+          ../.github/workflows/scripts/appimage_package_full.sh
+      - name: Build Wayvrctl
+        run: |
+          cd ../wayvrctl
+          cargo build --release
       - name: Make tarball
         run: |
           pip install portage pycargoebuild
           wget https://github.com/gentoo/gentoo/raw/refs/heads/master/metadata/license-mapping.conf
           mkdir dist
           pycargoebuild --distdir dist --license-mapping license-mapping.conf --crate-tarball --crate-tarball-path wlx-overlay-s-crates.tar.xz
-
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -60,18 +66,38 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.RELEASE_KEY }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ../target/release/wlx-overlay-s
+          asset_path: ./target/release/wlx-overlay-s
           asset_name: wlx-overlay-s
           asset_content_type: application/octet-stream
 
-      - name: Upload AppImage
+      - name: Upload WayVRCtl
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_KEY }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./WlxOverlay-S-x86_64.AppImage
-          asset_name: WlxOverlay-S-${{ github.ref_name }}-x86_64.AppImage
+          asset_path: ./target/release/wayvrctl
+          asset_name: wayvrctl
+          asset_content_type: application/octet-stream
+
+      - name: Upload AppImage (Full)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_KEY }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./wlx-overlay-s/WlxOverlay-S-Full-x86_64.AppImage
+          asset_name: WlxOverlay-S-${{ github.ref_name }}-Full-x86_64.AppImage
+          asset_content_type: application/octet-stream
+
+      - name: Upload AppImage (Slim)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_KEY }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./wlx-overlay-s/WlxOverlay-S-x86_64.AppImage
+          asset_name: WlxOverlay-S-${{ github.ref_name }}-Slim-x86_64.AppImage
           asset_content_type: application/octet-stream
 
       - name: Upload crates tarball
@@ -80,6 +106,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.RELEASE_KEY }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./wlx-overlay-s-crates.tar.xz
+          asset_path: ./wlx-overlay-s/wlx-overlay-s-crates.tar.xz
           asset_name: WlxOverlay-S-${{ github.ref_name }}-crates.tar.xz
           asset_content_type: application/x-gtar

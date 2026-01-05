@@ -52,7 +52,7 @@
       "WRONG_SCREEN_SELECTION_HELP": "Si el cursor se mueve en una pantalla completamente diferente,\nes probable que las pantallas se hayan seleccionado incorrectamente. Consulta el archivo readme.",
       "NORMAL": "Normal",
       "FLIPPED": "Invertido",
-      "FLIP90": "Girado 90°",
+      "FLIP90": "Invertido 90°",
       "FLIP180": "Invertido 180°",
       "FLIP270": "Invertido 270°",
       "ROTATE90": "Rotado 90°",

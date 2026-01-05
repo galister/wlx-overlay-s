@@ -27,7 +27,7 @@ jobs:
           ../.github/workflows/scripts/appimage_prepare_env.sh
       - name: Cargo Build
         run: |
-          ../.github/workflows/scripts/appimage_build_wlx.sh
+          ../.github/workflows/scripts/appimage_build_wlx_full.sh
       - name: Build WayVR Dashboard
         run: |
           ../.github/workflows/scripts/appimage_build_wayvr_dashboard.sh
