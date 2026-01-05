@@ -3,10 +3,10 @@ use std::{cell::RefCell, rc::Rc};
 use taffy::Style;
 
 use crate::{
-	components::{checkbox::ComponentCheckbox, Component, ComponentBase, ComponentTrait, RefreshData},
+	components::{Component, ComponentBase, ComponentTrait, RefreshData, checkbox::ComponentCheckbox},
 	event::CallbackDataCommon,
 	layout::WidgetPair,
-	widget::{div::WidgetDiv, ConstructEssentials},
+	widget::{ConstructEssentials, div::WidgetDiv},
 };
 
 pub struct RadioValueChangeEvent {

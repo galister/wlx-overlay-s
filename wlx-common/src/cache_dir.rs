@@ -3,14 +3,13 @@ use std::{path::PathBuf, sync::LazyLock};
 const FALLBACK_CACHE_PATH: &str = "/tmp/wayvr_cache";
 
 static CACHE_ROOT_PATH: LazyLock<PathBuf> = LazyLock::new(|| {
-
-if let Some(mut dir) = xdg::BaseDirectories::new().get_cache_home() {
+	if let Some(mut dir) = xdg::BaseDirectories::new().get_cache_home() {
 		dir.push("wayvr");
 		return dir;
 	}
 	//Return fallback cache path
 	log::error!("Err: Failed to find cache path, using {FALLBACK_CACHE_PATH}");
-	PathBuf::from(FALLBACK_CACHE_PATH)	// Panics if neither $XDG_CACHE_HOME nor $HOME is set
+	PathBuf::from(FALLBACK_CACHE_PATH) // Panics if neither $XDG_CACHE_HOME nor $HOME is set
 });
 
 fn get_cache_root() -> PathBuf {

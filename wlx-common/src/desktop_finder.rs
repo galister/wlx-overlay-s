@@ -1,12 +1,19 @@
 use std::{
-	collections::{HashMap, HashSet}, ffi::OsStr, fmt::Debug, fs::exists, path::Path, rc::Rc, sync::Arc, thread::JoinHandle,
+	collections::{HashMap, HashSet},
+	ffi::OsStr,
+	fmt::Debug,
+	fs::exists,
+	path::Path,
+	rc::Rc,
+	sync::Arc,
+	thread::JoinHandle,
 	time::Instant,
 };
 
+use crate::cache_dir;
 use ini::Ini;
 use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
-use crate::cache_dir;
 
 struct DesktopEntryOwned {
 	exec_path: String,
@@ -50,8 +57,8 @@ struct DesktopFinderParams {
 
 pub struct DesktopFinder {
 	params: Arc<DesktopFinderParams>,
-	entry_cache: HashMap<String,DesktopEntry>,
-	bg_task: Option<JoinHandle<HashMap<String,DesktopEntryOwned>>>,
+	entry_cache: HashMap<String, DesktopEntry>,
+	bg_task: Option<JoinHandle<HashMap<String, DesktopEntryOwned>>>,
 }
 
 impl DesktopFinder {
@@ -131,7 +138,10 @@ impl DesktopFinder {
 				}
 
 				let file_name = entry.file_name().to_string_lossy();
-				let Some(app_id) = Path::new(entry.file_name()).file_stem().map(|x| x.to_string_lossy().to_string()) else {
+				let Some(app_id) = Path::new(entry.file_name())
+					.file_stem()
+					.map(|x| x.to_string_lossy().to_string())
+				else {
 					continue;
 				};
 
@@ -223,12 +233,15 @@ impl DesktopFinder {
 
 				known_files.insert(file_name.to_string());
 
-				entries.insert(app_id, DesktopEntryOwned {
-					app_name: String::from(app_name),
-					exec_path: String::from(exec_path),
-					exec_args: exec_args.join(" "),
-					icon_path,
-				});
+				entries.insert(
+					app_id,
+					DesktopEntryOwned {
+						app_name: String::from(app_name),
+						exec_path: String::from(exec_path),
+						exec_args: exec_args.join(" "),
+						icon_path,
+					},
+				);
 			}
 		}
 

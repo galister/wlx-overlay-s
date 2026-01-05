@@ -13,12 +13,12 @@ use vulkano::{
 		view::ImageView,
 	},
 	pipeline::{
-		graphics::{self, vertex_input::Vertex, viewport::Viewport},
 		Pipeline, PipelineBindPoint,
+		graphics::{self, vertex_input::Vertex, viewport::Viewport},
 	},
 };
 
-use super::{pipeline::WGfxPipeline, WGfx};
+use super::{WGfx, pipeline::WGfxPipeline};
 
 pub struct WGfxPass<V> {
 	pub command_buffer: Arc<SecondaryAutoCommandBuffer>,

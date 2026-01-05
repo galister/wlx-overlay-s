@@ -4,9 +4,9 @@ use crate::{
 };
 
 use super::{
+	ContentType, FontSystem, GlyphDetails, GpuCacheStatus, SwashCache, TextArea,
 	custom_glyph::{CustomGlyphCacheKey, RasterizeCustomGlyphRequest, RasterizedCustomGlyph},
 	text_atlas::{GlyphVertex, TextAtlas, TextPipeline},
-	ContentType, FontSystem, GlyphDetails, GpuCacheStatus, SwashCache, TextArea,
 };
 use cosmic_text::{Color, SubpixelBin, SwashContent};
 use etagere::size2;

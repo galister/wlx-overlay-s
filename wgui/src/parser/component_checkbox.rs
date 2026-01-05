@@ -1,9 +1,9 @@
 use crate::{
-	components::{checkbox, radio_group::ComponentRadioGroup, Component},
+	components::{Component, checkbox, radio_group::ComponentRadioGroup},
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		parse_check_f32, parse_check_i32, process_component, style::parse_style, AttribPair, Fetchable, ParserContext,
+		AttribPair, Fetchable, ParserContext, parse_check_f32, parse_check_i32, process_component, style::parse_style,
 	},
 };
 

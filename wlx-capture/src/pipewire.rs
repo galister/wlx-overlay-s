@@ -297,10 +297,10 @@ where
             width: 0,
             height: 0,
             drm_format: DrmFormat {
-            code: DrmFourcc::Argb8888,
-            modifier: DrmModifier::Invalid,
-        },
-        transform: Transform::Undefined,
+                code: DrmFourcc::Argb8888,
+                modifier: DrmModifier::Invalid,
+            },
+            transform: Transform::Undefined,
         })
         .state_changed({
             let name = name.clone();
@@ -698,7 +698,7 @@ fn get_format_params(fmt: Option<(&DrmFourcc, &Vec<DrmModifier>)>) -> Object {
 }
 
 fn fourcc_to_spa(fourcc: DrmFourcc) -> VideoFormat {
-        match fourcc{
+    match fourcc {
         DrmFourcc::Argb8888 => VideoFormat::BGRA,
         DrmFourcc::Abgr8888 => VideoFormat::RGBA,
         DrmFourcc::Xrgb8888 => VideoFormat::BGRx,

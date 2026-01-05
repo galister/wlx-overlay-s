@@ -15,9 +15,9 @@ use wgui::{
 	taffy::{self, prelude::length},
 	task::Tasks,
 	widget::{
+		ConstructEssentials,
 		div::WidgetDiv,
 		label::{WidgetLabel, WidgetLabelParams},
-		ConstructEssentials,
 	},
 };
 use wlx_common::{dash_interface::BoxDashInterface, desktop_finder::DesktopEntry};

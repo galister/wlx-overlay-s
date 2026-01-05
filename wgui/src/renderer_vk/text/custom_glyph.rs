@@ -3,8 +3,8 @@ use std::{
 	f32,
 	hash::{DefaultHasher, Hasher},
 	sync::{
-		atomic::{AtomicUsize, Ordering},
 		Arc, Weak,
+		atomic::{AtomicUsize, Ordering},
 	},
 };
 

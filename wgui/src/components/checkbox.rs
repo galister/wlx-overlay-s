@@ -1,22 +1,25 @@
-use std::{cell::RefCell, rc::{Rc, Weak}};
+use std::{
+	cell::RefCell,
+	rc::{Rc, Weak},
+};
 use taffy::{
-	prelude::{length, percent},
 	AlignItems,
+	prelude::{length, percent},
 };
 
 use crate::{
 	animation::{Animation, AnimationEasing},
-	components::{radio_group::ComponentRadioGroup, Component, ComponentBase, ComponentTrait, RefreshData},
+	components::{Component, ComponentBase, ComponentTrait, RefreshData, radio_group::ComponentRadioGroup},
 	drawing::Color,
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerID, EventListenerKind},
 	i18n::Translation,
 	layout::{self, WidgetID, WidgetPair},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
+		ConstructEssentials, EventResult,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
-		ConstructEssentials, EventResult,
 	},
 };
 
@@ -54,7 +57,7 @@ struct State {
 	hovered: bool,
 	down: bool,
 	on_toggle: Option<CheckboxToggleCallback>,
-	self_ref: Weak<ComponentCheckbox>, 
+	self_ref: Weak<ComponentCheckbox>,
 }
 
 #[allow(clippy::struct_field_names)]
@@ -127,7 +130,6 @@ impl ComponentCheckbox {
 	pub(super) fn set_checked_internal(&self, checked: bool) {
 		self.state.borrow_mut().checked = checked;
 	}
-
 
 	pub fn on_toggle(&self, func: CheckboxToggleCallback) {
 		self.state.borrow_mut().on_toggle = Some(func);
@@ -246,19 +248,27 @@ fn register_event_mouse_release(
 			if state.down {
 				state.down = false;
 
-				if let Some(self_ref) = state.self_ref.upgrade() && let Some(radio) = data.radio_group.as_ref().and_then(|r| r.upgrade()) {
+				if let Some(self_ref) = state.self_ref.upgrade()
+					&& let Some(radio) = data.radio_group.as_ref().and_then(|r| r.upgrade())
+				{
 					radio.set_selected_internal(common, &self_ref)?;
 					state.checked = true; // can't uncheck radiobox by clicking the checked box again
 				} else {
 					state.checked = !state.checked;
-				}				
+				}
 
 				set_box_checked(&common.state.widgets, &data, state.checked);
 
 				if state.hovered
 					&& let Some(on_toggle) = &state.on_toggle
 				{
-					on_toggle(common, CheckboxToggleEvent { checked: state.checked, value: data.value.clone() })?;
+					on_toggle(
+						common,
+						CheckboxToggleEvent {
+							checked: state.checked,
+							value: data.value.clone(),
+						},
+					)?;
 				}
 				Ok(EventResult::Consumed)
 			} else {
@@ -292,12 +302,12 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	};
 	//style.align_self = Some(taffy::AlignSelf::Start); // do not stretch self to the parent
 	style.gap = length(4.0);
-	
+
 	let (round_5, round_8) = if params.radio_group.is_some() {
 		(WLength::Percent(1.0), WLength::Percent(1.0))
 	} else {
-			(WLength::Units(5.0), WLength::Units(8.0))
-		};
+		(WLength::Units(5.0), WLength::Units(8.0))
+	};
 
 	let globals = ess.layout.state.globals.clone();
 

@@ -12,8 +12,8 @@ use wgui::{
 	taffy::{self, prelude::length},
 	task::Tasks,
 	widget::{
-		label::{WidgetLabel, WidgetLabelParams},
 		ConstructEssentials,
+		label::{WidgetLabel, WidgetLabelParams},
 	},
 };
 use wlx_common::dash_interface::BoxDashInterface;

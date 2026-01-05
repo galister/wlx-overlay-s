@@ -10,9 +10,24 @@ mod widget_rectangle;
 mod widget_sprite;
 
 use crate::{
-	assets::{normalize_path, AssetPath, AssetPathOwned}, components::{Component, ComponentWeak}, drawing::{self}, globals::WguiGlobals, layout::{Layout, LayoutParams, LayoutState, Widget, WidgetID, WidgetMap, WidgetPair}, log::LogErr, parser::{
-		component_button::parse_component_button, component_checkbox::{parse_component_checkbox, CheckboxKind}, component_radio_group::parse_component_radio_group, component_slider::parse_component_slider, widget_div::parse_widget_div, widget_image::parse_widget_image, widget_label::parse_widget_label, widget_rectangle::parse_widget_rectangle, widget_sprite::parse_widget_sprite
-	}, widget::ConstructEssentials
+	assets::{AssetPath, AssetPathOwned, normalize_path},
+	components::{Component, ComponentWeak},
+	drawing::{self},
+	globals::WguiGlobals,
+	layout::{Layout, LayoutParams, LayoutState, Widget, WidgetID, WidgetMap, WidgetPair},
+	log::LogErr,
+	parser::{
+		component_button::parse_component_button,
+		component_checkbox::{CheckboxKind, parse_component_checkbox},
+		component_radio_group::parse_component_radio_group,
+		component_slider::parse_component_slider,
+		widget_div::parse_widget_div,
+		widget_image::parse_widget_image,
+		widget_label::parse_widget_label,
+		widget_rectangle::parse_widget_rectangle,
+		widget_sprite::parse_widget_sprite,
+	},
+	widget::ConstructEssentials,
 };
 use anyhow::Context;
 use ouroboros::self_referencing;
@@ -903,10 +918,20 @@ fn parse_child<'a>(
 			new_widget_id = Some(parse_component_slider(ctx, parent_id, &attribs)?);
 		}
 		"CheckBox" => {
-			new_widget_id = Some(parse_component_checkbox(ctx, parent_id, &attribs, CheckboxKind::CheckBox)?);
+			new_widget_id = Some(parse_component_checkbox(
+				ctx,
+				parent_id,
+				&attribs,
+				CheckboxKind::CheckBox,
+			)?);
 		}
 		"RadioBox" => {
-			new_widget_id = Some(parse_component_checkbox(ctx, parent_id, &attribs, CheckboxKind::RadioBox)?);
+			new_widget_id = Some(parse_component_checkbox(
+				ctx,
+				parent_id,
+				&attribs,
+				CheckboxKind::RadioBox,
+			)?);
 		}
 		"RadioGroup" => {
 			new_widget_id = Some(parse_component_radio_group(file, ctx, child_node, parent_id, &attribs)?);
@@ -1104,7 +1129,10 @@ fn get_doc_from_asset_path(
 			allow_dtd: true,
 			..Default::default()
 		};
-		roxmltree::Document::parse_with_options(xml, opt).context("Unable to parse XML").log_err_with(&asset_path).unwrap()
+		roxmltree::Document::parse_with_options(xml, opt)
+			.context("Unable to parse XML")
+			.log_err_with(&asset_path)
+			.unwrap()
 	}));
 
 	let root = document.borrow_doc().root();
