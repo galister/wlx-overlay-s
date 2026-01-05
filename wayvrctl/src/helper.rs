@@ -105,6 +105,8 @@ pub async fn wvr_process_launch(
     exec: String,
     name: String,
     env: Vec<String>,
+    resolution: [u32; 2],
+    icon: Option<String>,
     args: String,
     userdata: HashMap<String, String>,
 ) {
@@ -118,6 +120,8 @@ pub async fn wvr_process_launch(
                 exec,
                 name,
                 args,
+                resolution,
+                icon,
                 userdata,
             },
         )

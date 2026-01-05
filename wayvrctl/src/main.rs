@@ -119,10 +119,29 @@ async fn run_once(state: &mut WayVRClientState, args: Args) -> anyhow::Result<()
             exec,
             name,
             env,
+            resolution,
+            icon,
             args,
         } => {
             let env = env.split(",").map(|s| s.to_string()).collect::<Vec<_>>();
-            wvr_process_launch(state, exec, name, env, args, HashMap::new()).await;
+            let resolution = resolution
+                .split_once('x')
+                .and_then(|(x, y)| Some([x.parse::<u32>().ok()?, y.parse::<u32>().ok()?]))
+                .context(
+                    "Invalid resolution format. Expecting <width>x<height>, for example: 1920x1080, 1280x720",
+                )?;
+
+            wvr_process_launch(
+                state,
+                exec,
+                name,
+                env,
+                resolution,
+                icon,
+                args,
+                HashMap::new(),
+            )
+            .await;
         }
         Subcommands::Haptics {
             device,
@@ -216,6 +235,9 @@ enum Subcommands {
         env: String,
         /// Executable to run
         exec: String,
+        #[arg(default_value = "1920x1080")]
+        resolution: String,
+        icon: Option<String>,
         /// Arguments to pass to executable
         #[arg(default_value = "")]
         args: String,
