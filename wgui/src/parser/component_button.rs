@@ -102,7 +102,7 @@ pub fn parse_component_button<'a>(
 		}
 	}
 
-	let (widget, component) = button::construct(
+	let (widget, button) = button::construct(
 		&mut ctx.get_construct_essentials(parent_id),
 		button::Params {
 			color,
@@ -124,7 +124,7 @@ pub fn parse_component_button<'a>(
 		},
 	)?;
 
-	process_component(ctx, Component(component), widget.id, attribs);
+	process_component(ctx, Component(button), widget.id, attribs);
 	parse_children(file, ctx, node, widget.id)?;
 
 	Ok(widget.id)

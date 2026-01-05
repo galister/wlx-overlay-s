@@ -1,7 +1,5 @@
 use std::{cell::RefCell, rc::Rc};
 
-use taffy::Style;
-
 use crate::{
 	components::{Component, ComponentBase, ComponentTrait, RefreshData, checkbox::ComponentCheckbox},
 	event::CallbackDataCommon,

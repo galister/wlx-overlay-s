@@ -1,0 +1,16 @@
+<layout>
+  <!-- text: str -->
+  <template name="Cell">
+    <Button id="button" text="${text}" weight="bold" border="0" color="#FFFFFF00" />
+  </template>
+
+  <template name="Separator">
+    <rectangle width="100%" height="2" color="~color_accent" />
+  </template>
+
+  <elements>
+    <rectangle consume_mouse_events="1" color="#000000fa" round="8" border="2" border_color="~color_accent" gap="4" padding="8" id="buttons" flex_direction="column">
+
+    </rectangle>
+  </elements>
+</layout>

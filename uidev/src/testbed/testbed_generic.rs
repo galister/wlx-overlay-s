@@ -19,14 +19,19 @@ use wgui::{
 	i18n::Translation,
 	layout::{Layout, LayoutParams, LayoutUpdateParams, Widget},
 	parser::{Fetchable, ParseDocumentExtra, ParseDocumentParams, ParserState},
-	taffy,
+	taffy::{self, prelude::length},
 	task::Tasks,
-	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
-	windowing::{WguiWindow, WguiWindowParams},
+	widget::{div::WidgetDiv, label::WidgetLabel, rectangle::WidgetRectangle},
+	windowing::{
+		context_menu,
+		window::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra},
+	},
 };
 
+#[derive(Clone)]
 pub enum TestbedTask {
 	ShowPopup,
+	ShowContextMenu(Vec2),
 }
 
 struct Data {
@@ -34,6 +39,7 @@ struct Data {
 	state: ParserState,
 
 	popup_window: WguiWindow,
+	context_menu: context_menu::ContextMenu,
 }
 
 pub struct TestbedGeneric {
@@ -138,6 +144,7 @@ impl TestbedGeneric {
 
 		let label_cur_option = state.fetch_widget(&layout.state, "label_current_option")?;
 
+		let button_context_menu = state.fetch_component_as::<ComponentButton>("button_context_menu")?;
 		let button_click_me = state.fetch_component_as::<ComponentButton>("button_click_me")?;
 		let button = button_click_me.clone();
 		button_click_me.on_click(Box::new(move |common, _e| {
@@ -174,6 +181,7 @@ impl TestbedGeneric {
 			data: Rc::new(RefCell::new(Data {
 				state,
 				popup_window: WguiWindow::default(),
+				context_menu: context_menu::ContextMenu::default(),
 			})),
 		};
 
@@ -181,6 +189,14 @@ impl TestbedGeneric {
 			let tasks = testbed.tasks.clone();
 			Box::new(move |_, _| {
 				tasks.push(TestbedTask::ShowPopup);
+				Ok(())
+			})
+		});
+
+		button_context_menu.on_click({
+			let tasks = testbed.tasks.clone();
+			Box::new(move |_common, m| {
+				tasks.push(TestbedTask::ShowContextMenu(m.mouse_pos_absolute.unwrap()));
 				Ok(())
 			})
 		});
@@ -196,6 +212,7 @@ impl TestbedGeneric {
 	) -> anyhow::Result<()> {
 		match task {
 			TestbedTask::ShowPopup => self.show_popup(params, data)?,
+			TestbedTask::ShowContextMenu(position) => self.show_context_menu(params, data, *position)?,
 		}
 
 		Ok(())
@@ -207,11 +224,57 @@ impl TestbedGeneric {
 		data: &mut Data,
 	) -> anyhow::Result<()> {
 		data.popup_window.open(&mut WguiWindowParams {
-			globals: self.globals.clone(),
+			globals: &self.globals,
 			position: Vec2::new(128.0, 128.0),
 			layout: &mut self.layout,
-			title: Translation::from_raw_text("foo"),
-			extra: Default::default(),
+			extra: WguiWindowParamsExtra {
+				title: Some(Translation::from_raw_text("foo")),
+				..Default::default()
+			},
+		})?;
+
+		self.layout.add_child(
+			data.popup_window.get_content().id,
+			WidgetDiv::create(),
+			taffy::Style {
+				size: taffy::Size {
+					width: length(128.0),
+					height: length(64.0),
+				},
+				..Default::default()
+			},
+		)?;
+
+		Ok(())
+	}
+
+	fn show_context_menu(
+		&mut self,
+		_params: &mut TestbedUpdateParams,
+		data: &mut Data,
+		position: Vec2,
+	) -> anyhow::Result<()> {
+		data.context_menu.open(&mut context_menu::OpenParams {
+			globals: &self.globals,
+			layout: &mut self.layout,
+			position,
+			on_action: Rc::new(move |action| {
+				log::info!("got action: {}", action.name);
+			}),
+			cells: vec![
+				context_menu::Cell {
+					title: Translation::from_raw_text("Options"),
+					action_name: "options".into(),
+				},
+				context_menu::Cell {
+					title: Translation::from_raw_text("Exit software"),
+					action_name: "exit".into(),
+				},
+				context_menu::Cell {
+					title: Translation::from_raw_text("Restart software"),
+					action_name: "restart".into(),
+				},
+			],
 		})?;
 
 		Ok(())

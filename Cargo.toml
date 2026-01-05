@@ -5,6 +5,17 @@ strip = "none"
 debug-assertions = true
 incremental = true
 
+# to be used in case if you don't want debug features
+# (faster incremental compilation, about 15x smaller binary size compared to dev)
+# --profile=plain
+[profile.plain]
+inherits = "dev"
+opt-level = 1
+debug = false
+strip = true
+debug-assertions = true
+incremental = true
+
 [profile.release-with-debug]
 inherits = "release"
 debug = true

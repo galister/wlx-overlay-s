@@ -12,7 +12,7 @@ use wgui::{
 	parser::{Fetchable, ParseDocumentParams, ParserState},
 	task::Tasks,
 	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
-	windowing::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra, WguiWindowPlacement},
+	windowing::window::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra, WguiWindowPlacement},
 };
 use wlx_common::{audio, dash_interface::BoxDashInterface, timestep::Timestep};
 
@@ -379,13 +379,14 @@ impl<T: 'static> Frontend<T> {
 
 	fn action_show_audio_settings(&mut self) -> anyhow::Result<()> {
 		self.window_audio_settings.open(&mut WguiWindowParams {
-			globals: self.globals.clone(),
+			globals: &self.globals,
 			position: Vec2::new(64.0, 64.0),
 			layout: &mut self.layout,
-			title: Translation::from_translation_key("AUDIO.SETTINGS"),
 			extra: WguiWindowParamsExtra {
 				fixed_width: Some(400.0),
 				placement: WguiWindowPlacement::BottomLeft,
+				close_if_clicked_outside: true,
+				title: Some(Translation::from_translation_key("AUDIO.SETTINGS")),
 				..Default::default()
 			},
 		})?;

@@ -19,7 +19,7 @@ use crate::{
 		util::WLength,
 	},
 };
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Vec2, Vec3};
 use std::{
 	cell::RefCell,
 	rc::Rc,
@@ -66,7 +66,9 @@ impl Default for Params<'_> {
 	}
 }
 
-pub struct ButtonClickEvent {}
+pub struct ButtonClickEvent {
+	pub mouse_pos_absolute: Option<Vec2>,
+}
 pub type ButtonClickCallback = Box<dyn Fn(&mut CallbackDataCommon, ButtonClickEvent) -> anyhow::Result<()>>;
 
 pub struct Colors {
@@ -370,9 +372,7 @@ fn register_event_mouse_release(
 
 			if state.down {
 				state.down = false;
-				if state.hovered
-					&& let Some(on_click) = &state.on_click
-				{
+				if state.hovered {
 					anim_hover(
 						rect,
 						event_data.widget_data,
@@ -383,8 +383,16 @@ fn register_event_mouse_release(
 						state.sticky_down,
 					);
 
-					on_click(common, ButtonClickEvent {})?;
+					if let Some(on_click) = &state.on_click {
+						on_click(
+							common,
+							ButtonClickEvent {
+								mouse_pos_absolute: event_data.metadata.get_mouse_pos_absolute(),
+							},
+						)?;
+					}
 				}
+
 				Ok(EventResult::Consumed)
 			} else {
 				Ok(EventResult::Pass)

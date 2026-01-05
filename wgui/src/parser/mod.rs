@@ -809,7 +809,7 @@ fn parse_tag_macro(file: &ParserFile, ctx: &mut ParserContext, node: roxmltree::
 	}
 
 	let Some(name) = macro_name else {
-		log::error!("Template name not specified, ignoring");
+		log::error!("Macro name not specified, ignoring");
 		return;
 	};
 
@@ -1160,7 +1160,6 @@ fn parse_document_root(
 		.ok_or_else(|| anyhow::anyhow!("layout node not found"))?;
 
 	for child_node in node_layout.children() {
-		#[allow(clippy::single_match)]
 		match child_node.tag_name().name() {
 			/*  topmost include directly in <layout>  */
 			"include" => parse_tag_include(file, ctx, parent_id, &raw_attribs(&child_node))?,
