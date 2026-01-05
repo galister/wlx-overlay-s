@@ -21,7 +21,7 @@ use crate::{
     overlays::{
         anchor::{create_anchor, create_grab_help},
         custom::create_custom,
-        dashboard::create_dash_frontend,
+        dashboard::{DASH_NAME, create_dash_frontend},
         edit::EditWrapperManager,
         keyboard::create_keyboard,
         screen::create_screens,
@@ -201,17 +201,28 @@ where
             OverlayTask::ToggleEditMode => {
                 self.set_edit_mode(!self.edit_mode, app)?;
             }
+            OverlayTask::ToggleDashboard => {
+                if let Some(overlay) =
+                    self.mut_by_selector(&OverlaySelector::Name(DASH_NAME.into()))
+                {
+                    if overlay.config.active_state.is_none() {
+                        overlay.config.activate(app);
+                    } else {
+                        overlay.config.deactivate();
+                    }
+                }
+            }
             OverlayTask::AddSet => {
                 self.sets.push(OverlayWindowSet::default());
                 let len = self.sets.len();
                 for id in [self.watch_id, self.keyboard_id] {
-                    self.mut_by_id(id).map(|o| {
+                    if let Some(o) = self.mut_by_id(id) {
                         let _ = o
                             .config
                             .backend
                             .notify(app, OverlayEventData::NumSetsChanged(len))
                             .log_err("Could not notify NumSetsChanged");
-                    });
+                    }
                 }
             }
             OverlayTask::DeleteActiveSet => {
@@ -243,13 +254,13 @@ where
                 self.sets.remove(set);
                 let len = self.sets.len();
                 for id in [self.watch_id, self.keyboard_id] {
-                    self.mut_by_id(id).map(|o| {
+                    if let Some(o) = self.mut_by_id(id) {
                         let _ = o
                             .config
                             .backend
                             .notify(app, OverlayEventData::NumSetsChanged(len))
                             .log_err("Could not notify NumSetsChanged");
-                    });
+                    }
                 }
             }
             OverlayTask::CleanupMirrors => {

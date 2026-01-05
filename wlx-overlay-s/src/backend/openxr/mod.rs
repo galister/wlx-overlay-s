@@ -300,7 +300,10 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             .pointers
             .iter()
             .any(|p| p.now.toggle_dashboard && !p.before.toggle_dashboard)
-        { /* TODO */ }
+        {
+            app.tasks
+                .enqueue(TaskType::Overlay(OverlayTask::ToggleDashboard));
+        }
 
         watch_fade(&mut app, overlays.mut_by_id(watch_id).unwrap()); // want panic
         if let Some(ref mut space_mover) = playspace {

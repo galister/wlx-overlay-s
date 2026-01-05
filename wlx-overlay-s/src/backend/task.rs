@@ -85,6 +85,7 @@ pub enum OverlayTask {
     SoftToggleOverlay(OverlaySelector),
     DeleteActiveSet,
     ToggleEditMode,
+    ToggleDashboard,
     ShowHide,
     CleanupMirrors,
     Modify(OverlaySelector, Box<ModifyOverlayTask>),

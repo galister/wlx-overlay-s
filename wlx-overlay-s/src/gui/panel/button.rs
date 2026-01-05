@@ -238,16 +238,8 @@ pub(super) fn setup_custom_button<S: 'static>(
                     return Ok(EventResult::Pass);
                 }
 
-                app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
-                    OverlaySelector::Name(DASH_NAME.into()),
-                    Box::new(move |app, owc| {
-                        if owc.active_state.is_none() {
-                            owc.activate(app);
-                        } else {
-                            owc.deactivate();
-                        }
-                    }),
-                )));
+                app.tasks
+                    .enqueue(TaskType::Overlay(OverlayTask::ToggleDashboard));
                 Ok(EventResult::Consumed)
             }),
             "::SetToggle" => {

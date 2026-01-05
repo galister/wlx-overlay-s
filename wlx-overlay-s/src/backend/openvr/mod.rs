@@ -259,7 +259,10 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             .pointers
             .iter()
             .any(|p| p.now.toggle_dashboard && !p.before.toggle_dashboard)
-        { /* TODO */ }
+        {
+            app.tasks
+                .enqueue(TaskType::Overlay(OverlayTask::ToggleDashboard));
+        }
 
         overlays
             .values_mut()
