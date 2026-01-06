@@ -382,7 +382,7 @@ impl<T> TabSettings<T> {
 			idx: 9001,
 		};
 
-		let c = category!(mp, root, "APP_SETTINGS.LOOK_AND_FEEL", "dashboard/settings.svg")?;
+		let c = category!(mp, root, "APP_SETTINGS.LOOK_AND_FEEL", "dashboard/palette.svg")?;
 		checkbox!(mp, c, SettingType::OpaqueBackground);
 		checkbox!(mp, c, SettingType::HideUsername);
 		checkbox!(mp, c, SettingType::HideGrabHelp);
@@ -393,7 +393,7 @@ impl<T> TabSettings<T> {
 		checkbox!(mp, c, SettingType::UsePassthrough);
 		checkbox!(mp, c, SettingType::Clock12h);
 
-		let c = category!(mp, root, "APP_SETTINGS.FEATURES", "dashboard/settings.svg")?;
+		let c = category!(mp, root, "APP_SETTINGS.FEATURES", "dashboard/options.svg")?;
 		checkbox!(mp, c, SettingType::NotificationsEnabled);
 		checkbox!(mp, c, SettingType::NotificationsSoundEnabled);
 		checkbox!(mp, c, SettingType::KeyboardSoundEnabled);
@@ -403,7 +403,7 @@ impl<T> TabSettings<T> {
 		checkbox!(mp, c, SettingType::BlockGameInput);
 		checkbox!(mp, c, SettingType::BlockGameInputIgnoreWatch);
 
-		let c = category!(mp, root, "APP_SETTINGS.CONTROLS", "dashboard/settings.svg")?;
+		let c = category!(mp, root, "APP_SETTINGS.CONTROLS", "dashboard/controller.svg")?;
 		checkbox!(mp, c, SettingType::FocusFollowsMouseMode);
 		checkbox!(mp, c, SettingType::LeftHandedMouse);
 		checkbox!(mp, c, SettingType::AllowSliding);
@@ -416,7 +416,7 @@ impl<T> TabSettings<T> {
 		slider_f32!(mp, c, SettingType::XrClickSensitivityRelease, 0.1, 1.0, 0.1);
 		slider_i32!(mp, c, SettingType::ClickFreezeTimeMs, 0, 500, 50);
 
-		let c = category!(mp, root, "APP_SETTINGS.MISC", "dashboard/settings.svg")?;
+		let c = category!(mp, root, "APP_SETTINGS.MISC", "dashboard/blocks.svg")?;
 		checkbox!(mp, c, SettingType::XwaylandByDefault);
 		checkbox!(mp, c, SettingType::UprightScreenFix);
 		checkbox!(mp, c, SettingType::DoubleCursorFix);

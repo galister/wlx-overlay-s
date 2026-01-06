@@ -3,7 +3,7 @@
   <include src="../t_group_box.xml" />
 
   <template name="SettingsGroupBox">
-    <rectangle macro="group_box" id="${id}">
+    <rectangle macro="group_box" id="${id}" flex_grow="1">
       <GroupBoxTitle translation="${translation}" src_builtin="${icon}" />
     </rectangle>
   </template>
