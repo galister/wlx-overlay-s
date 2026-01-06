@@ -196,7 +196,7 @@ impl TestbedGeneric {
 		button_context_menu.on_click({
 			let tasks = testbed.tasks.clone();
 			Box::new(move |_common, m| {
-				tasks.push(TestbedTask::ShowContextMenu(m.mouse_pos_absolute.unwrap()));
+				tasks.push(TestbedTask::ShowContextMenu(m.boundary.bottom_left()));
 				Ok(())
 			})
 		});
@@ -254,28 +254,25 @@ impl TestbedGeneric {
 		data: &mut Data,
 		position: Vec2,
 	) -> anyhow::Result<()> {
-		data.context_menu.open(&mut context_menu::OpenParams {
-			globals: &self.globals,
-			layout: &mut self.layout,
+		data.context_menu.open(context_menu::OpenParams {
 			position,
-			on_action: Rc::new(move |action| {
-				log::info!("got action: {}", action.name);
-			}),
-			cells: vec![
-				context_menu::Cell {
-					title: Translation::from_raw_text("Options"),
-					action_name: "options".into(),
-				},
-				context_menu::Cell {
-					title: Translation::from_raw_text("Exit software"),
-					action_name: "exit".into(),
-				},
-				context_menu::Cell {
-					title: Translation::from_raw_text("Restart software"),
-					action_name: "restart".into(),
-				},
-			],
-		})?;
+			data: context_menu::Blueprint {
+				cells: vec![
+					context_menu::Cell {
+						title: Translation::from_raw_text("Options"),
+						action_name: "options".into(),
+					},
+					context_menu::Cell {
+						title: Translation::from_raw_text("Exit software"),
+						action_name: "exit".into(),
+					},
+					context_menu::Cell {
+						title: Translation::from_raw_text("Restart software"),
+						action_name: "restart".into(),
+					},
+				],
+			},
+		});
 
 		Ok(())
 	}
@@ -295,6 +292,11 @@ impl Testbed for TestbedGeneric {
 
 		for task in self.tasks.drain() {
 			self.process_task(&task, &mut params, &mut data)?;
+		}
+
+		let res = data.context_menu.tick(&mut self.layout)?;
+		if let Some(action_name) = res.action_name {
+			log::info!("got action: {}", action_name);
 		}
 
 		Ok(())

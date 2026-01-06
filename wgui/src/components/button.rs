@@ -68,6 +68,7 @@ impl Default for Params<'_> {
 
 pub struct ButtonClickEvent {
 	pub mouse_pos_absolute: Option<Vec2>,
+	pub boundary: Boundary,
 }
 pub type ButtonClickCallback = Box<dyn Fn(&mut CallbackDataCommon, ButtonClickEvent) -> anyhow::Result<()>>;
 
@@ -388,6 +389,7 @@ fn register_event_mouse_release(
 							common,
 							ButtonClickEvent {
 								mouse_pos_absolute: event_data.metadata.get_mouse_pos_absolute(),
+								boundary: event_data.widget_data.cached_absolute_boundary,
 							},
 						)?;
 					}
