@@ -58,6 +58,7 @@ impl Translation {
 }
 
 pub struct I18n {
+	lang: String,
 	json_root_translated: serde_json::Value, // any language
 	json_root_fallback: serde_json::Value,   // english
 }
@@ -123,9 +124,14 @@ impl I18n {
 		.context("Translation file not valid JSON")?;
 
 		Ok(Self {
+			lang,
 			json_root_translated,
 			json_root_fallback,
 		})
+	}
+
+	pub fn get_lang(&self) -> &str {
+		&self.lang
 	}
 
 	pub fn translate(&mut self, translation_key_full: &str) -> Rc<str> {

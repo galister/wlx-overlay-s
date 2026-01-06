@@ -72,10 +72,10 @@ impl WguiGlobals {
 		Ok(Self(Rc::new(RefCell::new(Globals {
 			assets_internal,
 			assets_builtin,
-			i18n_builtin,
 			defaults,
 			asset_folder,
-			font_system: WguiFontSystem::new(font_config),
+			font_system: WguiFontSystem::new(font_config, i18n_builtin.get_lang()),
+			i18n_builtin,
 			custom_glyph_cache: CustomGlyphCache::new(),
 		}))))
 	}
