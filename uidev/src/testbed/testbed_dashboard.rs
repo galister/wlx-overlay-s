@@ -9,14 +9,13 @@ pub struct TestbedDashboard {
 
 impl TestbedDashboard {
 	pub fn new() -> anyhow::Result<Self> {
-		let settings = SimpleSettingsIO::new();
 		let interface = DashInterfaceEmulated::new();
 
 		let frontend = frontend::Frontend::new(
 			frontend::InitParams {
 				interface: Box::new(interface),
 			},
-			(),
+			&mut (),
 		)?;
 		Ok(Self { frontend })
 	}
