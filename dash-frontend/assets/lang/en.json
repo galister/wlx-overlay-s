@@ -16,7 +16,7 @@
 		"CLOCK_12H": "12-hour clock",
 
 		"FEATURES": "Features",
-		
+
 		"NOTIFICATIONS_ENABLED": "Enable notifications",
 		"NOTIFICATIONS_SOUND_ENABLED": "Notification sounds",
 		"KEYBOARD_SOUND_ENABLED": "Keyboard sounds",
@@ -39,7 +39,7 @@
 		"XR_CLICK_SENSITIVITY": "XR click sensitivity",
 		"XR_CLICK_SENSITIVITY_RELEASE": "XR release sensitivity",
 		"CLICK_FREEZE_TIME_MS": "Click freeze time (ms)",
-		
+
 		"MISC": "Miscellaneous",
 
 		"XWAYLAND_BY_DEFAULT": "Run apps in Compatibility mode by default",
@@ -58,13 +58,7 @@
 		"BLOCK_GAME_INPUT_IGNORE_WATCH_HELP": "Do not block input when watch is hovered",
 		"USE_SKYBOX_HELP": "Show a skybox if there's no scene app or passthrough",
 		"USE_PASSTHROUGH_HELP": "Allow passthrough if the XR runtime supports it",
-		"SCREEN_RENDER_DOWN_HELP": "Helps with aliasing on high-res screens",
-
-		"__UNUSED": "---- Below this are unused values ----",
-
-		"BRIGHTNESS": "Brightness",
-		"HEADSET_SETTINGS": "Headset settings",
-		"RESTART_SOFTWARE": "Restart software"
+		"SCREEN_RENDER_DOWN_HELP": "Helps with aliasing on high-res screens"
 	},
 	"APPLICATION_LAUNCHER": "Application launcher",
 	"APPLICATION_STARTED": "Application started",

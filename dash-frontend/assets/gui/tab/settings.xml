@@ -23,16 +23,11 @@
   </template>
 
   <template name="SelectOption">
-      <RadioBox text="${text}" translation="${translation}" value="${value}" tooltip="${tooltip}" />
+    <RadioBox text="${text}" translation="${translation}" value="${value}" tooltip="${tooltip}" />
   </template>
 
   <elements>
     <TabTitle translation="SETTINGS" icon="dashboard/settings.svg" />
-
     <div flex_wrap="wrap" justify_content="stretch" gap="4" id="settings_root" />
-
-    <div>
-      <Button color="#AA3333" height="32" sprite_src_builtin="dashboard/refresh.svg" translation="APP_SETTINGS.RESTART_SOFTWARE" />
-    </div>
   </elements>
 </layout>
