@@ -70,6 +70,7 @@ struct AppList {
 	//data: Vec<ParserData>,
 	entries_to_mount: VecDeque<DesktopEntry>,
 	list_parent: WidgetPair,
+	prev_first_letter: char,
 }
 
 // called after the user clicks any desktop entry
@@ -130,12 +131,21 @@ impl<T> TabApps<T> {
 		let tasks = Tasks::new();
 		let state = Rc::new(RefCell::new(State { view_launcher: None }));
 
-		let mut entries = frontend.interface.desktop_finder(data).find_entries();
 		let parser_state = wgui::parser::parse_from_assets(&doc_params(globals.clone()), &mut frontend.layout, parent_id)?;
 		let app_list_parent = parser_state.fetch_widget(&frontend.layout.state, "app_list_parent")?;
+
+		let mut entries_sorted: Vec<_> = frontend
+			.interface
+			.desktop_finder(data)
+			.find_entries()
+			.into_values()
+			.collect();
+		entries_sorted.sort_by(|a, b| a.app_name.cmp(&b.app_name));
+
 		let app_list = AppList {
-			entries_to_mount: entries.into_values().collect(),
+			entries_to_mount: entries_sorted.drain(..).collect(),
 			list_parent: app_list_parent,
+			prev_first_letter: ' ',
 		};
 
 		Ok(Self {
@@ -156,37 +166,55 @@ impl AppList {
 		doc_params: &ParseDocumentParams,
 		entry: &DesktopEntry,
 	) -> anyhow::Result<Rc<ComponentButton>> {
-		let mut template_params = HashMap::new();
+		if let Some(ch) = entry.app_name.chars().next()
+			&& self.prev_first_letter != ch
+		{
+			self.prev_first_letter = ch;
+			let mut params = HashMap::<Rc<str>, Rc<str>>::new();
+			params.insert("text".into(), format!("{}", ch).into());
 
-		// entry icon
-		template_params.insert(
-			Rc::from("src_ext"),
-			entry
-				.icon_path
-				.as_ref()
-				.map_or_else(|| Rc::from(""), |icon_path| icon_path.clone()),
-		);
+			parser_state.parse_template(
+				doc_params,
+				"CategoryText",
+				&mut frontend.layout,
+				self.list_parent.id,
+				params,
+			)?;
+		}
 
-		// entry fallback (question mark) icon
-		template_params.insert(
-			Rc::from("src"),
-			if entry.icon_path.is_none() {
-				Rc::from("dashboard/terminal.svg")
-			} else {
-				Rc::from("")
-			},
-		);
+		{
+			let mut params = HashMap::new();
 
-		template_params.insert(Rc::from("name"), entry.app_name.clone());
+			// entry icon
+			params.insert(
+				"src_ext".into(),
+				entry
+					.icon_path
+					.as_ref()
+					.map_or_else(|| "".into(), |icon_path| icon_path.clone()),
+			);
 
-		let data = parser_state.parse_template(
-			doc_params,
-			"AppEntry",
-			&mut frontend.layout,
-			self.list_parent.id,
-			template_params,
-		)?;
-		data.fetch_component_as::<ComponentButton>("button")
+			// entry fallback (question mark) icon
+			params.insert(
+				"src".into(),
+				if entry.icon_path.is_none() {
+					"dashboard/terminal.svg".into()
+				} else {
+					"".into()
+				},
+			);
+			params.insert("name".into(), entry.app_name.clone());
+
+			let data = parser_state.parse_template(
+				doc_params,
+				"AppEntry",
+				&mut frontend.layout,
+				self.list_parent.id,
+				params,
+			)?;
+
+			data.fetch_component_as::<ComponentButton>("button")
+		}
 	}
 
 	fn tick<T>(

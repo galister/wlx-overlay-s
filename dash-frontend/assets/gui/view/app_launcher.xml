@@ -7,7 +7,7 @@
   </template>
 
   <template name="ApplicationIcon">
-    <sprite src_ext="${path}" width="128" height="128" />
+    <sprite src_ext="${path}" width="96" height="96" />
   </template>
 
   <include src="../t_separator.xml" />
@@ -15,7 +15,7 @@
 
   <elements>
     <div flex_direction="row" gap="16">
-      <rectangle macro="group_box" id="icon_parent" padding="8" color="#0033aa66" color2="#00000022" gradient="vertical" justify_content="center">
+      <rectangle macro="group_box" id="icon_parent" padding="16" color="#0033aa66" color2="#00000022" gradient="vertical" justify_content="center">
 
       </rectangle>
       <div flex_direction="column" gap="8">
@@ -25,7 +25,7 @@
         <Separator />
         <RadioGroup id="radio_compositor" flex_direction="row" gap="16">
           <RadioBox text="Native mode" value="Native" checked="1" />
-          <RadioBox text="Compatibility mode" value="Cage"/> <!-- TODO: tooltips -->
+          <RadioBox text="Compatibility mode" value="Cage" /> <!-- TODO: tooltips -->
         </RadioGroup>
         <Separator />
         <label text="Resolution" />

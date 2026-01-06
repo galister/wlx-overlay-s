@@ -79,7 +79,7 @@ fn handle_button_click(button: Rc<ComponentButton>, label: Widget, text: &'stati
 }
 
 impl TestbedGeneric {
-	fn doc_params(globals: &WguiGlobals, extra: ParseDocumentExtra) -> ParseDocumentParams {
+	fn doc_params(globals: &'_ WguiGlobals, extra: ParseDocumentExtra) -> ParseDocumentParams<'_> {
 		ParseDocumentParams {
 			globals: globals.clone(),
 			path: AssetPath::BuiltIn("gui/various_widgets.xml"),

@@ -99,6 +99,7 @@
         </rectangle>
         <!-- BOTTOM PANEL -->
         <rectangle
+          consume_mouse_events="1"
           width="100%"
           height="48"
           min_height="48"
