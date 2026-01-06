@@ -3,7 +3,7 @@ use wayvr_ipc::{
 	packet_server::{WvrProcess, WvrProcessHandle, WvrWindow, WvrWindowHandle},
 };
 
-use crate::{dash_interface::DashInterface, desktop_finder::DesktopFinder, gen_id};
+use crate::{config::GeneralConfig, dash_interface::DashInterface, desktop_finder::DesktopFinder, gen_id};
 
 #[derive(Debug)]
 pub struct EmuProcess {
@@ -55,6 +55,7 @@ pub struct DashInterfaceEmulated {
 	processes: EmuProcessVec,
 	windows: EmuWindowVec,
 	desktop_finder: DesktopFinder,
+	general_config: GeneralConfig,
 }
 
 impl DashInterfaceEmulated {
@@ -73,10 +74,14 @@ impl DashInterfaceEmulated {
 		let mut desktop_finder = DesktopFinder::new();
 		desktop_finder.refresh();
 
+		// Use serde defaults
+		let general_config = serde_json::from_str("{}").unwrap();
+
 		Self {
 			processes,
 			windows,
 			desktop_finder,
+			general_config,
 		}
 	}
 }
@@ -168,5 +173,9 @@ impl DashInterface<()> for DashInterfaceEmulated {
 
 	fn desktop_finder<'a>(&'a mut self, _: &'a mut ()) -> &'a mut DesktopFinder {
 		&mut self.desktop_finder
+	}
+
+	fn general_config<'a>(&'a mut self, _: &'a mut ()) -> &'a mut crate::config::GeneralConfig {
+		&mut self.general_config
 	}
 }

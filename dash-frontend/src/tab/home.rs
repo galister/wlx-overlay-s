@@ -9,10 +9,10 @@ use wgui::{
 	parser::{Fetchable, ParseDocumentParams, ParserState},
 	widget::label::WidgetLabel,
 };
+use wlx_common::config::GeneralConfig;
 
 use crate::{
 	frontend::{Frontend, FrontendTask},
-	settings,
 	tab::{Tab, TabType},
 	various,
 };
@@ -29,7 +29,7 @@ impl<T> Tab<T> for TabHome<T> {
 	}
 }
 
-fn configure_label_hello(common: &mut CallbackDataCommon, label_hello: Widget, settings: &settings::Settings) {
+fn configure_label_hello(common: &mut CallbackDataCommon, label_hello: Widget, config: &GeneralConfig) {
 	let mut username = various::get_username();
 	// first character as uppercase
 	if let Some(first) = username.chars().next() {
@@ -37,7 +37,7 @@ fn configure_label_hello(common: &mut CallbackDataCommon, label_hello: Widget, s
 		username.replace_range(0..1, &first);
 	}
 
-	let translated = if !settings.home_screen.hide_username {
+	let translated = if !config.hide_username {
 		common.i18n().translate_and_replace("HELLO_USER", ("{USER}", &username))
 	} else {
 		common.i18n().translate("HELLO").to_string()
@@ -48,7 +48,7 @@ fn configure_label_hello(common: &mut CallbackDataCommon, label_hello: Widget, s
 }
 
 impl<T> TabHome<T> {
-	pub fn new(frontend: &mut Frontend<T>, parent_id: WidgetID) -> anyhow::Result<Self> {
+	pub fn new(frontend: &mut Frontend<T>, parent_id: WidgetID, data: &mut T) -> anyhow::Result<Self> {
 		let state = wgui::parser::parse_from_assets(
 			&ParseDocumentParams {
 				globals: frontend.layout.state.globals.clone(),
@@ -61,7 +61,7 @@ impl<T> TabHome<T> {
 
 		let mut c = frontend.layout.start_common();
 		let widget_label = state.fetch_widget(&c.layout.state, "label_hello")?.widget;
-		configure_label_hello(&mut c.common(), widget_label, frontend.settings.get_mut());
+		configure_label_hello(&mut c.common(), widget_label, frontend.interface.general_config(data));
 
 		let btn_apps = state.fetch_component_as::<ComponentButton>("btn_apps")?;
 		let btn_games = state.fetch_component_as::<ComponentButton>("btn_games")?;

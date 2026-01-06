@@ -14,11 +14,9 @@ use wgui::{
 	taffy::Display,
 	widget::label::WidgetLabel,
 };
+use wlx_common::config::GeneralConfig;
 
-use crate::{
-	frontend::{FrontendTask, FrontendTasks},
-	settings::SettingsIO,
-};
+use crate::frontend::{FrontendTask, FrontendTasks};
 
 pub struct PopupManagerParams {
 	pub parent_id: WidgetID,
@@ -58,7 +56,7 @@ pub struct PopupManager {
 
 pub struct PopupContentFuncData<'a> {
 	pub layout: &'a mut Layout,
-	pub settings: &'a dyn SettingsIO,
+	pub config: &'a GeneralConfig,
 	pub handle: PopupHandle,
 	pub id_content: WidgetID,
 }
@@ -123,10 +121,10 @@ impl PopupManager {
 	pub fn mount_popup(
 		&mut self,
 		globals: WguiGlobals,
-		settings: &dyn SettingsIO,
 		layout: &mut Layout,
 		frontend_tasks: FrontendTasks,
 		params: MountPopupParams,
+		config: &GeneralConfig,
 	) -> anyhow::Result<()> {
 		let doc_params = &ParseDocumentParams {
 			globals: globals.clone(),
@@ -180,7 +178,7 @@ impl PopupManager {
 			layout,
 			handle: popup_handle.clone(),
 			id_content,
-			settings,
+			config,
 		})?;
 
 		Ok(())

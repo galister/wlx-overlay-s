@@ -107,7 +107,7 @@ impl BlitMethod {
 }
 
 pub struct Config {
-    pub click_freeze_time_ms: u32,
+    pub click_freeze_time_ms: i32,
     pub keyboard_repeat_delay_ms: u32,
     pub keyboard_repeat_rate: u32,
     pub auto_hide_delay: Option<u32>, // if None, auto-hide is disabled

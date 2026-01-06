@@ -17,10 +17,10 @@ use wgui::{
 use wlx_common::{audio, dash_interface::BoxDashInterface, timestep::Timestep};
 
 use crate::{
-	assets, settings,
+	assets,
 	tab::{
-		Tab, TabType, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses,
-		settings::TabSettings,
+		apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses, settings::TabSettings,
+		Tab, TabType,
 	},
 	util::{
 		popup_manager::{MountPopupParams, PopupManager, PopupManagerParams},
@@ -41,7 +41,6 @@ pub struct Frontend<T> {
 	pub layout: Layout,
 	globals: WguiGlobals,
 
-	pub settings: Box<dyn settings::SettingsIO>,
 	pub interface: BoxDashInterface<T>,
 
 	// async runtime executor
@@ -79,7 +78,6 @@ pub struct FrontendUpdateResult {
 }
 
 pub struct InitParams<T> {
-	pub settings: Box<dyn settings::SettingsIO>,
 	pub interface: BoxDashInterface<T>,
 }
 
@@ -104,7 +102,7 @@ pub enum FrontendTask {
 }
 
 impl<T: 'static> Frontend<T> {
-	pub fn new(params: InitParams<T>) -> anyhow::Result<Frontend<T>> {
+	pub fn new(params: InitParams<T>, data: &mut T) -> anyhow::Result<Frontend<T>> {
 		let mut assets = Box::new(assets::Asset {});
 
 		let font_binary_bold = assets.load_from_path_gzip("Quicksand-Bold.ttf.gz")?;
@@ -159,7 +157,6 @@ impl<T: 'static> Frontend<T> {
 				id_rect_content,
 			},
 			timestep,
-			settings: params.settings,
 			interface: params.interface,
 			popup_manager,
 			toast_manager,
@@ -170,8 +167,8 @@ impl<T: 'static> Frontend<T> {
 		};
 
 		// init some things first
-		frontend.update_background()?;
-		frontend.update_time()?;
+		frontend.update_background(data)?;
+		frontend.update_time(data)?;
 
 		Frontend::register_widgets(&mut frontend)?;
 
@@ -232,7 +229,7 @@ impl<T: 'static> Frontend<T> {
 	fn tick(&mut self, params: FrontendUpdateParams<T>) -> anyhow::Result<FrontendUpdateResult> {
 		// fixme: timer events instead of this thing
 		if self.ticks.is_multiple_of(1000) {
-			self.update_time()?;
+			self.update_time(params.data)?;
 		}
 
 		{
@@ -253,7 +250,7 @@ impl<T: 'static> Frontend<T> {
 		})
 	}
 
-	fn update_time(&mut self) -> anyhow::Result<()> {
+	fn update_time(&mut self, data: &mut T) -> anyhow::Result<()> {
 		let mut c = self.layout.start_common();
 		let mut common = c.common();
 
@@ -266,12 +263,12 @@ impl<T: 'static> Frontend<T> {
 			let hours = now.hour();
 			let minutes = now.minute();
 
-			let text: String = if !self.settings.get().general.am_pm_clock {
-				format!("{hours:02}:{minutes:02}")
-			} else {
+			let text: String = if self.interface.general_config(data).clock_12h {
 				let hours_ampm = (hours + 11) % 12 + 1;
 				let suffix = if hours >= 12 { "PM" } else { "AM" };
 				format!("{hours_ampm:02}:{minutes:02} {suffix}")
+			} else {
+				format!("{hours:02}:{minutes:02}")
 			};
 
 			label.set_text(&mut common, Translation::from_raw_text(&text));
@@ -281,13 +278,15 @@ impl<T: 'static> Frontend<T> {
 		Ok(())
 	}
 
-	fn mount_popup(&mut self, params: MountPopupParams) -> anyhow::Result<()> {
+	fn mount_popup(&mut self, params: MountPopupParams, data: &mut T) -> anyhow::Result<()> {
+		let config = self.interface.general_config(data);
+
 		self.popup_manager.mount_popup(
 			self.globals.clone(),
-			self.settings.as_ref(),
 			&mut self.layout,
 			self.tasks.clone(),
 			params,
+			config,
 		)?;
 		Ok(())
 	}
@@ -299,7 +298,7 @@ impl<T: 'static> Frontend<T> {
 		Ok(())
 	}
 
-	fn update_background(&self) -> anyhow::Result<()> {
+	fn update_background(&mut self, data: &mut T) -> anyhow::Result<()> {
 		let Some(mut rect) = self
 			.layout
 			.state
@@ -309,10 +308,10 @@ impl<T: 'static> Frontend<T> {
 			anyhow::bail!("");
 		};
 
-		let (alpha1, alpha2) = if !self.settings.get().general.opaque_background {
-			(0.8666, 0.9333)
-		} else {
+		let (alpha1, alpha2) = if self.interface.general_config(data).opaque_background {
 			(1.0, 1.0)
+		} else {
+			(0.8666, 0.9333)
 		};
 
 		rect.params.color.a = alpha1;
@@ -324,9 +323,9 @@ impl<T: 'static> Frontend<T> {
 	fn process_task(&mut self, params: &mut FrontendUpdateParams<T>, task: FrontendTask) -> anyhow::Result<()> {
 		match task {
 			FrontendTask::SetTab(tab_type) => self.set_tab(params.data, tab_type)?,
-			FrontendTask::RefreshClock => self.update_time()?,
-			FrontendTask::RefreshBackground => self.update_background()?,
-			FrontendTask::MountPopup(params) => self.mount_popup(params)?,
+			FrontendTask::RefreshClock => self.update_time(params.data)?,
+			FrontendTask::RefreshBackground => self.update_background(params.data)?,
+			FrontendTask::MountPopup(popup_params) => self.mount_popup(popup_params, params.data)?,
 			FrontendTask::RefreshPopupManager => self.refresh_popup_manager()?,
 			FrontendTask::ShowAudioSettings => self.action_show_audio_settings()?,
 			FrontendTask::UpdateAudioSettingsView => self.action_update_audio_settings()?,
@@ -343,12 +342,12 @@ impl<T: 'static> Frontend<T> {
 		self.layout.remove_children(widget_content.id);
 
 		let tab: Box<dyn Tab<T>> = match tab_type {
-			TabType::Home => Box::new(TabHome::new(self, widget_content.id)?),
+			TabType::Home => Box::new(TabHome::new(self, widget_content.id, data)?),
 			TabType::Apps => Box::new(TabApps::new(self, widget_content.id, data)?),
 			TabType::Games => Box::new(TabGames::new(self, widget_content.id)?),
 			TabType::Monado => Box::new(TabMonado::new(self, widget_content.id)?),
 			TabType::Processes => Box::new(TabProcesses::new(self, widget_content.id)?),
-			TabType::Settings => Box::new(TabSettings::new(self, widget_content.id)?),
+			TabType::Settings => Box::new(TabSettings::new(self, widget_content.id, data)?),
 		};
 
 		self.current_tab = Some(tab);

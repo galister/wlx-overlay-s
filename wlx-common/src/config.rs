@@ -23,11 +23,11 @@ pub const fn def_pw_tokens() -> PwTokenMap {
 	AStrMap::new()
 }
 
-const fn def_mouse_move_interval_ms() -> u32 {
+const fn def_mouse_move_interval_ms() -> i32 {
 	10 // 100fps
 }
 
-const fn def_click_freeze_time_ms() -> u32 {
+const fn def_click_freeze_time_ms() -> i32 {
 	300
 }
 
@@ -110,7 +110,7 @@ pub struct GeneralConfig {
 	pub attribs: AStrMap<Vec<BackendAttribValue>>,
 
 	#[serde(default = "def_click_freeze_time_ms")]
-	pub click_freeze_time_ms: u32,
+	pub click_freeze_time_ms: i32,
 
 	#[serde(default = "def_false")]
 	pub invert_scroll_direction_x: bool,
@@ -125,7 +125,7 @@ pub struct GeneralConfig {
 	pub long_press_duration: f32,
 
 	#[serde(default = "def_mouse_move_interval_ms")]
-	pub mouse_move_interval_ms: u32,
+	pub mouse_move_interval_ms: i32,
 
 	#[serde(default = "def_true")]
 	pub notifications_enabled: bool,
@@ -240,4 +240,13 @@ pub struct GeneralConfig {
 
 	#[serde(default)]
 	pub last_set: u32,
+
+	#[serde(default)]
+	pub hide_username: bool,
+
+	#[serde(default)]
+	pub opaque_background: bool,
+
+	#[serde(default)]
+	pub xwayland_by_default: bool,
 }

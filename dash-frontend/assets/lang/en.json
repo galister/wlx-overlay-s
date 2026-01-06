@@ -3,23 +3,68 @@
 		"RECENTER_PLAYSPACE": "Re-center playspace"
 	},
 	"APP_SETTINGS": {
+		"LOOK_AND_FEEL": "Look & Feel",
+
+		"OPAQUE_BACKGROUND": "Opaque background",
+		"HIDE_USERNAME": "Hide username",
+		"HIDE_GRAB_HELP": "Hide grab help",
+		"ANIMATION_SPEED": "UI Animation speed",
+		"ROUND_MULTIPLIER": "UI Edge roundness",
+		"SINGLE_SET_MODE": "Single set mode",
+		"USE_SKYBOX": "Enable skybox",
+		"USE_PASSTHROUGH": "Enable passthrough",
+		"CLOCK_12H": "12-hour clock",
+
+		"FEATURES": "Features",
+		
+		"NOTIFICATIONS_ENABLED": "Enable notifications",
+		"NOTIFICATIONS_SOUND_ENABLED": "Notification sounds",
+		"KEYBOARD_SOUND_ENABLED": "Keyboard sounds",
+		"SPACE_DRAG_MULTIPLIER": "Space drag multiplier",
+		"SPACE_DRAG_UNLOCKED": "Allow space drag on all axes",
+		"SPACE_ROTATE_UNLOCKED": "Allow space rotate on all axes",
+		"BLOCK_GAME_INPUT": "Block game input",
+		"BLOCK_GAME_INPUT_IGNORE_WATCH": "Ignore watch when blocking input",
+
+		"CONTROLS": "Controls",
+
+		"FOCUS_FOLLOWS_MOUSE_MODE": "Mouse move on trigger touch",
+		"LEFT_HANDED_MOUSE": "Left-handed mouse",
+		"ALLOW_SLIDING": "Stick interaction during grab",
+		"INVERT_SCROLL_DIRECTION_X": "Invert horizontal scroll direction",
+		"INVERT_SCROLL_DIRECTION_Y": "Invert vertical scroll direction",
+		"SCROLL_SPEED": "Scroll speed",
+		"LONG_PRESS_DURATION": "Long press duration",
+		"POINTER_LERP_FACTOR": "Pointer smoothing",
+		"XR_CLICK_SENSITIVITY": "XR click sensitivity",
+		"XR_CLICK_SENSITIVITY_RELEASE": "XR release sensitivity",
+		"CLICK_FREEZE_TIME_MS": "Click freeze time (ms)",
+		
+		"MISC": "Miscellaneous",
+
+		"XWAYLAND_BY_DEFAULT": "Run apps in Compatibility mode by default",
+		"UPRIGHT_SCREEN_FIX": "Upright screen fix",
+		"DOUBLE_CURSOR_FIX": "Double cursor fix",
+		"SCREEN_RENDER_DOWN": "Render screen at lower resolution",
+
+		"UPRIGHT_SCREEN_FIX_HELP": "Fixes upright screens on some desktops",
+		"DOUBLE_CURSOR_FIX_HELP": "Enable this if you see 2 cursors",
+		"SINGLE_SET_MODE_HELP": "Optimize the watch for working with a single set",
+		"XR_CLICK_SENSITIVITY_HELP": "Analog trigger sensitivity",
+		"XR_CLICK_SENSITIVITY_RELEASE_HELP": "Must be lower than click",
+		"CLICK_FREEZE_TIME_MS_HELP": "Helps with double-click precision",
+		"LEFT_HANDED_MOUSE_HELP": "Use this if mouse buttons are swapped",
+		"BLOCK_GAME_INPUT_HELP": "Blocks all input when an overlay is hovered",
+		"BLOCK_GAME_INPUT_IGNORE_WATCH_HELP": "Do not block input when watch is hovered",
+		"USE_SKYBOX_HELP": "Show a skybox if there's no scene app or passthrough",
+		"USE_PASSTHROUGH_HELP": "Allow passthrough if the XR runtime supports it",
+		"SCREEN_RENDER_DOWN_HELP": "Helps with aliasing on high-res screens",
+
+		"__UNUSED": "---- Below this are unused values ----",
+
 		"BRIGHTNESS": "Brightness",
 		"HEADSET_SETTINGS": "Headset settings",
-		"HIDE_USERNAME": "Hide username",
-		"OPAQUE_BACKGROUND": "Opaque background",
-		"RESTART_SOFTWARE": "Restart software",
-		"RUN_IN_XWAYLAND_MODE_BY_DEFAULT": "Run in XWayland mode by default",
-		"WLX": {
-			"BLOCK_GAME_INPUT": "Block game input",
-			"ENABLE_PASSTHROUGH": "Enable passthrough",
-			"KEYBOARD_SOUND_ENABLED": "Keyboard sound enabled",
-			"NOTIFICATIONS_ENABLED": "Notifications enabled",
-			"NOTIFICATIONS_SOUND_ENABLED": "Notifications sound enabled",
-			"SHOW_SKYBOX": "Show skybox",
-			"SPACE_DRAG_MULTIPLIER": "Space-drag multiplier",
-			"SPACE_DRAG_ROTATION_ENABLED": "Enable rotation in space-drag"
-		},
-		"WLX_OVERLAY_S_SETTINGS": "WlxOverlay-S settings"
+		"RESTART_SOFTWARE": "Restart software"
 	},
 	"APPLICATION_LAUNCHER": "Application launcher",
 	"APPLICATION_STARTED": "Application started",

@@ -104,7 +104,7 @@ fn on_app_click(
 						layout: data.layout,
 						parent_id: data.id_content,
 						frontend_tasks: &frontend_tasks,
-						settings: data.settings,
+						config: data.config,
 						on_launched,
 					})?;
 

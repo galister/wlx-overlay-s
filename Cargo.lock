@@ -6928,6 +6928,7 @@ dependencies = [
  "rodio",
  "rust-ini",
  "serde",
+ "serde_json",
  "smol",
  "walkdir",
  "wayvr-ipc",

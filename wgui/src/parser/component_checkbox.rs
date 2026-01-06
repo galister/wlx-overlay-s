@@ -1,9 +1,9 @@
 use crate::{
-	components::{Component, checkbox, radio_group::ComponentRadioGroup},
+	components::{checkbox, radio_group::ComponentRadioGroup, Component},
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		AttribPair, Fetchable, ParserContext, parse_check_f32, parse_check_i32, process_component, style::parse_style,
+		parse_check_f32, parse_check_i32, process_component, style::parse_style, AttribPair, Fetchable, ParserContext,
 	},
 };
 
@@ -29,10 +29,14 @@ pub fn parse_component_checkbox(
 		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
 		match key {
 			"text" => {
-				translation = Translation::from_raw_text(value);
+				if !value.is_empty() {
+					translation = Translation::from_raw_text(value);
+				}
 			}
 			"translation" => {
-				translation = Translation::from_translation_key(value);
+				if !value.is_empty() {
+					translation = Translation::from_translation_key(value);
+				}
 			}
 			"value" => {
 				component_value = Some(value.into());

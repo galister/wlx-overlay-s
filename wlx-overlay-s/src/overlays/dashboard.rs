@@ -1,7 +1,4 @@
-use dash_frontend::{
-    frontend::{self, FrontendTask, FrontendUpdateParams},
-    settings::{self, SettingsIO},
-};
+use dash_frontend::frontend::{self, FrontendTask, FrontendUpdateParams};
 use glam::{Affine2, Affine3A, Vec2, vec2, vec3};
 use wayvr_ipc::{
     packet_client::WvrProcessLaunchParams,
@@ -26,7 +23,6 @@ use wlx_common::{
 };
 
 use crate::{
-    app_misc,
     backend::{
         input::{Haptics, HoverResult, PointerHit, PointerMode},
         task::{OverlayTask, PlayspaceTask, TaskType},
@@ -53,43 +49,6 @@ pub const DASH_NAME: &str = "Dashboard";
 const DASH_RES_U32A: [u32; 2] = [1920, 1080];
 const DASH_RES_VEC2: Vec2 = vec2(DASH_RES_U32A[0] as _, DASH_RES_U32A[1] as _);
 
-//FIXME: replace with proper impl
-struct SimpleSettingsIO {
-    settings: settings::Settings,
-}
-impl SimpleSettingsIO {
-    fn new() -> Self {
-        let mut res = Self {
-            settings: settings::Settings::default(),
-        };
-        res.read_from_disk();
-        res
-    }
-}
-impl settings::SettingsIO for SimpleSettingsIO {
-    fn get_mut(&mut self) -> &mut settings::Settings {
-        &mut self.settings
-    }
-    fn get(&self) -> &dash_frontend::settings::Settings {
-        &self.settings
-    }
-    fn save_to_disk(&mut self) {
-        log::info!("saving settings");
-        let data = self.settings.save();
-        std::fs::write("/tmp/testbed_settings.json", data).unwrap();
-    }
-    fn read_from_disk(&mut self) {
-        log::info!("loading settings");
-        if let Ok(res) = std::fs::read("/tmp/testbed_settings.json") {
-            let data = String::from_utf8(res).unwrap();
-            self.settings = settings::Settings::load(&data).unwrap();
-        }
-    }
-    fn mark_as_dirty(&mut self) {
-        self.save_to_disk();
-    }
-}
-
 pub struct DashFrontend {
     inner: frontend::Frontend<AppState>,
     initialized: bool,
@@ -103,13 +62,14 @@ const GUI_SCALE: f32 = 2.0;
 
 impl DashFrontend {
     fn new(app: &mut AppState) -> anyhow::Result<Self> {
-        let settings = SimpleSettingsIO::new();
         let interface = DashInterfaceLive::new();
 
-        let frontend = frontend::Frontend::new(frontend::InitParams {
-            settings: Box::new(settings),
-            interface: Box::new(interface),
-        })?;
+        let frontend = frontend::Frontend::new(
+            frontend::InitParams {
+                interface: Box::new(interface),
+            },
+            app,
+        )?;
 
         frontend
             .tasks
@@ -447,5 +407,12 @@ impl DashInterface<AppState> for DashInterfaceLive {
         data: &'a mut AppState,
     ) -> &'a mut wlx_common::desktop_finder::DesktopFinder {
         &mut data.desktop_finder
+    }
+
+    fn general_config<'a>(
+        &'a mut self,
+        data: &'a mut AppState,
+    ) -> &'a mut wlx_common::config::GeneralConfig {
+        &mut data.session.config
     }
 }

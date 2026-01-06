@@ -1,13 +1,13 @@
 use crate::{
 	assets::AssetPath,
-	components::{Component, button, tooltip},
+	components::{button, tooltip, Component},
 	drawing::Color,
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		AttribPair, ParserContext, ParserFile, parse_check_f32, parse_check_i32, parse_children, parse_f32,
-		print_invalid_attrib, process_component,
+		parse_check_f32, parse_check_i32, parse_children, parse_f32, print_invalid_attrib, process_component,
 		style::{parse_color_opt, parse_round, parse_style, parse_text_style},
+		AttribPair, ParserContext, ParserFile,
 	},
 	widget::util::WLength,
 };
@@ -41,10 +41,14 @@ pub fn parse_component_button<'a>(
 		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
 		match key {
 			"text" => {
-				translation = Some(Translation::from_raw_text(value));
+				if !value.is_empty() {
+					translation = Some(Translation::from_raw_text(value));
+				}
 			}
 			"translation" => {
-				translation = Some(Translation::from_translation_key(value));
+				if !value.is_empty() {
+					translation = Some(Translation::from_translation_key(value));
+				}
 			}
 			"round" => {
 				parse_round(value, &mut round, ctx.doc_params.globals.get().defaults.rounding_mult);
@@ -77,8 +81,8 @@ pub fn parse_component_button<'a>(
 					sprite_src = Some(asset_path);
 				}
 			}
-			"tooltip" => tooltip = Some(Translation::from_translation_key(value)),
-			"tooltip_str" => tooltip = Some(Translation::from_raw_text(value)),
+			"tooltip" if !value.is_empty() => tooltip = Some(Translation::from_translation_key(value)),
+			"tooltip_str" if !value.is_empty() => tooltip = Some(Translation::from_raw_text(value)),
 			"tooltip_side" => {
 				tooltip_side = match value {
 					"left" => Some(tooltip::TooltipSide::Left),

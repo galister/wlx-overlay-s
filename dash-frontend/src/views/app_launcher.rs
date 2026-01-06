@@ -12,12 +12,9 @@ use wgui::{
 	task::Tasks,
 	widget::label::WidgetLabel,
 };
-use wlx_common::{dash_interface::BoxDashInterface, desktop_finder::DesktopEntry};
+use wlx_common::{config::GeneralConfig, dash_interface::BoxDashInterface, desktop_finder::DesktopEntry};
 
-use crate::{
-	frontend::{FrontendTask, FrontendTasks, SoundType},
-	settings::SettingsIO,
-};
+use crate::frontend::{FrontendTask, FrontendTasks, SoundType};
 
 #[derive(Clone, Copy, Eq, PartialEq, EnumString, VariantNames, AsRefStr)]
 enum ResMode {
@@ -89,7 +86,7 @@ pub struct Params<'a> {
 	pub entry: DesktopEntry,
 	pub layout: &'a mut Layout,
 	pub parent_id: WidgetID,
-	pub settings: &'a dyn SettingsIO,
+	pub config: &'a GeneralConfig,
 	pub frontend_tasks: &'a FrontendTasks,
 	pub on_launched: Box<dyn Fn()>,
 }
@@ -144,7 +141,7 @@ impl View {
 			)?;
 		}
 
-		let compositor_mode = if params.settings.get().tweaks.xwayland_by_default {
+		let compositor_mode = if params.config.xwayland_by_default {
 			CompositorMode::Cage
 		} else {
 			CompositorMode::Native

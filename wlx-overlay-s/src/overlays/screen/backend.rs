@@ -266,7 +266,7 @@ impl OverlayBackend for ScreenBackend {
         {
             let pos = self.mouse_transform.transform_point2(hit.uv);
             app.hid_provider.inner.mouse_move(pos);
-            set_next_move(u64::from(app.session.config.mouse_move_interval_ms));
+            set_next_move(app.session.config.mouse_move_interval_ms as _);
         }
         HoverResult {
             consume: true,
@@ -290,7 +290,7 @@ impl OverlayBackend for ScreenBackend {
         }
 
         if pressed {
-            set_next_move(u64::from(app.session.config.click_freeze_time_ms));
+            set_next_move(app.session.config.click_freeze_time_ms as _);
         }
 
         app.hid_provider.inner.send_button(btn, pressed);
