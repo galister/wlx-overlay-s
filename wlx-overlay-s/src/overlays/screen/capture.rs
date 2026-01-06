@@ -208,6 +208,12 @@ impl ScreenPipeline {
         self.buf_alpha.write()?[0] = rdr.alpha;
 
         for (eye, cmd_buf) in rdr.cmd_bufs.iter_mut().enumerate() {
+            // Only render if we have a pass for this eye
+            if eye >= self.pass.len() {
+                log::warn!("Eye {eye} not available during render");
+                continue;
+            }
+
             let current = &mut self.pass[eye];
 
             current
