@@ -14,6 +14,7 @@ use crate::{
 	components::{Component, ComponentWeak},
 	drawing::{self},
 	globals::WguiGlobals,
+	i18n::Translation,
 	layout::{Layout, LayoutParams, LayoutState, Widget, WidgetID, WidgetMap, WidgetPair},
 	log::LogErr,
 	parser::{
@@ -28,8 +29,10 @@ use crate::{
 		widget_sprite::parse_widget_sprite,
 	},
 	widget::ConstructEssentials,
+	windowing::context_menu,
 };
 use anyhow::Context;
+use glam::Vec2;
 use ouroboros::self_referencing;
 use smallvec::SmallVec;
 use std::{cell::RefMut, collections::HashMap, path::Path, rc::Rc};
@@ -254,6 +257,73 @@ impl ParserState {
 		let mut data_local = self.parse_template(doc_params, template_name, layout, widget_id, template_parameters)?;
 
 		self.data.take_results_from(&mut data_local);
+		Ok(())
+	}
+
+	pub fn instantiate_context_menu(
+		&mut self,
+		on_custom_attribs: Option<OnCustomAttribsFunc>,
+		template_name: &str,
+		layout: &mut Layout,
+		context_menu: &mut context_menu::ContextMenu,
+		position: Vec2,
+	) -> anyhow::Result<()> {
+		let Some(template) = self.data.templates.get(template_name) else {
+			anyhow::bail!("no template named \"{template_name}\" found");
+		};
+
+		let doc = template.node_document.borrow_doc();
+		let node = doc.get_node(template.node).context("node not found")?;
+		let el_context_menu = node.first_element_child().context("child not found")?;
+		let tag_name = el_context_menu.tag_name().name();
+		if tag_name != "context_menu" {
+			anyhow::bail!("expected <context_menu> tag, got <{tag_name}>");
+		}
+
+		let mut cells = Vec::<context_menu::Cell>::new();
+
+		for child in el_context_menu.children() {
+			match child.tag_name().name() {
+				"" => {}
+				"cell" => {
+					let mut title: Option<Translation> = None;
+					let mut action_name: Option<Rc<str>> = None;
+					let mut attribs = Vec::<AttribPair>::new();
+
+					for attrib in child.attributes() {
+						let (key, value) = (attrib.name(), attrib.value());
+						match key {
+							"text" => title = Some(Translation::from_raw_text(value)),
+							"translation" => title = Some(Translation::from_translation_key(value)),
+							"action" => action_name = Some(value.into()),
+							other => {
+								if !other.starts_with('_') {
+									anyhow::bail!("unexpected \"{other}\" attribute");
+								}
+								attribs.push(AttribPair::new(key, value));
+							}
+						}
+					}
+
+					let title = title.context("No text/translation provided")?;
+					cells.push(context_menu::Cell {
+						title,
+						action_name,
+						attribs,
+					});
+				}
+				other => {
+					anyhow::bail!("unexpected <{other}> tag");
+				}
+			}
+		}
+
+		context_menu.open(context_menu::OpenParams {
+			data: context_menu::Blueprint { cells },
+			on_custom_attribs,
+			position,
+		});
+
 		Ok(())
 	}
 }
@@ -549,7 +619,7 @@ fn parse_widget_other_internal(
 	let template_node = doc
 		.borrow_doc()
 		.get_node(template.node)
-		.ok_or_else(|| anyhow::anyhow!("template node invalid"))?;
+		.context("template node invalid")?;
 
 	parse_children(&template_file, ctx, template_node, parent_id)?;
 
@@ -691,7 +761,12 @@ pub fn replace_vars(input: &str, vars: &HashMap<Rc<str>, Rc<str>>) -> Rc<str> {
 }
 
 #[allow(clippy::manual_strip)]
-fn process_attrib<'a>(file: &'a ParserFile, ctx: &'a ParserContext, key: &str, value: &str) -> AttribPair {
+fn process_attrib(
+	template_parameters: &HashMap<Rc<str>, Rc<str>>,
+	ctx: &ParserContext,
+	key: &str,
+	value: &str,
+) -> AttribPair {
 	if value.starts_with('~') {
 		let name = &value[1..];
 
@@ -700,7 +775,7 @@ fn process_attrib<'a>(file: &'a ParserFile, ctx: &'a ParserContext, key: &str, v
 			None => AttribPair::new(key, "undefined"),
 		}
 	} else {
-		AttribPair::new(key, replace_vars(value, &file.template_parameters))
+		AttribPair::new(key, replace_vars(value, template_parameters))
 	}
 }
 
@@ -731,13 +806,13 @@ fn process_attribs<'a>(
 		if key == "macro" {
 			if let Some(macro_attrib) = ctx.get_macro_attrib(value) {
 				for (macro_key, macro_value) in &macro_attrib.attribs {
-					res.push(process_attrib(file, ctx, macro_key, macro_value));
+					res.push(process_attrib(&file.template_parameters, ctx, macro_key, macro_value));
 				}
 			} else {
 				log::warn!("requested macro named \"{value}\" not found!");
 			}
 		} else {
-			res.push(process_attrib(file, ctx, key, value));
+			res.push(process_attrib(&file.template_parameters, ctx, key, value));
 		}
 	}
 
@@ -994,7 +1069,7 @@ fn create_default_context<'a>(
 	}
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct AttribPair {
 	pub attrib: Rc<str>,
 	pub value: Rc<str>,
@@ -1157,7 +1232,7 @@ fn parse_document_root(
 		.document
 		.borrow_doc()
 		.get_node(node_layout)
-		.ok_or_else(|| anyhow::anyhow!("layout node not found"))?;
+		.context("layout node not found")?;
 
 	for child_node in node_layout.children() {
 		match child_node.tag_name().name() {
@@ -1165,6 +1240,7 @@ fn parse_document_root(
 			"include" => parse_tag_include(file, ctx, parent_id, &raw_attribs(&child_node))?,
 			"theme" => parse_tag_theme(ctx, child_node),
 			"template" => parse_tag_template(file, ctx, child_node),
+			"blueprint" => parse_tag_template(file, ctx, child_node),
 			"macro" => parse_tag_macro(file, ctx, child_node),
 			_ => {}
 		}

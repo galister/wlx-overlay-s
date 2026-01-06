@@ -8,9 +8,9 @@ use glam::Vec2;
 use wgui::{
 	assets::AssetPath,
 	components::{
+		Component,
 		button::{ButtonClickCallback, ComponentButton},
 		checkbox::ComponentCheckbox,
-		Component,
 	},
 	drawing::Color,
 	event::StyleSetRequest,
@@ -79,9 +79,15 @@ fn handle_button_click(button: Rc<ComponentButton>, label: Widget, text: &'stati
 }
 
 impl TestbedGeneric {
-	pub fn new(assets: Box<assets::Asset>) -> anyhow::Result<Self> {
-		const XML_PATH: AssetPath = AssetPath::BuiltIn("gui/various_widgets.xml");
+	fn doc_params(globals: &WguiGlobals, extra: ParseDocumentExtra) -> ParseDocumentParams {
+		ParseDocumentParams {
+			globals: globals.clone(),
+			path: AssetPath::BuiltIn("gui/various_widgets.xml"),
+			extra,
+		}
+	}
 
+	pub fn new(assets: Box<assets::Asset>) -> anyhow::Result<Self> {
 		let globals = WguiGlobals::new(
 			assets,
 			wgui::globals::Defaults::default(),
@@ -117,11 +123,7 @@ impl TestbedGeneric {
 		};
 
 		let (layout, state) = wgui::parser::new_layout_from_assets(
-			&ParseDocumentParams {
-				globals: globals.clone(),
-				path: XML_PATH,
-				extra,
-			},
+			&TestbedGeneric::doc_params(&globals, extra),
 			&LayoutParams {
 				resize_to_parent: true,
 			},
@@ -254,25 +256,15 @@ impl TestbedGeneric {
 		data: &mut Data,
 		position: Vec2,
 	) -> anyhow::Result<()> {
-		data.context_menu.open(context_menu::OpenParams {
+		data.state.instantiate_context_menu(
+			Some(Rc::new(move |custom_attribs| {
+				log::info!("custom attribs {:?}", custom_attribs.pairs);
+			})),
+			"my_context_menu",
+			&mut self.layout,
+			&mut data.context_menu,
 			position,
-			data: context_menu::Blueprint {
-				cells: vec![
-					context_menu::Cell {
-						title: Translation::from_raw_text("Options"),
-						action_name: "options".into(),
-					},
-					context_menu::Cell {
-						title: Translation::from_raw_text("Exit software"),
-						action_name: "exit".into(),
-					},
-					context_menu::Cell {
-						title: Translation::from_raw_text("Restart software"),
-						action_name: "restart".into(),
-					},
-				],
-			},
-		});
+		)?;
 
 		Ok(())
 	}

@@ -4,8 +4,7 @@ use glam::Vec2;
 
 use crate::{
 	assets::AssetPath,
-	components::button::ComponentButton,
-	event::CallbackDataCommon,
+	components::{ComponentTrait, button::ComponentButton},
 	globals::WguiGlobals,
 	i18n::Translation,
 	layout::Layout,
@@ -16,26 +15,23 @@ use crate::{
 
 pub struct Cell {
 	pub title: Translation,
-	pub action_name: Rc<str>,
+	pub action_name: Option<Rc<str>>,
+	pub attribs: Vec<parser::AttribPair>,
 }
 
 pub struct Blueprint {
 	pub cells: Vec<Cell>,
 }
 
-pub struct ContextMenuAction<'a> {
-	pub common: &'a mut CallbackDataCommon<'a>,
-	pub name: Rc<str>, // action name
-}
-
 pub struct OpenParams {
 	pub position: Vec2,
 	pub data: Blueprint,
+	pub on_custom_attribs: Option<parser::OnCustomAttribsFunc>,
 }
 
 #[derive(Clone)]
 enum Task {
-	ActionClicked(Rc<str>),
+	ActionClicked(Option<Rc<str>>),
 }
 
 #[derive(Default)]
@@ -67,7 +63,7 @@ impl ContextMenu {
 		self.window.close();
 	}
 
-	fn open_process(&mut self, params: &OpenParams, layout: &mut Layout) -> anyhow::Result<()> {
+	fn open_process(&mut self, params: &mut OpenParams, layout: &mut Layout) -> anyhow::Result<()> {
 		let globals = layout.state.globals.clone();
 
 		self.window.open(&mut WguiWindowParams {
@@ -93,9 +89,19 @@ impl ContextMenu {
 			let data_cell = state.parse_template(&doc_params(&globals), "Cell", layout, id_buttons, par)?;
 
 			let button = data_cell.fetch_component_as::<ComponentButton>("button")?;
+			let button_id = button.base().get_id();
 			self
 				.tasks
 				.handle_button(&button, Task::ActionClicked(cell.action_name.clone()));
+
+			if let Some(c) = &mut params.on_custom_attribs {
+				(*c)(parser::CustomAttribsInfo {
+					pairs: &cell.attribs,
+					parent_id: id_buttons,
+					widget_id: button_id,
+					widgets: &layout.state.widgets,
+				});
+			}
 
 			if idx < params.data.cells.len() - 1 {
 				state.parse_template(
@@ -112,8 +118,8 @@ impl ContextMenu {
 	}
 
 	pub fn tick(&mut self, layout: &mut Layout) -> anyhow::Result<TickResult> {
-		if let Some(p) = self.pending_open.take() {
-			self.open_process(&p, layout)?;
+		if let Some(mut p) = self.pending_open.take() {
+			self.open_process(&mut p, layout)?;
 		}
 
 		let mut result = TickResult::default();
@@ -121,7 +127,7 @@ impl ContextMenu {
 		for task in self.tasks.drain() {
 			match task {
 				Task::ActionClicked(action_name) => {
-					result.action_name = Some(action_name);
+					result.action_name = action_name;
 					self.close();
 				}
 			}

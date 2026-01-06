@@ -9,6 +9,15 @@
     align_self="baseline"
     align_items="baseline" />
 
+  <blueprint name="my_context_menu">
+    <context_menu>
+      <cell translation="TESTBED.HELLO_WORLD" action="first" _custom1="foo" />
+      <cell text="Second button" action="second" _custom1="bar" />
+      <cell text="Third button" action="third" />
+      <cell text="Foobar test test test" action="foobar" />
+    </context_menu>
+  </blueprint>
+
   <elements>
     <rectangle position="absolute" width="100%" height="100%" color="#1e3a3eee" />
     <div
