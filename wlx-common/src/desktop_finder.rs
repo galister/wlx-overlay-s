@@ -20,6 +20,7 @@ struct DesktopEntryOwned {
 	exec_args: String,
 	app_name: String,
 	icon_path: Option<String>,
+	categories: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -28,6 +29,7 @@ pub struct DesktopEntry {
 	pub exec_args: Rc<str>,
 	pub app_name: Rc<str>,
 	pub icon_path: Option<Rc<str>>,
+	pub categories: Vec<Rc<str>>,
 }
 
 impl From<DesktopEntryOwned> for DesktopEntry {
@@ -37,6 +39,7 @@ impl From<DesktopEntryOwned> for DesktopEntry {
 			exec_args: value.exec_args.into(),
 			app_name: value.app_name.into(),
 			icon_path: value.icon_path.map(|x| x.into()),
+			categories: value.categories.into_iter().map(|x| x.into()).collect(),
 		}
 	}
 }
@@ -220,14 +223,17 @@ impl DesktopFinder {
 
 				let icon_path = section
 					.get("Icon")
-					.and_then(|icon_name| Self::find_icon(&params, &icon_name))
+					.and_then(|icon_name| Self::find_icon(&params, icon_name))
 					.or_else(|| Self::create_icon(&file_name).ok());
+
+				let mut vec_categories = Vec::<String>::new();
 
 				if let Some(categories) = section.get("Categories") {
 					for cat in categories.split(";") {
 						if CATEGORY_TYPE_BLOCKLIST.contains(&cat) {
 							continue 'entries;
 						}
+						vec_categories.push(String::from(cat));
 					}
 				}
 
@@ -240,6 +246,7 @@ impl DesktopFinder {
 						exec_path: String::from(exec_path),
 						exec_args: exec_args.join(" "),
 						icon_path,
+						categories: vec_categories,
 					},
 				);
 			}

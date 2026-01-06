@@ -70,7 +70,7 @@ struct AppList {
 	//data: Vec<ParserData>,
 	entries_to_mount: VecDeque<DesktopEntry>,
 	list_parent: WidgetPair,
-	prev_first_letter: char,
+	prev_category_name: String,
 }
 
 // called after the user clicks any desktop entry
@@ -140,12 +140,17 @@ impl<T> TabApps<T> {
 			.find_entries()
 			.into_values()
 			.collect();
-		entries_sorted.sort_by(|a, b| a.app_name.cmp(&b.app_name));
+
+		entries_sorted.sort_by(|a, b| {
+			let cat_name_a = get_category_name(a);
+			let cat_name_b = get_category_name(b);
+			cat_name_a.cmp(cat_name_b)
+		});
 
 		let app_list = AppList {
 			entries_to_mount: entries_sorted.drain(..).collect(),
 			list_parent: app_list_parent,
-			prev_first_letter: ' ',
+			prev_category_name: String::new(),
 		};
 
 		Ok(Self {
@@ -158,6 +163,115 @@ impl<T> TabApps<T> {
 	}
 }
 
+enum Scores {
+	Empty,
+	Unknown,
+	XFooBar, // X-something
+	Xfce,
+	Gnome,
+	Kde,
+	Gtk,
+	Qt,
+	Settings,
+	Application,
+	System,
+	Utility,
+	FileTools,
+	Filesystem,
+	FileManager,
+	Graphics,
+	Office,
+	Game,
+	VR, // best score (of course!)
+}
+
+fn get_category_name_score(name: &str) -> u8 {
+	if name.starts_with("X-") {
+		return Scores::XFooBar as u8;
+	}
+
+	match name {
+		"" => {
+			return Scores::Empty as u8;
+		}
+		"VR" => {
+			return Scores::VR as u8;
+		}
+		"Game" => {
+			return Scores::Game as u8;
+		}
+		"FileManager" => {
+			return Scores::FileManager as u8;
+		}
+		"Utility" => {
+			return Scores::Utility as u8;
+		}
+		"FileTools" => {
+			return Scores::FileTools as u8;
+		}
+		"Filesystem" => {
+			return Scores::Filesystem as u8;
+		}
+		"System" => {
+			return Scores::System as u8;
+		}
+		"Office" => {
+			return Scores::Office as u8;
+		}
+		"Settings" => {
+			return Scores::Settings as u8;
+		}
+		"Application" => {
+			return Scores::Application as u8;
+		}
+		"GTK" => {
+			return Scores::Gtk as u8;
+		}
+		"Qt" => {
+			return Scores::Qt as u8;
+		}
+		"XFCE" => {
+			return Scores::Xfce as u8;
+		}
+		"GNOME" => {
+			return Scores::Gnome as u8;
+		}
+		"KDE" => {
+			return Scores::Kde as u8;
+		}
+		"Graphics" => {
+			return Scores::Graphics as u8;
+		}
+		_ => {}
+	}
+
+	Scores::Unknown as u8
+}
+
+fn get_best_category_name(categories: &[Rc<str>]) -> Option<&Rc<str>> {
+	let mut best_score: u8 = 0;
+	let mut best_category: Option<&Rc<str>> = None;
+
+	for cat in categories {
+		let score = get_category_name_score(cat);
+		if score > best_score {
+			best_category = Some(cat);
+			best_score = score;
+		}
+	}
+
+	best_category
+}
+
+fn get_category_name(entry: &DesktopEntry) -> &str {
+	//log::info!("{:?}", entry.categories);
+
+	match get_best_category_name(&entry.categories) {
+		Some(cat) => cat,
+		None => "Other",
+	}
+}
+
 impl AppList {
 	fn mount_entry<T>(
 		&mut self,
@@ -166,12 +280,11 @@ impl AppList {
 		doc_params: &ParseDocumentParams,
 		entry: &DesktopEntry,
 	) -> anyhow::Result<Rc<ComponentButton>> {
-		if let Some(ch) = entry.app_name.chars().next()
-			&& self.prev_first_letter != ch
-		{
-			self.prev_first_letter = ch;
+		let category_name = get_category_name(entry);
+		if category_name != self.prev_category_name {
+			self.prev_category_name = String::from(category_name);
 			let mut params = HashMap::<Rc<str>, Rc<str>>::new();
-			params.insert("text".into(), format!("{}", ch).into());
+			params.insert("text".into(), category_name.into());
 
 			parser_state.parse_template(
 				doc_params,
