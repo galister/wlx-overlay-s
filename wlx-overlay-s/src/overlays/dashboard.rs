@@ -1,5 +1,5 @@
 use dash_frontend::{
-    frontend::{self, FrontendUpdateParams},
+    frontend::{self, FrontendTask, FrontendUpdateParams},
     settings::{self, SettingsIO},
 };
 use glam::{Affine2, Affine3A, Vec2, vec2, vec3};
@@ -106,12 +106,14 @@ impl DashFrontend {
         let settings = SimpleSettingsIO::new();
         let interface = DashInterfaceLive::new();
 
-        let mut frontend = frontend::Frontend::new(frontend::InitParams {
+        let frontend = frontend::Frontend::new(frontend::InitParams {
             settings: Box::new(settings),
             interface: Box::new(interface),
         })?;
 
-        frontend.play_startup_sound(&mut app.audio_system)?;
+        frontend
+            .tasks
+            .push(FrontendTask::PlaySound(frontend::SoundType::Startup));
 
         let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
         Ok(Self {
@@ -131,7 +133,8 @@ impl DashFrontend {
             height: DASH_RES_VEC2.y / GUI_SCALE,
             timestep_alpha,
         })?;
-        app_misc::process_layout_result(app, res);
+        self.inner
+            .process_update(res, &mut app.audio_system, &mut app.audio_sample_player)?;
         Ok(())
     }
 

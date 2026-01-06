@@ -15,7 +15,7 @@ use wgui::{
 use wlx_common::{dash_interface::BoxDashInterface, desktop_finder::DesktopEntry};
 
 use crate::{
-	frontend::{FrontendTask, FrontendTasks},
+	frontend::{FrontendTask, FrontendTasks, SoundType},
 	settings::SettingsIO,
 };
 
@@ -334,6 +334,8 @@ impl View {
 			.push(FrontendTask::PushToast(Translation::from_translation_key(
 				"APPLICATION_STARTED",
 			)));
+
+		params.frontend_tasks.push(FrontendTask::PlaySound(SoundType::Launch));
 
 		(*params.on_launched)();
 

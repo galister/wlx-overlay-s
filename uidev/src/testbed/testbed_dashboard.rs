@@ -70,14 +70,16 @@ impl TestbedDashboard {
 }
 
 impl Testbed for TestbedDashboard {
-	fn update(&mut self, mut params: TestbedUpdateParams) -> anyhow::Result<()> {
+	fn update(&mut self, params: TestbedUpdateParams) -> anyhow::Result<()> {
 		let res = self.frontend.update(FrontendUpdateParams {
 			data: &mut (), /* nothing */
 			width: params.width,
 			height: params.height,
 			timestep_alpha: params.timestep_alpha,
 		})?;
-		params.process_layout_result(res);
+		self
+			.frontend
+			.process_update(res, params.audio_system, params.audio_sample_player)?;
 		Ok(())
 	}
 

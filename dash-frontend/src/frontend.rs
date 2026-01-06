@@ -60,6 +60,7 @@ pub struct Frontend<T> {
 	popup_manager: PopupManager,
 	toast_manager: ToastManager,
 	timestep: Timestep,
+	sounds_to_play: Vec<SoundType>,
 
 	window_audio_settings: WguiWindow,
 	view_audio_settings: Option<views::audio_settings::View>,
@@ -72,9 +73,20 @@ pub struct FrontendUpdateParams<'a, T> {
 	pub timestep_alpha: f32,
 }
 
+pub struct FrontendUpdateResult {
+	pub layout_result: LayoutUpdateResult,
+	pub sounds_to_play: Vec<SoundType>,
+}
+
 pub struct InitParams<T> {
 	pub settings: Box<dyn settings::SettingsIO>,
 	pub interface: BoxDashInterface<T>,
+}
+
+#[derive(Clone)]
+pub enum SoundType {
+	Startup,
+	Launch,
 }
 
 #[derive(Clone)]
@@ -88,6 +100,7 @@ pub enum FrontendTask {
 	UpdateAudioSettingsView,
 	RecenterPlayspace,
 	PushToast(Translation),
+	PlaySound(SoundType),
 }
 
 impl<T: 'static> Frontend<T> {
@@ -153,6 +166,7 @@ impl<T: 'static> Frontend<T> {
 			window_audio_settings: WguiWindow::default(),
 			view_audio_settings: None,
 			executor: Rc::new(smol::LocalExecutor::new()),
+			sounds_to_play: Vec::new(),
 		};
 
 		// init some things first
@@ -164,20 +178,25 @@ impl<T: 'static> Frontend<T> {
 		Ok(frontend)
 	}
 
-	pub fn play_startup_sound(&mut self, audio_system: &mut audio::AudioSystem) -> anyhow::Result<()> {
-		// play startup sound
-		let mut assets = self.globals.assets_builtin();
+	fn queue_play_sound(&mut self, sound_type: SoundType) {
+		self.sounds_to_play.push(sound_type);
+	}
 
-		let sample_startup = audio::AudioSample::from_mp3(&assets.load_from_path("sound/startup.mp3")?)?;
-		audio_system.play_sample(&sample_startup);
+	fn play_sound(&mut self, audio_system: &mut audio::AudioSystem, sound_type: SoundType) -> anyhow::Result<()> {
+		let mut assets = self.globals.assets_builtin();
+		let sample = audio::AudioSample::from_mp3(&assets.load_from_path(match sound_type {
+			SoundType::Startup => "sound/startup.mp3",
+			SoundType::Launch => "sound/app_start.mp3",
+		})?)?;
+		audio_system.play_sample(&sample);
 		Ok(())
 	}
 
-	pub fn update(&mut self, params: FrontendUpdateParams<T>) -> anyhow::Result<LayoutUpdateResult> {
+	pub fn update(&mut self, mut params: FrontendUpdateParams<T>) -> anyhow::Result<FrontendUpdateResult> {
 		let mut tasks = self.tasks.drain();
 
 		while let Some(task) = tasks.pop_front() {
-			self.process_task(params.data, task)?;
+			self.process_task(&mut params, task)?;
 		}
 
 		if let Some(mut tab) = self.current_tab.take() {
@@ -190,13 +209,27 @@ impl<T: 'static> Frontend<T> {
 		while self.executor.try_tick() {}
 
 		let res = self.tick(params)?;
-
 		self.ticks += 1;
 
 		Ok(res)
 	}
 
-	fn tick(&mut self, params: FrontendUpdateParams<T>) -> anyhow::Result<LayoutUpdateResult> {
+	pub fn process_update(
+		&mut self,
+		res: FrontendUpdateResult,
+		audio_system: &mut audio::AudioSystem,
+		audio_sample_player: &mut audio::SamplePlayer,
+	) -> anyhow::Result<()> {
+		for sound_type in res.sounds_to_play {
+			self.play_sound(audio_system, sound_type)?;
+		}
+
+		audio_sample_player.play_wgui_samples(audio_system, res.layout_result.sounds_to_play);
+
+		Ok(())
+	}
+
+	fn tick(&mut self, params: FrontendUpdateParams<T>) -> anyhow::Result<FrontendUpdateResult> {
 		// fixme: timer events instead of this thing
 		if self.ticks.is_multiple_of(1000) {
 			self.update_time()?;
@@ -209,9 +242,14 @@ impl<T: 'static> Frontend<T> {
 			}
 		}
 
-		self.layout.update(&mut LayoutUpdateParams {
+		let layout_result = self.layout.update(&mut LayoutUpdateParams {
 			size: Vec2::new(params.width, params.height),
 			timestep_alpha: params.timestep_alpha,
+		})?;
+
+		Ok(FrontendUpdateResult {
+			layout_result,
+			sounds_to_play: std::mem::take(&mut self.sounds_to_play),
 		})
 	}
 
@@ -283,17 +321,18 @@ impl<T: 'static> Frontend<T> {
 		Ok(())
 	}
 
-	fn process_task(&mut self, data: &mut T, task: FrontendTask) -> anyhow::Result<()> {
+	fn process_task(&mut self, params: &mut FrontendUpdateParams<T>, task: FrontendTask) -> anyhow::Result<()> {
 		match task {
-			FrontendTask::SetTab(tab_type) => self.set_tab(data, tab_type)?,
+			FrontendTask::SetTab(tab_type) => self.set_tab(params.data, tab_type)?,
 			FrontendTask::RefreshClock => self.update_time()?,
 			FrontendTask::RefreshBackground => self.update_background()?,
 			FrontendTask::MountPopup(params) => self.mount_popup(params)?,
 			FrontendTask::RefreshPopupManager => self.refresh_popup_manager()?,
 			FrontendTask::ShowAudioSettings => self.action_show_audio_settings()?,
 			FrontendTask::UpdateAudioSettingsView => self.action_update_audio_settings()?,
-			FrontendTask::RecenterPlayspace => self.action_recenter_playspace(data)?,
+			FrontendTask::RecenterPlayspace => self.action_recenter_playspace(params.data)?,
 			FrontendTask::PushToast(content) => self.toast_manager.push(content),
+			FrontendTask::PlaySound(sound_type) => self.queue_play_sound(sound_type),
 		};
 		Ok(())
 	}

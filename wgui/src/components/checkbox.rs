@@ -15,6 +15,7 @@ use crate::{
 	i18n::Translation,
 	layout::{self, WidgetID, WidgetPair},
 	renderer_vk::text::{FontWeight, TextStyle},
+	sound::WguiSoundType,
 	widget::{
 		ConstructEssentials, EventResult,
 		label::{WidgetLabel, WidgetLabelParams},
@@ -249,16 +250,21 @@ fn register_event_mouse_release(
 				state.down = false;
 
 				if let Some(self_ref) = state.self_ref.upgrade()
-					&& let Some(radio) = data.radio_group.as_ref().and_then(|r| r.upgrade())
+					&& let Some(radio) = data.radio_group.as_ref().and_then(Weak::upgrade)
 				{
 					radio.set_selected_internal(common, &self_ref)?;
 					state.checked = true; // can't uncheck radiobox by clicking the checked box again
+					common.alterables.play_sound(WguiSoundType::CheckboxCheck);
 				} else {
 					state.checked = !state.checked;
+					common.alterables.play_sound(if state.checked {
+						WguiSoundType::CheckboxCheck
+					} else {
+						WguiSoundType::CheckboxUncheck
+					});
 				}
 
 				set_box_checked(&common.state.widgets, &data, state.checked);
-
 				if state.hovered
 					&& let Some(on_toggle) = &state.on_toggle
 				{
@@ -383,7 +389,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		id_inner_box: inner_box.id,
 		id_label: label.id,
 		value: params.value,
-		radio_group: params.radio_group.as_ref().map(|x| Rc::downgrade(x)),
+		radio_group: params.radio_group.as_ref().map(Rc::downgrade),
 	});
 
 	let state = Rc::new(RefCell::new(State {

@@ -21,6 +21,8 @@ fn get_sample_name_from_wgui_sound_type(sound: WguiSoundType) -> &'static str {
 		WguiSoundType::ButtonMouseEnter => "wgui_mouse_enter",
 		WguiSoundType::ButtonPress => "wgui_button_press",
 		WguiSoundType::ButtonRelease => "wgui_button_release",
+		WguiSoundType::CheckboxCheck => "wgui_checkbox_check",
+		WguiSoundType::CheckboxUncheck => "wgui_checkbox_uncheck",
 	}
 }
 
@@ -62,6 +64,8 @@ impl SamplePlayer {
 		load(WguiSoundType::ButtonPress)?;
 		load(WguiSoundType::ButtonRelease)?;
 		load(WguiSoundType::ButtonMouseEnter)?;
+		load(WguiSoundType::CheckboxCheck)?;
+		load(WguiSoundType::CheckboxUncheck)?;
 		Ok(())
 	}
 

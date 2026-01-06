@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::{
-	frontend::{FrontendTask, FrontendTasks},
+	frontend::{FrontendTask, FrontendTasks, SoundType},
 	util::{
 		cached_fetcher::{self, CoverArt},
 		steam_utils::{self, AppID, AppManifest},
@@ -178,6 +178,7 @@ impl View {
 					.push(FrontendTask::PushToast(Translation::from_translation_key(
 						"GAME_LAUNCHED",
 					)));
+				self.frontend_tasks.push(FrontendTask::PlaySound(SoundType::Launch));
 			}
 			Err(e) => {
 				self

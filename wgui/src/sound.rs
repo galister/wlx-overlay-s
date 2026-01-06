@@ -3,4 +3,6 @@ pub enum WguiSoundType {
 	ButtonMouseEnter,
 	ButtonPress,
 	ButtonRelease,
+	CheckboxCheck,
+	CheckboxUncheck,
 }
