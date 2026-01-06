@@ -8,9 +8,9 @@ use glam::Vec2;
 use wgui::{
 	assets::AssetPath,
 	components::{
-		Component,
 		button::{ButtonClickCallback, ComponentButton},
 		checkbox::ComponentCheckbox,
+		Component,
 	},
 	drawing::Color,
 	event::StyleSetRequest,
@@ -90,7 +90,7 @@ impl TestbedGeneric {
 		)?;
 
 		let extra = ParseDocumentExtra {
-			on_custom_attribs: Some(Box::new(move |par| {
+			on_custom_attribs: Some(Rc::new(move |par| {
 				let Some(my_custom_value) = par.get_value("_my_custom") else {
 					return;
 				};

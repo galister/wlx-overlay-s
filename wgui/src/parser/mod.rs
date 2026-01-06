@@ -1069,9 +1069,9 @@ impl CustomAttribsInfoOwned {
 	}
 }
 
-pub type OnCustomAttribsFunc = Box<dyn Fn(CustomAttribsInfo)>;
+pub type OnCustomAttribsFunc = Rc<dyn Fn(CustomAttribsInfo)>;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ParseDocumentExtra {
 	pub on_custom_attribs: Option<OnCustomAttribsFunc>, // all attributes with '_' character prepended
 	pub dev_mode: bool,

@@ -113,7 +113,7 @@ impl<S: 'static> GuiPanel<S> {
                 AssetPath::FileOrBuiltIn(path)
             },
             extra: wgui::parser::ParseDocumentExtra {
-                on_custom_attribs: Some(Box::new({
+                on_custom_attribs: Some(Rc::new({
                     let custom_elems = custom_elems.clone();
                     move |attribs| {
                         custom_elems.borrow_mut().push(attribs.to_owned());
