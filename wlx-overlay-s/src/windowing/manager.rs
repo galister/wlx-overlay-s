@@ -172,7 +172,7 @@ where
             OverlayTask::SwitchSet(maybe_set) => {
                 self.switch_to_set(app, maybe_set, false);
             }
-            OverlayTask::SoftToggleOverlay(sel) => {
+            OverlayTask::ToggleOverlay(sel) => {
                 let Some(id) = self.id_by_selector(&sel) else {
                     log::warn!("Overlay not found for task: {sel:?}");
                     return Ok(());
@@ -180,13 +180,17 @@ where
 
                 let o = &mut self.overlays[id];
                 if let Some(active_state) = o.config.active_state.take() {
-                    log::debug!("{}: soft-toggle off", o.config.name);
+                    log::debug!("{}: toggle off", o.config.name);
+
                     self.sets[self.restore_set]
-                        .overlays
-                        .insert(id, active_state);
-                } else if let Some(state) = self.sets[self.restore_set].overlays.remove(id) {
+                        .inactive_overlays
+                        .arc_set(o.config.name.clone(), active_state);
+                } else if let Some(state) = self.sets[self.restore_set]
+                    .inactive_overlays
+                    .arc_rm(&o.config.name)
+                {
                     let o = &mut self.overlays[id];
-                    log::debug!("{}: soft-toggle on", o.config.name);
+                    log::debug!("{}: toggle on", o.config.name);
                     o.config.dirty = true;
                     o.config.active_state = Some(state);
                     o.config.reset(app, false);

@@ -35,7 +35,7 @@ All overlays are listed on bottom row.
 
   <template name="Overlay">
     <Button macro="button_style" id="overlay_${idx}" 
-      tooltip="WATCH.TOGGLE_FOR_CURRENT_SET" _press="::SingleSetOverlayToggle ${idx}" _long_release="::SingleSetOverlayReset ${idx}"
+      tooltip="WATCH.TOGGLE_FOR_CURRENT_SET" _press="::OverlayToggle ${idx}" _long_release="::SingleSetOverlayReset ${idx}"
       align_items="center"
       height="40">
       <sprite id="overlay_${idx}_sprite" src_builtin="${src}" width="32" height="32" />

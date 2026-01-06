@@ -106,7 +106,6 @@
         <rectangle macro="dropdown_title">
           <label text="${name}" weight="bold" size="24" />
         </rectangle>
-        <MenuButton translation="BAR.TOGGLE_HIDE" action="::OverlaySoftToggle ${name}" />
         <MenuButton translation="BAR.TOGGLE_IN_SET" action="::OverlayToggle ${name}" />
         <MenuButton translation="BAR.CLOSE" action="::WvrOverlayTermProcess ${name}" />
         <MenuButton translation="BAR.FORCE_CLOSE" action="::WvrOverlayKillProcess ${name}" />
@@ -127,7 +126,6 @@
         <rectangle macro="dropdown_title">
           <label text="${name}" weight="bold" size="24" />
         </rectangle>
-        <MenuButton translation="BAR.TOGGLE_HIDE" action="::OverlaySoftToggle ${name}" />
         <MenuButton translation="BAR.TOGGLE_IN_SET" action="::OverlayToggle ${name}" />
       </div>
     </div>
@@ -142,7 +140,6 @@
         <rectangle macro="dropdown_title">
           <label text="${name}" weight="bold" size="24" />
         </rectangle>
-        <MenuButton translation="BAR.TOGGLE_HIDE" action="::OverlaySoftToggle ${name}" />
         <MenuButton translation="BAR.TOGGLE_IN_SET" action="::OverlayToggle ${name}" />
       </div>
     </div>
@@ -160,7 +157,6 @@
         <rectangle macro="dropdown_title">
           <label text="${name}" weight="bold" size="24" />
         </rectangle>
-        <MenuButton translation="BAR.TOGGLE_HIDE" action="::OverlaySoftToggle ${name}" />
         <MenuButton translation="BAR.TOGGLE_IN_SET" action="::OverlayToggle ${name}" />
         <MenuButton translation="BAR.CLOSE" action="::OverlayDrop ${name}" />
       </div>

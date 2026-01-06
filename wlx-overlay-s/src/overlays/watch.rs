@@ -126,37 +126,8 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                             return Ok(EventResult::Consumed);
                         };
 
-                        app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
-                            OverlaySelector::Id(overlay.id),
-                            Box::new(move |app, owc| {
-                                if owc.active_state.is_none() {
-                                    owc.activate(app);
-                                } else {
-                                    owc.deactivate();
-                                }
-                            }),
-                        )));
-                        Ok(EventResult::Consumed)
-                    })
-                }
-                "::SingleSetOverlayToggle" => {
-                    let arg = args.next().unwrap_or_default();
-                    let Ok(idx) = arg.parse::<usize>() else {
-                        log::error!("{command} has invalid argument: \"{arg}\"");
-                        return;
-                    };
-                    Box::new(move |_common, data, app, state| {
-                        if !test_button(data) || !test_duration(&button, app) {
-                            return Ok(EventResult::Pass);
-                        }
-
-                        let Some(overlay) = state.overlay_metas.get(idx) else {
-                            log::error!("No overlay at index {idx}.");
-                            return Ok(EventResult::Consumed);
-                        };
-
                         app.tasks
-                            .enqueue(TaskType::Overlay(OverlayTask::SoftToggleOverlay(
+                            .enqueue(TaskType::Overlay(OverlayTask::ToggleOverlay(
                                 OverlaySelector::Id(overlay.id),
                             )));
                         Ok(EventResult::Consumed)

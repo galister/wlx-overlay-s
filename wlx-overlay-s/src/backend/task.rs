@@ -82,7 +82,7 @@ pub enum OverlayTask {
     AddSet,
     ToggleSet(usize),
     SwitchSet(Option<usize>),
-    SoftToggleOverlay(OverlaySelector),
+    ToggleOverlay(OverlaySelector),
     DeleteActiveSet,
     ToggleEditMode,
     ToggleDashboard,

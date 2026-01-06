@@ -312,33 +312,8 @@ pub(super) fn setup_custom_button<S: 'static>(
                         return Ok(EventResult::Pass);
                     }
 
-                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
-                        OverlaySelector::Name(arg.clone()),
-                        Box::new(move |app, owc| {
-                            if owc.active_state.is_none() {
-                                owc.activate(app);
-                            } else {
-                                owc.deactivate();
-                            }
-                        }),
-                    )));
-                    Ok(EventResult::Consumed)
-                })
-            }
-            "::OverlaySoftToggle" => {
-                let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
-                if arg.len() < 1 {
-                    log::error!("{command} has missing arguments");
-                    return;
-                };
-
-                Box::new(move |_common, data, app, _| {
-                    if !test_button(data) || !test_duration(&button, app) {
-                        return Ok(EventResult::Pass);
-                    }
-
                     app.tasks
-                        .enqueue(TaskType::Overlay(OverlayTask::SoftToggleOverlay(
+                        .enqueue(TaskType::Overlay(OverlayTask::ToggleOverlay(
                             OverlaySelector::Name(arg.clone()),
                         )));
                     Ok(EventResult::Consumed)
