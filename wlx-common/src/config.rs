@@ -16,7 +16,12 @@ pub type SerializedWindowStates = HashMap<Arc<str>, OverlayWindowState>;
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SerializedWindowSet {
 	pub name: Arc<str>,
+
+	#[serde(default)]
 	pub overlays: SerializedWindowStates,
+
+	#[serde(default)]
+	pub hidden_overlays: SerializedWindowStates,
 }
 
 pub const fn def_pw_tokens() -> PwTokenMap {

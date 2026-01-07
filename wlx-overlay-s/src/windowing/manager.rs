@@ -183,10 +183,10 @@ where
                     log::debug!("{}: toggle off", o.config.name);
 
                     self.sets[self.restore_set]
-                        .inactive_overlays
+                        .hidden_overlays
                         .arc_set(o.config.name.clone(), active_state);
                 } else if let Some(state) = self.sets[self.restore_set]
-                    .inactive_overlays
+                    .hidden_overlays
                     .arc_rm(&o.config.name)
                 {
                     let o = &mut self.overlays[id];
@@ -387,9 +387,12 @@ impl<T> OverlayWindowManager<T> {
                 }
             }
 
+            let hidden_overlays: HashMap<_, _> = set.hidden_overlays.iter().cloned().collect();
+
             let serialized = SerializedWindowSet {
                 name: set.name.clone(),
                 overlays,
+                hidden_overlays,
             };
             app.session.config.sets.push(serialized);
         }
@@ -454,10 +457,17 @@ impl<T> OverlayWindowManager<T> {
                 }
             }
 
+            let hidden_overlays: AStrMap<_> = s
+                .hidden_overlays
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect();
+
             self.sets.push(OverlayWindowSet {
                 name: s.name.clone(),
                 overlays,
                 inactive_overlays,
+                hidden_overlays,
             });
         }
 
