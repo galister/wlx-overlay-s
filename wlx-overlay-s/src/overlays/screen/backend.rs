@@ -311,7 +311,6 @@ impl OverlayBackend for ScreenBackend {
     fn get_interaction_transform(&mut self) -> Option<Affine2> {
         self.interaction_transform
     }
-    #[allow(unreachable_patterns)]
     fn get_attrib(&self, attrib: BackendAttrib) -> Option<BackendAttribValue> {
         match attrib {
             BackendAttrib::Stereo => self.stereo.map(BackendAttribValue::Stereo),
@@ -321,7 +320,6 @@ impl OverlayBackend for ScreenBackend {
             _ => None,
         }
     }
-    #[allow(unreachable_patterns)]
     fn set_attrib(&mut self, app: &mut AppState, value: BackendAttribValue) -> bool {
         match value {
             BackendAttribValue::Stereo(new) => {

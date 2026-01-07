@@ -97,6 +97,8 @@ impl ScreenPipeline {
     }
 
     pub fn set_stereo(&mut self, app: &mut AppState, stereo: StereoMode) -> anyhow::Result<()> {
+        self.stereo = stereo;
+
         let depth = if matches!(stereo, StereoMode::None) {
             1
         } else {
