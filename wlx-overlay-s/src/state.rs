@@ -9,6 +9,7 @@ use wgui::{
 use wlx_common::{
     audio,
     config::GeneralConfig,
+    config_io::{self, get_config_file_path},
     desktop_finder::DesktopFinder,
     overlays::{ToastDisplayMethod, ToastTopic},
 };
@@ -24,7 +25,6 @@ use crate::subsystem::osc::OscSender;
 use crate::{
     backend::{XrBackend, input::InputState, task::TaskContainer},
     config::load_general_config,
-    config_io::{self, get_config_file_path},
     graphics::WGfxExtras,
     gui,
     ipc::{event_queue::SyncEventQueue, ipc_server, signal::WayVRSignal},

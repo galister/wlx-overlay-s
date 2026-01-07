@@ -4,7 +4,7 @@ use anyhow::{Context, bail};
 use json::{array, object};
 use ovr_overlay::applications::ApplicationsManager;
 
-use crate::config_io;
+use wlx_common::config_io;
 
 const APP_KEY: &str = "galister.wlxoverlay-s";
 

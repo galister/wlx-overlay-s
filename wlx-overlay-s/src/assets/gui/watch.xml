@@ -113,7 +113,7 @@
         <Hmd idx="0" />
         <LeftHand idx="1" />
         <RightHand idx="2" />
-        <Track idx="3" />
+        <Tracker idx="3" />
       </div>
 
       <!-- All other elements inside the container -->

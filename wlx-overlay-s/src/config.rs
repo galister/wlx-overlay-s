@@ -1,4 +1,3 @@
-use crate::config_io;
 use config::{Config, File};
 use log::error;
 use serde::{Deserialize, Serialize};
@@ -6,6 +5,7 @@ use std::path::PathBuf;
 use wlx_common::{
     astr_containers::AStrMap,
     config::{GeneralConfig, SerializedWindowSet, SerializedWindowStates},
+    config_io,
     overlays::BackendAttribValue,
 };
 

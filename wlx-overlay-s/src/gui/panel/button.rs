@@ -25,9 +25,8 @@ use wgui::{
 use wlx_common::overlays::ToastTopic;
 
 use crate::{
-    RUNNING,
+    RESTART, RUNNING,
     backend::{
-        XrBackend,
         task::{OverlayTask, PlayspaceTask, TaskType, ToggleMode},
         wayvr::process::KillSignal,
     },
@@ -572,16 +571,8 @@ pub(super) fn setup_custom_button<S: 'static>(
                 if !test_button(data) || !test_duration(&button, app) {
                     return Ok(EventResult::Pass);
                 }
-
-                let runtime = match app.xr_backend {
-                    XrBackend::OpenVR => "--openvr",
-                    XrBackend::OpenXR => "--openxr",
-                };
-
-                Command::new("/proc/self/exe")
-                    .arg(runtime) // ensure same runtime
-                    .arg("--replace") // SIGTERM the previous process
-                    .arg("--show");
+                RUNNING.store(false, Ordering::Relaxed);
+                RESTART.store(true, Ordering::Relaxed);
 
                 Ok(EventResult::Consumed)
             }),

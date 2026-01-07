@@ -20,7 +20,6 @@
 mod app_misc;
 mod backend;
 mod config;
-mod config_io;
 mod graphics;
 mod gui;
 mod ipc;
@@ -34,7 +33,9 @@ mod windowing;
 mod config_wayvr;
 
 use std::{
+    os::unix::process::CommandExt,
     path::PathBuf,
+    process::Command,
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
@@ -45,10 +46,11 @@ use sysinfo::Pid;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
-use crate::subsystem::dbus::DbusConnector;
+use crate::{backend::XrBackend, subsystem::dbus::DbusConnector};
 
 pub static FRAME_COUNTER: AtomicUsize = AtomicUsize::new(0);
 pub static RUNNING: AtomicBool = AtomicBool::new(true);
+pub static RESTART: AtomicBool = AtomicBool::new(false);
 pub static KEYMAP_CHANGE: AtomicBool = AtomicBool::new(false);
 
 /// The lightweight desktop overlay for OpenVR and OpenXR
@@ -121,13 +123,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     setup_signal_hooks()?;
 
-    auto_run(args);
+    let mut used_backend = None;
+
+    auto_run(args, &mut used_backend);
+
+    if RESTART.load(Ordering::Relaxed) {
+        log::warn!("Restarting...");
+        let exe = std::env::current_exe()?;
+        let mut args = vec!["--replace", "--show"];
+
+        match used_backend {
+            Some(XrBackend::OpenXR) => args.push("--openxr"),
+            Some(XrBackend::OpenVR) => args.push("--openvr"),
+            _ => {}
+        };
+
+        let _ = Command::new(exe).args(args).spawn();
+    }
 
     Ok(())
 }
 
 #[allow(unused_mut, clippy::similar_names)]
-fn auto_run(args: Args) {
+fn auto_run(args: Args, used_backend: &mut Option<XrBackend>) {
     let mut tried_xr = false;
     let mut tried_vr = false;
 
@@ -136,9 +154,13 @@ fn auto_run(args: Args) {
         use crate::backend::{BackendError, openxr::openxr_run};
         tried_xr = true;
         match openxr_run(args.show, args.headless) {
-            Ok(()) => return,
+            Ok(()) => {
+                used_backend.replace(XrBackend::OpenXR);
+                return;
+            }
             Err(BackendError::NotSupported) => (),
             Err(e) => {
+                used_backend.replace(XrBackend::OpenXR);
                 log::error!("{e:?}");
                 return;
             }
@@ -150,9 +172,13 @@ fn auto_run(args: Args) {
         use crate::backend::{BackendError, openvr::openvr_run};
         tried_vr = true;
         match openvr_run(args.show, args.headless) {
-            Ok(()) => return,
+            Ok(()) => {
+                used_backend.replace(XrBackend::OpenVR);
+                return;
+            }
             Err(BackendError::NotSupported) => (),
             Err(e) => {
+                used_backend.replace(XrBackend::OpenVR);
                 log::error!("{e:?}");
                 return;
             }

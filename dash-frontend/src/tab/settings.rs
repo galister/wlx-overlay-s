@@ -1,14 +1,15 @@
-use std::{collections::HashMap, marker::PhantomData, rc::Rc};
+use std::{collections::HashMap, marker::PhantomData, os::unix::process::CommandExt, process::Command, rc::Rc};
 
 use strum::AsRefStr;
 use wgui::{
 	assets::AssetPath,
-	components::{checkbox::ComponentCheckbox, slider::ComponentSlider},
+	components::{button::ComponentButton, checkbox::ComponentCheckbox, slider::ComponentSlider},
 	layout::{Layout, WidgetID},
+	log::LogErr,
 	parser::{Fetchable, ParseDocumentParams, ParserState},
 	task::Tasks,
 };
-use wlx_common::config::GeneralConfig;
+use wlx_common::{config::GeneralConfig, config_io::ConfigRoot};
 
 use crate::{
 	frontend::{Frontend, FrontendTask},
@@ -19,6 +20,10 @@ enum Task {
 	UpdateBool(SettingType, bool),
 	UpdateFloat(SettingType, f32),
 	UpdateInt(SettingType, i32),
+	ClearPipewireTokens,
+	ClearSavedState,
+	DeleteAllConfigs,
+	RestartSoftware,
 }
 
 pub struct TabSettings<T> {
@@ -53,6 +58,23 @@ impl<T> Tab<T> for TabSettings<T> {
 					setting.get_frontend_task().map(|task| frontend.tasks.push(task));
 					*setting.mut_i32(config) = n;
 					changed = true;
+				}
+				Task::ClearPipewireTokens => {
+					let _ = std::fs::remove_file(ConfigRoot::Generic.get_conf_d_path().join("pw_tokens.yaml"))
+						.log_err("Could not remove pw_tokens.yaml");
+				}
+				Task::ClearSavedState => {
+					let _ = std::fs::remove_file(ConfigRoot::Generic.get_conf_d_path().join("zz-saved-state.json5"))
+						.log_err("Could not remove zz-saved-state.json5");
+				}
+				Task::DeleteAllConfigs => {
+					let path = ConfigRoot::Generic.get_conf_d_path();
+					std::fs::remove_dir_all(&path)?;
+					std::fs::create_dir(&path)?;
+				}
+				Task::RestartSoftware => {
+					frontend.interface.restart(data);
+					return Ok(());
 				}
 			}
 		}
@@ -359,6 +381,31 @@ macro_rules! slider_i32 {
 	};
 }
 
+macro_rules! button {
+	($mp:expr, $root:expr, $translation:expr, $icon:expr, $task:expr) => {
+		let id = $mp.idx.to_string();
+		$mp.idx += 1;
+
+		let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
+		params.insert(Rc::from("id"), Rc::from(id.as_ref()));
+		params.insert(Rc::from("translation"), Rc::from($translation));
+		params.insert(Rc::from("icon"), Rc::from($icon));
+
+		$mp
+			.parser_state
+			.instantiate_template($mp.doc_params, "DangerButton", $mp.layout, $root, params)?;
+
+		let btn = $mp.parser_state.fetch_component_as::<ComponentButton>(&id)?;
+		btn.on_click(Box::new({
+			let tasks = $mp.tasks.clone();
+			move |_common, _e| {
+				tasks.push($task);
+				Ok(())
+			}
+		}));
+	};
+}
+
 struct MacroParams<'a> {
 	layout: &'a mut Layout,
 	parser_state: &'a mut ParserState,
@@ -427,6 +474,36 @@ impl<T> TabSettings<T> {
 		checkbox!(mp, c, SettingType::UprightScreenFix);
 		checkbox!(mp, c, SettingType::DoubleCursorFix);
 		checkbox!(mp, c, SettingType::ScreenRenderDown);
+
+		let c = category!(mp, root, "APP_SETTINGS.TROUBLESHOOTING", "dashboard/blocks.svg")?;
+		button!(
+			mp,
+			c,
+			"APP_SETTINGS.CLEAR_SAVED_STATE",
+			"dashboard/remove_circle.svg",
+			Task::ClearSavedState
+		);
+		button!(
+			mp,
+			c,
+			"APP_SETTINGS.CLEAR_PIPEWIRE_TOKENS",
+			"dashboard/remove_circle.svg",
+			Task::ClearPipewireTokens
+		);
+		button!(
+			mp,
+			c,
+			"APP_SETTINGS.DELETE_ALL_CONFIGS",
+			"dashboard/remove_circle.svg",
+			Task::DeleteAllConfigs
+		);
+		button!(
+			mp,
+			c,
+			"APP_SETTINGS.RESTART_SOFTWARE",
+			"dashboard/refresh.svg",
+			Task::RestartSoftware
+		);
 
 		Ok(Self {
 			tasks: mp.tasks,

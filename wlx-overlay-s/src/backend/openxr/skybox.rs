@@ -11,10 +11,10 @@ use vulkano::{
     pipeline::graphics::color_blend::AttachmentBlend,
 };
 use wgui::gfx::{cmd::WGfxClearMode, pipeline::WPipelineCreateInfo};
+use wlx_common::config_io;
 
 use crate::{
     backend::openxr::{helpers::translation_rotation_to_posef, swapchain::SwapchainOpts},
-    config_io,
     graphics::{ExtentExt, GpuFutures, dds::WlxCommandBufferDds},
     state::AppState,
 };

@@ -1,3 +1,5 @@
+use std::sync::atomic::Ordering;
+
 use dash_frontend::frontend::{self, FrontendTask, FrontendUpdateParams};
 use glam::{Affine2, Affine3A, Vec2, vec2, vec3};
 use wayvr_ipc::{
@@ -23,6 +25,7 @@ use wlx_common::{
 };
 
 use crate::{
+    RESTART, RUNNING,
     backend::{
         input::{Haptics, HoverResult, PointerHit, PointerMode},
         task::{OverlayTask, PlayspaceTask, TaskType, ToggleMode},
@@ -417,5 +420,10 @@ impl DashInterface<AppState> for DashInterfaceLive {
     fn config_changed(&mut self, data: &mut AppState) {
         data.tasks
             .enqueue(TaskType::Overlay(OverlayTask::SettingsChanged));
+    }
+
+    fn restart(&mut self, _data: &mut AppState) {
+        RUNNING.store(false, Ordering::Relaxed);
+        RESTART.store(true, Ordering::Relaxed);
     }
 }

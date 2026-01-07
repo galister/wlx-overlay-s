@@ -57,7 +57,19 @@
 		"BLOCK_GAME_INPUT_IGNORE_WATCH_HELP": "Do not block input when watch is hovered",
 		"USE_SKYBOX_HELP": "Show a skybox if there's no scene app or passthrough",
 		"USE_PASSTHROUGH_HELP": "Allow passthrough if the XR runtime supports it",
-		"SCREEN_RENDER_DOWN_HELP": "Helps with aliasing on high-res screens"
+		"SCREEN_RENDER_DOWN_HELP": "Helps with aliasing on high-res screens",
+
+		"TROUBLESHOOTING": "Troubleshooting",
+
+		"CLEAR_SAVED_STATE": "Clear saved state",
+		"CLEAR_PIPEWIRE_TOKENS": "Clear PipeWire tokens",
+		"DELETE_ALL_CONFIGS": "Wipe configuration",
+		"RESTART_SOFTWARE": "Restart software",
+
+		"CLEAR_SAVED_STATE_HELP": "Reset sets & overlay positions",
+		"CLEAR_PIPEWIRE_TOKENS_HELP": "Prompt for screen selection on next start",
+		"DELETE_ALL_CONFIGS_HELP": "Remove all configuration files from conf.d",
+		"RESTART_SOFTWARE_HELP": "Apply settings that require a restart"
 	},
 	"APPLICATION_LAUNCHER": "Application launcher",
 	"APPLICATION_STARTED": "Application started",

@@ -9,7 +9,7 @@ use std::{
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use wgui::gfx::WGfx;
-use wlx_common::{common::LeftRight, config::GeneralConfig, windowing::Positioning};
+use wlx_common::{common::LeftRight, config::GeneralConfig, config_io, windowing::Positioning};
 
 use crate::{
     backend::{
@@ -17,7 +17,6 @@ use crate::{
         wayvr::{self, WvrServerState},
     },
     config::load_config_with_conf_d,
-    config_io,
     graphics::WGfxExtras,
     ipc::{event_queue::SyncEventQueue, signal::WayVRSignal},
 };
