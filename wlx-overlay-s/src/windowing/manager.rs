@@ -16,7 +16,7 @@ use wlx_common::{
 
 use crate::{
     FRAME_COUNTER,
-    backend::task::OverlayTask,
+    backend::task::{OverlayTask, ToggleMode},
     config::save_state,
     overlays::{
         anchor::{create_anchor, create_grab_help},
@@ -172,13 +172,29 @@ where
             OverlayTask::SwitchSet(maybe_set) => {
                 self.switch_to_set(app, maybe_set, false);
             }
-            OverlayTask::ToggleOverlay(sel) => {
+            OverlayTask::ResetOverlay(sel) => {
+                if let Some(o) = self.mut_by_selector(&sel) {
+                    let was_active = o.config.is_active();
+                    o.config.activate(app);
+                    if !was_active {
+                        self.visible_overlays_changed(app)?;
+                    }
+                }
+            }
+            OverlayTask::ToggleOverlay(sel, mode) => {
                 let Some(id) = self.id_by_selector(&sel) else {
                     log::warn!("Overlay not found for task: {sel:?}");
                     return Ok(());
                 };
 
                 let o = &mut self.overlays[id];
+
+                match mode {
+                    ToggleMode::EnsureOn if o.config.is_active() => return Ok(()),
+                    ToggleMode::EnsureOff if !o.config.is_active() => return Ok(()),
+                    _ => {}
+                };
+
                 if let Some(active_state) = o.config.active_state.take() {
                     log::debug!("{}: toggle off", o.config.name);
 
@@ -214,6 +230,7 @@ where
                     } else {
                         overlay.config.deactivate();
                     }
+                    self.visible_overlays_changed(app)?;
                 }
             }
             OverlayTask::AddSet => {
@@ -265,6 +282,15 @@ where
                             .notify(app, OverlayEventData::NumSetsChanged(len))
                             .log_err("Could not notify NumSetsChanged");
                     }
+                }
+            }
+            OverlayTask::SettingsChanged => {
+                for o in self.overlays.values_mut() {
+                    let _ = o
+                        .config
+                        .backend
+                        .notify(app, OverlayEventData::SettingsChanged)
+                        .log_err("Could not notify SettingsChanged");
                 }
             }
             OverlayTask::CleanupMirrors => {

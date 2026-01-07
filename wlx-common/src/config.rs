@@ -166,7 +166,7 @@ pub struct GeneralConfig {
 	pub double_cursor_fix: bool,
 
 	#[serde(default = "def_false")]
-	pub single_set_mode: bool,
+	pub sets_on_watch: bool,
 
 	#[serde(default = "def_false")]
 	pub hide_grab_help: bool,

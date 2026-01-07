@@ -126,6 +126,7 @@ pub enum OverlayEventData {
     OverlaysChanged(Rc<[OverlayMeta]>),
     VisibleOverlaysChanged(Rc<[OverlayID]>),
     DevicesChanged,
+    SettingsChanged,
     OverlayGrabbed {
         name: Arc<str>,
         pos: Positioning,

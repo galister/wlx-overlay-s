@@ -35,6 +35,7 @@ use crate::{
 use super::timer::GuiTimer;
 
 pub mod button;
+pub mod device_list;
 mod label;
 pub mod overlay_list;
 pub mod set_list;

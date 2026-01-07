@@ -18,6 +18,10 @@ pub struct SetList {
 }
 
 impl SetList {
+    pub fn num_sets(&self) -> usize {
+        self.set_buttons.len()
+    }
+
     pub fn on_notify(
         &mut self,
         layout: &mut Layout,

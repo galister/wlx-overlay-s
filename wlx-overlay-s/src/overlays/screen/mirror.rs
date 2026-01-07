@@ -20,7 +20,7 @@ use wlx_common::{
 use crate::{
     backend::{
         input::{HoverResult, PointerHit},
-        task::{OverlayTask, TaskType},
+        task::{OverlayTask, TaskType, ToggleMode},
     },
     overlays::screen::capture::{MainThreadWlxCapture, new_wlx_capture},
     state::{AppSession, AppState},
@@ -96,12 +96,11 @@ impl OverlayBackend for MirrorBackend {
                         app.xr_backend,
                         capture,
                     ));
-                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
-                        OverlaySelector::Name(self.name.clone()),
-                        Box::new(|app, o| {
-                            o.activate(app);
-                        }),
-                    )));
+                    app.tasks
+                        .enqueue(TaskType::Overlay(OverlayTask::ToggleOverlay(
+                            OverlaySelector::Name(self.name.clone()),
+                            ToggleMode::EnsureOn,
+                        )));
                 }
                 Err(e) => {
                     log::warn!("Failed to create mirror due to PipeWire error: {e:?}");

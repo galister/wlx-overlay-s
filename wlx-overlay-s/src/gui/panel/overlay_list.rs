@@ -75,9 +75,18 @@ impl OverlayList {
                             );
                             ("App", apps_root)
                         }
-                        OverlayCategory::Dashboard => {
-                            let overlay_button = parser_state
-                                .fetch_component_as::<ComponentButton>("btn_dashboard")?;
+                        OverlayCategory::Dashboard | OverlayCategory::Keyboard => {
+                            let key = if matches!(meta.category, OverlayCategory::Dashboard) {
+                                "btn_dashboard"
+                            } else {
+                                "btn_keyboard"
+                            };
+
+                            let Ok(overlay_button) =
+                                parser_state.fetch_component_as::<ComponentButton>(key)
+                            else {
+                                continue;
+                            };
 
                             if meta.visible {
                                 let mut com = CallbackDataCommon {

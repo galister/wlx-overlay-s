@@ -7,9 +7,8 @@
 
 ################ EXPERIENCE ################
 
-## When enabled, sets functionality will be disabled and
-## the bottom of the watch will list overlays instead of sets.
-#single_set_mode: false
+## The bottom of the watch will list sets instead of overlays.
+#sets_on_watch: false
 
 ## Force an alternative method for Wayland desktop capture.
 ## `auto`: default

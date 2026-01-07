@@ -7,6 +7,7 @@ use glam::{Affine3A, Vec2, Vec3A, Vec3Swizzles};
 
 use idmap_derive::IntegerId;
 use smallvec::{SmallVec, smallvec};
+use strum::AsRefStr;
 use wlx_common::common::LeftRight;
 use wlx_common::windowing::{OverlayWindowState, Positioning};
 
@@ -37,7 +38,7 @@ pub struct TrackedDevice {
 }
 
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, IntegerId)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, IntegerId, AsRefStr)]
 pub enum TrackedDeviceRole {
     None,
     Hmd,

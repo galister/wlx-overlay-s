@@ -76,18 +76,26 @@ pub struct ModifyPanelTask {
     pub command: ModifyPanelCommand,
 }
 
+pub enum ToggleMode {
+    EnsureOn,
+    EnsureOff,
+    Toggle,
+}
+
 pub type ModifyOverlayTask = dyn FnOnce(&mut AppState, &mut OverlayWindowConfig) + Send;
 pub type CreateOverlayTask = dyn FnOnce(&mut AppState) -> Option<OverlayWindowConfig> + Send;
 pub enum OverlayTask {
     AddSet,
     ToggleSet(usize),
     SwitchSet(Option<usize>),
-    ToggleOverlay(OverlaySelector),
+    ToggleOverlay(OverlaySelector, ToggleMode),
+    ResetOverlay(OverlaySelector),
     DeleteActiveSet,
     ToggleEditMode,
     ToggleDashboard,
     ShowHide,
     CleanupMirrors,
+    SettingsChanged,
     Modify(OverlaySelector, Box<ModifyOverlayTask>),
     Create(OverlaySelector, Box<CreateOverlayTask>),
     ModifyPanel(ModifyPanelTask),

@@ -16,6 +16,7 @@ pub trait DashInterface<T> {
 	fn recenter_playspace(&mut self, data: &mut T) -> anyhow::Result<()>;
 	fn desktop_finder<'a>(&'a mut self, data: &'a mut T) -> &'a mut DesktopFinder;
 	fn general_config<'a>(&'a mut self, data: &'a mut T) -> &'a mut GeneralConfig;
+	fn config_changed(&mut self, data: &mut T);
 }
 
 pub type BoxDashInterface<T> = Box<dyn DashInterface<T>>;

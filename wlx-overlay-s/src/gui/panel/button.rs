@@ -28,7 +28,7 @@ use crate::{
     RUNNING,
     backend::{
         XrBackend,
-        task::{OverlayTask, PlayspaceTask, TaskType},
+        task::{OverlayTask, PlayspaceTask, TaskType, ToggleMode},
         wayvr::process::KillSignal,
     },
     overlays::{custom::create_custom, toast::Toast, wayvr::WvrCommand},
@@ -337,12 +337,10 @@ pub(super) fn setup_custom_button<S: 'static>(
                         return Ok(EventResult::Pass);
                     }
 
-                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
-                        OverlaySelector::Name(arg.clone()),
-                        Box::new(move |app, owc| {
-                            owc.activate(app);
-                        }),
-                    )));
+                    app.tasks
+                        .enqueue(TaskType::Overlay(OverlayTask::ResetOverlay(
+                            OverlaySelector::Name(arg.clone()),
+                        )));
                     Ok(EventResult::Consumed)
                 })
             }
@@ -361,6 +359,7 @@ pub(super) fn setup_custom_button<S: 'static>(
                     app.tasks
                         .enqueue(TaskType::Overlay(OverlayTask::ToggleOverlay(
                             OverlaySelector::Name(arg.clone()),
+                            ToggleMode::Toggle,
                         )));
                     Ok(EventResult::Consumed)
                 })
@@ -384,6 +383,23 @@ pub(super) fn setup_custom_button<S: 'static>(
                     Ok(EventResult::Consumed)
                 })
             }
+            "::DeleteSet" => Box::new(move |_common, data, app, _state| {
+                if !test_button(data) || !test_duration(&button, app) {
+                    return Ok(EventResult::Pass);
+                }
+
+                app.tasks
+                    .enqueue(TaskType::Overlay(OverlayTask::DeleteActiveSet));
+                Ok(EventResult::Consumed)
+            }),
+            "::AddSet" => Box::new(move |_common, data, app, _state| {
+                if !test_button(data) || !test_duration(&button, app) {
+                    return Ok(EventResult::Pass);
+                }
+
+                app.tasks.enqueue(TaskType::Overlay(OverlayTask::AddSet));
+                Ok(EventResult::Consumed)
+            }),
             "::CustomOverlayReload" => {
                 let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
                 if arg.len() < 1 {

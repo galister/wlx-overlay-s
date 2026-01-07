@@ -10,7 +10,7 @@
 		"HIDE_GRAB_HELP": "Hide grab help",
 		"ANIMATION_SPEED": "UI Animation speed",
 		"ROUND_MULTIPLIER": "UI Edge roundness",
-		"SINGLE_SET_MODE": "Single set mode",
+		"SETS_ON_WATCH": "Sets on watch",
 		"USE_SKYBOX": "Enable skybox",
 		"USE_PASSTHROUGH": "Enable passthrough",
 		"CLOCK_12H": "12-hour clock",
@@ -49,7 +49,6 @@
 
 		"UPRIGHT_SCREEN_FIX_HELP": "Fixes upright screens on some desktops",
 		"DOUBLE_CURSOR_FIX_HELP": "Enable this if you see 2 cursors",
-		"SINGLE_SET_MODE_HELP": "Optimize the watch for working with a single set",
 		"XR_CLICK_SENSITIVITY_HELP": "Analog trigger sensitivity",
 		"XR_CLICK_SENSITIVITY_RELEASE_HELP": "Must be lower than click",
 		"CLICK_FREEZE_TIME_MS_HELP": "Helps with double-click precision",

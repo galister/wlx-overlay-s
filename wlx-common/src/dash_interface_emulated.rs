@@ -178,4 +178,6 @@ impl DashInterface<()> for DashInterfaceEmulated {
 	fn general_config<'a>(&'a mut self, _: &'a mut ()) -> &'a mut crate::config::GeneralConfig {
 		&mut self.general_config
 	}
+
+	fn config_changed(&mut self, _: &mut ()) {}
 }

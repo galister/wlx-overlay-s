@@ -89,6 +89,7 @@ pub(super) fn setup_custom_label<S: 'static>(
                 }
                 "date" => "%x",
                 "dow" => "%A",
+                "dow_short" => "%a",
                 "time" => {
                     if app.session.config.clock_12h {
                         "%I:%M %p"

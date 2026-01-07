@@ -25,7 +25,7 @@ use wlx_common::{
 use crate::{
     backend::{
         input::{Haptics, HoverResult, PointerHit, PointerMode},
-        task::{OverlayTask, PlayspaceTask, TaskType},
+        task::{OverlayTask, PlayspaceTask, TaskType, ToggleMode},
         wayvr::{
             process::{KillSignal, ProcessHandle},
             window::WindowHandle,
@@ -383,16 +383,14 @@ impl DashInterface<AppState> for DashInterfaceLive {
             return Ok(());
         };
 
-        app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
-            OverlaySelector::Id(oid),
-            Box::new(move |app, owc| {
-                if visible && !owc.is_active() {
-                    owc.activate(app);
-                } else if !visible && owc.is_active() {
-                    owc.deactivate();
-                }
-            }),
-        )));
+        app.tasks
+            .enqueue(TaskType::Overlay(OverlayTask::ToggleOverlay(
+                OverlaySelector::Id(oid),
+                match visible {
+                    true => ToggleMode::EnsureOn,
+                    false => ToggleMode::EnsureOff,
+                },
+            )));
         Ok(())
     }
 
@@ -414,5 +412,10 @@ impl DashInterface<AppState> for DashInterfaceLive {
         data: &'a mut AppState,
     ) -> &'a mut wlx_common::config::GeneralConfig {
         &mut data.session.config
+    }
+
+    fn config_changed(&mut self, data: &mut AppState) {
+        data.tasks
+            .enqueue(TaskType::Overlay(OverlayTask::SettingsChanged));
     }
 }

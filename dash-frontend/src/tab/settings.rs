@@ -36,21 +36,28 @@ impl<T> Tab<T> for TabSettings<T> {
 
 	fn update(&mut self, frontend: &mut Frontend<T>, data: &mut T) -> anyhow::Result<()> {
 		let config = frontend.interface.general_config(data);
+		let mut changed = false;
 		for task in self.tasks.drain() {
 			match task {
 				Task::UpdateBool(setting, n) => {
 					setting.get_frontend_task().map(|task| frontend.tasks.push(task));
 					*setting.mut_bool(config) = n;
+					changed = true;
 				}
 				Task::UpdateFloat(setting, n) => {
 					setting.get_frontend_task().map(|task| frontend.tasks.push(task));
 					*setting.mut_f32(config) = n;
+					changed = true;
 				}
 				Task::UpdateInt(setting, n) => {
 					setting.get_frontend_task().map(|task| frontend.tasks.push(task));
 					*setting.mut_i32(config) = n;
+					changed = true;
 				}
 			}
+		}
+		if changed {
+			frontend.interface.config_changed(data);
 		}
 		Ok(())
 	}
@@ -70,7 +77,7 @@ enum SettingType {
 	KeyboardSoundEnabled,
 	UprightScreenFix,
 	DoubleCursorFix,
-	SingleSetMode,
+	SetsOnWatch,
 	HideGrabHelp,
 	XrClickSensitivity,
 	XrClickSensitivityRelease,
@@ -103,7 +110,7 @@ impl SettingType {
 			Self::KeyboardSoundEnabled => &mut config.keyboard_sound_enabled,
 			Self::UprightScreenFix => &mut config.upright_screen_fix,
 			Self::DoubleCursorFix => &mut config.double_cursor_fix,
-			Self::SingleSetMode => &mut config.single_set_mode,
+			Self::SetsOnWatch => &mut config.sets_on_watch,
 			Self::HideGrabHelp => &mut config.hide_grab_help,
 			Self::AllowSliding => &mut config.allow_sliding,
 			Self::FocusFollowsMouseMode => &mut config.focus_follows_mouse_mode,
@@ -158,7 +165,7 @@ impl SettingType {
 			Self::KeyboardSoundEnabled => Ok("APP_SETTINGS.KEYBOARD_SOUND_ENABLED"),
 			Self::UprightScreenFix => Ok("APP_SETTINGS.UPRIGHT_SCREEN_FIX"),
 			Self::DoubleCursorFix => Ok("APP_SETTINGS.DOUBLE_CURSOR_FIX"),
-			Self::SingleSetMode => Ok("APP_SETTINGS.SINGLE_SET_MODE"),
+			Self::SetsOnWatch => Ok("APP_SETTINGS.SETS_ON_WATCH"),
 			Self::HideGrabHelp => Ok("APP_SETTINGS.HIDE_GRAB_HELP"),
 			Self::XrClickSensitivity => Ok("APP_SETTINGS.XR_CLICK_SENSITIVITY"),
 			Self::XrClickSensitivityRelease => Ok("APP_SETTINGS.XR_CLICK_SENSITIVITY_RELEASE"),
@@ -186,7 +193,6 @@ impl SettingType {
 		match self {
 			Self::UprightScreenFix => Some("APP_SETTINGS.UPRIGHT_SCREEN_FIX_HELP"),
 			Self::DoubleCursorFix => Some("APP_SETTINGS.DOUBLE_CURSOR_FIX_HELP"),
-			Self::SingleSetMode => Some("APP_SETTINGS.SINGLE_SET_MODE_HELP"),
 			Self::XrClickSensitivity => Some("APP_SETTINGS.XR_CLICK_SENSITIVITY_HELP"),
 			Self::XrClickSensitivityRelease => Some("APP_SETTINGS.XR_CLICK_SENSITIVITY_RELEASE_HELP"),
 			Self::FocusFollowsMouseMode => Some("APP_SETTINGS.FOCUS_FOLLOWS_MOUSE_MODE_HELP"),
@@ -207,7 +213,7 @@ impl SettingType {
 			| Self::RoundMultiplier
 			| Self::UprightScreenFix
 			| Self::DoubleCursorFix
-			| Self::SingleSetMode
+			| Self::SetsOnWatch
 			| Self::UseSkybox
 			| Self::UsePassthrough
 			| Self::ScreenRenderDown => true,
@@ -388,7 +394,7 @@ impl<T> TabSettings<T> {
 		checkbox!(mp, c, SettingType::HideGrabHelp);
 		slider_f32!(mp, c, SettingType::AnimationSpeed, 0.5, 5.0, 0.1); // min, max, step
 		slider_f32!(mp, c, SettingType::RoundMultiplier, 0.5, 5.0, 0.1);
-		checkbox!(mp, c, SettingType::SingleSetMode);
+		checkbox!(mp, c, SettingType::SetsOnWatch);
 		checkbox!(mp, c, SettingType::UseSkybox);
 		checkbox!(mp, c, SettingType::UsePassthrough);
 		checkbox!(mp, c, SettingType::Clock12h);

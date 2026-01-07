@@ -113,6 +113,8 @@ impl OverlayWindowConfig {
         self.active_state.is_some()
     }
 
+    /// only call this directly for `OverlayCategory::Internal`
+    /// for anything else, use `OverlayTask::ToggleOverlay` instead
     pub fn activate(&mut self, app: &mut AppState) {
         log::debug!("activate {}", self.name.as_ref());
         self.dirty = true;
@@ -120,17 +122,11 @@ impl OverlayWindowConfig {
         self.reset(app, true);
     }
 
+    /// only call this directly for `OverlayCategory::Internal`
+    /// for anything else, use `OverlayTask::ToggleOverlay` instead
     pub fn deactivate(&mut self) {
         log::debug!("deactivate {}", self.name.as_ref());
         self.active_state = None;
-    }
-
-    pub fn toggle(&mut self, app: &mut AppState) {
-        if self.active_state.take().is_none() {
-            self.activate(app);
-        } else {
-            log::debug!("deactivate {} (toggle)", self.name.as_ref());
-        }
     }
 
     pub fn auto_movement(&mut self, app: &mut AppState) {
