@@ -16,7 +16,7 @@ image = { version = "0.25.9", default-features = false, features = [
   "webp",
 ] }
 log.workspace = true
-lru = "0.16.2"
+lru = "0.16.3"
 ouroboros = "0.18.5"
 parking_lot = "0.12.5"
 regex.workspace = true
