@@ -117,9 +117,9 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                 panel.layout.mark_redraw();
 
                 let display = if app.session.config.sets_on_watch {
-                    [taffy::Display::Flex, taffy::Display::None]
-                } else {
                     [taffy::Display::None, taffy::Display::Flex]
+                } else {
+                    [taffy::Display::Flex, taffy::Display::None]
                 };
 
                 let widget = [
