@@ -1,12 +1,12 @@
 <layout>
   <macro name="keycap_rect"
     margin="2" width="100%" overflow="hidden" box_sizing="border_box"
-    border_color="~color_accent_translucent" border="2" round="8" color="~color_accent_40" color2="~color_accent_10" gradient="vertical"
+    border_color="~color_accent_translucent" border="2" round="6" color="~color_accent_40" color2="~color_accent_10" gradient="vertical"
     align_items="center" justify_content="center" />
 
   <macro name="tray_rect"
     margin="2" width="100%" overflow="hidden" box_sizing="border_box"
-    border_color="~color_accent_translucent" border="2" round="8" color="~color_bg" color2="~color_accent_10" gradient="vertical"
+    border_color="~color_accent_translucent" border="2" round="6" color="~color_bg" color2="~color_accent_10" gradient="vertical"
     align_items="center" justify_content="center" />
 
   <macro name="keycap_div"
@@ -24,7 +24,7 @@
   <template name="KeySpecial">
     <div macro="keycap_div">
       <rectangle id="${id}" macro="keycap_rect">
-        <sprite color="~color_text" width="32" height="32" src="keyboard/${text}.svg" />
+        <sprite color="~color_text" width="21" height="21" src="keyboard/${text}.svg" />
       </rectangle>
     </div>
   </template>
@@ -34,7 +34,7 @@
   <template name="KeyLetter">
     <div macro="keycap_div">
       <rectangle id="${id}" macro="keycap_rect">
-        <label text="${text}" size="24" />
+        <label text="${text}" size="16" />
       </rectangle>
     </div>
   </template>
@@ -43,9 +43,9 @@
   <!-- Used for letter keys on layouts with AltGr. -->
   <template name="KeyLetterAltGr">
     <div macro="keycap_div">
-      <rectangle id="${id}" macro="keycap_rect" gap="4">
-        <label text="${text}" size="24" />
-        <label color="~color_text_translucent" text="${text_altgr}" size="24" />
+      <rectangle id="${id}" macro="keycap_rect" gap="3">
+        <label text="${text}" size="16" />
+        <label color="~color_text_translucent" text="${text_altgr}" size="16" />
       </rectangle>
     </div>
   </template>
@@ -54,9 +54,9 @@
   <!-- Used for number & symbol keys on layouts without AltGr. -->
   <template name="KeySymbol">
     <div macro="keycap_div">
-      <rectangle id="${id}" macro="keycap_rect" gap="4">
-        <label color="~color_text_translucent" text="${text_shift}" size="24" />
-        <label text="${text}" size="24" />
+      <rectangle id="${id}" macro="keycap_rect" gap="3">
+        <label color="~color_text_translucent" text="${text_shift}" size="16" />
+        <label text="${text}" size="16" />
       </rectangle>
     </div>
   </template>
@@ -67,149 +67,139 @@
     <div macro="keycap_div">
       <rectangle id="${id}" macro="keycap_rect" flex_direction="row" flex_wrap="wrap">
         <div width="50%" height="50%" align_items="center" justify_content="center">
-          <label color="~color_text_translucent" text="${text_shift}" size="24" />
+          <label color="~color_text_translucent" text="${text_shift}" size="16" />
         </div>
         <div width="50%" height="50%" align_items="center" justify_content="center" />
         <div width="50%" height="50%" align_items="center" justify_content="center">
-          <label text="${text}" size="24" />
+          <label text="${text}" size="16" />
         </div>
         <div width="50%" height="50%" align_items="center" justify_content="center">
-          <label color="~color_text_translucent" text="${text_altgr}" size="24" />
+          <label color="~color_text_translucent" text="${text_altgr}" size="16" />
         </div>
       </rectangle>
     </div>
   </template>
 
-  <macro name="button_style" border="2" border_color="~color_accent_translucent" color="~color_bg" round="8"
-    align_items="center" justify_content="center" padding="8" width="80" height="80" overflow="visible"/>
+  <macro name="button_style" border="2" border_color="~color_accent_translucent" color="~color_bg" round="6"
+    align_items="center" justify_content="center" padding="6" width="60" height="60" overflow="visible"/>
 
-  <macro name="menu_button_style" border="2" border_color="~color_accent_translucent" color="~color_bg" round="8"
-    align_items="center" justify_content="center" padding="8" width="100%" height="60" />
+  <macro name="bg_rect" width="100%" color="~color_bg" round="10" border="2" border_color="~color_accent" />
 
-  <macro name="bg_rect" width="100%" color="~color_bg" round="16" border="2" border_color="~color_accent" />
-  <macro name="dropdown_root" new_pass="1" width="200" color="~color_bg" flex_direction="column" position="absolute" margin_top="80" display="none" />
-  <macro name="dropdown_title" color="~color_faded_50" width="100%" padding="16" overflow="hidden" />
-
-  <template name="MenuButton">
-    <Button macro="menu_button_style" _release="${action}">
-      <label translation="${translation}" size="24" />
-    </Button>
-  </template>
+  <blueprint name="menu_app">
+    <context_menu >
+      <!-- title text="${name}" /-->
+      <cell translation="BAR.TOGGLE_VISIBILITY" _release="::OverlayToggle ${name}" />
+      <cell translation="BAR.RESET_POSITION" _release="::OverlayReset ${name}" />
+      <cell translation="BAR.CLOSE_APP" _release="::WvrOverlayTermProcess ${name}" />
+      <cell translation="BAR.FORCE_CLOSE_APP" _release="::WvrOverlayKillProcess ${name}" />
+    </context_menu>
+  </blueprint>
 
   <!-- An app with a single icon. -->
   <template name="App">
-    <div>
-      <Button macro="button_style" id="overlay_${idx}" _press="::OverlayToggle ${name}" _release="::ElementSetDisplay dropdown_${idx} none">
-        <sprite width="56" height="56" color="~text_color" src_ext="${icon}" />
-      </Button>
-      <div macro="dropdown_root" id="dropdown_${idx}">
-        <rectangle macro="dropdown_title">
-          <label text="${name}" weight="bold" size="24" />
-        </rectangle>
-        <MenuButton translation="BAR.TOGGLE_IN_SET" action="::OverlayToggle ${name}" />
-        <MenuButton translation="BAR.CLOSE" action="::WvrOverlayTermProcess ${name}" />
-        <MenuButton translation="BAR.FORCE_CLOSE" action="::WvrOverlayKillProcess ${name}" />
-      </div>
-    </div>
+    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _press="::ContextMenuOpen menu_app">  
+      <sprite width="38" height="38" color="~text_color" src_ext="${icon}" />
+    </Button>
   </template>
+
+  <blueprint name="menu_screen">
+    <context_menu >
+      <!-- title text="${name}" /-->
+      <cell translation="BAR.TOGGLE_VISIBILITY" _press="::OverlayToggle ${name}" />
+      <cell translation="BAR.RESET_POSITION" _press="::OverlayReset ${name}" />
+    </context_menu>
+  </blueprint>
 
   <!-- A screen with a shortened connector name, e.g. "H1" for HDMI-A-1 or "D2" for DP-2 -->
   <template name="Screen">
-    <div>
-      <Button macro="button_style" id="overlay_${idx}" _press="::OverlayToggle ${name}" _release="::ElementSetDisplay dropdown_${idx} none">
-        <sprite width="56" height="56" color="~text_color" src_builtin="edit/screen.svg" />
-        <div position="absolute" margin_top="-10">
-          <label text="${display}" size="26" color="~color_faded_20" weight="bold" />
-        </div>
-      </Button>
-      <div macro="dropdown_root" id="dropdown_${idx}">
-        <rectangle macro="dropdown_title">
-          <label text="${name}" weight="bold" size="24" />
-        </rectangle>
-        <MenuButton translation="BAR.TOGGLE_IN_SET" action="::OverlayToggle ${name}" />
+    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press="::ContextMenuOpen menu_screen">
+      <sprite width="38" height="38" color="~text_color" src_builtin="edit/screen.svg" />
+      <div position="absolute" margin_top="-7" margin_left="-1">
+        <label text="${display}" size="18" color="~color_faded_20" weight="bold" />
       </div>
-    </div>
+    </Button>
   </template>
+
+  <blueprint name="menu_panel">
+    <context_menu >
+      <!-- title text="${name}" /-->
+      <cell translation="BAR.TOGGLE_VISIBILITY" _release="::OverlayToggle ${name}" />
+      <cell translation="BAR.RESET_POSITION" _release="::OverlayReset ${name}" />
+      <cell translation="BAR.RELOAD_FROM_DISK" _release="::CustomOverlayReload ${name}" />
+    </context_menu>
+  </blueprint>
 
   <template name="Panel">
-    <div>
-      <Button macro="button_style" id="overlay_${idx}" _press="::OverlayToggle ${name}" _release="::ElementSetDisplay dropdown_${idx} none">
-        <sprite width="56" height="56" color="~text_color" src_builtin="edit/panel.svg" />
-      </Button>
-      <div macro="dropdown_root" id="dropdown_${idx}">
-        <rectangle macro="dropdown_title">
-          <label text="${name}" weight="bold" size="24" />
-        </rectangle>
-        <MenuButton translation="BAR.TOGGLE_IN_SET" action="::OverlayToggle ${name}" />
-      </div>
-    </div>
+    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _press="::ContextMenuOpen menu_panel">
+      <sprite width="38" height="38" color="~text_color" src_builtin="edit/panel.svg" />
+    </Button>
   </template>
 
+  <blueprint name="menu_mirror">
+    <context_menu >
+      <!-- title text="${name}" /-->
+      <cell translation="BAR.TOGGLE_VISIBILITY" _release="::OverlayToggle ${name}" />
+      <cell translation="BAR.RESET_POSITION" _release="::OverlayReset ${name}" />
+      <cell translation="BAR.CLOSE_MIRROR" _release="::OverlayDrop ${name}" />
+    </context_menu>
+  </blueprint>
+
   <template name="Mirror">
-    <div>
-      <Button macro="button_style" id="overlay_${idx}" _press="::OverlayToggle ${name}" _release="::ElementSetDisplay dropdown_${idx} none">
-        <sprite width="56" height="56" color="~text_color" src_builtin="edit/mirror.svg" />
-        <div position="absolute" margin_top="7" margin_left="20">
-          <label text="${display}" size="26" color="~color_faded_20" weight="bold" />
-        </div>
-      </Button>
-      <div macro="dropdown_root" id="dropdown_${idx}">
-        <rectangle macro="dropdown_title">
-          <label text="${name}" weight="bold" size="24" />
-        </rectangle>
-        <MenuButton translation="BAR.TOGGLE_IN_SET" action="::OverlayToggle ${name}" />
-        <MenuButton translation="BAR.CLOSE" action="::OverlayDrop ${name}" />
+    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _press="::ContextMenuOpen menu_mirror">
+      <sprite width="38" height="38" color="~text_color" src_builtin="edit/mirror.svg" />
+      <div position="absolute" margin_top="5" margin_left="13">
+        <label text="${display}" size="20" color="~color_faded_20" weight="bold" />
       </div>
-    </div>
+    </Button>
   </template>
 
   <template name="Set">
     <Button macro="button_style" id="set_${idx}" _press="::SetSwitch ${idx}" tooltip="WATCH.SWITCH_TO_SET" tooltip_side="bottom">
-      <sprite width="56" height="56" color="~text_color" src_builtin="watch/set2.svg" />
-      <div position="absolute" margin_top="16" margin_left="-8">
-        <label text="${display}" size="26" color="~color_faded_20" weight="bold" />
+      <sprite width="38" height="38" color="~text_color" src_builtin="watch/set2.svg" />
+      <div position="absolute" margin_top="10" margin_left="-7">
+        <label text="${display}" size="20" color="~color_faded_20" weight="bold" />
       </div>
     </Button>
   </template>
 
   <elements>
     <div flex_direction="column" interactable="0">
-      <rectangle macro="bg_rect" padding="16" align_items="center" justify_content="space_between">
-        <div gap="16">
+      <rectangle macro="bg_rect" padding="10" align_items="center" justify_content="space_between">
+        <div gap="10">
           <Button macro="button_style" id="btn_dashboard" _press="::DashToggle">
-            <sprite width="56" height="56" color="~text_color" src="watch/wayvr_dashboard_mono.svg"  />
+            <sprite width="38" height="38" color="~text_color" src="watch/wayvr_dashboard_mono.svg"  />
           </Button>
           <VerticalSeparator />
-          <div id="panels_root" gap="8">
+          <div id="panels_root" gap="6">
             <Screen idx="0" display="H1" name="HDMI-A-1" />
             <Screen idx="1" display="D2" name="Screen: DP-2" />
             <Mirror idx="1" display="1" name="M1" />
             <Panel idx="1" display="Test" name="Test" />
           </div>
           <VerticalSeparator />
-          <div id="apps_root" gap="8">
+          <div id="apps_root" gap="6">
             <App id="test1" name="Blender" icon="/usr/share/icons/hicolor/scalable/apps/blender-5.0.svg" />
             <App id="test2" name="Inkscape" icon="/usr/share/icons/hicolor/scalable/apps/org.inkscape.Inkscape.svg" />
             <App id="test3" name="GIMP" icon="/usr/share/icons/hicolor/scalable/apps/gimp.svg" />
           </div>
         </div>
-        <div id="tray_root" flex_direction="row" gap="16">
-          <div id="sets_root" flex_direction="row" gap="8">
+        <div id="tray_root" flex_direction="row" gap="10">
+          <div id="sets_root" flex_direction="row" gap="6">
             <Set idx="0" display="1" />
             <Set idx="1" display="2" />
           </div>
 
           <VerticalSeparator />
 
-          <div flex_direction="column" gap="4" align_items="center">
-            <label text="23:59" _source="clock" _display="time" size="32" weight="bold" />
-            <label text="Tuesday" _source="clock" _display="dow" size="22" />
-            <label text="22/2/2022" _source="clock" _display="date" size="22" />
+          <div flex_direction="column" gap="3" align_items="center">
+            <label text="23:59" _source="clock" _display="time" size="21" weight="bold" />
+            <label text="Tuesday" _source="clock" _display="dow" size="15" />
+            <label text="22/2/2022" _source="clock" _display="date" size="15" />
           </div>
         </div>
       </rectangle>
-      <div width="100%" height="20" interactable="0" />
-      <rectangle id="keyboard_root" macro="bg_rect" flex_direction="column" padding="16">
+      <div width="100%" height="13" interactable="0" />
+      <rectangle id="keyboard_root" macro="bg_rect" flex_direction="column" padding="10">
       </rectangle>
     </div>
   </elements>

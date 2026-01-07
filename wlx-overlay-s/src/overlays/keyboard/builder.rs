@@ -30,7 +30,7 @@ use super::{
     layout::{self, KeyCapType},
 };
 
-const PIXELS_PER_UNIT: f32 = 80.;
+const PIXELS_PER_UNIT: f32 = 60.;
 
 fn new_doc_params(panel: &mut GuiPanel<KeyboardState>) -> ParseDocumentParams<'static> {
     ParseDocumentParams {
@@ -335,7 +335,10 @@ pub(super) fn create_keyboard_panel(
                             ("Screen", panels_root)
                         }
                         OverlayCategory::Mirror => {
-                            params.insert("display".into(), meta.name.as_ref().into());
+                            params.insert(
+                                "display".into(),
+                                (*meta.name).chars().last().unwrap().to_string().into(),
+                            );
                             ("Mirror", panels_root)
                         }
                         OverlayCategory::Panel => ("Panel", panels_root),

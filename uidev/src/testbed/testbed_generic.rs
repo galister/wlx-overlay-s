@@ -23,7 +23,7 @@ use wgui::{
 	task::Tasks,
 	widget::{div::WidgetDiv, label::WidgetLabel, rectangle::WidgetRectangle},
 	windowing::{
-		context_menu,
+		context_menu::{self, TickResult},
 		window::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra},
 	},
 };
@@ -285,7 +285,7 @@ impl Testbed for TestbedGeneric {
 		let res = data
 			.context_menu
 			.tick(&mut self.layout, &mut self.parser_state)?;
-		if let Some(action_name) = res.action_name {
+		if let TickResult::Action(action_name) = res {
 			log::info!("got action: {}", action_name);
 		}
 

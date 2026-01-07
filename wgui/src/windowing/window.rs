@@ -14,10 +14,10 @@ use crate::{
 	layout::{Layout, LayoutTask, LayoutTasks, WidgetPair},
 	parser::{self, Fetchable, ParserState},
 	widget::{
-		EventResult,
 		div::WidgetDiv,
 		label::WidgetLabel,
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
+		EventResult,
 	},
 };
 

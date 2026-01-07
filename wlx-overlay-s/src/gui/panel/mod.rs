@@ -14,9 +14,10 @@ use wgui::{
     },
     gfx::cmd::WGfxClearMode,
     layout::{Layout, LayoutParams, LayoutUpdateParams, WidgetID},
-    parser::{CustomAttribsInfoOwned, Fetchable, ParseDocumentExtra, ParserState},
+    parser::{self, CustomAttribsInfoOwned, Fetchable, ParseDocumentExtra, ParserState},
     renderer_vk::context::Context as WguiContext,
     widget::{EventResult, label::WidgetLabel},
+    windowing::context_menu::{self, ContextMenu},
 };
 use wlx_common::overlays::{BackendAttrib, BackendAttribValue};
 use wlx_common::timestep::Timestep;
@@ -59,7 +60,9 @@ pub struct GuiPanel<S> {
     has_focus: [bool; 2],
     last_content_size: Vec2,
     custom_elems: Rc<RefCell<Vec<CustomAttribsInfoOwned>>>,
+    context_menu: Rc<RefCell<ContextMenu>>,
     on_custom_attrib: Option<OnCustomAttribFunc>,
+    on_custom_attrib_inner: parser::OnCustomAttribsFunc,
 }
 
 pub type OnCustomIdFunc<S> = Box<
@@ -105,6 +108,13 @@ impl<S: 'static> GuiPanel<S> {
     ) -> anyhow::Result<Self> {
         let custom_elems = Rc::new(RefCell::new(vec![]));
 
+        let on_custom_attrib_inner: parser::OnCustomAttribsFunc = Rc::new({
+            let custom_elems = custom_elems.clone();
+            move |attribs| {
+                custom_elems.borrow_mut().push(attribs.to_owned());
+            }
+        });
+
         let doc_params = wgui::parser::ParseDocumentParams {
             globals: app.wgui_globals.clone(),
             path: if params.external_xml {
@@ -113,12 +123,7 @@ impl<S: 'static> GuiPanel<S> {
                 AssetPath::FileOrBuiltIn(path)
             },
             extra: wgui::parser::ParseDocumentExtra {
-                on_custom_attribs: Some(Rc::new({
-                    let custom_elems = custom_elems.clone();
-                    move |attribs| {
-                        custom_elems.borrow_mut().push(attribs.to_owned());
-                    }
-                })),
+                on_custom_attribs: Some(on_custom_attrib_inner.clone()),
                 ..Default::default()
             },
         };
@@ -164,13 +169,16 @@ impl<S: 'static> GuiPanel<S> {
             last_content_size: Vec2::ZERO,
             doc_extra: Some(doc_params.extra),
             custom_elems,
+            context_menu: Default::default(),
             on_custom_attrib: params.on_custom_attrib,
+            on_custom_attrib_inner,
         };
         me.process_custom_elems(app);
 
         Ok(me)
     }
 
+    /// Perform initial setup on newly added elements.
     pub fn process_custom_elems(&mut self, app: &mut AppState) {
         let mut elems = self.custom_elems.borrow_mut();
         for elem in elems.iter() {
@@ -186,7 +194,14 @@ impl<S: 'static> GuiPanel<S> {
                 .parser_state
                 .fetch_component_from_widget_id_as::<ComponentButton>(elem.widget_id)
             {
-                setup_custom_button::<S>(&mut self.layout, &self.parser_state, elem, app, button);
+                setup_custom_button::<S>(
+                    &mut self.layout,
+                    &self.parser_state,
+                    elem,
+                    &self.context_menu,
+                    &self.on_custom_attrib_inner,
+                    button,
+                );
             }
 
             if let Some(on_custom_attrib) = &self.on_custom_attrib {
@@ -266,6 +281,14 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
         if self.layout.content_size.x * self.layout.content_size.y == 0.0 {
             log::trace!("Unable to render: content size 0");
             return Ok(ShouldRender::Unable);
+        }
+
+        let tick_result = self
+            .context_menu
+            .borrow_mut()
+            .tick(&mut self.layout, &mut self.parser_state)?;
+        if matches!(tick_result, context_menu::TickResult::Opened) {
+            self.process_custom_elems(app);
         }
 
         if !self

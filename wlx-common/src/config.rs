@@ -249,4 +249,7 @@ pub struct GeneralConfig {
 
 	#[serde(default)]
 	pub xwayland_by_default: bool,
+
+	#[serde(default)]
+	pub context_menu_hold_and_release: bool,
 }

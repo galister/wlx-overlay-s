@@ -32,7 +32,6 @@ use crate::{
 	windowing::context_menu,
 };
 use anyhow::Context;
-use glam::Vec2;
 use ouroboros::self_referencing;
 use smallvec::SmallVec;
 use std::{cell::RefMut, collections::HashMap, path::Path, rc::Rc};
@@ -97,7 +96,7 @@ pub trait Fetchable {
 }
 
 impl ParserData {
-	fn take_results_from(&mut self, from: &mut Self) {
+	pub(crate) fn take_results_from(&mut self, from: &mut Self) {
 		let ids = std::mem::take(&mut from.ids);
 		let components = std::mem::take(&mut from.components);
 		let components_by_id = std::mem::take(&mut from.components_by_id);
@@ -140,7 +139,7 @@ impl Fetchable for ParserData {
 		};
 
 		let Some(component) = weak.upgrade() else {
-			anyhow::bail!("Component by widget ID \"{widget_id:?}\" doesn't exist");
+			anyhow::bail!("Component by widget ID \"{widget_id:?}\" has disappeared");
 		};
 
 		Ok(Component(component))
@@ -264,7 +263,6 @@ impl ParserState {
 		&mut self,
 		template_name: &str,
 		template_params: &HashMap<Rc<str>, Rc<str>>,
-		position: Vec2,
 	) -> anyhow::Result<context_menu::Blueprint> {
 		let Some(template) = self.data.templates.get(template_name) else {
 			anyhow::bail!("no template named \"{template_name}\" found");
@@ -320,7 +318,6 @@ impl ParserState {
 		Ok(
 			context_menu::Blueprint {
 				cells,
-				position,
 			}
 		)
 	}

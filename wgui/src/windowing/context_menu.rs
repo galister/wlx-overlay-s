@@ -20,7 +20,6 @@ pub struct Cell {
 }
 
 pub(crate) struct Blueprint {
-	pub position: Vec2,
 	pub cells: Vec<Cell>,
 }
 
@@ -43,23 +42,25 @@ pub struct ContextMenu {
 	tasks: Tasks<Task>,
 }
 
-fn doc_params<'a>(
-	globals: &WguiGlobals,
-	on_custom_attribs: Option<parser::OnCustomAttribsFunc>,
-) -> parser::ParseDocumentParams<'a> {
+fn doc_params<'a>(globals: &WguiGlobals) -> parser::ParseDocumentParams<'a> {
 	parser::ParseDocumentParams {
 		globals: globals.clone(),
 		path: AssetPath::WguiInternal("wgui/context_menu.xml"),
-		extra: parser::ParseDocumentExtra {
-			on_custom_attribs,
-			..Default::default()
-		},
+		extra: Default::default(),
 	}
 }
 
 #[derive(Default)]
-pub struct TickResult {
-	pub action_name: Option<Rc<str>>,
+pub enum TickResult {
+	/// Nothing happened
+	#[default]
+	None,
+	/// The context menu was opened.
+	Opened,
+	/// User has selected an action.
+	Action(Rc<str>),
+	/// The context menu was closed without an action.
+	Closed,
 }
 
 impl ContextMenu {
@@ -77,8 +78,7 @@ impl ContextMenu {
 		layout: &mut Layout,
 		parser_state: &mut ParserState,
 	) -> anyhow::Result<()> {
-		let blueprint =
-			parser_state.context_menu_create_blueprint(&params.template_name, &params.template_params, params.position)?;
+		let blueprint = parser_state.context_menu_create_blueprint(&params.template_name, &params.template_params)?;
 
 		let globals = layout.state.globals.clone();
 
@@ -94,19 +94,20 @@ impl ContextMenu {
 		})?;
 
 		let content = self.window.get_content();
-		let doc_params = doc_params(&globals, params.on_custom_attribs.clone());
+		let doc_params = doc_params(&globals);
 
-		let mut state = parser::parse_from_assets(&doc_params, layout, content.id)?;
+		let mut inner_parser = parser::parse_from_assets(&doc_params, layout, content.id)?;
 
-		let id_buttons = state.get_widget_id("buttons")?;
+		let id_buttons = inner_parser.get_widget_id("buttons")?;
 
 		for (idx, cell) in blueprint.cells.iter().enumerate() {
 			let mut par = HashMap::new();
 			par.insert(Rc::from("text"), cell.title.generate(&mut globals.i18n()));
-			let data_cell = state.parse_template(&doc_params, "Cell", layout, id_buttons, par)?;
+			let mut data_cell = inner_parser.parse_template(&doc_params, "Cell", layout, id_buttons, par)?;
 
 			let button = data_cell.fetch_component_as::<ComponentButton>("button")?;
 			let button_id = button.base().get_id();
+			parser_state.data.take_results_from(&mut data_cell);
 			self
 				.tasks
 				.handle_button(&button, Task::ActionClicked(cell.action_name.clone()));
@@ -121,7 +122,7 @@ impl ContextMenu {
 			}
 
 			if idx < blueprint.cells.len() - 1 {
-				state.parse_template(&doc_params, "Separator", layout, id_buttons, Default::default())?;
+				inner_parser.parse_template(&doc_params, "Separator", layout, id_buttons, Default::default())?;
 			}
 		}
 		Ok(())
@@ -130,14 +131,20 @@ impl ContextMenu {
 	pub fn tick(&mut self, layout: &mut Layout, parser_state: &mut ParserState) -> anyhow::Result<TickResult> {
 		if let Some(mut p) = self.pending_open.take() {
 			self.open_process(&mut p, layout, parser_state)?;
+			let _ = self.tasks.drain();
+			return Ok(TickResult::Opened);
 		}
 
 		let mut result = TickResult::default();
 
 		for task in self.tasks.drain() {
 			match task {
-				Task::ActionClicked(action_name) => {
-					result.action_name = action_name;
+				Task::ActionClicked(Some(action_name)) => {
+					result = TickResult::Action(action_name);
+					self.close();
+				}
+				Task::ActionClicked(None) => {
+					result = TickResult::Closed;
 					self.close();
 				}
 			}

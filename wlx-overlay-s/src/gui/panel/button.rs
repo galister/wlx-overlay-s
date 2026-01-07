@@ -1,5 +1,6 @@
 use std::{
     cell::RefCell,
+    collections::HashMap,
     process::{Child, Command, Stdio},
     rc::Rc,
     str::FromStr,
@@ -16,19 +17,21 @@ use wgui::{
     },
     layout::Layout,
     log::LogErr,
-    parser::{CustomAttribsInfoOwned, Fetchable, ParserState},
+    parser::{self, AttribPair, CustomAttribsInfoOwned, Fetchable, ParserState},
     taffy,
     widget::EventResult,
+    windowing::context_menu::{ContextMenu, OpenParams},
 };
 use wlx_common::overlays::ToastTopic;
 
 use crate::{
     RUNNING,
     backend::{
+        XrBackend,
         task::{OverlayTask, PlayspaceTask, TaskType},
         wayvr::process::KillSignal,
     },
-    overlays::{custom::create_custom, dashboard::DASH_NAME, toast::Toast, wayvr::WvrCommand},
+    overlays::{custom::create_custom, toast::Toast, wayvr::WvrCommand},
     state::AppState,
     subsystem::hid::VirtualKey,
     windowing::{OverlaySelector, backend::OverlayEventData, window::OverlayCategory},
@@ -186,7 +189,8 @@ pub(super) fn setup_custom_button<S: 'static>(
     layout: &mut Layout,
     parser_state: &ParserState,
     attribs: &CustomAttribsInfoOwned,
-    _app: &AppState,
+    context_menu: &Rc<RefCell<ContextMenu>>,
+    on_custom_attribs: &parser::OnCustomAttribsFunc,
     button: Rc<ComponentButton>,
 ) {
     for (name, kind, test_button, test_duration) in &BUTTON_EVENTS {
@@ -202,6 +206,49 @@ pub(super) fn setup_custom_button<S: 'static>(
         let button = button.clone();
 
         let callback: EventCallback<AppState, S> = match command {
+            "::ContextMenuOpen" => {
+                let Some(template_name) = args.next() else {
+                    log::warn!(
+                        "{command} has incorrect arguments. Should be: {command} <context_menu>"
+                    );
+                    return;
+                };
+
+                // pass attribs with key `_context_{name}` to the context_menu template
+                let mut template_params = HashMap::new();
+                for AttribPair { attrib, value } in &attribs.pairs {
+                    const PREFIX: &'static str = "_context_";
+                    if attrib.starts_with(PREFIX) {
+                        template_params.insert(attrib[PREFIX.len()..].into(), value.clone());
+                    }
+                }
+                log::warn!("Context params: {template_params:?}");
+
+                let template_name: Rc<str> = template_name.into();
+                let context_menu = context_menu.clone();
+                let on_custom_attribs = on_custom_attribs.clone();
+
+                Box::new({
+                    move |_common, data, _app, _| {
+                        context_menu.borrow_mut().open(OpenParams {
+                            on_custom_attribs: Some(on_custom_attribs.clone()),
+                            template_name: template_name.clone(),
+                            template_params: template_params.clone(),
+                            position: data.metadata.get_mouse_pos_absolute().unwrap(), //want panic
+                        });
+                        Ok(EventResult::Consumed)
+                    }
+                })
+            }
+            "::ContextMenuClose" => {
+                let context_menu = context_menu.clone();
+
+                Box::new(move |_common, _data, _app, _| {
+                    context_menu.borrow_mut().close();
+
+                    Ok(EventResult::Consumed)
+                })
+            }
             "::ElementSetDisplay" => {
                 let (Some(id), Some(value)) = (args.next(), args.next()) else {
                     log::warn!(
@@ -285,6 +332,8 @@ pub(super) fn setup_custom_button<S: 'static>(
                     log::error!("{command} has missing arguments");
                     return;
                 };
+
+                log::warn!("{command} {arg}");
 
                 Box::new(move |_common, data, app, _| {
                     if !test_button(data) || !test_duration(&button, app) {
@@ -504,6 +553,23 @@ pub(super) fn setup_custom_button<S: 'static>(
                 }
 
                 RUNNING.store(false, Ordering::Relaxed);
+                Ok(EventResult::Consumed)
+            }),
+            "::Restart" => Box::new(move |_common, data, app, _| {
+                if !test_button(data) || !test_duration(&button, app) {
+                    return Ok(EventResult::Pass);
+                }
+
+                let runtime = match app.xr_backend {
+                    XrBackend::OpenVR => "--openvr",
+                    XrBackend::OpenXR => "--openxr",
+                };
+
+                Command::new("/proc/self/exe")
+                    .arg(runtime) // ensure same runtime
+                    .arg("--replace") // SIGTERM the previous process
+                    .arg("--show");
+
                 Ok(EventResult::Consumed)
             }),
             "::SendKey" => {
