@@ -181,5 +181,5 @@ impl DashInterface<()> for DashInterfaceEmulated {
 
 	fn config_changed(&mut self, _: &mut ()) {}
 
-	fn restart(&mut self, data: &mut ()) {}
+	fn restart(&mut self, _data: &mut ()) {}
 }

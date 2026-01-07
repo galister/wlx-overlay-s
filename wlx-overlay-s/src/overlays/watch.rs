@@ -54,9 +54,6 @@ struct WatchState {
     clock_12h: bool,
 }
 
-#[allow(clippy::significant_drop_tightening)]
-#[allow(clippy::too_many_lines)]
-#[allow(clippy::cognitive_complexity)]
 pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
     let state = WatchState {
         clock_12h: app.session.config.clock_12h,
@@ -66,6 +63,10 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
 
     let mut panel =
         GuiPanel::new_from_template(app, watch_xml, state, NewGuiPanelParams::default())?;
+
+    let mut alterables = EventAlterables::default();
+    sets_or_overlays(&panel, app, &mut alterables);
+    panel.layout.process_alterables(alterables)?;
 
     let doc_params = ParseDocumentParams {
         globals: panel.layout.state.globals.clone(),
@@ -115,27 +116,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
             }
             OverlayEventData::SettingsChanged => {
                 panel.layout.mark_redraw();
-
-                let display = if app.session.config.sets_on_watch {
-                    [taffy::Display::None, taffy::Display::Flex]
-                } else {
-                    [taffy::Display::Flex, taffy::Display::None]
-                };
-
-                let widget = [
-                    panel
-                        .parser_state
-                        .get_widget_id("panels_root")
-                        .unwrap_or_default(),
-                    panel
-                        .parser_state
-                        .get_widget_id("sets_root")
-                        .unwrap_or_default(),
-                ];
-
-                for i in 0..2 {
-                    alterables.set_style(widget[i], StyleSetRequest::Display(display[i]));
-                }
+                sets_or_overlays(panel, app, &mut alterables);
 
                 if app.session.config.clock_12h != panel.state.clock_12h {
                     panel.state.clock_12h = app.session.config.clock_12h;
@@ -194,6 +175,33 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
         global: true,
         ..OverlayWindowConfig::from_backend(Box::new(panel))
     })
+}
+
+fn sets_or_overlays(
+    panel: &GuiPanel<WatchState>,
+    app: &mut AppState,
+    alterables: &mut EventAlterables,
+) {
+    let display = if app.session.config.sets_on_watch {
+        [taffy::Display::None, taffy::Display::Flex]
+    } else {
+        [taffy::Display::Flex, taffy::Display::None]
+    };
+
+    let widget = [
+        panel
+            .parser_state
+            .get_widget_id("panels_root")
+            .unwrap_or_default(),
+        panel
+            .parser_state
+            .get_widget_id("sets_root")
+            .unwrap_or_default(),
+    ];
+
+    for i in 0..2 {
+        alterables.set_style(widget[i], StyleSetRequest::Display(display[i]));
+    }
 }
 
 pub fn watch_fade<D>(app: &mut AppState, watch: &mut OverlayWindowData<D>) {

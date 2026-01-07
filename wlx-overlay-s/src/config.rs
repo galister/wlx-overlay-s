@@ -105,12 +105,39 @@ pub fn load_general_config() -> GeneralConfig {
 
 #[derive(Serialize)]
 pub struct AutoSettings {
-    pub watch_view_angle_min: f32,
-    pub watch_view_angle_max: f32,
+    pub animation_speed: f32,
+    pub round_multiplier: f32,
+    pub click_freeze_time_ms: i32,
+    pub invert_scroll_direction_x: bool,
+    pub invert_scroll_direction_y: bool,
+    pub scroll_speed: f32,
+    pub long_press_duration: f32,
     pub notifications_enabled: bool,
     pub notifications_sound_enabled: bool,
+    pub keyboard_sound_enabled: bool,
+    pub upright_screen_fix: bool,
+    pub double_cursor_fix: bool,
+    pub sets_on_watch: bool,
+    pub hide_grab_help: bool,
+    pub xr_click_sensitivity: f32,
+    pub xr_click_sensitivity_release: f32,
     pub allow_sliding: bool,
+    pub focus_follows_mouse_mode: bool,
+    pub left_handed_mouse: bool,
+    pub block_game_input: bool,
+    pub block_game_input_ignore_watch: bool,
     pub space_drag_multiplier: f32,
+    pub use_skybox: bool,
+    pub use_passthrough: bool,
+    pub screen_render_down: bool,
+    pub pointer_lerp_factor: f32,
+    pub space_drag_unlocked: bool,
+    pub space_rotate_unlocked: bool,
+    pub clock_12h: bool,
+    pub hide_username: bool,
+    pub opaque_background: bool,
+    pub xwayland_by_default: bool,
+    pub context_menu_hold_and_release: bool,
 }
 
 fn get_settings_path() -> PathBuf {
@@ -121,17 +148,45 @@ fn get_settings_path() -> PathBuf {
 
 pub fn save_settings(config: &GeneralConfig) -> anyhow::Result<()> {
     let conf = AutoSettings {
-        watch_view_angle_min: config.watch_view_angle_min,
-        watch_view_angle_max: config.watch_view_angle_max,
+        animation_speed: config.animation_speed,
+        round_multiplier: config.round_multiplier,
+        click_freeze_time_ms: config.click_freeze_time_ms,
+        invert_scroll_direction_x: config.invert_scroll_direction_x,
+        invert_scroll_direction_y: config.invert_scroll_direction_y,
+        scroll_speed: config.scroll_speed,
+        long_press_duration: config.long_press_duration,
         notifications_enabled: config.notifications_enabled,
         notifications_sound_enabled: config.notifications_sound_enabled,
+        keyboard_sound_enabled: config.keyboard_sound_enabled,
+        upright_screen_fix: config.upright_screen_fix,
+        double_cursor_fix: config.double_cursor_fix,
+        sets_on_watch: config.sets_on_watch,
+        hide_grab_help: config.hide_grab_help,
+        xr_click_sensitivity: config.xr_click_sensitivity,
+        xr_click_sensitivity_release: config.xr_click_sensitivity_release,
         allow_sliding: config.allow_sliding,
+        focus_follows_mouse_mode: config.focus_follows_mouse_mode,
+        left_handed_mouse: config.left_handed_mouse,
+        block_game_input: config.block_game_input,
+        block_game_input_ignore_watch: config.block_game_input_ignore_watch,
         space_drag_multiplier: config.space_drag_multiplier,
+        use_skybox: config.use_skybox,
+        use_passthrough: config.use_passthrough,
+        screen_render_down: config.screen_render_down,
+        pointer_lerp_factor: config.pointer_lerp_factor,
+        space_drag_unlocked: config.space_drag_unlocked,
+        space_rotate_unlocked: config.space_rotate_unlocked,
+        clock_12h: config.clock_12h,
+        hide_username: config.hide_username,
+        opaque_background: config.opaque_background,
+        xwayland_by_default: config.xwayland_by_default,
+        context_menu_hold_and_release: config.context_menu_hold_and_release,
     };
 
     let json = serde_json::to_string_pretty(&conf).unwrap(); // want panic
     std::fs::write(get_settings_path(), json)?;
 
+    log::info!("Saved settings.");
     Ok(())
 }
 

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, marker::PhantomData, os::unix::process::CommandExt, process::Command, rc::Rc};
+use std::{collections::HashMap, marker::PhantomData, rc::Rc};
 
 use strum::AsRefStr;
 use wgui::{

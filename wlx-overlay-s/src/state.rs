@@ -178,6 +178,7 @@ impl AppState {
 
 pub struct AppSession {
     pub config: GeneralConfig,
+    pub config_dirty: bool,
 
     #[cfg(feature = "wayvr")]
     pub wayvr_config: WayVRConfig, // TODO: rename to "wayland_server_config"
@@ -209,6 +210,7 @@ impl AppSession {
             #[cfg(feature = "wayvr")]
             wayvr_config,
             toast_topics,
+            config_dirty: false,
         }
     }
 }

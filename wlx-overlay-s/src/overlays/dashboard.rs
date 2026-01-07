@@ -34,6 +34,7 @@ use crate::{
             window::WindowHandle,
         },
     },
+    config::save_settings,
     ipc::ipc_server::{gen_args_vec, gen_env_vec},
     state::AppState,
     subsystem::hid::WheelDelta,
@@ -125,7 +126,12 @@ impl OverlayBackend for DashFrontend {
         Ok(())
     }
 
-    fn pause(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+    fn pause(&mut self, app: &mut AppState) -> anyhow::Result<()> {
+        if app.session.config_dirty {
+            save_settings(&app.session.config)?;
+            app.session.config_dirty = false;
+        }
+
         Ok(())
     }
 
@@ -418,6 +424,7 @@ impl DashInterface<AppState> for DashInterfaceLive {
     }
 
     fn config_changed(&mut self, data: &mut AppState) {
+        data.session.config_dirty = true;
         data.tasks
             .enqueue(TaskType::Overlay(OverlayTask::SettingsChanged));
     }

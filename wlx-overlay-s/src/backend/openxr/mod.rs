@@ -21,7 +21,7 @@ use crate::{
         openxr::{lines::LinePool, overlay::OpenXrOverlayData},
         task::{OverlayTask, TaskType},
     },
-    config::save_state,
+    config::{save_settings, save_state},
     graphics::{GpuFutures, init_openxr_graphics},
     overlays::{
         toast::Toast,
@@ -512,6 +512,10 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
     overlays.persist_layout(&mut app);
     if let Err(e) = save_state(&app.session.config) {
         log::error!("Could not save state: {e:?}");
+    }
+    if app.session.config_dirty {
+        save_settings(&app.session.config)?;
+        app.session.config_dirty = false;
     }
 
     Ok(())
