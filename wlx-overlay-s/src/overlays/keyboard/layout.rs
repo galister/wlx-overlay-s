@@ -118,7 +118,9 @@ impl Layout {
                             _ => label.push(format!("{vk:?}").to_lowercase()),
                         }
                     }
-                    KeyType::Other => {}
+                    KeyType::Other => {
+                        cap_type = KeyCapType::Other;
+                    }
                 }
             }
 
@@ -258,4 +260,6 @@ pub enum KeyCapType {
     /// Shift symbol on top-left
     /// AltGr symbol on bottom-right
     SymbolAltGr,
+    /// Label has text in the center, e.g. Home
+    Other,
 }

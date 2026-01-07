@@ -24,7 +24,7 @@
   <template name="KeySpecial">
     <div macro="keycap_div">
       <rectangle id="${id}" macro="keycap_rect">
-        <sprite color="~color_text" width="21" height="21" src="keyboard/${text}.svg" />
+        <sprite color="~color_text" width="24" height="24" src="keyboard/${text}.svg" />
       </rectangle>
     </div>
   </template>
@@ -34,7 +34,7 @@
   <template name="KeyLetter">
     <div macro="keycap_div">
       <rectangle id="${id}" macro="keycap_rect">
-        <label text="${text}" size="16" />
+        <label text="${text}" size="18" />
       </rectangle>
     </div>
   </template>
@@ -44,8 +44,8 @@
   <template name="KeyLetterAltGr">
     <div macro="keycap_div">
       <rectangle id="${id}" macro="keycap_rect" gap="3">
-        <label text="${text}" size="16" />
-        <label color="~color_text_translucent" text="${text_altgr}" size="16" />
+        <label text="${text}" size="18" />
+        <label color="~color_text_translucent" text="${text_altgr}" size="18" />
       </rectangle>
     </div>
   </template>
@@ -55,8 +55,8 @@
   <template name="KeySymbol">
     <div macro="keycap_div">
       <rectangle id="${id}" macro="keycap_rect" gap="3">
-        <label color="~color_text_translucent" text="${text_shift}" size="16" />
-        <label text="${text}" size="16" />
+        <label color="~color_text_translucent" text="${text_shift}" size="1" />
+        <label text="${text}" size="18" />
       </rectangle>
     </div>
   </template>
@@ -65,17 +65,27 @@
   <!-- Used for number & symbol keys on layouts with AltGr. -->
   <template name="KeySymbolAltGr">
     <div macro="keycap_div">
-      <rectangle id="${id}" macro="keycap_rect" flex_direction="row" flex_wrap="wrap">
+      <rectangle id="${id}" macro="keycap_rect" flex_direction="row" flex_wrap="wrap" padding="4">
         <div width="50%" height="50%" align_items="center" justify_content="center">
-          <label color="~color_text_translucent" text="${text_shift}" size="16" />
+          <label color="~color_text_translucent" text="${text_shift}" size="18" />
         </div>
         <div width="50%" height="50%" align_items="center" justify_content="center" />
         <div width="50%" height="50%" align_items="center" justify_content="center">
-          <label text="${text}" size="16" />
+          <label text="${text}" size="18" />
         </div>
         <div width="50%" height="50%" align_items="center" justify_content="center">
-          <label color="~color_text_translucent" text="${text_altgr}" size="16" />
+          <label color="~color_text_translucent" text="${text_altgr}" size="18" />
         </div>
+      </rectangle>
+    </div>
+  </template>
+
+  <!-- Key cap with a single text line in the middle -->
+  <!-- Used for keys, such as Home, PageUp, etc. -->
+  <template name="KeyOther">
+    <div macro="keycap_div">
+      <rectangle id="${id}" macro="keycap_rect">
+        <label text="${text}" size="16" />
       </rectangle>
     </div>
   </template>
