@@ -222,7 +222,6 @@ pub(super) fn setup_custom_button<S: 'static>(
                         template_params.insert(attrib[PREFIX.len()..].into(), value.clone());
                     }
                 }
-                log::warn!("Context params: {template_params:?}");
 
                 let template_name: Rc<str> = template_name.into();
                 let context_menu = context_menu.clone();
@@ -332,8 +331,6 @@ pub(super) fn setup_custom_button<S: 'static>(
                     log::error!("{command} has missing arguments");
                     return;
                 };
-
-                log::warn!("{command} {arg}");
 
                 Box::new(move |_common, data, app, _| {
                     if !test_button(data) || !test_duration(&button, app) {

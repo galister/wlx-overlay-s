@@ -88,10 +88,10 @@
   <blueprint name="menu_app">
     <context_menu >
       <!-- title text="${name}" /-->
-      <cell translation="BAR.TOGGLE_VISIBILITY" _release="::OverlayToggle ${name}" />
-      <cell translation="BAR.RESET_POSITION" _release="::OverlayReset ${name}" />
-      <cell translation="BAR.CLOSE_APP" _release="::WvrOverlayTermProcess ${name}" />
-      <cell translation="BAR.FORCE_CLOSE_APP" _release="::WvrOverlayKillProcess ${name}" />
+      <cell translation="BAR.TOGGLE_VISIBILITY" _press="::OverlayToggle ${name}" />
+      <cell translation="BAR.RESET_POSITION" _press="::OverlayReset ${name}" />
+      <cell translation="BAR.CLOSE_APP" _press="::WvrOverlayTermProcess ${name}" />
+      <cell translation="BAR.FORCE_CLOSE_APP" _press="::WvrOverlayKillProcess ${name}" />
     </context_menu>
   </blueprint>
 
@@ -123,9 +123,9 @@
   <blueprint name="menu_panel">
     <context_menu >
       <!-- title text="${name}" /-->
-      <cell translation="BAR.TOGGLE_VISIBILITY" _release="::OverlayToggle ${name}" />
-      <cell translation="BAR.RESET_POSITION" _release="::OverlayReset ${name}" />
-      <cell translation="BAR.RELOAD_FROM_DISK" _release="::CustomOverlayReload ${name}" />
+      <cell translation="BAR.TOGGLE_VISIBILITY" _press="::OverlayToggle ${name}" />
+      <cell translation="BAR.RESET_POSITION" _press="::OverlayReset ${name}" />
+      <cell translation="BAR.RELOAD_FROM_DISK" _press="::CustomOverlayReload ${name}" />
     </context_menu>
   </blueprint>
 
@@ -138,9 +138,9 @@
   <blueprint name="menu_mirror">
     <context_menu >
       <!-- title text="${name}" /-->
-      <cell translation="BAR.TOGGLE_VISIBILITY" _release="::OverlayToggle ${name}" />
-      <cell translation="BAR.RESET_POSITION" _release="::OverlayReset ${name}" />
-      <cell translation="BAR.CLOSE_MIRROR" _release="::OverlayDrop ${name}" />
+      <cell translation="BAR.TOGGLE_VISIBILITY" _press="::OverlayToggle ${name}" />
+      <cell translation="BAR.RESET_POSITION" _press="::OverlayReset ${name}" />
+      <cell translation="BAR.CLOSE_MIRROR" _press="::OverlayDrop ${name}" />
     </context_menu>
   </blueprint>
 
