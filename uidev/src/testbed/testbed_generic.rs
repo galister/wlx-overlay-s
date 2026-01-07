@@ -8,9 +8,9 @@ use glam::Vec2;
 use wgui::{
 	assets::AssetPath,
 	components::{
-		Component,
 		button::{ButtonClickCallback, ComponentButton},
 		checkbox::ComponentCheckbox,
+		Component,
 	},
 	drawing::Color,
 	event::StyleSetRequest,
@@ -35,15 +35,13 @@ pub enum TestbedTask {
 }
 
 struct Data {
-	#[allow(dead_code)]
-	state: ParserState,
-
 	popup_window: WguiWindow,
 	context_menu: context_menu::ContextMenu,
 }
 
 pub struct TestbedGeneric {
 	pub layout: Layout,
+	pub parser_state: ParserState,
 	tasks: Tasks<TestbedTask>,
 
 	globals: WguiGlobals,
@@ -122,15 +120,15 @@ impl TestbedGeneric {
 			dev_mode: false,
 		};
 
-		let (layout, state) = wgui::parser::new_layout_from_assets(
+		let (layout, parser_state) = wgui::parser::new_layout_from_assets(
 			&TestbedGeneric::doc_params(&globals, extra),
 			&LayoutParams {
 				resize_to_parent: true,
 			},
 		)?;
 
-		let cb_visible = state.fetch_component_as::<ComponentCheckbox>("cb_visible")?;
-		let div_visibility = state.fetch_widget(&layout.state, "div_visibility")?;
+		let cb_visible = parser_state.fetch_component_as::<ComponentCheckbox>("cb_visible")?;
+		let div_visibility = parser_state.fetch_widget(&layout.state, "div_visibility")?;
 
 		cb_visible.on_toggle(Box::new(move |common, evt| {
 			common.alterables.set_style(
@@ -144,20 +142,21 @@ impl TestbedGeneric {
 			Ok(())
 		}));
 
-		let label_cur_option = state.fetch_widget(&layout.state, "label_current_option")?;
+		let label_cur_option = parser_state.fetch_widget(&layout.state, "label_current_option")?;
 
-		let button_context_menu = state.fetch_component_as::<ComponentButton>("button_context_menu")?;
-		let button_click_me = state.fetch_component_as::<ComponentButton>("button_click_me")?;
+		let button_context_menu =
+			parser_state.fetch_component_as::<ComponentButton>("button_context_menu")?;
+		let button_click_me = parser_state.fetch_component_as::<ComponentButton>("button_click_me")?;
 		let button = button_click_me.clone();
 		button_click_me.on_click(Box::new(move |common, _e| {
 			button.set_text(common, Translation::from_raw_text("congrats!"));
 			Ok(())
 		}));
 
-		let button_popup = state.fetch_component_as::<ComponentButton>("button_popup")?;
-		let button_red = state.fetch_component_as::<ComponentButton>("button_red")?;
-		let button_aqua = state.fetch_component_as::<ComponentButton>("button_aqua")?;
-		let button_yellow = state.fetch_component_as::<ComponentButton>("button_yellow")?;
+		let button_popup = parser_state.fetch_component_as::<ComponentButton>("button_popup")?;
+		let button_red = parser_state.fetch_component_as::<ComponentButton>("button_red")?;
+		let button_aqua = parser_state.fetch_component_as::<ComponentButton>("button_aqua")?;
+		let button_yellow = parser_state.fetch_component_as::<ComponentButton>("button_yellow")?;
 
 		handle_button_click(button_red, label_cur_option.widget.clone(), "Clicked red");
 		handle_button_click(button_aqua, label_cur_option.widget.clone(), "Clicked aqua");
@@ -167,7 +166,7 @@ impl TestbedGeneric {
 			"Clicked yellow",
 		);
 
-		let cb_first = state.fetch_component_as::<ComponentCheckbox>("cb_first")?;
+		let cb_first = parser_state.fetch_component_as::<ComponentCheckbox>("cb_first")?;
 		let label = label_cur_option.widget.clone();
 		cb_first.on_toggle(Box::new(move |common, e| {
 			let mut widget = label.get_as::<WidgetLabel>().unwrap();
@@ -178,10 +177,10 @@ impl TestbedGeneric {
 
 		let testbed = Self {
 			layout,
+			parser_state,
 			tasks: Default::default(),
 			globals: globals.clone(),
 			data: Rc::new(RefCell::new(Data {
-				state,
 				popup_window: WguiWindow::default(),
 				context_menu: context_menu::ContextMenu::default(),
 			})),
@@ -214,7 +213,7 @@ impl TestbedGeneric {
 	) -> anyhow::Result<()> {
 		match task {
 			TestbedTask::ShowPopup => self.show_popup(params, data)?,
-			TestbedTask::ShowContextMenu(position) => self.show_context_menu(params, data, *position)?,
+			TestbedTask::ShowContextMenu(position) => self.show_context_menu(params, data, *position),
 		}
 
 		Ok(())
@@ -255,18 +254,15 @@ impl TestbedGeneric {
 		_params: &mut TestbedUpdateParams,
 		data: &mut Data,
 		position: Vec2,
-	) -> anyhow::Result<()> {
-		data.state.instantiate_context_menu(
-			Some(Rc::new(move |custom_attribs| {
+	) {
+		data.context_menu.open(context_menu::OpenParams {
+			on_custom_attribs: Some(Rc::new(move |custom_attribs| {
 				log::info!("custom attribs {:?}", custom_attribs.pairs);
 			})),
-			"my_context_menu",
-			Default::default(),
-			&mut data.context_menu,
+			template_name: "my_context_menu".into(),
+			template_params: Default::default(),
 			position,
-		)?;
-
-		Ok(())
+		});
 	}
 }
 
@@ -286,7 +282,9 @@ impl Testbed for TestbedGeneric {
 			self.process_task(&task, &mut params, &mut data)?;
 		}
 
-		let res = data.context_menu.tick(&mut self.layout)?;
+		let res = data
+			.context_menu
+			.tick(&mut self.layout, &mut self.parser_state)?;
 		if let Some(action_name) = res.action_name {
 			log::info!("got action: {}", action_name);
 		}

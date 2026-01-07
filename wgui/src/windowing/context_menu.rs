@@ -1,7 +1,4 @@
-use std::{
-	collections::{HashMap, HashSet},
-	rc::Rc,
-};
+use std::{collections::HashMap, rc::Rc};
 
 use glam::Vec2;
 
@@ -11,7 +8,7 @@ use crate::{
 	globals::WguiGlobals,
 	i18n::Translation,
 	layout::Layout,
-	parser::{self, Fetchable},
+	parser::{self, Fetchable, ParserState},
 	task::Tasks,
 	windowing::window::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra},
 };
@@ -22,10 +19,16 @@ pub struct Cell {
 	pub attribs: Vec<parser::AttribPair>,
 }
 
-pub struct OpenParams {
+pub(crate) struct Blueprint {
 	pub position: Vec2,
 	pub cells: Vec<Cell>,
+}
+
+pub struct OpenParams {
 	pub on_custom_attribs: Option<parser::OnCustomAttribsFunc>,
+	pub template_name: Rc<str>,
+	pub template_params: HashMap<Rc<str>, Rc<str>>,
+	pub position: Vec2,
 }
 
 #[derive(Clone)]
@@ -40,11 +43,17 @@ pub struct ContextMenu {
 	tasks: Tasks<Task>,
 }
 
-fn doc_params<'a>(globals: &WguiGlobals) -> parser::ParseDocumentParams<'a> {
+fn doc_params<'a>(
+	globals: &WguiGlobals,
+	on_custom_attribs: Option<parser::OnCustomAttribsFunc>,
+) -> parser::ParseDocumentParams<'a> {
 	parser::ParseDocumentParams {
 		globals: globals.clone(),
 		path: AssetPath::WguiInternal("wgui/context_menu.xml"),
-		extra: Default::default(),
+		extra: parser::ParseDocumentExtra {
+			on_custom_attribs,
+			..Default::default()
+		},
 	}
 }
 
@@ -62,7 +71,15 @@ impl ContextMenu {
 		self.window.close();
 	}
 
-	fn open_process(&mut self, params: &mut OpenParams, layout: &mut Layout) -> anyhow::Result<()> {
+	fn open_process(
+		&mut self,
+		params: &mut OpenParams,
+		layout: &mut Layout,
+		parser_state: &mut ParserState,
+	) -> anyhow::Result<()> {
+		let blueprint =
+			parser_state.context_menu_create_blueprint(&params.template_name, &params.template_params, params.position)?;
+
 		let globals = layout.state.globals.clone();
 
 		self.window.open(&mut WguiWindowParams {
@@ -77,15 +94,16 @@ impl ContextMenu {
 		})?;
 
 		let content = self.window.get_content();
+		let doc_params = doc_params(&globals, params.on_custom_attribs.clone());
 
-		let mut state = parser::parse_from_assets(&doc_params(&globals), layout, content.id)?;
+		let mut state = parser::parse_from_assets(&doc_params, layout, content.id)?;
 
 		let id_buttons = state.get_widget_id("buttons")?;
 
-		for (idx, cell) in params.cells.iter().enumerate() {
+		for (idx, cell) in blueprint.cells.iter().enumerate() {
 			let mut par = HashMap::new();
 			par.insert(Rc::from("text"), cell.title.generate(&mut globals.i18n()));
-			let data_cell = state.parse_template(&doc_params(&globals), "Cell", layout, id_buttons, par)?;
+			let data_cell = state.parse_template(&doc_params, "Cell", layout, id_buttons, par)?;
 
 			let button = data_cell.fetch_component_as::<ComponentButton>("button")?;
 			let button_id = button.base().get_id();
@@ -102,23 +120,16 @@ impl ContextMenu {
 				});
 			}
 
-			if idx < params.cells.len() - 1 {
-				state.parse_template(
-					&doc_params(&globals),
-					"Separator",
-					layout,
-					id_buttons,
-					Default::default(),
-				)?;
+			if idx < blueprint.cells.len() - 1 {
+				state.parse_template(&doc_params, "Separator", layout, id_buttons, Default::default())?;
 			}
 		}
-
 		Ok(())
 	}
 
-	pub fn tick(&mut self, layout: &mut Layout) -> anyhow::Result<TickResult> {
+	pub fn tick(&mut self, layout: &mut Layout, parser_state: &mut ParserState) -> anyhow::Result<TickResult> {
 		if let Some(mut p) = self.pending_open.take() {
-			self.open_process(&mut p, layout)?;
+			self.open_process(&mut p, layout, parser_state)?;
 		}
 
 		let mut result = TickResult::default();

@@ -260,14 +260,12 @@ impl ParserState {
 		Ok(())
 	}
 
-	pub fn instantiate_context_menu(
+	pub(crate) fn context_menu_create_blueprint(
 		&mut self,
-		on_custom_attribs: Option<OnCustomAttribsFunc>,
 		template_name: &str,
-		template_params: HashMap<Rc<str>, Rc<str>>,
-		context_menu: &mut context_menu::ContextMenu,
+		template_params: &HashMap<Rc<str>, Rc<str>>,
 		position: Vec2,
-	) -> anyhow::Result<()> {
+	) -> anyhow::Result<context_menu::Blueprint> {
 		let Some(template) = self.data.templates.get(template_name) else {
 			anyhow::bail!("no template named \"{template_name}\" found");
 		};
@@ -319,13 +317,12 @@ impl ParserState {
 			}
 		}
 
-		context_menu.open(context_menu::OpenParams {
-			cells,
-			on_custom_attribs,
-			position,
-		});
-
-		Ok(())
+		Ok(
+			context_menu::Blueprint {
+				cells,
+				position,
+			}
+		)
 	}
 }
 
