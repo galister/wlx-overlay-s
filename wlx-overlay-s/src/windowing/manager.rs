@@ -235,16 +235,7 @@ where
             }
             OverlayTask::AddSet => {
                 self.sets.push(OverlayWindowSet::default());
-                let len = self.sets.len();
-                for id in [self.watch_id, self.keyboard_id] {
-                    if let Some(o) = self.mut_by_id(id) {
-                        let _ = o
-                            .config
-                            .backend
-                            .notify(app, OverlayEventData::NumSetsChanged(len))
-                            .log_err("Could not notify NumSetsChanged");
-                    }
-                }
+                self.sets_changed(app);
             }
             OverlayTask::DeleteActiveSet => {
                 let Some(set) = self.current_set else {
@@ -273,16 +264,7 @@ where
 
                 self.switch_to_set(app, None, false);
                 self.sets.remove(set);
-                let len = self.sets.len();
-                for id in [self.watch_id, self.keyboard_id] {
-                    if let Some(o) = self.mut_by_id(id) {
-                        let _ = o
-                            .config
-                            .backend
-                            .notify(app, OverlayEventData::NumSetsChanged(len))
-                            .log_err("Could not notify NumSetsChanged");
-                    }
-                }
+                self.sets_changed(app);
             }
             OverlayTask::SettingsChanged => {
                 for o in self.overlays.values_mut() {
@@ -292,6 +274,10 @@ where
                         .notify(app, OverlayEventData::SettingsChanged)
                         .log_err("Could not notify SettingsChanged");
                 }
+            }
+            OverlayTask::KeyboardChanged => {
+                self.overlays_changed(app)?;
+                self.sets_changed(app);
             }
             OverlayTask::CleanupMirrors => {
                 let mut ids_to_remove = vec![];
@@ -879,6 +865,19 @@ impl<T> OverlayWindowManager<T> {
         }
 
         Ok(())
+    }
+
+    fn sets_changed(&mut self, app: &mut AppState) {
+        let len = self.sets.len();
+        for id in [self.watch_id, self.keyboard_id] {
+            if let Some(o) = self.mut_by_id(id) {
+                let _ = o
+                    .config
+                    .backend
+                    .notify(app, OverlayEventData::NumSetsChanged(len))
+                    .log_err("Could not notify NumSetsChanged");
+            }
+        }
     }
 
     pub fn devices_changed(&mut self, app: &mut AppState) -> anyhow::Result<()> {

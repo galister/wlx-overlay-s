@@ -7,7 +7,10 @@ use std::{
 
 use crate::{
     KEYMAP_CHANGE,
-    backend::input::{HoverResult, PointerHit},
+    backend::{
+        input::{HoverResult, PointerHit},
+        task::{OverlayTask, TaskType},
+    },
     gui::panel::{GuiPanel, overlay_list::OverlayList, set_list::SetList},
     overlays::keyboard::{builder::create_keyboard_panel, layout::AltModifier},
     state::AppState,
@@ -170,6 +173,8 @@ impl KeyboardBackend {
             let new_key = self.add_new_keymap(Some(keymap), app)?;
             self.internal_switch_keymap(new_key);
         }
+        app.tasks
+            .enqueue(TaskType::Overlay(OverlayTask::KeyboardChanged));
         Ok(true)
     }
 
@@ -329,8 +334,8 @@ impl KeyboardState {
             modifiers: self.modifiers,
             alt_modifier: self.alt_modifier,
             processes: take_and_leave_default!(&mut self.processes),
-            overlay_list: take_and_leave_default!(&mut self.overlay_list),
-            set_list: take_and_leave_default!(&mut self.set_list),
+            overlay_list: OverlayList::default(),
+            set_list: SetList::default(),
         }
     }
 }

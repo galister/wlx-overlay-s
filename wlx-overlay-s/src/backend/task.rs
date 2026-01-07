@@ -96,6 +96,7 @@ pub enum OverlayTask {
     ShowHide,
     CleanupMirrors,
     SettingsChanged,
+    KeyboardChanged,
     Modify(OverlaySelector, Box<ModifyOverlayTask>),
     Create(OverlaySelector, Box<CreateOverlayTask>),
     ModifyPanel(ModifyPanelTask),

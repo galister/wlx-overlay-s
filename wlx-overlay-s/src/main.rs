@@ -33,7 +33,6 @@ mod windowing;
 mod config_wayvr;
 
 use std::{
-    os::unix::process::CommandExt,
     path::PathBuf,
     process::Command,
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
