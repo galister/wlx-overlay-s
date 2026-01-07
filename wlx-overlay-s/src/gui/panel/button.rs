@@ -467,7 +467,7 @@ pub(super) fn setup_custom_button<S: 'static>(
                     return;
                 };
 
-                let signal = if command == "::OverlayKillProcess" {
+                let signal = if command == "::WvrOverlayKillProcess" {
                     KillSignal::Kill
                 } else {
                     KillSignal::Term
