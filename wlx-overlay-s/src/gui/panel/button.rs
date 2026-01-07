@@ -423,7 +423,14 @@ pub(super) fn setup_custom_button<S: 'static>(
                             )));
                             app.tasks.enqueue(TaskType::Overlay(OverlayTask::Create(
                                 OverlaySelector::Name(owc.name.clone()),
-                                Box::new(move |app| create_custom(app, name)),
+                                Box::new(move |app| {
+                                    if let Some(mut owc) = create_custom(app, name) {
+                                        owc.show_on_spawn = true;
+                                        Some(owc)
+                                    } else {
+                                        None
+                                    }
+                                }),
                             )));
                         }),
                     )));

@@ -107,7 +107,7 @@
 
   <!-- An app with a single icon. -->
   <template name="App">
-    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _press="::ContextMenuOpen menu_app">  
+    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press="::ContextMenuOpen menu_app">  
       <sprite width="38" height="38" color="~text_color" src_ext="${icon}" />
     </Button>
   </template>
@@ -140,7 +140,7 @@
   </blueprint>
 
   <template name="Panel">
-    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _press="::ContextMenuOpen menu_panel">
+    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press="::ContextMenuOpen menu_panel">
       <sprite width="38" height="38" color="~text_color" src_builtin="edit/panel.svg" />
     </Button>
   </template>
@@ -155,7 +155,7 @@
   </blueprint>
 
   <template name="Mirror">
-    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _press="::ContextMenuOpen menu_mirror">
+    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press="::ContextMenuOpen menu_mirror">
       <sprite width="38" height="38" color="~text_color" src_builtin="edit/mirror.svg" />
       <div position="absolute" margin_top="5" margin_left="13">
         <label text="${display}" size="20" color="~color_faded_20" weight="bold" />
