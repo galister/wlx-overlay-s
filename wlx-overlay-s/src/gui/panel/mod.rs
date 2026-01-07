@@ -36,6 +36,8 @@ use super::timer::GuiTimer;
 
 pub mod button;
 mod label;
+pub mod overlay_list;
+pub mod set_list;
 
 const DEFAULT_MAX_SIZE: f32 = 2048.0;
 

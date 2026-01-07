@@ -2,14 +2,13 @@ use std::{
     cell::Cell,
     collections::HashMap,
     process::{Child, Command},
-    rc::Rc,
     sync::atomic::Ordering,
 };
 
 use crate::{
     KEYMAP_CHANGE,
     backend::input::{HoverResult, PointerHit},
-    gui::panel::GuiPanel,
+    gui::panel::{GuiPanel, overlay_list::OverlayList, set_list::SetList},
     overlays::keyboard::{builder::create_keyboard_panel, layout::AltModifier},
     state::AppState,
     subsystem::{
@@ -20,19 +19,15 @@ use crate::{
         },
     },
     windowing::{
-        OverlayID,
-        backend::{
-            FrameMeta, OverlayBackend, OverlayEventData, OverlayMeta, RenderResources, ShouldRender,
-        },
+        backend::{FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender},
         window::{OverlayCategory, OverlayWindowConfig},
     },
 };
 use anyhow::Context;
 use glam::{Affine3A, Quat, Vec3, vec3};
 use regex::Regex;
-use slotmap::{SecondaryMap, SlotMap, new_key_type};
+use slotmap::{SlotMap, new_key_type};
 use wgui::{
-    components::button::ComponentButton,
     drawing,
     event::{InternalStateChangeEvent, MouseButton, MouseButtonIndex},
 };
@@ -59,10 +54,8 @@ pub fn create_keyboard(app: &mut AppState, wayland: bool) -> anyhow::Result<Over
             _ => 0,
         },
         processes: vec![],
-        set_buttons: vec![],
-        overlay_buttons: SecondaryMap::new(),
-        overlay_metas: SecondaryMap::new(),
-        current_set: None,
+        overlay_list: OverlayList::default(),
+        set_list: SetList::default(),
     };
 
     let auto_labels = layout.auto_labels.unwrap_or(true);
@@ -318,10 +311,16 @@ struct KeyboardState {
     modifiers: KeyModifier,
     alt_modifier: KeyModifier,
     processes: Vec<Child>,
-    set_buttons: Vec<Rc<ComponentButton>>,
-    overlay_buttons: SecondaryMap<OverlayID, Rc<ComponentButton>>,
-    overlay_metas: SecondaryMap<OverlayID, OverlayMeta>,
-    current_set: Option<usize>,
+    overlay_list: OverlayList,
+    set_list: SetList,
+}
+
+macro_rules! take_and_leave_default {
+    ($what:expr) => {{
+        let mut x = Default::default();
+        std::mem::swap(&mut x, $what);
+        x
+    }};
 }
 
 impl KeyboardState {
@@ -329,27 +328,9 @@ impl KeyboardState {
         Self {
             modifiers: self.modifiers,
             alt_modifier: self.alt_modifier,
-            processes: {
-                let mut processes = vec![];
-                std::mem::swap(&mut processes, &mut self.processes);
-                processes
-            },
-            set_buttons: {
-                let mut set_buttons = vec![];
-                std::mem::swap(&mut set_buttons, &mut self.set_buttons);
-                set_buttons
-            },
-            overlay_buttons: {
-                let mut overlay_buttons = SecondaryMap::new();
-                std::mem::swap(&mut overlay_buttons, &mut self.overlay_buttons);
-                overlay_buttons
-            },
-            overlay_metas: {
-                let mut overlay_metas = SecondaryMap::new();
-                std::mem::swap(&mut overlay_metas, &mut self.overlay_metas);
-                overlay_metas
-            },
-            current_set: self.current_set.take(),
+            processes: take_and_leave_default!(&mut self.processes),
+            overlay_list: take_and_leave_default!(&mut self.overlay_list),
+            set_list: take_and_leave_default!(&mut self.set_list),
         }
     }
 }

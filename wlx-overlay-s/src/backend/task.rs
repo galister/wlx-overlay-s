@@ -8,7 +8,7 @@ use std::{
 use serde::Deserialize;
 
 use crate::{
-    backend::{input, wayvr::process::KillSignal},
+    backend::input,
     state::AppState,
     windowing::{OverlaySelector, window::OverlayWindowConfig},
 };
