@@ -18,7 +18,6 @@ use vulkano::{
 	sync::GpuFuture,
 };
 use wgui::{
-	assets::AssetProvider,
 	event::{MouseButtonIndex, MouseDownEvent, MouseMotionEvent, MouseUpEvent, MouseWheelEvent},
 	gfx::{WGfx, cmd::WGfxClearMode},
 	renderer_vk::{self},

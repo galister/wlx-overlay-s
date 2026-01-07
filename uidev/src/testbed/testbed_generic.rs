@@ -261,7 +261,7 @@ impl TestbedGeneric {
 				log::info!("custom attribs {:?}", custom_attribs.pairs);
 			})),
 			"my_context_menu",
-			&mut self.layout,
+			Default::default(),
 			&mut data.context_menu,
 			position,
 		)?;

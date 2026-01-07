@@ -264,7 +264,7 @@ impl ParserState {
 		&mut self,
 		on_custom_attribs: Option<OnCustomAttribsFunc>,
 		template_name: &str,
-		layout: &mut Layout,
+		template_params: HashMap<Rc<str>, Rc<str>>,
 		context_menu: &mut context_menu::ContextMenu,
 		position: Vec2,
 	) -> anyhow::Result<()> {
@@ -292,6 +292,7 @@ impl ParserState {
 
 					for attrib in child.attributes() {
 						let (key, value) = (attrib.name(), attrib.value());
+						
 						match key {
 							"text" => title = Some(Translation::from_raw_text(value)),
 							"translation" => title = Some(Translation::from_translation_key(value)),
@@ -300,7 +301,7 @@ impl ParserState {
 								if !other.starts_with('_') {
 									anyhow::bail!("unexpected \"{other}\" attribute");
 								}
-								attribs.push(AttribPair::new(key, value));
+								attribs.push(AttribPair::new(key, replace_vars(value, &template_params)));
 							}
 						}
 					}
@@ -319,7 +320,7 @@ impl ParserState {
 		}
 
 		context_menu.open(context_menu::OpenParams {
-			data: context_menu::Blueprint { cells },
+			cells,
 			on_custom_attribs,
 			position,
 		});

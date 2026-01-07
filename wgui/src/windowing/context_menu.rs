@@ -1,10 +1,13 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{
+	collections::{HashMap, HashSet},
+	rc::Rc,
+};
 
 use glam::Vec2;
 
 use crate::{
 	assets::AssetPath,
-	components::{ComponentTrait, button::ComponentButton},
+	components::{button::ComponentButton, ComponentTrait},
 	globals::WguiGlobals,
 	i18n::Translation,
 	layout::Layout,
@@ -19,13 +22,9 @@ pub struct Cell {
 	pub attribs: Vec<parser::AttribPair>,
 }
 
-pub struct Blueprint {
-	pub cells: Vec<Cell>,
-}
-
 pub struct OpenParams {
 	pub position: Vec2,
-	pub data: Blueprint,
+	pub cells: Vec<Cell>,
 	pub on_custom_attribs: Option<parser::OnCustomAttribsFunc>,
 }
 
@@ -83,7 +82,7 @@ impl ContextMenu {
 
 		let id_buttons = state.get_widget_id("buttons")?;
 
-		for (idx, cell) in params.data.cells.iter().enumerate() {
+		for (idx, cell) in params.cells.iter().enumerate() {
 			let mut par = HashMap::new();
 			par.insert(Rc::from("text"), cell.title.generate(&mut globals.i18n()));
 			let data_cell = state.parse_template(&doc_params(&globals), "Cell", layout, id_buttons, par)?;
@@ -103,7 +102,7 @@ impl ContextMenu {
 				});
 			}
 
-			if idx < params.data.cells.len() - 1 {
+			if idx < params.cells.len() - 1 {
 				state.parse_template(
 					&doc_params(&globals),
 					"Separator",
