@@ -2,9 +2,10 @@
   "ANCHOR": {
     "CENTER": "Zentrum"
   },
+	"BAR": {
+    "ADD_MIRROR": "Neuen Spiegel-Overlay hinzufügen"
+  },
   "WATCH": {
-    "MIRROR": "Neuen Spiegel-Overlay hinzufügen",
-    "CLEANUP_MIRRORS": "Spiegel entfernen,\ndie derzeit nicht sichtbar sind",
     "RECENTER": "Spielbereich neu zentrieren",
     "FIX_FLOOR": "Bodenhöhe korrigieren",
     "EDIT_MODE_EXPLANATION": "Overlays können nun einzeln verschoben und angepasst werden.\nOverlays für den aktuellen Satz umschalten:",

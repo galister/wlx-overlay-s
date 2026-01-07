@@ -2,9 +2,10 @@
   "ANCHOR": {
     "CENTER": "Centrum"
   },
+	"BAR": {
+    "ADD_MIRROR": "Dodaj nowy widok lustrzany"
+  },
   "WATCH": {
-    "MIRROR": "Dodaj nowy widok lustrzany",
-    "CLEANUP_MIRRORS": "Usuń widoki lustrzane, które\nnie są obecnie widoczne",
     "RECENTER": "Wyśrodkuj przestrzeń gry",
     "FIX_FLOOR": "Napraw wysokość podłogi",
     "EDIT_MODE_EXPLANATION": "Nakładki można teraz przesuwać i dostosowywać indywidualnie.\nPrzełącz nakładki dla bieżącego zestawu:",

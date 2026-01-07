@@ -2,9 +2,10 @@
   "ANCHOR": {
     "CENTER": "Centro"
   },
+  "BAR": {
+    "ADD_MIRROR": "Agregar una nueva superposición de espejo"
+  },
   "WATCH": {
-    "MIRROR": "Agregar una nueva superposición de espejo",
-    "CLEANUP_MIRRORS": "Eliminar espejos que no están actualmente visibles",
     "RECENTER": "Recentrar el área de juego",
     "FIX_FLOOR": "Ajustar la altura del piso",
     "EDIT_MODE_EXPLANATION": "Ahora las superposiciones se pueden mover y ajustar individualmente.\nAlternar superposiciones para el conjunto actual:",

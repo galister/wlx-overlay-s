@@ -3,6 +3,10 @@
 		"CENTER": "Center"
 	},
 	"BAR": {
+		"ADD_MIRROR": "Add a new mirror overlay",
+		"EDIT_MODE_TOGGLE": "Toggle edit mode",
+		"ADD_NEW_SET": "Add new set",
+		"DELETE_CURRENT_SET": "Delete current set",
 		"TOGGLE_VISIBILITY": "Toggle visibility",
 		"RESET_POSITION": "Reset position",
 		"RELOAD_FROM_DISK": "Reload XML from disk",
@@ -12,12 +16,6 @@
 	},
 	"DEFAULT": "Default",
 	"DISABLED": "Disabled",
-	"OVERLAY_TOOLTIP": {
-		"SCREEN": "Screen {}",
-		"MIRROR": "Mirror {}",
-		"PANEL": "Panel {}",
-		"APP": "{}"
-	},
 	"EDIT_MODE": {
 		"ADJUST_CURVATURE": "Adjust curvature",
 		"ALPHA_BLEND_MODE": "Alpha blend mode",
@@ -75,6 +73,8 @@
 	"TOAST": {
 		"DEFAULT_TITLE": "Notification",
 		"ERROR": "Error",
+		"CANNOT_ADD_SET": "Cannot add set!",
+		"MAXIMUM_SETS_REACHED": "Maximum number of sets reached.",
 		"CANNOT_REMOVE_SET": "Cannot remove set!",
 		"NO_SET_SELECTED": "No set is selected.",
 		"LAST_EXISTING_SET": "This is the last existing set.",
@@ -91,7 +91,6 @@
 		"EDIT_MODE_EXPLANATION": "Overlays can now be moved and tuned individually.\nControl which overlays are visible on this set:",
 		"FIX_FLOOR": "Fix floor level",
 		"LONG_PRESS_TO_DELETE_SET": "Hold to delete",
-		"MIRROR": "Add a new mirror overlay",
 		"RECENTER": "Recenter playspace",
 		"SWITCH_TO_SET": "Switch to set",
 		"TOGGLE_FOR_CURRENT_SET": "Toggle for current set"

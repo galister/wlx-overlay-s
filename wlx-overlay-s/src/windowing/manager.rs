@@ -234,8 +234,23 @@ where
                 }
             }
             OverlayTask::AddSet => {
+                let new_idx = self.sets.len();
+                if new_idx >= MAX_OVERLAY_SETS {
+                    Toast::new(
+                        ToastTopic::System,
+                        "TOAST.CANNOT_ADD_SET".into(),
+                        "TOAST.MAXIMUM_SETS_REACHED".into(),
+                    )
+                    .with_timeout(5.)
+                    .with_sound(true)
+                    .submit(app);
+                    return Ok(());
+                }
                 self.sets.push(OverlayWindowSet::default());
+                self.switch_to_set(app, Some(new_idx), false);
+                self.overlays[self.keyboard_id].config.activate(app);
                 self.sets_changed(app);
+                self.visible_overlays_changed(app)?;
             }
             OverlayTask::DeleteActiveSet => {
                 let Some(set) = self.current_set else {
@@ -264,6 +279,7 @@ where
 
                 self.switch_to_set(app, None, false);
                 self.sets.remove(set);
+                self.restore_set = 0;
                 self.sets_changed(app);
             }
             OverlayTask::SettingsChanged => {

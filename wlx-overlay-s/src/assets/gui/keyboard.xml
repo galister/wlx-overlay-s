@@ -163,6 +163,15 @@
     </Button>
   </template>
 
+  <blueprint name="menu_burger">
+    <context_menu >
+      <cell translation="BAR.ADD_MIRROR" _press="::NewMirror" />
+      <cell translation="BAR.EDIT_MODE_TOGGLE" _press="::EditToggle" />
+      <cell translation="BAR.ADD_NEW_SET" _press="::AddSet" />
+      <cell translation="BAR.DELETE_CURRENT_SET" _press="::DeleteSet" />
+    </context_menu>
+  </blueprint>
+
   <template name="Set">
     <Button macro="button_style" id="set_${idx}" _press="::SetSwitch ${idx}" tooltip="WATCH.SWITCH_TO_SET" tooltip_side="bottom">
       <sprite width="38" height="38" color="~text_color" src_builtin="watch/set2.svg" />
@@ -194,6 +203,12 @@
           </div>
         </div>
         <div id="tray_root" flex_direction="row" gap="10">
+          <Button macro="button_style" _press="::ContextMenuOpen menu_burger">
+            <sprite width="38" height="38" color="~text_color" src_builtin="keyboard/burger.svg" />
+          </Button>
+
+          <VerticalSeparator />
+
           <div id="sets_root" flex_direction="row" gap="6">
             <Set idx="0" display="1" />
             <Set idx="1" display="2" />

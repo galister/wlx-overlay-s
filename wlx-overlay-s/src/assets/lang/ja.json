@@ -2,9 +2,10 @@
   "ANCHOR": {
     "CENTER": "センター"
   },
+	"BAR": {
+    "ADD_MIRROR": "新しいミラーを追加"
+  },
   "WATCH": {
-    "MIRROR": "新しいミラーオーバーレイを追加",
-    "CLEANUP_MIRRORS": "現在表示されていないミラーを削除",
     "RECENTER": "プレイスペースをリセンター",
     "FIX_FLOOR": "床の高さを修正",
     "EDIT_MODE_EXPLANATION": "オーバーレイは個別に移動および調整できます。\n現在のセットのオーバーレイを切り替え：",
