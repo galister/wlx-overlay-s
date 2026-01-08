@@ -284,6 +284,7 @@ fn logging_init(args: &mut Args) {
                 .add_directive("symphonia_core::probe=warn".parse().unwrap())
                 .add_directive("zbus=warn".parse().unwrap())
                 .add_directive("usvg=error".parse().unwrap())
+                .add_directive("resvg=error".parse().unwrap())
                 .add_directive("cosmic_text=warn".parse().unwrap())
                 .add_directive("wlx_capture::wayland=info".parse().unwrap())
                 .add_directive("smithay=debug".parse().unwrap()), /* GLES render spam */
