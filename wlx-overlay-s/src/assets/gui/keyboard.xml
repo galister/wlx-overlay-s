@@ -108,7 +108,7 @@
   <!-- An app with a single icon. -->
   <template name="App">
     <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press="::ContextMenuOpen menu_app">  
-      <sprite width="38" height="38" color="~text_color" src_ext="${icon}" />
+      <sprite width="38" height="38" color="~color_text" src_ext="${icon}" />
     </Button>
   </template>
 
@@ -123,7 +123,7 @@
   <!-- A screen with a shortened connector name, e.g. "H1" for HDMI-A-1 or "D2" for DP-2 -->
   <template name="Screen">
     <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press="::ContextMenuOpen menu_screen">
-      <sprite width="38" height="38" color="~text_color" src_builtin="edit/screen.svg" />
+      <sprite width="38" height="38" color="~color_text" src_builtin="edit/screen.svg" />
       <div position="absolute" margin_top="-7" margin_left="-1">
         <label text="${display}" size="18" color="~color_faded_20" weight="bold" />
       </div>
@@ -141,7 +141,7 @@
 
   <template name="Panel">
     <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press="::ContextMenuOpen menu_panel">
-      <sprite width="38" height="38" color="~text_color" src_builtin="edit/panel.svg" />
+      <sprite width="38" height="38" color="~color_text" src_builtin="edit/panel.svg" />
     </Button>
   </template>
 
@@ -156,7 +156,7 @@
 
   <template name="Mirror">
     <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press="::ContextMenuOpen menu_mirror">
-      <sprite width="38" height="38" color="~text_color" src_builtin="edit/mirror.svg" />
+      <sprite width="38" height="38" color="~color_text" src_builtin="edit/mirror.svg" />
       <div position="absolute" margin_top="5" margin_left="13">
         <label text="${display}" size="20" color="~color_faded_20" weight="bold" />
       </div>
@@ -174,7 +174,7 @@
 
   <template name="Set">
     <Button macro="button_style" id="set_${idx}" _press="::SetSwitch ${idx}" tooltip="WATCH.SWITCH_TO_SET" tooltip_side="bottom">
-      <sprite width="38" height="38" color="~text_color" src_builtin="watch/set2.svg" />
+      <sprite width="38" height="38" color="~color_text" src_builtin="watch/set2.svg" />
       <div position="absolute" margin_top="10" margin_left="-7">
         <label text="${display}" size="20" color="~color_faded_20" weight="bold" />
       </div>
@@ -186,32 +186,23 @@
       <rectangle macro="bg_rect" padding="10" align_items="center" justify_content="space_between">
         <div gap="10">
           <Button macro="button_style" id="btn_dashboard" _press="::DashToggle">
-            <sprite width="38" height="38" color="~text_color" src="watch/wayvr_dashboard_mono.svg"  />
+            <sprite width="38" height="38" color="~color_text" src="watch/wayvr_dashboard_mono.svg"  />
           </Button>
           <VerticalSeparator />
           <div id="panels_root" gap="6">
-            <Screen idx="0" display="H1" name="HDMI-A-1" />
-            <Screen idx="1" display="D2" name="Screen: DP-2" />
-            <Mirror idx="1" display="1" name="M1" />
-            <Panel idx="1" display="Test" name="Test" />
           </div>
           <VerticalSeparator />
           <div id="apps_root" gap="6">
-            <App id="test1" name="Blender" icon="/usr/share/icons/hicolor/scalable/apps/blender-5.0.svg" />
-            <App id="test2" name="Inkscape" icon="/usr/share/icons/hicolor/scalable/apps/org.inkscape.Inkscape.svg" />
-            <App id="test3" name="GIMP" icon="/usr/share/icons/hicolor/scalable/apps/gimp.svg" />
           </div>
         </div>
         <div id="tray_root" flex_direction="row" gap="10">
           <Button macro="button_style" _press="::ContextMenuOpen menu_burger">
-            <sprite width="38" height="38" color="~text_color" src_builtin="keyboard/burger.svg" />
+            <sprite width="38" height="38" color="~color_text" src_builtin="keyboard/burger.svg" />
           </Button>
 
           <VerticalSeparator />
 
           <div id="sets_root" flex_direction="row" gap="6">
-            <Set idx="0" display="1" />
-            <Set idx="1" display="2" />
           </div>
 
           <VerticalSeparator />

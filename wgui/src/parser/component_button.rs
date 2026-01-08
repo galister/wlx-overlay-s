@@ -5,7 +5,7 @@ use crate::{
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		parse_check_f32, parse_check_i32, parse_children, parse_f32, print_invalid_attrib, process_component,
+		parse_children, parse_f32, process_component,
 		style::{parse_color_opt, parse_round, parse_style, parse_text_style},
 		AttribPair, ParserContext, ParserFile,
 	},
@@ -19,6 +19,7 @@ pub fn parse_component_button<'a>(
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 	attribs: &[AttribPair],
+	tag_name: &str,
 ) -> anyhow::Result<WidgetID> {
 	let mut color: Option<Color> = None;
 	let mut border = 2.0;
@@ -34,8 +35,8 @@ pub fn parse_component_button<'a>(
 
 	let mut translation: Option<Translation> = None;
 
-	let text_style = parse_text_style(attribs);
-	let style = parse_style(attribs);
+	let text_style = parse_text_style(ctx, attribs, tag_name);
+	let style = parse_style(ctx, attribs, tag_name);
 
 	for pair in attribs {
 		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
@@ -51,22 +52,29 @@ pub fn parse_component_button<'a>(
 				}
 			}
 			"round" => {
-				parse_round(value, &mut round, ctx.doc_params.globals.get().defaults.rounding_mult);
+				parse_round(
+					ctx,
+					tag_name,
+					key,
+					value,
+					&mut round,
+					ctx.doc_params.globals.get().defaults.rounding_mult,
+				);
 			}
 			"color" => {
-				parse_color_opt(value, &mut color);
+				parse_color_opt(ctx, tag_name, key, value, &mut color);
 			}
 			"border" => {
-				parse_check_f32(value, &mut border);
+				ctx.parse_check_f32(tag_name, key, value, &mut border);
 			}
 			"border_color" => {
-				parse_color_opt(value, &mut border_color);
+				parse_color_opt(ctx, tag_name, key, value, &mut border_color);
 			}
 			"hover_color" => {
-				parse_color_opt(value, &mut hover_color);
+				parse_color_opt(ctx, tag_name, key, value, &mut hover_color);
 			}
 			"hover_border_color" => {
-				parse_color_opt(value, &mut hover_border_color);
+				parse_color_opt(ctx, tag_name, key, value, &mut hover_border_color);
 			}
 			"sprite_src" | "sprite_src_ext" | "sprite_src_builtin" | "sprite_src_internal" => {
 				let asset_path = match key {
@@ -90,14 +98,14 @@ pub fn parse_component_button<'a>(
 					"top" => Some(tooltip::TooltipSide::Top),
 					"bottom" => Some(tooltip::TooltipSide::Bottom),
 					_ => {
-						print_invalid_attrib(key, value);
+						ctx.print_invalid_attrib(tag_name, key, value);
 						None
 					}
 				}
 			}
 			"sticky" => {
 				let mut sticky_i32 = 0;
-				sticky = parse_check_i32(value, &mut sticky_i32) && sticky_i32 == 1;
+				sticky = ctx.parse_check_i32(tag_name, key, value, &mut sticky_i32) && sticky_i32 == 1;
 			}
 			"long_press_time" => {
 				long_press_time = parse_f32(value).unwrap_or(long_press_time);

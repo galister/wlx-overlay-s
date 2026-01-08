@@ -46,8 +46,6 @@ impl DeviceList {
 
                     let template = device.role.as_ref();
 
-                    log::warn!("creating {template} tag for {i}");
-
                     params.insert("idx".into(), i.to_string().into());
                     parser_state.instantiate_template(
                         &doc_params,

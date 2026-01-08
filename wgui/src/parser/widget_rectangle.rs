@@ -2,8 +2,9 @@ use crate::{
 	drawing::GradientMode,
 	layout::WidgetID,
 	parser::{
-		AttribPair, ParserContext, ParserFile, parse_children, parse_widget_universal, print_invalid_attrib,
+		parse_children, parse_widget_universal,
 		style::{parse_color, parse_round, parse_style},
+		AttribPair, ParserContext, ParserFile,
 	},
 	widget::rectangle::{WidgetRectangle, WidgetRectangleParams},
 };
@@ -14,18 +15,19 @@ pub fn parse_widget_rectangle<'a>(
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 	attribs: &[AttribPair],
+	tag_name: &str,
 ) -> anyhow::Result<WidgetID> {
 	let mut params = WidgetRectangleParams::default();
-	let style = parse_style(attribs);
+	let style = parse_style(ctx, attribs, tag_name);
 
 	for pair in attribs {
 		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
 		match key {
 			"color" => {
-				parse_color(value, &mut params.color);
+				parse_color(ctx, tag_name, key, value, &mut params.color);
 			}
 			"color2" => {
-				parse_color(value, &mut params.color2);
+				parse_color(ctx, tag_name, key, value, &mut params.color2);
 			}
 			"gradient" => {
 				params.gradient = match value {
@@ -34,13 +36,16 @@ pub fn parse_widget_rectangle<'a>(
 					"radial" => GradientMode::Radial,
 					"none" => GradientMode::None,
 					_ => {
-						print_invalid_attrib(key, value);
+						ctx.print_invalid_attrib(tag_name, key, value);
 						GradientMode::None
 					}
 				}
 			}
 			"round" => {
 				parse_round(
+					ctx,
+					tag_name,
+					key,
 					value,
 					&mut params.round,
 					ctx.doc_params.globals.get().defaults.rounding_mult,
@@ -48,12 +53,12 @@ pub fn parse_widget_rectangle<'a>(
 			}
 			"border" => {
 				params.border = value.parse().unwrap_or_else(|_| {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 					0.0
 				});
 			}
 			"border_color" => {
-				parse_color(value, &mut params.border_color);
+				parse_color(ctx, tag_name, key, value, &mut params.border_color);
 			}
 			_ => {}
 		}
@@ -63,7 +68,7 @@ pub fn parse_widget_rectangle<'a>(
 		.layout
 		.add_child(parent_id, WidgetRectangle::create(params), style)?;
 
-	parse_widget_universal(ctx, &widget, attribs);
+	parse_widget_universal(ctx, &widget, attribs, tag_name);
 	parse_children(file, ctx, node, widget.id)?;
 
 	Ok(widget.id)

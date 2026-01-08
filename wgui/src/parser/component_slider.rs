@@ -1,7 +1,7 @@
 use crate::{
-	components::{Component, slider},
+	components::{slider, Component},
 	layout::WidgetID,
-	parser::{AttribPair, ParserContext, parse_check_f32, parse_check_i32, process_component, style::parse_style},
+	parser::{process_component, style::parse_style, AttribPair, ParserContext},
 	widget::ConstructEssentials,
 };
 
@@ -9,6 +9,7 @@ pub fn parse_component_slider(
 	ctx: &mut ParserContext,
 	parent_id: WidgetID,
 	attribs: &[AttribPair],
+	tag_name: &str,
 ) -> anyhow::Result<WidgetID> {
 	let mut min_value = 0.0;
 	let mut max_value = 1.0;
@@ -16,25 +17,25 @@ pub fn parse_component_slider(
 	let mut step = 1.0;
 	let mut show_value = 1;
 
-	let style = parse_style(attribs);
+	let style = parse_style(ctx, attribs, tag_name);
 
 	for pair in attribs {
 		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
 		match key {
 			"min_value" => {
-				parse_check_f32(value, &mut min_value);
+				ctx.parse_check_f32(tag_name, key, value, &mut min_value);
 			}
 			"max_value" => {
-				parse_check_f32(value, &mut max_value);
+				ctx.parse_check_f32(tag_name, key, value, &mut max_value);
 			}
 			"value" => {
-				parse_check_f32(value, &mut initial_value);
+				ctx.parse_check_f32(tag_name, key, value, &mut initial_value);
 			}
 			"step" => {
-				parse_check_f32(value, &mut step);
+				ctx.parse_check_f32(tag_name, key, value, &mut step);
 			}
 			"show_value" => {
-				parse_check_i32(value, &mut show_value);
+				ctx.parse_check_i32(tag_name, key, value, &mut show_value);
 			}
 			_ => {}
 		}

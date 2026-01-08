@@ -10,16 +10,9 @@ mod widget_rectangle;
 mod widget_sprite;
 
 use crate::{
-	assets::{AssetPath, AssetPathOwned, normalize_path},
-	components::{Component, ComponentWeak},
-	drawing::{self},
-	globals::WguiGlobals,
-	i18n::Translation,
-	layout::{Layout, LayoutParams, LayoutState, Widget, WidgetID, WidgetMap, WidgetPair},
-	log::LogErr,
-	parser::{
+	assets::{normalize_path, AssetPath, AssetPathOwned}, components::{Component, ComponentWeak}, drawing::{self}, globals::WguiGlobals, i18n::Translation, layout::{Layout, LayoutParams, LayoutState, Widget, WidgetID, WidgetMap, WidgetPair}, log::LogErr, parser::{
 		component_button::parse_component_button,
-		component_checkbox::{CheckboxKind, parse_component_checkbox},
+		component_checkbox::{parse_component_checkbox, CheckboxKind},
 		component_radio_group::parse_component_radio_group,
 		component_slider::parse_component_slider,
 		widget_div::parse_widget_div,
@@ -27,9 +20,7 @@ use crate::{
 		widget_label::parse_widget_label,
 		widget_rectangle::parse_widget_rectangle,
 		widget_sprite::parse_widget_sprite,
-	},
-	widget::ConstructEssentials,
-	windowing::context_menu,
+	}, widget::ConstructEssentials, windowing::context_menu
 };
 use anyhow::Context;
 use ouroboros::self_referencing;
@@ -224,7 +215,7 @@ impl ParserState {
 		template_parameters: HashMap<Rc<str>, Rc<str>>,
 	) -> anyhow::Result<ParserData> {
 		let Some(template) = self.data.templates.get(template_name) else {
-			anyhow::bail!("no template named \"{template_name}\" found");
+			anyhow::bail!("{:?}: no template named \"{template_name}\" found", self.path.get_path_buf());
 		};
 
 		let mut ctx = ParserContext {
@@ -314,7 +305,7 @@ impl ParserState {
 					});
 				}
 				other => {
-					anyhow::bail!("unexpected <{other}> tag");
+					anyhow::bail!("{:?}: unexpected <{other}> tag", self.path.get_path_buf());
 				}
 			}
 		}
@@ -443,7 +434,7 @@ impl ParserContext<'_> {
 				.insert(id.clone(), component.weak())
 				.is_some()
 		{
-			log::warn!("duplicate component ID \"{id}\" in the same layout file!");
+			log::warn!("{}: duplicate component ID \"{id}\"", self.doc_params.path.get_str());
 		}
 
 		self.data_local.components.push(component);
@@ -451,7 +442,7 @@ impl ParserContext<'_> {
 
 	fn insert_id(&mut self, id: &Rc<str>, widget_id: WidgetID) {
 		if self.data_local.ids.insert(id.clone(), widget_id).is_some() {
-			log::warn!("duplicate widget ID \"{id}\" in the same layout file!");
+			log::warn!("{}: duplicate widget ID \"{id}\"", self.doc_params.path.get_str());
 		}
 	}
 
@@ -479,6 +470,77 @@ impl ParserContext<'_> {
 		insert_color_vars!(self, "faded", def.faded_color, def.translucent_alpha);
 		insert_color_vars!(self, "bg", def.bg_color, def.translucent_alpha);
 	}
+fn print_invalid_attrib(&self, tag_name: &str, key: &str, value: &str) {
+	log::warn!("{}: <{tag_name}> value for \"{key}\" is invalid: \"{value}\"", self.doc_params.path.get_str());
+}
+
+fn print_missing_attrib(&self, tag_name: &str, attr: &str) {
+	log::warn!("{}: <{tag_name}> is missing \"{attr}\".", self.doc_params.path.get_str());
+}
+
+fn parse_val(&self, tag_name: &str, key: &str, value: &str) -> Option<f32> {
+	let Ok(val) = value.parse::<f32>() else {
+		self.print_invalid_attrib(tag_name, key, value);
+		return None;
+	};
+	Some(val)
+}
+
+fn parse_percent(&self, tag_name: &str, key: &str, value: &str) -> Option<f32> {
+	let Some(val_str) = value.split('%').next() else {
+		self.print_invalid_attrib(tag_name, key, value);
+		return None;
+	};
+
+	let Ok(val) = val_str.parse::<f32>() else {
+		self.print_invalid_attrib(tag_name, key, value);
+		return None;
+	};
+	Some(val / 100.0)
+}
+
+fn parse_size_unit<T>(&self, tag_name: &str, key: &str, value: &str) -> Option<T>
+where
+	T: taffy::prelude::FromPercent + taffy::prelude::FromLength,
+{
+	if is_percent(value) {
+		Some(taffy::prelude::percent(self.parse_percent(tag_name, key, value)?))
+	} else {
+		Some(taffy::prelude::length(parse_f32(value)?))
+	}
+}
+
+fn parse_check_i32(&self, tag_name: &str, key: &str, value: &str, num: &mut i32) -> bool {
+	if let Some(value) = parse_i32(value) {
+		*num = value;
+		true
+	} else {
+		self.print_invalid_attrib(tag_name, key, value);
+		false
+	}
+}
+
+fn parse_check_f32(&self, tag_name: &str, key: &str, value: &str, num: &mut f32) -> bool {
+	if let Some(value) = parse_f32(value) {
+		*num = value;
+		true
+	} else {
+		self.print_invalid_attrib(tag_name, key, value);
+		false
+	}
+}
+}
+
+fn parse_i32(value: &str) -> Option<i32> {
+	value.parse::<i32>().ok()
+}
+
+fn parse_f32(value: &str) -> Option<f32> {
+	value.parse::<f32>().ok()
+}
+
+fn is_percent(value: &str) -> bool {
+	value.ends_with('%')
 }
 
 // Parses a color from a HTML hex string
@@ -510,7 +572,6 @@ pub fn parse_color_hex(html_hex: &str) -> Option<drawing::Color> {
 			f32::from(a) / 255.,
 		));
 	}
-	log::warn!("failed to parse color \"{html_hex}\"");
 	None
 }
 
@@ -522,81 +583,6 @@ fn require_tag_by_name<'a>(node: &roxmltree::Node<'a, 'a>, name: &str) -> anyhow
 	get_tag_by_name(node, name).ok_or_else(|| anyhow::anyhow!("Tag \"{name}\" not found"))
 }
 
-fn print_invalid_attrib(key: &str, value: &str) {
-	log::warn!("Invalid value \"{value}\" in attribute \"{key}\"");
-}
-
-fn print_missing_attrib(tag_name: &str, attr: &str) {
-	log::warn!("Missing attribute {attr} in tag <{tag_name}>");
-}
-
-fn print_invalid_value(value: &str) {
-	log::warn!("Invalid value \"{value}\"");
-}
-
-fn parse_val(value: &str) -> Option<f32> {
-	let Ok(val) = value.parse::<f32>() else {
-		print_invalid_value(value);
-		return None;
-	};
-	Some(val)
-}
-
-fn is_percent(value: &str) -> bool {
-	value.ends_with('%')
-}
-
-fn parse_percent(value: &str) -> Option<f32> {
-	let Some(val_str) = value.split('%').next() else {
-		print_invalid_value(value);
-		return None;
-	};
-
-	let Ok(val) = val_str.parse::<f32>() else {
-		print_invalid_value(value);
-		return None;
-	};
-	Some(val / 100.0)
-}
-
-fn parse_i32(value: &str) -> Option<i32> {
-	value.parse::<i32>().ok()
-}
-
-fn parse_f32(value: &str) -> Option<f32> {
-	value.parse::<f32>().ok()
-}
-
-fn parse_check_i32(value: &str, num: &mut i32) -> bool {
-	if let Some(value) = parse_i32(value) {
-		*num = value;
-		true
-	} else {
-		print_invalid_value(value);
-		false
-	}
-}
-
-fn parse_check_f32(value: &str, num: &mut f32) -> bool {
-	if let Some(value) = parse_f32(value) {
-		*num = value;
-		true
-	} else {
-		print_invalid_value(value);
-		false
-	}
-}
-
-fn parse_size_unit<T>(value: &str) -> Option<T>
-where
-	T: taffy::prelude::FromPercent + taffy::prelude::FromLength,
-{
-	if is_percent(value) {
-		Some(taffy::prelude::percent(parse_percent(value)?))
-	} else {
-		Some(taffy::prelude::length(parse_f32(value)?))
-	}
-}
 
 fn parse_widget_other_internal(
 	template: &Rc<Template>,
@@ -631,7 +617,7 @@ fn parse_widget_other(
 	attribs: &[AttribPair],
 ) -> anyhow::Result<()> {
 	let Some(template) = ctx.get_template(xml_tag_name) else {
-		log::error!("Undefined tag named \"{xml_tag_name}\"");
+		log::error!("{}: Undefined tag named \"{xml_tag_name}\"", ctx.doc_params.path.get_str());
 		return Ok(()); // not critical
 	};
 
@@ -647,6 +633,8 @@ fn parse_tag_include(
 	parent_id: WidgetID,
 	attribs: &[AttribPair],
 ) -> anyhow::Result<()> {
+	const TAG_NAME: &str = "include";
+
 	let mut path = None;
 	let mut optional = false;
 
@@ -678,16 +666,16 @@ fn parse_tag_include(
 			}
 			"optional" => {
 				let mut optional_i32 = 0;
-				optional = parse_check_i32(&pair.value, &mut optional_i32) && optional_i32 == 1;
+				optional = ctx.parse_check_i32(TAG_NAME, &pair.attrib, &pair.value, &mut optional_i32) && optional_i32 == 1;
 			}
 			_ => {
-				print_invalid_attrib(pair.attrib.as_ref(), pair.value.as_ref());
+				ctx.print_invalid_attrib(TAG_NAME, pair.attrib.as_ref(), pair.value.as_ref());
 			}
 		}
 	}
 
 	let Some(path) = path else {
-		log::warn!("include tag with no source! specify either: src, src_builtin, src_internal");
+		ctx.print_missing_attrib("include", "src");
 		return Ok(());
 	};
 	let path_ref = path.as_ref();
@@ -703,7 +691,7 @@ fn parse_tag_include(
 	Ok(())
 }
 
-fn parse_tag_var<'a>(ctx: &mut ParserContext, node: roxmltree::Node<'a, 'a>) {
+fn parse_tag_var<'a>(ctx: &mut ParserContext, tag_name: &str, node: roxmltree::Node<'a, 'a>) {
 	let mut out_key: Option<&str> = None;
 	let mut out_value: Option<&str> = None;
 
@@ -718,18 +706,18 @@ fn parse_tag_var<'a>(ctx: &mut ParserContext, node: roxmltree::Node<'a, 'a>) {
 				out_value = Some(value);
 			}
 			_ => {
-				print_invalid_attrib(key, value);
+				ctx.print_invalid_attrib(tag_name, key, value);
 			}
 		}
 	}
 
 	let Some(key) = out_key else {
-		print_missing_attrib("var", "key");
+		ctx.print_missing_attrib(tag_name, "key");
 		return;
 	};
 
 	let Some(value) = out_value else {
-		print_missing_attrib("var", "value");
+		ctx.print_missing_attrib(tag_name, "value");
 		return;
 	};
 
@@ -769,7 +757,10 @@ fn process_attrib(
 
 		match ctx.get_var(name) {
 			Some(name) => AttribPair::new(key, name),
-			None => AttribPair::new(key, "undefined"),
+			None => {
+				log::warn!("{}: undefined variable \"{value}\"", ctx.doc_params.path.get_str());
+				AttribPair::new(key, "undefined")
+			},
 		}
 	} else {
 		AttribPair::new(key, replace_vars(value, template_parameters))
@@ -806,7 +797,7 @@ fn process_attribs<'a>(
 					res.push(process_attrib(&file.template_parameters, ctx, macro_key, macro_value));
 				}
 			} else {
-				log::warn!("requested macro named \"{value}\" not found!");
+				log::warn!("{}: requested macro named \"{value}\" not found!", ctx.doc_params.path.get_str());
 			}
 		} else {
 			res.push(process_attrib(&file.template_parameters, ctx, key, value));
@@ -821,11 +812,11 @@ fn parse_tag_theme<'a>(ctx: &mut ParserContext, node: roxmltree::Node<'a, 'a>) {
 		let child_name = child_node.tag_name().name();
 		match child_name {
 			"var" => {
-				parse_tag_var(ctx, child_node);
+				parse_tag_var(ctx, child_name, child_node);
 			}
 			"" => { /* ignore */ }
 			_ => {
-				print_invalid_value(child_name);
+				log::warn!("{}: <{child_name}> is not a valid child to <theme>.", ctx.doc_params.path.get_str());
 			}
 		}
 	}
@@ -842,13 +833,13 @@ fn parse_tag_template(file: &ParserFile, ctx: &mut ParserContext, node: roxmltre
 				template_name = Some(pair.value);
 			}
 			_ => {
-				print_invalid_attrib(pair.value.as_ref(), pair.value.as_ref());
+				ctx.print_invalid_attrib("template", &pair.attrib, pair.value.as_ref());
 			}
 		}
 	}
-
+	
 	let Some(name) = template_name else {
-		log::error!("Template name not specified, ignoring");
+		ctx.print_missing_attrib("template", "name");
 		return;
 	};
 
@@ -874,14 +865,14 @@ fn parse_tag_macro(file: &ParserFile, ctx: &mut ParserContext, node: roxmltree::
 			}
 			_ => {
 				if macro_attribs.insert(pair.attrib.clone(), pair.value).is_some() {
-					log::warn!("macro attrib \"{}\" already defined!", pair.attrib);
+					log::warn!("{}: macro attrib \"{}\" already defined!", ctx.doc_params.path.get_str(), pair.attrib);
 				}
 			}
 		}
 	}
 
 	let Some(name) = macro_name else {
-		log::error!("Macro name not specified, ignoring");
+		ctx.print_missing_attrib("macro", "name");
 		return;
 	};
 
@@ -904,7 +895,7 @@ fn process_component(ctx: &mut ParserContext, component: Component, widget_id: W
 	ctx.insert_component(widget_id, component, component_id);
 }
 
-fn parse_widget_universal(ctx: &mut ParserContext, widget: &WidgetPair, attribs: &[AttribPair]) {
+fn parse_widget_universal(ctx: &mut ParserContext, widget: &WidgetPair, attribs: &[AttribPair], tag_name: &str) {
 	for pair in attribs {
 		#[allow(clippy::single_match)]
 		match pair.attrib.as_ref() {
@@ -916,21 +907,21 @@ fn parse_widget_universal(ctx: &mut ParserContext, widget: &WidgetPair, attribs:
 				if let Some(num) = parse_i32(&pair.value) {
 					widget.widget.state().flags.new_pass = num != 0;
 				} else {
-					print_invalid_attrib(&pair.attrib, &pair.value);
+					ctx.print_invalid_attrib(tag_name, &pair.attrib, &pair.value);
 				}
 			}
 			"interactable" => {
 				if let Some(num) = parse_i32(&pair.value) {
 					widget.widget.state().flags.interactable = num != 0;
 				} else {
-					print_invalid_attrib(&pair.attrib, &pair.value);
+					ctx.print_invalid_attrib(tag_name, &pair.attrib, &pair.value);
 				}
 			}
 			"consume_mouse_events" => {
 				if let Some(num) = parse_i32(&pair.value) {
 					widget.widget.state().flags.consume_mouse_events = num != 0;
 				} else {
-					print_invalid_attrib(&pair.attrib, &pair.value);
+					ctx.print_invalid_attrib(tag_name, &pair.attrib, &pair.value);
 				}
 			}
 			_ => {}
@@ -945,6 +936,7 @@ fn parse_child<'a>(
 	child_node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 ) -> anyhow::Result<()> {
+	let tag_name = child_node.tag_name().name();
 	match parent_node.attribute("ignore_in_mode") {
 		Some("dev") => {
 			if !ctx.doc_params.extra.dev_mode {
@@ -956,44 +948,44 @@ fn parse_child<'a>(
 				return Ok(()); // do not parse
 			}
 		}
-		Some(s) => print_invalid_attrib("ignore_in_mode", s),
+		Some(s) => ctx.print_invalid_attrib(tag_name, "ignore_in_mode", s),
 		_ => {}
 	}
 
 	let attribs = process_attribs(file, ctx, &child_node, false);
-
 	let mut new_widget_id: Option<WidgetID> = None;
 
-	match child_node.tag_name().name() {
+	match tag_name {
 		"include" => {
 			parse_tag_include(file, ctx, parent_id, &attribs)?;
 		}
 		"div" => {
-			new_widget_id = Some(parse_widget_div(file, ctx, child_node, parent_id, &attribs)?);
+			new_widget_id = Some(parse_widget_div(file, ctx, child_node, parent_id, &attribs, tag_name)?);
 		}
 		"rectangle" => {
-			new_widget_id = Some(parse_widget_rectangle(file, ctx, child_node, parent_id, &attribs)?);
+			new_widget_id = Some(parse_widget_rectangle(file, ctx, child_node, parent_id, &attribs, tag_name)?);
 		}
 		"label" => {
-			new_widget_id = Some(parse_widget_label(file, ctx, child_node, parent_id, &attribs)?);
+			new_widget_id = Some(parse_widget_label(file, ctx, child_node, parent_id, &attribs, tag_name)?);
 		}
 		"sprite" => {
-			new_widget_id = Some(parse_widget_sprite(file, ctx, child_node, parent_id, &attribs)?);
+			new_widget_id = Some(parse_widget_sprite(file, ctx, child_node, parent_id, &attribs, tag_name)?);
 		}
 		"image" => {
-			new_widget_id = Some(parse_widget_image(file, ctx, child_node, parent_id, &attribs)?);
+			new_widget_id = Some(parse_widget_image(file, ctx, child_node, parent_id, &attribs, tag_name)?);
 		}
 		"Button" => {
-			new_widget_id = Some(parse_component_button(file, ctx, child_node, parent_id, &attribs)?);
+			new_widget_id = Some(parse_component_button(file, ctx, child_node, parent_id, &attribs, tag_name)?);
 		}
 		"Slider" => {
-			new_widget_id = Some(parse_component_slider(ctx, parent_id, &attribs)?);
+			new_widget_id = Some(parse_component_slider(ctx, parent_id, &attribs, tag_name)?);
 		}
 		"CheckBox" => {
 			new_widget_id = Some(parse_component_checkbox(
 				ctx,
 				parent_id,
 				&attribs,
+				tag_name,
 				CheckboxKind::CheckBox,
 			)?);
 		}
@@ -1002,11 +994,12 @@ fn parse_child<'a>(
 				ctx,
 				parent_id,
 				&attribs,
+				tag_name,
 				CheckboxKind::RadioBox,
 			)?);
 		}
 		"RadioGroup" => {
-			new_widget_id = Some(parse_component_radio_group(file, ctx, child_node, parent_id, &attribs)?);
+			new_widget_id = Some(parse_component_radio_group(file, ctx, child_node, parent_id, &attribs, tag_name)?);
 		}
 		"" => { /* ignore */ }
 		other_tag_name => {

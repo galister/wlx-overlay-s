@@ -2,8 +2,9 @@ use crate::{
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		AttribPair, ParserContext, ParserFile, parse_children, parse_i32, parse_widget_universal, print_invalid_attrib,
+		parse_children, parse_i32, parse_widget_universal,
 		style::{parse_style, parse_text_style},
+		AttribPair, ParserContext, ParserFile,
 	},
 	widget::label::{WidgetLabel, WidgetLabelParams},
 };
@@ -14,11 +15,12 @@ pub fn parse_widget_label<'a>(
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 	attribs: &[AttribPair],
+	tag_name: &str,
 ) -> anyhow::Result<WidgetID> {
 	let mut params = WidgetLabelParams::default();
 
-	let style = parse_style(attribs);
-	params.style = parse_text_style(attribs);
+	let style = parse_style(ctx, attribs, tag_name);
+	params.style = parse_text_style(ctx, attribs, tag_name);
 
 	for pair in attribs {
 		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
@@ -27,7 +29,7 @@ pub fn parse_widget_label<'a>(
 				if let Some(num) = parse_i32(value) {
 					params.style.wrap = num == 1;
 				} else {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 				}
 			}
 			"text" => {
@@ -50,7 +52,7 @@ pub fn parse_widget_label<'a>(
 		.layout
 		.add_child(parent_id, WidgetLabel::create(&mut globals.get(), params), style)?;
 
-	parse_widget_universal(ctx, &widget, attribs);
+	parse_widget_universal(ctx, &widget, attribs, tag_name);
 	parse_children(file, ctx, node, widget.id)?;
 
 	Ok(widget.id)

@@ -30,6 +30,7 @@ use crate::{
         task::{OverlayTask, PlayspaceTask, TaskType, ToggleMode},
         wayvr::process::KillSignal,
     },
+    gui::panel::{log_cmd_invalid_arg, log_cmd_missing_arg},
     overlays::{custom::create_custom, toast::Toast, wayvr::WvrCommand},
     state::AppState,
     subsystem::hid::VirtualKey,
@@ -192,6 +193,8 @@ pub(super) fn setup_custom_button<S: 'static>(
     on_custom_attribs: &parser::OnCustomAttribsFunc,
     button: Rc<ComponentButton>,
 ) {
+    const TAG: &str = "Button";
+
     for (name, kind, test_button, test_duration) in &BUTTON_EVENTS {
         let Some(action) = attribs.get_value(name) else {
             continue;
@@ -207,10 +210,7 @@ pub(super) fn setup_custom_button<S: 'static>(
         let callback: EventCallback<AppState, S> = match command {
             "::ContextMenuOpen" => {
                 let Some(template_name) = args.next() else {
-                    log::error!(
-                        "{:?}: {command} has invalid arguments",
-                        parser_state.path.get_path_buf()
-                    );
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
                     return;
                 };
 
@@ -252,18 +252,13 @@ pub(super) fn setup_custom_button<S: 'static>(
             }
             "::ElementSetDisplay" => {
                 let (Some(id), Some(value)) = (args.next(), args.next()) else {
-                    log::error!(
-                        "{:?}: {command} has invalid arguments",
-                        parser_state.path.get_path_buf()
-                    );
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
                     return;
                 };
 
                 let Ok(widget_id) = parser_state.data.get_widget_id(id) else {
-                    log::warn!(
-                        "{:?}: {command}: no element exists with ID '{id}'",
-                        parser_state.path.get_path_buf()
-                    );
+                    let msg = format!("no element with ID \"{id}\"");
+                    log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
                     return;
                 };
 
@@ -273,7 +268,8 @@ pub(super) fn setup_custom_button<S: 'static>(
                     "block" => taffy::Display::Block,
                     "grid" => taffy::Display::Grid,
                     _ => {
-                        log::warn!("{command} has invalid display argument: '{value}'");
+                        let msg = format!("unexpected \"{value}\"");
+                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
                         return;
                     }
                 };
@@ -297,10 +293,8 @@ pub(super) fn setup_custom_button<S: 'static>(
             "::SetToggle" => {
                 let arg = args.next().unwrap_or_default();
                 let Ok(set_idx) = arg.parse() else {
-                    log::error!(
-                        "{:?}: {command} has invalid argument: \"{arg}\"",
-                        parser_state.path.get_path_buf()
-                    );
+                    let msg = format!("expected integer, found \"{arg}\"");
+                    log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
                     return;
                 };
                 Box::new(move |_common, data, app, _| {
@@ -316,10 +310,8 @@ pub(super) fn setup_custom_button<S: 'static>(
             "::SetSwitch" => {
                 let arg = args.next().unwrap_or_default();
                 let Ok(set_idx) = arg.parse::<i32>() else {
-                    log::error!(
-                        "{:?}: {command} has invalid argument: \"{arg}\"",
-                        parser_state.path.get_path_buf()
-                    );
+                    let msg = format!("expected integer, found \"{arg}\"");
+                    log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
                     return;
                 };
                 let maybe_set = if set_idx < 0 {
@@ -340,10 +332,7 @@ pub(super) fn setup_custom_button<S: 'static>(
             "::OverlayReset" => {
                 let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
                 if arg.len() < 1 {
-                    log::error!(
-                        "{:?}: {command} has missing arguments",
-                        parser_state.path.get_path_buf()
-                    );
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
                     return;
                 };
 
@@ -362,10 +351,7 @@ pub(super) fn setup_custom_button<S: 'static>(
             "::OverlayToggle" => {
                 let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
                 if arg.len() < 1 {
-                    log::error!(
-                        "{:?}: {command} has missing arguments",
-                        parser_state.path.get_path_buf()
-                    );
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
                     return;
                 };
 
@@ -385,10 +371,7 @@ pub(super) fn setup_custom_button<S: 'static>(
             "::OverlayDrop" => {
                 let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
                 if arg.len() < 1 {
-                    log::error!(
-                        "{:?}: {command} has missing arguments",
-                        parser_state.path.get_path_buf()
-                    );
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
                     return;
                 };
 
@@ -424,10 +407,7 @@ pub(super) fn setup_custom_button<S: 'static>(
             "::CustomOverlayReload" => {
                 let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
                 if arg.len() < 1 {
-                    log::error!(
-                        "{:?}: {command} has missing arguments",
-                        parser_state.path.get_path_buf()
-                    );
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
                     return;
                 };
 
@@ -465,10 +445,7 @@ pub(super) fn setup_custom_button<S: 'static>(
             "::WvrOverlayCloseWindow" => {
                 let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
                 if arg.len() < 1 {
-                    log::error!(
-                        "{:?}: {command} has missing arguments",
-                        parser_state.path.get_path_buf()
-                    );
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
                     return;
                 };
                 Box::new(move |_common, data, app, _| {
@@ -491,10 +468,7 @@ pub(super) fn setup_custom_button<S: 'static>(
             "::WvrOverlayKillProcess" | "::WvrOverlayTermProcess" => {
                 let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
                 if arg.len() < 1 {
-                    log::error!(
-                        "{:?}: {command} has missing arguments",
-                        parser_state.path.get_path_buf()
-                    );
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
                     return;
                 };
 
@@ -615,23 +589,27 @@ pub(super) fn setup_custom_button<S: 'static>(
                 Ok(EventResult::Consumed)
             }),
             "::SendKey" => {
-                let Some(key) = args.next().and_then(|s| VirtualKey::from_str(s).ok()) else {
-                    log::error!(
-                        "{:?}: {command} has bad/missing arguments",
-                        parser_state.path.get_path_buf()
-                    );
+                let Some(arg) = args.next() else {
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
                     return;
                 };
-                let Some(down) = args.next().and_then(|s| match s.to_lowercase().as_str() {
-                    "down" => Some(true),
-                    "up" => Some(false),
-                    _ => None,
-                }) else {
-                    log::error!(
-                        "{:?}: {command} has bad/missing arguments",
-                        parser_state.path.get_path_buf()
-                    );
+                let Ok(key) = VirtualKey::from_str(arg) else {
+                    let msg = format!("expected VirtualKey, found \"{arg}\"");
+                    log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
                     return;
+                };
+                let Some(arg) = args.next() else {
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
+                    return;
+                };
+                let down = match arg.to_lowercase().as_str() {
+                    "down" => true,
+                    "up" => false,
+                    _ => {
+                        let msg = format!("expected \"down\" or \"up\", found \"{arg}\"");
+                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
+                        return;
+                    }
                 };
                 Box::new(move |_common, data, app, _| {
                     if !test_button(data) || !test_duration(&button, app) {
@@ -677,18 +655,17 @@ pub(super) fn setup_custom_button<S: 'static>(
                 use crate::subsystem::osc::parse_osc_value;
 
                 let Some(address) = args.next().map(std::string::ToString::to_string) else {
-                    log::error!(
-                        "{:?}: {command} has bad/missing arguments",
-                        parser_state.path.get_path_buf()
-                    );
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
                     return;
                 };
 
                 let mut osc_args = vec![];
                 for arg in args {
                     let Ok(osc_arg) = parse_osc_value(arg)
-                        .inspect_err(|e| log::error!("Could not parse OSC value '{arg}': {e:?}"))
+                        .inspect_err(|e| log::warn!("Could not parse OSC value '{arg}': {e:?}"))
                     else {
+                        let msg = format!("expected OscValue, found \"{arg}\"");
+                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
                         return;
                     };
                     osc_args.push(osc_arg);

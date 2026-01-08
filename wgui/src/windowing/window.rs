@@ -13,12 +13,7 @@ use crate::{
 	i18n::Translation,
 	layout::{Layout, LayoutTask, LayoutTasks, WidgetPair},
 	parser::{self, Fetchable, ParserState},
-	widget::{
-		div::WidgetDiv,
-		label::WidgetLabel,
-		rectangle::{WidgetRectangle, WidgetRectangleParams},
-		EventResult,
-	},
+	widget::{div::WidgetDiv, label::WidgetLabel, rectangle::WidgetRectangle, EventResult},
 };
 
 struct OpenedWindow {

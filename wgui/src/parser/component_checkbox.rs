@@ -2,9 +2,7 @@ use crate::{
 	components::{checkbox, radio_group::ComponentRadioGroup, Component},
 	i18n::Translation,
 	layout::WidgetID,
-	parser::{
-		parse_check_f32, parse_check_i32, process_component, style::parse_style, AttribPair, Fetchable, ParserContext,
-	},
+	parser::{process_component, style::parse_style, AttribPair, Fetchable, ParserContext},
 };
 
 pub enum CheckboxKind {
@@ -16,6 +14,7 @@ pub fn parse_component_checkbox(
 	ctx: &mut ParserContext,
 	parent_id: WidgetID,
 	attribs: &[AttribPair],
+	tag_name: &str,
 	kind: CheckboxKind,
 ) -> anyhow::Result<WidgetID> {
 	let mut box_size = 24.0;
@@ -23,7 +22,7 @@ pub fn parse_component_checkbox(
 	let mut checked = 0;
 	let mut component_value = None;
 
-	let style = parse_style(attribs);
+	let style = parse_style(ctx, attribs, tag_name);
 
 	for pair in attribs {
 		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
@@ -42,10 +41,10 @@ pub fn parse_component_checkbox(
 				component_value = Some(value.into());
 			}
 			"box_size" => {
-				parse_check_f32(value, &mut box_size);
+				ctx.parse_check_f32(tag_name, key, value, &mut box_size);
 			}
 			"checked" => {
-				parse_check_i32(value, &mut checked);
+				ctx.parse_check_i32(tag_name, key, value, &mut checked);
 			}
 			_ => {}
 		}

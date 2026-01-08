@@ -2,8 +2,9 @@ use crate::{
 	assets::AssetPath,
 	layout::WidgetID,
 	parser::{
-		AttribPair, ParserContext, ParserFile, parse_children, parse_widget_universal, print_invalid_attrib,
+		parse_children, parse_widget_universal,
 		style::{parse_color, parse_round, parse_style},
+		AttribPair, ParserContext, ParserFile,
 	},
 	renderer_vk::text::custom_glyph::CustomGlyphData,
 	widget::image::{WidgetImage, WidgetImageParams},
@@ -15,9 +16,10 @@ pub fn parse_widget_image<'a>(
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 	attribs: &[AttribPair],
+	tag_name: &str,
 ) -> anyhow::Result<WidgetID> {
 	let mut params = WidgetImageParams::default();
-	let style = parse_style(attribs);
+	let style = parse_style(ctx, attribs, tag_name);
 	let mut glyph = None;
 
 	for pair in attribs {
@@ -44,6 +46,9 @@ pub fn parse_widget_image<'a>(
 			}
 			"round" => {
 				parse_round(
+					ctx,
+					tag_name,
+					key,
 					value,
 					&mut params.round,
 					ctx.doc_params.globals.get().defaults.rounding_mult,
@@ -51,12 +56,12 @@ pub fn parse_widget_image<'a>(
 			}
 			"border" => {
 				params.border = value.parse().unwrap_or_else(|_| {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 					0.0
 				});
 			}
 			"border_color" => {
-				parse_color(value, &mut params.border_color);
+				parse_color(ctx, tag_name, key, value, &mut params.border_color);
 			}
 			_ => {}
 		}
@@ -65,12 +70,12 @@ pub fn parse_widget_image<'a>(
 	if let Some(glyph) = glyph {
 		params.glyph_data = Some(glyph);
 	} else {
-		log::warn!("No source for image node!");
+		ctx.print_missing_attrib(tag_name, "src");
 	}
 
 	let (widget, _) = ctx.layout.add_child(parent_id, WidgetImage::create(params), style)?;
 
-	parse_widget_universal(ctx, &widget, attribs);
+	parse_widget_universal(ctx, &widget, attribs, tag_name);
 	parse_children(file, ctx, node, widget.id)?;
 
 	Ok(widget.id)

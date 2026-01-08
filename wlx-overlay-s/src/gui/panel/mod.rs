@@ -1,4 +1,4 @@
-use std::{any, cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
 use button::setup_custom_button;
 use glam::{Affine2, Vec2, vec2};
@@ -192,7 +192,7 @@ impl<S: 'static> GuiPanel<S> {
                 .get_as::<WidgetLabel>(elem.widget_id)
                 .is_some()
             {
-                setup_custom_label::<S>(&mut self.layout, elem, app);
+                setup_custom_label::<S>(&mut self.layout, &self.parser_state, elem, app);
             } else if let Ok(button) = self
                 .parser_state
                 .fetch_component_from_widget_id_as::<ComponentButton>(elem.widget_id)
@@ -439,4 +439,38 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
     fn set_attrib(&mut self, _app: &mut AppState, _value: BackendAttribValue) -> bool {
         false
     }
+}
+
+fn log_missing_attrib(parser_state: &ParserState, tag_name: &str, attrib: &str) {
+    log::warn!(
+        "{:?}: <{tag_name}> is missing \"{attrib}\"",
+        parser_state.path.get_path_buf()
+    )
+}
+
+fn log_invalid_attrib(parser_state: &ParserState, tag_name: &str, attrib: &str, value: &str) {
+    log::warn!(
+        "{:?}: <{tag_name}> value for \"{attrib}\" is invalid: {value}",
+        parser_state.path.get_path_buf()
+    )
+}
+
+fn log_cmd_missing_arg(parser_state: &ParserState, tag_name: &str, attrib: &str, command: &str) {
+    log::warn!(
+        "{:?}: <{tag_name}> \"{attrib}\": \"{command}\" has missing arguments",
+        parser_state.path.get_path_buf()
+    )
+}
+
+fn log_cmd_invalid_arg(
+    parser_state: &ParserState,
+    tag_name: &str,
+    attrib: &str,
+    command: &str,
+    arg: &str,
+) {
+    log::warn!(
+        "{:?}: <{tag_name}> \"{attrib}\": \"{command}\" has invalid argument: {arg}",
+        parser_state.path.get_path_buf()
+    )
 }

@@ -1,7 +1,7 @@
 use crate::{
-	components::{Component, radio_group},
+	components::{radio_group, Component},
 	layout::WidgetID,
-	parser::{AttribPair, ParserContext, ParserFile, parse_children, process_component, style::parse_style},
+	parser::{parse_children, process_component, style::parse_style, AttribPair, ParserContext, ParserFile},
 };
 
 pub fn parse_component_radio_group<'a>(
@@ -10,8 +10,9 @@ pub fn parse_component_radio_group<'a>(
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,
 	attribs: &[AttribPair],
+	tag_name: &str,
 ) -> anyhow::Result<WidgetID> {
-	let style = parse_style(attribs);
+	let style = parse_style(ctx, attribs, tag_name);
 
 	let (widget, component) = radio_group::construct(&mut ctx.get_construct_essentials(parent_id), style)?;
 

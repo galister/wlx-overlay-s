@@ -29,7 +29,7 @@
     <div flex_direction="row" gap="8" width="100%" height="100%" padding="4" interactable="0">
       <!-- LEFT MENU -->
       <div id="menu"
-        width="~size_size"
+        width="~side_size"
         min_width="~side_size"
         max_width="~side_size"
         height="100%"
