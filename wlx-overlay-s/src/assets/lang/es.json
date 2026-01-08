@@ -3,7 +3,16 @@
     "CENTER": "Centro"
   },
   "BAR": {
-    "ADD_MIRROR": "Agregar una nueva superposición de espejo"
+    "ADD_MIRROR": "Agregar una nueva superposición de espejo",
+    "EDIT_MODE_TOGGLE": "Activar/desactivar el modo de edición",
+    "ADD_NEW_SET": "Añadir nuevo set",
+    "DELETE_CURRENT_SET": "Eliminar set actual",
+    "TOGGLE_VISIBILITY": "Alternar visibilidad",
+    "RESET_POSITION": "Restablecer posición",
+    "RELOAD_FROM_DISK": "Volver a cargar XML desde el disco",
+    "CLOSE_MIRROR": "Cerrar espejo",
+    "CLOSE_APP": "Cerrar aplicación",
+    "FORCE_CLOSE_APP": "Forzar cierre de la aplicación"
   },
   "WATCH": {
     "RECENTER": "Recentrar el área de juego",
@@ -14,7 +23,8 @@
     "ADD_NEW_SET": "Añadir un nuevo conjunto",
     "SWITCH_TO_SET": "Cambiar al conjunto",
     "TOGGLE_FOR_CURRENT_SET": "Alternar visibilidad en el conjunto actual",
-    "LONG_PRESS_TO_DELETE_SET": "Mantén presionado para eliminar el conjunto"
+    "LONG_PRESS_TO_DELETE_SET": "Mantén presionado para eliminar el conjunto",
+    "CLEANUP_MIRRORS": "Eliminar los espejos que\nno son actualmente visibles"
   },
   "EDIT_MODE": {
     "ADJUST_CURVATURE": "Ajustar curvatura",
@@ -83,6 +93,8 @@
     "EMPTY_SET": "¡Conjunto vacío!",
     "LETS_ADD_OVERLAYS": "¡Añadamos algunos overlays desde el reloj!",
     "FIXING_FLOOR": "Fijando el suelo en 5 segundos...",
-    "ONE_CONTROLLER_ON_FLOOR": "¡Coloca un mando en el suelo!"
+    "ONE_CONTROLLER_ON_FLOOR": "¡Coloca un mando en el suelo!",
+    "CANNOT_ADD_SET": "¡No se puede agregar el conjunto!",
+    "MAXIMUM_SETS_REACHED": "Se ha alcanzado el número máximo de sets."
   }
 }

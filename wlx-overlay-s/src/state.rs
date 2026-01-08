@@ -64,6 +64,9 @@ pub struct AppState {
 
     #[cfg(feature = "wayvr")]
     pub wvr_server: Option<WvrServerState>,
+
+    #[cfg(feature = "openxr")]
+    pub monado: Option<libmonado::Monado>,
 }
 
 #[allow(unused_mut)]
@@ -163,7 +166,19 @@ impl AppState {
 
             #[cfg(feature = "wayvr")]
             wvr_server,
+
+            #[cfg(feature = "openxr")]
+            monado: None,
         })
+    }
+
+    #[cfg(feature = "openxr")]
+    pub fn monado_init(&mut self) {
+        log::debug!("Connecting to Monado IPC");
+        self.monado = None; // stop connection first
+        self.monado = libmonado::Monado::auto_connect()
+            .map_err(|e| log::warn!("Will not use libmonado: {e}"))
+            .ok();
     }
 }
 
