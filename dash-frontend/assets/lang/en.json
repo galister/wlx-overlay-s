@@ -72,7 +72,7 @@
 		"RESTART_SOFTWARE_HELP": "Apply settings that require a restart",
 
 		"CAPTURE_METHOD": "Wayland screen capture",
-		"CAPTURE_METHOD_HELP": "Try changing this if experiencing\nblack or glitchy screens",
+		"CAPTURE_METHOD_HELP": "Try changing this if you are\nexperiencing black or glitchy screens",
 
 		"KEYBOARD_MIDDLE_CLICK": "Keyboard middle click",
 		"KEYBOARD_MIDDLE_CLICK_HELP": "Modifier to use when typing\nwith purple laser",

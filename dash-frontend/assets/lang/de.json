@@ -55,7 +55,26 @@
     "BLOCK_GAME_INPUT_IGNORE_WATCH_HELP": "Blockiere die Eingabe nicht, wenn die Überwachung aktiviert ist",
     "USE_SKYBOX_HELP": "Zeige einen Skybox, wenn keine Szenen-App oder Passthrough vorhanden ist",
     "USE_PASSTHROUGH_HELP": "Aktiviere Passthrough, falls die XR-Laufzeitumgebung dies unterstützt",
-    "SCREEN_RENDER_DOWN_HELP": "Hilft bei Aliasing auf hochauflösenden Bildschirmen"
+    "SCREEN_RENDER_DOWN_HELP": "Hilft bei Aliasing auf hochauflösenden Bildschirmen",
+    "SETS_ON_WATCH": "Sets auf der Watch",
+    "TROUBLESHOOTING": "Fehlerbehebung",
+    "CLEAR_SAVED_STATE": "Gespeicherten Zustand löschen",
+    "CLEAR_PIPEWIRE_TOKENS": "PipeWire Tokens löschen",
+    "DELETE_ALL_CONFIGS": "Konfiguration löschen",
+    "RESTART_SOFTWARE": "Software neu starten",
+    "CLEAR_SAVED_STATE_HELP": "Sets und Overlay-Positionen zurücksetzen",
+    "CLEAR_PIPEWIRE_TOKENS_HELP": "Bildschirmauswahl beim nächsten Start abfragen",
+    "DELETE_ALL_CONFIGS_HELP": "Entfernen Sie alle Konfigurationsdateien aus conf.d",
+    "RESTART_SOFTWARE_HELP": "Einstellungen anwenden, die einen Neustart erfordern",
+    "CAPTURE_METHOD": "Wayland-Bildschirmaufnahme",
+    "CAPTURE_METHOD_HELP": "Versuchen Sie, dies zu ändern, wenn Sie\nschwarze oder fehlerhafte Bildschirme erleben",
+    "KEYBOARD_MIDDLE_CLICK": "Keyboard-Mittelklick",
+    "KEYBOARD_MIDDLE_CLICK_HELP": "Modifikator bei Eingabe mit violettem Laser",
+    "OPTION": {
+      "PIPEWIRE_HELP": "Schnelle GPU-Aufnahme. Empfohlen",
+      "PW_FALLBACK_HELP": "Langsam. Versuchen Sie dies, falls PipeWire GPU nicht funktioniert.",
+      "SCREENCOPY_HELP": "Langsam. Funktioniert mit: Hyprland, Niri, River, Sway"
+    }
   },
   "HELLO": "Hallo!",
   "AUDIO": {
@@ -99,5 +118,31 @@
     "NO_GAMES_FOUND": "Keine Spiele gefunden"
   },
   "TERMINATE_PROCESS": "Prozess beenden",
-  "GAME_LAUNCHED": "Spiel gestartet"
+  "GAME_LAUNCHED": "Spiel gestartet",
+  "APP_LAUNCHER": {
+    "MODE": {
+      "NATIVE": "Nativer Modus",
+      "CAGE": "Kompatibilitätsmodus (Cage)"
+    },
+    "RES_TITLE": "Auflösung",
+    "ASPECT_TITLE": "Seitenverhältnis",
+    "ASPECT": {
+      "WIDE": "Breit",
+      "SEMI_WIDE": "Halb-breit",
+      "SQUARE": "Quadratisch",
+      "SEMI_TALL": "Halbhoch",
+      "TALL": "Hoch"
+    },
+    "POS_TITLE": "Positionierung",
+    "POS": {
+      "FLOATING": "Schwebend",
+      "ANCHORED": "Verankert",
+      "STATIC": "Statisch",
+      "FLOATING_HELP": "Bewegt sich unabhängig, zentriert sich bei Anzeige neu.",
+      "ANCHORED_HELP": "Bleibt relativ zur Mittelmarkierung an Ort und Stelle.",
+      "STATIC_HELP": "Keine Set zugeordnet. Wird nicht zentriert."
+    },
+    "AUTOSTART": "Automatisch beim Start ausführen",
+    "LAUNCH": "Starten"
+  }
 }

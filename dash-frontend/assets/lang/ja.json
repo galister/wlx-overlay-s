@@ -56,7 +56,25 @@
     "USE_SKYBOX_HELP": "シーンアプリまたはパススルーがない場合にスカイボックスを表示します",
     "USE_PASSTHROUGH_HELP": "XRランタイムがサポートしていれば、パススルーを有効にします",
     "SCREEN_RENDER_DOWN_HELP": "高解像度スクリーンでのエイリアシングを軽減します",
-    "__UNUSED": "---- 以下未使用の値です ----"
+    "SETS_ON_WATCH": "ウォッチのセット",
+    "TROUBLESHOOTING": "トラブルシューティング",
+    "CLEAR_SAVED_STATE": "保存された状態をクリア",
+    "CLEAR_PIPEWIRE_TOKENS": "PipeWire トークンをクリア",
+    "DELETE_ALL_CONFIGS": "設定を消去",
+    "RESTART_SOFTWARE": "ソフトウェアを再起動",
+    "CLEAR_SAVED_STATE_HELP": "セットとオーバーレイの位置をリセット",
+    "CLEAR_PIPEWIRE_TOKENS_HELP": "次の起動時に画面選択のプロンプトを表示",
+    "DELETE_ALL_CONFIGS_HELP": "conf.d 内のすべての設定ファイルを削除します",
+    "RESTART_SOFTWARE_HELP": "再起動が必要な設定を適用する",
+    "CAPTURE_METHOD": "Waylandスクリーンキャプチャ",
+    "CAPTURE_METHOD_HELP": "画面が黒くなる、または乱れる場合は、\nこの設定を変更してみてください。",
+    "KEYBOARD_MIDDLE_CLICK": "キーボードの中ボタンクリック",
+    "KEYBOARD_MIDDLE_CLICK_HELP": "紫色のレーザーで入力する際の修飾キー",
+    "OPTION": {
+      "PIPEWIRE_HELP": "高速なGPUキャプチャ。推奨",
+      "PW_FALLBACK_HELP": "低速です。PipeWire GPU が動作しない場合に試してください。",
+      "SCREENCOPY_HELP": "遅い。動作する環境: Hyprland, Niri, River, Sway"
+    }
   },
   "HELLO": "こんにちは！",
   "AUDIO": {
@@ -100,5 +118,31 @@
     "NO_GAMES_FOUND": "ゲームが見つかりませんでした"
   },
   "TERMINATE_PROCESS": "プロセスを終了する",
-  "GAME_LAUNCHED": "ゲームが起動しました"
+  "GAME_LAUNCHED": "ゲームが起動しました",
+  "APP_LAUNCHER": {
+    "MODE": {
+      "NATIVE": "ネイティブモード",
+      "CAGE": "互換モード（Cage）"
+    },
+    "RES_TITLE": "解像度",
+    "ASPECT_TITLE": "アスペクト",
+    "ASPECT": {
+      "WIDE": "ワイド",
+      "SEMI_WIDE": "半広角",
+      "SQUARE": "正方形",
+      "SEMI_TALL": "半縦長",
+      "TALL": "縦長"
+    },
+    "POS_TITLE": "配置",
+    "POS": {
+      "FLOATING": "フローティング",
+      "ANCHORED": "固定",
+      "STATIC": "固定",
+      "FLOATING_HELP": "独立して移動し、表示時に中央に再配置されます。",
+      "ANCHORED_HELP": "中央マーカーに対して固定された位置に留まります。",
+      "STATIC_HELP": "どのセットにも属していません。リセンターされません。"
+    },
+    "AUTOSTART": "起動時に自動実行",
+    "LAUNCH": "起動"
+  }
 }
