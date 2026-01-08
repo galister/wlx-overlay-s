@@ -17,8 +17,8 @@ use wlx_common::{
 use crate::{
     gui::{
         panel::{
-            GuiPanel, NewGuiPanelParams, device_list::DeviceList, overlay_list::OverlayList,
-            set_list::SetList,
+            GuiPanel, NewGuiPanelParams, apply_custom_command, device_list::DeviceList,
+            overlay_list::OverlayList, set_list::SetList,
         },
         timer::GuiTimer,
     },
@@ -74,76 +74,84 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
         extra: panel.doc_extra.take().unwrap_or_default(),
     };
 
-    panel.on_notify = Some(Box::new(move |panel, app, event_data| {
-        let mut alterables = EventAlterables::default();
+    panel.on_notify = Some(Box::new({
+        let name = WATCH_NAME;
+        move |panel, app, event_data| {
+            let mut alterables = EventAlterables::default();
 
-        let mut elems_changed = panel.state.overlay_list.on_notify(
-            &mut panel.layout,
-            &mut panel.parser_state,
-            &event_data,
-            &mut alterables,
-            &doc_params,
-        )?;
+            let mut elems_changed = panel.state.overlay_list.on_notify(
+                &mut panel.layout,
+                &mut panel.parser_state,
+                &event_data,
+                &mut alterables,
+                &doc_params,
+            )?;
 
-        elems_changed |= panel.state.set_list.on_notify(
-            &mut panel.layout,
-            &mut panel.parser_state,
-            &event_data,
-            &mut alterables,
-            &doc_params,
-        )?;
+            elems_changed |= panel.state.set_list.on_notify(
+                &mut panel.layout,
+                &mut panel.parser_state,
+                &event_data,
+                &mut alterables,
+                &doc_params,
+            )?;
 
-        elems_changed |= panel.state.device_list.on_notify(
-            app,
-            &mut panel.layout,
-            &mut panel.parser_state,
-            &event_data,
-            &doc_params,
-        )?;
+            elems_changed |= panel.state.device_list.on_notify(
+                app,
+                &mut panel.layout,
+                &mut panel.parser_state,
+                &event_data,
+                &doc_params,
+            )?;
 
-        match event_data {
-            OverlayEventData::EditModeChanged(edit_mode) => {
-                if let Ok(btn_edit_mode) = panel
-                    .parser_state
-                    .fetch_component_as::<ComponentButton>("btn_edit_mode")
-                {
-                    let mut com = CallbackDataCommon {
-                        alterables: &mut alterables,
-                        state: &panel.layout.state,
-                    };
-                    btn_edit_mode.set_sticky_state(&mut com, edit_mode);
+            match event_data {
+                OverlayEventData::EditModeChanged(edit_mode) => {
+                    if let Ok(btn_edit_mode) = panel
+                        .parser_state
+                        .fetch_component_as::<ComponentButton>("btn_edit_mode")
+                    {
+                        let mut com = CallbackDataCommon {
+                            alterables: &mut alterables,
+                            state: &panel.layout.state,
+                        };
+                        btn_edit_mode.set_sticky_state(&mut com, edit_mode);
+                    }
                 }
-            }
-            OverlayEventData::SettingsChanged => {
-                panel.layout.mark_redraw();
-                sets_or_overlays(panel, app, &mut alterables);
+                OverlayEventData::SettingsChanged => {
+                    panel.layout.mark_redraw();
+                    sets_or_overlays(panel, app, &mut alterables);
 
-                if app.session.config.clock_12h != panel.state.clock_12h {
-                    panel.state.clock_12h = app.session.config.clock_12h;
+                    if app.session.config.clock_12h != panel.state.clock_12h {
+                        panel.state.clock_12h = app.session.config.clock_12h;
 
-                    let clock_root = panel.parser_state.get_widget_id("clock_root")?;
-                    panel.layout.remove_children(clock_root);
+                        let clock_root = panel.parser_state.get_widget_id("clock_root")?;
+                        panel.layout.remove_children(clock_root);
 
-                    panel.parser_state.instantiate_template(
-                        &doc_params,
-                        "Clock",
-                        &mut panel.layout,
-                        clock_root,
-                        Default::default(),
-                    )?;
+                        panel.parser_state.instantiate_template(
+                            &doc_params,
+                            "Clock",
+                            &mut panel.layout,
+                            clock_root,
+                            Default::default(),
+                        )?;
 
-                    elems_changed = true;
+                        elems_changed = true;
+                    }
                 }
+                OverlayEventData::CustomCommand { element, command } => {
+                    if let Err(e) = apply_custom_command(panel, app, &element, &command) {
+                        log::warn!("Could not apply {command:?} on {name}/{element}: {e:?}");
+                    }
+                }
+                _ => {}
             }
-            _ => {}
-        }
 
-        if elems_changed {
-            panel.process_custom_elems(app);
-        }
+            if elems_changed {
+                panel.process_custom_elems(app);
+            }
 
-        panel.layout.process_alterables(alterables)?;
-        Ok(())
+            panel.layout.process_alterables(alterables)?;
+            Ok(())
+        }
     }));
 
     panel
