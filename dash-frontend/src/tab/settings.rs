@@ -615,6 +615,12 @@ impl<T> TabSettings<T> {
 		checkbox!(mp, c, SettingType::BlockGameInputIgnoreWatch);
 
 		let c = category!(mp, root, "APP_SETTINGS.CONTROLS", "dashboard/controller.svg")?;
+		dropdown!(
+			mp,
+			c,
+			SettingType::KeyboardMiddleClick,
+			wlx_common::config::AltModifier::VARIANTS
+		);
 		checkbox!(mp, c, SettingType::FocusFollowsMouseMode);
 		checkbox!(mp, c, SettingType::LeftHandedMouse);
 		checkbox!(mp, c, SettingType::AllowSliding);
@@ -626,24 +632,18 @@ impl<T> TabSettings<T> {
 		slider_f32!(mp, c, SettingType::XrClickSensitivity, 0.1, 1.0, 0.1);
 		slider_f32!(mp, c, SettingType::XrClickSensitivityRelease, 0.1, 1.0, 0.1);
 		slider_i32!(mp, c, SettingType::ClickFreezeTimeMs, 0, 500, 50);
-		dropdown!(
-			mp,
-			c,
-			SettingType::KeyboardMiddleClick,
-			wlx_common::config::AltModifier::VARIANTS
-		);
 
 		let c = category!(mp, root, "APP_SETTINGS.MISC", "dashboard/blocks.svg")?;
-		checkbox!(mp, c, SettingType::XwaylandByDefault);
-		checkbox!(mp, c, SettingType::UprightScreenFix);
-		checkbox!(mp, c, SettingType::DoubleCursorFix);
-		checkbox!(mp, c, SettingType::ScreenRenderDown);
 		dropdown!(
 			mp,
 			c,
 			SettingType::CaptureMethod,
 			wlx_common::config::CaptureMethod::VARIANTS
 		);
+		checkbox!(mp, c, SettingType::XwaylandByDefault);
+		checkbox!(mp, c, SettingType::UprightScreenFix);
+		checkbox!(mp, c, SettingType::DoubleCursorFix);
+		checkbox!(mp, c, SettingType::ScreenRenderDown);
 
 		let c = category!(mp, root, "APP_SETTINGS.TROUBLESHOOTING", "dashboard/blocks.svg")?;
 		button!(
