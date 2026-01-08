@@ -98,8 +98,7 @@ pub(super) fn setup_custom_label<S: 'static>(
                     }
                 }
                 unk => {
-                    log::warn!("Unknown display value for clock label source: {unk}");
-                    return;
+                    unk
                 }
             };
 

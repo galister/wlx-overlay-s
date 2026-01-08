@@ -10,7 +10,7 @@ For more, refer to: `wayvrctl panel-modify --help`
 
 Clock labels are driven by the current time, adhering to the user's 12/24 hour setting as well as timezone settings.
 
-Available display values are: `name` (timezone name), `time`, `date`, `dow`
+Available display values are: `name` (timezone name), `time`, `date`, `dow` or a custom [format string](https://docs.rs/chrono/latest/chrono/format/strftime/index.html) like `%H:%M:%S`.
 
 See the Custom Timezones section for more info on timezones. Skip `_timezone` to use local time.
 
