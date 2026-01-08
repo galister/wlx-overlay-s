@@ -3,6 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use chrono::Offset;
 use idmap::IdMap;
 use serde::{Deserialize, Serialize};
+use strum::{AsRefStr, EnumProperty, EnumString, VariantArray};
 
 use crate::{
 	astr_containers::{AStrMap, AStrSet},
@@ -12,6 +13,22 @@ use crate::{
 
 pub type PwTokenMap = AStrMap<String>;
 pub type SerializedWindowStates = HashMap<Arc<str>, OverlayWindowState>;
+
+#[derive(Default, Clone, Copy, Serialize, Deserialize, AsRefStr, EnumString, EnumProperty, VariantArray)]
+pub enum CaptureMethod {
+	#[default]
+	#[serde(alias = "pipewire", alias = "auto")]
+	#[strum(props(Text = "PipeWire GPU", Tooltip = "APP_SETTINGS.OPTION.PIPEWIRE_HELP"))]
+	PipeWire,
+
+	#[serde(alias = "pw-fallback")]
+	#[strum(props(Text = "PipeWire CPU", Tooltip = "APP_SETTINGS.OPTION.PW_FALLBACK_HELP"))]
+	PwFallback,
+
+	#[serde(alias = "screencopy")]
+	#[strum(props(Text = "ScreenCopy CPU", Tooltip = "APP_SETTINGS.OPTION.SCREENCOPY_HELP"))]
+	ScreenCopy,
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SerializedWindowSet {
@@ -74,10 +91,6 @@ fn def_timezones() -> Vec<String> {
 		EMEA..APAC => vec!["America/New_York".into(), "Asia/Tokyo".into()],
 		APAC..=i32::MAX => vec!["Europe/Paris".into(), "America/New_York".into()],
 	}
-}
-
-fn def_auto() -> Arc<str> {
-	"auto".into()
 }
 
 fn def_empty() -> Arc<str> {
@@ -174,8 +187,8 @@ pub struct GeneralConfig {
 	#[serde(default)]
 	pub custom_panels: AStrSet,
 
-	#[serde(default = "def_auto")]
-	pub capture_method: Arc<str>,
+	#[serde(default)]
+	pub capture_method: CaptureMethod,
 
 	#[serde(default = "def_point7")]
 	pub xr_click_sensitivity: f32,

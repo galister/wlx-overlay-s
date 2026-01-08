@@ -18,7 +18,10 @@ use crate::{
         FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender, ui_transform,
     },
 };
-use wlx_common::overlays::{BackendAttrib, BackendAttribValue, MouseTransform, StereoMode};
+use wlx_common::{
+    config::CaptureMethod,
+    overlays::{BackendAttrib, BackendAttribValue, MouseTransform, StereoMode},
+};
 
 use super::capture::{ScreenPipeline, WlxCaptureIn, WlxCaptureOut, receive_callback};
 
@@ -144,10 +147,12 @@ impl OverlayBackend for ScreenBackend {
                 .ext_external_memory_dma_buf
                 && self.capture.supports_dmbuf();
 
-            let allow_dmabuf = &*app.session.config.capture_method != "pw_fallback"
-                && &*app.session.config.capture_method != "screencopy";
+            let capture_method = app.session.config.capture_method;
 
-            let capture_method = app.session.config.capture_method.clone();
+            let allow_dmabuf = !matches!(
+                capture_method,
+                CaptureMethod::PwFallback | CaptureMethod::ScreenCopy
+            );
 
             let dmabuf_formats = if !supports_dmabuf {
                 log::info!("Capture method does not support DMA-buf");
@@ -158,7 +163,10 @@ impl OverlayBackend for ScreenBackend {
                 }
                 &Vec::new()
             } else if !allow_dmabuf {
-                log::info!("Not using DMA-buf capture due to {capture_method}");
+                log::info!(
+                    "Not using DMA-buf capture due to {}",
+                    capture_method.as_ref()
+                );
                 if app.gfx_extras.queue_capture.is_none() {
                     log::warn!(
                         "Current GPU does not support multiple queues. Software capture will take place on the main thread. Expect degraded performance."

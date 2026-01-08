@@ -1,13 +1,18 @@
-use std::{collections::HashMap, marker::PhantomData, rc::Rc};
+use std::{collections::HashMap, marker::PhantomData, rc::Rc, str::FromStr};
 
-use strum::AsRefStr;
+use glam::Vec2;
+use strum::{AsRefStr, EnumProperty, EnumString, VariantArray};
 use wgui::{
 	assets::AssetPath,
 	components::{button::ComponentButton, checkbox::ComponentCheckbox, slider::ComponentSlider},
+	event::{CallbackDataCommon, EventAlterables},
+	i18n::Translation,
 	layout::{Layout, WidgetID},
 	log::LogErr,
 	parser::{Fetchable, ParseDocumentParams, ParserState},
 	task::Tasks,
+	widget::label::WidgetLabel,
+	windowing::context_menu::{self, Blueprint, ContextMenu, TickResult},
 };
 use wlx_common::{config::GeneralConfig, config_io::ConfigRoot};
 
@@ -20,6 +25,7 @@ enum Task {
 	UpdateBool(SettingType, bool),
 	UpdateFloat(SettingType, f32),
 	UpdateInt(SettingType, i32),
+	OpenContextMenu(Vec2, Vec<context_menu::Cell>),
 	ClearPipewireTokens,
 	ClearSavedState,
 	DeleteAllConfigs,
@@ -29,6 +35,8 @@ enum Task {
 pub struct TabSettings<T> {
 	#[allow(dead_code)]
 	pub state: ParserState,
+
+	context_menu: ContextMenu,
 
 	tasks: Tasks<Task>,
 	marker: PhantomData<T>,
@@ -76,17 +84,56 @@ impl<T> Tab<T> for TabSettings<T> {
 					frontend.interface.restart(data);
 					return Ok(());
 				}
+				Task::OpenContextMenu(position, cells) => {
+					self.context_menu.open(context_menu::OpenParams {
+						on_custom_attribs: None,
+						position,
+						blueprint: Blueprint::Cells(cells),
+					});
+				}
 			}
 		}
+
+		// Dropdown handling
+		if let TickResult::Action(name) = self.context_menu.tick(&mut frontend.layout, &mut self.state)? {
+			if let (Some(setting), Some(id), Some(value), Some(text), Some(translated)) = {
+				let mut s = name.splitn(5, ';');
+				(s.next(), s.next(), s.next(), s.next(), s.next())
+			} {
+				let mut label = self
+					.state
+					.fetch_widget_as::<WidgetLabel>(&frontend.layout.state, &format!("{id}_value"))?;
+
+				let mut alterables = EventAlterables::default();
+				let mut common = CallbackDataCommon {
+					alterables: &mut alterables,
+					state: &frontend.layout.state,
+				};
+
+				let translation = Translation {
+					text: text.into(),
+					translated: translated == "1",
+				};
+
+				label.set_text(&mut common, translation);
+
+				let setting = SettingType::from_str(setting).expect("Invalid Enum string");
+				setting.set_enum(config, value);
+				changed = true;
+			}
+		}
+
+		// Notify overlays of the change
 		if changed {
 			frontend.interface.config_changed(data);
 		}
+
 		Ok(())
 	}
 }
 
 #[allow(clippy::enum_variant_names)]
-#[derive(Clone, Copy, AsRefStr)]
+#[derive(Clone, Copy, AsRefStr, EnumString)]
 enum SettingType {
 	AnimationSpeed,
 	RoundMultiplier,
@@ -120,6 +167,7 @@ enum SettingType {
 	HideUsername,
 	OpaqueBackground,
 	XwaylandByDefault,
+	CaptureMethod,
 }
 
 impl SettingType {
@@ -173,6 +221,40 @@ impl SettingType {
 		}
 	}
 
+	pub fn set_enum<'a>(self, config: &'a mut GeneralConfig, value: &str) {
+		match self {
+			Self::CaptureMethod => {
+				config.capture_method = wlx_common::config::CaptureMethod::from_str(value).expect("Invalid enum value!")
+			}
+			_ => panic!("Requested enum for non-enum SettingType"),
+		}
+	}
+
+	fn get_enum_title<'a>(self, config: &'a mut GeneralConfig) -> Translation {
+		match self {
+			Self::CaptureMethod => Self::get_enum_title_inner(config.capture_method),
+			_ => panic!("Requested enum for non-enum SettingType"),
+		}
+	}
+
+	fn get_enum_title_inner<E>(value: E) -> Translation
+	where
+		E: EnumProperty + AsRef<str>,
+	{
+		value
+			.get_str("Translation")
+			.map(|x| Translation::from_translation_key(x))
+			.or_else(|| value.get_str("Text").map(|x| Translation::from_raw_text(x)))
+			.unwrap_or_else(|| Translation::from_raw_text(value.as_ref()))
+	}
+
+	fn get_enum_tooltip_inner<E>(value: E) -> Option<Translation>
+	where
+		E: EnumProperty + AsRef<str>,
+	{
+		value.get_str("Tooltip").map(|x| Translation::from_translation_key(x))
+	}
+
 	/// Ok is translation, Err is raw text
 	fn get_translation(self) -> Result<&'static str, &'static str> {
 		match self {
@@ -208,6 +290,7 @@ impl SettingType {
 			Self::HideUsername => Ok("APP_SETTINGS.HIDE_USERNAME"),
 			Self::OpaqueBackground => Ok("APP_SETTINGS.OPAQUE_BACKGROUND"),
 			Self::XwaylandByDefault => Ok("APP_SETTINGS.XWAYLAND_BY_DEFAULT"),
+			Self::CaptureMethod => Ok("APP_SETTINGS.CAPTURE_METHOD"),
 		}
 	}
 
@@ -224,6 +307,7 @@ impl SettingType {
 			Self::UseSkybox => Some("APP_SETTINGS.USE_SKYBOX_HELP"),
 			Self::UsePassthrough => Some("APP_SETTINGS.USE_PASSTHROUGH_HELP"),
 			Self::ScreenRenderDown => Some("APP_SETTINGS.SCREEN_RENDER_DOWN_HELP"),
+			Self::CaptureMethod => Some("APP_SETTINGS.CAPTURE_METHOD_HELP"),
 			_ => None,
 		}
 	}
@@ -381,6 +465,72 @@ macro_rules! slider_i32 {
 	};
 }
 
+macro_rules! dropdown {
+	($mp:expr, $root:expr, $setting:expr, $options:expr) => {
+		let id = $mp.idx.to_string();
+		$mp.idx += 1;
+
+		let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
+		params.insert(Rc::from("id"), Rc::from(id.as_ref()));
+
+		match $setting.get_translation() {
+			Ok(translation) => params.insert(Rc::from("translation"), translation.into()),
+			Err(raw_text) => params.insert(Rc::from("text"), raw_text.into()),
+		};
+
+		if let Some(tooltip) = $setting.get_tooltip() {
+			params.insert(Rc::from("tooltip"), Rc::from(tooltip));
+		}
+
+		$mp
+			.parser_state
+			.instantiate_template($mp.doc_params, "DropdownButton", $mp.layout, $root, params)?;
+
+		let setting_str = $setting.as_ref();
+		let title = $setting.get_enum_title($mp.config);
+
+		{
+			let mut label = $mp
+				.parser_state
+				.fetch_widget_as::<WidgetLabel>(&$mp.layout.state, &format!("{id}_value"))?;
+			label.set_text_simple(&mut $mp.layout.state.globals.get(), title);
+		}
+
+		let btn = $mp.parser_state.fetch_component_as::<ComponentButton>(&id)?;
+		btn.on_click(Box::new({
+			let tasks = $mp.tasks.clone();
+			move |_common, e| {
+				tasks.push(Task::OpenContextMenu(
+					e.mouse_pos_absolute.unwrap_or_default(),
+					$options
+						.iter()
+						.filter_map(|item| {
+							if item.get_bool("Hidden").unwrap_or(false) {
+								return None;
+							}
+
+							let value = item.as_ref();
+							let title = SettingType::get_enum_title_inner(*item);
+							let tooltip = SettingType::get_enum_tooltip_inner(*item);
+
+							let text = &title.text;
+							let translated = if title.translated { "1" } else { "0" };
+
+							Some(context_menu::Cell {
+								action_name: Some(format!("{setting_str};{id};{value};{text};{translated}").into()),
+								title,
+								tooltip,
+								attribs: vec![],
+							})
+						})
+						.collect(),
+				));
+				Ok(())
+			}
+		}));
+	};
+}
+
 macro_rules! button {
 	($mp:expr, $root:expr, $translation:expr, $icon:expr, $task:expr) => {
 		let id = $mp.idx.to_string();
@@ -474,27 +624,33 @@ impl<T> TabSettings<T> {
 		checkbox!(mp, c, SettingType::UprightScreenFix);
 		checkbox!(mp, c, SettingType::DoubleCursorFix);
 		checkbox!(mp, c, SettingType::ScreenRenderDown);
+		dropdown!(
+			mp,
+			c,
+			SettingType::CaptureMethod,
+			wlx_common::config::CaptureMethod::VARIANTS
+		);
 
 		let c = category!(mp, root, "APP_SETTINGS.TROUBLESHOOTING", "dashboard/blocks.svg")?;
 		button!(
 			mp,
 			c,
-			"APP_SETTINGS.CLEAR_SAVED_STATE",
-			"dashboard/remove_circle.svg",
-			Task::ClearSavedState
-		);
-		button!(
-			mp,
-			c,
 			"APP_SETTINGS.CLEAR_PIPEWIRE_TOKENS",
-			"dashboard/remove_circle.svg",
+			"dashboard/display.svg",
 			Task::ClearPipewireTokens
 		);
 		button!(
 			mp,
 			c,
+			"APP_SETTINGS.CLEAR_SAVED_STATE",
+			"dashboard/binary.svg",
+			Task::ClearSavedState
+		);
+		button!(
+			mp,
+			c,
 			"APP_SETTINGS.DELETE_ALL_CONFIGS",
-			"dashboard/remove_circle.svg",
+			"dashboard/circle.svg",
 			Task::DeleteAllConfigs
 		);
 		button!(
@@ -509,6 +665,7 @@ impl<T> TabSettings<T> {
 			tasks: mp.tasks,
 			state: parser_state,
 			marker: PhantomData,
+			context_menu: ContextMenu::default(),
 		})
 	}
 }

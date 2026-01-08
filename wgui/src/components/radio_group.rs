@@ -1,10 +1,10 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{
-	components::{Component, ComponentBase, ComponentTrait, RefreshData, checkbox::ComponentCheckbox},
+	components::{checkbox::ComponentCheckbox, Component, ComponentBase, ComponentTrait, RefreshData},
 	event::CallbackDataCommon,
 	layout::WidgetPair,
-	widget::{ConstructEssentials, div::WidgetDiv},
+	widget::{div::WidgetDiv, ConstructEssentials},
 };
 
 pub struct RadioValueChangeEvent {

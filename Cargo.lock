@@ -6930,6 +6930,7 @@ dependencies = [
  "serde",
  "serde_json",
  "smol",
+ "strum",
  "walkdir",
  "wayvr-ipc",
  "wgui",

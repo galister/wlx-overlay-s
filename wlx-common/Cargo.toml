@@ -14,7 +14,9 @@ idmap-derive.workspace = true
 log.workspace = true
 serde = { workspace = true, features = ["rc"] }
 serde_json.workspace = true
+strum.workspace = true
 xdg.workspace = true
+
 chrono = "0.4.42"
 smol = "2.0.2"
 wgui = { path = "../wgui/" }

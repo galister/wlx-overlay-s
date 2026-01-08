@@ -259,8 +259,10 @@ impl TestbedGeneric {
 			on_custom_attribs: Some(Rc::new(move |custom_attribs| {
 				log::info!("custom attribs {:?}", custom_attribs.pairs);
 			})),
-			template_name: "my_context_menu".into(),
-			template_params: Default::default(),
+			blueprint: context_menu::Blueprint::Template {
+				template_name: "my_context_menu".into(),
+				template_params: Default::default(),
+			},
 			position,
 		});
 	}

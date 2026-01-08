@@ -259,11 +259,11 @@ impl ParserState {
 		Ok(())
 	}
 
-	pub(crate) fn context_menu_create_blueprint(
+	pub(crate) fn context_menu_parse_cells(
 		&mut self,
 		template_name: &str,
 		template_params: &HashMap<Rc<str>, Rc<str>>,
-	) -> anyhow::Result<context_menu::Blueprint> {
+	) -> anyhow::Result<Vec<context_menu::Cell>> {
 		let Some(template) = self.data.templates.get(template_name) else {
 			anyhow::bail!("no template named \"{template_name}\" found");
 		};
@@ -283,6 +283,7 @@ impl ParserState {
 				"" => {}
 				"cell" => {
 					let mut title: Option<Translation> = None;
+					let mut tooltip: Option<Translation> = None;
 					let mut action_name: Option<Rc<str>> = None;
 					let mut attribs = Vec::<AttribPair>::new();
 
@@ -292,6 +293,8 @@ impl ParserState {
 						match key {
 							"text" => title = Some(Translation::from_raw_text(value)),
 							"translation" => title = Some(Translation::from_translation_key(value)),
+							"tooltip" => tooltip = Some(Translation::from_translation_key(value)),
+							"tooltip_str" => tooltip = Some(Translation::from_raw_text(value)),
 							"action" => action_name = Some(value.into()),
 							other => {
 								if !other.starts_with('_') {
@@ -305,6 +308,7 @@ impl ParserState {
 					let title = title.context("No text/translation provided")?;
 					cells.push(context_menu::Cell {
 						title,
+						tooltip,
 						action_name,
 						attribs,
 					});
@@ -316,9 +320,7 @@ impl ParserState {
 		}
 
 		Ok(
-			context_menu::Blueprint {
 				cells,
-			}
 		)
 	}
 }

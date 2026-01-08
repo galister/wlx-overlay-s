@@ -20,7 +20,7 @@ use wgui::{
     parser::{self, AttribPair, CustomAttribsInfoOwned, Fetchable, ParserState},
     taffy,
     widget::EventResult,
-    windowing::context_menu::{ContextMenu, OpenParams},
+    windowing::context_menu::{Blueprint, ContextMenu, OpenParams},
 };
 use wlx_common::overlays::ToastTopic;
 
@@ -207,8 +207,9 @@ pub(super) fn setup_custom_button<S: 'static>(
         let callback: EventCallback<AppState, S> = match command {
             "::ContextMenuOpen" => {
                 let Some(template_name) = args.next() else {
-                    log::warn!(
-                        "{command} has incorrect arguments. Should be: {command} <context_menu>"
+                    log::error!(
+                        "{:?}: {command} has invalid arguments",
+                        parser_state.path.get_path_buf()
                     );
                     return;
                 };
@@ -230,8 +231,10 @@ pub(super) fn setup_custom_button<S: 'static>(
                     move |_common, data, _app, _| {
                         context_menu.borrow_mut().open(OpenParams {
                             on_custom_attribs: Some(on_custom_attribs.clone()),
-                            template_name: template_name.clone(),
-                            template_params: template_params.clone(),
+                            blueprint: Blueprint::Template {
+                                template_name: template_name.clone(),
+                                template_params: template_params.clone(),
+                            },
                             position: data.metadata.get_mouse_pos_absolute().unwrap(), //want panic
                         });
                         Ok(EventResult::Consumed)
@@ -249,14 +252,18 @@ pub(super) fn setup_custom_button<S: 'static>(
             }
             "::ElementSetDisplay" => {
                 let (Some(id), Some(value)) = (args.next(), args.next()) else {
-                    log::warn!(
-                        "{command} has incorrect arguments. Should be: {command} <element_id> <display>"
+                    log::error!(
+                        "{:?}: {command} has invalid arguments",
+                        parser_state.path.get_path_buf()
                     );
                     return;
                 };
 
                 let Ok(widget_id) = parser_state.data.get_widget_id(id) else {
-                    log::warn!("{command}: no element exists with ID '{id}'");
+                    log::warn!(
+                        "{:?}: {command}: no element exists with ID '{id}'",
+                        parser_state.path.get_path_buf()
+                    );
                     return;
                 };
 
@@ -290,7 +297,10 @@ pub(super) fn setup_custom_button<S: 'static>(
             "::SetToggle" => {
                 let arg = args.next().unwrap_or_default();
                 let Ok(set_idx) = arg.parse() else {
-                    log::error!("{command} has invalid argument: \"{arg}\"");
+                    log::error!(
+                        "{:?}: {command} has invalid argument: \"{arg}\"",
+                        parser_state.path.get_path_buf()
+                    );
                     return;
                 };
                 Box::new(move |_common, data, app, _| {
@@ -306,7 +316,10 @@ pub(super) fn setup_custom_button<S: 'static>(
             "::SetSwitch" => {
                 let arg = args.next().unwrap_or_default();
                 let Ok(set_idx) = arg.parse::<i32>() else {
-                    log::error!("{command} has invalid argument: \"{arg}\"");
+                    log::error!(
+                        "{:?}: {command} has invalid argument: \"{arg}\"",
+                        parser_state.path.get_path_buf()
+                    );
                     return;
                 };
                 let maybe_set = if set_idx < 0 {
@@ -327,7 +340,10 @@ pub(super) fn setup_custom_button<S: 'static>(
             "::OverlayReset" => {
                 let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
                 if arg.len() < 1 {
-                    log::error!("{command} has missing arguments");
+                    log::error!(
+                        "{:?}: {command} has missing arguments",
+                        parser_state.path.get_path_buf()
+                    );
                     return;
                 };
 
@@ -346,7 +362,10 @@ pub(super) fn setup_custom_button<S: 'static>(
             "::OverlayToggle" => {
                 let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
                 if arg.len() < 1 {
-                    log::error!("{command} has missing arguments");
+                    log::error!(
+                        "{:?}: {command} has missing arguments",
+                        parser_state.path.get_path_buf()
+                    );
                     return;
                 };
 
@@ -366,7 +385,10 @@ pub(super) fn setup_custom_button<S: 'static>(
             "::OverlayDrop" => {
                 let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
                 if arg.len() < 1 {
-                    log::error!("{command} has missing arguments");
+                    log::error!(
+                        "{:?}: {command} has missing arguments",
+                        parser_state.path.get_path_buf()
+                    );
                     return;
                 };
 
@@ -402,7 +424,10 @@ pub(super) fn setup_custom_button<S: 'static>(
             "::CustomOverlayReload" => {
                 let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
                 if arg.len() < 1 {
-                    log::error!("{command} has missing arguments");
+                    log::error!(
+                        "{:?}: {command} has missing arguments",
+                        parser_state.path.get_path_buf()
+                    );
                     return;
                 };
 
@@ -440,7 +465,10 @@ pub(super) fn setup_custom_button<S: 'static>(
             "::WvrOverlayCloseWindow" => {
                 let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
                 if arg.len() < 1 {
-                    log::error!("{command} has missing arguments");
+                    log::error!(
+                        "{:?}: {command} has missing arguments",
+                        parser_state.path.get_path_buf()
+                    );
                     return;
                 };
                 Box::new(move |_common, data, app, _| {
@@ -463,7 +491,10 @@ pub(super) fn setup_custom_button<S: 'static>(
             "::WvrOverlayKillProcess" | "::WvrOverlayTermProcess" => {
                 let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
                 if arg.len() < 1 {
-                    log::error!("{command} has missing arguments");
+                    log::error!(
+                        "{:?}: {command} has missing arguments",
+                        parser_state.path.get_path_buf()
+                    );
                     return;
                 };
 
@@ -585,7 +616,10 @@ pub(super) fn setup_custom_button<S: 'static>(
             }),
             "::SendKey" => {
                 let Some(key) = args.next().and_then(|s| VirtualKey::from_str(s).ok()) else {
-                    log::error!("{command} has bad/missing arguments");
+                    log::error!(
+                        "{:?}: {command} has bad/missing arguments",
+                        parser_state.path.get_path_buf()
+                    );
                     return;
                 };
                 let Some(down) = args.next().and_then(|s| match s.to_lowercase().as_str() {
@@ -593,7 +627,10 @@ pub(super) fn setup_custom_button<S: 'static>(
                     "up" => Some(false),
                     _ => None,
                 }) else {
-                    log::error!("{command} has bad/missing arguments");
+                    log::error!(
+                        "{:?}: {command} has bad/missing arguments",
+                        parser_state.path.get_path_buf()
+                    );
                     return;
                 };
                 Box::new(move |_common, data, app, _| {
@@ -640,7 +677,10 @@ pub(super) fn setup_custom_button<S: 'static>(
                 use crate::subsystem::osc::parse_osc_value;
 
                 let Some(address) = args.next().map(std::string::ToString::to_string) else {
-                    log::error!("{command} has missing arguments");
+                    log::error!(
+                        "{:?}: {command} has bad/missing arguments",
+                        parser_state.path.get_path_buf()
+                    );
                     return;
                 };
 

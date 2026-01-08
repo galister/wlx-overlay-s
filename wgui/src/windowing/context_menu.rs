@@ -15,19 +15,23 @@ use crate::{
 
 pub struct Cell {
 	pub title: Translation,
+	pub tooltip: Option<Translation>,
 	pub action_name: Option<Rc<str>>,
 	pub attribs: Vec<parser::AttribPair>,
 }
 
-pub(crate) struct Blueprint {
-	pub cells: Vec<Cell>,
+pub enum Blueprint {
+	Cells(Vec<Cell>),
+	Template {
+		template_name: Rc<str>,
+		template_params: HashMap<Rc<str>, Rc<str>>,
+	},
 }
 
 pub struct OpenParams {
 	pub on_custom_attribs: Option<parser::OnCustomAttribsFunc>,
-	pub template_name: Rc<str>,
-	pub template_params: HashMap<Rc<str>, Rc<str>>,
 	pub position: Vec2,
+	pub blueprint: Blueprint,
 }
 
 #[derive(Clone)]
@@ -74,11 +78,17 @@ impl ContextMenu {
 
 	fn open_process(
 		&mut self,
-		params: &mut OpenParams,
+		params: OpenParams,
 		layout: &mut Layout,
 		parser_state: &mut ParserState,
 	) -> anyhow::Result<()> {
-		let blueprint = parser_state.context_menu_create_blueprint(&params.template_name, &params.template_params)?;
+		let cells = match params.blueprint {
+			Blueprint::Template {
+				template_name,
+				template_params,
+			} => parser_state.context_menu_parse_cells(&template_name, &template_params)?,
+			Blueprint::Cells(cells) => cells,
+		};
 
 		let globals = layout.state.globals.clone();
 
@@ -100,9 +110,13 @@ impl ContextMenu {
 
 		let id_buttons = inner_parser.get_widget_id("buttons")?;
 
-		for (idx, cell) in blueprint.cells.iter().enumerate() {
+		for (idx, cell) in cells.iter().enumerate() {
 			let mut par = HashMap::new();
 			par.insert(Rc::from("text"), cell.title.generate(&mut globals.i18n()));
+			if let Some(tooltip) = cell.tooltip.as_ref() {
+				par.insert(Rc::from("tooltip_str"), tooltip.generate(&mut globals.i18n()));
+			}
+
 			let mut data_cell = inner_parser.parse_template(&doc_params, "Cell", layout, id_buttons, par)?;
 
 			let button = data_cell.fetch_component_as::<ComponentButton>("button")?;
@@ -112,7 +126,7 @@ impl ContextMenu {
 				.tasks
 				.handle_button(&button, Task::ActionClicked(cell.action_name.clone()));
 
-			if let Some(c) = &mut params.on_custom_attribs {
+			if let Some(c) = params.on_custom_attribs.as_ref() {
 				(*c)(parser::CustomAttribsInfo {
 					pairs: &cell.attribs,
 					parent_id: id_buttons,
@@ -121,7 +135,7 @@ impl ContextMenu {
 				});
 			}
 
-			if idx < blueprint.cells.len() - 1 {
+			if idx < cells.len() - 1 {
 				inner_parser.parse_template(&doc_params, "Separator", layout, id_buttons, Default::default())?;
 			}
 		}
@@ -129,8 +143,8 @@ impl ContextMenu {
 	}
 
 	pub fn tick(&mut self, layout: &mut Layout, parser_state: &mut ParserState) -> anyhow::Result<TickResult> {
-		if let Some(mut p) = self.pending_open.take() {
-			self.open_process(&mut p, layout, parser_state)?;
+		if let Some(p) = self.pending_open.take() {
+			self.open_process(p, layout, parser_state)?;
 			let _ = self.tasks.drain();
 			return Ok(TickResult::Opened);
 		}

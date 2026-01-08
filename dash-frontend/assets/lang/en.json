@@ -69,7 +69,16 @@
 		"CLEAR_SAVED_STATE_HELP": "Reset sets & overlay positions",
 		"CLEAR_PIPEWIRE_TOKENS_HELP": "Prompt for screen selection on next start",
 		"DELETE_ALL_CONFIGS_HELP": "Remove all configuration files from conf.d",
-		"RESTART_SOFTWARE_HELP": "Apply settings that require a restart"
+		"RESTART_SOFTWARE_HELP": "Apply settings that require a restart",
+
+		"CAPTURE_METHOD": "Wayland screen capture",
+		"CAPTURE_METHOD_HELP": "Try changing this if experiencing\nblack or glitchy screens",
+
+		"OPTION": {
+			"PIPEWIRE_HELP": "Fast GPU capture. Recommended",
+			"PW_FALLBACK_HELP": "Slow. Try in case PipeWire GPU doesn't work",
+			"SCREENCOPY_HELP": "Slow. Works on: Hyprland, Niri, River, Sway"
+		}
 	},
 	"APPLICATION_LAUNCHER": "Application launcher",
 	"APPLICATION_STARTED": "Application started",
