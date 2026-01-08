@@ -169,7 +169,7 @@ impl View {
 		//radio_orientation.set_value(orientation_mode.as_ref())?;
 		//tasks.push(Task::SetOrientation(orientation_mode));
 
-		let pos_mode = PosMode::Floating;
+		let pos_mode = PosMode::Anchored;
 		// TODO: configurable defaults ?
 		//radio_pos.set_value(pos_mode.as_ref())?;
 		//tasks.push(Task::SetPos(pos_mode));
@@ -359,7 +359,7 @@ impl View {
 		};
 
 		let pos_mode = match params.pos_mode {
-			PosMode::Floating => PositionMode::Anchor,
+			PosMode::Floating => PositionMode::Float,
 			PosMode::Anchored => PositionMode::Anchor,
 			PosMode::Static => PositionMode::Static,
 		};

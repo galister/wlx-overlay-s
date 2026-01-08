@@ -32,7 +32,7 @@ use std::{
 };
 use time::get_millis;
 use vulkano::image::view::ImageView;
-use wayvr_ipc::packet_server;
+use wayvr_ipc::{packet_client::PositionMode, packet_server};
 use wgui::gfx::WGfx;
 use wlx_capture::frame::Transform;
 use wlx_common::desktop_finder::DesktopFinder;
@@ -300,15 +300,16 @@ impl WvrServerState {
                         };
 
                         // Size, icon & fallback title comes from process
-                        let ([size_x, size_y], fallback_title, icon, is_cage) =
+                        let ([size_x, size_y], pos, fallback_title, icon, is_cage) =
                             match wvr_server.processes.get(&process_handle) {
                                 Some(Process::Managed(p)) => (
                                     p.resolution,
+                                    p.pos_mode,
                                     Some(p.app_name.clone()),
                                     p.icon.as_ref().cloned(),
                                     p.exec_path.ends_with("cage"),
                                 ),
-                                _ => ([1920, 1080], None, None, false),
+                                _ => ([1920, 1080], PositionMode::Float, None, None, false),
                             };
 
                         let window_handle = wvr_server.wm.create_window(
@@ -373,6 +374,7 @@ impl WvrServerState {
                                     window_handle,
                                     icon,
                                     [size_x, size_y],
+                                    pos,
                                 )
                                 .context("Could not create WvrWindow overlay")
                                 .inspect_err(|e| log::warn!("{e:?}"))
@@ -571,6 +573,7 @@ impl WvrServerState {
         args: &[&str],
         env: &[(&str, &str)],
         resolution: [u32; 2],
+        pos_mode: PositionMode,
         working_dir: Option<&str>,
         icon: Option<&str>,
         userdata: HashMap<String, String>,
@@ -606,6 +609,7 @@ impl WvrServerState {
                     .collect(),
                 icon: icon.map(Arc::from),
                 resolution,
+                pos_mode,
             }));
 
         self.signals.send(WayVRSignal::BroadcastStateChanged(

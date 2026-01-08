@@ -204,7 +204,13 @@ impl OverlayWindowConfig {
                 hand, align_to_hmd, ..
             } => (app.input_state.pointers[hand as usize].pose, align_to_hmd),
             Positioning::Anchored => (app.anchor, false),
-            Positioning::Static => return,
+            Positioning::Static => {
+                if hard_reset {
+                    (app.input_state.hmd, false)
+                } else {
+                    return;
+                }
+            }
         };
 
         if hard_reset {

@@ -1,3 +1,4 @@
+use chrono_tz::PST8PDT;
 use glam::{Affine2, Affine3A, Quat, Vec2, Vec3, vec2, vec3};
 use smithay::{
     desktop::PopupManager,
@@ -7,6 +8,7 @@ use std::{ops::RangeInclusive, sync::Arc};
 use vulkano::{
     buffer::BufferUsage, image::view::ImageView, pipeline::graphics::color_blend::AttachmentBlend,
 };
+use wayvr_ipc::packet_client::PositionMode;
 use wgui::{
     components::button::ComponentButton,
     event::EventCallback,
@@ -58,21 +60,32 @@ pub fn create_wl_window_overlay(
     window: wayvr::window::WindowHandle,
     icon: Arc<str>,
     size: [u32; 2],
+    pos_mode: PositionMode,
 ) -> anyhow::Result<OverlayWindowConfig> {
     let scale = size[0].max(size[1]) as f32 / 1920.0;
     let curve_scale = size[0] as f32 / 1920.0;
+
+    let z_dist = if matches!(pos_mode, PositionMode::Anchor) {
+        0.0
+    } else {
+        -0.95
+    };
 
     Ok(OverlayWindowConfig {
         name: name.clone(),
         default_state: OverlayWindowState {
             grabbable: true,
             interactable: true,
-            positioning: Positioning::Floating,
+            positioning: match pos_mode {
+                PositionMode::Float => Positioning::Floating,
+                PositionMode::Anchor => Positioning::Anchored,
+                PositionMode::Static => Positioning::Static,
+            },
             curvature: Some(0.15 * curve_scale),
             transform: Affine3A::from_scale_rotation_translation(
                 Vec3::ONE * scale,
                 Quat::IDENTITY,
-                vec3(0.0, 0.0, -0.95),
+                vec3(0.0, 0.0, z_dist),
             ),
             ..OverlayWindowState::default()
         },

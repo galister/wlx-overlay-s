@@ -13,7 +13,7 @@ pub struct Handshake {
 	pub client_name: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub enum PositionMode {
 	Float,
 	Anchor,

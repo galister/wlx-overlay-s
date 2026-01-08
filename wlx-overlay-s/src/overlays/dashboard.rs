@@ -365,6 +365,7 @@ impl DashInterface<AppState> for DashInterfaceLive {
                 &args_vec,
                 &env_vec,
                 params.resolution,
+                params.pos_mode,
                 None,
                 params.icon.as_deref(),
                 params.userdata,

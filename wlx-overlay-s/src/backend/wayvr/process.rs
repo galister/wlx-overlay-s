@@ -1,6 +1,6 @@
 use std::{collections::HashMap, io::Read, sync::Arc};
 
-use wayvr_ipc::packet_server;
+use wayvr_ipc::{packet_client, packet_server};
 
 use crate::gen_id;
 
@@ -15,6 +15,7 @@ pub struct WayVRProcess {
     pub env: Vec<(String, String)>,
     pub working_dir: Option<String>,
     pub resolution: [u32; 2],
+    pub pos_mode: packet_client::PositionMode,
     pub icon: Option<Arc<str>>,
 
     pub userdata: HashMap<String, String>,

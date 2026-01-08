@@ -244,6 +244,7 @@ impl Connection {
             &args_vec,
             &env_vec,
             packet_params.resolution,
+            packet_params.pos_mode,
             None,
             packet_params.icon.as_deref(),
             packet_params.userdata,
