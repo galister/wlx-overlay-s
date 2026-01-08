@@ -2,112 +2,98 @@
 	"ACTIONS": {
 		"RECENTER_PLAYSPACE": "Re-center playspace"
 	},
+	"APP_LAUNCHER": {
+		"ASPECT": {
+			"SEMI_TALL": "Semi-tall",
+			"SEMI_WIDE": "Semi-wide",
+			"SQUARE": "Square",
+			"TALL": "Tall",
+			"WIDE": "Wide"
+		},
+		"ASPECT_TITLE": "Aspect",
+		"AUTOSTART": "Run automatically on startup",
+		"LAUNCH": "Launch",
+		"MODE": {
+			"CAGE": "Compatibility mode (Cage)",
+			"NATIVE": "Native mode"
+		},
+		"POS": {
+			"ANCHORED": "Anchored",
+			"ANCHORED_HELP": "Stays in place relative to center marker.",
+			"FLOATING": "Floating",
+			"FLOATING_HELP": "Moves independently, recenters on show.",
+			"STATIC": "Static",
+			"STATIC_HELP": "Not part of any set. Does not recenter."
+		},
+		"POS_TITLE": "Positioning",
+		"RES_TITLE": "Resolution"
+	},
 	"APP_SETTINGS": {
-		"LOOK_AND_FEEL": "Look & Feel",
-
-		"OPAQUE_BACKGROUND": "Opaque background",
-		"HIDE_USERNAME": "Hide username",
-		"HIDE_GRAB_HELP": "Hide grab help",
-		"ANIMATION_SPEED": "UI Animation speed",
-		"ROUND_MULTIPLIER": "UI Edge roundness",
-		"SETS_ON_WATCH": "Sets on watch",
-		"USE_SKYBOX": "Enable skybox",
-		"USE_PASSTHROUGH": "Enable passthrough",
-		"CLOCK_12H": "12-hour clock",
-
-		"FEATURES": "Features",
-
-		"NOTIFICATIONS_ENABLED": "Enable notifications",
-		"NOTIFICATIONS_SOUND_ENABLED": "Notification sounds",
-		"KEYBOARD_SOUND_ENABLED": "Keyboard sounds",
-		"SPACE_DRAG_MULTIPLIER": "Space drag multiplier",
-		"SPACE_DRAG_UNLOCKED": "Allow space drag on all axes",
-		"SPACE_ROTATE_UNLOCKED": "Allow space rotate on all axes",
-		"BLOCK_GAME_INPUT": "Block game input",
-		"BLOCK_GAME_INPUT_IGNORE_WATCH": "Ignore watch when blocking input",
-
-		"CONTROLS": "Controls",
-
-		"FOCUS_FOLLOWS_MOUSE_MODE": "Mouse move on trigger touch",
-		"LEFT_HANDED_MOUSE": "Left-handed mouse",
 		"ALLOW_SLIDING": "Stick interaction during grab",
-		"INVERT_SCROLL_DIRECTION_X": "Invert horizontal scroll direction",
-		"INVERT_SCROLL_DIRECTION_Y": "Invert vertical scroll direction",
-		"SCROLL_SPEED": "Scroll speed",
-		"LONG_PRESS_DURATION": "Long press duration",
-		"POINTER_LERP_FACTOR": "Pointer smoothing",
-		"XR_CLICK_SENSITIVITY": "XR click sensitivity",
-		"XR_CLICK_SENSITIVITY_RELEASE": "XR release sensitivity",
-		"CLICK_FREEZE_TIME_MS": "Click freeze time (ms)",
-
-		"MISC": "Miscellaneous",
-
-		"XWAYLAND_BY_DEFAULT": "Run apps in Compatibility mode by default",
-		"UPRIGHT_SCREEN_FIX": "Upright screen fix",
-		"DOUBLE_CURSOR_FIX": "Double cursor fix",
-		"SCREEN_RENDER_DOWN": "Render screen at lower resolution",
-
-		"UPRIGHT_SCREEN_FIX_HELP": "Fixes upright screens on some desktops",
-		"DOUBLE_CURSOR_FIX_HELP": "Enable this if you see 2 cursors",
-		"XR_CLICK_SENSITIVITY_HELP": "Analog trigger sensitivity",
-		"XR_CLICK_SENSITIVITY_RELEASE_HELP": "Must be lower than click",
-		"CLICK_FREEZE_TIME_MS_HELP": "Helps with double-click precision",
-		"LEFT_HANDED_MOUSE_HELP": "Use this if mouse buttons are swapped",
+		"ANIMATION_SPEED": "UI Animation speed",
+		"BLOCK_GAME_INPUT": "Block game input",
 		"BLOCK_GAME_INPUT_HELP": "Blocks all input when an overlay is hovered",
+		"BLOCK_GAME_INPUT_IGNORE_WATCH": "Ignore watch when blocking input",
 		"BLOCK_GAME_INPUT_IGNORE_WATCH_HELP": "Do not block input when watch is hovered",
-		"USE_SKYBOX_HELP": "Show a skybox if there's no scene app or passthrough",
-		"USE_PASSTHROUGH_HELP": "Allow passthrough if the XR runtime supports it",
-		"SCREEN_RENDER_DOWN_HELP": "Helps with aliasing on high-res screens",
-
-		"TROUBLESHOOTING": "Troubleshooting",
-
-		"CLEAR_SAVED_STATE": "Clear saved state",
-		"CLEAR_PIPEWIRE_TOKENS": "Clear PipeWire tokens",
-		"DELETE_ALL_CONFIGS": "Wipe configuration",
-		"RESTART_SOFTWARE": "Restart software",
-
-		"CLEAR_SAVED_STATE_HELP": "Reset sets & overlay positions",
-		"CLEAR_PIPEWIRE_TOKENS_HELP": "Prompt for screen selection on next start",
-		"DELETE_ALL_CONFIGS_HELP": "Remove all configuration files from conf.d",
-		"RESTART_SOFTWARE_HELP": "Apply settings that require a restart",
-
 		"CAPTURE_METHOD": "Wayland screen capture",
 		"CAPTURE_METHOD_HELP": "Try changing this if you are\nexperiencing black or glitchy screens",
-
+		"CLEAR_PIPEWIRE_TOKENS": "Clear PipeWire tokens",
+		"CLEAR_PIPEWIRE_TOKENS_HELP": "Prompt for screen selection on next start",
+		"CLEAR_SAVED_STATE": "Clear saved state",
+		"CLEAR_SAVED_STATE_HELP": "Reset sets & overlay positions",
+		"CLICK_FREEZE_TIME_MS": "Click freeze time (ms)",
+		"CLICK_FREEZE_TIME_MS_HELP": "Helps with double-click precision",
+		"CLOCK_12H": "12-hour clock",
+		"CONTROLS": "Controls",
+		"DELETE_ALL_CONFIGS": "Wipe configuration",
+		"DELETE_ALL_CONFIGS_HELP": "Remove all configuration files from conf.d",
+		"DOUBLE_CURSOR_FIX": "Double cursor fix",
+		"DOUBLE_CURSOR_FIX_HELP": "Enable this if you see 2 cursors",
+		"FEATURES": "Features",
+		"FOCUS_FOLLOWS_MOUSE_MODE": "Mouse move on trigger touch",
+		"HIDE_GRAB_HELP": "Hide grab help",
+		"HIDE_USERNAME": "Hide username",
+		"INVERT_SCROLL_DIRECTION_X": "Invert horizontal scroll direction",
+		"INVERT_SCROLL_DIRECTION_Y": "Invert vertical scroll direction",
 		"KEYBOARD_MIDDLE_CLICK": "Keyboard middle click",
 		"KEYBOARD_MIDDLE_CLICK_HELP": "Modifier to use when typing\nwith purple laser",
-
+		"KEYBOARD_SOUND_ENABLED": "Keyboard sounds",
+		"LEFT_HANDED_MOUSE": "Left-handed mouse",
+		"LEFT_HANDED_MOUSE_HELP": "Use this if mouse buttons are swapped",
+		"LONG_PRESS_DURATION": "Long press duration",
+		"LOOK_AND_FEEL": "Look & Feel",
+		"MISC": "Miscellaneous",
+		"NOTIFICATIONS_ENABLED": "Enable notifications",
+		"NOTIFICATIONS_SOUND_ENABLED": "Notification sounds",
+		"OPAQUE_BACKGROUND": "Opaque background",
 		"OPTION": {
 			"PIPEWIRE_HELP": "Fast GPU capture. Recommended",
 			"PW_FALLBACK_HELP": "Slow. Try in case PipeWire GPU doesn't work",
 			"SCREENCOPY_HELP": "Slow. Works on: Hyprland, Niri, River, Sway"
-		}
-	},
-	"APP_LAUNCHER": {
-		"MODE": {
-			"NATIVE": "Native mode",
-			"CAGE": "Compatibility mode (Cage)"
 		},
-		"RES_TITLE": "Resolution",
-		"ASPECT_TITLE": "Aspect",
-		"ASPECT": {
-			"WIDE": "Wide",
-			"SEMI_WIDE": "Semi-wide",
-			"SQUARE": "Square",
-			"SEMI_TALL": "Semi-tall",
-			"TALL": "Tall"
-		},
-		"POS_TITLE": "Positioning",
-		"POS": {
-			"FLOATING": "Floating",
-			"ANCHORED": "Anchored",
-			"STATIC": "Static",
-			"FLOATING_HELP": "Moves independently, recenters on show.",
-			"ANCHORED_HELP": "Stays in place relative to center marker.",
-			"STATIC_HELP": "Not part of any set. Does not recenter."
-		},
-		"AUTOSTART": "Run automatically on startup",
-		"LAUNCH": "Launch"
+		"POINTER_LERP_FACTOR": "Pointer smoothing",
+		"RESTART_SOFTWARE": "Restart software",
+		"RESTART_SOFTWARE_HELP": "Apply settings that require a restart",
+		"ROUND_MULTIPLIER": "UI Edge roundness",
+		"SCREEN_RENDER_DOWN": "Render screen at lower resolution",
+		"SCREEN_RENDER_DOWN_HELP": "Helps with aliasing on high-res screens",
+		"SCROLL_SPEED": "Scroll speed",
+		"SETS_ON_WATCH": "Sets on watch",
+		"SPACE_DRAG_MULTIPLIER": "Space drag multiplier",
+		"SPACE_DRAG_UNLOCKED": "Allow space drag on all axes",
+		"SPACE_ROTATE_UNLOCKED": "Allow space rotate on all axes",
+		"TROUBLESHOOTING": "Troubleshooting",
+		"UPRIGHT_SCREEN_FIX": "Upright screen fix",
+		"UPRIGHT_SCREEN_FIX_HELP": "Fixes upright screens on some desktops",
+		"USE_PASSTHROUGH": "Enable passthrough",
+		"USE_PASSTHROUGH_HELP": "Allow passthrough if the XR runtime supports it",
+		"USE_SKYBOX": "Enable skybox",
+		"USE_SKYBOX_HELP": "Show a skybox if there's no scene app or passthrough",
+		"XR_CLICK_SENSITIVITY": "XR click sensitivity",
+		"XR_CLICK_SENSITIVITY_HELP": "Analog trigger sensitivity",
+		"XR_CLICK_SENSITIVITY_RELEASE": "XR release sensitivity",
+		"XR_CLICK_SENSITIVITY_RELEASE_HELP": "Must be lower than click",
+		"XWAYLAND_BY_DEFAULT": "Run apps in Compatibility mode by default"
 	},
 	"APPLICATION_LAUNCHER": "Application launcher",
 	"APPLICATION_STARTED": "Application started",
