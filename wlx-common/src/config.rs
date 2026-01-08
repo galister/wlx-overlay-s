@@ -4,6 +4,7 @@ use chrono::Offset;
 use idmap::IdMap;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, EnumProperty, EnumString, VariantArray};
+use wayvr_ipc::packet_client::WvrProcessLaunchParams;
 
 use crate::{
 	astr_containers::{AStrMap, AStrSet},
@@ -266,6 +267,9 @@ pub struct GeneralConfig {
 
 	#[serde(default)]
 	pub global_set: SerializedWindowStates,
+
+	#[serde(default)]
+	pub autostart_apps: Vec<WvrProcessLaunchParams>,
 
 	#[serde(default)]
 	pub last_set: u32,

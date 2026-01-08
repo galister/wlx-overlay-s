@@ -2,6 +2,8 @@ use glam::Affine3A;
 use idmap::IdMap;
 use smallvec::{SmallVec, smallvec};
 use std::sync::Arc;
+#[cfg(feature = "wayvr")]
+use wgui::log::LogErr;
 use wgui::{
     drawing, font_config::WguiFontConfig, gfx::WGfx, globals::WguiGlobals, parser::parse_color_hex,
     renderer_vk::context::SharedContext as WSharedContext,
@@ -13,9 +15,6 @@ use wlx_common::{
     desktop_finder::DesktopFinder,
     overlays::{ToastDisplayMethod, ToastTopic},
 };
-
-#[cfg(feature = "wayvr")]
-use crate::config_wayvr::{self, WayVRConfig};
 
 #[cfg(feature = "wayvr")]
 use crate::backend::wayvr::WvrServerState;
@@ -78,19 +77,11 @@ impl AppState {
         let mut tasks = TaskContainer::new();
 
         let session = AppSession::load();
-        let wayvr_signals = SyncEventQueue::new();
+        let wvr_signals = SyncEventQueue::new();
 
         #[cfg(feature = "wayvr")]
-        let wayvr_server = session
-            .wayvr_config
-            .post_load(
-                gfx.clone(),
-                &gfx_extras,
-                &session.config,
-                &mut tasks,
-                wayvr_signals.clone(),
-            )
-            .inspect_err(|e| log::error!("Could not initialize wayland server: {e:?}"))
+        let wvr_server = WvrServerState::new(gfx.clone(), &gfx_extras, wvr_signals.clone())
+            .log_err("Could not initialize WayVR Server")
             .ok();
 
         let mut hid_provider = HidWrapper::new();
@@ -164,14 +155,14 @@ impl AppState {
             dbus,
             xr_backend,
             ipc_server,
-            wayvr_signals,
+            wayvr_signals: wvr_signals,
             desktop_finder,
 
             #[cfg(feature = "osc")]
             osc_sender,
 
             #[cfg(feature = "wayvr")]
-            wvr_server: wayvr_server,
+            wvr_server,
         })
     }
 }
@@ -179,9 +170,6 @@ impl AppState {
 pub struct AppSession {
     pub config: GeneralConfig,
     pub config_dirty: bool,
-
-    #[cfg(feature = "wayvr")]
-    pub wayvr_config: WayVRConfig, // TODO: rename to "wayland_server_config"
 
     pub toast_topics: IdMap<ToastTopic, ToastDisplayMethod>,
 }
@@ -202,13 +190,8 @@ impl AppSession {
             toast_topics.insert(*k, *v);
         });
 
-        #[cfg(feature = "wayvr")]
-        let wayvr_config = config_wayvr::load_wayvr();
-
         Self {
             config,
-            #[cfg(feature = "wayvr")]
-            wayvr_config,
             toast_topics,
             config_dirty: false,
         }

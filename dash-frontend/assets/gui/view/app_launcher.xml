@@ -18,17 +18,16 @@
       <rectangle macro="group_box" id="icon_parent" padding="16" color="#0033aa66" color2="#00000022" gradient="vertical" justify_content="center">
 
       </rectangle>
-      <div flex_direction="column" gap="8">
-        <label id="label_title" weight="bold" size="32" />
-        <Subtext title="Exec:" label_id="label_exec" />
-        <Subtext title="Args:" label_id="label_args" />
+      <div flex_direction="column" gap="8" min_width="720" max_width="720">
+        <label id="label_title" weight="bold" size="32" overflow="hidden" />
+        <Subtext label_id="label_exec" overflow="hidden" />
         <Separator />
         <RadioGroup id="radio_compositor" flex_direction="row" gap="16">
-          <RadioBox text="Native mode" value="Native" checked="1" />
-          <RadioBox text="Compatibility mode" value="Cage" /> <!-- TODO: tooltips -->
+          <RadioBox translation="APP_LAUNCHER.MODE.NATIVE" value="Native" checked="1" />
+          <RadioBox translation="APP_LAUNCHER.MODE.CAGE" value="Cage" /> <!-- TODO: tooltips -->
         </RadioGroup>
         <Separator />
-        <label text="Resolution" />
+        <label translation="APP_LAUNCHER.RES_TITLE" />
         <RadioGroup id="radio_res" flex_direction="row" gap="16">
           <RadioBox text="1440p" value="Res1440" />
           <RadioBox text="1080p" value="Res1080" checked="1" />
@@ -36,18 +35,29 @@
           <RadioBox text="480p" value="Res480" />
         </RadioGroup>
         <Separator />
-        <label text="Orientation" />
+        <label translation="APP_LAUNCHER.ASPECT_TITLE" />
         <RadioGroup id="radio_orientation" flex_direction="row" gap="16">
-          <RadioBox text="Wide" value="Wide" tooltip="16:9" checked="1" />
-          <RadioBox text="Semi-Wide" value="SemiWide" tooltip="3:2" />
-          <RadioBox text="Square" value="Square" tooltip="1:1" />
-          <RadioBox text="Semi-Tall" value="SemiTall" tooltip="2:3" />
-          <RadioBox text="Tall" value="Tall" tooltip="9:16" />
+          <RadioBox translation="APP_LAUNCHER.ASPECT.WIDE" value="Wide" tooltip="16:9" checked="1" />
+          <RadioBox translation="APP_LAUNCHER.ASPECT.SEMI_WIDE" value="SemiWide" tooltip="3:2" />
+          <RadioBox translation="APP_LAUNCHER.ASPECT.SQUARE" value="Square" tooltip="1:1" />
+          <RadioBox translation="APP_LAUNCHER.ASPECT.SEMI_TALL" value="SemiTall" tooltip="2:3" />
+          <RadioBox translation="APP_LAUNCHER.ASPECT.TALL" value="Tall" tooltip="9:16" />
         </RadioGroup>
-        <Button id="btn_launch" align_self="baseline" color="#44ce22FF" padding_top="4" padding_bottom="4" round="8" padding_right="12" min_height="40">
-          <sprite src_builtin="dashboard/play.svg" width="32" height="32" />
-          <label text="Launch" weight="bold" size="17" shadow="#00000099" />
-        </Button>
+        <Separator />
+        <label translation="APP_LAUNCHER.POS_TITLE" />
+        <RadioGroup id="radio_pos" flex_direction="row" gap="16">
+          <RadioBox translation="APP_LAUNCHER.POS.FLOATING" value="Floating" tooltip="APP_LAUNCHER.POS.FLOATING_HELP" />
+          <RadioBox translation="APP_LAUNCHER.POS.ANCHORED" value="Anchored" tooltip="APP_LAUNCHER.POS.ANCHORED_HELP" checked="1" />
+          <RadioBox translation="APP_LAUNCHER.POS.STATIC" value="Static" tooltip="APP_LAUNCHER.POS.STATIC_HELP" />
+        </RadioGroup>
+        <Separator />
+        <div flex_direction="row" justify_content="space_between" gap="16">
+          <CheckBox id="cb_autostart" translation="APP_LAUNCHER.AUTOSTART" />
+          <Button id="btn_launch" align_self="baseline" color="#44ce22FF" padding_top="4" padding_bottom="4" round="8" padding_right="12" min_height="40">
+            <sprite src_builtin="dashboard/play.svg" width="32" height="32" />
+            <label translation="APP_LAUNCHER.LAUNCH" weight="bold" size="17" shadow="#00000099" />
+          </Button>
+        </div>
       </div>
     </div>
   </elements>

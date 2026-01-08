@@ -106,20 +106,11 @@ impl BlitMethod {
     }
 }
 
-pub struct Config {
-    pub click_freeze_time_ms: i32,
-    pub keyboard_repeat_delay_ms: u32,
-    pub keyboard_repeat_rate: u32,
-    pub auto_hide_delay: Option<u32>, // if None, auto-hide is disabled
-    pub blit_method: BlitMethod,
-}
-
 pub struct WvrServerState {
     time_start: u64,
     pub manager: client::WayVRCompositor,
     pub wm: window::WindowManager,
     pub processes: process::ProcessVec,
-    pub config: Config,
     pub tasks: SyncEventQueue<WayVRTask>,
     ticks: u64,
     cur_modifiers: u8,
@@ -139,11 +130,13 @@ pub enum TickTask {
     NewExternalProcess(ExternalProcessRequest), // Call WayVRCompositor::add_client after receiving this message
 }
 
+const KEY_REPEAT_DELAY: i32 = 200;
+const KEY_REPEAT_RATE: i32 = 50;
+
 impl WvrServerState {
     pub fn new(
         gfx: Arc<WGfx>,
         gfx_extras: &WGfxExtras,
-        config: Config,
         signals: SyncEventQueue<WayVRSignal>,
     ) -> anyhow::Result<Self> {
         log::info!("Initializing WayVR server");
@@ -210,11 +203,8 @@ impl WvrServerState {
                 },
             );
 
-        let seat_keyboard = seat.add_keyboard(
-            XkbConfig::default(),
-            config.keyboard_repeat_delay_ms as i32,
-            config.keyboard_repeat_rate as i32,
-        )?;
+        let seat_keyboard =
+            seat.add_keyboard(XkbConfig::default(), KEY_REPEAT_DELAY, KEY_REPEAT_RATE)?;
         let seat_pointer = seat.add_pointer();
 
         let tasks = SyncEventQueue::new();
@@ -241,7 +231,6 @@ impl WvrServerState {
             manager: client::WayVRCompositor::new(state, display, seat_keyboard, seat_pointer)?,
             processes: ProcessVec::new(),
             wm: window::WindowManager::new(),
-            config,
             ticks: 0,
             tasks,
             cur_modifiers: 0,
@@ -507,9 +496,13 @@ impl WvrServerState {
         });
     }
 
-    pub fn send_mouse_down(&mut self, handle: window::WindowHandle, index: MouseIndex) {
-        self.mouse_freeze =
-            Instant::now() + Duration::from_millis(self.config.click_freeze_time_ms as _);
+    pub fn send_mouse_down(
+        &mut self,
+        click_freeze: i32,
+        handle: window::WindowHandle,
+        index: MouseIndex,
+    ) {
+        self.mouse_freeze = Instant::now() + Duration::from_millis(click_freeze as _);
 
         if let Some(window) = self.wm.windows.get_mut(&handle) {
             window.send_mouse_down(&mut self.manager, index);

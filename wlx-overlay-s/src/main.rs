@@ -29,9 +29,6 @@ mod state;
 mod subsystem;
 mod windowing;
 
-#[cfg(feature = "wayvr")]
-mod config_wayvr;
-
 use std::{
     path::PathBuf,
     process::Command,

@@ -83,6 +83,32 @@
 			"SCREENCOPY_HELP": "Slow. Works on: Hyprland, Niri, River, Sway"
 		}
 	},
+	"APP_LAUNCHER": {
+		"MODE": {
+			"NATIVE": "Native mode",
+			"CAGE": "Compatibility mode (Cage)"
+		},
+		"RES_TITLE": "Resolution",
+		"ASPECT_TITLE": "Aspect",
+		"ASPECT": {
+			"WIDE": "Wide",
+			"SEMI_WIDE": "Semi-wide",
+			"SQUARE": "Square",
+			"SEMI_TALL": "Semi-tall",
+			"TALL": "Tall"
+		},
+		"POS_TITLE": "Positioning",
+		"POS": {
+			"FLOATING": "Floating",
+			"ANCHORED": "Anchored",
+			"STATIC": "Static",
+			"FLOATING_HELP": "Moves independently, recenters on show.",
+			"ANCHORED_HELP": "Stays in place relative to center marker.",
+			"STATIC_HELP": "Not part of any set. Does not recenter."
+		},
+		"AUTOSTART": "Run automatically on startup",
+		"LAUNCH": "Launch"
+	},
 	"APPLICATION_LAUNCHER": "Application launcher",
 	"APPLICATION_STARTED": "Application started",
 	"APPLICATIONS": "Applications",

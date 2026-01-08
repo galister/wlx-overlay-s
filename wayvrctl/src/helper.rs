@@ -4,7 +4,9 @@ use anyhow::Context;
 use serde::Serialize;
 use wayvr_ipc::{
     client::{WayVRClient, WayVRClientMutex},
-    ipc, packet_client, packet_server,
+    ipc,
+    packet_client::{self, PositionMode},
+    packet_server,
 };
 
 pub struct WayVRClientState {
@@ -106,6 +108,7 @@ pub async fn wvr_process_launch(
     name: String,
     env: Vec<String>,
     resolution: [u32; 2],
+    pos_mode: PositionMode,
     icon: Option<String>,
     args: String,
     userdata: HashMap<String, String>,
@@ -121,6 +124,7 @@ pub async fn wvr_process_launch(
                 name,
                 args,
                 resolution,
+                pos_mode,
                 icon,
                 userdata,
             },

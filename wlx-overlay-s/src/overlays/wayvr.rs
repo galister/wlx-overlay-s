@@ -508,9 +508,10 @@ impl OverlayBackend for WvrWindowBackend {
                 None
             }
         } {
+            let click_freeze = app.session.config.click_freeze_time_ms;
             let wvr_server = app.wvr_server.as_mut().unwrap(); //never None
             if pressed {
-                wvr_server.send_mouse_down(self.window, index);
+                wvr_server.send_mouse_down(click_freeze, self.window, index);
             } else {
                 wvr_server.send_mouse_up(index);
             }

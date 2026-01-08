@@ -14,15 +14,13 @@ pub struct Handshake {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum AttachTo {
-	None,
-	HandLeft,
-	HandRight,
-	Head,
-	Stage,
+pub enum PositionMode {
+	Float,
+	Anchor,
+	Static,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WvrProcessLaunchParams {
 	pub name: String,
 	pub exec: String,
@@ -30,6 +28,7 @@ pub struct WvrProcessLaunchParams {
 	pub args: String,
 	pub icon: Option<String>,
 	pub resolution: [u32; 2],
+	pub pos_mode: PositionMode,
 	pub userdata: HashMap<String, String>,
 }
 

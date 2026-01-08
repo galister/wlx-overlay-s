@@ -2,6 +2,7 @@ use config::{Config, File};
 use log::error;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use wayvr_ipc::packet_client::WvrProcessLaunchParams;
 use wlx_common::{
     astr_containers::AStrMap,
     config::{
@@ -142,6 +143,7 @@ pub struct AutoSettings {
     pub context_menu_hold_and_release: bool,
     pub capture_method: CaptureMethod,
     pub keyboard_middle_click_mode: AltModifier,
+    pub autostart_apps: Vec<WvrProcessLaunchParams>,
 }
 
 fn get_settings_path() -> PathBuf {
@@ -187,6 +189,7 @@ pub fn save_settings(config: &GeneralConfig) -> anyhow::Result<()> {
         context_menu_hold_and_release: config.context_menu_hold_and_release,
         capture_method: config.capture_method,
         keyboard_middle_click_mode: config.keyboard_middle_click_mode,
+        autostart_apps: config.autostart_apps.clone(),
     };
 
     let json = serde_json::to_string_pretty(&conf).unwrap(); // want panic

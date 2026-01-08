@@ -7,7 +7,11 @@ use std::{
 use anyhow::Context;
 use clap::Parser;
 use env_logger::Env;
-use wayvr_ipc::{client::WayVRClient, ipc, packet_client};
+use wayvr_ipc::{
+    client::WayVRClient,
+    ipc,
+    packet_client::{self, PositionMode},
+};
 
 use crate::helper::{
     WayVRClientState, wlx_device_haptics, wlx_input_state, wlx_panel_modify, wvr_process_get,
@@ -120,6 +124,7 @@ async fn run_once(state: &mut WayVRClientState, args: Args) -> anyhow::Result<()
             name,
             env,
             resolution,
+            pos,
             icon,
             args,
         } => {
@@ -131,12 +136,19 @@ async fn run_once(state: &mut WayVRClientState, args: Args) -> anyhow::Result<()
                     "Invalid resolution format. Expecting <width>x<height>, for example: 1920x1080, 1280x720",
                 )?;
 
+            let pos_mode = match pos {
+                PosModeEnum::Floating => PositionMode::Float,
+                PosModeEnum::Static => PositionMode::Static,
+                PosModeEnum::Anchored => PositionMode::Anchor,
+            };
+
             wvr_process_launch(
                 state,
                 exec,
                 name,
                 env,
                 resolution,
+                pos_mode,
                 icon,
                 args,
                 HashMap::new(),
@@ -237,6 +249,9 @@ enum Subcommands {
         exec: String,
         #[arg(default_value = "1920x1080")]
         resolution: String,
+        /// Default positioning
+        pos: PosModeEnum,
+        /// Absolute path to the app icon
         icon: Option<String>,
         /// Arguments to pass to executable
         #[arg(default_value = "")]
@@ -263,6 +278,13 @@ enum Subcommands {
         #[command(subcommand)]
         command: SubcommandPanelModify,
     },
+}
+
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+enum PosModeEnum {
+    Floating,
+    Anchored,
+    Static,
 }
 
 #[derive(clap::Parser, Debug)]

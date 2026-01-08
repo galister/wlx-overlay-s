@@ -1,10 +1,10 @@
 use std::{collections::HashMap, rc::Rc, str::FromStr};
 
 use strum::{AsRefStr, EnumString, VariantNames};
-use wayvr_ipc::packet_client::WvrProcessLaunchParams;
+use wayvr_ipc::packet_client::{PositionMode, WvrProcessLaunchParams};
 use wgui::{
 	assets::AssetPath,
-	components::{button::ComponentButton, radio_group::ComponentRadioGroup},
+	components::{button::ComponentButton, checkbox::ComponentCheckbox, radio_group::ComponentRadioGroup},
 	globals::WguiGlobals,
 	i18n::Translation,
 	layout::{Layout, WidgetID},
@@ -15,6 +15,13 @@ use wgui::{
 use wlx_common::{config::GeneralConfig, dash_interface::BoxDashInterface, desktop_finder::DesktopEntry};
 
 use crate::frontend::{FrontendTask, FrontendTasks, SoundType};
+
+#[derive(Clone, Copy, Eq, PartialEq, EnumString, VariantNames, AsRefStr)]
+enum PosMode {
+	Floating,
+	Anchored,
+	Static,
+}
 
 #[derive(Clone, Copy, Eq, PartialEq, EnumString, VariantNames, AsRefStr)]
 enum ResMode {
@@ -43,18 +50,22 @@ enum CompositorMode {
 enum Task {
 	SetCompositor(CompositorMode),
 	SetRes(ResMode),
+	SetPos(PosMode),
 	SetOrientation(OrientationMode),
+	SetAutoStart(bool),
 	Launch,
 }
 
 struct LaunchParams<'a, T> {
 	application: &'a DesktopEntry,
 	compositor_mode: CompositorMode,
+	pos_mode: PosMode,
 	res_mode: ResMode,
 	orientation_mode: OrientationMode,
 	globals: &'a WguiGlobals,
 	frontend_tasks: &'a FrontendTasks,
 	interface: &'a mut BoxDashInterface<T>,
+	auto_start: bool,
 	data: &'a mut T,
 	on_launched: &'a dyn Fn(),
 }
@@ -75,8 +86,11 @@ pub struct View {
 	radio_orientation: Rc<ComponentRadioGroup>,
 
 	compositor_mode: CompositorMode,
+	pos_mode: PosMode,
 	res_mode: ResMode,
 	orientation_mode: OrientationMode,
+
+	auto_start: bool,
 
 	on_launched: Box<dyn Fn()>,
 }
@@ -103,22 +117,18 @@ impl View {
 
 		let radio_compositor = state.fetch_component_as::<ComponentRadioGroup>("radio_compositor")?;
 		let radio_res = state.fetch_component_as::<ComponentRadioGroup>("radio_res")?;
+		let radio_pos = state.fetch_component_as::<ComponentRadioGroup>("radio_pos")?;
 		let radio_orientation = state.fetch_component_as::<ComponentRadioGroup>("radio_orientation")?;
+		let cb_autostart = state.fetch_component_as::<ComponentCheckbox>("cb_autostart")?;
 
 		let btn_launch = state.fetch_component_as::<ComponentButton>("btn_launch")?;
 
 		{
 			let mut label_exec = state.fetch_widget_as::<WidgetLabel>(&params.layout.state, "label_exec")?;
-			let mut label_args = state.fetch_widget_as::<WidgetLabel>(&params.layout.state, "label_args")?;
 
 			label_exec.set_text_simple(
 				&mut params.globals.get(),
-				Translation::from_raw_text_rc(params.entry.exec_path.clone()),
-			);
-
-			label_args.set_text_simple(
-				&mut params.globals.get(),
-				Translation::from_raw_text_rc(params.entry.exec_args.clone()),
+				Translation::from_raw_text_string(format!("{} {}", params.entry.exec_path, params.entry.exec_args)),
 			);
 		}
 
@@ -159,6 +169,13 @@ impl View {
 		//radio_orientation.set_value(orientation_mode.as_ref())?;
 		//tasks.push(Task::SetOrientation(orientation_mode));
 
+		let pos_mode = PosMode::Floating;
+		// TODO: configurable defaults ?
+		//radio_pos.set_value(pos_mode.as_ref())?;
+		//tasks.push(Task::SetPos(pos_mode));
+
+		let auto_start = false;
+
 		radio_compositor.on_value_changed({
 			let tasks = tasks.clone();
 			Box::new(move |_, ev| {
@@ -197,6 +214,25 @@ impl View {
 			})
 		});
 
+		radio_pos.on_value_changed({
+			let tasks = tasks.clone();
+			Box::new(move |_, ev| {
+				if let Some(mode) = ev.value.and_then(|v| {
+					PosMode::from_str(&*v)
+						.inspect_err(|_| {
+							log::error!(
+								"Invalid value for position: '{v}'. Valid values are: {:?}",
+								PosMode::VARIANTS
+							)
+						})
+						.ok()
+				}) {
+					tasks.push(Task::SetPos(mode));
+				}
+				Ok(())
+			})
+		});
+
 		radio_orientation.on_value_changed({
 			let tasks = tasks.clone();
 			Box::new(move |_, ev| {
@@ -216,6 +252,14 @@ impl View {
 			})
 		});
 
+		cb_autostart.on_toggle({
+			let tasks = tasks.clone();
+			Box::new(move |_, ev| {
+				tasks.push(Task::SetAutoStart(ev.checked));
+				Ok(())
+			})
+		});
+
 		let mut label_title = state.fetch_widget_as::<WidgetLabel>(&params.layout.state, "label_title")?;
 
 		label_title.set_text_simple(
@@ -230,8 +274,10 @@ impl View {
 			radio_res,
 			radio_orientation,
 			compositor_mode,
+			pos_mode,
 			res_mode,
 			orientation_mode,
+			auto_start,
 			entry: params.entry,
 			frontend_tasks: params.frontend_tasks.clone(),
 			globals: params.globals.clone(),
@@ -249,7 +295,9 @@ impl View {
 				match task {
 					Task::SetCompositor(mode) => self.compositor_mode = mode,
 					Task::SetRes(mode) => self.res_mode = mode,
+					Task::SetPos(mode) => self.pos_mode = mode,
 					Task::SetOrientation(mode) => self.orientation_mode = mode,
+					Task::SetAutoStart(auto_start) => self.auto_start = auto_start,
 					Task::Launch => self.action_launch(interface, data),
 				}
 			}
@@ -265,7 +313,9 @@ impl View {
 			globals: &self.globals,
 			compositor_mode: self.compositor_mode,
 			res_mode: self.res_mode,
+			pos_mode: self.pos_mode,
 			orientation_mode: self.orientation_mode,
+			auto_start: self.auto_start,
 			interface,
 			data,
 			on_launched: &self.on_launched,
@@ -308,6 +358,12 @@ impl View {
 			CompositorMode::Native => params.application.exec_path.to_string(),
 		};
 
+		let pos_mode = match params.pos_mode {
+			PosMode::Floating => PositionMode::Anchor,
+			PosMode::Anchored => PositionMode::Anchor,
+			PosMode::Static => PositionMode::Static,
+		};
+
 		let mut userdata = HashMap::new();
 		userdata.insert("desktop-entry".to_string(), serde_json::to_string(params.application)?);
 
@@ -315,12 +371,14 @@ impl View {
 
 		params.interface.process_launch(
 			params.data,
+			params.auto_start,
 			WvrProcessLaunchParams {
 				env,
 				exec,
 				name: params.application.app_name.to_string(),
 				args,
 				resolution,
+				pos_mode,
 				icon: params.application.icon_path.as_ref().map(|x| x.as_ref().to_string()),
 				userdata,
 			},

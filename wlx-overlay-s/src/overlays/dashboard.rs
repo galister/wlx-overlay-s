@@ -66,7 +66,11 @@ const GUI_SCALE: f32 = 2.0;
 
 impl DashFrontend {
     fn new(app: &mut AppState) -> anyhow::Result<Self> {
-        let interface = DashInterfaceLive::new();
+        let mut interface = DashInterfaceLive::new();
+
+        for p in app.session.config.autostart_apps.clone() {
+            let _ = interface.process_launch(app, false, p)?;
+        }
 
         let frontend = frontend::Frontend::new(
             frontend::InitParams {
@@ -341,12 +345,18 @@ impl DashInterface<AppState> for DashInterfaceLive {
     fn process_launch(
         &mut self,
         app: &mut AppState,
+        auto_start: bool,
         params: WvrProcessLaunchParams,
     ) -> anyhow::Result<WvrProcessHandle> {
         let wvr_server = app.wvr_server.as_mut().unwrap();
 
         let args_vec = gen_args_vec(&params.args);
         let env_vec = gen_env_vec(&params.env);
+
+        if auto_start {
+            app.session.config.autostart_apps.push(params.clone());
+            save_settings(&app.session.config)?;
+        }
 
         wvr_server
             .spawn_process(

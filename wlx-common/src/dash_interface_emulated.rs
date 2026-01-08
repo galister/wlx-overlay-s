@@ -110,7 +110,12 @@ impl DashInterface<()> for DashInterfaceEmulated {
 		self.processes.get(&emu_handle).map(|process| process.to(emu_handle))
 	}
 
-	fn process_launch(&mut self, _: &mut (), params: WvrProcessLaunchParams) -> anyhow::Result<WvrProcessHandle> {
+	fn process_launch(
+		&mut self,
+		_: &mut (),
+		_: bool,
+		params: WvrProcessLaunchParams,
+	) -> anyhow::Result<WvrProcessHandle> {
 		let res = self.processes.add(EmuProcess { name: params.name });
 
 		self.windows.add(EmuWindow {

@@ -10,7 +10,7 @@
         round="8"
         align_items="center"
         justify_content="space_between"
-        color="~color_background"
+        color="~color_bg"
         border_color="~color_accent"
       >
         <label id="label_title" margin_left="8" color="~color_text" size="22" weight="bold" />
