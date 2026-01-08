@@ -144,5 +144,6 @@
     },
     "AUTOSTART": "起動時に自動実行",
     "LAUNCH": "起動"
-  }
+  },
+  "DISPLAY_BRIGHTNESS": "ディスプレイの明るさ"
 }

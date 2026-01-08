@@ -2,7 +2,7 @@ use std::{collections::HashMap, marker::PhantomData, rc::Rc};
 
 use wgui::{
 	assets::AssetPath,
-	components::checkbox::ComponentCheckbox,
+	components::{checkbox::ComponentCheckbox, slider::ComponentSlider},
 	globals::WguiGlobals,
 	layout::WidgetID,
 	parser::{self, Fetchable, ParseDocumentParams, ParserState},
@@ -19,6 +19,7 @@ use crate::{
 enum Task {
 	Refresh,
 	FocusClient(String),
+	SetBrightness(f32),
 }
 
 pub struct TabMonado<T> {
@@ -46,6 +47,7 @@ impl<T> Tab<T> for TabMonado<T> {
 			match task {
 				Task::Refresh => self.refresh(frontend, data)?,
 				Task::FocusClient(name) => self.focus_client(frontend, data, name)?,
+				Task::SetBrightness(brightness) => self.set_brightness(frontend, data, brightness),
 			}
 		}
 
@@ -152,6 +154,22 @@ impl<T> TabMonado<T> {
 			self.mount_client(frontend, &client)?;
 		}
 
+		// get brightness
+		let slider_brightness = self.state.fetch_component_as::<ComponentSlider>("slider_brightness")?;
+		if let Some(brightness) = frontend.interface.monado_brightness_get(data) {
+			let mut c = frontend.layout.start_common();
+			slider_brightness.set_value(&mut c.common(), brightness * 100.0);
+			c.finish()?;
+
+			slider_brightness.on_value_changed({
+				let tasks = self.tasks.clone();
+				Box::new(move |_common, e| {
+					tasks.push(Task::SetBrightness(e.value / 100.0));
+					Ok(())
+				})
+			});
+		}
+
 		Ok(())
 	}
 
@@ -159,5 +177,9 @@ impl<T> TabMonado<T> {
 		frontend.interface.monado_client_focus(data, &name)?;
 		self.tasks.push(Task::Refresh);
 		Ok(())
+	}
+
+	fn set_brightness(&mut self, frontend: &mut Frontend<T>, data: &mut T, brightness: f32) {
+		frontend.interface.monado_brightness_set(data, brightness);
 	}
 }

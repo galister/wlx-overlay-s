@@ -28,8 +28,13 @@
 
   <elements>
     <TabTitle translation="MONADO_RUNTIME" icon="dashboard/monado.svg" />
+    <label translation="DISPLAY_BRIGHTNESS" />
+    <Slider id="slider_brightness" width="300" height="24" min_value="0" max_value="140" />
+
+    <label translation="LIST_OF_PROCESSES" />
     <div id="list_parent" flex_direction="column" gap="8">
       <!-- filled at runtime -->
     </div>
+
   </elements>
 </layout>

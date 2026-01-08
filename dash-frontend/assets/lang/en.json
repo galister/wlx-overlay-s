@@ -113,6 +113,7 @@
 		"VOLUME": "Volume"
 	},
 	"CLOSE_WINDOW": "Close window",
+	"DISPLAY_BRIGHTNESS": "Display brightness",
 	"FAILED_TO_LAUNCH_APPLICATION": "Failed to launch a application:",
 	"GAME_LAUNCHED": "Game launched",
 	"GAME_LIST": {

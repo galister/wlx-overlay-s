@@ -62,6 +62,7 @@ pub struct DashInterfaceEmulated {
 	desktop_finder: DesktopFinder,
 	general_config: GeneralConfig,
 	monado_clients: Vec<dash_interface::MonadoClient>,
+	brightness: f32,
 }
 
 impl DashInterfaceEmulated {
@@ -119,6 +120,7 @@ impl DashInterfaceEmulated {
 			desktop_finder,
 			general_config,
 			monado_clients,
+			brightness: 1.0,
 		}
 	}
 }
@@ -242,5 +244,14 @@ impl DashInterface<()> for DashInterfaceEmulated {
 			client.is_primary = true;
 		}
 		Ok(())
+	}
+
+	fn monado_brightness_get(&mut self, _: &mut ()) -> Option<f32> {
+		Some(self.brightness)
+	}
+
+	fn monado_brightness_set(&mut self, _: &mut (), brightness: f32) -> Option<()> {
+		self.brightness = brightness;
+		Some(())
 	}
 }

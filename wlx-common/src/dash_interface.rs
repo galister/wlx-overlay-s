@@ -31,6 +31,8 @@ pub trait DashInterface<T> {
 	fn process_terminate(&mut self, data: &mut T, handle: WvrProcessHandle) -> anyhow::Result<()>;
 	fn monado_client_list(&mut self, data: &mut T) -> anyhow::Result<Vec<MonadoClient>>;
 	fn monado_client_focus(&mut self, data: &mut T, name: &str) -> anyhow::Result<()>;
+	fn monado_brightness_get(&mut self, data: &mut T) -> Option<f32>;
+	fn monado_brightness_set(&mut self, data: &mut T, brightness: f32) -> Option<()>;
 	fn recenter_playspace(&mut self, data: &mut T) -> anyhow::Result<()>;
 	fn desktop_finder<'a>(&'a mut self, data: &'a mut T) -> &'a mut DesktopFinder;
 	fn general_config<'a>(&'a mut self, data: &'a mut T) -> &'a mut GeneralConfig;

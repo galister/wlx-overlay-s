@@ -2884,8 +2884,7 @@ checksum = "f9fbbcab51052fe104eb5e5d351cf728d30a5be1fe14d9be8a3b097481fb97de"
 [[package]]
 name = "libmonado"
 version = "1.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f56d8582a273a05076c57d5478faa51c39958744760938f2da770e890b43c62d"
+source = "git+https://github.com/technobaboo/libmonado-rs.git?rev=26292e5b14663ee2f089f66f0851438a0c00ee67#26292e5b14663ee2f089f66f0851438a0c00ee67"
 dependencies = [
  "bindgen",
  "cmake",

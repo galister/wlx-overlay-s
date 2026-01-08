@@ -487,9 +487,36 @@ impl DashInterface<AppState> for DashInterfaceLive {
         app.monado_init();
         Ok(())
     }
+
+    fn monado_brightness_get(&mut self, app: &mut AppState) -> Option<f32> {
+        let Some(monado) = &mut app.monado else {
+            return None;
+        };
+
+        monado_get_brightness(monado)
+    }
+
+    fn monado_brightness_set(&mut self, app: &mut AppState, brightness: f32) -> Option<()> {
+        let Some(monado) = &mut app.monado else {
+            return None;
+        };
+
+        monado_set_brightness(monado, brightness).ok()
+    }
 }
 
 const CLIENT_NAME_BLACKLIST: [&str; 2] = ["wlx-overlay-s", "libmonado"];
+
+fn monado_get_brightness(monado: &mut libmonado::Monado) -> Option<f32> {
+    let device = monado.device_from_role(libmonado::DeviceRole::Head).ok()?;
+    device.brightness().ok()
+}
+
+fn monado_set_brightness(monado: &mut libmonado::Monado, brightness: f32) -> anyhow::Result<()> {
+    let device = monado.device_from_role(libmonado::DeviceRole::Head)?;
+    device.set_brightness(brightness, false)?;
+    Ok(())
+}
 
 fn monado_list_clients_filtered(
     monado: &mut libmonado::Monado,

@@ -144,5 +144,6 @@
     },
     "AUTOSTART": "Ejecutar automáticamente al inicio",
     "LAUNCH": "Iniciar"
-  }
+  },
+  "DISPLAY_BRIGHTNESS": "Brillo de la pantalla"
 }
