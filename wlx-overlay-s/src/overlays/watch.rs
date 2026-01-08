@@ -84,7 +84,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
     };
 
     panel.on_notify = Some(Box::new({
-        let name="watch";
+        let name=WATCH_NAME;
         move |panel, app, event_data| {
         let mut alterables = EventAlterables::default();
 

@@ -10,19 +10,25 @@ use crate::{
     state::AppState,
     subsystem::hid::XkbKeymap,
     windowing::backend::OverlayEventData,
+    backend::task::ModifyPanelCommand,
+
 };
 use anyhow::Context;
 use glam::{FloatExt, Mat4, Vec2, vec2, vec3};
 use wgui::{
+    components::button::ComponentButton,
     animation::{Animation, AnimationEasing},
     assets::AssetPath,
     drawing::{self, Color},
-    event::{self, CallbackMetadata, EventAlterables, EventListenerKind},
+    event::{self, CallbackMetadata, EventAlterables, EventListenerKind,CallbackDataCommon},
     layout::LayoutUpdateParams,
-    parser::{Fetchable, ParseDocumentParams},
+    parser::{Fetchable, ParseDocumentParams,parse_color_hex},
     renderer_vk::util,
+    renderer_vk::text::custom_glyph::CustomGlyphData,
     taffy::{self, prelude::length},
-    widget::{EventResult, div::WidgetDiv, rectangle::WidgetRectangle},
+    widget::{image::WidgetImage, label::WidgetLabel,EventResult, div::WidgetDiv, rectangle::WidgetRectangle,sprite::WidgetSprite,},
+    i18n::Translation,
+
 };
 
 use super::{
@@ -260,7 +266,9 @@ pub(super) fn create_keyboard_panel(
         }
     }
 
-    panel.on_notify = Some(Box::new(move |panel, app, event_data| {
+    panel.on_notify = Some(Box::new({
+        let name ="kbd";
+        move |panel, app, event_data| {
         let mut alterables = EventAlterables::default();
 
         let mut elems_changed = panel.state.overlay_list.on_notify(
@@ -282,15 +290,27 @@ pub(super) fn create_keyboard_panel(
         if elems_changed {
             panel.process_custom_elems(app);
         }
+        
+        match event_data{
 
-        if matches!(event_data, OverlayEventData::SettingsChanged) {
-            panel.state.alt_modifier =
-                alt_modifier_to_key(app.session.config.keyboard_middle_click_mode);
+            OverlayEventData::SettingsChanged => {
+                panel.state.alt_modifier =
+                    alt_modifier_to_key(app.session.config.keyboard_middle_click_mode);
+            }   
+        
+            OverlayEventData::CustomCommand {element, command} =>{
+                if let Err(e) = apply_custom_command(panel, app, &element, &command) {
+                    log::warn!("Could not apply {command:?} on {name}/{element}: {e:?}");
+                }
+            }
+
+            _=>{
+            }
         }
 
         panel.layout.process_alterables(alterables)?;
         Ok(())
-    }));
+    }}));
 
     panel
         .timers
@@ -415,3 +435,104 @@ fn on_release_anim(
     common.alterables.mark_redraw();
     key_state.drawn_state.set(false);
 }
+
+fn apply_custom_command(
+    panel: &mut GuiPanel<KeyboardState>,
+    app: &mut AppState,
+    element: &str,
+    command: &ModifyPanelCommand,
+) -> anyhow::Result<()> {
+    let mut alterables = EventAlterables::default();
+    let mut com = CallbackDataCommon {
+        alterables: &mut alterables,
+        state: &panel.layout.state,
+    };
+
+    match command {
+        ModifyPanelCommand::SetText(text) => {
+            if let Ok(mut label) = panel
+                .parser_state
+                .fetch_widget_as::<WidgetLabel>(&panel.layout.state, element)
+            {
+                label.set_text(&mut com, Translation::from_raw_text(text));
+            } else if let Ok(button) = panel
+                .parser_state
+                .fetch_component_as::<ComponentButton>(element)
+            {
+                button.set_text(&mut com, Translation::from_raw_text(text));
+            } else {
+                anyhow::bail!("No <label> or <Button> with such id.");
+            }
+        }
+        ModifyPanelCommand::SetImage(path) => {
+            if let Ok(pair) = panel
+                .parser_state
+                .fetch_widget(&panel.layout.state, element)
+            {
+                let data = CustomGlyphData::from_assets(
+                    &app.wgui_globals,
+                    wgui::assets::AssetPath::File(path),
+                )
+                .context("Could not load content from supplied path.")?;
+
+                if let Some(mut sprite) = pair.widget.get_as::<WidgetSprite>() {
+                    sprite.set_content(&mut com, Some(data));
+                } else if let Some(mut image) = pair.widget.get_as::<WidgetImage>() {
+                    image.set_content(&mut com, Some(data));
+                } else {
+                    anyhow::bail!("No <sprite> or <image> with such id.");
+                }
+            } else {
+                anyhow::bail!("No <sprite> or <image> with such id.");
+            }
+        }
+        ModifyPanelCommand::SetColor(color) => {
+            let color = parse_color_hex(color)
+                .context("Invalid color format, must be a html hex color!")?;
+
+            if let Ok(pair) = panel
+                .parser_state
+                .fetch_widget(&panel.layout.state, element)
+            {
+                if let Some(mut rect) = pair.widget.get_as::<WidgetRectangle>() {
+                    rect.set_color(&mut com, color);
+                } else if let Some(mut label) = pair.widget.get_as::<WidgetLabel>() {
+                    label.set_color(&mut com, color, true);
+                } else if let Some(mut sprite) = pair.widget.get_as::<WidgetSprite>() {
+                    sprite.set_color(&mut com, color);
+                } else {
+                    anyhow::bail!("No <rectangle> or <label> or <sprite> with such id.");
+                }
+            } else {
+                anyhow::bail!("No <rectangle> or <label> or <sprite> with such id.");
+            }
+        }
+        ModifyPanelCommand::SetVisible(visible) => {
+            let wid = panel
+                .parser_state
+                .get_widget_id(element)
+                .context("No widget with such id.")?;
+
+            let display = if *visible {
+                taffy::Display::Flex
+            } else {
+                taffy::Display::None
+            };
+
+            com.alterables
+                .set_style(wid, wgui::event::StyleSetRequest::Display(display));
+        }
+        ModifyPanelCommand::SetStickyState(sticky_down) => {
+            let button = panel
+                .parser_state
+                .fetch_component_as::<ComponentButton>(element)
+                .context("No <Button> with such id.")?;
+            button.set_sticky_state(&mut com, *sticky_down);
+        }
+    }
+
+    panel.layout.process_alterables(alterables)?;
+    Ok(())
+}
+
+
