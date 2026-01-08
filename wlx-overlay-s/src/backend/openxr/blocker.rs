@@ -14,14 +14,18 @@ impl InputBlocker {
         }
     }
 
-    pub fn update(&mut self, state: &AppState, watch_id: OverlayID, monado: &mut Monado) {
-        if !state.session.config.block_game_input {
+    pub fn update(&mut self, app: &mut AppState, watch_id: OverlayID) {
+        let Some(monado) = &mut app.monado else {
+            return; // monado not available
+        };
+
+        if !app.session.config.block_game_input {
             return;
         }
 
-        let any_hovered = state.input_state.pointers.iter().any(|p| {
+        let any_hovered = app.input_state.pointers.iter().any(|p| {
             p.interaction.hovered_id.is_some_and(|id| {
-                id != watch_id || !state.session.config.block_game_input_ignore_watch
+                id != watch_id || !app.session.config.block_game_input_ignore_watch
             })
         });
 

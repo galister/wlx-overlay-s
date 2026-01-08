@@ -16,7 +16,7 @@ use wgui::{
     widget::EventResult,
 };
 use wlx_common::{
-    dash_interface::DashInterface,
+    dash_interface::{self, DashInterface},
     overlays::{BackendAttrib, BackendAttribValue},
 };
 use wlx_common::{
@@ -444,4 +444,92 @@ impl DashInterface<AppState> for DashInterfaceLive {
         RUNNING.store(false, Ordering::Relaxed);
         RESTART.store(true, Ordering::Relaxed);
     }
+
+    fn monado_client_list(
+        &mut self,
+        app: &mut AppState,
+    ) -> anyhow::Result<Vec<dash_interface::MonadoClient>> {
+        let Some(monado) = &mut app.monado else {
+            return Ok(Vec::new()); // no monado available
+        };
+
+        let clients = monado_list_clients_filtered(monado)?;
+
+        let mut res = Vec::<dash_interface::MonadoClient>::new();
+
+        for mut client in clients {
+            let name = client.name()?;
+            let state = client.state()?;
+
+            res.push(dash_interface::MonadoClient {
+                name,
+                is_primary: state.contains(libmonado::ClientState::ClientPrimaryApp),
+                is_active: state.contains(libmonado::ClientState::ClientSessionActive),
+                is_visible: state.contains(libmonado::ClientState::ClientSessionVisible),
+                is_focused: state.contains(libmonado::ClientState::ClientSessionFocused),
+                is_overlay: state.contains(libmonado::ClientState::ClientSessionOverlay),
+                is_io_active: state.contains(libmonado::ClientState::ClientIoActive),
+            });
+        }
+
+        Ok(res)
+    }
+
+    fn monado_client_focus(&mut self, app: &mut AppState, name: &str) -> anyhow::Result<()> {
+        let Some(monado) = &mut app.monado else {
+            return Ok(()); // no monado avoilable
+        };
+
+        monado_client_focus(monado, name)?;
+
+        // Restart monado (BUG!)
+        // https://gitlab.freedesktop.org/monado/monado/-/issues/497
+        app.monado_init();
+        Ok(())
+    }
+}
+
+const CLIENT_NAME_BLACKLIST: [&str; 2] = ["wlx-overlay-s", "libmonado"];
+
+fn monado_list_clients_filtered(
+    monado: &mut libmonado::Monado,
+) -> anyhow::Result<Vec<libmonado::Client<'_>>> {
+    let mut clients: Vec<_> = monado.clients()?.into_iter().collect();
+
+    let clients: Vec<_> = clients
+        .iter_mut()
+        .filter_map(|client| {
+            let Ok(name) = client.name() else {
+                return None;
+            };
+
+            for cell in CLIENT_NAME_BLACKLIST {
+                if cell == name {
+                    // blacklisted!
+                    return None;
+                }
+            }
+
+            Some(client.clone())
+        })
+        .collect();
+
+    Ok(clients)
+}
+
+fn monado_client_focus(monado: &mut libmonado::Monado, name: &str) -> anyhow::Result<()> {
+    let clients = monado_list_clients_filtered(monado)?;
+
+    for mut client in clients {
+        let client_name = client.name()?;
+        if client_name != name {
+            continue;
+        }
+
+        log::info!("Monado focus set to {client_name}");
+        client.set_primary()?;
+        return Ok(());
+    }
+
+    Ok(())
 }

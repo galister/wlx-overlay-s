@@ -5,6 +5,7 @@ Glossary:
 - wlx-overlay-s: The name of this software (also called WlxOverlay-S)
 - WayVR: A Wayland compositor intended to be used in VR
 - WayVR Dashboard: An application (and game) launcher which is displayed in front of the user
+- Monado: A VR compositor
 - OpenVR: API made by Valve
 - OpenXR: API made by Khronos
 - OSC: OpenSoundControl

@@ -3,7 +3,12 @@ use wayvr_ipc::{
 	packet_server::{WvrProcess, WvrProcessHandle, WvrWindow, WvrWindowHandle},
 };
 
-use crate::{config::GeneralConfig, dash_interface::DashInterface, desktop_finder::DesktopFinder, gen_id};
+use crate::{
+	config::GeneralConfig,
+	dash_interface::{self, DashInterface},
+	desktop_finder::DesktopFinder,
+	gen_id,
+};
 
 #[derive(Debug)]
 pub struct EmuProcess {
@@ -56,6 +61,7 @@ pub struct DashInterfaceEmulated {
 	windows: EmuWindowVec,
 	desktop_finder: DesktopFinder,
 	general_config: GeneralConfig,
+	monado_clients: Vec<dash_interface::MonadoClient>,
 }
 
 impl DashInterfaceEmulated {
@@ -77,11 +83,42 @@ impl DashInterfaceEmulated {
 		// Use serde defaults
 		let general_config = serde_json::from_str("{}").unwrap();
 
+		let monado_clients = vec![
+			dash_interface::MonadoClient {
+				name: String::from("The Best VR Game 3000"),
+				is_active: true,
+				is_focused: true,
+				is_io_active: true,
+				is_overlay: false,
+				is_primary: true,
+				is_visible: true,
+			},
+			dash_interface::MonadoClient {
+				name: String::from("Second app"),
+				is_active: true,
+				is_focused: false,
+				is_io_active: true,
+				is_overlay: false,
+				is_primary: false,
+				is_visible: true,
+			},
+			dash_interface::MonadoClient {
+				name: String::from("Third app"),
+				is_active: true,
+				is_focused: false,
+				is_io_active: true,
+				is_overlay: false,
+				is_primary: false,
+				is_visible: true,
+			},
+		];
+
 		Self {
 			processes,
 			windows,
 			desktop_finder,
 			general_config,
+			monado_clients,
 		}
 	}
 }
@@ -187,4 +224,23 @@ impl DashInterface<()> for DashInterfaceEmulated {
 	fn config_changed(&mut self, _: &mut ()) {}
 
 	fn restart(&mut self, _data: &mut ()) {}
+
+	fn monado_client_list(&mut self, _data: &mut ()) -> anyhow::Result<Vec<dash_interface::MonadoClient>> {
+		Ok(self.monado_clients.clone())
+	}
+
+	fn monado_client_focus(&mut self, _data: &mut (), name: &str) -> anyhow::Result<()> {
+		for client in self.monado_clients.iter_mut() {
+			client.is_focused = false;
+			client.is_active = false;
+			client.is_primary = false;
+		}
+
+		if let Some(client) = self.monado_clients.iter_mut().find(|m| m.name == name) {
+			client.is_active = true;
+			client.is_focused = true;
+			client.is_primary = true;
+		}
+		Ok(())
+	}
 }

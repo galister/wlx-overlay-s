@@ -129,7 +129,7 @@ pub fn stop(app_id: AppID, force_kill: bool) -> anyhow::Result<()> {
 
 		log::info!("Killing process with PID {} and its children", game.pid);
 		let _ = std::process::Command::new("pkill")
-			.arg(if force_kill { "-9" } else { "-11" })
+			.arg(if force_kill { "-9" } else { "-15" })
 			.arg("-P")
 			.arg(format!("{}", game.pid))
 			.spawn()?;

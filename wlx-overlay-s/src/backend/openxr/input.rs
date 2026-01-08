@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use wlx_common::config_io;
 
 use crate::{
-    backend::input::{Haptics, Pointer, TrackedDevice, TrackedDeviceRole},
+    backend::input::{Haptics, InputState, Pointer, TrackedDevice, TrackedDeviceRole},
     state::{AppSession, AppState},
 };
 
@@ -227,12 +227,12 @@ impl OpenXrInputSource {
     fn update_device_battery_status(
         device: &mut mnd::Device,
         role: TrackedDeviceRole,
-        app: &mut AppState,
+        input_state: &mut InputState,
     ) {
         if let Ok(status) = device.battery_status()
             && status.present
         {
-            app.input_state.devices.push(TrackedDevice {
+            input_state.devices.push(TrackedDevice {
                 soc: Some(status.charge),
                 charging: status.charging,
                 role,
@@ -247,7 +247,11 @@ impl OpenXrInputSource {
         }
     }
 
-    pub fn update_devices(app: &mut AppState, monado: &mut mnd::Monado) -> bool {
+    pub fn update_devices(app: &mut AppState) -> bool {
+        let Some(monado) = &mut app.monado else {
+            return false; // monado not available
+        };
+
         let old_len = app.input_state.devices.len();
         app.input_state.devices.clear();
 
@@ -267,13 +271,14 @@ impl OpenXrInputSource {
             ),
         ];
         let mut seen = Vec::<u32>::with_capacity(32);
+
         for (mnd_role, wlx_role) in roles {
             let device = monado.device_from_role(mnd_role);
             if let Ok(mut device) = device
                 && !seen.contains(&device.index)
             {
                 seen.push(device.index);
-                Self::update_device_battery_status(&mut device, wlx_role, app);
+                Self::update_device_battery_status(&mut device, wlx_role, &mut app.input_state);
             }
         }
         if let Ok(devices) = monado.devices() {
@@ -284,7 +289,7 @@ impl OpenXrInputSource {
                     } else {
                         TrackedDeviceRole::None
                     };
-                    Self::update_device_battery_status(&mut device, role, app);
+                    Self::update_device_battery_status(&mut device, role, &mut app.input_state);
                 }
             }
         }
