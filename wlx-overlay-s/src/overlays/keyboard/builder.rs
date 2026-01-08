@@ -6,8 +6,10 @@ use crate::{
         panel::{GuiPanel, NewGuiPanelParams},
         timer::GuiTimer,
     },
+    overlays::keyboard::alt_modifier_to_key,
     state::AppState,
     subsystem::hid::XkbKeymap,
+    windowing::backend::OverlayEventData,
 };
 use anyhow::Context;
 use glam::{FloatExt, Mat4, Vec2, vec2, vec3};
@@ -279,6 +281,11 @@ pub(super) fn create_keyboard_panel(
 
         if elems_changed {
             panel.process_custom_elems(app);
+        }
+
+        if matches!(event_data, OverlayEventData::SettingsChanged) {
+            panel.state.alt_modifier =
+                alt_modifier_to_key(app.session.config.keyboard_middle_click_mode);
         }
 
         panel.layout.process_alterables(alterables)?;

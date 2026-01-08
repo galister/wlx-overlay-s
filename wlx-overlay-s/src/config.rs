@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use wlx_common::{
     astr_containers::AStrMap,
-    config::{CaptureMethod, GeneralConfig, SerializedWindowSet, SerializedWindowStates},
+    config::{
+        AltModifier, CaptureMethod, GeneralConfig, SerializedWindowSet, SerializedWindowStates,
+    },
     config_io,
     overlays::BackendAttribValue,
 };
@@ -139,6 +141,7 @@ pub struct AutoSettings {
     pub xwayland_by_default: bool,
     pub context_menu_hold_and_release: bool,
     pub capture_method: CaptureMethod,
+    pub keyboard_middle_click_mode: AltModifier,
 }
 
 fn get_settings_path() -> PathBuf {
@@ -183,6 +186,7 @@ pub fn save_settings(config: &GeneralConfig) -> anyhow::Result<()> {
         xwayland_by_default: config.xwayland_by_default,
         context_menu_hold_and_release: config.context_menu_hold_and_release,
         capture_method: config.capture_method,
+        keyboard_middle_click_mode: config.keyboard_middle_click_mode,
     };
 
     let json = serde_json::to_string_pretty(&conf).unwrap(); // want panic

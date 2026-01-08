@@ -12,7 +12,7 @@ use crate::{
         task::{OverlayTask, TaskType},
     },
     gui::panel::{GuiPanel, overlay_list::OverlayList, set_list::SetList},
-    overlays::keyboard::{builder::create_keyboard_panel, layout::AltModifier},
+    overlays::keyboard::builder::create_keyboard_panel,
     state::AppState,
     subsystem::{
         dbus::DbusConnector,
@@ -34,8 +34,11 @@ use wgui::{
     drawing,
     event::{InternalStateChangeEvent, MouseButton, MouseButtonIndex},
 };
-use wlx_common::overlays::{BackendAttrib, BackendAttribValue};
 use wlx_common::windowing::{OverlayWindowState, Positioning};
+use wlx_common::{
+    config::AltModifier,
+    overlays::{BackendAttrib, BackendAttribValue},
+};
 
 pub mod builder;
 mod layout;
@@ -48,14 +51,7 @@ pub fn create_keyboard(app: &mut AppState, wayland: bool) -> anyhow::Result<Over
     let layout = layout::Layout::load_from_disk();
     let default_state = KeyboardState {
         modifiers: 0,
-        alt_modifier: match layout.alt_modifier {
-            AltModifier::Shift => SHIFT,
-            AltModifier::Ctrl => CTRL,
-            AltModifier::Alt => ALT,
-            AltModifier::Super => SUPER,
-            AltModifier::Meta => META,
-            _ => 0,
-        },
+        alt_modifier: alt_modifier_to_key(app.session.config.keyboard_middle_click_mode),
         processes: vec![],
         overlay_list: OverlayList::default(),
         set_list: SetList::default(),
@@ -120,6 +116,17 @@ pub fn create_keyboard(app: &mut AppState, wayland: bool) -> anyhow::Result<Over
         },
         ..OverlayWindowConfig::from_backend(Box::new(backend))
     })
+}
+
+fn alt_modifier_to_key(m: AltModifier) -> KeyModifier {
+    match m {
+        AltModifier::Shift => SHIFT,
+        AltModifier::Ctrl => CTRL,
+        AltModifier::Alt => ALT,
+        AltModifier::Super => SUPER,
+        AltModifier::Meta => META,
+        _ => 0,
+    }
 }
 
 new_key_type! {

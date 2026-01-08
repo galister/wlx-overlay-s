@@ -168,6 +168,7 @@ enum SettingType {
 	OpaqueBackground,
 	XwaylandByDefault,
 	CaptureMethod,
+	KeyboardMiddleClick,
 }
 
 impl SettingType {
@@ -226,6 +227,10 @@ impl SettingType {
 			Self::CaptureMethod => {
 				config.capture_method = wlx_common::config::CaptureMethod::from_str(value).expect("Invalid enum value!")
 			}
+			Self::KeyboardMiddleClick => {
+				config.keyboard_middle_click_mode =
+					wlx_common::config::AltModifier::from_str(value).expect("Invalid enum value!")
+			}
 			_ => panic!("Requested enum for non-enum SettingType"),
 		}
 	}
@@ -233,6 +238,7 @@ impl SettingType {
 	fn get_enum_title<'a>(self, config: &'a mut GeneralConfig) -> Translation {
 		match self {
 			Self::CaptureMethod => Self::get_enum_title_inner(config.capture_method),
+			Self::KeyboardMiddleClick => Self::get_enum_title_inner(config.keyboard_middle_click_mode),
 			_ => panic!("Requested enum for non-enum SettingType"),
 		}
 	}
@@ -291,6 +297,7 @@ impl SettingType {
 			Self::OpaqueBackground => Ok("APP_SETTINGS.OPAQUE_BACKGROUND"),
 			Self::XwaylandByDefault => Ok("APP_SETTINGS.XWAYLAND_BY_DEFAULT"),
 			Self::CaptureMethod => Ok("APP_SETTINGS.CAPTURE_METHOD"),
+			Self::KeyboardMiddleClick => Ok("APP_SETTINGS.KEYBOARD_MIDDLE_CLICK"),
 		}
 	}
 
@@ -308,6 +315,7 @@ impl SettingType {
 			Self::UsePassthrough => Some("APP_SETTINGS.USE_PASSTHROUGH_HELP"),
 			Self::ScreenRenderDown => Some("APP_SETTINGS.SCREEN_RENDER_DOWN_HELP"),
 			Self::CaptureMethod => Some("APP_SETTINGS.CAPTURE_METHOD_HELP"),
+			Self::KeyboardMiddleClick => Some("APP_SETTINGS.KEYBOARD_MIDDLE_CLICK_HELP"),
 			_ => None,
 		}
 	}
@@ -618,6 +626,12 @@ impl<T> TabSettings<T> {
 		slider_f32!(mp, c, SettingType::XrClickSensitivity, 0.1, 1.0, 0.1);
 		slider_f32!(mp, c, SettingType::XrClickSensitivityRelease, 0.1, 1.0, 0.1);
 		slider_i32!(mp, c, SettingType::ClickFreezeTimeMs, 0, 500, 50);
+		dropdown!(
+			mp,
+			c,
+			SettingType::KeyboardMiddleClick,
+			wlx_common::config::AltModifier::VARIANTS
+		);
 
 		let c = category!(mp, root, "APP_SETTINGS.MISC", "dashboard/blocks.svg")?;
 		checkbox!(mp, c, SettingType::XwaylandByDefault);

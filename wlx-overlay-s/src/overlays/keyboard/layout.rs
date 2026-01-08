@@ -2,6 +2,7 @@ use std::{collections::HashMap, str::FromStr, sync::LazyLock};
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use wlx_common::config::AltModifier;
 
 use crate::{
     config::{ConfigType, load_known_yaml},
@@ -230,18 +231,6 @@ pub(super) struct KeyData {
     pub(super) label: Vec<String>,
     pub(super) button_state: KeyButtonData,
     pub(super) cap_type: KeyCapType,
-}
-
-#[derive(Debug, Default, Clone, Copy, Deserialize, Serialize)]
-#[repr(usize)]
-pub enum AltModifier {
-    #[default]
-    None,
-    Shift,
-    Ctrl,
-    Alt,
-    Super,
-    Meta,
 }
 
 #[derive(Debug)]

@@ -30,6 +30,17 @@ pub enum CaptureMethod {
 	ScreenCopy,
 }
 
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, AsRefStr, EnumString, EnumProperty, VariantArray)]
+pub enum AltModifier {
+	#[default]
+	None,
+	Shift,
+	Ctrl,
+	Alt,
+	Super,
+	Meta,
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SerializedWindowSet {
 	pub name: Arc<str>,
@@ -270,4 +281,7 @@ pub struct GeneralConfig {
 
 	#[serde(default)]
 	pub context_menu_hold_and_release: bool,
+
+	#[serde(default)]
+	pub keyboard_middle_click_mode: AltModifier,
 }

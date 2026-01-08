@@ -74,6 +74,9 @@
 		"CAPTURE_METHOD": "Wayland screen capture",
 		"CAPTURE_METHOD_HELP": "Try changing this if experiencing\nblack or glitchy screens",
 
+		"KEYBOARD_MIDDLE_CLICK": "Keyboard middle click",
+		"KEYBOARD_MIDDLE_CLICK_HELP": "Modifier to use when typing\nwith purple laser",
+
 		"OPTION": {
 			"PIPEWIRE_HELP": "Fast GPU capture. Recommended",
 			"PW_FALLBACK_HELP": "Slow. Try in case PipeWire GPU doesn't work",

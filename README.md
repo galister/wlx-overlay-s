@@ -56,8 +56,9 @@ For users specifically running **SteamVR via Steam Flatpak**, follow these steps
 **When the screen share pop-up appears, check your notifications or the terminal and select the screens in the order it requests.**
 
 In case screens were selected in the wrong order:
-
-- `rm ~/.config/wlxoverlay/conf.d/pw_tokens.yaml` then restart
+- Go to Settings and press `Clear PipeWire tokens` and then `Restart software`
+- Pay attention to your notifications, it tells you in which order to pick the screens.
+- If notifications don't show, try start Wlx from the terminal and look for instructions in there.
 
 **WiVRn users**: Select WlxOverlay-S from the `Application` drop-down. If there's no such entry, select `Custom` and browse to your WlxOverlay-S executable or AppImage.
 
@@ -161,29 +162,31 @@ Check [here](https://github.com/galister/wlx-overlay-s/wiki/Troubleshooting) for
 
 ### Mouse is not where it should be
 
-X11 users:
+If the mouse is moving on a completely different screen, the screens were likely selected in the wrong order:
+- Go to Settings and press `Clear PipeWire tokens` and then `Restart software`
+- Pay attention to your notifications, it tells you in which order to pick the screens.
+- If notifications don't show, try start Wlx from the terminal and look for instructions in there.
 
+COSMIC destkop:
+- Due to limitations with COSMIC, the mouse can only move on a single display.
+
+X11 users:
 - Might be dealing with a [Phantom Monitor](https://wiki.archlinux.org/title/Xrandr#Disabling_phantom_monitor).
 - DPI scaling is not supported and will mess with the mouse.
 - Upright screens are not supported and will mess with the mouse.
 
-Other desktops: The screens may have been selected in the wrong order, see [First Start](#first-start).
+### Screens are blank or black or frozen on Steam Link
 
-### Crashes, blank screens
+As of SteamVR version 2.14.x, PipeWire capture no longer works when using Steam Link.
 
-There are some driver-desktop combinations that don't play nice with DMA-buf capture.
+We're unable to completely troubleshoot how and why Steam Link interferes with PipeWire, so consider the following workarounds for the time being:
+- Use another streamer, such as WiVRn or ALVR
+- If your desktop [supports ScreenCopy](https://wayland.app/protocols/wlr-screencopy-unstable-v1#compositor-support), go to Settings and set `Wayland capture method` to `ScreenCopy`
+- If your desktop has an X11 mode, try using that
 
-Disabling DMA-buf capture is a good first step to try when encountering an app crash or gpu driver reset.
+### Modifiers get stuck
 
-```bash
-echo 'capture_method: pw_fallback' > ~/.config/wlxoverlay/conf.d/pw_fallback.yaml
-```
-
-Without DMA-buf capture, capturing screens takes CPU power, so let's try and not show too many screens at the same time.
-
-### Modifiers get stuck, mouse clicks stop working on KDE Plasma
-
-We are not sure what causes this, but it only happens on KDE Plasma. Restarting the overlay fixes this.
+Hiding the keyboard will un-press all of its buttons. Alternatively, go to Settings and use the `Restart software` button.
 
 ### X11 limitations
 

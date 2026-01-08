@@ -175,10 +175,7 @@ impl OverlayBackend for ScreenBackend {
                 &Vec::new()
             } else {
                 log::warn!(
-                    "Using DMA-buf capture. If screens are blank for you, switch to SHM using:"
-                );
-                log::warn!(
-                    "echo 'capture_method: pw_fallback' > ~/.config/wlxoverlay/conf.d/pw_fallback.yaml"
+                    "Using GPU capture. If you're having issues with screens, go to the Dashboard's Settings tab and switch 'Wayland capture method' to a CPU option!"
                 );
 
                 &app.gfx_extras.drm_formats
