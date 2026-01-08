@@ -355,7 +355,12 @@ where
                 if let Some(oid) = self.lookup(&task.overlay)
                     && let Some(o) = self.mut_by_id(oid)
                 {
-                    if !matches!(o.config.category, OverlayCategory::Panel | OverlayCategory::Keyboard | OverlayCategory::Internal) {
+                    if !matches!(
+                        o.config.category,
+                        OverlayCategory::Panel
+                            | OverlayCategory::Keyboard
+                            | OverlayCategory::Internal
+                    ) {
                         log::warn!(
                             "Received command for '{}', but this overlay does not support commands",
                             &task.overlay
