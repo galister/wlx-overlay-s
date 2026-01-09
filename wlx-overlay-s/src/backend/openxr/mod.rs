@@ -285,7 +285,6 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             overlays.show_hide(&mut app);
         }
 
-        #[cfg(feature = "wayvr")]
         if app
             .input_state
             .pointers
@@ -356,7 +355,6 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             });
         }
 
-        #[cfg(feature = "wayvr")]
         if let Err(e) =
             crate::ipc::events::tick_events::<OpenXrOverlayData>(&mut app, &mut overlays)
         {

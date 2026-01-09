@@ -6,7 +6,6 @@ pub mod openvr;
 #[cfg(feature = "openxr")]
 pub mod openxr;
 
-#[cfg(feature = "wayvr")]
 pub mod wayvr;
 
 pub mod set;

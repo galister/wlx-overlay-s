@@ -1,6 +1,5 @@
 use wayvr_ipc::packet_server;
 
-#[cfg(feature = "wayvr")]
 use crate::backend::wayvr::{self, WvrServerState};
 
 use crate::{
@@ -13,7 +12,6 @@ use crate::{
     windowing::{OverlaySelector, manager::OverlayWindowManager},
 };
 
-#[cfg(feature = "wayvr")]
 fn process_tick_tasks(
     tick_tasks: Vec<backend::wayvr::TickTask>,
     server_state: &mut WvrServerState,
@@ -41,7 +39,6 @@ where
 {
     while let Some(signal) = app.wayvr_signals.read() {
         match signal {
-            #[cfg(feature = "wayvr")]
             WayVRSignal::BroadcastStateChanged(packet) => {
                 app.ipc_server
                     .broadcast(packet_server::PacketServer::WvrStateChanged(packet));
@@ -66,21 +63,9 @@ where
         }
     }
 
-    #[cfg(feature = "wayvr")]
-    {
-        let tick_tasks = WvrServerState::tick_events(app)?;
-        if let Some(wayvr_server) = app.wvr_server.as_mut() {
-            process_tick_tasks(tick_tasks, wayvr_server);
-        }
-    }
-
-    #[cfg(not(feature = "wayvr"))]
-    {
-        use super::ipc_server::TickParams;
-        app.ipc_server.tick(&mut TickParams {
-            input_state: &app.input_state,
-            signals: &app.wayvr_signals,
-        });
+    let tick_tasks = WvrServerState::tick_events(app)?;
+    if let Some(wayvr_server) = app.wvr_server.as_mut() {
+        process_tick_tasks(tick_tasks, wayvr_server);
     }
 
     Ok(())

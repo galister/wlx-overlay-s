@@ -3,8 +3,6 @@ use std::{path::PathBuf, sync::LazyLock};
 
 pub enum ConfigRoot {
 	Generic,
-	#[allow(dead_code)]
-	WayVR,
 }
 
 const FALLBACK_CONFIG_PATH: &str = "/tmp/wlxoverlay";
@@ -27,7 +25,6 @@ impl ConfigRoot {
 	pub fn get_conf_d_path(&self) -> PathBuf {
 		get_config_root().join(match self {
 			Self::Generic => "conf.d",
-			Self::WayVR => "wayvr.conf.d",
 		})
 	}
 

@@ -2,7 +2,6 @@ use glam::Affine3A;
 use idmap::IdMap;
 use smallvec::{SmallVec, smallvec};
 use std::sync::Arc;
-#[cfg(feature = "wayvr")]
 use wgui::log::LogErr;
 use wgui::{
     drawing, font_config::WguiFontConfig, gfx::WGfx, globals::WguiGlobals, parser::parse_color_hex,
@@ -16,7 +15,6 @@ use wlx_common::{
     overlays::{ToastDisplayMethod, ToastTopic},
 };
 
-#[cfg(feature = "wayvr")]
 use crate::backend::wayvr::WvrServerState;
 #[cfg(feature = "osc")]
 use crate::subsystem::osc::OscSender;
@@ -62,7 +60,6 @@ pub struct AppState {
     #[cfg(feature = "osc")]
     pub osc_sender: Option<OscSender>,
 
-    #[cfg(feature = "wayvr")]
     pub wvr_server: Option<WvrServerState>,
 
     #[cfg(feature = "openxr")]
@@ -82,7 +79,6 @@ impl AppState {
         let session = AppSession::load();
         let wvr_signals = SyncEventQueue::new();
 
-        #[cfg(feature = "wayvr")]
         let wvr_server = WvrServerState::new(gfx.clone(), &gfx_extras, wvr_signals.clone())
             .log_err("Could not initialize WayVR Server")
             .ok();
@@ -164,7 +160,6 @@ impl AppState {
             #[cfg(feature = "osc")]
             osc_sender,
 
-            #[cfg(feature = "wayvr")]
             wvr_server,
 
             #[cfg(feature = "openxr")]

@@ -73,35 +73,29 @@ serde_json5 = "0.2.1"
 serde_yaml = "0.9.34"
 signal-hook = "0.3.18"
 smallvec = "1.15.1"
+smithay = { version = "0.7.0", default-features = false, features = [
+  "backend_vulkan",
+  "desktop",
+  "xwayland",
+  "wayland_frontend",
+]}
 sysinfo = { version = "0.37" }
 thiserror = "2.0"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 tracing = "0.1.43"
+uuid = { version = "1.19.0", features = ["v4", "fast-rng"] }
+wayland-client = { workspace = true }
 winit = { version = "0.30.12", optional = true }
 xcb = { version = "1.6.0", optional = true, features = [
   "as-raw-xcb-connection",
 ] }
 xkbcommon = { version = "0.8.0" } # 0.9.0 breaks keymap import on some distros
 
-################################
-# Wayland Server deps
-################################
-smithay = { version = "0.7.0", default-features = false, features = [
-  "backend_vulkan",
-  "desktop",
-  "xwayland",
-  "wayland_frontend",
-], optional = true }
-uuid = { version = "1.19.0", features = ["v4", "fast-rng"], optional = true }
-wayland-client = { workspace = true, optional = true }
-################################
-
 [build-dependencies]
 regex.workspace = true
 
-# TODO: rename "wayvr" feature to "wayland-server"
 [features]
-default = ["openvr", "openxr", "osc", "x11", "wayland", "wayvr"]
+default = ["openvr", "openxr", "osc", "x11", "wayland" ]
 openvr = ["dep:ovr_overlay", "dep:json"]
 openxr = ["dep:openxr", "dep:libmonado"]
 osc = ["dep:rosc"]
@@ -110,5 +104,4 @@ wayland = ["pipewire", "wlx-capture/wlr", "xkbcommon/wayland"]
 pipewire = ["wlx-capture/pipewire"]
 uidev = ["dep:winit"]
 xcb = ["dep:xcb"]
-wayvr = ["dep:smithay", "dep:uuid", "dep:wayland-client"]
 as-raw-xcb-connection = []

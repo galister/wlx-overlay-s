@@ -253,7 +253,6 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             overlays.show_hide(&mut app);
         }
 
-        #[cfg(feature = "wayvr")]
         if app
             .input_state
             .pointers

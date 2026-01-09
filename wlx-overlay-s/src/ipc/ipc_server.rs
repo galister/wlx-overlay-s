@@ -1,4 +1,3 @@
-#[cfg(feature = "wayvr")]
 use crate::backend::wayvr::{self, WvrServerState};
 
 use crate::{
@@ -75,9 +74,7 @@ fn read_payload(conn: &mut local_socket::Stream, size: u32) -> Option<Payload> {
 }
 
 pub struct TickParams<'a> {
-    #[cfg(feature = "wayvr")]
     pub wvr_server: &'a mut WvrServerState,
-    #[cfg(feature = "wayvr")]
     pub tasks: &'a mut Vec<wayvr::TickTask>,
     pub signals: &'a SyncEventQueue<WayVRSignal>,
     pub input_state: &'a InputState,
@@ -182,7 +179,6 @@ impl Connection {
         Ok(())
     }
 
-    #[cfg(feature = "wayvr")]
     fn handle_wvr_window_list(
         &mut self,
         params: &mut TickParams,
@@ -212,7 +208,6 @@ impl Connection {
         }))
     }
 
-    #[cfg(feature = "wayvr")]
     fn handle_wvr_window_set_visible(
         params: &mut TickParams,
         handle: packet_server::WvrWindowHandle,
@@ -228,7 +223,6 @@ impl Connection {
         }
     }
 
-    #[cfg(feature = "wayvr")]
     fn handle_wvr_process_launch(
         &mut self,
         params: &mut TickParams,
@@ -260,7 +254,6 @@ impl Connection {
         Ok(())
     }
 
-    #[cfg(feature = "wayvr")]
     fn handle_wvr_process_list(
         &mut self,
         params: &TickParams,
@@ -296,7 +289,6 @@ impl Connection {
     }
 
     // This request doesn't return anything to the client
-    #[cfg(feature = "wayvr")]
     fn handle_wvr_process_terminate(
         params: &mut TickParams,
         process_handle: packet_server::WvrProcessHandle,
@@ -313,7 +305,6 @@ impl Connection {
         process.kill(KillSignal::Term);
     }
 
-    #[cfg(feature = "wayvr")]
     fn handle_wvr_process_get(
         &mut self,
         params: &TickParams,
@@ -402,27 +393,21 @@ impl Connection {
                 self.handle_wlx_input_state(params, serial)?;
             }
             PacketClient::WvrWindowList(serial) => {
-                #[cfg(feature = "wayvr")]
                 self.handle_wvr_window_list(params, serial)?;
             }
             PacketClient::WvrWindowSetVisible(window_handle, visible) => {
-                #[cfg(feature = "wayvr")]
                 Self::handle_wvr_window_set_visible(params, window_handle, visible);
             }
             PacketClient::WvrProcessGet(serial, process_handle) => {
-                #[cfg(feature = "wayvr")]
                 self.handle_wvr_process_get(params, serial, process_handle)?;
             }
             PacketClient::WvrProcessList(serial) => {
-                #[cfg(feature = "wayvr")]
                 self.handle_wvr_process_list(params, serial)?;
             }
             PacketClient::WvrProcessLaunch(serial, packet_params) => {
-                #[cfg(feature = "wayvr")]
                 self.handle_wvr_process_launch(params, serial, packet_params)?;
             }
             PacketClient::WvrProcessTerminate(process_handle) => {
-                #[cfg(feature = "wayvr")]
                 Self::handle_wvr_process_terminate(params, process_handle);
             }
             PacketClient::WlxDeviceHaptics(device, haptics_params) => {
