@@ -25,6 +25,13 @@
   </template>
 
   <elements>
+    <div position="absolute" width="100%" justify_content="space_between">
+      <div />
+      <div padding="6">
+        <Button id="btn_close" sprite_src_builtin="dashboard/close.svg" color="#000000" border="2" border_color="~color_faded" />
+      </div>
+    </div>
+      
     <!-- left/right separator (menu and rest) -->
     <div flex_direction="row" gap="8" width="100%" height="100%" padding="4" interactable="0">
       <!-- LEFT MENU -->

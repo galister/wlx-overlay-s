@@ -227,6 +227,8 @@ impl DashInterface<()> for DashInterfaceEmulated {
 
 	fn restart(&mut self, _data: &mut ()) {}
 
+	fn toggle_dashboard(&mut self, _data: &mut ()) {}
+
 	fn monado_client_list(&mut self, _data: &mut ()) -> anyhow::Result<Vec<dash_interface::MonadoClient>> {
 		Ok(self.monado_clients.clone())
 	}

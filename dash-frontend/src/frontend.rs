@@ -100,6 +100,7 @@ pub enum FrontendTask {
 	RecenterPlayspace,
 	PushToast(Translation),
 	PlaySound(SoundType),
+	HideDashboard,
 }
 
 impl<T: 'static> Frontend<T> {
@@ -333,6 +334,7 @@ impl<T: 'static> Frontend<T> {
 			FrontendTask::RecenterPlayspace => self.action_recenter_playspace(params.data)?,
 			FrontendTask::PushToast(content) => self.toast_manager.push(content),
 			FrontendTask::PlaySound(sound_type) => self.queue_play_sound(sound_type),
+			FrontendTask::HideDashboard => self.action_hide_dashboard(params.data),
 		};
 		Ok(())
 	}
@@ -357,6 +359,12 @@ impl<T: 'static> Frontend<T> {
 	}
 
 	fn register_widgets(&mut self) -> anyhow::Result<()> {
+		// "X" button
+		self.tasks.handle_button(
+			&self.state.fetch_component_as::<ComponentButton>("btn_close")?,
+			FrontendTask::HideDashboard,
+		);
+
 		// ################################
 		// SIDE BUTTONS
 		// ################################
@@ -460,5 +468,9 @@ impl<T: 'static> Frontend<T> {
 	fn action_recenter_playspace(&mut self, data: &mut T) -> anyhow::Result<()> {
 		self.interface.recenter_playspace(data)?;
 		Ok(())
+	}
+
+	fn action_hide_dashboard(&mut self, data: &mut T) {
+		self.interface.toggle_dashboard(data);
 	}
 }

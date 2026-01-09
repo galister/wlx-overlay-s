@@ -447,6 +447,11 @@ impl DashInterface<AppState> for DashInterfaceLive {
         RESTART.store(true, Ordering::Relaxed);
     }
 
+    fn toggle_dashboard(&mut self, data: &mut AppState) {
+        data.tasks
+            .enqueue(TaskType::Overlay(OverlayTask::ToggleDashboard));
+    }
+
     #[cfg(feature = "openxr")]
     fn monado_client_list(
         &mut self,

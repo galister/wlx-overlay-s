@@ -38,6 +38,7 @@ pub trait DashInterface<T> {
 	fn general_config<'a>(&'a mut self, data: &'a mut T) -> &'a mut GeneralConfig;
 	fn config_changed(&mut self, data: &mut T);
 	fn restart(&mut self, data: &mut T);
+	fn toggle_dashboard(&mut self, data: &mut T);
 }
 
 pub type BoxDashInterface<T> = Box<dyn DashInterface<T>>;
