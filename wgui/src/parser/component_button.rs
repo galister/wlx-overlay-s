@@ -1,13 +1,12 @@
 use crate::{
 	assets::AssetPath,
-	components::{button, tooltip, Component},
+	components::{Component, button, tooltip},
 	drawing::Color,
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		parse_children, parse_f32, process_component,
+		AttribPair, ParserContext, ParserFile, parse_children, parse_f32, process_component,
 		style::{parse_color_opt, parse_round, parse_style, parse_text_style},
-		AttribPair, ParserContext, ParserFile,
 	},
 	widget::util::WLength,
 };

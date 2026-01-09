@@ -1,7 +1,7 @@
 use crate::{
-	components::{slider, Component},
+	components::{Component, slider},
 	layout::WidgetID,
-	parser::{process_component, style::parse_style, AttribPair, ParserContext},
+	parser::{AttribPair, ParserContext, process_component, style::parse_style},
 	widget::ConstructEssentials,
 };
 

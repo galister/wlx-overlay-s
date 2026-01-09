@@ -9,11 +9,11 @@ use crate::{
 	layout::{self, LayoutTask, LayoutTasks, WidgetID, WidgetPair},
 	renderer_vk::text::{FontWeight, TextStyle},
 	widget::{
+		ConstructEssentials,
 		div::WidgetDiv,
 		label::{WidgetLabel, WidgetLabelParams},
 		rectangle::{WidgetRectangle, WidgetRectangleParams},
 		util::WLength,
-		ConstructEssentials,
 	},
 };
 

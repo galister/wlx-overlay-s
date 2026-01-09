@@ -410,9 +410,7 @@ impl WayVRClient {
 		Ok(())
 	}
 
-	pub async fn fn_wlx_overlay_show_hide(
-		client: WayVRClientMutex,
-	) -> anyhow::Result<()> {
+	pub async fn fn_wlx_overlay_show_hide(client: WayVRClientMutex) -> anyhow::Result<()> {
 		send_only!(client, &PacketClient::WlxShowHide);
 		Ok(())
 	}

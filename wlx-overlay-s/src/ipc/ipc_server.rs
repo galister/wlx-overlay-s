@@ -350,9 +350,7 @@ impl Connection {
         ));
     }
 
-    fn handle_wlx_overlay_show_hide(
-        params: &mut TickParams
-    ) {
+    fn handle_wlx_overlay_show_hide(params: &mut TickParams) {
         params.signals.send(WayVRSignal::ShowHide);
     }
 

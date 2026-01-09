@@ -14,8 +14,8 @@ use wayvr_ipc::{
 };
 
 use crate::helper::{
-    WayVRClientState, wlx_device_haptics, wlx_input_state, wlx_panel_modify, wvr_process_get,
-    wvr_process_launch, wvr_process_list, wvr_process_terminate, wvr_window_list,
+    WayVRClientState, wlx_device_haptics, wlx_input_state, wlx_overlay_show_hide, wlx_panel_modify,
+    wvr_process_get, wvr_process_launch, wvr_process_list, wvr_process_terminate, wvr_window_list,
     wvr_window_set_visible,
 };
 

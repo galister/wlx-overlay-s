@@ -77,11 +77,7 @@ impl From<&TextStyle> for Metrics {
 
 impl From<&TextStyle> for Wrap {
 	fn from(value: &TextStyle) -> Self {
-		if value.wrap {
-			Self::WordOrGlyph
-		} else {
-			Self::None
-		}
+		if value.wrap { Self::WordOrGlyph } else { Self::None }
 	}
 }
 

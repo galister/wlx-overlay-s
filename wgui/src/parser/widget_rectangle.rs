@@ -2,9 +2,8 @@ use crate::{
 	drawing::GradientMode,
 	layout::WidgetID,
 	parser::{
-		parse_children, parse_widget_universal,
+		AttribPair, ParserContext, ParserFile, parse_children, parse_widget_universal,
 		style::{parse_color, parse_round, parse_style},
-		AttribPair, ParserContext, ParserFile,
 	},
 	widget::rectangle::{WidgetRectangle, WidgetRectangleParams},
 };

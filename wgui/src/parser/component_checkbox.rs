@@ -1,8 +1,8 @@
 use crate::{
-	components::{checkbox, radio_group::ComponentRadioGroup, Component},
+	components::{Component, checkbox, radio_group::ComponentRadioGroup},
 	i18n::Translation,
 	layout::WidgetID,
-	parser::{process_component, style::parse_style, AttribPair, Fetchable, ParserContext},
+	parser::{AttribPair, Fetchable, ParserContext, process_component, style::parse_style},
 };
 
 pub enum CheckboxKind {

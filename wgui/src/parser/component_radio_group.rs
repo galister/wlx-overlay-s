@@ -1,7 +1,7 @@
 use crate::{
-	components::{radio_group, Component},
+	components::{Component, radio_group},
 	layout::WidgetID,
-	parser::{parse_children, process_component, style::parse_style, AttribPair, ParserContext, ParserFile},
+	parser::{AttribPair, ParserContext, ParserFile, parse_children, process_component, style::parse_style},
 };
 
 pub fn parse_component_radio_group<'a>(

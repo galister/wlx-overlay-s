@@ -4,7 +4,7 @@ use glam::Vec2;
 
 use crate::{
 	assets::AssetPath,
-	components::{button::ComponentButton, ComponentTrait},
+	components::{ComponentTrait, button::ComponentButton},
 	globals::WguiGlobals,
 	i18n::Translation,
 	layout::Layout,

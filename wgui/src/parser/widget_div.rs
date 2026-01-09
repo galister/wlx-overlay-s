@@ -1,6 +1,6 @@
 use crate::{
 	layout::WidgetID,
-	parser::{parse_children, parse_widget_universal, style::parse_style, AttribPair, ParserContext, ParserFile},
+	parser::{AttribPair, ParserContext, ParserFile, parse_children, parse_widget_universal, style::parse_style},
 	widget::div::WidgetDiv,
 };
 

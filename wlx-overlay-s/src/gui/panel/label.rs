@@ -120,9 +120,7 @@ pub(super) fn setup_custom_label<S: 'static>(
                         "%H:%M"
                     }
                 }
-                unk => {
-                    unk
-                }
+                unk => unk,
             };
 
             let state = ClockLabelState {

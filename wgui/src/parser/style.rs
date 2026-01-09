@@ -5,7 +5,7 @@ use taffy::{
 
 use crate::{
 	drawing,
-	parser::{is_percent, parse_color_hex, parse_f32, AttribPair, ParserContext},
+	parser::{AttribPair, ParserContext, is_percent, parse_color_hex, parse_f32},
 	renderer_vk::text::{FontWeight, HorizontalAlign, TextStyle},
 	widget::util::WLength,
 };
