@@ -58,7 +58,7 @@
     "ALIGN_TO_HMD": "常にHMDの方を向く",
     "MOUSE": {
       "TITLE": "マウスの修正",
-      "WRONG_SCREEN_SELECTION_HELP": "カーソルが全く別のスクリーンで動く場合、\nスクリーンが正しく選択されていない可能性があります。\nマニュアルをご確認ください。",
+      "WRONG_SCREEN_SELECTION_HELP": "カーソルが全く別のスクリーンで動く場合、\nスクリーンが正しく選択されていない可能性があります。\nReadmeをご参照ください。",
       "NORMAL": "通常",
       "FLIPPED": "ミラー",
       "FLIP90": "ミラー 90°",

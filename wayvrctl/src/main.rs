@@ -163,6 +163,9 @@ async fn run_once(state: &mut WayVRClientState, args: Args) -> anyhow::Result<()
         } => {
             wlx_device_haptics(state, device, intensity, duration, frequency).await;
         }
+        Subcommands::ShowHide {} => {
+            wlx_overlay_show_hide(state).await;
+        }
         Subcommands::PanelModify {
             overlay,
             element,
@@ -268,6 +271,8 @@ enum Subcommands {
         #[arg(short, long, default_value = "0.1")]
         frequency: f32,
     },
+    /// Toggle overlay show or hide
+    ShowHide,
     /// Apply a modification to a panel element
     PanelModify {
         /// The name of the overlay (XML file name without extension)
