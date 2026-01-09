@@ -96,7 +96,8 @@
 		"XR_CLICK_SENSITIVITY_HELP": "Analog trigger sensitivity",
 		"XR_CLICK_SENSITIVITY_RELEASE": "XR release sensitivity",
 		"XR_CLICK_SENSITIVITY_RELEASE_HELP": "Must be lower than click",
-		"XWAYLAND_BY_DEFAULT": "Run apps in Compatibility mode by default"
+		"XWAYLAND_BY_DEFAULT": "Run apps in Compatibility mode by default",
+		"AUTOSTART_APPS": "Apps to run on startup"
 	},
 	"APPLICATION_LAUNCHER": "Application launcher",
 	"APPLICATION_STARTED": "Application started",

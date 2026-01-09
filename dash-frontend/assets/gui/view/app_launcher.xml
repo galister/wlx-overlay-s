@@ -18,7 +18,7 @@
       <rectangle macro="group_box" id="icon_parent" padding="16" color="#0033aa66" color2="#00000022" gradient="vertical" justify_content="center">
 
       </rectangle>
-      <div flex_direction="column" gap="8" flex_grow="1">
+      <div flex_direction="column" gap="8" flex_grow="1" max_width="720">
         <label id="label_title" weight="bold" size="32" overflow="hidden" />
         <Subtext label_id="label_exec" overflow="hidden" />
         <Separator />

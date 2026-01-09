@@ -30,12 +30,13 @@ enum Task {
 	ClearSavedState,
 	DeleteAllConfigs,
 	RestartSoftware,
+	RemoveAutostartApp(Rc<str>),
 }
 
 pub struct TabSettings<T> {
-	#[allow(dead_code)]
 	pub state: ParserState,
 
+	app_button_ids: Vec<Rc<str>>,
 	context_menu: ContextMenu,
 
 	tasks: Tasks<Task>,
@@ -90,6 +91,15 @@ impl<T> Tab<T> for TabSettings<T> {
 						position,
 						blueprint: Blueprint::Cells(cells),
 					});
+				}
+				Task::RemoveAutostartApp(button_id) => {
+					if let Some(idx) = self.app_button_ids.iter().position(|x| button_id.eq(x)) {
+						config.autostart_apps.remove(idx);
+						changed = true;
+						if let Ok(widget) = self.state.get_widget_id(&format!("{button_id}_root")) {
+							frontend.layout.remove_widget(widget);
+						}
+					}
 				}
 			}
 		}
@@ -539,7 +549,7 @@ macro_rules! dropdown {
 	};
 }
 
-macro_rules! button {
+macro_rules! danger_button {
 	($mp:expr, $root:expr, $translation:expr, $icon:expr, $task:expr) => {
 		let id = $mp.idx.to_string();
 		$mp.idx += 1;
@@ -558,6 +568,34 @@ macro_rules! button {
 			let tasks = $mp.tasks.clone();
 			move |_common, _e| {
 				tasks.push($task);
+				Ok(())
+			}
+		}));
+	};
+}
+
+macro_rules! autostart_app {
+	($mp:expr, $root:expr, $text:expr, $ids:expr) => {
+		let id = $mp.idx.to_string();
+		$mp.idx += 1;
+
+		let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
+		params.insert(Rc::from("id"), Rc::from(id.as_ref()));
+		params.insert(Rc::from("text"), Rc::from($text.as_str()));
+
+		$mp
+			.parser_state
+			.instantiate_template($mp.doc_params, "AutostartApp", $mp.layout, $root, params)?;
+
+		let btn = $mp.parser_state.fetch_component_as::<ComponentButton>(&id)?;
+		let id: Rc<str> = Rc::from(id);
+
+		$ids.push(id.clone());
+
+		btn.on_click(Box::new({
+			let tasks = $mp.tasks.clone();
+			move |_common, _e| {
+				tasks.push(Task::RemoveAutostartApp(id.clone()));
 				Ok(())
 			}
 		}));
@@ -645,29 +683,39 @@ impl<T> TabSettings<T> {
 		checkbox!(mp, c, SettingType::DoubleCursorFix);
 		checkbox!(mp, c, SettingType::ScreenRenderDown);
 
-		let c = category!(mp, root, "APP_SETTINGS.TROUBLESHOOTING", "dashboard/blocks.svg")?;
-		button!(
+		let mut app_button_ids = vec![];
+
+		if !mp.config.autostart_apps.is_empty() {
+			let c = category!(mp, root, "APP_SETTINGS.AUTOSTART_APPS", "dashboard/apps.svg")?;
+
+			for app in &mp.config.autostart_apps {
+				autostart_app!(mp, c, app.name, app_button_ids);
+			}
+		}
+
+		let c = category!(mp, root, "APP_SETTINGS.TROUBLESHOOTING", "dashboard/cpu.svg")?;
+		danger_button!(
 			mp,
 			c,
 			"APP_SETTINGS.CLEAR_PIPEWIRE_TOKENS",
 			"dashboard/display.svg",
 			Task::ClearPipewireTokens
 		);
-		button!(
+		danger_button!(
 			mp,
 			c,
 			"APP_SETTINGS.CLEAR_SAVED_STATE",
 			"dashboard/binary.svg",
 			Task::ClearSavedState
 		);
-		button!(
+		danger_button!(
 			mp,
 			c,
 			"APP_SETTINGS.DELETE_ALL_CONFIGS",
 			"dashboard/circle.svg",
 			Task::DeleteAllConfigs
 		);
-		button!(
+		danger_button!(
 			mp,
 			c,
 			"APP_SETTINGS.RESTART_SOFTWARE",
@@ -676,6 +724,7 @@ impl<T> TabSettings<T> {
 		);
 
 		Ok(Self {
+			app_button_ids,
 			tasks: mp.tasks,
 			state: parser_state,
 			marker: PhantomData,
