@@ -40,7 +40,7 @@ use xkbcommon::xkb;
 
 use crate::{
     backend::{
-        task::{OverlayTask, TaskType},
+        task::{OverlayTask, TaskType, ToggleMode},
         wayvr::{
             image_importer::ImageImporter,
             process::{KillSignal, Process},
@@ -86,6 +86,7 @@ pub struct ExternalProcessRequest {
 pub enum WayVRTask {
     NewToplevel(ClientId, ToplevelSurface),
     DropToplevel(ClientId, ToplevelSurface),
+    MinimizeRequest(ClientId, ToplevelSurface),
     NewExternalProcess(ExternalProcessRequest),
     ProcessTerminationRequest(process::ProcessHandle, KillSignal),
     CloseWindowRequest(window::WindowHandle),
@@ -407,6 +408,27 @@ impl WvrServerState {
                         }
 
                         wvr_server.wm.remove_window(window_handle);
+                    }
+                }
+                WayVRTask::MinimizeRequest(client_id, toplevel) => {
+                    for client in &wvr_server.manager.clients {
+                        if client.client.id() != client_id {
+                            continue;
+                        }
+
+                        let Some(window_handle) = wvr_server.wm.find_window_handle(&toplevel)
+                        else {
+                            log::warn!("MinimizeRequest: Couldn't find matching window handle");
+                            continue;
+                        };
+
+                        if let Some(oid) = wvr_server.window_to_overlay.get(&window_handle) {
+                            app.tasks
+                                .enqueue(TaskType::Overlay(OverlayTask::ToggleOverlay(
+                                    OverlaySelector::Id(*oid),
+                                    ToggleMode::EnsureOff,
+                                )));
+                        }
                     }
                 }
                 WayVRTask::ProcessTerminationRequest(process_handle, signal) => {

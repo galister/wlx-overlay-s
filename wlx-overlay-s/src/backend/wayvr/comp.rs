@@ -269,7 +269,6 @@ impl XdgShellHandler for Application {
         }
         surface.with_pending_state(|state| {
             state.states.set(xdg_toplevel::State::Activated);
-            state.states.set(xdg_toplevel::State::Fullscreen);
         });
         surface.send_configure();
     }
@@ -304,6 +303,44 @@ impl XdgShellHandler for Application {
         _token: u32,
     ) {
         // Handle popup reposition here
+    }
+
+    // If the app wants to be fullscreen, make it think that it's fullscreen.
+    fn fullscreen_request(
+        &mut self,
+        surface: ToplevelSurface,
+        _output: Option<wl_output::WlOutput>,
+    ) {
+        surface.with_pending_state(|state| {
+            state.states.set(xdg_toplevel::State::Fullscreen);
+        });
+        surface.send_configure();
+    }
+    fn unfullscreen_request(&mut self, surface: ToplevelSurface) {
+        surface.with_pending_state(|state| {
+            state.states.unset(xdg_toplevel::State::Fullscreen);
+        });
+        surface.send_configure();
+    }
+    // If the app wants to be maximized, make it think that it's maximized.
+    fn maximize_request(&mut self, surface: ToplevelSurface) {
+        surface.with_pending_state(|state| {
+            state.states.set(xdg_toplevel::State::Maximized);
+        });
+        surface.send_configure();
+    }
+    fn unmaximize_request(&mut self, surface: ToplevelSurface) {
+        surface.with_pending_state(|state| {
+            state.states.unset(xdg_toplevel::State::Maximized);
+        });
+        surface.send_configure();
+    }
+    // If the app requests minimize, hide its window
+    fn minimize_request(&mut self, surface: ToplevelSurface) {
+        if let Some(client) = surface.wl_surface().client() {
+            self.wayvr_tasks
+                .send(WayVRTask::MinimizeRequest(client.id(), surface.clone()));
+        }
     }
 }
 
