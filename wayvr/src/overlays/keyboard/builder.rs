@@ -3,7 +3,7 @@ use std::{collections::HashMap, rc::Rc, time::Duration};
 use crate::{
     app_misc,
     gui::{
-        panel::{GuiPanel, NewGuiPanelParams},
+        panel::{GuiPanel, NewGuiPanelParams, apply_custom_command},
         timer::GuiTimer,
     },
     overlays::keyboard::alt_modifier_to_key,
@@ -260,36 +260,49 @@ pub(super) fn create_keyboard_panel(
         }
     }
 
-    panel.on_notify = Some(Box::new(move |panel, app, event_data| {
-        let mut alterables = EventAlterables::default();
+    panel.on_notify = Some(Box::new({
+        let name = "kbd";
+        move |panel, app, event_data| {
+            let mut alterables = EventAlterables::default();
 
-        let mut elems_changed = panel.state.overlay_list.on_notify(
-            &mut panel.layout,
-            &mut panel.parser_state,
-            &event_data,
-            &mut alterables,
-            &doc_params,
-        )?;
+            let mut elems_changed = panel.state.overlay_list.on_notify(
+                &mut panel.layout,
+                &mut panel.parser_state,
+                &event_data,
+                &mut alterables,
+                &doc_params,
+            )?;
 
-        elems_changed |= panel.state.set_list.on_notify(
-            &mut panel.layout,
-            &mut panel.parser_state,
-            &event_data,
-            &mut alterables,
-            &doc_params,
-        )?;
+            elems_changed |= panel.state.set_list.on_notify(
+                &mut panel.layout,
+                &mut panel.parser_state,
+                &event_data,
+                &mut alterables,
+                &doc_params,
+            )?;
 
-        if elems_changed {
-            panel.process_custom_elems(app);
+            if elems_changed {
+                panel.process_custom_elems(app);
+            }
+
+            match event_data {
+                OverlayEventData::SettingsChanged => {
+                    panel.state.alt_modifier =
+                        alt_modifier_to_key(app.session.config.keyboard_middle_click_mode);
+                }
+
+                OverlayEventData::CustomCommand { element, command } => {
+                    if let Err(e) = apply_custom_command(panel, app, &element, &command) {
+                        log::warn!("Could not apply {command:?} on {name}/{element}: {e:?}");
+                    }
+                }
+
+                _ => {}
+            }
+
+            panel.layout.process_alterables(alterables)?;
+            Ok(())
         }
-
-        if matches!(event_data, OverlayEventData::SettingsChanged) {
-            panel.state.alt_modifier =
-                alt_modifier_to_key(app.session.config.keyboard_middle_click_mode);
-        }
-
-        panel.layout.process_alterables(alterables)?;
-        Ok(())
     }));
 
     panel

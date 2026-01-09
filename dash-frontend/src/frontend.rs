@@ -19,8 +19,8 @@ use wlx_common::{audio, dash_interface::BoxDashInterface, timestep::Timestep};
 use crate::{
 	assets,
 	tab::{
-		apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses, settings::TabSettings,
-		Tab, TabType,
+		Tab, TabType, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses,
+		settings::TabSettings,
 	},
 	util::{
 		popup_manager::{MountPopupParams, PopupManager, PopupManagerParams},
