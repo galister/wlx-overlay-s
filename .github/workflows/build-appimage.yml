@@ -8,7 +8,7 @@ on:
       - 'test-*'
 
 env:
-  APPDIR: WlxOverlay-S.AppDir
+  APPDIR: WayVR.AppDir
   CARGO_TERM_COLOR: always
   SCCACHE_GHA_ENABLED: "true"
   RUSTC_WRAPPER: "sccache"
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-22.04
     defaults:
       run:
-        working-directory: ./wlx-overlay-s
+        working-directory: ./wayvr
     steps:
       - uses: actions/checkout@v3
       - name: Setup sccache
@@ -35,5 +35,5 @@ jobs:
       - name: Upload AppImage
         uses: actions/upload-artifact@v4
         with:
-          name: WlxOverlay-S-${{ github.ref_name }}-x86_64.AppImage
-          path: ./wlx-overlay-s/WlxOverlay-S-x86_64.AppImage
+          name: WayVR-${{ github.ref_name }}-x86_64.AppImage
+          path: ./wayvr/WayVR-x86_64.AppImage

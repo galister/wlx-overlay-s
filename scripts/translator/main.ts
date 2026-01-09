@@ -24,7 +24,7 @@ if (lang_path === undefined) {
 Try one of these:
 LANG_PATH=../../uidev/assets/lang/ ./run.sh
 LANG_PATH=../../dash-frontend/assets/lang/ ./run.sh
-LANG_PATH=../../wlx-overlay-s/src/assets/lang/ ./run.sh`);
+LANG_PATH=../../wayvr/src/assets/lang/ ./run.sh`);
   exit(-1);
 }
 

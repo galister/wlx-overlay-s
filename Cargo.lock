@@ -6290,6 +6290,65 @@ dependencies = [
 ]
 
 [[package]]
+name = "wayvr"
+version = "26.1.0"
+dependencies = [
+ "anyhow",
+ "ash",
+ "bytes",
+ "chrono",
+ "chrono-tz",
+ "clap",
+ "config",
+ "dash-frontend",
+ "dbus",
+ "futures",
+ "glam",
+ "idmap",
+ "idmap-derive",
+ "image_dds",
+ "input-linux",
+ "interprocess",
+ "json",
+ "json5 1.3.0",
+ "libc",
+ "libmonado",
+ "log",
+ "log-panics",
+ "mint",
+ "openxr",
+ "ovr_overlay",
+ "regex",
+ "rosc",
+ "rust-embed",
+ "serde",
+ "serde_json",
+ "serde_json5",
+ "serde_yaml",
+ "signal-hook",
+ "slotmap",
+ "smallvec",
+ "smithay",
+ "strum",
+ "sysinfo",
+ "thiserror 2.0.17",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "vulkano",
+ "vulkano-shaders",
+ "wayland-client",
+ "wayvr-ipc",
+ "wgui",
+ "winit",
+ "wlx-capture",
+ "wlx-common",
+ "xcb",
+ "xdg 3.0.0",
+ "xkbcommon",
+]
+
+[[package]]
 name = "wayvr-ipc"
 version = "0.1.0"
 dependencies = [
@@ -6306,7 +6365,7 @@ dependencies = [
 
 [[package]]
 name = "wayvrctl"
-version = "0.1.0"
+version = "26.1.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -6898,7 +6957,7 @@ checksum = "f17a85883d4e6d00e8a97c586de764dabcc06133f7f1d55dce5cdc070ad7fe59"
 
 [[package]]
 name = "wlx-capture"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "ashpd",
  "drm-fourcc",
@@ -6934,65 +6993,6 @@ dependencies = [
  "wayvr-ipc",
  "wgui",
  "xdg 3.0.0",
-]
-
-[[package]]
-name = "wlx-overlay-s"
-version = "25.4.2"
-dependencies = [
- "anyhow",
- "ash",
- "bytes",
- "chrono",
- "chrono-tz",
- "clap",
- "config",
- "dash-frontend",
- "dbus",
- "futures",
- "glam",
- "idmap",
- "idmap-derive",
- "image_dds",
- "input-linux",
- "interprocess",
- "json",
- "json5 1.3.0",
- "libc",
- "libmonado",
- "log",
- "log-panics",
- "mint",
- "openxr",
- "ovr_overlay",
- "regex",
- "rosc",
- "rust-embed",
- "serde",
- "serde_json",
- "serde_json5",
- "serde_yaml",
- "signal-hook",
- "slotmap",
- "smallvec",
- "smithay",
- "strum",
- "sysinfo",
- "thiserror 2.0.17",
- "tracing",
- "tracing-subscriber",
- "uuid",
- "vulkano",
- "vulkano-shaders",
- "wayland-client",
- "wayvr-ipc",
- "wgui",
- "winit",
- "wlx-capture",
- "wlx-common",
- "xcb",
- "xdg 3.0.0",
- "xkbcommon",
 ]
 
 [[package]]

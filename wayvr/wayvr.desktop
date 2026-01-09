@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=WayVR
+Exec=wayvr
+Icon=wayvr
+Terminal=true
+Categories=Utility;X-WiVRn-VR;
+X-XR-Plugin=true
+X-XR-Plugin-Exec=wayvr --openxr

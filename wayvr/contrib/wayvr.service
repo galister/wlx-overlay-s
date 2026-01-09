@@ -1,0 +1,12 @@
+[Unit]
+Description=WayVR
+After=monado.service
+BindsTo=monado.service
+Requires=monado.socket
+Requires=graphical-session.target
+
+[Service]
+ExecStart=@prefix@/bin/wayvr
+
+[Install]
+WantedBy=monado.service

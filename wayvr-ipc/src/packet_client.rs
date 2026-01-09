@@ -1,4 +1,4 @@
-// Contents of this file should be the same as on wlx-overlay-s.
+// Contents of this file should be the same as on wayvr.
 
 use std::collections::HashMap;
 

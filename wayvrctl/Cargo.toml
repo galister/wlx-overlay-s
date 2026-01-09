@@ -1,6 +1,6 @@
 [package]
 name = "wayvrctl"
-version = "0.1.0"
+version = "26.1.0"
 edition = "2024"
 
 [dependencies]

@@ -1,4 +1,4 @@
 #!/bin/sh
 cargo build --release
-chmod +x ../target/release/wlx-overlay-s
-cp ../target/release/wlx-overlay-s ${APPDIR}/usr/bin
+chmod +x ../target/release/wayvr
+cp ../target/release/wayvr ${APPDIR}/usr/bin

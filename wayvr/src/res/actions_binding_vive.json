@@ -1,0 +1,139 @@
+{
+   "action_manifest_version" : 0,
+   "app_key" : "wlx-team.wayvr",
+   "bindings" : {
+      "/actions/default": {
+         "poses": [
+            {
+               "path": "/user/hand/left/pose/tip",
+               "output": "/actions/default/in/lefthand"
+            },
+            {
+               "path": "/user/hand/right/pose/tip",
+               "output": "/actions/default/in/righthand"
+            }
+         ],
+         "haptics": [
+            {
+               "output": "/actions/default/out/hapticsleft",
+               "path": "/user/hand/left/output/haptic"
+            },
+            {
+               "output": "/actions/default/out/hapticsright",
+               "path": "/user/hand/right/output/haptic"
+            }
+         ],
+         "sources": [
+            {
+               "path": "/user/hand/left/input/grip",
+               "mode": "button",
+               "inputs": {
+                  "click": {
+                     "output": "/actions/default/in/grab"
+                  }
+               }
+            },
+            {
+               "path": "/user/hand/right/input/grip",
+               "mode": "button",
+               "inputs": {
+                  "click": {
+                     "output": "/actions/default/in/grab"
+                  }
+               }
+            },
+            {
+               "path": "/user/hand/left/input/trigger",
+               "mode": "button",
+               "inputs": {
+                  "click": {
+                     "output": "/actions/default/in/click"
+                  }
+               }
+            },
+            {
+               "path": "/user/hand/right/input/trigger",
+               "mode": "trigger",
+               "inputs": {
+                  "click": {
+                     "output": "/actions/default/in/click"
+                  }
+               }
+            },
+            {
+               "path": "/user/hand/right/input/trackpad",
+               "mode": "scroll",
+               "parameters": {
+                  "scroll_mode": "discrete"
+               },
+               "inputs": {
+                  "scroll": {
+                     "output": "/actions/default/in/scroll"
+                  }
+               }
+            },
+            {
+               "path": "/user/hand/left/input/trackpad",
+               "mode": "scroll",
+               "parameters": {
+                  "scroll_mode": "discrete"
+               },
+               "inputs": {
+                  "scroll": {
+                     "output": "/actions/default/in/scroll"
+                  }
+               }
+            },
+            {
+               "path": "/user/hand/left/input/application_menu",
+               "mode": "button",
+               "inputs": {
+                  "double": {
+                     "output": "/actions/default/in/showhide"
+                  }
+               }
+            },
+            {
+               "path": "/user/hand/right/input/trackpad",
+               "mode": "dpad",
+               "parameters": {
+                  "sub_mode": "touch"
+               },
+               "inputs": {
+                  "west": {
+                     "output": "/actions/default/in/clickmodifiermiddle"
+                  },
+                  "east": {
+                     "output": "/actions/default/in/clickmodifierright"
+                  }
+               }
+            },
+            {
+               "path": "/user/hand/left/input/trackpad",
+               "mode": "dpad",
+               "parameters": {
+                  "sub_mode": "touch"
+               },
+               "inputs": {
+                  "west": {
+                     "output": "/actions/default/in/clickmodifiermiddle"
+                  },
+                  "east": {
+                     "output": "/actions/default/in/clickmodifierright"
+                  }
+               }
+            }
+         ]
+      }
+   },
+   "category" : "steamvr_input",
+   "controller_type" : "vive_controller",
+   "description" : "Ver1",
+   "interaction_profile" : "",
+   "name" : "WayVR configuration for Vive Controller",
+   "options" : {
+      "mirror_actions" : false,
+      "simulated_controller_type" : "none"
+   },
+   "simulated_actions" : []
+}

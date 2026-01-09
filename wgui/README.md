@@ -4,6 +4,6 @@
 
 # wgui
 
-an experimental gui library for wlx-overlay-s and WayVR Dashboard
+an experimental gui library for WayVR and friends
 
-powered via vulkan
+powered by Vulkan

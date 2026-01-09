@@ -1,12 +1,12 @@
-# WlxOverlay-S
+# WayVR
 
 A lightweight OpenXR/OpenVR overlay for Wayland and X11 desktops, inspired by XSOverlay.
 
-WlxOverlay-S lets you to access your desktop screens while in VR.
+WayVR lets you to access your desktop screens while in VR.
 
-In comparison to similar overlays, WlxOverlay-S aims to run alongside VR games and experiences while having as little performance impact as possible. The UI appearance and rendering techniques are kept as simple and efficient as possible, while still allowing a high degree of customizability.
+In comparison to similar overlays, WayVR aims to run alongside VR games and experiences while having as little performance impact as possible. The UI appearance and rendering techniques are kept as simple and efficient as possible, while still allowing a high degree of customizability.
 
-![Screenshot of WlxOverlay-S being used as an OpenXR home environment](https://github.com/galister/wlx-overlay-s/blob/guide/wlx-s.png?raw=true)
+![Screenshot of WayVR being used as an OpenXR home environment](https://github.com/galister/wlx-overlay-s/blob/guide/wlx-s.png?raw=true)
 
 ## Join the Linux VR Community
 
@@ -14,20 +14,20 @@ We are available on either **Discord** or **Matrix space**:
 
 [![LVRA Discord](https://img.shields.io/discord/1065291958328758352?style=for-the-badge&logo=discord)](https://discord.gg/EHAYe3tTYa) [![LVRA Matrix](https://img.shields.io/matrix/linux-vr-adventures:matrix.org?logo=matrix&style=for-the-badge)](https://matrix.to/#/#linux-vr-adventures:matrix.org)
 
-Questions/issues specific to WlxOverlay-S will be handled in the `wlxoverlay` chat room. Feel free to ask anything.
+Questions/issues specific to WayVR will be handled in the `wayvr` chat room. Feel free to ask anything.
 
 ## Setup
 
 ### Installation
 
-There are multiple ways to install WlxOverlay-S:
+There are multiple ways to install WayVR:
 
 1. AppImage: Download from [Releases](https://github.com/galister/wlx-overlay-s/releases)
 1. AUR package: [wlx-overlay-s-git](https://aur.archlinux.org/packages/wlx-overlay-s-git)
 1. Homebrew:
 
 - Add AtomicXR tap: `brew tap matrixfurry.com/atomicxr https://tangled.sh/@matrixfurry.com/homebrew-atomicxr`
-- Install WlxOverlay-S: `brew install wlx-overlay-s`
+- Install WayVR: `brew install wlx-overlay-s`
 
 1. [Building from source](https://github.com/galister/wlx-overlay-s/wiki/Building-from-Source).
 
@@ -36,14 +36,14 @@ There are multiple ways to install WlxOverlay-S:
 1. Start Monado, WiVRn or SteamVR.
 1. Run the overlay
 
-**Note:** If you are using Monado or WiVRn, no additional setup steps are required for Flatpak Steam compatibility—most people use WlxOverlay-S seamlessly with Monado/WiVRn.
+**Note:** If you are using Monado or WiVRn, no additional setup steps are required for Flatpak Steam compatibility—most people use WayVR seamlessly with Monado/WiVRn.
 
 ### SteamVR via Steam Flatpak
 
 For users specifically running **SteamVR via Steam Flatpak**, follow these steps:
 
 1. Grab the latest AppImage from [Releases](https://github.com/galister/wlx-overlay-s/releases).
-1. `WlxOverlay-S-*.AppImage --appimage-extract`
+1. `WayVR-*.AppImage --appimage-extract`
 1. `chmod +x squashfs-root/AppRun`
 1. Move the newly created `squashfs-root` folder to a location accessible by the Steam Flatpak.
 1. `flatpak override com.valvesoftware.Steam --user --filesystem=xdg-run/pipewire-0/:rw`
@@ -58,16 +58,16 @@ For users specifically running **SteamVR via Steam Flatpak**, follow these steps
 In case screens were selected in the wrong order:
 - Go to Settings and press `Clear PipeWire tokens` and then `Restart software`
 - Pay attention to your notifications, it tells you in which order to pick the screens.
-- If notifications don't show, try start Wlx from the terminal and look for instructions in there.
+- If notifications don't show, try start WayVR from the terminal and look for instructions in there.
 
-**WiVRn users**: Select WlxOverlay-S from the `Application` drop-down. If there's no such entry, select `Custom` and browse to your WlxOverlay-S executable or AppImage.
+**WiVRn users**: Select WayVR from the `Application` drop-down. If there's no such entry, select `Custom` and browse to your WayVR executable or AppImage.
 
-**Envision users**: Go to the Plugins menu and select the WlxOverlay-S plugin. This will download and run the AppImage version of the overlay.
-In order to run a standalone installation (for instance from the AUR), create a bash script containing `wlx-overlay-s --openxr --show` and then set this bash script as a custom Envision plugin.
+**Envision users**: Go to the Plugins menu and select the WayVR plugin. This will download and run the AppImage version of the overlay.
+In order to run a standalone installation (for instance from the AUR), create a bash script containing `wayvr --openxr --show` and then set this bash script as a custom Envision plugin.
 
 This will show a home environment with headset passthrough by default or a [customizable background](https://github.com/galister/wlx-overlay-s/wiki/OpenXR-Skybox)!
 
-**SteamVR users**: WlxOverlay-S will register itself for auto-start, so there is no need to start it every time. Disclaimer: SteamVR will sometimes disregard this and not start Wlx anyway.
+**SteamVR users**: WayVR will register itself for auto-start, so there is no need to start it every time. Disclaimer: SteamVR will sometimes disregard this and not start WayVR anyway.
 
 **Please continue reading the guide below.**
 
@@ -88,7 +88,7 @@ See the [bindings](#default-bindings) section on how to grab, move and resize ov
 
 ### Pointer Modes AKA Laser Colors
 
-Much of the functionality in WlxOverlay-S depends on what color of laser is used to interact with a UI element. \
+Much of the functionality in WayVR depends on what color of laser is used to interact with a UI element. \
 Using the default settings, there are 3 modes:
 
 - Regular Mode: Blue laser
@@ -128,14 +128,11 @@ The click type depends on the laser color:
 
 ### The keyboard
 
-The keyboard is fully customizable via the [keyboard.yaml](https://raw.githubusercontent.com/galister/wlx-overlay-s/main/wlx-overlay-s/src/res/keyboard.yaml) file. \
-Download it into the `~/.config/wlxoverlay/` folder and edit it to your liking.
-
 Typing
 
 - Use the BLUE laser when typing regularly.
 - While using ORANGE laser, all keystrokes will have SHIFT applied.
-- Purple laser is customizable via the `keyboard.yaml`'s `alt_modifier` settings.
+- Purple laser is customizable via the settings, no modifier by default.
 
 **Modifier Keys** are sticky. They will remain pressed until a non-modifier key is pressed, the modifier gets toggled off, or the keyboard gets hidden.
 
@@ -154,7 +151,7 @@ We would like to work with you and include additional bindings.
 
 When an error is detected, we often print tips for fixing into the log file.
 
-Logs will be at `/tmp/wlx.log` for most distros.
+Logs will be at `/tmp/wayvr.log` for most distros.
 
 Check [here](https://github.com/galister/wlx-overlay-s/wiki/Troubleshooting) for tips.
 
@@ -165,7 +162,7 @@ Check [here](https://github.com/galister/wlx-overlay-s/wiki/Troubleshooting) for
 If the mouse is moving on a completely different screen, the screens were likely selected in the wrong order:
 - Go to Settings and press `Clear PipeWire tokens` and then `Restart software`
 - Pay attention to your notifications, it tells you in which order to pick the screens.
-- If notifications don't show, try start Wlx from the terminal and look for instructions in there.
+- If notifications don't show, try start WayVR from the terminal and look for instructions in there.
 
 COSMIC destkop:
 - Due to limitations with COSMIC, the mouse can only move on a single display.

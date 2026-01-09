@@ -1,4 +1,4 @@
-// Contents of this file should be the same as on wlx-overlay-s.
+// Contents of this file should be the same as on wayvr.
 
 use std::collections::HashMap;
 
@@ -11,7 +11,7 @@ pub struct ServerInfo {}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HandshakeSuccess {
-	pub runtime: String, // Runtime name, for example "wlx-overlay-s"
+	pub runtime: String, // Runtime name, for example "wayvr"
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

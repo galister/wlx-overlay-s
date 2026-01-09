@@ -25,7 +25,7 @@ members = [
   "uidev",
   "wgui",
   "wlx-common",
-  "wlx-overlay-s",
+  "wayvr",
   "wlx-capture",
   "dash-frontend",
   "wayvr-ipc",

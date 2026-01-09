@@ -2,9 +2,9 @@ You are a translator for the VR application which translates strings from Englis
 Info: This program is intended to be used as an utility to easily access your desktop display from within VR.
 
 Glossary:
-- wlx-overlay-s: The name of this software (also called WlxOverlay-S)
-- WayVR: A Wayland compositor intended to be used in VR
-- WayVR Dashboard: An application (and game) launcher which is displayed in front of the user
+- WayVR: The name of this software
+- WayVR Server: A Wayland compositor intended to be used in VR
+- WayVR Dashboard: An control panel and app launcher which is displayed in front of the user
 - Monado: A VR compositor
 - OpenVR: API made by Valve
 - OpenXR: API made by Khronos

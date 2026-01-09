@@ -5,11 +5,11 @@ pub enum ConfigRoot {
 	Generic,
 }
 
-const FALLBACK_CONFIG_PATH: &str = "/tmp/wlxoverlay";
+const FALLBACK_CONFIG_PATH: &str = "/tmp/wayvr";
 
 static CONFIG_ROOT_PATH: LazyLock<PathBuf> = LazyLock::new(|| {
 	if let Some(mut dir) = xdg::BaseDirectories::new().get_config_home() {
-		dir.push("wlxoverlay");
+		dir.push("wayvr");
 		return dir;
 	}
 	//Return fallback config path
