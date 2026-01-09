@@ -34,6 +34,13 @@
     </Button>
   </template>
 
+  <template name="AutoStartApp">
+    <Button id="${id}" color="#AA3333" height="32" tooltip="${translation}_HELP" padding="4" gap="8" >
+      <sprite src_builtin="${icon}" height="24" width="24" />
+      <label align="left" translation="${translation}" weight="bold" min_width="200" />
+    </Button>
+  </template>
+
   <elements>
     <TabTitle translation="SETTINGS" icon="dashboard/settings.svg" />
     <div flex_wrap="wrap" justify_content="stretch" gap="4" id="settings_root" />
