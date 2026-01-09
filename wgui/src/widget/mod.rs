@@ -346,7 +346,6 @@ impl WidgetState {
 			if (scrolling_cur.x - scrolling_target.x).abs() < epsilon
 				&& (scrolling_cur.y - scrolling_target.y).abs() < epsilon
 			{
-				log::info!("stopped animating");
 				*scrolling_cur = *scrolling_target;
 			}
 		}

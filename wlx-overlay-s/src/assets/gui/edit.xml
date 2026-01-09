@@ -1,7 +1,7 @@
 <layout>
   <macro name="button_style"
     margin="2" overflow="hidden" box_sizing="border_box"
-    border_color="~color_accent_translucent" border="2" round="8" color="~color_accent_5" color2="~color_accent_1" gradient="vertical"
+    border_color="~color_accent" border="2" round="8" color="~color_accent_50" color2="~color_accent_10" gradient="vertical"
     align_items="center" justify_content="center" />
 
   <macro name="button_style"
@@ -9,25 +9,25 @@
     border="2" round="50%" padding="8" gradient="vertical" tooltip_side="bottom" />
 
   <template name="TopButton">
-    <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" sticky="${sticky}" border_color="~color_accent_translucent" color="~color_accent_5" color2="~color_accent_1">
+    <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" sticky="${sticky}" border_color="~color_accent_translucent" color="~color_accent_50" color2="~color_accent_10">
       <sprite id="${id}_sprite" width="48" height="48" src="${src}" />
     </Button>
   </template>
 
   <template name="TopButtonDanger">
-    <Button macro="button_style" tooltip="${tooltip}" _long_release="${long_release}" border_color="~color_danger_translucent" color="~color_danger_5" color2="~color_danger_1">
+    <Button macro="button_style" tooltip="${tooltip}" _release="${release}" border_color="~color_danger_translucent" color="~color_danger_50" color2="~color_danger_10">
       <sprite width="48" height="48" src="${src}" />
     </Button>
   </template>
 
   <template name="TopButtonFaded">
-    <Button macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" border_color="~color_faded_translucent" color="~color_faded_5" color2="~color_faded_1">
+    <Button macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" border_color="~color_faded_translucent" color="~color_faded_50" color2="~color_faded_10">
       <sprite width="48" height="48" src="${src}" />
     </Button>
   </template>
 
   <template name="PosButton">
-    <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" border_color="~color_accent_translucent" color="~color_accent_5" color2="~color_accent_1">
+    <Button id="${id}" macro="button_style" tooltip="${tooltip}" _press="${press}" _release="${release}" border_color="~color_accent_translucent" color="~color_accent_50" color2="~color_accent_10">
       <sprite id="${id}_sprite" width="40" height="40" src="${src}" />
     </Button>
   </template>
@@ -48,7 +48,7 @@
                 <TopButton sticky="0" id="top_mouse" src="edit/normal.svg" tooltip="EDIT_MODE.MOUSE.TITLE" press="::EditModeTab mouse" />
                 <!-- TopButton sticky="0" id="top_move" src="edit/move-all.svg" tooltip="EDIT_MODE.MOVE_PRESS_AND_DRAG" / -->
                 <!-- TopButton sticky="0" id="top_resize" src="edit/resize.svg" tooltip="EDIT_MODE.RESIZE_PRESS_AND_DRAG" / -->
-                <TopButtonDanger src="edit/delete.svg" tooltip="EDIT_MODE.DELETE" long_release="::EditModeDelete" />
+                <TopButtonDanger src="edit/delete.svg" tooltip="EDIT_MODE.DELETE" release="::EditModeDelete" />
                 <div width="8" height="100%" />
                 <TopButtonFaded src="watch/edit.svg" tooltip="EDIT_MODE.LEAVE" press="::EditToggle" />
               </div>

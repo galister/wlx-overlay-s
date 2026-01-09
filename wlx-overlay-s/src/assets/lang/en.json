@@ -2,6 +2,18 @@
 	"ANCHOR": {
 		"CENTER": "Center"
 	},
+	"BAR": {
+		"ADD_MIRROR": "Add a new mirror overlay",
+		"EDIT_MODE_TOGGLE": "Toggle edit mode",
+		"ADD_NEW_SET": "Add new set",
+		"DELETE_CURRENT_SET": "Delete current set",
+		"TOGGLE_VISIBILITY": "Toggle visibility",
+		"RESET_POSITION": "Reset position",
+		"RELOAD_FROM_DISK": "Reload XML from disk",
+		"CLOSE_MIRROR": "Close mirror",
+		"CLOSE_APP": "Close app",
+		"FORCE_CLOSE_APP": "Force close app"
+	},
 	"DEFAULT": "Default",
 	"DISABLED": "Disabled",
 	"EDIT_MODE": {
@@ -19,12 +31,12 @@
 		"LOCK_INTERACTION": "Lock interaction",
 		"MOVE_PRESS_AND_DRAG": "Move (press & drag)",
 		"OPACITY": "Opacity",
-		"POS_ANCHORED": "Anchored: Moves together with the rest of the set. Default.",
-		"POS_FLOATING": "Floating: Stay in place, recenter when shown.",
+		"POS_ANCHORED": "Anchored: Moves with center marker. Default.",
+		"POS_FLOATING": "Floating: Moves independently, recenters when shown.",
 		"POS_HAND_L": "Follow the left hand.",
 		"POS_HAND_R": "Follow the right hand.",
 		"POS_HMD": "Follow the HMD.",
-		"POS_STATIC": "Static: Stay in place and never recenter.",
+		"POS_STATIC": "Static: Not part of any set, no recenter.",
 		"POSITIONING": "Positioning",
 		"RESIZE_PRESS_AND_DRAG": "Resize (press & drag)",
 		"STEREO_3D_MODE": {
@@ -61,6 +73,8 @@
 	"TOAST": {
 		"DEFAULT_TITLE": "Notification",
 		"ERROR": "Error",
+		"CANNOT_ADD_SET": "Cannot add set!",
+		"MAXIMUM_SETS_REACHED": "Maximum number of sets reached.",
 		"CANNOT_REMOVE_SET": "Cannot remove set!",
 		"NO_SET_SELECTED": "No set is selected.",
 		"LAST_EXISTING_SET": "This is the last existing set.",
@@ -77,7 +91,6 @@
 		"EDIT_MODE_EXPLANATION": "Overlays can now be moved and tuned individually.\nControl which overlays are visible on this set:",
 		"FIX_FLOOR": "Fix floor level",
 		"LONG_PRESS_TO_DELETE_SET": "Hold to delete",
-		"MIRROR": "Add a new mirror overlay",
 		"RECENTER": "Recenter playspace",
 		"SWITCH_TO_SET": "Switch to set",
 		"TOGGLE_FOR_CURRENT_SET": "Toggle for current set"

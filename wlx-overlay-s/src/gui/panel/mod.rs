@@ -13,15 +13,17 @@ use wgui::{
         MouseMotionEvent, MouseUpEvent, MouseWheelEvent,
     },
     gfx::cmd::WGfxClearMode,
-    layout::{Layout, LayoutParams, WidgetID},
-    parser::{CustomAttribsInfoOwned, Fetchable, ParserState},
+    layout::{Layout, LayoutParams, LayoutUpdateParams, WidgetID},
+    parser::{self, CustomAttribsInfoOwned, Fetchable, ParseDocumentExtra, ParserState},
     renderer_vk::context::Context as WguiContext,
     widget::{EventResult, label::WidgetLabel},
+    windowing::context_menu::{self, ContextMenu},
 };
 use wlx_common::overlays::{BackendAttrib, BackendAttribValue};
 use wlx_common::timestep::Timestep;
 
 use crate::{
+    app_misc,
     backend::input::{Haptics, HoverResult, PointerHit, PointerMode},
     state::AppState,
     subsystem::hid::WheelDelta,
@@ -33,7 +35,10 @@ use crate::{
 use super::timer::GuiTimer;
 
 pub mod button;
+pub mod device_list;
 mod label;
+pub mod overlay_list;
+pub mod set_list;
 
 const DEFAULT_MAX_SIZE: f32 = 2048.0;
 
@@ -51,11 +56,16 @@ pub struct GuiPanel<S> {
     pub gui_scale: f32,
     pub on_notify: Option<OnNotifyFunc<S>>,
     pub initialized: bool,
+    pub doc_extra: Option<ParseDocumentExtra>,
     interaction_transform: Option<Affine2>,
     context: WguiContext,
     timestep: Timestep,
     has_focus: [bool; 2],
     last_content_size: Vec2,
+    custom_elems: Rc<RefCell<Vec<CustomAttribsInfoOwned>>>,
+    context_menu: Rc<RefCell<ContextMenu>>,
+    on_custom_attrib: Option<OnCustomAttribFunc>,
+    on_custom_attrib_inner: parser::OnCustomAttribsFunc,
 }
 
 pub type OnCustomIdFunc<S> = Box<
@@ -101,19 +111,22 @@ impl<S: 'static> GuiPanel<S> {
     ) -> anyhow::Result<Self> {
         let custom_elems = Rc::new(RefCell::new(vec![]));
 
+        let on_custom_attrib_inner: parser::OnCustomAttribsFunc = Rc::new({
+            let custom_elems = custom_elems.clone();
+            move |attribs| {
+                custom_elems.borrow_mut().push(attribs.to_owned());
+            }
+        });
+
         let doc_params = wgui::parser::ParseDocumentParams {
             globals: app.wgui_globals.clone(),
-            path: params
-                .external_xml
-                .then_some(AssetPath::File(path))
-                .unwrap_or(AssetPath::FileOrBuiltIn(path)),
+            path: if params.external_xml {
+                AssetPath::File(path)
+            } else {
+                AssetPath::FileOrBuiltIn(path)
+            },
             extra: wgui::parser::ParseDocumentExtra {
-                on_custom_attribs: Some(Box::new({
-                    let custom_elems = custom_elems.clone();
-                    move |attribs| {
-                        custom_elems.borrow_mut().push(attribs.to_owned());
-                    }
-                })),
+                on_custom_attribs: Some(on_custom_attrib_inner.clone()),
                 ..Default::default()
             },
         };
@@ -140,30 +153,10 @@ impl<S: 'static> GuiPanel<S> {
             }
         }
 
-        for elem in custom_elems.borrow().iter() {
-            if layout
-                .state
-                .widgets
-                .get_as::<WidgetLabel>(elem.widget_id)
-                .is_some()
-            {
-                setup_custom_label::<S>(&mut layout, elem, app);
-            } else if let Ok(button) =
-                parser_state.fetch_component_from_widget_id_as::<ComponentButton>(elem.widget_id)
-            {
-                setup_custom_button::<S>(&mut layout, elem, app, button);
-            }
-
-            if let Some(on_custom_attrib) = &params.on_custom_attrib {
-                on_custom_attrib(&mut layout, &parser_state, elem, app);
-            }
-        }
-
         let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
-        let mut timestep = Timestep::new();
-        timestep.set_tps(60.0);
+        let timestep = Timestep::new(60.0);
 
-        Ok(Self {
+        let mut me = Self {
             layout,
             context,
             timestep,
@@ -177,43 +170,59 @@ impl<S: 'static> GuiPanel<S> {
             initialized: false,
             has_focus: [false, false],
             last_content_size: Vec2::ZERO,
-        })
+            doc_extra: Some(doc_params.extra),
+            custom_elems,
+            context_menu: Default::default(),
+            on_custom_attrib: params.on_custom_attrib,
+            on_custom_attrib_inner,
+        };
+        me.process_custom_elems(app);
+
+        Ok(me)
     }
 
-    pub fn new_blank(
-        app: &mut AppState,
-        state: S,
-        params: NewGuiPanelParams<S>,
-    ) -> anyhow::Result<Self> {
-        let layout = Layout::new(
-            app.wgui_globals.clone(),
-            &LayoutParams {
-                resize_to_parent: params.resize_to_parent,
-            },
-        )?;
-        let context = WguiContext::new(&mut app.wgui_shared, 1.0)?;
-        let mut timestep = Timestep::new();
-        timestep.set_tps(60.0);
+    /// Perform initial setup on newly added elements.
+    pub fn process_custom_elems(&mut self, app: &mut AppState) {
+        let mut elems = self.custom_elems.borrow_mut();
+        for elem in elems.iter() {
+            if self
+                .layout
+                .state
+                .widgets
+                .get_as::<WidgetLabel>(elem.widget_id)
+                .is_some()
+            {
+                setup_custom_label::<S>(&mut self.layout, &self.parser_state, elem, app);
+            } else if let Ok(button) = self
+                .parser_state
+                .fetch_component_from_widget_id_as::<ComponentButton>(elem.widget_id)
+            {
+                setup_custom_button::<S>(
+                    &mut self.layout,
+                    &self.parser_state,
+                    elem,
+                    &self.context_menu,
+                    &self.on_custom_attrib_inner,
+                    button,
+                );
+            }
 
-        Ok(Self {
-            layout,
-            context,
-            timestep,
-            state,
-            parser_state: ParserState::default(),
-            max_size: vec2(DEFAULT_MAX_SIZE as _, DEFAULT_MAX_SIZE as _),
-            timers: vec![],
-            on_notify: None,
-            interaction_transform: None,
-            gui_scale: params.gui_scale,
-            initialized: false,
-            has_focus: [false, false],
-            last_content_size: Vec2::ZERO,
-        })
+            if let Some(on_custom_attrib) = &self.on_custom_attrib {
+                on_custom_attrib(&mut self.layout, &self.parser_state, elem, app);
+            }
+        }
+        elems.clear();
     }
 
-    pub fn update_layout(&mut self) -> anyhow::Result<()> {
-        self.layout.update(self.max_size, 0.0)
+    pub fn update_layout(&mut self, app: &mut AppState) -> anyhow::Result<()> {
+        app_misc::process_layout_result(
+            app,
+            self.layout.update(&mut LayoutUpdateParams {
+                size: self.max_size / self.gui_scale,
+                timestep_alpha: self.timestep.alpha,
+            })?,
+        );
+        Ok(())
     }
 
     pub fn push_event(&mut self, app: &mut AppState, event: &WguiEvent) -> EventResult {
@@ -237,9 +246,9 @@ impl<S: 'static> GuiPanel<S> {
 }
 
 impl<S: 'static> OverlayBackend for GuiPanel<S> {
-    fn init(&mut self, _app: &mut AppState) -> anyhow::Result<()> {
+    fn init(&mut self, app: &mut AppState) -> anyhow::Result<()> {
         if self.layout.content_size.x * self.layout.content_size.y != 0.0 {
-            self.update_layout()?;
+            self.update_layout(app)?;
             self.interaction_transform = Some(ui_transform([
                 self.layout.content_size.x as _,
                 self.layout.content_size.y as _,
@@ -277,6 +286,14 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
             return Ok(ShouldRender::Unable);
         }
 
+        let tick_result = self
+            .context_menu
+            .borrow_mut()
+            .tick(&mut self.layout, &mut self.parser_state)?;
+        if matches!(tick_result, context_menu::TickResult::Opened) {
+            self.process_custom_elems(app);
+        }
+
         if !self
             .last_content_size
             .abs_diff_eq(self.layout.content_size, 0.1 /* pixels */)
@@ -298,9 +315,7 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
     fn render(&mut self, app: &mut AppState, rdr: &mut RenderResources) -> anyhow::Result<()> {
         self.context
             .update_viewport(&mut app.wgui_shared, rdr.extent, self.gui_scale)?;
-        self.layout
-            .update(self.max_size / self.gui_scale, self.timestep.alpha)?;
-
+        self.update_layout(app)?;
         let globals = self.layout.state.globals.clone(); // sorry
         let mut globals = globals.get();
 
@@ -313,7 +328,7 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
         self.context.draw(
             &globals.font_system,
             &mut app.wgui_shared,
-            &mut rdr.cmd_buf_single(),
+            rdr.cmd_buf_single(),
             &primitives,
         )?;
         Ok(())
@@ -424,4 +439,38 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
     fn set_attrib(&mut self, _app: &mut AppState, _value: BackendAttribValue) -> bool {
         false
     }
+}
+
+fn log_missing_attrib(parser_state: &ParserState, tag_name: &str, attrib: &str) {
+    log::warn!(
+        "{:?}: <{tag_name}> is missing \"{attrib}\"",
+        parser_state.path.get_path_buf()
+    )
+}
+
+fn log_invalid_attrib(parser_state: &ParserState, tag_name: &str, attrib: &str, value: &str) {
+    log::warn!(
+        "{:?}: <{tag_name}> value for \"{attrib}\" is invalid: {value}",
+        parser_state.path.get_path_buf()
+    )
+}
+
+fn log_cmd_missing_arg(parser_state: &ParserState, tag_name: &str, attrib: &str, command: &str) {
+    log::warn!(
+        "{:?}: <{tag_name}> \"{attrib}\": \"{command}\" has missing arguments",
+        parser_state.path.get_path_buf()
+    )
+}
+
+fn log_cmd_invalid_arg(
+    parser_state: &ParserState,
+    tag_name: &str,
+    attrib: &str,
+    command: &str,
+    arg: &str,
+) {
+    log::warn!(
+        "{:?}: <{tag_name}> \"{attrib}\": \"{command}\" has invalid argument: {arg}",
+        parser_state.path.get_path_buf()
+    )
 }

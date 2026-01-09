@@ -7,7 +7,6 @@ use std::{
 
 use glam::{Affine3A, Vec3};
 use input::OpenXrInputSource;
-use libmonado::Monado;
 use openxr as xr;
 use skybox::create_skybox;
 use vulkano::{Handle, VulkanObject};
@@ -21,7 +20,7 @@ use crate::{
         openxr::{lines::LinePool, overlay::OpenXrOverlayData},
         task::{OverlayTask, TaskType},
     },
-    config::save_state,
+    config::{save_settings, save_state},
     graphics::{GpuFutures, init_openxr_graphics},
     overlays::{
         toast::Toast,
@@ -34,9 +33,6 @@ use crate::{
         manager::OverlayWindowManager,
     },
 };
-
-#[cfg(feature = "wayvr")]
-use crate::{backend::wayvr::WayVRAction, overlays::wayvr::wayvr_action};
 
 mod blocker;
 mod helpers;
@@ -101,17 +97,15 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
 
     let mut delete_queue = vec![];
 
-    let mut monado = Monado::auto_connect()
-        .map_err(|e| log::warn!("Will not use libmonado: {e}"))
-        .ok();
+    app.monado_init();
 
-    let mut playspace = monado.as_mut().and_then(|m| {
+    let mut playspace = app.monado.as_mut().and_then(|m| {
         playspace::PlayspaceMover::new(m)
             .map_err(|e| log::warn!("Will not use Monado playspace mover: {e}"))
             .ok()
     });
 
-    let mut blocker = monado.is_some().then(blocker::InputBlocker::new);
+    let mut blocker = app.monado.is_some().then(blocker::InputBlocker::new);
 
     let (session, mut frame_wait, mut frame_stream) = unsafe {
         let raw_session = helpers::create_overlay_session(
@@ -149,8 +143,8 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
     };
 
     let pointer_lines = [
-        lines.allocate(&xr_state, &mut app)?,
-        lines.allocate(&xr_state, &mut app)?,
+        lines.allocate(&xr_state, &app)?,
+        lines.allocate(&xr_state, &app)?,
     ];
 
     let watch_id = overlays.lookup(WATCH_NAME).unwrap(); // want panic
@@ -226,10 +220,8 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             }
         }
 
-        if next_device_update <= Instant::now()
-            && let Some(monado) = &mut monado
-        {
-            let changed = OpenXrInputSource::update_devices(&mut app, monado);
+        if app.monado.is_some() && next_device_update <= Instant::now() {
+            let changed = OpenXrInputSource::update_devices(&mut app);
             if changed {
                 overlays.devices_changed(&mut app)?;
             }
@@ -281,11 +273,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
         app.input_state.post_update(&app.session);
 
         if let Some(ref mut blocker) = blocker {
-            blocker.update(
-                &app,
-                watch_id,
-                monado.as_mut().unwrap(), // safe
-            );
+            blocker.update(&mut app, watch_id);
         }
 
         if app
@@ -297,23 +285,19 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             overlays.show_hide(&mut app);
         }
 
-        #[cfg(feature = "wayvr")]
         if app
             .input_state
             .pointers
             .iter()
             .any(|p| p.now.toggle_dashboard && !p.before.toggle_dashboard)
         {
-            wayvr_action(&mut app, &mut overlays, &WayVRAction::ToggleDashboard);
+            app.tasks
+                .enqueue(TaskType::Overlay(OverlayTask::ToggleDashboard));
         }
 
         watch_fade(&mut app, overlays.mut_by_id(watch_id).unwrap()); // want panic
         if let Some(ref mut space_mover) = playspace {
-            space_mover.update(
-                &mut overlays,
-                &app,
-                monado.as_mut().unwrap(), // safe
-            );
+            space_mover.update(&mut overlays, &mut app);
         }
 
         for o in overlays.values_mut() {
@@ -371,7 +355,6 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             });
         }
 
-        #[cfg(feature = "wayvr")]
         if let Err(e) =
             crate::ipc::events::tick_events::<OpenXrOverlayData>(&mut app, &mut overlays)
         {
@@ -458,11 +441,6 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
         }
         // End layer composition
 
-        #[cfg(feature = "wayvr")]
-        if let Some(wayland_server) = app.wayland_server.as_ref() {
-            wayland_server.borrow_mut().data.tick_finish()?;
-        }
-
         // Begin layer submit
         layers.sort_by(|a, b| b.0.total_cmp(&a.0));
 
@@ -496,16 +474,12 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                     overlays.handle_task(&mut app, task)?;
                 }
                 TaskType::Playspace(task) => {
-                    if let (Some(playspace), Some(monado)) = (playspace.as_mut(), monado.as_mut()) {
-                        playspace.handle_task(&app, monado, task);
+                    if let Some(playspace) = playspace.as_mut() {
+                        playspace.handle_task(&mut app, task);
                     }
                 }
                 #[cfg(feature = "openvr")]
                 TaskType::OpenVR(_) => {}
-                #[cfg(feature = "wayvr")]
-                TaskType::WayVR(action) => {
-                    wayvr_action(&mut app, &mut overlays, &action);
-                }
             }
         }
 
@@ -523,6 +497,10 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
     overlays.persist_layout(&mut app);
     if let Err(e) = save_state(&app.session.config) {
         log::error!("Could not save state: {e:?}");
+    }
+    if app.session.config_dirty {
+        save_settings(&app.session.config)?;
+        app.session.config_dirty = false;
     }
 
     Ok(())

@@ -8,7 +8,7 @@ use wlx_capture::{
 };
 
 use crate::{
-    overlays::screen::create_screen_from_backend,
+    overlays::screen::{backend::CaptureType, create_screen_from_backend},
     state::{AppState, ScreenMeta},
 };
 
@@ -27,7 +27,12 @@ impl ScreenBackend {
             app.gfx_extras.queue_capture,
             XshmCapture::new(screen.clone())
         );
-        Self::new_raw(screen.name.clone(), app.xr_backend, capture)
+        Self::new_raw(
+            screen.name.clone(),
+            app.xr_backend,
+            CaptureType::Xshm,
+            capture,
+        )
     }
 }
 
@@ -54,7 +59,6 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
     let embed_mouse = !app.session.config.double_cursor_fix;
 
     let select_screen_result = select_pw_screen(
-        app,
         "Select ALL screens on the screencast pop-up!",
         token,
         embed_mouse,
@@ -98,6 +102,7 @@ pub fn create_screens_x11pw(app: &mut AppState) -> anyhow::Result<ScreenCreateDa
             let mut backend = ScreenBackend::new_raw(
                 m.name.clone(),
                 app.xr_backend,
+                CaptureType::PipeWire,
                 new_wlx_capture!(
                     app.gfx_extras.queue_capture,
                     PipewireCapture::new(m.name.clone(), s.node_id)

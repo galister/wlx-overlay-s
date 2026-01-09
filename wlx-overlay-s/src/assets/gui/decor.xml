@@ -1,0 +1,32 @@
+<layout>
+  <macro name="window_button" min_width="40" min_height="40" padding="4" align_items="center" />
+  <macro name="window_button_icon" width="32" height="32" />
+
+  <elements>
+    <div flex_grow="1" height="48">
+      <rectangle
+        flex_grow="1" height="48"
+        padding="8" border="2"
+        round="8"
+        align_items="center"
+        justify_content="space_between"
+        color="~color_bg"
+        border_color="~color_accent"
+      >
+        <label id="label_title" margin_left="8" color="~color_text" size="22" weight="bold" />
+        <div gap="4">
+          <Button macro="window_button" _release="::EditToggle"
+            border_color="~color_faded_translucent" color="~color_faded_50" color2="~color_faded_10">
+            <sprite macro="window_button_icon" src="watch/edit.svg" />
+          </Button>
+
+          <Button macro="window_button" _release="::DecorCloseWindow"
+            border_color="~color_danger_translucent" color="~color_danger_50" color2="~color_danger_10">
+            <sprite macro="window_button_icon" src="edit/close.svg" />
+          </Button>
+        </div>
+
+      </rectangle>
+    </div>
+  </elements>
+</layout>

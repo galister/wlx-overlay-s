@@ -1,0 +1,27 @@
+<layout>
+  <include src="theme.xml" />
+
+  <macro name="dropdown_button"
+    flex_direction="row"
+    border="2"
+    color="#00000055"
+    border_color="#FFFFFF66"
+    justify_content="space_between" />
+
+  <!-- id, text, translation, tooltip -->
+  <template name="DropdownButton">
+    <label text="${text}" translation="${translation}" />
+    <Button id="${id}" height="32" tooltip="${tooltip}" >
+      <div padding_left="8" padding_right="8" min_width="200">
+        <label id="${id}_value" weight="bold" />
+      </div>
+      <div gap="2">
+        <div padding_top="4" padding_bottom="4">
+          <rectangle width="2" height="100%" color="#FFFFFF66" />
+        </div>
+        <sprite margin_left="-4" width="30" height="30" color="~color_text" src_builtin="dashboard/down.svg" />
+      </div>
+    </Button>
+  </template>
+
+</layout>

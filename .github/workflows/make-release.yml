@@ -30,15 +30,6 @@ jobs:
       - name: Package AppImage
         run: |
           ../.github/workflows/scripts/appimage_package.sh
-      - name: Cargo Build Full
-        run: |
-          ../.github/workflows/scripts/appimage_build_wlx_full.sh
-      - name: Build WayVR Dashboard
-        run: |
-          ../.github/workflows/scripts/appimage_build_wayvr_dashboard.sh
-      - name: Package AppImage
-        run: |
-          ../.github/workflows/scripts/appimage_package_full.sh
       - name: Build Wayvrctl
         run: |
           cd ../wayvrctl
@@ -80,24 +71,14 @@ jobs:
           asset_name: wayvrctl
           asset_content_type: application/octet-stream
 
-      - name: Upload AppImage (Full)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_KEY }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./wlx-overlay-s/WlxOverlay-S-Full-x86_64.AppImage
-          asset_name: WlxOverlay-S-${{ github.ref_name }}-Full-x86_64.AppImage
-          asset_content_type: application/octet-stream
-
-      - name: Upload AppImage (Slim)
+      - name: Upload AppImage
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_KEY }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./wlx-overlay-s/WlxOverlay-S-x86_64.AppImage
-          asset_name: WlxOverlay-S-${{ github.ref_name }}-Slim-x86_64.AppImage
+          asset_name: WlxOverlay-S-${{ github.ref_name }}-x86_64.AppImage
           asset_content_type: application/octet-stream
 
       - name: Upload crates tarball

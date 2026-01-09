@@ -14,18 +14,17 @@
       <rectangle
         position="relative"
         color="#000000"
-        round="4"
         width="100%" height="48"
       >
 
         <!-- Shine effect at the top -->
-        <rectangle position="absolute" width="100%" height="2" round="4" color="#ffffff55" />
+        <rectangle position="absolute" width="100%" height="2" round="4" color="#ffffff22" />
 
         <!-- Top bar contents -->
         <div gap="16" align_items="center">
           <!-- Back button -->
           <Button id="but_back" width="48" height="48" color="#ffffff00" border_color="#ffffff00">
-            <sprite src="dashboard/back.svg" width="24" height="24" />
+            <sprite src_builtin="dashboard/back.svg" width="24" height="24" />
           </Button>
 
           <!-- Title -->
@@ -34,9 +33,9 @@
       </rectangle>
 
       <!-- Content -->
-      <rectangle width="100%" height="100%"
-        color="#010310ee"
-        color2="#062a5eee"
+      <rectangle height="100%"
+        color="#010310fe"
+        color2="#051c55fc"
         gradient="vertical"
         padding="16"
         id="content">

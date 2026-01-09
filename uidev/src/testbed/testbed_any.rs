@@ -9,19 +9,19 @@ use wgui::{
 	assets::AssetPath,
 	font_config::WguiFontConfig,
 	globals::WguiGlobals,
-	layout::{LayoutParams, RcLayout},
+	layout::{Layout, LayoutParams, LayoutUpdateParams},
 	parser::{ParseDocumentParams, ParserState},
 };
 
 pub struct TestbedAny {
-	pub layout: RcLayout,
+	pub layout: Layout,
 
 	#[allow(dead_code)]
 	state: ParserState,
 }
 
 impl TestbedAny {
-	pub fn new(name: &str) -> anyhow::Result<Self> {
+	pub fn new(assets: Box<assets::Asset>, name: &str) -> anyhow::Result<Self> {
 		let path = if name.ends_with(".xml") {
 			AssetPath::FileOrBuiltIn(name)
 		} else {
@@ -29,7 +29,7 @@ impl TestbedAny {
 		};
 
 		let globals = WguiGlobals::new(
-			Box::new(assets::Asset {}),
+			assets,
 			wgui::globals::Defaults::default(),
 			&WguiFontConfig::default(),
 			PathBuf::new(), // cwd
@@ -43,23 +43,21 @@ impl TestbedAny {
 			},
 			&LayoutParams::default(),
 		)?;
-		Ok(Self {
-			layout: layout.as_rc(),
-			state,
-		})
+		Ok(Self { layout, state })
 	}
 }
 
 impl Testbed for TestbedAny {
-	fn update(&mut self, params: TestbedUpdateParams) -> anyhow::Result<()> {
-		self.layout.borrow_mut().update(
-			Vec2::new(params.width, params.height),
-			params.timestep_alpha,
-		)?;
+	fn update(&mut self, mut params: TestbedUpdateParams) -> anyhow::Result<()> {
+		let res = self.layout.update(&mut LayoutUpdateParams {
+			size: Vec2::new(params.width, params.height),
+			timestep_alpha: params.timestep_alpha,
+		})?;
+		params.process_layout_result(res);
 		Ok(())
 	}
 
-	fn layout(&self) -> &RcLayout {
-		&self.layout
+	fn layout(&mut self) -> &mut Layout {
+		&mut self.layout
 	}
 }

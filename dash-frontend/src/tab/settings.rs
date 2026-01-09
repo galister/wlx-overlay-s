@@ -1,103 +1,685 @@
-use std::rc::Rc;
+use std::{collections::HashMap, marker::PhantomData, rc::Rc, str::FromStr};
 
+use glam::Vec2;
+use strum::{AsRefStr, EnumProperty, EnumString, VariantArray};
 use wgui::{
 	assets::AssetPath,
-	components::checkbox::ComponentCheckbox,
+	components::{button::ComponentButton, checkbox::ComponentCheckbox, slider::ComponentSlider},
+	event::{CallbackDataCommon, EventAlterables},
+	i18n::Translation,
+	layout::{Layout, WidgetID},
+	log::LogErr,
 	parser::{Fetchable, ParseDocumentParams, ParserState},
+	task::Tasks,
+	widget::label::WidgetLabel,
+	windowing::context_menu::{self, Blueprint, ContextMenu, TickResult},
 };
+use wlx_common::{config::GeneralConfig, config_io::ConfigRoot};
 
 use crate::{
 	frontend::{Frontend, FrontendTask},
-	settings,
-	tab::{Tab, TabParams, TabType},
+	tab::{Tab, TabType},
 };
 
-pub struct TabSettings {
-	#[allow(dead_code)]
-	pub state: ParserState,
+enum Task {
+	UpdateBool(SettingType, bool),
+	UpdateFloat(SettingType, f32),
+	UpdateInt(SettingType, i32),
+	OpenContextMenu(Vec2, Vec<context_menu::Cell>),
+	ClearPipewireTokens,
+	ClearSavedState,
+	DeleteAllConfigs,
+	RestartSoftware,
 }
 
-impl Tab for TabSettings {
+pub struct TabSettings<T> {
+	#[allow(dead_code)]
+	pub state: ParserState,
+
+	context_menu: ContextMenu,
+
+	tasks: Tasks<Task>,
+	marker: PhantomData<T>,
+}
+
+impl<T> Tab<T> for TabSettings<T> {
 	fn get_type(&self) -> TabType {
 		TabType::Settings
 	}
-}
 
-fn init_setting_checkbox(
-	params: &mut TabParams,
-	checkbox: Rc<ComponentCheckbox>,
-	fetch_callback: fn(&mut settings::Settings) -> &mut bool,
-	change_callback: Option<fn(&mut Frontend, bool)>,
-) -> anyhow::Result<()> {
-	let mut c = params.layout.start_common();
-
-	checkbox.set_checked(&mut c.common(), *fetch_callback(params.settings));
-	let rc_frontend = params.frontend.clone();
-	checkbox.on_toggle(Box::new(move |_common, e| {
-		let mut frontend = rc_frontend.borrow_mut();
-		*fetch_callback(frontend.settings.get_mut()) = e.checked;
-
-		if let Some(change_callback) = &change_callback {
-			change_callback(&mut frontend, e.checked);
+	fn update(&mut self, frontend: &mut Frontend<T>, data: &mut T) -> anyhow::Result<()> {
+		let config = frontend.interface.general_config(data);
+		let mut changed = false;
+		for task in self.tasks.drain() {
+			match task {
+				Task::UpdateBool(setting, n) => {
+					setting.get_frontend_task().map(|task| frontend.tasks.push(task));
+					*setting.mut_bool(config) = n;
+					changed = true;
+				}
+				Task::UpdateFloat(setting, n) => {
+					setting.get_frontend_task().map(|task| frontend.tasks.push(task));
+					*setting.mut_f32(config) = n;
+					changed = true;
+				}
+				Task::UpdateInt(setting, n) => {
+					setting.get_frontend_task().map(|task| frontend.tasks.push(task));
+					*setting.mut_i32(config) = n;
+					changed = true;
+				}
+				Task::ClearPipewireTokens => {
+					let _ = std::fs::remove_file(ConfigRoot::Generic.get_conf_d_path().join("pw_tokens.yaml"))
+						.log_err("Could not remove pw_tokens.yaml");
+				}
+				Task::ClearSavedState => {
+					let _ = std::fs::remove_file(ConfigRoot::Generic.get_conf_d_path().join("zz-saved-state.json5"))
+						.log_err("Could not remove zz-saved-state.json5");
+				}
+				Task::DeleteAllConfigs => {
+					let path = ConfigRoot::Generic.get_conf_d_path();
+					std::fs::remove_dir_all(&path)?;
+					std::fs::create_dir(&path)?;
+				}
+				Task::RestartSoftware => {
+					frontend.interface.restart(data);
+					return Ok(());
+				}
+				Task::OpenContextMenu(position, cells) => {
+					self.context_menu.open(context_menu::OpenParams {
+						on_custom_attribs: None,
+						position,
+						blueprint: Blueprint::Cells(cells),
+					});
+				}
+			}
 		}
 
-		frontend.settings.mark_as_dirty();
+		// Dropdown handling
+		if let TickResult::Action(name) = self.context_menu.tick(&mut frontend.layout, &mut self.state)? {
+			if let (Some(setting), Some(id), Some(value), Some(text), Some(translated)) = {
+				let mut s = name.splitn(5, ';');
+				(s.next(), s.next(), s.next(), s.next(), s.next())
+			} {
+				let mut label = self
+					.state
+					.fetch_widget_as::<WidgetLabel>(&frontend.layout.state, &format!("{id}_value"))?;
+
+				let mut alterables = EventAlterables::default();
+				let mut common = CallbackDataCommon {
+					alterables: &mut alterables,
+					state: &frontend.layout.state,
+				};
+
+				let translation = Translation {
+					text: text.into(),
+					translated: translated == "1",
+				};
+
+				label.set_text(&mut common, translation);
+
+				let setting = SettingType::from_str(setting).expect("Invalid Enum string");
+				setting.set_enum(config, value);
+				changed = true;
+			}
+		}
+
+		// Notify overlays of the change
+		if changed {
+			frontend.interface.config_changed(data);
+		}
 
 		Ok(())
-	}));
-
-	c.finish()?;
-	Ok(())
+	}
 }
 
-impl TabSettings {
-	pub fn new(mut params: TabParams) -> anyhow::Result<Self> {
-		let state = wgui::parser::parse_from_assets(
-			&ParseDocumentParams {
-				globals: params.globals.clone(),
-				path: AssetPath::BuiltIn("gui/tab/settings.xml"),
-				extra: Default::default(),
-			},
-			params.layout,
-			params.parent_id,
-		)?;
+#[allow(clippy::enum_variant_names)]
+#[derive(Clone, Copy, AsRefStr, EnumString)]
+enum SettingType {
+	AnimationSpeed,
+	RoundMultiplier,
+	InvertScrollDirectionX,
+	InvertScrollDirectionY,
+	ScrollSpeed,
+	LongPressDuration,
+	NotificationsEnabled,
+	NotificationsSoundEnabled,
+	KeyboardSoundEnabled,
+	UprightScreenFix,
+	DoubleCursorFix,
+	SetsOnWatch,
+	HideGrabHelp,
+	XrClickSensitivity,
+	XrClickSensitivityRelease,
+	AllowSliding,
+	ClickFreezeTimeMs,
+	FocusFollowsMouseMode,
+	LeftHandedMouse,
+	BlockGameInput,
+	BlockGameInputIgnoreWatch,
+	SpaceDragMultiplier,
+	UseSkybox,
+	UsePassthrough,
+	ScreenRenderDown,
+	PointerLerpFactor,
+	SpaceDragUnlocked,
+	SpaceRotateUnlocked,
+	Clock12h,
+	HideUsername,
+	OpaqueBackground,
+	XwaylandByDefault,
+	CaptureMethod,
+	KeyboardMiddleClick,
+}
 
-		init_setting_checkbox(
-			&mut params,
-			state.data.fetch_component_as::<ComponentCheckbox>("cb_hide_username")?,
-			|settings| &mut settings.home_screen.hide_username,
-			None,
-		)?;
+impl SettingType {
+	pub fn mut_bool<'a>(self, config: &'a mut GeneralConfig) -> &'a mut bool {
+		match self {
+			Self::InvertScrollDirectionX => &mut config.invert_scroll_direction_x,
+			Self::InvertScrollDirectionY => &mut config.invert_scroll_direction_y,
+			Self::NotificationsEnabled => &mut config.notifications_enabled,
+			Self::NotificationsSoundEnabled => &mut config.notifications_sound_enabled,
+			Self::KeyboardSoundEnabled => &mut config.keyboard_sound_enabled,
+			Self::UprightScreenFix => &mut config.upright_screen_fix,
+			Self::DoubleCursorFix => &mut config.double_cursor_fix,
+			Self::SetsOnWatch => &mut config.sets_on_watch,
+			Self::HideGrabHelp => &mut config.hide_grab_help,
+			Self::AllowSliding => &mut config.allow_sliding,
+			Self::FocusFollowsMouseMode => &mut config.focus_follows_mouse_mode,
+			Self::LeftHandedMouse => &mut config.left_handed_mouse,
+			Self::BlockGameInput => &mut config.block_game_input,
+			Self::BlockGameInputIgnoreWatch => &mut config.block_game_input_ignore_watch,
+			Self::UseSkybox => &mut config.use_skybox,
+			Self::UsePassthrough => &mut config.use_passthrough,
+			Self::ScreenRenderDown => &mut config.screen_render_down,
+			Self::SpaceDragUnlocked => &mut config.space_drag_unlocked,
+			Self::SpaceRotateUnlocked => &mut config.space_rotate_unlocked,
+			Self::Clock12h => &mut config.clock_12h,
+			Self::HideUsername => &mut config.hide_username,
+			Self::OpaqueBackground => &mut config.opaque_background,
+			Self::XwaylandByDefault => &mut config.xwayland_by_default,
+			_ => panic!("Requested bool for non-bool SettingType"),
+		}
+	}
 
-		init_setting_checkbox(
-			&mut params,
-			state.data.fetch_component_as::<ComponentCheckbox>("cb_am_pm_clock")?,
-			|settings| &mut settings.general.am_pm_clock,
-			Some(|frontend, _| {
-				frontend.tasks.push(FrontendTask::RefreshClock);
-			}),
-		)?;
+	pub fn mut_f32<'a>(self, config: &'a mut GeneralConfig) -> &'a mut f32 {
+		match self {
+			Self::AnimationSpeed => &mut config.animation_speed,
+			Self::RoundMultiplier => &mut config.round_multiplier,
+			Self::ScrollSpeed => &mut config.scroll_speed,
+			Self::LongPressDuration => &mut config.long_press_duration,
+			Self::XrClickSensitivity => &mut config.xr_click_sensitivity,
+			Self::XrClickSensitivityRelease => &mut config.xr_click_sensitivity_release,
+			Self::SpaceDragMultiplier => &mut config.space_drag_multiplier,
+			Self::PointerLerpFactor => &mut config.pointer_lerp_factor,
+			_ => panic!("Requested f32 for non-f32 SettingType"),
+		}
+	}
 
-		init_setting_checkbox(
-			&mut params,
-			state
-				.data
-				.fetch_component_as::<ComponentCheckbox>("cb_opaque_background")?,
-			|settings| &mut settings.general.opaque_background,
-			Some(|frontend, _| {
-				frontend.tasks.push(FrontendTask::RefreshBackground);
-			}),
-		)?;
+	pub fn mut_i32<'a>(self, config: &'a mut GeneralConfig) -> &'a mut i32 {
+		match self {
+			Self::ClickFreezeTimeMs => &mut config.click_freeze_time_ms,
+			_ => panic!("Requested i32 for non-i32 SettingType"),
+		}
+	}
 
-		init_setting_checkbox(
-			&mut params,
-			state
-				.data
-				.fetch_component_as::<ComponentCheckbox>("cb_xwayland_by_default")?,
-			|settings| &mut settings.tweaks.xwayland_by_default,
-			None,
-		)?;
+	pub fn set_enum<'a>(self, config: &'a mut GeneralConfig, value: &str) {
+		match self {
+			Self::CaptureMethod => {
+				config.capture_method = wlx_common::config::CaptureMethod::from_str(value).expect("Invalid enum value!")
+			}
+			Self::KeyboardMiddleClick => {
+				config.keyboard_middle_click_mode =
+					wlx_common::config::AltModifier::from_str(value).expect("Invalid enum value!")
+			}
+			_ => panic!("Requested enum for non-enum SettingType"),
+		}
+	}
 
-		Ok(Self { state })
+	fn get_enum_title<'a>(self, config: &'a mut GeneralConfig) -> Translation {
+		match self {
+			Self::CaptureMethod => Self::get_enum_title_inner(config.capture_method),
+			Self::KeyboardMiddleClick => Self::get_enum_title_inner(config.keyboard_middle_click_mode),
+			_ => panic!("Requested enum for non-enum SettingType"),
+		}
+	}
+
+	fn get_enum_title_inner<E>(value: E) -> Translation
+	where
+		E: EnumProperty + AsRef<str>,
+	{
+		value
+			.get_str("Translation")
+			.map(|x| Translation::from_translation_key(x))
+			.or_else(|| value.get_str("Text").map(|x| Translation::from_raw_text(x)))
+			.unwrap_or_else(|| Translation::from_raw_text(value.as_ref()))
+	}
+
+	fn get_enum_tooltip_inner<E>(value: E) -> Option<Translation>
+	where
+		E: EnumProperty + AsRef<str>,
+	{
+		value.get_str("Tooltip").map(|x| Translation::from_translation_key(x))
+	}
+
+	/// Ok is translation, Err is raw text
+	fn get_translation(self) -> Result<&'static str, &'static str> {
+		match self {
+			Self::AnimationSpeed => Ok("APP_SETTINGS.ANIMATION_SPEED"),
+			Self::RoundMultiplier => Ok("APP_SETTINGS.ROUND_MULTIPLIER"),
+			Self::InvertScrollDirectionX => Ok("APP_SETTINGS.INVERT_SCROLL_DIRECTION_X"),
+			Self::InvertScrollDirectionY => Ok("APP_SETTINGS.INVERT_SCROLL_DIRECTION_Y"),
+			Self::ScrollSpeed => Ok("APP_SETTINGS.SCROLL_SPEED"),
+			Self::LongPressDuration => Ok("APP_SETTINGS.LONG_PRESS_DURATION"),
+			Self::NotificationsEnabled => Ok("APP_SETTINGS.NOTIFICATIONS_ENABLED"),
+			Self::NotificationsSoundEnabled => Ok("APP_SETTINGS.NOTIFICATIONS_SOUND_ENABLED"),
+			Self::KeyboardSoundEnabled => Ok("APP_SETTINGS.KEYBOARD_SOUND_ENABLED"),
+			Self::UprightScreenFix => Ok("APP_SETTINGS.UPRIGHT_SCREEN_FIX"),
+			Self::DoubleCursorFix => Ok("APP_SETTINGS.DOUBLE_CURSOR_FIX"),
+			Self::SetsOnWatch => Ok("APP_SETTINGS.SETS_ON_WATCH"),
+			Self::HideGrabHelp => Ok("APP_SETTINGS.HIDE_GRAB_HELP"),
+			Self::XrClickSensitivity => Ok("APP_SETTINGS.XR_CLICK_SENSITIVITY"),
+			Self::XrClickSensitivityRelease => Ok("APP_SETTINGS.XR_CLICK_SENSITIVITY_RELEASE"),
+			Self::AllowSliding => Ok("APP_SETTINGS.ALLOW_SLIDING"),
+			Self::ClickFreezeTimeMs => Ok("APP_SETTINGS.CLICK_FREEZE_TIME_MS"),
+			Self::FocusFollowsMouseMode => Ok("APP_SETTINGS.FOCUS_FOLLOWS_MOUSE_MODE"),
+			Self::LeftHandedMouse => Ok("APP_SETTINGS.LEFT_HANDED_MOUSE"),
+			Self::BlockGameInput => Ok("APP_SETTINGS.BLOCK_GAME_INPUT"),
+			Self::BlockGameInputIgnoreWatch => Ok("APP_SETTINGS.BLOCK_GAME_INPUT_IGNORE_WATCH"),
+			Self::SpaceDragMultiplier => Ok("APP_SETTINGS.SPACE_DRAG_MULTIPLIER"),
+			Self::UseSkybox => Ok("APP_SETTINGS.USE_SKYBOX"),
+			Self::UsePassthrough => Ok("APP_SETTINGS.USE_PASSTHROUGH"),
+			Self::ScreenRenderDown => Ok("APP_SETTINGS.SCREEN_RENDER_DOWN"),
+			Self::PointerLerpFactor => Ok("APP_SETTINGS.POINTER_LERP_FACTOR"),
+			Self::SpaceDragUnlocked => Ok("APP_SETTINGS.SPACE_DRAG_UNLOCKED"),
+			Self::SpaceRotateUnlocked => Ok("APP_SETTINGS.SPACE_ROTATE_UNLOCKED"),
+			Self::Clock12h => Ok("APP_SETTINGS.CLOCK_12H"),
+			Self::HideUsername => Ok("APP_SETTINGS.HIDE_USERNAME"),
+			Self::OpaqueBackground => Ok("APP_SETTINGS.OPAQUE_BACKGROUND"),
+			Self::XwaylandByDefault => Ok("APP_SETTINGS.XWAYLAND_BY_DEFAULT"),
+			Self::CaptureMethod => Ok("APP_SETTINGS.CAPTURE_METHOD"),
+			Self::KeyboardMiddleClick => Ok("APP_SETTINGS.KEYBOARD_MIDDLE_CLICK"),
+		}
+	}
+
+	fn get_tooltip(self) -> Option<&'static str> {
+		match self {
+			Self::UprightScreenFix => Some("APP_SETTINGS.UPRIGHT_SCREEN_FIX_HELP"),
+			Self::DoubleCursorFix => Some("APP_SETTINGS.DOUBLE_CURSOR_FIX_HELP"),
+			Self::XrClickSensitivity => Some("APP_SETTINGS.XR_CLICK_SENSITIVITY_HELP"),
+			Self::XrClickSensitivityRelease => Some("APP_SETTINGS.XR_CLICK_SENSITIVITY_RELEASE_HELP"),
+			Self::FocusFollowsMouseMode => Some("APP_SETTINGS.FOCUS_FOLLOWS_MOUSE_MODE_HELP"),
+			Self::LeftHandedMouse => Some("APP_SETTINGS.LEFT_HANDED_MOUSE_HELP"),
+			Self::BlockGameInput => Some("APP_SETTINGS.BLOCK_GAME_INPUT_HELP"),
+			Self::BlockGameInputIgnoreWatch => Some("APP_SETTINGS.BLOCK_GAME_INPUT_IGNORE_WATCH_HELP"),
+			Self::UseSkybox => Some("APP_SETTINGS.USE_SKYBOX_HELP"),
+			Self::UsePassthrough => Some("APP_SETTINGS.USE_PASSTHROUGH_HELP"),
+			Self::ScreenRenderDown => Some("APP_SETTINGS.SCREEN_RENDER_DOWN_HELP"),
+			Self::CaptureMethod => Some("APP_SETTINGS.CAPTURE_METHOD_HELP"),
+			Self::KeyboardMiddleClick => Some("APP_SETTINGS.KEYBOARD_MIDDLE_CLICK_HELP"),
+			_ => None,
+		}
+	}
+
+	//TODO: incorporate this
+	fn requires_restart(self) -> bool {
+		match self {
+			Self::AnimationSpeed
+			| Self::RoundMultiplier
+			| Self::UprightScreenFix
+			| Self::DoubleCursorFix
+			| Self::SetsOnWatch
+			| Self::UseSkybox
+			| Self::UsePassthrough
+			| Self::ScreenRenderDown => true,
+			_ => false,
+		}
+	}
+
+	fn get_frontend_task(self) -> Option<FrontendTask> {
+		match self {
+			Self::Clock12h => Some(FrontendTask::RefreshClock),
+			Self::OpaqueBackground => Some(FrontendTask::RefreshBackground),
+			_ => None,
+		}
+	}
+}
+
+macro_rules! category {
+	($pe:expr, $root:expr, $translation:expr, $icon:expr) => {{
+		let id = $pe.idx.to_string();
+		$pe.idx += 1;
+
+		let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
+		params.insert(Rc::from("translation"), Rc::from($translation));
+		params.insert(Rc::from("icon"), Rc::from($icon));
+		params.insert(Rc::from("id"), Rc::from(id.as_ref()));
+
+		$pe
+			.parser_state
+			.instantiate_template($pe.doc_params, "SettingsGroupBox", $pe.layout, $root, params)?;
+
+		$pe.parser_state.get_widget_id(&id)
+	}};
+}
+
+macro_rules! checkbox {
+	($mp:expr, $root:expr, $setting:expr) => {
+		let id = $mp.idx.to_string();
+		$mp.idx += 1;
+
+		let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
+		params.insert(Rc::from("id"), Rc::from(id.as_ref()));
+
+		match $setting.get_translation() {
+			Ok(translation) => params.insert(Rc::from("translation"), translation.into()),
+			Err(raw_text) => params.insert(Rc::from("text"), raw_text.into()),
+		};
+
+		if let Some(tooltip) = $setting.get_tooltip() {
+			params.insert(Rc::from("tooltip"), Rc::from(tooltip));
+		}
+
+		let checked = if *$setting.mut_bool($mp.config) { "1" } else { "0" };
+		params.insert(Rc::from("checked"), Rc::from(checked));
+
+		$mp
+			.parser_state
+			.instantiate_template($mp.doc_params, "CheckBoxSetting", $mp.layout, $root, params)?;
+
+		let checkbox = $mp.parser_state.fetch_component_as::<ComponentCheckbox>(&id)?;
+		checkbox.on_toggle(Box::new({
+			let tasks = $mp.tasks.clone();
+			move |_common, e| {
+				tasks.push(Task::UpdateBool($setting, e.checked));
+				Ok(())
+			}
+		}));
+	};
+}
+
+macro_rules! slider_f32 {
+	($mp:expr, $root:expr, $setting:expr, $min:expr, $max:expr, $step:expr) => {
+		let id = $mp.idx.to_string();
+		$mp.idx += 1;
+
+		let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
+		params.insert(Rc::from("id"), Rc::from(id.as_ref()));
+
+		match $setting.get_translation() {
+			Ok(translation) => params.insert(Rc::from("translation"), translation.into()),
+			Err(raw_text) => params.insert(Rc::from("text"), raw_text.into()),
+		};
+
+		if let Some(tooltip) = $setting.get_tooltip() {
+			params.insert(Rc::from("tooltip"), Rc::from(tooltip));
+		}
+
+		let value = $setting.mut_f32($mp.config).to_string();
+		params.insert(Rc::from("value"), Rc::from(value));
+		params.insert(Rc::from("min"), Rc::from($min.to_string()));
+		params.insert(Rc::from("max"), Rc::from($max.to_string()));
+		params.insert(Rc::from("step"), Rc::from($step.to_string()));
+
+		$mp
+			.parser_state
+			.instantiate_template($mp.doc_params, "SliderSetting", $mp.layout, $root, params)?;
+
+		let slider = $mp.parser_state.fetch_component_as::<ComponentSlider>(&id)?;
+		slider.on_value_changed(Box::new({
+			let tasks = $mp.tasks.clone();
+			move |_common, e| {
+				tasks.push(Task::UpdateFloat($setting, e.value));
+				Ok(())
+			}
+		}));
+	};
+}
+
+macro_rules! slider_i32 {
+	($mp:expr, $root:expr, $setting:expr, $min:expr, $max:expr, $step:expr) => {
+		let id = $mp.idx.to_string();
+		$mp.idx += 1;
+
+		let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
+		params.insert(Rc::from("id"), Rc::from(id.as_ref()));
+
+		match $setting.get_translation() {
+			Ok(translation) => params.insert(Rc::from("translation"), translation.into()),
+			Err(raw_text) => params.insert(Rc::from("text"), raw_text.into()),
+		};
+
+		if let Some(tooltip) = $setting.get_tooltip() {
+			params.insert(Rc::from("tooltip"), Rc::from(tooltip));
+		}
+
+		let value = $setting.mut_i32($mp.config).to_string();
+		params.insert(Rc::from("value"), Rc::from(value));
+		params.insert(Rc::from("min"), Rc::from($min.to_string()));
+		params.insert(Rc::from("max"), Rc::from($max.to_string()));
+		params.insert(Rc::from("step"), Rc::from($step.to_string()));
+
+		$mp
+			.parser_state
+			.instantiate_template($mp.doc_params, "SliderSetting", $mp.layout, $root, params)?;
+
+		let slider = $mp.parser_state.fetch_component_as::<ComponentSlider>(&id)?;
+		slider.on_value_changed(Box::new({
+			let tasks = $mp.tasks.clone();
+			move |_common, e| {
+				tasks.push(Task::UpdateInt($setting, e.value as i32));
+				Ok(())
+			}
+		}));
+	};
+}
+
+macro_rules! dropdown {
+	($mp:expr, $root:expr, $setting:expr, $options:expr) => {
+		let id = $mp.idx.to_string();
+		$mp.idx += 1;
+
+		let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
+		params.insert(Rc::from("id"), Rc::from(id.as_ref()));
+
+		match $setting.get_translation() {
+			Ok(translation) => params.insert(Rc::from("translation"), translation.into()),
+			Err(raw_text) => params.insert(Rc::from("text"), raw_text.into()),
+		};
+
+		if let Some(tooltip) = $setting.get_tooltip() {
+			params.insert(Rc::from("tooltip"), Rc::from(tooltip));
+		}
+
+		$mp
+			.parser_state
+			.instantiate_template($mp.doc_params, "DropdownButton", $mp.layout, $root, params)?;
+
+		let setting_str = $setting.as_ref();
+		let title = $setting.get_enum_title($mp.config);
+
+		{
+			let mut label = $mp
+				.parser_state
+				.fetch_widget_as::<WidgetLabel>(&$mp.layout.state, &format!("{id}_value"))?;
+			label.set_text_simple(&mut $mp.layout.state.globals.get(), title);
+		}
+
+		let btn = $mp.parser_state.fetch_component_as::<ComponentButton>(&id)?;
+		btn.on_click(Box::new({
+			let tasks = $mp.tasks.clone();
+			move |_common, e| {
+				tasks.push(Task::OpenContextMenu(
+					e.mouse_pos_absolute.unwrap_or_default(),
+					$options
+						.iter()
+						.filter_map(|item| {
+							if item.get_bool("Hidden").unwrap_or(false) {
+								return None;
+							}
+
+							let value = item.as_ref();
+							let title = SettingType::get_enum_title_inner(*item);
+							let tooltip = SettingType::get_enum_tooltip_inner(*item);
+
+							let text = &title.text;
+							let translated = if title.translated { "1" } else { "0" };
+
+							Some(context_menu::Cell {
+								action_name: Some(format!("{setting_str};{id};{value};{text};{translated}").into()),
+								title,
+								tooltip,
+								attribs: vec![],
+							})
+						})
+						.collect(),
+				));
+				Ok(())
+			}
+		}));
+	};
+}
+
+macro_rules! button {
+	($mp:expr, $root:expr, $translation:expr, $icon:expr, $task:expr) => {
+		let id = $mp.idx.to_string();
+		$mp.idx += 1;
+
+		let mut params: HashMap<Rc<str>, Rc<str>> = HashMap::new();
+		params.insert(Rc::from("id"), Rc::from(id.as_ref()));
+		params.insert(Rc::from("translation"), Rc::from($translation));
+		params.insert(Rc::from("icon"), Rc::from($icon));
+
+		$mp
+			.parser_state
+			.instantiate_template($mp.doc_params, "DangerButton", $mp.layout, $root, params)?;
+
+		let btn = $mp.parser_state.fetch_component_as::<ComponentButton>(&id)?;
+		btn.on_click(Box::new({
+			let tasks = $mp.tasks.clone();
+			move |_common, _e| {
+				tasks.push($task);
+				Ok(())
+			}
+		}));
+	};
+}
+
+struct MacroParams<'a> {
+	layout: &'a mut Layout,
+	parser_state: &'a mut ParserState,
+	doc_params: &'a ParseDocumentParams<'a>,
+	config: &'a mut GeneralConfig,
+	tasks: Tasks<Task>,
+	idx: usize,
+}
+
+impl<T> TabSettings<T> {
+	pub fn new(frontend: &mut Frontend<T>, parent_id: WidgetID, data: &mut T) -> anyhow::Result<Self> {
+		let doc_params = ParseDocumentParams {
+			globals: frontend.layout.state.globals.clone(),
+			path: AssetPath::BuiltIn("gui/tab/settings.xml"),
+			extra: Default::default(),
+		};
+		let mut parser_state = wgui::parser::parse_from_assets(&doc_params, &mut frontend.layout, parent_id)?;
+
+		let root = parser_state.get_widget_id("settings_root")?;
+
+		let mut mp = MacroParams {
+			layout: &mut frontend.layout,
+			parser_state: &mut parser_state,
+			doc_params: &doc_params,
+			config: frontend.interface.general_config(data),
+			tasks: Tasks::default(),
+			idx: 9001,
+		};
+
+		let c = category!(mp, root, "APP_SETTINGS.LOOK_AND_FEEL", "dashboard/palette.svg")?;
+		checkbox!(mp, c, SettingType::OpaqueBackground);
+		checkbox!(mp, c, SettingType::HideUsername);
+		checkbox!(mp, c, SettingType::HideGrabHelp);
+		slider_f32!(mp, c, SettingType::AnimationSpeed, 0.5, 5.0, 0.1); // min, max, step
+		slider_f32!(mp, c, SettingType::RoundMultiplier, 0.5, 5.0, 0.1);
+		checkbox!(mp, c, SettingType::SetsOnWatch);
+		checkbox!(mp, c, SettingType::UseSkybox);
+		checkbox!(mp, c, SettingType::UsePassthrough);
+		checkbox!(mp, c, SettingType::Clock12h);
+
+		let c = category!(mp, root, "APP_SETTINGS.FEATURES", "dashboard/options.svg")?;
+		checkbox!(mp, c, SettingType::NotificationsEnabled);
+		checkbox!(mp, c, SettingType::NotificationsSoundEnabled);
+		checkbox!(mp, c, SettingType::KeyboardSoundEnabled);
+		checkbox!(mp, c, SettingType::SpaceDragUnlocked);
+		checkbox!(mp, c, SettingType::SpaceRotateUnlocked);
+		slider_f32!(mp, c, SettingType::SpaceDragMultiplier, -10.0, 10.0, 0.5);
+		checkbox!(mp, c, SettingType::BlockGameInput);
+		checkbox!(mp, c, SettingType::BlockGameInputIgnoreWatch);
+
+		let c = category!(mp, root, "APP_SETTINGS.CONTROLS", "dashboard/controller.svg")?;
+		dropdown!(
+			mp,
+			c,
+			SettingType::KeyboardMiddleClick,
+			wlx_common::config::AltModifier::VARIANTS
+		);
+		checkbox!(mp, c, SettingType::FocusFollowsMouseMode);
+		checkbox!(mp, c, SettingType::LeftHandedMouse);
+		checkbox!(mp, c, SettingType::AllowSliding);
+		checkbox!(mp, c, SettingType::InvertScrollDirectionX);
+		checkbox!(mp, c, SettingType::InvertScrollDirectionY);
+		slider_f32!(mp, c, SettingType::ScrollSpeed, 0.1, 5.0, 0.1);
+		slider_f32!(mp, c, SettingType::LongPressDuration, 0.1, 2.0, 0.1);
+		slider_f32!(mp, c, SettingType::PointerLerpFactor, 0.1, 1.0, 0.1);
+		slider_f32!(mp, c, SettingType::XrClickSensitivity, 0.1, 1.0, 0.1);
+		slider_f32!(mp, c, SettingType::XrClickSensitivityRelease, 0.1, 1.0, 0.1);
+		slider_i32!(mp, c, SettingType::ClickFreezeTimeMs, 0, 500, 50);
+
+		let c = category!(mp, root, "APP_SETTINGS.MISC", "dashboard/blocks.svg")?;
+		dropdown!(
+			mp,
+			c,
+			SettingType::CaptureMethod,
+			wlx_common::config::CaptureMethod::VARIANTS
+		);
+		checkbox!(mp, c, SettingType::XwaylandByDefault);
+		checkbox!(mp, c, SettingType::UprightScreenFix);
+		checkbox!(mp, c, SettingType::DoubleCursorFix);
+		checkbox!(mp, c, SettingType::ScreenRenderDown);
+
+		let c = category!(mp, root, "APP_SETTINGS.TROUBLESHOOTING", "dashboard/blocks.svg")?;
+		button!(
+			mp,
+			c,
+			"APP_SETTINGS.CLEAR_PIPEWIRE_TOKENS",
+			"dashboard/display.svg",
+			Task::ClearPipewireTokens
+		);
+		button!(
+			mp,
+			c,
+			"APP_SETTINGS.CLEAR_SAVED_STATE",
+			"dashboard/binary.svg",
+			Task::ClearSavedState
+		);
+		button!(
+			mp,
+			c,
+			"APP_SETTINGS.DELETE_ALL_CONFIGS",
+			"dashboard/circle.svg",
+			Task::DeleteAllConfigs
+		);
+		button!(
+			mp,
+			c,
+			"APP_SETTINGS.RESTART_SOFTWARE",
+			"dashboard/refresh.svg",
+			Task::RestartSoftware
+		);
+
+		Ok(Self {
+			tasks: mp.tasks,
+			state: parser_state,
+			marker: PhantomData,
+			context_menu: ContextMenu::default(),
+		})
 	}
 }

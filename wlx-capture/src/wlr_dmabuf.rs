@@ -6,12 +6,13 @@ use std::{
     thread::JoinHandle,
 };
 
+use drm_fourcc::{DrmFormat, DrmFourcc, DrmModifier};
 use smithay_client_toolkit::reexports::protocols_wlr::export_dmabuf::v1::client::zwlr_export_dmabuf_frame_v1::{self, ZwlrExportDmabufFrameV1};
 use wayland_client::{Connection, QueueHandle, Dispatch, Proxy};
 
 use crate::{
     WlxCapture,
-    frame::{DmabufFrame, DrmFormat, FramePlane, WlxFrame},
+    frame::{DmabufFrame, FrameFormat, FramePlane, WlxFrame},
     wayland::WlxClient,
 };
 
@@ -168,13 +169,27 @@ fn request_dmabuf_frame(
             num_objects,
             ..
         } => {
-            let mut new_frame = DmabufFrame::default();
-            new_frame.format.width = width;
-            new_frame.format.height = height;
-            new_frame.format.fourcc.value = format;
+            let mut new_frame = DmabufFrame {
+                format: FrameFormat {
+                    width,
+                    height,
+                    drm_format: DrmFormat {
+                        code: match DrmFourcc::try_from(format) {
+                            Ok(code) => code,
+                            Err(e) => {
+                                log::error!("Unrecognized fourcc: {e:?}");
+                                return;
+                            }
+                        },
+                        modifier: DrmModifier::Invalid,
+                    },
+                    transform,
+                },
+                mouse: None,
+                num_planes: num_objects as _,
+                planes: Default::default(),
+            };
             new_frame.format.set_mod(mod_high, mod_low);
-            new_frame.format.transform = transform;
-            new_frame.num_planes = num_objects as _;
             frame = Some(new_frame);
         }
         zwlr_export_dmabuf_frame_v1::Event::Object {

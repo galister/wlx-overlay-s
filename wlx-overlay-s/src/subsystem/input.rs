@@ -1,25 +1,17 @@
 use super::hid::{self, HidProvider, VirtualKey};
 
-#[cfg(feature = "wayvr")]
-use crate::overlays::wayvr::WayVRData;
-use crate::subsystem::hid::XkbKeymap;
-#[cfg(feature = "wayvr")]
-use std::{cell::RefCell, rc::Rc};
+use crate::{backend::wayvr::WvrServerState, subsystem::hid::XkbKeymap};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum KeyboardFocus {
     PhysicalScreen,
-
-    #[allow(dead_code)] // Not available if "wayvr" feature is disabled
-    WayVR, // (for now without wayland window id data, it's handled internally),
+    WayVR, // (wayland window id data is handled internally),
 }
 
 pub struct HidWrapper {
     pub keyboard_focus: KeyboardFocus,
     pub inner: Box<dyn HidProvider>,
     pub keymap: Option<XkbKeymap>,
-    #[cfg(feature = "wayvr")]
-    pub wayvr: Option<Rc<RefCell<WayVRData>>>, // Dynamically created if requested
 }
 
 impl HidWrapper {
@@ -27,45 +19,29 @@ impl HidWrapper {
         Self {
             keyboard_focus: KeyboardFocus::PhysicalScreen,
             inner: hid::initialize(),
-            #[cfg(feature = "wayvr")]
-            wayvr: None,
             keymap: None,
         }
     }
 
-    #[cfg(feature = "wayvr")]
-    pub fn set_wayvr(&mut self, wayvr: Rc<RefCell<WayVRData>>) {
-        if let Some(keymap) = self.keymap.take() {
-            let _ = wayvr
-                .borrow_mut()
-                .data
-                .state
-                .set_keymap(&keymap.inner)
-                .inspect_err(|e| log::error!("Could not set WayVR keymap: {e:?}"));
-        }
-        self.wayvr = Some(wayvr);
-    }
-
-    pub fn send_key_routed(&self, key: VirtualKey, down: bool) {
+    pub fn send_key_routed(
+        &self,
+        wvr_server: Option<&mut WvrServerState>,
+        key: VirtualKey,
+        down: bool,
+    ) {
         match self.keyboard_focus {
             KeyboardFocus::PhysicalScreen => self.inner.send_key(key, down),
-            KeyboardFocus::WayVR =>
-            {
-                #[cfg(feature = "wayvr")]
-                if let Some(wayvr) = &self.wayvr {
-                    wayvr.borrow_mut().data.state.send_key(key as u32, down);
+            KeyboardFocus::WayVR => {
+                if let Some(wvr_server) = wvr_server {
+                    wvr_server.send_key(key as u32, down);
                 }
             }
         }
     }
 
-    pub fn keymap_changed(&mut self, keymap: &XkbKeymap) {
-        #[cfg(feature = "wayvr")]
-        if let Some(wayvr) = &self.wayvr {
-            let _ = wayvr
-                .borrow_mut()
-                .data
-                .state
+    pub fn keymap_changed(&mut self, wvr_server: Option<&mut WvrServerState>, keymap: &XkbKeymap) {
+        if let Some(wvr_server) = wvr_server {
+            let _ = wvr_server
                 .set_keymap(&keymap.inner)
                 .inspect_err(|e| log::error!("Could not set WayVR keymap: {e:?}"));
         } else {
@@ -78,14 +54,12 @@ impl HidWrapper {
         );
     }
 
-    pub fn set_modifiers_routed(&mut self, mods: u8) {
+    pub fn set_modifiers_routed(&mut self, wvr_server: Option<&mut WvrServerState>, mods: u8) {
         match self.keyboard_focus {
             KeyboardFocus::PhysicalScreen => self.inner.set_modifiers(mods),
-            KeyboardFocus::WayVR =>
-            {
-                #[cfg(feature = "wayvr")]
-                if let Some(wayvr) = &self.wayvr {
-                    wayvr.borrow_mut().data.state.set_modifiers(mods);
+            KeyboardFocus::WayVR => {
+                if let Some(wvr_server) = wvr_server {
+                    wvr_server.set_modifiers(mods);
                 }
             }
         }

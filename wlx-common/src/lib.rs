@@ -1,6 +1,13 @@
 pub mod astr_containers;
+pub mod audio;
+pub mod cache_dir;
 pub mod common;
 pub mod config;
+pub mod config_io;
+pub mod dash_interface;
+pub mod dash_interface_emulated;
+pub mod desktop_finder;
+mod handle;
 pub mod overlays;
 pub mod timestep;
 pub mod windowing;

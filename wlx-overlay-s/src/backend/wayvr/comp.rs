@@ -1,18 +1,20 @@
+use anyhow::Context;
 use smithay::backend::allocator::dmabuf::Dmabuf;
-use smithay::backend::renderer::ImportDma;
-use smithay::backend::renderer::gles::GlesRenderer;
-use smithay::backend::renderer::utils::on_commit_buffer_handler;
+use smithay::backend::renderer::{BufferType, buffer_type};
+use smithay::desktop::{PopupKind, PopupManager};
 use smithay::input::{Seat, SeatHandler, SeatState};
 use smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel;
 use smithay::reexports::wayland_server;
 use smithay::reexports::wayland_server::Resource;
-use smithay::reexports::wayland_server::protocol::{wl_buffer, wl_seat, wl_surface};
+use smithay::reexports::wayland_server::protocol::{wl_buffer, wl_output, wl_seat};
 use smithay::wayland::buffer::BufferHandler;
 use smithay::wayland::dmabuf::{
-    DmabufFeedback, DmabufGlobal, DmabufHandler, DmabufState, ImportNotifier,
+    DmabufFeedback, DmabufGlobal, DmabufHandler, DmabufState, ImportNotifier, get_dmabuf,
 };
+use smithay::wayland::fractional_scale::with_fractional_scale;
 use smithay::wayland::output::OutputHandler;
-use smithay::wayland::shm::{ShmHandler, ShmState};
+use smithay::wayland::shm::{ShmHandler, ShmState, with_buffer_contents};
+use smithay::wayland::single_pixel_buffer::get_single_pixel_buffer;
 use smithay::{
     delegate_compositor, delegate_data_device, delegate_dmabuf, delegate_output, delegate_seat,
     delegate_shm, delegate_xdg_shell,
@@ -22,9 +24,7 @@ use std::os::fd::OwnedFd;
 use std::sync::{Arc, Mutex};
 
 use smithay::utils::Serial;
-use smithay::wayland::compositor::{
-    self, SurfaceAttributes, TraversalAction, with_surface_tree_downward,
-};
+use smithay::wayland::compositor::{self, BufferAssignment, SurfaceAttributes, send_surface_state};
 
 use smithay::wayland::selection::SelectionHandler;
 use smithay::wayland::selection::data_device::{
@@ -37,12 +37,14 @@ use wayland_server::Client;
 use wayland_server::backend::{ClientData, ClientId, DisconnectReason};
 use wayland_server::protocol::wl_surface::WlSurface;
 
+use crate::backend::wayvr::image_importer::ImageImporter;
+use crate::backend::wayvr::{SurfaceBufWithImage, time};
 use crate::ipc::event_queue::SyncEventQueue;
 
 use super::WayVRTask;
 
 pub struct Application {
-    pub gles_renderer: GlesRenderer,
+    pub image_importer: ImageImporter,
     pub dmabuf_state: (DmabufState, DmabufGlobal, Option<DmabufFeedback>),
     pub compositor: compositor::CompositorState,
     pub xdg_shell: XdgShellState,
@@ -51,11 +53,44 @@ pub struct Application {
     pub data_device: DataDeviceState,
     pub wayvr_tasks: SyncEventQueue<WayVRTask>,
     pub redraw_requests: HashSet<wayland_server::backend::ObjectId>,
+    pub popup_manager: PopupManager,
 }
 
 impl Application {
     pub fn check_redraw(&mut self, surface: &WlSurface) -> bool {
         self.redraw_requests.remove(&surface.id())
+    }
+
+    pub fn cleanup(&mut self) {
+        self.image_importer.cleanup();
+    }
+
+    fn popups_commit(&mut self, surface: &WlSurface) {
+        self.popup_manager.commit(surface);
+
+        if let Some(popup) = self.popup_manager.find_popup(surface) {
+            match popup {
+                PopupKind::Xdg(ref popup) => {
+                    if !popup.is_initial_configure_sent() {
+                        smithay::wayland::compositor::with_states(surface, |states| {
+                            send_surface_state(
+                                surface,
+                                states,
+                                1,
+                                smithay::utils::Transform::Normal,
+                            );
+                            with_fractional_scale(states, |fractional| {
+                                fractional.set_preferred_scale(1.0);
+                            });
+                        });
+                        popup.send_configure().expect("initial configure failed");
+                    }
+                }
+                PopupKind::InputMethod(_) => {
+                    // TODO?
+                }
+            }
+        }
     }
 }
 
@@ -71,8 +106,92 @@ impl compositor::CompositorHandler for Application {
         &client.get_data::<ClientState>().unwrap().compositor_state
     }
 
+    #[allow(clippy::significant_drop_tightening)]
     fn commit(&mut self, surface: &WlSurface) {
-        on_commit_buffer_handler::<Self>(surface);
+        self.popups_commit(surface);
+
+        smithay::wayland::compositor::with_states(surface, |states| {
+            let mut guard = states.cached_state.get::<SurfaceAttributes>();
+            let attrs = guard.current();
+
+            match attrs.buffer.take() {
+                Some(BufferAssignment::NewBuffer(buffer)) => {
+                    match buffer_type(&buffer) {
+                        Some(BufferType::Dma) => {
+                            let dmabuf = get_dmabuf(&buffer).unwrap(); // always Ok due to buffer_type
+                            if let Ok(image) = self
+                                .image_importer
+                                .get_or_import_dmabuf(dmabuf.clone())
+                                .inspect_err(|e| {
+                                    log::warn!("wayland_server failed to import DMA-buf: {e:?}");
+                                })
+                            {
+                                let sbwi = SurfaceBufWithImage {
+                                    image,
+                                    transform: wl_transform_to_frame_transform(
+                                        attrs.buffer_transform,
+                                    ),
+                                    scale: attrs.buffer_scale,
+                                    dmabuf: true,
+                                };
+                                sbwi.apply_to_surface(states);
+                            }
+                        }
+                        Some(BufferType::Shm) => {
+                            let _ = with_buffer_contents(&buffer, |data, size, buf| {
+                                if let Ok(image) = self
+                                    .image_importer
+                                    .import_shm(data, size, buf)
+                                    .inspect_err(|e| {
+                                        log::warn!("wayland_server failed to import SHM: {e:?}");
+                                    })
+                                {
+                                    let sbwi = SurfaceBufWithImage {
+                                        image,
+                                        transform: wl_transform_to_frame_transform(
+                                            attrs.buffer_transform,
+                                        ),
+                                        scale: attrs.buffer_scale,
+                                        dmabuf: false,
+                                    };
+                                    sbwi.apply_to_surface(states);
+                                }
+                            });
+                        }
+                        Some(BufferType::SinglePixel) => {
+                            let spb = get_single_pixel_buffer(&buffer).unwrap(); // always Ok
+                            if let Ok(image) =
+                                self.image_importer.import_spb(spb).inspect_err(|e| {
+                                    log::warn!("wayland_server failed to import SPB: {e:?}");
+                                })
+                            {
+                                let sbwi = SurfaceBufWithImage {
+                                    image,
+                                    transform: wl_transform_to_frame_transform(
+                                        // does this even matter
+                                        attrs.buffer_transform,
+                                    ),
+                                    scale: attrs.buffer_scale,
+                                    dmabuf: false,
+                                };
+                                sbwi.apply_to_surface(states);
+                            }
+                        }
+                        Some(other) => log::warn!("Unsupported wl_buffer format: {other:?}"),
+                        None => { /* don't draw anything */ }
+                    }
+                    buffer.release();
+                }
+                Some(BufferAssignment::Removed) | None => {}
+            }
+
+            let t = time::get_millis() as u32;
+            let callbacks = std::mem::take(&mut attrs.frame_callbacks);
+            for cb in callbacks {
+                cb.done(t);
+            }
+        });
+
         self.redraw_requests.insert(surface.id());
     }
 }
@@ -150,6 +269,7 @@ impl XdgShellHandler for Application {
         }
         surface.with_pending_state(|state| {
             state.states.set(xdg_toplevel::State::Activated);
+            state.states.set(xdg_toplevel::State::Fullscreen);
         });
         surface.send_configure();
     }
@@ -161,8 +281,16 @@ impl XdgShellHandler for Application {
         }
     }
 
-    fn new_popup(&mut self, _surface: PopupSurface, _positioner: PositionerState) {
-        // Handle popup creation here
+    fn new_popup(&mut self, surface: PopupSurface, _positioner: PositionerState) {
+        let _ = self
+            .popup_manager
+            .track_popup(PopupKind::Xdg(surface))
+            .context("Could not track xdg_popup")
+            .inspect_err(|e| log::warn!("{e:?}"));
+    }
+
+    fn popup_destroyed(&mut self, _surface: PopupSurface) {
+        self.popup_manager.cleanup();
     }
 
     fn grab(&mut self, _surface: PopupSurface, _seat: wl_seat::WlSeat, _serial: Serial) {
@@ -198,7 +326,7 @@ impl DmabufHandler for Application {
         dmabuf: Dmabuf,
         notifier: ImportNotifier,
     ) {
-        if self.gles_renderer.import_dmabuf(&dmabuf, None).is_ok() {
+        if self.image_importer.get_or_import_dmabuf(dmabuf).is_ok() {
             let _ = notifier.successful::<Self>();
         } else {
             notifier.failed();
@@ -214,24 +342,18 @@ delegate_seat!(Application);
 delegate_data_device!(Application);
 delegate_output!(Application);
 
-pub fn send_frames_surface_tree(surface: &wl_surface::WlSurface, time: u32) {
-    with_surface_tree_downward(
-        surface,
-        (),
-        |_, _, &()| TraversalAction::DoChildren(()),
-        |_surf, states, &()| {
-            // the surface may not have any user_data if it is a subsurface and has not
-            // yet been committed
-            for callback in states
-                .cached_state
-                .get::<SurfaceAttributes>()
-                .current()
-                .frame_callbacks
-                .drain(..)
-            {
-                callback.done(time);
-            }
-        },
-        |_, _, &()| true,
-    );
+const fn wl_transform_to_frame_transform(
+    transform: wl_output::Transform,
+) -> wlx_capture::frame::Transform {
+    match transform {
+        wl_output::Transform::Normal => wlx_capture::frame::Transform::Normal,
+        wl_output::Transform::_90 => wlx_capture::frame::Transform::Rotated90,
+        wl_output::Transform::_180 => wlx_capture::frame::Transform::Rotated180,
+        wl_output::Transform::_270 => wlx_capture::frame::Transform::Rotated270,
+        wl_output::Transform::Flipped => wlx_capture::frame::Transform::Flipped,
+        wl_output::Transform::Flipped90 => wlx_capture::frame::Transform::Flipped90,
+        wl_output::Transform::Flipped180 => wlx_capture::frame::Transform::Flipped180,
+        wl_output::Transform::Flipped270 => wlx_capture::frame::Transform::Flipped270,
+        _ => wlx_capture::frame::Transform::Undefined,
+    }
 }

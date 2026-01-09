@@ -2,38 +2,62 @@
   <template name="Subtext">
     <div flex_direction="row" gap="8">
       <label weight="bold" text="${title}" />
-      <label text="foo" />
+      <label id="${label_id}" />
     </div>
   </template>
 
   <template name="ApplicationIcon">
-    <sprite src_ext="${path}" width="128" height="128" />
+    <sprite src_ext="${path}" width="96" height="96" />
   </template>
 
   <include src="../t_separator.xml" />
   <include src="../t_group_box.xml" />
 
   <elements>
-    <div flex_direction="row" gap="16" width="100%">
-      <rectangle macro="group_box" id="icon_parent" height="100%" padding="8" color="#0033aa66" color2="#00000022" gradient="vertical" justify_content="center">
+    <div flex_direction="row" gap="16" flex_grow="1">
+      <rectangle macro="group_box" id="icon_parent" padding="16" color="#0033aa66" color2="#00000022" gradient="vertical" justify_content="center">
 
       </rectangle>
-      <div flex_direction="column" gap="8" width="100%" align_items="baseline">
-        <label id="label_title" weight="bold" size="32" />
-        <Subtext title="Exec:" />
-        <Subtext title="Args:" />
+      <div flex_direction="column" gap="8" flex_grow="1">
+        <label id="label_title" weight="bold" size="32" overflow="hidden" />
+        <Subtext label_id="label_exec" overflow="hidden" />
         <Separator />
-        <CheckBox text="Run in X11 mode (cage)" />
-        <CheckBox text="Run in Wayland mode" checked="1" />
+        <RadioGroup id="radio_compositor" flex_direction="row" gap="16">
+          <RadioBox translation="APP_LAUNCHER.MODE.NATIVE" value="Native" checked="1" />
+          <RadioBox translation="APP_LAUNCHER.MODE.CAGE" value="Cage" /> <!-- TODO: tooltips -->
+        </RadioGroup>
         <Separator />
-        <Button color="#44ce22FF" padding_top="4" padding_bottom="4" round="8" padding_right="12">
-          <sprite src="dashboard/play.svg" width="32" height="32" />
-          <label text="Launch embedded" weight="bold" size="17" shadow="#00000099" />
-        </Button>
+        <label translation="APP_LAUNCHER.RES_TITLE" />
+        <RadioGroup id="radio_res" flex_direction="row" gap="16">
+          <RadioBox text="1440p" value="Res1440" />
+          <RadioBox text="1080p" value="Res1080" checked="1" />
+          <RadioBox text="720p" value="Res720" />
+          <RadioBox text="480p" value="Res480" />
+        </RadioGroup>
         <Separator />
-        <rectangle macro="group_box">
-          <label size="16" weight="bold" text="Or launch it detached" />
-        </rectangle>
+        <label translation="APP_LAUNCHER.ASPECT_TITLE" />
+        <RadioGroup id="radio_orientation" flex_direction="row" gap="16">
+          <RadioBox translation="APP_LAUNCHER.ASPECT.WIDE" value="Wide" tooltip="16:9" checked="1" />
+          <RadioBox translation="APP_LAUNCHER.ASPECT.SEMI_WIDE" value="SemiWide" tooltip="3:2" />
+          <RadioBox translation="APP_LAUNCHER.ASPECT.SQUARE" value="Square" tooltip="1:1" />
+          <RadioBox translation="APP_LAUNCHER.ASPECT.SEMI_TALL" value="SemiTall" tooltip="2:3" />
+          <RadioBox translation="APP_LAUNCHER.ASPECT.TALL" value="Tall" tooltip="9:16" />
+        </RadioGroup>
+        <Separator />
+        <label translation="APP_LAUNCHER.POS_TITLE" />
+        <RadioGroup id="radio_pos" flex_direction="row" gap="16">
+          <RadioBox translation="APP_LAUNCHER.POS.FLOATING" value="Floating" tooltip="APP_LAUNCHER.POS.FLOATING_HELP" />
+          <RadioBox translation="APP_LAUNCHER.POS.ANCHORED" value="Anchored" tooltip="APP_LAUNCHER.POS.ANCHORED_HELP" checked="1" />
+          <RadioBox translation="APP_LAUNCHER.POS.STATIC" value="Static" tooltip="APP_LAUNCHER.POS.STATIC_HELP" />
+        </RadioGroup>
+        <Separator />
+        <div flex_direction="row" justify_content="space_between" gap="16">
+          <CheckBox id="cb_autostart" translation="APP_LAUNCHER.AUTOSTART" />
+          <Button id="btn_launch" align_self="baseline" color="#44ce22FF" padding_top="4" padding_bottom="4" round="8" padding_right="12" min_height="40">
+            <sprite src_builtin="dashboard/play.svg" width="32" height="32" />
+            <label translation="APP_LAUNCHER.LAUNCH" weight="bold" size="17" shadow="#00000099" />
+          </Button>
+        </div>
       </div>
     </div>
   </elements>

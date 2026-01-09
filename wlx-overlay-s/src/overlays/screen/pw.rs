@@ -6,9 +6,12 @@ use wlx_capture::{
     pipewire::{PipewireCapture, PipewireSelectScreenResult},
     wayland::WlxOutput,
 };
-use wlx_common::config::{PwTokenMap, def_pw_tokens};
+use wlx_common::{
+    config::{PwTokenMap, def_pw_tokens},
+    config_io,
+};
 
-use crate::{config_io, state::AppState};
+use crate::{state::AppState, subsystem::dbus::DbusConnector};
 
 use super::{
     backend::ScreenBackend,
@@ -22,11 +25,12 @@ impl ScreenBackend {
         token: Option<&str>,
         app: &mut AppState,
     ) -> anyhow::Result<(Self, Option<String> /* pipewire restore token */)> {
+        use crate::overlays::screen::backend::CaptureType;
+
         let name = output.name.clone();
         let embed_mouse = !app.session.config.double_cursor_fix;
 
         let select_screen_result = select_pw_screen(
-            app,
             &format!(
                 "Now select: {} {} {} @ {},{}",
                 &output.name,
@@ -55,7 +59,12 @@ impl ScreenBackend {
             PipewireCapture::new(name, node_id)
         );
         Ok((
-            Self::new_raw(output.name.clone(), app.xr_backend, capture),
+            Self::new_raw(
+                output.name.clone(),
+                app.xr_backend,
+                CaptureType::PipeWire,
+                capture,
+            ),
             select_screen_result.restore_token,
         ))
     }
@@ -63,7 +72,6 @@ impl ScreenBackend {
 
 #[allow(clippy::fn_params_excessive_bools)]
 pub(super) fn select_pw_screen(
-    app: &mut AppState,
     instructions: &str,
     token: Option<&str>,
     embed_mouse: bool,
@@ -87,7 +95,8 @@ pub(super) fn select_pw_screen(
                 task::Poll::Pending => {
                     if Instant::now() >= print_at {
                         log::info!("{instructions}");
-                        if let Ok(id) = app.dbus.notify_send(instructions, "", 1, 60, 0, true) {
+                        if let Ok(id) = DbusConnector::notify_send(instructions, "", 1, 60, 0, true)
+                        {
                             notify = Some(id);
                         }
                         break;
@@ -103,7 +112,7 @@ pub(super) fn select_pw_screen(
         let result = f.await;
         if let Some(id) = notify {
             //safe unwrap; checked above
-            let _ = app.dbus.notify_close(id);
+            let _ = DbusConnector::notify_close(id);
         }
         result
     };

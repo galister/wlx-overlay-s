@@ -67,7 +67,8 @@ impl Toast {
         let destroy_at = instant.add(std::time::Duration::from_secs_f32(self.timeout));
 
         if self.sound && app.session.config.notifications_sound_enabled {
-            app.audio_provider.play(app.toast_sound);
+            app.audio_sample_player
+                .play_sample(&mut app.audio_system, "toast");
         }
 
         // drop any toast that was created before us.
@@ -178,7 +179,10 @@ fn new_toast(toast: Toast, app: &mut AppState) -> Option<OverlayWindowConfig> {
     .inspect_err(|e| log::error!("Could not create toast: {e:?}"))
     .ok()?;
 
-    panel.update_layout().context("layout update failed").ok()?;
+    panel
+        .update_layout(app)
+        .context("layout update failed")
+        .ok()?;
 
     Some(OverlayWindowConfig {
         name: TOAST_NAME.clone(),

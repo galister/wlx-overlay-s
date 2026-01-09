@@ -12,13 +12,17 @@ use crate::{
         input::{HoverResult, PointerHit, PointerMode},
     },
     graphics::ExtentExt,
+    overlays::screen::capture::MyFirstDmaExporter,
     state::AppState,
     subsystem::hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT, WheelDelta},
     windowing::backend::{
         FrameMeta, OverlayBackend, OverlayEventData, RenderResources, ShouldRender, ui_transform,
     },
 };
-use wlx_common::overlays::{BackendAttrib, BackendAttribValue, MouseTransform, StereoMode};
+use wlx_common::{
+    config::CaptureMethod,
+    overlays::{BackendAttrib, BackendAttribValue, MouseTransform, StereoMode},
+};
 
 use super::capture::{ScreenPipeline, WlxCaptureIn, WlxCaptureOut, receive_callback};
 
@@ -38,8 +42,15 @@ fn set_next_move(millis_from_now: u64) {
     );
 }
 
+pub(super) enum CaptureType {
+    PipeWire,
+    ScreenCopy,
+    Xshm,
+}
+
 pub struct ScreenBackend {
     name: Arc<str>,
+    capture_type: CaptureType,
     capture: Box<dyn WlxCapture<WlxCaptureIn, WlxCaptureOut>>,
     pipeline: Option<ScreenPipeline>,
     cur_frame: Option<WlxCaptureOut>,
@@ -55,13 +66,15 @@ pub struct ScreenBackend {
 }
 
 impl ScreenBackend {
-    pub fn new_raw(
+    pub(super) fn new_raw(
         name: Arc<str>,
         xr_backend: XrBackend,
+        capture_type: CaptureType,
         capture: Box<dyn WlxCapture<WlxCaptureIn, WlxCaptureOut>>,
     ) -> Self {
         Self {
             name,
+            capture_type,
             capture,
             pipeline: None,
             cur_frame: None,
@@ -144,39 +157,50 @@ impl OverlayBackend for ScreenBackend {
                 .ext_external_memory_dma_buf
                 && self.capture.supports_dmbuf();
 
-            let allow_dmabuf = &*app.session.config.capture_method != "pw_fallback"
-                && &*app.session.config.capture_method != "screencopy";
+            let capture_method = app.session.config.capture_method;
 
-            let capture_method = app.session.config.capture_method.clone();
+            let allow_dmabuf = !matches!(
+                capture_method,
+                CaptureMethod::PipeWireCpu | CaptureMethod::ScreenCopyCpu
+            );
 
-            let dmabuf_formats = if !supports_dmabuf {
+            let (dmabuf_formats, dma_exporter) = if !supports_dmabuf {
                 log::info!("Capture method does not support DMA-buf");
                 if app.gfx_extras.queue_capture.is_none() {
                     log::warn!(
                         "Current GPU does not support multiple queues. Software capture will take place on the main thread. Expect degraded performance."
                     );
                 }
-                &Vec::new()
+                ([].as_slice(), None)
             } else if !allow_dmabuf {
-                log::info!("Not using DMA-buf capture due to {capture_method}");
+                log::info!(
+                    "Not using DMA-buf capture due to {}",
+                    capture_method.as_ref()
+                );
                 if app.gfx_extras.queue_capture.is_none() {
                     log::warn!(
                         "Current GPU does not support multiple queues. Software capture will take place on the main thread. Expect degraded performance."
                     );
                 }
-                &Vec::new()
+                ([].as_slice(), None)
             } else {
                 log::warn!(
-                    "Using DMA-buf capture. If screens are blank for you, switch to SHM using:"
-                );
-                log::warn!(
-                    "echo 'capture_method: pw_fallback' > ~/.config/wlxoverlay/conf.d/pw_fallback.yaml"
+                    "Using GPU capture. If you're having issues with screens, go to the Dashboard's Settings tab and switch 'Wayland capture method' to a CPU option!"
                 );
 
-                &app.gfx_extras.drm_formats
+                let dma_exporter = if matches!(self.capture_type, CaptureType::ScreenCopy) {
+                    Some(MyFirstDmaExporter::new(
+                        app.gfx.clone(),
+                        app.gfx_extras.drm_formats.clone(),
+                    ))
+                } else {
+                    None
+                };
+
+                (&*app.gfx_extras.drm_formats, dma_exporter)
             };
 
-            let user_data = WlxCaptureIn::new(self.name.clone(), app);
+            let user_data = WlxCaptureIn::new(self.name.clone(), app, dma_exporter);
             self.capture
                 .init(dmabuf_formats, user_data, receive_callback);
             self.capture.request_new_frame();
@@ -192,12 +216,20 @@ impl OverlayBackend for ScreenBackend {
                     .meta
                     .is_some_and(|old| old.extent[..2] != meta.extent[..2])
                 {
-                    pipeline.set_extent(app, [meta.extent[0] as _, meta.extent[1] as _])?;
+                    pipeline.set_extent(
+                        app,
+                        [meta.extent[0] as _, meta.extent[1] as _],
+                        [0., 0.],
+                    )?;
                     self.interaction_transform = Some(ui_transform(meta.extent.extent_u32arr()));
                 }
             } else {
-                let pipeline =
-                    ScreenPipeline::new(&meta, app, self.stereo.unwrap_or(StereoMode::None))?;
+                let pipeline = ScreenPipeline::new(
+                    &meta,
+                    app,
+                    self.stereo.unwrap_or(StereoMode::None),
+                    [0., 0.],
+                )?;
                 meta.extent[2] = pipeline.get_depth();
                 self.pipeline = Some(pipeline);
                 self.interaction_transform = Some(ui_transform(meta.extent.extent_u32arr()));
@@ -222,9 +254,13 @@ impl OverlayBackend for ScreenBackend {
     fn render(&mut self, app: &mut AppState, rdr: &mut RenderResources) -> anyhow::Result<()> {
         // want panic; must be some if should_render was not Unable
         let capture = self.cur_frame.as_ref().unwrap();
+        let image = capture.image.clone();
 
         // want panic; must be Some if cur_frame is also Some
-        self.pipeline.as_mut().unwrap().render(&capture, app, rdr)?;
+        self.pipeline
+            .as_mut()
+            .unwrap()
+            .render(image, capture.mouse.as_ref(), app, rdr)?;
         self.capture.request_new_frame();
         Ok(())
     }
@@ -242,7 +278,7 @@ impl OverlayBackend for ScreenBackend {
     }
 
     fn notify(&mut self, _app: &mut AppState, _event_data: OverlayEventData) -> anyhow::Result<()> {
-        todo!();
+        Ok(())
     }
 
     fn on_hover(&mut self, app: &mut AppState, hit: &PointerHit) -> HoverResult {
@@ -254,7 +290,7 @@ impl OverlayBackend for ScreenBackend {
         {
             let pos = self.mouse_transform.transform_point2(hit.uv);
             app.hid_provider.inner.mouse_move(pos);
-            set_next_move(u64::from(app.session.config.mouse_move_interval_ms));
+            set_next_move(app.session.config.mouse_move_interval_ms as _);
         }
         HoverResult {
             consume: true,
@@ -278,7 +314,7 @@ impl OverlayBackend for ScreenBackend {
         }
 
         if pressed {
-            set_next_move(u64::from(app.session.config.click_freeze_time_ms));
+            set_next_move(app.session.config.click_freeze_time_ms as _);
         }
 
         app.hid_provider.inner.send_button(btn, pressed);
@@ -299,17 +335,15 @@ impl OverlayBackend for ScreenBackend {
     fn get_interaction_transform(&mut self) -> Option<Affine2> {
         self.interaction_transform
     }
-    #[allow(unreachable_patterns)]
     fn get_attrib(&self, attrib: BackendAttrib) -> Option<BackendAttribValue> {
         match attrib {
-            BackendAttrib::Stereo => self.stereo.map(|s| BackendAttribValue::Stereo(s)),
+            BackendAttrib::Stereo => self.stereo.map(BackendAttribValue::Stereo),
             BackendAttrib::MouseTransform => Some(BackendAttribValue::MouseTransform(
                 self.mouse_transform_override,
             )),
             _ => None,
         }
     }
-    #[allow(unreachable_patterns)]
     fn set_attrib(&mut self, app: &mut AppState, value: BackendAttribValue) -> bool {
         match value {
             BackendAttribValue::Stereo(new) => {

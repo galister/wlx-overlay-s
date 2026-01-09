@@ -1,33 +1,70 @@
+use std::marker::PhantomData;
+
 use wgui::{
 	assets::AssetPath,
-	parser::{ParseDocumentParams, ParserState},
+	layout::WidgetID,
+	parser::{Fetchable, ParseDocumentParams, ParserState},
 };
 
-use crate::tab::{Tab, TabParams, TabType};
+use crate::{
+	frontend::Frontend,
+	tab::{Tab, TabType},
+	views::{process_list, window_list},
+};
 
-pub struct TabProcesses {
+pub struct TabProcesses<T> {
 	#[allow(dead_code)]
 	pub state: ParserState,
+
+	view_window_list: window_list::View,
+	view_process_list: process_list::View,
+	marker: PhantomData<T>,
 }
 
-impl Tab for TabProcesses {
+impl<T> Tab<T> for TabProcesses<T> {
 	fn get_type(&self) -> TabType {
 		TabType::Games
 	}
+
+	fn update(&mut self, frontend: &mut Frontend<T>, data: &mut T) -> anyhow::Result<()> {
+		self
+			.view_window_list
+			.update(&mut frontend.layout, &mut frontend.interface, data)?;
+		self
+			.view_process_list
+			.update(&mut frontend.layout, &mut frontend.interface, data)?;
+		Ok(())
+	}
 }
 
-impl TabProcesses {
-	pub fn new(params: TabParams) -> anyhow::Result<Self> {
+impl<T> TabProcesses<T> {
+	pub fn new(frontend: &mut Frontend<T>, parent_id: WidgetID) -> anyhow::Result<Self> {
+		let globals = frontend.layout.state.globals.clone();
 		let state = wgui::parser::parse_from_assets(
 			&ParseDocumentParams {
-				globals: params.globals.clone(),
+				globals: globals.clone(),
 				path: AssetPath::BuiltIn("gui/tab/processes.xml"),
 				extra: Default::default(),
 			},
-			params.layout,
-			params.parent_id,
+			&mut frontend.layout,
+			parent_id,
 		)?;
 
-		Ok(Self { state })
+		Ok(Self {
+			view_window_list: window_list::View::new(window_list::Params {
+				layout: &mut frontend.layout,
+				parent_id: state.get_widget_id("window_list_parent")?,
+				globals: globals.clone(),
+				frontend_tasks: frontend.tasks.clone(),
+				on_click: None,
+			})?,
+			view_process_list: process_list::View::new(process_list::Params {
+				layout: &mut frontend.layout,
+				parent_id: state.get_widget_id("process_list_parent")?,
+				globals,
+			})?,
+			state,
+			marker: PhantomData,
+		})
 	}
 }

@@ -9,6 +9,9 @@ pub struct OverlayWindowSet {
     pub(super) name: Arc<str>,
     pub(super) overlays: SecondaryMap<OverlayID, OverlayWindowState>,
 
-    // stores overlays that have not been seen since startup.
+    /// overlays that are not currently visible
+    pub(super) hidden_overlays: AStrMap<OverlayWindowState>,
+
+    /// overlays that have not been seen since startup
     pub(super) inactive_overlays: AStrMap<OverlayWindowState>,
 }

@@ -1,6 +1,6 @@
 {
   "HOME_SCREEN": "Inicio",
-  "MONADO_RUNTIME": "„Monado” tiempo de ejecución",
+  "MONADO_RUNTIME": "Monado tiempo de ejecución",
   "APPLICATIONS": "Aplicaciones",
   "GAMES": "Juegos",
   "SETTINGS": "Ajustes",
@@ -11,21 +11,65 @@
   "APP_SETTINGS": {
     "HIDE_USERNAME": "Ocultar nombre de usuario",
     "OPAQUE_BACKGROUND": "Fondo opaco",
-    "RUN_IN_XWAYLAND_MODE_BY_DEFAULT": "Ejecutar en modo XWayland por defecto",
-    "WLX_OVERLAY_S_SETTINGS": "Configuración de WlxOverlay-S",
-    "HEADSET_SETTINGS": "Configuración del casco",
-    "BRIGHTNESS": "Brillo",
-    "WLX": {
-      "NOTIFICATIONS_ENABLED": "Notificaciones activadas",
-      "NOTIFICATIONS_SOUND_ENABLED": "Sonido de notificaciones activado",
-      "KEYBOARD_SOUND_ENABLED": "Sonido del teclado activado",
-      "BLOCK_GAME_INPUT": "Bloquear entrada del juego",
-      "SPACE_DRAG_MULTIPLIER": "Multiplicador de movimiento por arrastre",
-      "SPACE_DRAG_ROTATION_ENABLED": "Habilitar rotación en space-drag",
-      "SHOW_SKYBOX": "Mostrar cielo",
-      "ENABLE_PASSTHROUGH": "Habilitar Passthrough"
-    },
-    "RESTART_SOFTWARE": "Reiniciar software"
+    "WLX": {},
+    "LOOK_AND_FEEL": "Apariencia y estilo",
+    "HIDE_GRAB_HELP": "Ocultar ayuda para agarrar",
+    "ANIMATION_SPEED": "Velocidad de animación de la IU",
+    "ROUND_MULTIPLIER": "Redondeo de bordes de la IU",
+    "USE_SKYBOX": "Activar skybox",
+    "USE_PASSTHROUGH": "Activar passthrough",
+    "CLOCK_12H": "Reloj de 12 horas",
+    "FEATURES": "Funciones",
+    "NOTIFICATIONS_ENABLED": "Habilitar notificaciones",
+    "NOTIFICATIONS_SOUND_ENABLED": "Sonidos de notificación",
+    "KEYBOARD_SOUND_ENABLED": "Sonidos del teclado",
+    "SPACE_DRAG_MULTIPLIER": "Multiplicador de arrastre espacial",
+    "SPACE_DRAG_UNLOCKED": "Permitir arrastre del espacio en todos los ejes",
+    "SPACE_ROTATE_UNLOCKED": "Permitir rotación espacial en todos los ejes",
+    "BLOCK_GAME_INPUT": "Bloquear entrada del juego",
+    "BLOCK_GAME_INPUT_IGNORE_WATCH": "Ignorar watch al bloquear la entrada",
+    "CONTROLS": "Controles",
+    "FOCUS_FOLLOWS_MOUSE_MODE": "El movimiento del ratón en el disparador",
+    "LEFT_HANDED_MOUSE": "Ratón para zurdos",
+    "ALLOW_SLIDING": "Interacción con el stick durante el agarre",
+    "INVERT_SCROLL_DIRECTION_X": "Invertir dirección de desplazamiento horizontal",
+    "INVERT_SCROLL_DIRECTION_Y": "Invertir la dirección del desplazamiento vertical",
+    "SCROLL_SPEED": "Velocidad de desplazamiento",
+    "LONG_PRESS_DURATION": "Duración de la pulsación larga",
+    "POINTER_LERP_FACTOR": "Suavizado del puntero",
+    "XR_CLICK_SENSITIVITY": "Sensibilidad del clic XR",
+    "XR_CLICK_SENSITIVITY_RELEASE": "Sensibilidad de liberación de OpenXR",
+    "CLICK_FREEZE_TIME_MS": "Tiempo de congelación al hacer clic (ms)",
+    "MISC": "Miscelánea",
+    "XWAYLAND_BY_DEFAULT": "Ejecutar aplicaciones en modo de compatibilidad por defecto",
+    "UPRIGHT_SCREEN_FIX": "Corrección de pantalla vertical",
+    "DOUBLE_CURSOR_FIX": "Solución de doble cursor",
+    "SCREEN_RENDER_DOWN": "Renderizar pantalla a menor resolución",
+    "UPRIGHT_SCREEN_FIX_HELP": "Corrige pantallas en posición vertical en algunos escritorios",
+    "DOUBLE_CURSOR_FIX_HELP": "Habilita esto si ves 2 cursores",
+    "XR_CLICK_SENSITIVITY_HELP": "Sensibilidad del gatillo analógico",
+    "XR_CLICK_SENSITIVITY_RELEASE_HELP": "Debe ser inferior a 'click'",
+    "CLICK_FREEZE_TIME_MS_HELP": "Ayuda con la precisión de los dobles clics",
+    "LEFT_HANDED_MOUSE_HELP": "Utilice esto si los botones del ratón están intercambiados",
+    "BLOCK_GAME_INPUT_HELP": "Bloquea toda la entrada cuando se pasa el cursor sobre un overlay",
+    "BLOCK_GAME_INPUT_IGNORE_WATCH_HELP": "No bloquear la entrada cuando el cursor está sobre la ventana",
+    "USE_SKYBOX_HELP": "Mostrar una skybox si no hay una aplicación de escena o passthrough",
+    "USE_PASSTHROUGH_HELP": "Permitir passthrough si el entorno de ejecución XR lo admite",
+    "SCREEN_RENDER_DOWN_HELP": "Ayuda a reducir el aliasing en pantallas de alta resolución",
+    "SETS_ON_WATCH": "Conjuntos en el reloj",
+    "TROUBLESHOOTING": "Solución de problemas",
+    "CLEAR_SAVED_STATE": "Borrar estado guardado",
+    "CLEAR_PIPEWIRE_TOKENS": "Limpiar tokens de PipeWire",
+    "DELETE_ALL_CONFIGS": "Borrar configuración",
+    "RESTART_SOFTWARE": "Reiniciar software",
+    "CLEAR_SAVED_STATE_HELP": "Restablecer sets y posiciones de superposición",
+    "CLEAR_PIPEWIRE_TOKENS_HELP": "Solicitar la selección de pantalla al iniciar la próxima vez",
+    "DELETE_ALL_CONFIGS_HELP": "Eliminar todos los archivos de configuración de conf.d",
+    "RESTART_SOFTWARE_HELP": "Aplicar la configuración que requiere un reinicio",
+    "CAPTURE_METHOD": "Captura de pantalla de Wayland",
+    "CAPTURE_METHOD_HELP": "Intente cambiar esta opción si\nexperimenta pantallas negras o con fallos",
+    "KEYBOARD_MIDDLE_CLICK": "Clic del botón central del teclado",
+    "KEYBOARD_MIDDLE_CLICK_HELP": "Modificador para usar al escribir\ncon láser púrpura"
   },
   "HELLO": "¡Hola!",
   "AUDIO": {
@@ -40,10 +84,61 @@
     "NO_VR_MICROPHONE_SWITCH_MANUALLY": "No se encontró micrófono VR. Actívelo manualmente.",
     "FAILED_TO_SWITCH_MICROPHONE": "No se pudo cambiar el micrófono",
     "MICROPHONE_SET_SUCCESSFULLY": "Micrófono configurado correctamente",
-    "SPEAKERS_SET_SUCCESSFULLY": "Altavoces configurados correctamente",
-    "DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED": "Dispositivo encontrado e inicializado, pero no cambiado"
+    "SPEAKERS_SET_SUCCESSFULLY": "Altavoces configurados correctamente"
   },
   "ACTIONS": {
     "RECENTER_PLAYSPACE": "Re-centrar espacio de juego"
-  }
+  },
+  "LIST_OF_PROCESSES": "Lista de procesos",
+  "POPUP_ADD_DISPLAY": {
+    "RESOLUTION": "Resolución"
+  },
+  "WIDTH": "Ancho",
+  "HEIGHT": "Altura",
+  "HIDE": "Ocultar",
+  "REMOVE": "Eliminar",
+  "SHOW": "Mostrar",
+  "PROCESS_LIST": {
+    "NO_PROCESSES_FOUND": "No se encontraron procesos",
+    "LOCATED_ON": "en",
+    "TERMINATE_PROCESS_NAMED_X": "Terminar proceso \"{PROCESS_NAME}\""
+  },
+  "FAILED_TO_LAUNCH_APPLICATION": "No se pudo iniciar la aplicación:",
+  "NO_WINDOWS_FOUND": "No se encontraron ventanas",
+  "WINDOW_OPTIONS": "Opciones de ventana",
+  "APPLICATION_STARTED": "Aplicación iniciada",
+  "LIST_OF_WINDOWS": "Lista de ventanas",
+  "CLOSE_WINDOW": "Cerrar ventana",
+  "GAME_LIST": {
+    "NO_GAMES_FOUND": "No se encontraron juegos"
+  },
+  "TERMINATE_PROCESS": "Finalizar proceso",
+  "GAME_LAUNCHED": "Juego lanzado",
+  "APP_LAUNCHER": {
+    "MODE": {
+      "NATIVE": "Modo nativo",
+      "CAGE": "Modo de compatibilidad (Cage)"
+    },
+    "RES_TITLE": "Resolución",
+    "ASPECT_TITLE": "Aspecto",
+    "ASPECT": {
+      "WIDE": "Ancho",
+      "SEMI_WIDE": "Semi-ancho",
+      "SQUARE": "Cuadrado",
+      "SEMI_TALL": "Semi alto",
+      "TALL": "Alto"
+    },
+    "POS_TITLE": "Posicionamiento",
+    "POS": {
+      "FLOATING": "Flotante",
+      "ANCHORED": "Anclado",
+      "STATIC": "Estático",
+      "FLOATING_HELP": "Se mueve independientemente, se recentra al mostrarse.",
+      "ANCHORED_HELP": "Se mantiene en su lugar con respecto al marcador central.",
+      "STATIC_HELP": "No pertenece a ningún conjunto. No se recentra."
+    },
+    "AUTOSTART": "Ejecutar automáticamente al inicio",
+    "LAUNCH": "Iniciar"
+  },
+  "DISPLAY_BRIGHTNESS": "Brillo de la pantalla"
 }

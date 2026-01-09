@@ -8,30 +8,38 @@ use wgui::{
     event::{self, EventCallback},
     i18n::Translation,
     layout::Layout,
-    parser::{CustomAttribsInfoOwned, parse_color_hex},
+    parser::{CustomAttribsInfoOwned, ParserState, parse_color_hex},
     widget::{EventResult, label::WidgetLabel},
 };
 
-use crate::state::AppState;
+use crate::{
+    gui::panel::{log_invalid_attrib, log_missing_attrib},
+    state::AppState,
+};
 
 #[allow(clippy::too_many_lines)]
 pub(super) fn setup_custom_label<S: 'static>(
     layout: &mut Layout,
+    parser_state: &ParserState,
     attribs: &CustomAttribsInfoOwned,
     app: &AppState,
 ) {
+    const TAG: &str = "label";
+
     let Some(source) = attribs.get_value("_source") else {
-        log::warn!("custom label with no source!");
+        log_missing_attrib(parser_state, TAG, "_source");
         return;
     };
 
     let callback: EventCallback<AppState, S> = match source {
         "battery" => {
-            let Some(device) = attribs
-                .get_value("_device")
-                .and_then(|s| s.parse::<usize>().ok())
-            else {
-                log::warn!("label with battery source but no device attribute!");
+            let Some(device) = attribs.get_value("_device") else {
+                log_missing_attrib(parser_state, TAG, "_device");
+                return;
+            };
+            let Ok(device) = device.parse::<usize>() else {
+                let msg = format!("expected integer, found \"{device}\"");
+                log_invalid_attrib(parser_state, TAG, "_device", &msg);
                 return;
             };
 
@@ -61,19 +69,33 @@ pub(super) fn setup_custom_label<S: 'static>(
         }
         "clock" => {
             let Some(display) = attribs.get_value("_display") else {
-                log::warn!("label with clock source but no display attribute!");
+                log_missing_attrib(parser_state, TAG, "_display");
                 return;
             };
 
+            let tz_str = attribs
+                .get_value("_timezone")
+                .and_then(|tz| {
+                    tz.parse::<usize>()
+                        .inspect_err(|_| {
+                            let msg = format!("expected integer, found \"{tz}\"");
+                            log_invalid_attrib(parser_state, TAG, "_timezone", &msg);
+                        })
+                        .ok()
+                })
+                .and_then(|tz_idx| {
+                    app.session.config.timezones.get(tz_idx).or_else(|| {
+                        let msg = format!("timezone index \"{tz_idx}\" is out of range");
+                        log_invalid_attrib(parser_state, TAG, "_timezone", &msg);
+                        None
+                    })
+                });
+
             let format = match display {
                 "name" => {
-                    let maybe_pretty_tz = attribs
-                        .get_value("_timezone")
-                        .and_then(|tz| tz.parse::<usize>().ok())
-                        .and_then(|tz_idx| app.session.config.timezones.get(tz_idx))
-                        .and_then(|tz_name| {
-                            tz_name.split('/').next_back().map(|x| x.replace('_', " "))
-                        });
+                    let maybe_pretty_tz = tz_str.and_then(|tz_name| {
+                        tz_name.split('/').next_back().map(|x| x.replace('_', " "))
+                    });
 
                     let pretty_tz = maybe_pretty_tz.as_ref().map_or("Local", |x| x.as_str());
 
@@ -90,6 +112,7 @@ pub(super) fn setup_custom_label<S: 'static>(
                 }
                 "date" => "%x",
                 "dow" => "%A",
+                "dow_short" => "%a",
                 "time" => {
                     if app.session.config.clock_12h {
                         "%I:%M %p"
@@ -97,16 +120,8 @@ pub(super) fn setup_custom_label<S: 'static>(
                         "%H:%M"
                     }
                 }
-                unk => {
-                    log::warn!("Unknown display value for clock label source: {unk}");
-                    return;
-                }
+                unk => unk,
             };
-
-            let tz_str = attribs
-                .get_value("_timezone")
-                .and_then(|tz| tz.parse::<usize>().ok())
-                .and_then(|tz_idx| app.session.config.timezones.get(tz_idx));
 
             let state = ClockLabelState {
                 timezone: tz_str.and_then(|tz| {
@@ -140,7 +155,7 @@ pub(super) fn setup_custom_label<S: 'static>(
             Ok(EventResult::Pass)
         }),
         unk => {
-            log::warn!("Unknown source value for label: {unk}");
+            log_invalid_attrib(parser_state, TAG, "_source", unk);
             return;
         }
     };
@@ -178,7 +193,9 @@ fn battery_on_tick(
         && let Some(soc) = device.soc
     {
         let soc = (soc * 100.).min(99.) as u32;
-        let text = soc.to_string();
+        let num_devices = app.input_state.devices.len();
+        let suffix = if num_devices > 3 { "" } else { "%" };
+        let text = format!("{soc}{suffix}");
         let color = if device.charging {
             state.charging_color
         } else if soc < state.low_threshold {

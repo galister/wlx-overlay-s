@@ -264,6 +264,10 @@ _Translated by key_
 
 _Tooltip text on hover, translated by key_
 
+`tooltip_str`: **string**
+
+_Tooltip text on hover, raw text (not translated)_
+
 `tooltip_side`: "top" | "bottom" | "left" | "right" (default: top)
 
 `sticky`: "1" | "0" (default: "0")
@@ -322,7 +326,45 @@ _Translated by key_
 
 `box_size`: **float** (default: 24)
 
+`value`: **string**
+
+_optional value that will be sent with internal events_
+
 `checked`: **int** (default: 0)
+
+---
+
+## Radiobox component
+
+### `<RadioBox>`
+
+### A radio-box with label.
+
+#### Parameters
+
+`text`: **string**
+
+_Simple text_
+
+`translation`: **string**
+
+_Translated by key_
+
+`box_size`: **float** (default: 24)
+
+`value`: **string**
+
+_optional value that will be set as the RadioGroup's value_
+
+`checked`: **int** (default: 0)
+
+---
+
+## RadioGroup component
+
+### `<RadioGroup>`
+
+### A radio group. Place `<RadioBox>` components inside this.
 
 ---
 

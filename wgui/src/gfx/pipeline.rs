@@ -266,6 +266,7 @@ where
 	pub fn create_pass(
 		self: &Arc<Self>,
 		dimensions: [f32; 2],
+		offset: [f32; 2],
 		vertex_buffer: Subbuffer<[V]>,
 		vertices: Range<u32>,
 		instances: Range<u32>,
@@ -275,6 +276,7 @@ where
 		WGfxPass::new(
 			&self.clone(),
 			dimensions,
+			offset,
 			vertex_buffer,
 			vertices,
 			instances,

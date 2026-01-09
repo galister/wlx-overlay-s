@@ -68,7 +68,7 @@ pub struct CardProperties {
 	pub device_name: String, // alsa_card.pci-0000_0c_00.4
 
 	#[serde(rename = "device.nick")]
-	pub device_nick: String, // HD-Audio Generic
+	pub device_nick: Option<String>, // HD-Audio Generic
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -296,7 +296,12 @@ pub fn list_cards() -> anyhow::Result<Vec<Card>> {
 	let mut cards: Vec<Card> = serde_json::from_str(json_str)?;
 
 	// exclude card which has "Loopback" in name
-	cards.retain(|card| card.properties.device_nick != "Loopback");
+	cards.retain(|card| {
+		if let Some(nick) = &card.properties.device_nick {
+			return nick != "Loopback";
+		};
+		true
+	});
 
 	Ok(cards)
 }

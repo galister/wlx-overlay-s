@@ -1,0 +1,19 @@
+<layout>
+  <elements>
+    <div flex_direction="row" gap="16" align_items="center">
+      <div id="cover_art_parent" />
+      <div flex_direction="column" gap="16">
+        <label id="label_title" weight="bold" size="32" />
+        <div flex_direction="row" gap="8">
+          <label text="by" />
+          <label weight="bold" id="label_author" text="Unknown" />
+        </div>
+        <label id="label_description" wrap="1" text="No description available" />
+        <Button id="btn_launch" align_self="baseline" color="#44ce22FF" padding_top="4" padding_bottom="4" round="8" padding_right="12" min_width="200" min_height="40">
+          <sprite src_builtin="dashboard/play.svg" width="32" height="32" />
+          <label text="Launch" weight="bold" size="17" shadow="#00000099" />
+        </Button>
+      </div>
+    </div>
+  </elements>
+</layout>

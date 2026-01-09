@@ -5,45 +5,55 @@ use taffy::{
 
 use crate::{
 	drawing,
-	parser::{
-		AttribPair, is_percent, parse_color_hex, parse_f32, parse_percent, parse_size_unit, parse_val,
-		print_invalid_attrib, print_invalid_value,
-	},
+	parser::{AttribPair, ParserContext, is_percent, parse_color_hex, parse_f32},
 	renderer_vk::text::{FontWeight, HorizontalAlign, TextStyle},
 	widget::util::WLength,
 };
 
-pub fn parse_round(value: &str, round: &mut WLength, multiplier: f32) {
+pub fn parse_round(
+	ctx: &ParserContext<'_>,
+	tag_name: &str,
+	key: &str,
+	value: &str,
+	round: &mut WLength,
+	multiplier: f32,
+) {
 	if is_percent(value) {
-		if let Some(val) = parse_percent(value) {
+		if let Some(val) = ctx.parse_percent(tag_name, key, value) {
 			*round = WLength::Percent(val);
 		} else {
-			print_invalid_value(value);
+			ctx.print_invalid_attrib(tag_name, key, value);
 		}
 	} else if let Some(val) = parse_f32(value) {
 		*round = WLength::Units((val * multiplier).max(0.));
 	} else {
-		print_invalid_value(value);
+		ctx.print_invalid_attrib(tag_name, key, value);
 	}
 }
 
-pub fn parse_color(value: &str, color: &mut drawing::Color) {
+pub fn parse_color(ctx: &ParserContext<'_>, tag_name: &str, key: &str, value: &str, color: &mut drawing::Color) {
 	if let Some(res_color) = parse_color_hex(value) {
 		*color = res_color;
 	} else {
-		print_invalid_value(value);
+		ctx.print_invalid_attrib(tag_name, key, value);
 	}
 }
 
-pub fn parse_color_opt(value: &str, color: &mut Option<drawing::Color>) {
+pub fn parse_color_opt(
+	ctx: &ParserContext<'_>,
+	tag_name: &str,
+	key: &str,
+	value: &str,
+	color: &mut Option<drawing::Color>,
+) {
 	if let Some(res_color) = parse_color_hex(value) {
 		*color = Some(res_color);
 	} else {
-		print_invalid_value(value);
+		ctx.print_invalid_attrib(tag_name, key, value);
 	}
 }
 
-pub fn parse_text_style(attribs: &[AttribPair]) -> TextStyle {
+pub fn parse_text_style(ctx: &ParserContext<'_>, attribs: &[AttribPair], tag_name: &str) -> TextStyle {
 	let mut style = TextStyle::default();
 
 	for pair in attribs {
@@ -61,7 +71,7 @@ pub fn parse_text_style(attribs: &[AttribPair]) -> TextStyle {
 				"justified" => style.align = Some(HorizontalAlign::Justified),
 				"end" => style.align = Some(HorizontalAlign::End),
 				_ => {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 				}
 			},
 			"weight" => match value {
@@ -69,14 +79,14 @@ pub fn parse_text_style(attribs: &[AttribPair]) -> TextStyle {
 				"normal" => style.weight = Some(FontWeight::Normal),
 				"bold" => style.weight = Some(FontWeight::Bold),
 				_ => {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 				}
 			},
 			"size" => {
 				if let Ok(size) = value.parse::<f32>() {
 					style.size = Some(size);
 				} else {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 				}
 			}
 			"shadow" => {
@@ -88,21 +98,21 @@ pub fn parse_text_style(attribs: &[AttribPair]) -> TextStyle {
 				if let Ok(x) = value.parse::<f32>() {
 					style.shadow.get_or_insert_default().x = x;
 				} else {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 				}
 			}
 			"shadow_y" => {
 				if let Ok(y) = value.parse::<f32>() {
 					style.shadow.get_or_insert_default().y = y;
 				} else {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 				}
 			}
 			"wrap" => {
 				if let Ok(y) = value.parse::<i32>() {
 					style.wrap = y == 1;
 				} else {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 				}
 			}
 			_ => {}
@@ -114,7 +124,7 @@ pub fn parse_text_style(attribs: &[AttribPair]) -> TextStyle {
 
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::cognitive_complexity)]
-pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
+pub fn parse_style(ctx: &ParserContext<'_>, attribs: &[AttribPair], tag_name: &str) -> taffy::Style {
 	let mut style = taffy::Style::default();
 
 	for pair in attribs {
@@ -126,51 +136,51 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 				"grid" => style.display = Display::Grid,
 				"none" => style.display = Display::None,
 				_ => {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 				}
 			},
 			"margin_left" => {
-				if let Some(dim) = parse_size_unit(value) {
+				if let Some(dim) = ctx.parse_size_unit(tag_name, key, value) {
 					style.margin.left = dim;
 				}
 			}
 			"margin_right" => {
-				if let Some(dim) = parse_size_unit(value) {
+				if let Some(dim) = ctx.parse_size_unit(tag_name, key, value) {
 					style.margin.right = dim;
 				}
 			}
 			"margin_top" => {
-				if let Some(dim) = parse_size_unit(value) {
+				if let Some(dim) = ctx.parse_size_unit(tag_name, key, value) {
 					style.margin.top = dim;
 				}
 			}
 			"margin_bottom" => {
-				if let Some(dim) = parse_size_unit(value) {
+				if let Some(dim) = ctx.parse_size_unit(tag_name, key, value) {
 					style.margin.bottom = dim;
 				}
 			}
 			"padding_left" => {
-				if let Some(dim) = parse_size_unit(value) {
+				if let Some(dim) = ctx.parse_size_unit(tag_name, key, value) {
 					style.padding.left = dim;
 				}
 			}
 			"padding_right" => {
-				if let Some(dim) = parse_size_unit(value) {
+				if let Some(dim) = ctx.parse_size_unit(tag_name, key, value) {
 					style.padding.right = dim;
 				}
 			}
 			"padding_top" => {
-				if let Some(dim) = parse_size_unit(value) {
+				if let Some(dim) = ctx.parse_size_unit(tag_name, key, value) {
 					style.padding.top = dim;
 				}
 			}
 			"padding_bottom" => {
-				if let Some(dim) = parse_size_unit(value) {
+				if let Some(dim) = ctx.parse_size_unit(tag_name, key, value) {
 					style.padding.bottom = dim;
 				}
 			}
 			"margin" => {
-				if let Some(dim) = parse_size_unit(value) {
+				if let Some(dim) = ctx.parse_size_unit(tag_name, key, value) {
 					style.margin.left = dim;
 					style.margin.right = dim;
 					style.margin.top = dim;
@@ -178,7 +188,7 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 				}
 			}
 			"padding" => {
-				if let Some(dim) = parse_size_unit(value) {
+				if let Some(dim) = ctx.parse_size_unit(tag_name, key, value) {
 					style.padding.left = dim;
 					style.padding.right = dim;
 					style.padding.top = dim;
@@ -203,7 +213,7 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 					style.overflow.y = Overflow::Scroll;
 				}
 				_ => {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 				}
 			},
 			"overflow_x" => match value {
@@ -212,7 +222,7 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 				"clip" => style.overflow.x = Overflow::Clip,
 				"scroll" => style.overflow.x = Overflow::Scroll,
 				_ => {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 				}
 			},
 			"overflow_y" => match value {
@@ -221,56 +231,56 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 				"clip" => style.overflow.y = Overflow::Clip,
 				"scroll" => style.overflow.y = Overflow::Scroll,
 				_ => {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 				}
 			},
 			"min_width" => {
-				if let Some(dim) = parse_size_unit(value) {
+				if let Some(dim) = ctx.parse_size_unit(tag_name, key, value) {
 					style.min_size.width = dim;
 				}
 			}
 			"min_height" => {
-				if let Some(dim) = parse_size_unit(value) {
+				if let Some(dim) = ctx.parse_size_unit(tag_name, key, value) {
 					style.min_size.height = dim;
 				}
 			}
 			"max_width" => {
-				if let Some(dim) = parse_size_unit(value) {
+				if let Some(dim) = ctx.parse_size_unit(tag_name, key, value) {
 					style.max_size.width = dim;
 				}
 			}
 			"max_height" => {
-				if let Some(dim) = parse_size_unit(value) {
+				if let Some(dim) = ctx.parse_size_unit(tag_name, key, value) {
 					style.max_size.height = dim;
 				}
 			}
 			"width" => {
-				if let Some(dim) = parse_size_unit(value) {
+				if let Some(dim) = ctx.parse_size_unit(tag_name, key, value) {
 					style.size.width = dim;
 				}
 			}
 			"height" => {
-				if let Some(dim) = parse_size_unit(value) {
+				if let Some(dim) = ctx.parse_size_unit(tag_name, key, value) {
 					style.size.height = dim;
 				}
 			}
 			"gap" => {
-				if let Some(val) = parse_size_unit(value) {
+				if let Some(val) = ctx.parse_size_unit(tag_name, key, value) {
 					style.gap = val;
 				}
 			}
 			"flex_basis" => {
-				if let Some(val) = parse_size_unit(value) {
+				if let Some(val) = ctx.parse_size_unit(tag_name, key, value) {
 					style.flex_basis = val;
 				}
 			}
 			"flex_grow" => {
-				if let Some(val) = parse_val(value) {
+				if let Some(val) = ctx.parse_val(tag_name, key, value) {
 					style.flex_grow = val;
 				}
 			}
 			"flex_shrink" => {
-				if let Some(val) = parse_val(value) {
+				if let Some(val) = ctx.parse_val(tag_name, key, value) {
 					style.flex_shrink = val;
 				}
 			}
@@ -278,14 +288,14 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 				"absolute" => style.position = taffy::Position::Absolute,
 				"relative" => style.position = taffy::Position::Relative,
 				_ => {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 				}
 			},
 			"box_sizing" => match value {
 				"border_box" => style.box_sizing = BoxSizing::BorderBox,
 				"content_box" => style.box_sizing = BoxSizing::ContentBox,
 				_ => {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 				}
 			},
 			"align_self" => match value {
@@ -297,7 +307,7 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 				"start" => style.align_self = Some(AlignSelf::Start),
 				"stretch" => style.align_self = Some(AlignSelf::Stretch),
 				_ => {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 				}
 			},
 			"justify_self" => match value {
@@ -308,7 +318,7 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 				"start" => style.justify_self = Some(JustifySelf::Start),
 				"stretch" => style.justify_self = Some(JustifySelf::Stretch),
 				_ => {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 				}
 			},
 			"align_items" => match value {
@@ -320,7 +330,7 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 				"start" => style.align_items = Some(AlignItems::Start),
 				"stretch" => style.align_items = Some(AlignItems::Stretch),
 				_ => {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 				}
 			},
 			"align_content" => match value {
@@ -334,7 +344,7 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 				"start" => style.align_content = Some(AlignContent::Start),
 				"stretch" => style.align_content = Some(AlignContent::Stretch),
 				_ => {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 				}
 			},
 			"justify_content" => match value {
@@ -348,7 +358,7 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 				"start" => style.justify_content = Some(JustifyContent::Start),
 				"stretch" => style.justify_content = Some(JustifyContent::Stretch),
 				_ => {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 				}
 			},
 			"flex_wrap" => match value {
@@ -363,7 +373,7 @@ pub fn parse_style(attribs: &[AttribPair]) -> taffy::Style {
 				"row_reverse" => style.flex_direction = FlexDirection::RowReverse,
 				"row" => style.flex_direction = FlexDirection::Row,
 				_ => {
-					print_invalid_attrib(key, value);
+					ctx.print_invalid_attrib(tag_name, key, value);
 				}
 			},
 			_ => {}

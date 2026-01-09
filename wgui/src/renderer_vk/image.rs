@@ -14,10 +14,10 @@ use vulkano::{
 use crate::{
 	drawing::{Boundary, ImagePrimitive},
 	gfx::{
+		BLEND_ALPHA, WGfx,
 		cmd::GfxCommandBuffer,
 		pass::WGfxPass,
 		pipeline::{WGfxPipeline, WPipelineCreateInfo},
-		WGfx, BLEND_ALPHA,
 	},
 	renderer_vk::{
 		model_buffer::ModelBuffer,
@@ -200,6 +200,7 @@ impl ImageRenderer {
 
 					let pass = self.pipeline.inner.create_pass(
 						[res[0] as _, res[1] as _],
+						[0.0, 0.0],
 						vert_buffer.clone(),
 						0..4,
 						0..1,

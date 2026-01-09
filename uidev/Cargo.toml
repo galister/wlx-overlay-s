@@ -15,3 +15,4 @@ winit = "0.30.12"
 vulkano = { workspace = true }
 vulkano-shaders = { workspace = true }
 dash-frontend = { path = "../dash-frontend/" }
+wlx-common = { path = "../wlx-common" }

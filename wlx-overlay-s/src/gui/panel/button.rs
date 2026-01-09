@@ -1,5 +1,6 @@
 use std::{
     cell::RefCell,
+    collections::HashMap,
     process::{Child, Command, Stdio},
     rc::Rc,
     str::FromStr,
@@ -10,25 +11,33 @@ use std::{
 use anyhow::Context;
 use wgui::{
     components::button::ComponentButton,
-    event::{CallbackData, CallbackMetadata, EventCallback, EventListenerKind, MouseButtonIndex},
+    event::{
+        CallbackData, CallbackMetadata, EventCallback, EventListenerKind, MouseButtonIndex,
+        StyleSetRequest,
+    },
     layout::Layout,
-    parser::CustomAttribsInfoOwned,
+    log::LogErr,
+    parser::{self, AttribPair, CustomAttribsInfoOwned, Fetchable, ParserState},
+    taffy,
     widget::EventResult,
+    windowing::context_menu::{Blueprint, ContextMenu, OpenParams},
 };
 use wlx_common::overlays::ToastTopic;
 
 use crate::{
-    RUNNING,
-    backend::task::{OverlayTask, PlayspaceTask, TaskType},
-    overlays::toast::Toast,
+    RESTART, RUNNING,
+    backend::{
+        task::{OverlayTask, PlayspaceTask, TaskType, ToggleMode},
+        wayvr::process::KillSignal,
+    },
+    gui::panel::{log_cmd_invalid_arg, log_cmd_missing_arg},
+    overlays::{custom::create_custom, toast::Toast, wayvr::WvrCommand},
     state::AppState,
     subsystem::hid::VirtualKey,
-    windowing::OverlaySelector,
+    windowing::{OverlaySelector, backend::OverlayEventData, window::OverlayCategory},
 };
 
-#[cfg(feature = "wayvr")]
-use crate::backend::wayvr::WayVRAction;
-
+#[allow(clippy::type_complexity)]
 pub const BUTTON_EVENTS: [(
     &str,
     EventListenerKind,
@@ -133,31 +142,31 @@ pub const BUTTON_EVENTS: [(
     ),
 ];
 
-fn button_any(_: &mut CallbackData) -> bool {
+const fn button_any(_: &mut CallbackData) -> bool {
     true
 }
 
-fn button_left(data: &mut CallbackData) -> bool {
+const fn button_left(data: &mut CallbackData) -> bool {
     if let CallbackMetadata::MouseButton(b) = data.metadata
-        && let MouseButtonIndex::Left = b.index
+        && matches!(b.index, MouseButtonIndex::Left)
     {
         true
     } else {
         false
     }
 }
-fn button_right(data: &mut CallbackData) -> bool {
+const fn button_right(data: &mut CallbackData) -> bool {
     if let CallbackMetadata::MouseButton(b) = data.metadata
-        && let MouseButtonIndex::Right = b.index
+        && matches!(b.index, MouseButtonIndex::Right)
     {
         true
     } else {
         false
     }
 }
-fn button_middle(data: &mut CallbackData) -> bool {
+const fn button_middle(data: &mut CallbackData) -> bool {
     if let CallbackMetadata::MouseButton(b) = data.metadata
-        && let MouseButtonIndex::Middle = b.index
+        && matches!(b.index, MouseButtonIndex::Middle)
     {
         true
     } else {
@@ -165,7 +174,7 @@ fn button_middle(data: &mut CallbackData) -> bool {
     }
 }
 
-fn ignore_duration(_btn: &ComponentButton, _app: &AppState) -> bool {
+const fn ignore_duration(_btn: &ComponentButton, _app: &AppState) -> bool {
     true
 }
 fn long_duration(btn: &ComponentButton, app: &AppState) -> bool {
@@ -175,12 +184,17 @@ fn short_duration(btn: &ComponentButton, app: &AppState) -> bool {
     btn.get_time_since_last_pressed().as_secs_f32() < app.session.config.long_press_duration
 }
 
+#[allow(clippy::too_many_lines)]
 pub(super) fn setup_custom_button<S: 'static>(
     layout: &mut Layout,
+    parser_state: &ParserState,
     attribs: &CustomAttribsInfoOwned,
-    _app: &AppState,
+    context_menu: &Rc<RefCell<ContextMenu>>,
+    on_custom_attribs: &parser::OnCustomAttribsFunc,
     button: Rc<ComponentButton>,
 ) {
+    const TAG: &str = "Button";
+
     for (name, kind, test_button, test_duration) in &BUTTON_EVENTS {
         let Some(action) = attribs.get_value(name) else {
             continue;
@@ -194,20 +208,93 @@ pub(super) fn setup_custom_button<S: 'static>(
         let button = button.clone();
 
         let callback: EventCallback<AppState, S> = match command {
-            #[cfg(feature = "wayvr")]
+            "::ContextMenuOpen" => {
+                let Some(template_name) = args.next() else {
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
+                    return;
+                };
+
+                // pass attribs with key `_context_{name}` to the context_menu template
+                let mut template_params = HashMap::new();
+                for AttribPair { attrib, value } in &attribs.pairs {
+                    const PREFIX: &'static str = "_context_";
+                    if attrib.starts_with(PREFIX) {
+                        template_params.insert(attrib[PREFIX.len()..].into(), value.clone());
+                    }
+                }
+
+                let template_name: Rc<str> = template_name.into();
+                let context_menu = context_menu.clone();
+                let on_custom_attribs = on_custom_attribs.clone();
+
+                Box::new({
+                    move |_common, data, _app, _| {
+                        context_menu.borrow_mut().open(OpenParams {
+                            on_custom_attribs: Some(on_custom_attribs.clone()),
+                            blueprint: Blueprint::Template {
+                                template_name: template_name.clone(),
+                                template_params: template_params.clone(),
+                            },
+                            position: data.metadata.get_mouse_pos_absolute().unwrap(), //want panic
+                        });
+                        Ok(EventResult::Consumed)
+                    }
+                })
+            }
+            "::ContextMenuClose" => {
+                let context_menu = context_menu.clone();
+
+                Box::new(move |_common, _data, _app, _| {
+                    context_menu.borrow_mut().close();
+
+                    Ok(EventResult::Consumed)
+                })
+            }
+            "::ElementSetDisplay" => {
+                let (Some(id), Some(value)) = (args.next(), args.next()) else {
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
+                    return;
+                };
+
+                let Ok(widget_id) = parser_state.data.get_widget_id(id) else {
+                    let msg = format!("no element with ID \"{id}\"");
+                    log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
+                    return;
+                };
+
+                let display = match value {
+                    "none" => taffy::Display::None,
+                    "flex" => taffy::Display::Flex,
+                    "block" => taffy::Display::Block,
+                    "grid" => taffy::Display::Grid,
+                    _ => {
+                        let msg = format!("unexpected \"{value}\"");
+                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
+                        return;
+                    }
+                };
+
+                Box::new(move |common, _data, _app, _| {
+                    common
+                        .alterables
+                        .set_style(widget_id, StyleSetRequest::Display(display));
+                    Ok(EventResult::Consumed)
+                })
+            }
             "::DashToggle" => Box::new(move |_common, data, app, _| {
                 if !test_button(data) || !test_duration(&button, app) {
                     return Ok(EventResult::Pass);
                 }
 
                 app.tasks
-                    .enqueue(TaskType::WayVR(WayVRAction::ToggleDashboard));
+                    .enqueue(TaskType::Overlay(OverlayTask::ToggleDashboard));
                 Ok(EventResult::Consumed)
             }),
             "::SetToggle" => {
                 let arg = args.next().unwrap_or_default();
                 let Ok(set_idx) = arg.parse() else {
-                    log::error!("{command} has invalid argument: \"{arg}\"");
+                    let msg = format!("expected integer, found \"{arg}\"");
+                    log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
                     return;
                 };
                 Box::new(move |_common, data, app, _| {
@@ -220,9 +307,107 @@ pub(super) fn setup_custom_button<S: 'static>(
                     Ok(EventResult::Consumed)
                 })
             }
+            "::SetSwitch" => {
+                let arg = args.next().unwrap_or_default();
+                let Ok(set_idx) = arg.parse::<i32>() else {
+                    let msg = format!("expected integer, found \"{arg}\"");
+                    log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
+                    return;
+                };
+                let maybe_set = if set_idx < 0 {
+                    None
+                } else {
+                    Some(set_idx as usize)
+                };
+                Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    app.tasks
+                        .enqueue(TaskType::Overlay(OverlayTask::SwitchSet(maybe_set)));
+                    Ok(EventResult::Consumed)
+                })
+            }
+            "::OverlayReset" => {
+                let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
+                if arg.len() < 1 {
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
+                    return;
+                };
+
+                Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    app.tasks
+                        .enqueue(TaskType::Overlay(OverlayTask::ResetOverlay(
+                            OverlaySelector::Name(arg.clone()),
+                        )));
+                    Ok(EventResult::Consumed)
+                })
+            }
             "::OverlayToggle" => {
-                let Some(arg): Option<Arc<str>> = args.next().map(Into::into) else {
-                    log::error!("{command} has missing arguments");
+                let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
+                if arg.len() < 1 {
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
+                    return;
+                };
+
+                Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    app.tasks
+                        .enqueue(TaskType::Overlay(OverlayTask::ToggleOverlay(
+                            OverlaySelector::Name(arg.clone()),
+                            ToggleMode::Toggle,
+                        )));
+                    Ok(EventResult::Consumed)
+                })
+            }
+            "::OverlayDrop" => {
+                let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
+                if arg.len() < 1 {
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
+                    return;
+                };
+
+                Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    app.tasks
+                        .enqueue(TaskType::Overlay(OverlayTask::Drop(OverlaySelector::Name(
+                            arg.clone(),
+                        ))));
+                    Ok(EventResult::Consumed)
+                })
+            }
+            "::DeleteSet" => Box::new(move |_common, data, app, _state| {
+                if !test_button(data) || !test_duration(&button, app) {
+                    return Ok(EventResult::Pass);
+                }
+
+                app.tasks
+                    .enqueue(TaskType::Overlay(OverlayTask::DeleteActiveSet));
+                Ok(EventResult::Consumed)
+            }),
+            "::AddSet" => Box::new(move |_common, data, app, _state| {
+                if !test_button(data) || !test_duration(&button, app) {
+                    return Ok(EventResult::Pass);
+                }
+
+                app.tasks.enqueue(TaskType::Overlay(OverlayTask::AddSet));
+                Ok(EventResult::Consumed)
+            }),
+            "::CustomOverlayReload" => {
+                let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
+                if arg.len() < 1 {
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
                     return;
                 };
 
@@ -233,12 +418,81 @@ pub(super) fn setup_custom_button<S: 'static>(
 
                     app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
                         OverlaySelector::Name(arg.clone()),
-                        Box::new(move |app, owc| {
-                            if owc.active_state.is_none() {
-                                owc.activate(app);
-                            } else {
-                                owc.deactivate();
+                        Box::new(|app, owc| {
+                            if !matches!(owc.category, OverlayCategory::Panel) {
+                                return;
                             }
+                            let name = owc.name.clone();
+                            app.tasks.enqueue(TaskType::Overlay(OverlayTask::Drop(
+                                OverlaySelector::Name(name.clone()),
+                            )));
+                            app.tasks.enqueue(TaskType::Overlay(OverlayTask::Create(
+                                OverlaySelector::Name(owc.name.clone()),
+                                Box::new(move |app| {
+                                    if let Some(mut owc) = create_custom(app, name) {
+                                        owc.show_on_spawn = true;
+                                        Some(owc)
+                                    } else {
+                                        None
+                                    }
+                                }),
+                            )));
+                        }),
+                    )));
+                    Ok(EventResult::Consumed)
+                })
+            }
+            "::WvrOverlayCloseWindow" => {
+                let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
+                if arg.len() < 1 {
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
+                    return;
+                };
+                Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
+                        OverlaySelector::Name(arg.clone()),
+                        Box::new(move |app, owc| {
+                            let _ = owc
+                                .backend
+                                .notify(app, OverlayEventData::WvrCommand(WvrCommand::CloseWindow))
+                                .log_warn("Could not close window");
+                        }),
+                    )));
+                    Ok(EventResult::Consumed)
+                })
+            }
+            "::WvrOverlayKillProcess" | "::WvrOverlayTermProcess" => {
+                let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
+                if arg.len() < 1 {
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
+                    return;
+                };
+
+                let signal = if command == "::WvrOverlayKillProcess" {
+                    KillSignal::Kill
+                } else {
+                    KillSignal::Term
+                };
+
+                Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
+                        OverlaySelector::Name(arg.clone()),
+                        Box::new(move |app, owc| {
+                            let _ = owc
+                                .backend
+                                .notify(
+                                    app,
+                                    OverlayEventData::WvrCommand(WvrCommand::KillProcess(signal)),
+                                )
+                                .log_warn("Could not kill process");
                         }),
                     )));
                     Ok(EventResult::Consumed)
@@ -325,25 +579,45 @@ pub(super) fn setup_custom_button<S: 'static>(
                 RUNNING.store(false, Ordering::Relaxed);
                 Ok(EventResult::Consumed)
             }),
+            "::Restart" => Box::new(move |_common, data, app, _| {
+                if !test_button(data) || !test_duration(&button, app) {
+                    return Ok(EventResult::Pass);
+                }
+                RUNNING.store(false, Ordering::Relaxed);
+                RESTART.store(true, Ordering::Relaxed);
+
+                Ok(EventResult::Consumed)
+            }),
             "::SendKey" => {
-                let Some(key) = args.next().and_then(|s| VirtualKey::from_str(s).ok()) else {
-                    log::error!("{command} has bad/missing arguments");
+                let Some(arg) = args.next() else {
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
                     return;
                 };
-                let Some(down) = args.next().and_then(|s| match s.to_lowercase().as_str() {
-                    "down" => Some(true),
-                    "up" => Some(false),
-                    _ => None,
-                }) else {
-                    log::error!("{command} has bad/missing arguments");
+                let Ok(key) = VirtualKey::from_str(arg) else {
+                    let msg = format!("expected VirtualKey, found \"{arg}\"");
+                    log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
                     return;
+                };
+                let Some(arg) = args.next() else {
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
+                    return;
+                };
+                let down = match arg.to_lowercase().as_str() {
+                    "down" => true,
+                    "up" => false,
+                    _ => {
+                        let msg = format!("expected \"down\" or \"up\", found \"{arg}\"");
+                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
+                        return;
+                    }
                 };
                 Box::new(move |_common, data, app, _| {
                     if !test_button(data) || !test_duration(&button, app) {
                         return Ok(EventResult::Pass);
                     }
 
-                    app.hid_provider.send_key_routed(key, down);
+                    app.hid_provider
+                        .send_key_routed(app.wvr_server.as_mut(), key, down);
                     Ok(EventResult::Consumed)
                 })
             }
@@ -381,15 +655,17 @@ pub(super) fn setup_custom_button<S: 'static>(
                 use crate::subsystem::osc::parse_osc_value;
 
                 let Some(address) = args.next().map(std::string::ToString::to_string) else {
-                    log::error!("{command} has missing arguments");
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
                     return;
                 };
 
                 let mut osc_args = vec![];
                 for arg in args {
                     let Ok(osc_arg) = parse_osc_value(arg)
-                        .inspect_err(|e| log::error!("Could not parse OSC value '{arg}': {e:?}"))
+                        .inspect_err(|e| log::warn!("Could not parse OSC value '{arg}': {e:?}"))
                     else {
+                        let msg = format!("expected OscValue, found \"{arg}\"");
+                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
                         return;
                     };
                     osc_args.push(osc_arg);
@@ -437,7 +713,7 @@ fn shell_on_action(state: &ShellButtonState) -> anyhow::Result<()> {
     let mut mut_state = state.mut_state.borrow_mut();
 
     if let Some(child) = mut_state.child.as_mut()
-        && let Ok(None) = child.try_wait()
+        && matches!(child.try_wait(), Ok(None))
     {
         log::info!("ShellExec triggered while child is still running; sending SIGUSR1");
         let _ = Command::new("kill")

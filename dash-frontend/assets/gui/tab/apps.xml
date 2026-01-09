@@ -1,40 +1,50 @@
 <layout>
   <include src="t_tab_title.xml" />
+  <include src="../theme.xml" />
 
   <template name="AppEntry">
     <Button
       id="button" width="116" max_width="140" min_height="100" flex_grow="1"
-      flex_direction="column" overflow="visible" align_items="center" justify_content="center" gap="8">
+      flex_direction="column" overflow="visible" align_items="center" justify_content="center" gap="4"
+      color="#3385FF10"
+    >
       <div>
         <sprite src="${src}" src_ext="${src_ext}" width="64" height="64" />
       </div>
       <div align_items="center" justify_content="center">
-        <label weight="bold" text="${name}" size="12" />
+        <label width="116" weight="bold" text="${name}" size="12" wrap="1" align="center" padding_left="16" padding_right="16" />
       </div>
     </Button>
+  </template>
+
+  <template name="CategoryText">
+    <rectangle width="100%" flex_direction="column" round="8" border="2" gradient="vertical" color2="#4477FF09" color="#5588FF10" border_color="#FFFFFF00">
+      <label margin="8" text="${text}" weight="bold" size="22" />
+      <rectangle height="2" color="~color_accent" margin_left="4" margin_right="4" />
+    </rectangle>
   </template>
 
   <elements>
     <TabTitle translation="APPLICATIONS" icon="dashboard/apps.svg" />
     <!-- placeholders for now -->
+    <!--
     <div gap="4" align_items="center">
       <Button width="48" height="38">
-        <sprite src="dashboard/alphabetical.svg" width="24" height="24" />
+        <sprite src_builtin="dashboard/alphabetical.svg" width="24" height="24" />
       </Button>
       <Button width="48" height="38">
-        <sprite src="dashboard/category_search.svg" width="24" height="24" />
+        <sprite src_builtin="dashboard/category_search.svg" width="24" height="24" />
       </Button>
-      <sprite src="dashboard/search.svg" width="24" height="24" />
-      <!-- placeholder editbox -->
+      <sprite src_builtin="dashboard/search.svg" width="24" height="24" />
       <rectangle flex_grow="1" height="100%" color="#1d2e51" border_color="#294774" border="2" round="4" align_items="center" padding_left="12">
         <label text="Search" color="#FFFFFF88" weight="bold" />
       </rectangle>
     </div>
+    -->
     <div
       id="app_list_parent"
       flex_direction="row"
       flex_wrap="wrap"
-      justify_content="center"
       gap="4"
       overflow_y="scroll"
     />

@@ -32,7 +32,7 @@ drm-fourcc = "2.2.0"
 idmap = { workspace = true }
 libc = "0.2.178"
 log = { workspace = true }
-pipewire = { git = "https://gitlab.freedesktop.org/galister/pipewire-rs.git", ref = "ba32202c3c391004c3bb533b58fa75a50e47ff57", features = [
+pipewire = { git = "https://gitlab.freedesktop.org/galister/pipewire-rs.git", rev = "ba32202c3c391004c3bb533b58fa75a50e47ff57", features = [
   "v0_3_33",
 ], optional = true }
 #pipewire = { version = "0.8.0", features = ["v0_3_33"], optional = true }

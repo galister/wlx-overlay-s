@@ -43,7 +43,11 @@ impl PlayspaceMover {
         })
     }
 
-    pub fn handle_task(&mut self, app: &AppState, monado: &mut Monado, task: PlayspaceTask) {
+    pub fn handle_task(&mut self, app: &mut AppState, task: PlayspaceTask) {
+        let Some(monado) = &mut app.monado else {
+            return; // monado not available
+        };
+
         match task {
             PlayspaceTask::FixFloor => {
                 self.fix_floor(&app.input_state, monado);
@@ -60,9 +64,12 @@ impl PlayspaceMover {
     pub fn update(
         &mut self,
         overlays: &mut OverlayWindowManager<OpenXrOverlayData>,
-        app: &AppState,
-        monado: &mut Monado,
+        app: &mut AppState,
     ) {
+        let Some(monado) = &mut app.monado else {
+            return; // monado not available
+        };
+
         for pointer in &app.input_state.pointers {
             if pointer.now.space_reset {
                 if !pointer.before.space_reset {

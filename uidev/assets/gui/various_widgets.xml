@@ -9,6 +9,15 @@
     align_self="baseline"
     align_items="baseline" />
 
+  <blueprint name="my_context_menu">
+    <context_menu>
+      <cell translation="TESTBED.HELLO_WORLD" action="first" _custom1="foo" />
+      <cell text="Second button" action="second" _custom1="bar" />
+      <cell text="Third button" action="third" />
+      <cell text="Foobar test test test" action="foobar" />
+    </context_menu>
+  </blueprint>
+
   <elements>
     <rectangle position="absolute" width="100%" height="100%" color="#1e3a3eee" />
     <div
@@ -25,8 +34,8 @@
       <rectangle macro="rect">
         <label id="label_current_option" text="Click any of these buttons" size="20" weight="bold" />
         <div gap="4">
-          <Button id="button_red" text="Red button" width="150" height="32" color="#FF0000" tooltip="I'm at the top" tooltip_side="top" />
-          <Button id="button_aqua" text="Aqua button" width="150" height="32" color="#00FFFF" tooltip="I'm at the bottom" tooltip_side="bottom" />
+          <Button id="button_red" text="Red button" width="150" height="32" color="#FF0000" tooltip_str="I'm at the top" tooltip_side="top" />
+          <Button id="button_aqua" text="Aqua button" width="150" height="32" color="#00FFFF" tooltip_str="I'm at the bottom" tooltip_side="bottom" />
           <Button id="button_yellow" text="Yellow button" width="150" height="32" color="#FFFF00" tooltip="TESTBED.HELLO_WORLD" tooltip_side="right" />
         </div>
         <div gap="4">
@@ -48,6 +57,11 @@
           <rectangle _my_custom="green" _mult="0.5" width="16" height="16" />
           <rectangle _my_custom="blue" _mult="0.5" width="16" height="16" />
         </div>
+      </rectangle>
+
+      <rectangle macro="rect">
+        <label text="Context menu test" />
+        <Button id="button_context_menu" text="Show context menu" />
       </rectangle>
 
       <rectangle macro="rect">

@@ -7,6 +7,7 @@ use glam::{Affine3A, Vec2, Vec3A, Vec3Swizzles};
 
 use idmap_derive::IntegerId;
 use smallvec::{SmallVec, smallvec};
+use strum::AsRefStr;
 use wlx_common::common::LeftRight;
 use wlx_common::windowing::{OverlayWindowState, Positioning};
 
@@ -37,7 +38,7 @@ pub struct TrackedDevice {
 }
 
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, IntegerId)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, IntegerId, AsRefStr)]
 pub enum TrackedDeviceRole {
     None,
     Hmd,
@@ -375,17 +376,16 @@ where
     // focus change
     if let Some(hovered_id) = hovered_id
         && hovered_id != hit.overlay
+        && let Some(old_hovered) = overlays.mut_by_id(hovered_id)
     {
-        if let Some(old_hovered) = overlays.mut_by_id(hovered_id) {
-            if old_hovered.primary_pointer.is_some_and(|i| i == idx) {
-                old_hovered.primary_pointer = None;
-            }
-            log::debug!("{} on_left (focus changed)", old_hovered.config.name);
-            old_hovered.config.backend.on_left(app, idx);
-            old_hovered.hover_pointers[idx] = false;
-            if !old_hovered.hover_pointers.iter().any(|x| *x) {
-                overlays.edit_overlay(hovered_id, false, app);
-            }
+        if old_hovered.primary_pointer.is_some_and(|i| i == idx) {
+            old_hovered.primary_pointer = None;
+        }
+        log::debug!("{} on_left (focus changed)", old_hovered.config.name);
+        old_hovered.config.backend.on_left(app, idx);
+        old_hovered.hover_pointers[idx] = false;
+        if !old_hovered.hover_pointers.iter().any(|x| *x) {
+            overlays.edit_overlay(hovered_id, false, app);
         }
     }
 
@@ -472,14 +472,14 @@ fn handle_no_hit<O>(
     overlays: &mut OverlayWindowManager<O>,
     app: &mut AppState,
 ) {
-    if let Some(hovered_id) = hovered_id {
-        if let Some(hovered) = overlays.mut_by_id(hovered_id) {
-            log::debug!("{} on_left (no hit)", hovered.config.name);
-            hovered.config.backend.on_left(app, pointer_idx);
-            hovered.hover_pointers[pointer_idx] = false;
-            if !hovered.hover_pointers.iter().any(|x| *x) {
-                overlays.edit_overlay(hovered_id, false, app);
-            }
+    if let Some(hovered_id) = hovered_id
+        && let Some(hovered) = overlays.mut_by_id(hovered_id)
+    {
+        log::debug!("{} on_left (no hit)", hovered.config.name);
+        hovered.config.backend.on_left(app, pointer_idx);
+        hovered.hover_pointers[pointer_idx] = false;
+        if !hovered.hover_pointers.iter().any(|x| *x) {
+            overlays.edit_overlay(hovered_id, false, app);
         }
     }
 
@@ -671,7 +671,7 @@ fn start_grab(
         }),
     )));
 
-    if let Some(hand) = pointer.hand().clone()
+    if let Some(hand) = pointer.hand()
         && !app.session.config.hide_grab_help
     {
         let pos = state.positioning;
@@ -708,6 +708,7 @@ fn handle_scale(transform: &mut Affine3A, scroll_y: f32) {
         .mul_scalar(0.025f32.mul_add(-scroll_y, 1.0));
 }
 
+#[allow(clippy::too_many_lines)]
 fn handle_grabbed<O>(idx: usize, overlay: &mut OverlayWindowData<O>, app: &mut AppState)
 where
     O: Default,
@@ -804,14 +805,13 @@ where
                         x => x,
                     };
                 }
-            } else if overlay.config.global {
-                if let Some(active_state) = overlay.config.active_state.as_ref() {
-                    let cur_scale = overlay.config.default_state.transform.x_axis.length();
-                    let tgt_scale = active_state.transform.x_axis.length();
-
-                    let mat = &mut overlay.config.default_state.transform.matrix3;
-                    *mat = mat.mul_scalar(tgt_scale / cur_scale);
-                }
+            } else if overlay.config.global
+                && let Some(active_state) = overlay.config.active_state.as_ref()
+            {
+                let cur_scale = overlay.config.default_state.transform.x_axis.length();
+                let tgt_scale = active_state.transform.x_axis.length();
+                let mat = &mut overlay.config.default_state.transform.matrix3;
+                *mat = mat.mul_scalar(tgt_scale / cur_scale);
             }
             overlay.config.pause_movement = false;
             if let Some(overlay_state) = overlay.config.active_state.as_mut() {

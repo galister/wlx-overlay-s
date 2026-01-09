@@ -1,4 +1,4 @@
-use std::{cell::RefCell, path::PathBuf, rc::Rc};
+use std::{path::PathBuf, rc::Rc};
 
 use chrono::Timelike;
 use glam::Vec2;
@@ -8,23 +8,24 @@ use wgui::{
 	font_config::WguiFontConfig,
 	globals::WguiGlobals,
 	i18n::Translation,
-	layout::{LayoutParams, RcLayout, WidgetID},
+	layout::{Layout, LayoutParams, LayoutUpdateParams, LayoutUpdateResult, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
+	task::Tasks,
 	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
-	windowing::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra, WguiWindowPlacement},
+	windowing::window::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra, WguiWindowPlacement},
 };
-use wlx_common::timestep::Timestep;
+use wlx_common::{audio, dash_interface::BoxDashInterface, timestep::Timestep};
 
 use crate::{
-	assets, settings,
+	assets,
 	tab::{
-		Tab, TabParams, TabType, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses,
-		settings::TabSettings,
+		apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses, settings::TabSettings,
+		Tab, TabType,
 	},
-	task::Tasks,
 	util::{
 		popup_manager::{MountPopupParams, PopupManager, PopupManagerParams},
 		toast_manager::ToastManager,
+		various::AsyncExecutor,
 	},
 	views,
 };
@@ -36,16 +37,19 @@ pub struct FrontendWidgets {
 
 pub type FrontendTasks = Tasks<FrontendTask>;
 
-pub struct Frontend {
-	pub layout: RcLayout,
+pub struct Frontend<T> {
+	pub layout: Layout,
 	globals: WguiGlobals,
 
-	pub settings: Box<dyn settings::SettingsIO>,
+	pub interface: BoxDashInterface<T>,
+
+	// async runtime executor
+	pub executor: AsyncExecutor,
 
 	#[allow(dead_code)]
 	state: ParserState,
 
-	current_tab: Option<Box<dyn Tab>>,
+	current_tab: Option<Box<dyn Tab<T>>>,
 
 	pub tasks: FrontendTasks,
 
@@ -55,16 +59,34 @@ pub struct Frontend {
 	popup_manager: PopupManager,
 	toast_manager: ToastManager,
 	timestep: Timestep,
+	sounds_to_play: Vec<SoundType>,
 
 	window_audio_settings: WguiWindow,
 	view_audio_settings: Option<views::audio_settings::View>,
 }
 
-pub struct InitParams {
-	pub settings: Box<dyn settings::SettingsIO>,
+pub struct FrontendUpdateParams<'a, T> {
+	pub data: &'a mut T,
+	pub width: f32,
+	pub height: f32,
+	pub timestep_alpha: f32,
 }
 
-pub type RcFrontend = Rc<RefCell<Frontend>>;
+pub struct FrontendUpdateResult {
+	pub layout_result: LayoutUpdateResult,
+	pub sounds_to_play: Vec<SoundType>,
+}
+
+pub struct InitParams<T> {
+	pub interface: BoxDashInterface<T>,
+	pub has_monado: bool,
+}
+
+#[derive(Clone)]
+pub enum SoundType {
+	Startup,
+	Launch,
+}
 
 #[derive(Clone)]
 pub enum FrontendTask {
@@ -77,10 +99,11 @@ pub enum FrontendTask {
 	UpdateAudioSettingsView,
 	RecenterPlayspace,
 	PushToast(Translation),
+	PlaySound(SoundType),
 }
 
-impl Frontend {
-	pub fn new(params: InitParams) -> anyhow::Result<(RcFrontend, RcLayout)> {
+impl<T: 'static> Frontend<T> {
+	pub fn new(params: InitParams<T>, data: &mut T) -> anyhow::Result<Frontend<T>> {
 		let mut assets = Box::new(assets::Asset {});
 
 		let font_binary_bold = assets.load_from_path_gzip("Quicksand-Bold.ttf.gz")?;
@@ -115,19 +138,16 @@ impl Frontend {
 
 		let toast_manager = ToastManager::new();
 
-		let rc_layout = layout.as_rc();
-
 		let tasks = FrontendTasks::new();
 		tasks.push(FrontendTask::SetTab(TabType::Home));
 
 		let id_label_time = state.get_widget_id("label_time")?;
 		let id_rect_content = state.get_widget_id("rect_content")?;
 
-		let mut timestep = Timestep::new();
-		timestep.set_tps(30.0); // 30 ticks per second
+		let timestep = Timestep::new(60.0);
 
-		let frontend = Self {
-			layout: rc_layout.clone(),
+		let mut frontend = Self {
+			layout,
 			state,
 			current_tab: None,
 			globals,
@@ -138,60 +158,101 @@ impl Frontend {
 				id_rect_content,
 			},
 			timestep,
-			settings: params.settings,
+			interface: params.interface,
 			popup_manager,
 			toast_manager,
 			window_audio_settings: WguiWindow::default(),
 			view_audio_settings: None,
+			executor: Rc::new(smol::LocalExecutor::new()),
+			sounds_to_play: Vec::new(),
 		};
 
 		// init some things first
-		frontend.update_background()?;
-		frontend.update_time()?;
+		frontend.update_background(data)?;
+		frontend.update_time(data)?;
 
-		let res = Rc::new(RefCell::new(frontend));
+		Frontend::register_widgets(&mut frontend)?;
 
-		Frontend::register_widgets(&res)?;
-
-		Ok((res, rc_layout))
+		Ok(frontend)
 	}
 
-	pub fn update(&mut self, rc_this: &RcFrontend, width: f32, height: f32, timestep_alpha: f32) -> anyhow::Result<()> {
+	fn queue_play_sound(&mut self, sound_type: SoundType) {
+		self.sounds_to_play.push(sound_type);
+	}
+
+	fn play_sound(&mut self, audio_system: &mut audio::AudioSystem, sound_type: SoundType) -> anyhow::Result<()> {
+		let mut assets = self.globals.assets_builtin();
+		let sample = audio::AudioSample::from_mp3(&assets.load_from_path(match sound_type {
+			SoundType::Startup => "sound/startup.mp3",
+			SoundType::Launch => "sound/app_start.mp3",
+		})?)?;
+		audio_system.play_sample(&sample);
+		Ok(())
+	}
+
+	pub fn update(&mut self, mut params: FrontendUpdateParams<T>) -> anyhow::Result<FrontendUpdateResult> {
 		let mut tasks = self.tasks.drain();
 
 		while let Some(task) = tasks.pop_front() {
-			self.process_task(rc_this, task)?;
+			self.process_task(&mut params, task)?;
 		}
 
-		self.tick(width, height, timestep_alpha)?;
+		if let Some(mut tab) = self.current_tab.take() {
+			tab.update(self, params.data)?;
+
+			self.current_tab = Some(tab);
+		}
+
+		// process async runtime tasks
+		while self.executor.try_tick() {}
+
+		let res = self.tick(params)?;
 		self.ticks += 1;
+
+		Ok(res)
+	}
+
+	pub fn process_update(
+		&mut self,
+		res: FrontendUpdateResult,
+		audio_system: &mut audio::AudioSystem,
+		audio_sample_player: &mut audio::SamplePlayer,
+	) -> anyhow::Result<()> {
+		for sound_type in res.sounds_to_play {
+			self.play_sound(audio_system, sound_type)?;
+		}
+
+		audio_sample_player.play_wgui_samples(audio_system, res.layout_result.sounds_to_play);
 
 		Ok(())
 	}
 
-	fn tick(&mut self, width: f32, height: f32, timestep_alpha: f32) -> anyhow::Result<()> {
+	fn tick(&mut self, params: FrontendUpdateParams<T>) -> anyhow::Result<FrontendUpdateResult> {
 		// fixme: timer events instead of this thing
 		if self.ticks.is_multiple_of(1000) {
-			self.update_time()?;
+			self.update_time(params.data)?;
 		}
 
 		{
-			let mut layout = self.layout.borrow_mut();
-
 			// always 30 times per second
 			while self.timestep.on_tick() {
-				self.toast_manager.tick(&self.globals, &mut layout)?;
+				self.toast_manager.tick(&self.globals, &mut self.layout)?;
 			}
-
-			layout.update(Vec2::new(width, height), timestep_alpha)?;
 		}
 
-		Ok(())
+		let layout_result = self.layout.update(&mut LayoutUpdateParams {
+			size: Vec2::new(params.width, params.height),
+			timestep_alpha: params.timestep_alpha,
+		})?;
+
+		Ok(FrontendUpdateResult {
+			layout_result,
+			sounds_to_play: std::mem::take(&mut self.sounds_to_play),
+		})
 	}
 
-	fn update_time(&self) -> anyhow::Result<()> {
-		let mut layout = self.layout.borrow_mut();
-		let mut c = layout.start_common();
+	fn update_time(&mut self, data: &mut T) -> anyhow::Result<()> {
+		let mut c = self.layout.start_common();
 		let mut common = c.common();
 
 		{
@@ -203,12 +264,12 @@ impl Frontend {
 			let hours = now.hour();
 			let minutes = now.minute();
 
-			let text: String = if !self.settings.get().general.am_pm_clock {
-				format!("{hours:02}:{minutes:02}")
-			} else {
+			let text: String = if self.interface.general_config(data).clock_12h {
 				let hours_ampm = (hours + 11) % 12 + 1;
 				let suffix = if hours >= 12 { "PM" } else { "AM" };
 				format!("{hours_ampm:02}:{minutes:02} {suffix}")
+			} else {
+				format!("{hours:02}:{minutes:02}")
 			};
 
 			label.set_text(&mut common, Translation::from_raw_text(&text));
@@ -218,26 +279,29 @@ impl Frontend {
 		Ok(())
 	}
 
-	fn mount_popup(&mut self, params: MountPopupParams) -> anyhow::Result<()> {
-		let mut layout = self.layout.borrow_mut();
-		self
-			.popup_manager
-			.mount_popup(self.globals.clone(), &mut layout, self.tasks.clone(), params)?;
+	fn mount_popup(&mut self, params: MountPopupParams, data: &mut T) -> anyhow::Result<()> {
+		let config = self.interface.general_config(data);
+
+		self.popup_manager.mount_popup(
+			self.globals.clone(),
+			&mut self.layout,
+			self.tasks.clone(),
+			params,
+			config,
+		)?;
 		Ok(())
 	}
 
 	fn refresh_popup_manager(&mut self) -> anyhow::Result<()> {
-		let mut layout = self.layout.borrow_mut();
-		let mut c = layout.start_common();
+		let mut c = self.layout.start_common();
 		self.popup_manager.refresh(c.common().alterables);
 		c.finish()?;
 		Ok(())
 	}
 
-	fn update_background(&self) -> anyhow::Result<()> {
-		let layout = self.layout.borrow_mut();
-
-		let Some(mut rect) = layout
+	fn update_background(&mut self, data: &mut T) -> anyhow::Result<()> {
+		let Some(mut rect) = self
+			.layout
 			.state
 			.widgets
 			.get_as::<WidgetRectangle>(self.widgets.id_rect_content)
@@ -245,10 +309,10 @@ impl Frontend {
 			anyhow::bail!("");
 		};
 
-		let (alpha1, alpha2) = if !self.settings.get().general.opaque_background {
-			(0.8666, 0.9333)
-		} else {
+		let (alpha1, alpha2) = if self.interface.general_config(data).opaque_background {
 			(1.0, 1.0)
+		} else {
+			(0.8666, 0.9333)
 		};
 
 		rect.params.color.a = alpha1;
@@ -257,47 +321,34 @@ impl Frontend {
 		Ok(())
 	}
 
-	pub fn get_layout(&self) -> &RcLayout {
-		&self.layout
-	}
-
-	fn process_task(&mut self, rc_this: &RcFrontend, task: FrontendTask) -> anyhow::Result<()> {
+	fn process_task(&mut self, params: &mut FrontendUpdateParams<T>, task: FrontendTask) -> anyhow::Result<()> {
 		match task {
-			FrontendTask::SetTab(tab_type) => self.set_tab(tab_type, rc_this)?,
-			FrontendTask::RefreshClock => self.update_time()?,
-			FrontendTask::RefreshBackground => self.update_background()?,
-			FrontendTask::MountPopup(params) => self.mount_popup(params)?,
+			FrontendTask::SetTab(tab_type) => self.set_tab(params.data, tab_type)?,
+			FrontendTask::RefreshClock => self.update_time(params.data)?,
+			FrontendTask::RefreshBackground => self.update_background(params.data)?,
+			FrontendTask::MountPopup(popup_params) => self.mount_popup(popup_params, params.data)?,
 			FrontendTask::RefreshPopupManager => self.refresh_popup_manager()?,
 			FrontendTask::ShowAudioSettings => self.action_show_audio_settings()?,
 			FrontendTask::UpdateAudioSettingsView => self.action_update_audio_settings()?,
-			FrontendTask::RecenterPlayspace => self.action_recenter_playspace()?,
+			FrontendTask::RecenterPlayspace => self.action_recenter_playspace(params.data)?,
 			FrontendTask::PushToast(content) => self.toast_manager.push(content),
+			FrontendTask::PlaySound(sound_type) => self.queue_play_sound(sound_type),
 		};
 		Ok(())
 	}
 
-	fn set_tab(&mut self, tab_type: TabType, rc_this: &RcFrontend) -> anyhow::Result<()> {
+	fn set_tab(&mut self, data: &mut T, tab_type: TabType) -> anyhow::Result<()> {
 		log::info!("Setting tab to {tab_type:?}");
-		let mut layout = self.layout.borrow_mut();
-		let widget_content = self.state.fetch_widget(&layout.state, "content")?;
-		layout.remove_children(widget_content.id);
+		let widget_content = self.state.fetch_widget(&self.layout.state, "content")?;
+		self.layout.remove_children(widget_content.id);
 
-		let tab_params = TabParams {
-			globals: &self.globals,
-			layout: &mut layout,
-			parent_id: widget_content.id,
-			frontend: rc_this,
-			//frontend_widgets: &self.widgets,
-			settings: self.settings.get_mut(),
-		};
-
-		let tab: Box<dyn Tab> = match tab_type {
-			TabType::Home => Box::new(TabHome::new(tab_params)?),
-			TabType::Apps => Box::new(TabApps::new(tab_params)?),
-			TabType::Games => Box::new(TabGames::new(tab_params)?),
-			TabType::Monado => Box::new(TabMonado::new(tab_params)?),
-			TabType::Processes => Box::new(TabProcesses::new(tab_params)?),
-			TabType::Settings => Box::new(TabSettings::new(tab_params)?),
+		let tab: Box<dyn Tab<T>> = match tab_type {
+			TabType::Home => Box::new(TabHome::new(self, widget_content.id, data)?),
+			TabType::Apps => Box::new(TabApps::new(self, widget_content.id, data)?),
+			TabType::Games => Box::new(TabGames::new(self, widget_content.id)?),
+			TabType::Monado => Box::new(TabMonado::new(self, widget_content.id)?),
+			TabType::Processes => Box::new(TabProcesses::new(self, widget_content.id)?),
+			TabType::Settings => Box::new(TabSettings::new(self, widget_content.id, data)?),
 		};
 
 		self.current_tab = Some(tab);
@@ -305,61 +356,44 @@ impl Frontend {
 		Ok(())
 	}
 
-	pub fn register_button_task(this_rc: RcFrontend, btn: &Rc<ComponentButton>, task: FrontendTask) {
-		btn.on_click({
-			Box::new(move |_common, _evt| {
-				this_rc.borrow_mut().tasks.push(task.clone());
-				Ok(())
-			})
-		});
-	}
-
-	fn register_widgets(rc_this: &RcFrontend) -> anyhow::Result<()> {
-		let this = rc_this.borrow_mut();
-
+	fn register_widgets(&mut self) -> anyhow::Result<()> {
 		// ################################
 		// SIDE BUTTONS
 		// ################################
 
 		// "Home" side button
-		Frontend::register_button_task(
-			rc_this.clone(),
-			&this.state.fetch_component_as::<ComponentButton>("btn_side_home")?,
+		self.tasks.handle_button(
+			&self.state.fetch_component_as::<ComponentButton>("btn_side_home")?,
 			FrontendTask::SetTab(TabType::Home),
 		);
 
 		// "Apps" side button
-		Frontend::register_button_task(
-			rc_this.clone(),
-			&this.state.fetch_component_as::<ComponentButton>("btn_side_apps")?,
+		self.tasks.handle_button(
+			&self.state.fetch_component_as::<ComponentButton>("btn_side_apps")?,
 			FrontendTask::SetTab(TabType::Apps),
 		);
 
 		// "Games" side button
-		Frontend::register_button_task(
-			rc_this.clone(),
-			&this.state.fetch_component_as::<ComponentButton>("btn_side_games")?,
+		self.tasks.handle_button(
+			&self.state.fetch_component_as::<ComponentButton>("btn_side_games")?,
 			FrontendTask::SetTab(TabType::Games),
 		);
 
 		// "Monado side button"
-		Frontend::register_button_task(
-			rc_this.clone(),
-			&this.state.fetch_component_as::<ComponentButton>("btn_side_monado")?,
+		self.tasks.handle_button(
+			&self.state.fetch_component_as::<ComponentButton>("btn_side_monado")?,
 			FrontendTask::SetTab(TabType::Monado),
 		);
 
 		// "Processes" side button
-		Frontend::register_button_task(
-			rc_this.clone(),
-			&this.state.fetch_component_as::<ComponentButton>("btn_side_processes")?,
+		self.tasks.handle_button(
+			&self.state.fetch_component_as::<ComponentButton>("btn_side_processes")?,
 			FrontendTask::SetTab(TabType::Processes),
 		);
 
 		// "Settings" side button
-		Frontend::register_button_task(
-			rc_this.clone(),
-			&this.state.fetch_component_as::<ComponentButton>("btn_side_settings")?,
+		self.tasks.handle_button(
+			&self.state.fetch_component_as::<ComponentButton>("btn_side_settings")?,
 			FrontendTask::SetTab(TabType::Settings),
 		);
 
@@ -368,16 +402,14 @@ impl Frontend {
 		// ################################
 
 		// "Audio" bottom bar button
-		Frontend::register_button_task(
-			rc_this.clone(),
-			&this.state.fetch_component_as::<ComponentButton>("btn_audio")?,
+		self.tasks.handle_button(
+			&self.state.fetch_component_as::<ComponentButton>("btn_audio")?,
 			FrontendTask::ShowAudioSettings,
 		);
 
 		// "Recenter playspace" bottom bar button
-		Frontend::register_button_task(
-			rc_this.clone(),
-			&this.state.fetch_component_as::<ComponentButton>("btn_recenter")?,
+		self.tasks.handle_button(
+			&self.state.fetch_component_as::<ComponentButton>("btn_recenter")?,
 			FrontendTask::RecenterPlayspace,
 		);
 
@@ -385,16 +417,15 @@ impl Frontend {
 	}
 
 	fn action_show_audio_settings(&mut self) -> anyhow::Result<()> {
-		let mut layout = self.layout.borrow_mut();
-
 		self.window_audio_settings.open(&mut WguiWindowParams {
-			globals: self.globals.clone(),
+			globals: &self.globals,
 			position: Vec2::new(64.0, 64.0),
-			layout: &mut layout,
-			title: Translation::from_translation_key("AUDIO.SETTINGS"),
+			layout: &mut self.layout,
 			extra: WguiWindowParamsExtra {
 				fixed_width: Some(400.0),
 				placement: WguiWindowPlacement::BottomLeft,
+				close_if_clicked_outside: true,
+				title: Some(Translation::from_translation_key("AUDIO.SETTINGS")),
 				..Default::default()
 			},
 		})?;
@@ -404,7 +435,7 @@ impl Frontend {
 		self.view_audio_settings = Some(views::audio_settings::View::new(views::audio_settings::Params {
 			globals: self.globals.clone(),
 			frontend_tasks: self.tasks.clone(),
-			layout: &mut layout,
+			layout: &mut self.layout,
 			parent_id: content.id,
 			on_update: {
 				let tasks = self.tasks.clone();
@@ -421,14 +452,13 @@ impl Frontend {
 			return Ok(());
 		};
 
-		let mut layout = self.layout.borrow_mut();
-		view.update(&mut layout)?;
+		view.update(&mut self.layout)?;
 
 		Ok(())
 	}
 
-	fn action_recenter_playspace(&mut self) -> anyhow::Result<()> {
-		log::info!("todo");
+	fn action_recenter_playspace(&mut self, data: &mut T) -> anyhow::Result<()> {
+		self.interface.recenter_playspace(data)?;
 		Ok(())
 	}
 }

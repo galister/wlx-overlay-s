@@ -96,6 +96,7 @@ pub fn init_window(
 			enabled_extensions: my_extensions,
 			enabled_features: DeviceFeatures {
 				dynamic_rendering: true,
+				descriptor_binding_sampled_image_update_after_bind: true,
 				..DeviceFeatures::empty()
 			},
 			queue_create_infos: queue_families
@@ -117,7 +118,7 @@ pub fn init_window(
 		device,
 		queue_gfx,
 		queue_xfer,
-		vulkano::format::Format::B8G8R8A8_UNORM,
+		vulkano::format::Format::R8G8B8A8_SRGB,
 	);
 	Ok((me, event_loop, window, surface))
 }

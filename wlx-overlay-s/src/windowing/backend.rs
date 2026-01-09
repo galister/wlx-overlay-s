@@ -1,6 +1,6 @@
 use glam::{Affine2, Affine3A, Vec2};
 use smallvec::SmallVec;
-use std::{any::Any, sync::Arc};
+use std::{any::Any, rc::Rc, sync::Arc};
 use vulkano::{command_buffer::CommandBufferUsage, format::Format, image::view::ImageView};
 use wgui::gfx::{
     WGfx,
@@ -17,6 +17,7 @@ use crate::{
         task::ModifyPanelCommand,
     },
     graphics::{ExtentExt, RenderResult},
+    overlays::wayvr::WvrCommand,
     state::AppState,
     subsystem::hid::WheelDelta,
     windowing::{OverlayID, window::OverlayCategory},
@@ -106,21 +107,26 @@ macro_rules! attrib_value {
     };
 }
 
+#[derive(Clone)]
 pub struct OverlayMeta {
     pub id: OverlayID,
     pub name: Arc<str>,
     pub category: OverlayCategory,
     pub visible: bool,
+    pub icon: Option<Arc<str>>,
 }
 
 #[allow(clippy::enum_variant_names)]
 pub enum OverlayEventData {
+    /// Notifies a newly added overlay of its ID, even before the overlay is shown.
+    IdAssigned(OverlayID),
     ActiveSetChanged(Option<usize>),
     NumSetsChanged(usize),
     EditModeChanged(bool),
-    OverlaysChanged(Vec<OverlayMeta>),
-    VisibleOverlaysChanged(Vec<OverlayID>),
+    OverlaysChanged(Rc<[OverlayMeta]>),
+    VisibleOverlaysChanged(Rc<[OverlayID]>),
     DevicesChanged,
+    SettingsChanged,
     OverlayGrabbed {
         name: Arc<str>,
         pos: Positioning,
@@ -130,6 +136,7 @@ pub enum OverlayEventData {
         element: String,
         command: ModifyPanelCommand,
     },
+    WvrCommand(WvrCommand),
 }
 
 pub trait OverlayBackend: Any {

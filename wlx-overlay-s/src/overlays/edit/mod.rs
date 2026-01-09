@@ -167,7 +167,7 @@ impl OverlayBackend for EditModeBackendWrapper {
 
                 let gui_scale = (new_size.x / 750.0).min(new_size.y / 300.0);
                 self.panel.gui_scale = (gui_scale * 4.0).round() / 4.0;
-                self.panel.update_layout()?;
+                self.panel.update_layout(app)?;
             }
 
             self.can_render_inner = true;
@@ -256,6 +256,7 @@ impl OverlayBackend for EditModeBackendWrapper {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
     let state = EditModeState {
         id: Rc::new(RefCell::new(OverlayID::null())),

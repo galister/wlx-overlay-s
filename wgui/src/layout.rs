@@ -1,6 +1,6 @@
 use std::{
 	cell::{RefCell, RefMut},
-	collections::{HashMap, HashSet, VecDeque},
+	collections::{HashMap, HashSet},
 	io::Write,
 	rc::{Rc, Weak},
 };
@@ -11,9 +11,12 @@ use crate::{
 	drawing::{self, ANSI_BOLD_CODE, ANSI_RESET_CODE, Boundary, push_scissor_stack, push_transform_stack},
 	event::{self, CallbackDataCommon, EventAlterables},
 	globals::WguiGlobals,
+	sound::WguiSoundType,
+	task::Tasks,
 	widget::{self, EventParams, EventResult, WidgetObj, WidgetState, WidgetStateFlags, div::WidgetDiv},
 };
 
+use anyhow::Context;
 use glam::{Vec2, vec2};
 use slotmap::{HopSlotMap, SecondaryMap, new_key_type};
 use taffy::{NodeId, TaffyTree, TraversePartialTree};
@@ -31,8 +34,12 @@ impl Widget {
 		Self(Rc::new(RefCell::new(widget_state)))
 	}
 
-	pub fn get_as_mut<T: 'static>(&self) -> Option<RefMut<'_, T>> {
+	pub fn get_as<T: 'static>(&self) -> Option<RefMut<'_, T>> {
 		RefMut::filter_map(self.0.borrow_mut(), |w| w.obj.get_as_mut::<T>()).ok()
+	}
+
+	pub fn cast<T: 'static>(&self) -> anyhow::Result<RefMut<'_, T>> {
+		self.get_as().context("Widget cast failed")
 	}
 
 	pub fn downgrade(&self) -> WeakWidget {
@@ -65,7 +72,7 @@ impl WidgetMap {
 	}
 
 	pub fn get_as<T: 'static>(&self, handle: WidgetID) -> Option<RefMut<'_, T>> {
-		self.0.get(handle)?.get_as_mut::<T>()
+		self.0.get(handle)?.get_as::<T>()
 	}
 
 	pub fn get(&self, handle: WidgetID) -> Option<&Widget> {
@@ -97,7 +104,7 @@ impl WidgetMap {
 			return;
 		};
 
-		if let Some(mut casted) = widget.get_as_mut::<WIDGET>() {
+		if let Some(mut casted) = widget.get_as::<WIDGET>() {
 			func(&mut casted);
 		}
 	}
@@ -114,25 +121,24 @@ pub struct ModifyLayoutStateData<'a> {
 	pub layout: &'a mut Layout,
 }
 
+pub struct LayoutUpdateParams {
+	pub size: Vec2, // logical resolution
+	pub timestep_alpha: f32,
+}
+
+pub struct LayoutUpdateResult {
+	pub sounds_to_play: Vec<WguiSoundType>,
+}
+
 pub type ModifyLayoutStateFunc = Box<dyn Fn(ModifyLayoutStateData) -> anyhow::Result<()>>;
 
 pub enum LayoutTask {
 	RemoveWidget(WidgetID),
 	ModifyLayoutState(ModifyLayoutStateFunc),
+	PlaySound(WguiSoundType),
 }
 
-#[derive(Clone)]
-pub struct LayoutTasks(pub Rc<RefCell<VecDeque<LayoutTask>>>);
-
-impl LayoutTasks {
-	fn new() -> Self {
-		Self(Rc::new(RefCell::new(VecDeque::new())))
-	}
-
-	pub fn push(&self, task: LayoutTask) {
-		self.0.borrow_mut().push_back(task);
-	}
-}
+pub type LayoutTasks = Tasks<LayoutTask>;
 
 pub struct Layout {
 	pub state: LayoutState,
@@ -141,6 +147,7 @@ pub struct Layout {
 
 	components_to_refresh_once: HashSet<Component>,
 	registered_components_to_refresh: HashMap<taffy::NodeId, Component>,
+	sounds_to_play_once: Vec<WguiSoundType>,
 
 	pub widgets_to_tick: Vec<WidgetID>,
 
@@ -162,8 +169,6 @@ pub struct Layout {
 
 	pub animations: Animations,
 }
-
-pub type RcLayout = Rc<RefCell<Layout>>;
 
 #[derive(Default)]
 pub struct LayoutParams {
@@ -226,10 +231,6 @@ impl Layout {
 		}
 	}
 
-	pub fn as_rc(self) -> RcLayout {
-		Rc::new(RefCell::new(self))
-	}
-
 	pub fn add_topmost_child(
 		&mut self,
 		widget: WidgetState,
@@ -264,6 +265,15 @@ impl Layout {
 			widget,
 			style,
 		)
+	}
+
+	pub fn get_parent(&self, widget_id: WidgetID) -> Option<(WidgetID, taffy::NodeId)> {
+		let node_id = self.state.nodes.get(widget_id)?;
+
+		self.state.tree.parent(*node_id).map(|parent_id| {
+			let parent_widget_id = self.state.tree.get_node_context(parent_id).unwrap();
+			(*parent_widget_id, parent_id)
+		})
 	}
 
 	fn collect_children_ids_recursive(&self, widget_id: WidgetID, out: &mut Vec<(WidgetID, taffy::NodeId)>) {
@@ -564,6 +574,7 @@ impl Layout {
 			registered_components_to_refresh: HashMap::new(),
 			widgets_to_tick: Vec::new(),
 			tasks: LayoutTasks::new(),
+			sounds_to_play_once: Vec::new(),
 		})
 	}
 
@@ -648,12 +659,17 @@ impl Layout {
 		Ok(())
 	}
 
-	pub fn update(&mut self, size: Vec2, timestep_alpha: f32) -> anyhow::Result<()> {
+	pub fn update(&mut self, params: &mut LayoutUpdateParams) -> anyhow::Result<LayoutUpdateResult> {
 		let mut alterables = EventAlterables::default();
-		self.animations.process(&self.state, &mut alterables, timestep_alpha);
+		self
+			.animations
+			.process(&self.state, &mut alterables, params.timestep_alpha);
 		self.process_alterables(alterables)?;
-		self.try_recompute_layout(size)?;
-		Ok(())
+		self.try_recompute_layout(params.size)?;
+
+		Ok(LayoutUpdateResult {
+			sounds_to_play: std::mem::take(&mut self.sounds_to_play_once),
+		})
 	}
 
 	pub fn tick(&mut self) -> anyhow::Result<()> {
@@ -666,8 +682,7 @@ impl Layout {
 	}
 
 	pub fn process_tasks(&mut self) -> anyhow::Result<()> {
-		let tasks = self.tasks.clone();
-		let mut tasks = tasks.0.borrow_mut();
+		let mut tasks = self.tasks.drain();
 		while let Some(task) = tasks.pop_front() {
 			match task {
 				LayoutTask::RemoveWidget(widget_id) => {
@@ -675,6 +690,11 @@ impl Layout {
 				}
 				LayoutTask::ModifyLayoutState(callback) => {
 					(*callback)(ModifyLayoutStateData { layout: self })?;
+				}
+				LayoutTask::PlaySound(sound) => {
+					if !self.sounds_to_play_once.contains(&sound) {
+						self.sounds_to_play_once.push(sound);
+					}
 				}
 			}
 		}
@@ -689,8 +709,10 @@ impl Layout {
 
 		self.process_tasks()?;
 
-		for node in alterables.dirty_nodes {
-			self.state.tree.mark_dirty(node)?;
+		for dirty_widget_id in alterables.dirty_widgets {
+			if let Some(dirty_node_id) = self.state.nodes.get(dirty_widget_id) {
+				self.state.tree.mark_dirty(*dirty_node_id)?;
+			}
 		}
 
 		if alterables.needs_redraw {

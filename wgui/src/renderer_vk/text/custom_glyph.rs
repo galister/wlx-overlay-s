@@ -1,7 +1,9 @@
 use std::{
+	collections::HashMap,
 	f32,
+	hash::{DefaultHasher, Hasher},
 	sync::{
-		Arc,
+		Arc, Weak,
 		atomic::{AtomicUsize, Ordering},
 	},
 };
@@ -14,15 +16,68 @@ use crate::{assets::AssetPath, globals::WguiGlobals};
 
 static AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(0);
 
+#[derive(Hash, PartialEq, Eq)]
+pub struct HashedAsset {
+	path: String,
+	hash: u64,
+}
+
+pub struct CustomGlyphCache {
+	inner: HashMap<HashedAsset, CustomGlyphDataWeak>,
+	next_cleanup: i32,
+}
+
+impl CustomGlyphCache {
+	const CLEANUP_INTERVAL: i32 = 100;
+
+	pub(crate) fn new() -> Self {
+		Self {
+			inner: HashMap::new(),
+			next_cleanup: Self::CLEANUP_INTERVAL,
+		}
+	}
+
+	fn cleanup(&mut self) {
+		self.inner.retain(|_, v| v.content.strong_count() > 0);
+	}
+
+	fn get(&self, path: &str, bytes: &[u8]) -> Result<CustomGlyphData, HashedAsset> {
+		let mut hasher = DefaultHasher::new();
+		hasher.write(bytes);
+		let hash = hasher.finish();
+
+		let hashed_asset = HashedAsset {
+			path: path.to_string(),
+			hash,
+		};
+
+		self
+			.inner
+			.get(&hashed_asset)
+			.and_then(|a| a.upgrade())
+			.inspect(|_| log::debug!("Glyph cache hit on: '{path}'"))
+			.ok_or(hashed_asset)
+	}
+
+	fn insert(&mut self, hashed_asset: HashedAsset, data: &CustomGlyphData) {
+		if self.next_cleanup <= 0 {
+			self.cleanup();
+			self.next_cleanup = Self::CLEANUP_INTERVAL;
+		}
+
+		self.inner.insert(hashed_asset, data.clone_weak());
+	}
+}
+
 /// The raw content of a glyph.
 #[derive(Debug, Clone)]
-pub enum CustomGlyphContent {
+pub(crate) enum CustomGlyphContent {
 	Svg(Box<Tree>),
 	Image(RgbaImage),
 }
 
 impl CustomGlyphContent {
-	pub fn from_bin_svg(data: &[u8]) -> anyhow::Result<Self> {
+	fn from_bin_svg(data: &[u8]) -> anyhow::Result<Self> {
 		let options = Options {
 			style_sheet: Some("svg { color: white }".into()),
 			..Options::default()
@@ -32,19 +87,23 @@ impl CustomGlyphContent {
 		Ok(Self::Svg(Box::new(tree)))
 	}
 
-	pub fn from_bin_raster(data: &[u8]) -> anyhow::Result<Self> {
+	fn from_bin_raster(data: &[u8]) -> anyhow::Result<Self> {
 		let image = image::load_from_memory(data)?.into_rgba8();
 		Ok(Self::Image(image))
 	}
+}
 
-	#[allow(clippy::case_sensitive_file_extension_comparisons)]
-	pub fn from_assets(globals: &mut WguiGlobals, path: AssetPath) -> anyhow::Result<Self> {
-		let path_str = path.get_str();
-		let data = globals.get_asset(path)?;
-		if path_str.ends_with(".svg") || path_str.ends_with(".svgz") {
-			Ok(Self::from_bin_svg(&data)?)
+struct CustomGlyphDataWeak {
+	id: usize,
+	content: Weak<CustomGlyphContent>,
+}
+
+impl CustomGlyphDataWeak {
+	fn upgrade(&self) -> Option<CustomGlyphData> {
+		if let Some(content) = self.content.upgrade() {
+			Some(CustomGlyphData { id: self.id, content })
 		} else {
-			Ok(Self::from_bin_raster(&data)?)
+			None
 		}
 	}
 }
@@ -58,10 +117,17 @@ pub struct CustomGlyphData {
 }
 
 impl CustomGlyphData {
-	pub fn new(content: CustomGlyphContent) -> Self {
+	fn new(content: CustomGlyphContent) -> Self {
 		Self {
 			id: AUTO_INCREMENT.fetch_add(1, Ordering::Relaxed),
 			content: Arc::new(content),
+		}
+	}
+
+	fn clone_weak(&self) -> CustomGlyphDataWeak {
+		CustomGlyphDataWeak {
+			id: self.id,
+			content: Arc::downgrade(&self.content),
 		}
 	}
 
@@ -73,6 +139,41 @@ impl CustomGlyphData {
 				height.next_power_of_two().min(MAX_RASTER_DIM),
 			),
 			CustomGlyphContent::Image(image) => (image.width() as _, image.height() as _),
+		}
+	}
+
+	pub fn from_assets(globals: &WguiGlobals, path: AssetPath) -> anyhow::Result<Self> {
+		let path_str = path.get_str();
+		let data = globals.get_asset(path)?;
+
+		if path_str.ends_with(".svg") || path_str.ends_with(".svgz") {
+			Self::from_bytes_svg(globals, path_str, &data)
+		} else {
+			Self::from_bytes_raster(globals, path_str, &data)
+		}
+	}
+
+	pub fn from_bytes_raster(globals: &WguiGlobals, path: &str, data: &[u8]) -> anyhow::Result<Self> {
+		let globals_borrow = &mut globals.get();
+		match globals_borrow.custom_glyph_cache.get(path, data) {
+			Ok(data) => return Ok(data),
+			Err(hashed_asset) => {
+				let data = Self::new(CustomGlyphContent::from_bin_raster(data)?);
+				globals_borrow.custom_glyph_cache.insert(hashed_asset, &data);
+				Ok(data)
+			}
+		}
+	}
+
+	pub fn from_bytes_svg(globals: &WguiGlobals, path: &str, data: &[u8]) -> anyhow::Result<Self> {
+		let globals_borrow = &mut globals.get();
+		match globals_borrow.custom_glyph_cache.get(path, data) {
+			Ok(data) => return Ok(data),
+			Err(hashed_asset) => {
+				let data = Self::new(CustomGlyphContent::from_bin_svg(data)?);
+				globals_borrow.custom_glyph_cache.insert(hashed_asset, &data);
+				Ok(data)
+			}
 		}
 	}
 }

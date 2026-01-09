@@ -1,3 +1,4 @@
+use cosmic_text::PlatformFallback;
 use parking_lot::Mutex;
 
 #[derive(Default)]
@@ -13,12 +14,15 @@ pub struct WguiFontSystem {
 }
 
 impl WguiFontSystem {
-	pub fn new(config: &WguiFontConfig) -> Self {
+	pub fn new(config: &WguiFontConfig, lang: &str) -> Self {
 		let mut db = cosmic_text::fontdb::Database::new();
 
 		let system = if config.binaries.is_empty() {
 			cosmic_text::FontSystem::new()
 		} else {
+			// needed for fallback
+			db.load_system_fonts();
+
 			for binary in &config.binaries {
 				// binary data is copied and preserved here
 				db.load_font_data(binary.to_vec());
@@ -33,9 +37,7 @@ impl WguiFontSystem {
 			}
 
 			// we don't require anything special, at least for now
-			let locale = String::from("C");
-
-			cosmic_text::FontSystem::new_with_locale_and_db(locale, db)
+			cosmic_text::FontSystem::new_with_locale_and_db_and_fallback(lang.to_string(), db, PlatformFallback)
 		};
 
 		Self {

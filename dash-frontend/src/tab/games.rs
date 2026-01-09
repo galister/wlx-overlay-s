@@ -1,33 +1,62 @@
+use std::marker::PhantomData;
+
 use wgui::{
 	assets::AssetPath,
-	parser::{ParseDocumentParams, ParserState},
+	layout::WidgetID,
+	parser::{Fetchable, ParseDocumentParams, ParserState},
 };
 
-use crate::tab::{Tab, TabParams, TabType};
+use crate::{
+	frontend::Frontend,
+	tab::{Tab, TabType},
+	views::game_list,
+};
 
-pub struct TabGames {
+pub struct TabGames<T> {
 	#[allow(dead_code)]
 	pub state: ParserState,
+
+	view_game_list: game_list::View,
+	marker: PhantomData<T>,
 }
 
-impl Tab for TabGames {
+impl<T> Tab<T> for TabGames<T> {
 	fn get_type(&self) -> TabType {
 		TabType::Games
 	}
+
+	fn update(&mut self, frontend: &mut Frontend<T>, _data: &mut T) -> anyhow::Result<()> {
+		self.view_game_list.update(&mut frontend.layout, &frontend.executor)?;
+		Ok(())
+	}
 }
 
-impl TabGames {
-	pub fn new(params: TabParams) -> anyhow::Result<Self> {
+impl<T> TabGames<T> {
+	pub fn new(frontend: &mut Frontend<T>, parent_id: WidgetID) -> anyhow::Result<Self> {
 		let state = wgui::parser::parse_from_assets(
 			&ParseDocumentParams {
-				globals: params.globals.clone(),
+				globals: frontend.layout.state.globals.clone(),
 				path: AssetPath::BuiltIn("gui/tab/games.xml"),
 				extra: Default::default(),
 			},
-			params.layout,
-			params.parent_id,
+			&mut frontend.layout,
+			parent_id,
 		)?;
 
-		Ok(Self { state })
+		let game_list_parent = state.get_widget_id("game_list_parent")?;
+
+		let view_game_list = game_list::View::new(game_list::Params {
+			executor: frontend.executor.clone(),
+			frontend_tasks: frontend.tasks.clone(),
+			globals: frontend.layout.state.globals.clone(),
+			layout: &mut frontend.layout,
+			parent_id: game_list_parent,
+		})?;
+
+		Ok(Self {
+			state,
+			view_game_list,
+			marker: PhantomData,
+		})
 	}
 }

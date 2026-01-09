@@ -151,6 +151,7 @@ impl RectRenderer {
 				let set1 = self.model_buffer.get_rect_descriptor(&self.pipeline);
 				let pass = self.pipeline.color_rect.create_pass(
 					[res[0] as _, res[1] as _],
+					[0.0, 0.0],
 					self.vert_buffer.clone(),
 					0..4,
 					0..self.rect_vertices.len() as _,

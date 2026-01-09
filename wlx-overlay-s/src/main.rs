@@ -17,9 +17,9 @@
     clippy::cargo_common_metadata,
     clippy::option_if_let_else
 )]
+mod app_misc;
 mod backend;
 mod config;
-mod config_io;
 mod graphics;
 mod gui;
 mod ipc;
@@ -29,11 +29,9 @@ mod state;
 mod subsystem;
 mod windowing;
 
-#[cfg(feature = "wayvr")]
-mod config_wayvr;
-
 use std::{
     path::PathBuf,
+    process::Command,
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
@@ -44,10 +42,11 @@ use sysinfo::Pid;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
-use crate::subsystem::dbus::DbusConnector;
+use crate::{backend::XrBackend, subsystem::dbus::DbusConnector};
 
 pub static FRAME_COUNTER: AtomicUsize = AtomicUsize::new(0);
 pub static RUNNING: AtomicBool = AtomicBool::new(true);
+pub static RESTART: AtomicBool = AtomicBool::new(false);
 pub static KEYMAP_CHANGE: AtomicBool = AtomicBool::new(false);
 
 /// The lightweight desktop overlay for OpenVR and OpenXR
@@ -120,13 +119,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     setup_signal_hooks()?;
 
-    auto_run(args);
+    let mut used_backend = None;
+
+    auto_run(args, &mut used_backend);
+
+    if RESTART.load(Ordering::Relaxed) {
+        log::warn!("Restarting...");
+        let exe = std::env::current_exe()?;
+        let mut args = vec!["--replace", "--show"];
+
+        match used_backend {
+            Some(XrBackend::OpenXR) => args.push("--openxr"),
+            Some(XrBackend::OpenVR) => args.push("--openvr"),
+            _ => {}
+        };
+
+        let _ = Command::new(exe).args(args).spawn();
+    }
 
     Ok(())
 }
 
 #[allow(unused_mut, clippy::similar_names)]
-fn auto_run(args: Args) {
+fn auto_run(args: Args, used_backend: &mut Option<XrBackend>) {
     let mut tried_xr = false;
     let mut tried_vr = false;
 
@@ -135,9 +150,13 @@ fn auto_run(args: Args) {
         use crate::backend::{BackendError, openxr::openxr_run};
         tried_xr = true;
         match openxr_run(args.show, args.headless) {
-            Ok(()) => return,
+            Ok(()) => {
+                used_backend.replace(XrBackend::OpenXR);
+                return;
+            }
             Err(BackendError::NotSupported) => (),
             Err(e) => {
+                used_backend.replace(XrBackend::OpenXR);
                 log::error!("{e:?}");
                 return;
             }
@@ -149,9 +168,13 @@ fn auto_run(args: Args) {
         use crate::backend::{BackendError, openvr::openvr_run};
         tried_vr = true;
         match openvr_run(args.show, args.headless) {
-            Ok(()) => return,
+            Ok(()) => {
+                used_backend.replace(XrBackend::OpenVR);
+                return;
+            }
             Err(BackendError::NotSupported) => (),
             Err(e) => {
+                used_backend.replace(XrBackend::OpenVR);
                 log::error!("{e:?}");
                 return;
             }
@@ -169,7 +192,7 @@ fn auto_run(args: Args) {
 
     let instructions = format!("Could not connect to runtime.\n{instructions}");
 
-    let _ = DbusConnector::default().notify_send("WlxOverlay-S", &instructions, 1, 0, 0, false);
+    let _ = DbusConnector::notify_send("WlxOverlay-S", &instructions, 1, 0, 0, false);
 
     #[cfg(not(any(feature = "openvr", feature = "openxr")))]
     compile_error!("No VR support! Enable either openvr or openxr features!");
@@ -200,6 +223,7 @@ const fn args_get_openxr(args: &Args) -> bool {
     ret
 }
 
+#[allow(clippy::single_match_else)]
 fn setup_signal_hooks() -> anyhow::Result<()> {
     let mut signals = Signals::new([SIGINT, SIGTERM, SIGUSR1])?;
 
@@ -209,7 +233,6 @@ fn setup_signal_hooks() -> anyhow::Result<()> {
                 SIGUSR1 => {
                     log::info!("SIGUSR1 received (keymap changed)");
                     KEYMAP_CHANGE.store(true, Ordering::Relaxed);
-                    continue;
                 }
                 _ => {
                     RUNNING.store(false, Ordering::Relaxed);
@@ -257,6 +280,8 @@ fn logging_init(args: &mut Args) {
                 .from_env_lossy()
                 .add_directive("symphonia_core::probe=warn".parse().unwrap())
                 .add_directive("zbus=warn".parse().unwrap())
+                .add_directive("usvg=error".parse().unwrap())
+                .add_directive("resvg=error".parse().unwrap())
                 .add_directive("cosmic_text=warn".parse().unwrap())
                 .add_directive("wlx_capture::wayland=info".parse().unwrap())
                 .add_directive("smithay=debug".parse().unwrap()), /* GLES render spam */

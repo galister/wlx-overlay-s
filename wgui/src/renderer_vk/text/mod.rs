@@ -16,7 +16,7 @@ use crate::drawing::{self};
 pub static SWASH_CACHE: LazyLock<Mutex<SwashCache>> = LazyLock::new(|| Mutex::new(SwashCache::new()));
 
 /// Used in case no `font_size` is defined
-const DEFAULT_FONT_SIZE: f32 = 14.;
+pub(crate) const DEFAULT_FONT_SIZE: f32 = 14.;
 
 /// In case no `line_height` is defined, use `font_size` * `DEFAULT_LINE_HEIGHT_RATIO`
 const DEFAULT_LINE_HEIGHT_RATIO: f32 = 1.43;

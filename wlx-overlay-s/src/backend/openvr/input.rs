@@ -10,10 +10,10 @@ use ovr_overlay::{
     },
     system::SystemManager,
 };
+use wlx_common::config_io;
 
 use crate::{
     backend::input::{Haptics, TrackedDevice, TrackedDeviceRole},
-    config_io,
     state::AppState,
 };
 

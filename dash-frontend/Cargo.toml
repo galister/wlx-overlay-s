@@ -4,14 +4,27 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow.workspace = true
+wayvr-ipc = { path = "../wayvr-ipc", default-features = false }
 wgui = { path = "../wgui/" }
+wlx-common = { path = "../wlx-common" }
+
+anyhow.workspace = true
 glam = { workspace = true, features = ["mint", "serde"] }
 log.workspace = true
+xdg.workspace = true
 rust-embed.workspace = true
-chrono = "0.4.42"
-gio = "0.21.5"
-gtk = "0.18.2"
-serde.workspace = true
+serde = { workspace = true, features = ["rc"] }
 serde_json.workspace = true
-wlx-common = { path = "../wlx-common" }
+strum.workspace = true
+
+chrono = "0.4.42"
+keyvalues-parser = { git = "https://github.com/CosmicHorrorDev/vdf-rs.git", rev = "fc6dcbea9eb13cacb98dea40063f6f56cde6e145" }
+smol = "2.0.2"
+hyper = { version = "1.8.1", features = ["client", "http1", "http2"] }
+http-body-util = "0.1.3"
+async-native-tls = "0.5.0"
+smol-hyper = "0.1.1"
+
+[features]
+default = ["monado" ]
+monado = []

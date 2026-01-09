@@ -1,22 +1,28 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, rc::Rc, time::Duration};
 
-use crate::{gui::panel::GuiPanel, state::AppState, subsystem::hid::XkbKeymap};
+use crate::{
+    app_misc,
+    gui::{
+        panel::{GuiPanel, NewGuiPanelParams},
+        timer::GuiTimer,
+    },
+    overlays::keyboard::alt_modifier_to_key,
+    state::AppState,
+    subsystem::hid::XkbKeymap,
+    windowing::backend::OverlayEventData,
+};
+use anyhow::Context;
 use glam::{FloatExt, Mat4, Vec2, vec2, vec3};
 use wgui::{
     animation::{Animation, AnimationEasing},
     assets::AssetPath,
     drawing::{self, Color},
-    event::{self, CallbackMetadata, EventListenerKind},
-    layout::LayoutParams,
-    parser::Fetchable,
+    event::{self, CallbackMetadata, EventAlterables, EventListenerKind},
+    layout::LayoutUpdateParams,
+    parser::{Fetchable, ParseDocumentParams},
     renderer_vk::util,
     taffy::{self, prelude::length},
-    widget::{
-        EventResult,
-        div::WidgetDiv,
-        rectangle::{WidgetRectangle, WidgetRectangleParams},
-        util::WLength,
-    },
+    widget::{EventResult, div::WidgetDiv, rectangle::WidgetRectangle},
 };
 
 use super::{
@@ -24,8 +30,15 @@ use super::{
     layout::{self, KeyCapType},
 };
 
-const BACKGROUND_PADDING: f32 = 16.0;
-const PIXELS_PER_UNIT: f32 = 80.;
+const PIXELS_PER_UNIT: f32 = 60.;
+
+fn new_doc_params(panel: &mut GuiPanel<KeyboardState>) -> ParseDocumentParams<'static> {
+    ParseDocumentParams {
+        globals: panel.layout.state.globals.clone(),
+        path: AssetPath::FileOrBuiltIn("gui/keyboard.xml"),
+        extra: panel.doc_extra.take().unwrap_or_default(),
+    }
+}
 
 #[allow(clippy::too_many_lines, clippy::significant_drop_tightening)]
 pub(super) fn create_keyboard_panel(
@@ -34,43 +47,26 @@ pub(super) fn create_keyboard_panel(
     state: KeyboardState,
     layout: &layout::Layout,
 ) -> anyhow::Result<GuiPanel<KeyboardState>> {
-    let mut panel = GuiPanel::new_blank(app, state, Default::default())?;
+    let mut panel =
+        GuiPanel::new_from_template(app, "gui/keyboard.xml", state, NewGuiPanelParams::default())?;
+
+    let doc_params = new_doc_params(&mut panel);
 
     let globals = app.wgui_globals.clone();
     let accent_color = globals.get().defaults.accent_color;
 
     let anim_mult = globals.defaults().animation_mult;
 
-    let (background, _) = panel.layout.add_child(
-        panel.layout.content_root_widget,
-        WidgetRectangle::create(WidgetRectangleParams {
-            color: globals.defaults().bg_color,
-            round: WLength::Units((16.0 * globals.defaults().rounding_mult).max(0.)),
-            border: 2.0,
-            border_color: accent_color,
-            ..Default::default()
-        }),
-        taffy::Style {
-            flex_direction: taffy::FlexDirection::Column,
-            padding: length(BACKGROUND_PADDING),
-            ..Default::default()
-        },
-    )?;
+    let root = panel
+        .parser_state
+        .get_widget_id("keyboard_root")
+        .context("Element with id 'keyboard_root' not found; keyboard.xml may be out of date.")?;
 
-    let has_altgr = keymap.as_ref().is_some_and(|m| XkbKeymap::has_altgr(*m));
-
-    let parse_doc_params = wgui::parser::ParseDocumentParams {
-        globals,
-        path: AssetPath::FileOrBuiltIn("gui/keyboard.xml"),
-        extra: Default::default(),
-    };
-
-    let (_, mut gui_state_key) =
-        wgui::parser::new_layout_from_assets(&parse_doc_params, &LayoutParams::default())?;
+    let has_altgr = keymap.as_ref().is_some_and(|m| XkbKeymap::has_altgr(m));
 
     for row in 0..layout.key_sizes.len() {
         let (div, _) = panel.layout.add_child(
-            background.id,
+            root,
             WidgetDiv::create(),
             taffy::Style {
                 flex_direction: taffy::FlexDirection::Row,
@@ -144,15 +140,15 @@ pub(super) fn create_keyboard_panel(
             }
 
             let template_key = format!("Key{:?}", key.cap_type);
-            gui_state_key.instantiate_template(
-                &parse_doc_params,
+            panel.parser_state.instantiate_template(
+                &doc_params,
                 &template_key,
                 &mut panel.layout,
                 div.id,
                 params,
             )?;
 
-            if let Ok(widget_id) = gui_state_key.get_widget_id(&my_id) {
+            if let Ok(widget_id) = panel.parser_state.get_widget_id(&my_id) {
                 let key_state = {
                     let rect = panel
                         .layout
@@ -264,8 +260,49 @@ pub(super) fn create_keyboard_panel(
         }
     }
 
-    panel.layout.update(vec2(2048., 2048.), 0.0)?;
-    panel.parser_state = gui_state_key;
+    panel.on_notify = Some(Box::new(move |panel, app, event_data| {
+        let mut alterables = EventAlterables::default();
+
+        let mut elems_changed = panel.state.overlay_list.on_notify(
+            &mut panel.layout,
+            &mut panel.parser_state,
+            &event_data,
+            &mut alterables,
+            &doc_params,
+        )?;
+
+        elems_changed |= panel.state.set_list.on_notify(
+            &mut panel.layout,
+            &mut panel.parser_state,
+            &event_data,
+            &mut alterables,
+            &doc_params,
+        )?;
+
+        if elems_changed {
+            panel.process_custom_elems(app);
+        }
+
+        if matches!(event_data, OverlayEventData::SettingsChanged) {
+            panel.state.alt_modifier =
+                alt_modifier_to_key(app.session.config.keyboard_middle_click_mode);
+        }
+
+        panel.layout.process_alterables(alterables)?;
+        Ok(())
+    }));
+
+    panel
+        .timers
+        .push(GuiTimer::new(Duration::from_millis(100), 0));
+
+    app_misc::process_layout_result(
+        app,
+        panel.layout.update(&mut LayoutUpdateParams {
+            size: vec2(2048., 2048.),
+            timestep_alpha: 0.0,
+        })?,
+    );
 
     Ok(panel)
 }

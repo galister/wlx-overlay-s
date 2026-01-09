@@ -13,9 +13,6 @@ use crate::{
     windowing::{OverlaySelector, window::OverlayWindowConfig},
 };
 
-#[cfg(feature = "wayvr")]
-use crate::backend::wayvr::WayVRAction;
-
 static TASK_AUTO_INCREMENT: AtomicUsize = AtomicUsize::new(0);
 
 struct AppTask {
@@ -63,6 +60,7 @@ pub enum PlayspaceTask {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::enum_variant_names)]
 pub enum ModifyPanelCommand {
     SetText(String),
     SetColor(String),
@@ -78,16 +76,27 @@ pub struct ModifyPanelTask {
     pub command: ModifyPanelCommand,
 }
 
+pub enum ToggleMode {
+    EnsureOn,
+    EnsureOff,
+    Toggle,
+}
+
 pub type ModifyOverlayTask = dyn FnOnce(&mut AppState, &mut OverlayWindowConfig) + Send;
 pub type CreateOverlayTask = dyn FnOnce(&mut AppState) -> Option<OverlayWindowConfig> + Send;
 pub enum OverlayTask {
     AddSet,
     ToggleSet(usize),
-    SoftToggleOverlay(OverlaySelector),
+    SwitchSet(Option<usize>),
+    ToggleOverlay(OverlaySelector, ToggleMode),
+    ResetOverlay(OverlaySelector),
     DeleteActiveSet,
     ToggleEditMode,
+    ToggleDashboard,
     ShowHide,
     CleanupMirrors,
+    SettingsChanged,
+    KeyboardChanged,
     Modify(OverlaySelector, Box<ModifyOverlayTask>),
     Create(OverlaySelector, Box<CreateOverlayTask>),
     ModifyPanel(ModifyPanelTask),
@@ -100,8 +109,6 @@ pub enum TaskType {
     Playspace(PlayspaceTask),
     #[cfg(feature = "openvr")]
     OpenVR(OpenVrTask),
-    #[cfg(feature = "wayvr")]
-    WayVR(WayVRAction),
 }
 
 #[derive(Deserialize, Clone, Copy)]

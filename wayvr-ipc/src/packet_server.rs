@@ -20,12 +20,6 @@ pub struct Disconnect {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-pub struct WvrDisplayHandle {
-	pub idx: u32,
-	pub generation: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct WvrProcessHandle {
 	pub idx: u32,
 	pub generation: u64,
@@ -38,29 +32,12 @@ pub struct WvrWindowHandle {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WvrDisplay {
-	pub width: u16,
-	pub height: u16,
-	pub name: String,
-	pub visible: bool,
-	pub handle: WvrDisplayHandle,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WvrWindow {
-	pub pos_x: i32,
-	pub pos_y: i32,
 	pub size_x: u32,
 	pub size_y: u32,
 	pub visible: bool,
 	pub handle: WvrWindowHandle,
 	pub process_handle: WvrProcessHandle,
-	pub display_handle: WvrDisplayHandle,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WvrDisplayList {
-	pub list: Vec<WvrDisplay>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -71,7 +48,6 @@ pub struct WvrWindowList {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WvrProcess {
 	pub name: String,
-	pub display_handle: WvrDisplayHandle,
 	pub handle: WvrProcessHandle,
 	pub userdata: HashMap<String, String>,
 }
@@ -96,15 +72,7 @@ pub struct StackingOptions {
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-pub enum WvrDisplayWindowLayout {
-	Tiling,
-	Stacking(StackingOptions),
-}
-
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub enum WvrStateChanged {
-	DisplayCreated,
-	DisplayRemoved,
 	ProcessCreated,
 	ProcessRemoved,
 	WindowCreated,
@@ -132,11 +100,7 @@ pub enum PacketServer {
 	Disconnect(Disconnect),
 	HandshakeSuccess(HandshakeSuccess),
 	WlxInputStateResponse(Serial, WlxInputState),
-	WvrDisplayCreateResponse(Serial, WvrDisplayHandle),
-	WvrDisplayGetResponse(Serial, Option<WvrDisplay>),
-	WvrDisplayListResponse(Serial, WvrDisplayList),
-	WvrDisplayRemoveResponse(Serial, Result<(), String>),
-	WvrDisplayWindowListResponse(Serial, Option<WvrWindowList>),
+	WvrWindowListResponse(Serial, Option<WvrWindowList>),
 	WvrProcessGetResponse(Serial, Option<WvrProcess>),
 	WvrProcessLaunchResponse(Serial, Result<WvrProcessHandle, String>),
 	WvrProcessListResponse(Serial, WvrProcessList),
@@ -149,11 +113,7 @@ impl PacketServer {
 			PacketServer::Disconnect(_) => None,
 			PacketServer::HandshakeSuccess(_) => None,
 			PacketServer::WlxInputStateResponse(serial, _) => Some(serial),
-			PacketServer::WvrDisplayCreateResponse(serial, _) => Some(serial),
-			PacketServer::WvrDisplayGetResponse(serial, _) => Some(serial),
-			PacketServer::WvrDisplayListResponse(serial, _) => Some(serial),
-			PacketServer::WvrDisplayRemoveResponse(serial, _) => Some(serial),
-			PacketServer::WvrDisplayWindowListResponse(serial, _) => Some(serial),
+			PacketServer::WvrWindowListResponse(serial, _) => Some(serial),
 			PacketServer::WvrProcessGetResponse(serial, _) => Some(serial),
 			PacketServer::WvrProcessLaunchResponse(serial, _) => Some(serial),
 			PacketServer::WvrProcessListResponse(serial, _) => Some(serial),

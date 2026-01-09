@@ -19,7 +19,7 @@ use wgui::gfx::WGfx;
 
 #[cfg(feature = "openvr")]
 use vulkano::instance::InstanceCreateFlags;
-use wlx_capture::frame::DrmFormat;
+use wlx_capture::DrmFormat;
 
 use crate::shaders::{frag_color, frag_grid, frag_screen, frag_srgb, vert_quad};
 
@@ -69,10 +69,11 @@ pub const BLEND_ALPHA: AttachmentBlend = AttachmentBlend {
 
 pub struct WGfxExtras {
     pub shaders: HashMap<&'static str, Arc<ShaderModule>>,
-    pub drm_formats: Vec<DrmFormat>,
+    pub drm_formats: Arc<[DrmFormat]>,
     pub queue_capture: Option<Arc<Queue>>,
     pub quad_verts: Vert2Buf,
     pub fallback_image: Arc<ImageView>,
+    pub drm_device: Option<(i64, i64)>,
 }
 
 impl WGfxExtras {
@@ -94,7 +95,7 @@ impl WGfxExtras {
         let shader = frag_screen::load(gfx.device.clone())?;
         shaders.insert("frag_screen", shader);
 
-        let drm_formats = get_drm_formats(gfx.device.clone());
+        let drm_formats = get_drm_formats(gfx.device.clone()).into();
 
         let vertices = [
             Vert2Uv {
@@ -135,12 +136,23 @@ impl WGfxExtras {
 
         let fallback_image = ImageView::new_default(fallback_image)?;
 
+        let p = gfx.device.physical_device().properties();
+
+        let drm_device = if let (Some(maj), Some(min)) = (p.render_major, p.render_minor) {
+            log::info!("DRM render device: {maj} {min}");
+            Some((maj, min))
+        } else {
+            log::warn!("No DRM device.");
+            None
+        };
+
         Ok(Self {
             shaders,
             drm_formats,
             queue_capture,
             quad_verts,
             fallback_image,
+            drm_device,
         })
     }
 }
@@ -269,6 +281,13 @@ pub fn init_openxr_graphics(
         device_extensions.ext_image_drm_format_modifier = physical_device
             .supported_extensions()
             .ext_image_drm_format_modifier;
+    }
+
+    if physical_device
+        .supported_extensions()
+        .ext_physical_device_drm
+    {
+        device_extensions.ext_physical_device_drm = true;
     }
 
     let device_extensions_raw = device_extensions
@@ -430,6 +449,11 @@ pub fn init_openvr_graphics(
 
             if p.supported_extensions().ext_filter_cubic {
                 my_extensions.ext_filter_cubic = true;
+            }
+
+            if p.supported_extensions().ext_physical_device_drm {
+                // needed for wayland_server
+                my_extensions.ext_physical_device_drm = true;
             }
 
             log::debug!(

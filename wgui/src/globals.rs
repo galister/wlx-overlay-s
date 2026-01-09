@@ -12,6 +12,7 @@ use crate::{
 	assets_internal, drawing,
 	font_config::{WguiFontConfig, WguiFontSystem},
 	i18n::I18n,
+	renderer_vk::text::custom_glyph::CustomGlyphCache,
 };
 
 #[derive(Clone)]
@@ -33,12 +34,12 @@ impl Default for Defaults {
 		Self {
 			dark_mode: true,
 			text_color: drawing::Color::new(1.0, 1.0, 1.0, 1.0),
-			button_color: drawing::Color::new(1.0, 1.0, 1.0, 0.05),
-			accent_color: drawing::Color::new(0.0, 0.54, 1.0, 1.0),
-			danger_color: drawing::Color::new(0.8, 0.0, 0.0, 1.0),
-			faded_color: drawing::Color::new(0.4, 0.5, 0.6, 1.0),
-			bg_color: drawing::Color::new(0.0039, 0.0078, 0.0235, 0.8352),
-			translucent_alpha: 0.25,
+			button_color: drawing::Color::new(1.0, 1.0, 1.0, 0.02),
+			accent_color: drawing::Color::new(0.13, 0.68, 1.0, 1.0),
+			danger_color: drawing::Color::new(0.9, 0.0, 0.0, 1.0),
+			faded_color: drawing::Color::new(0.67, 0.74, 0.80, 1.0),
+			bg_color: drawing::Color::new(0.0, 0.07, 0.1, 0.75),
+			translucent_alpha: 0.5,
 			animation_mult: 1.0,
 			rounding_mult: 1.0,
 		}
@@ -52,6 +53,7 @@ pub struct Globals {
 	pub i18n_builtin: I18n,
 	pub defaults: Defaults,
 	pub font_system: WguiFontSystem,
+	pub custom_glyph_cache: CustomGlyphCache,
 }
 
 #[derive(Clone)]
@@ -70,10 +72,11 @@ impl WguiGlobals {
 		Ok(Self(Rc::new(RefCell::new(Globals {
 			assets_internal,
 			assets_builtin,
-			i18n_builtin,
 			defaults,
 			asset_folder,
-			font_system: WguiFontSystem::new(font_config),
+			font_system: WguiFontSystem::new(font_config, i18n_builtin.get_lang()),
+			i18n_builtin,
+			custom_glyph_cache: CustomGlyphCache::new(),
 		}))))
 	}
 

@@ -7,12 +7,10 @@ use crate::{
 	i18n::Translation,
 	layout::{LayoutTask, WidgetID, WidgetPair},
 	renderer_vk::{
-		text::{
-			FontWeight, TextStyle,
-			custom_glyph::{CustomGlyphContent, CustomGlyphData},
-		},
+		text::{FontWeight, TextStyle, custom_glyph::CustomGlyphData},
 		util::centered_matrix,
 	},
+	sound::WguiSoundType,
 	widget::{
 		self, ConstructEssentials, EventResult, WidgetData,
 		label::{WidgetLabel, WidgetLabelParams},
@@ -21,7 +19,7 @@ use crate::{
 		util::WLength,
 	},
 };
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Vec2, Vec3};
 use std::{
 	cell::RefCell,
 	rc::Rc,
@@ -68,7 +66,10 @@ impl Default for Params<'_> {
 	}
 }
 
-pub struct ButtonClickEvent {}
+pub struct ButtonClickEvent {
+	pub mouse_pos_absolute: Option<Vec2>,
+	pub boundary: Boundary,
+}
 pub type ButtonClickCallback = Box<dyn Fn(&mut CallbackDataCommon, ButtonClickEvent) -> anyhow::Result<()>>;
 
 pub struct Colors {
@@ -273,6 +274,7 @@ fn register_event_mouse_enter(
 	listeners.register(
 		EventListenerKind::MouseEnter,
 		Box::new(move |common, event_data, (), ()| {
+			common.alterables.play_sound(WguiSoundType::ButtonMouseEnter);
 			common.alterables.trigger_haptics();
 			common.alterables.mark_redraw();
 			common
@@ -335,11 +337,13 @@ fn register_event_mouse_press(state: Rc<RefCell<State>>, listeners: &mut EventLi
 			);
 
 			common.alterables.trigger_haptics();
+			common.alterables.play_sound(WguiSoundType::ButtonPress);
 			common.alterables.mark_redraw();
 
 			if state.hovered {
 				state.down = true;
 				state.last_pressed = Instant::now();
+				state.active_tooltip = None;
 				Ok(EventResult::Consumed)
 			} else {
 				Ok(EventResult::Pass)
@@ -364,13 +368,12 @@ fn register_event_mouse_release(
 			}
 
 			common.alterables.trigger_haptics();
+			common.alterables.play_sound(WguiSoundType::ButtonRelease);
 			common.alterables.mark_redraw();
 
 			if state.down {
 				state.down = false;
-				if state.hovered
-					&& let Some(on_click) = &state.on_click
-				{
+				if state.hovered {
 					anim_hover(
 						rect,
 						event_data.widget_data,
@@ -381,8 +384,17 @@ fn register_event_mouse_release(
 						state.sticky_down,
 					);
 
-					on_click(common, ButtonClickEvent {})?;
+					if let Some(on_click) = &state.on_click {
+						on_click(
+							common,
+							ButtonClickEvent {
+								mouse_pos_absolute: event_data.metadata.get_mouse_pos_absolute(),
+								boundary: event_data.widget_data.cached_absolute_boundary,
+							},
+						)?;
+					}
 				}
+
 				Ok(EventResult::Consumed)
 			} else {
 				Ok(EventResult::Pass)
@@ -393,7 +405,7 @@ fn register_event_mouse_release(
 
 #[allow(clippy::too_many_lines)]
 pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Result<(WidgetPair, Rc<ComponentButton>)> {
-	let mut globals = ess.layout.state.globals.clone();
+	let globals = ess.layout.state.globals.clone();
 	let mut style = params.style;
 
 	// force-override style
@@ -401,7 +413,6 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	style.justify_content = Some(JustifyContent::Center);
 	style.overflow.x = taffy::Overflow::Hidden;
 	style.overflow.y = taffy::Overflow::Hidden;
-	style.gap = length(8.0);
 
 	// update colors to default ones if they are not specified
 	let color = if let Some(color) = params.color {
@@ -413,13 +424,13 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	let border_color = if let Some(border_color) = params.border_color {
 		border_color
 	} else {
-		Color::new(color.r, color.g, color.b, color.a + 0.4)
+		Color::new(color.r, color.g, color.b, color.a + 0.25)
 	};
 
 	let hover_color = if let Some(hover_color) = params.hover_color {
 		hover_color
 	} else {
-		Color::new(color.r + 0.25, color.g + 0.25, color.g + 0.25, color.a + 0.25)
+		Color::new(color.r + 0.25, color.g + 0.25, color.g + 0.25, color.a + 0.15)
 	};
 
 	let hover_border_color = if let Some(hover_border_color) = params.hover_border_color {
@@ -452,12 +463,16 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		(color.r + color.g + color.b) * mult < 1.5
 	};
 
+	let default_margin = taffy::Rect {
+		top: length(4.0),
+		bottom: length(4.0),
+		left: length(4.0),
+		right: length(4.0),
+	};
+
 	if let Some(sprite_path) = params.sprite_src {
 		let sprite = WidgetSprite::create(WidgetSpriteParams {
-			glyph_data: Some(CustomGlyphData::new(CustomGlyphContent::from_assets(
-				&mut globals,
-				sprite_path,
-			)?)),
+			glyph_data: Some(CustomGlyphData::from_assets(&globals, sprite_path)?),
 			..Default::default()
 		});
 
@@ -469,12 +484,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 					width: length(20.0),
 					height: length(20.0),
 				},
-				margin: taffy::Rect {
-					top: length(4.0),
-					bottom: length(4.0),
-					left: length(0.0),
-					right: length(0.0),
-				},
+				margin: default_margin,
 				..Default::default()
 			},
 		)?;
@@ -498,7 +508,10 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 					},
 				},
 			),
-			Default::default(),
+			taffy::Style {
+				margin: default_margin,
+				..Default::default()
+			},
 		)?;
 		label.id
 	} else {

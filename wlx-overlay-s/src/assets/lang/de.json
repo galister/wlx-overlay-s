@@ -2,9 +2,19 @@
   "ANCHOR": {
     "CENTER": "Zentrum"
   },
+  "BAR": {
+    "ADD_MIRROR": "Neuen Spiegel-Overlay hinzufügen",
+    "EDIT_MODE_TOGGLE": "Bearbeitungsmodus umschalten",
+    "ADD_NEW_SET": "Neues Set hinzufügen",
+    "DELETE_CURRENT_SET": "Aktuelles Set löschen",
+    "TOGGLE_VISIBILITY": "Sichtbarkeit umschalten",
+    "RESET_POSITION": "Position zurücksetzen",
+    "RELOAD_FROM_DISK": "XML-Datei von der Festplatte neu laden",
+    "CLOSE_MIRROR": "Spiegel schließen",
+    "CLOSE_APP": "App schließen",
+    "FORCE_CLOSE_APP": "App zwangsweise schließen"
+  },
   "WATCH": {
-    "MIRROR": "Neuen Spiegel-Overlay hinzufügen",
-    "CLEANUP_MIRRORS": "Spiegel entfernen,\ndie derzeit nicht sichtbar sind",
     "RECENTER": "Spielbereich neu zentrieren",
     "FIX_FLOOR": "Bodenhöhe korrigieren",
     "EDIT_MODE_EXPLANATION": "Overlays können nun einzeln verschoben und angepasst werden.\nOverlays für den aktuellen Satz umschalten:",
@@ -13,7 +23,8 @@
     "ADD_NEW_SET": "Neuen Satz hinzufügen",
     "SWITCH_TO_SET": "Zum Satz wechseln",
     "TOGGLE_FOR_CURRENT_SET": "Sichtbarkeit im aktuellen Satz umschalten",
-    "LONG_PRESS_TO_DELETE_SET": "Lange drücken, um Satz zu löschen"
+    "LONG_PRESS_TO_DELETE_SET": "Lange drücken, um Satz zu löschen",
+    "CLEANUP_MIRRORS": "Spiegel entfernen, die\nderzeit nicht sichtbar sind"
   },
   "EDIT_MODE": {
     "ADJUST_CURVATURE": "Krümmung anpassen",
@@ -82,6 +93,8 @@
     "EMPTY_SET": "Leeres Set!",
     "LETS_ADD_OVERLAYS": "Lass uns ein paar Overlays von der Uhr hinzufügen!",
     "FIXING_FLOOR": "Boden wird in 5 Sekunden fixiert...",
-    "ONE_CONTROLLER_ON_FLOOR": "Lege einen Controller auf den Boden!"
+    "ONE_CONTROLLER_ON_FLOOR": "Lege einen Controller auf den Boden!",
+    "CANNOT_ADD_SET": "Satz kann nicht hinzugefügt werden!",
+    "MAXIMUM_SETS_REACHED": "Maximale Anzahl an Sets erreicht."
   }
 }

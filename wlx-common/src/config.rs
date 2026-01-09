@@ -3,6 +3,8 @@ use std::{collections::HashMap, sync::Arc};
 use chrono::Offset;
 use idmap::IdMap;
 use serde::{Deserialize, Serialize};
+use strum::{AsRefStr, EnumProperty, EnumString, VariantArray};
+use wayvr_ipc::packet_client::WvrProcessLaunchParams;
 
 use crate::{
 	astr_containers::{AStrMap, AStrSet},
@@ -13,21 +15,60 @@ use crate::{
 pub type PwTokenMap = AStrMap<String>;
 pub type SerializedWindowStates = HashMap<Arc<str>, OverlayWindowState>;
 
+#[derive(Default, Clone, Copy, Serialize, Deserialize, AsRefStr, EnumString, EnumProperty, VariantArray)]
+pub enum CaptureMethod {
+	#[default]
+	#[serde(alias = "auto")]
+	#[strum(props(Translation = "APP_SETTINGS.OPTION.AUTO", Tooltip = "APP_SETTINGS.OPTION.AUTO_HELP"))]
+	Auto,
+
+	#[serde(alias = "pipewire")]
+	#[strum(props(Text = "PipeWire GPU", Tooltip = "APP_SETTINGS.OPTION.PIPEWIRE_HELP"))]
+	PipeWire,
+
+	#[strum(props(Text = "ScreenCopy GPU", Tooltip = "APP_SETTINGS.OPTION.SCREENCOPY_GPU_HELP"))]
+	ScreenCopyGpu,
+
+	#[serde(alias = "pw-fallback")]
+	#[strum(props(Text = "PipeWire CPU", Tooltip = "APP_SETTINGS.OPTION.PW_FALLBACK_HELP"))]
+	PipeWireCpu,
+
+	#[serde(alias = "screencopy")]
+	#[strum(props(Text = "ScreenCopy CPU", Tooltip = "APP_SETTINGS.OPTION.SCREENCOPY_HELP"))]
+	ScreenCopyCpu,
+}
+
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, AsRefStr, EnumString, EnumProperty, VariantArray)]
+pub enum AltModifier {
+	#[default]
+	None,
+	Shift,
+	Ctrl,
+	Alt,
+	Super,
+	Meta,
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SerializedWindowSet {
 	pub name: Arc<str>,
+
+	#[serde(default)]
 	pub overlays: SerializedWindowStates,
+
+	#[serde(default)]
+	pub hidden_overlays: SerializedWindowStates,
 }
 
 pub const fn def_pw_tokens() -> PwTokenMap {
 	AStrMap::new()
 }
 
-const fn def_mouse_move_interval_ms() -> u32 {
+const fn def_mouse_move_interval_ms() -> i32 {
 	10 // 100fps
 }
 
-const fn def_click_freeze_time_ms() -> u32 {
+const fn def_click_freeze_time_ms() -> i32 {
 	300
 }
 
@@ -71,10 +112,6 @@ fn def_timezones() -> Vec<String> {
 	}
 }
 
-fn def_auto() -> Arc<str> {
-	"auto".into()
-}
-
 fn def_empty() -> Arc<str> {
 	"".into()
 }
@@ -110,7 +147,7 @@ pub struct GeneralConfig {
 	pub attribs: AStrMap<Vec<BackendAttribValue>>,
 
 	#[serde(default = "def_click_freeze_time_ms")]
-	pub click_freeze_time_ms: u32,
+	pub click_freeze_time_ms: i32,
 
 	#[serde(default = "def_false")]
 	pub invert_scroll_direction_x: bool,
@@ -125,7 +162,7 @@ pub struct GeneralConfig {
 	pub long_press_duration: f32,
 
 	#[serde(default = "def_mouse_move_interval_ms")]
-	pub mouse_move_interval_ms: u32,
+	pub mouse_move_interval_ms: i32,
 
 	#[serde(default = "def_true")]
 	pub notifications_enabled: bool,
@@ -135,9 +172,6 @@ pub struct GeneralConfig {
 
 	#[serde(default)]
 	pub notification_topics: IdMap<ToastTopic, ToastDisplayMethod>,
-
-	#[serde(default = "def_empty")]
-	pub notification_sound: Arc<str>,
 
 	#[serde(default = "def_true")]
 	pub keyboard_sound_enabled: bool,
@@ -164,7 +198,7 @@ pub struct GeneralConfig {
 	pub double_cursor_fix: bool,
 
 	#[serde(default = "def_false")]
-	pub single_set_mode: bool,
+	pub sets_on_watch: bool,
 
 	#[serde(default = "def_false")]
 	pub hide_grab_help: bool,
@@ -172,8 +206,8 @@ pub struct GeneralConfig {
 	#[serde(default)]
 	pub custom_panels: AStrSet,
 
-	#[serde(default = "def_auto")]
-	pub capture_method: Arc<str>,
+	#[serde(default)]
+	pub capture_method: CaptureMethod,
 
 	#[serde(default = "def_point7")]
 	pub xr_click_sensitivity: f32,
@@ -242,5 +276,23 @@ pub struct GeneralConfig {
 	pub global_set: SerializedWindowStates,
 
 	#[serde(default)]
+	pub autostart_apps: Vec<WvrProcessLaunchParams>,
+
+	#[serde(default)]
 	pub last_set: u32,
+
+	#[serde(default)]
+	pub hide_username: bool,
+
+	#[serde(default)]
+	pub opaque_background: bool,
+
+	#[serde(default)]
+	pub xwayland_by_default: bool,
+
+	#[serde(default)]
+	pub context_menu_hold_and_release: bool,
+
+	#[serde(default)]
+	pub keyboard_middle_click_mode: AltModifier,
 }

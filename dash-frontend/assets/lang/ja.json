@@ -1,7 +1,7 @@
 {
   "HOME_SCREEN": "ホーム",
   "MONADO_RUNTIME": "「Monado」ランタイム",
-  "APPLICATIONS": "アプリケーション",
+  "APPLICATIONS": "アプリ",
   "GAMES": "ゲーム",
   "SETTINGS": "設定",
   "PROCESSES": "プロセス",
@@ -11,21 +11,65 @@
   "APP_SETTINGS": {
     "HIDE_USERNAME": "ユーザー名を表示しない",
     "OPAQUE_BACKGROUND": "不透明な背景",
-    "RUN_IN_XWAYLAND_MODE_BY_DEFAULT": "XWaylandモードでデフォルトで実行する",
-    "WLX_OVERLAY_S_SETTINGS": "WlxOverlay-Sの設定",
-    "HEADSET_SETTINGS": "ヘッドセット設定",
-    "BRIGHTNESS": "明るさ",
-    "WLX": {
-      "NOTIFICATIONS_ENABLED": "通知",
-      "NOTIFICATIONS_SOUND_ENABLED": "通知音",
-      "KEYBOARD_SOUND_ENABLED": "キーボード音",
-      "BLOCK_GAME_INPUT": "ゲーム入力をブロック",
-      "SPACE_DRAG_MULTIPLIER": "スペースドラッグ乗数",
-      "SPACE_DRAG_ROTATION_ENABLED": "スペースドラッグでの回転",
-      "SHOW_SKYBOX": "スカイボックス",
-      "ENABLE_PASSTHROUGH": "パススルー"
-    },
-    "RESTART_SOFTWARE": "ソフトウェアを再起動"
+    "WLX": {},
+    "LOOK_AND_FEEL": "外観",
+    "HIDE_GRAB_HELP": "掴み操作のヘルプを非表示にする",
+    "ANIMATION_SPEED": "UIアニメーション速度",
+    "ROUND_MULTIPLIER": "UI エッジの丸み",
+    "USE_SKYBOX": "スカイボックスを有効にする",
+    "USE_PASSTHROUGH": "パススルーを有効にする",
+    "CLOCK_12H": "12時間制",
+    "FEATURES": "機能",
+    "NOTIFICATIONS_ENABLED": "通知を有効にする",
+    "NOTIFICATIONS_SOUND_ENABLED": "通知音",
+    "KEYBOARD_SOUND_ENABLED": "キーボード音",
+    "SPACE_DRAG_MULTIPLIER": "スペースドラッグ倍率",
+    "SPACE_DRAG_UNLOCKED": "全ての軸でのスペースドラッグを許可",
+    "SPACE_ROTATE_UNLOCKED": "全軸でのスペース回転を許可する",
+    "BLOCK_GAME_INPUT": "ゲームからの入力をブロック",
+    "BLOCK_GAME_INPUT_IGNORE_WATCH": "入力ブロック時に監視を無視",
+    "CONTROLS": "コントロール",
+    "FOCUS_FOLLOWS_MOUSE_MODE": "トリガー操作でマウス移動",
+    "LEFT_HANDED_MOUSE": "左利きマウス",
+    "ALLOW_SLIDING": "掴んでいる間のスティック操作を許可する",
+    "INVERT_SCROLL_DIRECTION_X": "水平スクロール方向を反転",
+    "INVERT_SCROLL_DIRECTION_Y": "垂直方向のスクロール方向を反転",
+    "SCROLL_SPEED": "スクロール速度",
+    "LONG_PRESS_DURATION": "長押し時間",
+    "POINTER_LERP_FACTOR": "ポインタのスムージング",
+    "XR_CLICK_SENSITIVITY": "XRクリック感度",
+    "XR_CLICK_SENSITIVITY_RELEASE": "XRリリース感度",
+    "CLICK_FREEZE_TIME_MS": "クリックで一時停止時間 (ms)",
+    "MISC": "その他",
+    "XWAYLAND_BY_DEFAULT": "互換モードでアプリをデフォルトで実行",
+    "UPRIGHT_SCREEN_FIX": "画面の縦向き修正",
+    "DOUBLE_CURSOR_FIX": "ダブルカーソル修正",
+    "SCREEN_RENDER_DOWN": "低い解像度で画面をレンダリングする",
+    "UPRIGHT_SCREEN_FIX_HELP": "一部のデスクトップで縦向きの画面を修正",
+    "DOUBLE_CURSOR_FIX_HELP": "2つのカーソルが表示される場合は、これを有効にします",
+    "XR_CLICK_SENSITIVITY_HELP": "アナログトリガの感度",
+    "XR_CLICK_SENSITIVITY_RELEASE_HELP": "クリックより低くする必要があります",
+    "CLICK_FREEZE_TIME_MS_HELP": "ダブルクリックの精度向上に役立ちます",
+    "LEFT_HANDED_MOUSE_HELP": "マウスボタンが入れ替わっている場合に有効にします",
+    "BLOCK_GAME_INPUT_HELP": "オーバーレイ上にマウスカーソルがあるときに入力をブロックします",
+    "BLOCK_GAME_INPUT_IGNORE_WATCH_HELP": "ウォッチがホバーされているときは入力をブロックしない",
+    "USE_SKYBOX_HELP": "シーンアプリまたはパススルーがない場合にスカイボックスを表示します",
+    "USE_PASSTHROUGH_HELP": "XRランタイムがサポートしていれば、パススルーを有効にします",
+    "SCREEN_RENDER_DOWN_HELP": "高解像度スクリーンでのエイリアシングを軽減します",
+    "SETS_ON_WATCH": "ウォッチのセット",
+    "TROUBLESHOOTING": "トラブルシューティング",
+    "CLEAR_SAVED_STATE": "保存された状態をクリア",
+    "CLEAR_PIPEWIRE_TOKENS": "PipeWire トークンをクリア",
+    "DELETE_ALL_CONFIGS": "設定を消去",
+    "RESTART_SOFTWARE": "ソフトウェアを再起動",
+    "CLEAR_SAVED_STATE_HELP": "セットとオーバーレイの位置をリセット",
+    "CLEAR_PIPEWIRE_TOKENS_HELP": "次の起動時に画面選択のプロンプトを表示",
+    "DELETE_ALL_CONFIGS_HELP": "conf.d 内のすべての設定ファイルを削除します",
+    "RESTART_SOFTWARE_HELP": "再起動が必要な設定を適用する",
+    "CAPTURE_METHOD": "Waylandスクリーンキャプチャ",
+    "CAPTURE_METHOD_HELP": "画面が黒くなる、または乱れる場合は、\nこの設定を変更してみてください。",
+    "KEYBOARD_MIDDLE_CLICK": "キーボードの中ボタンクリック",
+    "KEYBOARD_MIDDLE_CLICK_HELP": "紫色のレーザーで入力する際の修飾キー"
   },
   "HELLO": "こんにちは！",
   "AUDIO": {
@@ -40,10 +84,61 @@
     "NO_VR_MICROPHONE_SWITCH_MANUALLY": "VRマイクが見つかりませんでした。手動で切り替えてください。",
     "FAILED_TO_SWITCH_MICROPHONE": "マイクの切り替えに失敗しました",
     "MICROPHONE_SET_SUCCESSFULLY": "マイクの設定が完了しました",
-    "SPEAKERS_SET_SUCCESSFULLY": "スピーカーを設定しました",
-    "DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED": "デバイスが見つかり、初期化されましたが、切り替えられていません"
+    "SPEAKERS_SET_SUCCESSFULLY": "スピーカーを設定しました"
   },
   "ACTIONS": {
     "RECENTER_PLAYSPACE": "プレイスペースを再中央"
-  }
+  },
+  "LIST_OF_PROCESSES": "プロセスのリスト",
+  "POPUP_ADD_DISPLAY": {
+    "RESOLUTION": "解像度"
+  },
+  "WIDTH": "幅",
+  "HEIGHT": "高さ",
+  "HIDE": "隠す",
+  "REMOVE": "削除",
+  "SHOW": "表示",
+  "PROCESS_LIST": {
+    "NO_PROCESSES_FOUND": "プロセスが見つかりませんでした",
+    "LOCATED_ON": "に",
+    "TERMINATE_PROCESS_NAMED_X": "プロセス \"{PROCESS_NAME}\" を終了します"
+  },
+  "FAILED_TO_LAUNCH_APPLICATION": "アプリケーションの起動に失敗しました：",
+  "NO_WINDOWS_FOUND": "ウィンドウが見つかりませんでした",
+  "WINDOW_OPTIONS": "ウィンドウオプション",
+  "APPLICATION_STARTED": "アプリケーションが起動しました",
+  "LIST_OF_WINDOWS": "ウィンドウ一覧",
+  "CLOSE_WINDOW": "ウィンドウを閉じる",
+  "GAME_LIST": {
+    "NO_GAMES_FOUND": "ゲームが見つかりませんでした"
+  },
+  "TERMINATE_PROCESS": "プロセスを終了する",
+  "GAME_LAUNCHED": "ゲームが起動しました",
+  "APP_LAUNCHER": {
+    "MODE": {
+      "NATIVE": "ネイティブモード",
+      "CAGE": "互換モード（Cage）"
+    },
+    "RES_TITLE": "解像度",
+    "ASPECT_TITLE": "アスペクト",
+    "ASPECT": {
+      "WIDE": "ワイド",
+      "SEMI_WIDE": "半広角",
+      "SQUARE": "正方形",
+      "SEMI_TALL": "半縦長",
+      "TALL": "縦長"
+    },
+    "POS_TITLE": "配置",
+    "POS": {
+      "FLOATING": "フローティング",
+      "ANCHORED": "固定",
+      "STATIC": "固定",
+      "FLOATING_HELP": "独立して移動し、表示時に中央に再配置されます。",
+      "ANCHORED_HELP": "中央マーカーに対して固定された位置に留まります。",
+      "STATIC_HELP": "どのセットにも属していません。リセンターされません。"
+    },
+    "AUTOSTART": "起動時に自動実行",
+    "LAUNCH": "起動"
+  },
+  "DISPLAY_BRIGHTNESS": "ディスプレイの明るさ"
 }

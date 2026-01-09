@@ -110,7 +110,7 @@ impl OverlayWindowData<OpenXrOverlayData> {
                     .radius(radius)
                     .central_angle(angle)
                     .aspect_ratio(aspect_ratio);
-                layers.push(CompositionLayer::Cylinder(cylinder))
+                layers.push(CompositionLayer::Cylinder(cylinder));
             }
         } else {
             let posef = helpers::transform_to_posef(&transform);
@@ -125,7 +125,7 @@ impl OverlayWindowData<OpenXrOverlayData> {
                         width: scale_x,
                         height: scale_y,
                     });
-                layers.push(CompositionLayer::Quad(quad))
+                layers.push(CompositionLayer::Quad(quad));
             }
         }
         Ok(layers)

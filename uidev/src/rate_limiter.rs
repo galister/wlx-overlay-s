@@ -1,4 +1,4 @@
-use crate::timestep::get_micros;
+use wlx_common::timestep::get_micros;
 
 #[derive(Default)]
 pub struct RateLimiter {

@@ -7,26 +7,26 @@ use std::{marker::PhantomData, slice::Iter, sync::Arc};
 use cmd::{GfxCommandBuffer, XferCommandBuffer};
 use pipeline::WGfxPipeline;
 use vulkano::{
-	DeviceSize,
 	buffer::{Buffer, BufferContents, BufferCreateInfo, BufferUsage, IndexBuffer, Subbuffer},
 	command_buffer::{
-		AutoCommandBufferBuilder, CommandBufferUsage,
 		allocator::{StandardCommandBufferAllocator, StandardCommandBufferAllocatorCreateInfo},
+		AutoCommandBufferBuilder, CommandBufferUsage,
 	},
 	descriptor_set::allocator::{StandardDescriptorSetAllocator, StandardDescriptorSetAllocatorCreateInfo},
 	device::{Device, Queue},
 	format::Format,
-	image::{Image, ImageCreateInfo, ImageType, ImageUsage, sampler::Filter},
+	image::{sampler::Filter, Image, ImageCreateInfo, ImageType, ImageUsage},
 	instance::Instance,
 	memory::{
-		MemoryPropertyFlags,
 		allocator::{AllocationCreateInfo, GenericMemoryAllocatorCreateInfo, MemoryTypeFilter, StandardMemoryAllocator},
+		ExternalMemoryHandleTypes, MemoryPropertyFlags,
 	},
 	pipeline::graphics::{
 		color_blend::{AttachmentBlend, BlendFactor, BlendOp},
 		vertex_input::Vertex,
 	},
 	shader::ShaderModule,
+	DeviceSize,
 };
 
 use crate::gfx::pipeline::WPipelineCreateInfo;
@@ -81,7 +81,7 @@ impl WGfx {
 		queue_xfer: Arc<Queue>,
 		surface_format: Format,
 	) -> Arc<Self> {
-		let memory_allocator = memory_allocator(device.clone());
+		let memory_allocator = memory_allocator(device.clone(), None);
 		let command_buffer_allocator = Arc::new(StandardCommandBufferAllocator::new(
 			device.clone(),
 			StandardCommandBufferAllocatorCreateInfo {
@@ -222,10 +222,14 @@ impl WGfx {
 	}
 }
 
-fn memory_allocator(device: Arc<Device>) -> Arc<StandardMemoryAllocator> {
+pub fn memory_allocator(
+	device: Arc<Device>,
+	export_handle_types: Option<ExternalMemoryHandleTypes>,
+) -> Arc<StandardMemoryAllocator> {
 	let props = device.physical_device().memory_properties();
 
 	let mut block_sizes = vec![0; props.memory_types.len()];
+
 	let mut memory_type_bits = u32::MAX;
 
 	for (index, memory_type) in props.memory_types.iter().enumerate() {
@@ -252,9 +256,16 @@ fn memory_allocator(device: Arc<Device>) -> Arc<StandardMemoryAllocator> {
 		}
 	}
 
+	let export_handle_types = if let Some(val) = export_handle_types {
+		vec![val; props.memory_types.len()]
+	} else {
+		vec![]
+	};
+
 	let create_info = GenericMemoryAllocatorCreateInfo {
 		block_sizes: &block_sizes,
 		memory_type_bits,
+		export_handle_types: &export_handle_types,
 		..Default::default()
 	};
 

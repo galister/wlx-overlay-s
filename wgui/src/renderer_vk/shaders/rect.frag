@@ -14,6 +14,7 @@ layout(location = 0) out vec4 out_color;
 
 #define UNIFORM_PARAMS_SET 0
 #include "uniform.glsl"
+#include "srgb.glsl"
 
 void main() {
   float rect_aspect = in_rect_size.x / in_rect_size.y;
@@ -51,4 +52,5 @@ void main() {
     // rounding cutout alpha
     out_color.a *= 1.0 - smoothstep(-pixel_size, 0.0, sdf);
   }
+  out_color.rgb = to_srgb(out_color.rgb);
 }

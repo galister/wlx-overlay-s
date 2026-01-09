@@ -1,84 +1,42 @@
 use crate::testbed::{Testbed, TestbedUpdateParams};
-use dash_frontend::{
-	frontend,
-	settings::{self, SettingsIO},
-};
-use wgui::layout::RcLayout;
-
-struct SimpleSettingsIO {
-	settings: settings::Settings,
-}
-
-impl SimpleSettingsIO {
-	fn new() -> Self {
-		let mut res = Self {
-			settings: settings::Settings::default(),
-		};
-		res.read_from_disk();
-		res
-	}
-}
-
-// just a simple impl of a config io for dashboard frontend
-// use ~/.config later
-impl settings::SettingsIO for SimpleSettingsIO {
-	fn get_mut(&mut self) -> &mut settings::Settings {
-		&mut self.settings
-	}
-
-	fn get(&self) -> &dash_frontend::settings::Settings {
-		&self.settings
-	}
-
-	fn save_to_disk(&mut self) {
-		log::info!("saving settings");
-		let data = self.settings.save();
-		std::fs::write("/tmp/testbed_settings.json", data).unwrap();
-	}
-
-	fn read_from_disk(&mut self) {
-		log::info!("loading settings");
-		if let Ok(res) = std::fs::read("/tmp/testbed_settings.json") {
-			let data = String::from_utf8(res).unwrap();
-			self.settings = settings::Settings::load(&data).unwrap();
-		}
-	}
-
-	fn mark_as_dirty(&mut self) {
-		// just save it, at least for now
-		// save_to_disk should be called later in time or at exit, not instantly
-		self.save_to_disk();
-	}
-}
+use dash_frontend::frontend::{self, FrontendUpdateParams};
+use wgui::layout::Layout;
+use wlx_common::dash_interface_emulated::DashInterfaceEmulated;
 
 pub struct TestbedDashboard {
-	layout: RcLayout,
-	frontend: frontend::RcFrontend,
+	frontend: frontend::Frontend<()>,
 }
 
 impl TestbedDashboard {
 	pub fn new() -> anyhow::Result<Self> {
-		let settings = SimpleSettingsIO::new();
+		let interface = DashInterfaceEmulated::new();
 
-		let (frontend, layout) = frontend::Frontend::new(frontend::InitParams {
-			settings: Box::new(settings),
-		})?;
-		Ok(Self { frontend, layout })
+		let frontend = frontend::Frontend::new(
+			frontend::InitParams {
+				interface: Box::new(interface),
+				has_monado: true,
+			},
+			&mut (),
+		)?;
+		Ok(Self { frontend })
 	}
 }
 
 impl Testbed for TestbedDashboard {
 	fn update(&mut self, params: TestbedUpdateParams) -> anyhow::Result<()> {
-		let mut frontend = self.frontend.borrow_mut();
-		frontend.update(
-			&self.frontend,
-			params.width,
-			params.height,
-			params.timestep_alpha,
-		)
+		let res = self.frontend.update(FrontendUpdateParams {
+			data: &mut (), /* nothing */
+			width: params.width,
+			height: params.height,
+			timestep_alpha: params.timestep_alpha,
+		})?;
+		self
+			.frontend
+			.process_update(res, params.audio_system, params.audio_sample_player)?;
+		Ok(())
 	}
 
-	fn layout(&self) -> &RcLayout {
-		&self.layout
+	fn layout(&mut self) -> &mut Layout {
+		&mut self.frontend.layout
 	}
 }

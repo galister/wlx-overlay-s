@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+use anyhow::Context;
+
 use crate::assets::AssetProvider;
 
 // a string which optionally has translation key in it
@@ -26,9 +28,16 @@ impl Translation {
 		}
 	}
 
-	pub fn from_raw_text_rc(text: Rc<str>) -> Self {
+	pub const fn from_raw_text_rc(text: Rc<str>) -> Self {
 		Self {
 			text,
+			translated: false,
+		}
+	}
+
+	pub fn from_raw_text_string(text: String) -> Self {
+		Self {
+			text: text.into(),
 			translated: false,
 		}
 	}
@@ -49,6 +58,7 @@ impl Translation {
 }
 
 pub struct I18n {
+	lang: String,
 	json_root_translated: serde_json::Value, // any language
 	json_root_fallback: serde_json::Value,   // english
 }
@@ -91,25 +101,50 @@ impl I18n {
 		}
 
 		let data_english = provider.load_from_path("lang/en.json")?;
-		let data_translated = provider.load_from_path(&format!("lang/{lang}.json"))?;
+		let path = format!("lang/{lang}.json");
+		let data_translated = provider
+			.load_from_path(&path)
+			.with_context(|| path.clone())
+			.context("Could not load translation file")?;
 
-		let json_root_fallback = serde_json::from_str(str::from_utf8(&data_english)?)?;
-		let json_root_translated = serde_json::from_str(str::from_utf8(&data_translated)?)?;
+		let json_root_fallback = serde_json::from_str(
+			str::from_utf8(&data_english)
+				.with_context(|| path.clone())
+				.context("Translation file not valid UTF-8")?,
+		)
+		.with_context(|| path.clone())
+		.context("Translation file not valid JSON")?;
+
+		let json_root_translated = serde_json::from_str(
+			str::from_utf8(&data_translated)
+				.with_context(|| path.clone())
+				.context("Translation file not valid UTF-8")?,
+		)
+		.with_context(|| path.clone())
+		.context("Translation file not valid JSON")?;
 
 		Ok(Self {
+			lang,
 			json_root_translated,
 			json_root_fallback,
 		})
 	}
 
-	pub fn translate(&mut self, translation_key: &str) -> Rc<str> {
+	pub fn get_lang(&self) -> &str {
+		&self.lang
+	}
+
+	pub fn translate(&mut self, translation_key_full: &str) -> Rc<str> {
+		let mut sections = translation_key_full.split(';');
+		let translation_key = sections.next().map_or(translation_key_full, |a| a);
+
 		if let Some(translated) = find_translation(translation_key, &self.json_root_translated) {
-			return Rc::from(translated);
+			return Rc::from(format_translated(translated, sections));
 		}
 
 		if let Some(translated_fallback) = find_translation(translation_key, &self.json_root_fallback) {
 			log::warn!("missing translation for key \"{translation_key}\", using \"en\" instead");
-			return Rc::from(translated_fallback);
+			return Rc::from(format_translated(translated_fallback, sections));
 		}
 
 		log::error!("missing translation for key \"{translation_key}\"");
@@ -120,4 +155,29 @@ impl I18n {
 		let translated = self.translate(translation_key);
 		translated.replace(to_replace.0, to_replace.1)
 	}
+}
+
+fn format_translated<'a, I>(format: &str, args: I) -> String
+where
+	I: IntoIterator<Item = &'a str>,
+{
+	let mut result = String::new();
+	let mut args = args.into_iter();
+
+	let mut chars = format.chars().peekable();
+	while let Some(c) = chars.next() {
+		if c == '{' && chars.peek() == Some(&'}') {
+			chars.next(); //consume }
+			if let Some(arg) = args.next() {
+				result.push_str(arg);
+			} else {
+				// no more args → keep literal {}
+				result.push_str("{}");
+			}
+		} else {
+			result.push(c);
+		}
+	}
+
+	result
 }

@@ -2,9 +2,19 @@
   "ANCHOR": {
     "CENTER": "Centrum"
   },
+  "BAR": {
+    "ADD_MIRROR": "Dodaj nowy widok lustrzany",
+    "EDIT_MODE_TOGGLE": "Przełącz tryb edycji",
+    "ADD_NEW_SET": "Dodaj nowy zestaw",
+    "DELETE_CURRENT_SET": "Usuń aktualny zestaw",
+    "TOGGLE_VISIBILITY": "Przełącz widoczność",
+    "RESET_POSITION": "Zresetuj pozycję",
+    "RELOAD_FROM_DISK": "Przeładuj XML z dysku",
+    "CLOSE_MIRROR": "Zamknij lustro",
+    "CLOSE_APP": "Zamknij aplikację",
+    "FORCE_CLOSE_APP": "Wymuś zamknięcie aplikacji"
+  },
   "WATCH": {
-    "MIRROR": "Dodaj nowy widok lustrzany",
-    "CLEANUP_MIRRORS": "Usuń widoki lustrzane, które\nnie są obecnie widoczne",
     "RECENTER": "Wyśrodkuj przestrzeń gry",
     "FIX_FLOOR": "Napraw wysokość podłogi",
     "EDIT_MODE_EXPLANATION": "Nakładki można teraz przesuwać i dostosowywać indywidualnie.\nPrzełącz nakładki dla bieżącego zestawu:",
@@ -13,7 +23,8 @@
     "ADD_NEW_SET": "Dodaj nowy zestaw",
     "SWITCH_TO_SET": "Przełącz na zestaw",
     "TOGGLE_FOR_CURRENT_SET": "Przełącz widoczność w bieżącym zestawie",
-    "LONG_PRESS_TO_DELETE_SET": "Przytrzymaj, aby usunąć zestaw"
+    "LONG_PRESS_TO_DELETE_SET": "Przytrzymaj, aby usunąć zestaw",
+    "CLEANUP_MIRRORS": "Usuń lustra, które\nnie są obecnie widoczne"
   },
   "EDIT_MODE": {
     "ADJUST_CURVATURE": "Dostosuj zakrzywienie",
@@ -80,6 +91,8 @@
     "EMPTY_SET": "Pusty zestaw!",
     "LETS_ADD_OVERLAYS": "Dodajmy kilka nakładek z zegarka!",
     "FIXING_FLOOR": "Naprawianie podłogi za 5 sekund...",
-    "ONE_CONTROLLER_ON_FLOOR": "Umieść jeden kontroler na podłodze!"
+    "ONE_CONTROLLER_ON_FLOOR": "Umieść jeden kontroler na podłodze!",
+    "CANNOT_ADD_SET": "Nie można dodać zestawu!",
+    "MAXIMUM_SETS_REACHED": "Osiągnięto maksymalną liczbę zestawów."
   }
 }

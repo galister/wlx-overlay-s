@@ -1,12 +1,21 @@
 <layout>
   <macro name="keycap_rect"
     margin="2" width="100%" overflow="hidden" box_sizing="border_box"
-    border_color="~color_accent_translucent" border="2" round="8" color="~color_accent_5" color2="~color_accent_1" gradient="vertical"
+    border_color="~color_accent_translucent" border="2" round="6" color="~color_accent_40" color2="~color_accent_10" gradient="vertical"
+    align_items="center" justify_content="center" />
+
+  <macro name="tray_rect"
+    margin="2" width="100%" overflow="hidden" box_sizing="border_box"
+    border_color="~color_accent_translucent" border="2" round="6" color="~color_bg" color2="~color_accent_10" gradient="vertical"
     align_items="center" justify_content="center" />
 
   <macro name="keycap_div"
     width="${width}" height="${height}" min_width="${width}" min_height="${height}" max_width="${width}" max_height="${height}"
   />
+
+  <template name="VerticalSeparator">
+    <rectangle width="2" height="100%" color="~color_accent" />
+  </template>
 
   <!-- The keyboard is build from the xkb keymap. This file is for customizing the keycaps. -->
 
@@ -15,7 +24,7 @@
   <template name="KeySpecial">
     <div macro="keycap_div">
       <rectangle id="${id}" macro="keycap_rect">
-        <sprite color="~color_text" width="32" height="32" src="keyboard/${text}.svg" />
+        <sprite color="~color_text" width="24" height="24" src="keyboard/${text}.svg" />
       </rectangle>
     </div>
   </template>
@@ -25,7 +34,7 @@
   <template name="KeyLetter">
     <div macro="keycap_div">
       <rectangle id="${id}" macro="keycap_rect">
-        <label text="${text}" size="24" />
+        <label text="${text}" size="18" />
       </rectangle>
     </div>
   </template>
@@ -34,9 +43,9 @@
   <!-- Used for letter keys on layouts with AltGr. -->
   <template name="KeyLetterAltGr">
     <div macro="keycap_div">
-      <rectangle id="${id}" macro="keycap_rect" gap="4">
-        <label text="${text}" size="24" />
-        <label color="~color_text_translucent" text="${text_altgr}" size="24" />
+      <rectangle id="${id}" macro="keycap_rect" gap="3">
+        <label text="${text}" size="18" />
+        <label color="~color_text_translucent" text="${text_altgr}" size="18" />
       </rectangle>
     </div>
   </template>
@@ -45,9 +54,9 @@
   <!-- Used for number & symbol keys on layouts without AltGr. -->
   <template name="KeySymbol">
     <div macro="keycap_div">
-      <rectangle id="${id}" macro="keycap_rect" gap="4">
-        <label color="~color_text_translucent" text="${text_shift}" size="24" />
-        <label text="${text}" size="24" />
+      <rectangle id="${id}" macro="keycap_rect" gap="3">
+        <label color="~color_text_translucent" text="${text_shift}" size="1" />
+        <label text="${text}" size="18" />
       </rectangle>
     </div>
   </template>
@@ -56,19 +65,159 @@
   <!-- Used for number & symbol keys on layouts with AltGr. -->
   <template name="KeySymbolAltGr">
     <div macro="keycap_div">
-      <rectangle id="${id}" macro="keycap_rect" flex_direction="row" flex_wrap="wrap">
+      <rectangle id="${id}" macro="keycap_rect" flex_direction="row" flex_wrap="wrap" padding="4">
         <div width="50%" height="50%" align_items="center" justify_content="center">
-          <label color="~color_text_translucent" text="${text_shift}" size="24" />
+          <label color="~color_text_translucent" text="${text_shift}" size="18" />
         </div>
         <div width="50%" height="50%" align_items="center" justify_content="center" />
         <div width="50%" height="50%" align_items="center" justify_content="center">
-          <label text="${text}" size="24" />
+          <label text="${text}" size="18" />
         </div>
         <div width="50%" height="50%" align_items="center" justify_content="center">
-          <label color="~color_text_translucent" text="${text_altgr}" size="24" />
+          <label color="~color_text_translucent" text="${text_altgr}" size="18" />
         </div>
       </rectangle>
     </div>
   </template>
+
+  <!-- Key cap with a single text line in the middle -->
+  <!-- Used for keys, such as Home, PageUp, etc. -->
+  <template name="KeyOther">
+    <div macro="keycap_div">
+      <rectangle id="${id}" macro="keycap_rect">
+        <label text="${text}" size="16" />
+      </rectangle>
+    </div>
+  </template>
+
+  <macro name="button_style" border="2" border_color="~color_accent_translucent" color="~color_bg" round="6"
+    align_items="center" justify_content="center" padding="6" width="60" height="60" overflow="visible"/>
+
+  <macro name="bg_rect" width="100%" color="~color_bg" round="10" border="2" border_color="~color_accent" />
+
+  <blueprint name="menu_app">
+    <context_menu >
+      <!-- title text="${name}" /-->
+      <cell translation="BAR.TOGGLE_VISIBILITY" _press="::OverlayToggle ${name}" />
+      <cell translation="BAR.RESET_POSITION" _press="::OverlayReset ${name}" />
+      <cell translation="BAR.CLOSE_APP" _press="::WvrOverlayTermProcess ${name}" />
+      <cell translation="BAR.FORCE_CLOSE_APP" _press="::WvrOverlayKillProcess ${name}" />
+    </context_menu>
+  </blueprint>
+
+  <!-- An app with a single icon. -->
+  <template name="App">
+    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press="::ContextMenuOpen menu_app">  
+      <sprite width="38" height="38" color="~color_text" src_ext="${icon}" />
+    </Button>
+  </template>
+
+  <blueprint name="menu_screen">
+    <context_menu >
+      <!-- title text="${name}" /-->
+      <cell translation="BAR.TOGGLE_VISIBILITY" _press="::OverlayToggle ${name}" />
+      <cell translation="BAR.RESET_POSITION" _press="::OverlayReset ${name}" />
+    </context_menu>
+  </blueprint>
+
+  <!-- A screen with a shortened connector name, e.g. "H1" for HDMI-A-1 or "D2" for DP-2 -->
+  <template name="Screen">
+    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press="::ContextMenuOpen menu_screen">
+      <sprite width="38" height="38" color="~color_text" src_builtin="edit/screen.svg" />
+      <div position="absolute" margin_top="-7" margin_left="-1">
+        <label text="${display}" size="18" color="~color_faded_20" weight="bold" />
+      </div>
+    </Button>
+  </template>
+
+  <blueprint name="menu_panel">
+    <context_menu >
+      <!-- title text="${name}" /-->
+      <cell translation="BAR.TOGGLE_VISIBILITY" _press="::OverlayToggle ${name}" />
+      <cell translation="BAR.RESET_POSITION" _press="::OverlayReset ${name}" />
+      <cell translation="BAR.RELOAD_FROM_DISK" _press="::CustomOverlayReload ${name}" />
+    </context_menu>
+  </blueprint>
+
+  <template name="Panel">
+    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press="::ContextMenuOpen menu_panel">
+      <sprite width="38" height="38" color="~color_text" src_builtin="edit/panel.svg" />
+    </Button>
+  </template>
+
+  <blueprint name="menu_mirror">
+    <context_menu >
+      <!-- title text="${name}" /-->
+      <cell translation="BAR.TOGGLE_VISIBILITY" _press="::OverlayToggle ${name}" />
+      <cell translation="BAR.RESET_POSITION" _press="::OverlayReset ${name}" />
+      <cell translation="BAR.CLOSE_MIRROR" _press="::OverlayDrop ${name}" />
+    </context_menu>
+  </blueprint>
+
+  <template name="Mirror">
+    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press="::ContextMenuOpen menu_mirror">
+      <sprite width="38" height="38" color="~color_text" src_builtin="edit/mirror.svg" />
+      <div position="absolute" margin_top="5" margin_left="13">
+        <label text="${display}" size="20" color="~color_faded_20" weight="bold" />
+      </div>
+    </Button>
+  </template>
+
+  <blueprint name="menu_burger">
+    <context_menu >
+      <cell translation="BAR.ADD_MIRROR" _press="::NewMirror" />
+      <cell translation="BAR.EDIT_MODE_TOGGLE" _press="::EditToggle" />
+      <cell translation="BAR.ADD_NEW_SET" _press="::AddSet" />
+      <cell translation="BAR.DELETE_CURRENT_SET" _press="::DeleteSet" />
+    </context_menu>
+  </blueprint>
+
+  <template name="Set">
+    <Button macro="button_style" id="set_${idx}" _press="::SetSwitch ${idx}" tooltip="WATCH.SWITCH_TO_SET" tooltip_side="bottom">
+      <sprite width="38" height="38" color="~color_text" src_builtin="watch/set2.svg" />
+      <div position="absolute" margin_top="10" margin_left="-7">
+        <label text="${display}" size="20" color="~color_faded_20" weight="bold" />
+      </div>
+    </Button>
+  </template>
+
+  <elements>
+    <div flex_direction="column" interactable="0">
+      <rectangle macro="bg_rect" padding="10" align_items="center" justify_content="space_between">
+        <div gap="10">
+          <Button macro="button_style" id="btn_dashboard" _press="::DashToggle">
+            <sprite width="38" height="38" color="~color_text" src="watch/wayvr_dashboard_mono.svg"  />
+          </Button>
+          <VerticalSeparator />
+          <div id="panels_root" gap="6">
+          </div>
+          <VerticalSeparator />
+          <div id="apps_root" gap="6">
+          </div>
+        </div>
+        <div id="tray_root" flex_direction="row" gap="10">
+          <Button macro="button_style" _press="::ContextMenuOpen menu_burger">
+            <sprite width="38" height="38" color="~color_text" src_builtin="keyboard/burger.svg" />
+          </Button>
+
+          <VerticalSeparator />
+
+          <div id="sets_root" flex_direction="row" gap="6">
+          </div>
+
+          <VerticalSeparator />
+
+          <div flex_direction="column" gap="3" align_items="center">
+            <label text="23:59" _source="clock" _display="time" size="21" weight="bold" />
+            <label text="Tuesday" _source="clock" _display="dow" size="15" />
+            <label text="22/2/2022" _source="clock" _display="date" size="15" />
+          </div>
+        </div>
+      </rectangle>
+      <div width="100%" height="13" interactable="0" />
+      <rectangle id="keyboard_root" macro="bg_rect" flex_direction="column" padding="10">
+      </rectangle>
+    </div>
+  </elements>
 
 </layout>

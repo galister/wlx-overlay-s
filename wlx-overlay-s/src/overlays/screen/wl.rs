@@ -3,13 +3,15 @@ use wlx_capture::{
     WlxCapture,
     frame::Transform,
     wayland::{WlxClient, WlxOutput},
-    wlr_dmabuf::WlrDmabufCapture,
     wlr_screencopy::WlrScreencopyCapture,
 };
-use wlx_common::{astr_containers::AStrMapExt, config::PwTokenMap};
+use wlx_common::{
+    astr_containers::AStrMapExt,
+    config::{CaptureMethod, PwTokenMap},
+};
 
 use crate::{
-    overlays::screen::create_screen_from_backend,
+    overlays::screen::{backend::CaptureType, create_screen_from_backend},
     state::{AppState, ScreenMeta},
 };
 
@@ -21,41 +23,36 @@ use super::{
 };
 
 impl ScreenBackend {
-    pub fn new_wlr_dmabuf(output: &WlxOutput, app: &AppState) -> Option<Self> {
-        let client = WlxClient::new()?;
-        let capture = new_wlx_capture!(
-            app.gfx_extras.queue_capture,
-            WlrDmabufCapture::new(client, output.id)
-        );
-        Some(Self::new_raw(output.name.clone(), app.xr_backend, capture))
-    }
-
     pub fn new_wlr_screencopy(output: &WlxOutput, app: &AppState) -> Option<Self> {
         let client = WlxClient::new()?;
         let capture = new_wlx_capture!(
             app.gfx_extras.queue_capture,
             WlrScreencopyCapture::new(client, output.id)
         );
-        Some(Self::new_raw(output.name.clone(), app.xr_backend, capture))
+        Some(Self::new_raw(
+            output.name.clone(),
+            app.xr_backend,
+            CaptureType::ScreenCopy,
+            capture,
+        ))
     }
 }
 
 #[allow(clippy::useless_let_if_seq)]
 pub fn create_screen_renderer_wl(
     output: &WlxOutput,
-    has_wlr_dmabuf: bool,
     has_wlr_screencopy: bool,
     pw_token_store: &mut PwTokenMap,
     app: &mut AppState,
 ) -> Option<ScreenBackend> {
     let mut capture: Option<ScreenBackend> = None;
-    if (&*app.session.config.capture_method == "wlr-dmabuf") && has_wlr_dmabuf {
-        log::info!("{}: Using Wlr DMA-Buf", &output.name);
-        capture = ScreenBackend::new_wlr_dmabuf(output, app);
-    }
 
-    if &*app.session.config.capture_method == "screencopy" && has_wlr_screencopy {
-        log::info!("{}: Using Wlr Screencopy Wl-SHM", &output.name);
+    if matches!(
+        app.session.config.capture_method,
+        CaptureMethod::ScreenCopyCpu | CaptureMethod::ScreenCopyGpu | CaptureMethod::Auto
+    ) && has_wlr_screencopy
+    {
+        log::info!("{}: Using ScreenCopy capture", &output.name);
         capture = ScreenBackend::new_wlr_screencopy(output, app);
     }
 
@@ -102,7 +99,6 @@ pub fn create_screens_wayland(wl: &mut WlxClient, app: &mut AppState) -> ScreenC
     let mut pw_tokens: PwTokenMap = load_pw_token_config().unwrap_or_default();
 
     let pw_tokens_copy = pw_tokens.clone();
-    let has_wlr_dmabuf = wl.maybe_wlr_dmabuf_mgr.is_some();
     let has_wlr_screencopy = wl.maybe_wlr_screencopy_mgr.is_some();
 
     for (id, output) in &wl.outputs {
@@ -118,13 +114,9 @@ pub fn create_screens_wayland(wl: &mut WlxClient, app: &mut AppState) -> ScreenC
             output.logical_pos,
         );
 
-        if let Some(mut backend) = create_screen_renderer_wl(
-            output,
-            has_wlr_dmabuf,
-            has_wlr_screencopy,
-            &mut pw_tokens,
-            app,
-        ) {
+        if let Some(mut backend) =
+            create_screen_renderer_wl(output, has_wlr_screencopy, &mut pw_tokens, app)
+        {
             backend.logical_pos = vec2(output.logical_pos.0 as f32, output.logical_pos.1 as f32);
             backend.logical_size = vec2(output.logical_size.0 as f32, output.logical_size.1 as f32);
             backend.mouse_transform_original = output.transform;

@@ -12,13 +12,13 @@ use wgui::{
 	i18n::Translation,
 	layout::{Layout, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
+	task::Tasks,
 	widget::ConstructEssentials,
 };
 
 use crate::{
 	frontend::{FrontendTask, FrontendTasks},
-	task::Tasks,
-	util::pactl_wrapper,
+	util::pactl_wrapper::{self},
 };
 
 #[derive(Clone)]
@@ -172,7 +172,8 @@ fn does_string_mention_hmd_sink(input: &str) -> bool {
 	lwr.contains("index") || // Valve hardware
 	lwr.contains("oculus") || // Oculus
 	lwr.contains("rift") || // Also Oculus
-	lwr.contains("beyond") // Bigscreen Beyond
+	lwr.contains("beyond") ||  // Bigscreen Beyond
+	lwr.contains("wivrn") // WiVRn
 }
 
 fn does_string_mention_hmd_source(input: &str) -> bool {
@@ -180,7 +181,8 @@ fn does_string_mention_hmd_source(input: &str) -> bool {
 	lwr.contains("hmd") || // generic hmd name detected
 	lwr.contains("valve") || // Valve hardware
 	lwr.contains("oculus") || // Oculus
-	lwr.contains("beyond") // Bigscreen Beyond
+	lwr.contains("beyond")  || // Bigscreen Beyond
+	lwr.contains("wivrn") // WiVRn
 }
 
 fn is_card_mentioning_hmd(card: &pactl_wrapper::Card) -> bool {
@@ -401,7 +403,30 @@ struct MountDeviceSliderParams<'a> {
 	alt_desc: String,
 }
 
+fn push_popup_speakers_set_successfully(globals: &WguiGlobals, frontend_tasks: &FrontendTasks, name: &str) {
+	frontend_tasks.push(FrontendTask::PushToast(Translation::from_translation_key(
+		format!(
+			"{}: {}",
+			globals.i18n().translate("AUDIO.SPEAKERS_SET_SUCCESSFULLY"),
+			name
+		)
+		.as_str(),
+	)));
+}
+
+fn push_popup_microphone_set_successfully(globals: &WguiGlobals, frontend_tasks: &FrontendTasks, name: &str) {
+	frontend_tasks.push(FrontendTask::PushToast(Translation::from_translation_key(
+		format!(
+			"{}: {}",
+			globals.i18n().translate("AUDIO.MICROPHONE_SET_SUCCESSFULLY"),
+			name
+		)
+		.as_str(),
+	)));
+}
+
 fn switch_sink_card(
+	globals: &WguiGlobals,
 	frontend_tasks: &FrontendTasks,
 	card: &pactl_wrapper::Card,
 	profile_name: &str,
@@ -424,32 +449,32 @@ fn switch_sink_card(
 	}
 
 	if sink_found {
-		frontend_tasks.push(FrontendTask::PushToast(Translation::from_translation_key(
-			format!("[AUDIO.SPEAKERS_SET_SUCCESSFULLY]: {}", name.name).as_str(),
-		)));
+		push_popup_speakers_set_successfully(globals, frontend_tasks, &name.name);
 	} else {
 		frontend_tasks.push(FrontendTask::PushToast(Translation::from_translation_key(
-			format!("[AUDIO.DEVICE_FOUND_AND_INITIALIZED_BUT_NOT_SWITCHED]: {}", name.name).as_str(),
+			format!("Card found ({}), but no matching speakers found", name.name).as_str(),
 		)));
 	}
 
 	Ok(())
 }
 
-fn switch_source(frontend_tasks: &FrontendTasks, source: &pactl_wrapper::Source) -> anyhow::Result<()> {
+fn switch_source(
+	globals: &WguiGlobals,
+	frontend_tasks: &FrontendTasks,
+	source: &pactl_wrapper::Source,
+) -> anyhow::Result<()> {
 	match pactl_wrapper::set_default_source(source.index) {
 		Ok(()) => {
-			frontend_tasks.push(FrontendTask::PushToast(Translation::from_translation_key(
-				format!(
-					"[AUDIO.MICROPHONE_SET_SUCCESSFULLY]: {}",
-					if let Some(card_name) = &source.properties.card_name {
-						card_name
-					} else {
-						&source.description
-					}
-				)
-				.as_str(),
-			)));
+			push_popup_microphone_set_successfully(
+				globals,
+				frontend_tasks,
+				if let Some(card_name) = &source.properties.card_name {
+					card_name
+				} else {
+					&source.description
+				},
+			);
 			Ok(())
 		}
 		Err(e) => {
@@ -459,13 +484,13 @@ fn switch_source(frontend_tasks: &FrontendTasks, source: &pactl_wrapper::Source)
 	}
 }
 
-fn switch_to_vr_microphone(frontend_tasks: &FrontendTasks) -> anyhow::Result<()> {
+fn switch_to_vr_microphone(globals: &WguiGlobals, frontend_tasks: &FrontendTasks) -> anyhow::Result<()> {
 	let sources = pactl_wrapper::list_sources()?;
 	let mut switched = false;
 
 	for source in &sources {
 		if is_source_mentioning_hmd(source) {
-			switch_source(frontend_tasks, source)?;
+			switch_source(globals, frontend_tasks, source)?;
 			switched = true;
 			break;
 		}
@@ -529,9 +554,19 @@ fn get_best_profile_from_array<'a>(arr: &[CardPriorityResult<'a>]) -> Option<Car
 	res
 }
 
-fn switch_to_vr_speakers(frontend_tasks: &FrontendTasks) -> anyhow::Result<()> {
+fn switch_to_vr_speakers(globals: &WguiGlobals, frontend_tasks: &FrontendTasks) -> anyhow::Result<()> {
 	let cards = pactl_wrapper::list_cards()?;
+	let sinks = pactl_wrapper::list_sinks()?;
 	let mut best_profiles = Vec::new();
+
+	// Check for WiVRn presence
+	for sink in sinks {
+		if sink.name.contains("wivrn") {
+			pactl_wrapper::set_default_sink(sink.index)?;
+			push_popup_speakers_set_successfully(globals, frontend_tasks, "WiVRn");
+			return Ok(());
+		}
+	}
 
 	for card in &cards {
 		if !is_card_mentioning_hmd(card) {
@@ -545,7 +580,7 @@ fn switch_to_vr_speakers(frontend_tasks: &FrontendTasks) -> anyhow::Result<()> {
 	if !best_profiles.is_empty() {
 		let best_profile = get_best_profile_from_array(&best_profiles).unwrap();
 		let name = get_profile_display_name(&best_profile.name, best_profile.card);
-		switch_sink_card(frontend_tasks, best_profile.card, &best_profile.name, &name)?;
+		switch_sink_card(globals, frontend_tasks, best_profile.card, &best_profile.name, &name)?;
 		return Ok(());
 	}
 
@@ -556,7 +591,7 @@ fn switch_to_vr_speakers(frontend_tasks: &FrontendTasks) -> anyhow::Result<()> {
 			if !name.is_vr {
 				continue;
 			}
-			switch_sink_card(frontend_tasks, card, profile_name, &name)?;
+			switch_sink_card(globals, frontend_tasks, card, profile_name, &name)?;
 			return Ok(());
 		}
 	}
@@ -684,8 +719,8 @@ impl View {
 					pactl_wrapper::set_card_profile(c.card.index, &c.profile_name)?;
 				}
 				ViewTask::AutoSwitch => {
-					switch_to_vr_microphone(&self.frontend_tasks)?;
-					switch_to_vr_speakers(&self.frontend_tasks)?;
+					switch_to_vr_speakers(&self.globals, &self.frontend_tasks)?;
+					switch_to_vr_microphone(&self.globals, &self.frontend_tasks)?;
 					self.tasks.push(ViewTask::Remount);
 				}
 			}
@@ -745,8 +780,14 @@ impl View {
 			par.insert("device_name".into(), disp.name.as_str().into());
 			par.insert("device_icon".into(), disp.icon_path.into());
 		} else {
+			let icon_path = if params.alt_desc.contains("WiVRn") {
+				"dashboard/wivrn_head_symbolic.svg"
+			} else {
+				"dashboard/binary.svg"
+			};
+
 			par.insert("device_name".into(), params.alt_desc.into());
-			par.insert("device_icon".into(), "dashboard/binary.svg".into());
+			par.insert("device_icon".into(), icon_path.into());
 		}
 
 		par.insert(

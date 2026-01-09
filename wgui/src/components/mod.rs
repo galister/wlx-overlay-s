@@ -9,6 +9,7 @@ use crate::{
 
 pub mod button;
 pub mod checkbox;
+pub mod radio_group;
 pub mod slider;
 pub mod tooltip;
 

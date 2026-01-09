@@ -13,32 +13,23 @@ pub struct Handshake {
 	pub client_name: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum AttachTo {
-	None,
-	HandLeft,
-	HandRight,
-	Head,
-	Stage,
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+pub enum PositionMode {
+	Float,
+	Anchor,
+	Static,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WvrProcessLaunchParams {
 	pub name: String,
 	pub exec: String,
-	pub target_display: packet_server::WvrDisplayHandle,
 	pub env: Vec<String>,
 	pub args: String,
+	pub icon: Option<String>,
+	pub resolution: [u32; 2],
+	pub pos_mode: PositionMode,
 	pub userdata: HashMap<String, String>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct WvrDisplayCreateParams {
-	pub width: u16,
-	pub height: u16,
-	pub name: String,
-	pub scale: Option<f32>,
-	pub attach_to: AttachTo,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -67,22 +58,12 @@ pub struct WlxModifyPanelParams {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum PacketClient {
 	Handshake(Handshake),
-	WvrDisplayCreate(Serial, WvrDisplayCreateParams),
-	WvrDisplayGet(Serial, packet_server::WvrDisplayHandle),
-	WvrDisplayList(Serial),
-	WvrDisplayRemove(Serial, packet_server::WvrDisplayHandle),
-	WvrDisplaySetVisible(packet_server::WvrDisplayHandle, bool),
-	WvrDisplayWindowList(Serial, packet_server::WvrDisplayHandle),
-	WvrDisplaySetWindowLayout(
-		packet_server::WvrDisplayHandle,
-		packet_server::WvrDisplayWindowLayout,
-	),
+	WvrWindowList(Serial),
 	WvrWindowSetVisible(packet_server::WvrWindowHandle, bool),
 	WvrProcessGet(Serial, packet_server::WvrProcessHandle),
 	WvrProcessLaunch(Serial, WvrProcessLaunchParams),
 	WvrProcessList(Serial),
 	WvrProcessTerminate(packet_server::WvrProcessHandle),
-	WlxHaptics(WlxHapticsParams),
 	WlxInputState(Serial),
 	WlxModifyPanel(WlxModifyPanelParams),
 	WlxDeviceHaptics(usize, WlxHapticsParams),

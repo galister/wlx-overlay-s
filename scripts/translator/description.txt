@@ -5,12 +5,16 @@ Glossary:
 - wlx-overlay-s: The name of this software (also called WlxOverlay-S)
 - WayVR: A Wayland compositor intended to be used in VR
 - WayVR Dashboard: An application (and game) launcher which is displayed in front of the user
+- Monado: A VR compositor
 - OpenVR: API made by Valve
 - OpenXR: API made by Khronos
 - OSC: OpenSoundControl
 - Playspace: A designated real area where users can interact with the virtual environment
 - Space-drag: A feature which allows the user to move their HMD origin position via a controller
 - Passthrough: Some headsets have built-in cameras for displaying image on the HMD screen
-End of glossary;
+- Display: A virtual monitor located in WayVR environment. It has a specific resolution and it contains virtual windows.
+- Set: A list of virtual overlays you can interact with
+- Watch: An overlay anchored to your left hand in which you can display a dashboard, see your current date and time or toggle your sets.
+End of glossary.
 
-You will be given the input in the code blocks which needs to be translated to {TARGET_LANG} language. Write only the result in codeblocks, do not explain. Keep any newlines and other important formatting-required identifiers as-is.
+You will be given the input in the code blocks which needs to be translated to {TARGET_LANG} language. Write only the result in codeblocks, do not explain. Keep any newlines and other important formatting-required identifiers as-is, in the same state.

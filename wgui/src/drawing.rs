@@ -54,6 +54,41 @@ impl Boundary {
 		}
 	}
 
+	pub const fn bottom_left(&self) -> Vec2 {
+		Vec2::new(self.pos.x, self.pos.y + self.size.y)
+	}
+
+	pub const fn bottom_right(&self) -> Vec2 {
+		Vec2::new(self.pos.x + self.size.x, self.pos.y + self.size.y)
+	}
+
+	pub const fn top_right(&self) -> Vec2 {
+		Vec2::new(self.pos.x + self.size.x, self.pos.y)
+	}
+
+	pub const fn center(&self) -> Vec2 {
+		Vec2::new(self.pos.x + self.size.x / 2.0, self.pos.y + self.size.y / 2.0)
+	}
+
+	pub const fn width(&self) -> f32 {
+		self.size.x
+	}
+
+	pub const fn height(&self) -> f32 {
+		self.size.y
+	}
+
+	pub const fn area(&self) -> f32 {
+		self.size.x * self.size.y
+	}
+
+	pub const fn contains_point(&self, point: Vec2) -> bool {
+		point.x >= self.pos.x
+			&& point.x <= self.pos.x + self.size.x
+			&& point.y >= self.pos.y
+			&& point.y <= self.pos.y + self.size.y
+	}
+
 	pub const fn top(&self) -> f32 {
 		self.pos.y
 	}
@@ -146,6 +181,11 @@ impl Color {
 		let b = (self.b.clamp(0.0, 1.0) * 255.0).round() as u8;
 		let a = (self.a.clamp(0.0, 1.0) * 255.0).round() as u8;
 		format!("#{r:02X}{g:02X}{b:02X}{a:02X}")
+	}
+
+	#[must_use]
+	pub fn as_arr(&self) -> [f32; 4] {
+		[self.r, self.b, self.g, self.a]
 	}
 }
 

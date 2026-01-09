@@ -2,6 +2,7 @@ use std::{collections::HashMap, str::FromStr, sync::LazyLock};
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use wlx_common::config::AltModifier;
 
 use crate::{
     config::{ConfigType, load_known_yaml},
@@ -118,7 +119,9 @@ impl Layout {
                             _ => label.push(format!("{vk:?}").to_lowercase()),
                         }
                     }
-                    KeyType::Other => {}
+                    KeyType::Other => {
+                        cap_type = KeyCapType::Other;
+                    }
                 }
             }
 
@@ -230,18 +233,6 @@ pub(super) struct KeyData {
     pub(super) cap_type: KeyCapType,
 }
 
-#[derive(Debug, Default, Clone, Copy, Deserialize, Serialize)]
-#[repr(usize)]
-pub enum AltModifier {
-    #[default]
-    None,
-    Shift,
-    Ctrl,
-    Alt,
-    Super,
-    Meta,
-}
-
 #[derive(Debug)]
 pub enum KeyCapType {
     /// Label an SVG
@@ -258,4 +249,6 @@ pub enum KeyCapType {
     /// Shift symbol on top-left
     /// AltGr symbol on bottom-right
     SymbolAltGr,
+    /// Label has text in the center, e.g. Home
+    Other,
 }

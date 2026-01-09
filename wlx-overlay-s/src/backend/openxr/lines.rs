@@ -75,6 +75,7 @@ impl LinePool {
 
         let pass = self.pipeline.create_pass(
             [1.0, 1.0],
+            [0.0, 0.0],
             app.gfx_extras.quad_verts.clone(),
             0..4,
             0..1,

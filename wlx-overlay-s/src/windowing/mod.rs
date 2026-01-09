@@ -15,6 +15,7 @@ new_key_type! {
 pub enum OverlaySelector {
     Id(OverlayID),
     Name(Arc<str>),
+    Nothing,
 }
 
 pub const Z_ORDER_TOAST: u32 = 71;

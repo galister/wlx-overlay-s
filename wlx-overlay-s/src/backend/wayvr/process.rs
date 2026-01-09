@@ -1,22 +1,22 @@
-use std::{collections::HashMap, io::Read};
+use std::{collections::HashMap, io::Read, sync::Arc};
 
-use wayvr_ipc::packet_server;
+use wayvr_ipc::{packet_client, packet_server};
 
 use crate::gen_id;
-
-use super::display;
 
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct WayVRProcess {
     pub auth_key: String,
     pub child: std::process::Child,
-    pub display_handle: display::DisplayHandle,
-
+    pub app_name: String,
     pub exec_path: String,
     pub args: Vec<String>,
     pub env: Vec<(String, String)>,
     pub working_dir: Option<String>,
+    pub resolution: [u32; 2],
+    pub pos_mode: packet_client::PositionMode,
+    pub icon: Option<Arc<str>>,
 
     pub userdata: HashMap<String, String>,
 }
@@ -24,7 +24,6 @@ pub struct WayVRProcess {
 #[derive(Debug)]
 pub struct ExternalProcess {
     pub pid: u32,
-    pub display_handle: display::DisplayHandle,
 }
 
 #[derive(Debug)]
@@ -33,14 +32,13 @@ pub enum Process {
     External(ExternalProcess), // External process not directly controlled by us
 }
 
-impl Process {
-    pub const fn display_handle(&self) -> display::DisplayHandle {
-        match self {
-            Self::Managed(p) => p.display_handle,
-            Self::External(p) => p.display_handle,
-        }
-    }
+#[derive(Clone, Copy)]
+pub enum KillSignal {
+    Term,
+    Kill,
+}
 
+impl Process {
     pub fn is_running(&mut self) -> bool {
         match self {
             Self::Managed(p) => p.is_running(),
@@ -48,16 +46,24 @@ impl Process {
         }
     }
 
-    pub fn terminate(&mut self) {
+    pub fn kill(&mut self, signal: KillSignal) {
+        let signal = match signal {
+            KillSignal::Term => libc::SIGTERM,
+            KillSignal::Kill => libc::SIGKILL,
+        };
+
         match self {
-            Self::Managed(p) => p.terminate(),
-            Self::External(p) => p.terminate(),
+            Self::Managed(p) => p.kill(signal),
+            Self::External(p) => p.kill(signal),
         }
     }
 
     pub fn get_name(&self) -> String {
         match self {
-            Self::Managed(p) => p.get_name().unwrap_or_else(|| String::from("unknown")),
+            Self::Managed(p) => p
+                .get_name()
+                .or_else(|| p.exec_path.split('/').last().map(String::from))
+                .unwrap_or_else(|| String::from("unknown")),
             Self::External(p) => p.get_name().unwrap_or_else(|| String::from("unknown")),
         }
     }
@@ -67,13 +73,11 @@ impl Process {
             Self::Managed(p) => packet_server::WvrProcess {
                 name: p.get_name().unwrap_or_else(|| String::from("unknown")),
                 userdata: p.userdata.clone(),
-                display_handle: p.display_handle.as_packet(),
                 handle: handle.as_packet(),
             },
             Self::External(p) => packet_server::WvrProcess {
                 name: p.get_name().unwrap_or_else(|| String::from("unknown")),
                 userdata: HashMap::default(),
-                display_handle: p.display_handle.as_packet(),
                 handle: handle.as_packet(),
             },
         }
@@ -83,10 +87,11 @@ impl Process {
 impl Drop for WayVRProcess {
     fn drop(&mut self) {
         log::info!(
-            "Sending SIGTERM (graceful exit) to process {}",
+            "Sending SIGTERM (graceful exit) to process {} ({})",
+            self.child.id(),
             self.exec_path.as_str()
         );
-        self.terminate();
+        self.kill(libc::SIGTERM);
     }
 }
 
@@ -120,10 +125,10 @@ impl WayVRProcess {
         }
     }
 
-    fn terminate(&mut self) {
+    fn kill(&mut self, signal: i32) {
         unsafe {
             // Gracefully stop process
-            libc::kill(self.child.id() as i32, libc::SIGTERM);
+            libc::kill(self.child.id() as i32, signal);
         }
     }
 
@@ -154,11 +159,11 @@ impl ExternalProcess {
         }
     }
 
-    fn terminate(&mut self) {
+    fn kill(&mut self, signal: i32) {
         if self.pid != 0 {
             unsafe {
                 // send SIGINT (^C)
-                libc::kill(self.pid as i32, libc::SIGINT);
+                libc::kill(self.pid as i32, signal);
             }
         }
         self.pid = 0;

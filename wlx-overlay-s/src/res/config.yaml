@@ -5,11 +5,88 @@
 # In case you're not getting the expected result,
 # check the logs at /tmp/wlx.log for parsing errors.
 
-################ EXPERIENCE ################
+## Only if built with `osc` feature. What port to send OSC messages to.
+#osc_out_port: 9000
 
-## When enabled, sets functionality will be disabled and
-## the bottom of the watch will list overlays instead of sets.
-#single_set_mode: false
+## Set your preferred watch timezones here.
+#timezones:
+# - "Europe/Oslo"
+# - "America/New_York"
+
+## On most desktops, WlxOverlay-S is able to pick up your keymap via wayland. (Especially when using Fcitx5!)
+## However, if this does not happen, you might want to set your keymap by hand.
+## When using a simple layout:
+#default_keymap: us
+# 
+## When defining a layout-variant pair, separate using a dash:
+#default_keymap: us-colemak_dh
+
+## Path to read the custom theme from, relative to `~/.config/wlxoverlay`
+#theme_path: "theme"
+
+## These can be used to control the color theme of WlxOverlay-S.
+#color_text: "#ffffff"
+#color_accent: "#008cff"
+#color_danger: "#ff3300"
+#color_faded: "#668299"
+#color_background: "#010206"
+
+## Path to custom skybox texture, relative to `~/.config/wlxoverlay`
+#skybox_texture: ""
+
+## User-defined list of custom overlays that should be created.
+## Each entry must correspond to an XML file at: {theme_path}/gui/{entry}.xml
+#custom_panels:
+# - "test"
+
+## The alt_click binding can be used to execute a program of choice
+## These are not default, but example values.
+#alt_click_down: ["bash", "-c", "echo x"]
+#alt_click_up: ["bash", "-c", "echo y"]
+
+## Example for quick-calibration with `motoc`:
+#alt_click_down:
+#  [
+#    "motoc",
+#    "calibrate",
+#    "--src",
+#    "WiVRn HMD",
+#    "--dst",
+#    "LHR-AABBCCDD",
+#    "--samples",
+#    "200",
+#  ]
+ 
+## Set what kind of notifications to show and what to hide
+#notification_topics:
+#  System: Center
+#  DesktopNotification: Center
+#  XSNotification: Center
+#  IpdChange: Hide
+
+## Path to a custom notification sound, relative to `~/.config/wlxoverlay`
+#notification_sound: ""
+
+## If `screen_render_down` is enabled,
+## controls the maximum height of the screen
+#screen_max_height: 1440
+
+## Don't move the mouse more often than this value
+## helps to avoid unnecessary load when pairing
+## a high-refresh screen with a lower-refresh hmd
+#mouse_move_interval_ms: 10
+
+################ MANAGED FROM DASHBOARD ################
+################ MANAGED FROM DASHBOARD ################
+################ MANAGED FROM DASHBOARD ################
+################ MANAGED FROM DASHBOARD ################
+
+# ANYTHING BELOW HERE IS MANAGED FROM THE DASHBOARD.
+# The settings are here for reference only.
+# Probably don't include them in your config file.
+
+## The bottom of the watch will list sets instead of overlays.
+#sets_on_watch: false
 
 ## Force an alternative method for Wayland desktop capture.
 ## `auto`: default
@@ -52,93 +129,14 @@
 ## 0.1 → too much smoothing
 #pointer_lerp_factor: 0.3
 
-## Only if built with `osc` feature. What port to send OSC messages to.
-#osc_out_port: 9000
-
 ## If your upright screen is not displaying correctly, try enabling this.
 #upright_screen_fix: false
 
 ## If you're seeing the cursor twice, try enabling this.
 #double_cursor_fix: false
-
-################ TIME ################ 
-
-## Set your preferred watch timezones here.
-#timezones:
-# - "Europe/Oslo"
-# - "America/New_York"
-
+# 
 ## Use 12h instead of 24h watch.
 #clock_12h: false
-
-################ KEYBOARD ################ 
-
-## On most desktops, WlxOverlay-S is able to pick up your keymap via wayland. (Especially when using Fcitx5!)
-## However, if this does not happen, you might want to set your keymap by hand.
-
-## When using a simple layout:
-#default_keymap: us
-
-## When defining a layout-variant pair, separate using a dash:
-#default_keymap: us-colemak_dh
-
-## Toggle keyboard click sound
-#keyboard_sound_enabled: true
-
-################ THEMING & CUSTOMIZATION ################ 
-
-## Path to read the custom theme from, relative to `~/.config/wlxoverlay`
-#theme_path: "theme"
-
-## These can be used to control the color theme of WlxOverlay-S.
-#color_text: "#ffffff"
-#color_accent: "#008cff"
-#color_danger: "#ff3300"
-#color_faded: "#668299"
-#color_background: "#010206"
-
-## Multiplier for animation speed. 2.0 → double speed, 0.5 → half speed
-#animation_speed: 1.0
-
-## Adjust this between 0..1 for a more rectangular feel.
-#round_multiplier: 1.0
-
-## Path to custom skybox texture, relative to `~/.config/wlxoverlay`
-#skybox_texture: ""
-
-## User-defined list of custom overlays that should be created.
-## Each entry must correspond to an XML file at: {theme_path}/gui/{entry}.xml
-#custom_panels:
-# - "test"
-
-## Alter default scale of various overlays
-#keyboard_scale: 1.0
-#desktop_view_scale: 1.0
-#watch_scale: 1.0
-
-## Control the fade & visibility of the watch
-#watch_view_angle_min: 0.5
-#watch_view_angle_max: 0.7
-
-## The alt_click binding can be used to execute a program of choice
-## These are not default, but example values.
-#alt_click_down: ["bash", "-c", "echo x"]
-#alt_click_up: ["bash", "-c", "echo y"]
-
-## Example for quick-calibration with `motoc`:
-#alt_click_down:
-#  [
-#    "motoc",
-#    "calibrate",
-#    "--src",
-#    "WiVRn HMD",
-#    "--dst",
-#    "LHR-AABBCCDD",
-#    "--samples",
-#    "200",
-#  ]
- 
-################ NOTIFICATIONS ################
 
 ## Set whether notifications should be shown at all
 #notifications_enabled: true
@@ -146,17 +144,18 @@
 ## Set whether notfications should make a sound
 #notifications_sound_enabled: true
 
-## Set what kind of notifications to show and what to hide
-#notification_topics:
-#  System: Center
-#  DesktopNotification: Center
-#  XSNotification: Center
-#  IpdChange: Hide
+## Toggle keyboard click sound
+#keyboard_sound_enabled: true
 
-## Path to a custom notification sound, relative to `~/.config/wlxoverlay`
-#notification_sound: ""
+## Multiplier for animation speed. 2.0 → double speed, 0.5 → half speed
+#animation_speed: 1.0
 
-################ CONTROL TWEAKS ################
+## Adjust this between 0..1 for a more rectangular feel.
+#round_multiplier: 1.0
+
+## Render screens & mirrors at a lower resolution.
+## Avoids aliasing on 4K+ screens, and also saves VRAM
+#screen_render_down: false
 
 ## For how much time mouse motion events should be stopped after clicking?
 ## Prevents accidental dragging various GUI elements or links, making it easier to click
@@ -191,18 +190,3 @@
 ## allowing for moving both pointers off the screens to the keyboard, while keeping the cursor position
 ## unchanged, for when the desktop is configured to move the focus with the mouse cursor
 #focus_follows_mouse_mode: false
-
-################ PERFORMANCE TWEAKS ################
-
-## Render screens & mirrors at a lower resolution.
-## Avoids aliasing on 4K+ screens, and also saves VRAM
-#screen_render_down: false
-
-## If `screen_render_down` is enabled,
-## controls the maximum height of the screen
-#screen_max_height: 1440
-
-## Don't move the mouse more often than this value
-## helps to avoid unnecessary load when pairing
-## a high-refresh screen with a lower-refresh hmd
-#mouse_move_interval_ms: 10
