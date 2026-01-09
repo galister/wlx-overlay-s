@@ -293,7 +293,7 @@ version = "0.38.0+1.3.281"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0bb44936d800fea8f016d7f2311c6a4f97aebd5dc86f09906139ec848cf3a46f"
 dependencies = [
- "libloading",
+ "libloading 0.8.9",
 ]
 
 [[package]]
@@ -957,7 +957,7 @@ checksum = "0b023947811758c97c59bf9d1c188fd619ad4718dcaa767947df1cadb14f39f4"
 dependencies = [
  "glob",
  "libc",
- "libloading",
+ "libloading 0.8.9",
 ]
 
 [[package]]
@@ -1544,7 +1544,7 @@ version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330c60081dcc4c72131f8eb70510f1ac07223e5d4163db481a04a0befcffa412"
 dependencies = [
- "libloading",
+ "libloading 0.8.9",
 ]
 
 [[package]]
@@ -2876,6 +2876,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "libloading"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "754ca22de805bb5744484a5b151a9e1a8e837d5dc232c2d7d8c2e3492edc8b60"
+dependencies = [
+ "cfg-if",
+ "windows-link 0.2.1",
+]
+
+[[package]]
 name = "libm"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3730,19 +3740,21 @@ dependencies = [
 
 [[package]]
 name = "openxr"
-version = "0.19.0"
-source = "git+https://github.com/Ralith/openxrs?rev=d0afdd3365bc1e14de28f6a3a21f457e788a702e#d0afdd3365bc1e14de28f6a3a21f457e788a702e"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09a7b5f4a26a71928a11b912f94c387378b1c14caac3bde3d9cecd4bb8870262"
 dependencies = [
  "libc",
- "libloading",
+ "libloading 0.9.0",
  "ndk-context",
  "openxr-sys",
 ]
 
 [[package]]
 name = "openxr-sys"
-version = "0.11.0"
-source = "git+https://github.com/Ralith/openxrs?rev=d0afdd3365bc1e14de28f6a3a21f457e788a702e#d0afdd3365bc1e14de28f6a3a21f457e788a702e"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b69a1e728e450d419fa7e82fdfb2988d4a0eadd6bdd16fceff72f1b485c4d96b"
 dependencies = [
  "libc",
  "mint",
@@ -5825,7 +5837,7 @@ dependencies = [
  "log",
  "rust-embed",
  "tracing-subscriber",
- "vulkano",
+ "vulkano 0.35.0",
  "vulkano-shaders",
  "wgui",
  "winit",
@@ -5985,6 +5997,25 @@ dependencies = [
 
 [[package]]
 name = "vulkano"
+version = "0.35.0"
+dependencies = [
+ "ash",
+ "bytemuck",
+ "crossbeam-queue",
+ "foldhash 0.1.5",
+ "half",
+ "libloading 0.8.9",
+ "parking_lot",
+ "raw-window-handle",
+ "raw-window-metal",
+ "slabbin",
+ "smallvec",
+ "thread_local",
+ "vulkano-macros",
+]
+
+[[package]]
+name = "vulkano"
 version = "0.35.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee487adf7c13e5aa46d4d7fac6ffb8e172eb7e6472aaf815e9ade4992f8f2414"
@@ -5996,7 +6027,7 @@ dependencies = [
  "half",
  "heck 0.4.1",
  "indexmap 2.12.1",
- "libloading",
+ "libloading 0.8.9",
  "nom 7.1.3",
  "once_cell",
  "parking_lot",
@@ -6010,14 +6041,11 @@ dependencies = [
  "smallvec",
  "thread_local",
  "vk-parse",
- "vulkano-macros",
 ]
 
 [[package]]
 name = "vulkano-macros"
 version = "0.35.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1dc929c42c9336fd082079ac3ea30126e4a0dfe36fd2e2b3581303f7d140d20f"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -6037,7 +6065,7 @@ dependencies = [
  "quote",
  "shaderc",
  "syn 2.0.113",
- "vulkano",
+ "vulkano 0.35.2",
 ]
 
 [[package]]
@@ -6335,7 +6363,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
- "vulkano",
+ "vulkano 0.35.0",
  "vulkano-shaders",
  "wayland-client",
  "wayvr-ipc",
@@ -6427,7 +6455,7 @@ dependencies = [
  "slotmap",
  "smallvec",
  "taffy",
- "vulkano",
+ "vulkano 0.35.0",
  "vulkano-shaders",
 ]
 
@@ -7021,7 +7049,7 @@ dependencies = [
  "as-raw-xcb-connection",
  "gethostname",
  "libc",
- "libloading",
+ "libloading 0.8.9",
  "once_cell",
  "rustix 1.1.3",
  "x11rb-protocol",

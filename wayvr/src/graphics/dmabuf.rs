@@ -11,8 +11,8 @@ use vulkano::{
     device::Device,
     format::Format,
     image::{
-        Image, ImageCreateInfo, ImageMemory, ImageTiling, ImageType, ImageUsage, SubresourceLayout,
-        sys::RawImage, view::ImageView,
+        Image, ImageAspect, ImageCreateInfo, ImageMemory, ImageTiling, ImageType, ImageUsage,
+        SubresourceLayout, sys::RawImage, view::ImageView,
     },
     memory::{
         DedicatedAllocation, DeviceMemory, ExternalMemoryHandleType, ExternalMemoryHandleTypes,
@@ -316,14 +316,6 @@ pub fn export_dmabuf_image(
     format: Format,
     modifier: DrmModifier,
 ) -> anyhow::Result<ExportedDmabufImage> {
-    let layout = SubresourceLayout {
-        offset: 0,
-        size: 0,
-        row_pitch: align_to(format.block_size() * (extent[0] as u64), 64),
-        array_pitch: None,
-        depth_pitch: None,
-    };
-
     let image = Image::new(
         allocator.clone(),
         ImageCreateInfo {
@@ -333,7 +325,6 @@ pub fn export_dmabuf_image(
             usage: ImageUsage::TRANSFER_DST | ImageUsage::TRANSFER_SRC | ImageUsage::SAMPLED,
             tiling: ImageTiling::DrmFormatModifier,
             drm_format_modifiers: vec![modifier.into()],
-            drm_format_modifier_plane_layouts: vec![layout],
             external_memory_handle_types: ExternalMemoryHandleTypes::DMA_BUF,
             ..Default::default()
         },
@@ -352,6 +343,8 @@ pub fn export_dmabuf_image(
         }
         _ => anyhow::bail!("Could not export DMA-buf: invalid ImageMemory"),
     };
+
+    let layout = unsafe { image.subresource_layout_unchecked(ImageAspect::MemoryPlane0, 0, 0) };
 
     Ok(ExportedDmabufImage {
         view: ImageView::new_default(image)?,

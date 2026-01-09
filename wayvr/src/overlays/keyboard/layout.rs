@@ -2,7 +2,6 @@ use std::{collections::HashMap, str::FromStr, sync::LazyLock};
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use wlx_common::config::AltModifier;
 
 use crate::{
     config::{ConfigType, load_known_yaml},

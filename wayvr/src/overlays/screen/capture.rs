@@ -429,7 +429,9 @@ impl MyFirstDmaExporter {
         for _ in 0..2 {
             let image =
                 export_dmabuf_image(allocator.clone(), [width, height, 1], format, modifier)
-                    .log_err("Could not export DMA-buf image")
+                    .log_err(&format!(
+                        "Could not export DMA-buf image {width}x{height} {fourcc} {modifier:?}"
+                    ))
                     .ok()?;
 
             self.images.push(image);

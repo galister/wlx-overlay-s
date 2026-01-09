@@ -1,6 +1,6 @@
 use anyhow::{bail, ensure};
 use glam::{Affine3A, Quat, Vec3, Vec3A};
-use openxr::{self as xr, SessionCreateFlags, Version};
+use openxr::{self as xr, SessionCreateFlags, Version, sys::Handle};
 use xr::OverlaySessionCreateFlagsEXTX;
 
 pub(super) fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
@@ -47,13 +47,10 @@ pub(super) fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
     } else {
         log::warn!("Missing EXT_composition_layer_equirect2 extension.");
     }
-    if available_extensions
-        .other
-        .contains(&"XR_MNDX_system_buttons".to_owned())
-    {
-        enabled_extensions
-            .other
-            .push("XR_MNDX_system_buttons".to_owned());
+
+    let xr_mndx_system_buttons = "XR_MNDX_system_buttons".as_bytes().to_vec();
+    if available_extensions.other.contains(&xr_mndx_system_buttons) {
+        enabled_extensions.other.push(xr_mndx_system_buttons);
     }
 
     //#[cfg(not(debug_assertions))]

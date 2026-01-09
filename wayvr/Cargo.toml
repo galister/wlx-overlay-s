@@ -60,7 +60,7 @@ libc = "0.2.178"
 libmonado = { git = "https://github.com/technobaboo/libmonado-rs.git", rev = "26292e5b14663ee2f089f66f0851438a0c00ee67", optional = true }
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
 mint = "0.5.9"
-openxr = { git = "https://github.com/Ralith/openxrs", rev = "d0afdd3365bc1e14de28f6a3a21f457e788a702e", features = [
+openxr = { version = "0.21.0", features = [
   "linked",
   "mint",
 ], optional = true }
