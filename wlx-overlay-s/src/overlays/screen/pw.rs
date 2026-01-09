@@ -25,6 +25,8 @@ impl ScreenBackend {
         token: Option<&str>,
         app: &mut AppState,
     ) -> anyhow::Result<(Self, Option<String> /* pipewire restore token */)> {
+        use crate::overlays::screen::backend::CaptureType;
+
         let name = output.name.clone();
         let embed_mouse = !app.session.config.double_cursor_fix;
 
@@ -57,7 +59,12 @@ impl ScreenBackend {
             PipewireCapture::new(name, node_id)
         );
         Ok((
-            Self::new_raw(output.name.clone(), app.xr_backend, capture),
+            Self::new_raw(
+                output.name.clone(),
+                app.xr_backend,
+                CaptureType::PipeWire,
+                capture,
+            ),
             select_screen_result.restore_token,
         ))
     }

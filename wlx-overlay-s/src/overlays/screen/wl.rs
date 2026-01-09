@@ -3,7 +3,6 @@ use wlx_capture::{
     WlxCapture,
     frame::Transform,
     wayland::{WlxClient, WlxOutput},
-    wlr_dmabuf::WlrDmabufCapture,
     wlr_screencopy::WlrScreencopyCapture,
 };
 use wlx_common::{
@@ -12,7 +11,7 @@ use wlx_common::{
 };
 
 use crate::{
-    overlays::screen::create_screen_from_backend,
+    overlays::screen::{backend::CaptureType, create_screen_from_backend},
     state::{AppState, ScreenMeta},
 };
 
@@ -24,22 +23,18 @@ use super::{
 };
 
 impl ScreenBackend {
-    pub fn new_wlr_dmabuf(output: &WlxOutput, app: &AppState) -> Option<Self> {
-        let client = WlxClient::new()?;
-        let capture = new_wlx_capture!(
-            app.gfx_extras.queue_capture,
-            WlrDmabufCapture::new(client, output.id)
-        );
-        Some(Self::new_raw(output.name.clone(), app.xr_backend, capture))
-    }
-
     pub fn new_wlr_screencopy(output: &WlxOutput, app: &AppState) -> Option<Self> {
         let client = WlxClient::new()?;
         let capture = new_wlx_capture!(
             app.gfx_extras.queue_capture,
             WlrScreencopyCapture::new(client, output.id)
         );
-        Some(Self::new_raw(output.name.clone(), app.xr_backend, capture))
+        Some(Self::new_raw(
+            output.name.clone(),
+            app.xr_backend,
+            CaptureType::ScreenCopy,
+            capture,
+        ))
     }
 }
 
@@ -52,9 +47,12 @@ pub fn create_screen_renderer_wl(
 ) -> Option<ScreenBackend> {
     let mut capture: Option<ScreenBackend> = None;
 
-    if matches!(app.session.config.capture_method, CaptureMethod::ScreenCopy) && has_wlr_screencopy
+    if matches!(
+        app.session.config.capture_method,
+        CaptureMethod::ScreenCopyCpu | CaptureMethod::ScreenCopyGpu | CaptureMethod::Auto
+    ) && has_wlr_screencopy
     {
-        log::info!("{}: Using Wlr Screencopy Wl-SHM", &output.name);
+        log::info!("{}: Using ScreenCopy capture", &output.name);
         capture = ScreenBackend::new_wlr_screencopy(output, app);
     }
 

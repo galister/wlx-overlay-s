@@ -18,17 +18,24 @@ pub type SerializedWindowStates = HashMap<Arc<str>, OverlayWindowState>;
 #[derive(Default, Clone, Copy, Serialize, Deserialize, AsRefStr, EnumString, EnumProperty, VariantArray)]
 pub enum CaptureMethod {
 	#[default]
-	#[serde(alias = "pipewire", alias = "auto")]
+	#[serde(alias = "auto")]
+	#[strum(props(Translation = "APP_SETTINGS.OPTION.AUTO", Tooltip = "APP_SETTINGS.OPTION.AUTO_HELP"))]
+	Auto,
+
+	#[serde(alias = "pipewire")]
 	#[strum(props(Text = "PipeWire GPU", Tooltip = "APP_SETTINGS.OPTION.PIPEWIRE_HELP"))]
 	PipeWire,
 
+	#[strum(props(Text = "ScreenCopy GPU", Tooltip = "APP_SETTINGS.OPTION.SCREENCOPY_GPU_HELP"))]
+	ScreenCopyGpu,
+
 	#[serde(alias = "pw-fallback")]
 	#[strum(props(Text = "PipeWire CPU", Tooltip = "APP_SETTINGS.OPTION.PW_FALLBACK_HELP"))]
-	PwFallback,
+	PipeWireCpu,
 
 	#[serde(alias = "screencopy")]
 	#[strum(props(Text = "ScreenCopy CPU", Tooltip = "APP_SETTINGS.OPTION.SCREENCOPY_HELP"))]
-	ScreenCopy,
+	ScreenCopyCpu,
 }
 
 #[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, AsRefStr, EnumString, EnumProperty, VariantArray)]

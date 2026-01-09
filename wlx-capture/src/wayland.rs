@@ -29,6 +29,9 @@ use wayland_client::{
         wl_shm::WlShm,
     },
 };
+use wayland_protocols::wp::linux_dmabuf::zv1::client::{
+    zwp_linux_buffer_params_v1::ZwpLinuxBufferParamsV1, zwp_linux_dmabuf_v1::ZwpLinuxDmabufV1,
+};
 
 use crate::frame;
 
@@ -61,6 +64,7 @@ pub struct WlxClient {
     pub xdg_output_mgr: ZxdgOutputManagerV1,
     pub maybe_wlr_dmabuf_mgr: Option<ZwlrExportDmabufManagerV1>,
     pub maybe_wlr_screencopy_mgr: Option<ZwlrScreencopyManagerV1>,
+    pub maybe_zwp_linux_dmabuf: Option<ZwpLinuxDmabufV1>,
     pub wl_seat: WlSeat,
     pub wl_shm: WlShm,
     pub outputs: IdMap<u32, WlxOutput>,
@@ -91,7 +95,8 @@ impl WlxClient {
                 .expect(WlSeat::interface().name),
             wl_shm: globals.bind(&qh, 1..=1, ()).expect(WlShm::interface().name),
             maybe_wlr_dmabuf_mgr: globals.bind(&qh, 1..=1, ()).ok(),
-            maybe_wlr_screencopy_mgr: globals.bind(&qh, 2..=2, ()).ok(),
+            maybe_wlr_screencopy_mgr: globals.bind(&qh, 3..=3, ()).ok(),
+            maybe_zwp_linux_dmabuf: globals.bind(&qh, 4..=4, ()).ok(),
             outputs: IdMap::new(),
             queue: Arc::new(Mutex::new(queue)),
             globals,
@@ -435,6 +440,30 @@ impl Dispatch<WlShm, ()> for WlxClient {
         _state: &mut Self,
         _proxy: &WlShm,
         _event: <WlShm as Proxy>::Event,
+        _data: &(),
+        _conn: &Connection,
+        _qhandle: &QueueHandle<Self>,
+    ) {
+    }
+}
+
+impl Dispatch<ZwpLinuxDmabufV1, ()> for WlxClient {
+    fn event(
+        _state: &mut Self,
+        _proxy: &ZwpLinuxDmabufV1,
+        _event: <ZwpLinuxDmabufV1 as Proxy>::Event,
+        _data: &(),
+        _conn: &Connection,
+        _qhandle: &QueueHandle<Self>,
+    ) {
+    }
+}
+
+impl Dispatch<ZwpLinuxBufferParamsV1, ()> for WlxClient {
+    fn event(
+        _state: &mut Self,
+        _proxy: &ZwpLinuxBufferParamsV1,
+        _event: <ZwpLinuxBufferParamsV1 as Proxy>::Event,
         _data: &(),
         _conn: &Connection,
         _qhandle: &QueueHandle<Self>,

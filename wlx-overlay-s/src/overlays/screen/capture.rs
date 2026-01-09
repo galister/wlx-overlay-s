@@ -1,4 +1,8 @@
-use std::{f32::consts::PI, sync::Arc};
+use std::{
+    f32::consts::PI,
+    os::fd::AsRawFd,
+    sync::{Arc, OnceLock},
+};
 
 use glam::{Affine3A, Vec3};
 use smallvec::{SmallVec, smallvec};
@@ -8,24 +12,30 @@ use vulkano::{
     device::Queue,
     format::Format,
     image::{Image, sampler::Filter, view::ImageView},
+    memory::{ExternalMemoryHandleTypes, allocator::MemoryAllocator},
     pipeline::graphics::color_blend::AttachmentBlend,
 };
-use wgui::gfx::{
-    WGfx,
-    cmd::WGfxClearMode,
-    pass::WGfxPass,
-    pipeline::{WGfxPipeline, WPipelineCreateInfo},
+use wgui::{
+    gfx::{
+        WGfx,
+        cmd::WGfxClearMode,
+        memory_allocator,
+        pass::WGfxPass,
+        pipeline::{WGfxPipeline, WPipelineCreateInfo},
+    },
+    log::LogErr,
 };
 use wlx_capture::{
-    DrmFormat, WlxCapture,
+    DrmFormat, DrmFourcc, DrmModifier, WlxCapture,
     frame::{self as wlx_frame, FrameFormat, MouseMeta, WlxFrame},
+    wlr_screencopy::DmaExporter,
 };
 use wlx_common::{config::GeneralConfig, overlays::StereoMode};
 
 use crate::{
     graphics::{
-        Vert2Uv,
-        dmabuf::{WGfxDmabuf, fourcc_to_vk},
+        ExtentExt, Vert2Uv,
+        dmabuf::{ExportedDmabufImage, WGfxDmabuf, export_dmabuf_image, fourcc_to_vk},
         upload_quad_vertices,
     },
     state::AppState,
@@ -343,15 +353,120 @@ fn stereo_mode_to_verts(stereo: StereoMode, array_index: usize) -> [Vert2Uv; 4] 
     }
 }
 
-#[derive(Clone)]
+static DMA_ALLOCATOR: OnceLock<Arc<dyn MemoryAllocator>> = OnceLock::new();
+
+pub(super) struct MyFirstDmaExporter {
+    gfx: Arc<WGfx>,
+    drm_formats: Arc<[DrmFormat]>,
+    images: SmallVec<[ExportedDmabufImage; 2]>,
+    fourcc: DrmFourcc,
+    current: usize,
+}
+
+impl MyFirstDmaExporter {
+    pub(super) fn new(gfx: Arc<WGfx>, drm_formats: Arc<[DrmFormat]>) -> Self {
+        Self {
+            gfx,
+            drm_formats,
+            images: smallvec![],
+            fourcc: DrmFourcc::Argb8888,
+            current: 0,
+        }
+    }
+
+    fn get_current(&self) -> Option<(Arc<ImageView>, FrameFormat)> {
+        let image = self.images.get(self.current)?;
+        let extent = image.view.extent_u32arr();
+        Some((
+            image.view.clone(),
+            FrameFormat {
+                width: extent[0],
+                height: extent[1],
+                drm_format: DrmFormat {
+                    code: self.fourcc,
+                    modifier: image.modifier,
+                },
+                transform: wlx_frame::Transform::Undefined,
+            },
+        ))
+    }
+
+    fn set_format(
+        &mut self,
+        width: u32,
+        height: u32,
+        fourcc: wlx_capture::DrmFourcc,
+    ) -> Option<()> {
+        if let Some(image) = self.images.first() {
+            let extent = image.view.image().extent();
+            if self.fourcc == fourcc && extent[0] == width && extent[1] == height {
+                return Some(());
+            }
+        }
+        self.images.clear();
+
+        let Some(modifier) = self
+            .drm_formats
+            .iter()
+            .filter(|f| f.code == fourcc)
+            .map(|f| f.modifier)
+            .next()
+        else {
+            log::error!("Unsupported format requested: {fourcc}");
+            return None;
+        };
+
+        let format = fourcc_to_vk(fourcc)
+            .log_err("Could not export new dmabuf due to invalid format")
+            .ok()?;
+
+        let allocator = DMA_ALLOCATOR.get_or_init(|| {
+            memory_allocator(
+                self.gfx.device.clone(),
+                Some(ExternalMemoryHandleTypes::DMA_BUF),
+            )
+        });
+
+        for _ in 0..2 {
+            let image =
+                export_dmabuf_image(allocator.clone(), [width, height, 1], format, modifier)
+                    .log_err("Could not export DMA-buf image")
+                    .ok()?;
+
+            self.images.push(image);
+        }
+
+        Some(())
+    }
+
+    fn next_frame(&mut self) -> Option<(wlx_frame::FramePlane, DrmModifier)> {
+        self.current = 1 - self.current;
+        let image = self.images.get(self.current)?;
+
+        Some((
+            wlx_frame::FramePlane {
+                fd: Some(image.fd.as_raw_fd()),
+                offset: image.offset,
+                stride: image.stride,
+            },
+            image.modifier,
+        ))
+    }
+}
+
 pub struct WlxCaptureIn {
     name: Arc<str>,
     gfx: Arc<WGfx>,
     queue: Arc<Queue>,
+    dma_exporter: Option<MyFirstDmaExporter>,
 }
 
 impl WlxCaptureIn {
-    pub(super) fn new(name: Arc<str>, app: &AppState) -> Self {
+    pub(super) fn new(
+        name: Arc<str>,
+        app: &AppState,
+        dma_exporter: Option<MyFirstDmaExporter>,
+    ) -> Self {
         Self {
             name,
             gfx: app.gfx.clone(),
@@ -361,7 +476,21 @@ impl WlxCaptureIn {
                 .as_ref()
                 .unwrap_or_else(|| &app.gfx.queue_xfer)
                 .clone(),
+            dma_exporter,
         }
+    }
+}
+
+impl DmaExporter for WlxCaptureIn {
+    fn next_frame(
+        &mut self,
+        width: u32,
+        height: u32,
+        fourcc: DrmFourcc,
+    ) -> Option<(wlx_frame::FramePlane, DrmModifier)> {
+        let dma_exporter = self.dma_exporter.as_mut()?;
+        dma_exporter.set_format(width, height, fourcc)?;
+        dma_exporter.next_frame()
     }
 }
 
@@ -501,6 +630,33 @@ pub(super) fn receive_callback(me: &WlxCaptureIn, frame: WlxFrame) -> Option<Wlx
                 mouse: frame.mouse,
             })
         }
+        WlxFrame::Implicit => {
+            log::trace!("{}: New Implicit frame", me.name);
+
+            let Some((image, format)) = me.dma_exporter.as_ref().unwrap().get_current() else {
+                log::error!("{}: Implicit frame is missing!", me.name);
+                return None;
+            };
+
+            Some(WlxCaptureOut {
+                image,
+                format,
+                mouse: None,
+            })
+        }
+    }
+}
+
+/// DmaExporter is not used for SHM capture
+pub(super) struct DummyDrmExporter;
+impl DmaExporter for DummyDrmExporter {
+    fn next_frame(
+        &mut self,
+        _: u32,
+        _: u32,
+        _: DrmFourcc,
+    ) -> Option<(wlx_frame::FramePlane, DrmModifier)> {
+        unreachable!()
     }
 }
 
@@ -508,7 +664,7 @@ pub(super) fn receive_callback(me: &WlxCaptureIn, frame: WlxFrame) -> Option<Wlx
 // In this case, receive_callback needs to run on the main thread
 pub(super) struct MainThreadWlxCapture<T>
 where
-    T: WlxCapture<(), WlxFrame>,
+    T: WlxCapture<DummyDrmExporter, WlxFrame>,
 {
     inner: T,
     data: Option<WlxCaptureIn>,
@@ -516,7 +672,7 @@ where
 
 impl<T> MainThreadWlxCapture<T>
 where
-    T: WlxCapture<(), WlxFrame>,
+    T: WlxCapture<DummyDrmExporter, WlxFrame>,
 {
     pub const fn new(inner: T) -> Self {
         Self { inner, data: None }
@@ -525,7 +681,7 @@ where
 
 impl<T> WlxCapture<WlxCaptureIn, WlxCaptureOut> for MainThreadWlxCapture<T>
 where
-    T: WlxCapture<(), WlxFrame>,
+    T: WlxCapture<DummyDrmExporter, WlxFrame>,
 {
     fn init(
         &mut self,
@@ -534,7 +690,8 @@ where
         _: fn(&WlxCaptureIn, WlxFrame) -> Option<WlxCaptureOut>,
     ) {
         self.data = Some(user_data);
-        self.inner.init(dmabuf_formats, (), receive_callback_dummy);
+        self.inner
+            .init(dmabuf_formats, DummyDrmExporter, receive_callback_dummy);
     }
     fn is_ready(&self) -> bool {
         self.inner.is_ready()
@@ -559,7 +716,7 @@ where
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref, clippy::unnecessary_wraps)]
-const fn receive_callback_dummy(_: &(), frame: WlxFrame) -> Option<WlxFrame> {
+const fn receive_callback_dummy(_: &DummyDrmExporter, frame: WlxFrame) -> Option<WlxFrame> {
     Some(frame)
 }
 

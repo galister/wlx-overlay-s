@@ -69,12 +69,7 @@
     "CAPTURE_METHOD": "Wayland-Bildschirmaufnahme",
     "CAPTURE_METHOD_HELP": "Versuchen Sie, dies zu ändern, wenn Sie\nschwarze oder fehlerhafte Bildschirme erleben",
     "KEYBOARD_MIDDLE_CLICK": "Keyboard-Mittelklick",
-    "KEYBOARD_MIDDLE_CLICK_HELP": "Modifikator bei Eingabe mit violettem Laser",
-    "OPTION": {
-      "PIPEWIRE_HELP": "Schnelle GPU-Aufnahme. Empfohlen",
-      "PW_FALLBACK_HELP": "Langsam. Versuchen Sie dies, falls PipeWire GPU nicht funktioniert.",
-      "SCREENCOPY_HELP": "Langsam. Funktioniert mit: Hyprland, Niri, River, Sway"
-    }
+    "KEYBOARD_MIDDLE_CLICK_HELP": "Modifikator bei Eingabe mit violettem Laser"
   },
   "HELLO": "Hallo!",
   "AUDIO": {

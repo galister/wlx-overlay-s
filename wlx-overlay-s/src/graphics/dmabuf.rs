@@ -10,11 +10,14 @@ use vulkano::{
     VulkanError, VulkanObject,
     device::Device,
     format::Format,
-    image::{Image, ImageCreateInfo, ImageTiling, ImageUsage, SubresourceLayout, sys::RawImage},
+    image::{
+        Image, ImageCreateInfo, ImageMemory, ImageTiling, ImageType, ImageUsage, SubresourceLayout,
+        sys::RawImage, view::ImageView,
+    },
     memory::{
         DedicatedAllocation, DeviceMemory, ExternalMemoryHandleType, ExternalMemoryHandleTypes,
         MemoryAllocateInfo, MemoryImportInfo, MemoryPropertyFlags, ResourceMemory,
-        allocator::{MemoryAllocator, MemoryTypeFilter},
+        allocator::{AllocationCreateInfo, MemoryAllocator, MemoryTypeFilter},
     },
     sync::Sharing,
 };
@@ -297,6 +300,70 @@ pub(super) unsafe fn create_dmabuf_image(
 
         RawImage::from_handle(device, handle, create_info)
     }
+}
+
+pub struct ExportedDmabufImage {
+    pub view: Arc<ImageView>,
+    pub fd: std::fs::File,
+    pub offset: u32,
+    pub stride: i32,
+    pub modifier: DrmModifier,
+}
+
+pub fn export_dmabuf_image(
+    allocator: Arc<dyn MemoryAllocator>,
+    extent: [u32; 3],
+    format: Format,
+    modifier: DrmModifier,
+) -> anyhow::Result<ExportedDmabufImage> {
+    let layout = SubresourceLayout {
+        offset: 0,
+        size: 0,
+        row_pitch: align_to(format.block_size() * (extent[0] as u64), 64),
+        array_pitch: None,
+        depth_pitch: None,
+    };
+
+    let image = Image::new(
+        allocator.clone(),
+        ImageCreateInfo {
+            image_type: ImageType::Dim2d,
+            format,
+            extent,
+            usage: ImageUsage::TRANSFER_DST | ImageUsage::TRANSFER_SRC | ImageUsage::SAMPLED,
+            tiling: ImageTiling::DrmFormatModifier,
+            drm_format_modifiers: vec![modifier.into()],
+            drm_format_modifier_plane_layouts: vec![layout],
+            external_memory_handle_types: ExternalMemoryHandleTypes::DMA_BUF,
+            ..Default::default()
+        },
+        AllocationCreateInfo {
+            ..Default::default()
+        },
+    )
+    .context("Could not create image to export")?;
+
+    let fd = match image.memory() {
+        ImageMemory::Normal(planes) if planes.len() == 1 => {
+            let plane = planes.first().unwrap();
+            plane
+                .device_memory()
+                .export_fd(ExternalMemoryHandleType::DmaBuf)?
+        }
+        _ => anyhow::bail!("Could not export DMA-buf: invalid ImageMemory"),
+    };
+
+    Ok(ExportedDmabufImage {
+        view: ImageView::new_default(image)?,
+        fd,
+        modifier: DrmModifier::from(modifier),
+        offset: layout.offset as _,
+        stride: layout.row_pitch as _,
+    })
+}
+
+fn align_to(value: u64, alignment: u64) -> u64 {
+    ((value + alignment - 1) / alignment) * alignment
 }
 
 pub(super) fn get_drm_formats(device: Arc<Device>) -> Vec<DrmFormat> {

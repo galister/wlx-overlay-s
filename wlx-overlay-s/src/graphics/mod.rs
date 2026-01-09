@@ -69,7 +69,7 @@ pub const BLEND_ALPHA: AttachmentBlend = AttachmentBlend {
 
 pub struct WGfxExtras {
     pub shaders: HashMap<&'static str, Arc<ShaderModule>>,
-    pub drm_formats: Vec<DrmFormat>,
+    pub drm_formats: Arc<[DrmFormat]>,
     pub queue_capture: Option<Arc<Queue>>,
     pub quad_verts: Vert2Buf,
     pub fallback_image: Arc<ImageView>,
@@ -95,7 +95,7 @@ impl WGfxExtras {
         let shader = frag_screen::load(gfx.device.clone())?;
         shaders.insert("frag_screen", shader);
 
-        let drm_formats = get_drm_formats(gfx.device.clone());
+        let drm_formats = get_drm_formats(gfx.device.clone()).into();
 
         let vertices = [
             Vert2Uv {

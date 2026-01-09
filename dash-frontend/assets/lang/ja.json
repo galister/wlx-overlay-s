@@ -69,12 +69,7 @@
     "CAPTURE_METHOD": "Waylandスクリーンキャプチャ",
     "CAPTURE_METHOD_HELP": "画面が黒くなる、または乱れる場合は、\nこの設定を変更してみてください。",
     "KEYBOARD_MIDDLE_CLICK": "キーボードの中ボタンクリック",
-    "KEYBOARD_MIDDLE_CLICK_HELP": "紫色のレーザーで入力する際の修飾キー",
-    "OPTION": {
-      "PIPEWIRE_HELP": "高速なGPUキャプチャ。推奨",
-      "PW_FALLBACK_HELP": "低速です。PipeWire GPU が動作しない場合に試してください。",
-      "SCREENCOPY_HELP": "遅い。動作する環境: Hyprland, Niri, River, Sway"
-    }
+    "KEYBOARD_MIDDLE_CLICK_HELP": "紫色のレーザーで入力する際の修飾キー"
   },
   "HELLO": "こんにちは！",
   "AUDIO": {

@@ -22,7 +22,10 @@ use crate::{
         input::{HoverResult, PointerHit},
         task::{OverlayTask, TaskType, ToggleMode},
     },
-    overlays::screen::capture::{MainThreadWlxCapture, new_wlx_capture},
+    overlays::screen::{
+        backend::CaptureType,
+        capture::{MainThreadWlxCapture, new_wlx_capture},
+    },
     state::{AppSession, AppState},
     subsystem::hid::WheelDelta,
     windowing::{
@@ -94,6 +97,7 @@ impl OverlayBackend for MirrorBackend {
                     self.renderer = Some(ScreenBackend::new_raw(
                         self.name.clone(),
                         app.xr_backend,
+                        CaptureType::PipeWire,
                         capture,
                     ));
                     app.tasks

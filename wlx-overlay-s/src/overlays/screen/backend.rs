@@ -12,6 +12,7 @@ use crate::{
         input::{HoverResult, PointerHit, PointerMode},
     },
     graphics::ExtentExt,
+    overlays::screen::capture::MyFirstDmaExporter,
     state::AppState,
     subsystem::hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT, WheelDelta},
     windowing::backend::{
@@ -41,8 +42,15 @@ fn set_next_move(millis_from_now: u64) {
     );
 }
 
+pub(super) enum CaptureType {
+    PipeWire,
+    ScreenCopy,
+    Xshm,
+}
+
 pub struct ScreenBackend {
     name: Arc<str>,
+    capture_type: CaptureType,
     capture: Box<dyn WlxCapture<WlxCaptureIn, WlxCaptureOut>>,
     pipeline: Option<ScreenPipeline>,
     cur_frame: Option<WlxCaptureOut>,
@@ -61,10 +69,12 @@ impl ScreenBackend {
     pub(super) fn new_raw(
         name: Arc<str>,
         xr_backend: XrBackend,
+        capture_type: CaptureType,
         capture: Box<dyn WlxCapture<WlxCaptureIn, WlxCaptureOut>>,
     ) -> Self {
         Self {
             name,
+            capture_type,
             capture,
             pipeline: None,
             cur_frame: None,
@@ -151,17 +161,17 @@ impl OverlayBackend for ScreenBackend {
 
             let allow_dmabuf = !matches!(
                 capture_method,
-                CaptureMethod::PwFallback | CaptureMethod::ScreenCopy
+                CaptureMethod::PipeWireCpu | CaptureMethod::ScreenCopyCpu
             );
 
-            let dmabuf_formats = if !supports_dmabuf {
+            let (dmabuf_formats, dma_exporter) = if !supports_dmabuf {
                 log::info!("Capture method does not support DMA-buf");
                 if app.gfx_extras.queue_capture.is_none() {
                     log::warn!(
                         "Current GPU does not support multiple queues. Software capture will take place on the main thread. Expect degraded performance."
                     );
                 }
-                &Vec::new()
+                ([].as_slice(), None)
             } else if !allow_dmabuf {
                 log::info!(
                     "Not using DMA-buf capture due to {}",
@@ -172,16 +182,25 @@ impl OverlayBackend for ScreenBackend {
                         "Current GPU does not support multiple queues. Software capture will take place on the main thread. Expect degraded performance."
                     );
                 }
-                &Vec::new()
+                ([].as_slice(), None)
             } else {
                 log::warn!(
                     "Using GPU capture. If you're having issues with screens, go to the Dashboard's Settings tab and switch 'Wayland capture method' to a CPU option!"
                 );
 
-                &app.gfx_extras.drm_formats
+                let dma_exporter = if matches!(self.capture_type, CaptureType::ScreenCopy) {
+                    Some(MyFirstDmaExporter::new(
+                        app.gfx.clone(),
+                        app.gfx_extras.drm_formats.clone(),
+                    ))
+                } else {
+                    None
+                };
+
+                (&*app.gfx_extras.drm_formats, dma_exporter)
             };
 
-            let user_data = WlxCaptureIn::new(self.name.clone(), app);
+            let user_data = WlxCaptureIn::new(self.name.clone(), app, dma_exporter);
             self.capture
                 .init(dmabuf_formats, user_data, receive_callback);
             self.capture.request_new_frame();

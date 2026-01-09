@@ -67,9 +67,12 @@
 		"NOTIFICATIONS_SOUND_ENABLED": "Notification sounds",
 		"OPAQUE_BACKGROUND": "Opaque background",
 		"OPTION": {
-			"PIPEWIRE_HELP": "Fast GPU capture. Recommended",
-			"PW_FALLBACK_HELP": "Slow. Try in case PipeWire GPU doesn't work",
-			"SCREENCOPY_HELP": "Slow. Works on: Hyprland, Niri, River, Sway"
+			"AUTO": "Automatic",
+			"AUTO_HELP": "ScreenCopy GPU if supported,\notherwise PipeWire GPU.",
+			"PIPEWIRE_HELP": "Fast GPU capture,\nstandard on all desktops.",
+			"PW_FALLBACK_HELP": "Slow method with high CPU usage.\nTry in case PipeWire GPU doesn't work",
+			"SCREENCOPY_GPU_HELP": "Fast, no screen share popups.\nWorks on: Hyprland, Niri, River, Sway",
+			"SCREENCOPY_HELP": "Slow, no screen share popups.\nWorks on: Hyprland, Niri, River, Sway"
 		},
 		"POINTER_LERP_FACTOR": "Pointer smoothing",
 		"RESTART_SOFTWARE": "Restart software",

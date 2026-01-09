@@ -178,7 +178,7 @@ impl WvrServerState {
         // this will throw a compile-time error if smithay's drm-fourcc is out of sync with wlx-capture's
         let mut formats: Vec<smithay::backend::allocator::Format> = vec![];
 
-        for f in &gfx_extras.drm_formats {
+        for f in &*gfx_extras.drm_formats {
             formats.push(*f);
         }
 
