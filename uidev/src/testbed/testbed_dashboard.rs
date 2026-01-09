@@ -14,6 +14,7 @@ impl TestbedDashboard {
 		let frontend = frontend::Frontend::new(
 			frontend::InitParams {
 				interface: Box::new(interface),
+				has_monado: true,
 			},
 			&mut (),
 		)?;

@@ -19,8 +19,8 @@ use wlx_common::{audio, dash_interface::BoxDashInterface, timestep::Timestep};
 use crate::{
 	assets,
 	tab::{
-		Tab, TabType, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses,
-		settings::TabSettings,
+		apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses, settings::TabSettings,
+		Tab, TabType,
 	},
 	util::{
 		popup_manager::{MountPopupParams, PopupManager, PopupManagerParams},
@@ -79,6 +79,7 @@ pub struct FrontendUpdateResult {
 
 pub struct InitParams<T> {
 	pub interface: BoxDashInterface<T>,
+	pub has_monado: bool,
 }
 
 #[derive(Clone)]

@@ -1,6 +1,6 @@
 use std::os::fd::RawFd;
 
-use drm_fourcc::{DrmFormat, DrmModifier};
+use drm_fourcc::{DrmFormat, DrmFourcc, DrmModifier};
 
 #[cfg(feature = "egl")]
 #[rustfmt::skip]
@@ -135,4 +135,13 @@ pub struct MemPtrFrame {
 pub struct MouseMeta {
     pub x: f32,
     pub y: f32,
+}
+
+pub trait DmaExporter {
+    fn next_frame(
+        &mut self,
+        width: u32,
+        height: u32,
+        fourcc: DrmFourcc,
+    ) -> Option<(FramePlane, DrmModifier)>;
 }

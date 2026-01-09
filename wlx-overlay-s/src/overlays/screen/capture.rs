@@ -27,8 +27,7 @@ use wgui::{
 };
 use wlx_capture::{
     DrmFormat, DrmFourcc, DrmModifier, WlxCapture,
-    frame::{self as wlx_frame, FrameFormat, MouseMeta, WlxFrame},
-    wlr_screencopy::DmaExporter,
+    frame::{self as wlx_frame, DmaExporter, FrameFormat, MouseMeta, WlxFrame},
 };
 use wlx_common::{config::GeneralConfig, overlays::StereoMode};
 

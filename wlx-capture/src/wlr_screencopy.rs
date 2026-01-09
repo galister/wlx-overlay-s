@@ -20,18 +20,9 @@ use smithay_client_toolkit::reexports::protocols_wlr::screencopy::v1::client::zw
 
 use crate::{
     WlxCapture,
-    frame::{FrameFormat, FramePlane, MemFdFrame, WlxFrame},
+    frame::{DmaExporter, FrameFormat, FramePlane, MemFdFrame, WlxFrame},
     wayland::WlxClient,
 };
-
-pub trait DmaExporter {
-    fn next_frame(
-        &mut self,
-        width: u32,
-        height: u32,
-        fourcc: DrmFourcc,
-    ) -> Option<(FramePlane, DrmModifier)>;
-}
 
 enum BufData {
     Shm {

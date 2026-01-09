@@ -12,12 +12,9 @@ use wlx_common::{
     overlays::BackendAttribValue,
 };
 
-const FALLBACKS: [&str; 2] = [
-    include_str!("res/keyboard.yaml"),
-    include_str!("res/wayvr.yaml"),
-];
+const FALLBACKS: [&str; 1] = [include_str!("res/keyboard.yaml")];
 
-const FILES: [&str; 2] = ["keyboard.yaml", "wayvr.yaml"];
+const FILES: [&str; 1] = ["keyboard.yaml"];
 
 #[derive(Clone, Copy)]
 #[repr(usize)]
@@ -26,8 +23,6 @@ pub enum ConfigType {
     Watch,
     Settings,
     Anchor,
-    #[allow(dead_code)]
-    WayVR,
 }
 
 pub fn load_known_yaml<T>(config_type: ConfigType) -> T

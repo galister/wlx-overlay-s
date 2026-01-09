@@ -27,6 +27,7 @@ use wlx_common::{
 use crate::{
     RESTART, RUNNING,
     backend::{
+        XrBackend,
         input::{Haptics, HoverResult, PointerHit, PointerMode},
         task::{OverlayTask, PlayspaceTask, TaskType, ToggleMode},
         wayvr::{
@@ -75,6 +76,7 @@ impl DashFrontend {
         let frontend = frontend::Frontend::new(
             frontend::InitParams {
                 interface: Box::new(interface),
+                has_monado: matches!(app.xr_backend, XrBackend::OpenXR),
             },
             app,
         )?;
@@ -445,6 +447,7 @@ impl DashInterface<AppState> for DashInterfaceLive {
         RESTART.store(true, Ordering::Relaxed);
     }
 
+    #[cfg(feature = "openxr")]
     fn monado_client_list(
         &mut self,
         app: &mut AppState,
@@ -475,6 +478,7 @@ impl DashInterface<AppState> for DashInterfaceLive {
         Ok(res)
     }
 
+    #[cfg(feature = "openxr")]
     fn monado_client_focus(&mut self, app: &mut AppState, name: &str) -> anyhow::Result<()> {
         let Some(monado) = &mut app.monado else {
             return Ok(()); // no monado avoilable
@@ -488,6 +492,7 @@ impl DashInterface<AppState> for DashInterfaceLive {
         Ok(())
     }
 
+    #[cfg(feature = "openxr")]
     fn monado_brightness_get(&mut self, app: &mut AppState) -> Option<f32> {
         let Some(monado) = &mut app.monado else {
             return None;
@@ -496,6 +501,7 @@ impl DashInterface<AppState> for DashInterfaceLive {
         monado_get_brightness(monado)
     }
 
+    #[cfg(feature = "openxr")]
     fn monado_brightness_set(&mut self, app: &mut AppState, brightness: f32) -> Option<()> {
         let Some(monado) = &mut app.monado else {
             return None;
@@ -503,21 +509,44 @@ impl DashInterface<AppState> for DashInterfaceLive {
 
         monado_set_brightness(monado, brightness).ok()
     }
+
+    #[cfg(not(feature = "openxr"))]
+    fn monado_client_list(
+        &mut self,
+        _: &mut AppState,
+    ) -> anyhow::Result<Vec<dash_interface::MonadoClient>> {
+        anyhow::bail!("Not supported in this build.")
+    }
+    #[cfg(not(feature = "openxr"))]
+    fn monado_client_focus(&mut self, _: &mut AppState, _: &str) -> anyhow::Result<()> {
+        anyhow::bail!("Not supported in this build.")
+    }
+    #[cfg(not(feature = "openxr"))]
+    fn monado_brightness_get(&mut self, _: &mut AppState) -> Option<f32> {
+        None
+    }
+    #[cfg(not(feature = "openxr"))]
+    fn monado_brightness_set(&mut self, _: &mut AppState, _: f32) -> Option<()> {
+        None
+    }
 }
 
 const CLIENT_NAME_BLACKLIST: [&str; 2] = ["wlx-overlay-s", "libmonado"];
 
+#[cfg(feature = "openxr")]
 fn monado_get_brightness(monado: &mut libmonado::Monado) -> Option<f32> {
     let device = monado.device_from_role(libmonado::DeviceRole::Head).ok()?;
     device.brightness().ok()
 }
 
+#[cfg(feature = "openxr")]
 fn monado_set_brightness(monado: &mut libmonado::Monado, brightness: f32) -> anyhow::Result<()> {
     let device = monado.device_from_role(libmonado::DeviceRole::Head)?;
     device.set_brightness(brightness, false)?;
     Ok(())
 }
 
+#[cfg(feature = "openxr")]
 fn monado_list_clients_filtered(
     monado: &mut libmonado::Monado,
 ) -> anyhow::Result<Vec<libmonado::Client<'_>>> {
@@ -544,6 +573,7 @@ fn monado_list_clients_filtered(
     Ok(clients)
 }
 
+#[cfg(feature = "openxr")]
 fn monado_client_focus(monado: &mut libmonado::Monado, name: &str) -> anyhow::Result<()> {
     let clients = monado_list_clients_filtered(monado)?;
 
