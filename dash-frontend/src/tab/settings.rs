@@ -93,12 +93,14 @@ impl<T> Tab<T> for TabSettings<T> {
 					});
 				}
 				Task::RemoveAutostartApp(button_id) => {
-					if let Some(idx) = self.app_button_ids.iter().position(|x| button_id.eq(x)) {
+					if let (Some(idx), Ok(widget)) = (
+						self.app_button_ids.iter().position(|x| button_id.eq(x)),
+						self.state.get_widget_id(&format!("{button_id}_root")),
+					) {
+						self.app_button_ids.remove(idx);
 						config.autostart_apps.remove(idx);
+						frontend.layout.remove_widget(widget);
 						changed = true;
-						if let Ok(widget) = self.state.get_widget_id(&format!("{button_id}_root")) {
-							frontend.layout.remove_widget(widget);
-						}
 					}
 				}
 			}
