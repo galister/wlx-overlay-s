@@ -570,6 +570,7 @@ pub fn apply_custom_command<T>(
 
             com.alterables
                 .set_style(wid, wgui::event::StyleSetRequest::Display(display));
+            com.alterables.mark_redraw();
         }
         ModifyPanelCommand::SetStickyState(sticky_down) => {
             let button = panel
