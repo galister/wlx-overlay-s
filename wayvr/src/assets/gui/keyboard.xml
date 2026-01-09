@@ -141,7 +141,7 @@
 
   <template name="Panel">
     <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press="::ContextMenuOpen menu_panel">
-      <sprite width="38" height="38" color="~color_text" src_builtin="edit/panel.svg" />
+      <sprite width="38" height="38" color="~color_text" src="${icon}" />
     </Button>
   </template>
 

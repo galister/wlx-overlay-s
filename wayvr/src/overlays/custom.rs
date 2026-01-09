@@ -1,7 +1,14 @@
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::{Arc, LazyLock},
+    time::Duration,
+};
 
 use glam::{Affine3A, Quat, Vec3, vec3};
-use wlx_common::windowing::OverlayWindowState;
+use regex::Regex;
+use wlx_common::{
+    overlays::{BackendAttrib, BackendAttribValue},
+    windowing::OverlayWindowState,
+};
 
 use crate::{
     gui::{
@@ -15,7 +22,22 @@ use crate::{
     },
 };
 
-struct CustomPanelState {}
+static ENV_VAR_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\$\{([A-Z_][A-Z0-9_]*)}|\$([A-Z_][A-Z0-9_]*)").unwrap() // want panic
+});
+
+pub(super) fn expand_env_vars(template: &str) -> String {
+    ENV_VAR_REGEX
+        .replace_all(template, |caps: &regex::Captures| {
+            let var_name = caps.get(1).or_else(|| caps.get(2)).unwrap().as_str();
+            std::env::var(var_name)
+                .inspect_err(|e| log::warn!("Unable to substitute env var {var_name}: {e:?}"))
+                .unwrap_or_default()
+        })
+        .into_owned()
+}
+
+struct CustomPanelState;
 
 pub fn create_custom(app: &mut AppState, name: Arc<str>) -> Option<OverlayWindowConfig> {
     let params = NewGuiPanelParams {
@@ -24,9 +46,16 @@ pub fn create_custom(app: &mut AppState, name: Arc<str>) -> Option<OverlayWindow
     };
 
     let mut panel =
-        GuiPanel::new_from_template(app, &format!("gui/{name}.xml"), CustomPanelState {}, params)
+        GuiPanel::new_from_template(app, &format!("gui/{name}.xml"), CustomPanelState, params)
             .inspect_err(|e| log::warn!("Error creating '{name}': {e:?}"))
             .ok()?;
+
+    if let Some(icon) = panel.parser_state.data.var_map.get("_panel_icon") {
+        let icon = expand_env_vars(&icon);
+        panel
+            .extra_attribs
+            .insert(BackendAttrib::Icon, BackendAttribValue::Icon(icon.into()));
+    }
 
     panel
         .update_layout(app)

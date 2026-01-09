@@ -14,7 +14,7 @@ use crate::windowing::{OverlayID, backend::OverlayEventData, window::OverlayCate
 /// Helper for managing a list of overlays
 /// Populates `id="panels_root"` with `<Screen>`, `<Mirror>`, `<Panel>` templates
 /// Populates `id="apps_root"` with `<App>` templates (optional)
-/// Uses the following parameters: `name` (All), `display` (Screen, Mirror), `icon` (App)
+/// Uses the following parameters: `name` (All), `display` (Screen, Mirror), `icon` (App, Panel)
 pub struct OverlayList {
     overlay_buttons: SecondaryMap<OverlayID, Rc<ComponentButton>>,
 }
@@ -63,7 +63,16 @@ impl OverlayList {
                             );
                             ("Mirror", panels_root)
                         }
-                        OverlayCategory::Panel => ("Panel", panels_root),
+                        OverlayCategory::Panel => {
+                            let icon: Rc<str> = if let Some(icon) = meta.icon.as_ref() {
+                                icon.to_string().into()
+                            } else {
+                                "edit/panel.svg".into()
+                            };
+
+                            params.insert("icon".into(), icon);
+                            ("Panel", panels_root)
+                        }
                         OverlayCategory::WayVR => {
                             params.insert(
                                 "icon".into(),

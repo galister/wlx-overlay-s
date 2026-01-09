@@ -1,8 +1,9 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use anyhow::Context;
 use button::setup_custom_button;
 use glam::{Affine2, Vec2, vec2};
+use idmap::IdMap;
 use label::setup_custom_label;
 use wgui::{
     assets::AssetPath,
@@ -67,6 +68,7 @@ pub struct GuiPanel<S> {
     pub on_notify: Option<OnNotifyFunc<S>>,
     pub initialized: bool,
     pub doc_extra: Option<ParseDocumentExtra>,
+    pub extra_attribs: IdMap<BackendAttrib, BackendAttribValue>,
     interaction_transform: Option<Affine2>,
     context: WguiContext,
     timestep: Timestep,
@@ -182,6 +184,7 @@ impl<S: 'static> GuiPanel<S> {
             last_content_size: Vec2::ZERO,
             doc_extra: Some(doc_params.extra),
             custom_elems,
+            extra_attribs: Default::default(),
             context_menu: Default::default(),
             on_custom_attrib: params.on_custom_attrib,
             on_custom_attrib_inner,
@@ -443,8 +446,8 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
     fn get_interaction_transform(&mut self) -> Option<Affine2> {
         self.interaction_transform
     }
-    fn get_attrib(&self, _attrib: BackendAttrib) -> Option<BackendAttribValue> {
-        None
+    fn get_attrib(&self, attrib: BackendAttrib) -> Option<BackendAttribValue> {
+        self.extra_attribs.get(&attrib).cloned()
     }
     fn set_attrib(&mut self, _app: &mut AppState, _value: BackendAttribValue) -> bool {
         false

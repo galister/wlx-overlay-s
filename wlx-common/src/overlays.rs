@@ -19,7 +19,7 @@ pub enum ToastDisplayMethod {
 	Watch,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, IntegerId, PartialEq)]
 pub enum BackendAttrib {
 	Stereo,
 	MouseTransform,
