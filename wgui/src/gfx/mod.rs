@@ -7,26 +7,26 @@ use std::{marker::PhantomData, slice::Iter, sync::Arc};
 use cmd::{GfxCommandBuffer, XferCommandBuffer};
 use pipeline::WGfxPipeline;
 use vulkano::{
+	DeviceSize,
 	buffer::{Buffer, BufferContents, BufferCreateInfo, BufferUsage, IndexBuffer, Subbuffer},
 	command_buffer::{
-		allocator::{StandardCommandBufferAllocator, StandardCommandBufferAllocatorCreateInfo},
 		AutoCommandBufferBuilder, CommandBufferUsage,
+		allocator::{StandardCommandBufferAllocator, StandardCommandBufferAllocatorCreateInfo},
 	},
 	descriptor_set::allocator::{StandardDescriptorSetAllocator, StandardDescriptorSetAllocatorCreateInfo},
 	device::{Device, Queue},
 	format::Format,
-	image::{sampler::Filter, Image, ImageCreateInfo, ImageType, ImageUsage},
+	image::{Image, ImageCreateInfo, ImageType, ImageUsage, sampler::Filter},
 	instance::Instance,
 	memory::{
-		allocator::{AllocationCreateInfo, GenericMemoryAllocatorCreateInfo, MemoryTypeFilter, StandardMemoryAllocator},
 		ExternalMemoryHandleTypes, MemoryPropertyFlags,
+		allocator::{AllocationCreateInfo, GenericMemoryAllocatorCreateInfo, MemoryTypeFilter, StandardMemoryAllocator},
 	},
 	pipeline::graphics::{
 		color_blend::{AttachmentBlend, BlendFactor, BlendOp},
 		vertex_input::Vertex,
 	},
 	shader::ShaderModule,
-	DeviceSize,
 };
 
 use crate::gfx::pipeline::WPipelineCreateInfo;

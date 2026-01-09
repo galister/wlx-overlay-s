@@ -140,6 +140,8 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                 OverlayEventData::CustomCommand { element, command } => {
                     if let Err(e) = apply_custom_command(panel, app, &element, &command) {
                         log::warn!("Could not apply {command:?} on {name}/{element}: {e:?}");
+                    } else {
+                        elems_changed = true;
                     }
                 }
                 _ => {}
