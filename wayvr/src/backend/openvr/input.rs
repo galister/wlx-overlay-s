@@ -15,6 +15,7 @@ use wlx_common::config_io;
 use crate::{
     backend::input::{Haptics, TrackedDevice, TrackedDeviceRole},
     state::AppState,
+    windowing::OverlayID,
 };
 
 use super::helpers::{Affine3AConvert, OVRError};
@@ -142,13 +143,23 @@ impl OpenVrInputSource {
         input: &mut InputManager,
         system: &mut SystemManager,
         app: &mut AppState,
+        watch_id: OverlayID,
     ) {
+        let should_block_input = app.input_state.pointers.iter().any(|p| {
+            p.interaction.hovered_id.is_some_and(|id| {
+                id != watch_id || !app.session.config.block_game_input_ignore_watch
+            })
+        }) && app.session.config.block_game_input;
+
         let aas = ActiveActionSet(ovr_overlay::sys::VRActiveActionSet_t {
             ulActionSet: self.set_hnd.0,
             ulRestrictedToDevice: 0,
             ulSecondaryActionSet: 0,
             unPadding: 0,
-            nPriority: 0,
+            // the range between 0x01000000 and 0x01FFFFFF overrides game action sets as long as
+            // global input from overlays is enabled in SteamVR developer settings
+            // (taken from https://github.com/ValveSoftware/openvr/issues/1236)
+            nPriority: if should_block_input { 0x01000000 } else { 0x0 },
         });
 
         let _ = input.update_actions(&mut [aas]);
