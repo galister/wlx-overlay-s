@@ -1,6 +1,6 @@
 [package]
 name = "wayvrctl"
-version = "26.1.0"
+version = "26.1.1"
 edition = "2024"
 description = "CLI for controlling WayVR"
 license = "GPL-3.0-only"
