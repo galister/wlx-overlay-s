@@ -2,6 +2,10 @@
 name = "wgui"
 version = "0.1.0"
 edition = "2024"
+description = "A VR-first Vulkan GUI library"
+license = "GPL-3.0-only"
+authors = ["galister", "oo8dev"]
+repository = "https://github.com/wlx-team/wayvr"
 
 [dependencies]
 anyhow.workspace = true

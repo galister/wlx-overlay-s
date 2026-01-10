@@ -2,6 +2,10 @@
 name = "dash-frontend"
 version = "0.1.0"
 edition = "2024"
+description = "The dashboard frontend for WayVR"
+license = "GPL-3.0-only"
+authors = ["galister", "oo8dev"]
+repository = "https://github.com/wlx-team/wayvr"
 
 [dependencies]
 wayvr-ipc = { path = "../wayvr-ipc", default-features = false }
