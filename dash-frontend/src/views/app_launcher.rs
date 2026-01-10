@@ -117,7 +117,7 @@ impl View {
 
 		let radio_compositor = state.fetch_component_as::<ComponentRadioGroup>("radio_compositor")?;
 		let radio_res = state.fetch_component_as::<ComponentRadioGroup>("radio_res")?;
-		let radio_pos = state.fetch_component_as::<ComponentRadioGroup>("radio_pos")?;
+		// let radio_pos = state.fetch_component_as::<ComponentRadioGroup>("radio_pos")?;
 		let radio_orientation = state.fetch_component_as::<ComponentRadioGroup>("radio_orientation")?;
 		let cb_autostart = state.fetch_component_as::<ComponentCheckbox>("cb_autostart")?;
 
@@ -214,24 +214,24 @@ impl View {
 			})
 		});
 
-		radio_pos.on_value_changed({
-			let tasks = tasks.clone();
-			Box::new(move |_, ev| {
-				if let Some(mode) = ev.value.and_then(|v| {
-					PosMode::from_str(&*v)
-						.inspect_err(|_| {
-							log::error!(
-								"Invalid value for position: '{v}'. Valid values are: {:?}",
-								PosMode::VARIANTS
-							)
-						})
-						.ok()
-				}) {
-					tasks.push(Task::SetPos(mode));
-				}
-				Ok(())
-			})
-		});
+		// radio_pos.on_value_changed({
+		// 	let tasks = tasks.clone();
+		// 	Box::new(move |_, ev| {
+		// 		if let Some(mode) = ev.value.and_then(|v| {
+		// 			PosMode::from_str(&*v)
+		// 				.inspect_err(|_| {
+		// 					log::error!(
+		// 						"Invalid value for position: '{v}'. Valid values are: {:?}",
+		// 						PosMode::VARIANTS
+		// 					)
+		// 				})
+		// 				.ok()
+		// 		}) {
+		// 			tasks.push(Task::SetPos(mode));
+		// 		}
+		// 		Ok(())
+		// 	})
+		// });
 
 		radio_orientation.on_value_changed({
 			let tasks = tasks.clone();
