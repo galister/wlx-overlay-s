@@ -8,7 +8,7 @@ repository = "https://github.com/galister/wlx-capture"
 keywords = ["desktop", "capture", "pipewire", "wayland", "x11"]
 categories = ["computer-vision", "multimedia::images"]
 documentation = "https://docs.rs/wlx-capture"
-license = "GPL-3.0"
+license = "GPL-3.0-only"
 
 [features]
 default = ["wayland", "pipewire"]
