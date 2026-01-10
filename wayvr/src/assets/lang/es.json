@@ -54,7 +54,8 @@
       "SPLIT_LEFT_RIGHT": "IZQ→DER",
       "SPLIT_RIGHT_LEFT": "DERECHA→IZQUIERDA",
       "SPLIT_TOP_BOTTOM": "ARRIBA→ABAJO",
-      "SPLIT_BOTTOM_TOP": "ABAJO→ARRIBA"
+      "SPLIT_BOTTOM_TOP": "ABAJO→ARRIBA",
+      "FULL_FRAME": "3D completo"
     },
     "STEREO_3D_MODE_": {},
     "ALIGN_TO_HMD": "Alinear al HMD",

@@ -82,6 +82,9 @@
                   <PosButton id="stereo_topbottom" src="edit/3d_topbottom.svg" tooltip="EDIT_MODE.STEREO_3D_MODE.SPLIT_TOP_BOTTOM" press="::EditModeSetStereo topbottom" />
                   <PosButton id="stereo_bottomtop" src="edit/3d_bottomtop.svg" tooltip="EDIT_MODE.STEREO_3D_MODE.SPLIT_BOTTOM_TOP" press="::EditModeSetStereo bottomtop" />
                 </div>
+                <div justify_content="center" align_items="center">
+                  <CheckBox id="stereo_full_frame_box" translation="EDIT_MODE.STEREO_3D_MODE.FULL_FRAME" tooltip_side="top" />
+                </div>
               </div>
               <div id="tab_mouse" display="none" height="100" flex_direction="column">
                 <div padding_left="8" padding_right="8" gap="8" justify_content="center" align_items="center">

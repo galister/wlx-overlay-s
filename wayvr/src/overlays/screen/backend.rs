@@ -57,6 +57,7 @@ pub struct ScreenBackend {
     mouse_transform: Affine2,
     interaction_transform: Option<Affine2>,
     stereo: Option<StereoMode>,
+    stereo_full_frame: bool,
     pub(super) logical_pos: Vec2,
     pub(super) logical_size: Vec2,
     pub(super) mouse_transform_original: Transform,
@@ -85,6 +86,7 @@ impl ScreenBackend {
             } else {
                 None
             },
+            stereo_full_frame: false,
             logical_pos: Vec2::ZERO,
             logical_size: Vec2::ZERO,
             mouse_transform_original: Transform::Undefined,
@@ -208,7 +210,22 @@ impl OverlayBackend for ScreenBackend {
 
         if let Some(frame) = self.capture.receive() {
             let stereo = self.stereo.unwrap_or(StereoMode::None);
-            let meta = frame.get_frame_meta(&app.session.config, stereo);
+            let mut meta = frame.get_frame_meta(&app.session.config, stereo);
+
+            if let Some(stereo) = self.stereo {
+                // Apply stereo full frame logic
+                if self.stereo_full_frame {
+                    match stereo {
+                        StereoMode::LeftRight | StereoMode::RightLeft => {
+                            meta.extent[0] /= 2;
+                        }
+                        StereoMode::TopBottom | StereoMode::BottomTop => {
+                            meta.extent[1] /= 2;
+                        }
+                        _ => {}
+                    }
+                }
+            }
 
             if let Some(pipeline) = self.pipeline.as_mut() {
                 if self.meta.is_some_and(|old| old.extent != meta.extent) {
@@ -331,6 +348,9 @@ impl OverlayBackend for ScreenBackend {
             BackendAttrib::MouseTransform => Some(BackendAttribValue::MouseTransform(
                 self.mouse_transform_override,
             )),
+            BackendAttrib::StereoFullFrame => {
+                Some(BackendAttribValue::StereoFullFrame(self.stereo_full_frame))
+            }
             _ => None,
         }
     }
@@ -362,6 +382,10 @@ impl OverlayBackend for ScreenBackend {
                     MouseTransform::Flipped270 => Transform::Flipped270,
                 };
                 self.apply_mouse_transform_with_override(frame_transform);
+                true
+            }
+            BackendAttribValue::StereoFullFrame(new) => {
+                self.stereo_full_frame = new;
                 true
             }
             _ => false,

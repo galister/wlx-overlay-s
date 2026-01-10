@@ -22,6 +22,7 @@ pub enum ToastDisplayMethod {
 #[derive(Debug, Clone, Copy, IntegerId, PartialEq)]
 pub enum BackendAttrib {
 	Stereo,
+	StereoFullFrame,
 	MouseTransform,
 	Icon,
 }
@@ -29,6 +30,7 @@ pub enum BackendAttrib {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BackendAttribValue {
 	Stereo(StereoMode),
+	StereoFullFrame(bool),
 	MouseTransform(MouseTransform),
 	#[serde(skip_serializing, skip_deserializing)]
 	Icon(Arc<str>),
