@@ -25,10 +25,14 @@ impl OverlayWindowData<OpenXrOverlayData> {
         &'a mut self,
         app: &AppState,
         xr: &'a XrState,
-        extent: [u32; 3],
+        extent: [u32; 2],
+        stereo: bool,
     ) -> anyhow::Result<WlxSwapchainImage> {
+        let array_size = if stereo { 2 } else { 1 };
+
         if let Some(swapchain) = self.data.swapchain.as_mut()
             && swapchain.extent == extent
+            && swapchain.array_size == array_size
         {
             return swapchain.acquire_wait_image();
         }
@@ -38,9 +42,15 @@ impl OverlayWindowData<OpenXrOverlayData> {
             self.config.name,
             extent[0],
             extent[1],
-            extent[2],
+            array_size,
         );
-        let mut swapchain = create_swapchain(xr, app.gfx.clone(), extent, SwapchainOpts::new())?;
+        let mut swapchain = create_swapchain(
+            xr,
+            app.gfx.clone(),
+            extent,
+            array_size,
+            SwapchainOpts::new(),
+        )?;
         let tgt = swapchain.acquire_wait_image()?;
         self.data.swapchain = Some(swapchain);
         Ok(tgt)
@@ -65,7 +75,7 @@ impl OverlayWindowData<OpenXrOverlayData> {
         // overlays without active_state don't get queued for present
         let state = self.config.active_state.as_ref().unwrap();
 
-        let sub_images: SmallVec<[_; 2]> = if swapchain.extent[2] > 1 {
+        let sub_images: SmallVec<[_; 2]> = if swapchain.array_size > 1 {
             smallvec![
                 (swapchain.get_subimage(0), EyeVisibility::LEFT),
                 (swapchain.get_subimage(1), EyeVisibility::RIGHT),

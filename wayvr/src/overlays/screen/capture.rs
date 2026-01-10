@@ -101,20 +101,21 @@ impl ScreenPipeline {
             buf_alpha,
             stereo,
         };
-        me.set_stereo(app, stereo)?;
+        me.ensure_stereo(stereo);
         Ok(me)
     }
 
-    pub fn set_stereo(&mut self, app: &mut AppState, stereo: StereoMode) -> anyhow::Result<()> {
+    pub fn ensure_stereo(&mut self, stereo: StereoMode) {
+        if self.stereo == stereo {
+            return;
+        }
+
         self.stereo = stereo;
+        self.pass.clear(); // ensure_depth will repopulate
+    }
 
-        let depth = if matches!(stereo, StereoMode::None) {
-            1
-        } else {
-            2
-        };
-
-        if self.pass.len() < depth {
+    fn ensure_depth(&mut self, app: &mut AppState, depth: usize) -> anyhow::Result<()> {
+        while self.pass.len() < depth {
             self.pass.push(Self::create_pass(
                 app,
                 self.pipeline.clone(),
@@ -124,19 +125,15 @@ impl ScreenPipeline {
             )?);
         }
 
-        if self.pass.len() > depth {
+        while self.pass.len() > depth {
             self.pass.pop();
         }
 
         for (eye, current) in self.pass.iter_mut().enumerate() {
-            let verts = stereo_mode_to_verts(stereo, eye);
+            let verts = stereo_mode_to_verts(self.stereo, eye);
             current.buf_vert.write()?.copy_from_slice(&verts);
         }
         Ok(())
-    }
-
-    pub fn get_depth(&self) -> u32 {
-        self.pass.len() as _
     }
 
     pub fn set_extent(
@@ -147,18 +144,7 @@ impl ScreenPipeline {
     ) -> anyhow::Result<()> {
         self.extentf = extentf;
         self.offsetf = offsetf;
-
-        for (eye, pass) in self.pass.iter_mut().enumerate() {
-            *pass = Self::create_pass(
-                app,
-                self.pipeline.clone(),
-                extentf,
-                offsetf,
-                self.buf_alpha.clone(),
-            )?;
-            let verts = stereo_mode_to_verts(self.stereo, eye);
-            pass.buf_vert.write()?.copy_from_slice(&verts);
-        }
+        self.pass.clear();
 
         self.mouse = Self::create_mouse_pass(
             app,
@@ -251,6 +237,8 @@ impl ScreenPipeline {
         app: &mut AppState,
         rdr: &mut RenderResources,
     ) -> anyhow::Result<()> {
+        self.ensure_depth(app, rdr.cmd_bufs.len())?;
+
         self.buf_alpha.write()?[0] = rdr.alpha;
 
         for (eye, cmd_buf) in rdr.cmd_bufs.iter_mut().enumerate() {
@@ -503,12 +491,13 @@ pub(super) struct WlxCaptureOut {
 }
 
 impl WlxCaptureOut {
-    pub(super) fn get_frame_meta(&self, config: &GeneralConfig) -> FrameMeta {
+    pub(super) fn get_frame_meta(&self, config: &GeneralConfig, stereo: StereoMode) -> FrameMeta {
         FrameMeta {
             clear: WGfxClearMode::DontCare,
             extent: extent_from_format(self.format, config),
             transform: affine_from_format(&self.format),
             format: self.image.format(),
+            stereo,
         }
     }
 }
@@ -721,7 +710,7 @@ const fn receive_callback_dummy(_: &DummyDrmExporter, frame: WlxFrame) -> Option
     Some(frame)
 }
 
-fn extent_from_format(fmt: FrameFormat, config: &GeneralConfig) -> [u32; 3] {
+fn extent_from_format(fmt: FrameFormat, config: &GeneralConfig) -> [u32; 2] {
     // screens above a certain resolution will have severe aliasing
     let height_limit = if config.screen_render_down {
         u32::from(config.screen_max_height.min(2560))
@@ -731,7 +720,7 @@ fn extent_from_format(fmt: FrameFormat, config: &GeneralConfig) -> [u32; 3] {
 
     let h = fmt.height.min(height_limit);
     let w = (fmt.width as f32 / fmt.height as f32 * h as f32) as u32;
-    [w, h, 1]
+    [w, h]
 }
 
 fn affine_from_format(format: &FrameFormat) -> Affine3A {

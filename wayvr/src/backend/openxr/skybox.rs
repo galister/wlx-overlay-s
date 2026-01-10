@@ -92,8 +92,8 @@ impl Skybox {
         }
         let opts = SwapchainOpts::new().immutable();
 
-        let extent = self.view.image().extent();
-        let mut swapchain = create_swapchain(xr, app.gfx.clone(), extent, opts)?;
+        let extent = self.view.extent_u32arr();
+        let mut swapchain = create_swapchain(xr, app.gfx.clone(), extent, 1, opts)?;
         let tgt = swapchain
             .acquire_wait_image()?
             .views
@@ -141,11 +141,12 @@ impl Skybox {
             return Ok(());
         }
 
-        let extent = [1024, 1024, 1];
+        let extent = [1024, 1024];
         let mut swapchain = create_swapchain(
             xr,
             app.gfx.clone(),
             extent,
+            1,
             SwapchainOpts::new().immutable(),
         )?;
         let pipeline = app.gfx.create_pipeline(

@@ -34,7 +34,7 @@ pub enum BackendAttribValue {
 	Icon(Arc<str>),
 }
 
-#[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum StereoMode {
 	#[default]
 	None,

@@ -11,7 +11,6 @@ use crate::{
         XrBackend,
         input::{HoverResult, PointerHit, PointerMode},
     },
-    graphics::ExtentExt,
     overlays::screen::capture::MyFirstDmaExporter,
     state::AppState,
     subsystem::hid::{MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT, WheelDelta},
@@ -208,31 +207,22 @@ impl OverlayBackend for ScreenBackend {
         }
 
         if let Some(frame) = self.capture.receive() {
-            let mut meta = frame.get_frame_meta(&app.session.config);
+            let stereo = self.stereo.unwrap_or(StereoMode::None);
+            let meta = frame.get_frame_meta(&app.session.config, stereo);
 
             if let Some(pipeline) = self.pipeline.as_mut() {
-                meta.extent[2] = pipeline.get_depth();
-                if self
-                    .meta
-                    .is_some_and(|old| old.extent[..2] != meta.extent[..2])
-                {
+                if self.meta.is_some_and(|old| old.extent != meta.extent) {
                     pipeline.set_extent(
                         app,
                         [meta.extent[0] as _, meta.extent[1] as _],
                         [0., 0.],
                     )?;
-                    self.interaction_transform = Some(ui_transform(meta.extent.extent_u32arr()));
+                    self.interaction_transform = Some(ui_transform(meta.extent));
                 }
             } else {
-                let pipeline = ScreenPipeline::new(
-                    &meta,
-                    app,
-                    self.stereo.unwrap_or(StereoMode::None),
-                    [0., 0.],
-                )?;
-                meta.extent[2] = pipeline.get_depth();
+                let pipeline = ScreenPipeline::new(&meta, app, stereo, [0., 0.])?;
                 self.pipeline = Some(pipeline);
-                self.interaction_transform = Some(ui_transform(meta.extent.extent_u32arr()));
+                self.interaction_transform = Some(ui_transform(meta.extent));
             }
 
             self.meta = Some(meta);
@@ -344,14 +334,14 @@ impl OverlayBackend for ScreenBackend {
             _ => None,
         }
     }
-    fn set_attrib(&mut self, app: &mut AppState, value: BackendAttribValue) -> bool {
+    fn set_attrib(&mut self, _app: &mut AppState, value: BackendAttribValue) -> bool {
         match value {
             BackendAttribValue::Stereo(new) => {
                 if let Some(stereo) = self.stereo.as_mut() {
                     log::debug!("{}: stereo: {stereo:?} → {new:?}", self.name);
                     *stereo = new;
                     if let Some(pipeline) = self.pipeline.as_mut() {
-                        pipeline.set_stereo(app, new).unwrap(); // only panics if gfx is dead
+                        pipeline.ensure_stereo(new);
                     }
                     true
                 } else {

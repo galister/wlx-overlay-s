@@ -111,7 +111,7 @@ pub struct WvrWindowBackend {
     stereo: Option<StereoMode>,
     cur_image: Option<Arc<ImageView>>,
     panel: GuiPanel<WindowHandle>,
-    inner_extent: [u32; 3],
+    inner_extent: [u32; 2],
     mouse_transform: Affine2,
     uv_range: RangeInclusive<f32>,
     panel_hovered: bool,
@@ -208,7 +208,7 @@ impl WvrWindowBackend {
                 None
             },
             cur_image: None,
-            inner_extent: [0, 0, 1],
+            inner_extent: [0, 0],
             panel,
             mouse_transform: Affine2::ZERO,
             uv_range: 0.0..=1.0,
@@ -217,7 +217,7 @@ impl WvrWindowBackend {
     }
 
     fn apply_extent(&mut self, app: &mut AppState, meta: &FrameMeta) -> anyhow::Result<()> {
-        self.interaction_transform = Some(ui_transform(meta.extent.extent_u32arr()));
+        self.interaction_transform = Some(ui_transform(meta.extent));
 
         let scale = vec2(
             ((meta.extent[0] + BORDER_SIZE * 2) as f32) / (meta.extent[0] as f32),
@@ -300,7 +300,7 @@ impl OverlayBackend for WvrWindowBackend {
         with_states(toplevel.wl_surface(), |states| {
             if let Some(surf) = SurfaceBufWithImage::get_from_surface(states) {
                 let mut meta = FrameMeta {
-                    extent: surf.image.image().extent(),
+                    extent: surf.image.extent_u32arr(),
                     format: surf.image.format(),
                     clear: WGfxClearMode::Clear([0.0, 0.0, 0.0, 0.0]),
                     ..Default::default()
@@ -310,8 +310,7 @@ impl OverlayBackend for WvrWindowBackend {
                 meta.extent[1] += BORDER_SIZE * 2 + BAR_SIZE;
 
                 if let Some(pipeline) = self.pipeline.as_mut() {
-                    meta.extent[2] = pipeline.get_depth();
-                    if self.inner_extent[..2] != inner_extent[..2] {
+                    if self.inner_extent != inner_extent {
                         pipeline.set_extent(
                             app,
                             [inner_extent[0] as _, inner_extent[1] as _],
@@ -327,7 +326,6 @@ impl OverlayBackend for WvrWindowBackend {
                         self.stereo.unwrap_or(StereoMode::None),
                         [BORDER_SIZE as _, (BAR_SIZE + BORDER_SIZE) as _],
                     )?;
-                    meta.extent[2] = pipeline.get_depth();
                     self.apply_extent(app, &meta)?;
                     self.pipeline = Some(pipeline);
                 }
@@ -388,7 +386,8 @@ impl OverlayBackend for WvrWindowBackend {
             .render(image, self.mouse.as_ref(), app, rdr)?;
 
         for (popup_img, point) in &self.popups {
-            let extentf = self.meta.as_ref().unwrap().extent.extent_f32();
+            let meta = self.meta.as_ref().unwrap();
+            let extentf = [meta.extent[0] as f32, meta.extent[1] as f32];
             let popup_extentf = popup_img.extent_f32();
             let mut buf_vert = app
                 .gfx
@@ -551,14 +550,14 @@ impl OverlayBackend for WvrWindowBackend {
             _ => None,
         }
     }
-    fn set_attrib(&mut self, app: &mut AppState, value: BackendAttribValue) -> bool {
+    fn set_attrib(&mut self, _app: &mut AppState, value: BackendAttribValue) -> bool {
         match value {
             BackendAttribValue::Stereo(new) => {
                 if let Some(stereo) = self.stereo.as_mut() {
                     log::debug!("{}: stereo: {stereo:?} → {new:?}", self.name);
                     *stereo = new;
                     if let Some(pipeline) = self.pipeline.as_mut() {
-                        pipeline.set_stereo(app, new).unwrap(); // only panics if gfx is dead
+                        pipeline.ensure_stereo(new);
                     }
                     true
                 } else {

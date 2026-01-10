@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
 use anyhow::Context;
 use button::setup_custom_button;
@@ -353,7 +353,6 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
             extent: [
                 self.max_size.x.min(self.layout.content_size.x) as _,
                 self.max_size.y.min(self.layout.content_size.y) as _,
-                1,
             ],
             ..Default::default()
         })

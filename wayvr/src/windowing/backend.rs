@@ -7,7 +7,7 @@ use wgui::gfx::{
     cmd::{GfxCommandBuffer, WGfxClearMode},
 };
 use wlx_common::{
-    overlays::{BackendAttrib, BackendAttribValue},
+    overlays::{BackendAttrib, BackendAttribValue, StereoMode},
     windowing::Positioning,
 };
 
@@ -16,7 +16,7 @@ use crate::{
         input::{HoverResult, PointerHit},
         task::ModifyPanelCommand,
     },
-    graphics::{ExtentExt, RenderResult},
+    graphics::RenderResult,
     overlays::wayvr::WvrCommand,
     state::AppState,
     subsystem::hid::WheelDelta,
@@ -25,10 +25,11 @@ use crate::{
 
 #[derive(Default, Clone, Copy)]
 pub struct FrameMeta {
-    pub extent: [u32; 3],
+    pub extent: [u32; 2],
     pub transform: Affine3A,
     pub format: Format,
     pub clear: WGfxClearMode,
+    pub stereo: StereoMode,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -70,7 +71,7 @@ impl RenderResources {
         Ok(Self {
             cmd_bufs,
             alpha,
-            extent: meta.extent.extent_u32arr(),
+            extent: meta.extent,
         })
     }
 

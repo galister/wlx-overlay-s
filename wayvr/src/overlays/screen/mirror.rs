@@ -49,7 +49,7 @@ pub struct MirrorBackend {
     name: Arc<str>,
     renderer: Option<ScreenBackend>,
     selector: Option<PinnedSelectorFuture>,
-    last_extent: [u32; 3],
+    last_extent: [u32; 2],
     interaction_transform: Option<Affine2>,
 }
 impl MirrorBackend {
@@ -59,7 +59,7 @@ impl MirrorBackend {
             name,
             renderer: None,
             selector: Some(selector),
-            last_extent: [0; 3],
+            last_extent: [0; 2],
             interaction_transform: None,
         }
     }
@@ -131,7 +131,7 @@ impl OverlayBackend for MirrorBackend {
             let extent = meta.extent;
             if self.last_extent != extent {
                 self.last_extent = extent;
-                self.interaction_transform = Some(ui_transform([extent[0], extent[1]]));
+                self.interaction_transform = Some(ui_transform(extent));
             }
         }
 

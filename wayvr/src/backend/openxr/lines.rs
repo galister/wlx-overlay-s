@@ -83,7 +83,7 @@ impl LinePool {
             &Default::default(),
         )?;
 
-        let srd = create_swapchain(xr, app.gfx.clone(), [1, 1, 1], SwapchainOpts::new())?;
+        let srd = create_swapchain(xr, app.gfx.clone(), [1, 1], 1, SwapchainOpts::new())?;
         self.lines.insert(
             id,
             LineContainer {

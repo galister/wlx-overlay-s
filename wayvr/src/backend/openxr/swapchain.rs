@@ -35,7 +35,8 @@ impl SwapchainOpts {
 pub(super) fn create_swapchain(
     xr: &XrState,
     gfx: Arc<WGfx>,
-    extent: [u32; 3],
+    extent: [u32; 2],
+    array_size: u32,
     opts: SwapchainOpts,
 ) -> anyhow::Result<WlxSwapchain> {
     let create_flags = if opts.immutable {
@@ -52,7 +53,7 @@ pub(super) fn create_swapchain(
         width: extent[0],
         height: extent[1],
         face_count: 1,
-        array_size: extent[2],
+        array_size,
         mip_count: 1,
     })?;
 
@@ -69,7 +70,7 @@ pub(super) fn create_swapchain(
                     ImageCreateInfo {
                         format: gfx.surface_format as _,
                         extent: [extent[0], extent[1], 1],
-                        array_layers: extent[2],
+                        array_layers: array_size,
                         usage: ImageUsage::COLOR_ATTACHMENT,
                         ..Default::default()
                     },
@@ -78,7 +79,7 @@ pub(super) fn create_swapchain(
             // SAFETY: OpenXR guarantees that the image is a swapchain image, thus has memory backing it.
             let image = Arc::new(unsafe { raw_image.assume_bound() });
             let mut wsi = WlxSwapchainImage::default();
-            for d in 0..extent[2] {
+            for d in 0..array_size {
                 let mut create_info = ImageViewCreateInfo::from_image(&image);
                 create_info.subresource_range.array_layers = d..d + 1;
                 wsi.views.push(ImageView::new(image.clone(), create_info)?);
@@ -93,6 +94,7 @@ pub(super) fn create_swapchain(
         swapchain,
         images,
         extent,
+        array_size,
     })
 }
 
@@ -105,7 +107,8 @@ pub(super) struct WlxSwapchain {
     acquired: bool,
     pub(super) ever_acquired: bool,
     pub(super) swapchain: xr::Swapchain<xr::Vulkan>,
-    pub(super) extent: [u32; 3],
+    pub(super) extent: [u32; 2],
+    pub(super) array_size: u32,
     pub(super) images: SmallVec<[WlxSwapchainImage; 4]>,
 }
 

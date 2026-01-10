@@ -13,7 +13,7 @@ use vulkano::{
 };
 use wgui::gfx::WGfx;
 
-use crate::{state::AppState, windowing::window::OverlayWindowData};
+use crate::{graphics::ExtentExt, state::AppState, windowing::window::OverlayWindowData};
 
 use super::helpers::Affine3AConvert;
 
@@ -65,10 +65,10 @@ impl OverlayWindowData<OpenVrOverlayData> {
     pub(super) fn ensure_staging_image(
         &mut self,
         app: &mut AppState,
-        extent: [u32; 3],
+        extent: [u32; 2],
     ) -> anyhow::Result<Arc<ImageView>> {
         if let Some(image_view) = self.data.image_view.as_ref()
-            && image_view.image().extent() == extent
+            && image_view.extent_u32arr() == extent
         {
             return Ok(image_view.clone());
         }

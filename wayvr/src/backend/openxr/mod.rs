@@ -10,7 +10,7 @@ use input::OpenXrInputSource;
 use openxr as xr;
 use skybox::create_skybox;
 use vulkano::{Handle, VulkanObject};
-use wlx_common::overlays::ToastTopic;
+use wlx_common::overlays::{StereoMode, ToastTopic};
 
 use crate::{
     FRAME_COUNTER, RUNNING,
@@ -391,7 +391,8 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             if should_render {
                 log::trace!("{}: render new frame", o.config.name);
                 let meta = o.config.backend.frame_meta().unwrap(); // want panic
-                let wsi = o.ensure_swapchain_acquire(&app, &xr_state, meta.extent)?;
+                let stereo = !matches!(meta.stereo, StereoMode::None);
+                let wsi = o.ensure_swapchain_acquire(&app, &xr_state, meta.extent, stereo)?;
                 let tgt = RenderTarget { views: wsi.views };
                 let mut rdr = RenderResources::new(app.gfx.clone(), tgt, &meta, alpha)?;
                 o.render(&mut app, &mut rdr)?;

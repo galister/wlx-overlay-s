@@ -185,7 +185,7 @@ impl OverlayBackend for DashFrontend {
     fn frame_meta(&mut self) -> Option<FrameMeta> {
         Some(FrameMeta {
             clear: WGfxClearMode::Clear([0., 0., 0., 0.]),
-            extent: [DASH_RES_U32A[0], DASH_RES_U32A[1], 1],
+            extent: [DASH_RES_U32A[0], DASH_RES_U32A[1]],
             ..Default::default()
         })
     }

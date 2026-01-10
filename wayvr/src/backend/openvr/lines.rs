@@ -24,6 +24,7 @@ use wgui::gfx::WGfx;
 use wlx_common::overlays::{BackendAttrib, BackendAttribValue};
 
 use crate::backend::input::{HoverResult, PointerHit};
+use crate::graphics::ExtentExt;
 use crate::state::AppState;
 use crate::subsystem::hid::WheelDelta;
 use crate::windowing::Z_ORDER_LINES;
@@ -200,7 +201,7 @@ impl OverlayBackend for LineBackend {
     }
     fn frame_meta(&mut self) -> Option<FrameMeta> {
         Some(FrameMeta {
-            extent: self.view.image().extent(),
+            extent: self.view.extent_u32arr(),
             ..Default::default()
         })
     }
