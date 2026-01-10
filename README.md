@@ -1,6 +1,6 @@
 ![WayVR splash screen header](https://github.com/wlx-team/wayvr/blob/guide/wayvr-readme-header.webp?raw=true)
 
-# WayVR
+# WayVR (previously WlxOverlay-S)
 
 A lightweight OpenXR/OpenVR overlay for Wayland and X11 desktops.
 
