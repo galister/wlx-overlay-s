@@ -3,33 +3,43 @@ use smithay::backend::allocator::dmabuf::Dmabuf;
 use smithay::backend::renderer::{BufferType, buffer_type};
 use smithay::desktop::{PopupKind, PopupManager};
 use smithay::input::{Seat, SeatHandler, SeatState};
+use smithay::reexports::rustix::fs::{OFlags, fcntl_setfl};
 use smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel;
-use smithay::reexports::wayland_server;
 use smithay::reexports::wayland_server::Resource;
 use smithay::reexports::wayland_server::protocol::{wl_buffer, wl_output, wl_seat};
+use smithay::reexports::wayland_server::{self, DisplayHandle};
 use smithay::wayland::buffer::BufferHandler;
 use smithay::wayland::dmabuf::{
     DmabufFeedback, DmabufGlobal, DmabufHandler, DmabufState, ImportNotifier, get_dmabuf,
 };
 use smithay::wayland::fractional_scale::with_fractional_scale;
 use smithay::wayland::output::OutputHandler;
+use smithay::wayland::selection::{
+    ext_data_control as selection_ext,
+    primary_selection::{PrimarySelectionHandler, PrimarySelectionState, set_primary_focus},
+    wlr_data_control as selection_wlr,
+};
 use smithay::wayland::shm::{ShmHandler, ShmState, with_buffer_contents};
 use smithay::wayland::single_pixel_buffer::get_single_pixel_buffer;
 use smithay::{
-    delegate_compositor, delegate_data_device, delegate_dmabuf, delegate_output, delegate_seat,
-    delegate_shm, delegate_xdg_shell,
+    delegate_compositor, delegate_data_control, delegate_data_device, delegate_dmabuf,
+    delegate_ext_data_control, delegate_output, delegate_primary_selection, delegate_seat,
+    delegate_shm, delegate_single_pixel_buffer, delegate_xdg_shell,
 };
 use std::collections::HashSet;
+use std::fs::File;
+use std::io::Write;
 use std::os::fd::OwnedFd;
 use std::sync::{Arc, Mutex};
 
 use smithay::utils::Serial;
 use smithay::wayland::compositor::{self, BufferAssignment, SurfaceAttributes, send_surface_state};
 
-use smithay::wayland::selection::SelectionHandler;
 use smithay::wayland::selection::data_device::{
     ClientDndGrabHandler, DataDeviceHandler, DataDeviceState, ServerDndGrabHandler,
+    set_data_device_focus,
 };
+use smithay::wayland::selection::{self, SelectionHandler};
 use smithay::wayland::shell::xdg::{
     PopupSurface, PositionerState, ToplevelSurface, XdgShellHandler, XdgShellState,
 };
@@ -51,9 +61,13 @@ pub struct Application {
     pub seat_state: SeatState<Application>,
     pub shm: ShmState,
     pub data_device: DataDeviceState,
+    pub primary_selection_state: PrimarySelectionState,
+    pub ext_data_control_state: selection_ext::DataControlState,
+    pub wlr_data_control_state: selection_wlr::DataControlState,
     pub wayvr_tasks: SyncEventQueue<WayVRTask>,
     pub redraw_requests: HashSet<wayland_server::backend::ObjectId>,
     pub popup_manager: PopupManager,
+    pub display_handle: DisplayHandle,
 }
 
 impl Application {
@@ -205,7 +219,13 @@ impl SeatHandler for Application {
         &mut self.seat_state
     }
 
-    fn focus_changed(&mut self, _seat: &Seat<Self>, _focused: Option<&WlSurface>) {}
+    fn focus_changed(&mut self, seat: &Seat<Self>, focused: Option<&WlSurface>) {
+        let dh = &self.display_handle;
+        let client = focused.and_then(|s| dh.get_client(s.id()).ok());
+        set_data_device_focus(dh, seat, client.clone());
+        set_primary_focus(dh, seat, client);
+    }
+
     fn cursor_image(
         &mut self,
         _seat: &Seat<Self>,
@@ -231,7 +251,35 @@ impl DataDeviceHandler for Application {
 }
 
 impl SelectionHandler for Application {
-    type SelectionUserData = ();
+    type SelectionUserData = Arc<[u8]>;
+
+    fn send_selection(
+        &mut self,
+        _ty: selection::SelectionTarget,
+        _mime_type: String,
+        fd: OwnedFd,
+        _seat: Seat<Self>,
+        user_data: &Self::SelectionUserData,
+    ) {
+        let buf = user_data.clone();
+        std::thread::spawn(move || {
+            // Clear O_NONBLOCK, otherwise File::write_all() will stop halfway.
+            if let Err(err) = fcntl_setfl(&fd, OFlags::empty()) {
+                log::warn!("error clearing flags on selection target fd: {err:?}");
+            }
+            if let Err(err) = File::from(fd).write_all(&buf) {
+                log::warn!("error writing selection: {err:?}");
+            }
+        });
+    }
+
+    fn new_selection(
+        &mut self,
+        _ty: selection::SelectionTarget,
+        _source: Option<selection::SelectionSource>,
+        _seat: Seat<Self>,
+    ) {
+    }
 }
 
 #[derive(Default)]
@@ -371,6 +419,24 @@ impl DmabufHandler for Application {
     }
 }
 
+impl PrimarySelectionHandler for Application {
+    fn primary_selection_state(&self) -> &PrimarySelectionState {
+        &self.primary_selection_state
+    }
+}
+
+impl selection_wlr::DataControlHandler for Application {
+    fn data_control_state(&self) -> &selection_wlr::DataControlState {
+        &self.wlr_data_control_state
+    }
+}
+
+impl selection_ext::DataControlHandler for Application {
+    fn data_control_state(&self) -> &selection_ext::DataControlState {
+        &self.ext_data_control_state
+    }
+}
+
 delegate_dmabuf!(Application);
 delegate_xdg_shell!(Application);
 delegate_compositor!(Application);
@@ -378,6 +444,10 @@ delegate_shm!(Application);
 delegate_seat!(Application);
 delegate_data_device!(Application);
 delegate_output!(Application);
+delegate_primary_selection!(Application);
+delegate_data_control!(Application);
+delegate_ext_data_control!(Application);
+delegate_single_pixel_buffer!(Application);
 
 const fn wl_transform_to_frame_transform(
     transform: wl_output::Transform,

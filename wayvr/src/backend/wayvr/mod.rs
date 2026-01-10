@@ -15,11 +15,15 @@ use smithay::{
     input::{SeatState, keyboard::XkbConfig},
     output::{Mode, Output},
     reexports::wayland_server::{self, backend::ClientId},
+    utils::{Logical, Size},
     wayland::{
         compositor::{self, SurfaceData, with_states},
         dmabuf::{DmabufFeedbackBuilder, DmabufState},
-        selection::data_device::DataDeviceState,
-        shell::xdg::{ToplevelSurface, XdgShellState, XdgToplevelSurfaceData},
+        selection::{
+            data_device::DataDeviceState, ext_data_control as selection_ext,
+            primary_selection::PrimarySelectionState, wlr_data_control as selection_wlr,
+        },
+        shell::xdg::{SurfaceCachedState, ToplevelSurface, XdgShellState, XdgToplevelSurfaceData},
         shm::ShmState,
     },
 };
@@ -148,7 +152,22 @@ impl WvrServerState {
         let mut seat_state = SeatState::new();
         let shm = ShmState::new::<Application>(&dh, Vec::new());
         let data_device = DataDeviceState::new::<Application>(&dh);
+        let primary_selection_state = PrimarySelectionState::new::<Application>(&dh);
         let mut seat = seat_state.new_wl_seat(&dh, "wayvr");
+
+        fn filter_allow_any(_: &wayland_server::Client) -> bool {
+            true
+        }
+        let ext_data_control_state = selection_ext::DataControlState::new::<Application, _>(
+            &dh,
+            Some(&primary_selection_state),
+            filter_allow_any,
+        );
+        let wlr_data_control_state = selection_wlr::DataControlState::new::<Application, _>(
+            &dh,
+            Some(&primary_selection_state),
+            filter_allow_any,
+        );
 
         let dummy_milli_hz = 60000; /* refresh rate in millihertz */
 
@@ -214,11 +233,15 @@ impl WvrServerState {
 
         let state = Application {
             image_importer: dma_importer,
+            display_handle: dh,
             compositor,
             xdg_shell,
             seat_state,
             shm,
             data_device,
+            primary_selection_state,
+            wlr_data_control_state,
+            ext_data_control_state,
             wayvr_tasks: tasks.clone(),
             redraw_requests: HashSet::new(),
             dmabuf_state,
@@ -300,29 +323,50 @@ impl WvrServerState {
                             continue;
                         };
 
-                        // Size, icon & fallback title comes from process
-                        let ([size_x, size_y], pos, fallback_title, icon, is_cage) =
-                            match wvr_server.processes.get(&process_handle) {
-                                Some(Process::Managed(p)) => (
-                                    p.resolution,
-                                    p.pos_mode,
-                                    Some(p.app_name.clone()),
-                                    p.icon.as_ref().cloned(),
-                                    p.exec_path.ends_with("cage"),
-                                ),
-                                _ => ([1920, 1080], PositionMode::Float, None, None, false),
-                            };
+                        let (min_size, max_size) = with_states(toplevel.wl_surface(), |state| {
+                            let mut guard = state.cached_state.get::<SurfaceCachedState>();
+                            let mut min_size = guard.current().min_size;
+                            let mut max_size = guard.current().max_size;
 
-                        let window_handle = wvr_server.wm.create_window(
-                            toplevel.clone(),
-                            process_handle,
-                            size_x,
-                            size_y,
-                        );
+                            if min_size.is_empty() {
+                                min_size = Size::new(1, 1);
+                            }
+
+                            if max_size.is_empty() {
+                                max_size = Size::new(4096, 4096);
+                            }
+
+                            (min_size, max_size)
+                        });
+
+                        // Size, icon & fallback title comes from process
+                        let (size, pos, fallback_title, icon, is_cage) =
+                            match wvr_server.processes.get(&process_handle) {
+                                Some(Process::Managed(p)) => {
+                                    let size: Size<i32, Logical> =
+                                        Size::new(p.resolution[0] as _, p.resolution[1] as _);
+                                    (
+                                        size.clamp(min_size, max_size),
+                                        p.pos_mode,
+                                        Some(p.app_name.clone()),
+                                        p.icon.as_ref().cloned(),
+                                        p.exec_path.ends_with("cage"),
+                                    )
+                                }
+                                _ => (min_size, PositionMode::Float, None, None, false),
+                            };
 
                         let mut title: Arc<str> = fallback_title
                             .unwrap_or_else(|| format!("P{}", client.pid))
                             .into();
+
+                        let window_handle = wvr_server.wm.create_window(
+                            toplevel.clone(),
+                            process_handle,
+                            size.w as _,
+                            size.h as _,
+                        );
+
                         let mut icon = icon;
 
                         // Try to get title from xdg_toplevel, unless it's running in cage
@@ -374,7 +418,7 @@ impl WvrServerState {
                                     app,
                                     window_handle,
                                     icon,
-                                    [size_x, size_y],
+                                    [size.w as _, size.h as _],
                                     pos,
                                 )
                                 .context("Could not create WvrWindow overlay")
