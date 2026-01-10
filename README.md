@@ -2,9 +2,9 @@
 
 # WayVR
 
-A lightweight OpenXR/OpenVR overlay for Wayland and X11 desktops, inspired by XSOverlay.
+A lightweight OpenXR/OpenVR overlay for Wayland and X11 desktops.
 
-WayVR lets you to access your desktop screens while in VR.
+WayVR lets you to access your desktop screens while in VR, and even launch apps directly in VR.
 
 In comparison to similar overlays, WayVR aims to run alongside VR games and experiences while having as little performance impact as possible. The UI appearance and rendering techniques are kept as simple and efficient as possible, while still allowing a high degree of customizability.
 
@@ -24,14 +24,14 @@ Questions/issues specific to WayVR will be handled in the `wayvr` chat room. Fee
 
 There are multiple ways to install WayVR:
 
-1. AppImage: Download from [Releases](https://github.com/galister/wlx-overlay-s/releases)
-1. AUR package: [wlx-overlay-s-git](https://aur.archlinux.org/packages/wlx-overlay-s-git)
+1. AppImage: Download from [Releases](https://github.com/wlx-team/wayvr/releases)
+1. AUR package: [wayvr](https://aur.archlinux.org/packages/wayvr) or [wayvr-git](https://aur.archlinux.org/packages/wayvr-git) 
 1. Homebrew:
 
 - Add AtomicXR tap: `brew tap matrixfurry.com/atomicxr https://tangled.sh/@matrixfurry.com/homebrew-atomicxr`
 - Install WayVR: `brew install wlx-overlay-s`
 
-1. [Building from source](https://github.com/galister/wlx-overlay-s/wiki/Building-from-Source).
+1. [Building from source](https://github.com/wlx-team/wayvr/wiki/Building-from-Source).
 
 ### General Setup
 
@@ -44,7 +44,7 @@ There are multiple ways to install WayVR:
 
 For users specifically running **SteamVR via Steam Flatpak**, follow these steps:
 
-1. Grab the latest AppImage from [Releases](https://github.com/galister/wlx-overlay-s/releases).
+1. Grab the latest AppImage from [Releases](https://github.com/wlx-team/wayvr/releases).
 1. `WayVR-*.AppImage --appimage-extract`
 1. `chmod +x squashfs-root/AppRun`
 1. Move the newly created `squashfs-root` folder to a location accessible by the Steam Flatpak.
@@ -68,7 +68,7 @@ In case screens were selected in the wrong order:
 **Envision users**: Go to the Plugins menu and select the WayVR plugin. This will download and run the AppImage version of the overlay.
 In order to run a standalone installation (for instance from the AUR), create a bash script containing `wayvr --openxr --show` and then set this bash script as a custom Envision plugin.
 
-This will show a home environment with headset passthrough by default or a [customizable background](https://github.com/galister/wlx-overlay-s/wiki/OpenXR-Skybox)!
+This will show a home environment with headset passthrough by default or a [customizable background](https://github.com/wlx-team/wayvr/wiki/OpenXR-Skybox)!
 
 **SteamVR users**: WayVR will register itself for auto-start, so there is no need to start it every time. Disclaimer: SteamVR will sometimes disregard this and not start WayVR anyway.
 
@@ -116,8 +116,6 @@ After grabbing, the watch will automatically attach to the hand that's opposite 
 
 In edit mode, try hovering other overlays to see their advanced options!
 
-![Watch usage guide](https://github.com/galister/wlx-overlay-s/blob/guide/wlx-watch.png)
-
 ### The screens
 
 Hovering a pointer over a screen will move the mouse. If there are more than one pointers hovering a screen, the pointer that was last used to click will take precedence.
@@ -141,11 +139,11 @@ Typing
 
 ### Default Bindings
 
-![Index Controller Bindings](https://github.com/galister/wlx-overlay-s/blob/guide/wlx-index.png)
+![Index Controller Bindings](https://github.com/wlx-team/wayvr/blob/guide/wlx-index.png)
 
-![Touch Controller Bindings](https://github.com/galister/wlx-overlay-s/blob/guide/wlx-oculus.png)
+![Touch Controller Bindings](https://github.com/wlx-team/wayvr/blob/guide/wlx-oculus.png)
 
-To customize bindings on OpenXR, refer to the [OpenXR Bindings wiki page](https://github.com/galister/wlx-overlay-s/wiki/OpenXR-Bindings).
+To customize bindings on OpenXR, refer to the [OpenXR Bindings wiki page](https://github.com/wlx-team/wayvr/wiki/OpenXR-Bindings).
 
 If your bindings are not supported, please reach out. \
 We would like to work with you and include additional bindings.
@@ -156,7 +154,7 @@ When an error is detected, we often print tips for fixing into the log file.
 
 Logs will be at `/tmp/wayvr.log` for most distros.
 
-Check [here](https://github.com/galister/wlx-overlay-s/wiki/Troubleshooting) for tips.
+Check [here](https://github.com/wlx-team/wayvr/wiki/Troubleshooting) for tips.
 
 ## Known Issues
 
