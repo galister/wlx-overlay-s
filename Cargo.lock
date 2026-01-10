@@ -5837,7 +5837,7 @@ dependencies = [
  "log",
  "rust-embed",
  "tracing-subscriber",
- "vulkano 0.35.2 (git+https://github.com/galister/vulkano.git?rev=cf7f92867928a56ce16b376037c1120f2b167678)",
+ "vulkano",
  "vulkano-shaders",
  "wgui",
  "winit",
@@ -5998,35 +5998,6 @@ dependencies = [
 [[package]]
 name = "vulkano"
 version = "0.35.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee487adf7c13e5aa46d4d7fac6ffb8e172eb7e6472aaf815e9ade4992f8f2414"
-dependencies = [
- "ash",
- "bytemuck",
- "crossbeam-queue",
- "foldhash 0.1.5",
- "half",
- "heck 0.4.1",
- "indexmap 2.12.1",
- "libloading 0.8.9",
- "nom 7.1.3",
- "once_cell",
- "parking_lot",
- "proc-macro2",
- "quote",
- "raw-window-handle",
- "raw-window-metal",
- "serde",
- "serde_json",
- "slabbin",
- "smallvec",
- "thread_local",
- "vk-parse",
-]
-
-[[package]]
-name = "vulkano"
-version = "0.35.2"
 source = "git+https://github.com/galister/vulkano.git?rev=cf7f92867928a56ce16b376037c1120f2b167678#cf7f92867928a56ce16b376037c1120f2b167678"
 dependencies = [
  "ash",
@@ -6076,7 +6047,7 @@ dependencies = [
  "quote",
  "shaderc",
  "syn 2.0.113",
- "vulkano 0.35.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "vulkano",
 ]
 
 [[package]]
@@ -6374,7 +6345,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
- "vulkano 0.35.2 (git+https://github.com/galister/vulkano.git?rev=cf7f92867928a56ce16b376037c1120f2b167678)",
+ "vulkano",
  "vulkano-shaders",
  "wayland-client",
  "wayvr-ipc",
@@ -6466,7 +6437,7 @@ dependencies = [
  "slotmap",
  "smallvec",
  "taffy",
- "vulkano 0.35.2 (git+https://github.com/galister/vulkano.git?rev=cf7f92867928a56ce16b376037c1120f2b167678)",
+ "vulkano",
  "vulkano-shaders",
 ]
 
