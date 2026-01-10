@@ -646,7 +646,7 @@ impl DmaExporter for DummyDrmExporter {
         _: u32,
         _: DrmFourcc,
     ) -> Option<(wlx_frame::FramePlane, DrmModifier)> {
-        unreachable!()
+        None
     }
 }
 
