@@ -53,7 +53,7 @@ use xkbcommon::xkb;
 
 use crate::{
     backend::{
-        task::{OverlayTask, TaskType, ToggleMode},
+        task::{OverlayTask, TaskContainer, TaskType, ToggleMode},
         wayvr::{
             image_importer::ImageImporter,
             process::{KillSignal, Process},
@@ -306,6 +306,7 @@ impl WvrServerState {
 
         for p_handle in &to_remove {
             wvr_server.processes.remove(p_handle);
+            wvr_server.process_removed(&mut app.tasks, *p_handle);
         }
 
         if !to_remove.is_empty() {
@@ -562,6 +563,31 @@ impl WvrServerState {
     pub fn overlay_added(&mut self, oid: OverlayID, window: window::WindowHandle) {
         self.overlay_to_window.insert(oid, window);
         self.window_to_overlay.insert(window, oid);
+    }
+
+    pub fn process_removed(&mut self, tasks: &mut TaskContainer, process: process::ProcessHandle) {
+        let mut to_remove = vec![];
+
+        for (hnd, win) in self.wm.windows.iter() {
+            if win.process != process {
+                continue;
+            }
+
+            if let Some(oid) = self.window_to_overlay.get(&hnd).cloned() {
+                tasks.enqueue(TaskType::Overlay(OverlayTask::Drop(OverlaySelector::Id(
+                    oid,
+                ))));
+
+                self.overlay_to_window.remove(oid);
+                self.window_to_overlay.remove(&hnd);
+            }
+
+            to_remove.push(hnd);
+        }
+
+        for hnd in &to_remove {
+            self.wm.windows.remove(hnd);
+        }
     }
 
     pub fn get_overlay_id(&self, window: window::WindowHandle) -> Option<OverlayID> {
