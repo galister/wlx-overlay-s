@@ -1,6 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=WayVR
+Comment=Your way to enjoy VR on Linux
 Exec=wayvr
 Icon=wayvr
 Terminal=true
