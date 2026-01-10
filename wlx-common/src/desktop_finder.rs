@@ -11,6 +11,7 @@ use std::{
 };
 
 use crate::cache_dir;
+use anyhow::Context;
 use ini::Ini;
 use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
@@ -290,7 +291,13 @@ impl DesktopFinder {
 
 	pub fn create_icon(desktop_entry_name: &str) -> anyhow::Result<String> {
 		let relative_path = format!("icons/{}.svg", desktop_entry_name);
-		let file_path = cache_dir::get_path(&relative_path).to_string_lossy().to_string();
+		let file_path = cache_dir::get_path(&relative_path);
+
+		let mut dir_path = file_path.clone();
+		dir_path.pop();
+		std::fs::create_dir_all(dir_path).context("Could not create ~/.cache/wayvr")?;
+
+		let file_path = file_path.to_string_lossy().to_string();
 
 		if std::fs::exists(&file_path).unwrap_or(false) {
 			return Ok(file_path);
@@ -304,7 +311,7 @@ impl DesktopFinder {
 			..Default::default()
 		});
 
-		std::fs::write(&file_path, svg)?;
+		std::fs::write(&file_path, svg).context("Could not save file to ~/.cache/wayvr")?;
 		Ok(file_path)
 	}
 
