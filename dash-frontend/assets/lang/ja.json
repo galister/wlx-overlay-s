@@ -69,7 +69,16 @@
     "CAPTURE_METHOD": "Waylandスクリーンキャプチャ",
     "CAPTURE_METHOD_HELP": "画面が黒くなる、または乱れる場合は、\nこの設定を変更してみてください。",
     "KEYBOARD_MIDDLE_CLICK": "キーボードの中ボタンクリック",
-    "KEYBOARD_MIDDLE_CLICK_HELP": "紫色のレーザーで入力する際の修飾キー"
+    "KEYBOARD_MIDDLE_CLICK_HELP": "紫色のレーザーで入力する際の修飾キー",
+    "OPTION": {
+      "AUTO": "自動",
+      "AUTO_HELP": "サポートされている場合はScreenCopy GPU、\nそうでない場合はPipeWire GPU。",
+      "PIPEWIRE_HELP": "GPU高速キャプチャ。\nすべてのデスクトップで標準です。",
+      "PW_FALLBACK_HELP": "CPU使用量が多い低速な方法です。\nPipeWire GPUが動作しない場合に試してください。",
+      "SCREENCOPY_GPU_HELP": "高速で、スクリーン共有ポップアップはありません。\n動作する環境: Hyprland, Niri, River, Sway",
+      "SCREENCOPY_HELP": "遅延あり、画面共有ポップアップなし。\n動作する環境: Hyprland, Niri, River, Sway"
+    },
+    "AUTOSTART_APPS": "起動時に実行するアプリ"
   },
   "HELLO": "こんにちは！",
   "AUDIO": {

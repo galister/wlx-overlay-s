@@ -69,7 +69,16 @@
     "CAPTURE_METHOD": "Captura de pantalla de Wayland",
     "CAPTURE_METHOD_HELP": "Intente cambiar esta opción si\nexperimenta pantallas negras o con fallos",
     "KEYBOARD_MIDDLE_CLICK": "Clic del botón central del teclado",
-    "KEYBOARD_MIDDLE_CLICK_HELP": "Modificador para usar al escribir\ncon láser púrpura"
+    "KEYBOARD_MIDDLE_CLICK_HELP": "Modificador para usar al escribir\ncon láser púrpura",
+    "OPTION": {
+      "AUTO": "Automático",
+      "AUTO_HELP": "Copiar pantalla usando la GPU si es compatible,\nde lo contrario, GPU de PipeWire.",
+      "PIPEWIRE_HELP": "Captura de GPU rápida,\nestándar en todos los escritorios.",
+      "PW_FALLBACK_HELP": "Método lento con alto uso de CPU.\nPruébalo si PipeWire GPU no funciona",
+      "SCREENCOPY_GPU_HELP": "Rápido, sin ventanas emergentes de uso compartido de pantalla.\nFunciona en: Hyprland, Niri, River, Sway",
+      "SCREENCOPY_HELP": "Lento, sin ventanas emergentes de uso compartido de pantalla.\nFunciona en: Hyprland, Niri, River, Sway"
+    },
+    "AUTOSTART_APPS": "Aplicaciones a ejecutar al inicio"
   },
   "HELLO": "¡Hola!",
   "AUDIO": {

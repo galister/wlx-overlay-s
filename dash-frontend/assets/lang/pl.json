@@ -63,7 +63,16 @@
     "CAPTURE_METHOD": "Przechwytywanie ekranu Wayland",
     "CAPTURE_METHOD_HELP": "Spróbuj zmienić tę opcję, jeśli masz\nproblemy z czarnym lub migoczącym ekranem",
     "KEYBOARD_MIDDLE_CLICK": "Środkowy przycisk myszy na klawiaturze",
-    "KEYBOARD_MIDDLE_CLICK_HELP": "Modyfikator, który ma zostać użyty podczas pisania\nfioletową wiązką lasera"
+    "KEYBOARD_MIDDLE_CLICK_HELP": "Modyfikator, który ma zostać użyty podczas pisania\nfioletową wiązką lasera",
+    "OPTION": {
+      "AUTO": "Automatycznie",
+      "AUTO_HELP": "Skopiuj ekran za pomocą GPU, jeśli obsługiwane,\nw przeciwnym razie GPU PipeWire.",
+      "PIPEWIRE_HELP": "Szybkie przechwytywanie GPU,\nstandard na wszystkich komputerach.",
+      "PW_FALLBACK_HELP": "Powolna metoda z wysokim użyciem procesora.\nWypróbuj w przypadku, gdy PipeWire GPU nie działa",
+      "SCREENCOPY_GPU_HELP": "Szybkie działanie, brak wyskakujących okien z informacją o udostępnianiu ekranu.\nDziała na: Hyprland, Niri, River, Sway",
+      "SCREENCOPY_HELP": "Wolne, bez wyskakujących okienek udostępniania ekranu.\nDziała na: Hyprland, Niri, River, Sway"
+    },
+    "AUTOSTART_APPS": "Aplikacje do uruchomienia przy starcie"
   },
   "APPLICATION_LAUNCHER": "Uruchamiacz aplikacji",
   "APPLICATIONS": "Aplikacje",
