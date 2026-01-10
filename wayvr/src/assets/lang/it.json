@@ -44,7 +44,8 @@
       "SPLIT_LEFT_RIGHT": "SINISTRA→DESTRA",
       "SPLIT_RIGHT_LEFT": "DESTRA→SINISTRA",
       "SPLIT_TOP_BOTTOM": "TOP→BOTTOM",
-      "TITLE": "Modalità Stereo 3D"
+      "TITLE": "Modalità Stereo 3D",
+      "FULL_FRAME": "3D Completo"
     },
     "MOUSE": {
       "TITLE": "Correzioni del mouse",

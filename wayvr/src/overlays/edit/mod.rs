@@ -355,6 +355,24 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
                         Ok(EventResult::Consumed)
                     })
                 }
+                "::EditModeSetStereoFullFrame" => {
+                    let full_frame = args.next().unwrap().parse::<bool>().unwrap();
+                    Box::new(move |common, data, app, state| {
+                        if !test_button(data) || !test_duration(&button, app) {
+                            return Ok(EventResult::Pass);
+                        }
+
+                        let sel = OverlaySelector::Id(*state.id.borrow());
+                        app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
+                            sel,
+                            Box::new(move |_app, owc| {
+                                let attrib = BackendAttribValue::StereoFullFrame(full_frame);
+                                owc.backend.set_attrib(_app, attrib);
+                            }),
+                        )));
+                        Ok(EventResult::Consumed)
+                    })
+                }
                 "::EditModeSetMouse" => {
                     let key = args.next().unwrap().to_owned();
                     Box::new(move |common, data, app, state| {
@@ -412,6 +430,11 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
 
     set_up_checkbox(&mut panel, "additive_box", cb_assign_additive)?;
     set_up_checkbox(&mut panel, "align_box", cb_assign_align)?;
+    set_up_checkbox(
+        &mut panel,
+        "stereo_full_frame_box",
+        cb_assign_stereo_full_frame,
+    )?;
     set_up_slider(&mut panel, "lerp_slider", cb_assign_lerp)?;
     set_up_slider(&mut panel, "alpha_slider", cb_assign_alpha)?;
     set_up_slider(&mut panel, "curve_slider", cb_assign_curve)?;
@@ -499,6 +522,16 @@ fn reset_panel(
             .set_tab_visible(&mut common, "mouse", false);
     }
 
+    if let Some(full_frame) = attrib_value!(
+        owc.backend.get_attrib(BackendAttrib::StereoFullFrame),
+        BackendAttribValue::StereoFullFrame
+    ) {
+        let c = panel
+            .parser_state
+            .fetch_component_as::<ComponentCheckbox>("stereo_full_frame_box")?;
+        c.set_checked(&mut common, full_frame);
+    }
+
     panel.layout.process_alterables(alterables)?;
 
     Ok(())
@@ -533,6 +566,16 @@ const fn cb_assign_align(_app: &mut AppState, owc: &mut OverlayWindowConfig, ali
     owc.dirty = true;
     let active_state = owc.active_state.as_mut().unwrap();
     active_state.positioning = active_state.positioning.with_align(align);
+}
+
+fn cb_assign_stereo_full_frame(
+    _app: &mut AppState,
+    owc: &mut OverlayWindowConfig,
+    full_frame: bool,
+) {
+    owc.dirty = true;
+    let attrib = BackendAttribValue::StereoFullFrame(full_frame);
+    owc.backend.set_attrib(_app, attrib);
 }
 
 fn set_up_slider(

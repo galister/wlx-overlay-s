@@ -382,7 +382,11 @@ where
     }
 }
 
-const SAVED_ATTRIBS: [BackendAttrib; 2] = [BackendAttrib::Stereo, BackendAttrib::MouseTransform];
+const SAVED_ATTRIBS: [BackendAttrib; 3] = [
+    BackendAttrib::Stereo,
+    BackendAttrib::StereoFullFrame,
+    BackendAttrib::MouseTransform,
+];
 
 impl<T> OverlayWindowManager<T> {
     pub fn pop_dropped(&mut self) -> Option<OverlayWindowData<T>> {
