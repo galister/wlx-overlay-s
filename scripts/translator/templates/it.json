@@ -1,0 +1,20 @@
+{
+	"full_name": "Italian",
+	"examples": [
+		{
+			"key": "BAR.OPACITY",
+			"en": "Opacity",
+			"translated": "Opacità"
+		},
+		{
+			"key": "PANEL.CLOSE",
+			"en": "Close panel",
+			"translated": "Chiudi pannello"
+		},
+		{
+			"key": "SETTINGS.LEFT_HANDED_MODE",
+			"en": "Left-handed mode",
+			"translated": "Modalità mancino"
+		}
+	]
+}
