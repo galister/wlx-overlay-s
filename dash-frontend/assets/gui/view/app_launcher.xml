@@ -43,13 +43,13 @@
           <RadioBox translation="APP_LAUNCHER.ASPECT.SEMI_TALL" value="SemiTall" tooltip="2:3" />
           <RadioBox translation="APP_LAUNCHER.ASPECT.TALL" value="Tall" tooltip="9:16" />
         </RadioGroup>
-        <Separator />
+        <!-- Separator /> // saved settings override this, so let's hide it for now
         <label translation="APP_LAUNCHER.POS_TITLE" />
         <RadioGroup id="radio_pos" flex_direction="row" gap="16">
           <RadioBox translation="APP_LAUNCHER.POS.FLOATING" value="Floating" tooltip="APP_LAUNCHER.POS.FLOATING_HELP" />
           <RadioBox translation="APP_LAUNCHER.POS.ANCHORED" value="Anchored" tooltip="APP_LAUNCHER.POS.ANCHORED_HELP" checked="1" />
           <RadioBox translation="APP_LAUNCHER.POS.STATIC" value="Static" tooltip="APP_LAUNCHER.POS.STATIC_HELP" />
-        </RadioGroup>
+        </RadioGroup -->
         <Separator />
         <div flex_direction="row" justify_content="space_between" gap="16">
           <CheckBox id="cb_autostart" translation="APP_LAUNCHER.AUTOSTART" />

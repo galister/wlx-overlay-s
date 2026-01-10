@@ -55,7 +55,7 @@
           <SideButton id="btn_side_apps" src_builtin="dashboard/apps.svg" tooltip="APPLICATIONS" tooltip_side="right" />
           <SideButton id="btn_side_games" src_builtin="dashboard/games.svg" tooltip="GAMES" tooltip_side="right" />
           <SideButton id="btn_side_monado" src_builtin="dashboard/monado.svg" tooltip="MONADO_RUNTIME" tooltip_side="right" />
-          <SideButton id="btn_side_processes" src_builtin="dashboard/window.svg" tooltip="PROCESSES" tooltip_side="right" />
+          <!-- SideButton id="btn_side_processes" src_builtin="dashboard/window.svg" tooltip="PROCESSES" tooltip_side="right" /-->
           <rectangle height="2" color="#FFFFFF33" width="~side_sprite_size" />
           <SideButton id="btn_side_settings" src_builtin="dashboard/settings.svg" tooltip="SETTINGS" tooltip_side="right" />
         </rectangle>

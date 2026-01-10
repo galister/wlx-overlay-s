@@ -536,7 +536,7 @@ impl DashInterface<AppState> for DashInterfaceLive {
     }
 }
 
-const CLIENT_NAME_BLACKLIST: [&str; 2] = ["wayvr", "libmonado"];
+const CLIENT_NAME_BLACKLIST: [&str; 3] = ["wayvr", "libmonado", "oscavmgr"];
 
 #[cfg(feature = "openxr")]
 fn monado_get_brightness(monado: &mut libmonado::Monado) -> Option<f32> {
