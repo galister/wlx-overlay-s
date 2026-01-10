@@ -8,7 +8,7 @@ WayVR lets you to access your desktop screens while in VR.
 
 In comparison to similar overlays, WayVR aims to run alongside VR games and experiences while having as little performance impact as possible. The UI appearance and rendering techniques are kept as simple and efficient as possible, while still allowing a high degree of customizability.
 
-![Screenshot of WayVR being used as an OpenXR home environment](https://github.com/galister/wlx-overlay-s/blob/guide/wlx-s.png?raw=true)
+![Screenshot of WayVR being used as an OpenXR home environment](https://github.com/wlx-team/wayvr/blob/guide/wayvr-readme-screenshot.webp?raw=true)
 
 ## Join the Linux VR Community
 
