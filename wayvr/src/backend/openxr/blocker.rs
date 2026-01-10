@@ -4,13 +4,13 @@ use log::{trace, warn};
 use crate::{state::AppState, windowing::OverlayID};
 
 pub(super) struct InputBlocker {
-    hovered_last_frame: bool,
+    blocked_last_frame: bool,
 }
 
 impl InputBlocker {
     pub const fn new() -> Self {
         Self {
-            hovered_last_frame: false,
+            blocked_last_frame: false,
         }
     }
 
@@ -19,17 +19,13 @@ impl InputBlocker {
             return; // monado not available
         };
 
-        if !app.session.config.block_game_input {
-            return;
-        }
-
-        let any_hovered = app.input_state.pointers.iter().any(|p| {
+        let should_block = app.input_state.pointers.iter().any(|p| {
             p.interaction.hovered_id.is_some_and(|id| {
                 id != watch_id || !app.session.config.block_game_input_ignore_watch
             })
-        });
+        }) && app.session.config.block_game_input;
 
-        match (any_hovered, self.hovered_last_frame) {
+        match (should_block, self.blocked_last_frame) {
             (true, false) => {
                 trace!("Blocking input");
                 set_clients_io_active(monado, false);
@@ -41,7 +37,7 @@ impl InputBlocker {
             _ => {}
         }
 
-        self.hovered_last_frame = any_hovered;
+        self.blocked_last_frame = should_block;
     }
 }
 
