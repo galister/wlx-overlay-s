@@ -69,7 +69,16 @@
     "CAPTURE_METHOD": "Wayland-Bildschirmaufnahme",
     "CAPTURE_METHOD_HELP": "Versuchen Sie, dies zu ändern, wenn Sie\nschwarze oder fehlerhafte Bildschirme erleben",
     "KEYBOARD_MIDDLE_CLICK": "Keyboard-Mittelklick",
-    "KEYBOARD_MIDDLE_CLICK_HELP": "Modifikator bei Eingabe mit violettem Laser"
+    "KEYBOARD_MIDDLE_CLICK_HELP": "Modifikator bei Eingabe mit violettem Laser",
+    "OPTION": {
+      "AUTO": "Automatisch",
+      "AUTO_HELP": "Bildschirmkopie GPU falls unterstützt,\nansonsten PipeWire GPU.",
+      "PIPEWIRE_HELP": "Schnelle GPU-Erfassung,\nStandard auf allen Desktops.",
+      "PW_FALLBACK_HELP": "Langsame Methode mit hoher CPU-Auslastung.\nVersuchen Sie es, falls PipeWire GPU nicht funktioniert.",
+      "SCREENCOPY_GPU_HELP": "Schnell, keine Bildschirmfreigabe-Popups.\nFunktioniert mit: Hyprland, Niri, River, Sway",
+      "SCREENCOPY_HELP": "Langsam, keine Bildschirmfreigabe-Popups.\nFunktioniert mit: Hyprland, Niri, River, Sway"
+    },
+    "AUTOSTART_APPS": "Anwendungen, die beim Start ausgeführt werden sollen"
   },
   "HELLO": "Hallo!",
   "AUDIO": {
