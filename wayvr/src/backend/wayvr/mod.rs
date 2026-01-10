@@ -368,7 +368,13 @@ impl WvrServerState {
                                         p.exec_path.ends_with("cage"),
                                     )
                                 }
-                                _ => (min_size, PositionMode::Float, None, None, false),
+                                _ => (
+                                    Size::new(1920, 1080).clamp(min_size, max_size),
+                                    PositionMode::Float,
+                                    None,
+                                    None,
+                                    false,
+                                ),
                             };
 
                         let mut title: Arc<str> = fallback_title
@@ -661,8 +667,11 @@ impl WvrServerState {
     ) -> anyhow::Result<process::ProcessHandle> {
         let auth_key = generate_auth_key();
 
+        let is_flatpak =
+            exec_path.ends_with("flatpak") && args.first().is_some_and(|a| *a == "run");
+
         let mut cmd = std::process::Command::new(exec_path);
-        self.configure_env(&mut cmd, auth_key.as_str());
+        self.configure_env(&mut cmd, auth_key.as_str(), is_flatpak);
         cmd.args(args);
         if let Some(working_dir) = working_dir {
             cmd.current_dir(working_dir);
@@ -700,13 +709,19 @@ impl WvrServerState {
         Ok(handle)
     }
 
-    fn configure_env(&self, cmd: &mut std::process::Command, auth_key: &str) {
+    fn configure_env(&self, cmd: &mut std::process::Command, auth_key: &str, is_flatpak: bool) {
         cmd.env_remove("DISPLAY"); // Goodbye X11
         cmd.env(
             "WAYLAND_DISPLAY",
             self.manager.wayland_env.display_num_string(),
         );
-        cmd.env("WAYVR_DISPLAY_AUTH", auth_key);
+
+        if is_flatpak {
+            // doesn't seem to work all that well
+            cmd.arg(format!("--env=WAYVR_DISPLAY_AUTH={auth_key}"));
+        } else {
+            cmd.env("WAYVR_DISPLAY_AUTH", auth_key);
+        }
     }
 }
 
