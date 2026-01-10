@@ -14,7 +14,10 @@ use smithay::{
     desktop::PopupManager,
     input::{SeatState, keyboard::XkbConfig},
     output::{Mode, Output},
-    reexports::wayland_server::{self, backend::ClientId},
+    reexports::{
+        wayland_protocols_misc::server_decoration::server::org_kde_kwin_server_decoration_manager as kde_decoration,
+        wayland_server::{self, backend::ClientId},
+    },
     utils::{Logical, Size},
     wayland::{
         compositor::{self, SurfaceData, with_states},
@@ -23,7 +26,13 @@ use smithay::{
             data_device::DataDeviceState, ext_data_control as selection_ext,
             primary_selection::PrimarySelectionState, wlr_data_control as selection_wlr,
         },
-        shell::xdg::{SurfaceCachedState, ToplevelSurface, XdgShellState, XdgToplevelSurfaceData},
+        shell::{
+            kde::decoration::KdeDecorationState,
+            xdg::{
+                SurfaceCachedState, ToplevelSurface, XdgShellState, XdgToplevelSurfaceData,
+                decoration::XdgDecorationState,
+            },
+        },
         shm::ShmState,
     },
 };
@@ -169,6 +178,10 @@ impl WvrServerState {
             filter_allow_any,
         );
 
+        let xdg_decoration_state = XdgDecorationState::new::<Application>(&dh);
+        let kde_decoration_state =
+            KdeDecorationState::new::<Application>(&dh, kde_decoration::Mode::Server);
+
         let dummy_milli_hz = 60000; /* refresh rate in millihertz */
 
         let output = Output::new(
@@ -242,6 +255,8 @@ impl WvrServerState {
             primary_selection_state,
             wlr_data_control_state,
             ext_data_control_state,
+            xdg_decoration_state,
+            kde_decoration_state,
             wayvr_tasks: tasks.clone(),
             redraw_requests: HashSet::new(),
             dmabuf_state,

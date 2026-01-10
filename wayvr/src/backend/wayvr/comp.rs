@@ -4,7 +4,9 @@ use smithay::backend::renderer::{BufferType, buffer_type};
 use smithay::desktop::{PopupKind, PopupManager};
 use smithay::input::{Seat, SeatHandler, SeatState};
 use smithay::reexports::rustix::fs::{OFlags, fcntl_setfl};
+use smithay::reexports::wayland_protocols::xdg::decoration::zv1::server::zxdg_toplevel_decoration_v1;
 use smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel;
+use smithay::reexports::wayland_protocols_misc::server_decoration::server::org_kde_kwin_server_decoration;
 use smithay::reexports::wayland_server::Resource;
 use smithay::reexports::wayland_server::protocol::{wl_buffer, wl_output, wl_seat};
 use smithay::reexports::wayland_server::{self, DisplayHandle};
@@ -19,18 +21,22 @@ use smithay::wayland::selection::{
     primary_selection::{PrimarySelectionHandler, PrimarySelectionState, set_primary_focus},
     wlr_data_control as selection_wlr,
 };
+use smithay::wayland::shell::kde::decoration::{KdeDecorationHandler, KdeDecorationState};
+use smithay::wayland::shell::xdg::decoration::{XdgDecorationHandler, XdgDecorationState};
 use smithay::wayland::shm::{ShmHandler, ShmState, with_buffer_contents};
 use smithay::wayland::single_pixel_buffer::get_single_pixel_buffer;
 use smithay::{
     delegate_compositor, delegate_data_control, delegate_data_device, delegate_dmabuf,
-    delegate_ext_data_control, delegate_output, delegate_primary_selection, delegate_seat,
-    delegate_shm, delegate_single_pixel_buffer, delegate_xdg_shell,
+    delegate_ext_data_control, delegate_kde_decoration, delegate_output,
+    delegate_primary_selection, delegate_seat, delegate_shm, delegate_single_pixel_buffer,
+    delegate_xdg_decoration, delegate_xdg_shell,
 };
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::Write;
 use std::os::fd::OwnedFd;
 use std::sync::{Arc, Mutex};
+use wayland_client::WEnum;
 
 use smithay::utils::Serial;
 use smithay::wayland::compositor::{self, BufferAssignment, SurfaceAttributes, send_surface_state};
@@ -64,6 +70,8 @@ pub struct Application {
     pub primary_selection_state: PrimarySelectionState,
     pub ext_data_control_state: selection_ext::DataControlState,
     pub wlr_data_control_state: selection_wlr::DataControlState,
+    pub xdg_decoration_state: XdgDecorationState,
+    pub kde_decoration_state: KdeDecorationState,
     pub wayvr_tasks: SyncEventQueue<WayVRTask>,
     pub redraw_requests: HashSet<wayland_server::backend::ObjectId>,
     pub popup_manager: PopupManager,
@@ -437,6 +445,41 @@ impl selection_ext::DataControlHandler for Application {
     }
 }
 
+impl XdgDecorationHandler for Application {
+    fn new_decoration(&mut self, toplevel: ToplevelSurface) {
+        toplevel.with_pending_state(|state| {
+            state.decoration_mode = Some(zxdg_toplevel_decoration_v1::Mode::ServerSide);
+        });
+    }
+
+    fn request_mode(
+        &mut self,
+        _toplevel: ToplevelSurface,
+        _mode: zxdg_toplevel_decoration_v1::Mode,
+    ) {
+        // no switching away from SSD
+    }
+
+    fn unset_mode(&mut self, _toplevel: ToplevelSurface) {
+        // no switching away from SSD
+    }
+}
+
+impl KdeDecorationHandler for Application {
+    fn kde_decoration_state(&self) -> &KdeDecorationState {
+        &self.kde_decoration_state
+    }
+
+    fn request_mode(
+        &mut self,
+        _surface: &WlSurface,
+        decoration: &org_kde_kwin_server_decoration::OrgKdeKwinServerDecoration,
+        _mode: wayland_server::WEnum<org_kde_kwin_server_decoration::Mode>,
+    ) {
+        decoration.mode(org_kde_kwin_server_decoration::Mode::Server);
+    }
+}
+
 delegate_dmabuf!(Application);
 delegate_xdg_shell!(Application);
 delegate_compositor!(Application);
@@ -447,6 +490,8 @@ delegate_output!(Application);
 delegate_primary_selection!(Application);
 delegate_data_control!(Application);
 delegate_ext_data_control!(Application);
+delegate_xdg_decoration!(Application);
+delegate_kde_decoration!(Application);
 delegate_single_pixel_buffer!(Application);
 
 const fn wl_transform_to_frame_transform(
