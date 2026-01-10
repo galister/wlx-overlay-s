@@ -1,6 +1,6 @@
 [package]
 name = "wayvr"
-version = "26.1.1"
+version = "26.1.2"
 edition = "2024"
 license = "GPL-3.0-only"
 authors = ["galister", "oo8dev"]
