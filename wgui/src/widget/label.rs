@@ -158,7 +158,11 @@ impl WidgetObj for WidgetLabel {
 			(run.line_w.max(width), total_lines + 1)
 		});
 		let height = total_lines as f32 * buffer.metrics().line_height;
-		taffy::Size { width, height }
+
+		taffy::Size {
+			width: width + 1.0, /* f32 aliasing fix */
+			height,
+		}
 	}
 
 	fn get_id(&self) -> WidgetID {
