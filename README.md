@@ -1,3 +1,5 @@
+![WayVR splash screen header](https://github.com/wlx-team/wayvr/blob/guide/wayvr-readme-header.webp?raw=true)
+
 # WayVR
 
 A lightweight OpenXR/OpenVR overlay for Wayland and X11 desktops, inspired by XSOverlay.
@@ -56,6 +58,7 @@ For users specifically running **SteamVR via Steam Flatpak**, follow these steps
 **When the screen share pop-up appears, check your notifications or the terminal and select the screens in the order it requests.**
 
 In case screens were selected in the wrong order:
+
 - Go to Settings and press `Clear PipeWire tokens` and then `Restart software`
 - Pay attention to your notifications, it tells you in which order to pick the screens.
 - If notifications don't show, try start WayVR from the terminal and look for instructions in there.
@@ -160,14 +163,17 @@ Check [here](https://github.com/galister/wlx-overlay-s/wiki/Troubleshooting) for
 ### Mouse is not where it should be
 
 If the mouse is moving on a completely different screen, the screens were likely selected in the wrong order:
+
 - Go to Settings and press `Clear PipeWire tokens` and then `Restart software`
 - Pay attention to your notifications, it tells you in which order to pick the screens.
 - If notifications don't show, try start WayVR from the terminal and look for instructions in there.
 
-COSMIC destkop:
+COSMIC desktop:
+
 - Due to limitations with COSMIC, the mouse can only move on a single display.
 
 X11 users:
+
 - Might be dealing with a [Phantom Monitor](https://wiki.archlinux.org/title/Xrandr#Disabling_phantom_monitor).
 - DPI scaling is not supported and will mess with the mouse.
 - Upright screens are not supported and will mess with the mouse.
@@ -177,6 +183,7 @@ X11 users:
 As of SteamVR version 2.14.x, PipeWire capture no longer works when using Steam Link.
 
 We're unable to completely troubleshoot how and why Steam Link interferes with PipeWire, so consider the following workarounds for the time being:
+
 - Use another streamer, such as WiVRn or ALVR
 - If your desktop [supports ScreenCopy](https://wayland.app/protocols/wlr-screencopy-unstable-v1#compositor-support), go to Settings and set `Wayland capture method` to `ScreenCopy`
 - If your desktop has an X11 mode, try using that
