@@ -358,7 +358,7 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
                 }
                 "::EditModeSetStereoFullFrame" => {
                     let full_frame = args.next().unwrap().parse::<bool>().unwrap();
-                    Box::new(move |common, data, app, state| {
+                    Box::new(move |_common, data, app, state| {
                         if !test_button(data) || !test_duration(&button, app) {
                             return Ok(EventResult::Pass);
                         }

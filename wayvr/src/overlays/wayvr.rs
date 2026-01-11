@@ -109,6 +109,7 @@ pub struct WvrWindowBackend {
     meta: Option<FrameMeta>,
     mouse: Option<MouseMeta>,
     stereo: Option<StereoMode>,
+    stereo_full_frame: bool,
     cur_image: Option<Arc<ImageView>>,
     panel: GuiPanel<WindowHandle>,
     inner_extent: [u32; 2],
@@ -207,6 +208,7 @@ impl WvrWindowBackend {
             } else {
                 None
             },
+            stereo_full_frame: false,
             cur_image: None,
             inner_extent: [0, 0],
             panel,
@@ -303,8 +305,25 @@ impl OverlayBackend for WvrWindowBackend {
                     extent: surf.image.extent_u32arr(),
                     format: surf.image.format(),
                     clear: WGfxClearMode::Clear([0.0, 0.0, 0.0, 0.0]),
+                    stereo: self.stereo.unwrap_or(StereoMode::None),
                     ..Default::default()
                 };
+
+                if let Some(stereo) = self.stereo {
+                    // Apply stereo full frame logic
+                    if self.stereo_full_frame {
+                        match stereo {
+                            StereoMode::LeftRight | StereoMode::RightLeft => {
+                                meta.extent[0] /= 2;
+                            }
+                            StereoMode::TopBottom | StereoMode::BottomTop => {
+                                meta.extent[1] /= 2;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
                 let inner_extent = meta.extent;
                 meta.extent[0] += BORDER_SIZE * 2;
                 meta.extent[1] += BORDER_SIZE * 2 + BAR_SIZE;
@@ -377,6 +396,12 @@ impl OverlayBackend for WvrWindowBackend {
         rdr: &mut RenderResources,
     ) -> anyhow::Result<()> {
         self.panel.render(app, rdr)?;
+        // `GuiPanel` is not stereo-aware, so just render the same pass twice
+        if rdr.cmd_bufs.len() > 1 {
+            rdr.cmd_bufs.reverse();
+            self.panel.render(app, rdr)?;
+            rdr.cmd_bufs.reverse();
+        }
 
         let image = self.cur_image.as_ref().unwrap().clone();
 
@@ -422,7 +447,9 @@ impl OverlayBackend for WvrWindowBackend {
                 &Default::default(),
             )?;
 
-            rdr.cmd_buf_single().run_ref(&pass)?;
+            for buf in &mut rdr.cmd_bufs {
+                buf.run_ref(&pass)?;
+            }
         }
 
         Ok(())
@@ -547,6 +574,9 @@ impl OverlayBackend for WvrWindowBackend {
         match attrib {
             BackendAttrib::Stereo => self.stereo.map(BackendAttribValue::Stereo),
             BackendAttrib::Icon => Some(BackendAttribValue::Icon(self.icon.clone())),
+            BackendAttrib::StereoFullFrame => {
+                Some(BackendAttribValue::StereoFullFrame(self.stereo_full_frame))
+            }
             _ => None,
         }
     }
@@ -563,6 +593,10 @@ impl OverlayBackend for WvrWindowBackend {
                 } else {
                     false
                 }
+            }
+            BackendAttribValue::StereoFullFrame(new) => {
+                self.stereo_full_frame = new;
+                true
             }
             _ => false,
         }
