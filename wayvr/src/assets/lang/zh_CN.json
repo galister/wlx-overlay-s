@@ -48,7 +48,7 @@
       "FULL_FRAME": "完整 3D",
       "FULL_FRAME_SBS": "完整左右 (Full-SBS)",
       "FULL_FRAME_TAB": "完整上下 (Full-TAB)",
-      "FULL_FRAME_BAT": "完整上下 (Full-BAT)"
+      "FULL_FRAME_BAT": "完整下上 (Full-BAT)"
     },
     "MOUSE": {
       "TITLE": "鼠标修复",
