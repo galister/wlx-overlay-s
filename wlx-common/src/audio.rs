@@ -154,7 +154,7 @@ impl AudioSample {
 		let real_path = get_config_root().join(&*path);
 
 		if std::fs::File::open(real_path.clone()).is_err() {
-			log::warn!("Could not open file at: {}", path);
+			log::trace!("Could not open file at: {}, using fallback.", path);
 			return fallback_bytes;
 		};
 
@@ -162,7 +162,7 @@ impl AudioSample {
 			// Box is used here to work around `f`'s limited lifetime
 			Ok(f) => Box::leak(Box::new(f)).as_slice(),
 			Err(e) => {
-				log::warn!("Failed to read file at: {}", path);
+				log::warn!("Failed to read file at: {}, using fallback.", path);
 				log::warn!("{:?}", e);
 				fallback_bytes
 			}
