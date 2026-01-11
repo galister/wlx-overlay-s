@@ -34,7 +34,6 @@
 
           <!-- Embed sprites -->
           <sprite width="64" height="64" src="raster.png" />
-          <sprite width="64" height="64" src="dashboard/wayvr_dashboard.svg" />
         </rectangle>
         <!-- 2/3 green rects -->
         <div flex_direction="column">
