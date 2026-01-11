@@ -35,11 +35,19 @@ impl SamplePlayer {
 		}
 	}
 
-	pub fn register_sample(&mut self, sample_name: &str, sample: AudioSample) {
+	pub fn register_sample(&mut self, sample_name: &str, sample: AudioSample) -> anyhow::Result<()> {
+		// load only once
+		if self.samples.contains_key(sample_name) {
+			log::debug!("audio sample \"{sample_name}\" already exists");
+			return Ok(());
+		}
+
 		log::debug!("registering audio sample \"{sample_name}\"");
 		self.samples.insert(String::from(sample_name), sample);
+		Ok(())
 	}
 
+	// unused
 	pub fn register_mp3_sample_from_assets(
 		&mut self,
 		sample_name: &str,
@@ -52,7 +60,7 @@ impl SamplePlayer {
 		}
 
 		let data = assets.load_from_path(path)?;
-		self.register_sample(sample_name, AudioSample::from_mp3(&data)?);
+		self.register_sample(sample_name, AudioSample::from_mp3(&data)?)?;
 
 		Ok(())
 	}
@@ -60,7 +68,16 @@ impl SamplePlayer {
 	pub fn register_wgui_samples(&mut self, assets: &mut dyn AssetProvider) -> anyhow::Result<()> {
 		let mut load = |sound: WguiSoundType| -> anyhow::Result<()> {
 			let sample_name = get_sample_name_from_wgui_sound_type(sound);
-			self.register_mp3_sample_from_assets(sample_name, assets, &format!("sound/{}.mp3", sample_name))
+			let path = &format!("sound/{}.mp3", sample_name);
+
+			// try loading a custom sound; if one doesn't exist (or it failed to load), use the built-in asset
+			let sound_bytes = match AudioSample::try_bytes_from_config(path) {
+				Some(bytes) => bytes,
+				None => &assets.load_from_path(path)?,
+			};
+
+			self.register_sample(sample_name, AudioSample::from_mp3(sound_bytes)?)?;
+			Ok(())
 		};
 
 		load(WguiSoundType::ButtonPress)?;
@@ -146,7 +163,7 @@ impl AudioSample {
 		})
 	}
 
-	pub fn try_bytes_from_config(path: &str, default: &'static [u8]) -> &'static [u8] {
+	pub fn try_bytes_from_config(path: &str) -> Option<&mut Vec<u8>> {
 		let real_path = crate::config_io::get_config_root().join(&*path);
 
 		match std::fs::File::open(real_path) {
@@ -154,21 +171,28 @@ impl AudioSample {
 				let mut file_buffer = vec![];
 				match file.read_to_end(&mut file_buffer) {
 					Ok(_) => {
-						log::info!("Loaded file: {} (size: {})", path, file_buffer.len());
+						log::info!("Loaded file \"{}\" (size: {})", path, file_buffer.len());
 						// Box is used here to work around `file_buffer`'s limited lifetime
-						Box::leak(Box::new(file_buffer))
+						Some(Box::leak(Box::new(file_buffer)))
 					}
 					Err(e) => {
-						log::warn!("Unable to read file at: {}, using default.", path);
+						log::warn!("Unable to read file \"{}\", using default.", path);
 						log::warn!("{:?}", e);
-						default
+						None
 					}
 				}
 			}
 			Err(_) => {
-				log::trace!("File does not exist: {}, using default.", path);
-				default
+				log::trace!("File \"{}\" does not exist, using default.", path);
+				None
 			}
+		}
+	}
+
+	pub fn bytes_from_config_or_default(path: &'static str, default: &'static [u8]) -> &'static [u8] {
+		match AudioSample::try_bytes_from_config(path) {
+			Some(value) => value,
+			None => default,
 		}
 	}
 }
