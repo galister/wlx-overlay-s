@@ -146,26 +146,28 @@ impl AudioSample {
 		})
 	}
 
-	pub fn try_bytes_from_config(path: &str, fallback_bytes: &'static [u8]) -> &'static [u8] {
+	pub fn try_bytes_from_config(path: &str, default: &'static [u8]) -> &'static [u8] {
 		let real_path = crate::config_io::get_config_root().join(&*path);
 
 		match std::fs::File::open(real_path) {
 			Ok(mut file) => {
 				let mut file_buffer = vec![];
-				match file.read(&mut file_buffer) {
+				match file.read_to_end(&mut file_buffer) {
 					Ok(_) => {
+						log::info!("Loaded file: {} (size: {})", path, file_buffer.len());
 						// Box is used here to work around `file_buffer`'s limited lifetime
 						Box::leak(Box::new(file_buffer))
 					}
-					Err(_) => {
-						log::trace!("Unable to read file at: {}, using fallback.", path);
-						fallback_bytes
+					Err(e) => {
+						log::warn!("Unable to read file at: {}, using default.", path);
+						log::warn!("{:?}", e);
+						default
 					}
 				}
 			}
 			Err(_) => {
-				log::trace!("Could not open file at: {}, using fallback.", path);
-				return fallback_bytes;
+				log::trace!("File does not exist: {}, using default.", path);
+				default
 			}
 		}
 	}
