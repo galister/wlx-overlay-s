@@ -54,7 +54,10 @@
       "SPLIT_RIGHT_LEFT": "PRAWO→LEWO",
       "SPLIT_TOP_BOTTOM": "GÓRA→DÓŁ",
       "TITLE": "Tryb stereoskopowy 3D",
-      "FULL_FRAME": "Pełny 3D"
+      "FULL_FRAME": "Pełny 3D",
+      "FULL_FRAME_SBS": "Full-SBS",
+      "FULL_FRAME_TAB": "Full-TAB",
+      "FULL_FRAME_BAT": "Full-BAT"
     },
     "ALIGN_TO_HMD": "Dopasuj do HMD",
     "MOUSE": {

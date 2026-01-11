@@ -45,7 +45,10 @@
 			"SPLIT_RIGHT_LEFT": "RIGHT→LEFT",
 			"SPLIT_TOP_BOTTOM": "TOP→BOTTOM",
 			"TITLE": "3D Stereo Mode",
-			"FULL_FRAME": "Full 3D"
+			"FULL_FRAME": "Full 3D",
+			"FULL_FRAME_SBS": "Full-SBS",
+			"FULL_FRAME_TAB": "Full-TAB",
+			"FULL_FRAME_BAT": "Full-BAT"
 		},
 		"MOUSE": {
 			"TITLE": "Mouse fixes",
