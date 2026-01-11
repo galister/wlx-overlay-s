@@ -171,6 +171,7 @@ impl CustomGlyphData {
 			Ok(data) => return Ok(data),
 			Err(hashed_asset) => {
 				let data = Self::new(CustomGlyphContent::from_bin_svg(data)?);
+				log::trace!("Caching {path} with content_id {}", data.id);
 				globals_borrow.custom_glyph_cache.insert(hashed_asset, &data);
 				Ok(data)
 			}
@@ -323,6 +324,8 @@ fn rasterize_svg(tree: &Tree, input: &RasterizeCustomGlyphRequest) -> Option<Ras
 	let svg_size = tree.size();
 	let scale_x = f32::from(input.width) / svg_size.width();
 	let scale_y = f32::from(input.height) / svg_size.height();
+
+	log::trace!("Rasterizing content_id {}", input.data.id);
 
 	let mut pixmap = resvg::tiny_skia::Pixmap::new(u32::from(input.width), u32::from(input.height))?;
 	let mut transform = resvg::usvg::Transform::from_scale(scale_x, scale_y);
