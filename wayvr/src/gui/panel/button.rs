@@ -228,7 +228,11 @@ pub(super) fn setup_custom_button<S: 'static>(
                 let on_custom_attribs = on_custom_attribs.clone();
 
                 Box::new({
-                    move |_common, data, _app, _| {
+                    move |_common, data, app, _| {
+                        if !test_button(data) || !test_duration(&button, app) {
+                            return Ok(EventResult::Pass);
+                        }
+
                         context_menu.borrow_mut().open(OpenParams {
                             on_custom_attribs: Some(on_custom_attribs.clone()),
                             blueprint: Blueprint::Template {
@@ -244,7 +248,11 @@ pub(super) fn setup_custom_button<S: 'static>(
             "::ContextMenuClose" => {
                 let context_menu = context_menu.clone();
 
-                Box::new(move |_common, _data, _app, _| {
+                Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
                     context_menu.borrow_mut().close();
 
                     Ok(EventResult::Consumed)
@@ -274,7 +282,11 @@ pub(super) fn setup_custom_button<S: 'static>(
                     }
                 };
 
-                Box::new(move |common, _data, _app, _| {
+                Box::new(move |common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
                     common
                         .alterables
                         .set_style(widget_id, StyleSetRequest::Display(display));
