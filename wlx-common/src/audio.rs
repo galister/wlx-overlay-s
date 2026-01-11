@@ -3,7 +3,7 @@ use std::{collections::HashMap, io::Cursor};
 use rodio::Source;
 use wgui::{assets::AssetProvider, sound::WguiSoundType};
 
-use crate::config_io::get_config_root;
+use std::io::Read;
 
 pub struct AudioSystem {
 	audio_stream: Option<rodio::OutputStream>,
@@ -147,25 +147,26 @@ impl AudioSample {
 	}
 
 	pub fn try_bytes_from_config(path: &str, fallback_bytes: &'static [u8]) -> &'static [u8] {
-		if path.is_empty() {
-			return fallback_bytes;
-		}
+		let real_path = crate::config_io::get_config_root().join(&*path);
 
-		let real_path = get_config_root().join(&*path);
-
-		if std::fs::File::open(real_path.clone()).is_err() {
-			log::trace!("Could not open file at: {}, using fallback.", path);
-			return fallback_bytes;
-		};
-
-		return match std::fs::read(real_path.clone()) {
-			// Box is used here to work around `f`'s limited lifetime
-			Ok(f) => Box::leak(Box::new(f)).as_slice(),
-			Err(e) => {
-				log::warn!("Failed to read file at: {}, using fallback.", path);
-				log::warn!("{:?}", e);
-				fallback_bytes
+		match std::fs::File::open(real_path) {
+			Ok(mut file) => {
+				let mut file_buffer = vec![];
+				match file.read(&mut file_buffer) {
+					Ok(_) => {
+						// Box is used here to work around `file_buffer`'s limited lifetime
+						Box::leak(Box::new(file_buffer))
+					}
+					Err(_) => {
+						log::trace!("Unable to read file at: {}, using fallback.", path);
+						fallback_bytes
+					}
+				}
 			}
-		};
+			Err(_) => {
+				log::trace!("Could not open file at: {}, using fallback.", path);
+				return fallback_bytes;
+			}
+		}
 	}
 }
