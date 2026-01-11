@@ -122,7 +122,6 @@ pub fn parse_text_style(ctx: &ParserContext<'_>, attribs: &[AttribPair], tag_nam
 	style
 }
 
-#[allow(clippy::too_many_lines)]
 #[allow(clippy::cognitive_complexity)]
 pub fn parse_style(ctx: &ParserContext<'_>, attribs: &[AttribPair], tag_name: &str) -> taffy::Style {
 	let mut style = taffy::Style::default();

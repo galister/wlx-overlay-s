@@ -54,7 +54,6 @@ impl TextRenderer {
 	}
 
 	/// Prepares all of the provided text areas for rendering.
-	#[allow(clippy::too_many_lines)]
 	pub fn prepare<'a>(
 		&mut self,
 		font_system: &mut FontSystem,
@@ -324,7 +323,6 @@ struct PrepareGlyphParams<'a> {
 	bounds_max_y: i32,
 }
 
-#[allow(clippy::too_many_lines)]
 fn prepare_glyph(
 	par: &mut PrepareGlyphParams,
 	get_glyph_image: impl FnOnce(&mut SwashCache, &mut FontSystem) -> Option<GetGlyphImageResult>,

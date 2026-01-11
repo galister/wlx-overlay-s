@@ -4,8 +4,14 @@ use glam::Vec2;
 use strum::{AsRefStr, EnumProperty, EnumString, VariantArray};
 use wgui::{
 	assets::AssetPath,
-	components::{button::ComponentButton, checkbox::ComponentCheckbox, slider::ComponentSlider},
+	components::{
+		button::{ButtonClickEvent, ComponentButton},
+		checkbox::ComponentCheckbox,
+		slider::ComponentSlider,
+		tabs::ComponentTabs,
+	},
 	event::{CallbackDataCommon, EventAlterables},
+	globals::WguiGlobals,
 	i18n::Translation,
 	layout::{Layout, WidgetID},
 	log::LogErr,
@@ -21,6 +27,30 @@ use crate::{
 	tab::{Tab, TabType},
 };
 
+#[derive(Clone)]
+enum TabNameEnum {
+	LookAndFeel,
+	Features,
+	Controls,
+	Misc,
+	AutostartApps,
+	Troubleshooting,
+}
+
+impl TabNameEnum {
+	fn from_string(s: &str) -> Option<Self> {
+		match s {
+			"look_and_feel" => Some(TabNameEnum::LookAndFeel),
+			"features" => Some(TabNameEnum::Features),
+			"controls" => Some(TabNameEnum::Controls),
+			"misc" => Some(TabNameEnum::Misc),
+			"autostart_apps" => Some(TabNameEnum::AutostartApps),
+			"troubleshooting" => Some(TabNameEnum::Troubleshooting),
+			_ => None,
+		}
+	}
+}
+
 enum Task {
 	UpdateBool(SettingType, bool),
 	UpdateFloat(SettingType, f32),
@@ -31,6 +61,7 @@ enum Task {
 	DeleteAllConfigs,
 	RestartSoftware,
 	RemoveAutostartApp(Rc<str>),
+	SetTab(TabNameEnum),
 }
 
 pub struct TabSettings<T> {
@@ -49,22 +80,33 @@ impl<T> Tab<T> for TabSettings<T> {
 	}
 
 	fn update(&mut self, frontend: &mut Frontend<T>, data: &mut T) -> anyhow::Result<()> {
-		let config = frontend.interface.general_config(data);
 		let mut changed = false;
 		for task in self.tasks.drain() {
 			match task {
+				Task::SetTab(tab) => {
+					self.set_tab(frontend, data, tab)?;
+				}
 				Task::UpdateBool(setting, n) => {
-					setting.get_frontend_task().map(|task| frontend.tasks.push(task));
+					if let Some(task) = setting.get_frontend_task() {
+						frontend.tasks.push(task)
+					}
+					let config = frontend.interface.general_config(data);
 					*setting.mut_bool(config) = n;
 					changed = true;
 				}
 				Task::UpdateFloat(setting, n) => {
-					setting.get_frontend_task().map(|task| frontend.tasks.push(task));
+					if let Some(task) = setting.get_frontend_task() {
+						frontend.tasks.push(task)
+					}
+					let config = frontend.interface.general_config(data);
 					*setting.mut_f32(config) = n;
 					changed = true;
 				}
 				Task::UpdateInt(setting, n) => {
-					setting.get_frontend_task().map(|task| frontend.tasks.push(task));
+					if let Some(task) = setting.get_frontend_task() {
+						frontend.tasks.push(task)
+					}
+					let config = frontend.interface.general_config(data);
 					*setting.mut_i32(config) = n;
 					changed = true;
 				}
@@ -98,6 +140,7 @@ impl<T> Tab<T> for TabSettings<T> {
 						self.state.get_widget_id(&format!("{button_id}_root")),
 					) {
 						self.app_button_ids.remove(idx);
+						let config = frontend.interface.general_config(data);
 						config.autostart_apps.remove(idx);
 						frontend.layout.remove_widget(widget);
 						changed = true;
@@ -107,32 +150,32 @@ impl<T> Tab<T> for TabSettings<T> {
 		}
 
 		// Dropdown handling
-		if let TickResult::Action(name) = self.context_menu.tick(&mut frontend.layout, &mut self.state)? {
-			if let (Some(setting), Some(id), Some(value), Some(text), Some(translated)) = {
+		if let TickResult::Action(name) = self.context_menu.tick(&mut frontend.layout, &mut self.state)?
+			&& let (Some(setting), Some(id), Some(value), Some(text), Some(translated)) = {
 				let mut s = name.splitn(5, ';');
 				(s.next(), s.next(), s.next(), s.next(), s.next())
 			} {
-				let mut label = self
-					.state
-					.fetch_widget_as::<WidgetLabel>(&frontend.layout.state, &format!("{id}_value"))?;
+			let mut label = self
+				.state
+				.fetch_widget_as::<WidgetLabel>(&frontend.layout.state, &format!("{id}_value"))?;
 
-				let mut alterables = EventAlterables::default();
-				let mut common = CallbackDataCommon {
-					alterables: &mut alterables,
-					state: &frontend.layout.state,
-				};
+			let mut alterables = EventAlterables::default();
+			let mut common = CallbackDataCommon {
+				alterables: &mut alterables,
+				state: &frontend.layout.state,
+			};
 
-				let translation = Translation {
-					text: text.into(),
-					translated: translated == "1",
-				};
+			let translation = Translation {
+				text: text.into(),
+				translated: translated == "1",
+			};
 
-				label.set_text(&mut common, translation);
+			label.set_text(&mut common, translation);
 
-				let setting = SettingType::from_str(setting).expect("Invalid Enum string");
-				setting.set_enum(config, value);
-				changed = true;
-			}
+			let setting = SettingType::from_str(setting).expect("Invalid Enum string");
+			let config = frontend.interface.general_config(data);
+			setting.set_enum(config, value);
+			changed = true;
 		}
 
 		// Notify overlays of the change
@@ -184,7 +227,7 @@ enum SettingType {
 }
 
 impl SettingType {
-	pub fn mut_bool<'a>(self, config: &'a mut GeneralConfig) -> &'a mut bool {
+	pub fn mut_bool(self, config: &mut GeneralConfig) -> &mut bool {
 		match self {
 			Self::InvertScrollDirectionX => &mut config.invert_scroll_direction_x,
 			Self::InvertScrollDirectionY => &mut config.invert_scroll_direction_y,
@@ -213,7 +256,7 @@ impl SettingType {
 		}
 	}
 
-	pub fn mut_f32<'a>(self, config: &'a mut GeneralConfig) -> &'a mut f32 {
+	pub fn mut_f32(self, config: &mut GeneralConfig) -> &mut f32 {
 		match self {
 			Self::AnimationSpeed => &mut config.animation_speed,
 			Self::RoundMultiplier => &mut config.round_multiplier,
@@ -227,14 +270,14 @@ impl SettingType {
 		}
 	}
 
-	pub fn mut_i32<'a>(self, config: &'a mut GeneralConfig) -> &'a mut i32 {
+	pub fn mut_i32(self, config: &mut GeneralConfig) -> &mut i32 {
 		match self {
 			Self::ClickFreezeTimeMs => &mut config.click_freeze_time_ms,
 			_ => panic!("Requested i32 for non-i32 SettingType"),
 		}
 	}
 
-	pub fn set_enum<'a>(self, config: &'a mut GeneralConfig, value: &str) {
+	pub fn set_enum(self, config: &mut GeneralConfig, value: &str) {
 		match self {
 			Self::CaptureMethod => {
 				config.capture_method = wlx_common::config::CaptureMethod::from_str(value).expect("Invalid enum value!")
@@ -247,7 +290,7 @@ impl SettingType {
 		}
 	}
 
-	fn get_enum_title<'a>(self, config: &'a mut GeneralConfig) -> Translation {
+	fn get_enum_title(self, config: &mut GeneralConfig) -> Translation {
 		match self {
 			Self::CaptureMethod => Self::get_enum_title_inner(config.capture_method),
 			Self::KeyboardMiddleClick => Self::get_enum_title_inner(config.keyboard_middle_click_mode),
@@ -261,8 +304,8 @@ impl SettingType {
 	{
 		value
 			.get_str("Translation")
-			.map(|x| Translation::from_translation_key(x))
-			.or_else(|| value.get_str("Text").map(|x| Translation::from_raw_text(x)))
+			.map(Translation::from_translation_key)
+			.or_else(|| value.get_str("Text").map(Translation::from_raw_text))
 			.unwrap_or_else(|| Translation::from_raw_text(value.as_ref()))
 	}
 
@@ -270,7 +313,7 @@ impl SettingType {
 	where
 		E: EnumProperty + AsRef<str>,
 	{
-		value.get_str("Tooltip").map(|x| Translation::from_translation_key(x))
+		value.get_str("Tooltip").map(Translation::from_translation_key)
 	}
 
 	/// Ok is translation, Err is raw text
@@ -517,9 +560,9 @@ macro_rules! dropdown {
 		}
 
 		let btn = $mp.parser_state.fetch_component_as::<ComponentButton>(&id)?;
-		btn.on_click(Box::new({
+		btn.on_click(Rc::new({
 			let tasks = $mp.tasks.clone();
-			move |_common, e| {
+			move |_common, e: ButtonClickEvent| {
 				tasks.push(Task::OpenContextMenu(
 					e.mouse_pos_absolute.unwrap_or_default(),
 					$options
@@ -566,7 +609,7 @@ macro_rules! danger_button {
 			.instantiate_template($mp.doc_params, "DangerButton", $mp.layout, $root, params)?;
 
 		let btn = $mp.parser_state.fetch_component_as::<ComponentButton>(&id)?;
-		btn.on_click(Box::new({
+		btn.on_click(Rc::new({
 			let tasks = $mp.tasks.clone();
 			move |_common, _e| {
 				tasks.push($task);
@@ -594,7 +637,7 @@ macro_rules! autostart_app {
 
 		$ids.push(id.clone());
 
-		btn.on_click(Box::new({
+		btn.on_click(Rc::new({
 			let tasks = $mp.tasks.clone();
 			move |_common, _e| {
 				tasks.push(Task::RemoveAutostartApp(id.clone()));
@@ -613,121 +656,158 @@ struct MacroParams<'a> {
 	idx: usize,
 }
 
+fn doc_params(globals: &'_ WguiGlobals) -> ParseDocumentParams<'_> {
+	ParseDocumentParams {
+		globals: globals.clone(),
+		path: AssetPath::BuiltIn("gui/tab/settings.xml"),
+		extra: Default::default(),
+	}
+}
+
 impl<T> TabSettings<T> {
-	pub fn new(frontend: &mut Frontend<T>, parent_id: WidgetID, data: &mut T) -> anyhow::Result<Self> {
+	fn set_tab(&mut self, frontend: &mut Frontend<T>, data: &mut T, name: TabNameEnum) -> anyhow::Result<()> {
+		let root = self.state.get_widget_id("settings_root")?;
+		frontend.layout.remove_children(root);
+		let globals = frontend.layout.state.globals.clone();
+
+		let mut mp = MacroParams {
+			layout: &mut frontend.layout,
+			parser_state: &mut self.state,
+			doc_params: &doc_params(&globals),
+			config: frontend.interface.general_config(data),
+			tasks: self.tasks.clone(),
+			idx: 9001,
+		};
+
+		match name {
+			TabNameEnum::LookAndFeel => {
+				let c = category!(mp, root, "APP_SETTINGS.LOOK_AND_FEEL", "dashboard/palette.svg")?;
+				checkbox!(mp, c, SettingType::OpaqueBackground);
+				checkbox!(mp, c, SettingType::HideUsername);
+				checkbox!(mp, c, SettingType::HideGrabHelp);
+				slider_f32!(mp, c, SettingType::AnimationSpeed, 0.5, 5.0, 0.1); // min, max, step
+				slider_f32!(mp, c, SettingType::RoundMultiplier, 0.5, 5.0, 0.1);
+				checkbox!(mp, c, SettingType::SetsOnWatch);
+				checkbox!(mp, c, SettingType::UseSkybox);
+				checkbox!(mp, c, SettingType::UsePassthrough);
+				checkbox!(mp, c, SettingType::Clock12h);
+			}
+			TabNameEnum::Features => {
+				let c = category!(mp, root, "APP_SETTINGS.FEATURES", "dashboard/options.svg")?;
+				checkbox!(mp, c, SettingType::NotificationsEnabled);
+				checkbox!(mp, c, SettingType::NotificationsSoundEnabled);
+				checkbox!(mp, c, SettingType::KeyboardSoundEnabled);
+				checkbox!(mp, c, SettingType::SpaceDragUnlocked);
+				checkbox!(mp, c, SettingType::SpaceRotateUnlocked);
+				slider_f32!(mp, c, SettingType::SpaceDragMultiplier, -10.0, 10.0, 0.5);
+				checkbox!(mp, c, SettingType::BlockGameInput);
+				checkbox!(mp, c, SettingType::BlockGameInputIgnoreWatch);
+			}
+			TabNameEnum::Controls => {
+				let c = category!(mp, root, "APP_SETTINGS.CONTROLS", "dashboard/controller.svg")?;
+				dropdown!(
+					mp,
+					c,
+					SettingType::KeyboardMiddleClick,
+					wlx_common::config::AltModifier::VARIANTS
+				);
+				checkbox!(mp, c, SettingType::FocusFollowsMouseMode);
+				checkbox!(mp, c, SettingType::LeftHandedMouse);
+				checkbox!(mp, c, SettingType::AllowSliding);
+				checkbox!(mp, c, SettingType::InvertScrollDirectionX);
+				checkbox!(mp, c, SettingType::InvertScrollDirectionY);
+				slider_f32!(mp, c, SettingType::ScrollSpeed, 0.1, 5.0, 0.1);
+				slider_f32!(mp, c, SettingType::LongPressDuration, 0.1, 2.0, 0.1);
+				slider_f32!(mp, c, SettingType::PointerLerpFactor, 0.1, 1.0, 0.1);
+				slider_f32!(mp, c, SettingType::XrClickSensitivity, 0.1, 1.0, 0.1);
+				slider_f32!(mp, c, SettingType::XrClickSensitivityRelease, 0.1, 1.0, 0.1);
+				slider_i32!(mp, c, SettingType::ClickFreezeTimeMs, 0, 500, 50);
+			}
+			TabNameEnum::Misc => {
+				let c = category!(mp, root, "APP_SETTINGS.MISC", "dashboard/blocks.svg")?;
+				dropdown!(
+					mp,
+					c,
+					SettingType::CaptureMethod,
+					wlx_common::config::CaptureMethod::VARIANTS
+				);
+				checkbox!(mp, c, SettingType::XwaylandByDefault);
+				checkbox!(mp, c, SettingType::UprightScreenFix);
+				checkbox!(mp, c, SettingType::DoubleCursorFix);
+				checkbox!(mp, c, SettingType::ScreenRenderDown);
+			}
+			TabNameEnum::AutostartApps => {
+				self.app_button_ids = vec![];
+
+				if !mp.config.autostart_apps.is_empty() {
+					let c = category!(mp, root, "APP_SETTINGS.AUTOSTART_APPS", "dashboard/apps.svg")?;
+
+					for app in &mp.config.autostart_apps {
+						autostart_app!(mp, c, app.name, self.app_button_ids);
+					}
+				}
+			}
+			TabNameEnum::Troubleshooting => {
+				let c = category!(mp, root, "APP_SETTINGS.TROUBLESHOOTING", "dashboard/cpu.svg")?;
+				danger_button!(
+					mp,
+					c,
+					"APP_SETTINGS.CLEAR_PIPEWIRE_TOKENS",
+					"dashboard/display.svg",
+					Task::ClearPipewireTokens
+				);
+				danger_button!(
+					mp,
+					c,
+					"APP_SETTINGS.CLEAR_SAVED_STATE",
+					"dashboard/binary.svg",
+					Task::ClearSavedState
+				);
+				danger_button!(
+					mp,
+					c,
+					"APP_SETTINGS.DELETE_ALL_CONFIGS",
+					"dashboard/circle.svg",
+					Task::DeleteAllConfigs
+				);
+				danger_button!(
+					mp,
+					c,
+					"APP_SETTINGS.RESTART_SOFTWARE",
+					"dashboard/refresh.svg",
+					Task::RestartSoftware
+				);
+			}
+		}
+
+		Ok(())
+	}
+
+	pub fn new(frontend: &mut Frontend<T>, parent_id: WidgetID, _data: &mut T) -> anyhow::Result<Self> {
 		let doc_params = ParseDocumentParams {
 			globals: frontend.layout.state.globals.clone(),
 			path: AssetPath::BuiltIn("gui/tab/settings.xml"),
 			extra: Default::default(),
 		};
-		let mut parser_state = wgui::parser::parse_from_assets(&doc_params, &mut frontend.layout, parent_id)?;
 
-		let root = parser_state.get_widget_id("settings_root")?;
+		let parser_state = wgui::parser::parse_from_assets(&doc_params, &mut frontend.layout, parent_id)?;
+		let tasks = Tasks::default();
+		let tabs = parser_state.fetch_component_as::<ComponentTabs>("tabs")?;
+		tabs.on_select({
+			let tasks = tasks.clone();
+			Rc::new(move |_common, evt| {
+				if let Some(tab) = TabNameEnum::from_string(&evt.name) {
+					tasks.push(Task::SetTab(tab));
+				}
+				Ok(())
+			})
+		});
 
-		let mut mp = MacroParams {
-			layout: &mut frontend.layout,
-			parser_state: &mut parser_state,
-			doc_params: &doc_params,
-			config: frontend.interface.general_config(data),
-			tasks: Tasks::default(),
-			idx: 9001,
-		};
-
-		let c = category!(mp, root, "APP_SETTINGS.LOOK_AND_FEEL", "dashboard/palette.svg")?;
-		checkbox!(mp, c, SettingType::OpaqueBackground);
-		checkbox!(mp, c, SettingType::HideUsername);
-		checkbox!(mp, c, SettingType::HideGrabHelp);
-		slider_f32!(mp, c, SettingType::AnimationSpeed, 0.5, 5.0, 0.1); // min, max, step
-		slider_f32!(mp, c, SettingType::RoundMultiplier, 0.5, 5.0, 0.1);
-		checkbox!(mp, c, SettingType::SetsOnWatch);
-		checkbox!(mp, c, SettingType::UseSkybox);
-		checkbox!(mp, c, SettingType::UsePassthrough);
-		checkbox!(mp, c, SettingType::Clock12h);
-
-		let c = category!(mp, root, "APP_SETTINGS.FEATURES", "dashboard/options.svg")?;
-		checkbox!(mp, c, SettingType::NotificationsEnabled);
-		checkbox!(mp, c, SettingType::NotificationsSoundEnabled);
-		checkbox!(mp, c, SettingType::KeyboardSoundEnabled);
-		checkbox!(mp, c, SettingType::SpaceDragUnlocked);
-		checkbox!(mp, c, SettingType::SpaceRotateUnlocked);
-		slider_f32!(mp, c, SettingType::SpaceDragMultiplier, -10.0, 10.0, 0.5);
-		checkbox!(mp, c, SettingType::BlockGameInput);
-		checkbox!(mp, c, SettingType::BlockGameInputIgnoreWatch);
-
-		let c = category!(mp, root, "APP_SETTINGS.CONTROLS", "dashboard/controller.svg")?;
-		dropdown!(
-			mp,
-			c,
-			SettingType::KeyboardMiddleClick,
-			wlx_common::config::AltModifier::VARIANTS
-		);
-		checkbox!(mp, c, SettingType::FocusFollowsMouseMode);
-		checkbox!(mp, c, SettingType::LeftHandedMouse);
-		checkbox!(mp, c, SettingType::AllowSliding);
-		checkbox!(mp, c, SettingType::InvertScrollDirectionX);
-		checkbox!(mp, c, SettingType::InvertScrollDirectionY);
-		slider_f32!(mp, c, SettingType::ScrollSpeed, 0.1, 5.0, 0.1);
-		slider_f32!(mp, c, SettingType::LongPressDuration, 0.1, 2.0, 0.1);
-		slider_f32!(mp, c, SettingType::PointerLerpFactor, 0.1, 1.0, 0.1);
-		slider_f32!(mp, c, SettingType::XrClickSensitivity, 0.1, 1.0, 0.1);
-		slider_f32!(mp, c, SettingType::XrClickSensitivityRelease, 0.1, 1.0, 0.1);
-		slider_i32!(mp, c, SettingType::ClickFreezeTimeMs, 0, 500, 50);
-
-		let c = category!(mp, root, "APP_SETTINGS.MISC", "dashboard/blocks.svg")?;
-		dropdown!(
-			mp,
-			c,
-			SettingType::CaptureMethod,
-			wlx_common::config::CaptureMethod::VARIANTS
-		);
-		checkbox!(mp, c, SettingType::XwaylandByDefault);
-		checkbox!(mp, c, SettingType::UprightScreenFix);
-		checkbox!(mp, c, SettingType::DoubleCursorFix);
-		checkbox!(mp, c, SettingType::ScreenRenderDown);
-
-		let mut app_button_ids = vec![];
-
-		if !mp.config.autostart_apps.is_empty() {
-			let c = category!(mp, root, "APP_SETTINGS.AUTOSTART_APPS", "dashboard/apps.svg")?;
-
-			for app in &mp.config.autostart_apps {
-				autostart_app!(mp, c, app.name, app_button_ids);
-			}
-		}
-
-		let c = category!(mp, root, "APP_SETTINGS.TROUBLESHOOTING", "dashboard/cpu.svg")?;
-		danger_button!(
-			mp,
-			c,
-			"APP_SETTINGS.CLEAR_PIPEWIRE_TOKENS",
-			"dashboard/display.svg",
-			Task::ClearPipewireTokens
-		);
-		danger_button!(
-			mp,
-			c,
-			"APP_SETTINGS.CLEAR_SAVED_STATE",
-			"dashboard/binary.svg",
-			Task::ClearSavedState
-		);
-		danger_button!(
-			mp,
-			c,
-			"APP_SETTINGS.DELETE_ALL_CONFIGS",
-			"dashboard/circle.svg",
-			Task::DeleteAllConfigs
-		);
-		danger_button!(
-			mp,
-			c,
-			"APP_SETTINGS.RESTART_SOFTWARE",
-			"dashboard/refresh.svg",
-			Task::RestartSoftware
-		);
+		tasks.push(Task::SetTab(TabNameEnum::LookAndFeel));
 
 		Ok(Self {
-			app_button_ids,
-			tasks: mp.tasks,
+			app_button_ids: Vec::new(),
+			tasks,
 			state: parser_state,
 			marker: PhantomData,
 			context_menu: ContextMenu::default(),

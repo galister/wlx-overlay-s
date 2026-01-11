@@ -136,6 +136,7 @@ pub enum LayoutTask {
 	RemoveWidget(WidgetID),
 	ModifyLayoutState(ModifyLayoutStateFunc),
 	PlaySound(WguiSoundType),
+	Dispatch(Box<dyn FnOnce(&mut CallbackDataCommon) -> anyhow::Result<()>>),
 }
 
 pub type LayoutTasks = Tasks<LayoutTask>;
@@ -695,6 +696,11 @@ impl Layout {
 					if !self.sounds_to_play_once.contains(&sound) {
 						self.sounds_to_play_once.push(sound);
 					}
+				}
+				LayoutTask::Dispatch(func) => {
+					let mut c = self.start_common();
+					func(&mut c.common())?;
+					c.finish()?;
 				}
 			}
 		}

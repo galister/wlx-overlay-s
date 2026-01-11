@@ -2,7 +2,7 @@ use crate::{
 	assets::AssetPath,
 	layout::WidgetID,
 	parser::{
-		AttribPair, ParserContext, ParserFile, parse_children, parse_widget_universal,
+		AttribPair, ParserContext, ParserFile, get_asset_path_from_kv, parse_children, parse_widget_universal,
 		style::{parse_color, parse_round, parse_style},
 	},
 	renderer_vk::text::custom_glyph::CustomGlyphData,
@@ -25,16 +25,9 @@ pub fn parse_widget_image<'a>(
 		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
 		match key {
 			"src" | "src_ext" | "src_builtin" | "src_internal" => {
-				let asset_path = match key {
-					"src" => AssetPath::FileOrBuiltIn(value),
-					"src_ext" => AssetPath::File(value),
-					"src_builtin" => AssetPath::BuiltIn(value),
-					"src_internal" => AssetPath::WguiInternal(value),
-					_ => unreachable!(),
-				};
-
 				if !value.is_empty() {
-					glyph = match CustomGlyphData::from_assets(&mut ctx.layout.state.globals, asset_path) {
+					glyph = match CustomGlyphData::from_assets(&ctx.layout.state.globals, get_asset_path_from_kv("", key, value))
+					{
 						Ok(glyph) => Some(glyph),
 						Err(e) => {
 							log::warn!("failed to load {value}: {e}");

@@ -9,6 +9,7 @@ use slotmap::{DenseSlotMap, new_key_type};
 
 use crate::{
 	animation::{self, Animation},
+	components::Component,
 	i18n::I18n,
 	layout::{LayoutState, LayoutTask, WidgetID},
 	sound::WguiSoundType,
@@ -144,6 +145,10 @@ impl EventAlterables {
 
 	pub fn play_sound(&mut self, sound_type: WguiSoundType) {
 		self.tasks.push(LayoutTask::PlaySound(sound_type));
+	}
+
+	pub fn dispatch(&mut self, func: Box<dyn FnOnce(&mut CallbackDataCommon) -> anyhow::Result<()>>) {
+		self.tasks.push(LayoutTask::Dispatch(func))
 	}
 }
 

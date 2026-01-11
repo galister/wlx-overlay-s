@@ -66,11 +66,12 @@ impl Default for Params<'_> {
 	}
 }
 
+#[derive(Clone)]
 pub struct ButtonClickEvent {
 	pub mouse_pos_absolute: Option<Vec2>,
 	pub boundary: Boundary,
 }
-pub type ButtonClickCallback = Box<dyn Fn(&mut CallbackDataCommon, ButtonClickEvent) -> anyhow::Result<()>>;
+pub type ButtonClickCallback = Rc<dyn Fn(&mut CallbackDataCommon, ButtonClickEvent) -> anyhow::Result<()>>;
 
 pub struct Colors {
 	pub color: drawing::Color,
@@ -111,7 +112,6 @@ impl ComponentTrait for ComponentButton {
 	}
 
 	fn refresh(&self, data: &mut RefreshData) {
-		// nothing to do
 		let mut state = self.state.borrow_mut();
 
 		if state.active_tooltip.is_some() {
@@ -362,7 +362,6 @@ fn register_event_mouse_release(
 		Box::new(move |common, event_data, (), ()| {
 			let rect = event_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
 			let mut state = state.borrow_mut();
-
 			if data.sticky {
 				state.sticky_down = !state.sticky_down;
 			}
@@ -384,17 +383,18 @@ fn register_event_mouse_release(
 						state.sticky_down,
 					);
 
-					if let Some(on_click) = &state.on_click {
-						on_click(
-							common,
-							ButtonClickEvent {
-								mouse_pos_absolute: event_data.metadata.get_mouse_pos_absolute(),
-								boundary: event_data.widget_data.cached_absolute_boundary,
-							},
-						)?;
+					if let Some(on_click) = state.on_click.clone() {
+						let evt = ButtonClickEvent {
+							mouse_pos_absolute: event_data.metadata.get_mouse_pos_absolute(),
+							boundary: event_data.widget_data.cached_absolute_boundary,
+						};
+
+						common.alterables.dispatch(Box::new(move |common| {
+							(*on_click)(common, evt)?;
+							Ok(())
+						}));
 					}
 				}
-
 				Ok(EventResult::Consumed)
 			} else {
 				Ok(EventResult::Pass)
@@ -403,14 +403,15 @@ fn register_event_mouse_release(
 	)
 }
 
-#[allow(clippy::too_many_lines)]
 pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Result<(WidgetPair, Rc<ComponentButton>)> {
 	let globals = ess.layout.state.globals.clone();
 	let mut style = params.style;
 
 	// force-override style
 	style.align_items = Some(AlignItems::Center);
-	style.justify_content = Some(JustifyContent::Center);
+	if style.justify_content.is_none() {
+		style.justify_content = Some(JustifyContent::Center);
+	}
 	style.overflow.x = taffy::Overflow::Hidden;
 	style.overflow.y = taffy::Overflow::Hidden;
 

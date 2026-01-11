@@ -84,7 +84,6 @@ struct Data {
 	slider_handle_rect_id: WidgetID,  // Rectangle
 	slider_text_id: Option<WidgetID>, // Text
 	slider_handle_id: WidgetID,
-	slider_handle_node_id: taffy::NodeId,
 }
 
 pub struct SliderValueChangedEvent {
@@ -212,7 +211,14 @@ impl State {
 		self.values.set_value(value);
 
 		let changed = self.values.value != before;
-		let style = common.state.tree.style(data.slider_handle_node_id).unwrap();
+
+		let Some(slider_handle_node_id) = common.state.nodes.get(data.slider_handle_id) else {
+			return;
+		};
+
+		let Ok(style) = common.state.tree.style(*slider_handle_node_id) else {
+			return;
+		};
 		if !conf_handle_style(
 			common.alterables,
 			&self.values,
@@ -398,7 +404,6 @@ fn register_event_mouse_release(
 	)
 }
 
-#[allow(clippy::too_many_lines)]
 pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Result<(WidgetPair, Rc<ComponentSlider>)> {
 	let mut style = params.style;
 	style.position = taffy::Position::Relative;
@@ -441,10 +446,9 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	};
 
 	// invisible outer handle body
-	let (slider_handle, slider_handle_node_id) =
-		ess
-			.layout
-			.add_child(body_id, WidgetDiv::create(), slider_handle_style)?;
+	let (slider_handle, _) = ess
+		.layout
+		.add_child(body_id, WidgetDiv::create(), slider_handle_style)?;
 
 	let (slider_handle_rect, _) = ess.layout.add_child(
 		slider_handle.id,
@@ -500,7 +504,6 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		slider_handle_rect_id: slider_handle_rect.id,
 		body_node: slider_body_node,
 		slider_handle_id: slider_handle.id,
-		slider_handle_node_id,
 		slider_text_id: slider_text.map(|s| s.0.id),
 	});
 

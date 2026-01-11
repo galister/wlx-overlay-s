@@ -190,7 +190,7 @@ fn fill_window_list<T>(
 
 		button.on_click({
 			let tasks = tasks.clone();
-			Box::new(move |_, _| {
+			Rc::new(move |_, _| {
 				tasks.push(Task::WindowClicked(entry.clone()));
 				Ok(())
 			})
@@ -260,14 +260,14 @@ impl View {
 			self.frontend_tasks.push(FrontendTask::MountPopup(MountPopupParams {
 				title: Translation::from_translation_key("WINDOW_OPTIONS"),
 				on_content: {
-					let frontend_tasks = self.frontend_tasks.clone();
-					let globals = self.globals.clone();
-					let state = self.state.clone();
-					let tasks = self.tasks.clone();
+					let _frontend_tasks = self.frontend_tasks.clone();
+					let _globals = self.globals.clone();
+					let _state = self.state.clone();
+					let _tasks = self.tasks.clone();
 
 					//TODO
 
-					Rc::new(move |data| {
+					Rc::new(move |_data| {
 						// state.borrow_mut().view_window_options = Some((
 						// 	data.handle,
 						// 	window_options::View::new(window_options::Params {

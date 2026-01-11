@@ -34,7 +34,7 @@ impl<TaskType: Clone + 'static> Tasks<TaskType> {
 	pub fn handle_button(&self, button: &Rc<ComponentButton>, task: TaskType) {
 		button.on_click({
 			let this = self.clone();
-			Box::new(move |_, _| {
+			Rc::new(move |_, _| {
 				this.push(task.clone());
 				Ok(())
 			})

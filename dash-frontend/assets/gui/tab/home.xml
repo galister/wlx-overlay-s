@@ -8,7 +8,7 @@
       align_items="center"
       flex_grow="1"
       gap="24">
-      <sprite src_builtin="dashboard/wayvr_dashboard.svg" width="96" height="96" />
+      <sprite src_builtin="dashboard/wayvr_dashboard.png" width="96" height="96" />
       <label id="label_hello" size="32" weight="bold" />
 
       <!-- main button list -->
