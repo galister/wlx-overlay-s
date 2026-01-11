@@ -95,7 +95,7 @@ impl AppState {
         audio_sample_player.register_sample(
             "key_click",
             audio::AudioSample::from_mp3(audio::AudioSample::try_bytes_from_config(
-                "audio/key_click.mp3",
+                "sound/key_click.mp3",
                 include_bytes!("res/key_click.mp3"),
             ))?,
         );
@@ -103,7 +103,7 @@ impl AppState {
         audio_sample_player.register_sample(
             "toast",
             audio::AudioSample::from_mp3(audio::AudioSample::try_bytes_from_config(
-                "audio/toast.mp3",
+                "sound/toast.mp3",
                 include_bytes!("res/toast.mp3"),
             ))?,
         );

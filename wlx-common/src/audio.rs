@@ -58,9 +58,26 @@ impl SamplePlayer {
 	}
 
 	pub fn register_wgui_samples(&mut self, assets: &mut dyn AssetProvider) -> anyhow::Result<()> {
+		/*
 		let mut load = |sound: WguiSoundType| -> anyhow::Result<()> {
 			let sample_name = get_sample_name_from_wgui_sound_type(sound);
 			self.register_mp3_sample_from_assets(sample_name, assets, &format!("sound/{}.mp3", sample_name))
+		};
+		*/
+		let mut load = |sound: WguiSoundType| -> anyhow::Result<()> {
+			let sample_name = get_sample_name_from_wgui_sound_type(sound);
+			let path = &format!("sound/{}.mp3", sample_name);
+
+			let default_bytes = assets.load_from_path(path)?;
+
+			self.register_sample(
+				sample_name, 
+				AudioSample::from_mp3(AudioSample::try_bytes_from_config(
+					path,
+					default_bytes.as_slice(),
+				))?
+			);
+			Ok(())
 		};
 
 		load(WguiSoundType::ButtonPress)?;
