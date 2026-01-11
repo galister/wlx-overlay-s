@@ -17,7 +17,8 @@
 	clippy::float_cmp,
 	clippy::needless_pass_by_ref_mut,
 	clippy::use_self,
-	clippy::match_same_arms
+	clippy::match_same_arms,
+	clippy::too_many_lines
 )]
 
 pub mod animation;

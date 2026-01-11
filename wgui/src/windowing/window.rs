@@ -100,7 +100,6 @@ impl WguiWindow {
 		self.0.borrow_mut().opened_window = None;
 	}
 
-	#[allow(clippy::too_many_lines)]
 	pub fn open(&mut self, params: &mut WguiWindowParams) -> anyhow::Result<()> {
 		// close previous one if it's already open
 		self.close();
@@ -233,7 +232,7 @@ impl WguiWindow {
 			let but_close = state.fetch_component_as::<ComponentButton>("but_close").unwrap();
 			but_close.on_click({
 				let this = self.clone();
-				Box::new(move |_common, _e| {
+				Rc::new(move |_common, _e| {
 					this.close();
 					Ok(())
 				})

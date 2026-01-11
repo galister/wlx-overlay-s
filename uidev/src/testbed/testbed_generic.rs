@@ -53,7 +53,7 @@ fn button_click_callback(
 	label: Widget,
 	text: &'static str,
 ) -> ButtonClickCallback {
-	Box::new(move |common, _e| {
+	Rc::new(move |common, _e| {
 		label
 			.get_as::<WidgetLabel>()
 			.unwrap()
@@ -148,7 +148,7 @@ impl TestbedGeneric {
 			parser_state.fetch_component_as::<ComponentButton>("button_context_menu")?;
 		let button_click_me = parser_state.fetch_component_as::<ComponentButton>("button_click_me")?;
 		let button = button_click_me.clone();
-		button_click_me.on_click(Box::new(move |common, _e| {
+		button_click_me.on_click(Rc::new(move |common, _e| {
 			button.set_text(common, Translation::from_raw_text("congrats!"));
 			Ok(())
 		}));
@@ -188,7 +188,7 @@ impl TestbedGeneric {
 
 		button_popup.on_click({
 			let tasks = testbed.tasks.clone();
-			Box::new(move |_, _| {
+			Rc::new(move |_, _| {
 				tasks.push(TestbedTask::ShowPopup);
 				Ok(())
 			})
@@ -196,7 +196,7 @@ impl TestbedGeneric {
 
 		button_context_menu.on_click({
 			let tasks = testbed.tasks.clone();
-			Box::new(move |_common, m| {
+			Rc::new(move |_common, m| {
 				tasks.push(TestbedTask::ShowContextMenu(m.boundary.bottom_left()));
 				Ok(())
 			})

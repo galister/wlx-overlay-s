@@ -186,7 +186,7 @@ fn fill_process_list(
 		entry_res.btn_terminate.on_click({
 			let tasks = tasks.clone();
 			let entry = process_entry.clone();
-			Box::new(move |_, _| {
+			Rc::new(move |_, _| {
 				tasks.push(Task::TerminateProcess(entry.clone()));
 				Ok(())
 			})

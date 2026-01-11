@@ -398,7 +398,6 @@ fn register_event_mouse_release(
 	)
 }
 
-#[allow(clippy::too_many_lines)]
 pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Result<(WidgetPair, Rc<ComponentSlider>)> {
 	let mut style = params.style;
 	style.position = taffy::Position::Relative;

@@ -163,7 +163,7 @@ impl PopupManager {
 
 		but_back.on_click({
 			let popup_handle = Rc::downgrade(&popup_handle.state);
-			Box::new(move |_common, _evt| {
+			Rc::new(move |_common, _evt| {
 				if let Some(popup_handle) = popup_handle.upgrade() {
 					popup_handle.borrow_mut().mounted_popup = None; // will call Drop
 				}

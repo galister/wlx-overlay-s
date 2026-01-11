@@ -131,7 +131,7 @@ fn mount_multi_selector(params: MultiSelectorParams) -> anyhow::Result<()> {
 		button.on_click({
 			let on_click = params.on_click.clone();
 			let key = cell.key.clone();
-			Box::new(move |_, _| {
+			Rc::new(move |_, _| {
 				(*on_click)(key.as_str());
 				Ok(())
 			})
@@ -610,7 +610,7 @@ impl View {
 	fn handle_func_button_click(&self, task: ViewTask) -> ButtonClickCallback {
 		let tasks = self.tasks.clone();
 		let on_update = self.on_update.clone();
-		Box::new(move |_common, _evt| {
+		Rc::new(move |_common, _evt| {
 			tasks.push(task.clone());
 			(*on_update)();
 			Ok(())
@@ -762,7 +762,7 @@ impl View {
 			let tasks = self.tasks.clone();
 			let card = params.card.clone();
 			let on_update = self.on_update.clone();
-			Box::new(move |_common, _evt| {
+			Rc::new(move |_common, _evt| {
 				tasks.push(ViewTask::SetMode(CurrentMode::CardProfileSelector(card.clone())));
 				(*on_update)();
 				Ok(())
@@ -836,7 +836,7 @@ impl View {
 
 		btn_mute.on_click({
 			let control = params.control.clone();
-			Box::new(move |_common, _event| {
+			Rc::new(move |_common, _event| {
 				control.on_mute_toggle()?;
 				Ok(())
 			})
@@ -957,7 +957,7 @@ impl View {
 			btn_back.on_click({
 				let tasks = self.tasks.clone();
 				let on_update = self.on_update.clone();
-				Box::new(move |_, _| {
+				Rc::new(move |_, _| {
 					tasks.push(ViewTask::SetMode(CurrentMode::Cards));
 					(*on_update)();
 					Ok(())

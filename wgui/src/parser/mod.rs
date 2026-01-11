@@ -2,6 +2,7 @@ mod component_button;
 mod component_checkbox;
 mod component_radio_group;
 mod component_slider;
+mod component_tabs;
 mod style;
 mod widget_div;
 mod widget_image;
@@ -22,6 +23,7 @@ use crate::{
 		component_checkbox::{CheckboxKind, parse_component_checkbox},
 		component_radio_group::parse_component_radio_group,
 		component_slider::parse_component_slider,
+		component_tabs::parse_component_tabs,
 		widget_div::parse_widget_div,
 		widget_image::parse_widget_image,
 		widget_label::parse_widget_label,
@@ -480,9 +482,17 @@ impl ParserContext<'_> {
 		insert_color_vars!(self, "faded", def.faded_color, def.translucent_alpha);
 		insert_color_vars!(self, "bg", def.bg_color, def.translucent_alpha);
 	}
+
 	fn print_invalid_attrib(&self, tag_name: &str, key: &str, value: &str) {
 		log::warn!(
 			"{}: <{tag_name}> value for \"{key}\" is invalid: \"{value}\"",
+			self.doc_params.path.get_str()
+		);
+	}
+
+	fn print_invalid_tag(&self, tag_name: &str, invalid_tag_name: &str) {
+		log::warn!(
+			"{}: <{tag_name}> has an invalid tag named <{invalid_tag_name}>",
 			self.doc_params.path.get_str()
 		);
 	}
@@ -1042,6 +1052,11 @@ fn parse_child<'a>(
 				file, ctx, child_node, parent_id, &attribs, tag_name,
 			)?);
 		}
+		"Tabs" => {
+			new_widget_id = Some(parse_component_tabs(
+				file, ctx, child_node, parent_id, &attribs, tag_name,
+			)?);
+		}
 		"" => { /* ignore */ }
 		other_tag_name => {
 			parse_widget_other(other_tag_name, file, ctx, parent_id, &attribs)?;
@@ -1282,4 +1297,23 @@ fn parse_document_root(
 	}
 
 	Ok(())
+}
+
+fn get_asset_path_from_kv<'a>(prefix: &'static str, key: &'a str, value: &'a str) -> AssetPath<'a> {
+	let key_split = match key.find(prefix) {
+		Some(pos) => {
+			assert!(pos == 0, "invalid split");
+			key.get(prefix.len()..).unwrap()
+		}
+		None => key,
+	};
+	match key_split {
+		"src" => AssetPath::FileOrBuiltIn(value),
+		"src_ext" => AssetPath::File(value),
+		"src_builtin" => AssetPath::BuiltIn(value),
+		"src_internal" => AssetPath::WguiInternal(value),
+		other => {
+			panic!("unexpected attrib {other}");
+		}
+	}
 }

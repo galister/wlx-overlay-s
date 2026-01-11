@@ -1,7 +1,10 @@
 use crate::{
 	assets::AssetPath,
 	layout::WidgetID,
-	parser::{AttribPair, ParserContext, ParserFile, parse_children, parse_widget_universal, style::parse_style},
+	parser::{
+		AttribPair, ParserContext, ParserFile, get_asset_path_from_kv, parse_children, parse_widget_universal,
+		style::parse_style,
+	},
 	renderer_vk::text::custom_glyph::CustomGlyphData,
 	widget::sprite::{WidgetSprite, WidgetSpriteParams},
 };
@@ -24,13 +27,7 @@ pub fn parse_widget_sprite<'a>(
 		let (key, value) = (pair.attrib.as_ref(), pair.value.as_ref());
 		match key {
 			"src" | "src_ext" | "src_builtin" | "src_internal" => {
-				let asset_path = match key {
-					"src" => AssetPath::FileOrBuiltIn(value),
-					"src_ext" => AssetPath::File(value),
-					"src_builtin" => AssetPath::BuiltIn(value),
-					"src_internal" => AssetPath::WguiInternal(value),
-					_ => unreachable!(),
-				};
+				let asset_path = get_asset_path_from_kv("", key, value);
 
 				if !value.is_empty() {
 					glyph = match CustomGlyphData::from_assets(&ctx.layout.state.globals, asset_path) {

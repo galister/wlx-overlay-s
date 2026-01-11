@@ -11,6 +11,7 @@ pub mod button;
 pub mod checkbox;
 pub mod radio_group;
 pub mod slider;
+pub mod tabs;
 pub mod tooltip;
 
 pub struct RefreshData<'a> {

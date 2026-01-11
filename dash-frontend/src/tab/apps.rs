@@ -81,7 +81,7 @@ fn on_app_click(
 	state: Rc<RefCell<State>>,
 	tasks: Tasks<Task>,
 ) -> ButtonClickCallback {
-	Box::new(move |_common, _evt| {
+	Rc::new(move |_common, _evt| {
 		frontend_tasks.push(FrontendTask::MountPopup(MountPopupParams {
 			title: Translation::from_raw_text(&entry.app_name),
 			on_content: {

@@ -5,13 +5,12 @@ use crate::{
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		AttribPair, ParserContext, ParserFile, parse_children, parse_f32, process_component,
+		AttribPair, ParserContext, ParserFile, get_asset_path_from_kv, parse_children, parse_f32, process_component,
 		style::{parse_color_opt, parse_round, parse_style, parse_text_style},
 	},
 	widget::util::WLength,
 };
 
-#[allow(clippy::too_many_lines)]
 pub fn parse_component_button<'a>(
 	file: &'a ParserFile,
 	ctx: &mut ParserContext,
@@ -76,13 +75,7 @@ pub fn parse_component_button<'a>(
 				parse_color_opt(ctx, tag_name, key, value, &mut hover_border_color);
 			}
 			"sprite_src" | "sprite_src_ext" | "sprite_src_builtin" | "sprite_src_internal" => {
-				let asset_path = match key {
-					"sprite_src" => AssetPath::FileOrBuiltIn(value),
-					"sprite_src_ext" => AssetPath::File(value),
-					"sprite_src_builtin" => AssetPath::BuiltIn(value),
-					"sprite_src_internal" => AssetPath::WguiInternal(value),
-					_ => unreachable!(),
-				};
+				let asset_path = get_asset_path_from_kv("sprite_", key, value);
 
 				if !value.is_empty() {
 					sprite_src = Some(asset_path);

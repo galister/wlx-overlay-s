@@ -150,7 +150,7 @@ fn fill_game_list(
 		view_cover.button.on_click({
 			let tasks = tasks.clone();
 			let manifest = manifest.clone();
-			Box::new(move |_, _| {
+			Rc::new(move |_, _| {
 				tasks.push(Task::AppManifestClicked(manifest.clone()));
 				Ok(())
 			})
