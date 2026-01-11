@@ -55,7 +55,10 @@
       "SPLIT_RIGHT_LEFT": "RECHTS→LINKS",
       "SPLIT_TOP_BOTTOM": "OBEN→UNTEN",
       "SPLIT_BOTTOM_TOP": "UNTEN→OBEN",
-      "FULL_FRAME": "Voll 3D"
+      "FULL_FRAME": "Voll 3D",
+      "FULL_FRAME_SBS": "Full-SBS",
+      "FULL_FRAME_TAB": "Full-TAB",
+      "FULL_FRAME_BAT": "Full-BAT"
     },
     "STEREO_3D_MODE_": {},
     "ALIGN_TO_HMD": "An HMD ausrichten",

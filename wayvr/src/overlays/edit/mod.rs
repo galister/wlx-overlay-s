@@ -11,6 +11,7 @@ use slotmap::Key;
 use wgui::{
     components::{button::ComponentButton, checkbox::ComponentCheckbox, slider::ComponentSlider},
     event::{CallbackDataCommon, EventAlterables, EventCallback},
+    i18n::Translation,
     parser::Fetchable,
     widget::EventResult,
 };
@@ -28,7 +29,7 @@ use crate::{
         mouse::new_mouse_tab_handler,
         pos::{PosTabState, new_pos_tab_handler},
         sprite_tab::SpriteTabHandler,
-        stereo::new_stereo_tab_handler,
+        stereo::{get_stereo_full_frame_translation, new_stereo_tab_handler},
         tab::ButtonPaneTabSwitcher,
     },
     state::AppState,
@@ -502,6 +503,13 @@ fn reset_panel(
             .tabs
             .set_tab_visible(&mut common, "stereo", true);
         panel.state.stereo.reset(&mut common, &stereo);
+
+        // Set the checkbox label based on stereo mode
+        let translation = get_stereo_full_frame_translation(&stereo);
+        let c = panel
+            .parser_state
+            .fetch_component_as::<ComponentCheckbox>("stereo_full_frame_box")?;
+        c.set_text(&mut common, Translation::from_translation_key(translation));
     } else {
         panel
             .state

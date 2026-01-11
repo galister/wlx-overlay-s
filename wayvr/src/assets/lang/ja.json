@@ -54,7 +54,10 @@
       "SPLIT_RIGHT_LEFT": "右→左",
       "SPLIT_TOP_BOTTOM": "上→下",
       "SPLIT_BOTTOM_TOP": "下→上",
-      "FULL_FRAME": "フル3D"
+      "FULL_FRAME": "フル3D",
+      "FULL_FRAME_SBS": "フルSBS",
+      "FULL_FRAME_TAB": "フルTAB",
+      "FULL_FRAME_BAT": "フルBAT"
     },
     "ALIGN_TO_HMD": "常にHMDの方を向く",
     "MOUSE": {
