@@ -1,0 +1,102 @@
+{
+  "ANCHOR": {
+    "CENTER": "中心"
+  },
+  "BAR": {
+    "ADD_MIRROR": "添加新的镜像覆盖层",
+    "EDIT_MODE_TOGGLE": "切换编辑模式",
+    "ADD_NEW_SET": "添加新集合",
+    "DELETE_CURRENT_SET": "删除当前集合",
+    "TOGGLE_VISIBILITY": "切换可见性",
+    "RESET_POSITION": "重置位置",
+    "RELOAD_FROM_DISK": "从磁盘重新加载 XML",
+    "CLOSE_MIRROR": "关闭镜像",
+    "CLOSE_APP": "关闭应用",
+    "FORCE_CLOSE_APP": "强制关闭应用"
+  },
+  "DEFAULT": "默认",
+  "DISABLED": "已禁用",
+  "EDIT_MODE": {
+    "ADJUST_CURVATURE": "调整曲率",
+    "ALPHA_BLEND_MODE": "Alpha 混合模式",
+    "BLENDING_ADDITIVE": "叠加混合",
+    "CURVATURE": "曲率",
+    "DELETE": "长按以从当前集合中移除",
+    "DISABLE_GRAB": "禁用抓取",
+    "HINT_POINT_WINDOW": "指向窗口以更改其参数。\n完成后，使用右侧按钮退出编辑模式。",
+    "INTERPOLATION": "插值",
+    "ALIGN_TO_HMD": "对齐到头显 (HMD)",
+    "KEYBOARD": "键盘",
+    "LEAVE": "离开编辑模式",
+    "LOCK_INTERACTION": "锁定交互",
+    "MOVE_PRESS_AND_DRAG": "移动 (按住并拖拽)",
+    "OPACITY": "不透明度",
+    "POS_ANCHORED": "锚定：随中心标记移动。默认。",
+    "POS_FLOATING": "悬浮：独立移动，显示时重新居中。",
+    "POS_HAND_L": "跟随左手。",
+    "POS_HAND_R": "跟随右手。",
+    "POS_HMD": "跟随头显 (HMD)。",
+    "POS_STATIC": "静态：不属于任何集合，不重新居中。",
+    "POSITIONING": "定位",
+    "RESIZE_PRESS_AND_DRAG": "调整大小 (按住并拖拽)",
+    "STEREO_3D_MODE": {
+      "SPLIT_BOTTOM_TOP": "下→上",
+      "SPLIT_LEFT_RIGHT": "左→右",
+      "SPLIT_RIGHT_LEFT": "右→左",
+      "SPLIT_TOP_BOTTOM": "上→下",
+      "TITLE": "3D 立体模式",
+      "FULL_FRAME": "完整 3D",
+      "FULL_FRAME_SBS": "完整左右 (Full-SBS)",
+      "FULL_FRAME_TAB": "完整上下 (Full-TAB)",
+      "FULL_FRAME_BAT": "完整下上 (Full-BAT)"
+    },
+    "MOUSE": {
+      "TITLE": "鼠标修复",
+      "WRONG_SCREEN_SELECTION_HELP": "如果光标在完全不同的屏幕上移动，\n可能是屏幕选择错误。请参阅 readme。",
+      "NORMAL": "正常",
+      "ROTATE90": "旋转 90°",
+      "ROTATE180": "旋转 180°",
+      "ROTATE270": "旋转 270°",
+      "FLIPPED": "镜像",
+      "FLIP90": "镜像旋转 90°",
+      "FLIP180": "镜像旋转 180°",
+      "FLIP270": "镜像旋转 270°"
+    }
+  },
+  "GRAB": {
+    "ADJUST_DISTANCE": "调整距离",
+    "ADJUST_SIZE": "调整大小",
+    "UNRESTRICTED_MOVEMENT": "无限制移动",
+    "GRABBING_WATCH": "若要更换手，请将手表移至前方并用另一只手抓取。",
+    "GRABBING_STATIC": "此覆盖层是静态的，将固定在原位，忽略重新居中。",
+    "GRABBING_ANCHORED": "锚定覆盖层将一起移动。通过用另一只手抓取单个窗口，同时仍抓取锚点来分离它。",
+    "GRABBING_ANCHORED_EDIT": "此覆盖层将保持锚定在中心标记上。",
+    "GRABBING_FLOATING": "此覆盖层是悬浮的，将固定在原位，除非重新居中。",
+    "GRABBING_FOLLOW": "此覆盖层将跟随它所连接的设备。"
+  },
+  "TOAST": {
+    "DEFAULT_TITLE": "通知",
+    "ERROR": "错误",
+    "CANNOT_ADD_SET": "无法添加集合！",
+    "MAXIMUM_SETS_REACHED": "已达到集合数量上限。",
+    "CANNOT_REMOVE_SET": "无法移除集合！",
+    "NO_SET_SELECTED": "未选择集合。",
+    "LAST_EXISTING_SET": "这是最后一个现有的集合。",
+    "EMPTY_SET": "空集合！",
+    "LETS_ADD_OVERLAYS": "让我们从手表添加一些覆盖层吧！",
+    "FIXING_FLOOR": "将在 5 秒内修复地面...",
+    "ONE_CONTROLLER_ON_FLOOR": "请将一个控制器放在地面上！"
+  },
+  "WATCH": {
+    "ADD_NEW_SET": "添加新集合",
+    "CLEANUP_MIRRORS": "移除当前不可见的镜像",
+    "DASHBOARD": "控制面板 (Dashboard)",
+    "EDIT_MODE": "编辑模式",
+    "EDIT_MODE_EXPLANATION": "覆盖层现在可以单独移动和调整。\n控制此集合中哪些覆盖层可见：",
+    "FIX_FLOOR": "修复地面水平",
+    "LONG_PRESS_TO_DELETE_SET": "按住以删除",
+    "RECENTER": "重置游玩区中心 (Recenter)",
+    "SWITCH_TO_SET": "切换到集合",
+    "TOGGLE_FOR_CURRENT_SET": "切换当前集合"
+  }
+}
