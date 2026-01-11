@@ -3,6 +3,9 @@ use std::{collections::HashMap, io::Cursor};
 use rodio::Source;
 use wgui::{assets::AssetProvider, sound::WguiSoundType};
 
+
+use crate::config_io::{get_config_root};
+
 pub struct AudioSystem {
 	audio_stream: Option<rodio::OutputStream>,
 	first_try: bool,
@@ -143,4 +146,37 @@ impl AudioSample {
 			),
 		})
 	}
+
+	pub fn try_bytes_from_config(path: &str, fallback_bytes: &'static [u8]) -> &'static [u8]
+    {
+        if path.is_empty() {
+            return fallback_bytes;
+        }
+
+        let real_path = get_config_root().join(&*path);
+
+        if std::fs::File::open(real_path.clone()).is_err() {
+            log::warn!(
+                "Could not open file at: {}",
+                path
+            );
+            return fallback_bytes;
+        };
+
+        return match std::fs::read(real_path.clone()){
+            // Box is used here to work around `f`'s limited lifetime
+            Ok(f) => {
+                Box::leak(Box::new(f)).as_slice()
+            },
+            Err(e) => {
+                log::warn!(
+                    "Failed to read file at: {}",
+                    path
+                );
+                log::warn!("{:?}", e);
+                fallback_bytes
+            }
+        };
+
+    }
 }
