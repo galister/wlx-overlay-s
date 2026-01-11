@@ -369,7 +369,7 @@ impl<S: 'static> OverlayBackend for GuiPanel<S> {
 
     fn on_scroll(&mut self, app: &mut AppState, hit: &PointerHit, delta: WheelDelta) {
         let e = WguiEvent::MouseWheel(MouseWheelEvent {
-            delta: vec2(delta.x, delta.y),
+            delta: vec2(delta.x, delta.y) / 8.0,
             pos: hit.uv * self.layout.content_size,
             device: hit.pointer,
         });

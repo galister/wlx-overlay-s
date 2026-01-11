@@ -65,7 +65,7 @@ impl<const COUNT: usize> MultiClickHandler<COUNT> {
 
         if !state {
             let res = self.action_f32.state(session, xr::Path::NULL)?;
-            state = res.is_active && res.current_state > threshold;
+            state = res.is_active && res.current_state >= threshold - 0.001;
         }
 
         if !state {

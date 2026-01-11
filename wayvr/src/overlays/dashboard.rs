@@ -196,7 +196,7 @@ impl OverlayBackend for DashFrontend {
 
     fn on_scroll(&mut self, _app: &mut AppState, hit: &PointerHit, delta: WheelDelta) {
         let e = WguiEvent::MouseWheel(MouseWheelEvent {
-            delta: vec2(delta.x, delta.y),
+            delta: vec2(delta.x, delta.y) / 8.0,
             pos: hit.uv * self.inner.layout.content_size,
             device: hit.pointer,
         });
