@@ -80,16 +80,6 @@ This button action executes a shell script using the `sh` shell.
 <button _press="::ShellExec $HOME/myscript.sh test-argument" [...] />
 ```
 
-###### Update the button's label from stdout
-
-```xml
-<button _press="::ShellExec $HOME/myscript.sh test-argument" _update_label="1" [...] />
-```
-
-- Write lines to the script's stdout to update the label text.
-- The label will look for the last complete line to use as its text.
-- Long-running scripts are allowed, but the label is only updated while the HMD is active.
-
 ##### `::OscSend <path> <args ..>`
 
 Send an OSC message. The target port comes from the `osc_out_port` configuration setting.

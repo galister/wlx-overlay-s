@@ -1,0 +1,98 @@
+{
+  "ANCHOR": {
+    "CENTER": "Centro"
+  },
+  "BAR": {
+    "ADD_MIRROR": "Aggiungi un nuovo overlay specchio",
+    "EDIT_MODE_TOGGLE": "Attiva/disattiva modalità modifica",
+    "ADD_NEW_SET": "Aggiungi nuovo set",
+    "DELETE_CURRENT_SET": "Elimina set attuale",
+    "TOGGLE_VISIBILITY": "Alterna visibilità",
+    "RESET_POSITION": "Ripristina posizione",
+    "RELOAD_FROM_DISK": "Ricarica XML dal disco",
+    "CLOSE_MIRROR": "Chiudi mirror",
+    "CLOSE_APP": "Chiudi app",
+    "FORCE_CLOSE_APP": "Chiudi forzatamente l'app"
+  },
+  "DEFAULT": "Predefinito",
+  "DISABLED": "Disabilitato",
+  "EDIT_MODE": {
+    "ADJUST_CURVATURE": "Regola curvatura",
+    "ALPHA_BLEND_MODE": "Modalità di fusione Alpha",
+    "BLENDING_ADDITIVE": "Blending additivo",
+    "CURVATURE": "Curvatura",
+    "DELETE": "Tenere premuto per rimuovere dal set corrente",
+    "DISABLE_GRAB": "Disabilita l'afferra",
+    "HINT_POINT_WINDOW": "Punta a una finestra per modificarne i parametri.\nUna volta fatto, esci dalla modalità di modifica usando il pulsante a destra.",
+    "INTERPOLATION": "Interpolazione",
+    "ALIGN_TO_HMD": "Allinea all'HMD",
+    "KEYBOARD": "Tastiera",
+    "LEAVE": "Esci dalla modalità di modifica",
+    "LOCK_INTERACTION": "Blocca interazione",
+    "MOVE_PRESS_AND_DRAG": "Muovi (premi e trascina)",
+    "OPACITY": "Opacità",
+    "POS_ANCHORED": "Ancorato: si muove con il marker centrale. Predefinito.",
+    "POS_FLOATING": "Galleggiante: si muove indipendentemente, si recentra quando viene visualizzato.",
+    "POS_HAND_L": "Segui la mano sinistra.",
+    "POS_HAND_R": "Segui la mano destra.",
+    "POS_HMD": "Segui l'HMD.",
+    "POS_STATIC": "Statico: non fa parte di alcun set, senza recentratura.",
+    "POSITIONING": "Posizionamento",
+    "RESIZE_PRESS_AND_DRAG": "Ridimensiona (premi e trascina)",
+    "STEREO_3D_MODE": {
+      "SPLIT_BOTTOM_TOP": "DAL BASSO→IN ALTO",
+      "SPLIT_LEFT_RIGHT": "SINISTRA→DESTRA",
+      "SPLIT_RIGHT_LEFT": "DESTRA→SINISTRA",
+      "SPLIT_TOP_BOTTOM": "TOP→BOTTOM",
+      "TITLE": "Modalità Stereo 3D"
+    },
+    "MOUSE": {
+      "TITLE": "Correzioni del mouse",
+      "WRONG_SCREEN_SELECTION_HELP": "Se il cursore si sposta su uno schermo completamente diverso,\nprobabilmente gli schermi sono stati selezionati in modo errato. Consulta il file readme.",
+      "NORMAL": "Normale",
+      "ROTATE90": "Ruotato di 90°",
+      "ROTATE180": "Ruotato di 180°",
+      "ROTATE270": "Ruotato di 270°",
+      "FLIPPED": "Capovolto",
+      "FLIP90": "Ruotato di 90°",
+      "FLIP180": "Ruotato di 180°",
+      "FLIP270": "Ruotato di 270°"
+    }
+  },
+  "GRAB": {
+    "ADJUST_DISTANCE": "Regola la distanza",
+    "ADJUST_SIZE": "Regola dimensione",
+    "UNRESTRICTED_MOVEMENT": "Movimento libero",
+    "GRABBING_WATCH": "Per cambiare mano, sposta il watch davanti a te e afferralo con l'altra mano.",
+    "GRABBING_STATIC": "Questo overlay è Statico e rimarrà in posizione, ignorando il recenter.",
+    "GRABBING_ANCHORED": "Gli overlay ancorati si muovono tutti insieme. Separa una singola finestra afferrandola con l'altra mano mentre tieni ancora l'ancora.",
+    "GRABBING_ANCHORED_EDIT": "Questo overlay rimarrà ancorato al marcatore centrale.",
+    "GRABBING_FLOATING": "Questo overlay è mobile e rimarrà in posizione, a meno che non venga recentrato.",
+    "GRABBING_FOLLOW": "Questo overlay seguirà il dispositivo a cui è collegato."
+  },
+  "TOAST": {
+    "DEFAULT_TITLE": "Notifica",
+    "ERROR": "Errore",
+    "CANNOT_ADD_SET": "Impossibile aggiungere il set!",
+    "MAXIMUM_SETS_REACHED": "Numero massimo di set raggiunto.",
+    "CANNOT_REMOVE_SET": "Impossibile rimuovere il set!",
+    "NO_SET_SELECTED": "Nessun set è selezionato.",
+    "LAST_EXISTING_SET": "Questo è l'ultimo set esistente.",
+    "EMPTY_SET": "Set vuoto!",
+    "LETS_ADD_OVERLAYS": "Aggiungiamo degli overlay dal Watch!",
+    "FIXING_FLOOR": "Rifissaggio del pavimento tra 5 secondi...",
+    "ONE_CONTROLLER_ON_FLOOR": "Posiziona un controller a terra!"
+  },
+  "WATCH": {
+    "ADD_NEW_SET": "Aggiungi un nuovo set",
+    "CLEANUP_MIRRORS": "Rimuovi gli specchi che\nnon sono attualmente visibili",
+    "DASHBOARD": "Pannello di controllo",
+    "EDIT_MODE": "Modalità modifica",
+    "EDIT_MODE_EXPLANATION": "Gli overlay possono ora essere spostati e regolati individualmente.\nControlla quali overlay sono visibili in questo set:",
+    "FIX_FLOOR": "Fissa il livello del pavimento",
+    "LONG_PRESS_TO_DELETE_SET": "Tenere premuto per eliminare",
+    "RECENTER": "Recentra l'area di gioco",
+    "SWITCH_TO_SET": "Passa a set",
+    "TOGGLE_FOR_CURRENT_SET": "Attiva/disattiva per il set corrente"
+  }
+}
