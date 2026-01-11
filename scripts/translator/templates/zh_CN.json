@@ -1,0 +1,20 @@
+{
+  "full_name": "Chinese (Simplified)",
+  "examples": [
+    {
+      "key": "BAR.OPACITY",
+      "en": "Opacity",
+      "translated": "不透明度"
+    },
+    {
+      "key": "PANEL.CLOSE",
+      "en": "Close panel",
+      "translated": "关闭面板"
+    },
+    {
+      "key": "SETTINGS.LEFT_HANDED_MODE",
+      "en": "Left-handed mode",
+      "translated": "左手模式"
+    }
+  ]
+}
