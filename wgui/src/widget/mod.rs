@@ -226,8 +226,10 @@ pub struct ScrollbarInfo {
 }
 
 pub fn get_scrollbar_info(l: &taffy::Layout) -> Option<ScrollbarInfo> {
+	let overflow_start_threshold_units = 3.0; // don't show scrollbars for nearly non-scrollable lists
+
 	let overflow = Vec2::new(l.scroll_width(), l.scroll_height());
-	if overflow.x == 0.0 && overflow.y == 0.0 {
+	if overflow.x < overflow_start_threshold_units && overflow.y < overflow_start_threshold_units {
 		return None; // not overflowing
 	}
 
@@ -360,13 +362,11 @@ impl WidgetState {
 		let transform = state.transform_stack.get();
 
 		let thickness = 6.0;
-		let margin = 4.0;
+		let margin = 6.0;
 
 		let rect_params = drawing::Rectangle {
-			color: drawing::Color::new(1.0, 1.0, 1.0, 0.0),
-			border: 2.0,
-			border_color: drawing::Color::new(1.0, 1.0, 1.0, 1.0),
-			round_units: 2,
+			color: drawing::Color::new(1.0, 1.0, 1.0, 0.5),
+			round_units: 4,
 			..Default::default()
 		};
 
@@ -376,8 +376,8 @@ impl WidgetState {
 				PrimitiveExtent {
 					boundary: drawing::Boundary::from_pos_size(
 						Vec2::new(
-							transform.abs_pos.x + transform.raw_dim.x * (1.0 - info.handle_size.x) * self.data.scrolling_cur.x,
-							transform.abs_pos.y + transform.raw_dim.y - thickness - margin,
+							transform.rel_pos.x + transform.raw_dim.x * (1.0 - info.handle_size.x) * self.data.scrolling_cur.x,
+							transform.rel_pos.y + transform.raw_dim.y - thickness - margin,
 						),
 						Vec2::new(transform.raw_dim.x * info.handle_size.x, thickness),
 					),
@@ -393,8 +393,8 @@ impl WidgetState {
 				PrimitiveExtent {
 					boundary: drawing::Boundary::from_pos_size(
 						Vec2::new(
-							transform.abs_pos.x + transform.raw_dim.x - thickness - margin,
-							transform.abs_pos.y + transform.raw_dim.y * (1.0 - info.handle_size.y) * self.data.scrolling_cur.y,
+							transform.rel_pos.x + transform.raw_dim.x - thickness - margin,
+							transform.rel_pos.y + transform.raw_dim.y * (1.0 - info.handle_size.y) * self.data.scrolling_cur.y,
 						),
 						Vec2::new(thickness, transform.raw_dim.y * info.handle_size.y),
 					),

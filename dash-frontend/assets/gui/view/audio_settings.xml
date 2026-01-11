@@ -46,23 +46,25 @@
   </template>
 
   <elements>
-    <div id="devices" flex_direction="column" gap="4">
+    <div flex_direction="column" gap="4">
+      <div id="devices" flex_direction="column" gap="4" max_height="400" overflow_y="scroll">
 
-    </div>
+      </div>
 
-    <!-- bottom buttons -->
-    <div flex_direction="row" gap="4">
-      <Button
-        id="btn_auto"
-        sprite_src_builtin="dashboard/magic_wand.svg"
-        min_width="32"
-        tooltip="AUDIO.AUTO_SWITCH_TO_VR_AUDIO"
-        color="~color_accent"
-        tooltip_side="right" />
+      <!-- bottom buttons -->
+      <div flex_direction="row" gap="4">
+        <Button
+          id="btn_auto"
+          sprite_src_builtin="dashboard/magic_wand.svg"
+          min_width="32"
+          tooltip="AUDIO.AUTO_SWITCH_TO_VR_AUDIO"
+          color="~color_accent"
+          tooltip_side="right" />
 
-      <BottomButton id="btn_sinks" src_builtin="dashboard/volume.svg" translation="AUDIO.SPEAKERS" />
-      <BottomButton id="btn_sources" src_builtin="dashboard/microphone.svg" translation="AUDIO.MICROPHONES" />
-      <BottomButton id="btn_cards" src_builtin="dashboard/cpu.svg" translation="AUDIO.CARDS" />
+        <BottomButton id="btn_sinks" src_builtin="dashboard/volume.svg" translation="AUDIO.SPEAKERS" />
+        <BottomButton id="btn_sources" src_builtin="dashboard/microphone.svg" translation="AUDIO.MICROPHONES" />
+        <BottomButton id="btn_cards" src_builtin="dashboard/cpu.svg" translation="AUDIO.CARDS" />
+      </div>
     </div>
   </elements>
 </layout>
