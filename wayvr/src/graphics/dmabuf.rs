@@ -17,7 +17,9 @@ use vulkano::{
     memory::{
         DedicatedAllocation, DeviceMemory, ExternalMemoryHandleType, ExternalMemoryHandleTypes,
         MemoryAllocateInfo, MemoryImportInfo, MemoryPropertyFlags, ResourceMemory,
-        allocator::{AllocationCreateInfo, MemoryAllocator, MemoryTypeFilter},
+        allocator::{
+            AllocationCreateInfo, MemoryAllocatePreference, MemoryAllocator, MemoryTypeFilter,
+        },
     },
     sync::Sharing,
 };
@@ -329,6 +331,7 @@ pub fn export_dmabuf_image(
             ..Default::default()
         },
         AllocationCreateInfo {
+            allocate_preference: MemoryAllocatePreference::AlwaysAllocate,
             ..Default::default()
         },
     )
