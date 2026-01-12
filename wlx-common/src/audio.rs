@@ -176,23 +176,23 @@ impl AudioSample {
 						Some(Box::leak(Box::new(file_buffer)))
 					}
 					Err(e) => {
-						log::warn!("Unable to read file \"{}\", using default.", path);
+						log::warn!("Unable to read file \"{}\".", path);
 						log::warn!("{:?}", e);
 						None
 					}
 				}
 			}
-			Err(_) => {
-				log::trace!("File \"{}\" does not exist, using default.", path);
-				None
-			}
+			Err(_) => None,
 		}
 	}
 
 	pub fn bytes_from_config_or_default(path: &'static str, default: &'static [u8]) -> &'static [u8] {
 		match AudioSample::try_bytes_from_config(path) {
 			Some(value) => value,
-			None => default,
+			None => {
+				log::trace!("File \"{}\" not found, using default.", path);
+				default
+			}
 		}
 	}
 }
