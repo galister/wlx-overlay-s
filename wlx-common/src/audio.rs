@@ -1,7 +1,9 @@
-use std::{collections::HashMap, io::Cursor};
+use std::{collections::HashMap, io::Cursor, rc::Rc};
 
 use rodio::Source;
 use wgui::{assets::AssetProvider, sound::WguiSoundType};
+
+use std::io::Read;
 
 pub struct AudioSystem {
 	audio_stream: Option<rodio::OutputStream>,
@@ -33,32 +35,31 @@ impl SamplePlayer {
 		}
 	}
 
-	pub fn register_sample(&mut self, sample_name: &str, sample: AudioSample) {
-		log::debug!("registering audio sample \"{sample_name}\"");
-		self.samples.insert(String::from(sample_name), sample);
-	}
-
-	pub fn register_mp3_sample_from_assets(
-		&mut self,
-		sample_name: &str,
-		assets: &mut dyn AssetProvider,
-		path: &str,
-	) -> anyhow::Result<()> {
+	pub fn register_sample(&mut self, sample_name: &str, sample: AudioSample) -> anyhow::Result<()> {
 		// load only once
 		if self.samples.contains_key(sample_name) {
+			log::debug!("Audio sample '{sample_name}' already exists.");
 			return Ok(());
 		}
 
-		let data = assets.load_from_path(path)?;
-		self.register_sample(sample_name, AudioSample::from_mp3(&data)?);
-
+		log::debug!("Registering audio sample '{sample_name}'");
+		self.samples.insert(String::from(sample_name), sample);
 		Ok(())
 	}
 
 	pub fn register_wgui_samples(&mut self, assets: &mut dyn AssetProvider) -> anyhow::Result<()> {
 		let mut load = |sound: WguiSoundType| -> anyhow::Result<()> {
 			let sample_name = get_sample_name_from_wgui_sound_type(sound);
-			self.register_mp3_sample_from_assets(sample_name, assets, &format!("sound/{}.mp3", sample_name))
+			let path = &format!("sound/{}.mp3", sample_name);
+
+			// try loading a custom sound; if one doesn't exist (or it failed to load), use the built-in asset
+			let sound_bytes = match AudioSample::try_bytes_from_config(path) {
+				Ok(bytes) => bytes,
+				Err(_) => assets.load_from_path(path)?.into(),
+			};
+
+			self.register_sample(sample_name, AudioSample::from_mp3(&*sound_bytes)?)?;
+			Ok(())
 		};
 
 		load(WguiSoundType::ButtonPress)?;
@@ -71,7 +72,7 @@ impl SamplePlayer {
 
 	pub fn play_sample(&mut self, system: &mut AudioSystem, sample_name: &str) {
 		let Some(sample) = self.samples.get(sample_name) else {
-			log::error!("failed to play sample by name {}", sample_name);
+			log::error!("Failed to play sample by name '{}'", sample_name);
 			return;
 		};
 
@@ -142,5 +143,27 @@ impl AudioSample {
 				decoder.collect::<Vec<rodio::Sample>>(),
 			),
 		})
+	}
+
+	pub fn try_bytes_from_config(path: &str) -> anyhow::Result<Rc<[u8]>> {
+		let real_path = crate::config_io::get_config_root().join(&*path);
+
+		let mut file = std::fs::File::open(&real_path)
+			.inspect_err(|e| log::debug!("Could not open file '{}': {e:?}", real_path.display()))?;
+		let mut file_buffer = vec![];
+		file
+			.read_to_end(&mut file_buffer)
+			.inspect_err(|e| log::debug!("Could not read file '{}': {e:?}", real_path.display()))?;
+		Ok(file_buffer.into())
+	}
+
+	pub fn bytes_from_config_or_default(path: &str, default: &'static [u8]) -> Rc<[u8]> {
+		match AudioSample::try_bytes_from_config(path) {
+			Ok(value) => value,
+			Err(_) => {
+				log::trace!("File '{}' not found, using default.", path);
+				default.into()
+			}
+		}
 	}
 }
