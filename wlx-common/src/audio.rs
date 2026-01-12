@@ -1,6 +1,5 @@
 use std::{collections::HashMap, io::Cursor, rc::Rc};
 
-use anyhow::Context as _;
 use rodio::Source;
 use wgui::{assets::AssetProvider, sound::WguiSoundType};
 
@@ -39,11 +38,11 @@ impl SamplePlayer {
 	pub fn register_sample(&mut self, sample_name: &str, sample: AudioSample) -> anyhow::Result<()> {
 		// load only once
 		if self.samples.contains_key(sample_name) {
-			log::debug!("audio sample \"{sample_name}\" already exists");
+			log::debug!("Audio sample '{sample_name}' already exists.");
 			return Ok(());
 		}
 
-		log::debug!("registering audio sample \"{sample_name}\"");
+		log::debug!("Registering audio sample '{sample_name}'");
 		self.samples.insert(String::from(sample_name), sample);
 		Ok(())
 	}
@@ -73,7 +72,7 @@ impl SamplePlayer {
 
 	pub fn play_sample(&mut self, system: &mut AudioSystem, sample_name: &str) {
 		let Some(sample) = self.samples.get(sample_name) else {
-			log::error!("failed to play sample by name {}", sample_name);
+			log::error!("Failed to play sample by name '{}'", sample_name);
 			return;
 		};
 
