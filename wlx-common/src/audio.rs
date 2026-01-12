@@ -1,5 +1,6 @@
-use std::{collections::HashMap, io::Cursor};
+use std::{collections::HashMap, io::Cursor, rc::Rc};
 
+use anyhow::Context as _;
 use rodio::Source;
 use wgui::{assets::AssetProvider, sound::WguiSoundType};
 
@@ -47,24 +48,6 @@ impl SamplePlayer {
 		Ok(())
 	}
 
-	// unused
-	pub fn register_mp3_sample_from_assets(
-		&mut self,
-		sample_name: &str,
-		assets: &mut dyn AssetProvider,
-		path: &str,
-	) -> anyhow::Result<()> {
-		// load only once
-		if self.samples.contains_key(sample_name) {
-			return Ok(());
-		}
-
-		let data = assets.load_from_path(path)?;
-		self.register_sample(sample_name, AudioSample::from_mp3(&data)?)?;
-
-		Ok(())
-	}
-
 	pub fn register_wgui_samples(&mut self, assets: &mut dyn AssetProvider) -> anyhow::Result<()> {
 		let mut load = |sound: WguiSoundType| -> anyhow::Result<()> {
 			let sample_name = get_sample_name_from_wgui_sound_type(sound);
@@ -72,11 +55,11 @@ impl SamplePlayer {
 
 			// try loading a custom sound; if one doesn't exist (or it failed to load), use the built-in asset
 			let sound_bytes = match AudioSample::try_bytes_from_config(path) {
-				Some(bytes) => bytes,
-				None => &assets.load_from_path(path)?,
+				Ok(bytes) => bytes,
+				Err(_) => assets.load_from_path(path)?.into(),
 			};
 
-			self.register_sample(sample_name, AudioSample::from_mp3(sound_bytes)?)?;
+			self.register_sample(sample_name, AudioSample::from_mp3(&*sound_bytes)?)?;
 			Ok(())
 		};
 
@@ -163,35 +146,24 @@ impl AudioSample {
 		})
 	}
 
-	pub fn try_bytes_from_config(path: &str) -> Option<&mut Vec<u8>> {
+	pub fn try_bytes_from_config(path: &str) -> anyhow::Result<Rc<[u8]>> {
 		let real_path = crate::config_io::get_config_root().join(&*path);
 
-		match std::fs::File::open(real_path) {
-			Ok(mut file) => {
-				let mut file_buffer = vec![];
-				match file.read_to_end(&mut file_buffer) {
-					Ok(size) => {
-						log::info!("Loaded file \"{}\" (size: {})", path, size);
-						// Box is used here to work around `file_buffer`'s limited lifetime
-						Some(Box::leak(Box::new(file_buffer)))
-					}
-					Err(e) => {
-						log::warn!("Unable to read file \"{}\".", path);
-						log::warn!("{:?}", e);
-						None
-					}
-				}
-			}
-			Err(_) => None,
-		}
+		// .context(real_path.to_string_lossy())
+		let mut file = std::fs::File::open(real_path).context("Could not open file")?;
+		let mut file_buffer = vec![];
+		file
+			.read_to_end(&mut file_buffer)
+			.context("Could not read file contents")?;
+		Ok(file_buffer.into())
 	}
 
-	pub fn bytes_from_config_or_default(path: &'static str, default: &'static [u8]) -> &'static [u8] {
+	pub fn bytes_from_config_or_default(path: &str, default: &'static [u8]) -> Rc<[u8]> {
 		match AudioSample::try_bytes_from_config(path) {
-			Some(value) => value,
-			None => {
+			Ok(value) => value,
+			Err(_) => {
 				log::trace!("File \"{}\" not found, using default.", path);
-				default
+				default.into()
 			}
 		}
 	}

@@ -191,11 +191,11 @@ impl<T: 'static> Frontend<T> {
 
 		// try loading a custom sound; if one doesn't exist (or it failed to load), use the built-in asset
 		let sound_bytes = match audio::AudioSample::try_bytes_from_config(path) {
-			Some(bytes) => bytes,
-			None => &assets.load_from_path(path)?,
+			Ok(bytes) => bytes,
+			Err(_) => assets.load_from_path(path)?.into(),
 		};
 
-		let sample = audio::AudioSample::from_mp3(sound_bytes)?;
+		let sample = audio::AudioSample::from_mp3(&*sound_bytes)?;
 		audio_system.play_sample(&sample);
 		Ok(())
 	}
