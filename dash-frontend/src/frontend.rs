@@ -183,10 +183,19 @@ impl<T: 'static> Frontend<T> {
 
 	fn play_sound(&mut self, audio_system: &mut audio::AudioSystem, sound_type: SoundType) -> anyhow::Result<()> {
 		let mut assets = self.globals.assets_builtin();
-		let sample = audio::AudioSample::from_mp3(&assets.load_from_path(match sound_type {
+
+		let path = match sound_type {
 			SoundType::Startup => "sound/startup.mp3",
 			SoundType::Launch => "sound/app_start.mp3",
-		})?)?;
+		};
+
+		// try loading a custom sound; if one doesn't exist (or it failed to load), use the built-in asset
+		let sound_bytes = match audio::AudioSample::try_bytes_from_config(path) {
+			Some(bytes) => bytes,
+			None => &assets.load_from_path(path)?,
+		};
+
+		let sample = audio::AudioSample::from_mp3(sound_bytes)?;
 		audio_system.play_sample(&sample);
 		Ok(())
 	}
