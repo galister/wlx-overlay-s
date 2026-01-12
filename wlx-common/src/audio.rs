@@ -170,8 +170,8 @@ impl AudioSample {
 			Ok(mut file) => {
 				let mut file_buffer = vec![];
 				match file.read_to_end(&mut file_buffer) {
-					Ok(_) => {
-						log::info!("Loaded file \"{}\" (size: {})", path, file_buffer.len());
+					Ok(size) => {
+						log::info!("Loaded file \"{}\" (size: {})", path, size);
 						// Box is used here to work around `file_buffer`'s limited lifetime
 						Some(Box::leak(Box::new(file_buffer)))
 					}
