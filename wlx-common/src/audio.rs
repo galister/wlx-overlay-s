@@ -149,12 +149,12 @@ impl AudioSample {
 	pub fn try_bytes_from_config(path: &str) -> anyhow::Result<Rc<[u8]>> {
 		let real_path = crate::config_io::get_config_root().join(&*path);
 
-		// .context(real_path.to_string_lossy())
-		let mut file = std::fs::File::open(real_path).context("Could not open file")?;
+		let mut file = std::fs::File::open(&real_path)
+			.inspect_err(|e| log::debug!("Could not open file '{}': {e:?}", real_path.display()))?;
 		let mut file_buffer = vec![];
 		file
 			.read_to_end(&mut file_buffer)
-			.context("Could not read file contents")?;
+			.inspect_err(|e| log::debug!("Could not read file '{}': {e:?}", real_path.display()))?;
 		Ok(file_buffer.into())
 	}
 
@@ -162,7 +162,7 @@ impl AudioSample {
 		match AudioSample::try_bytes_from_config(path) {
 			Ok(value) => value,
 			Err(_) => {
-				log::trace!("File \"{}\" not found, using default.", path);
+				log::trace!("File '{}' not found, using default.", path);
 				default.into()
 			}
 		}
