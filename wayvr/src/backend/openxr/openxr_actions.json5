@@ -34,19 +34,21 @@
 // do not mess with these, unless you know what you're doing
 
 [
+  // Eye+hand interaction
+  // eye is aim, left pinch is grab, right pinch is click
   {
     profile: "/interaction_profiles/ext/eye_gaze_interaction",
     pose: {
-      fallback: "/user/eyes_ext/input/gaze_ext/pose",
+      handsfree: "/user/eyes_ext/input/gaze_ext/pose",
     },
   },
   {
     profile: "/interaction_profiles/ext/hand_interaction_ext",
     click: {
-      fallback: "/user/hand/right/input/pinch_ext/value"
+      handsfree: "/user/hand/right/input/pinch_ext/value"
     },
     grab: {
-      fallback: "/user/hand/left/input/pinch_ext/value",
+      handsfree: "/user/hand/left/input/pinch_ext/value",
     },
   },
 
