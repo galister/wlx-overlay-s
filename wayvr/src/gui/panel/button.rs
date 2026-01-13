@@ -671,8 +671,9 @@ pub(super) fn setup_custom_button<S: 'static>(
                     return;
                 };
 
-                // collect arguments specified in the initial string
                 let mut osc_args = vec![];
+
+                // collect arguments specified in the initial string
                 for arg in args {
                     let Ok(osc_arg) = parse_osc_value(arg)
                         .inspect_err(|e| log::warn!("Could not parse OSC value '{arg}': {e:?}"))
@@ -685,7 +686,6 @@ pub(super) fn setup_custom_button<S: 'static>(
                 }
 
                 // collect arguments from _arg<n> attributes.
-                let mut osc_args = vec![];
                 let mut arg_index = 0;
                 while match attribs.get_value(&format!("_arg{arg_index}")) {
                     Some(value) => {
