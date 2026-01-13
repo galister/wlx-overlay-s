@@ -243,7 +243,8 @@ pub fn parse_osc_value(s: &str) -> anyhow::Result<OscType> {
                 }
             }
 
-            anyhow::bail!("Unknown OSC type literal: {s}")
+            //anyhow::bail!("Unknown OSC type literal: {s}")
+            return Ok(OscType::String(s.to_string()));
         }
     }
 }

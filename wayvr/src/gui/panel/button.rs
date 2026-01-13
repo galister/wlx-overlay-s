@@ -671,8 +671,11 @@ pub(super) fn setup_custom_button<S: 'static>(
                     return;
                 };
 
+                // re-consolidate arguments (now that `action` and `command` were removed)
+                let args_joined = args.collect::<Vec<_>>().join(" ");
+
                 let mut osc_args = vec![];
-                for arg in args {
+                for arg in args_joined.split(";") {
                     let Ok(osc_arg) = parse_osc_value(arg)
                         .inspect_err(|e| log::warn!("Could not parse OSC value '{arg}': {e:?}"))
                     else {
