@@ -671,11 +671,9 @@ pub(super) fn setup_custom_button<S: 'static>(
                     return;
                 };
 
-                // re-consolidate arguments (now that `action` and `command` were removed)
-                let args_joined = args.collect::<Vec<_>>().join(" ");
-
+                // collect arguments specified in the initial string
                 let mut osc_args = vec![];
-                for arg in args_joined.split(";") {
+                for arg in args {
                     let Ok(osc_arg) = parse_osc_value(arg)
                         .inspect_err(|e| log::warn!("Could not parse OSC value '{arg}': {e:?}"))
                     else {
@@ -685,6 +683,25 @@ pub(super) fn setup_custom_button<S: 'static>(
                     };
                     osc_args.push(osc_arg);
                 }
+
+                // collect arguments from _arg<n> attributes.
+                let mut osc_args = vec![];
+                let mut arg_index = 0;
+                while match attribs.get_value(&format!("_arg{arg_index}")) {
+                    Some(value) => {
+                        let Ok(osc_arg) = parse_osc_value(value).inspect_err(|e| {
+                            log::warn!("Could not parse OSC value \"{value}\": {e:?}")
+                        }) else {
+                            let msg = format!("expected OscValue, found \"{value}\"");
+                            log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
+                            return;
+                        };
+                        osc_args.push(osc_arg);
+                        arg_index += 1;
+                        true
+                    }
+                    None => false,
+                } {} // cursed
 
                 Box::new(move |_common, data, app, _| {
                     if !test_button(data) || !test_duration(&button, app) {
