@@ -72,6 +72,9 @@
                   <div id="pos_align_to_hmd" >
                     <CheckBox id="align_box" translation="EDIT_MODE.ALIGN_TO_HMD" tooltip_side="bottom" />
                   </div>
+                  <div id="pos_global">
+                    <CheckBox id="global_box" translation="EDIT_MODE.GLOBAL" tooltip_side="bottom" />
+                  </div>
                 </div>
               </div>
               <div id="tab_stereo" display="none" height="100" flex_direction="column">

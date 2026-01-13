@@ -44,6 +44,7 @@
 		"POS_HMD": "Follow the HMD.",
 		"POS_STATIC": "Static: Not part of any set, no recenter.",
 		"POSITIONING": "Positioning",
+		"GLOBAL": "Always visible",
 		"RESIZE_PRESS_AND_DRAG": "Resize (press & drag)",
 		"STEREO_3D_MODE": {
 			"SPLIT_BOTTOM_TOP": "BOTTOM→TOP",
