@@ -107,7 +107,7 @@
 
   <!-- An app with a single icon. -->
   <template name="App">
-    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press="::ContextMenuOpen menu_app">  
+    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press_left="::ContextMenuOpen menu_app" _press_right="::OverlayToggle ${name}">  
       <sprite width="38" height="38" color="~color_text" src_ext="${icon}" />
     </Button>
   </template>
@@ -122,7 +122,7 @@
 
   <!-- A screen with a shortened connector name, e.g. "H1" for HDMI-A-1 or "D2" for DP-2 -->
   <template name="Screen">
-    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press="::ContextMenuOpen menu_screen">
+    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press_left="::ContextMenuOpen menu_screen" _press_right="::OverlayToggle ${name}">
       <sprite width="38" height="38" color="~color_text" src_builtin="edit/screen.svg" />
       <div position="absolute" margin_top="-7" margin_left="-1">
         <label text="${display}" size="18" color="~color_faded_20" weight="bold" />
@@ -140,7 +140,7 @@
   </blueprint>
 
   <template name="Panel">
-    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press="::ContextMenuOpen menu_panel">
+    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press_left="::ContextMenuOpen menu_panel" _press_right="::OverlayToggle ${name}">
       <sprite width="38" height="38" color="~color_text" src="${icon}" />
     </Button>
   </template>
@@ -155,7 +155,7 @@
   </blueprint>
 
   <template name="Mirror">
-    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press="::ContextMenuOpen menu_mirror">
+    <Button macro="button_style" id="overlay_${idx}" tooltip_str="${name}" _context_name="${name}" _press_left="::ContextMenuOpen menu_mirror" _press_right="::OverlayToggle ${name}">
       <sprite width="38" height="38" color="~color_text" src_builtin="edit/mirror.svg" />
       <div position="absolute" margin_top="5" margin_left="13">
         <label text="${display}" size="20" color="~color_faded_20" weight="bold" />
