@@ -156,7 +156,7 @@ impl View {
 		} else {
 			CompositorMode::Native
 		};
-		radio_compositor.set_value(compositor_mode.as_ref())?;
+		radio_compositor.set_value_simple(compositor_mode.as_ref())?;
 		tasks.push(Task::SetCompositor(compositor_mode));
 
 		let res_mode = ResMode::Res1080;

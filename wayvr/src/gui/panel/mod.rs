@@ -7,7 +7,10 @@ use idmap::IdMap;
 use label::setup_custom_label;
 use wgui::{
     assets::AssetPath,
-    components::button::ComponentButton,
+    components::{
+        button::ComponentButton, checkbox::ComponentCheckbox, radio_group::ComponentRadioGroup,
+        slider::ComponentSlider,
+    },
     drawing,
     event::{
         CallbackDataCommon, Event as WguiEvent, EventAlterables, EventCallback, EventListenerID,
@@ -20,8 +23,7 @@ use wgui::{
     parser::{
         self, CustomAttribsInfoOwned, Fetchable, ParseDocumentExtra, ParserState, parse_color_hex,
     },
-    renderer_vk::context::Context as WguiContext,
-    renderer_vk::text::custom_glyph::CustomGlyphData,
+    renderer_vk::{context::Context as WguiContext, text::custom_glyph::CustomGlyphData},
     taffy,
     widget::{
         EventResult, image::WidgetImage, label::WidgetLabel, rectangle::WidgetRectangle,
@@ -574,6 +576,33 @@ pub fn apply_custom_command<T>(
                 .set_style(wid, wgui::event::StyleSetRequest::Display(display));
             com.alterables.mark_redraw();
         }
+        ModifyPanelCommand::SetValue(value_str) => {
+            if let Ok(cb) = panel
+                .parser_state
+                .fetch_component_as::<ComponentCheckbox>(element)
+            {
+                let value_b = match value_str.to_lowercase().as_str() {
+                    "0" | "false" => false,
+                    "1" | "true" => true,
+                    _ => anyhow::bail!(
+                        "Not a valid bool. Supported values: '0', '1', 'false', 'true'"
+                    ),
+                };
+                cb.set_checked(&mut com, value_b);
+            } else if let Ok(slider) = panel
+                .parser_state
+                .fetch_component_as::<ComponentSlider>(element)
+            {
+                let value_f32 = value_str.parse::<f32>().context("Not a valid number")?;
+                slider.set_value(&mut com, value_f32);
+            } else if let Ok(radio) = panel
+                .parser_state
+                .fetch_component_as::<ComponentRadioGroup>(element)
+            {
+                radio.set_value(&mut com, &value_str)?;
+            }
+        }
+        ModifyPanelCommand::GetValue => todo!(),
         ModifyPanelCommand::SetStickyState(sticky_down) => {
             let button = panel
                 .parser_state

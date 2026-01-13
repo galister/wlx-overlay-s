@@ -66,6 +66,8 @@ pub enum ModifyPanelCommand {
     SetColor(String),
     SetImage(String),
     SetVisible(bool),
+    GetValue,
+    SetValue(String),
     SetStickyState(bool),
 }
 

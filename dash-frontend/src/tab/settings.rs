@@ -224,6 +224,7 @@ enum SettingType {
 	XwaylandByDefault,
 	CaptureMethod,
 	KeyboardMiddleClick,
+	HandsfreePointer,
 }
 
 impl SettingType {
@@ -286,6 +287,9 @@ impl SettingType {
 				config.keyboard_middle_click_mode =
 					wlx_common::config::AltModifier::from_str(value).expect("Invalid enum value!")
 			}
+			Self::HandsfreePointer => {
+				config.handsfree_pointer = wlx_common::config::HandsfreePointer::from_str(value).expect("Invalid enum value!")
+			}
 			_ => panic!("Requested enum for non-enum SettingType"),
 		}
 	}
@@ -294,6 +298,7 @@ impl SettingType {
 		match self {
 			Self::CaptureMethod => Self::get_enum_title_inner(config.capture_method),
 			Self::KeyboardMiddleClick => Self::get_enum_title_inner(config.keyboard_middle_click_mode),
+			Self::HandsfreePointer => Self::get_enum_title_inner(config.handsfree_pointer),
 			_ => panic!("Requested enum for non-enum SettingType"),
 		}
 	}
@@ -353,6 +358,7 @@ impl SettingType {
 			Self::XwaylandByDefault => Ok("APP_SETTINGS.XWAYLAND_BY_DEFAULT"),
 			Self::CaptureMethod => Ok("APP_SETTINGS.CAPTURE_METHOD"),
 			Self::KeyboardMiddleClick => Ok("APP_SETTINGS.KEYBOARD_MIDDLE_CLICK"),
+			Self::HandsfreePointer => Ok("APP_SETTINGS.HANDSFREE_POINTER"),
 		}
 	}
 
@@ -371,6 +377,7 @@ impl SettingType {
 			Self::ScreenRenderDown => Some("APP_SETTINGS.SCREEN_RENDER_DOWN_HELP"),
 			Self::CaptureMethod => Some("APP_SETTINGS.CAPTURE_METHOD_HELP"),
 			Self::KeyboardMiddleClick => Some("APP_SETTINGS.KEYBOARD_MIDDLE_CLICK_HELP"),
+			Self::HandsfreePointer => Some("APP_SETTINGS.HANDSFREE_POINTER_HELP"),
 			_ => None,
 		}
 	}
@@ -382,10 +389,10 @@ impl SettingType {
 			| Self::RoundMultiplier
 			| Self::UprightScreenFix
 			| Self::DoubleCursorFix
-			| Self::SetsOnWatch
 			| Self::UseSkybox
 			| Self::UsePassthrough
-			| Self::ScreenRenderDown => true,
+			| Self::ScreenRenderDown
+			| Self::CaptureMethod => true,
 			_ => false,
 		}
 	}
@@ -710,6 +717,12 @@ impl<T> TabSettings<T> {
 					c,
 					SettingType::KeyboardMiddleClick,
 					wlx_common::config::AltModifier::VARIANTS
+				);
+				dropdown!(
+					mp,
+					c,
+					SettingType::HandsfreePointer,
+					wlx_common::config::HandsfreePointer::VARIANTS
 				);
 				checkbox!(mp, c, SettingType::FocusFollowsMouseMode);
 				checkbox!(mp, c, SettingType::LeftHandedMouse);

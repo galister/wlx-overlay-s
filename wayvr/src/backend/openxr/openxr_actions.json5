@@ -34,22 +34,21 @@
 // do not mess with these, unless you know what you're doing
 
 [
-  // Hand tracking
-  // {
-  //   profile: "/interaction_profiles/ext/hand_interaction_ext",
-  //   pose: {
-  //     left: "/user/hand/left/input/aim/pose",
-  //     right: "/user/hand/right/input/aim/pose"
-  //   },
-  //   click: {
-  //     left: "/user/hand/left/input/pinch_ext/value",
-  //     right: "/user/hand/right/input/pinch_ext/value"
-  //   },
-  //   grab: {
-  //     left: "/user/hand/left/input/grasp_ext/value",
-  //     right: "/user/hand/right/input/grasp_ext/value"
-  //   },
-  // },
+  {
+    profile: "/interaction_profiles/ext/eye_gaze_interaction",
+    pose: {
+      fallback: "/user/eyes_ext/input/gaze_ext/pose",
+    },
+  },
+  {
+    profile: "/interaction_profiles/ext/hand_interaction_ext",
+    click: {
+      fallback: "/user/hand/right/input/pinch_ext/value"
+    },
+    grab: {
+      fallback: "/user/hand/left/input/pinch_ext/value",
+    },
+  },
 
   // Fallback controller, intended for testing
   {

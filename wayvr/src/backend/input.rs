@@ -3,7 +3,7 @@ use std::process::{Child, Command};
 use std::sync::Arc;
 use std::time::Instant;
 
-use glam::{Affine3A, Vec2, Vec3A, Vec3Swizzles};
+use glam::{Affine3A, Mat3A, Vec2, Vec3, Vec3A, Vec3Swizzles};
 
 use idmap_derive::IntegerId;
 use smallvec::{SmallVec, smallvec};
@@ -233,6 +233,8 @@ pub struct Pointer {
     pub last_click: Instant,
     pub pending_haptics: Option<Haptics>,
     pub(super) interaction: InteractionState,
+    pub tracked: bool,
+    pub handsfree: bool,
 }
 
 impl Pointer {
@@ -247,6 +249,8 @@ impl Pointer {
             last_click: Instant::now(),
             pending_haptics: None,
             interaction: InteractionState::default(),
+            tracked: false,
+            handsfree: false,
         }
     }
 
@@ -318,6 +322,47 @@ pub enum PointerMode {
     Special,
 }
 
+pub struct PointerLine {
+    pub mode: PointerMode,
+    pub a: Vec3A,
+    pub b: Vec3A,
+}
+
+fn populate_lines(
+    lines: &mut Vec<PointerLine>,
+    pointer: &Pointer,
+    maybe_hit: Option<(PointerHit, RayHit)>,
+    hmd: &Affine3A,
+) {
+    let Some((hit, raw_hit)) = maybe_hit else {
+        return;
+    };
+
+    if pointer.handsfree {
+        const HALF_SIZE: f32 = 0.01;
+
+        // horizontal arm
+        lines.push(PointerLine {
+            mode: PointerMode::Left,
+            a: raw_hit.global_pos - (hmd.x_axis * HALF_SIZE),
+            b: raw_hit.global_pos + (hmd.x_axis * HALF_SIZE),
+        });
+
+        // vertical arm
+        lines.push(PointerLine {
+            mode: PointerMode::Special,
+            a: raw_hit.global_pos - (hmd.y_axis * HALF_SIZE),
+            b: raw_hit.global_pos + (hmd.y_axis * HALF_SIZE),
+        });
+    } else {
+        lines.push(PointerLine {
+            mode: hit.mode,
+            a: pointer.pose.translation,
+            b: raw_hit.global_pos,
+        });
+    }
+}
+
 fn update_focus(focus: &mut KeyboardFocus, overlay_keyboard_focus: Option<KeyboardFocus>) {
     if let Some(f) = &overlay_keyboard_focus
         && *focus != *f
@@ -330,11 +375,12 @@ fn update_focus(focus: &mut KeyboardFocus, overlay_keyboard_focus: Option<Keyboa
 pub fn interact<O>(
     overlays: &mut OverlayWindowManager<O>,
     app: &mut AppState,
-) -> [(f32, Option<Haptics>); 2]
+    lines: &mut Vec<PointerLine>,
+) -> [Option<Haptics>; 2]
 where
     O: Default,
 {
-    if app.input_state.pointers[1].last_click > app.input_state.pointers[0].last_click {
+    let hits = if app.input_state.pointers[1].last_click > app.input_state.pointers[0].last_click {
         let right = interact_hand(1, overlays, app);
         let left = interact_hand(0, overlays, app);
         [left, right]
@@ -342,21 +388,36 @@ where
         let left = interact_hand(0, overlays, app);
         let right = interact_hand(1, overlays, app);
         [left, right]
+    };
+
+    for (idx, hit) in hits.iter().enumerate() {
+        populate_lines(
+            lines,
+            &mut app.input_state.pointers[idx],
+            hit.0,
+            &app.input_state.hmd,
+        );
     }
+
+    [hits[0].1, hits[1].1]
 }
 
 fn interact_hand<O>(
     idx: usize,
     overlays: &mut OverlayWindowManager<O>,
     app: &mut AppState,
-) -> (f32, Option<Haptics>)
+) -> (Option<(PointerHit, RayHit)>, Option<Haptics>)
 where
     O: Default,
 {
-    // already grabbing, ignore everything else
     let mut pointer = &mut app.input_state.pointers[idx];
     let pending_haptics = pointer.pending_haptics.take();
 
+    if !pointer.tracked {
+        return (None, pending_haptics); // no hit
+    }
+
+    // already grabbing, ignore everything else
     if let Some(grab_data) = pointer.interaction.grabbed {
         if let Some(grabbed) = overlays.mut_by_id(grab_data.grabbed_id) {
             handle_grabbed(idx, grabbed, app);
@@ -364,13 +425,13 @@ where
             log::warn!("Grabbed overlay {:?} does not exist", grab_data.grabbed_id);
             pointer.interaction.grabbed = None;
         }
-        return (0.1, pending_haptics);
+        return (None, pending_haptics);
     }
 
     let hovered_id = pointer.interaction.hovered_id.take();
-    let (Some(mut hit), haptics) = get_nearest_hit(idx, overlays, app) else {
+    let (Some((mut hit, raw_hit)), haptics) = get_nearest_hit(idx, overlays, app) else {
         handle_no_hit(idx, hovered_id, overlays, app);
-        return (0.0, pending_haptics); // no hit
+        return (None, pending_haptics); // no hit
     };
 
     // focus change
@@ -394,7 +455,7 @@ where
 
     let Some(hovered) = overlays.mut_by_id(hit.overlay) else {
         log::warn!("Hit overlay {:?} does not exist", hit.overlay);
-        return (0.0, pending_haptics); // no hit
+        return (None, pending_haptics); // no hit
     };
     pointer = &mut app.input_state.pointers[idx];
     pointer.interaction.hovered_id = Some(hit.overlay);
@@ -432,7 +493,7 @@ where
         );
         log::debug!("Hand {}: grabbed {}", hit.pointer, hovered.config.name);
         return (
-            hit.dist,
+            Some((hit, raw_hit)),
             Some(Haptics {
                 intensity: 0.25,
                 duration: 0.1,
@@ -463,7 +524,7 @@ where
         }
     }
 
-    (hit.dist, haptics.or(pending_haptics))
+    (Some((hit, raw_hit)), haptics.or(pending_haptics))
 }
 
 fn handle_no_hit<O>(
@@ -562,7 +623,7 @@ fn get_nearest_hit<O>(
     pointer_idx: usize,
     overlays: &mut OverlayWindowManager<O>,
     app: &mut AppState,
-) -> (Option<PointerHit>, Option<Haptics>)
+) -> (Option<(PointerHit, RayHit)>, Option<Haptics>)
 where
     O: Default,
 {
@@ -594,7 +655,7 @@ where
 
     hits.sort_by(|a, b| a.dist.total_cmp(&b.dist));
 
-    for hit in &hits {
+    for hit in hits {
         let overlay = overlays.mut_by_id(hit.overlay).unwrap(); // safe because we just got the id from the overlay
 
         let Some(uv) = overlay
@@ -611,7 +672,7 @@ where
             continue;
         }
 
-        let hit = PointerHit {
+        let pointer_hit = PointerHit {
             pointer: pointer_idx,
             overlay: hit.overlay,
             mode,
@@ -620,9 +681,9 @@ where
             dist: hit.dist,
         };
 
-        let result = overlay.config.backend.on_hover(app, &hit);
+        let result = overlay.config.backend.on_hover(app, &pointer_hit);
         if result.consume || overlay.config.editing {
-            return (Some(hit), result.haptics);
+            return (Some((pointer_hit, hit)), result.haptics);
         }
     }
 
@@ -673,6 +734,7 @@ fn start_grab(
 
     if let Some(hand) = pointer.hand()
         && !app.session.config.hide_grab_help
+        && !pointer.handsfree
     {
         let pos = state.positioning;
         app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(

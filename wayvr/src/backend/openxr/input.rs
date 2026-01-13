@@ -8,7 +8,7 @@ use glam::{Affine3A, Quat, Vec3, bool};
 use libmonado as mnd;
 use openxr::{self as xr, Quaternionf, Vector2f, Vector3f};
 use serde::{Deserialize, Serialize};
-use wlx_common::config_io;
+use wlx_common::{config::HandsfreePointer, config_io};
 
 use crate::{
     backend::input::{Haptics, InputState, Pointer, TrackedDevice, TrackedDeviceRole},
@@ -25,10 +25,11 @@ static CLICK_TIMES: [Duration; 3] = [
 
 pub(super) struct OpenXrInputSource {
     action_set: xr::ActionSet,
-    hands: [OpenXrHand; 2],
+    pointers: [OpenXrPointer; 2],
+    handsfree_pointer: OpenXrPointer,
 }
 
-pub(super) struct OpenXrHand {
+pub(super) struct OpenXrPointer {
     source: OpenXrHandSource,
     space: xr::Space,
 }
@@ -170,22 +171,27 @@ impl OpenXrInputSource {
 
         let left_source = OpenXrHandSource::new(&mut action_set, "left")?;
         let right_source = OpenXrHandSource::new(&mut action_set, "right")?;
+        let fallback_source = OpenXrHandSource::new(&mut action_set, "handsfree")?;
 
-        suggest_bindings(&xr.instance, &[&left_source, &right_source]);
+        suggest_bindings(
+            &xr.instance,
+            &[&left_source, &right_source, &fallback_source],
+        );
 
         xr.session.attach_action_sets(&[&action_set])?;
 
         Ok(Self {
             action_set,
-            hands: [
-                OpenXrHand::new(xr, left_source)?,
-                OpenXrHand::new(xr, right_source)?,
+            pointers: [
+                OpenXrPointer::new(xr, left_source)?,
+                OpenXrPointer::new(xr, right_source)?,
             ],
+            handsfree_pointer: OpenXrPointer::new(xr, fallback_source)?,
         })
     }
 
     pub fn haptics(&self, xr: &XrState, hand: usize, haptics: &Haptics) {
-        let action = &self.hands[hand].source.haptics;
+        let action = &self.pointers[hand].source.haptics;
 
         let duration_nanos = f64::from(haptics.duration) * 1_000_000_000.0;
 
@@ -204,11 +210,14 @@ impl OpenXrInputSource {
 
         let loc = xr.view.locate(&xr.stage, xr.predicted_display_time)?;
         let hmd = posef_to_transform(&loc.pose);
+        let mut hmd_tracked = true;
         if loc
             .location_flags
             .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
         {
             state.input_state.hmd.matrix3 = hmd.matrix3;
+        } else {
+            hmd_tracked = false;
         }
 
         if loc
@@ -216,11 +225,26 @@ impl OpenXrInputSource {
             .contains(xr::SpaceLocationFlags::POSITION_VALID)
         {
             state.input_state.hmd.translation = hmd.translation;
+        } else {
+            hmd_tracked = false;
         }
 
+        let mut any_tracked = false;
         for i in 0..2 {
-            self.hands[i].update(&mut state.input_state.pointers[i], xr, &state.session)?;
+            let pointer = &mut state.input_state.pointers[i];
+            self.pointers[i].update(pointer, xr, &state.session)?;
+            any_tracked |= pointer.tracked;
         }
+        if !any_tracked {
+            self.handsfree_pointer.update_handsfree(
+                &mut state.input_state.pointers[0],
+                xr,
+                &state.session,
+                hmd,
+                hmd_tracked,
+            )?;
+        }
+
         Ok(())
     }
 
@@ -305,7 +329,7 @@ impl OpenXrInputSource {
     }
 }
 
-impl OpenXrHand {
+impl OpenXrPointer {
     pub(super) fn new(xr: &XrState, source: OpenXrHandSource) -> Result<Self, xr::sys::Result> {
         let space = source
             .pose
@@ -314,11 +338,62 @@ impl OpenXrHand {
         Ok(Self { source, space })
     }
 
+    pub(super) fn update_handsfree(
+        &mut self,
+        pointer: &mut Pointer,
+        xr: &XrState,
+        session: &AppSession,
+        hmd: Affine3A,
+        hmd_tracked: bool,
+    ) -> anyhow::Result<()> {
+        match session.config.handsfree_pointer {
+            HandsfreePointer::None => return Ok(()),
+            HandsfreePointer::Hmd => {
+                pointer.tracked = hmd_tracked;
+                pointer.raw_pose = hmd;
+                pointer.pose = hmd;
+                let (cur_quat, cur_pos) =
+                    (Quat::from_affine3(&pointer.pose), pointer.pose.translation);
+
+                let (new_quat, new_pos) = (Quat::from_affine3(&hmd), Vec3::from(hmd.translation));
+                let lerp_factor =
+                    (1.0 / (xr.fps / 100.0) * session.config.pointer_lerp_factor).clamp(0.1, 1.0);
+                pointer.raw_pose = Affine3A::from_rotation_translation(new_quat, new_pos);
+                pointer.pose = Affine3A::from_rotation_translation(
+                    cur_quat.lerp(new_quat, lerp_factor),
+                    cur_pos.lerp(new_pos.into(), lerp_factor).into(),
+                );
+            }
+            HandsfreePointer::EyeTracking => {
+                // more aggressive smoothing for eye
+                self.pointer_load_pose(pointer, xr, session.config.pointer_lerp_factor * 0.5)?;
+            }
+        }
+
+        pointer.handsfree = pointer.tracked;
+        self.pointer_load_actions(pointer, xr, session)?;
+
+        Ok(())
+    }
+
     pub(super) fn update(
         &mut self,
         pointer: &mut Pointer,
         xr: &XrState,
         session: &AppSession,
+    ) -> anyhow::Result<()> {
+        pointer.handsfree = false;
+        self.pointer_load_pose(pointer, xr, session.config.pointer_lerp_factor)?;
+        self.pointer_load_actions(pointer, xr, session)?;
+
+        Ok(())
+    }
+
+    fn pointer_load_pose(
+        &mut self,
+        pointer: &mut Pointer,
+        xr: &XrState,
+        lerp_factor: f32,
     ) -> anyhow::Result<()> {
         let location = self.space.locate(&xr.stage, xr.predicted_display_time)?;
         if location
@@ -333,15 +408,25 @@ impl OpenXrHand {
                     transmute::<Vector3f, Vec3>(location.pose.position),
                 )
             };
-            let lerp_factor =
-                (1.0 / (xr.fps / 100.0) * session.config.pointer_lerp_factor).clamp(0.1, 1.0);
+            let lerp_factor = (1.0 / (xr.fps / 100.0) * lerp_factor).clamp(0.1, 1.0);
             pointer.raw_pose = Affine3A::from_rotation_translation(new_quat, new_pos);
             pointer.pose = Affine3A::from_rotation_translation(
                 cur_quat.lerp(new_quat, lerp_factor),
                 cur_pos.lerp(new_pos.into(), lerp_factor).into(),
             );
+            pointer.tracked = true;
+        } else {
+            pointer.tracked = false;
         }
+        Ok(())
+    }
 
+    fn pointer_load_actions(
+        &mut self,
+        pointer: &mut Pointer,
+        xr: &XrState,
+        session: &AppSession,
+    ) -> anyhow::Result<()> {
         pointer.now.click = self.source.click.state(pointer.before.click, xr, session)?;
 
         pointer.now.grab = self.source.grab.state(pointer.before.grab, xr, session)?;
@@ -464,11 +549,12 @@ fn is_bool(path_str: &str) -> bool {
 macro_rules! add_custom {
     ($action:expr, $field:ident, $hands:expr, $bindings:expr, $instance:expr) => {
         if let Some(action) = $action.as_ref() {
-            for i in 0..2 {
-                let spec = if i == 0 {
-                    action.left.as_ref()
-                } else {
-                    action.right.as_ref()
+            for i in 0..3 {
+                let spec = match i {
+                    0 => action.left.as_ref(),
+                    1 => action.right.as_ref(),
+                    2 => action.handsfree.as_ref(),
+                    _ => unreachable!(),
                 };
 
                 if let Some(spec) = spec {
@@ -526,11 +612,12 @@ macro_rules! add_custom {
 macro_rules! add_custom_lr {
     ($action:expr, $field:ident, $hands:expr, $bindings:expr, $instance:expr) => {
         if let Some(action) = $action {
-            for i in 0..2 {
-                let spec = if i == 0 {
-                    action.left.as_ref()
-                } else {
-                    action.right.as_ref()
+            for i in 0..3 {
+                let spec = match i {
+                    0 => action.left.as_ref(),
+                    1 => action.right.as_ref(),
+                    2 => action.handsfree.as_ref(),
+                    _ => unreachable!(),
                 };
 
                 if let Some(spec) = spec {
@@ -551,12 +638,14 @@ macro_rules! add_custom_lr {
 }
 
 #[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
-fn suggest_bindings(instance: &xr::Instance, hands: &[&OpenXrHandSource; 2]) {
+fn suggest_bindings(instance: &xr::Instance, hands: &[&OpenXrHandSource; 3]) {
     let profiles = load_action_profiles();
 
     for profile in profiles {
+        log::warn!("Loading profile {}", &profile.profile);
+
         let Ok(profile_path) = instance.string_to_path(&profile.profile) else {
-            log::debug!("Profile not supported: {}", profile.profile);
+            log::warn!("Profile not supported: {}", profile.profile);
             continue;
         };
 
@@ -618,6 +707,11 @@ fn suggest_bindings(instance: &xr::Instance, hands: &[&OpenXrHandSource; 2]) {
         {
             log::error!("Bad bindings for {}", &profile.profile[22..]);
             log::error!("Verify config: ~/.config/wayvr/openxr_actions.json5");
+        } else {
+            log::debug!(
+                "Bindings for {} bound successfully.",
+                &profile.profile[22..]
+            )
         }
     }
 }
@@ -633,6 +727,7 @@ enum OneOrMany<T> {
 struct OpenXrActionConfAction {
     left: Option<OneOrMany<String>>,
     right: Option<OneOrMany<String>>,
+    handsfree: Option<OneOrMany<String>>,
     threshold: Option<[f32; 2]>,
     double_click: Option<bool>,
     triple_click: Option<bool>,
@@ -672,6 +767,8 @@ fn load_action_profiles() -> Vec<OpenXrActionConfProfile> {
             for new in override_profiles {
                 if let Some(i) = profiles.iter().position(|old| old.profile == new.profile) {
                     profiles[i] = new;
+                } else {
+                    profiles.push(new);
                 }
             }
         }

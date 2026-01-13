@@ -1,4 +1,4 @@
-use glam::{Affine3A, Vec3, Vec3A};
+use glam::{Affine3A, Quat, Vec3, Vec3A};
 use idmap::IdMap;
 use openxr as xr;
 use smallvec::SmallVec;
@@ -96,14 +96,17 @@ impl LinePool {
         Ok(id)
     }
 
-    pub(super) fn draw_from(
+    pub(super) fn draw_between(
         &mut self,
         id: usize,
-        mut from: Affine3A,
-        len: f32,
+        start: Vec3A,
+        end: Vec3A,
         color: usize,
-        hmd: &Affine3A,
+        hmd: Affine3A,
     ) {
+        let dir = end - start;
+        let len = dir.length();
+
         if len < 0.01 {
             return;
         }
@@ -115,13 +118,19 @@ impl LinePool {
             return;
         };
 
+        let center = (start + end) * 0.5;
+        let dir_norm = dir / len;
+
+        let xform = Affine3A::from_rotation_translation(
+            Quat::from_rotation_arc(Vec3::Z, dir_norm.into()),
+            center.into(),
+        );
+
         let rotation = Affine3A::from_axis_angle(Vec3::X, PI * 1.5);
-
-        from.translation += from.transform_vector3a(Vec3A::NEG_Z) * (len * 0.5);
-        let mut transform = from * rotation;
-
-        let to_hmd = hmd.translation - from.translation;
+        let mut transform = xform * rotation;
+        let to_hmd = hmd.translation - center;
         let sides = [Vec3A::Z, Vec3A::X, Vec3A::NEG_Z, Vec3A::NEG_X];
+
         #[allow(clippy::neg_multiply)]
         let rotations = [
             Affine3A::IDENTITY,
@@ -129,6 +138,7 @@ impl LinePool {
             Affine3A::from_axis_angle(Vec3::Y, PI * -1.0),
             Affine3A::from_axis_angle(Vec3::Y, PI * 1.5),
         ];
+
         let mut closest = (0, 0.0);
         for (i, &side) in sides.iter().enumerate() {
             let dot = to_hmd.dot(transform.transform_vector3a(side));

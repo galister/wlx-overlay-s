@@ -12,7 +12,13 @@
 		"RELOAD_FROM_DISK": "Reload XML from disk",
 		"CLOSE_MIRROR": "Close mirror",
 		"CLOSE_APP": "Close app",
-		"FORCE_CLOSE_APP": "Force close app"
+		"FORCE_CLOSE_APP": "Force close app",
+		"HANDSFREE": {
+			"TITLE": "Handsfree mode",
+			"NONE": "Off",
+			"HMD": "HMD + pinch",
+			"EYE_TRACKING": "Eye + pinch"
+		}
 	},
 	"DEFAULT": "Default",
 	"DISABLED": "Disabled",

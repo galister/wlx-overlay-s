@@ -123,6 +123,11 @@ impl ComponentCheckbox {
 		common.alterables.mark_redraw();
 	}
 
+	pub fn get_checked(&self) -> bool {
+		let state = self.state.borrow_mut();
+		state.checked
+	}
+
 	pub fn get_value(&self) -> Option<Rc<str>> {
 		self.data.value.clone()
 	}

@@ -22,7 +22,7 @@ use wgui::{
     widget::EventResult,
     windowing::context_menu::{Blueprint, ContextMenu, OpenParams},
 };
-use wlx_common::overlays::ToastTopic;
+use wlx_common::{config::HandsfreePointer, overlays::ToastTopic};
 
 use crate::{
     RESTART, RUNNING,
@@ -600,6 +600,26 @@ pub(super) fn setup_custom_button<S: 'static>(
 
                 Ok(EventResult::Consumed)
             }),
+            "::HandsfreeMode" => {
+                let Some(arg) = args.next() else {
+                    log_cmd_missing_arg(parser_state, TAG, name, command);
+                    return;
+                };
+
+                let Ok(val) = HandsfreePointer::from_str(arg) else {
+                    let msg = format!("expected HandsfreePointer, found \"{arg}\"");
+                    log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
+                    return;
+                };
+
+                Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+                    app.session.config.handsfree_pointer = val;
+                    Ok(EventResult::Consumed)
+                })
+            }
             "::SendKey" => {
                 let Some(arg) = args.next() else {
                     log_cmd_missing_arg(parser_state, TAG, name, command);

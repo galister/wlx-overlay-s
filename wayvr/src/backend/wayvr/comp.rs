@@ -36,7 +36,6 @@ use std::fs::File;
 use std::io::Write;
 use std::os::fd::OwnedFd;
 use std::sync::{Arc, Mutex};
-use wayland_client::WEnum;
 
 use smithay::utils::Serial;
 use smithay::wayland::compositor::{self, BufferAssignment, SurfaceAttributes, send_surface_state};

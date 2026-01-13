@@ -6,7 +6,8 @@ use wayvr_ipc::packet_client::WvrProcessLaunchParams;
 use wlx_common::{
     astr_containers::AStrMap,
     config::{
-        AltModifier, CaptureMethod, GeneralConfig, SerializedWindowSet, SerializedWindowStates,
+        AltModifier, CaptureMethod, GeneralConfig, HandsfreePointer, SerializedWindowSet,
+        SerializedWindowStates,
     },
     config_io,
     overlays::BackendAttribValue,
@@ -139,6 +140,7 @@ pub struct AutoSettings {
     pub capture_method: CaptureMethod,
     pub keyboard_middle_click_mode: AltModifier,
     pub autostart_apps: Vec<WvrProcessLaunchParams>,
+    pub handsfree_pointer: HandsfreePointer,
 }
 
 fn get_settings_path() -> PathBuf {
@@ -185,6 +187,7 @@ pub fn save_settings(config: &GeneralConfig) -> anyhow::Result<()> {
         capture_method: config.capture_method,
         keyboard_middle_click_mode: config.keyboard_middle_click_mode,
         autostart_apps: config.autostart_apps.clone(),
+        handsfree_pointer: config.handsfree_pointer,
     };
 
     let json = serde_json::to_string_pretty(&conf).unwrap(); // want panic

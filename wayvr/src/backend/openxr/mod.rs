@@ -90,6 +90,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
 
     let mut overlays = OverlayWindowManager::<OpenXrOverlayData>::new(&mut app, headless)?;
     let mut lines = LinePool::new(&app)?;
+    let mut current_lines = Vec::with_capacity(2);
 
     let mut notifications = NotificationManager::new();
     notifications.run_dbus(&mut app.dbus);
@@ -327,18 +328,22 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             .values_mut()
             .for_each(|o| o.config.auto_movement(&mut app));
 
-        let lengths_haptics = interact(&mut overlays, &mut app);
-        for (idx, (len, haptics)) in lengths_haptics.iter().enumerate() {
-            lines.draw_from(
-                pointer_lines[idx],
-                app.input_state.pointers[idx].pose,
-                *len,
-                app.input_state.pointers[idx].interaction.mode as usize + 1,
-                &app.input_state.hmd,
-            );
+        current_lines.clear();
+
+        let haptics = interact(&mut overlays, &mut app, &mut current_lines);
+        for (idx, haptics) in haptics.iter().enumerate() {
             if let Some(haptics) = haptics {
                 input_source.haptics(&xr_state, idx, haptics);
             }
+        }
+        for (idx, line) in current_lines.iter().enumerate() {
+            lines.draw_between(
+                pointer_lines[idx],
+                line.a,
+                line.b,
+                line.mode as usize + 1,
+                app.input_state.hmd,
+            );
         }
 
         app.hid_provider.inner.commit();

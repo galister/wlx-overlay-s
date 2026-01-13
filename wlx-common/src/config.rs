@@ -41,12 +41,24 @@ pub enum CaptureMethod {
 #[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, AsRefStr, EnumString, EnumProperty, VariantArray)]
 pub enum AltModifier {
 	#[default]
+	#[strum(props(Translation = "APP_SETTINGS.OPTION.NONE"))]
 	None,
 	Shift,
 	Ctrl,
 	Alt,
 	Super,
 	Meta,
+}
+
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, AsRefStr, EnumString, EnumProperty, VariantArray)]
+pub enum HandsfreePointer {
+	#[strum(props(Translation = "APP_SETTINGS.OPTION.NONE"))]
+	None,
+	#[strum(props(Translation = "APP_SETTINGS.OPTION.HMD_PINCH"))]
+	#[default]
+	Hmd,
+	#[strum(props(Translation = "APP_SETTINGS.OPTION.EYE_PINCH"))]
+	EyeTracking,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -295,4 +307,7 @@ pub struct GeneralConfig {
 
 	#[serde(default)]
 	pub keyboard_middle_click_mode: AltModifier,
+
+	#[serde(default)]
+	pub handsfree_pointer: HandsfreePointer,
 }

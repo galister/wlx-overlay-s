@@ -175,6 +175,9 @@ impl OpenVrInputSource {
                 app_hand.raw_pose = devices[device.0 as usize]
                     .mDeviceToAbsoluteTracking
                     .to_affine();
+                app_hand.tracked = devices[device.0 as usize].bPoseIsValid;
+            } else {
+                app_hand.tracked = false;
             }
 
             hand.has_pose = false;

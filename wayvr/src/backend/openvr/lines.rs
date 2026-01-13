@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use ash::vk::SubmitInfo;
-use glam::{Affine3A, Vec3, Vec3A, Vec4};
+use glam::{Affine3A, Quat, Vec3, Vec3A, Vec4};
 use idmap::IdMap;
 use ovr_overlay::overlay::OverlayManager;
 use ovr_overlay::sys::ETrackingUniverseOrigin;
@@ -103,27 +103,44 @@ impl LinePool {
         id
     }
 
-    pub fn draw_from(
+    pub(super) fn draw_between(
         &mut self,
         id: usize,
-        mut from: Affine3A,
-        len: f32,
+        start: Vec3A,
+        end: Vec3A,
         color: usize,
         hmd: &Affine3A,
     ) {
-        let rotation = Affine3A::from_axis_angle(Vec3::X, -PI * 0.5);
+        let dir = end - start;
+        let len = dir.length();
 
-        from.translation += from.transform_vector3a(Vec3A::NEG_Z) * (len * 0.5);
-        let mut transform = from * rotation * Affine3A::from_scale(Vec3::new(1., len / 0.002, 1.));
+        if len < 0.01 {
+            return;
+        }
 
-        let to_hmd = hmd.translation - from.translation;
+        debug_assert!(color < self.colors.len());
+
+        let center = (start + end) * 0.5;
+        let dir_norm = dir / len;
+
+        let xform = Affine3A::from_rotation_translation(
+            Quat::from_rotation_arc(Vec3::Z, dir_norm.into()),
+            center.into(),
+        );
+
+        let rotation = Affine3A::from_axis_angle(Vec3::X, PI * 1.5);
+        let mut transform = xform * rotation;
+        let to_hmd = hmd.translation - center;
         let sides = [Vec3A::Z, Vec3A::X, Vec3A::NEG_Z, Vec3A::NEG_X];
+
+        #[allow(clippy::neg_multiply)]
         let rotations = [
             Affine3A::IDENTITY,
             Affine3A::from_axis_angle(Vec3::Y, PI * 0.5),
-            Affine3A::from_axis_angle(Vec3::Y, PI * 1.0),
+            Affine3A::from_axis_angle(Vec3::Y, PI * -1.0),
             Affine3A::from_axis_angle(Vec3::Y, PI * 1.5),
         ];
+
         let mut closest = (0, 0.0);
         for (i, &side) in sides.iter().enumerate() {
             let dot = to_hmd.dot(transform.transform_vector3a(side));
@@ -135,7 +152,6 @@ impl LinePool {
         transform *= rotations[closest.0];
 
         debug_assert!(color < self.colors.len());
-
         self.draw_transform(id, transform, self.colors[color]);
     }
 

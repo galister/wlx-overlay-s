@@ -67,6 +67,9 @@
 		"NOTIFICATIONS_SOUND_ENABLED": "Notification sounds",
 		"OPAQUE_BACKGROUND": "Opaque background",
 		"OPTION": {
+			"NONE": "None",
+			"HMD_PINCH": "HMD + pinch",
+			"EYE_PINCH": "Eye + pinch",
 			"AUTO": "Automatic",
 			"AUTO_HELP": "ScreenCopy GPU if supported,\notherwise PipeWire GPU.",
 			"PIPEWIRE_HELP": "Fast GPU capture,\nstandard on all desktops.",
@@ -97,6 +100,8 @@
 		"XR_CLICK_SENSITIVITY_RELEASE": "XR release sensitivity",
 		"XR_CLICK_SENSITIVITY_RELEASE_HELP": "Must be lower than click",
 		"XWAYLAND_BY_DEFAULT": "Run apps in Compatibility mode by default",
+		"HANDSFREE_POINTER": "Handsfree mode",
+		"HANDSFREE_POINTER_HELP": "Input to use when motion\ncontrollers are unavailable",
 		"AUTOSTART_APPS": "Apps to run on startup"
 	},
 	"APPLICATION_LAUNCHER": "Application launcher",

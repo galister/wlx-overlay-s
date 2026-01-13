@@ -144,6 +144,7 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
 
     let mut lines = LinePool::new(app.gfx.clone())?;
     let pointer_lines = [lines.allocate(), lines.allocate()];
+    let mut current_lines = Vec::with_capacity(2);
 
     'main_loop: loop {
         let _ = overlay_mgr.wait_frame_sync(frame_timeout);
@@ -276,18 +277,22 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
         watch_fade(&mut app, overlays.mut_by_id(watch_id).unwrap()); // want panic
         playspace.update(&mut chaperone_mgr, &mut overlays, &app);
 
-        let lengths_haptics = interact(&mut overlays, &mut app);
-        for (idx, (len, haptics)) in lengths_haptics.iter().enumerate() {
-            lines.draw_from(
-                pointer_lines[idx],
-                app.input_state.pointers[idx].pose,
-                *len,
-                app.input_state.pointers[idx].interaction.mode as usize + 1,
-                &app.input_state.hmd,
-            );
+        current_lines.clear();
+
+        let haptics = interact(&mut overlays, &mut app, &mut current_lines);
+        for (idx, haptics) in haptics.iter().enumerate() {
             if let Some(haptics) = haptics {
                 input_source.haptics(&mut input_mgr, idx, haptics);
             }
+        }
+        for (idx, line) in current_lines.iter().enumerate() {
+            lines.draw_between(
+                pointer_lines[idx],
+                line.a,
+                line.b,
+                line.mode as usize + 1,
+                &app.input_state.hmd,
+            );
         }
 
         app.hid_provider.inner.commit();
