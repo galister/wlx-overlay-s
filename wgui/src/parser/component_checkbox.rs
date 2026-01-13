@@ -2,9 +2,15 @@ use crate::{
 	components::{Component, checkbox, radio_group::ComponentRadioGroup},
 	i18n::Translation,
 	layout::WidgetID,
-	parser::{AttribPair, Fetchable, ParserContext, process_component, style::parse_style},
+	parser::{
+		AttribPair, Fetchable, ParserContext,
+		helpers::{TooltipAttribs, parse_attrib_tooltip},
+		process_component,
+		style::parse_style,
+	},
 };
 
+#[derive(Clone, Copy)]
 pub enum CheckboxKind {
 	CheckBox,
 	RadioBox,
@@ -21,6 +27,7 @@ pub fn parse_component_checkbox(
 	let mut translation = Translation::default();
 	let mut checked = 0;
 	let mut component_value = None;
+	let mut tooltip = TooltipAttribs::default();
 
 	let style = parse_style(ctx, attribs, tag_name);
 
@@ -46,7 +53,9 @@ pub fn parse_component_checkbox(
 			"checked" => {
 				ctx.parse_check_i32(tag_name, key, value, &mut checked);
 			}
-			_ => {}
+			_ => {
+				parse_attrib_tooltip(ctx, tag_name, pair, &mut tooltip);
+			}
 		}
 	}
 
@@ -81,6 +90,7 @@ pub fn parse_component_checkbox(
 			style,
 			radio_group,
 			value: component_value,
+			tooltip: tooltip.get_info(),
 		},
 	)?;
 

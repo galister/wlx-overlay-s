@@ -5,7 +5,9 @@ use crate::{
 	i18n::Translation,
 	layout::WidgetID,
 	parser::{
-		AttribPair, ParserContext, ParserFile, get_asset_path_from_kv, parse_children, parse_f32, process_component,
+		AttribPair, ParserContext, ParserFile, get_asset_path_from_kv,
+		helpers::{TooltipAttribs, parse_attrib_tooltip},
+		parse_children, parse_f32, process_component,
 		style::{parse_color_opt, parse_round, parse_style, parse_text_style},
 	},
 	widget::util::WLength,
@@ -25,8 +27,7 @@ pub fn parse_component_button<'a>(
 	let mut hover_color: Option<Color> = None;
 	let mut hover_border_color: Option<Color> = None;
 	let mut round = WLength::Units(4.0);
-	let mut tooltip: Option<Translation> = None;
-	let mut tooltip_side: Option<tooltip::TooltipSide> = None;
+	let mut tooltip = TooltipAttribs::default();
 	let mut sticky: bool = false;
 	let mut long_press_time = 0.0;
 	let mut sprite_src: Option<AssetPath> = None;
@@ -81,20 +82,6 @@ pub fn parse_component_button<'a>(
 					sprite_src = Some(asset_path);
 				}
 			}
-			"tooltip" if !value.is_empty() => tooltip = Some(Translation::from_translation_key(value)),
-			"tooltip_str" if !value.is_empty() => tooltip = Some(Translation::from_raw_text(value)),
-			"tooltip_side" => {
-				tooltip_side = match value {
-					"left" => Some(tooltip::TooltipSide::Left),
-					"right" => Some(tooltip::TooltipSide::Right),
-					"top" => Some(tooltip::TooltipSide::Top),
-					"bottom" => Some(tooltip::TooltipSide::Bottom),
-					_ => {
-						ctx.print_invalid_attrib(tag_name, key, value);
-						None
-					}
-				}
-			}
 			"sticky" => {
 				let mut sticky_i32 = 0;
 				sticky = ctx.parse_check_i32(tag_name, key, value, &mut sticky_i32) && sticky_i32 == 1;
@@ -102,7 +89,9 @@ pub fn parse_component_button<'a>(
 			"long_press_time" => {
 				long_press_time = parse_f32(value).unwrap_or(long_press_time);
 			}
-			_ => {}
+			_ => {
+				parse_attrib_tooltip(ctx, tag_name, pair, &mut tooltip);
+			}
 		}
 	}
 
@@ -118,10 +107,7 @@ pub fn parse_component_button<'a>(
 			style,
 			text_style,
 			round,
-			tooltip: tooltip.map(|text| tooltip::TooltipInfo {
-				side: tooltip_side.map_or(tooltip::TooltipSide::Top, |f| f),
-				text,
-			}),
+			tooltip: tooltip.get_info(),
 			sticky,
 			long_press_time,
 			sprite_src,

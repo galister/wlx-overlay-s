@@ -3,6 +3,7 @@ mod component_checkbox;
 mod component_radio_group;
 mod component_slider;
 mod component_tabs;
+mod helpers;
 mod style;
 mod widget_div;
 mod widget_image;

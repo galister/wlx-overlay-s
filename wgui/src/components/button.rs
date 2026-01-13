@@ -1,11 +1,14 @@
 use crate::{
 	animation::{Animation, AnimationEasing},
 	assets::AssetPath,
-	components::{self, Component, ComponentBase, ComponentTrait, RefreshData, tooltip::ComponentTooltip},
+	components::{
+		self, Component, ComponentBase, ComponentTrait, RefreshData,
+		tooltip::{ComponentTooltip, TooltipTrait},
+	},
 	drawing::{self, Boundary, Color},
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerID, EventListenerKind},
 	i18n::Translation,
-	layout::{LayoutTask, WidgetID, WidgetPair},
+	layout::{WidgetID, WidgetPair},
 	renderer_vk::{
 		text::{FontWeight, TextStyle, custom_glyph::CustomGlyphData},
 		util::centered_matrix,
@@ -88,6 +91,12 @@ struct State {
 	active_tooltip: Option<Rc<ComponentTooltip>>,
 	colors: Colors,
 	last_pressed: Instant,
+}
+
+impl TooltipTrait for State {
+	fn get(&mut self) -> &mut Option<Rc<ComponentTooltip>> {
+		&mut self.active_tooltip
+	}
 }
 
 struct Data {
@@ -268,7 +277,7 @@ fn register_event_mouse_enter(
 	data: Rc<Data>,
 	state: Rc<RefCell<State>>,
 	listeners: &mut EventListenerCollection,
-	info: Option<components::tooltip::TooltipInfo>,
+	tooltip_info: Option<components::tooltip::TooltipInfo>,
 	anim_mult: f32,
 ) -> EventListenerID {
 	listeners.register(
@@ -281,17 +290,7 @@ fn register_event_mouse_enter(
 				.alterables
 				.animate(anim_hover_create(state.clone(), event_data.widget_id, true, anim_mult));
 
-			if let Some(info) = info.clone() {
-				common.alterables.tasks.push(LayoutTask::ModifyLayoutState({
-					let widget_to_watch = data.id_rect;
-					let state = state.clone();
-					Box::new(move |m| {
-						state.borrow_mut().active_tooltip =
-							Some(components::tooltip::show(m.layout, widget_to_watch, info.clone())?);
-						Ok(())
-					})
-				}));
-			}
+			ComponentTooltip::register_hover_in(common, &tooltip_info, data.id_rect, state.clone());
 
 			state.borrow_mut().hovered = true;
 			Ok(EventResult::Pass)

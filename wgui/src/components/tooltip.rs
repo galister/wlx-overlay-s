@@ -1,10 +1,12 @@
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Vec2, Vec3};
 use std::{cell::RefCell, rc::Rc};
 use taffy::prelude::length;
 
 use crate::{
+	animation::{Animation, AnimationEasing},
 	components::{self, Component, ComponentBase, ComponentTrait, RefreshData},
 	drawing::Color,
+	event::CallbackDataCommon,
 	i18n::Translation,
 	layout::{self, LayoutTask, LayoutTasks, WidgetID, WidgetPair},
 	renderer_vk::text::{FontWeight, TextStyle},
@@ -16,6 +18,30 @@ use crate::{
 		util::WLength,
 	},
 };
+
+pub trait TooltipTrait {
+	fn get(&mut self) -> &mut Option<Rc<ComponentTooltip>>;
+}
+
+impl ComponentTooltip {
+	pub fn register_hover_in(
+		common: &mut CallbackDataCommon,
+		tooltip_info: &Option<TooltipInfo>,
+		widget_to_watch: WidgetID,
+		state: Rc<RefCell<dyn TooltipTrait>>,
+	) {
+		let Some(info) = tooltip_info.clone() else {
+			return;
+		};
+		common.alterables.tasks.push(LayoutTask::ModifyLayoutState({
+			Box::new(move |m| {
+				let mut state = state.borrow_mut();
+				*state.get() = Some(components::tooltip::show(m.layout, widget_to_watch, info.clone())?);
+				Ok(())
+			})
+		}));
+	}
+}
 
 #[derive(Clone, Default)]
 pub enum TooltipSide {
@@ -77,8 +103,6 @@ impl ComponentTrait for ComponentTooltip {
 		// nothing to do
 	}
 }
-
-impl ComponentTooltip {}
 
 impl Drop for ComponentTooltip {
 	fn drop(&mut self) {
@@ -180,7 +204,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		},
 	)?;
 
-	let (_label, _) = ess.layout.add_child(
+	let (label, _) = ess.layout.add_child(
 		rect.id,
 		WidgetLabel::create(
 			&mut globals.get(),
@@ -207,6 +231,35 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		state,
 		tasks: ess.layout.tasks.clone(),
 	});
+
+	let direction = match params.info.side {
+		TooltipSide::Left => Vec2::new(-1.0, 0.0),
+		TooltipSide::Right => Vec2::new(1.0, 0.0),
+		TooltipSide::Top => Vec2::new(0.0, -1.0),
+		TooltipSide::Bottom => Vec2::new(0.0, 1.0),
+	};
+
+	let anim_mult = ess.layout.state.globals.defaults().animation_mult;
+	ess.layout.animations.add(Animation::new(
+		rect.id,
+		(10.0 * anim_mult) as u32,
+		AnimationEasing::OutQuad,
+		Box::new(move |common, data| {
+			let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap(); /* safe */
+			let alpha = data.pos;
+			rect.params.color.a = alpha;
+			rect.params.border_color.a = alpha;
+
+			let dir_mult = (1.0 - data.pos) * 5.0;
+			data.data.transform = Mat4::from_translation(Vec3::new(direction.x * dir_mult, direction.y * dir_mult, 0.0));
+
+			if let Some(mut label) = common.state.widgets.get_as::<WidgetLabel>(label.id) {
+				label.set_color(common, Color::new(1.0, 1.0, 1.0, alpha), true);
+			}
+
+			common.alterables.mark_redraw();
+		}),
+	));
 
 	ess.layout.defer_component_refresh(Component(tooltip.clone()));
 	Ok((div, tooltip))

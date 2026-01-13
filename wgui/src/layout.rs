@@ -130,7 +130,7 @@ pub struct LayoutUpdateResult {
 	pub sounds_to_play: Vec<WguiSoundType>,
 }
 
-pub type ModifyLayoutStateFunc = Box<dyn Fn(ModifyLayoutStateData) -> anyhow::Result<()>>;
+pub type ModifyLayoutStateFunc = Box<dyn FnOnce(ModifyLayoutStateData) -> anyhow::Result<()>>;
 
 pub enum LayoutTask {
 	RemoveWidget(WidgetID),
@@ -690,7 +690,7 @@ impl Layout {
 					self.remove_widget(widget_id);
 				}
 				LayoutTask::ModifyLayoutState(callback) => {
-					(*callback)(ModifyLayoutStateData { layout: self })?;
+					callback(ModifyLayoutStateData { layout: self })?;
 				}
 				LayoutTask::PlaySound(sound) => {
 					if !self.sounds_to_play_once.contains(&sound) {
