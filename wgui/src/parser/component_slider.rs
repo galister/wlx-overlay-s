@@ -1,7 +1,12 @@
 use crate::{
 	components::{Component, slider},
 	layout::WidgetID,
-	parser::{AttribPair, ParserContext, process_component, style::parse_style},
+	parser::{
+		AttribPair, ParserContext,
+		helpers::{TooltipAttribs, parse_attrib_tooltip},
+		process_component,
+		style::parse_style,
+	},
 	widget::ConstructEssentials,
 };
 
@@ -16,6 +21,7 @@ pub fn parse_component_slider(
 	let mut initial_value = 0.5;
 	let mut step = 1.0;
 	let mut show_value = 1;
+	let mut tooltip = TooltipAttribs::default();
 
 	let style = parse_style(ctx, attribs, tag_name);
 
@@ -37,7 +43,9 @@ pub fn parse_component_slider(
 			"show_value" => {
 				ctx.parse_check_i32(tag_name, key, value, &mut show_value);
 			}
-			_ => {}
+			_ => {
+				parse_attrib_tooltip(ctx, tag_name, pair, &mut tooltip);
+			}
 		}
 	}
 
@@ -55,6 +63,7 @@ pub fn parse_component_slider(
 				step,
 			},
 			show_value: show_value != 0,
+			tooltip: tooltip.get_info(),
 		},
 	)?;
 

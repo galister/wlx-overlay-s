@@ -9,7 +9,11 @@ use taffy::{
 
 use crate::{
 	animation::{Animation, AnimationEasing},
-	components::{Component, ComponentBase, ComponentTrait, RefreshData, radio_group::ComponentRadioGroup},
+	components::{
+		Component, ComponentBase, ComponentTrait, RefreshData,
+		radio_group::ComponentRadioGroup,
+		tooltip::{self, ComponentTooltip, TooltipTrait},
+	},
 	drawing::Color,
 	event::{CallbackDataCommon, EventListenerCollection, EventListenerID, EventListenerKind},
 	i18n::Translation,
@@ -31,6 +35,7 @@ pub struct Params {
 	pub checked: bool,
 	pub radio_group: Option<Rc<ComponentRadioGroup>>,
 	pub value: Option<Rc<str>>,
+	pub tooltip: Option<tooltip::TooltipInfo>,
 }
 
 impl Default for Params {
@@ -42,6 +47,7 @@ impl Default for Params {
 			checked: false,
 			radio_group: None,
 			value: None,
+			tooltip: None,
 		}
 	}
 }
@@ -59,6 +65,13 @@ struct State {
 	down: bool,
 	on_toggle: Option<CheckboxToggleCallback>,
 	self_ref: Weak<ComponentCheckbox>,
+	active_tooltip: Option<Rc<ComponentTooltip>>,
+}
+
+impl TooltipTrait for State {
+	fn get(&mut self) -> &mut Option<Rc<ComponentTooltip>> {
+		&mut self.active_tooltip
+	}
 }
 
 #[allow(clippy::struct_field_names)]
@@ -181,6 +194,7 @@ fn anim_hover_out(state: Rc<RefCell<State>>, widget_id: WidgetID, anim_mult: f32
 fn register_event_mouse_enter(
 	state: Rc<RefCell<State>>,
 	listeners: &mut EventListenerCollection,
+	tooltip_info: Option<tooltip::TooltipInfo>,
 	anim_mult: f32,
 ) -> EventListenerID {
 	listeners.register(
@@ -190,6 +204,9 @@ fn register_event_mouse_enter(
 			common
 				.alterables
 				.animate(anim_hover_in(state.clone(), event_data.widget_id, anim_mult));
+
+			ComponentTooltip::register_hover_in(common, &tooltip_info, event_data.widget_id, state.clone());
+
 			state.borrow_mut().hovered = true;
 			Ok(EventResult::Pass)
 		}),
@@ -208,7 +225,13 @@ fn register_event_mouse_leave(
 			common
 				.alterables
 				.animate(anim_hover_out(state.clone(), event_data.widget_id, anim_mult));
-			state.borrow_mut().hovered = false;
+
+			{
+				let mut state = state.borrow_mut();
+				state.hovered = false;
+				state.active_tooltip = None;
+			}
+
 			Ok(EventResult::Pass)
 		}),
 	)
@@ -402,6 +425,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		hovered: false,
 		on_toggle: None,
 		self_ref: Weak::new(),
+		active_tooltip: None,
 	}));
 
 	let base = ComponentBase {
@@ -410,7 +434,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 			let mut widget = ess.layout.state.widgets.get(id_container).unwrap().state();
 			let anim_mult = ess.layout.state.globals.defaults().animation_mult;
 			vec![
-				register_event_mouse_enter(state.clone(), &mut widget.event_listeners, anim_mult),
+				register_event_mouse_enter(state.clone(), &mut widget.event_listeners, params.tooltip, anim_mult),
 				register_event_mouse_leave(state.clone(), &mut widget.event_listeners, anim_mult),
 				register_event_mouse_press(state.clone(), &mut widget.event_listeners),
 				register_event_mouse_release(data.clone(), state.clone(), &mut widget.event_listeners),

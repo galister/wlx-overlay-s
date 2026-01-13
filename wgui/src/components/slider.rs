@@ -5,7 +5,10 @@ use taffy::prelude::{length, percent};
 
 use crate::{
 	animation::{Animation, AnimationEasing},
-	components::{Component, ComponentBase, ComponentTrait, RefreshData},
+	components::{
+		Component, ComponentBase, ComponentTrait, RefreshData,
+		tooltip::{self, ComponentTooltip, TooltipTrait},
+	},
 	drawing::{self},
 	event::{
 		self, CallbackDataCommon, CallbackMetadata, EventAlterables, EventListenerCollection, EventListenerKind,
@@ -70,6 +73,7 @@ pub struct Params {
 	pub style: taffy::Style,
 	pub values: ValuesMinMax,
 	pub show_value: bool,
+	pub tooltip: Option<tooltip::TooltipInfo>,
 }
 
 struct State {
@@ -77,6 +81,13 @@ struct State {
 	hovered: bool,
 	values: ValuesMinMax,
 	on_value_changed: Option<SliderValueChangedCallback>,
+	active_tooltip: Option<Rc<ComponentTooltip>>,
+}
+
+impl TooltipTrait for State {
+	fn get(&mut self) -> &mut Option<Rc<ComponentTooltip>> {
+		&mut self.active_tooltip
+	}
 }
 
 struct Data {
@@ -304,14 +315,18 @@ fn register_event_mouse_enter(
 	data: Rc<Data>,
 	state: Rc<RefCell<State>>,
 	listeners: &mut EventListenerCollection,
+	tooltip_info: Option<tooltip::TooltipInfo>,
 	anim_mult: f32,
 ) -> event::EventListenerID {
 	listeners.register(
 		EventListenerKind::MouseEnter,
-		Box::new(move |common, _data, (), ()| {
+		Box::new(move |common, event_data, (), ()| {
 			common.alterables.trigger_haptics();
 			state.borrow_mut().hovered = true;
 			on_enter_anim(common, data.slider_handle_rect_id, anim_mult);
+
+			ComponentTooltip::register_hover_in(common, &tooltip_info, event_data.widget_id, state.clone());
+
 			Ok(EventResult::Pass)
 		}),
 	)
@@ -327,8 +342,14 @@ fn register_event_mouse_leave(
 		EventListenerKind::MouseLeave,
 		Box::new(move |common, _data, (), ()| {
 			common.alterables.trigger_haptics();
-			state.borrow_mut().hovered = false;
+
+			{
+				let mut state = state.borrow_mut();
+				state.hovered = false;
+				state.active_tooltip = None;
+			}
 			on_leave_anim(common, data.slider_handle_rect_id, anim_mult);
+
 			Ok(EventResult::Pass)
 		}),
 	)
@@ -474,6 +495,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		hovered: false,
 		values: params.values,
 		on_value_changed: None,
+		active_tooltip: None,
 	};
 
 	let globals = ess.layout.state.globals.clone();
@@ -515,7 +537,13 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 			let mut widget = ess.layout.state.widgets.get(body_id).unwrap().state();
 			let anim_mult = ess.layout.state.globals.defaults().animation_mult;
 			vec![
-				register_event_mouse_enter(data.clone(), state.clone(), &mut widget.event_listeners, anim_mult),
+				register_event_mouse_enter(
+					data.clone(),
+					state.clone(),
+					&mut widget.event_listeners,
+					params.tooltip,
+					anim_mult,
+				),
 				register_event_mouse_leave(data.clone(), state.clone(), &mut widget.event_listeners, anim_mult),
 				register_event_mouse_motion(data.clone(), state.clone(), &mut widget.event_listeners),
 				register_event_mouse_press(data.clone(), state.clone(), &mut widget.event_listeners),
