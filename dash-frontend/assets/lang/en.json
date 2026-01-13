@@ -101,7 +101,7 @@
 		"XR_CLICK_SENSITIVITY_RELEASE_HELP": "Must be lower than click",
 		"XWAYLAND_BY_DEFAULT": "Run apps in Compatibility mode by default",
 		"HANDSFREE_POINTER": "Handsfree mode",
-		"HANDSFREE_POINTER_HELP": "Input to use when motion\ncontrollers are unavailable",
+		"HANDSFREE_POINTER_HELP": "Input to use when motion\ncontrollers are unavailable.\nLeft pinch is grab, right is click.",
 		"AUTOSTART_APPS": "Apps to run on startup"
 	},
 	"APPLICATION_LAUNCHER": "Application launcher",
