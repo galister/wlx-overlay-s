@@ -688,15 +688,12 @@ pub(super) fn setup_custom_button<S: 'static>(
 
                 // collect arguments from _arg<n> attributes.
                 let mut arg_index = 0;
-                while let Some(arg) = attribs.get_value(&format!("_arg{arg_index}")) {
-                    let Ok(osc_arg) = parse_osc_value(arg).inspect_err(|e| {
+                while let Some(arg) = attribs.get_value(&format!("_arg{arg_index}"))
+                    && let Ok(osc_arg) = parse_osc_value(arg).inspect_err(|e| {
                         let msg = format!("Could not parse OSC value \"{arg}\": {e:?}");
                         log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
-                    }) else {
-                        let msg = format!("expected OscValue, found \"{arg}\"");
-                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
-                        return;
-                    };
+                    })
+                {
                     osc_args.push(osc_arg);
                     arg_index += 1;
                 }
