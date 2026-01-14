@@ -50,6 +50,10 @@ where
             WayVRSignal::ShowHide => {
                 app.tasks.enqueue(TaskType::Overlay(OverlayTask::ShowHide));
             }
+            WayVRSignal::SwitchSet(set) => {
+                app.tasks
+                    .enqueue(TaskType::Overlay(OverlayTask::SwitchSet(set)));
+            }
             WayVRSignal::DropOverlay(overlay_id) => {
                 app.tasks
                     .enqueue(TaskType::Overlay(OverlayTask::Drop(OverlaySelector::Id(

@@ -751,7 +751,7 @@ impl<T> OverlayWindowManager<T> {
         new_set: Option<usize>,
         keep_transforms: bool,
     ) {
-        if new_set == self.current_set {
+        if new_set == self.current_set || new_set.is_some_and(|x| x >= self.sets.len()) {
             return;
         }
 
@@ -766,11 +766,6 @@ impl<T> OverlayWindowManager<T> {
         }
 
         if let Some(new_set) = new_set {
-            if new_set >= self.sets.len() {
-                log::error!("switch_to_set: new_set is out of range ({new_set:?})");
-                return;
-            }
-
             let mut num_overlays = 0;
             let ws = &mut self.sets[new_set];
             for (id, data) in self.overlays.iter_mut().filter(|(_, d)| !d.config.global) {

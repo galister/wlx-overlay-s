@@ -156,11 +156,19 @@ pub async fn wlx_device_haptics(
     )
 }
 
-pub async fn wlx_overlay_show_hide(state: &mut WayVRClientState) {
+pub async fn wlx_show_hide(state: &mut WayVRClientState) {
     handle_empty_result(
-        WayVRClient::fn_wlx_overlay_show_hide(state.wayvr_client.clone())
+        WayVRClient::fn_wlx_show_hide(state.wayvr_client.clone())
             .await
             .context("failed to trigger overlay show hide"),
+    )
+}
+
+pub async fn wlx_switch_set(state: &mut WayVRClientState, set: Option<usize>) {
+    handle_empty_result(
+        WayVRClient::fn_wlx_switch_set(state.wayvr_client.clone(), set)
+            .await
+            .context("failed to switch to set"),
     )
 }
 

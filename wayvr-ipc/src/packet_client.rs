@@ -68,4 +68,5 @@ pub enum PacketClient {
 	WlxModifyPanel(WlxModifyPanelParams),
 	WlxDeviceHaptics(usize, WlxHapticsParams),
 	WlxShowHide,
+	WlxSwitchSet(Option<usize>),
 }
