@@ -675,9 +675,10 @@ pub(super) fn setup_custom_button<S: 'static>(
 
                 // collect arguments specified in the initial string
                 for arg in args {
-                    let Ok(osc_arg) = parse_osc_value(arg)
-                        .inspect_err(|e| log::warn!("Could not parse OSC value '{arg}': {e:?}"))
-                    else {
+                    let Ok(osc_arg) = parse_osc_value(arg).inspect_err(|e| {
+                        let msg = format!("Could not parse OSC value \"{arg}\": {e:?}");
+                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
+                    }) else {
                         let msg = format!("expected OscValue, found \"{arg}\"");
                         log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
                         return;
@@ -687,21 +688,18 @@ pub(super) fn setup_custom_button<S: 'static>(
 
                 // collect arguments from _arg<n> attributes.
                 let mut arg_index = 0;
-                while match attribs.get_value(&format!("_arg{arg_index}")) {
-                    Some(value) => {
-                        let Ok(osc_arg) = parse_osc_value(value).inspect_err(|e| {
-                            log::warn!("Could not parse OSC value \"{value}\": {e:?}")
-                        }) else {
-                            let msg = format!("expected OscValue, found \"{value}\"");
-                            log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
-                            return;
-                        };
-                        osc_args.push(osc_arg);
-                        arg_index += 1;
-                        true
-                    }
-                    None => false,
-                } {} // cursed
+                while let Some(arg) = attribs.get_value(&format!("_arg{arg_index}")) {
+                    let Ok(osc_arg) = parse_osc_value(arg).inspect_err(|e| {
+                        let msg = format!("Could not parse OSC value \"{arg}\": {e:?}");
+                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
+                    }) else {
+                        let msg = format!("expected OscValue, found \"{arg}\"");
+                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
+                        return;
+                    };
+                    osc_args.push(osc_arg);
+                    arg_index += 1;
+                }
 
                 Box::new(move |_common, data, app, _| {
                     if !test_button(data) || !test_duration(&button, app) {
