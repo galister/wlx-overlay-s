@@ -26,11 +26,6 @@ There are multiple ways to install WayVR:
 
 1. AppImage: Download from [Releases](https://github.com/wlx-team/wayvr/releases)
 1. AUR package: [wayvr](https://aur.archlinux.org/packages/wayvr) or [wayvr-git](https://aur.archlinux.org/packages/wayvr-git) 
-1. Homebrew:
-
-- Add AtomicXR tap: `brew tap matrixfurry.com/atomicxr https://tangled.sh/@matrixfurry.com/homebrew-atomicxr`
-- Install WayVR: `brew install wayvr`
-
 1. [Building from source](https://github.com/wlx-team/wayvr/wiki/Building-from-Source).
 
 ### General Setup
