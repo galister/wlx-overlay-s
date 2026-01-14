@@ -675,15 +675,13 @@ pub(super) fn setup_custom_button<S: 'static>(
 
                 // collect arguments specified in the initial string
                 for arg in args {
-                    let Ok(osc_arg) = parse_osc_value(arg).inspect_err(|e| {
+                    if let Ok(osc_arg) = parse_osc_value(arg).inspect_err(|e| {
                         let msg = format!("Could not parse OSC value \"{arg}\": {e:?}");
                         log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
-                    }) else {
-                        let msg = format!("expected OscValue, found \"{arg}\"");
-                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
                         return;
-                    };
-                    osc_args.push(osc_arg);
+                    }) {
+                        osc_args.push(osc_arg);
+                    }
                 }
 
                 // collect arguments from _arg<n> attributes.
