@@ -110,6 +110,7 @@ pub struct WvrWindowBackend {
     mouse: Option<MouseMeta>,
     stereo: Option<StereoMode>,
     stereo_full_frame: bool,
+    stereo_adjust_mouse: bool,
     cur_image: Option<Arc<ImageView>>,
     panel: GuiPanel<WindowHandle>,
     inner_extent: [u32; 2],
@@ -209,6 +210,7 @@ impl WvrWindowBackend {
                 None
             },
             stereo_full_frame: false,
+            stereo_adjust_mouse: false,
             cur_image: None,
             inner_extent: [0, 0],
             panel,
@@ -221,10 +223,20 @@ impl WvrWindowBackend {
     fn apply_extent(&mut self, app: &mut AppState, meta: &FrameMeta) -> anyhow::Result<()> {
         self.interaction_transform = Some(ui_transform(meta.extent));
 
-        let scale = vec2(
+        let mut scale = vec2(
             ((meta.extent[0] + BORDER_SIZE * 2) as f32) / (meta.extent[0] as f32),
             ((meta.extent[1] + BORDER_SIZE * 2 + BAR_SIZE) as f32) / (meta.extent[1] as f32),
         );
+
+        if self.stereo_adjust_mouse
+            && let Some(stereo) = self.stereo
+        {
+            match stereo {
+                StereoMode::LeftRight | StereoMode::RightLeft => scale.x *= 0.5,
+                StereoMode::TopBottom | StereoMode::BottomTop => scale.y *= 0.5,
+                _ => {}
+            }
+        }
 
         let translation = vec2(
             -(BORDER_SIZE as f32) / (meta.extent[0] as f32),
@@ -577,10 +589,13 @@ impl OverlayBackend for WvrWindowBackend {
             BackendAttrib::StereoFullFrame => {
                 Some(BackendAttribValue::StereoFullFrame(self.stereo_full_frame))
             }
+            BackendAttrib::StereoAdjustMouse => Some(BackendAttribValue::StereoAdjustMouse(
+                self.stereo_adjust_mouse,
+            )),
             _ => None,
         }
     }
-    fn set_attrib(&mut self, _app: &mut AppState, value: BackendAttribValue) -> bool {
+    fn set_attrib(&mut self, app: &mut AppState, value: BackendAttribValue) -> bool {
         match value {
             BackendAttribValue::Stereo(new) => {
                 if let Some(stereo) = self.stereo.as_mut() {
@@ -596,6 +611,14 @@ impl OverlayBackend for WvrWindowBackend {
             }
             BackendAttribValue::StereoFullFrame(new) => {
                 self.stereo_full_frame = new;
+                true
+            }
+            BackendAttribValue::StereoAdjustMouse(new) => {
+                self.stereo_adjust_mouse = new;
+                if let Some(meta) = self.meta.take() {
+                    let _ = self.apply_extent(app, &meta);
+                    self.meta = Some(meta);
+                }
                 true
             }
             _ => false,

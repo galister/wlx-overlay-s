@@ -58,6 +58,7 @@ pub struct ScreenBackend {
     interaction_transform: Option<Affine2>,
     stereo: Option<StereoMode>,
     stereo_full_frame: bool,
+    stereo_adjust_mouse: bool,
     pub(super) logical_pos: Vec2,
     pub(super) logical_size: Vec2,
     pub(super) mouse_transform_original: Transform,
@@ -87,6 +88,7 @@ impl ScreenBackend {
                 None
             },
             stereo_full_frame: false,
+            stereo_adjust_mouse: false,
             logical_pos: Vec2::ZERO,
             logical_size: Vec2::ZERO,
             mouse_transform_original: Transform::Undefined,
@@ -96,8 +98,18 @@ impl ScreenBackend {
     }
 
     pub(super) fn apply_mouse_transform_with_override(&mut self, override_transform: Transform) {
-        let size = self.logical_size;
+        let mut size = self.logical_size;
         let pos = self.logical_pos;
+
+        if self.stereo_adjust_mouse
+            && let Some(stereo) = self.stereo.as_ref()
+        {
+            match stereo {
+                StereoMode::LeftRight | StereoMode::RightLeft => size.x *= 0.5,
+                StereoMode::TopBottom | StereoMode::BottomTop => size.y *= 0.5,
+                _ => {}
+            }
+        }
 
         let transform = match override_transform {
             Transform::Undefined => self.mouse_transform_original,
@@ -351,6 +363,9 @@ impl OverlayBackend for ScreenBackend {
             BackendAttrib::StereoFullFrame => {
                 Some(BackendAttribValue::StereoFullFrame(self.stereo_full_frame))
             }
+            BackendAttrib::StereoAdjustMouse => Some(BackendAttribValue::StereoAdjustMouse(
+                self.stereo_adjust_mouse,
+            )),
             _ => None,
         }
     }
@@ -370,17 +385,7 @@ impl OverlayBackend for ScreenBackend {
             }
             BackendAttribValue::MouseTransform(new) => {
                 self.mouse_transform_override = new;
-                let frame_transform = match new {
-                    MouseTransform::Default => Transform::Undefined,
-                    MouseTransform::Normal => Transform::Normal,
-                    MouseTransform::Rotated90 => Transform::Rotated90,
-                    MouseTransform::Rotated180 => Transform::Rotated180,
-                    MouseTransform::Rotated270 => Transform::Rotated270,
-                    MouseTransform::Flipped => Transform::Flipped,
-                    MouseTransform::Flipped90 => Transform::Flipped90,
-                    MouseTransform::Flipped180 => Transform::Flipped180,
-                    MouseTransform::Flipped270 => Transform::Flipped270,
-                };
+                let frame_transform = mouse_transform_to_transform(new);
                 self.apply_mouse_transform_with_override(frame_transform);
                 true
             }
@@ -388,7 +393,27 @@ impl OverlayBackend for ScreenBackend {
                 self.stereo_full_frame = new;
                 true
             }
+            BackendAttribValue::StereoAdjustMouse(new) => {
+                self.stereo_adjust_mouse = new;
+                let frame_transform = mouse_transform_to_transform(self.mouse_transform_override);
+                self.apply_mouse_transform_with_override(frame_transform);
+                true
+            }
             _ => false,
         }
+    }
+}
+
+fn mouse_transform_to_transform(mouse_transform: MouseTransform) -> Transform {
+    match mouse_transform {
+        MouseTransform::Default => Transform::Undefined,
+        MouseTransform::Normal => Transform::Normal,
+        MouseTransform::Rotated90 => Transform::Rotated90,
+        MouseTransform::Rotated180 => Transform::Rotated180,
+        MouseTransform::Rotated270 => Transform::Rotated270,
+        MouseTransform::Flipped => Transform::Flipped,
+        MouseTransform::Flipped90 => Transform::Flipped90,
+        MouseTransform::Flipped180 => Transform::Flipped180,
+        MouseTransform::Flipped270 => Transform::Flipped270,
     }
 }

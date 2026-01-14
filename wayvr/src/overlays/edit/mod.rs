@@ -437,6 +437,11 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
         "stereo_full_frame_box",
         cb_assign_stereo_full_frame,
     )?;
+    set_up_checkbox(
+        &mut panel,
+        "stereo_adjust_mouse_box",
+        cb_assign_stereo_adjust_mouse,
+    )?;
     set_up_slider(&mut panel, "lerp_slider", cb_assign_lerp)?;
     set_up_slider(&mut panel, "alpha_slider", cb_assign_alpha)?;
     set_up_slider(&mut panel, "curve_slider", cb_assign_curve)?;
@@ -546,6 +551,16 @@ fn reset_panel(
         c.set_checked(&mut common, full_frame);
     }
 
+    if let Some(adjust_mouse) = attrib_value!(
+        owc.backend.get_attrib(BackendAttrib::StereoAdjustMouse),
+        BackendAttribValue::StereoAdjustMouse
+    ) {
+        let c = panel
+            .parser_state
+            .fetch_component_as::<ComponentCheckbox>("stereo_adjust_mouse_box")?;
+        c.set_checked(&mut common, adjust_mouse);
+    }
+
     panel.layout.process_alterables(alterables)?;
 
     Ok(())
@@ -593,6 +608,16 @@ fn cb_assign_stereo_full_frame(
 ) {
     owc.dirty = true;
     let attrib = BackendAttribValue::StereoFullFrame(full_frame);
+    owc.backend.set_attrib(_app, attrib);
+}
+
+fn cb_assign_stereo_adjust_mouse(
+    _app: &mut AppState,
+    owc: &mut OverlayWindowConfig,
+    adjust_mouse: bool,
+) {
+    owc.dirty = true;
+    let attrib = BackendAttribValue::StereoAdjustMouse(adjust_mouse);
     owc.backend.set_attrib(_app, attrib);
 }
 

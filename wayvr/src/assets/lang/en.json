@@ -47,6 +47,7 @@
 		"GLOBAL": "Always visible",
 		"RESIZE_PRESS_AND_DRAG": "Resize (press & drag)",
 		"STEREO_3D_MODE": {
+			"ADJUST_MOUSE": "Adjust mouse",
 			"SPLIT_BOTTOM_TOP": "BOTTOM→TOP",
 			"SPLIT_LEFT_RIGHT": "LEFT→RIGHT",
 			"SPLIT_RIGHT_LEFT": "RIGHT→LEFT",
