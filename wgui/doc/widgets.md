@@ -162,7 +162,7 @@ _2nd gradient color_
 
 ### Image widget for small images
 
-Always set the `width` & `height` of a <sprite>!
+Always set the `width` & `height` of a `<sprite>`!
 
 Supported formats: svg, png, jpeg, gif, webp
 
@@ -198,7 +198,7 @@ _wgui internal image path. Do not use directly unless it's related to the core w
 
 ### Image widget for large images
 
-Always set the `width` & `height` of an <image>!
+Always set the `width` & `height` of an `<image>`!
 
 Supported formats: svg, png, jpeg, gif, webp
 
