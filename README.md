@@ -176,13 +176,13 @@ X11 users:
 - DPI scaling is not supported and will mess with the mouse.
 - Upright screens are not supported and will mess with the mouse.
 
-### Screens are blank or black or frozen on Steam Link
+### Screens are blank or black or frozen on SteamVR 2.14+
 
 As of SteamVR version 2.14.x, PipeWire capture no longer works when using Steam Link.
 
-We're unable to completely troubleshoot how and why Steam Link interferes with PipeWire, so consider the following workarounds for the time being:
+We're unable to completely troubleshoot how and why SteamVR interferes with PipeWire, so consider the following workarounds for the time being:
 
-- Use another streamer, such as WiVRn or ALVR
+- Use another streamer, such as WiVRn or ALVR. Note that SteamVR on Linux is considered experimental by Valve themselves [disclaimer](https://github.com/ValveSoftware/SteamVR-for-Linux?tab=readme-ov-file#steamvr-release-notes-and-known-issues).
 - If your desktop [supports ScreenCopy](https://wayland.app/protocols/wlr-screencopy-unstable-v1#compositor-support), go to Settings and set `Wayland capture method` to `ScreenCopy`
 - If your desktop has an X11 mode, try using that
 
