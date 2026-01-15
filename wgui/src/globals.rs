@@ -3,9 +3,11 @@ use std::{
 	io::Read,
 	path::PathBuf,
 	rc::Rc,
+	sync::LazyLock,
 };
 
 use anyhow::Context;
+use regex::Regex;
 
 use crate::{
 	assets::{AssetPath, AssetProvider},
@@ -93,6 +95,7 @@ impl WguiGlobals {
 	}
 
 	fn load_asset_from_fs(&self, path: &str) -> anyhow::Result<Vec<u8>> {
+		let path = expand_env_vars(path);
 		let path = self.0.borrow().asset_folder.join(path);
 		let mut file =
 			std::fs::File::open(path.as_path()).with_context(|| format!("Could not open asset from {}", path.display()))?;
@@ -135,4 +138,19 @@ impl WguiGlobals {
 	pub fn font_system(&self) -> RefMut<'_, WguiFontSystem> {
 		RefMut::map(self.0.borrow_mut(), |x| &mut x.font_system)
 	}
+}
+
+static ENV_VAR_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+	Regex::new(r"\$\{([A-Z_][A-Z0-9_]*)}|\$([A-Z_][A-Z0-9_]*)").unwrap() // want panic
+});
+
+pub fn expand_env_vars(template: &str) -> String {
+	ENV_VAR_REGEX
+		.replace_all(template, |caps: &regex::Captures| {
+			let var_name = caps.get(1).or_else(|| caps.get(2)).unwrap().as_str();
+			std::env::var(var_name)
+				.inspect_err(|e| log::warn!("Unable to substitute env var {var_name}: {e:?}"))
+				.unwrap_or_default()
+		})
+		.into_owned()
 }

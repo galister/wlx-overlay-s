@@ -4,7 +4,7 @@ use std::{
 };
 
 use glam::{Affine3A, Quat, Vec3, vec3};
-use regex::Regex;
+use wgui::globals::expand_env_vars;
 use wlx_common::{
     overlays::{BackendAttrib, BackendAttribValue},
     windowing::OverlayWindowState,
@@ -21,21 +21,6 @@ use crate::{
         window::{OverlayCategory, OverlayWindowConfig},
     },
 };
-
-static ENV_VAR_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\$\{([A-Z_][A-Z0-9_]*)}|\$([A-Z_][A-Z0-9_]*)").unwrap() // want panic
-});
-
-pub(super) fn expand_env_vars(template: &str) -> String {
-    ENV_VAR_REGEX
-        .replace_all(template, |caps: &regex::Captures| {
-            let var_name = caps.get(1).or_else(|| caps.get(2)).unwrap().as_str();
-            std::env::var(var_name)
-                .inspect_err(|e| log::warn!("Unable to substitute env var {var_name}: {e:?}"))
-                .unwrap_or_default()
-        })
-        .into_owned()
-}
 
 struct CustomPanelState;
 
