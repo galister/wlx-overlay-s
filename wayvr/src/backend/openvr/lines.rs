@@ -88,7 +88,7 @@ impl LinePool {
                 ..Default::default()
             },
             ..OverlayWindowData::from_config(OverlayWindowConfig {
-                name: Arc::from(format!("wlx-line{id}")),
+                name: Arc::from(format!("line{id}")),
                 default_state: Default::default(),
                 active_state: Some(Default::default()),
                 z_order: Z_ORDER_LINES,
