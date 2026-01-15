@@ -72,7 +72,10 @@
       "PIPEWIRE_HELP": "快速 GPU 采集，\n所有桌面环境的标准方式。",
       "PW_FALLBACK_HELP": "高 CPU 占用的慢速方法。\n在 PipeWire GPU 不起作用时尝试。",
       "SCREENCOPY_GPU_HELP": "快速，无屏幕共享弹窗。\n支持：Hyprland, Niri, River, Sway",
-      "SCREENCOPY_HELP": "慢速，无屏幕共享弹窗。\n支持：Hyprland, Niri, River, Sway"
+      "SCREENCOPY_HELP": "慢速，无屏幕共享弹窗。\n支持：Hyprland, Niri, River, Sway",
+      "NONE": "无",
+      "HMD_PINCH": "HMD + 捏合",
+      "EYE_PINCH": "眼睛 + 捏合"
     },
     "POINTER_LERP_FACTOR": "指针平滑",
     "RESTART_SOFTWARE": "重启软件",
@@ -97,7 +100,9 @@
     "XR_CLICK_SENSITIVITY_RELEASE": "XR 释放灵敏度",
     "XR_CLICK_SENSITIVITY_RELEASE_HELP": "必须低于点击灵敏度",
     "XWAYLAND_BY_DEFAULT": "默认以兼容模式运行应用",
-    "AUTOSTART_APPS": "开机启动应用"
+    "AUTOSTART_APPS": "开机启动应用",
+    "HANDSFREE_POINTER": "免提模式",
+    "HANDSFREE_POINTER_HELP": "当运动控制器不可用时使用的输入。\n左手捏合为抓取，右手为点击。"
   },
   "APPLICATION_LAUNCHER": "应用启动器",
   "APPLICATION_STARTED": "应用已启动",
@@ -130,23 +135,14 @@
   "HELLO_USER": "你好，{USER}！",
   "HIDE": "隐藏",
   "HOME_SCREEN": "主页",
-  "LIST_OF_PROCESSES": "进程列表",
-  "LIST_OF_WINDOWS": "窗口列表",
   "MONADO_RUNTIME": "Monado 运行时",
-  "NO_WINDOWS_FOUND": "未找到窗口",
   "POPUP_ADD_DISPLAY": {
     "RESOLUTION": "分辨率"
   },
-  "PROCESS_LIST": {
-    "LOCATED_ON": "位于",
-    "NO_PROCESSES_FOUND": "未找到进程",
-    "TERMINATE_PROCESS_NAMED_X": "终止名为 \"{PROCESS_NAME}\" 的进程"
-  },
-  "PROCESSES": "进程",
+  "PROCESS_LIST": {},
   "REMOVE": "移除",
   "SETTINGS": "设置",
   "SHOW": "显示",
   "TERMINATE_PROCESS": "终止进程",
-  "WIDTH": "宽度",
-  "WINDOW_OPTIONS": "窗口选项"
+  "WIDTH": "宽度"
 }

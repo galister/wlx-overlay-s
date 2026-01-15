@@ -1,7 +1,4 @@
-use std::{
-    sync::{Arc, LazyLock},
-    time::Duration,
-};
+use std::{sync::Arc, time::Duration};
 
 use glam::{Affine3A, Quat, Vec3, vec3};
 use wgui::globals::expand_env_vars;

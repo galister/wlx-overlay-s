@@ -72,7 +72,10 @@
       "PIPEWIRE_HELP": "Acquisizione GPU veloce,\nstandard su tutti i desktop.",
       "PW_FALLBACK_HELP": "Metodo lento con elevato utilizzo della CPU.\nProva in caso PipeWire GPU non funzioni",
       "SCREENCOPY_GPU_HELP": "Veloce, senza popup di condivisione schermo.\nFunziona su: Hyprland, Niri, River, Sway",
-      "SCREENCOPY_HELP": "Lento, nessuna finestra pop-up per la condivisione dello schermo.\nFunziona su: Hyprland, Niri, River, Sway"
+      "SCREENCOPY_HELP": "Lento, nessuna finestra pop-up per la condivisione dello schermo.\nFunziona su: Hyprland, Niri, River, Sway",
+      "NONE": "Nessuno",
+      "HMD_PINCH": "HMD + pizzico",
+      "EYE_PINCH": "Occhio + pizzico"
     },
     "POINTER_LERP_FACTOR": "Smussamento puntatore",
     "RESTART_SOFTWARE": "Riavvia il software",
@@ -97,7 +100,9 @@
     "XR_CLICK_SENSITIVITY_RELEASE": "Sensibilità di rilascio XR",
     "XR_CLICK_SENSITIVITY_RELEASE_HELP": "Deve essere inferiore al clic",
     "XWAYLAND_BY_DEFAULT": "Esegui le app in modalità Compatibilità per impostazione predefinita",
-    "AUTOSTART_APPS": "App da avviare all'avvio"
+    "AUTOSTART_APPS": "App da avviare all'avvio",
+    "HANDSFREE_POINTER": "Modalità a mani libere",
+    "HANDSFREE_POINTER_HELP": "Input da usare quando i\ncontroller di movimento non sono disponibili.\nPizzico sinistro per afferrare, destro per cliccare."
   },
   "APPLICATION_LAUNCHER": "Lanciatore applicazioni",
   "APPLICATION_STARTED": "Applicazione avviata",
@@ -130,23 +135,14 @@
   "HELLO_USER": "Ciao, {USER}!",
   "HIDE": "Nascondi",
   "HOME_SCREEN": "Home",
-  "LIST_OF_PROCESSES": "Lista dei processi",
-  "LIST_OF_WINDOWS": "Elenco finestre",
   "MONADO_RUNTIME": "Runtime Monado",
-  "NO_WINDOWS_FOUND": "Nessuna finestra trovata",
   "POPUP_ADD_DISPLAY": {
     "RESOLUTION": "Risoluzione"
   },
-  "PROCESS_LIST": {
-    "LOCATED_ON": "su",
-    "NO_PROCESSES_FOUND": "Nessun processo trovato",
-    "TERMINATE_PROCESS_NAMED_X": "Termina processo \"{PROCESS_NAME}\""
-  },
-  "PROCESSES": "Processi",
+  "PROCESS_LIST": {},
   "REMOVE": "Rimuovi",
   "SETTINGS": "Impostazioni",
   "SHOW": "Mostra",
   "TERMINATE_PROCESS": "Termina processo",
-  "WIDTH": "Larghezza",
-  "WINDOW_OPTIONS": "Opzioni finestra"
+  "WIDTH": "Larghezza"
 }

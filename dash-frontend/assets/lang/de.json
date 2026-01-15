@@ -4,7 +4,6 @@
   "APPLICATIONS": "Anwendungen",
   "GAMES": "Spiele",
   "SETTINGS": "Einstellungen",
-  "PROCESSES": "Prozesse",
   "HELLO_USER": "Hallo, {USER}!",
   "GENERAL_SETTINGS": "Allgemeine Einstellungen",
   "APPLICATION_LAUNCHER": "Anwendung Launcher",
@@ -76,9 +75,14 @@
       "PIPEWIRE_HELP": "Schnelle GPU-Erfassung,\nStandard auf allen Desktops.",
       "PW_FALLBACK_HELP": "Langsame Methode mit hoher CPU-Auslastung.\nVersuchen Sie es, falls PipeWire GPU nicht funktioniert.",
       "SCREENCOPY_GPU_HELP": "Schnell, keine Bildschirmfreigabe-Popups.\nFunktioniert mit: Hyprland, Niri, River, Sway",
-      "SCREENCOPY_HELP": "Langsam, keine Bildschirmfreigabe-Popups.\nFunktioniert mit: Hyprland, Niri, River, Sway"
+      "SCREENCOPY_HELP": "Langsam, keine Bildschirmfreigabe-Popups.\nFunktioniert mit: Hyprland, Niri, River, Sway",
+      "NONE": "Keine",
+      "HMD_PINCH": "HMD + Kneifen",
+      "EYE_PINCH": "Auge + Kneifen"
     },
-    "AUTOSTART_APPS": "Anwendungen, die beim Start ausgeführt werden sollen"
+    "AUTOSTART_APPS": "Anwendungen, die beim Start ausgeführt werden sollen",
+    "HANDSFREE_POINTER": "Freihändige Modus",
+    "HANDSFREE_POINTER_HELP": "Eingabe, die bei Bewegung\nder Controller verwendet wird, wenn diese nicht verfügbar sind.\nLinkes Kneifen greift, rechtes klickt."
   },
   "HELLO": "Hallo!",
   "AUDIO": {
@@ -98,7 +102,6 @@
   "ACTIONS": {
     "RECENTER_PLAYSPACE": "Playspace neu zentrieren"
   },
-  "LIST_OF_PROCESSES": "Prozessliste",
   "POPUP_ADD_DISPLAY": {
     "RESOLUTION": "Auflösung"
   },
@@ -107,16 +110,9 @@
   "HIDE": "Verbergen",
   "REMOVE": "Entfernen",
   "SHOW": "Anzeigen",
-  "PROCESS_LIST": {
-    "NO_PROCESSES_FOUND": "Keine Prozesse gefunden",
-    "LOCATED_ON": "auf",
-    "TERMINATE_PROCESS_NAMED_X": "Prozess \"{PROCESS_NAME}\" beenden"
-  },
+  "PROCESS_LIST": {},
   "FAILED_TO_LAUNCH_APPLICATION": "Fehler beim Starten der Anwendung:",
-  "NO_WINDOWS_FOUND": "Keine Fenster gefunden",
-  "WINDOW_OPTIONS": "Fensteroptionen",
   "APPLICATION_STARTED": "Anwendung gestartet",
-  "LIST_OF_WINDOWS": "Fensterliste",
   "CLOSE_WINDOW": "Fenster schließen",
   "GAME_LIST": {
     "NO_GAMES_FOUND": "Keine Spiele gefunden"

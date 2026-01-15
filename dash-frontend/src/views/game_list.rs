@@ -18,7 +18,7 @@ use crate::{
 	util::{
 		cached_fetcher::CoverArt,
 		popup_manager::{MountPopupParams, PopupHandle},
-		steam_utils::{self, AppID, AppManifest, SteamUtils},
+		steam_utils::{self, AppID, SteamUtils},
 		various::AsyncExecutor,
 	},
 	views::{self, game_cover, game_launcher},
@@ -42,7 +42,6 @@ pub struct Params<'a> {
 
 pub struct Cell {
 	view_cover: game_cover::View,
-	manifest: AppManifest,
 }
 
 struct State {
@@ -156,13 +155,7 @@ fn fill_game_list(
 			})
 		});
 
-		cells.insert(
-			manifest.app_id.clone(),
-			Cell {
-				view_cover,
-				manifest: manifest.clone(),
-			},
-		);
+		cells.insert(manifest.app_id.clone(), Cell { view_cover });
 	}
 
 	Ok(())

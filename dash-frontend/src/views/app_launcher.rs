@@ -50,7 +50,7 @@ enum CompositorMode {
 enum Task {
 	SetCompositor(CompositorMode),
 	SetRes(ResMode),
-	SetPos(PosMode),
+	SetPos(PosMode), // TODO?
 	SetOrientation(OrientationMode),
 	SetAutoStart(bool),
 	Launch,

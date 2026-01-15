@@ -4,7 +4,6 @@
   "APPLICATIONS": "Aplicaciones",
   "GAMES": "Juegos",
   "SETTINGS": "Ajustes",
-  "PROCESSES": "Procesos",
   "HELLO_USER": "¡Hola, {USER}!",
   "GENERAL_SETTINGS": "Ajustes generales",
   "APPLICATION_LAUNCHER": "Lanzador de aplicaciones",
@@ -76,9 +75,14 @@
       "PIPEWIRE_HELP": "Captura de GPU rápida,\nestándar en todos los escritorios.",
       "PW_FALLBACK_HELP": "Método lento con alto uso de CPU.\nPruébalo si PipeWire GPU no funciona",
       "SCREENCOPY_GPU_HELP": "Rápido, sin ventanas emergentes de uso compartido de pantalla.\nFunciona en: Hyprland, Niri, River, Sway",
-      "SCREENCOPY_HELP": "Lento, sin ventanas emergentes de uso compartido de pantalla.\nFunciona en: Hyprland, Niri, River, Sway"
+      "SCREENCOPY_HELP": "Lento, sin ventanas emergentes de uso compartido de pantalla.\nFunciona en: Hyprland, Niri, River, Sway",
+      "NONE": "Ninguno",
+      "HMD_PINCH": "HMD + pellizco",
+      "EYE_PINCH": "Ojo + pellizco"
     },
-    "AUTOSTART_APPS": "Aplicaciones a ejecutar al inicio"
+    "AUTOSTART_APPS": "Aplicaciones a ejecutar al inicio",
+    "HANDSFREE_POINTER": "Modo manos libres",
+    "HANDSFREE_POINTER_HELP": "Entrada a utilizar cuando no\nestén disponibles los mandos de movimiento.\nPellizco con la izquierda para agarrar, con la derecha para hacer clic."
   },
   "HELLO": "¡Hola!",
   "AUDIO": {
@@ -98,7 +102,6 @@
   "ACTIONS": {
     "RECENTER_PLAYSPACE": "Re-centrar espacio de juego"
   },
-  "LIST_OF_PROCESSES": "Lista de procesos",
   "POPUP_ADD_DISPLAY": {
     "RESOLUTION": "Resolución"
   },
@@ -107,16 +110,9 @@
   "HIDE": "Ocultar",
   "REMOVE": "Eliminar",
   "SHOW": "Mostrar",
-  "PROCESS_LIST": {
-    "NO_PROCESSES_FOUND": "No se encontraron procesos",
-    "LOCATED_ON": "en",
-    "TERMINATE_PROCESS_NAMED_X": "Terminar proceso \"{PROCESS_NAME}\""
-  },
+  "PROCESS_LIST": {},
   "FAILED_TO_LAUNCH_APPLICATION": "No se pudo iniciar la aplicación:",
-  "NO_WINDOWS_FOUND": "No se encontraron ventanas",
-  "WINDOW_OPTIONS": "Opciones de ventana",
   "APPLICATION_STARTED": "Aplicación iniciada",
-  "LIST_OF_WINDOWS": "Lista de ventanas",
   "CLOSE_WINDOW": "Cerrar ventana",
   "GAME_LIST": {
     "NO_GAMES_FOUND": "No se encontraron juegos"

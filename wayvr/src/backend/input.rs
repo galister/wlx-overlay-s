@@ -3,7 +3,7 @@ use std::process::{Child, Command};
 use std::sync::Arc;
 use std::time::Instant;
 
-use glam::{Affine3A, Mat3A, Vec2, Vec3, Vec3A, Vec3Swizzles};
+use glam::{Affine3A, Vec2, Vec3A, Vec3Swizzles};
 
 use idmap_derive::IntegerId;
 use smallvec::{SmallVec, smallvec};

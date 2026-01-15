@@ -12,7 +12,13 @@
     "RELOAD_FROM_DISK": "从磁盘重新加载 XML",
     "CLOSE_MIRROR": "关闭镜像",
     "CLOSE_APP": "关闭应用",
-    "FORCE_CLOSE_APP": "强制关闭应用"
+    "FORCE_CLOSE_APP": "强制关闭应用",
+    "HANDSFREE": {
+      "TITLE": "免提模式",
+      "NONE": "关闭",
+      "HMD": "HMD + 捏合",
+      "EYE_TRACKING": "眼动 + 捏合"
+    }
   },
   "DEFAULT": "默认",
   "DISABLED": "已禁用",
@@ -48,7 +54,8 @@
       "FULL_FRAME": "完整 3D",
       "FULL_FRAME_SBS": "完整左右 (Full-SBS)",
       "FULL_FRAME_TAB": "完整上下 (Full-TAB)",
-      "FULL_FRAME_BAT": "完整下上 (Full-BAT)"
+      "FULL_FRAME_BAT": "完整下上 (Full-BAT)",
+      "ADJUST_MOUSE": "调整鼠标"
     },
     "MOUSE": {
       "TITLE": "鼠标修复",
@@ -61,7 +68,8 @@
       "FLIP90": "镜像旋转 90°",
       "FLIP180": "镜像旋转 180°",
       "FLIP270": "镜像旋转 270°"
-    }
+    },
+    "GLOBAL": "始终可见"
   },
   "GRAB": {
     "ADJUST_DISTANCE": "调整距离",

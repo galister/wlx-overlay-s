@@ -1054,9 +1054,7 @@ fn parse_child<'a>(
 			)?);
 		}
 		"Tabs" => {
-			new_widget_id = Some(parse_component_tabs(
-				file, ctx, child_node, parent_id, &attribs, tag_name,
-			)?);
+			new_widget_id = Some(parse_component_tabs(ctx, child_node, parent_id, &attribs, tag_name)?);
 		}
 		"" => { /* ignore */ }
 		other_tag_name => {

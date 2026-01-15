@@ -12,7 +12,13 @@
     "RELOAD_FROM_DISK": "ディスクからXMLを再読み込み",
     "CLOSE_MIRROR": "ミラーを閉じる",
     "CLOSE_APP": "アプリを閉じる",
-    "FORCE_CLOSE_APP": "アプリを強制終了"
+    "FORCE_CLOSE_APP": "アプリを強制終了",
+    "HANDSFREE": {
+      "TITLE": "ハンズフリーモード",
+      "NONE": "オフ",
+      "HMD": "HMD + ピンチ",
+      "EYE_TRACKING": "視線 + ピンチ"
+    }
   },
   "WATCH": {
     "RECENTER": "プレイスペースをリセンター",
@@ -57,7 +63,8 @@
       "FULL_FRAME": "フル3D",
       "FULL_FRAME_SBS": "フルSBS",
       "FULL_FRAME_TAB": "フルTAB",
-      "FULL_FRAME_BAT": "フルBAT"
+      "FULL_FRAME_BAT": "フルBAT",
+      "ADJUST_MOUSE": "マウス調整"
     },
     "ALIGN_TO_HMD": "常にHMDの方を向く",
     "MOUSE": {
@@ -71,7 +78,8 @@
       "ROTATE90": "回転 90°",
       "ROTATE180": "回転 180°",
       "ROTATE270": "回転 270°"
-    }
+    },
+    "GLOBAL": "常に表示"
   },
   "DISABLED": "無効",
   "DEFAULT": "デフォルト",

@@ -1,6 +1,6 @@
 use std::{
 	any::{Any, TypeId},
-	cell::RefMut,
+	cell::{Ref, RefMut},
 	collections::HashSet,
 };
 
@@ -10,6 +10,7 @@ use slotmap::{DenseSlotMap, new_key_type};
 use crate::{
 	animation::{self, Animation},
 	components::Component,
+	globals,
 	i18n::I18n,
 	layout::{LayoutState, LayoutTask, WidgetID},
 	sound::WguiSoundType,
@@ -162,10 +163,18 @@ impl CallbackDataCommon<'_> {
 		self.state.globals.i18n()
 	}
 
-	// helper function
+	// helper functions
 	pub fn mark_widget_dirty(&mut self, id: WidgetID) {
 		self.alterables.mark_dirty(id);
 		self.alterables.mark_redraw();
+	}
+
+	pub fn globals(&self) -> RefMut<'_, globals::Globals> {
+		self.state.globals.get()
+	}
+
+	pub fn defaults(&self) -> Ref<'_, globals::Defaults> {
+		self.state.globals.defaults()
 	}
 }
 

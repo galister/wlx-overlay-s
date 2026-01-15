@@ -12,7 +12,13 @@
     "RELOAD_FROM_DISK": "Ricarica XML dal disco",
     "CLOSE_MIRROR": "Chiudi mirror",
     "CLOSE_APP": "Chiudi app",
-    "FORCE_CLOSE_APP": "Chiudi forzatamente l'app"
+    "FORCE_CLOSE_APP": "Chiudi forzatamente l'app",
+    "HANDSFREE": {
+      "TITLE": "Modalità a mani libere",
+      "NONE": "Disattivato",
+      "HMD": "HMD + pizzico",
+      "EYE_TRACKING": "Occhio + pizzico"
+    }
   },
   "DEFAULT": "Predefinito",
   "DISABLED": "Disabilitato",
@@ -48,7 +54,8 @@
       "FULL_FRAME": "3D Completo",
       "FULL_FRAME_SBS": "Full-SBS",
       "FULL_FRAME_TAB": "Full-TAB",
-      "FULL_FRAME_BAT": "Full-BAT"
+      "FULL_FRAME_BAT": "Full-BAT",
+      "ADJUST_MOUSE": "Regola il mouse"
     },
     "MOUSE": {
       "TITLE": "Correzioni del mouse",
@@ -61,7 +68,8 @@
       "FLIP90": "Ruotato di 90°",
       "FLIP180": "Ruotato di 180°",
       "FLIP270": "Ruotato di 270°"
-    }
+    },
+    "GLOBAL": "Sempre visibile"
   },
   "GRAB": {
     "ADJUST_DISTANCE": "Regola la distanza",

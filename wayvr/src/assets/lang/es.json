@@ -12,7 +12,13 @@
     "RELOAD_FROM_DISK": "Volver a cargar XML desde el disco",
     "CLOSE_MIRROR": "Cerrar espejo",
     "CLOSE_APP": "Cerrar aplicación",
-    "FORCE_CLOSE_APP": "Forzar cierre de la aplicación"
+    "FORCE_CLOSE_APP": "Forzar cierre de la aplicación",
+    "HANDSFREE": {
+      "TITLE": "Modo manos libres",
+      "NONE": "Desactivado",
+      "HMD": "HMD + pellizco",
+      "EYE_TRACKING": "Ojo + pellizco"
+    }
   },
   "WATCH": {
     "RECENTER": "Recentrar el área de juego",
@@ -58,7 +64,8 @@
       "FULL_FRAME": "3D completo",
       "FULL_FRAME_SBS": "Full-SBS",
       "FULL_FRAME_TAB": "Full-TAB",
-      "FULL_FRAME_BAT": "Full-BAT"
+      "FULL_FRAME_BAT": "Full-BAT",
+      "ADJUST_MOUSE": "Ajustar ratón"
     },
     "STEREO_3D_MODE_": {},
     "ALIGN_TO_HMD": "Alinear al HMD",
@@ -73,7 +80,8 @@
       "ROTATE90": "Rotado 90°",
       "ROTATE180": "Rotado 180°",
       "ROTATE270": "Rotado 270°"
-    }
+    },
+    "GLOBAL": "Siempre visible"
   },
   "DISABLED": "Deshabilitado",
   "DEFAULT": "Por defecto",
