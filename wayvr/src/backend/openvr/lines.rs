@@ -123,14 +123,13 @@ impl LinePool {
         let center = (start + end) * 0.5;
         let dir_norm = dir / len;
 
-        let xform = Affine3A::from_scale_rotation_translation(
-            Vec3::new(1., len / 0.002, 1.),
+        let xform = Affine3A::from_rotation_translation(
             Quat::from_rotation_arc(Vec3::Z, dir_norm.into()),
             center.into(),
         );
 
-        let rotation = Affine3A::from_axis_angle(Vec3::X, PI * 1.5);
-        let mut transform = xform * rotation;
+        let rotation = Affine3A::from_axis_angle(Vec3::X, -PI * 0.5);
+        let mut transform = xform * rotation * Affine3A::from_scale(Vec3::new(1., len / 0.002, 1.));
         let to_hmd = hmd.translation - center;
         let sides = [Vec3A::Z, Vec3A::X, Vec3A::NEG_Z, Vec3A::NEG_X];
 
