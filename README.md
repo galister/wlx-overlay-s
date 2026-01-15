@@ -4,7 +4,7 @@
 
 A lightweight OpenXR/OpenVR overlay for Wayland and X11 desktops.
 
-WayVR lets you to access your desktop screens while in VR, and even launch apps directly in VR.
+WayVR lets you access your desktop screens while in VR, and even launch apps directly in VR.
 
 In comparison to similar overlays, WayVR aims to run alongside VR games and experiences while having as little performance impact as possible. The UI appearance and rendering techniques are kept as simple and efficient as possible, while still allowing a high degree of customizability.
 
@@ -26,11 +26,6 @@ There are multiple ways to install WayVR:
 
 1. AppImage: Download from [Releases](https://github.com/wlx-team/wayvr/releases)
 1. AUR package: [wayvr](https://aur.archlinux.org/packages/wayvr) or [wayvr-git](https://aur.archlinux.org/packages/wayvr-git) 
-1. Homebrew:
-
-- Add AtomicXR tap: `brew tap matrixfurry.com/atomicxr https://tangled.sh/@matrixfurry.com/homebrew-atomicxr`
-- Install WayVR: `brew install wlx-overlay-s`
-
 1. [Building from source](https://github.com/wlx-team/wayvr/wiki/Building-from-Source).
 
 ### General Setup
@@ -60,15 +55,15 @@ For users specifically running **SteamVR via Steam Flatpak**, follow these steps
 In case screens were selected in the wrong order:
 
 - Go to Settings and press `Clear PipeWire tokens` and then `Restart software`
-- Pay attention to your notifications, it tells you in which order to pick the screens.
-- If notifications don't show, try start WayVR from the terminal and look for instructions in there.
+- Pay attention to your notifications, which tell you in which order to pick the screens.
+- If notifications don't show, try starting WayVR from the terminal and look for instructions in there.
 
 **WiVRn users**: Select WayVR from the `Application` drop-down. If there's no such entry, select `Custom` and browse to your WayVR executable or AppImage.
 
 **Envision users**: Go to the Plugins menu and select the WayVR plugin. This will download and run the AppImage version of the overlay.
-In order to run a standalone installation (for instance from the AUR), create a bash script containing `wayvr --openxr --show` and then set this bash script as a custom Envision plugin.
+To run a standalone installation (for instance, from the AUR), create a bash script containing `wayvr --openxr --show` and then set this bash script as a custom Envision plugin.
 
-This will show a home environment with headset passthrough by default or a [customizable background](https://github.com/wlx-team/wayvr/wiki/OpenXR-Skybox)!
+This will show a home environment with headset passthrough enabled by default or a [customizable background](https://github.com/wlx-team/wayvr/wiki/OpenXR-Skybox)!
 
 **SteamVR users**: WayVR will register itself for auto-start, so there is no need to start it every time. Disclaimer: SteamVR will sometimes disregard this and not start WayVR anyway.
 
@@ -78,7 +73,7 @@ This will show a home environment with headset passthrough by default or a [cust
 
 ### Working Set
 
-The working set consists of all currently selected overlays; screens, mirrors, keyboard, etc.
+The working set consists of all currently selected overlays: screens, mirrors, keyboard, etc.
 
 The working set appears in front of the headset when shown, and can be re-centered by hiding and showing again.
 
@@ -108,17 +103,17 @@ Check your left wrist for the watch. The watch is the primary tool for controlli
 
 The top of the watch shows device batteries, and the bottom shows your overlay controls.
 
-Enter edit mode (leftmost button on bottom) to edit your overlay sets.
+Enter edit mode (the leftmost button at the bottom) to edit your overlay sets.
 
-While in edit mode, the watch can also be grabbed, and passed between your hands.
+While in edit mode, the watch can also be grabbed and passed between your hands.
 
 After grabbing, the watch will automatically attach to the hand that's opposite from the one that held it.
 
-In edit mode, try hovering other overlays to see their advanced options!
+In edit mode, try hovering over other overlays to see their advanced options!
 
 ### The screens
 
-Hovering a pointer over a screen will move the mouse. If there are more than one pointers hovering a screen, the pointer that was last used to click will take precedence.
+Hovering a pointer over a screen will move the mouse. If more than one pointer is hovering over a screen, the pointer that was last used to click will take precedence.
 
 The click type depends on the laser color:
 
@@ -132,7 +127,7 @@ The click type depends on the laser color:
 Typing
 
 - Use the BLUE laser when typing regularly.
-- While using ORANGE laser, all keystrokes will have SHIFT applied.
+- While using the ORANGE laser, all keystrokes will have SHIFT applied.
 - Purple laser is customizable via the settings, no modifier by default.
 
 **Modifier Keys** are sticky. They will remain pressed until a non-modifier key is pressed, the modifier gets toggled off, or the keyboard gets hidden.
@@ -150,7 +145,7 @@ We would like to work with you and include additional bindings.
 
 ## Troubleshooting
 
-When an error is detected, we often print tips for fixing into the log file.
+When an error is detected, we often print tips for fixing it into the log file.
 
 Logs will be at `/tmp/wayvr.log` for most distros.
 
@@ -163,8 +158,8 @@ Check [here](https://github.com/wlx-team/wayvr/wiki/Troubleshooting) for tips.
 If the mouse is moving on a completely different screen, the screens were likely selected in the wrong order:
 
 - Go to Settings and press `Clear PipeWire tokens` and then `Restart software`
-- Pay attention to your notifications, it tells you in which order to pick the screens.
-- If notifications don't show, try start WayVR from the terminal and look for instructions in there.
+- Pay attention to your notifications, which tell you in which order to pick the screens.
+- If notifications don't show, try starting WayVR from the terminal and look for instructions in there.
 
 COSMIC desktop:
 
@@ -188,11 +183,11 @@ We're unable to completely troubleshoot how and why SteamVR interferes with Pipe
 
 ### Modifiers get stuck
 
-Hiding the keyboard will un-press all of its buttons. Alternatively, go to Settings and use the `Restart software` button.
+Hiding the keyboard will unpress all of its buttons. Alternatively, go to Settings and use the `Restart software` button.
 
 ### X11 limitations
 
 - X11 capture can generally seem slow. This is because zero-copy GPU capture is not supported on the general X11 desktop. Consider trying Wayland.
 - DPI scaling is not supported and may cause the mouse to not follow the laser properly.
 - Upright screens are not supported and can cause the mouse to not follow the laser properly.
-- Screen changes (connecting / disconnecting a display, resolution changes, etc) are not handled at runtime. Restart the overlay for these to take effect.
+- Screen changes (connecting/disconnecting a display, resolution changes, etc) are not handled at runtime. Restart the overlay for these to take effect.
