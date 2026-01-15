@@ -123,7 +123,8 @@ impl LinePool {
         let center = (start + end) * 0.5;
         let dir_norm = dir / len;
 
-        let xform = Affine3A::from_rotation_translation(
+        let xform = Affine3A::from_scale_rotation_translation(
+            Vec3::new(1., len / 0.002, 1.),
             Quat::from_rotation_arc(Vec3::Z, dir_norm.into()),
             center.into(),
         );
@@ -133,11 +134,10 @@ impl LinePool {
         let to_hmd = hmd.translation - center;
         let sides = [Vec3A::Z, Vec3A::X, Vec3A::NEG_Z, Vec3A::NEG_X];
 
-        #[allow(clippy::neg_multiply)]
         let rotations = [
             Affine3A::IDENTITY,
             Affine3A::from_axis_angle(Vec3::Y, PI * 0.5),
-            Affine3A::from_axis_angle(Vec3::Y, PI * -1.0),
+            Affine3A::from_axis_angle(Vec3::Y, PI * 1.0),
             Affine3A::from_axis_angle(Vec3::Y, PI * 1.5),
         ];
 
@@ -151,7 +151,6 @@ impl LinePool {
 
         transform *= rotations[closest.0];
 
-        debug_assert!(color < self.colors.len());
         self.draw_transform(id, transform, self.colors[color]);
     }
 
@@ -175,7 +174,7 @@ impl LinePool {
         for data in self.lines.values_mut() {
             data.after_input(overlay, app)?;
             let state = data.config.active_state.as_mut().unwrap();
-            if state.alpha > 0.01 {
+            if state.alpha > 0.05 {
                 if data.config.dirty {
                     data.upload_texture(overlay, &app.gfx);
                     data.config.dirty = false;
@@ -191,6 +190,13 @@ impl LinePool {
     pub fn mark_dirty(&mut self) {
         for data in self.lines.values_mut() {
             data.config.dirty = true;
+        }
+    }
+
+    pub fn reset(&mut self) {
+        for data in self.lines.values_mut() {
+            let state = data.config.active_state.as_mut().unwrap();
+            state.alpha = 0.0;
         }
     }
 }

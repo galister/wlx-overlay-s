@@ -340,6 +340,8 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             .values_mut()
             .for_each(|o| o.after_render(universe.clone(), &mut overlay_mgr, &app.gfx));
 
+        lines.reset();
+
         // chaperone
     } // main_loop
 
@@ -353,7 +355,7 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
     }
 
     log::warn!("OpenVR shutdown");
-    // context.shutdown() called by Drop
+    unsafe { context.shutdown() };
 
     Ok(())
 }
