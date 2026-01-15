@@ -131,6 +131,7 @@ async function run() {
   let llm_translated_json = {};
   const translated_json_path = lang_path + "/" + template_name + ".json";
   if (await fsp.exists(translated_json_path)) {
+    console.log("Loading file", translated_json_path);
     llm_translated_json = JSON.parse((await fsp.readFile(translated_json_path)).toString());
   }
 

@@ -32,6 +32,8 @@ pub struct AppManifest {
 	pub last_played: Option<u64>, // unix timestamp
 }
 
+// TODO @oo8dev: game sort methods
+#[allow(dead_code)]
 pub enum GameSortMethod {
 	NameAsc,
 	NameDesc,
@@ -119,6 +121,15 @@ struct AppEntry {
 	pub app_id: AppID,
 }
 
+pub fn launch(app_id: &AppID) -> anyhow::Result<()> {
+	log::info!("Launching Steam game with AppID {}", app_id);
+	call_steam(&format!("steam://rungameid/{}", app_id))?;
+	Ok(())
+}
+
+// TODO @oo8dev: running games list (#398)
+/*
+
 pub fn stop(app_id: AppID, force_kill: bool) -> anyhow::Result<()> {
 	log::info!("Stopping Steam game with AppID {}", app_id);
 
@@ -134,12 +145,6 @@ pub fn stop(app_id: AppID, force_kill: bool) -> anyhow::Result<()> {
 			.arg(format!("{}", game.pid))
 			.spawn()?;
 	}
-	Ok(())
-}
-
-pub fn launch(app_id: &AppID) -> anyhow::Result<()> {
-	log::info!("Launching Steam game with AppID {}", app_id);
-	call_steam(&format!("steam://rungameid/{}", app_id))?;
 	Ok(())
 }
 
@@ -215,7 +220,7 @@ pub fn list_running_games() -> anyhow::Result<Vec<RunningGame>> {
 	}
 
 	Ok(res)
-}
+} */
 
 fn call_steam(arg: &str) -> anyhow::Result<()> {
 	match std::process::Command::new("xdg-open").arg(arg).spawn() {

@@ -1,6 +1,6 @@
 use crate::{
 	assets::AssetPath,
-	components::{Component, button, tooltip},
+	components::{Component, button},
 	drawing::Color,
 	i18n::Translation,
 	layout::WidgetID,
@@ -57,7 +57,7 @@ pub fn parse_component_button<'a>(
 					key,
 					value,
 					&mut round,
-					ctx.doc_params.globals.get().defaults.rounding_mult,
+					ctx.doc_params.globals.defaults().rounding_mult,
 				);
 			}
 			"color" => {

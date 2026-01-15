@@ -47,7 +47,7 @@ pub fn parse_widget_rectangle<'a>(
 					key,
 					value,
 					&mut params.round,
-					ctx.doc_params.globals.get().defaults.rounding_mult,
+					ctx.doc_params.globals.defaults().rounding_mult,
 				);
 			}
 			"border" => {

@@ -135,8 +135,8 @@ impl ComponentTrait for ComponentButton {
 	}
 }
 
-fn get_color2(color: &drawing::Color) -> drawing::Color {
-	color.lerp(&Color::new(0.0, 0.0, 0.0, color.a), 0.2)
+fn get_color2(color: &drawing::Color, gradient_intensity: f32) -> drawing::Color {
+	color.lerp(&Color::new(0.0, 0.0, 0.0, color.a), gradient_intensity)
 }
 
 impl ComponentButton {
@@ -157,6 +157,8 @@ impl ComponentButton {
 	}
 
 	pub fn set_color(&self, common: &mut CallbackDataCommon, color: Color) {
+		let gradient_intensity = common.defaults().gradient_intensity;
+
 		let Some(mut rect) = common.state.widgets.get_as::<WidgetRectangle>(self.data.id_rect) else {
 			return;
 		};
@@ -165,7 +167,7 @@ impl ComponentButton {
 		state.colors.color = color;
 
 		rect.params.color = color;
-		rect.params.color2 = get_color2(&color);
+		rect.params.color2 = get_color2(&color, gradient_intensity);
 	}
 
 	pub fn get_time_since_last_pressed(&self) -> Duration {
@@ -191,7 +193,11 @@ impl ComponentButton {
 			return;
 		}
 
-		let anim_mult = common.state.globals.defaults().animation_mult;
+		let (anim_mult, gradient_intensity) = {
+			let defaults = common.state.globals.defaults();
+			(defaults.animation_mult, defaults.gradient_intensity)
+		};
+
 		let anim_ticks = if sticky_down { 5. } else { 10. };
 
 		let state = self.state.clone();
@@ -211,7 +217,7 @@ impl ComponentButton {
 				let colors = &state.colors;
 				let bgcolor = colors.color.lerp(&colors.hover_color, mult * 0.5);
 				rect.params.color = bgcolor;
-				rect.params.color2 = get_color2(&bgcolor);
+				rect.params.color2 = get_color2(&bgcolor, gradient_intensity);
 				rect.params.border_color = colors.border_color.lerp(&colors.hover_border_color, mult);
 				common.alterables.mark_redraw();
 			}),
@@ -222,6 +228,7 @@ impl ComponentButton {
 }
 
 fn anim_hover(
+	common: &mut CallbackDataCommon,
 	rect: &mut WidgetRectangle,
 	widget_data: &mut WidgetData,
 	colors: &Colors,
@@ -240,13 +247,15 @@ fn anim_hover(
 
 	let bgcolor = init_color.lerp(&colors.hover_color, mult);
 
+	let gradient_intensity = common.globals().defaults.gradient_intensity;
+
 	//let t = Mat4::from_scale(Vec3::splat(1.0 + pos * 0.5)) * Mat4::from_rotation_z(pos * 1.0);
 
 	let t = Mat4::from_scale(Vec3::splat(1.0 + pos * 0.05));
 	widget_data.transform = centered_matrix(widget_boundary.size, &t);
 
 	rect.params.color = bgcolor;
-	rect.params.color2 = get_color2(&bgcolor);
+	rect.params.color2 = get_color2(&bgcolor, gradient_intensity);
 
 	rect.params.border_color = init_border_color.lerp(&colors.hover_border_color, mult);
 }
@@ -260,6 +269,7 @@ fn anim_hover_create(state: Rc<RefCell<State>>, widget_id: WidgetID, fade_in: bo
 			let rect = anim_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
 			let state = state.borrow();
 			anim_hover(
+				common,
 				rect,
 				anim_data.data,
 				&state.colors,
@@ -326,6 +336,7 @@ fn register_event_mouse_press(state: Rc<RefCell<State>>, listeners: &mut EventLi
 
 			let rect = event_data.obj.get_as_mut::<WidgetRectangle>().unwrap();
 			anim_hover(
+				common,
 				rect,
 				event_data.widget_data,
 				&state.colors,
@@ -373,6 +384,7 @@ fn register_event_mouse_release(
 				state.down = false;
 				if state.hovered {
 					anim_hover(
+						common,
 						rect,
 						event_data.widget_data,
 						&state.colors,
@@ -418,7 +430,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	let color = if let Some(color) = params.color {
 		color
 	} else {
-		globals.get().defaults.button_color
+		globals.defaults().button_color
 	};
 
 	let border_color = if let Some(border_color) = params.border_color {
@@ -439,11 +451,13 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		Color::new(color.r + 0.5, color.g + 0.5, color.g + 0.5, color.a + 0.5)
 	};
 
+	let gradient_intensity = ess.layout.state.globals.defaults().gradient_intensity;
+
 	let (root, _) = ess.layout.add_child(
 		ess.parent,
 		WidgetRectangle::create(WidgetRectangleParams {
 			color,
-			color2: get_color2(&color),
+			color2: get_color2(&color, gradient_intensity),
 			gradient: drawing::GradientMode::Vertical,
 			round: params.round,
 			border_color,
@@ -455,7 +469,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	let id_rect = root.id;
 
 	let light_text = {
-		let mult = if globals.get().defaults.dark_mode {
+		let mult = if globals.defaults().dark_mode {
 			color.a
 		} else {
 			1.0 - color.a

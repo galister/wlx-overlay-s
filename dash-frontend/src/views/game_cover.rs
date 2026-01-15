@@ -10,7 +10,7 @@ use wgui::{
 	drawing::{self, GradientMode},
 	globals::WguiGlobals,
 	i18n::Translation,
-	layout::{Layout, WidgetID, WidgetPair},
+	layout::{Layout, WidgetID},
 	renderer_vk::text::{FontWeight, HorizontalAlign, TextShadow, TextStyle, custom_glyph::CustomGlyphData},
 	taffy::{
 		self, AlignItems, AlignSelf, JustifyContent, JustifySelf,
@@ -47,7 +47,6 @@ pub struct Params<'a, 'b> {
 
 pub struct View {
 	pub button: Rc<ComponentButton>,
-	pair: WidgetPair,
 	id_image_parent: WidgetID,
 	app_name: String,
 	app_id: AppID,
@@ -289,7 +288,6 @@ impl View {
 			.detach();
 
 		Ok(View {
-			pair: widget_button,
 			button,
 			id_image_parent: image_parent.id,
 			app_name: params.manifest.name.clone(),

@@ -67,7 +67,7 @@ impl InteractLockHandler {
         app: &mut AppState,
         anim_mult: f32,
     ) -> Box<ModifyOverlayTask> {
-        let defaults = app.wgui_globals.get().defaults.clone();
+        let defaults = app.wgui_globals.defaults().clone();
         let rect_color = self.color;
 
         self.interactable = !self.interactable;

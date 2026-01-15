@@ -12,7 +12,13 @@
     "RELOAD_FROM_DISK": "XML-Datei von der Festplatte neu laden",
     "CLOSE_MIRROR": "Spiegel schließen",
     "CLOSE_APP": "App schließen",
-    "FORCE_CLOSE_APP": "App zwangsweise schließen"
+    "FORCE_CLOSE_APP": "App zwangsweise schließen",
+    "HANDSFREE": {
+      "TITLE": "Freihändig-Modus",
+      "NONE": "Aus",
+      "HMD": "HMD + Kneifen",
+      "EYE_TRACKING": "Auge + Kneifen"
+    }
   },
   "WATCH": {
     "RECENTER": "Spielbereich neu zentrieren",
@@ -59,7 +65,8 @@
       "FULL_FRAME": "Voll 3D",
       "FULL_FRAME_SBS": "Full-SBS",
       "FULL_FRAME_TAB": "Full-TAB",
-      "FULL_FRAME_BAT": "Full-BAT"
+      "FULL_FRAME_BAT": "Full-BAT",
+      "ADJUST_MOUSE": "Maus anpassen"
     },
     "STEREO_3D_MODE_": {},
     "ALIGN_TO_HMD": "An HMD ausrichten",
@@ -74,7 +81,8 @@
       "ROTATE90": "90° gedreht",
       "ROTATE180": "180° gedreht",
       "ROTATE270": "270° gedreht"
-    }
+    },
+    "GLOBAL": "Immer sichtbar"
   },
   "DISABLED": "Deaktiviert",
   "DEFAULT": "Standard",

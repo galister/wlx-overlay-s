@@ -16,7 +16,6 @@
         <MenuButton id="btn_apps" icon="dashboard/apps.svg" translation="APPLICATIONS" />
         <MenuButton id="btn_games" icon="dashboard/games.svg" translation="GAMES" />
         <MenuButton id="btn_monado" icon="dashboard/monado.svg" text="Monado" />
-        <!--MenuButton id="btn_processes" icon="dashboard/window.svg" translation="PROCESSES" /-->
         <MenuButton id="btn_settings" icon="dashboard/settings.svg" translation="SETTINGS" />
       </div>
     </div>

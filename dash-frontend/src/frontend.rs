@@ -18,10 +18,7 @@ use wlx_common::{audio, dash_interface::BoxDashInterface, timestep::Timestep};
 
 use crate::{
 	assets,
-	tab::{
-		Tab, TabType, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, processes::TabProcesses,
-		settings::TabSettings,
-	},
+	tab::{Tab, TabType, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, settings::TabSettings},
 	util::{
 		popup_manager::{MountPopupParams, PopupManager, PopupManagerParams},
 		toast_manager::ToastManager,
@@ -358,7 +355,6 @@ impl<T: 'static> Frontend<T> {
 			TabType::Apps => Box::new(TabApps::new(self, widget_content.id, data)?),
 			TabType::Games => Box::new(TabGames::new(self, widget_content.id)?),
 			TabType::Monado => Box::new(TabMonado::new(self, widget_content.id)?),
-			TabType::Processes => Box::new(TabProcesses::new(self, widget_content.id)?),
 			TabType::Settings => Box::new(TabSettings::new(self, widget_content.id, data)?),
 		};
 
@@ -401,12 +397,6 @@ impl<T: 'static> Frontend<T> {
 			&self.state.fetch_component_as::<ComponentButton>("btn_side_monado")?,
 			FrontendTask::SetTab(TabType::Monado),
 		);
-
-		// "Processes" side button
-		// self.tasks.handle_button(
-		// 	&self.state.fetch_component_as::<ComponentButton>("btn_side_processes")?,
-		// 	FrontendTask::SetTab(TabType::Processes),
-		// );
 
 		// "Settings" side button
 		self.tasks.handle_button(

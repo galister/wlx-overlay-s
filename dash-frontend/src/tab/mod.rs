@@ -4,7 +4,6 @@ pub mod apps;
 pub mod games;
 pub mod home;
 pub mod monado;
-pub mod processes;
 pub mod settings;
 
 #[derive(Clone, Copy, Debug)]
@@ -13,7 +12,6 @@ pub enum TabType {
 	Apps,
 	Games,
 	Monado,
-	Processes,
 	Settings,
 }
 

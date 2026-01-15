@@ -111,7 +111,7 @@ struct MultiSelectorParams<'a> {
 
 fn mount_multi_selector(params: MultiSelectorParams) -> anyhow::Result<()> {
 	let globals = params.ess.layout.state.globals.clone();
-	let accent_color = globals.get().defaults.accent_color;
+	let accent_color = globals.defaults().accent_color;
 
 	for cell in params.cells {
 		let highlighted = cell.key == params.def_cell;

@@ -9,14 +9,10 @@ use crate::{
 	layout::WidgetPair,
 	widget::{ConstructEssentials, div::WidgetDiv},
 };
-use std::{
-	cell::RefCell,
-	rc::{Rc, Weak},
-	sync::Arc,
-};
+use std::{cell::RefCell, rc::Rc};
 use taffy::{
 	AlignItems,
-	prelude::{auto, length, percent},
+	prelude::{length, percent},
 };
 
 pub struct Entry<'a> {
@@ -49,11 +45,8 @@ struct State {
 	on_select: Option<TabSelectCallback>,
 }
 
-struct Data {}
-
 pub struct ComponentTabs {
 	base: ComponentBase,
-	data: Rc<Data>,
 	state: Rc<RefCell<State>>,
 }
 
@@ -145,7 +138,6 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		});
 	}
 
-	let data = Rc::new(Data {});
 	let state = Rc::new(RefCell::new(State {
 		selected_entry_name: Rc::from(params.selected_entry_name),
 		mounted_entries,
@@ -169,7 +161,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 		lhandles: Default::default(),
 	};
 
-	let tabs = Rc::new(ComponentTabs { base, data, state });
+	let tabs = Rc::new(ComponentTabs { base, state });
 
 	ess.layout.defer_component_refresh(Component(tabs.clone()));
 	Ok((root, tabs))

@@ -12,7 +12,13 @@
     "RELOAD_FROM_DISK": "Przeładuj XML z dysku",
     "CLOSE_MIRROR": "Zamknij lustro",
     "CLOSE_APP": "Zamknij aplikację",
-    "FORCE_CLOSE_APP": "Wymuś zamknięcie aplikacji"
+    "FORCE_CLOSE_APP": "Wymuś zamknięcie aplikacji",
+    "HANDSFREE": {
+      "TITLE": "Tryb wolnych rąk",
+      "NONE": "Wyłączone",
+      "HMD": "HMD + uszczypnięcie",
+      "EYE_TRACKING": "Oko + uszczypnięcie"
+    }
   },
   "WATCH": {
     "RECENTER": "Wyśrodkuj przestrzeń gry",
@@ -58,7 +64,8 @@
       "FULL_FRAME": "Pełny 3D",
       "FULL_FRAME_SBS": "Full-SBS",
       "FULL_FRAME_TAB": "Full-TAB",
-      "FULL_FRAME_BAT": "Full-BAT"
+      "FULL_FRAME_BAT": "Full-BAT",
+      "ADJUST_MOUSE": "Dostosuj mysz"
     },
     "ALIGN_TO_HMD": "Dopasuj do HMD",
     "MOUSE": {
@@ -72,7 +79,8 @@
       "FLIP90": "Odwrócony o 90°",
       "FLIP180": "Odwrócony o 180°",
       "FLIP270": "Odwrócony o 270°"
-    }
+    },
+    "GLOBAL": "Zawsze widoczne"
   },
   "DISABLED": "Wyłączone",
   "DEFAULT": "Domyślny",

@@ -1,15 +1,12 @@
-use std::rc::Rc;
-
 use crate::{
 	assets::AssetPath,
 	components::{Component, tabs},
 	i18n::Translation,
 	layout::WidgetID,
-	parser::{AttribPair, ParserContext, ParserFile, get_asset_path_from_kv, process_component, style::parse_style},
+	parser::{AttribPair, ParserContext, get_asset_path_from_kv, process_component, style::parse_style},
 };
 
 pub fn parse_component_tabs<'a>(
-	file: &'a ParserFile,
 	ctx: &mut ParserContext,
 	node: roxmltree::Node<'a, 'a>,
 	parent_id: WidgetID,

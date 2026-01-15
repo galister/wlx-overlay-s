@@ -70,9 +70,14 @@
       "PIPEWIRE_HELP": "Szybkie przechwytywanie GPU,\nstandard na wszystkich komputerach.",
       "PW_FALLBACK_HELP": "Powolna metoda z wysokim użyciem procesora.\nWypróbuj w przypadku, gdy PipeWire GPU nie działa",
       "SCREENCOPY_GPU_HELP": "Szybkie działanie, brak wyskakujących okien z informacją o udostępnianiu ekranu.\nDziała na: Hyprland, Niri, River, Sway",
-      "SCREENCOPY_HELP": "Wolne, bez wyskakujących okienek udostępniania ekranu.\nDziała na: Hyprland, Niri, River, Sway"
+      "SCREENCOPY_HELP": "Wolne, bez wyskakujących okienek udostępniania ekranu.\nDziała na: Hyprland, Niri, River, Sway",
+      "NONE": "Brak",
+      "HMD_PINCH": "HMD + szczyknięcie",
+      "EYE_PINCH": "Ściśnięcie palcami + oko"
     },
-    "AUTOSTART_APPS": "Aplikacje do uruchomienia przy starcie"
+    "AUTOSTART_APPS": "Aplikacje do uruchomienia przy starcie",
+    "HANDSFREE_POINTER": "Tryb bez użycia rąk",
+    "HANDSFREE_POINTER_HELP": "Wejście do użycia, gdy kontrolery ruchu\nsą niedostępne. Lewy szczyptak to chwyt,\nprawy to kliknięcie."
   },
   "APPLICATION_LAUNCHER": "Uruchamiacz aplikacji",
   "APPLICATIONS": "Aplikacje",
@@ -97,7 +102,6 @@
   "HELLO_USER": "Witaj, {USER}!",
   "HIDE": "Ukryj",
   "HOME_SCREEN": "Ekran główny",
-  "LIST_OF_PROCESSES": "Lista procesów",
   "MONADO_RUNTIME": "Środowisko Monado",
   "POPUP_ADD_DISPLAY": {
     "RESOLUTION": "Rozdzielczość"
@@ -106,17 +110,9 @@
   "SETTINGS": "Ustawienia",
   "SHOW": "Pokaż",
   "WIDTH": "Szerokość",
-  "PROCESSES": "Procesy",
-  "PROCESS_LIST": {
-    "NO_PROCESSES_FOUND": "Nie znaleziono procesów",
-    "LOCATED_ON": "na",
-    "TERMINATE_PROCESS_NAMED_X": "Zakończ proces \"{PROCESS_NAME}\""
-  },
+  "PROCESS_LIST": {},
   "FAILED_TO_LAUNCH_APPLICATION": "Nie udało się uruchomić aplikacji:",
-  "NO_WINDOWS_FOUND": "Nie znaleziono okien",
-  "WINDOW_OPTIONS": "Opcje okna",
   "APPLICATION_STARTED": "Aplikacja uruchomiona",
-  "LIST_OF_WINDOWS": "Lista okien",
   "CLOSE_WINDOW": "Zamknij okno",
   "GAME_LIST": {
     "NO_GAMES_FOUND": "Nie znaleziono gier"
