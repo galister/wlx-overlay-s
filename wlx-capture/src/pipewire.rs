@@ -308,6 +308,38 @@ where
                 log::info!("{}: stream state changed: {:?} -> {:?}", &name, old, new);
             }
         })
+        .add_buffer({
+            let name = name.clone();
+            move |_, _, a| {
+                log::debug!("{}: add_buffer: {a:?}", &name);
+            }
+        })
+        .control_info({
+            let name = name.clone();
+            move |_, _, a, b| {
+                let control_info = unsafe { *b };
+
+                log::debug!("{}: control_info {a}: {control_info:?}", &name);
+            }
+        })
+        .remove_buffer({
+            let name = name.clone();
+            move |_, _, a| {
+                log::debug!("{}: remove_buffer: {a:?}", &name);
+            }
+        })
+        .io_changed({
+            let name = name.clone();
+            move |_, _, a, _, b| {
+                log::debug!("{}: IO changed: {a}, {b}", &name);
+            }
+        })
+        .drained({
+            let name = name.clone();
+            move |_, _| {
+                log::debug!("{}: stream is drained", &name);
+            }
+        })
         .param_changed({
             let name = name.clone();
             move |stream, format, id, param| {
