@@ -38,6 +38,7 @@
     "POS_HMD": "Segui l'HMD.",
     "POS_STATIC": "Statico: non fa parte di alcun set, senza recentratura.",
     "POSITIONING": "Posizionamento",
+    "BLOCK_GAME_INPUT": "Blocca l'input di gioco",
     "RESIZE_PRESS_AND_DRAG": "Ridimensiona (premi e trascina)",
     "STEREO_3D_MODE": {
       "SPLIT_BOTTOM_TOP": "DAL BASSO→IN ALTO",

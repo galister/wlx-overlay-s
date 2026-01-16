@@ -432,6 +432,7 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
     set_up_checkbox(&mut panel, "additive_box", cb_assign_additive)?;
     set_up_checkbox(&mut panel, "align_box", cb_assign_align)?;
     set_up_checkbox(&mut panel, "global_box", cb_assign_global)?;
+    set_up_checkbox(&mut panel, "block_input_box", cb_assign_block_input)?;
     set_up_checkbox(
         &mut panel,
         "stereo_full_frame_box",
@@ -497,6 +498,11 @@ fn reset_panel(
         .parser_state
         .fetch_component_as::<ComponentCheckbox>("global_box")?;
     c.set_checked(&mut common, owc.global);
+
+    let c = panel
+        .parser_state
+        .fetch_component_as::<ComponentCheckbox>("block_input_box")?;
+    c.set_checked(&mut common, owc.block_input);
 
     panel
         .state
@@ -599,6 +605,14 @@ const fn cb_assign_align(_app: &mut AppState, owc: &mut OverlayWindowConfig, ali
 
 const fn cb_assign_global(_app: &mut AppState, owc: &mut OverlayWindowConfig, global: bool) {
     owc.global = global;
+}
+
+const fn cb_assign_block_input(
+    _app: &mut AppState,
+    owc: &mut OverlayWindowConfig,
+    block_input: bool,
+) {
+    owc.block_input = block_input;
 }
 
 fn cb_assign_stereo_full_frame(

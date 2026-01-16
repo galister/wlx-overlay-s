@@ -39,6 +39,7 @@
     "MOVE_PRESS_AND_DRAG": "Verschieben (drücken & ziehen)",
     "OPACITY": "Undurchsichtigkeit",
     "POSITIONING": "Positionierung",
+    "BLOCK_GAME_INPUT": "Spieleingabe blockieren",
     "RESIZE_PRESS_AND_DRAG": "Größe ändern (gedrückt halten & ziehen)",
     "POS_STATIC": "Statisch: Bleibt an Ort und Stelle und wird niemals neu zentriert.",
     "POS_ANCHORED": "Verankert: Bewegt sich zusammen mit dem Rest des Sets. Standard.",
