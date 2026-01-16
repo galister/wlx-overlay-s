@@ -692,15 +692,28 @@ pub(super) fn setup_custom_button<S: 'static>(
                 };
 
                 let mut osc_args = vec![];
+
+                // collect arguments specified in the initial string
                 for arg in args {
-                    let Ok(osc_arg) = parse_osc_value(arg)
-                        .inspect_err(|e| log::warn!("Could not parse OSC value '{arg}': {e:?}"))
-                    else {
-                        let msg = format!("expected OscValue, found \"{arg}\"");
+                    if let Ok(osc_arg) = parse_osc_value(arg).inspect_err(|e| {
+                        let msg = format!("Could not parse OSC value \"{arg}\": {e:?}");
                         log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
                         return;
-                    };
+                    }) {
+                        osc_args.push(osc_arg);
+                    }
+                }
+
+                // collect arguments from _arg<n> attributes.
+                let mut arg_index = 0;
+                while let Some(arg) = attribs.get_value(&format!("_arg{arg_index}"))
+                    && let Ok(osc_arg) = parse_osc_value(arg).inspect_err(|e| {
+                        let msg = format!("Could not parse OSC value \"{arg}\": {e:?}");
+                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
+                    })
+                {
                     osc_args.push(osc_arg);
+                    arg_index += 1;
                 }
 
                 Box::new(move |_common, data, app, _| {

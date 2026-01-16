@@ -80,22 +80,40 @@ This button action executes a shell script using the `sh` shell.
 <button _press="::ShellExec $HOME/myscript.sh test-argument" [...] />
 ```
 
-##### `::OscSend <path> <args ..>`
+##### `::OscSend <path>` `::OscSend <path> <args ..>`
 
 Send an OSC message. The target port comes from the `osc_out_port` configuration setting.
 
+There are two formats; here is an example for both formats writing a message to the VRChat Chatbox:
 ```xml
-<button _press="::OscSend /avatar/parameters/MyInt 1i32" [...] />
+<!-- parameter form - OSC arguments are listed as parameters labelled `_arg<n>` where `n` is 0-indexed -->
+<Button _press="::OscSend /chatbox/input" _arg0="Hello World! I am WayVR." _arg1="true" _arg2="true"> </Button>
+<!-- will send: ("Hello World! I am WayVR.", True, True) to /chatbox/input -->
+```
+
+```xml
+<!-- shorthand form - OSC arguments are space-separated in one string. note that single strings cannot contain spaces -->
+<Button _press="::OscSend /chatbox/input Hello_World!_I_am_WayVR. true true"> </Button>
+<!-- will send: ("Hello_World!_I_am_WayVR.", True, True) to /chatbox/input -->
+```
+
+The two can be combined; parameter-form arguments will be appended after shorthand-form arguments:
+```xml
+<!-- combined-form - rectangle bounds with a name -->
+<Button _press="::OscSend /graphthing/rectangle 0i32 0i32 50i32 200i32" _arg0="tall rectangle"> </Button>
+<!-- will send: (0, 0, 50, 200, "tall rectangle") to /graphthing/rectangle -->
 ```
 
 Available argument value types (case insensitive):
 - Bool: `true` or `false`
 - Nil: `nil`
 - Inf: `inf`
-- Int: `-1i32`, `1i32`, etc
-- Long: `-1i64`, `1i64`, etc
-- Float: `1f32`, `1.0f32`, etc
-- Double: `1f64`, `1.0f64`, etc
+- Int: suffix `i32` (`-1i32`, `1i32`, etc)
+- Long: suffix `i64` (`-1i64`, `1i64`, etc)
+- Float: suffix `f32` (`1f32`, `1.0f32`, etc)
+- Double: suffix `f64` (`1f64`, `1.0f64`, etc)
+- String: any other value
+    - Shorthand form will treat Strings with spaces as multiple arguments. Use parameter form if you need spaces.
 
 ##### `::SendKey <VirtualKey> <UP|DOWN>`
 
