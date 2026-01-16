@@ -143,25 +143,40 @@ impl OpenVrInputSource {
         system: &mut SystemManager,
         app: &mut AppState,
     ) {
-        let should_block_input = app
-            .input_state
-            .pointers
-            .iter()
-            .any(|p| p.interaction.should_block_input)
+        let should_block_input_left = app.input_state.pointers[0].interaction.should_block_input
             && app.session.config.block_game_input;
 
-        let aas = ActiveActionSet(ovr_overlay::sys::VRActiveActionSet_t {
+        let should_block_input_right = app.input_state.pointers[1].interaction.should_block_input
+            && app.session.config.block_game_input;
+
+        let aas_left = ActiveActionSet(ovr_overlay::sys::VRActiveActionSet_t {
             ulActionSet: self.set_hnd.0,
-            ulRestrictedToDevice: 0,
+            ulRestrictedToDevice: self.hands[0].input_hnd.0,
             ulSecondaryActionSet: 0,
             unPadding: 0,
             // the range between 0x01000000 and 0x01FFFFFF overrides game action sets as long as
             // global input from overlays is enabled in SteamVR developer settings
             // (taken from https://github.com/ValveSoftware/openvr/issues/1236)
-            nPriority: if should_block_input { 0x01000000 } else { 0x0 },
+            nPriority: if should_block_input_left {
+                0x01000000
+            } else {
+                0x0
+            },
         });
 
-        let _ = input.update_actions(&mut [aas]);
+        let aas_right = ActiveActionSet(ovr_overlay::sys::VRActiveActionSet_t {
+            ulActionSet: self.set_hnd.0,
+            ulRestrictedToDevice: self.hands[1].input_hnd.0,
+            ulSecondaryActionSet: 0,
+            unPadding: 0,
+            nPriority: if should_block_input_right {
+                0x01000000
+            } else {
+                0x0
+            },
+        });
+
+        let _ = input.update_actions(&mut [aas_left, aas_right]);
 
         let devices = system.get_device_to_absolute_tracking_pose(universe.clone(), 0.005);
         app.input_state.hmd = devices[0].mDeviceToAbsoluteTracking.to_affine();
