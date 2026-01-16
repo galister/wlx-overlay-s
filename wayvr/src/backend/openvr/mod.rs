@@ -241,13 +241,7 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
         let universe = playspace.get_universe();
 
         app.input_state.pre_update();
-        input_source.update(
-            universe.clone(),
-            &mut input_mgr,
-            &mut system_mgr,
-            &mut app,
-            watch_id,
-        );
+        input_source.update(universe.clone(), &mut input_mgr, &mut system_mgr, &mut app);
         app.input_state.post_update(&app.session);
 
         if app

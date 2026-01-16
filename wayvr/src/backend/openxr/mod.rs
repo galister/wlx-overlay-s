@@ -274,7 +274,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
         app.input_state.post_update(&app.session);
 
         if let Some(ref mut blocker) = blocker {
-            blocker.update(&mut app, watch_id);
+            blocker.update(&mut app);
         }
 
         if app

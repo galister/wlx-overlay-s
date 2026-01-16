@@ -1,7 +1,7 @@
 use libmonado::{ClientState, Monado};
 use log::{trace, warn};
 
-use crate::{state::AppState, windowing::OverlayID};
+use crate::state::AppState;
 
 pub(super) struct InputBlocker {
     blocked_last_frame: bool,
@@ -14,16 +14,17 @@ impl InputBlocker {
         }
     }
 
-    pub fn update(&mut self, app: &mut AppState, watch_id: OverlayID) {
+    pub fn update(&mut self, app: &mut AppState) {
         let Some(monado) = &mut app.monado else {
             return; // monado not available
         };
 
-        let should_block = app.input_state.pointers.iter().any(|p| {
-            p.interaction.hovered_id.is_some_and(|id| {
-                id != watch_id || !app.session.config.block_game_input_ignore_watch
-            })
-        }) && app.session.config.block_game_input;
+        let should_block = app
+            .input_state
+            .pointers
+            .iter()
+            .any(|p| p.interaction.should_block_input)
+            && app.session.config.block_game_input;
 
         match (should_block, self.blocked_last_frame) {
             (true, false) => {

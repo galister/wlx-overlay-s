@@ -15,7 +15,6 @@ use wlx_common::config_io;
 use crate::{
     backend::input::{Haptics, TrackedDevice, TrackedDeviceRole},
     state::AppState,
-    windowing::OverlayID,
 };
 
 use super::helpers::{Affine3AConvert, OVRError};
@@ -143,13 +142,13 @@ impl OpenVrInputSource {
         input: &mut InputManager,
         system: &mut SystemManager,
         app: &mut AppState,
-        watch_id: OverlayID,
     ) {
-        let should_block_input = app.input_state.pointers.iter().any(|p| {
-            p.interaction.hovered_id.is_some_and(|id| {
-                id != watch_id || !app.session.config.block_game_input_ignore_watch
-            })
-        }) && app.session.config.block_game_input;
+        let should_block_input = app
+            .input_state
+            .pointers
+            .iter()
+            .any(|p| p.interaction.should_block_input)
+            && app.session.config.block_game_input;
 
         let aas = ActiveActionSet(ovr_overlay::sys::VRActiveActionSet_t {
             ulActionSet: self.set_hnd.0,
