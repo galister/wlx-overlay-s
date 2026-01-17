@@ -141,7 +141,7 @@
 ## Set whether notifications should be shown at all
 #notifications_enabled: true
 
-## Set whether notfications should make a sound
+## Set whether notifications should make a sound
 #notifications_sound_enabled: true
 
 ## Toggle keyboard click sound

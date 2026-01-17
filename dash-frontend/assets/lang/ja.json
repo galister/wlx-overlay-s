@@ -82,7 +82,8 @@
     },
     "AUTOSTART_APPS": "起動時に実行するアプリ",
     "HANDSFREE_POINTER": "ハンズフリーモード",
-    "HANDSFREE_POINTER_HELP": "モーションコントローラーが利用できない場合の入力方法。\n左手のピンチは掴み、右手のピンチはクリックです。"
+    "HANDSFREE_POINTER_HELP": "モーションコントローラーが利用できない場合の入力方法。\n左手のピンチは掴み、右手のピンチはクリックです。",
+    "UI_GRADIENT_INTENSITY": "UIグラデーションの強さ"
   },
   "HELLO": "こんにちは！",
   "AUDIO": {

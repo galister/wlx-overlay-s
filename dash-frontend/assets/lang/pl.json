@@ -77,7 +77,8 @@
     },
     "AUTOSTART_APPS": "Aplikacje do uruchomienia przy starcie",
     "HANDSFREE_POINTER": "Tryb bez użycia rąk",
-    "HANDSFREE_POINTER_HELP": "Wejście do użycia, gdy kontrolery ruchu\nsą niedostępne. Lewy szczyptak to chwyt,\nprawy to kliknięcie."
+    "HANDSFREE_POINTER_HELP": "Wejście do użycia, gdy kontrolery ruchu\nsą niedostępne. Lewy szczyptak to chwyt,\nprawy to kliknięcie.",
+    "UI_GRADIENT_INTENSITY": "Intensywność gradientu UI"
   },
   "APPLICATION_LAUNCHER": "Uruchamiacz aplikacji",
   "APPLICATIONS": "Aplikacje",

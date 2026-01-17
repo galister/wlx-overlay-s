@@ -128,8 +128,8 @@ impl AppState {
             apply_color(&mut defaults.bg_color, &session.config.color_background);
         }
 
-        defaults.animation_mult = 1. / session.config.animation_speed;
-        defaults.rounding_mult = session.config.round_multiplier;
+        defaults.animation_mult = 1. / session.config.ui_animation_speed;
+        defaults.rounding_mult = session.config.ui_round_multiplier;
 
         let dbus = DbusConnector::default();
 

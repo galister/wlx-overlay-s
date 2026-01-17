@@ -104,8 +104,9 @@ pub fn load_general_config() -> GeneralConfig {
 
 #[derive(Serialize)]
 pub struct AutoSettings {
-    pub animation_speed: f32,
-    pub round_multiplier: f32,
+    pub ui_animation_speed: f32,
+    pub ui_round_multiplier: f32,
+    pub ui_gradient_intensity: f32,
     pub click_freeze_time_ms: i32,
     pub invert_scroll_direction_x: bool,
     pub invert_scroll_direction_y: bool,
@@ -151,8 +152,9 @@ fn get_settings_path() -> PathBuf {
 
 pub fn save_settings(config: &GeneralConfig) -> anyhow::Result<()> {
     let conf = AutoSettings {
-        animation_speed: config.animation_speed,
-        round_multiplier: config.round_multiplier,
+        ui_animation_speed: config.ui_animation_speed,
+        ui_round_multiplier: config.ui_round_multiplier,
+        ui_gradient_intensity: config.ui_gradient_intensity,
         click_freeze_time_ms: config.click_freeze_time_ms,
         invert_scroll_direction_x: config.invert_scroll_direction_x,
         invert_scroll_direction_y: config.invert_scroll_direction_y,
