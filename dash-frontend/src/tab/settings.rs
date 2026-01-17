@@ -55,6 +55,7 @@ enum Task {
 	UpdateBool(SettingType, bool),
 	UpdateFloat(SettingType, f32),
 	UpdateInt(SettingType, i32),
+	SettingUpdated(SettingType),
 	OpenContextMenu(Vec2, Vec<context_menu::Cell>),
 	ClearPipewireTokens,
 	ClearSavedState,
@@ -87,6 +88,7 @@ impl<T> Tab<T> for TabSettings<T> {
 					self.set_tab(frontend, data, tab)?;
 				}
 				Task::UpdateBool(setting, n) => {
+					self.tasks.push(Task::SettingUpdated(setting));
 					if let Some(task) = setting.get_frontend_task() {
 						frontend.tasks.push(task)
 					}
@@ -95,6 +97,7 @@ impl<T> Tab<T> for TabSettings<T> {
 					changed = true;
 				}
 				Task::UpdateFloat(setting, n) => {
+					self.tasks.push(Task::SettingUpdated(setting));
 					if let Some(task) = setting.get_frontend_task() {
 						frontend.tasks.push(task)
 					}
@@ -103,6 +106,7 @@ impl<T> Tab<T> for TabSettings<T> {
 					changed = true;
 				}
 				Task::UpdateInt(setting, n) => {
+					self.tasks.push(Task::SettingUpdated(setting));
 					if let Some(task) = setting.get_frontend_task() {
 						frontend.tasks.push(task)
 					}
@@ -146,6 +150,12 @@ impl<T> Tab<T> for TabSettings<T> {
 						changed = true;
 					}
 				}
+				Task::SettingUpdated(setting) => match setting {
+					SettingType::UiAnimationSpeed | SettingType::UiGradientIntensity | SettingType::UiRoundMultiplier => {
+						frontend.tasks.push(FrontendTask::UpdateWguiDefaultsFromConfig);
+					}
+					_ => { /* do nothing */ }
+				},
 			}
 		}
 
@@ -190,8 +200,9 @@ impl<T> Tab<T> for TabSettings<T> {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, Copy, AsRefStr, EnumString)]
 enum SettingType {
-	AnimationSpeed,
-	RoundMultiplier,
+	UiAnimationSpeed,
+	UiGradientIntensity,
+	UiRoundMultiplier,
 	InvertScrollDirectionX,
 	InvertScrollDirectionY,
 	ScrollSpeed,
@@ -259,8 +270,9 @@ impl SettingType {
 
 	pub fn mut_f32(self, config: &mut GeneralConfig) -> &mut f32 {
 		match self {
-			Self::AnimationSpeed => &mut config.animation_speed,
-			Self::RoundMultiplier => &mut config.round_multiplier,
+			Self::UiAnimationSpeed => &mut config.ui_animation_speed,
+			Self::UiGradientIntensity => &mut config.ui_gradient_intensity,
+			Self::UiRoundMultiplier => &mut config.ui_round_multiplier,
 			Self::ScrollSpeed => &mut config.scroll_speed,
 			Self::LongPressDuration => &mut config.long_press_duration,
 			Self::XrClickSensitivity => &mut config.xr_click_sensitivity,
@@ -324,8 +336,9 @@ impl SettingType {
 	/// Ok is translation, Err is raw text
 	fn get_translation(self) -> Result<&'static str, &'static str> {
 		match self {
-			Self::AnimationSpeed => Ok("APP_SETTINGS.ANIMATION_SPEED"),
-			Self::RoundMultiplier => Ok("APP_SETTINGS.ROUND_MULTIPLIER"),
+			Self::UiAnimationSpeed => Ok("APP_SETTINGS.ANIMATION_SPEED"),
+			Self::UiGradientIntensity => Ok("APP_SETTINGS.UI_GRADIENT_INTENSITY"),
+			Self::UiRoundMultiplier => Ok("APP_SETTINGS.ROUND_MULTIPLIER"),
 			Self::InvertScrollDirectionX => Ok("APP_SETTINGS.INVERT_SCROLL_DIRECTION_X"),
 			Self::InvertScrollDirectionY => Ok("APP_SETTINGS.INVERT_SCROLL_DIRECTION_Y"),
 			Self::ScrollSpeed => Ok("APP_SETTINGS.SCROLL_SPEED"),
@@ -385,8 +398,8 @@ impl SettingType {
 	//TODO: incorporate this
 	fn requires_restart(self) -> bool {
 		match self {
-			Self::AnimationSpeed
-			| Self::RoundMultiplier
+			Self::UiAnimationSpeed
+			| Self::UiRoundMultiplier
 			| Self::UprightScreenFix
 			| Self::DoubleCursorFix
 			| Self::UseSkybox
@@ -692,8 +705,9 @@ impl<T> TabSettings<T> {
 				checkbox!(mp, c, SettingType::OpaqueBackground);
 				checkbox!(mp, c, SettingType::HideUsername);
 				checkbox!(mp, c, SettingType::HideGrabHelp);
-				slider_f32!(mp, c, SettingType::AnimationSpeed, 0.5, 5.0, 0.1); // min, max, step
-				slider_f32!(mp, c, SettingType::RoundMultiplier, 0.5, 5.0, 0.1);
+				slider_f32!(mp, c, SettingType::UiAnimationSpeed, 0.5, 5.0, 0.1); // min, max, step
+				slider_f32!(mp, c, SettingType::UiGradientIntensity, 0.0, 1.0, 0.05); // min, max, step
+				slider_f32!(mp, c, SettingType::UiRoundMultiplier, 0.5, 5.0, 0.1);
 				checkbox!(mp, c, SettingType::SetsOnWatch);
 				checkbox!(mp, c, SettingType::UseSkybox);
 				checkbox!(mp, c, SettingType::UsePassthrough);

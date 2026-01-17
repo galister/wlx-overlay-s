@@ -82,7 +82,8 @@
     },
     "AUTOSTART_APPS": "Aplicaciones a ejecutar al inicio",
     "HANDSFREE_POINTER": "Modo manos libres",
-    "HANDSFREE_POINTER_HELP": "Entrada a utilizar cuando no\nestén disponibles los mandos de movimiento.\nPellizco con la izquierda para agarrar, con la derecha para hacer clic."
+    "HANDSFREE_POINTER_HELP": "Entrada a utilizar cuando no\nestén disponibles los mandos de movimiento.\nPellizco con la izquierda para agarrar, con la derecha para hacer clic.",
+    "UI_GRADIENT_INTENSITY": "Intensidad del degradado de la IU"
   },
   "HELLO": "¡Hola!",
   "AUDIO": {

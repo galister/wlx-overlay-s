@@ -9,7 +9,6 @@ use slotmap::{DenseSlotMap, new_key_type};
 
 use crate::{
 	animation::{self, Animation},
-	components::Component,
 	globals,
 	i18n::I18n,
 	layout::{LayoutState, LayoutTask, WidgetID},

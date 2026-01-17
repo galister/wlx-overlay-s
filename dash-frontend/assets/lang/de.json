@@ -82,7 +82,8 @@
     },
     "AUTOSTART_APPS": "Anwendungen, die beim Start ausgeführt werden sollen",
     "HANDSFREE_POINTER": "Freihändige Modus",
-    "HANDSFREE_POINTER_HELP": "Eingabe, die bei Bewegung\nder Controller verwendet wird, wenn diese nicht verfügbar sind.\nLinkes Kneifen greift, rechtes klickt."
+    "HANDSFREE_POINTER_HELP": "Eingabe, die bei Bewegung\nder Controller verwendet wird, wenn diese nicht verfügbar sind.\nLinkes Kneifen greift, rechtes klickt.",
+    "UI_GRADIENT_INTENSITY": "UI-Verlaufsintensität"
   },
   "HELLO": "Hallo!",
   "AUDIO": {

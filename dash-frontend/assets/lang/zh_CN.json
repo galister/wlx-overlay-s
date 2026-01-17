@@ -102,7 +102,8 @@
     "XWAYLAND_BY_DEFAULT": "默认以兼容模式运行应用",
     "AUTOSTART_APPS": "开机启动应用",
     "HANDSFREE_POINTER": "免提模式",
-    "HANDSFREE_POINTER_HELP": "当运动控制器不可用时使用的输入。\n左手捏合为抓取，右手为点击。"
+    "HANDSFREE_POINTER_HELP": "当运动控制器不可用时使用的输入。\n左手捏合为抓取，右手为点击。",
+    "UI_GRADIENT_INTENSITY": "UI 渐变强度"
   },
   "APPLICATION_LAUNCHER": "应用启动器",
   "APPLICATION_STARTED": "应用已启动",

@@ -1,5 +1,4 @@
 use crate::{
-	assets::AssetPath,
 	layout::WidgetID,
 	parser::{
 		AttribPair, ParserContext, ParserFile, get_asset_path_from_kv, parse_children, parse_widget_universal,

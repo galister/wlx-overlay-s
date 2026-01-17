@@ -97,11 +97,12 @@ pub enum FrontendTask {
 	RecenterPlayspace,
 	PushToast(Translation),
 	PlaySound(SoundType),
+	UpdateWguiDefaultsFromConfig,
 	HideDashboard,
 }
 
 impl<T: 'static> Frontend<T> {
-	pub fn new(params: InitParams<T>, data: &mut T) -> anyhow::Result<Frontend<T>> {
+	pub fn new(mut params: InitParams<T>, data: &mut T) -> anyhow::Result<Frontend<T>> {
 		let mut assets = Box::new(assets::Asset {});
 
 		let font_binary_bold = assets.load_from_path_gzip("Quicksand-Bold.ttf.gz")?;
@@ -119,6 +120,8 @@ impl<T: 'static> Frontend<T> {
 			},
 			PathBuf::new(), //FIXME: pass from somewhere else
 		)?;
+
+		Frontend::update_defaults_from_config(&globals, &mut params.interface, data);
 
 		let (layout, state) = wgui::parser::new_layout_from_assets(
 			&ParseDocumentParams {
@@ -166,8 +169,9 @@ impl<T: 'static> Frontend<T> {
 		};
 
 		// init some things first
-		frontend.update_background(data)?;
-		frontend.update_time(data)?;
+		frontend.tasks.push(FrontendTask::RefreshBackground);
+		frontend.tasks.push(FrontendTask::RefreshClock);
+		frontend.tasks.push(FrontendTask::UpdateWguiDefaultsFromConfig);
 
 		Frontend::register_widgets(&mut frontend)?;
 
@@ -176,6 +180,16 @@ impl<T: 'static> Frontend<T> {
 
 	fn queue_play_sound(&mut self, sound_type: SoundType) {
 		self.sounds_to_play.push(sound_type);
+	}
+
+	fn update_defaults_from_config(globals: &WguiGlobals, interface: &mut BoxDashInterface<T>, data: &mut T) {
+		let config = interface.general_config(data);
+
+		let mut globals = globals.get();
+		let defaults = &mut globals.defaults;
+
+		defaults.animation_mult = 1.0 / config.ui_animation_speed;
+		defaults.gradient_intensity = config.ui_gradient_intensity;
 	}
 
 	fn play_sound(&mut self, audio_system: &mut audio::AudioSystem, sound_type: SoundType) -> anyhow::Result<()> {
@@ -192,7 +206,7 @@ impl<T: 'static> Frontend<T> {
 			Err(_) => assets.load_from_path(path)?.into(),
 		};
 
-		let sample = audio::AudioSample::from_mp3(&*sound_bytes)?;
+		let sample = audio::AudioSample::from_mp3(&sound_bytes)?;
 		audio_system.play_sample(&sample);
 		Ok(())
 	}
@@ -307,6 +321,8 @@ impl<T: 'static> Frontend<T> {
 	}
 
 	fn update_background(&mut self, data: &mut T) -> anyhow::Result<()> {
+		self.layout.mark_redraw();
+
 		let Some(mut rect) = self
 			.layout
 			.state
@@ -341,6 +357,9 @@ impl<T: 'static> Frontend<T> {
 			FrontendTask::PushToast(content) => self.toast_manager.push(content),
 			FrontendTask::PlaySound(sound_type) => self.queue_play_sound(sound_type),
 			FrontendTask::HideDashboard => self.action_hide_dashboard(params.data),
+			FrontendTask::UpdateWguiDefaultsFromConfig => {
+				Frontend::update_defaults_from_config(&self.globals, &mut self.interface, params.data)
+			}
 		};
 		Ok(())
 	}

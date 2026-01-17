@@ -102,7 +102,8 @@
     "XWAYLAND_BY_DEFAULT": "Esegui le app in modalità Compatibilità per impostazione predefinita",
     "AUTOSTART_APPS": "App da avviare all'avvio",
     "HANDSFREE_POINTER": "Modalità a mani libere",
-    "HANDSFREE_POINTER_HELP": "Input da usare quando i\ncontroller di movimento non sono disponibili.\nPizzico sinistro per afferrare, destro per cliccare."
+    "HANDSFREE_POINTER_HELP": "Input da usare quando i\ncontroller di movimento non sono disponibili.\nPizzico sinistro per afferrare, destro per cliccare.",
+    "UI_GRADIENT_INTENSITY": "Intensità gradiente dell'interfaccia utente"
   },
   "APPLICATION_LAUNCHER": "Lanciatore applicazioni",
   "APPLICATION_STARTED": "Applicazione avviata",
