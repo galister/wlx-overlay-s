@@ -111,12 +111,13 @@
   "HIDE": "Verbergen",
   "REMOVE": "Entfernen",
   "SHOW": "Anzeigen",
-  "PROCESS_LIST": {},
   "FAILED_TO_LAUNCH_APPLICATION": "Fehler beim Starten der Anwendung:",
   "APPLICATION_STARTED": "Anwendung gestartet",
   "CLOSE_WINDOW": "Fenster schließen",
   "GAME_LIST": {
-    "NO_GAMES_FOUND": "Keine Spiele gefunden"
+    "NO_GAMES_FOUND": "Keine Spiele gefunden",
+    "RUNNING_GAMES_LIST": "Liste der laufenden Spiele",
+    "NO_RUNNING_GAME_FOUND": "Kein laufendes Spiel gefunden"
   },
   "TERMINATE_PROCESS": "Prozess beenden",
   "GAME_LAUNCHED": "Spiel gestartet",
@@ -146,5 +147,11 @@
     "AUTOSTART": "Automatisch beim Start ausführen",
     "LAUNCH": "Starten"
   },
-  "DISPLAY_BRIGHTNESS": "Bildschirmhelligkeit"
+  "DISPLAY_BRIGHTNESS": "Bildschirmhelligkeit",
+  "PROCESS_LIST": "Prozessliste",
+  "REFRESH": "Aktualisieren",
+  "PROCESS": {
+    "STOP": "Stopp",
+    "FORCE_KILL": "Erzwinge Beenden"
+  }
 }

@@ -31,7 +31,7 @@
 	"APP_SETTINGS": {
 		"ALLOW_SLIDING": "Stick interaction during grab",
 		"ANIMATION_SPEED": "UI Animation speed",
-		"UI_GRADIENT_INTENSITY": "UI Gradient intensity",
+		"AUTOSTART_APPS": "Apps to run on startup",
 		"BLOCK_GAME_INPUT": "Block game input",
 		"BLOCK_GAME_INPUT_HELP": "Blocks all input when an overlay is hovered",
 		"BLOCK_GAME_INPUT_IGNORE_WATCH": "Ignore watch when blocking input",
@@ -52,6 +52,8 @@
 		"DOUBLE_CURSOR_FIX_HELP": "Enable this if you see 2 cursors",
 		"FEATURES": "Features",
 		"FOCUS_FOLLOWS_MOUSE_MODE": "Mouse move on trigger touch",
+		"HANDSFREE_POINTER": "Handsfree mode",
+		"HANDSFREE_POINTER_HELP": "Input to use when motion\ncontrollers are unavailable.\nLeft pinch is grab, right is click.",
 		"HIDE_GRAB_HELP": "Hide grab help",
 		"HIDE_USERNAME": "Hide username",
 		"INVERT_SCROLL_DIRECTION_X": "Invert horizontal scroll direction",
@@ -68,11 +70,11 @@
 		"NOTIFICATIONS_SOUND_ENABLED": "Notification sounds",
 		"OPAQUE_BACKGROUND": "Opaque background",
 		"OPTION": {
-			"NONE": "None",
-			"HMD_PINCH": "HMD + pinch",
-			"EYE_PINCH": "Eye + pinch",
 			"AUTO": "Automatic",
 			"AUTO_HELP": "ScreenCopy GPU if supported,\notherwise PipeWire GPU.",
+			"EYE_PINCH": "Eye + pinch",
+			"HMD_PINCH": "HMD + pinch",
+			"NONE": "None",
 			"PIPEWIRE_HELP": "Fast GPU capture,\nstandard on all desktops.",
 			"PW_FALLBACK_HELP": "Slow method with high CPU usage.\nTry in case PipeWire GPU doesn't work",
 			"SCREENCOPY_GPU_HELP": "Fast, no screen share popups.\nWorks on: Hyprland, Niri, River, Sway",
@@ -90,6 +92,7 @@
 		"SPACE_DRAG_UNLOCKED": "Allow space drag on all axes",
 		"SPACE_ROTATE_UNLOCKED": "Allow space rotate on all axes",
 		"TROUBLESHOOTING": "Troubleshooting",
+		"UI_GRADIENT_INTENSITY": "UI Gradient intensity",
 		"UPRIGHT_SCREEN_FIX": "Upright screen fix",
 		"UPRIGHT_SCREEN_FIX_HELP": "Fixes upright screens on some desktops",
 		"USE_PASSTHROUGH": "Enable passthrough",
@@ -100,10 +103,7 @@
 		"XR_CLICK_SENSITIVITY_HELP": "Analog trigger sensitivity",
 		"XR_CLICK_SENSITIVITY_RELEASE": "XR release sensitivity",
 		"XR_CLICK_SENSITIVITY_RELEASE_HELP": "Must be lower than click",
-		"XWAYLAND_BY_DEFAULT": "Run apps in Compatibility mode by default",
-		"HANDSFREE_POINTER": "Handsfree mode",
-		"HANDSFREE_POINTER_HELP": "Input to use when motion\ncontrollers are unavailable.\nLeft pinch is grab, right is click.",
-		"AUTOSTART_APPS": "Apps to run on startup"
+		"XWAYLAND_BY_DEFAULT": "Run apps in Compatibility mode by default"
 	},
 	"APPLICATION_LAUNCHER": "Application launcher",
 	"APPLICATION_STARTED": "Application started",
@@ -127,7 +127,9 @@
 	"FAILED_TO_LAUNCH_APPLICATION": "Failed to launch a application:",
 	"GAME_LAUNCHED": "Game launched",
 	"GAME_LIST": {
-		"NO_GAMES_FOUND": "No games found"
+		"NO_GAMES_FOUND": "No games found",
+		"RUNNING_GAMES_LIST": "List of running games",
+		"NO_RUNNING_GAME_FOUND": "No running game found"
 	},
 	"GAMES": "Games",
 	"GENERAL_SETTINGS": "General settings",
@@ -140,6 +142,12 @@
 	"POPUP_ADD_DISPLAY": {
 		"RESOLUTION": "Resolution"
 	},
+	"PROCESS": {
+		"STOP": "Stop",
+		"FORCE_KILL": "Force-kill"
+	},
+	"PROCESS_LIST": "Process list",
+	"REFRESH": "Refresh",
 	"REMOVE": "Remove",
 	"SETTINGS": "Settings",
 	"SHOW": "Show",

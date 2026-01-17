@@ -127,7 +127,9 @@
   "FAILED_TO_LAUNCH_APPLICATION": "Impossibile avviare l'applicazione:",
   "GAME_LAUNCHED": "Gioco lanciato",
   "GAME_LIST": {
-    "NO_GAMES_FOUND": "Nessun gioco trovato"
+    "NO_GAMES_FOUND": "Nessun gioco trovato",
+    "RUNNING_GAMES_LIST": "Lista dei giochi in esecuzione",
+    "NO_RUNNING_GAME_FOUND": "Nessun gioco in esecuzione trovato"
   },
   "GAMES": "Giochi",
   "GENERAL_SETTINGS": "Impostazioni generali",
@@ -140,10 +142,15 @@
   "POPUP_ADD_DISPLAY": {
     "RESOLUTION": "Risoluzione"
   },
-  "PROCESS_LIST": {},
   "REMOVE": "Rimuovi",
   "SETTINGS": "Impostazioni",
   "SHOW": "Mostra",
   "TERMINATE_PROCESS": "Termina processo",
-  "WIDTH": "Larghezza"
+  "WIDTH": "Larghezza",
+  "PROCESS_LIST": "Elenco processi",
+  "REFRESH": "Aggiorna",
+  "PROCESS": {
+    "STOP": "Interrompi",
+    "FORCE_KILL": "Uccidi forzatamente"
+  }
 }

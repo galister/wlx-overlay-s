@@ -42,7 +42,7 @@ impl<T> Tab<T> for TabMonado<T> {
 		TabType::Games
 	}
 
-	fn update(&mut self, frontend: &mut Frontend<T>, data: &mut T) -> anyhow::Result<()> {
+	fn update(&mut self, frontend: &mut Frontend<T>, _time_ms: u32, data: &mut T) -> anyhow::Result<()> {
 		for task in self.tasks.drain() {
 			match task {
 				Task::Refresh => self.refresh(frontend, data)?,

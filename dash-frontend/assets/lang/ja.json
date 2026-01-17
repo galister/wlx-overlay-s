@@ -111,12 +111,13 @@
   "HIDE": "隠す",
   "REMOVE": "削除",
   "SHOW": "表示",
-  "PROCESS_LIST": {},
   "FAILED_TO_LAUNCH_APPLICATION": "アプリケーションの起動に失敗しました：",
   "APPLICATION_STARTED": "アプリケーションが起動しました",
   "CLOSE_WINDOW": "ウィンドウを閉じる",
   "GAME_LIST": {
-    "NO_GAMES_FOUND": "ゲームが見つかりませんでした"
+    "NO_GAMES_FOUND": "ゲームが見つかりませんでした",
+    "RUNNING_GAMES_LIST": "実行中のゲーム一覧",
+    "NO_RUNNING_GAME_FOUND": "実行中のゲームが見つかりません"
   },
   "TERMINATE_PROCESS": "プロセスを終了する",
   "GAME_LAUNCHED": "ゲームが起動しました",
@@ -146,5 +147,11 @@
     "AUTOSTART": "起動時に自動実行",
     "LAUNCH": "起動"
   },
-  "DISPLAY_BRIGHTNESS": "ディスプレイの明るさ"
+  "DISPLAY_BRIGHTNESS": "ディスプレイの明るさ",
+  "PROCESS_LIST": "プロセスリスト",
+  "REFRESH": "更新",
+  "PROCESS": {
+    "STOP": "停止",
+    "FORCE_KILL": "強制終了"
+  }
 }

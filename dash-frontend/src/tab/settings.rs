@@ -80,7 +80,7 @@ impl<T> Tab<T> for TabSettings<T> {
 		TabType::Settings
 	}
 
-	fn update(&mut self, frontend: &mut Frontend<T>, data: &mut T) -> anyhow::Result<()> {
+	fn update(&mut self, frontend: &mut Frontend<T>, _time_ms: u32, data: &mut T) -> anyhow::Result<()> {
 		let mut changed = false;
 		for task in self.tasks.drain() {
 			match task {

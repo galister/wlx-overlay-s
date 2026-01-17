@@ -46,7 +46,7 @@ impl<T> Tab<T> for TabApps<T> {
 		TabType::Apps
 	}
 
-	fn update(&mut self, frontend: &mut Frontend<T>, data: &mut T) -> anyhow::Result<()> {
+	fn update(&mut self, frontend: &mut Frontend<T>, _time_ms: u32, data: &mut T) -> anyhow::Result<()> {
 		let mut state = self.state.borrow_mut();
 
 		for task in self.tasks.drain() {

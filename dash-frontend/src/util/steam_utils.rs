@@ -35,6 +35,7 @@ pub struct AppManifest {
 // TODO @oo8dev: game sort methods
 #[allow(dead_code)]
 pub enum GameSortMethod {
+	None,
 	NameAsc,
 	NameDesc,
 	PlayDateDesc,
@@ -127,9 +128,6 @@ pub fn launch(app_id: &AppID) -> anyhow::Result<()> {
 	Ok(())
 }
 
-// TODO @oo8dev: running games list (#398)
-/*
-
 pub fn stop(app_id: AppID, force_kill: bool) -> anyhow::Result<()> {
 	log::info!("Stopping Steam game with AppID {}", app_id);
 
@@ -220,7 +218,7 @@ pub fn list_running_games() -> anyhow::Result<Vec<RunningGame>> {
 	}
 
 	Ok(res)
-} */
+}
 
 fn call_steam(arg: &str) -> anyhow::Result<()> {
 	match std::process::Command::new("xdg-open").arg(arg).spawn() {
@@ -286,6 +284,7 @@ impl SteamUtils {
 			.collect();
 
 		match sort_method {
+			GameSortMethod::None => {}
 			GameSortMethod::NameAsc => {
 				games.sort_by(|a, b| a.name.cmp(&b.name));
 			}
