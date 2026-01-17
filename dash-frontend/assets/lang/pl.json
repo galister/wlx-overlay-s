@@ -111,12 +111,13 @@
   "SETTINGS": "Ustawienia",
   "SHOW": "Pokaż",
   "WIDTH": "Szerokość",
-  "PROCESS_LIST": {},
   "FAILED_TO_LAUNCH_APPLICATION": "Nie udało się uruchomić aplikacji:",
   "APPLICATION_STARTED": "Aplikacja uruchomiona",
   "CLOSE_WINDOW": "Zamknij okno",
   "GAME_LIST": {
-    "NO_GAMES_FOUND": "Nie znaleziono gier"
+    "NO_GAMES_FOUND": "Nie znaleziono gier",
+    "RUNNING_GAMES_LIST": "Lista uruchomionych gier",
+    "NO_RUNNING_GAME_FOUND": "Nie znaleziono uruchomionej gry"
   },
   "TERMINATE_PROCESS": "Zakończ proces",
   "GAME_LAUNCHED": "Gra uruchomiona",
@@ -146,5 +147,11 @@
     "AUTOSTART": "Uruchom automatycznie przy starcie",
     "LAUNCH": "Uruchom"
   },
-  "DISPLAY_BRIGHTNESS": "Jasność wyświetlacza"
+  "DISPLAY_BRIGHTNESS": "Jasność wyświetlacza",
+  "PROCESS_LIST": "Lista procesów",
+  "REFRESH": "Odśwież",
+  "PROCESS": {
+    "STOP": "Zatrzymaj",
+    "FORCE_KILL": "Wymuś zakończenie"
+  }
 }

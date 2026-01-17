@@ -14,7 +14,11 @@ use wgui::{
 	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
 	windowing::window::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra, WguiWindowPlacement},
 };
-use wlx_common::{audio, dash_interface::BoxDashInterface, timestep::Timestep};
+use wlx_common::{
+	audio,
+	dash_interface::BoxDashInterface,
+	timestep::{self, Timestep},
+};
 
 use crate::{
 	assets,
@@ -218,8 +222,10 @@ impl<T: 'static> Frontend<T> {
 			self.process_task(&mut params, task)?;
 		}
 
+		let time_ms = timestep::get_micros() / 1000;
+
 		if let Some(mut tab) = self.current_tab.take() {
-			tab.update(self, params.data)?;
+			tab.update(self, time_ms as u32, params.data)?;
 
 			self.current_tab = Some(tab);
 		}

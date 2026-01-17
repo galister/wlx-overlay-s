@@ -9,7 +9,8 @@ use wgui::{
 use crate::{
 	frontend::Frontend,
 	tab::{Tab, TabType},
-	views::game_list,
+	util::steam_utils::SteamUtils,
+	views::{game_list, running_games_list},
 };
 
 pub struct TabGames<T> {
@@ -17,6 +18,8 @@ pub struct TabGames<T> {
 	pub state: ParserState,
 
 	view_game_list: game_list::View,
+	view_running_games_list: running_games_list::View,
+	steam_utils: SteamUtils,
 	marker: PhantomData<T>,
 }
 
@@ -25,17 +28,22 @@ impl<T> Tab<T> for TabGames<T> {
 		TabType::Games
 	}
 
-	fn update(&mut self, frontend: &mut Frontend<T>, _data: &mut T) -> anyhow::Result<()> {
-		self.view_game_list.update(&mut frontend.layout, &frontend.executor)?;
+	fn update(&mut self, frontend: &mut Frontend<T>, time_ms: u32, _data: &mut T) -> anyhow::Result<()> {
+		self
+			.view_game_list
+			.update(&mut frontend.layout, &mut self.steam_utils, &frontend.executor)?;
+		self.view_running_games_list.update(&mut frontend.layout, time_ms)?;
 		Ok(())
 	}
 }
 
 impl<T> TabGames<T> {
 	pub fn new(frontend: &mut Frontend<T>, parent_id: WidgetID) -> anyhow::Result<Self> {
+		let globals = frontend.layout.state.globals.clone();
+
 		let state = wgui::parser::parse_from_assets(
 			&ParseDocumentParams {
-				globals: frontend.layout.state.globals.clone(),
+				globals: globals.clone(),
 				path: AssetPath::BuiltIn("gui/tab/games.xml"),
 				extra: Default::default(),
 			},
@@ -44,19 +52,32 @@ impl<T> TabGames<T> {
 		)?;
 
 		let game_list_parent = state.get_widget_id("game_list_parent")?;
+		let id_running_games_list_parent = state.get_widget_id("running_games_list_parent")?;
 
 		let view_game_list = game_list::View::new(game_list::Params {
 			executor: frontend.executor.clone(),
 			frontend_tasks: frontend.tasks.clone(),
-			globals: frontend.layout.state.globals.clone(),
+			globals: globals.clone(),
 			layout: &mut frontend.layout,
 			parent_id: game_list_parent,
+		})?;
+
+		let mut steam_utils = SteamUtils::new()?;
+
+		let view_running_games_list = running_games_list::View::new(running_games_list::Params {
+			globals: globals.clone(),
+			layout: &mut frontend.layout,
+			parent_id: id_running_games_list_parent,
+			steam_utils: &mut steam_utils,
+			frontend_tasks: frontend.tasks.clone(),
 		})?;
 
 		Ok(Self {
 			state,
 			view_game_list,
+			view_running_games_list,
 			marker: PhantomData,
+			steam_utils,
 		})
 	}
 }

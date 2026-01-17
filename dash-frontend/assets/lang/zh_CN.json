@@ -127,7 +127,9 @@
   "FAILED_TO_LAUNCH_APPLICATION": "启动应用失败：",
   "GAME_LAUNCHED": "游戏已启动",
   "GAME_LIST": {
-    "NO_GAMES_FOUND": "未找到游戏"
+    "NO_GAMES_FOUND": "未找到游戏",
+    "RUNNING_GAMES_LIST": "正在运行的游戏列表",
+    "NO_RUNNING_GAME_FOUND": "未找到正在运行的游戏"
   },
   "GAMES": "游戏",
   "GENERAL_SETTINGS": "通用设置",
@@ -140,10 +142,15 @@
   "POPUP_ADD_DISPLAY": {
     "RESOLUTION": "分辨率"
   },
-  "PROCESS_LIST": {},
   "REMOVE": "移除",
   "SETTINGS": "设置",
   "SHOW": "显示",
   "TERMINATE_PROCESS": "终止进程",
-  "WIDTH": "宽度"
+  "WIDTH": "宽度",
+  "PROCESS_LIST": "进程列表",
+  "REFRESH": "刷新",
+  "PROCESS": {
+    "STOP": "停止",
+    "FORCE_KILL": "强制关闭"
+  }
 }

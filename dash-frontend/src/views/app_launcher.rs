@@ -180,7 +180,7 @@ impl View {
 			let tasks = tasks.clone();
 			Box::new(move |_, ev| {
 				if let Some(mode) = ev.value.and_then(|v| {
-					CompositorMode::from_str(&*v)
+					CompositorMode::from_str(&v)
 						.inspect_err(|_| {
 							log::error!(
 								"Invalid value for compositor: '{v}'. Valid values are: {:?}",
@@ -199,7 +199,7 @@ impl View {
 			let tasks = tasks.clone();
 			Box::new(move |_, ev| {
 				if let Some(mode) = ev.value.and_then(|v| {
-					ResMode::from_str(&*v)
+					ResMode::from_str(&v)
 						.inspect_err(|_| {
 							log::error!(
 								"Invalid value for resolution: '{v}'. Valid values are: {:?}",
@@ -237,7 +237,7 @@ impl View {
 			let tasks = tasks.clone();
 			Box::new(move |_, ev| {
 				if let Some(mode) = ev.value.and_then(|v| {
-					OrientationMode::from_str(&*v)
+					OrientationMode::from_str(&v)
 						.inspect_err(|_| {
 							log::error!(
 								"Invalid value for orientation: '{v}'. Valid values are: {:?}",

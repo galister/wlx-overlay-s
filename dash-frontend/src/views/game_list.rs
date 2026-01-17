@@ -55,7 +55,6 @@ pub struct View {
 	frontend_tasks: FrontendTasks,
 	globals: WguiGlobals,
 	id_list_parent: WidgetID,
-	steam_utils: steam_utils::SteamUtils,
 	cells: HashMap<AppID, Cell>,
 	game_cover_view_common: game_cover::ViewCommon,
 	executor: AsyncExecutor,
@@ -75,8 +74,6 @@ impl View {
 
 		let tasks = Tasks::new();
 
-		let steam_utils = SteamUtils::new()?;
-
 		tasks.push(Task::Refresh);
 
 		Ok(Self {
@@ -85,7 +82,6 @@ impl View {
 			frontend_tasks: params.frontend_tasks,
 			globals: params.globals.clone(),
 			id_list_parent: list_parent.id,
-			steam_utils,
 			cells: HashMap::new(),
 			game_cover_view_common: game_cover::ViewCommon::new(params.globals.clone()),
 			state: Rc::new(RefCell::new(State { view_launcher: None })),
@@ -93,7 +89,12 @@ impl View {
 		})
 	}
 
-	pub fn update(&mut self, layout: &mut Layout, executor: &AsyncExecutor) -> anyhow::Result<()> {
+	pub fn update(
+		&mut self,
+		layout: &mut Layout,
+		steam_utils: &mut SteamUtils,
+		executor: &AsyncExecutor,
+	) -> anyhow::Result<()> {
 		loop {
 			let tasks = self.tasks.drain();
 			if tasks.is_empty() {
@@ -101,7 +102,7 @@ impl View {
 			}
 			for task in tasks {
 				match task {
-					Task::Refresh => self.refresh(layout, executor)?,
+					Task::Refresh => self.refresh(layout, steam_utils, executor)?,
 					Task::AppManifestClicked(manifest) => self.action_app_manifest_clicked(manifest)?,
 					Task::SetCoverArt(app_id, cover_art) => self.set_cover_art(layout, app_id, cover_art),
 					Task::CloseLauncher => self.state.borrow_mut().view_launcher = None,
@@ -162,20 +163,23 @@ fn fill_game_list(
 }
 
 impl View {
-	fn game_list(&self) -> anyhow::Result<Games> {
-		let manifests = self
-			.steam_utils
-			.list_installed_games(steam_utils::GameSortMethod::PlayDateDesc)?;
+	fn game_list(&self, steam_utils: &mut SteamUtils) -> anyhow::Result<Games> {
+		let manifests = steam_utils.list_installed_games(steam_utils::GameSortMethod::PlayDateDesc)?;
 
 		Ok(Games { manifests })
 	}
 
-	fn refresh(&mut self, layout: &mut Layout, executor: &AsyncExecutor) -> anyhow::Result<()> {
+	fn refresh(
+		&mut self,
+		layout: &mut Layout,
+		steam_utils: &mut SteamUtils,
+		executor: &AsyncExecutor,
+	) -> anyhow::Result<()> {
 		layout.remove_children(self.id_list_parent);
 		self.cells.clear();
 
 		let mut text: Option<Translation> = None;
-		match self.game_list() {
+		match self.game_list(steam_utils) {
 			Ok(list) => {
 				if list.manifests.is_empty() {
 					text = Some(Translation::from_translation_key("GAME_LIST.NO_GAMES_FOUND"))
