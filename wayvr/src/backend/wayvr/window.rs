@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use smithay::backend::input::{AxisRelativeDirection, AxisSource};
 use smithay::{
     input,
     utils::{Logical, Point},
@@ -111,16 +112,32 @@ impl Window {
     }
 
     pub(super) fn send_mouse_scroll(manager: &mut WayVRCompositor, delta: WheelDelta) {
+        // workaround: it seems that with one event most applications work fine, but cage doesn't
         manager.seat_pointer.axis(
             &mut manager.state,
             input::pointer::AxisFrame {
-                source: None,
+                source: Some(AxisSource::Continuous),
                 relative_direction: (
-                    smithay::backend::input::AxisRelativeDirection::Identical,
-                    smithay::backend::input::AxisRelativeDirection::Identical,
+                    AxisRelativeDirection::Identical,
+                    AxisRelativeDirection::Identical,
                 ),
                 time: 0,
-                axis: (f64::from(delta.x), f64::from(-delta.y)),
+                axis: (f64::from(delta.x), 0.0),
+                v120: Some(((delta.x * 64.0) as i32, 0)),
+                stop: (false, false),
+            },
+        );
+
+        manager.seat_pointer.axis(
+            &mut manager.state,
+            input::pointer::AxisFrame {
+                source: Some(AxisSource::Continuous),
+                relative_direction: (
+                    AxisRelativeDirection::Identical,
+                    AxisRelativeDirection::Identical,
+                ),
+                time: 0,
+                axis: (0.0, f64::from(-delta.y)),
                 v120: Some((0, (delta.y * -64.0) as i32)),
                 stop: (false, false),
             },
