@@ -39,6 +39,7 @@
     "MOVE_PRESS_AND_DRAG": "移動（押してドラッグ）",
     "OPACITY": "不透明度",
     "POSITIONING": "位置付け",
+    "BLOCK_GAME_INPUT": "ゲームの入力をブロック",
     "RESIZE_PRESS_AND_DRAG": "サイズ変更（押してドラッグ）",
     "POS_STATIC": "固定：置かれた場所に留まり、再センタリングされません。",
     "POS_ANCHORED": "アンカー：セット内の他のウィンドウと共に移動します。デフォルト。",

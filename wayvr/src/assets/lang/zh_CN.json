@@ -38,6 +38,7 @@
     "POS_HMD": "跟随头显 (HMD)。",
     "POS_STATIC": "静态：不属于任何集合，不重新居中。",
     "POSITIONING": "定位",
+    "BLOCK_GAME_INPUT": "屏蔽游戏输入",
     "RESIZE_PRESS_AND_DRAG": "调整大小 (按住并拖拽)",
     "STEREO_3D_MODE": {
       "SPLIT_BOTTOM_TOP": "下→上",

@@ -45,6 +45,7 @@
 		"POS_STATIC": "Static: Not part of any set, no recenter.",
 		"POSITIONING": "Positioning",
 		"GLOBAL": "Always visible",
+		"BLOCK_INPUT": "Block game input",
 		"RESIZE_PRESS_AND_DRAG": "Resize (press & drag)",
 		"STEREO_3D_MODE": {
 			"ADJUST_MOUSE": "Adjust mouse",

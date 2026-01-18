@@ -76,6 +76,7 @@ pub struct OverlayWindowState {
 	pub curvature: Option<f32>,
 	pub additive: bool,
 	pub saved_transform: Option<Affine3A>,
+	pub block_input: bool,
 }
 
 impl Default for OverlayWindowState {
@@ -89,6 +90,7 @@ impl Default for OverlayWindowState {
 			transform: Affine3A::IDENTITY,
 			additive: false,
 			saved_transform: None,
+			block_input: true,
 		}
 	}
 }

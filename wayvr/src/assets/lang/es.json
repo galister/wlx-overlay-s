@@ -39,6 +39,7 @@
     "MOVE_PRESS_AND_DRAG": "Mover (presionar y arrastrar)",
     "OPACITY": "Opacidad",
     "POSITIONING": "Posicionamiento",
+    "BLOCK_GAME_INPUT": "Bloquear entrada del juego",
     "RESIZE_PRESS_AND_DRAG": "Redimensionar (presionar y arrastrar)",
     "POS_STATIC": "Estático: Permanece en su lugar y nunca se recentra.",
     "POS_ANCHORED": "Anclado: Se mueve junto con el resto del conjunto. Predeterminado.",

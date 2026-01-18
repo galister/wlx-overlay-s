@@ -3,7 +3,7 @@ use std::process::{Child, Command};
 use std::sync::Arc;
 use std::time::Instant;
 
-use glam::{Affine3A, Mat3A, Vec2, Vec3, Vec3A, Vec3Swizzles};
+use glam::{Affine3A, Vec2, Vec3A, Vec3Swizzles};
 
 use idmap_derive::IntegerId;
 use smallvec::{SmallVec, smallvec};
@@ -209,6 +209,7 @@ pub struct InteractionState {
     pub hovered_id: Option<OverlayID>,
     pub next_push: Instant,
     pub haptics: Option<f32>,
+    pub should_block_input: bool,
 }
 
 impl Default for InteractionState {
@@ -220,6 +221,7 @@ impl Default for InteractionState {
             hovered_id: None,
             next_push: Instant::now(),
             haptics: None,
+            should_block_input: false,
         }
     }
 }
@@ -393,7 +395,7 @@ where
     for (idx, hit) in hits.iter().enumerate() {
         populate_lines(
             lines,
-            &mut app.input_state.pointers[idx],
+            &app.input_state.pointers[idx],
             hit.0,
             &app.input_state.hmd,
         );
@@ -471,6 +473,14 @@ where
         hit.primary = true;
     }
 
+    pointer.interaction.should_block_input = hovered
+        .config
+        .active_state
+        .as_ref()
+        .map_or(false, |state| state.block_input)
+        && (hovered.config.name.as_ref() != WATCH_NAME
+            || !app.session.config.block_game_input_ignore_watch);
+
     #[cfg(debug_assertions)]
     log::trace!("Hit: {} {:?}", hovered.config.name, hit);
 
@@ -544,9 +554,11 @@ fn handle_no_hit<O>(
         }
     }
 
+    let pointer = &mut app.input_state.pointers[pointer_idx];
+    pointer.interaction.should_block_input = false;
+
     // in case click released while not aiming at anything
     // send release event to overlay that was originally clicked
-    let pointer = &mut app.input_state.pointers[pointer_idx];
     if !pointer.now.click
         && pointer.before.click
         && let Some(clicked_id) = pointer.interaction.clicked_id.take()
