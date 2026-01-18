@@ -183,8 +183,6 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
         },
         show_on_spawn: true,
         global: true,
-        // the watch is a special case and this is handled by the global config instead
-        block_input: true,
         ..OverlayWindowConfig::from_backend(Box::new(panel))
     })
 }

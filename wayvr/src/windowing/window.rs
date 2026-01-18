@@ -86,8 +86,6 @@ pub struct OverlayWindowConfig {
     pub editing: bool,
     /// Used by grab to pause following of HMD or other devices
     pub pause_movement: bool,
-    /// Enables input blocking when hovering over this window (does not apply to the watch, that's a global setting)
-    pub block_input: bool,
 }
 
 impl OverlayWindowConfig {
@@ -108,7 +106,6 @@ impl OverlayWindowConfig {
             dirty: true,
             editing: false,
             pause_movement: false,
-            block_input: true,
         }
     }
 

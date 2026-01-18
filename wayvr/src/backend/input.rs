@@ -473,7 +473,11 @@ where
         hit.primary = true;
     }
 
-    pointer.interaction.should_block_input = hovered.config.block_input
+    pointer.interaction.should_block_input = hovered
+        .config
+        .active_state
+        .as_ref()
+        .map_or(false, |state| state.block_input)
         && (hovered.config.name.as_ref() != WATCH_NAME
             || !app.session.config.block_game_input_ignore_watch);
 

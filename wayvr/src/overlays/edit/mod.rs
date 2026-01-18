@@ -502,7 +502,7 @@ fn reset_panel(
     let c = panel
         .parser_state
         .fetch_component_as::<ComponentCheckbox>("block_input_box")?;
-    c.set_checked(&mut common, owc.block_input);
+    c.set_checked(&mut common, state.block_input);
 
     panel
         .state
@@ -612,7 +612,7 @@ const fn cb_assign_block_input(
     owc: &mut OverlayWindowConfig,
     block_input: bool,
 ) {
-    owc.block_input = block_input;
+    owc.active_state.as_mut().unwrap().block_input = block_input;
 }
 
 fn cb_assign_stereo_full_frame(
