@@ -163,7 +163,8 @@ pub(super) fn create_keyboard_panel(
                         button_state: key.button_state,
                         color: rect.params.color,
                         color2: rect.params.color2,
-                        border_color: rect.params.border_color,
+                        base_border_color: rect.params.border_color,
+                        cur_border_color: rect.params.border_color.into(),
                         border: rect.params.border,
                         drawn_state: false.into(),
                     })
@@ -351,10 +352,11 @@ fn set_anim_color(
     rect.params.color2.b = key_state.color2.b.lerp(accent_color.b, pos);
 
     // fade to white
-    rect.params.border_color.r = key_state.border_color.r.lerp(1.0, pos);
-    rect.params.border_color.g = key_state.border_color.g.lerp(1.0, pos);
-    rect.params.border_color.b = key_state.border_color.b.lerp(1.0, pos);
-    rect.params.border_color.a = key_state.border_color.a.lerp(1.0, pos);
+    let cur_border_color = key_state.cur_border_color.get();
+    rect.params.border_color.r = cur_border_color.r.lerp(1.0, pos);
+    rect.params.border_color.g = cur_border_color.g.lerp(1.0, pos);
+    rect.params.border_color.b = cur_border_color.b.lerp(1.0, pos);
+    rect.params.border_color.a = cur_border_color.a.lerp(1.0, pos);
 
     rect.params.border = key_state.border.lerp(key_state.border * 1.5, pos);
 }
@@ -412,7 +414,10 @@ fn on_press_anim(
         return;
     }
     let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
-    rect.params.border_color = Color::new(1.0, 1.0, 1.0, 1.0);
+    key_state
+        .cur_border_color
+        .set(Color::new(1.0, 1.0, 1.0, 1.0));
+    rect.params.border_color = key_state.cur_border_color.get();
     common.alterables.mark_redraw();
     key_state.drawn_state.set(true);
 }
@@ -426,7 +431,8 @@ fn on_release_anim(
         return;
     }
     let rect = data.obj.get_as_mut::<WidgetRectangle>().unwrap();
-    rect.params.border_color = key_state.border_color;
+    key_state.cur_border_color.set(key_state.base_border_color);
+    rect.params.border_color = key_state.cur_border_color.get();
     common.alterables.mark_redraw();
     key_state.drawn_state.set(false);
 }
