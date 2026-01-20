@@ -8,7 +8,7 @@ use std::{
 use glam::{Affine3A, Vec3};
 use input::OpenXrInputSource;
 use openxr as xr;
-use skybox::create_skybox;
+use skybox::{Skybox, create_skybox};
 use vulkano::{Handle, VulkanObject};
 use wlx_common::overlays::{StereoMode, ToastTopic};
 
@@ -69,17 +69,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
         AppState::from_graphics(gfx, gfx_extras, XrBackend::OpenXR)?
     };
 
-    let environment_blend_mode = {
-        let modes = xr_instance.enumerate_environment_blend_modes(system, VIEW_TYPE)?;
-        if modes.contains(&xr::EnvironmentBlendMode::ALPHA_BLEND)
-            && app.session.config.use_passthrough
-        {
-            xr::EnvironmentBlendMode::ALPHA_BLEND
-        } else {
-            modes[0]
-        }
-    };
-    log::info!("Using environment blend mode: {environment_blend_mode:?}");
+    let modes = xr_instance.enumerate_environment_blend_modes(system, VIEW_TYPE)?;
 
     if show_by_default {
         app.tasks.enqueue_at(
@@ -137,11 +127,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
         view: Arc::new(view),
     };
 
-    let mut skybox = if environment_blend_mode == xr::EnvironmentBlendMode::OPAQUE {
-        create_skybox(&xr_state, &app)
-    } else {
-        None
-    };
+    let mut skybox: Option<Skybox> = None;
 
     let pointer_lines = [
         lines.allocate(&xr_state, &app)?,
@@ -177,6 +163,30 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             }
         }
 
+        let environment_blend_mode = {
+            if modes.contains(&xr::EnvironmentBlendMode::ALPHA_BLEND)
+                && app.session.config.use_passthrough
+            {
+                xr::EnvironmentBlendMode::ALPHA_BLEND
+            } else {
+                modes[0]
+            }
+        };
+
+        match (environment_blend_mode, skybox.as_ref()) {
+            (xr::EnvironmentBlendMode::OPAQUE, None) if !main_session_visible => {
+                log::debug!("Allocating skybox.");
+                skybox = create_skybox(&xr_state, &app);
+            }
+            (blend_mode, Some(_))
+                if blend_mode != xr::EnvironmentBlendMode::OPAQUE || main_session_visible =>
+            {
+                log::debug!("Destroying skybox.");
+                skybox = None;
+            }
+            _ => {}
+        };
+
         while let Some(event) = xr_state.instance.poll_event(&mut event_storage)? {
             match event {
                 xr::Event::SessionStateChanged(e) => {
@@ -205,17 +215,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                     log::warn!("lost {} events", e.lost_event_count());
                 }
                 xr::Event::MainSessionVisibilityChangedEXTX(e) => {
-                    if main_session_visible != e.visible() {
-                        main_session_visible = e.visible();
-                        log::info!("Main session visible: {main_session_visible}");
-                        if main_session_visible {
-                            log::debug!("Destroying skybox.");
-                            skybox = None;
-                        } else if environment_blend_mode == xr::EnvironmentBlendMode::OPAQUE {
-                            log::debug!("Allocating skybox.");
-                            skybox = create_skybox(&xr_state, &app);
-                        }
-                    }
+                    main_session_visible = e.visible();
                 }
                 _ => {}
             }
