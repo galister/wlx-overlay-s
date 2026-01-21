@@ -251,9 +251,6 @@ impl Skybox {
 }
 
 pub(super) fn create_skybox(xr: &XrState, app: &AppState) -> Option<Skybox> {
-    if !app.session.config.use_skybox {
-        return None;
-    }
     xr.instance
         .exts()
         .khr_composition_layer_equirect2
