@@ -345,6 +345,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                 y: 0.001,
                 z: 0.001,
             });
+            watch_state.alpha = 0.02; // visible but not really. Monado freaks out if no layers are submitted.
         }
 
         if let Err(e) =
@@ -366,7 +367,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                 log::trace!("{}: hidden, skip render", o.config.name);
                 continue;
             };
-            if alpha < 0.05 {
+            if alpha < 0.01 {
                 log::trace!("{}: alpha too low, skip render", o.config.name);
                 continue;
             }
