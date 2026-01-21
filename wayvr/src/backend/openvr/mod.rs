@@ -30,10 +30,7 @@ use crate::{
     },
     config::{save_settings, save_state},
     graphics::{GpuFutures, init_openvr_graphics},
-    overlays::{
-        toast::Toast,
-        watch::{WATCH_NAME, watch_fade},
-    },
+    overlays::toast::Toast,
     state::AppState,
     subsystem::notifications::NotificationManager,
     windowing::{
@@ -133,8 +130,6 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
     };
 
     log::info!("HMD running @ {refresh_rate} Hz");
-
-    let watch_id = overlays.lookup(WATCH_NAME).unwrap(); // want panic
 
     // want at least half refresh rate
     let frame_timeout = 2 * (1000.0 / refresh_rate).floor() as u32;
@@ -266,11 +261,8 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                 .enqueue(TaskType::Overlay(OverlayTask::ToggleDashboard));
         }
 
-        overlays
-            .values_mut()
-            .for_each(|o| o.config.auto_movement(&mut app));
+        overlays.values_mut().for_each(|o| o.config.tick(&mut app));
 
-        watch_fade(&mut app, overlays.mut_by_id(watch_id).unwrap()); // want panic
         playspace.update(&mut chaperone_mgr, &mut overlays, &app);
 
         current_lines.clear();

@@ -52,6 +52,11 @@ pub(super) fn init_xr() -> Result<(xr::Instance, xr::SystemId), anyhow::Error> {
     } else {
         log::warn!("Missing EXT_composition_layer_equirect2 extension.");
     }
+    if available_extensions.khr_composition_layer_color_scale_bias {
+        enabled_extensions.khr_composition_layer_color_scale_bias = true;
+    } else {
+        log::warn!("Missing XR_KHR_composition_layer_color_scale_bias extension.");
+    }
 
     let xr_mndx_system_buttons = "XR_MNDX_system_buttons".as_bytes().to_vec();
     if available_extensions.other.contains(&xr_mndx_system_buttons) {

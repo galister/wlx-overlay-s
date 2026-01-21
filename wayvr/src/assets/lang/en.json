@@ -26,6 +26,8 @@
 		"ADJUST_CURVATURE": "Adjust curvature",
 		"ALPHA_BLEND_MODE": "Alpha blend mode",
 		"BLENDING_ADDITIVE": "Additive blending",
+		"ANGLE_FADE": "Angle fade",
+		"ANGLE_FADE_HELP": "Fade when not facing HMD",
 		"CURVATURE": "Curvature",
 		"DELETE": "Long press to remove from current set",
 		"DISABLE_GRAB": "Disable grab",

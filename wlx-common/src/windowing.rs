@@ -77,6 +77,7 @@ pub struct OverlayWindowState {
 	pub additive: bool,
 	pub saved_transform: Option<Affine3A>,
 	pub block_input: bool,
+	pub angle_fade: bool,
 }
 
 impl Default for OverlayWindowState {
@@ -91,6 +92,7 @@ impl Default for OverlayWindowState {
 			additive: false,
 			saved_transform: None,
 			block_input: true,
+			angle_fade: false,
 		}
 	}
 }

@@ -79,7 +79,7 @@ impl OscSender {
                 };
 
                 // skip overlays that are fully transparent; e.g. the watch when not looking at it
-                if state.alpha <= 0f32 {
+                if state.alpha <= 0.05 {
                     continue;
                 }
 

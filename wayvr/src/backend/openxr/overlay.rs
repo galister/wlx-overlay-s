@@ -18,6 +18,18 @@ pub struct OpenXrOverlayData {
     pub(super) init: bool,
     pub(super) cur_visible: bool,
     pub(super) last_alpha: f32,
+    color_bias_khr: Option<Box<xr::sys::CompositionLayerColorScaleBiasKHR>>,
+}
+
+macro_rules! next_chain_insert {
+    ($layer:expr, $payload:expr) => {{
+        let payload_ptr = $payload.as_mut() as *mut _ as *mut xr::sys::BaseInStructure;
+        let new_elem = payload_ptr.as_mut().unwrap();
+        let mut raw = $layer.into_raw();
+        new_elem.next = raw.next as _;
+        raw.next = payload_ptr as *const _;
+        raw
+    }};
 }
 
 impl OverlayWindowData<OpenXrOverlayData> {
@@ -110,8 +122,10 @@ impl OverlayWindowData<OpenXrOverlayData> {
             let posef = helpers::translation_rotation_to_posef(center_point, quat);
             let angle = 2.0 * (scale_x / (2.0 * radius));
 
+            try_update_color_scale_bias(xr, &mut self.data.color_bias_khr, state.alpha);
+
             for sub_image in sub_images {
-                let cylinder = xr::CompositionLayerCylinderKHR::new()
+                let mut cylinder = xr::CompositionLayerCylinderKHR::new()
                     .layer_flags(flags)
                     .pose(posef)
                     .sub_image(sub_image.0)
@@ -120,12 +134,22 @@ impl OverlayWindowData<OpenXrOverlayData> {
                     .radius(radius)
                     .central_angle(angle)
                     .aspect_ratio(aspect_ratio);
+
+                if let Some(color_bias_khr) = self.data.color_bias_khr.as_mut() {
+                    unsafe {
+                        let raw = next_chain_insert!(cylinder, color_bias_khr);
+                        cylinder = xr::CompositionLayerCylinderKHR::from_raw(raw);
+                    }
+                }
+
                 layers.push(CompositionLayer::Cylinder(cylinder));
             }
         } else {
             let posef = helpers::transform_to_posef(&transform);
+            try_update_color_scale_bias(xr, &mut self.data.color_bias_khr, state.alpha);
+
             for sub_image in sub_images {
-                let quad = xr::CompositionLayerQuad::new()
+                let mut quad = xr::CompositionLayerQuad::new()
                     .layer_flags(flags)
                     .pose(posef)
                     .sub_image(sub_image.0)
@@ -135,6 +159,14 @@ impl OverlayWindowData<OpenXrOverlayData> {
                         width: scale_x,
                         height: scale_y,
                     });
+
+                if let Some(color_bias_khr) = self.data.color_bias_khr.as_mut() {
+                    unsafe {
+                        let raw = next_chain_insert!(quad, color_bias_khr);
+                        quad = xr::CompositionLayerQuad::from_raw(raw);
+                    }
+                }
+
                 layers.push(CompositionLayer::Quad(quad));
             }
         }
@@ -158,4 +190,34 @@ impl OverlayWindowData<OpenXrOverlayData> {
         self.data.last_visible = want_visible;
         Ok(())
     }
+}
+
+fn try_update_color_scale_bias(
+    xr_state: &XrState,
+    color_bias_khr: &mut Option<Box<xr::sys::CompositionLayerColorScaleBiasKHR>>,
+    alpha: f32,
+) {
+    if let Some(item) = color_bias_khr.as_mut() {
+        item.color_scale.a = alpha;
+        return;
+    }
+
+    if xr_state
+        .instance
+        .exts()
+        .khr_composition_layer_color_scale_bias
+        .is_none()
+    {
+        return;
+    }
+    let new_item = Box::new(xr::sys::CompositionLayerColorScaleBiasKHR {
+        ty: xr::StructureType::COMPOSITION_LAYER_COLOR_SCALE_BIAS_KHR,
+        next: std::ptr::null(),
+        color_bias: Default::default(),
+        color_scale: xr::Color4f {
+            a: alpha,
+            ..Default::default()
+        },
+    });
+    *color_bias_khr = Some(new_item);
 }

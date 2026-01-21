@@ -129,7 +129,12 @@ impl OverlayWindowConfig {
         self.active_state = None;
     }
 
-    pub fn auto_movement(&mut self, app: &mut AppState) {
+    pub fn tick(&mut self, app: &mut AppState) {
+        self.auto_movement(app);
+        self.angle_fade(app);
+    }
+
+    fn auto_movement(&mut self, app: &mut AppState) {
         if self.pause_movement {
             return;
         }
@@ -186,6 +191,25 @@ impl OverlayWindowConfig {
         }
 
         self.dirty = true;
+    }
+
+    fn angle_fade(&mut self, app: &mut AppState) {
+        let Some(state) = self.active_state.as_mut() else {
+            return;
+        };
+
+        if !state.angle_fade {
+            return;
+        }
+
+        let to_hmd = (state.transform.translation - app.input_state.hmd.translation).normalize();
+        let watch_normal = state.transform.transform_vector3a(Vec3A::NEG_Z).normalize();
+        let dot = to_hmd.dot(watch_normal);
+
+        state.alpha = (dot - app.session.config.watch_view_angle_min)
+            / (app.session.config.watch_view_angle_max - app.session.config.watch_view_angle_min);
+        state.alpha += 0.1;
+        state.alpha = state.alpha.clamp(0., 1.);
     }
 
     /// Returns true if changes were saved.

@@ -12,6 +12,7 @@ use wlx_common::{
     astr_containers::{AStrMap, AStrMapExt},
     config::SerializedWindowSet,
     overlays::{BackendAttrib, BackendAttribValue, ToastTopic},
+    windowing::Positioning,
 };
 
 use crate::{
@@ -26,7 +27,7 @@ use crate::{
         keyboard::create_keyboard,
         screen::create_screens,
         toast::Toast,
-        watch::create_watch,
+        watch::{WATCH_NAME, create_watch},
     },
     state::AppState,
     windowing::{
@@ -44,6 +45,7 @@ pub struct OverlayWindowManager<T> {
     wrappers: EditWrapperManager,
     overlays: HopSlotMap<OverlayID, OverlayWindowData<T>>,
     sets: Vec<OverlayWindowSet>,
+    global_set: OverlayWindowSet,
     /// The set that is currently visible.
     current_set: Option<usize>,
     /// The set that will be restored by show_hide.
@@ -68,6 +70,7 @@ where
             current_set: Some(0),
             restore_set: 0,
             sets: vec![OverlayWindowSet::default()],
+            global_set: OverlayWindowSet::default(),
             anchor_local: Affine3A::from_translation(Vec3::NEG_Z),
             watch_id: OverlayID::null(),    // set down below
             keyboard_id: OverlayID::null(), // set down below
@@ -195,16 +198,19 @@ where
                     _ => {}
                 };
 
+                let parent_set = if o.config.global {
+                    &mut self.global_set
+                } else {
+                    &mut self.sets[self.restore_set]
+                };
+
                 if let Some(active_state) = o.config.active_state.take() {
                     log::debug!("{}: toggle off", o.config.name);
 
-                    self.sets[self.restore_set]
+                    parent_set
                         .hidden_overlays
                         .arc_set(o.config.name.clone(), active_state);
-                } else if let Some(state) = self.sets[self.restore_set]
-                    .hidden_overlays
-                    .arc_rm(&o.config.name)
-                {
+                } else if let Some(state) = parent_set.hidden_overlays.arc_rm(&o.config.name) {
                     let o = &mut self.overlays[id];
                     log::debug!("{}: toggle on", o.config.name);
                     o.config.dirty = true;
@@ -509,15 +515,32 @@ impl<T> OverlayWindowManager<T> {
         }
 
         // global overlays
-        for oid in &[self.watch_id] {
-            if let Some(o) = self.mut_by_id(*oid) {
-                if let Some(state) = app.session.config.global_set.get(&*o.config.name).cloned() {
-                    o.config.active_state = Some(state);
-                    o.config.reset(app, false);
-                    log::debug!("global set: loaded state for {}", o.config.name);
+        for (name, ows) in app.session.config.global_set.clone().into_iter() {
+            let mut ows = ows.clone();
+
+            // fix angle_fade missing on watch if loading older state
+            if name.as_ref() == WATCH_NAME {
+                ows.angle_fade = true;
+            }
+
+            if let Some(oid) = self.lookup(&*name)
+                && let Some(o) = self.mut_by_id(oid)
+            {
+                o.config.global = true;
+                if o.config.active_state.is_none() {
+                    self.global_set.hidden_overlays.arc_set(name.clone(), ows);
                 } else {
-                    log::debug!("global set: no state for {}", o.config.name);
+                    o.config.active_state = Some(ows);
+                    o.config.reset(app, false);
                 }
+                log::debug!("global set: loaded state for {name}");
+            } else {
+                log::debug!(
+                    "global set has saved state for {name} which doesn't exist. will apply state once added."
+                );
+                self.global_set
+                    .inactive_overlays
+                    .arc_set(name.clone(), ows.clone());
             }
         }
 

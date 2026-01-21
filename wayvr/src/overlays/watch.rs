@@ -179,6 +179,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
                 WATCH_ROT,
                 WATCH_POS,
             ),
+            angle_fade: true,
             ..OverlayWindowState::default()
         },
         show_on_spawn: true,
@@ -212,19 +213,4 @@ fn sets_or_overlays(
     for i in 0..2 {
         alterables.set_style(widget[i], StyleSetRequest::Display(display[i]));
     }
-}
-
-pub fn watch_fade<D>(app: &mut AppState, watch: &mut OverlayWindowData<D>) {
-    let Some(state) = watch.config.active_state.as_mut() else {
-        return;
-    };
-
-    let to_hmd = (state.transform.translation - app.input_state.hmd.translation).normalize();
-    let watch_normal = state.transform.transform_vector3a(Vec3A::NEG_Z).normalize();
-    let dot = to_hmd.dot(watch_normal);
-
-    state.alpha = (dot - app.session.config.watch_view_angle_min)
-        / (app.session.config.watch_view_angle_max - app.session.config.watch_view_angle_min);
-    state.alpha += 0.1;
-    state.alpha = state.alpha.clamp(0., 1.);
 }

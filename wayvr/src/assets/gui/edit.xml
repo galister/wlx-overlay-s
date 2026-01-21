@@ -114,6 +114,7 @@
                 </div>
                 <div width="100%" padding="8" gap="8" justify_content="center" align_items="center">
                   <CheckBox id="additive_box" translation="EDIT_MODE.BLENDING_ADDITIVE" tooltip="EDIT_MODE.ALPHA_BLEND_MODE" tooltip_side="bottom" />
+                  <CheckBox id="angle_fade_box" translation="EDIT_MODE.ANGLE_FADE" tooltip="EDIT_MODE.ANGLE_FADE_HELP" tooltip_side="bottom" />
                 </div>
               </div>
               <div id="tab_curve" display="none" height="100" flex_direction="column">

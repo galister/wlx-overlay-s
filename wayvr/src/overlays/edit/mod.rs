@@ -432,6 +432,7 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
     set_up_checkbox(&mut panel, "additive_box", cb_assign_additive)?;
     set_up_checkbox(&mut panel, "align_box", cb_assign_align)?;
     set_up_checkbox(&mut panel, "global_box", cb_assign_global)?;
+    set_up_checkbox(&mut panel, "angle_fade_box", cb_assign_angle_fade)?;
     set_up_checkbox(&mut panel, "block_input_box", cb_assign_block_input)?;
     set_up_checkbox(
         &mut panel,
@@ -498,6 +499,11 @@ fn reset_panel(
         .parser_state
         .fetch_component_as::<ComponentCheckbox>("global_box")?;
     c.set_checked(&mut common, owc.global);
+
+    let c = panel
+        .parser_state
+        .fetch_component_as::<ComponentCheckbox>("angle_fade_box")?;
+    c.set_checked(&mut common, state.angle_fade);
 
     let c = panel
         .parser_state
@@ -605,6 +611,14 @@ const fn cb_assign_align(_app: &mut AppState, owc: &mut OverlayWindowConfig, ali
 
 const fn cb_assign_global(_app: &mut AppState, owc: &mut OverlayWindowConfig, global: bool) {
     owc.global = global;
+}
+
+const fn cb_assign_angle_fade(
+    _app: &mut AppState,
+    owc: &mut OverlayWindowConfig,
+    angle_fade: bool,
+) {
+    owc.active_state.as_mut().unwrap().angle_fade = angle_fade;
 }
 
 const fn cb_assign_block_input(

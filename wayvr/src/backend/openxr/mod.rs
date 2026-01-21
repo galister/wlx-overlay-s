@@ -22,10 +22,7 @@ use crate::{
     },
     config::{save_settings, save_state},
     graphics::{GpuFutures, init_openxr_graphics},
-    overlays::{
-        toast::Toast,
-        watch::{WATCH_NAME, watch_fade},
-    },
+    overlays::{toast::Toast, watch::WATCH_NAME},
     state::AppState,
     subsystem::notifications::NotificationManager,
     windowing::{
@@ -289,7 +286,6 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                 .enqueue(TaskType::Overlay(OverlayTask::ToggleDashboard));
         }
 
-        watch_fade(&mut app, overlays.mut_by_id(watch_id).unwrap()); // want panic
         if let Some(ref mut space_mover) = playspace {
             space_mover.update(&mut overlays, &mut app);
         }
@@ -317,9 +313,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                 .submit(&mut app);
         }
 
-        overlays
-            .values_mut()
-            .for_each(|o| o.config.auto_movement(&mut app));
+        overlays.values_mut().for_each(|o| o.config.tick(&mut app));
 
         current_lines.clear();
 
@@ -372,6 +366,10 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                 log::trace!("{}: hidden, skip render", o.config.name);
                 continue;
             };
+            if alpha < 0.05 {
+                log::trace!("{}: alpha too low, skip render", o.config.name);
+                continue;
+            }
 
             if !o.data.init {
                 log::trace!("{}: init", o.config.name);
