@@ -438,6 +438,12 @@ impl DashInterface<AppState> for DashInterfaceLive {
 
     fn config_changed(&mut self, data: &mut AppState) {
         data.session.config_dirty = true;
+        #[cfg(feature = "openxr")]
+        {
+            use crate::backend::task::OpenXrTask;
+            data.tasks
+                .enqueue(TaskType::OpenXR(OpenXrTask::SettingsChanged));
+        }
         data.tasks
             .enqueue(TaskType::Overlay(OverlayTask::SettingsChanged));
     }

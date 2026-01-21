@@ -53,6 +53,11 @@ pub enum OpenVrTask {
     ColorGain(ColorChannel, f32),
 }
 
+#[cfg(feature = "openxr")]
+pub enum OpenXrTask {
+    SettingsChanged,
+}
+
 pub enum PlayspaceTask {
     Recenter,
     Reset,
@@ -111,6 +116,7 @@ pub enum TaskType {
     Playspace(PlayspaceTask),
     #[cfg(feature = "openvr")]
     OpenVR(OpenVrTask),
+    OpenXR(OpenXrTask),
 }
 
 #[derive(Deserialize, Clone, Copy)]

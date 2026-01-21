@@ -18,7 +18,7 @@ use crate::{
         BackendError, XrBackend,
         input::interact,
         openxr::{lines::LinePool, overlay::OpenXrOverlayData},
-        task::{OverlayTask, TaskType},
+        task::{OpenXrTask, OverlayTask, TaskType},
     },
     config::{save_settings, save_state},
     graphics::{GpuFutures, init_openxr_graphics},
@@ -147,6 +147,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
     let mut fps_counter: VecDeque<Instant> = VecDeque::new();
 
     let mut main_session_visible = false;
+    let mut environment_blend_mode = modes[0];
 
     'main_loop: loop {
         let cur_frame = FRAME_COUNTER.fetch_add(1, Ordering::Relaxed);
@@ -163,34 +164,6 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             }
         }
 
-        let environment_blend_mode = {
-            if modes.contains(&xr::EnvironmentBlendMode::ALPHA_BLEND)
-                && app.session.config.use_passthrough
-            {
-                xr::EnvironmentBlendMode::ALPHA_BLEND
-            } else {
-                modes[0]
-            }
-        };
-
-        match (environment_blend_mode, skybox.as_ref()) {
-            (xr::EnvironmentBlendMode::OPAQUE, None)
-                if app.session.config.use_skybox && !main_session_visible =>
-            {
-                log::debug!("Allocating skybox.");
-                skybox = create_skybox(&xr_state, &app);
-            }
-            (blend_mode, Some(_))
-                if blend_mode != xr::EnvironmentBlendMode::OPAQUE
-                    || !app.session.config.use_skybox
-                    || main_session_visible =>
-            {
-                log::debug!("Destroying skybox.");
-                skybox = None;
-            }
-            _ => {}
-        };
-
         while let Some(event) = xr_state.instance.poll_event(&mut event_storage)? {
             match event {
                 xr::Event::SessionStateChanged(e) => {
@@ -201,6 +174,14 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                         xr::SessionState::READY => {
                             xr_state.session.begin(VIEW_TYPE)?;
                             session_running = true;
+                            reconfigure_environment_blend(
+                                &app,
+                                &xr_state,
+                                &modes,
+                                &mut skybox,
+                                &mut environment_blend_mode,
+                                main_session_visible,
+                            );
                         }
                         xr::SessionState::STOPPING => {
                             xr_state.session.end()?;
@@ -220,6 +201,14 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                 }
                 xr::Event::MainSessionVisibilityChangedEXTX(e) => {
                     main_session_visible = e.visible();
+                    reconfigure_environment_blend(
+                        &app,
+                        &xr_state,
+                        &modes,
+                        &mut skybox,
+                        &mut environment_blend_mode,
+                        main_session_visible,
+                    );
                 }
                 _ => {}
             }
@@ -488,6 +477,18 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                         playspace.handle_task(&mut app, task);
                     }
                 }
+                TaskType::OpenXR(task) => {
+                    if matches!(task, OpenXrTask::SettingsChanged) {
+                        reconfigure_environment_blend(
+                            &app,
+                            &xr_state,
+                            &modes,
+                            &mut skybox,
+                            &mut environment_blend_mode,
+                            main_session_visible,
+                        );
+                    }
+                }
                 #[cfg(feature = "openvr")]
                 TaskType::OpenVR(_) => {}
             }
@@ -520,4 +521,39 @@ pub(super) enum CompositionLayer<'a> {
     Quad(xr::CompositionLayerQuad<'a, xr::Vulkan>),
     Cylinder(xr::CompositionLayerCylinderKHR<'a, xr::Vulkan>),
     Equirect2(xr::CompositionLayerEquirect2KHR<'a, xr::Vulkan>),
+}
+
+fn reconfigure_environment_blend(
+    app: &AppState,
+    xr_state: &XrState,
+    modes: &[xr::EnvironmentBlendMode],
+    skybox: &mut Option<Skybox>,
+    environment_blend_mode: &mut xr::EnvironmentBlendMode,
+    main_session_visible: bool,
+) {
+    *environment_blend_mode = {
+        if modes.contains(&xr::EnvironmentBlendMode::ALPHA_BLEND)
+            && app.session.config.use_passthrough
+        {
+            xr::EnvironmentBlendMode::ALPHA_BLEND
+        } else {
+            modes[0]
+        }
+    };
+
+    let want_skybox = *environment_blend_mode == xr::EnvironmentBlendMode::OPAQUE
+        && app.session.config.use_skybox
+        && !main_session_visible;
+
+    if want_skybox == skybox.is_some() {
+        return;
+    }
+
+    if want_skybox {
+        log::debug!("Allocating skybox.");
+        *skybox = create_skybox(xr_state, app);
+    } else {
+        log::debug!("Destroying skybox.");
+        *skybox = None;
+    }
 }

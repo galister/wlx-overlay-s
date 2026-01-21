@@ -402,8 +402,6 @@ impl SettingType {
 			| Self::UiRoundMultiplier
 			| Self::UprightScreenFix
 			| Self::DoubleCursorFix
-			| Self::UseSkybox
-			| Self::UsePassthrough
 			| Self::ScreenRenderDown
 			| Self::CaptureMethod => true,
 			_ => false,
