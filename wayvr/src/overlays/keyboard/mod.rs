@@ -356,7 +356,8 @@ struct KeyState {
     button_state: KeyButtonData,
     color: drawing::Color,
     color2: drawing::Color,
-    border_color: drawing::Color,
+    base_border_color: drawing::Color,
+    cur_border_color: Cell<drawing::Color>,
     border: f32,
     drawn_state: Cell<bool>,
 }
