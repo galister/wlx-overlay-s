@@ -174,12 +174,16 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
         };
 
         match (environment_blend_mode, skybox.as_ref()) {
-            (xr::EnvironmentBlendMode::OPAQUE, None) if !main_session_visible => {
+            (xr::EnvironmentBlendMode::OPAQUE, None)
+                if app.session.config.use_skybox && !main_session_visible =>
+            {
                 log::debug!("Allocating skybox.");
                 skybox = create_skybox(&xr_state, &app);
             }
             (blend_mode, Some(_))
-                if blend_mode != xr::EnvironmentBlendMode::OPAQUE || main_session_visible =>
+                if blend_mode != xr::EnvironmentBlendMode::OPAQUE
+                    || !app.session.config.use_skybox
+                    || main_session_visible =>
             {
                 log::debug!("Destroying skybox.");
                 skybox = None;
