@@ -806,6 +806,7 @@ where
                 pointer.interaction.mode = PointerMode::Special;
                 let grab_dist = grab_data.offset.translation.length().clamp(0.5, 5.0) * 0.2 + 0.4;
                 handle_scale(&mut app.anchor, pointer.now.scroll_y * grab_dist);
+                handle_scale(&mut grab_data.offset, pointer.now.scroll_y * grab_dist);
             } else if app.session.config.allow_sliding && pointer.now.scroll_y.is_finite() {
                 // single grab push/pull
                 let grab_dist = grab_data.offset.translation.length().clamp(0.5, 5.0);
@@ -828,6 +829,7 @@ where
                     &mut overlay_state.transform,
                     pointer.now.scroll_y * grab_dist,
                 );
+                handle_scale(&mut grab_data.offset, pointer.now.scroll_y * grab_dist);
             } else if app.session.config.allow_sliding && pointer.now.scroll_y.is_finite() {
                 // single grab push/pull
                 let grab_dist = grab_data.offset.translation.length().clamp(0.5, 5.0);
