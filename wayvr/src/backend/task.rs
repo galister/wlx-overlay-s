@@ -116,6 +116,7 @@ pub enum TaskType {
     Playspace(PlayspaceTask),
     #[cfg(feature = "openvr")]
     OpenVR(OpenVrTask),
+    #[cfg(feature = "openxr")]
     OpenXR(OpenXrTask),
 }
 
