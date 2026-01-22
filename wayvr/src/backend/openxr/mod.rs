@@ -363,14 +363,14 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
 
         for o in overlays.values_mut() {
             o.data.cur_visible = false;
-            let Some(alpha) = o.config.active_state.as_ref().map(|x| x.alpha) else {
+            if o.config
+                .active_state
+                .as_ref()
+                .is_none_or(|s| s.alpha < 0.01)
+            {
                 log::trace!("{}: hidden, skip render", o.config.name);
                 continue;
             };
-            if alpha < 0.01 {
-                log::trace!("{}: alpha too low, skip render", o.config.name);
-                continue;
-            }
 
             if !o.data.init {
                 log::trace!("{}: init", o.config.name);
@@ -378,11 +378,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                 o.data.init = true;
             }
 
-            let should_render = match o.should_render(&mut app)? {
-                ShouldRender::Should => true,
-                ShouldRender::Can => (o.data.last_alpha - alpha).abs() > f32::EPSILON,
-                ShouldRender::Unable => false, //try show old image if exists
-            };
+            let should_render = matches!(o.should_render(&mut app)?, ShouldRender::Should);
             log::trace!("{}: should_render returned: {should_render}", o.config.name);
 
             if should_render {
@@ -391,9 +387,8 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                 let stereo = !matches!(meta.stereo, StereoMode::None);
                 let wsi = o.ensure_swapchain_acquire(&app, &xr_state, meta.extent, stereo)?;
                 let tgt = RenderTarget { views: wsi.views };
-                let mut rdr = RenderResources::new(app.gfx.clone(), tgt, &meta, alpha)?;
+                let mut rdr = RenderResources::new(app.gfx.clone(), tgt, &meta)?;
                 o.render(&mut app, &mut rdr)?;
-                o.data.last_alpha = alpha;
                 futures.execute_results(rdr.end()?)?;
             } else if o.data.swapchain.is_none() {
                 log::trace!("{}: not showing due to missing swapchain", o.config.name);

@@ -17,7 +17,6 @@ pub struct OpenXrOverlayData {
     pub(super) swapchain: Option<WlxSwapchain>,
     pub(super) init: bool,
     pub(super) cur_visible: bool,
-    pub(super) last_alpha: f32,
     color_bias_khr: Option<Box<xr::sys::CompositionLayerColorScaleBiasKHR>>,
 }
 
@@ -215,8 +214,10 @@ fn try_update_color_scale_bias(
         next: std::ptr::null(),
         color_bias: Default::default(),
         color_scale: xr::Color4f {
+            r: 1.0,
+            g: 1.0,
+            b: 1.0,
             a: alpha,
-            ..Default::default()
         },
     });
     *color_bias_khr = Some(new_item);
