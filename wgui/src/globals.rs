@@ -78,7 +78,7 @@ impl WguiGlobals {
 			assets_builtin,
 			defaults,
 			asset_folder,
-			font_system: WguiFontSystem::new(font_config, i18n_builtin.get_lang()),
+			font_system: WguiFontSystem::new(font_config, i18n_builtin.get_locale()),
 			i18n_builtin,
 			custom_glyph_cache: CustomGlyphCache::new(),
 		}))))

@@ -1,6 +1,8 @@
 use cosmic_text::PlatformFallback;
 use parking_lot::Mutex;
 
+use crate::i18n::Locale;
+
 #[derive(Default)]
 pub struct WguiFontConfig<'a> {
 	pub binaries: Vec<&'a [u8]>,
@@ -14,7 +16,7 @@ pub struct WguiFontSystem {
 }
 
 impl WguiFontSystem {
-	pub fn new(config: &WguiFontConfig, lang: &str) -> Self {
+	pub fn new(config: &WguiFontConfig, locale: &Locale) -> Self {
 		let mut db = cosmic_text::fontdb::Database::new();
 
 		let system = if config.binaries.is_empty() {
@@ -37,7 +39,11 @@ impl WguiFontSystem {
 			}
 
 			// we don't require anything special, at least for now
-			cosmic_text::FontSystem::new_with_locale_and_db_and_fallback(lang.to_string(), db, PlatformFallback)
+			cosmic_text::FontSystem::new_with_locale_and_db_and_fallback(
+				locale.get_matched().to_owned(),
+				db,
+				PlatformFallback,
+			)
 		};
 
 		Self {

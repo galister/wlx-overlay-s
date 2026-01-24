@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{fmt::Display, rc::Rc, str};
 
 use anyhow::Context;
 
@@ -57,8 +57,89 @@ impl Translation {
 	}
 }
 
-pub struct I18n {
+pub struct Locale {
 	lang: String,
+	region: Option<String>,
+	matched: String,
+}
+
+impl Locale {
+	pub fn all_locale() -> &'static [&'static str] {
+		&["de", "en", "es", "ja", "it", "pl", "zh_CN"]
+	}
+	pub fn default_lang() -> &'static str {
+		"en"
+	}
+	fn match_locale<'o>(lang: &str, region: Option<&str>, all_locales: &[&'o str]) -> &'o str {
+		if let Some(region) = region {
+			let locale_str = format!("{lang}_{region}");
+			if let Some(locale) = all_locales.iter().find(|&&l| l == locale_str) {
+				return locale;
+			}
+			log::warn!("Unsupported locale \"{locale_str}\", trying \"{lang}\".");
+		};
+
+		if let Some(locale) = all_locales.iter().find(|&&l| l == lang) {
+			return locale;
+		}
+		
+		let prefix = format!("{lang}_");
+		if let Some(locale) = all_locales.iter().find(|&&l| l == prefix) {
+			return locale;
+		}
+
+		let locale = Self::default_lang();
+		log::warn!("Unsupported language \"{lang}\", defaulting to \"{locale}\".");
+		locale
+	}
+	pub fn new(lang: String, region: Option<String>) -> Self {
+		let matched = Self::match_locale(&lang, region.as_deref(), Self::all_locale()).to_string();
+		Self { lang, region, matched }
+	}
+	pub fn parse_str(locale: &str) -> Self {
+		let base = locale.split(|c| c == '.' || c == '@').next().unwrap_or(locale);
+		let parts: Vec<&str> = base.split(|c| c == '_' || c == '-').collect();
+		// Ensures the format is lang_REGION
+		match parts.as_slice() {
+			[lang, region, ..] => Self::new(lang.to_lowercase(), Some(region.to_uppercase())),
+			[lang] if !lang.is_empty() => Self::new(lang.to_lowercase(), None),
+			_ => Self::new("en".to_string(), None),
+		}
+	}
+	pub fn from_env() -> Self {
+		use std::env;
+		let vars = ["LC_ALL", "LC_MESSAGES", "LANG"];
+		let full_locale = vars
+			.iter()
+			.find_map(|&v| env::var(v).ok())
+			.filter(|v| !v.is_empty() && v != "C" && v != "POSIX")
+			.unwrap_or_else(|| {
+				log::warn!(
+					"LC_ALL/LC_MESSAGES/LANG is not set, defaulting to \"{}\"",
+					Self::default_lang()
+				);
+				Self::default_lang().to_string()
+			});
+		Self::parse_str(&full_locale)
+	}
+	pub fn get_matched(&self) -> &str {
+		&self.matched
+	}
+}
+
+impl Display for Locale {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.lang)?;
+		if let Some(ref region) = self.region {
+			write!(f, "_{region}")
+		} else {
+			Ok(())
+		}
+	}
+}
+
+pub struct I18n {
+	locale: Locale,
 	json_root_translated: serde_json::Value, // any language
 	json_root_fallback: serde_json::Value,   // english
 }
@@ -73,35 +154,13 @@ fn find_translation<'a>(translation: &str, mut val: &'a serde_json::Value) -> Op
 	val.as_str()
 }
 
-fn guess_lang() -> String {
-	if let Ok(lang) = std::env::var("LANG") {
-		if let Some((first, _)) = lang.split_once('_') {
-			String::from(first)
-		} else {
-			lang
-		}
-	} else {
-		log::warn!("LANG is not set, defaulting to \"en\".");
-		String::from("en")
-	}
-}
-
 impl I18n {
 	pub fn new(provider: &mut Box<dyn AssetProvider>) -> anyhow::Result<Self> {
-		let mut lang = guess_lang();
-		log::info!("Guessed system language: {lang}");
-
-		match lang.as_str() {
-			"en" | "pl" | "it" | "ja" | "es" | "de" | "zh_CN" => {}
-			_ => {
-				log::warn!("Unsupported language \"{}\", defaulting to \"en\".", lang.as_str());
-
-				lang = String::from("en");
-			}
-		}
+		let locale = Locale::from_env();
+		log::info!("Guessed system language: {locale}");
 
 		let data_english = provider.load_from_path("lang/en.json")?;
-		let path = format!("lang/{lang}.json");
+		let path = format!("lang/{}.json", locale.get_matched());
 		let data_translated = provider
 			.load_from_path(&path)
 			.with_context(|| path.clone())
@@ -124,14 +183,14 @@ impl I18n {
 		.context("Translation file not valid JSON")?;
 
 		Ok(Self {
-			lang,
+			locale,
 			json_root_translated,
 			json_root_fallback,
 		})
 	}
 
-	pub fn get_lang(&self) -> &str {
-		&self.lang
+	pub fn get_locale(&self) -> &Locale {
+		&self.locale
 	}
 
 	pub fn translate(&mut self, translation_key_full: &str) -> Rc<str> {
