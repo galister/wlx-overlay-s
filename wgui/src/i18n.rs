@@ -84,7 +84,7 @@ impl Locale {
 		}
 		
 		let prefix = format!("{lang}_");
-		if let Some(locale) = all_locales.iter().find(|&&l| l == prefix) {
+		if let Some(locale) = all_locales.iter().find(|&&l| l.starts_with(&prefix)) {
 			return locale;
 		}
 
