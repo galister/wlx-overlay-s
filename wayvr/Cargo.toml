@@ -60,14 +60,11 @@ libc = "0.2.178"
 libmonado = { git = "https://github.com/technobaboo/libmonado-rs.git", rev = "26292e5b14663ee2f089f66f0851438a0c00ee67", optional = true }
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
 mint = "0.5.9"
-openxr = { version = "0.21.0", features = [
-  "linked",
-  "mint",
-], optional = true }
+openxr = { version = "0.21.0", features = ["linked", "mint"], optional = true }
 ovr_overlay = { features = [
   "ovr_input",
   "ovr_system",
-], git = "https://github.com/galister/ovr_overlay_oyasumi", rev = "8d62c73d5f17e4210d6d0cd52e7f3953eb9b481a", optional = true }
+], git = "https://github.com/galister/ovr_overlay_oyasumi", rev = "e477bd2a9e04293ea68c1e7529ef2cb131f32acc", optional = true }
 rosc = { version = "0.11.4", optional = true }
 serde_json5 = "0.2.1"
 serde_yaml = "0.9.34"
@@ -78,7 +75,7 @@ smithay = { version = "0.7.0", default-features = false, features = [
   "desktop",
   "xwayland",
   "wayland_frontend",
-]}
+] }
 sysinfo = { version = "0.37" }
 thiserror = "2.0"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
@@ -95,7 +92,7 @@ xkbcommon = { version = "0.8.0" } # 0.9.0 breaks keymap import on some distros
 regex.workspace = true
 
 [features]
-default = ["openvr", "openxr", "osc", "x11", "wayland" ]
+default = ["openvr", "openxr", "osc", "x11", "wayland"]
 openvr = ["dep:ovr_overlay", "dep:json"]
 openxr = ["dep:openxr", "dep:libmonado"]
 osc = ["dep:rosc"]
