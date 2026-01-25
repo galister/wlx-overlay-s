@@ -20,7 +20,7 @@ use wgui::{
 	widget::label::WidgetLabel,
 	windowing::context_menu::{self, Blueprint, ContextMenu, TickResult},
 };
-use wlx_common::{config::GeneralConfig, config_io::ConfigRoot};
+use wlx_common::{config::GeneralConfig, config_io::ConfigRoot, dash_interface::RecenterMode};
 
 use crate::{
 	frontend::{Frontend, FrontendTask},
@@ -60,6 +60,7 @@ enum Task {
 	ClearPipewireTokens,
 	ClearSavedState,
 	DeleteAllConfigs,
+	ResetPlayspace,
 	RestartSoftware,
 	RemoveAutostartApp(Rc<str>),
 	SetTab(TabNameEnum),
@@ -126,6 +127,10 @@ impl<T> Tab<T> for TabSettings<T> {
 					let path = ConfigRoot::Generic.get_conf_d_path();
 					std::fs::remove_dir_all(&path)?;
 					std::fs::create_dir(&path)?;
+				}
+				Task::ResetPlayspace => {
+					frontend.interface.recenter_playspace(data, RecenterMode::Reset)?;
+					return Ok(());
 				}
 				Task::RestartSoftware => {
 					frontend.interface.restart(data);
@@ -774,6 +779,13 @@ impl<T> TabSettings<T> {
 			}
 			TabNameEnum::Troubleshooting => {
 				let c = category!(mp, root, "APP_SETTINGS.TROUBLESHOOTING", "dashboard/cpu.svg")?;
+				danger_button!(
+					mp,
+					c,
+					"APP_SETTINGS.RESET_PLAYSPACE",
+					"dashboard/recenter.svg",
+					Task::ResetPlayspace
+				);
 				danger_button!(
 					mp,
 					c,

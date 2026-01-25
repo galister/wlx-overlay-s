@@ -16,7 +16,7 @@ use wgui::{
     widget::EventResult,
 };
 use wlx_common::{
-    dash_interface::{self, DashInterface},
+    dash_interface::{self, DashInterface, RecenterMode},
     overlays::{BackendAttrib, BackendAttribValue},
 };
 use wlx_common::{
@@ -416,9 +416,13 @@ impl DashInterface<AppState> for DashInterfaceLive {
         Ok(())
     }
 
-    fn recenter_playspace(&mut self, app: &mut AppState) -> anyhow::Result<()> {
-        app.tasks
-            .enqueue(TaskType::Playspace(PlayspaceTask::Recenter));
+    fn recenter_playspace(&mut self, app: &mut AppState, mode: RecenterMode) -> anyhow::Result<()> {
+        let task = match mode {
+            RecenterMode::FixFloor => PlayspaceTask::FixFloor,
+            RecenterMode::Recenter => PlayspaceTask::Recenter,
+            RecenterMode::Reset => PlayspaceTask::Reset,
+        };
+        app.tasks.enqueue(TaskType::Playspace(task));
         Ok(())
     }
 

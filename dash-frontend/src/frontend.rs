@@ -16,13 +16,13 @@ use wgui::{
 };
 use wlx_common::{
 	audio,
-	dash_interface::BoxDashInterface,
+	dash_interface::{BoxDashInterface, RecenterMode},
 	timestep::{self, Timestep},
 };
 
 use crate::{
 	assets,
-	tab::{Tab, TabType, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, settings::TabSettings},
+	tab::{apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, settings::TabSettings, Tab, TabType},
 	util::{
 		popup_manager::{MountPopupParams, PopupManager, PopupManagerParams},
 		toast_manager::ToastManager,
@@ -490,7 +490,7 @@ impl<T: 'static> Frontend<T> {
 	}
 
 	fn action_recenter_playspace(&mut self, data: &mut T) -> anyhow::Result<()> {
-		self.interface.recenter_playspace(data)?;
+		self.interface.recenter_playspace(data, RecenterMode::Recenter)?;
 		Ok(())
 	}
 

@@ -16,6 +16,13 @@ pub struct MonadoClient {
 	pub is_io_active: bool,
 }
 
+#[derive(Clone, Copy)]
+pub enum RecenterMode {
+	FixFloor,
+	Recenter,
+	Reset,
+}
+
 pub trait DashInterface<T> {
 	fn window_list(&mut self, data: &mut T) -> anyhow::Result<Vec<WvrWindow>>;
 	fn window_set_visible(&mut self, data: &mut T, handle: WvrWindowHandle, visible: bool) -> anyhow::Result<()>;
@@ -33,7 +40,7 @@ pub trait DashInterface<T> {
 	fn monado_client_focus(&mut self, data: &mut T, name: &str) -> anyhow::Result<()>;
 	fn monado_brightness_get(&mut self, data: &mut T) -> Option<f32>;
 	fn monado_brightness_set(&mut self, data: &mut T, brightness: f32) -> Option<()>;
-	fn recenter_playspace(&mut self, data: &mut T) -> anyhow::Result<()>;
+	fn recenter_playspace(&mut self, data: &mut T, mode: RecenterMode) -> anyhow::Result<()>;
 	fn desktop_finder<'a>(&'a mut self, data: &'a mut T) -> &'a mut DesktopFinder;
 	fn general_config<'a>(&'a mut self, data: &'a mut T) -> &'a mut GeneralConfig;
 	fn config_changed(&mut self, data: &mut T);
