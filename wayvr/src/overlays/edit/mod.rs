@@ -23,7 +23,10 @@ use crate::{
         input::HoverResult,
         task::{OverlayTask, TaskContainer, TaskType},
     },
-    gui::panel::{GuiPanel, NewGuiPanelParams, OnCustomAttribFunc, button::BUTTON_EVENTS},
+    gui::panel::{
+        GuiPanel, NewGuiPanelParams, OnCustomAttribFunc,
+        button::{BUTTON_EVENT_SUFFIX, BUTTON_EVENTS},
+    },
     overlays::edit::{
         lock::InteractLockHandler,
         mouse::new_mouse_tab_handler,
@@ -279,86 +282,32 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
         };
 
         for (name, kind, test_button, test_duration) in &BUTTON_EVENTS {
-            let Some(action) = attribs.get_value(name) else {
-                continue;
-            };
+            for suffix in BUTTON_EVENT_SUFFIX {
+                let name = &format!("{name}{suffix}");
+                let Some(action) = attribs.get_value(name) else {
+                    break;
+                };
 
-            let mut args = action.split_whitespace();
-            let Some(command) = args.next() else {
-                continue;
-            };
+                let mut args = action.split_whitespace();
+                let Some(command) = args.next() else {
+                    continue;
+                };
 
-            let button = button.clone();
+                let button = button.clone();
 
-            let callback: EventCallback<AppState, EditModeState> = match command {
-                "::EditModeToggleLock" => Box::new(move |common, data, app, state| {
-                    if !test_button(data) || !test_duration(&button, app) {
-                        return Ok(EventResult::Pass);
-                    }
-
-                    let sel = OverlaySelector::Id(*state.id.borrow());
-                    let task = state.lock.toggle(common, app, anim_mult);
-                    app.tasks
-                        .enqueue(TaskType::Overlay(OverlayTask::Modify(sel, task)));
-                    Ok(EventResult::Consumed)
-                }),
-                "::EditModeToggleGrab" => Box::new(move |_common, data, app, state| {
-                    if !test_button(data) || !test_duration(&button, app) {
-                        return Ok(EventResult::Pass);
-                    }
-
-                    let sel = OverlaySelector::Id(*state.id.borrow());
-                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
-                        sel,
-                        Box::new(|_app, owc| {
-                            let state = owc.active_state.as_mut().unwrap(); //want panic
-                            state.grabbable = !state.grabbable;
-                        }),
-                    )));
-                    Ok(EventResult::Consumed)
-                }),
-                "::EditModeTab" => {
-                    let tab_name = args.next().unwrap().to_owned();
-                    Box::new(move |common, data, app, state| {
-                        if !test_button(data) || !test_duration(&button, app) {
-                            return Ok(EventResult::Pass);
-                        }
-
-                        state.tabs.tab_button_clicked(common, &tab_name);
-                        Ok(EventResult::Consumed)
-                    })
-                }
-                "::EditModeSetPos" => {
-                    let key = args.next().unwrap().to_owned();
-                    Box::new(move |common, data, app, state| {
+                let callback: EventCallback<AppState, EditModeState> = match command {
+                    "::EditModeToggleLock" => Box::new(move |common, data, app, state| {
                         if !test_button(data) || !test_duration(&button, app) {
                             return Ok(EventResult::Pass);
                         }
 
                         let sel = OverlaySelector::Id(*state.id.borrow());
-                        let task = state.pos.button_clicked(common, &key);
+                        let task = state.lock.toggle(common, app, anim_mult);
                         app.tasks
                             .enqueue(TaskType::Overlay(OverlayTask::Modify(sel, task)));
                         Ok(EventResult::Consumed)
-                    })
-                }
-                "::EditModeSetStereo" => {
-                    let key = args.next().unwrap().to_owned();
-                    Box::new(move |common, data, app, state| {
-                        if !test_button(data) || !test_duration(&button, app) {
-                            return Ok(EventResult::Pass);
-                        }
-
-                        let sel = OverlaySelector::Id(*state.id.borrow());
-                        let task = state.stereo.button_clicked(common, &key);
-                        app.tasks
-                            .enqueue(TaskType::Overlay(OverlayTask::Modify(sel, task)));
-                        Ok(EventResult::Consumed)
-                    })
-                }
-                "::EditModeSetStereoFullFrame" => {
-                    let full_frame = args.next().unwrap().parse::<bool>().unwrap();
-                    Box::new(move |_common, data, app, state| {
+                    }),
+                    "::EditModeToggleGrab" => Box::new(move |_common, data, app, state| {
                         if !test_button(data) || !test_duration(&button, app) {
                             return Ok(EventResult::Pass);
                         }
@@ -366,46 +315,103 @@ fn make_edit_panel(app: &mut AppState) -> anyhow::Result<EditModeWrapPanel> {
                         let sel = OverlaySelector::Id(*state.id.borrow());
                         app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
                             sel,
-                            Box::new(move |_app, owc| {
-                                let attrib = BackendAttribValue::StereoFullFrame(full_frame);
-                                owc.backend.set_attrib(_app, attrib);
+                            Box::new(|_app, owc| {
+                                let state = owc.active_state.as_mut().unwrap(); //want panic
+                                state.grabbable = !state.grabbable;
                             }),
                         )));
                         Ok(EventResult::Consumed)
-                    })
-                }
-                "::EditModeSetMouse" => {
-                    let key = args.next().unwrap().to_owned();
-                    Box::new(move |common, data, app, state| {
+                    }),
+                    "::EditModeTab" => {
+                        let tab_name = args.next().unwrap().to_owned();
+                        Box::new(move |common, data, app, state| {
+                            if !test_button(data) || !test_duration(&button, app) {
+                                return Ok(EventResult::Pass);
+                            }
+
+                            state.tabs.tab_button_clicked(common, &tab_name);
+                            Ok(EventResult::Consumed)
+                        })
+                    }
+                    "::EditModeSetPos" => {
+                        let key = args.next().unwrap().to_owned();
+                        Box::new(move |common, data, app, state| {
+                            if !test_button(data) || !test_duration(&button, app) {
+                                return Ok(EventResult::Pass);
+                            }
+
+                            let sel = OverlaySelector::Id(*state.id.borrow());
+                            let task = state.pos.button_clicked(common, &key);
+                            app.tasks
+                                .enqueue(TaskType::Overlay(OverlayTask::Modify(sel, task)));
+                            Ok(EventResult::Consumed)
+                        })
+                    }
+                    "::EditModeSetStereo" => {
+                        let key = args.next().unwrap().to_owned();
+                        Box::new(move |common, data, app, state| {
+                            if !test_button(data) || !test_duration(&button, app) {
+                                return Ok(EventResult::Pass);
+                            }
+
+                            let sel = OverlaySelector::Id(*state.id.borrow());
+                            let task = state.stereo.button_clicked(common, &key);
+                            app.tasks
+                                .enqueue(TaskType::Overlay(OverlayTask::Modify(sel, task)));
+                            Ok(EventResult::Consumed)
+                        })
+                    }
+                    "::EditModeSetStereoFullFrame" => {
+                        let full_frame = args.next().unwrap().parse::<bool>().unwrap();
+                        Box::new(move |_common, data, app, state| {
+                            if !test_button(data) || !test_duration(&button, app) {
+                                return Ok(EventResult::Pass);
+                            }
+
+                            let sel = OverlaySelector::Id(*state.id.borrow());
+                            app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
+                                sel,
+                                Box::new(move |_app, owc| {
+                                    let attrib = BackendAttribValue::StereoFullFrame(full_frame);
+                                    owc.backend.set_attrib(_app, attrib);
+                                }),
+                            )));
+                            Ok(EventResult::Consumed)
+                        })
+                    }
+                    "::EditModeSetMouse" => {
+                        let key = args.next().unwrap().to_owned();
+                        Box::new(move |common, data, app, state| {
+                            if !test_button(data) || !test_duration(&button, app) {
+                                return Ok(EventResult::Pass);
+                            }
+
+                            let sel = OverlaySelector::Id(*state.id.borrow());
+                            let task = state.mouse.button_clicked(common, &key);
+                            app.tasks
+                                .enqueue(TaskType::Overlay(OverlayTask::Modify(sel, task)));
+                            Ok(EventResult::Consumed)
+                        })
+                    }
+                    "::EditModeDelete" => Box::new(move |_common, data, app, state| {
                         if !test_button(data) || !test_duration(&button, app) {
                             return Ok(EventResult::Pass);
                         }
 
-                        let sel = OverlaySelector::Id(*state.id.borrow());
-                        let task = state.mouse.button_clicked(common, &key);
-                        app.tasks
-                            .enqueue(TaskType::Overlay(OverlayTask::Modify(sel, task)));
+                        app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
+                            OverlaySelector::Id(*state.id.borrow()),
+                            Box::new(move |_app, owc| {
+                                owc.active_state = None;
+                            }),
+                        )));
                         Ok(EventResult::Consumed)
-                    })
-                }
-                "::EditModeDelete" => Box::new(move |_common, data, app, state| {
-                    if !test_button(data) || !test_duration(&button, app) {
-                        return Ok(EventResult::Pass);
-                    }
+                    }),
+                    _ => return,
+                };
 
-                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
-                        OverlaySelector::Id(*state.id.borrow()),
-                        Box::new(move |_app, owc| {
-                            owc.active_state = None;
-                        }),
-                    )));
-                    Ok(EventResult::Consumed)
-                }),
-                _ => return,
-            };
-
-            let id = layout.add_event_listener(attribs.widget_id, *kind, callback);
-            log::debug!("Registered {action} on {:?} as {id:?}", attribs.widget_id);
+                let id = layout.add_event_listener(attribs.widget_id, *kind, callback);
+                log::debug!("Registered {action} on {:?} as {id:?}", attribs.widget_id);
+            }
         }
     });
 

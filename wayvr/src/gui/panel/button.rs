@@ -37,6 +37,8 @@ use crate::{
     windowing::{OverlaySelector, backend::OverlayEventData, window::OverlayCategory},
 };
 
+pub const BUTTON_EVENT_SUFFIX: &[&str] = &["", "2", "3", "4", "5", "6", "7", "8", "9"];
+
 #[allow(clippy::type_complexity)]
 pub const BUTTON_EVENTS: [(
     &str,
@@ -196,549 +198,557 @@ pub(super) fn setup_custom_button<S: 'static>(
     const TAG: &str = "Button";
 
     for (name, kind, test_button, test_duration) in &BUTTON_EVENTS {
-        let Some(action) = attribs.get_value(name) else {
-            continue;
-        };
+        for suffix in BUTTON_EVENT_SUFFIX {
+            let name = &format!("{name}{suffix}");
+            let Some(action) = attribs.get_value(name) else {
+                //if no _press2 then don't attempt _press3 etc
+                break;
+            };
 
-        let mut args = action.split_whitespace();
-        let Some(command) = args.next() else {
-            continue;
-        };
+            let mut args = action.split_whitespace();
+            let Some(command) = args.next() else {
+                continue;
+            };
 
-        let button = button.clone();
+            let button = button.clone();
 
-        let callback: EventCallback<AppState, S> = match command {
-            "::ContextMenuOpen" => {
-                let Some(template_name) = args.next() else {
-                    log_cmd_missing_arg(parser_state, TAG, name, command);
-                    return;
-                };
+            let callback: EventCallback<AppState, S> = match command {
+                "::ContextMenuOpen" => {
+                    let Some(template_name) = args.next() else {
+                        log_cmd_missing_arg(parser_state, TAG, name, command);
+                        return;
+                    };
 
-                // pass attribs with key `_context_{name}` to the context_menu template
-                let mut template_params = HashMap::new();
-                for AttribPair { attrib, value } in &attribs.pairs {
-                    const PREFIX: &'static str = "_context_";
-                    if attrib.starts_with(PREFIX) {
-                        template_params.insert(attrib[PREFIX.len()..].into(), value.clone());
+                    // pass attribs with key `_context_{name}` to the context_menu template
+                    let mut template_params = HashMap::new();
+                    for AttribPair { attrib, value } in &attribs.pairs {
+                        const PREFIX: &'static str = "_context_";
+                        if attrib.starts_with(PREFIX) {
+                            template_params.insert(attrib[PREFIX.len()..].into(), value.clone());
+                        }
                     }
+
+                    let template_name: Rc<str> = template_name.into();
+                    let context_menu = context_menu.clone();
+                    let on_custom_attribs = on_custom_attribs.clone();
+
+                    Box::new({
+                        move |_common, data, app, _| {
+                            if !test_button(data) || !test_duration(&button, app) {
+                                return Ok(EventResult::Pass);
+                            }
+
+                            context_menu.borrow_mut().open(OpenParams {
+                                on_custom_attribs: Some(on_custom_attribs.clone()),
+                                blueprint: Blueprint::Template {
+                                    template_name: template_name.clone(),
+                                    template_params: template_params.clone(),
+                                },
+                                position: data.metadata.get_mouse_pos_absolute().unwrap(), //want panic
+                            });
+                            Ok(EventResult::Consumed)
+                        }
+                    })
                 }
+                "::ContextMenuClose" => {
+                    let context_menu = context_menu.clone();
 
-                let template_name: Rc<str> = template_name.into();
-                let context_menu = context_menu.clone();
-                let on_custom_attribs = on_custom_attribs.clone();
-
-                Box::new({
-                    move |_common, data, app, _| {
+                    Box::new(move |_common, data, app, _| {
                         if !test_button(data) || !test_duration(&button, app) {
                             return Ok(EventResult::Pass);
                         }
 
-                        context_menu.borrow_mut().open(OpenParams {
-                            on_custom_attribs: Some(on_custom_attribs.clone()),
-                            blueprint: Blueprint::Template {
-                                template_name: template_name.clone(),
-                                template_params: template_params.clone(),
-                            },
-                            position: data.metadata.get_mouse_pos_absolute().unwrap(), //want panic
-                        });
+                        context_menu.borrow_mut().close();
+
                         Ok(EventResult::Consumed)
-                    }
-                })
-            }
-            "::ContextMenuClose" => {
-                let context_menu = context_menu.clone();
-
-                Box::new(move |_common, data, app, _| {
-                    if !test_button(data) || !test_duration(&button, app) {
-                        return Ok(EventResult::Pass);
-                    }
-
-                    context_menu.borrow_mut().close();
-
-                    Ok(EventResult::Consumed)
-                })
-            }
-            "::ElementSetDisplay" => {
-                let (Some(id), Some(value)) = (args.next(), args.next()) else {
-                    log_cmd_missing_arg(parser_state, TAG, name, command);
-                    return;
-                };
-
-                let Ok(widget_id) = parser_state.data.get_widget_id(id) else {
-                    let msg = format!("no element with ID \"{id}\"");
-                    log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
-                    return;
-                };
-
-                let display = match value {
-                    "none" => taffy::Display::None,
-                    "flex" => taffy::Display::Flex,
-                    "block" => taffy::Display::Block,
-                    "grid" => taffy::Display::Grid,
-                    _ => {
-                        let msg = format!("unexpected \"{value}\"");
-                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
-                        return;
-                    }
-                };
-
-                Box::new(move |common, data, app, _| {
-                    if !test_button(data) || !test_duration(&button, app) {
-                        return Ok(EventResult::Pass);
-                    }
-
-                    common
-                        .alterables
-                        .set_style(widget_id, StyleSetRequest::Display(display));
-                    Ok(EventResult::Consumed)
-                })
-            }
-            "::DashToggle" => Box::new(move |_common, data, app, _| {
-                if !test_button(data) || !test_duration(&button, app) {
-                    return Ok(EventResult::Pass);
-                }
-
-                app.tasks
-                    .enqueue(TaskType::Overlay(OverlayTask::ToggleDashboard));
-                Ok(EventResult::Consumed)
-            }),
-            "::SetToggle" => {
-                let arg = args.next().unwrap_or_default();
-                let Ok(set_idx) = arg.parse() else {
-                    let msg = format!("expected integer, found \"{arg}\"");
-                    log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
-                    return;
-                };
-                Box::new(move |_common, data, app, _| {
-                    if !test_button(data) || !test_duration(&button, app) {
-                        return Ok(EventResult::Pass);
-                    }
-
-                    app.tasks
-                        .enqueue(TaskType::Overlay(OverlayTask::ToggleSet(set_idx)));
-                    Ok(EventResult::Consumed)
-                })
-            }
-            "::SetSwitch" => {
-                let arg = args.next().unwrap_or_default();
-                let Ok(set_idx) = arg.parse::<i32>() else {
-                    let msg = format!("expected integer, found \"{arg}\"");
-                    log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
-                    return;
-                };
-                let maybe_set = if set_idx < 0 {
-                    None
-                } else {
-                    Some(set_idx as usize)
-                };
-                Box::new(move |_common, data, app, _| {
-                    if !test_button(data) || !test_duration(&button, app) {
-                        return Ok(EventResult::Pass);
-                    }
-
-                    app.tasks
-                        .enqueue(TaskType::Overlay(OverlayTask::SwitchSet(maybe_set)));
-                    Ok(EventResult::Consumed)
-                })
-            }
-            "::OverlayReset" => {
-                let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
-                if arg.len() < 1 {
-                    log_cmd_missing_arg(parser_state, TAG, name, command);
-                    return;
-                };
-
-                Box::new(move |_common, data, app, _| {
-                    if !test_button(data) || !test_duration(&button, app) {
-                        return Ok(EventResult::Pass);
-                    }
-
-                    app.tasks
-                        .enqueue(TaskType::Overlay(OverlayTask::ResetOverlay(
-                            OverlaySelector::Name(arg.clone()),
-                        )));
-                    Ok(EventResult::Consumed)
-                })
-            }
-            "::OverlayToggle" => {
-                let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
-                if arg.len() < 1 {
-                    log_cmd_missing_arg(parser_state, TAG, name, command);
-                    return;
-                };
-
-                Box::new(move |_common, data, app, _| {
-                    if !test_button(data) || !test_duration(&button, app) {
-                        return Ok(EventResult::Pass);
-                    }
-
-                    app.tasks
-                        .enqueue(TaskType::Overlay(OverlayTask::ToggleOverlay(
-                            OverlaySelector::Name(arg.clone()),
-                            ToggleMode::Toggle,
-                        )));
-                    Ok(EventResult::Consumed)
-                })
-            }
-            "::OverlayDrop" => {
-                let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
-                if arg.len() < 1 {
-                    log_cmd_missing_arg(parser_state, TAG, name, command);
-                    return;
-                };
-
-                Box::new(move |_common, data, app, _| {
-                    if !test_button(data) || !test_duration(&button, app) {
-                        return Ok(EventResult::Pass);
-                    }
-
-                    app.tasks
-                        .enqueue(TaskType::Overlay(OverlayTask::Drop(OverlaySelector::Name(
-                            arg.clone(),
-                        ))));
-                    Ok(EventResult::Consumed)
-                })
-            }
-            "::DeleteSet" => Box::new(move |_common, data, app, _state| {
-                if !test_button(data) || !test_duration(&button, app) {
-                    return Ok(EventResult::Pass);
-                }
-
-                app.tasks
-                    .enqueue(TaskType::Overlay(OverlayTask::DeleteActiveSet));
-                Ok(EventResult::Consumed)
-            }),
-            "::AddSet" => Box::new(move |_common, data, app, _state| {
-                if !test_button(data) || !test_duration(&button, app) {
-                    return Ok(EventResult::Pass);
-                }
-
-                app.tasks.enqueue(TaskType::Overlay(OverlayTask::AddSet));
-                Ok(EventResult::Consumed)
-            }),
-            "::CustomOverlayReload" => {
-                let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
-                if arg.len() < 1 {
-                    log_cmd_missing_arg(parser_state, TAG, name, command);
-                    return;
-                };
-
-                Box::new(move |_common, data, app, _| {
-                    if !test_button(data) || !test_duration(&button, app) {
-                        return Ok(EventResult::Pass);
-                    }
-
-                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
-                        OverlaySelector::Name(arg.clone()),
-                        Box::new(|app, owc| {
-                            if !matches!(owc.category, OverlayCategory::Panel) {
-                                return;
-                            }
-                            let name = owc.name.clone();
-                            app.tasks.enqueue(TaskType::Overlay(OverlayTask::Drop(
-                                OverlaySelector::Name(name.clone()),
-                            )));
-                            app.tasks.enqueue(TaskType::Overlay(OverlayTask::Create(
-                                OverlaySelector::Name(owc.name.clone()),
-                                Box::new(move |app| {
-                                    if let Some(mut owc) = create_custom(app, name) {
-                                        owc.show_on_spawn = true;
-                                        Some(owc)
-                                    } else {
-                                        None
-                                    }
-                                }),
-                            )));
-                        }),
-                    )));
-                    Ok(EventResult::Consumed)
-                })
-            }
-            "::WvrOverlayCloseWindow" => {
-                let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
-                if arg.len() < 1 {
-                    log_cmd_missing_arg(parser_state, TAG, name, command);
-                    return;
-                };
-                Box::new(move |_common, data, app, _| {
-                    if !test_button(data) || !test_duration(&button, app) {
-                        return Ok(EventResult::Pass);
-                    }
-
-                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
-                        OverlaySelector::Name(arg.clone()),
-                        Box::new(move |app, owc| {
-                            let _ = owc
-                                .backend
-                                .notify(app, OverlayEventData::WvrCommand(WvrCommand::CloseWindow))
-                                .log_warn("Could not close window");
-                        }),
-                    )));
-                    Ok(EventResult::Consumed)
-                })
-            }
-            "::WvrOverlayKillProcess" | "::WvrOverlayTermProcess" => {
-                let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
-                if arg.len() < 1 {
-                    log_cmd_missing_arg(parser_state, TAG, name, command);
-                    return;
-                };
-
-                let signal = if command == "::WvrOverlayKillProcess" {
-                    KillSignal::Kill
-                } else {
-                    KillSignal::Term
-                };
-
-                Box::new(move |_common, data, app, _| {
-                    if !test_button(data) || !test_duration(&button, app) {
-                        return Ok(EventResult::Pass);
-                    }
-
-                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
-                        OverlaySelector::Name(arg.clone()),
-                        Box::new(move |app, owc| {
-                            let _ = owc
-                                .backend
-                                .notify(
-                                    app,
-                                    OverlayEventData::WvrCommand(WvrCommand::KillProcess(signal)),
-                                )
-                                .log_warn("Could not kill process");
-                        }),
-                    )));
-                    Ok(EventResult::Consumed)
-                })
-            }
-            "::EditToggle" => Box::new(move |_common, data, app, _| {
-                if !test_button(data) || !test_duration(&button, app) {
-                    return Ok(EventResult::Pass);
-                }
-
-                app.tasks
-                    .enqueue(TaskType::Overlay(OverlayTask::ToggleEditMode));
-                Ok(EventResult::Consumed)
-            }),
-            #[cfg(feature = "wayland")]
-            "::NewMirror" => Box::new(move |_common, data, app, _| {
-                if !test_button(data) || !test_duration(&button, app) {
-                    return Ok(EventResult::Pass);
-                }
-
-                let name = crate::overlays::screen::mirror::new_mirror_name();
-                app.tasks.enqueue(TaskType::Overlay(OverlayTask::Create(
-                    OverlaySelector::Name(name.clone()),
-                    Box::new(move |app| {
-                        Some(crate::overlays::screen::mirror::new_mirror(
-                            name,
-                            &app.session,
-                        ))
-                    }),
-                )));
-                Ok(EventResult::Consumed)
-            }),
-            "::CleanupMirrors" => Box::new(move |_common, data, app, _| {
-                if !test_button(data) || !test_duration(&button, app) {
-                    return Ok(EventResult::Pass);
-                }
-
-                app.tasks
-                    .enqueue(TaskType::Overlay(OverlayTask::CleanupMirrors));
-                Ok(EventResult::Consumed)
-            }),
-            "::PlayspaceReset" => Box::new(move |_common, data, app, _| {
-                if !test_button(data) || !test_duration(&button, app) {
-                    return Ok(EventResult::Pass);
-                }
-
-                app.tasks.enqueue(TaskType::Playspace(PlayspaceTask::Reset));
-                Ok(EventResult::Consumed)
-            }),
-            "::PlayspaceRecenter" => Box::new(move |_common, data, app, _| {
-                if !test_button(data) || !test_duration(&button, app) {
-                    return Ok(EventResult::Pass);
-                }
-
-                app.tasks
-                    .enqueue(TaskType::Playspace(PlayspaceTask::Recenter));
-                Ok(EventResult::Consumed)
-            }),
-            "::PlayspaceFixFloor" => Box::new(move |_common, data, app, _| {
-                if !test_button(data) || !test_duration(&button, app) {
-                    return Ok(EventResult::Pass);
-                }
-
-                Toast::new(
-                    ToastTopic::System,
-                    "TOAST.FIXING_FLOOR".into(),
-                    "TOAST.ONE_CONTROLLER_ON_FLOOR".into(),
-                )
-                .with_timeout(5.)
-                .with_sound(true)
-                .submit(app);
-
-                app.tasks.enqueue_at(
-                    TaskType::Playspace(PlayspaceTask::FixFloor),
-                    Instant::now() + Duration::from_secs(5),
-                );
-                Ok(EventResult::Consumed)
-            }),
-            "::Shutdown" => Box::new(move |_common, data, app, _| {
-                if !test_button(data) || !test_duration(&button, app) {
-                    return Ok(EventResult::Pass);
-                }
-
-                RUNNING.store(false, Ordering::Relaxed);
-                Ok(EventResult::Consumed)
-            }),
-            "::Restart" => Box::new(move |_common, data, app, _| {
-                if !test_button(data) || !test_duration(&button, app) {
-                    return Ok(EventResult::Pass);
-                }
-                RUNNING.store(false, Ordering::Relaxed);
-                RESTART.store(true, Ordering::Relaxed);
-
-                Ok(EventResult::Consumed)
-            }),
-            "::HandsfreeMode" => {
-                let Some(arg) = args.next() else {
-                    log_cmd_missing_arg(parser_state, TAG, name, command);
-                    return;
-                };
-
-                let Ok(val) = HandsfreePointer::from_str(arg) else {
-                    let msg = format!("expected HandsfreePointer, found \"{arg}\"");
-                    log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
-                    return;
-                };
-
-                Box::new(move |_common, data, app, _| {
-                    if !test_button(data) || !test_duration(&button, app) {
-                        return Ok(EventResult::Pass);
-                    }
-                    app.session.config.handsfree_pointer = val;
-                    Ok(EventResult::Consumed)
-                })
-            }
-            "::SendKey" => {
-                let Some(arg) = args.next() else {
-                    log_cmd_missing_arg(parser_state, TAG, name, command);
-                    return;
-                };
-                let Ok(key) = VirtualKey::from_str(arg) else {
-                    let msg = format!("expected VirtualKey, found \"{arg}\"");
-                    log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
-                    return;
-                };
-                let Some(arg) = args.next() else {
-                    log_cmd_missing_arg(parser_state, TAG, name, command);
-                    return;
-                };
-                let down = match arg.to_lowercase().as_str() {
-                    "down" => true,
-                    "up" => false,
-                    _ => {
-                        let msg = format!("expected \"down\" or \"up\", found \"{arg}\"");
-                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
-                        return;
-                    }
-                };
-                Box::new(move |_common, data, app, _| {
-                    if !test_button(data) || !test_duration(&button, app) {
-                        return Ok(EventResult::Pass);
-                    }
-
-                    app.hid_provider
-                        .send_key_routed(app.wvr_server.as_mut(), key, down);
-                    Ok(EventResult::Consumed)
-                })
-            }
-            "::ShellExec" => {
-                let state = Rc::new(ShellButtonState {
-                    button: button.clone(),
-                    exec: args.fold(String::new(), |c, n| c + " " + n),
-                    mut_state: RefCell::new(ShellButtonMutableState::default()),
-                    carry_over: RefCell::new(None),
-                });
-
-                layout.add_event_listener::<AppState, S>(
-                    attribs.widget_id,
-                    EventListenerKind::InternalStateChange,
-                    Box::new({
-                        let state = state.clone();
-                        move |_, _, _, _| {
-                            shell_on_tick(&state);
-                            Ok(EventResult::Pass)
-                        }
-                    }),
-                );
-
-                Box::new(move |_common, data, app, _| {
-                    if !test_button(data) || !test_duration(&button, app) {
-                        return Ok(EventResult::Pass);
-                    }
-
-                    let _ = shell_on_action(&state).inspect_err(|e| log::error!("{e:?}"));
-                    Ok(EventResult::Consumed)
-                })
-            }
-            #[cfg(feature = "osc")]
-            "::OscSend" => {
-                use crate::subsystem::osc::parse_osc_value;
-
-                let Some(address) = args.next().map(std::string::ToString::to_string) else {
-                    log_cmd_missing_arg(parser_state, TAG, name, command);
-                    return;
-                };
-
-                let mut osc_args = vec![];
-
-                // collect arguments specified in the initial string
-                for arg in args {
-                    if let Ok(osc_arg) = parse_osc_value(arg).inspect_err(|e| {
-                        let msg = format!("Could not parse OSC value \"{arg}\": {e:?}");
-                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
-                        return;
-                    }) {
-                        osc_args.push(osc_arg);
-                    }
-                }
-
-                // collect arguments from _arg<n> attributes.
-                let mut arg_index = 0;
-                while let Some(arg) = attribs.get_value(&format!("_arg{arg_index}"))
-                    && let Ok(osc_arg) = parse_osc_value(arg).inspect_err(|e| {
-                        let msg = format!("Could not parse OSC value \"{arg}\": {e:?}");
-                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
                     })
-                {
-                    osc_args.push(osc_arg);
-                    arg_index += 1;
                 }
-
-                Box::new(move |_common, data, app, _| {
-                    if !test_button(data) || !test_duration(&button, app) {
-                        return Ok(EventResult::Pass);
-                    }
-
-                    let Some(sender) = app.osc_sender.as_mut() else {
-                        log::error!("OscSend: sender is not available.");
-                        return Ok(EventResult::Consumed);
+                "::ElementSetDisplay" => {
+                    let (Some(id), Some(value)) = (args.next(), args.next()) else {
+                        log_cmd_missing_arg(parser_state, TAG, name, command);
+                        return;
                     };
 
-                    let _ = sender
-                        .send_message(address.clone(), osc_args.clone())
-                        .inspect_err(|e| log::error!("OscSend: Could not send message: {e:?}"));
+                    let Ok(widget_id) = parser_state.data.get_widget_id(id) else {
+                        let msg = format!("no element with ID \"{id}\"");
+                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
+                        return;
+                    };
+
+                    let display = match value {
+                        "none" => taffy::Display::None,
+                        "flex" => taffy::Display::Flex,
+                        "block" => taffy::Display::Block,
+                        "grid" => taffy::Display::Grid,
+                        _ => {
+                            let msg = format!("unexpected \"{value}\"");
+                            log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
+                            return;
+                        }
+                    };
+
+                    Box::new(move |common, data, app, _| {
+                        if !test_button(data) || !test_duration(&button, app) {
+                            return Ok(EventResult::Pass);
+                        }
+
+                        common
+                            .alterables
+                            .set_style(widget_id, StyleSetRequest::Display(display));
+                        Ok(EventResult::Consumed)
+                    })
+                }
+                "::DashToggle" => Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    app.tasks
+                        .enqueue(TaskType::Overlay(OverlayTask::ToggleDashboard));
+                    Ok(EventResult::Consumed)
+                }),
+                "::SetToggle" => {
+                    let arg = args.next().unwrap_or_default();
+                    let Ok(set_idx) = arg.parse() else {
+                        let msg = format!("expected integer, found \"{arg}\"");
+                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
+                        return;
+                    };
+                    Box::new(move |_common, data, app, _| {
+                        if !test_button(data) || !test_duration(&button, app) {
+                            return Ok(EventResult::Pass);
+                        }
+
+                        app.tasks
+                            .enqueue(TaskType::Overlay(OverlayTask::ToggleSet(set_idx)));
+                        Ok(EventResult::Consumed)
+                    })
+                }
+                "::SetSwitch" => {
+                    let arg = args.next().unwrap_or_default();
+                    let Ok(set_idx) = arg.parse::<i32>() else {
+                        let msg = format!("expected integer, found \"{arg}\"");
+                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
+                        return;
+                    };
+                    let maybe_set = if set_idx < 0 {
+                        None
+                    } else {
+                        Some(set_idx as usize)
+                    };
+                    Box::new(move |_common, data, app, _| {
+                        if !test_button(data) || !test_duration(&button, app) {
+                            return Ok(EventResult::Pass);
+                        }
+
+                        app.tasks
+                            .enqueue(TaskType::Overlay(OverlayTask::SwitchSet(maybe_set)));
+                        Ok(EventResult::Consumed)
+                    })
+                }
+                "::OverlayReset" => {
+                    let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
+                    if arg.len() < 1 {
+                        log_cmd_missing_arg(parser_state, TAG, name, command);
+                        return;
+                    };
+
+                    Box::new(move |_common, data, app, _| {
+                        if !test_button(data) || !test_duration(&button, app) {
+                            return Ok(EventResult::Pass);
+                        }
+
+                        app.tasks
+                            .enqueue(TaskType::Overlay(OverlayTask::ResetOverlay(
+                                OverlaySelector::Name(arg.clone()),
+                            )));
+                        Ok(EventResult::Consumed)
+                    })
+                }
+                "::OverlayToggle" => {
+                    let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
+                    if arg.len() < 1 {
+                        log_cmd_missing_arg(parser_state, TAG, name, command);
+                        return;
+                    };
+
+                    Box::new(move |_common, data, app, _| {
+                        if !test_button(data) || !test_duration(&button, app) {
+                            return Ok(EventResult::Pass);
+                        }
+
+                        app.tasks
+                            .enqueue(TaskType::Overlay(OverlayTask::ToggleOverlay(
+                                OverlaySelector::Name(arg.clone()),
+                                ToggleMode::Toggle,
+                            )));
+                        Ok(EventResult::Consumed)
+                    })
+                }
+                "::OverlayDrop" => {
+                    let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
+                    if arg.len() < 1 {
+                        log_cmd_missing_arg(parser_state, TAG, name, command);
+                        return;
+                    };
+
+                    Box::new(move |_common, data, app, _| {
+                        if !test_button(data) || !test_duration(&button, app) {
+                            return Ok(EventResult::Pass);
+                        }
+
+                        app.tasks.enqueue(TaskType::Overlay(OverlayTask::Drop(
+                            OverlaySelector::Name(arg.clone()),
+                        )));
+                        Ok(EventResult::Consumed)
+                    })
+                }
+                "::DeleteSet" => Box::new(move |_common, data, app, _state| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    app.tasks
+                        .enqueue(TaskType::Overlay(OverlayTask::DeleteActiveSet));
+                    Ok(EventResult::Consumed)
+                }),
+                "::AddSet" => Box::new(move |_common, data, app, _state| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::AddSet));
+                    Ok(EventResult::Consumed)
+                }),
+                "::CustomOverlayReload" => {
+                    let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
+                    if arg.len() < 1 {
+                        log_cmd_missing_arg(parser_state, TAG, name, command);
+                        return;
+                    };
+
+                    Box::new(move |_common, data, app, _| {
+                        if !test_button(data) || !test_duration(&button, app) {
+                            return Ok(EventResult::Pass);
+                        }
+
+                        app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
+                            OverlaySelector::Name(arg.clone()),
+                            Box::new(|app, owc| {
+                                if !matches!(owc.category, OverlayCategory::Panel) {
+                                    return;
+                                }
+                                let name = owc.name.clone();
+                                app.tasks.enqueue(TaskType::Overlay(OverlayTask::Drop(
+                                    OverlaySelector::Name(name.clone()),
+                                )));
+                                app.tasks.enqueue(TaskType::Overlay(OverlayTask::Create(
+                                    OverlaySelector::Name(owc.name.clone()),
+                                    Box::new(move |app| {
+                                        if let Some(mut owc) = create_custom(app, name) {
+                                            owc.show_on_spawn = true;
+                                            Some(owc)
+                                        } else {
+                                            None
+                                        }
+                                    }),
+                                )));
+                            }),
+                        )));
+                        Ok(EventResult::Consumed)
+                    })
+                }
+                "::WvrOverlayCloseWindow" => {
+                    let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
+                    if arg.len() < 1 {
+                        log_cmd_missing_arg(parser_state, TAG, name, command);
+                        return;
+                    };
+                    Box::new(move |_common, data, app, _| {
+                        if !test_button(data) || !test_duration(&button, app) {
+                            return Ok(EventResult::Pass);
+                        }
+
+                        app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
+                            OverlaySelector::Name(arg.clone()),
+                            Box::new(move |app, owc| {
+                                let _ = owc
+                                    .backend
+                                    .notify(
+                                        app,
+                                        OverlayEventData::WvrCommand(WvrCommand::CloseWindow),
+                                    )
+                                    .log_warn("Could not close window");
+                            }),
+                        )));
+                        Ok(EventResult::Consumed)
+                    })
+                }
+                "::WvrOverlayKillProcess" | "::WvrOverlayTermProcess" => {
+                    let arg: Arc<str> = args.collect::<Vec<_>>().join(" ").into();
+                    if arg.len() < 1 {
+                        log_cmd_missing_arg(parser_state, TAG, name, command);
+                        return;
+                    };
+
+                    let signal = if command == "::WvrOverlayKillProcess" {
+                        KillSignal::Kill
+                    } else {
+                        KillSignal::Term
+                    };
+
+                    Box::new(move |_common, data, app, _| {
+                        if !test_button(data) || !test_duration(&button, app) {
+                            return Ok(EventResult::Pass);
+                        }
+
+                        app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
+                            OverlaySelector::Name(arg.clone()),
+                            Box::new(move |app, owc| {
+                                let _ = owc
+                                    .backend
+                                    .notify(
+                                        app,
+                                        OverlayEventData::WvrCommand(WvrCommand::KillProcess(
+                                            signal,
+                                        )),
+                                    )
+                                    .log_warn("Could not kill process");
+                            }),
+                        )));
+                        Ok(EventResult::Consumed)
+                    })
+                }
+                "::EditToggle" => Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    app.tasks
+                        .enqueue(TaskType::Overlay(OverlayTask::ToggleEditMode));
+                    Ok(EventResult::Consumed)
+                }),
+                #[cfg(feature = "wayland")]
+                "::NewMirror" => Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    let name = crate::overlays::screen::mirror::new_mirror_name();
+                    app.tasks.enqueue(TaskType::Overlay(OverlayTask::Create(
+                        OverlaySelector::Name(name.clone()),
+                        Box::new(move |app| {
+                            Some(crate::overlays::screen::mirror::new_mirror(
+                                name,
+                                &app.session,
+                            ))
+                        }),
+                    )));
+                    Ok(EventResult::Consumed)
+                }),
+                "::CleanupMirrors" => Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    app.tasks
+                        .enqueue(TaskType::Overlay(OverlayTask::CleanupMirrors));
+                    Ok(EventResult::Consumed)
+                }),
+                "::PlayspaceReset" => Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    app.tasks.enqueue(TaskType::Playspace(PlayspaceTask::Reset));
+                    Ok(EventResult::Consumed)
+                }),
+                "::PlayspaceRecenter" => Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    app.tasks
+                        .enqueue(TaskType::Playspace(PlayspaceTask::Recenter));
+                    Ok(EventResult::Consumed)
+                }),
+                "::PlayspaceFixFloor" => Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    Toast::new(
+                        ToastTopic::System,
+                        "TOAST.FIXING_FLOOR".into(),
+                        "TOAST.ONE_CONTROLLER_ON_FLOOR".into(),
+                    )
+                    .with_timeout(5.)
+                    .with_sound(true)
+                    .submit(app);
+
+                    app.tasks.enqueue_at(
+                        TaskType::Playspace(PlayspaceTask::FixFloor),
+                        Instant::now() + Duration::from_secs(5),
+                    );
+                    Ok(EventResult::Consumed)
+                }),
+                "::Shutdown" => Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+
+                    RUNNING.store(false, Ordering::Relaxed);
+                    Ok(EventResult::Consumed)
+                }),
+                "::Restart" => Box::new(move |_common, data, app, _| {
+                    if !test_button(data) || !test_duration(&button, app) {
+                        return Ok(EventResult::Pass);
+                    }
+                    RUNNING.store(false, Ordering::Relaxed);
+                    RESTART.store(true, Ordering::Relaxed);
 
                     Ok(EventResult::Consumed)
-                })
-            }
-            // shell
-            _ => return,
-        };
+                }),
+                "::HandsfreeMode" => {
+                    let Some(arg) = args.next() else {
+                        log_cmd_missing_arg(parser_state, TAG, name, command);
+                        return;
+                    };
 
-        let id = layout.add_event_listener(attribs.widget_id, *kind, callback);
-        log::debug!("Registered {action} on {:?} as {id:?}", attribs.widget_id);
+                    let Ok(val) = HandsfreePointer::from_str(arg) else {
+                        let msg = format!("expected HandsfreePointer, found \"{arg}\"");
+                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
+                        return;
+                    };
+
+                    Box::new(move |_common, data, app, _| {
+                        if !test_button(data) || !test_duration(&button, app) {
+                            return Ok(EventResult::Pass);
+                        }
+                        app.session.config.handsfree_pointer = val;
+                        Ok(EventResult::Consumed)
+                    })
+                }
+                "::SendKey" => {
+                    let Some(arg) = args.next() else {
+                        log_cmd_missing_arg(parser_state, TAG, name, command);
+                        return;
+                    };
+                    let Ok(key) = VirtualKey::from_str(arg) else {
+                        let msg = format!("expected VirtualKey, found \"{arg}\"");
+                        log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
+                        return;
+                    };
+                    let Some(arg) = args.next() else {
+                        log_cmd_missing_arg(parser_state, TAG, name, command);
+                        return;
+                    };
+                    let down = match arg.to_lowercase().as_str() {
+                        "down" => true,
+                        "up" => false,
+                        _ => {
+                            let msg = format!("expected \"down\" or \"up\", found \"{arg}\"");
+                            log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
+                            return;
+                        }
+                    };
+                    Box::new(move |_common, data, app, _| {
+                        if !test_button(data) || !test_duration(&button, app) {
+                            return Ok(EventResult::Pass);
+                        }
+
+                        app.hid_provider
+                            .send_key_routed(app.wvr_server.as_mut(), key, down);
+                        Ok(EventResult::Consumed)
+                    })
+                }
+                "::ShellExec" => {
+                    let state = Rc::new(ShellButtonState {
+                        button: button.clone(),
+                        exec: args.fold(String::new(), |c, n| c + " " + n),
+                        mut_state: RefCell::new(ShellButtonMutableState::default()),
+                        carry_over: RefCell::new(None),
+                    });
+
+                    layout.add_event_listener::<AppState, S>(
+                        attribs.widget_id,
+                        EventListenerKind::InternalStateChange,
+                        Box::new({
+                            let state = state.clone();
+                            move |_, _, _, _| {
+                                shell_on_tick(&state);
+                                Ok(EventResult::Pass)
+                            }
+                        }),
+                    );
+
+                    Box::new(move |_common, data, app, _| {
+                        if !test_button(data) || !test_duration(&button, app) {
+                            return Ok(EventResult::Pass);
+                        }
+
+                        let _ = shell_on_action(&state).inspect_err(|e| log::error!("{e:?}"));
+                        Ok(EventResult::Consumed)
+                    })
+                }
+                #[cfg(feature = "osc")]
+                "::OscSend" => {
+                    use crate::subsystem::osc::parse_osc_value;
+
+                    let Some(address) = args.next().map(std::string::ToString::to_string) else {
+                        log_cmd_missing_arg(parser_state, TAG, name, command);
+                        return;
+                    };
+
+                    let mut osc_args = vec![];
+
+                    // collect arguments specified in the initial string
+                    for arg in args {
+                        if let Ok(osc_arg) = parse_osc_value(arg).inspect_err(|e| {
+                            let msg = format!("Could not parse OSC value \"{arg}\": {e:?}");
+                            log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
+                            return;
+                        }) {
+                            osc_args.push(osc_arg);
+                        }
+                    }
+
+                    // collect arguments from _arg<n> attributes.
+                    let mut arg_index = 0;
+                    while let Some(arg) = attribs.get_value(&format!("_arg{arg_index}"))
+                        && let Ok(osc_arg) = parse_osc_value(arg).inspect_err(|e| {
+                            let msg = format!("Could not parse OSC value \"{arg}\": {e:?}");
+                            log_cmd_invalid_arg(parser_state, TAG, name, command, &msg);
+                        })
+                    {
+                        osc_args.push(osc_arg);
+                        arg_index += 1;
+                    }
+
+                    Box::new(move |_common, data, app, _| {
+                        if !test_button(data) || !test_duration(&button, app) {
+                            return Ok(EventResult::Pass);
+                        }
+
+                        let Some(sender) = app.osc_sender.as_mut() else {
+                            log::error!("OscSend: sender is not available.");
+                            return Ok(EventResult::Consumed);
+                        };
+
+                        let _ = sender
+                            .send_message(address.clone(), osc_args.clone())
+                            .inspect_err(|e| log::error!("OscSend: Could not send message: {e:?}"));
+
+                        Ok(EventResult::Consumed)
+                    })
+                }
+                // shell
+                _ => return,
+            };
+
+            let id = layout.add_event_listener(attribs.widget_id, *kind, callback);
+            log::debug!("Registered {action} on {:?} as {id:?}", attribs.widget_id);
+        }
     }
 }
 

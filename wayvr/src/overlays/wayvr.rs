@@ -32,7 +32,10 @@ use crate::{
         wayvr::{self, SurfaceBufWithImage, process::KillSignal, window::WindowHandle},
     },
     graphics::{ExtentExt, Vert2Uv, upload_quad_vertices},
-    gui::panel::{GuiPanel, NewGuiPanelParams, OnCustomAttribFunc, button::BUTTON_EVENTS},
+    gui::panel::{
+        GuiPanel, NewGuiPanelParams, OnCustomAttribFunc,
+        button::{BUTTON_EVENT_SUFFIX, BUTTON_EVENTS},
+    },
     overlays::screen::capture::ScreenPipeline,
     state::{self, AppState},
     subsystem::{hid::WheelDelta, input::KeyboardFocus},
@@ -141,32 +144,35 @@ impl WvrWindowBackend {
                 };
 
                 for (name, kind, test_button, test_duration) in &BUTTON_EVENTS {
-                    let Some(action) = attribs.get_value(name) else {
-                        continue;
-                    };
+                    for suffix in BUTTON_EVENT_SUFFIX {
+                        let name = &format!("{name}{suffix}");
+                        let Some(action) = attribs.get_value(name) else {
+                            break;
+                        };
 
-                    let mut args = action.split_whitespace();
-                    let Some(command) = args.next() else {
-                        continue;
-                    };
+                        let mut args = action.split_whitespace();
+                        let Some(command) = args.next() else {
+                            continue;
+                        };
 
-                    let button = button.clone();
+                        let button = button.clone();
 
-                    let callback: EventCallback<AppState, WindowHandle> = match command {
-                        "::DecorCloseWindow" => Box::new(move |_common, data, app, state| {
-                            if !test_button(data) || !test_duration(&button, app) {
-                                return Ok(EventResult::Pass);
-                            }
+                        let callback: EventCallback<AppState, WindowHandle> = match command {
+                            "::DecorCloseWindow" => Box::new(move |_common, data, app, state| {
+                                if !test_button(data) || !test_duration(&button, app) {
+                                    return Ok(EventResult::Pass);
+                                }
 
-                            app.wvr_server.as_mut().unwrap().close_window(*state);
+                                app.wvr_server.as_mut().unwrap().close_window(*state);
 
-                            Ok(EventResult::Consumed)
-                        }),
-                        _ => return,
-                    };
+                                Ok(EventResult::Consumed)
+                            }),
+                            _ => return,
+                        };
 
-                    let id = layout.add_event_listener(attribs.widget_id, *kind, callback);
-                    log::debug!("Registered {action} on {:?} as {id:?}", attribs.widget_id);
+                        let id = layout.add_event_listener(attribs.widget_id, *kind, callback);
+                        log::debug!("Registered {action} on {:?} as {id:?}", attribs.widget_id);
+                    }
                 }
             });
 
