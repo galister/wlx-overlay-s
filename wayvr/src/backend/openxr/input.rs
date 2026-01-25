@@ -348,7 +348,7 @@ impl OpenXrPointer {
     ) -> anyhow::Result<()> {
         match session.config.handsfree_pointer {
             HandsfreePointer::None => return Ok(()),
-            HandsfreePointer::Hmd => {
+            HandsfreePointer::Hmd | HandsfreePointer::HmdOnly => {
                 pointer.tracked = hmd_tracked;
                 pointer.raw_pose = hmd;
                 pointer.pose = hmd;
@@ -364,13 +364,21 @@ impl OpenXrPointer {
                     cur_pos.lerp(new_pos.into(), lerp_factor).into(),
                 );
             }
-            HandsfreePointer::EyeTracking => {
+            HandsfreePointer::EyeTracking | HandsfreePointer::EyeTrackingOnly => {
                 // more aggressive smoothing for eye
                 self.pointer_load_pose(pointer, xr, session.config.pointer_lerp_factor * 0.5)?;
             }
         }
 
         pointer.handsfree = pointer.tracked;
+        if matches!(
+            session.config.handsfree_pointer,
+            HandsfreePointer::HmdOnly | HandsfreePointer::EyeTrackingOnly
+        ) {
+            // skip actions
+            return Ok(());
+        }
+
         self.pointer_load_actions(pointer, xr, session)?;
 
         Ok(())

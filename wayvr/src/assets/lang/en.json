@@ -17,7 +17,9 @@
 			"TITLE": "Handsfree mode",
 			"NONE": "Off",
 			"HMD": "HMD + pinch",
-			"EYE_TRACKING": "Eye + pinch"
+			"EYE_TRACKING": "Eye + pinch",
+			"HMD_ONLY": "HMD only",
+			"EYE_ONLY": "Eye only"
 		}
 	},
 	"DEFAULT": "Default",

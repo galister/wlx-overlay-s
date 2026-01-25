@@ -57,8 +57,12 @@ pub enum HandsfreePointer {
 	#[strum(props(Translation = "APP_SETTINGS.OPTION.HMD_PINCH"))]
 	#[default]
 	Hmd,
+	#[strum(props(Translation = "APP_SETTINGS.OPTION.HMD_ONLY"))]
+	HmdOnly,
 	#[strum(props(Translation = "APP_SETTINGS.OPTION.EYE_PINCH"))]
 	EyeTracking,
+	#[strum(props(Translation = "APP_SETTINGS.OPTION.EYE_ONLY"))]
+	EyeTrackingOnly,
 }
 
 #[derive(Clone, Serialize, Deserialize)]

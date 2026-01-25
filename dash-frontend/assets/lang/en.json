@@ -74,6 +74,8 @@
 			"AUTO_HELP": "ScreenCopy GPU if supported,\notherwise PipeWire GPU.",
 			"EYE_PINCH": "Eye + pinch",
 			"HMD_PINCH": "HMD + pinch",
+			"EYE_ONLY": "Eye only",
+			"HMD_ONLY": "HMD only",
 			"NONE": "None",
 			"PIPEWIRE_HELP": "Fast GPU capture,\nstandard on all desktops.",
 			"PW_FALLBACK_HELP": "Slow method with high CPU usage.\nTry in case PipeWire GPU doesn't work",

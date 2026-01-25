@@ -12,7 +12,6 @@ use wlx_common::{
     astr_containers::{AStrMap, AStrMapExt},
     config::SerializedWindowSet,
     overlays::{BackendAttrib, BackendAttribValue, ToastTopic},
-    windowing::Positioning,
 };
 
 use crate::{

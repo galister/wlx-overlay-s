@@ -1,6 +1,6 @@
 use std::{rc::Rc, time::Duration};
 
-use glam::{Affine3A, Quat, Vec3, Vec3A, vec3};
+use glam::{Affine3A, Quat, Vec3, vec3};
 use wgui::{
     assets::AssetPath,
     components::button::ComponentButton,
@@ -23,11 +23,7 @@ use crate::{
         timer::GuiTimer,
     },
     state::AppState,
-    windowing::{
-        Z_ORDER_WATCH,
-        backend::OverlayEventData,
-        window::{OverlayWindowConfig, OverlayWindowData},
-    },
+    windowing::{Z_ORDER_WATCH, backend::OverlayEventData, window::OverlayWindowConfig},
 };
 
 pub const WATCH_NAME: &str = "watch";

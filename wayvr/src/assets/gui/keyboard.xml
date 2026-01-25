@@ -167,7 +167,9 @@
     <context_menu >
       <cell translation="BAR.HANDSFREE.NONE" _press="::HandsfreeMode None" />
       <cell translation="BAR.HANDSFREE.HMD" _press="::HandsfreeMode Hmd" />
+      <cell translation="BAR.HANDSFREE.HMD_ONLY" _press="::HandsfreeMode HmdOnly" />
       <cell translation="BAR.HANDSFREE.EYE_TRACKING" _press="::HandsfreeMode EyeTracking" />
+      <cell translation="BAR.HANDSFREE.EYE_ONLY" _press="::HandsfreeMode EyeTrackingOnly" />
     </context_menu>
   </blueprint>
 
