@@ -6,6 +6,7 @@ pub trait Pushable<T> {
 	fn push(&mut self, item: &T);
 }
 
+#[derive(Debug)]
 pub struct GenericStack<T, const STACK_MAX: usize> {
 	pub stack: [T; STACK_MAX],
 	top: u8,
@@ -50,7 +51,7 @@ impl<T: StackItem<T>, const STACK_MAX: usize> Default for GenericStack<T, STACK_
 // Transform stack
 // ########################################
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Transform {
 	pub rel_pos: Vec2,
 	pub visual_dim: Vec2, // for convenience
@@ -95,7 +96,7 @@ pub type TransformStack = GenericStack<Transform, 64>;
 // Scissor stack
 // ########################################
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ScissorBoundary(pub drawing::Boundary);
 
 impl Default for ScissorBoundary {
@@ -144,3 +145,10 @@ impl Pushable<ScissorBoundary> for ScissorBoundary {
 }
 
 pub type ScissorStack = GenericStack<ScissorBoundary, 64>;
+
+impl ScissorStack {
+	pub const fn is_out_of_bounds(&self) -> bool {
+		let boundary = &self.get().0;
+		boundary.width() < 0.0 || boundary.height() < 0.0
+	}
+}

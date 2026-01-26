@@ -129,27 +129,34 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 
 	let transform = Mat4::from_translation(Vec3::new(-0.5, 0.0, 0.0));
 
+	// this value needs to be bigger than rectangle padding sizes due to the
+	// transform stack & scissoring design. Needs investigation, zero-size objects
+	// would result in PushScissorStackResult::OutOfBounds otherwise preventing us
+	// to render the label. Didn't find the best solution for this edge-case yet,
+	// so here it is.
+	let pin_size = 32.0;
+
 	let (pin_left, pin_top, pin_align_items, pin_justify_content) = match params.info.side {
 		TooltipSide::Left => (
-			absolute_boundary.left() - spacing,
-			absolute_boundary.top() + absolute_boundary.size.y / 2.0,
+			absolute_boundary.left() - spacing - pin_size,
+			absolute_boundary.top() + absolute_boundary.size.y / 2.0 - pin_size / 2.0,
 			taffy::AlignItems::Center,
 			taffy::JustifyContent::End,
 		),
 		TooltipSide::Right => (
 			absolute_boundary.left() + absolute_boundary.size.x + spacing,
-			absolute_boundary.top() + absolute_boundary.size.y / 2.0,
+			absolute_boundary.top() + absolute_boundary.size.y / 2.0 - pin_size / 2.0,
 			taffy::AlignItems::Center,
 			taffy::JustifyContent::Start,
 		),
 		TooltipSide::Top => (
-			absolute_boundary.left() + absolute_boundary.size.x / 2.0,
-			absolute_boundary.top() - spacing,
+			absolute_boundary.left() + absolute_boundary.size.x / 2.0 - pin_size / 2.0,
+			absolute_boundary.top() - spacing - pin_size,
 			taffy::AlignItems::End,
 			taffy::JustifyContent::Center,
 		),
 		TooltipSide::Bottom => (
-			absolute_boundary.left() + absolute_boundary.size.x / 2.0,
+			absolute_boundary.left() + absolute_boundary.size.x / 2.0 - pin_size / 2.0,
 			absolute_boundary.top() + absolute_boundary.size.y + spacing,
 			taffy::AlignItems::Baseline,
 			taffy::JustifyContent::Center,
@@ -173,8 +180,8 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 			},
 			/* important, to make it centered! */
 			size: taffy::Size {
-				width: length(0.0),
-				height: length(0.0),
+				width: length(pin_size),
+				height: length(pin_size),
 			},
 			..Default::default()
 		},

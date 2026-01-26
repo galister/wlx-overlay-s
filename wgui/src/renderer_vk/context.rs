@@ -173,6 +173,7 @@ pub struct Context {
 
 pub struct ContextDrawResult {
 	pub pass_count: u32,
+	pub primitive_commands_count: u32,
 }
 
 impl Context {
@@ -239,7 +240,7 @@ impl Context {
 
 		let mut passes = Vec::<RendererPass>::new();
 		let mut needs_new_pass = true;
-		let mut next_scissor: Option<drawing::Boundary> = None;
+		let mut cur_scissor: Option<drawing::Boundary> = None;
 
 		for primitive in primitives {
 			if needs_new_pass {
@@ -247,7 +248,7 @@ impl Context {
 					&mut atlas.text_atlas,
 					shared.rect_pipeline.clone(),
 					shared.image_pipeline.clone(),
-					next_scissor,
+					cur_scissor,
 					self.pixel_scale,
 				)?);
 				needs_new_pass = false;
@@ -309,14 +310,26 @@ impl Context {
 						.add_image(extent.boundary, image.clone(), &extent.transform);
 				}
 				drawing::RenderPrimitive::ScissorSet(boundary) => {
-					next_scissor = Some(boundary.0);
-					needs_new_pass = true;
+					let skip = if let Some(cur_scissor) = cur_scissor {
+						// do not create a new pass if it's not needed (same scissor values)
+						cur_scissor == boundary.0
+					} else {
+						false
+					};
+
+					cur_scissor = Some(boundary.0);
+					if skip {
+						//log::debug!("same scissor boundary, re-using the same pass");
+					} else {
+						needs_new_pass = true;
+					}
 				}
 			}
 		}
 
 		let res = ContextDrawResult {
 			pass_count: passes.len() as u32,
+			primitive_commands_count: primitives.len() as u32,
 		};
 
 		for mut pass in passes {
