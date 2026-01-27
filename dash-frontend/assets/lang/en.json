@@ -132,8 +132,7 @@
 	"GAME_LAUNCHED": "Game launched",
 	"GAME_LIST": {
 		"NO_GAMES_FOUND": "No games found",
-		"RUNNING_GAMES_LIST": "List of running games",
-		"NO_RUNNING_GAME_FOUND": "No running game found"
+		"RUNNING_GAMES_LIST": "List of running games"
 	},
 	"GAMES": "Games",
 	"GENERAL_SETTINGS": "General settings",

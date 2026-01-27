@@ -66,7 +66,7 @@
           <!-- Title bar -->
           <div width="100%" align_items="center" justify_content="center">
             <rectangle min_width="300" height="100%" consume_mouse_events="1" round="100%" color="~color_top_panel" align_items="center" justify_content="center" gap="8">
-              <sprite id="sprite_titlebar_icon" width="28" height="28" />
+              <sprite id="sprite_titlebar_icon" width="24" height="24" />
               <label id="label_titlebar_title" weight="bold" size="16" text="Title" />
             </rectangle>
           </div>
@@ -98,10 +98,7 @@
             flex_direction="column"
             overflow_x="scroll"
             overflow_y="scroll"
-            padding_top="8"
-            padding_bottom="8"
-            padding_left="16"
-            padding_right="16"
+            padding="16"
             gap="8"
             width="100%"
             min_height="100%"

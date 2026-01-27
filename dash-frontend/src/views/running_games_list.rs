@@ -1,20 +1,19 @@
 use wgui::{
 	assets::AssetPath,
 	components::button::ComponentButton,
+	event::StyleSetRequest,
 	globals::WguiGlobals,
 	i18n::Translation,
-	layout::{Layout, WidgetID},
+	layout::{Layout, LayoutTask, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
+	taffy::Display,
 	task::Tasks,
 	widget::label::WidgetLabel,
 };
 
 use crate::{
 	frontend::{FrontendTask, FrontendTasks},
-	util::{
-		steam_utils::{self, AppID, AppManifest, GameSortMethod, SteamUtils},
-		wgui_simple,
-	},
+	util::steam_utils::{self, AppID, AppManifest, GameSortMethod, SteamUtils},
 };
 
 #[derive(Clone)]
@@ -39,6 +38,7 @@ pub struct View {
 	id_list_parent: WidgetID,
 	installed_games: Vec<AppManifest>,
 	frontend_tasks: FrontendTasks,
+	parent_id: WidgetID,
 }
 
 fn doc_params(globals: WguiGlobals) -> ParseDocumentParams<'static> {
@@ -58,7 +58,7 @@ impl View {
 		let installed_games = params
 			.steam_utils
 			.list_installed_games(GameSortMethod::None)
-			.unwrap_or(Vec::new());
+			.unwrap_or_default();
 
 		let tasks = Tasks::<Task>::new();
 
@@ -72,6 +72,7 @@ impl View {
 			id_list_parent,
 			installed_games,
 			frontend_tasks: params.frontend_tasks,
+			parent_id: params.parent_id,
 		})
 	}
 
@@ -98,7 +99,7 @@ impl View {
 		Ok(())
 	}
 
-	fn extract_name_from_appid<'a>(app_id: &AppID, manifests: &[AppManifest]) -> String {
+	fn extract_name_from_appid(app_id: &AppID, manifests: &[AppManifest]) -> String {
 		for manifest in manifests {
 			if manifest.app_id == *app_id {
 				return manifest.name.clone();
@@ -110,13 +111,18 @@ impl View {
 
 	fn fill_list(&mut self, layout: &mut Layout, games: Vec<steam_utils::RunningGame>) -> anyhow::Result<()> {
 		if games.is_empty() {
-			wgui_simple::create_label(
-				layout,
-				self.id_list_parent,
-				Translation::from_translation_key("GAME_LIST.NO_RUNNING_GAME_FOUND"),
-			)?;
+			// hide self
+			layout.tasks.push(LayoutTask::SetWidgetStyle(
+				self.parent_id,
+				StyleSetRequest::Display(Display::None),
+			));
 			return Ok(());
 		}
+
+		layout.tasks.push(LayoutTask::SetWidgetStyle(
+			self.parent_id,
+			StyleSetRequest::Display(Display::DEFAULT),
+		));
 
 		for game in games {
 			let game_name = View::extract_name_from_appid(&game.app_id, &self.installed_games);

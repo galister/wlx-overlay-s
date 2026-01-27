@@ -1,6 +1,5 @@
 use std::{path::PathBuf, rc::Rc};
 
-use anyhow::Context;
 use chrono::Timelike;
 use glam::Vec2;
 use wgui::{

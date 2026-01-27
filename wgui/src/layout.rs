@@ -138,6 +138,7 @@ pub type ModifyLayoutStateFunc = Box<dyn FnOnce(ModifyLayoutStateData) -> anyhow
 
 pub enum LayoutTask {
 	RemoveWidget(WidgetID),
+	SetWidgetStyle(WidgetID, event::StyleSetRequest),
 	ModifyLayoutState(ModifyLayoutStateFunc),
 	PlaySound(WguiSoundType),
 	Dispatch(Box<dyn FnOnce(&mut CallbackDataCommon) -> anyhow::Result<()>>),
@@ -706,10 +707,49 @@ impl Layout {
 					func(&mut c.common())?;
 					c.finish()?;
 				}
+				LayoutTask::SetWidgetStyle(widget_id, style_request) => {
+					self.set_style_request(widget_id, style_request);
+				}
 			}
 		}
 
 		Ok(())
+	}
+
+	fn set_style_request(&mut self, widget_id: WidgetID, style_request: event::StyleSetRequest) {
+		let Some(node_id) = self.state.nodes.get(widget_id) else {
+			return;
+		};
+
+		// taffy requires us to copy this whole 536-byte style struct.
+		// we can't get `&mut Style` directly from taffy unfortunately
+		let mut cur_style = self.state.tree.style(*node_id).unwrap().clone() /* always safe */;
+
+		match style_request {
+			event::StyleSetRequest::Display(display) => {
+				// refresh the component in case if visibility/display mode has changed
+				if cur_style.display != display
+					&& let Some(component) = self.registered_components_to_refresh.get(node_id)
+				{
+					self.components_to_refresh_once.insert(component.clone());
+				}
+
+				cur_style.display = display;
+			}
+			event::StyleSetRequest::Margin(margin) => {
+				cur_style.margin = margin;
+			}
+			event::StyleSetRequest::Width(val) => {
+				cur_style.size.width = val;
+			}
+			event::StyleSetRequest::Height(val) => {
+				cur_style.size.height = val;
+			}
+		}
+
+		if let Err(e) = self.state.tree.set_style(*node_id, cur_style) {
+			log::error!("failed to set style for taffy widget ID {node_id:?}: {e:?}");
+		}
 	}
 
 	pub fn process_alterables(&mut self, alterables: EventAlterables) -> anyhow::Result<()> {
@@ -747,39 +787,7 @@ impl Layout {
 		}
 
 		for (widget_id, style_request) in alterables.style_set_requests {
-			let Some(node_id) = self.state.nodes.get(widget_id) else {
-				continue;
-			};
-
-			// taffy requires us to copy this whole 536-byte style struct.
-			// we can't get `&mut Style` directly from taffy unfortunately
-			let mut cur_style = self.state.tree.style(*node_id).unwrap().clone() /* always safe */;
-
-			match style_request {
-				event::StyleSetRequest::Display(display) => {
-					// refresh the component in case if visibility/display mode has changed
-					if cur_style.display != display
-						&& let Some(component) = self.registered_components_to_refresh.get(node_id)
-					{
-						self.components_to_refresh_once.insert(component.clone());
-					}
-
-					cur_style.display = display;
-				}
-				event::StyleSetRequest::Margin(margin) => {
-					cur_style.margin = margin;
-				}
-				event::StyleSetRequest::Width(val) => {
-					cur_style.size.width = val;
-				}
-				event::StyleSetRequest::Height(val) => {
-					cur_style.size.height = val;
-				}
-			}
-
-			if let Err(e) = self.state.tree.set_style(*node_id, cur_style) {
-				log::error!("failed to set style for taffy widget ID {node_id:?}: {e:?}");
-			}
+			self.set_style_request(widget_id, style_request);
 		}
 
 		Ok(())

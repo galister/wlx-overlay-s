@@ -47,7 +47,7 @@ impl WidgetObj for WidgetRectangle {
 		let boundary = drawing::Boundary::construct_relative(state.transform_stack);
 
 		let round_units = match self.params.round {
-			WLength::Units(units) => units as u8,
+			WLength::Units(units) => (f32::min(boundary.size.x, boundary.size.y) as u8 / 2).min(units as u8),
 			WLength::Percent(percent) => (f32::min(boundary.size.x, boundary.size.y) * percent / 2.0) as u8,
 		};
 

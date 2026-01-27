@@ -103,7 +103,8 @@ pub(super) fn setup_custom_label<S: 'static>(
                     layout
                         .state
                         .widgets
-                        .cast_as::<WidgetLabel>(attribs.widget_id)?
+                        .cast_as::<WidgetLabel>(attribs.widget_id)
+                        .unwrap()
                         .set_text_simple(&mut globals, Translation::from_raw_text(pretty_tz));
 
                     // does not need to be dynamic
