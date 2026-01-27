@@ -75,6 +75,10 @@ impl WidgetMap {
 		self.0.get(handle)?.get_as::<T>()
 	}
 
+	pub fn cast_as<T: 'static>(&self, handle: WidgetID) -> anyhow::Result<RefMut<'_, T>> {
+		self.get_as(handle).context("Widget cast failed")
+	}
+
 	pub fn get(&self, handle: WidgetID) -> Option<&Widget> {
 		self.0.get(handle)
 	}

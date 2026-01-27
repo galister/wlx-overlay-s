@@ -1,5 +1,6 @@
 use std::{path::PathBuf, rc::Rc};
 
+use anyhow::Context;
 use chrono::Timelike;
 use glam::Vec2;
 use wgui::{
@@ -10,8 +11,9 @@ use wgui::{
 	i18n::Translation,
 	layout::{Layout, LayoutParams, LayoutUpdateParams, LayoutUpdateResult, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState},
+	renderer_vk::text::custom_glyph::CustomGlyphData,
 	task::Tasks,
-	widget::{label::WidgetLabel, rectangle::WidgetRectangle},
+	widget::{label::WidgetLabel, rectangle::WidgetRectangle, sprite::WidgetSprite},
 	windowing::window::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra, WguiWindowPlacement},
 };
 use wlx_common::{
@@ -22,7 +24,7 @@ use wlx_common::{
 
 use crate::{
 	assets,
-	tab::{apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, settings::TabSettings, Tab, TabType},
+	tab::{Tab, TabType, apps::TabApps, games::TabGames, home::TabHome, monado::TabMonado, settings::TabSettings},
 	util::{
 		popup_manager::{MountPopupParams, PopupManager, PopupManagerParams},
 		toast_manager::ToastManager,
@@ -32,8 +34,10 @@ use crate::{
 };
 
 pub struct FrontendWidgets {
-	pub id_label_time: WidgetID,
-	pub id_rect_content: WidgetID,
+	id_label_time: WidgetID,
+	id_rect_content: WidgetID,
+	id_sprite_titlebar_icon: WidgetID,
+	id_label_titlebar_title: WidgetID,
 }
 
 pub type FrontendTasks = Tasks<FrontendTask>;
@@ -148,6 +152,8 @@ impl<T: 'static> Frontend<T> {
 
 		let id_label_time = state.get_widget_id("label_time")?;
 		let id_rect_content = state.get_widget_id("rect_content")?;
+		let id_sprite_titlebar_icon = state.get_widget_id("sprite_titlebar_icon")?;
+		let id_label_titlebar_title = state.get_widget_id("label_titlebar_title")?;
 
 		let timestep = Timestep::new(60.0);
 
@@ -161,6 +167,8 @@ impl<T: 'static> Frontend<T> {
 			widgets: FrontendWidgets {
 				id_label_time,
 				id_rect_content,
+				id_sprite_titlebar_icon,
+				id_label_titlebar_title,
 			},
 			timestep,
 			interface: params.interface,
@@ -283,9 +291,10 @@ impl<T: 'static> Frontend<T> {
 		let mut common = c.common();
 
 		{
-			let Some(mut label) = common.state.widgets.get_as::<WidgetLabel>(self.widgets.id_label_time) else {
-				anyhow::bail!("");
-			};
+			let mut label = common
+				.state
+				.widgets
+				.cast_as::<WidgetLabel>(self.widgets.id_label_time)?;
 
 			let now = chrono::Local::now();
 			let hours = now.hour();
@@ -370,10 +379,47 @@ impl<T: 'static> Frontend<T> {
 		Ok(())
 	}
 
+	fn set_tab_title(&mut self, translation: &str, icon: &str) -> anyhow::Result<()> {
+		let mut c = self.layout.start_common();
+		let mut common = c.common();
+
+		{
+			let mut label = common
+				.state
+				.widgets
+				.cast_as::<WidgetLabel>(self.widgets.id_label_titlebar_title)?;
+			label.set_text(&mut common, Translation::from_translation_key(translation));
+		}
+
+		{
+			let mut sprite = common
+				.state
+				.widgets
+				.cast_as::<WidgetSprite>(self.widgets.id_sprite_titlebar_icon)?;
+			sprite.set_content(
+				&mut common,
+				Some(CustomGlyphData::from_assets(&self.globals, AssetPath::BuiltIn(icon))?),
+			);
+		}
+
+		c.finish()?;
+		Ok(())
+	}
+
 	fn set_tab(&mut self, data: &mut T, tab_type: TabType) -> anyhow::Result<()> {
 		log::info!("Setting tab to {tab_type:?}");
 		let widget_content = self.state.fetch_widget(&self.layout.state, "content")?;
 		self.layout.remove_children(widget_content.id);
+
+		let (tab_translation, icon_path) = match tab_type {
+			TabType::Home => ("HOME_SCREEN", "dashboard/home.svg"),
+			TabType::Apps => ("APPLICATIONS", "dashboard/apps.svg"),
+			TabType::Games => ("GAMES", "dashboard/games.svg"),
+			TabType::Monado => ("MONADO_RUNTIME", "dashboard/monado.svg"),
+			TabType::Settings => ("SETTINGS", "dashboard/settings.svg"),
+		};
+
+		self.set_tab_title(tab_translation, icon_path)?;
 
 		let tab: Box<dyn Tab<T>> = match tab_type {
 			TabType::Home => Box::new(TabHome::new(self, widget_content.id, data)?),
