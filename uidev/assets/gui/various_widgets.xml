@@ -36,7 +36,7 @@
         <div gap="4">
           <Button id="button_red" text="Red button" width="150" height="32" color="#FF0000" tooltip_str="I'm at the top" tooltip_side="top" />
           <Button id="button_aqua" text="Aqua button" width="150" height="32" color="#00FFFF" tooltip_str="I'm at the bottom" tooltip_side="bottom" />
-          <Button id="button_yellow" text="Yellow button" width="150" height="32" color="#FFFF00" tooltip="TESTBED.HELLO_WORLD" tooltip_side="right" />
+          <Button id="button_yellow" text="Yellow button" width="150" height="32" color="#FFFF00" tooltip="TESTBED.HELLO_WORLD" tooltip_side="left" />
         </div>
         <div gap="4">
           <Button id="button_click_me" text="Click me" width="128" height="24" color="#FFFFFF" />

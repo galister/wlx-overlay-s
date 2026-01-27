@@ -442,7 +442,7 @@ impl Layout {
 
 		widget.data.cached_absolute_boundary = drawing::Boundary::construct_absolute(&alterables.transform_stack);
 
-		let scissor_pushed = push_scissor_stack(
+		let scissor_result = push_scissor_stack(
 			&mut alterables.transform_stack,
 			&mut alterables.scissor_stack,
 			scroll_shift,
@@ -450,24 +450,24 @@ impl Layout {
 			style,
 		);
 
-		// check children first
-		self.push_event_children(node_id, event, event_result, alterables, user_data)?;
+		if scissor_result.should_display() {
+			// check children first
+			self.push_event_children(node_id, event, event_result, alterables, user_data)?;
 
-		if event_result.can_propagate() {
-			let mut params = EventParams {
-				state: &self.state,
-				layout: l,
-				alterables,
-				node_id,
-				style,
-			};
+			if event_result.can_propagate() {
+				let mut params = EventParams {
+					state: &self.state,
+					layout: l,
+					alterables,
+					node_id,
+					style,
+				};
 
-			widget.process_event(widget_id, node_id, event, event_result, user_data, &mut params)?;
+				widget.process_event(widget_id, node_id, event, event_result, user_data, &mut params)?;
+			}
 		}
 
-		if scissor_pushed {
-			alterables.scissor_stack.pop();
-		}
+		alterables.scissor_stack.pop();
 		alterables.transform_stack.pop();
 
 		Ok(())

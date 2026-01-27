@@ -288,24 +288,48 @@ pub fn push_transform_stack(
 	});
 }
 
-/// returns true if scissor has been pushed
+#[derive(Eq, PartialEq)]
+pub enum PushScissorStackResult {
+	VisibleDontClip, // scissor calculated, but don't clip anything
+	VisibleAndClip,  // scissor should be applied at this stage (ScissorSet primitive needs to be called)
+	OutOfBounds,     // scissor rectangle is out of bounds (negative boundary dimensions)
+}
+
+impl PushScissorStackResult {
+	pub fn should_display(&self) -> bool {
+		*self != Self::OutOfBounds
+	}
+}
+
+/// Returns true if scissor has been pushed.
 pub fn push_scissor_stack(
 	transform_stack: &mut TransformStack,
 	scissor_stack: &mut ScissorStack,
 	scroll_shift: Vec2,
 	info: &Option<ScrollbarInfo>,
 	style: &taffy::Style,
-) -> bool {
-	let scissor_pushed = info.is_some() && has_overflow_clip(style);
-	if !scissor_pushed {
-		return false;
-	}
-
+) -> PushScissorStackResult {
 	let mut boundary_absolute = drawing::Boundary::construct_absolute(transform_stack);
 	boundary_absolute.pos += scroll_shift;
+
+	let do_clip = info.is_some() && has_overflow_clip(style);
+
 	scissor_stack.push(ScissorBoundary(boundary_absolute));
 
-	true
+	if scissor_stack.is_out_of_bounds() {
+		return PushScissorStackResult::OutOfBounds;
+	}
+
+	if do_clip {
+		PushScissorStackResult::VisibleAndClip
+	} else {
+		PushScissorStackResult::VisibleDontClip
+	}
+}
+
+struct DrawWidgetInternal {
+	// how many times ScissorSet render primitives has been called?
+	scissor_set_count: u32,
 }
 
 fn draw_widget(
@@ -313,6 +337,7 @@ fn draw_widget(
 	state: &mut DrawState,
 	node_id: taffy::NodeId,
 	style: &taffy::Style,
+	internal: &mut DrawWidgetInternal,
 	widget: &Widget,
 ) {
 	let Ok(l) = params.layout.state.tree.layout(node_id) else {
@@ -346,9 +371,11 @@ fn draw_widget(
 		));
 	}
 
-	let scissor_pushed = push_scissor_stack(state.transform_stack, state.scissor_stack, scroll_shift, &info, style);
+	let starting_scissor_set_count = internal.scissor_set_count;
 
-	if scissor_pushed {
+	let scissor_result = push_scissor_stack(state.transform_stack, state.scissor_stack, scroll_shift, &info, style);
+
+	if scissor_result == PushScissorStackResult::VisibleAndClip {
 		if params.debug_draw {
 			let mut boundary_relative = drawing::Boundary::construct_relative(state.transform_stack);
 			boundary_relative.pos += scroll_shift;
@@ -358,10 +385,10 @@ fn draw_widget(
 				Color::new(1.0, 0.0, 1.0, 1.0),
 			));
 		}
-
 		state
 			.primitives
 			.push(drawing::RenderPrimitive::ScissorSet(*state.scissor_stack.get()));
+		internal.scissor_set_count += 1;
 	}
 
 	let draw_params = widget::DrawParams {
@@ -370,12 +397,16 @@ fn draw_widget(
 		style,
 	};
 
-	widget_state.draw_all(state, &draw_params);
+	if scissor_result.should_display() {
+		widget_state.draw_all(state, &draw_params);
+		draw_children(params, state, node_id, internal, false);
+	}
 
-	draw_children(params, state, node_id, false);
+	state.scissor_stack.pop();
 
-	if scissor_pushed {
-		state.scissor_stack.pop();
+	let current_scissor_set_count = internal.scissor_set_count;
+
+	if current_scissor_set_count > starting_scissor_set_count {
 		state
 			.primitives
 			.push(drawing::RenderPrimitive::ScissorSet(*state.scissor_stack.get()));
@@ -392,7 +423,13 @@ fn draw_widget(
 	}
 }
 
-fn draw_children(params: &DrawParams, state: &mut DrawState, parent_node_id: taffy::NodeId, is_topmost: bool) {
+fn draw_children(
+	params: &DrawParams,
+	state: &mut DrawState,
+	parent_node_id: taffy::NodeId,
+	internal: &mut DrawWidgetInternal,
+	is_topmost: bool,
+) {
 	let layout = &params.layout;
 
 	for node_id in layout.state.tree.child_ids(parent_node_id) {
@@ -415,7 +452,7 @@ fn draw_children(params: &DrawParams, state: &mut DrawState, parent_node_id: taf
 			continue;
 		};
 
-		draw_widget(params, state, node_id, style, widget);
+		draw_widget(params, state, node_id, style, internal, widget);
 
 		if is_topmost {
 			state.primitives.push(RenderPrimitive::NewPass);
@@ -439,7 +476,9 @@ pub fn draw(params: &mut DrawParams) -> anyhow::Result<Vec<RenderPrimitive>> {
 		alterables: &mut alterables,
 	};
 
-	draw_children(params, &mut state, params.layout.tree_root_node, true);
+	let mut internal = DrawWidgetInternal { scissor_set_count: 0 };
+
+	draw_children(params, &mut state, params.layout.tree_root_node, &mut internal, true);
 
 	params.layout.process_alterables(alterables)?;
 

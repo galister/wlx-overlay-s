@@ -359,7 +359,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 						.unwrap();
 
 					if debug_draw_enabled {
-						log::debug!("pass count: {}", draw_result.pass_count);
+						log::debug!(
+							"pass count: {}, primitive commands count: {}",
+							draw_result.pass_count,
+							draw_result.primitive_commands_count
+						);
 					}
 
 					cmd_buf.end_rendering().unwrap();
