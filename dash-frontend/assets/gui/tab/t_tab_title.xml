@@ -1,9 +1,0 @@
-<layout>
-  <!-- translation, icon -->
-  <template name="TabTitle">
-    <div gap="8" align_items="center">
-      <sprite src_builtin="${icon}" width="24" height="24" />
-      <label translation="${translation}" size="18" weight="bold" />
-    </div>
-  </template>
-</layout>

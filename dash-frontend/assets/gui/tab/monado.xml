@@ -1,7 +1,5 @@
 <layout>
-  <include src="t_tab_title.xml" />
   <include src="../t_group_box.xml" />
-
 
   <!-- key: str, value: str -->
   <template name="BoolFlag">
@@ -27,7 +25,6 @@
   </template>
 
   <elements>
-    <TabTitle translation="MONADO_RUNTIME" icon="dashboard/monado.svg" />
     <label translation="DISPLAY_BRIGHTNESS" />
     <Slider id="slider_brightness" width="300" height="24" min_value="0" max_value="140" />
 

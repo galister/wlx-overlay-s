@@ -75,7 +75,9 @@
       "SCREENCOPY_HELP": "Lento, nessuna finestra pop-up per la condivisione dello schermo.\nFunziona su: Hyprland, Niri, River, Sway",
       "NONE": "Nessuno",
       "HMD_PINCH": "HMD + pizzico",
-      "EYE_PINCH": "Occhio + pizzico"
+      "EYE_PINCH": "Occhio + pizzico",
+      "EYE_ONLY": "Solo occhio",
+      "HMD_ONLY": "Solo HMD"
     },
     "POINTER_LERP_FACTOR": "Smussamento puntatore",
     "RESTART_SOFTWARE": "Riavvia il software",
@@ -103,7 +105,9 @@
     "AUTOSTART_APPS": "App da avviare all'avvio",
     "HANDSFREE_POINTER": "Modalità a mani libere",
     "HANDSFREE_POINTER_HELP": "Input da usare quando i\ncontroller di movimento non sono disponibili.\nPizzico sinistro per afferrare, destro per cliccare.",
-    "UI_GRADIENT_INTENSITY": "Intensità gradiente dell'interfaccia utente"
+    "UI_GRADIENT_INTENSITY": "Intensità gradiente dell'interfaccia utente",
+    "RESET_PLAYSPACE": "Ripristina playspace",
+    "RESET_PLAYSPACE_HELP": "Cancella l'offset dello spazio di gioco."
   },
   "APPLICATION_LAUNCHER": "Lanciatore applicazioni",
   "APPLICATION_STARTED": "Applicazione avviata",
@@ -128,8 +132,7 @@
   "GAME_LAUNCHED": "Gioco lanciato",
   "GAME_LIST": {
     "NO_GAMES_FOUND": "Nessun gioco trovato",
-    "RUNNING_GAMES_LIST": "Lista dei giochi in esecuzione",
-    "NO_RUNNING_GAME_FOUND": "Nessun gioco in esecuzione trovato"
+    "RUNNING_GAMES_LIST": "Lista dei giochi in esecuzione"
   },
   "GAMES": "Giochi",
   "GENERAL_SETTINGS": "Impostazioni generali",

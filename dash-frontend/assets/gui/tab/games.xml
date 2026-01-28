@@ -1,10 +1,6 @@
 <layout>
-  <include src="t_tab_title.xml" />
-  <include src="../t_group_box.xml" />
-
   <elements>
-    <TabTitle translation="GAMES" icon="dashboard/games.svg" />
-    <rectangle macro="group_box" id="running_games_list_parent" align_self="center" />
-    <div id="game_list_parent" align_items="center" />
+    <div id="running_games_list_parent" align_self="center" />
+    <div id="game_list_parent" align_items="center" flex_direction="column" gap="8" overflow_y="scroll" />
   </elements>
 </layout>

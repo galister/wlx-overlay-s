@@ -195,7 +195,7 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 			color: TOOLTIP_COLOR,
 			border_color: TOOLTIP_BORDER_COLOR,
 			border: 2.0,
-			round: WLength::Percent(1.0),
+			round: WLength::Units(24.0),
 			..Default::default()
 		}),
 		taffy::Style {

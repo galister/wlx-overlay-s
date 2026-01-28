@@ -73,12 +73,16 @@
       "SCREENCOPY_HELP": "Wolne, bez wyskakujących okienek udostępniania ekranu.\nDziała na: Hyprland, Niri, River, Sway",
       "NONE": "Brak",
       "HMD_PINCH": "HMD + szczyknięcie",
-      "EYE_PINCH": "Ściśnięcie palcami + oko"
+      "EYE_PINCH": "Ściśnięcie palcami + oko",
+      "EYE_ONLY": "Tylko oko",
+      "HMD_ONLY": "Tylko HMD"
     },
     "AUTOSTART_APPS": "Aplikacje do uruchomienia przy starcie",
     "HANDSFREE_POINTER": "Tryb bez użycia rąk",
     "HANDSFREE_POINTER_HELP": "Wejście do użycia, gdy kontrolery ruchu\nsą niedostępne. Lewy szczyptak to chwyt,\nprawy to kliknięcie.",
-    "UI_GRADIENT_INTENSITY": "Intensywność gradientu UI"
+    "UI_GRADIENT_INTENSITY": "Intensywność gradientu UI",
+    "RESET_PLAYSPACE": "Zresetuj przestrzeń gry",
+    "RESET_PLAYSPACE_HELP": "Wyczyść przesunięcie przestrzeni gry."
   },
   "APPLICATION_LAUNCHER": "Uruchamiacz aplikacji",
   "APPLICATIONS": "Aplikacje",
@@ -116,8 +120,7 @@
   "CLOSE_WINDOW": "Zamknij okno",
   "GAME_LIST": {
     "NO_GAMES_FOUND": "Nie znaleziono gier",
-    "RUNNING_GAMES_LIST": "Lista uruchomionych gier",
-    "NO_RUNNING_GAME_FOUND": "Nie znaleziono uruchomionej gry"
+    "RUNNING_GAMES_LIST": "Lista uruchomionych gier"
   },
   "TERMINATE_PROCESS": "Zakończ proces",
   "GAME_LAUNCHED": "Gra uruchomiona",

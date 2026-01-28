@@ -78,12 +78,16 @@
       "SCREENCOPY_HELP": "Langsam, keine Bildschirmfreigabe-Popups.\nFunktioniert mit: Hyprland, Niri, River, Sway",
       "NONE": "Keine",
       "HMD_PINCH": "HMD + Kneifen",
-      "EYE_PINCH": "Auge + Kneifen"
+      "EYE_PINCH": "Auge + Kneifen",
+      "EYE_ONLY": "Nur Auge",
+      "HMD_ONLY": "Nur HMD"
     },
     "AUTOSTART_APPS": "Anwendungen, die beim Start ausgeführt werden sollen",
     "HANDSFREE_POINTER": "Freihändige Modus",
     "HANDSFREE_POINTER_HELP": "Eingabe, die bei Bewegung\nder Controller verwendet wird, wenn diese nicht verfügbar sind.\nLinkes Kneifen greift, rechtes klickt.",
-    "UI_GRADIENT_INTENSITY": "UI-Verlaufsintensität"
+    "UI_GRADIENT_INTENSITY": "UI-Verlaufsintensität",
+    "RESET_PLAYSPACE": "Spielbereich zurücksetzen",
+    "RESET_PLAYSPACE_HELP": "Den Abstand des Spielbereichs zurücksetzen."
   },
   "HELLO": "Hallo!",
   "AUDIO": {
@@ -116,8 +120,7 @@
   "CLOSE_WINDOW": "Fenster schließen",
   "GAME_LIST": {
     "NO_GAMES_FOUND": "Keine Spiele gefunden",
-    "RUNNING_GAMES_LIST": "Liste der laufenden Spiele",
-    "NO_RUNNING_GAME_FOUND": "Kein laufendes Spiel gefunden"
+    "RUNNING_GAMES_LIST": "Liste der laufenden Spiele"
   },
   "TERMINATE_PROCESS": "Prozess beenden",
   "GAME_LAUNCHED": "Spiel gestartet",

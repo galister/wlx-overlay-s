@@ -1,5 +1,4 @@
 <layout>
-  <include src="t_tab_title.xml" />
   <include src="../t_group_box.xml" />
   <include src="../t_dropdown_button.xml" />
 
@@ -46,7 +45,6 @@
   </template>
 
   <elements>
-    <TabTitle translation="SETTINGS" icon="dashboard/settings.svg" />
     <div gap="4">
       <Tabs id="tabs">
         <Tab name="look_and_feel" translation="APP_SETTINGS.LOOK_AND_FEEL" sprite_src_builtin="dashboard/palette.svg" />

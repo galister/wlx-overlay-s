@@ -78,12 +78,16 @@
       "SCREENCOPY_HELP": "Lento, sin ventanas emergentes de uso compartido de pantalla.\nFunciona en: Hyprland, Niri, River, Sway",
       "NONE": "Ninguno",
       "HMD_PINCH": "HMD + pellizco",
-      "EYE_PINCH": "Ojo + pellizco"
+      "EYE_PINCH": "Ojo + pellizco",
+      "EYE_ONLY": "Solo ojo",
+      "HMD_ONLY": "Solo HMD"
     },
     "AUTOSTART_APPS": "Aplicaciones a ejecutar al inicio",
     "HANDSFREE_POINTER": "Modo manos libres",
     "HANDSFREE_POINTER_HELP": "Entrada a utilizar cuando no\nestén disponibles los mandos de movimiento.\nPellizco con la izquierda para agarrar, con la derecha para hacer clic.",
-    "UI_GRADIENT_INTENSITY": "Intensidad del degradado de la IU"
+    "UI_GRADIENT_INTENSITY": "Intensidad del degradado de la IU",
+    "RESET_PLAYSPACE": "Restablecer espacio de juego",
+    "RESET_PLAYSPACE_HELP": "Borrar el desplazamiento del espacio de juego."
   },
   "HELLO": "¡Hola!",
   "AUDIO": {
@@ -116,8 +120,7 @@
   "CLOSE_WINDOW": "Cerrar ventana",
   "GAME_LIST": {
     "NO_GAMES_FOUND": "No se encontraron juegos",
-    "RUNNING_GAMES_LIST": "Lista de juegos en ejecución",
-    "NO_RUNNING_GAME_FOUND": "No se encontró ningún juego en ejecución"
+    "RUNNING_GAMES_LIST": "Lista de juegos en ejecución"
   },
   "TERMINATE_PROCESS": "Finalizar proceso",
   "GAME_LAUNCHED": "Juego lanzado",

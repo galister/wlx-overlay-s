@@ -55,8 +55,7 @@ fn button_click_callback(
 ) -> ButtonClickCallback {
 	Rc::new(move |common, _e| {
 		label
-			.get_as::<WidgetLabel>()
-			.unwrap()
+			.cast::<WidgetLabel>()?
 			.set_text(common, Translation::from_raw_text(text));
 
 		button.try_cast::<ComponentButton>()?.set_text(
@@ -169,7 +168,7 @@ impl TestbedGeneric {
 		let cb_first = parser_state.fetch_component_as::<ComponentCheckbox>("cb_first")?;
 		let label = label_cur_option.widget.clone();
 		cb_first.on_toggle(Box::new(move |common, e| {
-			let mut widget = label.get_as::<WidgetLabel>().unwrap();
+			let mut widget = label.cast::<WidgetLabel>()?;
 			let text = format!("checkbox toggle: {}", e.checked);
 			widget.set_text(common, Translation::from_raw_text(&text));
 			Ok(())

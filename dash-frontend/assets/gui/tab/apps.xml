@@ -1,5 +1,4 @@
 <layout>
-  <include src="t_tab_title.xml" />
   <include src="../theme.xml" />
 
   <template name="AppEntry">
@@ -25,7 +24,6 @@
   </template>
 
   <elements>
-    <TabTitle translation="APPLICATIONS" icon="dashboard/apps.svg" />
     <!-- placeholders for now -->
     <!--
     <div gap="4" align_items="center">

@@ -2,6 +2,7 @@
   <theme>
     <var key="color_menu_dark" value="#0A0A0ACC" />
     <var key="color_accent" value="#008cff" />
+    <var key="color_top_panel" value="#00000099" />
     <var key="color_bottom_panel" value="#141e28" />
   </theme>
 </layout>

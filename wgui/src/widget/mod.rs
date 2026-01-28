@@ -1,3 +1,4 @@
+use anyhow::Context;
 use glam::Vec2;
 use taffy::{NodeId, TaffyTree};
 
@@ -248,9 +249,17 @@ impl dyn WidgetObj {
 		any.downcast_ref::<T>()
 	}
 
+	pub fn cast<T: 'static>(&self) -> anyhow::Result<&T> {
+		self.get_as().context("cast failed")
+	}
+
 	pub fn get_as_mut<T: 'static>(&mut self) -> Option<&mut T> {
 		let any = self.as_any_mut();
 		any.downcast_mut::<T>()
+	}
+
+	pub fn cast_mut<T: 'static>(&mut self) -> anyhow::Result<&mut T> {
+		self.get_as_mut().context("cast failed")
 	}
 }
 
