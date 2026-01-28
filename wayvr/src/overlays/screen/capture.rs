@@ -53,7 +53,6 @@ pub struct ScreenPipeline {
     mouse: BufPass,
     pass: SmallVec<[BufPass; 2]>,
     pipeline: Arc<WGfxPipeline<Vert2Uv>>,
-    buf_alpha: Subbuffer<[f32]>,
     extentf: [f32; 2],
     offsetf: [f32; 2],
     stereo: StereoMode,
@@ -76,29 +75,12 @@ impl ScreenPipeline {
                 .use_updatable_descriptors(smallvec![0]),
         )?;
 
-        let buf_alpha = app
-            .gfx
-            .empty_buffer(BufferUsage::TRANSFER_DST | BufferUsage::UNIFORM_BUFFER, 1)?;
-
         let mut me = Self {
-            pass: smallvec![Self::create_pass(
-                app,
-                pipeline.clone(),
-                extentf,
-                offsetf,
-                buf_alpha.clone()
-            )?],
-            mouse: Self::create_mouse_pass(
-                app,
-                pipeline.clone(),
-                extentf,
-                offsetf,
-                buf_alpha.clone(),
-            )?,
+            pass: smallvec![Self::create_pass(app, pipeline.clone(), extentf, offsetf,)?],
+            mouse: Self::create_mouse_pass(app, pipeline.clone(), extentf, offsetf)?,
             pipeline,
             extentf,
             offsetf,
-            buf_alpha,
             stereo,
         };
         me.ensure_stereo(stereo);
@@ -121,7 +103,6 @@ impl ScreenPipeline {
                 self.pipeline.clone(),
                 self.extentf,
                 self.offsetf,
-                self.buf_alpha.clone(),
             )?);
         }
 
@@ -146,13 +127,7 @@ impl ScreenPipeline {
         self.offsetf = offsetf;
         self.pass.clear();
 
-        self.mouse = Self::create_mouse_pass(
-            app,
-            self.pipeline.clone(),
-            extentf,
-            offsetf,
-            self.buf_alpha.clone(),
-        )?;
+        self.mouse = Self::create_mouse_pass(app, self.pipeline.clone(), extentf, offsetf)?;
         Ok(())
     }
 
@@ -161,14 +136,12 @@ impl ScreenPipeline {
         pipeline: Arc<WGfxPipeline<Vert2Uv>>,
         extentf: [f32; 2],
         offsetf: [f32; 2],
-        buf_alpha: Subbuffer<[f32]>,
     ) -> anyhow::Result<BufPass> {
         let set0 = pipeline.uniform_sampler(
             0,
             app.gfx_extras.fallback_image.clone(),
             app.gfx.texture_filter,
         )?;
-        let set1 = pipeline.buffer(1, buf_alpha)?;
         let buf_vert = app
             .gfx
             .empty_buffer(BufferUsage::TRANSFER_DST | BufferUsage::VERTEX_BUFFER, 4)?;
@@ -179,7 +152,7 @@ impl ScreenPipeline {
             buf_vert.clone(),
             0..4,
             0..1,
-            vec![set0, set1],
+            vec![set0],
             &Default::default(),
         )?;
 
@@ -191,7 +164,6 @@ impl ScreenPipeline {
         pipeline: Arc<WGfxPipeline<Vert2Uv>>,
         extentf: [f32; 2],
         offsetf: [f32; 2],
-        buf_alpha: Subbuffer<[f32]>,
     ) -> anyhow::Result<BufPass> {
         #[rustfmt::skip]
         let mouse_bytes = [
@@ -215,14 +187,13 @@ impl ScreenPipeline {
             .empty_buffer(BufferUsage::TRANSFER_DST | BufferUsage::VERTEX_BUFFER, 4)?;
 
         let set0 = pipeline.uniform_sampler(0, view, Filter::Nearest)?;
-        let set1 = pipeline.buffer(1, buf_alpha)?;
         let pass = pipeline.create_pass(
             extentf,
             offsetf,
             buf_vert.clone(),
             0..4,
             0..1,
-            vec![set0, set1],
+            vec![set0],
             &Default::default(),
         )?;
 
@@ -238,8 +209,6 @@ impl ScreenPipeline {
         rdr: &mut RenderResources,
     ) -> anyhow::Result<()> {
         self.ensure_depth(app, rdr.cmd_bufs.len())?;
-
-        self.buf_alpha.write()?[0] = rdr.alpha;
 
         for (eye, cmd_buf) in rdr.cmd_bufs.iter_mut().enumerate() {
             let current = &mut self.pass[eye];
@@ -269,10 +238,6 @@ impl ScreenPipeline {
         }
 
         Ok(())
-    }
-
-    pub fn get_alpha_buf(&self) -> Subbuffer<[f32]> {
-        self.buf_alpha.clone()
     }
 }
 

@@ -47,18 +47,12 @@ pub struct RenderTarget {
 }
 
 pub struct RenderResources {
-    pub alpha: f32,
     pub cmd_bufs: SmallVec<[GfxCommandBuffer; 2]>,
     pub extent: [u32; 2],
 }
 
 impl RenderResources {
-    pub fn new(
-        gfx: Arc<WGfx>,
-        target: RenderTarget,
-        meta: &FrameMeta,
-        alpha: f32,
-    ) -> anyhow::Result<Self> {
+    pub fn new(gfx: Arc<WGfx>, target: RenderTarget, meta: &FrameMeta) -> anyhow::Result<Self> {
         let mut cmd_bufs = SmallVec::new_const();
 
         for tgt in target.views {
@@ -70,7 +64,6 @@ impl RenderResources {
 
         Ok(Self {
             cmd_bufs,
-            alpha,
             extent: meta.extent,
         })
     }
