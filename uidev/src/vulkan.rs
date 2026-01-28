@@ -1,10 +1,12 @@
+use anyhow::Context;
 use std::sync::{Arc, OnceLock};
 use vulkano::{
 	device::{
-		Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures, Queue, QueueCreateInfo, QueueFlags,
 		physical::{PhysicalDevice, PhysicalDeviceType},
+		Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures, Queue, QueueCreateInfo, QueueFlags,
 	},
 	instance::{Instance, InstanceCreateInfo},
+	swapchain::ColorSpace,
 };
 use wgui::gfx::WGfx;
 
@@ -21,6 +23,7 @@ pub fn init_window(
 	winit::event_loop::EventLoop<()>,
 	Arc<winit::window::Window>,
 	Arc<vulkano::swapchain::Surface>,
+	ColorSpace,
 )> {
 	use vulkano::{instance::InstanceCreateFlags, swapchain::Surface};
 	use winit::{event_loop::EventLoop, window::Window};
@@ -90,6 +93,12 @@ pub fn init_window(
 		log::info!("img_filter_cubic!");
 	}
 
+	let (format, color_space) = physical_device
+		.surface_formats(&surface, vulkano::swapchain::SurfaceInfo::default())?
+		.into_iter()
+		.next()
+		.context("Could not read surface formats for PhysicalDevice")?;
+
 	let (device, queues) = Device::new(
 		physical_device,
 		DeviceCreateInfo {
@@ -113,14 +122,8 @@ pub fn init_window(
 
 	let (queue_gfx, queue_xfer, _) = unwrap_queues(queues.collect());
 
-	let me = WGfx::new_from_raw(
-		instance,
-		device,
-		queue_gfx,
-		queue_xfer,
-		vulkano::format::Format::R8G8B8A8_SRGB,
-	);
-	Ok((me, event_loop, window, surface))
+	let me = WGfx::new_from_raw(instance, device, queue_gfx, queue_xfer, format);
+	Ok((me, event_loop, window, surface, color_space))
 }
 
 #[derive(Debug)]

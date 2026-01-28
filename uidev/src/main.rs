@@ -1,25 +1,25 @@
-use glam::{Vec2, vec2};
+use glam::{vec2, Vec2};
 use std::sync::Arc;
-use testbed::{Testbed, testbed_any::TestbedAny};
-use tracing_subscriber::EnvFilter;
+use testbed::{testbed_any::TestbedAny, Testbed};
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::EnvFilter;
 use vulkan::init_window;
 use vulkano::{
-	Validated, VulkanError,
 	command_buffer::CommandBufferUsage,
 	format::Format,
-	image::{ImageUsage, view::ImageView},
+	image::{view::ImageView, ImageUsage},
 	swapchain::{
-		CompositeAlpha, PresentMode, Surface, SurfaceInfo, Swapchain, SwapchainCreateInfo,
-		SwapchainPresentInfo, acquire_next_image,
+		acquire_next_image, ColorSpace, CompositeAlpha, PresentMode, Surface, SurfaceInfo, Swapchain,
+		SwapchainCreateInfo, SwapchainPresentInfo,
 	},
 	sync::GpuFuture,
+	Validated, VulkanError,
 };
 use wgui::{
 	event::{MouseButtonIndex, MouseDownEvent, MouseMotionEvent, MouseUpEvent, MouseWheelEvent},
-	gfx::{WGfx, cmd::WGfxClearMode},
+	gfx::{cmd::WGfxClearMode, WGfx},
 	renderer_vk::{self},
 };
 use winit::{
@@ -32,7 +32,7 @@ use wlx_common::{audio, timestep::Timestep};
 use crate::{
 	rate_limiter::RateLimiter,
 	testbed::{
-		TestbedUpdateParams, testbed_dashboard::TestbedDashboard, testbed_generic::TestbedGeneric,
+		testbed_dashboard::TestbedDashboard, testbed_generic::TestbedGeneric, TestbedUpdateParams,
 	},
 };
 
@@ -74,13 +74,18 @@ fn load_testbed(audio_sample_player: &mut audio::SamplePlayer) -> anyhow::Result
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	init_logging();
 
-	let (gfx, event_loop, window, surface) =
+	let (gfx, event_loop, window, surface, color_space) =
 		init_window("[-/=]: gui scale, F10: debug draw, F11: print tree")?;
 	let inner_size = window.inner_size();
 	let mut swapchain_size = [inner_size.width, inner_size.height];
 
-	let mut swapchain_create_info =
-		swapchain_create_info(&gfx, gfx.surface_format, surface.clone(), swapchain_size);
+	let mut swapchain_create_info = swapchain_create_info(
+		&gfx,
+		gfx.surface_format,
+		color_space,
+		surface.clone(),
+		swapchain_size,
+	);
 
 	let (mut swapchain, mut images) = {
 		let (swapchain, images) = Swapchain::new(
@@ -400,6 +405,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn swapchain_create_info(
 	graphics: &WGfx,
 	format: Format,
+	color_space: ColorSpace,
 	surface: Arc<Surface>,
 	extent: [u32; 2],
 ) -> SwapchainCreateInfo {
@@ -453,6 +459,7 @@ fn swapchain_create_info(
 		image_format: format,
 		image_extent: extent,
 		image_usage: ImageUsage::COLOR_ATTACHMENT,
+		image_color_space: color_space,
 		composite_alpha,
 		..Default::default()
 	}
