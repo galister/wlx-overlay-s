@@ -55,7 +55,7 @@
   <template name="KeySymbol">
     <div macro="keycap_div">
       <rectangle id="${id}" macro="keycap_rect" gap="3">
-        <label color="~color_text_translucent" text="${text_shift}" size="1" />
+        <label color="~color_text_translucent" text="${text_shift}" size="18" />
         <label text="${text}" size="18" />
       </rectangle>
     </div>
