@@ -24,6 +24,9 @@ use wlx_common::{
     windowing::{OverlayWindowState, Positioning},
 };
 
+#[cfg(feature = "openxr")]
+use libmonado::{ClientLogic, DeviceLogic};
+
 use crate::{
     RESTART, RUNNING,
     backend::{

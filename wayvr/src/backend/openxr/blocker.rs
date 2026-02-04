@@ -1,15 +1,17 @@
-use libmonado::{ClientState, Monado};
+use libmonado::{BlockFlags, ClientLogic, ClientState, Monado, Version};
 use log::{trace, warn};
 
 use crate::state::AppState;
 
 pub(super) struct InputBlocker {
+    use_io_blocks: bool,
     blocked_last_frame: bool,
 }
 
 impl InputBlocker {
-    pub const fn new() -> Self {
+    pub fn new(monado: &Monado) -> Self {
         Self {
+            use_io_blocks: monado.get_api_version() >= Version::new(1, 6, 0),
             blocked_last_frame: false,
         }
     }
@@ -29,47 +31,59 @@ impl InputBlocker {
         match (should_block, self.blocked_last_frame) {
             (true, false) => {
                 trace!("Blocking input");
-                set_clients_io_active(monado, false);
+                self.block_inputs(monado, true);
             }
             (false, true) => {
                 trace!("Unblocking input");
-                set_clients_io_active(monado, true);
+                self.block_inputs(monado, false);
             }
             _ => {}
         }
 
         self.blocked_last_frame = should_block;
     }
-}
 
-fn set_clients_io_active(monado: &mut Monado, active: bool) {
-    match monado.clients() {
-        Ok(clients) => {
-            for mut client in clients {
-                let name = match client.name() {
-                    Ok(n) => n,
-                    Err(e) => {
-                        warn!("Failed to get client name: {e}");
-                        continue;
+    fn block_inputs(&self, monado: &mut Monado, block: bool) {
+        match monado.clients() {
+            Ok(clients) => {
+                for mut client in clients {
+                    match client.name() {
+                        Ok(n) => {
+                            if n == "wayvr" {
+                                continue;
+                            }
+                        }
+                        Err(e) => {
+                            warn!("Failed to get client name: {e}");
+                            continue;
+                        }
+                    };
+
+                    let state = match client.state() {
+                        Ok(s) => s,
+                        Err(e) => {
+                            warn!("Failed to get client state: {e}");
+                            continue;
+                        }
+                    };
+
+                    if state.contains(ClientState::ClientSessionVisible) {
+                        let r = if self.use_io_blocks {
+                            client.set_io_blocks(if block {
+                                BlockFlags::BlockInputs.into()
+                            } else {
+                                BlockFlags::None.into()
+                            })
+                        } else {
+                            client.set_io_active(!block)
+                        };
+                        if let Err(e) = r {
+                            warn!("Failed to set io active for client: {e}");
+                        }
                     }
-                };
-
-                let state = match client.state() {
-                    Ok(s) => s,
-                    Err(e) => {
-                        warn!("Failed to get client state: {e}");
-                        continue;
-                    }
-                };
-
-                if name != "wayvr"
-                    && state.contains(ClientState::ClientSessionVisible)
-                    && let Err(e) = client.set_io_active(active)
-                {
-                    warn!("Failed to set io active for client: {e}");
                 }
             }
+            Err(e) => warn!("Failed to get clients from Monado: {e}"),
         }
-        Err(e) => warn!("Failed to get clients from Monado: {e}"),
     }
 }

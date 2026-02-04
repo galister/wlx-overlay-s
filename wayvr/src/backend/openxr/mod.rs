@@ -93,7 +93,7 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
             .ok()
     });
 
-    let mut blocker = app.monado.is_some().then(blocker::InputBlocker::new);
+    let mut blocker = app.monado.as_ref().map(blocker::InputBlocker::new);
 
     let (session, mut frame_wait, mut frame_stream) = unsafe {
         let raw_session = helpers::create_overlay_session(

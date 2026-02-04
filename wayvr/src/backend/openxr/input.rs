@@ -5,7 +5,7 @@ use std::{
 };
 
 use glam::{Affine3A, Quat, Vec3, bool};
-use libmonado as mnd;
+use libmonado::{self as mnd, DeviceLogic};
 use openxr::{self as xr, Quaternionf, Vector2f, Vector3f};
 use serde::{Deserialize, Serialize};
 use wlx_common::{config::HandsfreePointer, config_io};
