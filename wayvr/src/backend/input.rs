@@ -13,6 +13,7 @@ use wlx_common::windowing::{OverlayWindowState, Positioning};
 
 use crate::backend::task::{InputTask, OverlayTask};
 use crate::overlays::anchor::{ANCHOR_NAME, GRAB_HELP_NAME};
+use crate::overlays::keyboard::KEYBOARD_NAME;
 use crate::overlays::watch::WATCH_NAME;
 use crate::state::{AppSession, AppState};
 use crate::subsystem::hid::WheelDelta;
@@ -210,6 +211,7 @@ pub struct InteractionState {
     pub next_push: Instant,
     pub haptics: Option<f32>,
     pub should_block_input: bool,
+    pub should_block_poses: bool,
 }
 
 impl Default for InteractionState {
@@ -222,6 +224,7 @@ impl Default for InteractionState {
             next_push: Instant::now(),
             haptics: None,
             should_block_input: false,
+            should_block_poses: false,
         }
     }
 }
@@ -473,13 +476,18 @@ where
         hit.primary = true;
     }
 
-    pointer.interaction.should_block_input = hovered
-        .config
-        .active_state
-        .as_ref()
-        .map_or(false, |state| state.block_input)
-        && (hovered.config.name.as_ref() != WATCH_NAME
-            || !app.session.config.block_game_input_ignore_watch);
+    if let Some(state) = hovered.config.active_state.as_ref() {
+        pointer.interaction.should_block_input = state.block_input
+            && (hovered.config.name.as_ref() != WATCH_NAME
+                || !app.session.config.block_game_input_ignore_watch);
+
+        pointer.interaction.should_block_poses = state.block_input
+            && app.session.config.block_poses_on_kbd_interaction
+            && hovered.config.name.as_ref() == KEYBOARD_NAME;
+    } else {
+        pointer.interaction.should_block_input = false;
+        pointer.interaction.should_block_poses = false;
+    }
 
     #[cfg(debug_assertions)]
     log::trace!("Hit: {} {:?}", hovered.config.name, hit);
@@ -556,6 +564,7 @@ fn handle_no_hit<O>(
 
     let pointer = &mut app.input_state.pointers[pointer_idx];
     pointer.interaction.should_block_input = false;
+    pointer.interaction.should_block_poses = false;
 
     // in case click released while not aiming at anything
     // send release event to overlay that was originally clicked

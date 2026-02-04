@@ -227,6 +227,7 @@ enum SettingType {
 	LeftHandedMouse,
 	BlockGameInput,
 	BlockGameInputIgnoreWatch,
+	BlockPosesOnKbdInteraction,
 	SpaceDragMultiplier,
 	UseSkybox,
 	UsePassthrough,
@@ -260,6 +261,7 @@ impl SettingType {
 			Self::LeftHandedMouse => &mut config.left_handed_mouse,
 			Self::BlockGameInput => &mut config.block_game_input,
 			Self::BlockGameInputIgnoreWatch => &mut config.block_game_input_ignore_watch,
+			Self::BlockPosesOnKbdInteraction => &mut config.block_poses_on_kbd_interaction,
 			Self::UseSkybox => &mut config.use_skybox,
 			Self::UsePassthrough => &mut config.use_passthrough,
 			Self::ScreenRenderDown => &mut config.screen_render_down,
@@ -363,6 +365,7 @@ impl SettingType {
 			Self::LeftHandedMouse => Ok("APP_SETTINGS.LEFT_HANDED_MOUSE"),
 			Self::BlockGameInput => Ok("APP_SETTINGS.BLOCK_GAME_INPUT"),
 			Self::BlockGameInputIgnoreWatch => Ok("APP_SETTINGS.BLOCK_GAME_INPUT_IGNORE_WATCH"),
+			Self::BlockPosesOnKbdInteraction => Ok("APP_SETTINGS.BLOCK_POSES_ON_KBD_INTERACTION"),
 			Self::SpaceDragMultiplier => Ok("APP_SETTINGS.SPACE_DRAG_MULTIPLIER"),
 			Self::UseSkybox => Ok("APP_SETTINGS.USE_SKYBOX"),
 			Self::UsePassthrough => Ok("APP_SETTINGS.USE_PASSTHROUGH"),
@@ -390,6 +393,7 @@ impl SettingType {
 			Self::LeftHandedMouse => Some("APP_SETTINGS.LEFT_HANDED_MOUSE_HELP"),
 			Self::BlockGameInput => Some("APP_SETTINGS.BLOCK_GAME_INPUT_HELP"),
 			Self::BlockGameInputIgnoreWatch => Some("APP_SETTINGS.BLOCK_GAME_INPUT_IGNORE_WATCH_HELP"),
+			Self::BlockPosesOnKbdInteraction => Some("APP_SETTINGS.BLOCK_POSES_ON_KBD_INTERACTION_HELP"),
 			Self::UseSkybox => Some("APP_SETTINGS.USE_SKYBOX_HELP"),
 			Self::UsePassthrough => Some("APP_SETTINGS.USE_PASSTHROUGH_HELP"),
 			Self::ScreenRenderDown => Some("APP_SETTINGS.SCREEN_RENDER_DOWN_HELP"),
@@ -726,6 +730,7 @@ impl<T> TabSettings<T> {
 				slider_f32!(mp, c, SettingType::SpaceDragMultiplier, -10.0, 10.0, 0.5);
 				checkbox!(mp, c, SettingType::BlockGameInput);
 				checkbox!(mp, c, SettingType::BlockGameInputIgnoreWatch);
+				checkbox!(mp, c, SettingType::BlockPosesOnKbdInteraction);
 			}
 			TabNameEnum::Controls => {
 				let c = category!(mp, root, "APP_SETTINGS.CONTROLS", "dashboard/controller.svg")?;
