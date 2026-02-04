@@ -451,17 +451,13 @@ impl OverlayBackend for WvrWindowBackend {
                 popup_img.clone(),
                 app.gfx.texture_filter,
             )?;
-            let set1 = self
-                .popups_pipeline
-                .buffer(1, self.pipeline.as_ref().unwrap().get_alpha_buf())?;
-
             let pass = self.popups_pipeline.create_pass(
                 extentf,
                 [BORDER_SIZE as _, (BAR_SIZE + BORDER_SIZE) as _],
                 buf_vert,
                 0..4,
                 0..1,
-                vec![set0, set1],
+                vec![set0],
                 &Default::default(),
             )?;
 

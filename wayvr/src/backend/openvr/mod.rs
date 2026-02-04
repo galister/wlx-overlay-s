@@ -314,7 +314,7 @@ pub fn openvr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
                 let tgt = RenderTarget {
                     views: smallvec![o.ensure_staging_image(&mut app, meta.extent)?],
                 };
-                let mut rdr = RenderResources::new(app.gfx.clone(), tgt, &meta, 1.0)?;
+                let mut rdr = RenderResources::new(app.gfx.clone(), tgt, &meta)?;
                 o.render(&mut app, &mut rdr)?;
                 o.data.image_dirty = true;
                 futures.execute_results(rdr.end()?)?;
