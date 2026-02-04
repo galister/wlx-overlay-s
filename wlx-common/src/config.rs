@@ -251,6 +251,9 @@ pub struct GeneralConfig {
 	#[serde(default = "def_true")]
 	pub block_game_input_ignore_watch: bool,
 
+	#[serde(default = "def_true")]
+	pub block_poses_on_kbd_interaction: bool,
+
 	#[serde(default = "def_one")]
 	pub space_drag_multiplier: f32,
 

@@ -5,14 +5,16 @@ use crate::state::AppState;
 
 pub(super) struct InputBlocker {
     use_io_blocks: bool,
-    blocked_last_frame: bool,
+    inputs_blocked_last_frame: bool,
+    poses_blocked_last_frame: bool,
 }
 
 impl InputBlocker {
     pub fn new(monado: &Monado) -> Self {
         Self {
             use_io_blocks: monado.get_api_version() >= Version::new(1, 6, 0),
-            blocked_last_frame: false,
+            inputs_blocked_last_frame: false,
+            poses_blocked_last_frame: false,
         }
     }
 
@@ -21,29 +23,36 @@ impl InputBlocker {
             return; // monado not available
         };
 
-        let should_block = app
+        let should_block_inputs = app
             .input_state
             .pointers
             .iter()
             .any(|p| p.interaction.should_block_input)
             && app.session.config.block_game_input;
 
-        match (should_block, self.blocked_last_frame) {
-            (true, false) => {
+        let should_block_poses = app
+            .input_state
+            .pointers
+            .iter()
+            .any(|p| p.interaction.should_block_poses)
+            && app.session.config.block_poses_on_kbd_interaction;
+
+        if should_block_inputs != self.inputs_blocked_last_frame
+            || should_block_poses != self.poses_blocked_last_frame
+        {
+            if should_block_inputs {
                 trace!("Blocking input");
-                self.block_inputs(monado, true);
-            }
-            (false, true) => {
+            } else {
                 trace!("Unblocking input");
-                self.block_inputs(monado, false);
             }
-            _ => {}
+            self.block_inputs(monado, should_block_inputs, should_block_poses);
         }
 
-        self.blocked_last_frame = should_block;
+        self.inputs_blocked_last_frame = should_block_inputs;
+        self.poses_blocked_last_frame = should_block_poses;
     }
 
-    fn block_inputs(&self, monado: &mut Monado, block: bool) {
+    fn block_inputs(&self, monado: &mut Monado, block_inputs: bool, block_poses: bool) {
         match monado.clients() {
             Ok(clients) => {
                 for mut client in clients {
@@ -69,13 +78,14 @@ impl InputBlocker {
 
                     if state.contains(ClientState::ClientSessionVisible) {
                         let r = if self.use_io_blocks {
-                            client.set_io_blocks(if block {
-                                BlockFlags::BlockInputs.into()
-                            } else {
-                                BlockFlags::None.into()
-                            })
+                            let flags = match (block_inputs, block_poses) {
+                                (true, true) => BlockFlags::BlockPoses | BlockFlags::BlockInputs,
+                                (true, false) => BlockFlags::BlockInputs.into(),
+                                (false, _) => BlockFlags::None.into(),
+                            };
+                            client.set_io_blocks(flags)
                         } else {
-                            client.set_io_active(!block)
+                            client.set_io_active(!block_inputs)
                         };
                         if let Err(e) = r {
                             warn!("Failed to set io active for client: {e}");

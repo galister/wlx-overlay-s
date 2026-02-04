@@ -102,6 +102,10 @@
 ## Do not block input when the watch is hovered.
 #block_game_input_ignore_watch: true
 
+## Monado/WiVRn only. Do not send hand poses when interacting with the
+## keyboard.
+#block_poses_on_kbd_interaction: true
+
 ## How fast to drag when the space drag feature is activated
 #space_drag_multiplier: 1.0
 
