@@ -43,7 +43,7 @@ vulkano-shaders.workspace = true
 xdg.workspace = true
 
 ash = "^0.38.0" # must match vulkano
-bytes = { version = "1.11.0" }
+bytes = { version = "1.11.1" }
 chrono = "0.4.42"
 chrono-tz = "0.10.4"
 config = "0.15.19"
