@@ -546,8 +546,6 @@ impl DashInterface<AppState> for DashInterfaceLive {
     }
 }
 
-const CLIENT_NAME_BLACKLIST: [&str; 3] = ["wayvr", "libmonado", "oscavmgr"];
-
 #[cfg(feature = "openxr")]
 fn monado_get_brightness(monado: &mut libmonado::Monado) -> Option<f32> {
     let device = monado.device_from_role(libmonado::DeviceRole::Head).ok()?;
@@ -570,15 +568,15 @@ fn monado_list_clients_filtered(
     let clients: Vec<_> = clients
         .iter_mut()
         .filter_map(|client| {
-            let Ok(name) = client.name() else {
+            use libmonado::ClientState;
+            let Ok(state) = client.state() else {
                 return None;
             };
 
-            for cell in CLIENT_NAME_BLACKLIST {
-                if cell == name {
-                    // blacklisted!
-                    return None;
-                }
+            if !state.contains(ClientState::ClientSessionActive)
+                || state.contains(ClientState::ClientSessionOverlay)
+            {
+                return None;
             }
 
             Some(client.clone())
