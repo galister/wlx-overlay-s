@@ -38,6 +38,18 @@ pub enum BackendAttribValue {
 	Icon(Arc<str>),
 }
 
+impl BackendAttribValue {
+	pub fn is_default(&self) -> bool {
+		match self {
+			Self::Stereo(val) => *val == StereoMode::default(),
+			Self::StereoFullFrame(val) => *val == false,
+			Self::StereoAdjustMouse(val) => *val == false,
+			Self::MouseTransform(val) => *val == MouseTransform::default(),
+			Self::Icon(_) => false,
+		}
+	}
+}
+
 #[derive(Default, Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum StereoMode {
 	#[default]
@@ -48,7 +60,7 @@ pub enum StereoMode {
 	BottomTop,
 }
 
-#[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum MouseTransform {
 	#[default]
 	Default,

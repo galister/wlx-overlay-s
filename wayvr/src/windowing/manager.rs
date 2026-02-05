@@ -460,6 +460,7 @@ impl<T> OverlayWindowManager<T> {
                 SAVED_ATTRIBS
                     .iter()
                     .filter_map(|a| o.config.backend.get_attrib(*a))
+                    .filter(|val| !val.is_default())
                     .collect(),
             );
         }
