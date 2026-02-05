@@ -168,6 +168,7 @@ pub fn create_watch(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig> {
         name: WATCH_NAME.into(),
         z_order: Z_ORDER_WATCH,
         default_state: OverlayWindowState {
+            grabbable: false,
             interactable: true,
             positioning,
             transform: Affine3A::from_scale_rotation_translation(
