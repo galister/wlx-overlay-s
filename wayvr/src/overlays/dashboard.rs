@@ -499,12 +499,7 @@ impl DashInterface<AppState> for DashInterfaceLive {
             return Ok(()); // no monado avoilable
         };
 
-        monado_client_focus(monado, name)?;
-
-        // Restart monado (BUG!)
-        // https://gitlab.freedesktop.org/monado/monado/-/issues/497
-        app.monado_init();
-        Ok(())
+        monado_client_focus(monado, name)
     }
 
     #[cfg(feature = "openxr")]
