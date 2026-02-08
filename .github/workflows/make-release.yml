@@ -36,10 +36,9 @@ jobs:
           cargo build --release
       - name: Make tarball
         run: |
-          pip install portage pycargoebuild
-          wget https://github.com/gentoo/gentoo/raw/refs/heads/master/metadata/license-mapping.conf
-          mkdir dist
-          pycargoebuild --distdir dist --license-mapping license-mapping.conf --crate-tarball --crate-tarball-path wayvr-crates.tar.xz
+          cargo vendor > vendor-config.toml
+          mv vendor-config.toml vendor
+          tar --xz -cf vendor.tar.xz vendor
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -81,12 +80,12 @@ jobs:
           asset_name: WayVR-${{ github.ref_name }}-x86_64.AppImage
           asset_content_type: application/octet-stream
 
-      - name: Upload crates tarball
+      - name: Upload vendor tarball
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_KEY }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./wayvr/wayvr-crates.tar.xz
-          asset_name: WayVR-${{ github.ref_name }}-crates.tar.xz
+          asset_path: ./wayvr/vendor.tar.xz
+          asset_name: vendor.tar.xz
           asset_content_type: application/x-gtar
