@@ -67,7 +67,7 @@
     
   <template name="Set">
     <Button macro="button_style" id="set_${idx}" _press="::SetToggle ${idx}" tooltip="WATCH.SWITCH_TO_SET" tooltip_side="top">
-      <sprite width="40" height="40" color="~color_text" src_builtin="watch/set2.svg" />
+      <sprite width="38" height="38" color="~color_text" src_builtin="watch/set2.svg" />
       <div position="absolute" margin_top="9">
         <label text="${display}" size="24" color="#00050F" weight="bold" />
       </div>
