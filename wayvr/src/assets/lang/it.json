@@ -17,7 +17,9 @@
       "TITLE": "Modalità a mani libere",
       "NONE": "Disattivato",
       "HMD": "HMD + pizzico",
-      "EYE_TRACKING": "Occhio + pizzico"
+      "EYE_TRACKING": "Occhio + pizzico",
+      "HMD_ONLY": "Solo HMD",
+      "EYE_ONLY": "Solo occhi"
     }
   },
   "DEFAULT": "Predefinito",
@@ -44,7 +46,6 @@
     "POS_HMD": "Segui l'HMD.",
     "POS_STATIC": "Statico: non fa parte di alcun set, senza recentratura.",
     "POSITIONING": "Posizionamento",
-    "BLOCK_GAME_INPUT": "Blocca l'input di gioco",
     "RESIZE_PRESS_AND_DRAG": "Ridimensiona (premi e trascina)",
     "STEREO_3D_MODE": {
       "SPLIT_BOTTOM_TOP": "DAL BASSO→IN ALTO",
@@ -70,7 +71,10 @@
       "FLIP180": "Ruotato di 180°",
       "FLIP270": "Ruotato di 270°"
     },
-    "GLOBAL": "Sempre visibile"
+    "GLOBAL": "Sempre visibile",
+    "ANGLE_FADE": "Dissolvenza angolare",
+    "ANGLE_FADE_HELP": "Sfumatura quando non si guarda l'HMD",
+    "BLOCK_INPUT": "Blocca l'input del gioco"
   },
   "GRAB": {
     "ADJUST_DISTANCE": "Regola la distanza",

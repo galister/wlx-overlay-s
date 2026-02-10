@@ -107,7 +107,9 @@
     "HANDSFREE_POINTER_HELP": "Input da usare quando i\ncontroller di movimento non sono disponibili.\nPizzico sinistro per afferrare, destro per cliccare.",
     "UI_GRADIENT_INTENSITY": "Intensità gradiente dell'interfaccia utente",
     "RESET_PLAYSPACE": "Ripristina playspace",
-    "RESET_PLAYSPACE_HELP": "Cancella l'offset dello spazio di gioco."
+    "RESET_PLAYSPACE_HELP": "Cancella l'offset dello spazio di gioco.",
+    "BLOCK_POSES_ON_KBD_INTERACTION": "Blocca le pose durante l'interazione con la tastiera",
+    "BLOCK_POSES_ON_KBD_INTERACTION_HELP": "Impedisce al gioco di ricevere pose quando la tastiera è evidenziata e 'Blocca input di gioco' è abilitato"
   },
   "APPLICATION_LAUNCHER": "Lanciatore applicazioni",
   "APPLICATION_STARTED": "Applicazione avviata",

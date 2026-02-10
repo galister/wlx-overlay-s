@@ -82,7 +82,9 @@
     "HANDSFREE_POINTER_HELP": "Wejście do użycia, gdy kontrolery ruchu\nsą niedostępne. Lewy szczyptak to chwyt,\nprawy to kliknięcie.",
     "UI_GRADIENT_INTENSITY": "Intensywność gradientu UI",
     "RESET_PLAYSPACE": "Zresetuj przestrzeń gry",
-    "RESET_PLAYSPACE_HELP": "Wyczyść przesunięcie przestrzeni gry."
+    "RESET_PLAYSPACE_HELP": "Wyczyść przesunięcie przestrzeni gry.",
+    "BLOCK_POSES_ON_KBD_INTERACTION": "Blokuj pozy podczas interakcji z klawiaturą",
+    "BLOCK_POSES_ON_KBD_INTERACTION_HELP": "Blokuje odbieranie póz przez grę, gdy kursor myszy znajduje się nad klawiaturą i włączona jest opcja 'Blokuj dane wejściowe z gry'"
   },
   "APPLICATION_LAUNCHER": "Uruchamiacz aplikacji",
   "APPLICATIONS": "Aplikacje",

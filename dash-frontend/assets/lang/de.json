@@ -87,7 +87,9 @@
     "HANDSFREE_POINTER_HELP": "Eingabe, die bei Bewegung\nder Controller verwendet wird, wenn diese nicht verfügbar sind.\nLinkes Kneifen greift, rechtes klickt.",
     "UI_GRADIENT_INTENSITY": "UI-Verlaufsintensität",
     "RESET_PLAYSPACE": "Spielbereich zurücksetzen",
-    "RESET_PLAYSPACE_HELP": "Den Abstand des Spielbereichs zurücksetzen."
+    "RESET_PLAYSPACE_HELP": "Den Abstand des Spielbereichs zurücksetzen.",
+    "BLOCK_POSES_ON_KBD_INTERACTION": "Posen beim Interagieren mit der Tastatur blockieren",
+    "BLOCK_POSES_ON_KBD_INTERACTION_HELP": "Verhindert, dass das Spiel Posen empfängt, wenn die Tastatur angefahren wird und „Spieleingabe blockieren“ aktiviert ist"
   },
   "HELLO": "Hallo!",
   "AUDIO": {

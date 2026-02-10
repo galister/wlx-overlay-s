@@ -87,7 +87,9 @@
     "HANDSFREE_POINTER_HELP": "Entrada a utilizar cuando no\nestén disponibles los mandos de movimiento.\nPellizco con la izquierda para agarrar, con la derecha para hacer clic.",
     "UI_GRADIENT_INTENSITY": "Intensidad del degradado de la IU",
     "RESET_PLAYSPACE": "Restablecer espacio de juego",
-    "RESET_PLAYSPACE_HELP": "Borrar el desplazamiento del espacio de juego."
+    "RESET_PLAYSPACE_HELP": "Borrar el desplazamiento del espacio de juego.",
+    "BLOCK_POSES_ON_KBD_INTERACTION": "Bloquear poses al interactuar con el teclado",
+    "BLOCK_POSES_ON_KBD_INTERACTION_HELP": "Bloquea que el juego reciba poses cuando el teclado está sobre él y 'Bloquear entrada del juego' está habilitado"
   },
   "HELLO": "¡Hola!",
   "AUDIO": {

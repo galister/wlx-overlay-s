@@ -1,0 +1,9 @@
+{
+  "BAR": {
+    "OPACITY": "Opacità",
+    "ADDITIVE": "Additivo"
+  },
+  "TESTBED": {
+    "HELLO_WORLD": "Ciao, mondo! Questo è un testo I18n tradotto."
+  }
+}

@@ -17,7 +17,9 @@
       "TITLE": "ハンズフリーモード",
       "NONE": "オフ",
       "HMD": "HMD + ピンチ",
-      "EYE_TRACKING": "視線 + ピンチ"
+      "EYE_TRACKING": "視線 + ピンチ",
+      "HMD_ONLY": "HMDのみ",
+      "EYE_ONLY": "目のみ"
     }
   },
   "WATCH": {
@@ -45,7 +47,6 @@
     "MOVE_PRESS_AND_DRAG": "移動（押してドラッグ）",
     "OPACITY": "不透明度",
     "POSITIONING": "位置付け",
-    "BLOCK_GAME_INPUT": "ゲームの入力をブロック",
     "RESIZE_PRESS_AND_DRAG": "サイズ変更（押してドラッグ）",
     "POS_STATIC": "固定：置かれた場所に留まり、再センタリングされません。",
     "POS_ANCHORED": "アンカー：セット内の他のウィンドウと共に移動します。デフォルト。",
@@ -80,7 +81,10 @@
       "ROTATE180": "回転 180°",
       "ROTATE270": "回転 270°"
     },
-    "GLOBAL": "常に表示"
+    "GLOBAL": "常に表示",
+    "ANGLE_FADE": "角度フェード",
+    "ANGLE_FADE_HELP": "HMDに向いていない時にフェード",
+    "BLOCK_INPUT": "ゲーム入力をブロック"
   },
   "DISABLED": "無効",
   "DEFAULT": "デフォルト",

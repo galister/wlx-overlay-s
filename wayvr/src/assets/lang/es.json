@@ -17,7 +17,9 @@
       "TITLE": "Modo manos libres",
       "NONE": "Desactivado",
       "HMD": "HMD + pellizco",
-      "EYE_TRACKING": "Ojo + pellizco"
+      "EYE_TRACKING": "Ojo + pellizco",
+      "HMD_ONLY": "Solo HMD",
+      "EYE_ONLY": "Solo ojos"
     }
   },
   "WATCH": {
@@ -45,7 +47,6 @@
     "MOVE_PRESS_AND_DRAG": "Mover (presionar y arrastrar)",
     "OPACITY": "Opacidad",
     "POSITIONING": "Posicionamiento",
-    "BLOCK_GAME_INPUT": "Bloquear entrada del juego",
     "RESIZE_PRESS_AND_DRAG": "Redimensionar (presionar y arrastrar)",
     "POS_STATIC": "Estático: Permanece en su lugar y nunca se recentra.",
     "POS_ANCHORED": "Anclado: Se mueve junto con el resto del conjunto. Predeterminado.",
@@ -82,7 +83,10 @@
       "ROTATE180": "Rotado 180°",
       "ROTATE270": "Rotado 270°"
     },
-    "GLOBAL": "Siempre visible"
+    "GLOBAL": "Siempre visible",
+    "ANGLE_FADE": "Atenuación angular",
+    "ANGLE_FADE_HELP": "Desvanecer cuando no se mira el HMD",
+    "BLOCK_INPUT": "Bloquear entrada del juego"
   },
   "DISABLED": "Deshabilitado",
   "DEFAULT": "Por defecto",

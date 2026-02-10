@@ -17,7 +17,9 @@
       "TITLE": "免提模式",
       "NONE": "关闭",
       "HMD": "HMD + 捏合",
-      "EYE_TRACKING": "眼动 + 捏合"
+      "EYE_TRACKING": "眼动 + 捏合",
+      "HMD_ONLY": "仅 HMD",
+      "EYE_ONLY": "仅限眼睛"
     }
   },
   "DEFAULT": "默认",
@@ -44,7 +46,6 @@
     "POS_HMD": "跟随头显 (HMD)。",
     "POS_STATIC": "静态：不属于任何集合，不重新居中。",
     "POSITIONING": "定位",
-    "BLOCK_GAME_INPUT": "屏蔽游戏输入",
     "RESIZE_PRESS_AND_DRAG": "调整大小 (按住并拖拽)",
     "STEREO_3D_MODE": {
       "SPLIT_BOTTOM_TOP": "下→上",
@@ -70,7 +71,10 @@
       "FLIP180": "镜像旋转 180°",
       "FLIP270": "镜像旋转 270°"
     },
-    "GLOBAL": "始终可见"
+    "GLOBAL": "始终可见",
+    "ANGLE_FADE": "角度淡出",
+    "ANGLE_FADE_HELP": "未朝向HMD时淡出",
+    "BLOCK_INPUT": "阻止游戏输入"
   },
   "GRAB": {
     "ADJUST_DISTANCE": "调整距离",

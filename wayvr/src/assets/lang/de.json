@@ -17,7 +17,9 @@
       "TITLE": "Freihändig-Modus",
       "NONE": "Aus",
       "HMD": "HMD + Kneifen",
-      "EYE_TRACKING": "Auge + Kneifen"
+      "EYE_TRACKING": "Auge + Kneifen",
+      "HMD_ONLY": "Nur HMD",
+      "EYE_ONLY": "Nur Augen"
     }
   },
   "WATCH": {
@@ -45,7 +47,6 @@
     "MOVE_PRESS_AND_DRAG": "Verschieben (drücken & ziehen)",
     "OPACITY": "Undurchsichtigkeit",
     "POSITIONING": "Positionierung",
-    "BLOCK_GAME_INPUT": "Spieleingabe blockieren",
     "RESIZE_PRESS_AND_DRAG": "Größe ändern (gedrückt halten & ziehen)",
     "POS_STATIC": "Statisch: Bleibt an Ort und Stelle und wird niemals neu zentriert.",
     "POS_ANCHORED": "Verankert: Bewegt sich zusammen mit dem Rest des Sets. Standard.",
@@ -82,7 +83,10 @@
       "ROTATE180": "180° gedreht",
       "ROTATE270": "270° gedreht"
     },
-    "GLOBAL": "Immer sichtbar"
+    "GLOBAL": "Immer sichtbar",
+    "ANGLE_FADE": "Winkelübergang",
+    "ANGLE_FADE_HELP": "Ausblenden, wenn nicht auf das Headset gerichtet",
+    "BLOCK_INPUT": "Blockiere Spieleingabe"
   },
   "DISABLED": "Deaktiviert",
   "DEFAULT": "Standard",

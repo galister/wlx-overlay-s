@@ -17,7 +17,9 @@
       "TITLE": "Tryb wolnych rąk",
       "NONE": "Wyłączone",
       "HMD": "HMD + uszczypnięcie",
-      "EYE_TRACKING": "Oko + uszczypnięcie"
+      "EYE_TRACKING": "Oko + uszczypnięcie",
+      "HMD_ONLY": "Tylko HMD",
+      "EYE_ONLY": "Tylko oczy"
     }
   },
   "WATCH": {
@@ -80,7 +82,9 @@
       "FLIP180": "Odwrócony o 180°",
       "FLIP270": "Odwrócony o 270°"
     },
-    "GLOBAL": "Zawsze widoczne"
+    "GLOBAL": "Zawsze widoczne",
+    "ANGLE_FADE": "Zanik kątowy",
+    "ANGLE_FADE_HELP": "Wyblaknij, gdy nie patrzysz na HMD"
   },
   "DISABLED": "Wyłączone",
   "DEFAULT": "Domyślny",

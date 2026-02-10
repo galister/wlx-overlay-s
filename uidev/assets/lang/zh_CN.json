@@ -1,0 +1,9 @@
+{
+  "BAR": {
+    "OPACITY": "不透明度",
+    "ADDITIVE": "加法"
+  },
+  "TESTBED": {
+    "HELLO_WORLD": "你好，世界！这是一段翻译后的国际化文本。"
+  }
+}
