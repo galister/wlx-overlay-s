@@ -26,6 +26,7 @@ There are multiple ways to install WayVR:
 
 1. AppImage: Download from [Releases](https://github.com/wlx-team/wayvr/releases)
 1. AUR package: [wayvr](https://aur.archlinux.org/packages/wayvr) or [wayvr-git](https://aur.archlinux.org/packages/wayvr-git) 
+1. Nix package: [wayvr](https://search.nixos.org/packages?channel=unstable&show=wayvr&query=wayvr) or [unstable package from nixpkgs-xr](https://github.com/nix-community/nixpkgs-xr)
 1. [Building from source](https://github.com/wlx-team/wayvr/wiki/Building-from-Source).
 
 ### General Setup
