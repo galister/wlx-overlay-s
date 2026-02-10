@@ -52,6 +52,30 @@
     },
   },
 
+  // Fallback controller, intended for testing
+  //{
+  //  profile: "/interaction_profiles/khr/simple_controller",
+  //  pose: {
+  //    left: "/user/hand/left/input/aim/pose",
+  //    right: "/user/hand/right/input/aim/pose"
+  //  },
+  //  haptic: {
+  //    left: "/user/hand/left/output/haptic",
+  //    right: "/user/hand/right/output/haptic"
+  //  },
+  //  click: {
+      // right trigger is click
+  //    right: "/user/hand/right/input/select/click"
+  //  },
+  //  grab: {
+      // left trigger is grab
+  //    left: "/user/hand/left/input/select/click",
+  //  },
+  //  show_hide: {
+  //    left: "/user/hand/left/input/menu/click"
+  //  }
+  //},
+
   // Oculus Touch Controller. Compatible with Quest 2, Quest 3, Quest Pro
   {
     profile: "/interaction_profiles/oculus/touch_controller",
