@@ -7,7 +7,7 @@
   "screenshots": [
     "https://github.com/wlx-team/wayvr/raw/guide/wayvr-readme-screenshot.webp?raw=true"
   ],
-  "description": "A lightweight OpenXR/OpenVR overlay for Wayland and X11 desktops, inspired by XSOverlay.\n\nWlxOverlay-S allows you to access your desktop screens while in VR.\n\nIn comparison to similar overlays, WlxOverlay-S aims to run alongside VR games and experiences while having as little performance impact as possible. The UI appearance and rendering techniques are kept as simple and efficient as possible, while still allowing a high degree of customizability.",
+  "description": "A lightweight OpenXR/OpenVR overlay for Wayland and X11 desktops, inspired by XSOverlay.\n\nWayVR allows you to access your desktop screens while in VR.\n\nIn comparison to similar overlays, WayVR aims to run alongside VR games and experiences while having as little performance impact as possible. The UI appearance and rendering techniques are kept as simple and efficient as possible, while still allowing a high degree of customizability.",
   "short_description": "Access your Wayland/X11 desktop",
   "exec_url": "https://github.com/wlx-team/wayvr/releases/download/v26.2.1/WayVR-v26.2.1-x86_64.AppImage",
   "luanch_opts": ["--openxr"],
