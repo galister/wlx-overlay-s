@@ -7,6 +7,7 @@ use wgui::{
     drawing, font_config::WguiFontConfig, gfx::WGfx, globals::WguiGlobals, parser::parse_color_hex,
     renderer_vk::context::SharedContext as WSharedContext,
 };
+use wlx_common::locale::WayVRLangProvider;
 use wlx_common::{
     audio,
     config::GeneralConfig,
@@ -138,6 +139,8 @@ impl AppState {
         let mut desktop_finder = DesktopFinder::new();
         desktop_finder.refresh();
 
+        let lang_provider = WayVRLangProvider::from_config(&session.config);
+
         Ok(Self {
             session,
             tasks,
@@ -153,6 +156,7 @@ impl AppState {
             anchor_grabbed: false,
             wgui_globals: WguiGlobals::new(
                 assets,
+                &lang_provider,
                 defaults,
                 &WguiFontConfig::default(),
                 get_config_file_path(&theme),

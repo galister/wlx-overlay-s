@@ -109,7 +109,9 @@
     "RESET_PLAYSPACE": "重置游戏空间",
     "RESET_PLAYSPACE_HELP": "清除舞台空间偏移。",
     "BLOCK_POSES_ON_KBD_INTERACTION": "与键盘交互时阻止姿势",
-    "BLOCK_POSES_ON_KBD_INTERACTION_HELP": "当键盘悬停且启用“阻止游戏输入”时，阻止游戏接收姿势"
+    "BLOCK_POSES_ON_KBD_INTERACTION_HELP": "当键盘悬停且启用“阻止游戏输入”时，阻止游戏接收姿势",
+    "LANGUAGE": "语言",
+    "REQUIRES_RESTART": "需要重启"
   },
   "APPLICATION_LAUNCHER": "应用启动器",
   "APPLICATION_STARTED": "应用已启动",

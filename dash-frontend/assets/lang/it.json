@@ -109,7 +109,9 @@
     "RESET_PLAYSPACE": "Ripristina playspace",
     "RESET_PLAYSPACE_HELP": "Cancella l'offset dello spazio di gioco.",
     "BLOCK_POSES_ON_KBD_INTERACTION": "Blocca le pose durante l'interazione con la tastiera",
-    "BLOCK_POSES_ON_KBD_INTERACTION_HELP": "Impedisce al gioco di ricevere pose quando la tastiera è evidenziata e 'Blocca input di gioco' è abilitato"
+    "BLOCK_POSES_ON_KBD_INTERACTION_HELP": "Impedisce al gioco di ricevere pose quando la tastiera è evidenziata e 'Blocca input di gioco' è abilitato",
+    "LANGUAGE": "Lingua",
+    "REQUIRES_RESTART": "Richiede riavvio"
   },
   "APPLICATION_LAUNCHER": "Lanciatore applicazioni",
   "APPLICATION_STARTED": "Applicazione avviata",

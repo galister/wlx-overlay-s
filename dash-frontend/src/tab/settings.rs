@@ -10,14 +10,20 @@ use wgui::{
 		slider::ComponentSlider,
 		tabs::ComponentTabs,
 	},
+	drawing,
 	event::{CallbackDataCommon, EventAlterables},
 	globals::WguiGlobals,
 	i18n::Translation,
 	layout::{Layout, WidgetID},
 	log::LogErr,
 	parser::{Fetchable, ParseDocumentParams, ParserState},
+	renderer_vk::text::{FontWeight, TextStyle},
+	taffy::{self, prelude::length},
 	task::Tasks,
-	widget::label::WidgetLabel,
+	widget::{
+		div::WidgetDiv,
+		label::{WidgetLabel, WidgetLabelParams},
+	},
 	windowing::context_menu::{self, Blueprint, ContextMenu, TickResult},
 };
 use wlx_common::{config::GeneralConfig, config_io::ConfigRoot, dash_interface::RecenterMode};
@@ -202,46 +208,48 @@ impl<T> Tab<T> for TabSettings<T> {
 	}
 }
 
+// Sorted alphabetically
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, Copy, AsRefStr, EnumString)]
 enum SettingType {
-	UiAnimationSpeed,
-	UiGradientIntensity,
-	UiRoundMultiplier,
-	InvertScrollDirectionX,
-	InvertScrollDirectionY,
-	ScrollSpeed,
-	LongPressDuration,
-	NotificationsEnabled,
-	NotificationsSoundEnabled,
-	KeyboardSoundEnabled,
-	UprightScreenFix,
-	DoubleCursorFix,
-	SetsOnWatch,
-	HideGrabHelp,
-	XrClickSensitivity,
-	XrClickSensitivityRelease,
 	AllowSliding,
-	ClickFreezeTimeMs,
-	FocusFollowsMouseMode,
-	LeftHandedMouse,
 	BlockGameInput,
 	BlockGameInputIgnoreWatch,
 	BlockPosesOnKbdInteraction,
-	SpaceDragMultiplier,
-	UseSkybox,
-	UsePassthrough,
-	ScreenRenderDown,
+	CaptureMethod,
+	ClickFreezeTimeMs,
+	Clock12h,
+	DoubleCursorFix,
+	FocusFollowsMouseMode,
+	HandsfreePointer,
+	HideGrabHelp,
+	HideUsername,
+	InvertScrollDirectionX,
+	InvertScrollDirectionY,
+	KeyboardMiddleClick,
+	KeyboardSoundEnabled,
+	Language,
+	LeftHandedMouse,
+	LongPressDuration,
+	NotificationsEnabled,
+	NotificationsSoundEnabled,
+	OpaqueBackground,
 	PointerLerpFactor,
+	ScreenRenderDown,
+	ScrollSpeed,
+	SetsOnWatch,
+	SpaceDragMultiplier,
 	SpaceDragUnlocked,
 	SpaceRotateUnlocked,
-	Clock12h,
-	HideUsername,
-	OpaqueBackground,
+	UiAnimationSpeed,
+	UiGradientIntensity,
+	UiRoundMultiplier,
+	UprightScreenFix,
+	UsePassthrough,
+	UseSkybox,
+	XrClickSensitivity,
+	XrClickSensitivityRelease,
 	XwaylandByDefault,
-	CaptureMethod,
-	KeyboardMiddleClick,
-	HandsfreePointer,
 }
 
 impl SettingType {
@@ -309,6 +317,9 @@ impl SettingType {
 			Self::HandsfreePointer => {
 				config.handsfree_pointer = wlx_common::config::HandsfreePointer::from_str(value).expect("Invalid enum value!")
 			}
+			Self::Language => {
+				config.language = Some(wlx_common::locale::Language::from_str(value).expect("Invalid enum value!"))
+			}
 			_ => panic!("Requested enum for non-enum SettingType"),
 		}
 	}
@@ -318,6 +329,10 @@ impl SettingType {
 			Self::CaptureMethod => Self::get_enum_title_inner(config.capture_method),
 			Self::KeyboardMiddleClick => Self::get_enum_title_inner(config.keyboard_middle_click_mode),
 			Self::HandsfreePointer => Self::get_enum_title_inner(config.handsfree_pointer),
+			Self::Language => match &config.language {
+				Some(lang) => Self::get_enum_title_inner(*lang),
+				None => Translation::from_translation_key("APP_SETTINGS.OPTION.AUTO"),
+			},
 			_ => panic!("Requested enum for non-enum SettingType"),
 		}
 	}
@@ -341,70 +356,71 @@ impl SettingType {
 	}
 
 	/// Ok is translation, Err is raw text
+	/// `match` sorted alphabetically
 	fn get_translation(self) -> Result<&'static str, &'static str> {
 		match self {
-			Self::UiAnimationSpeed => Ok("APP_SETTINGS.ANIMATION_SPEED"),
-			Self::UiGradientIntensity => Ok("APP_SETTINGS.UI_GRADIENT_INTENSITY"),
-			Self::UiRoundMultiplier => Ok("APP_SETTINGS.ROUND_MULTIPLIER"),
-			Self::InvertScrollDirectionX => Ok("APP_SETTINGS.INVERT_SCROLL_DIRECTION_X"),
-			Self::InvertScrollDirectionY => Ok("APP_SETTINGS.INVERT_SCROLL_DIRECTION_Y"),
-			Self::ScrollSpeed => Ok("APP_SETTINGS.SCROLL_SPEED"),
-			Self::LongPressDuration => Ok("APP_SETTINGS.LONG_PRESS_DURATION"),
-			Self::NotificationsEnabled => Ok("APP_SETTINGS.NOTIFICATIONS_ENABLED"),
-			Self::NotificationsSoundEnabled => Ok("APP_SETTINGS.NOTIFICATIONS_SOUND_ENABLED"),
-			Self::KeyboardSoundEnabled => Ok("APP_SETTINGS.KEYBOARD_SOUND_ENABLED"),
-			Self::UprightScreenFix => Ok("APP_SETTINGS.UPRIGHT_SCREEN_FIX"),
-			Self::DoubleCursorFix => Ok("APP_SETTINGS.DOUBLE_CURSOR_FIX"),
-			Self::SetsOnWatch => Ok("APP_SETTINGS.SETS_ON_WATCH"),
-			Self::HideGrabHelp => Ok("APP_SETTINGS.HIDE_GRAB_HELP"),
-			Self::XrClickSensitivity => Ok("APP_SETTINGS.XR_CLICK_SENSITIVITY"),
-			Self::XrClickSensitivityRelease => Ok("APP_SETTINGS.XR_CLICK_SENSITIVITY_RELEASE"),
 			Self::AllowSliding => Ok("APP_SETTINGS.ALLOW_SLIDING"),
-			Self::ClickFreezeTimeMs => Ok("APP_SETTINGS.CLICK_FREEZE_TIME_MS"),
-			Self::FocusFollowsMouseMode => Ok("APP_SETTINGS.FOCUS_FOLLOWS_MOUSE_MODE"),
-			Self::LeftHandedMouse => Ok("APP_SETTINGS.LEFT_HANDED_MOUSE"),
 			Self::BlockGameInput => Ok("APP_SETTINGS.BLOCK_GAME_INPUT"),
 			Self::BlockGameInputIgnoreWatch => Ok("APP_SETTINGS.BLOCK_GAME_INPUT_IGNORE_WATCH"),
 			Self::BlockPosesOnKbdInteraction => Ok("APP_SETTINGS.BLOCK_POSES_ON_KBD_INTERACTION"),
-			Self::SpaceDragMultiplier => Ok("APP_SETTINGS.SPACE_DRAG_MULTIPLIER"),
-			Self::UseSkybox => Ok("APP_SETTINGS.USE_SKYBOX"),
-			Self::UsePassthrough => Ok("APP_SETTINGS.USE_PASSTHROUGH"),
-			Self::ScreenRenderDown => Ok("APP_SETTINGS.SCREEN_RENDER_DOWN"),
+			Self::CaptureMethod => Ok("APP_SETTINGS.CAPTURE_METHOD"),
+			Self::ClickFreezeTimeMs => Ok("APP_SETTINGS.CLICK_FREEZE_TIME_MS"),
+			Self::Clock12h => Ok("APP_SETTINGS.CLOCK_12H"),
+			Self::DoubleCursorFix => Ok("APP_SETTINGS.DOUBLE_CURSOR_FIX"),
+			Self::FocusFollowsMouseMode => Ok("APP_SETTINGS.FOCUS_FOLLOWS_MOUSE_MODE"),
+			Self::HandsfreePointer => Ok("APP_SETTINGS.HANDSFREE_POINTER"),
+			Self::HideGrabHelp => Ok("APP_SETTINGS.HIDE_GRAB_HELP"),
+			Self::HideUsername => Ok("APP_SETTINGS.HIDE_USERNAME"),
+			Self::InvertScrollDirectionX => Ok("APP_SETTINGS.INVERT_SCROLL_DIRECTION_X"),
+			Self::InvertScrollDirectionY => Ok("APP_SETTINGS.INVERT_SCROLL_DIRECTION_Y"),
+			Self::KeyboardMiddleClick => Ok("APP_SETTINGS.KEYBOARD_MIDDLE_CLICK"),
+			Self::KeyboardSoundEnabled => Ok("APP_SETTINGS.KEYBOARD_SOUND_ENABLED"),
+			Self::Language => Ok("APP_SETTINGS.LANGUAGE"),
+			Self::LeftHandedMouse => Ok("APP_SETTINGS.LEFT_HANDED_MOUSE"),
+			Self::LongPressDuration => Ok("APP_SETTINGS.LONG_PRESS_DURATION"),
+			Self::NotificationsEnabled => Ok("APP_SETTINGS.NOTIFICATIONS_ENABLED"),
+			Self::NotificationsSoundEnabled => Ok("APP_SETTINGS.NOTIFICATIONS_SOUND_ENABLED"),
+			Self::OpaqueBackground => Ok("APP_SETTINGS.OPAQUE_BACKGROUND"),
 			Self::PointerLerpFactor => Ok("APP_SETTINGS.POINTER_LERP_FACTOR"),
+			Self::ScreenRenderDown => Ok("APP_SETTINGS.SCREEN_RENDER_DOWN"),
+			Self::ScrollSpeed => Ok("APP_SETTINGS.SCROLL_SPEED"),
+			Self::SetsOnWatch => Ok("APP_SETTINGS.SETS_ON_WATCH"),
+			Self::SpaceDragMultiplier => Ok("APP_SETTINGS.SPACE_DRAG_MULTIPLIER"),
 			Self::SpaceDragUnlocked => Ok("APP_SETTINGS.SPACE_DRAG_UNLOCKED"),
 			Self::SpaceRotateUnlocked => Ok("APP_SETTINGS.SPACE_ROTATE_UNLOCKED"),
-			Self::Clock12h => Ok("APP_SETTINGS.CLOCK_12H"),
-			Self::HideUsername => Ok("APP_SETTINGS.HIDE_USERNAME"),
-			Self::OpaqueBackground => Ok("APP_SETTINGS.OPAQUE_BACKGROUND"),
+			Self::UiAnimationSpeed => Ok("APP_SETTINGS.ANIMATION_SPEED"),
+			Self::UiGradientIntensity => Ok("APP_SETTINGS.UI_GRADIENT_INTENSITY"),
+			Self::UiRoundMultiplier => Ok("APP_SETTINGS.ROUND_MULTIPLIER"),
+			Self::UprightScreenFix => Ok("APP_SETTINGS.UPRIGHT_SCREEN_FIX"),
+			Self::UsePassthrough => Ok("APP_SETTINGS.USE_PASSTHROUGH"),
+			Self::UseSkybox => Ok("APP_SETTINGS.USE_SKYBOX"),
+			Self::XrClickSensitivity => Ok("APP_SETTINGS.XR_CLICK_SENSITIVITY"),
+			Self::XrClickSensitivityRelease => Ok("APP_SETTINGS.XR_CLICK_SENSITIVITY_RELEASE"),
 			Self::XwaylandByDefault => Ok("APP_SETTINGS.XWAYLAND_BY_DEFAULT"),
-			Self::CaptureMethod => Ok("APP_SETTINGS.CAPTURE_METHOD"),
-			Self::KeyboardMiddleClick => Ok("APP_SETTINGS.KEYBOARD_MIDDLE_CLICK"),
-			Self::HandsfreePointer => Ok("APP_SETTINGS.HANDSFREE_POINTER"),
 		}
 	}
 
+	/// `match` sorted alphabetically
 	fn get_tooltip(self) -> Option<&'static str> {
 		match self {
-			Self::UprightScreenFix => Some("APP_SETTINGS.UPRIGHT_SCREEN_FIX_HELP"),
-			Self::DoubleCursorFix => Some("APP_SETTINGS.DOUBLE_CURSOR_FIX_HELP"),
-			Self::XrClickSensitivity => Some("APP_SETTINGS.XR_CLICK_SENSITIVITY_HELP"),
-			Self::XrClickSensitivityRelease => Some("APP_SETTINGS.XR_CLICK_SENSITIVITY_RELEASE_HELP"),
-			Self::FocusFollowsMouseMode => Some("APP_SETTINGS.FOCUS_FOLLOWS_MOUSE_MODE_HELP"),
-			Self::LeftHandedMouse => Some("APP_SETTINGS.LEFT_HANDED_MOUSE_HELP"),
 			Self::BlockGameInput => Some("APP_SETTINGS.BLOCK_GAME_INPUT_HELP"),
 			Self::BlockGameInputIgnoreWatch => Some("APP_SETTINGS.BLOCK_GAME_INPUT_IGNORE_WATCH_HELP"),
 			Self::BlockPosesOnKbdInteraction => Some("APP_SETTINGS.BLOCK_POSES_ON_KBD_INTERACTION_HELP"),
-			Self::UseSkybox => Some("APP_SETTINGS.USE_SKYBOX_HELP"),
-			Self::UsePassthrough => Some("APP_SETTINGS.USE_PASSTHROUGH_HELP"),
-			Self::ScreenRenderDown => Some("APP_SETTINGS.SCREEN_RENDER_DOWN_HELP"),
 			Self::CaptureMethod => Some("APP_SETTINGS.CAPTURE_METHOD_HELP"),
-			Self::KeyboardMiddleClick => Some("APP_SETTINGS.KEYBOARD_MIDDLE_CLICK_HELP"),
+			Self::DoubleCursorFix => Some("APP_SETTINGS.DOUBLE_CURSOR_FIX_HELP"),
 			Self::HandsfreePointer => Some("APP_SETTINGS.HANDSFREE_POINTER_HELP"),
+			Self::KeyboardMiddleClick => Some("APP_SETTINGS.KEYBOARD_MIDDLE_CLICK_HELP"),
+			Self::LeftHandedMouse => Some("APP_SETTINGS.LEFT_HANDED_MOUSE_HELP"),
+			Self::ScreenRenderDown => Some("APP_SETTINGS.SCREEN_RENDER_DOWN_HELP"),
+			Self::UprightScreenFix => Some("APP_SETTINGS.UPRIGHT_SCREEN_FIX_HELP"),
+			Self::UsePassthrough => Some("APP_SETTINGS.USE_PASSTHROUGH_HELP"),
+			Self::UseSkybox => Some("APP_SETTINGS.USE_SKYBOX_HELP"),
+			Self::XrClickSensitivity => Some("APP_SETTINGS.XR_CLICK_SENSITIVITY_HELP"),
+			Self::XrClickSensitivityRelease => Some("APP_SETTINGS.XR_CLICK_SENSITIVITY_RELEASE_HELP"),
 			_ => None,
 		}
 	}
 
-	//TODO: incorporate this
 	fn requires_restart(self) -> bool {
 		match self {
 			Self::UiAnimationSpeed
@@ -412,6 +428,7 @@ impl SettingType {
 			| Self::UprightScreenFix
 			| Self::DoubleCursorFix
 			| Self::ScreenRenderDown
+			| Self::Language
 			| Self::CaptureMethod => true,
 			_ => false,
 		}
@@ -424,6 +441,42 @@ impl SettingType {
 			_ => None,
 		}
 	}
+}
+
+// creates a simple div with horizontal, centered flow
+fn horiz_cell(layout: &mut Layout, parent: WidgetID) -> anyhow::Result<WidgetID> {
+	let (pair, _) = layout.add_child(
+		parent,
+		WidgetDiv::create(),
+		taffy::Style {
+			flex_direction: taffy::FlexDirection::Row,
+			align_items: Some(taffy::AlignItems::Center),
+			gap: length(8.0),
+			..Default::default()
+		},
+	)?;
+
+	Ok(pair.id)
+}
+
+fn mount_requires_restart(layout: &mut Layout, parent: WidgetID) -> anyhow::Result<()> {
+	let content = Translation::from_translation_key("APP_SETTINGS.REQUIRES_RESTART");
+	let label = WidgetLabel::create(
+		&mut layout.state.globals.get(),
+		WidgetLabelParams {
+			content,
+			style: TextStyle {
+				wrap: false,
+				color: Some(drawing::Color::new(1.0, 0.5, 0.5, 1.0)),
+				weight: Some(FontWeight::Bold),
+				size: Some(10.0),
+				..Default::default()
+			},
+		},
+	);
+
+	layout.add_child(parent, label, Default::default())?;
+	Ok(())
 }
 
 macro_rules! category {
@@ -464,9 +517,15 @@ macro_rules! checkbox {
 		let checked = if *$setting.mut_bool($mp.config) { "1" } else { "0" };
 		params.insert(Rc::from("checked"), Rc::from(checked));
 
+		let id_cell = horiz_cell($mp.layout, $root)?;
+
 		$mp
 			.parser_state
-			.instantiate_template($mp.doc_params, "CheckBoxSetting", $mp.layout, $root, params)?;
+			.instantiate_template($mp.doc_params, "CheckBoxSetting", $mp.layout, id_cell, params)?;
+
+		if $setting.requires_restart() {
+			mount_requires_restart($mp.layout, id_cell)?;
+		}
 
 		let checkbox = $mp.parser_state.fetch_component_as::<ComponentCheckbox>(&id)?;
 		checkbox.on_toggle(Box::new({
@@ -502,9 +561,15 @@ macro_rules! slider_f32 {
 		params.insert(Rc::from("max"), Rc::from($max.to_string()));
 		params.insert(Rc::from("step"), Rc::from($step.to_string()));
 
+		let id_cell = horiz_cell($mp.layout, $root)?;
+
 		$mp
 			.parser_state
-			.instantiate_template($mp.doc_params, "SliderSetting", $mp.layout, $root, params)?;
+			.instantiate_template($mp.doc_params, "SliderSetting", $mp.layout, id_cell, params)?;
+
+		if $setting.requires_restart() {
+			mount_requires_restart($mp.layout, id_cell)?;
+		}
 
 		let slider = $mp.parser_state.fetch_component_as::<ComponentSlider>(&id)?;
 		slider.on_value_changed(Box::new({
@@ -534,6 +599,8 @@ macro_rules! slider_i32 {
 			params.insert(Rc::from("tooltip"), Rc::from(tooltip));
 		}
 
+		let id_cell = horiz_cell($mp.layout, $root)?;
+
 		let value = $setting.mut_i32($mp.config).to_string();
 		params.insert(Rc::from("value"), Rc::from(value));
 		params.insert(Rc::from("min"), Rc::from($min.to_string()));
@@ -542,7 +609,11 @@ macro_rules! slider_i32 {
 
 		$mp
 			.parser_state
-			.instantiate_template($mp.doc_params, "SliderSetting", $mp.layout, $root, params)?;
+			.instantiate_template($mp.doc_params, "SliderSetting", $mp.layout, id_cell, params)?;
+
+		if $setting.requires_restart() {
+			mount_requires_restart($mp.layout, id_cell)?;
+		}
 
 		let slider = $mp.parser_state.fetch_component_as::<ComponentSlider>(&id)?;
 		slider.on_value_changed(Box::new({
@@ -556,7 +627,7 @@ macro_rules! slider_i32 {
 }
 
 macro_rules! dropdown {
-	($mp:expr, $root:expr, $setting:expr, $options:expr) => {
+	($mp:expr /* `MacroParams` struct */, $root:expr, $setting:expr, $options:expr) => {
 		let id = $mp.idx.to_string();
 		$mp.idx += 1;
 
@@ -572,9 +643,15 @@ macro_rules! dropdown {
 			params.insert(Rc::from("tooltip"), Rc::from(tooltip));
 		}
 
+		let id_cell = horiz_cell($mp.layout, $root)?;
+
 		$mp
 			.parser_state
-			.instantiate_template($mp.doc_params, "DropdownButton", $mp.layout, $root, params)?;
+			.instantiate_template($mp.doc_params, "DropdownButton", $mp.layout, id_cell, params)?;
+
+		if $setting.requires_restart() {
+			mount_requires_restart($mp.layout, id_cell)?;
+		}
 
 		let setting_str = $setting.as_ref();
 		let title = $setting.get_enum_title($mp.config);
@@ -709,6 +786,7 @@ impl<T> TabSettings<T> {
 		match name {
 			TabNameEnum::LookAndFeel => {
 				let c = category!(mp, root, "APP_SETTINGS.LOOK_AND_FEEL", "dashboard/palette.svg")?;
+				dropdown!(mp, c, SettingType::Language, wlx_common::locale::Language::VARIANTS);
 				checkbox!(mp, c, SettingType::OpaqueBackground);
 				checkbox!(mp, c, SettingType::HideUsername);
 				checkbox!(mp, c, SettingType::HideGrabHelp);

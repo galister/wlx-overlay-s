@@ -27,6 +27,7 @@ use wgui::{
 		window::{WguiWindow, WguiWindowParams, WguiWindowParamsExtra},
 	},
 };
+use wlx_common::locale::WayVRLangProvider;
 
 #[derive(Clone)]
 pub enum TestbedTask {
@@ -85,8 +86,11 @@ impl TestbedGeneric {
 	}
 
 	pub fn new(assets: Box<assets::Asset>) -> anyhow::Result<Self> {
+		let lang_provider = WayVRLangProvider::default();
+
 		let globals = WguiGlobals::new(
 			assets,
+			&lang_provider,
 			wgui::globals::Defaults::default(),
 			&WguiFontConfig::default(),
 			PathBuf::new(), // cwd

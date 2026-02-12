@@ -7,9 +7,7 @@ use strum::{AsRefStr, EnumProperty, EnumString, VariantArray};
 use wayvr_ipc::packet_client::WvrProcessLaunchParams;
 
 use crate::{
-	astr_containers::{AStrMap, AStrSet},
-	overlays::{BackendAttribValue, ToastDisplayMethod, ToastTopic},
-	windowing::OverlayWindowState,
+	astr_containers::{AStrMap, AStrSet}, locale::{self}, overlays::{BackendAttribValue, ToastDisplayMethod, ToastTopic}, windowing::OverlayWindowState
 };
 
 pub type PwTokenMap = AStrMap<String>;
@@ -140,6 +138,8 @@ const fn def_max_height() -> u16 {
 	1440
 }
 
+
+
 #[derive(Deserialize, Serialize)]
 pub struct GeneralConfig {
 	#[serde(default = "def_theme_path")]
@@ -150,6 +150,8 @@ pub struct GeneralConfig {
 	pub color_danger: Option<String>,
 	pub color_faded: Option<String>,
 	pub color_background: Option<String>,
+
+	pub language: Option<locale::Language>, // auto-detected at runtime if unset
 
 	#[serde(default = "def_one")]
 	#[serde(alias = "ui_animation_speed", alias = "animation_speed" /* old name */)]

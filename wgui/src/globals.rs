@@ -10,7 +10,7 @@ use anyhow::Context;
 use regex::Regex;
 
 use crate::{
-	assets::{AssetPath, AssetProvider},
+	assets::{AssetPath, AssetProvider, LangProvider},
 	assets_internal, drawing,
 	font_config::{WguiFontConfig, WguiFontSystem},
 	i18n::I18n,
@@ -66,11 +66,12 @@ pub struct WguiGlobals(Rc<RefCell<Globals>>);
 impl WguiGlobals {
 	pub fn new(
 		mut assets_builtin: Box<dyn AssetProvider>,
+		lang_provider: &dyn LangProvider,
 		defaults: Defaults,
 		font_config: &WguiFontConfig,
 		asset_folder: PathBuf,
 	) -> anyhow::Result<Self> {
-		let i18n_builtin = I18n::new(&mut assets_builtin)?;
+		let i18n_builtin = I18n::new(assets_builtin.as_mut(), lang_provider)?;
 		let assets_internal = Box::new(assets_internal::AssetInternal {});
 
 		Ok(Self(Rc::new(RefCell::new(Globals {

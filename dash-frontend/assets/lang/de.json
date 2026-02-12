@@ -10,7 +10,6 @@
   "APP_SETTINGS": {
     "HIDE_USERNAME": "Benutzernamen ausblenden",
     "OPAQUE_BACKGROUND": "Undurchsichtiger Hintergrund",
-    "WLX": {},
     "LOOK_AND_FEEL": "Aussehen und Verhalten",
     "HIDE_GRAB_HELP": "Greif-Hilfe ausblenden",
     "ANIMATION_SPEED": "UI-Animationsgeschwindigkeit",
@@ -89,7 +88,9 @@
     "RESET_PLAYSPACE": "Spielbereich zurücksetzen",
     "RESET_PLAYSPACE_HELP": "Den Abstand des Spielbereichs zurücksetzen.",
     "BLOCK_POSES_ON_KBD_INTERACTION": "Posen beim Interagieren mit der Tastatur blockieren",
-    "BLOCK_POSES_ON_KBD_INTERACTION_HELP": "Verhindert, dass das Spiel Posen empfängt, wenn die Tastatur angefahren wird und „Spieleingabe blockieren“ aktiviert ist"
+    "BLOCK_POSES_ON_KBD_INTERACTION_HELP": "Verhindert, dass das Spiel Posen empfängt, wenn die Tastatur angefahren wird und „Spieleingabe blockieren“ aktiviert ist",
+    "LANGUAGE": "Sprache",
+    "REQUIRES_RESTART": "Erfordert Neustart"
   },
   "HELLO": "Hallo!",
   "AUDIO": {

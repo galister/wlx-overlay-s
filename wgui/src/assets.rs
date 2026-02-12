@@ -3,6 +3,8 @@ use std::ffi::OsStr;
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 
+use crate::i18n::LangsList;
+
 #[derive(Debug, Clone, Copy)]
 pub enum AssetPath<'a> {
 	WguiInternal(&'a str),  // tied to internal wgui AssetProvider. Used internally
@@ -81,6 +83,11 @@ impl Default for AssetPathOwned {
 	fn default() -> Self {
 		Self::WguiInternal(PathBuf::default())
 	}
+}
+
+pub trait LangProvider {
+	fn langs_list(&self) -> &dyn LangsList;
+	fn forced_lang(&self) -> Option<&str>;
 }
 
 pub trait AssetProvider {
