@@ -499,6 +499,10 @@ pub fn openxr_run(show_by_default: bool, headless: bool) -> Result<(), BackendEr
         watch.config.active_state.as_mut().unwrap().transform = watch_transform;
     } // main_loop
 
+    if let (Some(blocker), Some(monado)) = (blocker, app.monado.as_mut()) {
+        blocker.unblock(monado);
+    }
+
     overlays.persist_layout(&mut app);
     if let Err(e) = save_state(&app.session.config) {
         log::error!("Could not save state: {e:?}");

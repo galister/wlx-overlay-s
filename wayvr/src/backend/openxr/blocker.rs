@@ -18,6 +18,10 @@ impl InputBlocker {
         }
     }
 
+    pub fn unblock(&self, monado: &mut Monado) {
+        self.block_inputs(monado, false, false);
+    }
+
     pub fn update(&mut self, app: &mut AppState) {
         let Some(monado) = &mut app.monado else {
             return; // monado not available
