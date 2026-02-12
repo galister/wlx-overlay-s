@@ -76,7 +76,8 @@ impl InputBlocker {
                 continue;
             };
 
-            if state.contains(ClientState::ClientSessionVisible) {
+            if state.contains(ClientState::ClientSessionActive | ClientState::ClientSessionVisible)
+            {
                 let _ = if self.use_io_blocks {
                     let flags = match (block_inputs, block_poses) {
                         (true, true) => BlockFlags::BlockPoses | BlockFlags::BlockInputs,
