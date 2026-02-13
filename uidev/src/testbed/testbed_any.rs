@@ -12,6 +12,7 @@ use wgui::{
 	layout::{Layout, LayoutParams, LayoutUpdateParams},
 	parser::{ParseDocumentParams, ParserState},
 };
+use wlx_common::locale::WayVRLangProvider;
 
 pub struct TestbedAny {
 	pub layout: Layout,
@@ -28,8 +29,11 @@ impl TestbedAny {
 			AssetPath::BuiltIn(&format!("gui/{name}.xml"))
 		};
 
+		let lang_provider = WayVRLangProvider::default();
+
 		let globals = WguiGlobals::new(
 			assets,
+			&lang_provider,
 			wgui::globals::Defaults::default(),
 			&WguiFontConfig::default(),
 			PathBuf::new(), // cwd

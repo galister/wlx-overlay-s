@@ -10,6 +10,7 @@ use wlx_common::{
         SerializedWindowStates,
     },
     config_io,
+    locale::Language,
     overlays::BackendAttribValue,
 };
 
@@ -143,6 +144,7 @@ pub struct AutoSettings {
     pub keyboard_middle_click_mode: AltModifier,
     pub autostart_apps: Vec<WvrProcessLaunchParams>,
     pub handsfree_pointer: HandsfreePointer,
+    pub language: Option<Language>,
 }
 
 fn get_settings_path() -> PathBuf {
@@ -192,6 +194,7 @@ pub fn save_settings(config: &GeneralConfig) -> anyhow::Result<()> {
         keyboard_middle_click_mode: config.keyboard_middle_click_mode,
         autostart_apps: config.autostart_apps.clone(),
         handsfree_pointer: config.handsfree_pointer,
+        language: config.language,
     };
 
     let json = serde_json::to_string_pretty(&conf).unwrap(); // want panic

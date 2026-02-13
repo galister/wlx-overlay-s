@@ -17,6 +17,7 @@ use wgui::{
 };
 use wlx_common::{
     dash_interface::{self, DashInterface, RecenterMode},
+    locale::WayVRLangProvider,
     overlays::{BackendAttrib, BackendAttribValue},
 };
 use wlx_common::{
@@ -79,6 +80,7 @@ impl DashFrontend {
         let frontend = frontend::Frontend::new(
             frontend::InitParams {
                 interface: Box::new(interface),
+                lang_provider: &WayVRLangProvider::from_config(&app.session.config),
                 has_monado: matches!(app.xr_backend, XrBackend::OpenXR),
             },
             app,

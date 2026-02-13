@@ -18,6 +18,7 @@ use wgui::{
 use wlx_common::{
 	audio,
 	dash_interface::{BoxDashInterface, RecenterMode},
+	locale::WayVRLangProvider,
 	timestep::{self, Timestep},
 };
 
@@ -81,8 +82,9 @@ pub struct FrontendUpdateResult {
 	pub sounds_to_play: Vec<SoundType>,
 }
 
-pub struct InitParams<T> {
+pub struct InitParams<'a, T> {
 	pub interface: BoxDashInterface<T>,
+	pub lang_provider: &'a WayVRLangProvider,
 	pub has_monado: bool,
 }
 
@@ -118,6 +120,7 @@ impl<T: 'static> Frontend<T> {
 
 		let globals = WguiGlobals::new(
 			assets,
+			params.lang_provider,
 			wgui::globals::Defaults::default(),
 			&WguiFontConfig {
 				binaries: vec![&font_binary_regular, &font_binary_bold, &font_binary_light],

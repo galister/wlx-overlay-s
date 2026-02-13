@@ -63,6 +63,7 @@
 		"KEYBOARD_MIDDLE_CLICK": "Keyboard middle click",
 		"KEYBOARD_MIDDLE_CLICK_HELP": "Modifier to use when typing\nwith purple laser",
 		"KEYBOARD_SOUND_ENABLED": "Keyboard sounds",
+		"LANGUAGE": "Language",
 		"LEFT_HANDED_MOUSE": "Left-handed mouse",
 		"LEFT_HANDED_MOUSE_HELP": "Use this if mouse buttons are swapped",
 		"LONG_PRESS_DURATION": "Long press duration",
@@ -74,10 +75,10 @@
 		"OPTION": {
 			"AUTO": "Automatic",
 			"AUTO_HELP": "ScreenCopy GPU if supported,\notherwise PipeWire GPU.",
-			"EYE_PINCH": "Eye + pinch",
-			"HMD_PINCH": "HMD + pinch",
 			"EYE_ONLY": "Eye only",
+			"EYE_PINCH": "Eye + pinch",
 			"HMD_ONLY": "HMD only",
+			"HMD_PINCH": "HMD + pinch",
 			"NONE": "None",
 			"PIPEWIRE_HELP": "Fast GPU capture,\nstandard on all desktops.",
 			"PW_FALLBACK_HELP": "Slow method with high CPU usage.\nTry in case PipeWire GPU doesn't work",
@@ -85,6 +86,7 @@
 			"SCREENCOPY_HELP": "Slow, no screen share popups.\nWorks on: Hyprland, Niri, River, Sway"
 		},
 		"POINTER_LERP_FACTOR": "Pointer smoothing",
+		"REQUIRES_RESTART": "Requires restart",
 		"RESET_PLAYSPACE": "Reset playspace",
 		"RESET_PLAYSPACE_HELP": "Clear the stage space offset.",
 		"RESTART_SOFTWARE": "Restart software",
@@ -148,8 +150,8 @@
 		"RESOLUTION": "Resolution"
 	},
 	"PROCESS": {
-		"STOP": "Stop",
-		"FORCE_KILL": "Force-kill"
+		"FORCE_KILL": "Force-kill",
+		"STOP": "Stop"
 	},
 	"PROCESS_LIST": "Process list",
 	"REFRESH": "Refresh",
