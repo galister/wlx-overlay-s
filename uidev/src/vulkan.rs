@@ -2,8 +2,8 @@ use anyhow::Context;
 use std::sync::{Arc, OnceLock};
 use vulkano::{
 	device::{
-		physical::{PhysicalDevice, PhysicalDeviceType},
 		Device, DeviceCreateInfo, DeviceExtensions, DeviceFeatures, Queue, QueueCreateInfo, QueueFlags,
+		physical::{PhysicalDevice, PhysicalDeviceType},
 	},
 	instance::{Instance, InstanceCreateInfo},
 	swapchain::ColorSpace,
@@ -96,8 +96,8 @@ pub fn init_window(
 	let (format, color_space) = physical_device
 		.surface_formats(&surface, vulkano::swapchain::SurfaceInfo::default())?
 		.into_iter()
-		.next()
-		.context("Could not read surface formats for PhysicalDevice")?;
+		.find(|(format, _)| !format.components().iter().any(|b| *b > 8))
+		.context("Could not read or no suitable surface formats for PhysicalDevice")?;
 
 	let (device, queues) = Device::new(
 		physical_device,
