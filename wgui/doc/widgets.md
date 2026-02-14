@@ -6,7 +6,7 @@
 
 ## [Built-in components](#components)
 
-[Button](#button-component), [Slider](#slider-component), [CheckBox](#checkbox-component), [Tabs](#tabs-component) ([Tab](#tab-component))
+[Button](#button-component), [Slider](#slider-component), [CheckBox](#checkbox-component), [Tabs](#tabs-component) ([Tab](#tab-component)), [EditBox](#editbox-component)
 
 ## [Examples](#examples)
 
@@ -405,6 +405,20 @@ _Translated by key_
 `sprite_src` | `sprite_src_ext` | `sprite_src_builtin` | `sprite_src_internal`
 
 _Image path (see [sprite](#sprite-widget)) for src descriptions_
+
+---
+
+## EditBox component
+
+### `<EditBox>`
+
+### A single-line text input field.
+
+#### Parameters
+
+`text`: **string**
+
+_Initial text content_
 
 ---
 

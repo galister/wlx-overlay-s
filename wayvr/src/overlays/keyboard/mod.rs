@@ -32,7 +32,7 @@ use regex::Regex;
 use slotmap::{SlotMap, new_key_type};
 use wgui::{
     drawing,
-    event::{InternalStateChangeEvent, MouseButton, MouseButtonIndex},
+    event::{InternalStateChangeEvent, MouseButtonEvent, MouseButtonIndex},
 };
 use wlx_common::windowing::{OverlayWindowState, Positioning};
 use wlx_common::{
@@ -390,7 +390,7 @@ fn handle_press(
     app: &mut AppState,
     key: &KeyState,
     keyboard: &mut KeyboardState,
-    button: MouseButton,
+    button: MouseButtonEvent,
 ) {
     match &key.button_state {
         KeyButtonData::Key { vk, pressed } => {

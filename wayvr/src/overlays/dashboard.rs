@@ -8,8 +8,8 @@ use wayvr_ipc::{
 };
 use wgui::{
     event::{
-        Event as WguiEvent, MouseButtonIndex, MouseDownEvent, MouseLeaveEvent, MouseMotionEvent,
-        MouseUpEvent, MouseWheelEvent,
+        Event as WguiEvent, MouseButtonEvent, MouseButtonIndex, MouseLeaveEvent, MouseMotionEvent,
+        MouseWheelEvent,
     },
     gfx::cmd::WGfxClearMode,
     renderer_vk::context::Context as WguiContext,
@@ -247,13 +247,13 @@ impl OverlayBackend for DashFrontend {
         };
 
         let e = if pressed {
-            WguiEvent::MouseDown(MouseDownEvent {
+            WguiEvent::MouseDown(MouseButtonEvent {
                 pos: hit.uv * self.inner.layout.content_size,
                 index,
                 device: hit.pointer,
             })
         } else {
-            WguiEvent::MouseUp(MouseUpEvent {
+            WguiEvent::MouseUp(MouseButtonEvent {
                 pos: hit.uv * self.inner.layout.content_size,
                 index,
                 device: hit.pointer,

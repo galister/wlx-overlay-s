@@ -10,7 +10,7 @@ use crate::{
 	animation::{Animation, AnimationEasing},
 	components::{Component, ComponentBase, ComponentTrait, FocusChangeData, RefreshData},
 	drawing::{self, Color},
-	event::{self, CallbackDataCommon, EventListenerCollection, EventListenerKind, StyleSetRequest},
+	event::{self, CallbackDataCommon, CallbackMetadata, EventListenerCollection, EventListenerKind, StyleSetRequest},
 	i18n::Translation,
 	layout::{WidgetID, WidgetPair},
 	renderer_vk::text::{TextShadow, TextStyle},
@@ -41,8 +41,9 @@ struct State {
 #[allow(clippy::struct_field_names)]
 struct Data {
 	#[allow(dead_code)]
-	id_rect_container: WidgetID, // Rectangle
-	id_rect_bottom: WidgetID, // Rectangle
+	id_rect_container: WidgetID,
+	id_rect_bottom: WidgetID,
+	id_rect_cursor: WidgetID,
 	id_label: WidgetID,
 }
 
@@ -76,15 +77,15 @@ fn anim_bottom_rect(
 				common.alterables.set_style(
 					data.widget_id,
 					StyleSetRequest::Size(taffy::Size {
-						width: percent(0.9.lerp(1.0, pos_bidir)),
-						height: length(2.0 + pos_bidir * 2.0),
+						width: percent(0.95.lerp(1.0, pos_bidir)),
+						height: length(1.0 + pos_bidir),
 					}),
 				);
 
 				common.alterables.set_style(
 					data.widget_id,
 					StyleSetRequest::Margin(taffy::Rect {
-						bottom: length(0.0),
+						bottom: length(pos_bidir),
 						left: auto(),
 						right: auto(),
 						top: auto(),
@@ -105,7 +106,7 @@ fn refresh_all(common: &mut CallbackDataCommon, data: &Data, state: &mut State) 
 	drop(defaults);
 
 	let (rect_color, border_color) = if state.focused {
-		(editbox_color.add_rgb(0.1), editbox_color.add_rgb(0.75))
+		(editbox_color.add_rgb(0.15), editbox_color.add_rgb(0.15 + 0.25))
 	} else if state.hovered {
 		(editbox_color.add_rgb(0.1), editbox_color.add_rgb(0.1 + 0.15))
 	} else {
@@ -121,6 +122,16 @@ fn refresh_all(common: &mut CallbackDataCommon, data: &Data, state: &mut State) 
 		anim_bottom_rect(common, accent_color, data.id_rect_bottom, anim_mult, state.focused);
 		state.focused_prev = state.focused;
 	}
+
+	// Cursor
+	common.alterables.set_style(
+		data.id_rect_cursor,
+		StyleSetRequest::Display(if state.focused {
+			taffy::Display::Flex
+		} else {
+			taffy::Display::None
+		}),
+	);
 
 	state.first_refresh = false;
 
@@ -149,18 +160,71 @@ impl ComponentTrait for ComponentEditBox {
 	}
 }
 
-impl ComponentEditBox {
-	pub fn set_text(&self, common: &mut CallbackDataCommon, text: Translation) {
-		let Some(mut label) = common.state.widgets.get_as::<WidgetLabel>(self.data.id_label) else {
-			return;
-		};
+fn update_text(common: &mut CallbackDataCommon, state: &mut State, data: &Data, text: String) {
+	let Some(mut label) = common.state.widgets.get_as::<WidgetLabel>(data.id_label) else {
+		return;
+	};
 
-		label.set_text(common, text);
+	label.set_text(common, Translation::from_raw_text(&text));
+
+	common.alterables.refresh_component_once(&state.self_ref);
+
+	state.text = text;
+}
+
+impl ComponentEditBox {
+	pub fn set_text(&self, common: &mut CallbackDataCommon, text: &str) {
+		let mut state = self.state.borrow_mut();
+		update_text(common, &mut state, &self.data, String::from(text));
 	}
 
 	pub fn get_text(&self) -> Ref<'_, String> {
 		Ref::map(self.state.borrow(), |x| &x.text)
 	}
+}
+
+fn register_event_text_input(
+	state: Rc<RefCell<State>>,
+	data: Rc<Data>,
+	listeners: &mut EventListenerCollection,
+) -> event::EventListenerID {
+	listeners.register(
+		EventListenerKind::TextInput,
+		Box::new(move |common, evt, (), ()| {
+			let mut state = state.borrow_mut();
+			if !state.focused {
+				return Ok(EventResult::Pass);
+			}
+
+			let CallbackMetadata::TextInput(input) = &evt.metadata else {
+				unreachable!();
+			};
+
+			let Some(input_text) = &input.text else {
+				return Ok(EventResult::Pass); // nothing to do
+			};
+
+			let Some(ch) = input_text.chars().next() else {
+				return Ok(EventResult::Pass); // ???
+			};
+
+			let mut new_text = std::mem::take(&mut state.text);
+
+			if ch == '\x08' {
+				// Backspace
+				new_text.pop();
+			} else {
+				let printable = !input_text.chars().any(char::is_control);
+				if printable {
+					new_text.push_str(input_text);
+				}
+			}
+
+			update_text(common, &mut state, &data, new_text);
+
+			Ok(EventResult::Consumed)
+		}),
+	)
 }
 
 fn register_event_mouse_enter(
@@ -217,6 +281,7 @@ pub fn construct(
 ) -> anyhow::Result<(WidgetPair, Rc<ComponentEditBox>)> {
 	let globals = ess.layout.state.globals.clone();
 	let defaults = globals.defaults();
+	let text_color = defaults.text_color;
 	drop(defaults);
 
 	if params.style.size.width.is_auto() {
@@ -232,7 +297,7 @@ pub fn construct(
 	params.style.position = taffy::Position::Relative;
 	params.style.overflow = taffy::Point {
 		x: taffy::Overflow::Scroll,
-		y: taffy::Overflow::Scroll,
+		y: taffy::Overflow::Visible,
 	};
 	params.style.min_size = params.style.max_size;
 
@@ -296,13 +361,34 @@ pub fn construct(
 				},
 			},
 		),
-		Default::default(),
+		taffy::Style {
+			position: taffy::Position::Relative,
+			..Default::default()
+		},
+	)?;
+
+	let (rect_cursor, _) = ess.layout.add_child(
+		label_parent.id,
+		WidgetRectangle::create(WidgetRectangleParams {
+			color: text_color.with_alpha(0.75),
+			..Default::default()
+		}),
+		taffy::Style {
+			align_self: Some(taffy::AlignSelf::Center),
+			justify_self: Some(taffy::JustifySelf::End),
+			min_size: taffy::Size {
+				width: length(2.0),
+				height: length(16.0),
+			},
+			..Default::default()
+		},
 	)?;
 
 	let data = Rc::new(Data {
 		id_rect_container: id_container,
 		id_label: label.id,
 		id_rect_bottom: rect_bottom.id,
+		id_rect_cursor: rect_cursor.id,
 	});
 
 	let state = Rc::new(RefCell::new(State {
@@ -322,6 +408,7 @@ pub fn construct(
 				register_event_mouse_enter(state.clone(), &mut root_state.event_listeners),
 				register_event_mouse_leave(state.clone(), &mut root_state.event_listeners),
 				register_event_mouse_press(state.clone(), &mut root_state.event_listeners),
+				register_event_text_input(state.clone(), data.clone(), &mut root_state.event_listeners),
 			]
 		},
 	};

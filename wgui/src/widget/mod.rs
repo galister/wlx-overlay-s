@@ -311,6 +311,8 @@ impl WidgetState {
 	}
 
 	pub fn get_scroll_shift_smooth(&self, info: &ScrollbarInfo, l: &taffy::Layout, timestep_alpha: f32) -> (Vec2, bool) {
+		//return (self.get_scroll_shift_raw(info, l), false);
+
 		let currently_animating = self.data.scrolling_cur != self.data.scrolling_cur_prev;
 
 		let scrolling = self
@@ -368,7 +370,8 @@ impl WidgetState {
 			return;
 		}
 
-		let transform = state.transform_stack.get();
+		let transform_widget = state.transform_stack.get();
+		let transform_parent = state.transform_stack.parent();
 
 		let thickness = 6.0;
 		let margin = 6.0;
@@ -385,12 +388,15 @@ impl WidgetState {
 				PrimitiveExtent {
 					boundary: drawing::Boundary::from_pos_size(
 						Vec2::new(
-							transform.rel_pos.x + transform.raw_dim.x * (1.0 - info.handle_size.x) * self.data.scrolling_cur.x,
-							transform.rel_pos.y + transform.raw_dim.y - thickness - margin,
+							// X
+							transform_widget.content_rel_pos.x
+								+ transform_parent.raw_dim.x * (1.0 - info.handle_size.x) * self.data.scrolling_cur.x,
+							// Y
+							transform_widget.content_rel_pos.y + transform_widget.raw_dim.y - thickness - margin,
 						),
-						Vec2::new(transform.raw_dim.x * info.handle_size.x, thickness),
+						Vec2::new(transform_widget.raw_dim.x * info.handle_size.x, thickness),
 					),
-					transform: transform.transform,
+					transform: transform_parent.transform,
 				},
 				rect_params,
 			));
@@ -402,12 +408,15 @@ impl WidgetState {
 				PrimitiveExtent {
 					boundary: drawing::Boundary::from_pos_size(
 						Vec2::new(
-							transform.rel_pos.x + transform.raw_dim.x - thickness - margin,
-							transform.rel_pos.y + transform.raw_dim.y * (1.0 - info.handle_size.y) * self.data.scrolling_cur.y,
+							// X
+							transform_widget.content_rel_pos.x + transform_widget.raw_dim.x - thickness - margin,
+							// Y
+							transform_widget.content_rel_pos.y
+								+ transform_parent.raw_dim.y * (1.0 - info.handle_size.y) * self.data.scrolling_cur.y,
 						),
-						Vec2::new(thickness, transform.raw_dim.y * info.handle_size.y),
+						Vec2::new(thickness, transform_widget.raw_dim.y * info.handle_size.y),
 					),
-					transform: transform.transform,
+					transform: transform_parent.transform,
 				},
 				rect_params,
 			));
@@ -489,16 +498,19 @@ impl WidgetState {
 		let mut res: Option<InvokeListenersResult> = None;
 
 		match &event {
+			Event::TextInput(e) => {
+				res = Some(self.invoke_listeners(
+					&mut invoke_data,
+					EventListenerKind::TextInput,
+					CallbackMetadata::TextInput(e.clone()),
+				)?);
+			}
 			Event::MouseDown(e) => {
 				if hovered && self.data.set_device_pressed(e.device, true) {
 					res = Some(self.invoke_listeners(
 						&mut invoke_data,
 						EventListenerKind::MousePress,
-						CallbackMetadata::MouseButton(event::MouseButton {
-							index: e.index,
-							pos: e.pos,
-							device: e.device,
-						}),
+						CallbackMetadata::MouseButton(*e),
 					)?);
 				}
 			}
@@ -507,11 +519,7 @@ impl WidgetState {
 					res = Some(self.invoke_listeners(
 						&mut invoke_data,
 						EventListenerKind::MouseRelease,
-						CallbackMetadata::MouseButton(event::MouseButton {
-							index: e.index,
-							pos: e.pos,
-							device: e.device,
-						}),
+						CallbackMetadata::MouseButton(*e),
 					)?);
 				}
 			}

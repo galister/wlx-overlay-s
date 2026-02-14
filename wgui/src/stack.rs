@@ -39,6 +39,11 @@ impl<T: StackItem<T>, const STACK_MAX: usize> GenericStack<T, STACK_MAX> {
 	pub const fn get(&self) -> &T {
 		&self.stack[(self.top - 1) as usize]
 	}
+
+	pub const fn parent(&self) -> &T {
+		debug_assert!(self.top >= 2);
+		&self.stack[(self.top - 2) as usize]
+	}
 }
 
 impl<T: StackItem<T>, const STACK_MAX: usize> Default for GenericStack<T, STACK_MAX> {
@@ -54,9 +59,11 @@ impl<T: StackItem<T>, const STACK_MAX: usize> Default for GenericStack<T, STACK_
 #[derive(Debug, Copy, Clone)]
 pub struct Transform {
 	pub rel_pos: Vec2,
-	pub visual_dim: Vec2, // for convenience
-	pub raw_dim: Vec2,    // for convenience
-	pub abs_pos: Vec2,    // for convenience, will be set after pushing
+	pub visual_dim: Vec2,
+	pub raw_dim: Vec2,
+	pub content_rel_pos: Vec2,
+	pub content_dim: Vec2,
+	pub abs_pos: Vec2, // for convenience, will be set after pushing
 	pub transform: glam::Mat4,
 	pub transform_rel: glam::Mat4,
 }
@@ -68,6 +75,8 @@ impl Default for Transform {
 			rel_pos: Default::default(),
 			visual_dim: Default::default(),
 			raw_dim: Default::default(),
+			content_dim: Default::default(),
+			content_rel_pos: Default::default(),
 			transform: Mat4::IDENTITY,
 			transform_rel: Default::default(),
 		}

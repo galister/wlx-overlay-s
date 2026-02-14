@@ -93,19 +93,18 @@
             position="absolute" width="100%" height="100%"
             gradient="radial" color="#44BBFF11" color2="#00000000" />
 
-          <div
-            id="content"
-            flex_direction="column"
-            overflow_x="scroll"
-            overflow_y="scroll"
-            padding="16"
-            gap="8"
-            width="100%"
-            min_height="100%"
-          >
-            <!-- filled-in at runtime -->
+          <div overflow_x="scroll" overflow_y="scroll" width="100%" height="100%">
+            <div
+              id="content"
+              flex_direction="column"
+              padding="16"
+              gap="8"
+              width="100%"
+              height="100%"
+            >
+              <!-- filled-in at runtime -->
+            </div>
           </div>
-
           <div position="absolute" id="popup_manager" width="100%" height="100%" />
         </rectangle>
         <!-- BOTTOM PANEL -->

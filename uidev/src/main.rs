@@ -1,25 +1,25 @@
-use glam::{vec2, Vec2};
-use std::sync::Arc;
-use testbed::{testbed_any::TestbedAny, Testbed};
+use glam::{Vec2, vec2};
+use std::{rc::Rc, sync::Arc};
+use testbed::{Testbed, testbed_any::TestbedAny};
+use tracing_subscriber::EnvFilter;
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::EnvFilter;
 use vulkan::init_window;
 use vulkano::{
+	Validated, VulkanError,
 	command_buffer::CommandBufferUsage,
 	format::Format,
-	image::{view::ImageView, ImageUsage},
+	image::{ImageUsage, view::ImageView},
 	swapchain::{
-		acquire_next_image, ColorSpace, CompositeAlpha, PresentMode, Surface, SurfaceInfo, Swapchain,
-		SwapchainCreateInfo, SwapchainPresentInfo,
+		ColorSpace, CompositeAlpha, PresentMode, Surface, SurfaceInfo, Swapchain, SwapchainCreateInfo,
+		SwapchainPresentInfo, acquire_next_image,
 	},
 	sync::GpuFuture,
-	Validated, VulkanError,
 };
 use wgui::{
-	event::{MouseButtonIndex, MouseDownEvent, MouseMotionEvent, MouseUpEvent, MouseWheelEvent},
-	gfx::{cmd::WGfxClearMode, WGfx},
+	event::{MouseButtonEvent, MouseButtonIndex, MouseMotionEvent, MouseWheelEvent},
+	gfx::{WGfx, cmd::WGfxClearMode},
 	renderer_vk::{self},
 };
 use winit::{
@@ -32,7 +32,7 @@ use wlx_common::{audio, timestep::Timestep};
 use crate::{
 	rate_limiter::RateLimiter,
 	testbed::{
-		testbed_dashboard::TestbedDashboard, testbed_generic::TestbedGeneric, TestbedUpdateParams,
+		TestbedUpdateParams, testbed_dashboard::TestbedDashboard, testbed_generic::TestbedGeneric,
 	},
 };
 
@@ -174,7 +174,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 						testbed
 							.layout()
 							.push_event(
-								&wgui::event::Event::MouseDown(MouseDownEvent {
+								&wgui::event::Event::MouseDown(MouseButtonEvent {
 									pos: mouse / scale,
 									index: MouseButtonIndex::Left,
 									device: 0,
@@ -187,7 +187,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 						testbed
 							.layout()
 							.push_event(
-								&wgui::event::Event::MouseUp(MouseUpEvent {
+								&wgui::event::Event::MouseUp(MouseButtonEvent {
 									pos: mouse / scale,
 									index: MouseButtonIndex::Left,
 									device: 0,
@@ -221,33 +221,46 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 				..
 			} => {
 				if event.state == ElementState::Pressed {
-					if event.physical_key == PhysicalKey::Code(KeyCode::F10) {
-						debug_draw_enabled = !debug_draw_enabled;
-						if debug_draw_enabled {
-							log::info!(
-								"Debug draw enabled\n\tAqua: widget boundary\n\tMagenta: Scissoring (separate render pass)"
-							);
+					if !event.repeat {
+						if event.physical_key == PhysicalKey::Code(KeyCode::F10) {
+							debug_draw_enabled = !debug_draw_enabled;
+							if debug_draw_enabled {
+								log::info!(
+									"Debug draw enabled\n\tAqua: widget boundary\n\tMagenta: Scissoring (separate render pass)"
+								);
+							}
+							testbed.layout().mark_redraw();
 						}
-						testbed.layout().mark_redraw();
+
+						if event.physical_key == PhysicalKey::Code(KeyCode::F11) {
+							testbed.layout().print_tree();
+						}
+
+						if event.physical_key == PhysicalKey::Code(KeyCode::Equal) {
+							scale *= 1.25;
+							render_context
+								.update_viewport(&mut shared_context, swapchain_size, scale)
+								.unwrap();
+						}
+
+						if event.physical_key == PhysicalKey::Code(KeyCode::Minus) {
+							scale *= 0.75;
+							render_context
+								.update_viewport(&mut shared_context, swapchain_size, scale)
+								.unwrap();
+						}
 					}
 
-					if event.physical_key == PhysicalKey::Code(KeyCode::F11) {
-						testbed.layout().print_tree();
-					}
-
-					if event.physical_key == PhysicalKey::Code(KeyCode::Equal) {
-						scale *= 1.25;
-						render_context
-							.update_viewport(&mut shared_context, swapchain_size, scale)
-							.unwrap();
-					}
-
-					if event.physical_key == PhysicalKey::Code(KeyCode::Minus) {
-						scale *= 0.75;
-						render_context
-							.update_viewport(&mut shared_context, swapchain_size, scale)
-							.unwrap();
-					}
+					testbed
+						.layout()
+						.push_event(
+							&wgui::event::Event::TextInput(wgui::event::TextInputEvent {
+								text: event.text.map(|text| Rc::from(text.as_str())),
+							}),
+							&mut (),
+							&mut (),
+						)
+						.unwrap();
 				}
 			}
 			Event::WindowEvent {

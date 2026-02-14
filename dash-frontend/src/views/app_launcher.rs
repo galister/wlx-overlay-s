@@ -50,7 +50,6 @@ enum CompositorMode {
 enum Task {
 	SetCompositor(CompositorMode),
 	SetRes(ResMode),
-	SetPos(PosMode), // TODO?
 	SetOrientation(OrientationMode),
 	SetAutoStart(bool),
 	Launch,
@@ -295,7 +294,6 @@ impl View {
 				match task {
 					Task::SetCompositor(mode) => self.compositor_mode = mode,
 					Task::SetRes(mode) => self.res_mode = mode,
-					Task::SetPos(mode) => self.pos_mode = mode,
 					Task::SetOrientation(mode) => self.orientation_mode = mode,
 					Task::SetAutoStart(auto_start) => self.auto_start = auto_start,
 					Task::Launch => self.action_launch(interface, data),

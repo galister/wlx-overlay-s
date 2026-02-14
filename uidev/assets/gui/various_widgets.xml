@@ -66,8 +66,9 @@
         </rectangle>
         <rectangle macro="rect">
           <label text="Editbox test" />
-          <EditBox text="Initial text. Test, abcdef." />
-          <EditBox />
+          <EditBox text="Initial text. Test, abcdef." width="400" />
+
+          <EditBox margin_left="42" margin_top="42" margin_bottom="40" width="200" />
         </rectangle>
       </div>
 
