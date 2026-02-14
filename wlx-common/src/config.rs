@@ -184,6 +184,9 @@ pub struct GeneralConfig {
 	#[serde(default = "def_one")]
 	pub long_press_duration: f32,
 
+	#[serde(default = "def_true")]
+	pub long_press_to_right_click: bool,
+
 	#[serde(default = "def_mouse_move_interval_ms")]
 	pub mouse_move_interval_ms: i32,
 

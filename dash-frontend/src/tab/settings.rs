@@ -231,6 +231,7 @@ enum SettingType {
 	Language,
 	LeftHandedMouse,
 	LongPressDuration,
+	LongPressToRightClick,
 	NotificationsEnabled,
 	NotificationsSoundEnabled,
 	OpaqueBackground,
@@ -267,6 +268,7 @@ impl SettingType {
 			Self::AllowSliding => &mut config.allow_sliding,
 			Self::FocusFollowsMouseMode => &mut config.focus_follows_mouse_mode,
 			Self::LeftHandedMouse => &mut config.left_handed_mouse,
+			Self::LongPressToRightClick => &mut config.long_press_to_right_click,
 			Self::BlockGameInput => &mut config.block_game_input,
 			Self::BlockGameInputIgnoreWatch => &mut config.block_game_input_ignore_watch,
 			Self::BlockPosesOnKbdInteraction => &mut config.block_poses_on_kbd_interaction,
@@ -378,6 +380,7 @@ impl SettingType {
 			Self::Language => Ok("APP_SETTINGS.LANGUAGE"),
 			Self::LeftHandedMouse => Ok("APP_SETTINGS.LEFT_HANDED_MOUSE"),
 			Self::LongPressDuration => Ok("APP_SETTINGS.LONG_PRESS_DURATION"),
+			Self::LongPressToRightClick => Ok("APP_SETTINGS.LONG_PRESS_TO_RIGHT_CLICK"),
 			Self::NotificationsEnabled => Ok("APP_SETTINGS.NOTIFICATIONS_ENABLED"),
 			Self::NotificationsSoundEnabled => Ok("APP_SETTINGS.NOTIFICATIONS_SOUND_ENABLED"),
 			Self::OpaqueBackground => Ok("APP_SETTINGS.OPAQUE_BACKGROUND"),
@@ -831,6 +834,7 @@ impl<T> TabSettings<T> {
 				checkbox!(mp, c, SettingType::InvertScrollDirectionY);
 				slider_f32!(mp, c, SettingType::ScrollSpeed, 0.1, 5.0, 0.1);
 				slider_f32!(mp, c, SettingType::LongPressDuration, 0.1, 2.0, 0.1);
+				checkbox!(mp, c, SettingType::LongPressToRightClick);
 				slider_f32!(mp, c, SettingType::PointerLerpFactor, 0.1, 1.0, 0.1);
 				slider_f32!(mp, c, SettingType::XrClickSensitivity, 0.1, 1.0, 0.1);
 				slider_f32!(mp, c, SettingType::XrClickSensitivityRelease, 0.1, 1.0, 0.1);

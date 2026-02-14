@@ -182,6 +182,9 @@
 ## before it's considered a long press
 #long_press_duration: 1.0
 
+## When enabled, a long press will be interpreted as a right click.
+#long_press_to_right_click: true
+
 ## Change speed of scrolling
 # 0.5 → half the speed
 # 2.0 → twice the speed

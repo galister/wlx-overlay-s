@@ -67,6 +67,7 @@
 		"LEFT_HANDED_MOUSE": "Left-handed mouse",
 		"LEFT_HANDED_MOUSE_HELP": "Use this if mouse buttons are swapped",
 		"LONG_PRESS_DURATION": "Long press duration",
+		"LONG_PRESS_TO_RIGHT_CLICK": "Long press to right click",
 		"LOOK_AND_FEEL": "Look & Feel",
 		"MISC": "Miscellaneous",
 		"NOTIFICATIONS_ENABLED": "Enable notifications",
