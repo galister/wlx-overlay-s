@@ -6,7 +6,7 @@
 
 ## [Built-in components](#components)
 
-[Button](#button-component), [Slider](#slider-component), [CheckBox](#checkbox-component)
+[Button](#button-component), [Slider](#slider-component), [CheckBox](#checkbox-component), [Tabs](#tabs-component) ([Tab](#tab-component))
 
 ## [Examples](#examples)
 
@@ -369,6 +369,42 @@ _optional value that will be set as the RadioGroup's value_
 ### `<RadioGroup>`
 
 ### A radio group. Place `<RadioBox>` components inside this.
+
+## Tabs component
+
+### `<Tabs>`
+
+### A tab bar component
+
+#### Parameters
+
+`id`: **string**
+
+_Unique identifier for the tab group_
+
+Only `<Tab>` components should be placed inside `<Tabs>`.
+
+---
+
+## Tab component
+
+### `<Tab>`
+
+### A single tab inside a `<Tabs>` component
+
+#### Parameters
+
+`name`: **string**
+
+_Unique identifier for the tab_
+
+`translation`: **string**
+
+_Translated by key_
+
+`sprite_src` | `sprite_src_ext` | `sprite_src_builtin` | `sprite_src_internal`
+
+_Image path (see [sprite](#sprite-widget)) for src descriptions_
 
 ---
 
