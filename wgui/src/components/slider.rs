@@ -324,7 +324,6 @@ fn register_event_mouse_enter(
 			common.alterables.trigger_haptics();
 			state.borrow_mut().hovered = true;
 			on_enter_anim(common, data.slider_handle_rect_id, anim_mult);
-
 			ComponentTooltip::register_hover_in(common, &tooltip_info, event_data.widget_id, state.clone());
 
 			Ok(EventResult::Pass)
@@ -388,6 +387,7 @@ fn register_event_mouse_press(
 		EventListenerKind::MousePress,
 		Box::new(move |common, event_data, (), ()| {
 			common.alterables.trigger_haptics();
+			common.alterables.unfocus();
 			let mut state = state.borrow_mut();
 
 			let CallbackMetadata::MouseButton(btn) = event_data.metadata else {
@@ -534,26 +534,20 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	let base = ComponentBase {
 		id: root.id,
 		lhandles: {
-			let mut widget = ess.layout.state.widgets.get(body_id).unwrap().state();
+			let listeners = &mut root.widget.state().event_listeners;
 			let anim_mult = ess.layout.state.globals.defaults().animation_mult;
 			vec![
-				register_event_mouse_enter(
-					data.clone(),
-					state.clone(),
-					&mut widget.event_listeners,
-					params.tooltip,
-					anim_mult,
-				),
-				register_event_mouse_leave(data.clone(), state.clone(), &mut widget.event_listeners, anim_mult),
-				register_event_mouse_motion(data.clone(), state.clone(), &mut widget.event_listeners),
-				register_event_mouse_press(data.clone(), state.clone(), &mut widget.event_listeners),
-				register_event_mouse_release(state.clone(), &mut widget.event_listeners),
+				register_event_mouse_enter(data.clone(), state.clone(), listeners, params.tooltip, anim_mult),
+				register_event_mouse_leave(data.clone(), state.clone(), listeners, anim_mult),
+				register_event_mouse_motion(data.clone(), state.clone(), listeners),
+				register_event_mouse_press(data.clone(), state.clone(), listeners),
+				register_event_mouse_release(state.clone(), listeners),
 			]
 		},
 	};
 
 	let slider = Rc::new(ComponentSlider { base, data, state });
 
-	ess.layout.register_component_refresh(Component(slider.clone()));
+	ess.layout.register_component_refresh(&Component(slider.clone()));
 	Ok((root, slider))
 }

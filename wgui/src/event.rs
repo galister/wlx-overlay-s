@@ -2,6 +2,7 @@ use std::{
 	any::{Any, TypeId},
 	cell::{Ref, RefMut},
 	collections::HashSet,
+	rc::Weak,
 };
 
 use glam::Vec2;
@@ -9,9 +10,10 @@ use slotmap::{DenseSlotMap, new_key_type};
 
 use crate::{
 	animation::{self, Animation},
+	components::{Component, ComponentTrait, ComponentWeak},
 	globals,
 	i18n::I18n,
-	layout::{LayoutState, LayoutTask, WidgetID},
+	layout::{LayoutDispatchFunc, LayoutState, LayoutTask, WidgetID},
 	sound::WguiSoundType,
 	stack::{ScissorStack, Transform, TransformStack},
 	widget::{EventResult, WidgetData, WidgetObj},
@@ -101,12 +103,14 @@ pub enum StyleSetRequest {
 	Margin(taffy::Rect<taffy::LengthPercentageAuto>),
 	Width(taffy::Dimension),
 	Height(taffy::Dimension),
+	Size(taffy::Size<taffy::Dimension>),
 }
 
 // alterables which will be dispatched in the next loop iteration phase
 #[derive(Default)]
 pub struct EventAlterables {
 	pub dirty_widgets: Vec<WidgetID>,
+	pub components_to_refresh_once: Vec<ComponentWeak>,
 	pub style_set_requests: Vec<(WidgetID, StyleSetRequest)>,
 	pub animations: Vec<animation::Animation>,
 	pub widgets_to_tick: HashSet<WidgetID>, // widgets which needs to be ticked in the next `Layout::update()` fn
@@ -147,8 +151,20 @@ impl EventAlterables {
 		self.tasks.push(LayoutTask::PlaySound(sound_type));
 	}
 
-	pub fn dispatch(&mut self, func: Box<dyn FnOnce(&mut CallbackDataCommon) -> anyhow::Result<()>>) {
-		self.tasks.push(LayoutTask::Dispatch(func))
+	pub fn dispatch(&mut self, func: LayoutDispatchFunc) {
+		self.tasks.push(LayoutTask::Dispatch(func));
+	}
+
+	pub fn focus<ComponentType: ComponentTrait>(&mut self, component: &Weak<ComponentType>) {
+		self.tasks.push(LayoutTask::SetFocus(component.clone()));
+	}
+
+	pub fn unfocus(&mut self) {
+		self.tasks.push(LayoutTask::Unfocus);
+	}
+
+	pub fn refresh_component_once<ComponentType: ComponentTrait>(&mut self, component: &Weak<ComponentType>) {
+		self.components_to_refresh_once.push(component.clone());
 	}
 }
 

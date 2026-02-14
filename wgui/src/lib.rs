@@ -18,7 +18,8 @@
 	clippy::needless_pass_by_ref_mut,
 	clippy::use_self,
 	clippy::match_same_arms,
-	clippy::too_many_lines
+	clippy::too_many_lines,
+	clippy::struct_excessive_bools
 )]
 
 pub mod animation;

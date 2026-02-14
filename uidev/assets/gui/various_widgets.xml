@@ -59,10 +59,17 @@
         </div>
       </rectangle>
 
-      <rectangle macro="rect">
-        <label text="Context menu test" />
-        <Button id="button_context_menu" text="Show context menu" />
-      </rectangle>
+      <div>
+        <rectangle macro="rect">
+          <label text="Context menu test" />
+          <Button id="button_context_menu" text="Show context menu" />
+        </rectangle>
+        <rectangle macro="rect">
+          <label text="Editbox test" />
+          <EditBox text="Initial text. Test, abcdef." />
+          <EditBox />
+        </rectangle>
+      </div>
 
       <rectangle macro="rect">
         <label text="visibility test" weight="bold" />

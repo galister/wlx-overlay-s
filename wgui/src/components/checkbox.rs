@@ -248,6 +248,7 @@ fn register_event_mouse_press(state: Rc<RefCell<State>>, listeners: &mut EventLi
 
 			common.alterables.trigger_haptics();
 			common.alterables.mark_redraw();
+			common.alterables.unfocus();
 
 			if state.hovered {
 				state.down = true;
@@ -431,13 +432,13 @@ pub fn construct(ess: &mut ConstructEssentials, params: Params) -> anyhow::Resul
 	let base = ComponentBase {
 		id: root.id,
 		lhandles: {
-			let mut widget = ess.layout.state.widgets.get(id_container).unwrap().state();
+			let listeners = &mut root.widget.state().event_listeners;
 			let anim_mult = ess.layout.state.globals.defaults().animation_mult;
 			vec![
-				register_event_mouse_enter(state.clone(), &mut widget.event_listeners, params.tooltip, anim_mult),
-				register_event_mouse_leave(state.clone(), &mut widget.event_listeners, anim_mult),
-				register_event_mouse_press(state.clone(), &mut widget.event_listeners),
-				register_event_mouse_release(data.clone(), state.clone(), &mut widget.event_listeners),
+				register_event_mouse_enter(state.clone(), listeners, params.tooltip, anim_mult),
+				register_event_mouse_leave(state.clone(), listeners, anim_mult),
+				register_event_mouse_press(state.clone(), listeners),
+				register_event_mouse_release(data.clone(), state.clone(), listeners),
 			]
 		},
 	};

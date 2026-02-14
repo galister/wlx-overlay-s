@@ -1,5 +1,6 @@
 mod component_button;
 mod component_checkbox;
+mod component_editbox;
 mod component_radio_group;
 mod component_slider;
 mod component_tabs;
@@ -22,6 +23,7 @@ use crate::{
 	parser::{
 		component_button::parse_component_button,
 		component_checkbox::{CheckboxKind, parse_component_checkbox},
+		component_editbox::parse_component_editbox,
 		component_radio_group::parse_component_radio_group,
 		component_slider::parse_component_slider,
 		component_tabs::parse_component_tabs,
@@ -1053,6 +1055,7 @@ fn parse_child<'a>(
 				file, ctx, child_node, parent_id, &attribs, tag_name,
 			)?);
 		}
+		"EditBox" => new_widget_id = Some(parse_component_editbox(ctx, parent_id, &attribs, tag_name)?),
 		"Tabs" => {
 			new_widget_id = Some(parse_component_tabs(ctx, child_node, parent_id, &attribs, tag_name)?);
 		}

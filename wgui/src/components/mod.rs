@@ -9,6 +9,7 @@ use crate::{
 
 pub mod button;
 pub mod checkbox;
+pub mod editbox;
 pub mod radio_group;
 pub mod slider;
 pub mod tabs;
@@ -16,6 +17,11 @@ pub mod tooltip;
 
 pub struct RefreshData<'a> {
 	pub common: &'a mut CallbackDataCommon<'a>,
+}
+
+pub struct FocusChangeData<'a> {
+	pub common: &'a mut CallbackDataCommon<'a>,
+	pub focused: bool,
 }
 
 // common component data
@@ -36,6 +42,7 @@ pub trait ComponentTrait: AnyTrait {
 	fn base(&self) -> &ComponentBase;
 	fn base_mut(&mut self) -> &mut ComponentBase;
 	fn refresh(&self, data: &mut RefreshData);
+	fn on_focus_change(&self, _data: &mut FocusChangeData) {}
 }
 
 #[derive(Clone)]

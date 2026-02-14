@@ -5,6 +5,7 @@ use wgui::{
 	widget::label::{WidgetLabel, WidgetLabelParams},
 };
 
+#[allow(dead_code)]
 pub fn create_label(layout: &mut Layout, parent: WidgetID, content: Translation) -> anyhow::Result<()> {
 	let label = WidgetLabel::create(
 		&mut layout.state.globals.get(),
