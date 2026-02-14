@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::Context;
 use glam::{Affine3A, Vec3, Vec3A};
-use slotmap::{HopSlotMap, Key, SecondaryMap};
+use slotmap::{Key, SecondaryMap, SlotMap};
 use wgui::log::LogErr;
 use wlx_common::{
     astr_containers::{AStrMap, AStrMapExt},
@@ -42,7 +42,7 @@ pub const MAX_OVERLAY_SETS: usize = 6;
 
 pub struct OverlayWindowManager<T> {
     wrappers: EditWrapperManager,
-    overlays: HopSlotMap<OverlayID, OverlayWindowData<T>>,
+    overlays: SlotMap<OverlayID, OverlayWindowData<T>>,
     sets: Vec<OverlayWindowSet>,
     global_set: OverlayWindowSet,
     /// The set that is currently visible.
@@ -65,7 +65,7 @@ where
     pub fn new(app: &mut AppState, headless: bool) -> anyhow::Result<Self> {
         let mut me = Self {
             wrappers: EditWrapperManager::default(),
-            overlays: HopSlotMap::with_key(),
+            overlays: SlotMap::<OverlayID, OverlayWindowData<T>>::with_key(),
             current_set: Some(0),
             restore_set: 0,
             sets: vec![OverlayWindowSet::default()],

@@ -18,7 +18,7 @@ use crate::{
 
 use anyhow::Context;
 use glam::{Vec2, vec2};
-use slotmap::{HopSlotMap, SecondaryMap, new_key_type};
+use slotmap::{SecondaryMap, SlotMap, new_key_type};
 use taffy::{NodeId, TaffyTree, TraversePartialTree};
 
 new_key_type! {
@@ -57,7 +57,7 @@ impl WeakWidget {
 	}
 }
 
-pub struct WidgetMap(HopSlotMap<WidgetID, Widget>);
+pub struct WidgetMap(SlotMap<WidgetID, Widget>);
 pub type WidgetNodeMap = SecondaryMap<WidgetID, taffy::NodeId>;
 
 #[derive(Clone)]
@@ -68,7 +68,7 @@ pub struct WidgetPair {
 
 impl WidgetMap {
 	fn new() -> Self {
-		Self(HopSlotMap::with_key())
+		Self(SlotMap::<WidgetID, Widget>::with_key())
 	}
 
 	pub fn get_as<T: 'static>(&self, handle: WidgetID) -> Option<RefMut<'_, T>> {
