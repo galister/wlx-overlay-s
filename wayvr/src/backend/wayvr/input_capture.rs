@@ -182,11 +182,16 @@ impl RestrictedState {
                     if entry.device.is_grabbed() {
                         Ok(false)
                     } else {
-                        entry
-                            .device
-                            .grab()
-                            .map(|()| true)
-                            .map_err(|error| with_device_context("grab", &entry.path, error))
+                        match entry.device.grab() {
+                            Ok(()) => {
+                                log::debug!(
+                                    "exclusively grabbed input device: {}",
+                                    evdev_device_desc(&entry.path, &entry.device)
+                                );
+                                Ok(true)
+                            }
+                            Err(error) => Err(with_device_context("grab", &entry.path, error)),
+                        }
                     }
                 };
 
@@ -218,10 +223,18 @@ impl RestrictedState {
                 continue;
             }
 
-            if let Err(error) = entry.device.ungrab()
-                && first_error.is_none()
-            {
-                first_error = Some(with_device_context("ungrab", &entry.path, error));
+            match entry.device.ungrab() {
+                Ok(()) => {
+                    log::debug!(
+                        "ungrabbed input device: {}",
+                        evdev_device_desc(&entry.path, &entry.device)
+                    );
+                }
+                Err(error) => {
+                    if first_error.is_none() {
+                        first_error = Some(with_device_context("ungrab", &entry.path, error));
+                    }
+                }
             }
         }
 
@@ -261,6 +274,15 @@ impl LibinputInterface for RestrictedInterface {
 
         if state.desired_grabbed {
             device.grab().map_err(io_errno)?;
+            log::debug!(
+                "exclusively grabbed input device on open: {}",
+                evdev_device_desc(path, &device)
+            );
+        } else {
+            log::debug!(
+                "opened input device (non-exclusive): {}",
+                evdev_device_desc(path, &device)
+            );
         }
 
         state.devices.insert(
@@ -275,7 +297,13 @@ impl LibinputInterface for RestrictedInterface {
     }
 
     fn close_restricted(&mut self, fd: OwnedFd) {
-        self.state.borrow_mut().devices.remove(&fd.as_raw_fd());
+        let removed = self.state.borrow_mut().devices.remove(&fd.as_raw_fd());
+        if let Some(removed) = removed {
+            log::debug!(
+                "closed input device (releasing grab): {}",
+                evdev_device_desc(&removed.path, &removed.device)
+            );
+        }
         drop(fd);
     }
 }
@@ -315,6 +343,8 @@ fn worker_main(
     if init_tx.send(Ok(())).is_err() {
         return;
     }
+
+    log::debug!("input capture worker started");
 
     let mut grabbed = false;
     let mut pending_grab = false;
@@ -563,9 +593,11 @@ fn process_libinput_event(par: ProcessLibinputEventParams) -> ProcessResult {
             if !par.grabbed {
                 // while ungrabbed, arm an automatic grab that triggers after release
                 if par.allow_deferred_grab
+                    && !*par.pending_grab
                     && key_combo_is_pressed(KeyCombo::GrabRelease, &state.pressed_keys)
                 {
                     *par.pending_grab = true;
+                    log::debug!("key combo triggered: GrabRelease (grab deferred until release)");
                 }
 
                 return ProcessResult::Continue;
@@ -590,6 +622,8 @@ fn process_libinput_event(par: ProcessLibinputEventParams) -> ProcessResult {
                 if combo_pressed == was_pressed {
                     continue;
                 }
+
+                log::debug!("key combo triggered: {combo:?} pressed={combo_pressed}");
 
                 if combo_pressed {
                     state.active_combos.insert(combo);
@@ -906,6 +940,17 @@ fn key_combo_is_pressed(combo: KeyCombo, pressed: &HashSet<u16>) -> bool {
 
 fn io_errno(error: io::Error) -> i32 {
     error.raw_os_error().unwrap_or(libc::EIO)
+}
+
+fn evdev_device_desc(path: &Path, device: &EvdevDevice) -> String {
+    let id = device.input_id();
+    format!(
+        "{} (vendor {:04x}, product {:04x}) {}",
+        device.name().unwrap_or("<unknown>"),
+        id.vendor(),
+        id.product(),
+        path.display()
+    )
 }
 
 fn with_device_context(action: &str, path: &Path, error: io::Error) -> io::Error {
