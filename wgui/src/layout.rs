@@ -658,14 +658,13 @@ impl Layout {
 	}
 
 	pub fn recompute_layout(&mut self) -> anyhow::Result<()> {
-		let size = Vec2::new(self.content_size.x.round(), self.content_size.y.round());
+		let size = self.content_size;
 
 		if !self.state.tree.dirty(self.tree_root_node)? && self.prev_size == size {
 			// Nothing to do
 			return Ok(());
 		}
 
-		log::trace!("re-computing layout, size {}x{}", size.x, size.y);
 		self.mark_redraw();
 		self.prev_size = size;
 
@@ -712,7 +711,7 @@ impl Layout {
 			},
 		)?;
 		let root_size = self.state.tree.layout(self.tree_root_node).unwrap().size;
-		if self.content_size.x != root_size.width || self.content_size.y != root_size.height {
+		if (self.content_size.x - root_size.width).abs() >= 1.0 || (self.content_size.y - root_size.height).abs() >= 1.0 {
 			log::debug!(
 				"content size changed: {:.0}x{:.0} → {:.0}x{:.0}",
 				self.content_size.x,

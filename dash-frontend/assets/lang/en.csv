@@ -219,7 +219,6 @@ APP_SETTINGS.SNAP_ANGLE_DEG,Window pitch & roll snap angle,Slider in Settings > 
 APP_SETTINGS.SNAP_ANGLE_DEG_HELP,Grabbed windows snap to this angle on pitch and roll axis.,Tooltip for the snap angle setting.
 APP_SETTINGS.ENABLE_WATCH,Enable watch,"Checkbox in Settings > Look & Feel tab. Enables the wrist watch UI element. ""Watch"" was previously translated as ""${DEFINITIONS.WATCH}""."
 APP_SETTINGS.SETS_ON_WATCH,Sets on watch,"Checkbox in Settings > Look & Feel tab. Shows overlay sets on the wrist watch display. ""Watch"" was previously translated as ""${DEFINITIONS.WATCH}"". ""Set"" was previously translated as ""${DEFINITIONS.SET}""."
-APP_SETTINGS.SHOW_WELCOME_SCREEN,Show welcome screen,Checkbox in Settings > Features tab. Controls whether the welcome/tutorial screen is shown on first launch.
 APP_SETTINGS.SKYBOX,Skymap,"Category header in Settings > Skymap tab. Groups skymap-related settings. ""Skymap"" was previously translated as ""${DEFINITIONS.SKYMAP}""."
 APP_SETTINGS.SKYMAP_ALREADY_DOWNLOADED,This skymap is already downloaded. Select desired action.,"Message shown in a dialog when attempting to download a skymap that is already present locally. ""Skymap"" was previously translated as ""${DEFINITIONS.SKYMAP}""."
 APP_SETTINGS.SPACE_DRAG,Playspace,"Category header in Settings. Groups playspace drag/physics settings including reset buttons and gravity. ""Playspace"" was previously translated as ""${DEFINITIONS.PLAYSPACE}""."
@@ -260,6 +259,7 @@ APP_SETTINGS.WHISPER_MODEL,Speech-to-text model,Dropdown label in Settings > Fea
 APP_SETTINGS.WHISPER_MODEL_HELP,"Whisper model to use.
 Larger models produce more accurate
 results, but consume more VRAM.",Tooltip for the speech-to-text model dropdown.
+APP_SETTINGS.TUTORIAL,Tutorial,Tooltip for tutorial button in the main screen.
 APP_SETTINGS.GRID_OPACITY,Floor grid opacity,Slider in Settings > Skybox tab. Controls the opacity of the floor grid when skybox is enabled.
 APP_SETTINGS.GRID_OPACITY_HELP,Opacity of the floor grid when the skymap is enabled,"Tooltip for the floor grid opacity slider. ""Skymap"" was previously translated as ""${DEFINITIONS.SKYMAP}""."
 APP_SETTINGS.XWAYLAND_BY_DEFAULT,Run apps in Compatibility mode by default,Checkbox in Settings > Miscellaneous tab. Launches apps in Cage/compatibility mode by default.

@@ -208,7 +208,6 @@
 		"SNAP_ANGLE_DEG_HELP": "掴んでいるウィンドウが、ピッチ軸とロール軸でこの角度にスナップします。",
 		"ENABLE_WATCH": "ウォッチを有効にする",
 		"SETS_ON_WATCH": "ウォッチにセットを表示",
-		"SHOW_WELCOME_SCREEN": "ウェルカムスクリーンを表示",
 		"SKYBOX": "スカイマップ",
 		"SKYMAP_ALREADY_DOWNLOADED": "このスカイマップはすでにダウンロード済みです。操作を選択してください。",
 		"SPACE_DRAG": "プレイスペース",
@@ -263,7 +262,8 @@
 			"CPU_ACCESSIBLE_VRAM": "CPUアクセス可能VRAM: {NUM} MiB",
 			"TITLE": "診断",
 			"ENABLE_REBAR": "VRパフォーマンスを最適化するため、BIOS設定でresizable BARを有効にして下さい"
-		}
+		},
+		"TUTORIAL": "チュートリアル"
 	},
 	"APPLICATION_LAUNCHER": "アプリランチャー",
 	"APPLICATION_STARTED": "アプリが起動しました",

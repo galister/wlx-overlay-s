@@ -208,7 +208,6 @@
 		"SNAP_ANGLE_DEG_HELP": "Le finestre afferrate si allineano a questo angolo sugli assi di beccheggio e rollio.",
 		"ENABLE_WATCH": "Attiva orologio",
 		"SETS_ON_WATCH": "Set sull'orologio",
-		"SHOW_WELCOME_SCREEN": "Mostra schermata di benvenuto",
 		"SKYBOX": "Skymap",
 		"SKYMAP_ALREADY_DOWNLOADED": "Questo skymap è già stato scaricato. Seleziona l'azione desiderata.",
 		"SPACE_DRAG": "Playspace",
@@ -263,7 +262,8 @@
 			"CPU_ACCESSIBLE_VRAM": "VRAM accessibile dalla CPU: {NUM} MiB",
 			"TITLE": "Diagnostica",
 			"ENABLE_REBAR": "Abilita Resizable BAR nelle impostazioni del BIOS per prestazioni VR ottimali"
-		}
+		},
+		"TUTORIAL": "Tutorial"
 	},
 	"APPLICATION_LAUNCHER": "Avvio applicazioni",
 	"APPLICATION_STARTED": "Applicazione avviata",

@@ -117,7 +117,7 @@ fn shift_padding(
 	taffy::Rect {
 		left: length(padding_left + if inv_x { 0.0 } else { shift.x }),
 		right: length(padding_right + if inv_x { shift.x } else { 0.0 }),
-		top: length(padding_top + shift.y + if inv_y { 0.0 } else { shift.y }),
+		top: length(padding_top + if inv_y { 0.0 } else { shift.y }),
 		bottom: length(padding_bottom + if inv_y { shift.y } else { 0.0 }),
 	}
 }

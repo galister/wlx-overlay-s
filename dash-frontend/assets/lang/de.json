@@ -208,7 +208,6 @@
 		"SNAP_ANGLE_DEG_HELP": "Gegriffene Fenster rasten auf der Nick- und Rollachse in diesem Winkel ein.",
 		"ENABLE_WATCH": "Handgelenk-Uhr aktivieren",
 		"SETS_ON_WATCH": "Sets auf Handgelenk-Uhr",
-		"SHOW_WELCOME_SCREEN": "Willkommensbildschirm anzeigen",
 		"SKYBOX": "Skymap",
 		"SKYMAP_ALREADY_DOWNLOADED": "Diese Skymap ist bereits heruntergeladen. Wähle eine Aktion aus.",
 		"SPACE_DRAG": "Playspace",
@@ -263,7 +262,8 @@
 			"CPU_ACCESSIBLE_VRAM": "CPU-zugänglicher VRAM: {NUM} MiB",
 			"TITLE": "Diagnose",
 			"ENABLE_REBAR": "Aktiviere resizable bar in den BIOS-Einstellungen für optimale VR-Performance"
-		}
+		},
+		"TUTORIAL": "Tutorial"
 	},
 	"APPLICATION_LAUNCHER": "Programmstarter",
 	"APPLICATION_STARTED": "Anwendung gestartet",

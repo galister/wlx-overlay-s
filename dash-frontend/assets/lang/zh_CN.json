@@ -208,7 +208,6 @@
 		"SNAP_ANGLE_DEG_HELP": "抓取窗口在俯仰轴和翻滚轴上按此角度对齐。",
 		"ENABLE_WATCH": "启用手表",
 		"SETS_ON_WATCH": "手表显示套装",
-		"SHOW_WELCOME_SCREEN": "显示欢迎界面",
 		"SKYBOX": "天空图",
 		"SKYMAP_ALREADY_DOWNLOADED": "此天空盒已下载。请选择操作。",
 		"SPACE_DRAG": "活动空间",
@@ -263,7 +262,8 @@
 			"CPU_ACCESSIBLE_VRAM": "CPU 可访问 VRAM: {NUM} MiB",
 			"TITLE": "诊断",
 			"ENABLE_REBAR": "请在 BIOS 设置中启用 Resizable BAR 以获得最佳 VR 性能"
-		}
+		},
+		"TUTORIAL": "教程"
 	},
 	"APPLICATION_LAUNCHER": "应用启动器",
 	"APPLICATION_STARTED": "应用程序已启动",

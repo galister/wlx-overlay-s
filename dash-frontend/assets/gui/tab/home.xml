@@ -1,6 +1,21 @@
 <layout version="2">
   <include src="@/gui/t_menu_button.xml" />
 
+  <template name="MiscButton">
+    <Button
+      id="${id}" macro="home_button"
+      min_width="64" height="36"
+      padding_left="8" padding_right="8">
+      <div gap="8"
+        align_items="center"
+        justify_content="center"
+        flex_direction="row">
+        <sprite src_builtin="${icon}" width="24" height="24" />
+        <label weight="bold" size="18" text="${text}" translation="${translation}" />
+      </div>
+    </Button>
+  </template>
+
   <elements>
     <div
       flex_direction="column"
@@ -33,17 +48,9 @@
       </div>
 
       <div gap="8">
-        <Button id="btn_welcome_screen" macro="home_button" tooltip="APP_SETTINGS.SHOW_WELCOME_SCREEN">
-          <sprite src_builtin="@/dashboard/welcome.svg" width="32" height="32" margin="16" />
-        </Button>
-
-        <Button id="btn_website" macro="home_button" tooltip_str="wayvr.org">
-          <sprite src_builtin="@/dashboard/globe.svg" width="32" height="32" margin="16" />
-        </Button>
-
-        <Button id="btn_donate" macro="home_button" tooltip="DONATE.SUPPORT_US">
-          <sprite src_builtin="@/dashboard/opencollective.svg" width="32" height="32" margin="16" />
-        </Button>
+        <MiscButton id="btn_welcome_screen" icon="@/dashboard/welcome.svg" translation="APP_SETTINGS.TUTORIAL"/>
+        <MiscButton id="btn_website" icon="@/dashboard/globe.svg" text="wayvr.org"/>
+        <MiscButton id="btn_donate" icon="@/dashboard/opencollective.svg" translation="DONATE.SUPPORT_US"/>
       </div>
     </div>
   </elements>
