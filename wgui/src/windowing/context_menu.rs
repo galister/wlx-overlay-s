@@ -156,6 +156,7 @@ impl ContextMenu {
 	pub fn tick(&mut self, layout: &mut Layout, parser_state: &mut ParserState) -> anyhow::Result<TickResult> {
 		if let Some(p) = self.pending_open.take() {
 			self.process_open(p, layout, parser_state)?;
+			self.window.reposition_if_outside(layout);
 			let _ = self.tasks.drain();
 			return Ok(TickResult::Opened);
 		}

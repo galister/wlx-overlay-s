@@ -657,9 +657,8 @@ impl Layout {
 		}
 	}
 
-	fn try_recompute_layout(&mut self, mut size: Vec2) -> anyhow::Result<()> {
-		size.x = size.x.round();
-		size.y = size.y.round();
+	pub fn recompute_layout(&mut self) -> anyhow::Result<()> {
+		let size = Vec2::new(self.content_size.x.round(), self.content_size.y.round());
 
 		if !self.state.tree.dirty(self.tree_root_node)? && self.prev_size == size {
 			// Nothing to do
@@ -734,7 +733,8 @@ impl Layout {
 			.animations
 			.process(&self.state, &mut self.alterables, params.timestep_alpha);
 		self.process_alterables(alterables)?;
-		self.try_recompute_layout(params.size)?;
+		self.content_size = params.size;
+		self.recompute_layout()?;
 		self.process_pending_components();
 
 		Ok(LayoutUpdateResult {
@@ -747,7 +747,7 @@ impl Layout {
 		self.animations.tick(&self.state, &mut alterables);
 		self.process_pending_widget_ticks(&mut alterables);
 		self.process_alterables(alterables)?;
-		self.try_recompute_layout(self.content_size /* cached value */)?;
+		self.recompute_layout()?;
 		self.process_pending_components();
 		Ok(())
 	}

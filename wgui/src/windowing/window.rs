@@ -1,7 +1,10 @@
 use std::{cell::RefCell, rc::Rc};
 
 use glam::Vec2;
-use taffy::prelude::{length, percent};
+use taffy::{
+	LengthPercentage,
+	prelude::{length, percent},
+};
 
 use crate::{
 	animation::{Animation, AnimationDuration, AnimationEasing},
@@ -20,6 +23,7 @@ struct OpenedWindow {
 	widget: WidgetPair,
 	input_grabber: Option<WidgetPair>,
 	content: WidgetPair,
+	placement: WguiWindowPlacement,
 
 	#[allow(dead_code)]
 	state: Option<ParserState>,
@@ -45,7 +49,7 @@ pub struct OnContentData {
 	pub widget: WidgetPair,
 }
 
-#[derive(Default)]
+#[derive(Clone, Copy, Default)]
 pub enum WguiWindowPlacement {
 	#[default]
 	TopLeft,
@@ -93,9 +97,89 @@ impl Default for WguiWindow {
 const WINDOW_DECORATION_PADDING: f32 = 2.0;
 const WINDOW_DECORATION_HEADER_HEIGHT: f32 = 32.0;
 
+fn shift_padding(
+	placement: WguiWindowPlacement,
+	rect: taffy::Rect<LengthPercentage>,
+	shift: Vec2,
+) -> taffy::Rect<LengthPercentage> {
+	let padding_left = rect.left.into_raw().value();
+	let padding_right = rect.right.into_raw().value();
+	let padding_top = rect.top.into_raw().value();
+	let padding_bottom = rect.bottom.into_raw().value();
+
+	let (inv_x, inv_y) = match placement {
+		WguiWindowPlacement::TopLeft => (false, false),
+		WguiWindowPlacement::BottomLeft => (false, true),
+		WguiWindowPlacement::TopRight => (true, false),
+		WguiWindowPlacement::BottomRight => (true, true),
+	};
+
+	taffy::Rect {
+		left: length(padding_left + if inv_x { 0.0 } else { shift.x }),
+		right: length(padding_right + if inv_x { shift.x } else { 0.0 }),
+		top: length(padding_top + shift.y + if inv_y { 0.0 } else { shift.y }),
+		bottom: length(padding_bottom + if inv_y { shift.y } else { 0.0 }),
+	}
+}
+
 impl WguiWindow {
 	pub fn close(&self) {
 		self.0.borrow_mut().opened_window = None;
+	}
+
+	// before                     after
+	// ┌───────────────────────┐  ┌───────────────────────┐
+	// │                  root │  │                  root │
+	// │                       │  │  ┌───────┐            │
+	// │                       │->│  │   win │            │
+	// │  ┌───────┐            │  │  │       │            │
+	// │  │   win │            │  │  │       │            │
+	// │  │       │            │  │  │       │            │
+	// └──│───────│────────────┘  └──└───────┘────────────┘
+	//    │       │
+	//    └───────┘
+	pub fn reposition_if_outside(&self, layout: &mut Layout) {
+		let mut state = self.0.borrow_mut();
+		let Some(window) = &mut state.opened_window else {
+			return;
+		};
+
+		let _ = layout.recompute_layout(); // just in case
+
+		let Some(style) = layout.state.get_widget_style(window.widget.id) else {
+			unreachable!(); // shouldn't happen
+		};
+
+		let content_size = layout.content_size;
+		let boundary = layout.state.get_widget_boundary(window.content.id);
+
+		let mut shift_x = 0.0;
+		let mut shift_y = 0.0;
+
+		if boundary.left() < 0.0 {
+			shift_x += boundary.left();
+		}
+
+		if boundary.top() < 0.0 {
+			shift_y += boundary.top();
+		}
+
+		if boundary.right() >= content_size.x {
+			shift_x -= boundary.right() - content_size.x;
+		}
+
+		if boundary.bottom() >= content_size.y {
+			shift_y -= boundary.bottom() - content_size.y;
+		}
+
+		layout.tasks.push(LayoutTask::SetWidgetStyle(
+			window.widget.id,
+			StyleSetRequest::Padding(shift_padding(
+				window.placement,
+				style.padding,
+				Vec2::new(shift_x, shift_y),
+			)),
+		));
 	}
 
 	pub fn open(&self, params: &mut WguiWindowParams) -> anyhow::Result<()> {
@@ -200,7 +284,7 @@ impl WguiWindow {
 			None
 		};
 
-		let (widget, _) = params.layout.add_topmost_child(
+		let (topmost_widget, _) = params.layout.add_topmost_child(
 			WidgetDiv::create(),
 			taffy::Style {
 				position: taffy::Position::Absolute,
@@ -219,7 +303,7 @@ impl WguiWindow {
 
 		// window slide animation
 		Animation::effect_slide(
-			widget.id,
+			topmost_widget.id,
 			AnimationDuration::Seconds(0.5),
 			AnimationEasing::OutQuint,
 			Vec2::new(0.0, 16.0),
@@ -236,7 +320,7 @@ impl WguiWindow {
 					extra: Default::default(),
 				},
 				params.layout,
-				widget.id,
+				topmost_widget.id,
 			)?;
 
 			let but_close = state.fetch_component_as::<ComponentButton>("but_close").unwrap();
@@ -255,11 +339,12 @@ impl WguiWindow {
 			let content = state.fetch_widget(&params.layout.state, "content")?;
 
 			self.0.borrow_mut().opened_window = Some(OpenedWindow {
-				widget,
+				widget: topmost_widget,
 				state: Some(state),
 				layout_tasks: params.layout.tasks.clone(),
 				content: content.clone(),
 				input_grabber,
+				placement: params.extra.placement,
 			});
 
 			content.id
@@ -267,14 +352,15 @@ impl WguiWindow {
 			// without decorations
 			let (content, _) = params
 				.layout
-				.add_child(widget.id, WidgetDiv::create(), Default::default())?;
+				.add_child(topmost_widget.id, WidgetDiv::create(), Default::default())?;
 
 			self.0.borrow_mut().opened_window = Some(OpenedWindow {
-				widget,
+				widget: topmost_widget,
 				state: None,
 				layout_tasks: params.layout.tasks.clone(),
 				content: content.clone(),
 				input_grabber,
+				placement: params.extra.placement,
 			});
 
 			content.id
