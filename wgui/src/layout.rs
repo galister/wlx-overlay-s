@@ -657,8 +657,11 @@ impl Layout {
 		}
 	}
 
-	pub fn recompute_layout(&mut self) -> anyhow::Result<()> {
-		let size = self.content_size;
+	pub fn recompute_layout(&mut self, new_size: Option<Vec2>) -> anyhow::Result<()> {
+		let size = match new_size {
+			Some(size) => Vec2::new(size.x.round(), size.y.round()),
+			None => self.content_size,
+		};
 
 		if !self.state.tree.dirty(self.tree_root_node)? && self.prev_size == size {
 			// Nothing to do
@@ -711,7 +714,7 @@ impl Layout {
 			},
 		)?;
 		let root_size = self.state.tree.layout(self.tree_root_node).unwrap().size;
-		if (self.content_size.x - root_size.width).abs() >= 1.0 || (self.content_size.y - root_size.height).abs() >= 1.0 {
+		if self.content_size.x != root_size.width || self.content_size.y != root_size.height {
 			log::debug!(
 				"content size changed: {:.0}x{:.0} → {:.0}x{:.0}",
 				self.content_size.x,
@@ -732,8 +735,7 @@ impl Layout {
 			.animations
 			.process(&self.state, &mut self.alterables, params.timestep_alpha);
 		self.process_alterables(alterables)?;
-		self.content_size = params.size;
-		self.recompute_layout()?;
+		self.recompute_layout(Some(params.size))?;
 		self.process_pending_components();
 
 		Ok(LayoutUpdateResult {
@@ -746,7 +748,7 @@ impl Layout {
 		self.animations.tick(&self.state, &mut alterables);
 		self.process_pending_widget_ticks(&mut alterables);
 		self.process_alterables(alterables)?;
-		self.recompute_layout()?;
+		self.recompute_layout(None)?;
 		self.process_pending_components();
 		Ok(())
 	}

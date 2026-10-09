@@ -144,7 +144,7 @@ impl WguiWindow {
 			return;
 		};
 
-		let _ = layout.recompute_layout(); // just in case
+		let _ = layout.recompute_layout(None); // required
 
 		let Some(style) = layout.state.get_widget_style(window.widget.id) else {
 			unreachable!(); // shouldn't happen
