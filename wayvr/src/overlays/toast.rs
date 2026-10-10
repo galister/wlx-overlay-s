@@ -1,4 +1,5 @@
 use std::{
+    collections::VecDeque,
     sync::{Arc, LazyLock},
     time::Instant,
 };
@@ -46,10 +47,90 @@ pub struct Toast {
     pub params: ToastParams,
 }
 
+#[derive(Clone)]
 pub struct BakedToast {
-    title_raw: String, // ready-to-display text
-    body_raw: String,  // ready-to-display text
+    title_raw: Arc<str>, // ready-to-display text
+    body_raw: Arc<str>,  // ready-to-display text
     params: ToastParams,
+}
+
+#[derive(Default)]
+pub struct ToastQueue {
+    queue: VecDeque<BakedToast>,
+    current: Option<BakedToast>,
+    current_remaining: f32,
+}
+
+pub fn toast_enqueue(app: &mut AppState, toast: BakedToast) {
+    let queue = &mut app.toast_queue;
+    let params = toast.params.clone();
+
+    // nothing currently showing, display immediately
+    if queue.current.is_none() {
+        queue.current = Some(toast);
+        queue.current_remaining = params.timeout;
+        queue
+            .current
+            .as_ref()
+            .unwrap()
+            .clone()
+            .submit_at(app, Instant::now());
+        return;
+    }
+
+    // if a Priority toast arrives, interrupt current one
+    if params.topic == ToastTopic::Priority {
+        // place current toast back to front of queue
+        if let Some(current_toast) = queue.current.take() {
+            let mut restored = current_toast;
+            restored.params.timeout = queue.current_remaining.max(3.0);
+            queue.queue.push_front(restored);
+        }
+
+        // display the priority toast
+        queue.current = Some(toast);
+        queue.current_remaining = params.timeout;
+        queue
+            .current
+            .as_ref()
+            .unwrap()
+            .clone()
+            .submit_at(app, Instant::now());
+    } else {
+        // queue non-priority toast
+        queue.queue.push_back(toast);
+    }
+}
+
+pub fn toast_tick(app: &mut AppState, delta: f32) {
+    let queue = &mut app.toast_queue;
+
+    if queue.current.is_none() {
+        // no current toast, try to pop from queue
+        if let Some(next_toast) = queue.queue.pop_front() {
+            let params = next_toast.params.clone();
+            queue.current = Some(next_toast);
+            queue.current_remaining = params.timeout;
+            queue
+                .current
+                .as_ref()
+                .unwrap()
+                .clone()
+                .submit_at(app, Instant::now());
+        }
+        return;
+    }
+
+    // decrement remaining time
+    queue.current_remaining -= delta;
+
+    if queue.current_remaining <= 0.0 {
+        // current toast expired, drop it and move to next
+        let selector = OverlaySelector::Name(TOAST_NAME.clone());
+        app.tasks
+            .enqueue(TaskType::Overlay(OverlayTask::Drop(selector)));
+        queue.current = None;
+    }
 }
 
 #[allow(dead_code)]
@@ -95,10 +176,13 @@ impl Toast {
     }
 
     pub fn submit(self, app: &mut AppState) {
-        self.submit_at(app, Instant::now());
+        let globals = app.wgui_globals.clone();
+        let baked = self.build(&mut globals.i18n());
+        toast_enqueue(app, baked);
     }
 
     pub fn extend_display_time(app: &mut AppState, seconds: f32) {
+        app.toast_queue.current_remaining += seconds;
         app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
             OverlaySelector::Name(TOAST_NAME.clone()),
             Box::new(move |_app, overlay| overlay.extend_lifetime(seconds)),
@@ -120,20 +204,20 @@ impl Toast {
         };
 
         BakedToast {
-            title_raw: String::from(title.generate(lang).as_ref()),
-            body_raw: String::from(self.body.generate(lang).as_ref()),
+            title_raw: Arc::from(title.generate(lang).as_ref()),
+            body_raw: Arc::from(self.body.generate(lang).as_ref()),
             params: self.params.clone(),
         }
     }
 
     pub fn build_raw(&self) -> BakedToast {
         BakedToast {
-            title_raw: String::from(if let Some(title) = &self.title {
+            title_raw: Arc::from(if let Some(title) = &self.title {
                 title.text.as_ref()
             } else {
                 ""
             }),
-            body_raw: String::from(self.body.text.as_ref()),
+            body_raw: Arc::from(self.body.text.as_ref()),
             params: self.params.clone(),
         }
     }
@@ -141,7 +225,7 @@ impl Toast {
 
 impl BakedToast {
     pub fn submit(self, app: &mut AppState) {
-        self.submit_at(app, Instant::now());
+        toast_enqueue(app, self);
     }
     pub fn submit_at(self, app: &mut AppState, instant: Instant) {
         let selector = OverlaySelector::Name(TOAST_NAME.clone());

@@ -10,6 +10,7 @@ pub enum ToastTopic {
 	DesktopNotification,
 	XSNotification,
 	IpdChange,
+	Priority,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
