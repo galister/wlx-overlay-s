@@ -402,7 +402,7 @@ struct MountDeviceSliderParams<'a> {
 	checked: bool,
 	muted: bool,
 	disp: Option<ProfileDisplayName>,
-	alt_desc: String,
+	device_desc: String,
 }
 
 fn push_popup_speakers_set_successfully(globals: &WguiGlobals, frontend_tasks: &FrontendTasks, name: &str) {
@@ -775,13 +775,13 @@ impl View {
 			par.insert("device_name", &disp.name);
 			par.insert("device_icon", disp.icon_path);
 		} else {
-			let icon_path = if params.alt_desc.contains("WiVRn") {
+			let icon_path = if params.device_desc.contains("WiVRn") {
 				"@/dashboard/wivrn_head_symbolic.svg"
 			} else {
 				"@/dashboard/binary.svg"
 			};
 
-			par.insert("device_name", &params.alt_desc);
+			par.insert("device_name", &params.device_desc);
 			par.insert("device_icon", icon_path);
 		}
 
@@ -865,7 +865,7 @@ impl View {
 				false
 			};
 
-			let alt_desc = sink.description.clone();
+			let device_desc = sink.description.clone();
 			let muted = sink.mute;
 
 			let control = Rc::new(ControlSink::new(self.tasks.clone(), self.on_update.clone(), sink));
@@ -877,7 +877,7 @@ impl View {
 			self.mount_device_slider(MountDeviceSliderParams {
 				checked,
 				disp,
-				alt_desc,
+				device_desc,
 				layout,
 				control,
 				muted,
@@ -905,7 +905,7 @@ impl View {
 				false
 			};
 
-			let alt_desc = source.description.clone();
+			let device_desc = source.description.clone();
 			let muted = source.mute;
 
 			let control = Rc::new(ControlSource::new(self.tasks.clone(), self.on_update.clone(), source));
@@ -917,7 +917,7 @@ impl View {
 			self.mount_device_slider(MountDeviceSliderParams {
 				checked,
 				disp,
-				alt_desc,
+				device_desc,
 				layout,
 				control,
 				muted,

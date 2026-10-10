@@ -280,7 +280,8 @@
 		"SETTINGS": "音频设置",
 		"SPEAKERS": "扬声器",
 		"SPEAKERS_SET_SUCCESSFULLY": "扬声器设置成功",
-		"VOLUME": "音量"
+		"VOLUME": "音量",
+		"SWITCH_TO_THIS_DEVICE": "切换至此设备"
 	},
 	"CLOSE_WINDOW": "关闭窗口",
 	"CREATION_DATE": "创建日期",

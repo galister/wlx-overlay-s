@@ -280,7 +280,8 @@
 		"SETTINGS": "Ajustes de audio",
 		"SPEAKERS": "Altavoces",
 		"SPEAKERS_SET_SUCCESSFULLY": "Altavoces configurados correctamente",
-		"VOLUME": "Volumen"
+		"VOLUME": "Volumen",
+		"SWITCH_TO_THIS_DEVICE": "Cambiar a este dispositivo"
 	},
 	"CLOSE_WINDOW": "Cerrar ventana",
 	"CREATION_DATE": "Fecha de creación",

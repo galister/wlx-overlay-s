@@ -268,6 +268,7 @@ APP_SETTINGS.CANCEL,Cancel,Button label in the controller bindings editor popup 
 APPLICATION_LAUNCHER,Application launcher,App launcher configuration popup title - appears as the label for the app launch/options dialog.
 APPLICATION_STARTED,Application started,Toast notification shown after a successful app launch.
 APPLICATIONS,Applications,Tab label in the dashboard sidebar for the Apps tab.
+AUDIO.SWITCH_TO_THIS_DEVICE,Switch to this device,Button in the audio settings dialog
 AUDIO.AUTO_SWITCH_TO_VR_AUDIO,Auto-switch to VR audio,Tooltip on the auto-switch audio button in the audio settings popup.
 AUDIO.CARDS,Cards,Button label in the audio settings popup for selecting audio card profiles.
 AUDIO.FAILED_TO_SWITCH_MICROPHONE,Failed to switch microphone,Error toast shown when switching to a VR microphone fails.

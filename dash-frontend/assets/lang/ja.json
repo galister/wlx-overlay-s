@@ -280,7 +280,8 @@
 		"SETTINGS": "オーディオ設定",
 		"SPEAKERS": "スピーカー",
 		"SPEAKERS_SET_SUCCESSFULLY": "スピーカーを設定完了",
-		"VOLUME": "音量"
+		"VOLUME": "音量",
+		"SWITCH_TO_THIS_DEVICE": "このデバイスに切り替え"
 	},
 	"CLOSE_WINDOW": "ウィンドウを閉じる",
 	"CREATION_DATE": "作成日",

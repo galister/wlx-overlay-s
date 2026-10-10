@@ -280,7 +280,8 @@
 		"SETTINGS": "Ustawienia dźwięku",
 		"SPEAKERS": "Głośniki",
 		"SPEAKERS_SET_SUCCESSFULLY": "Głośniki ustawione pomyślnie",
-		"VOLUME": "Głośność"
+		"VOLUME": "Głośność",
+		"SWITCH_TO_THIS_DEVICE": "Przełącz na to urządzenie"
 	},
 	"CLOSE_WINDOW": "Zamknij okno",
 	"CREATION_DATE": "Data utworzenia",

@@ -5,13 +5,13 @@
   <template name="DeviceSlider">
     <GroupBox id="rect">
       <div width="100%" align_items="center" justify_content="center" gap="8">
-        <sprite src_builtin="${device_icon}" width="16" height="16" color="on_background" />
+        <sprite src_builtin="${device_icon}" width="24" height="24" color="on_background" />
         <label text="${device_name}" margin_right="8" size="12" weight="bold" color="on_background" />
       </div>
       <div width="100%" align_items="center">
-        <CheckBox id="checkbox" />
-        <Button sprite_src_builtin="${volume_icon}" id="btn_mute" width="32" />
-        <Slider id="slider" flex_grow="1" height="16" min_value="0" max_value="150" margin_left="8" />
+        <CheckBox id="checkbox" tooltip="AUDIO.SWITCH_TO_THIS_DEVICE" />
+        <Slider id="slider" flex_grow="1" height="16" min_value="0" max_value="150" margin_left="8" margin_right="8" />
+        <Button sprite_src_builtin="${volume_icon}" id="btn_mute" width="32" height="32" />
       </div>
     </GroupBox>
   </template>

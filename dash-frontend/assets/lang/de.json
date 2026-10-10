@@ -280,7 +280,8 @@
 		"SETTINGS": "Audio-Einstellungen",
 		"SPEAKERS": "Lautsprecher",
 		"SPEAKERS_SET_SUCCESSFULLY": "Lautsprecher erfolgreich eingestellt",
-		"VOLUME": "Lautstärke"
+		"VOLUME": "Lautstärke",
+		"SWITCH_TO_THIS_DEVICE": "Zu diesem Gerät wechseln"
 	},
 	"CLOSE_WINDOW": "Fenster schließen",
 	"CREATION_DATE": "Erstellungsdatum",

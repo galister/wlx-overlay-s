@@ -21,6 +21,9 @@ pub struct Volume {
 
 	#[serde(rename = "front-right")]
 	pub front_right: Option<VolumeChannel>,
+
+	#[serde(rename = "mono")]
+	pub mono: Option<VolumeChannel>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -207,7 +210,7 @@ pub fn list_sources() -> anyhow::Result<Vec<Source>> {
 	// exclude all monitor sources
 	sources.retain(|source| match &source.properties.device_class {
 		Some(c) => c != "monitor",
-		None => false,
+		None => true, /* unknown, pass it */
 	});
 
 	Ok(sources)
@@ -242,6 +245,8 @@ pub fn get_source_volume(source: &Source) -> anyhow::Result<f32> {
 			front_left
 		} else if let Some(aux0) = &source.volume.aux0 {
 			aux0
+		} else if let Some(mono) = &source.volume.mono {
+			mono
 		} else {
 			return Ok(0.0); // fail silently
 		}
