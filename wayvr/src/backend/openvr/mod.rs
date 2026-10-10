@@ -116,6 +116,10 @@ pub fn openvr_run(args: &Args, params: RunParams) -> Result<(), BackendError> {
 
     let mut overlays = OverlayWindowManager::<OpenVrOverlayData>::new(&mut app, args.headless)?;
 
+    let mut dashboard_hidden = false;
+    let mut dash_toast_shown = false;
+    let mut dash_toast_id = None;
+
     let mut playspace = playspace::PlayspaceMover::new();
     playspace.playspace_changed(&mut compositor_mgr, &mut chaperone_mgr);
 
@@ -201,6 +205,28 @@ pub fn openvr_run(args: &Args, params: RunParams) -> Result<(), BackendError> {
                     }
                     _ => {}
                 }
+            }
+        }
+
+        if !dashboard_hidden {
+            if overlay_mgr.is_dashboard_visible() {
+                if !dash_toast_shown {
+                    let id = Toast::new(
+                        ToastTopic::Priority,
+                        Some(Translation::from_translation_key(
+                            "STEAMVR_DASH_TOAST_TITLE",
+                        )),
+                        Translation::from_translation_key("STEAMVR_DASH_TOAST_TEXT"),
+                    )
+                    .submit(&mut app);
+                    dash_toast_id = Some(id);
+                    dash_toast_shown = true;
+                }
+                if let Some(id) = dash_toast_id {
+                    Toast::extend_display_time(&mut app, id, 0.5);
+                }
+            } else {
+                dashboard_hidden = true;
             }
         }
 
