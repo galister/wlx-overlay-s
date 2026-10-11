@@ -92,10 +92,12 @@ impl OverlayLifetime {
         }
     }
 
-    pub fn extend(&mut self, seconds: f32) {
-        if seconds.is_finite() && seconds > 0.0 {
-            self.remaining += seconds;
-            self.duration += seconds;
+    pub fn set_expiry(&mut self, until: Instant) {
+        let now = Instant::now();
+        let remaining = until.duration_since(now).as_secs_f32();
+        if remaining.is_finite() {
+            self.remaining = remaining;
+            self.last_tick = now;
         }
     }
 
@@ -183,9 +185,9 @@ impl OverlayWindowConfig {
         self.tick_lifetime(app)
     }
 
-    pub fn extend_lifetime(&mut self, seconds: f32) {
+    pub fn set_lifetime_expiry(&mut self, until: Instant) {
         if let Some(lifetime) = self.lifetime.as_mut() {
-            lifetime.extend(seconds);
+            lifetime.set_expiry(until);
         }
     }
 

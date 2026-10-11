@@ -218,15 +218,16 @@ pub fn openvr_run(args: &Args, params: RunParams) -> Result<(), BackendError> {
                         )),
                         Translation::from_translation_key("STEAMVR_DASH_TOAST_TEXT"),
                     )
+                    .with_timeout(300.0) // we'll zero this if dash gets hidden
                     .submit(&mut app);
                     dash_toast_id = Some(id);
                     dash_toast_shown = true;
                 }
-                if let Some(id) = dash_toast_id {
-                    Toast::extend_display_time(&mut app, id, 0.5);
-                }
             } else {
                 dashboard_hidden = true;
+                if let Some(id) = dash_toast_id {
+                    Toast::expire_now(&mut app, id);
+                }
             }
         }
 

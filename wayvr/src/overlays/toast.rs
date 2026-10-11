@@ -141,14 +141,10 @@ pub fn toast_tick(app: &mut AppState, delta: f32) {
         return;
     }
 
-    // decrement remaining time
     queue.current_remaining -= delta;
 
     if queue.current_remaining <= 0.0 {
-        // current toast expired, drop it and move to next
-        let selector = OverlaySelector::Name(TOAST_NAME.clone());
-        app.tasks
-            .enqueue(TaskType::Overlay(OverlayTask::Drop(selector)));
+        // OverlayWindowManager handles the actual drop
         queue.current = None;
     }
 }
@@ -203,13 +199,18 @@ impl Toast {
         id
     }
 
-    /// extend display time of current toast if matches given ID
-    pub fn extend_display_time(app: &mut AppState, id: ToastId, seconds: f32) {
+    pub fn expire_now(app: &mut AppState, id: ToastId) {
+        Self::set_expiry(app, id, Instant::now());
+    }
+
+    /// set expiry of current toast if matches given ID
+    pub fn set_expiry(app: &mut AppState, id: ToastId, until: Instant) {
         if app.toast_queue.current_id() == Some(id) {
-            app.toast_queue.current_remaining += seconds;
+            let now = Instant::now();
+            app.toast_queue.current_remaining = until.duration_since(now).as_secs_f32().max(0.0);
             app.tasks.enqueue(TaskType::Overlay(OverlayTask::Modify(
                 OverlaySelector::Name(TOAST_NAME.clone()),
-                Box::new(move |_app, overlay| overlay.extend_lifetime(seconds)),
+                Box::new(move |_app, overlay| overlay.set_lifetime_expiry(until)),
             )));
         }
     }
