@@ -145,6 +145,8 @@
 		"NO_SET_SELECTED": "No set is selected.",
 		"ONE_CONTROLLER_ON_FLOOR": "Place one controller on the floor!"
 	},
+	"STEAMVR_DASH_TOAST_TITLE": "SteamVR Dashboard Open",
+	"STEAMVR_DASH_TOAST_TEXT": "Close SteamVR dashboard to start using WayVR.",
 	"WATCH": {
 		"ADD_NEW_SET": "Add a new set",
 		"CLEANUP_MIRRORS": "Remove mirrors that are\nnot currently visible",

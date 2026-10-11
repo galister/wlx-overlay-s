@@ -177,5 +177,7 @@
 		"SELECT_SCREEN_CAST_FOR": "为显示器 {DISPLAY} 选择屏幕投射",
 		"CANNOT_CAPTURE_KBD_MOUSE": "无法初始化键盘/鼠标捕获！\n请检查您的用户是否在 'input' 组中。",
 		"WE_ARE_GRABBING": "WayVR 正在接管你的键盘和鼠标！\n按 Super+Z 释放。"
-	}
+	},
+	"STEAMVR_DASH_TOAST_TITLE": "SteamVR 控制面板已开启",
+	"STEAMVR_DASH_TOAST_TEXT": "关闭 SteamVR 仪表板以开始使用 WayVR。"
 }

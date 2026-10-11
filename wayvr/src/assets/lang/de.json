@@ -177,5 +177,7 @@
 		"SELECT_SCREEN_CAST_FOR": "Screen-Cast für Display {DISPLAY} auswählen",
 		"CANNOT_CAPTURE_KBD_MOUSE": "Tastatur/Maus-Erfassung konnte nicht initialisiert werden!\nPrüfe, ob dein Benutzer in der Gruppe 'input' ist.",
 		"WE_ARE_GRABBING": "WayVR steuert jetzt deine Tastatur und Maus!\nDrücke Super+Z, um die Steuerung freizugeben."
-	}
+	},
+	"STEAMVR_DASH_TOAST_TITLE": "SteamVR Dashboard geöffnet",
+	"STEAMVR_DASH_TOAST_TEXT": "Schließe das SteamVR-Dashboard, um WayVR zu nutzen."
 }

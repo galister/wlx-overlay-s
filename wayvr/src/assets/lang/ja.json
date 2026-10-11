@@ -177,5 +177,7 @@
 		"SELECT_SCREEN_CAST_FOR": "ディスプレイ {DISPLAY} のスクリーンキャストを選択してください",
 		"CANNOT_CAPTURE_KBD_MOUSE": "キーボード/マウスのキャプチャを初期化できませんでした！\nユーザーが 'input' グループに所属しているか確認してください。",
 		"WE_ARE_GRABBING": "WayVR がキーボードとマウスを制御しています。\n解除するには、Super+Zを押してください。"
-	}
+	},
+	"STEAMVR_DASH_TOAST_TITLE": "SteamVRダッシュボード展開中",
+	"STEAMVR_DASH_TOAST_TEXT": "WayVRを使用するには、SteamVRダッシュボードを閉じてください。"
 }

@@ -177,5 +177,7 @@
 		"SELECT_SCREEN_CAST_FOR": "Seleccionar transmisión de pantalla para la pantalla {DISPLAY}",
 		"CANNOT_CAPTURE_KBD_MOUSE": "¡No se pudo inicializar la captura de teclado/ratón!\nComprueba que tu usuario esté en el grupo 'input'.",
 		"WE_ARE_GRABBING": "¡WayVR tiene el control de tu teclado y ratón!\nPulsa Super+Z para liberarlos."
-	}
+	},
+	"STEAMVR_DASH_TOAST_TITLE": "Panel de SteamVR abierto",
+	"STEAMVR_DASH_TOAST_TEXT": "Cierra el tablero de SteamVR para empezar a usar WayVR."
 }
