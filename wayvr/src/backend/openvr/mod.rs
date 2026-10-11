@@ -349,6 +349,9 @@ pub fn openvr_run(args: &Args, params: RunParams) -> Result<(), BackendError> {
 
         for o in overlays.values_mut() {
             if o.data.visible {
+                if !(dashboard_hidden || o.data.always_visible) {
+                    continue;
+                }
                 let ShouldRender::Should = o.should_render(&mut app)? else {
                     continue;
                 };
@@ -366,9 +369,12 @@ pub fn openvr_run(args: &Args, params: RunParams) -> Result<(), BackendError> {
         log::trace!("Rendering overlays");
         futures.wait()?;
 
-        overlays
-            .values_mut()
-            .for_each(|o| o.after_render(universe.clone(), &mut overlay_mgr, &app.gfx));
+        overlays.values_mut().for_each(|o| {
+            if !(dashboard_hidden || o.data.always_visible) {
+                return;
+            }
+            o.after_render(universe.clone(), &mut overlay_mgr, &app.gfx);
+        });
 
         lines.reset();
 

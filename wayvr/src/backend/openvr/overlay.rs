@@ -9,7 +9,7 @@ use ovr_overlay::{
 };
 use wgui::gfx::{ImageLayout, ImageUsage, ImageView, WGfx};
 
-use crate::{state::AppState, windowing::window::OverlayWindowData};
+use crate::{overlays::toast::TOAST_NAME, state::AppState, windowing::window::OverlayWindowData};
 
 use super::helpers::Affine3AConvert;
 
@@ -17,6 +17,7 @@ use super::helpers::Affine3AConvert;
 pub(super) struct OpenVrOverlayData {
     pub(super) handle: Option<OverlayHandle>,
     pub(super) visible: bool,
+    pub(super) always_visible: bool,
     pub(super) color: Vec4,
     pub(crate) width: f32,
     pub(super) override_width: bool,
@@ -40,6 +41,7 @@ impl OverlayWindowData<OpenVrOverlayData> {
         };
         log::debug!("{}: initialize", self.config.name);
 
+        self.data.always_visible = self.config.name.as_ref() == TOAST_NAME.as_ref();
         self.data.handle = Some(handle);
         self.data.color = Vec4::ONE;
 

@@ -32,7 +32,7 @@ use crate::{
     },
 };
 
-static TOAST_NAME: LazyLock<Arc<str>> = LazyLock::new(|| "toast".into());
+pub static TOAST_NAME: LazyLock<Arc<str>> = LazyLock::new(|| "toast".into());
 static TOAST_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
