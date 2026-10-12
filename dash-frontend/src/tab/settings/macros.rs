@@ -360,12 +360,12 @@ where
 						let text = &title.text;
 						let translated = if title.translated { "1" } else { "0" };
 
-						Some(context_menu::Cell {
+						Some(context_menu::Cell::Button(context_menu::Button {
 							action_name: Some(format!("{setting_str};{id};{value};{text};{translated}").into()),
 							title,
 							tooltip,
-							attribs: vec![],
-						})
+							..Default::default()
+						}))
 					})
 					.collect(),
 			));

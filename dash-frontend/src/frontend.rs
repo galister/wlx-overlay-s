@@ -306,7 +306,7 @@ impl<T: 'static> Frontend<T> {
 		);
 	}
 
-	fn process_power_action(&mut self, action: &str) {
+	fn process_power_action(&mut self, action: &str, data: &mut T) {
 		if !is_exec_installed("systemctl") {
 			// TODO: add support for other init systems?
 			self.tasks.push(FrontendTask::PushToast(Translation::from_raw_text(
@@ -316,6 +316,12 @@ impl<T: 'static> Frontend<T> {
 		}
 
 		match action {
+			"restart" => {
+				self.interface.restart(data);
+			}
+			"close" => {
+				self.interface.close(data);
+			}
 			"suspend" => {
 				self.tasks.push(FrontendTask::RunCommand(
 					String::from("systemctl"),
@@ -347,7 +353,7 @@ impl<T: 'static> Frontend<T> {
 		})?;
 
 		if let context_menu::TickResult::Action(action) = self.context_menu_power.tick(&mut self.layout, &mut self.state)? {
-			self.process_power_action(&action);
+			self.process_power_action(&action, params.data);
 		}
 
 		{

@@ -197,8 +197,6 @@
 		"SAVE_PLAYSPACE_CENTER_HELP": "Nutze aktuellen Playspace für die Playspace-Reset-Belegung.",
 		"RESET_PLAYSPACE_CENTER": "Playspace-Zentrum zurücksetzen",
 		"RESET_PLAYSPACE_CENTER_HELP": "Vorheriges Playspace-Zentrum zurücksetzen.",
-		"RESTART_SOFTWARE": "Software neu starten",
-		"RESTART_SOFTWARE_HELP": "Einstellungen übernehmen, die einen Neustart erfordern",
 		"ROUND_MULTIPLIER": "Abrundung der UI-Kanten",
 		"SCREEN_RENDER_DOWN": "Bildschirm mit niedrigerer Auflösung rendern",
 		"SCREEN_RENDER_DOWN_HELP": "Hilft gegen Treppeneffekte bei hochauflösenden Bildschirmen",
@@ -263,7 +261,9 @@
 			"TITLE": "Diagnose",
 			"ENABLE_REBAR": "Aktiviere resizable bar in den BIOS-Einstellungen für optimale VR-Performance"
 		},
-		"TUTORIAL": "Tutorial"
+		"TUTORIAL": "Tutorial",
+		"RESTART_WAYVR": "WayVR neu starten",
+		"CLOSE_WAYVR": "WayVR schließen"
 	},
 	"APPLICATION_LAUNCHER": "Programmstarter",
 	"APPLICATION_STARTED": "Anwendung gestartet",

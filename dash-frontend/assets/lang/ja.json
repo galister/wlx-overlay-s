@@ -197,8 +197,6 @@
 		"SAVE_PLAYSPACE_CENTER_HELP": "現在のプレイスペースを、プレイスペースリセットのバインディングに使用する。",
 		"RESET_PLAYSPACE_CENTER": "プレイスペースの中心をリセット",
 		"RESET_PLAYSPACE_CENTER_HELP": "設定済みのプレイスペースの中心点をリセットする。",
-		"RESTART_SOFTWARE": "ソフトウェアを再起動",
-		"RESTART_SOFTWARE_HELP": "再起動が必要な設定を適用する",
 		"ROUND_MULTIPLIER": "UIの角の丸み",
 		"SCREEN_RENDER_DOWN": "低解像度で画面をレンダリング",
 		"SCREEN_RENDER_DOWN_HELP": "高解像度ディスプレイでのジャギーを軽減する",
@@ -263,7 +261,9 @@
 			"TITLE": "診断",
 			"ENABLE_REBAR": "VRパフォーマンスを最適化するため、BIOS設定でresizable BARを有効にして下さい"
 		},
-		"TUTORIAL": "チュートリアル"
+		"TUTORIAL": "チュートリアル",
+		"RESTART_WAYVR": "WayVRを再起動",
+		"CLOSE_WAYVR": "WayVRを閉じる"
 	},
 	"APPLICATION_LAUNCHER": "アプリランチャー",
 	"APPLICATION_STARTED": "アプリが起動しました",

@@ -12,12 +12,19 @@ use crate::{
 use glam::Vec2;
 use std::rc::Rc;
 
-#[derive(Clone)]
-pub struct Cell {
+#[derive(Default, Clone)]
+pub struct Button {
 	pub title: Translation,
 	pub tooltip: Option<Translation>,
 	pub action_name: Option<Rc<str>>,
+	pub sprite_src_builtin: Option<Rc<str>>,
 	pub attribs: Vec<parser::AttribPair>,
+}
+
+#[derive(Clone)]
+pub enum Cell {
+	Button(Button),
+	Separator,
 }
 
 pub enum Blueprint {
@@ -170,33 +177,62 @@ impl ContextMenu {
 
 		let id_buttons = inner_parser.get_widget_id("buttons")?;
 
-		for (idx, cell) in cells.iter().enumerate() {
-			let mut par = TemplateParams::new();
-			par.insert_rc("text", cell.title.generate(&mut globals.i18n()));
-			if let Some(tooltip) = cell.tooltip.as_ref() {
-				par.insert_rc("tooltip_str", tooltip.generate(&mut globals.i18n()));
+		let mut has_sprites = false;
+
+		for cell in &cells {
+			if let Cell::Button(button) = cell
+				&& button.sprite_src_builtin.is_some()
+			{
+				has_sprites = true;
 			}
+		}
 
-			let mut data_cell = inner_parser.parse_template_only(&doc_params, "Cell", layout, id_buttons, par)?;
+		for cell in &cells {
+			match cell {
+				Cell::Button(cell) => {
+					let mut par = TemplateParams::new();
+					par.insert_rc("text", cell.title.generate(&mut globals.i18n()));
 
-			let button = data_cell.fetch_component_as::<ComponentButton>("button")?;
-			let button_id = button.base().get_id();
-			parser_state.data.take_results_from(&mut data_cell);
-			self
-				.tasks
-				.handle_button(&button, Task::ActionClicked(cell.action_name.clone()));
+					if has_sprites {
+						par.insert_rc(
+							"sprite_src_builtin",
+							cell
+								.sprite_src_builtin
+								.clone()
+								.unwrap_or_else(|| Rc::from("@/dashboard/dot.svg")),
+						);
+					}
+					if let Some(tooltip) = &cell.tooltip {
+						par.insert_rc("tooltip_str", tooltip.generate(&mut globals.i18n()));
+					}
 
-			if let Some(c) = params.on_custom_attribs.as_ref() {
-				(*c)(parser::CustomAttribsInfo {
-					pairs: &cell.attribs,
-					parent_id: id_buttons,
-					widget_id: button_id,
-					widgets: &layout.state.widgets,
-				});
-			}
+					let mut data_cell = inner_parser.parse_template_only(
+						&doc_params,
+						if has_sprites { "CellButtonSprite" } else { "CellButton" },
+						layout,
+						id_buttons,
+						par,
+					)?;
 
-			if idx < cells.len() - 1 {
-				inner_parser.realize_template(&doc_params, "Separator", layout, id_buttons, Default::default())?;
+					let button = data_cell.fetch_component_as::<ComponentButton>("button")?;
+					let button_id = button.base().get_id();
+					parser_state.data.take_results_from(&mut data_cell);
+					self
+						.tasks
+						.handle_button(&button, Task::ActionClicked(cell.action_name.clone()));
+
+					if let Some(c) = params.on_custom_attribs.as_ref() {
+						(*c)(parser::CustomAttribsInfo {
+							pairs: &cell.attribs,
+							parent_id: id_buttons,
+							widget_id: button_id,
+							widgets: &layout.state.widgets,
+						});
+					}
+				}
+				Cell::Separator => {
+					inner_parser.realize_template(&doc_params, "Separator", layout, id_buttons, Default::default())?;
+				}
 			}
 		}
 		Ok(())

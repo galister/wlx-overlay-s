@@ -84,7 +84,6 @@ pub(crate) enum Task {
 	RemoveAutostartApp(Rc<str>),
 	ResetPlayspace,
 	ResetPlayspaceCenter,
-	RestartSoftware,
 	SavePlayspaceCenter,
 	SetTab(TabNameEnum),
 	SettingUpdated(SettingType),
@@ -228,10 +227,6 @@ impl<T> Tab<T> for TabSettings<T> {
 				}
 				Task::ResetPlayspace => {
 					frontend.interface.playspace_task(data, DashPlayspaceTask::Reset)?;
-					return Ok(());
-				}
-				Task::RestartSoftware => {
-					frontend.interface.restart(data);
 					return Ok(());
 				}
 				Task::OpenContextMenu(position, cells) => {

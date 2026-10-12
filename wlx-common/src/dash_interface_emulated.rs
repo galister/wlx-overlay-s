@@ -231,6 +231,8 @@ impl DashInterface<()> for DashInterfaceEmulated {
 
 	fn restart(&mut self, _data: &mut ()) {}
 
+	fn close(&mut self, _data: &mut ()) {}
+
 	fn toggle_dashboard(&mut self, _data: &mut ()) {}
 
 	fn get_feats(&mut self, _data: &mut ()) -> dash_interface::InterfaceFeats {

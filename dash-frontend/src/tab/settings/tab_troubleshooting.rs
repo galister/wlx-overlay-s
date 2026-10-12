@@ -36,13 +36,6 @@ impl State {
 			"@/dashboard/circle.svg",
 			Task::DeleteAllConfigs,
 		)?;
-		options_danger_button(
-			par.mp,
-			c,
-			"APP_SETTINGS.RESTART_SOFTWARE",
-			"@/dashboard/refresh.svg",
-			Task::RestartSoftware,
-		)?;
 		Ok(State {})
 	}
 }

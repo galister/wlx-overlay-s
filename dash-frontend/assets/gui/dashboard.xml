@@ -8,8 +8,11 @@
 
   <blueprint name="context_menu_power_options">
     <context_menu>
-      <cell translation="POWER_OPTIONS.SUSPEND" action="suspend"/>
-      <cell translation="POWER_OPTIONS.SHUTDOWN" action="shutdown" />
+      <cell translation="APP_SETTINGS.RESTART_WAYVR" action="restart" sprite_src_builtin="@/dashboard/refresh.svg"/>
+      <cell translation="APP_SETTINGS.CLOSE_WAYVR" action="close" sprite_src_builtin="@/dashboard/close.svg"/>
+      <separator/>
+      <cell translation="POWER_OPTIONS.SUSPEND" action="suspend" sprite_src_builtin="@/dashboard/sleep.svg"/>
+      <cell translation="POWER_OPTIONS.SHUTDOWN" action="shutdown" sprite_src_builtin="@/dashboard/power.svg"/>
     </context_menu>
   </blueprint>
 
