@@ -97,6 +97,7 @@ pub trait DashInterface<T> {
 	fn general_config<'a>(&'a mut self, data: &'a mut T) -> &'a mut GeneralConfig;
 	fn config_changed(&mut self, data: &mut T, kind: ConfigChangeKind);
 	fn restart(&mut self, data: &mut T);
+	fn close(&mut self, data: &mut T);
 	fn toggle_dashboard(&mut self, data: &mut T);
 	fn get_feats(&mut self, data: &mut T) -> InterfaceFeats;
 	fn hmd_stats(&mut self, data: &mut T) -> HmdStats;

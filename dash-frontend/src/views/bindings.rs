@@ -39,7 +39,7 @@ use crate::{
 enum Task {
 	Save,
 	Cancel,
-	OpenContextMenu(glam::Vec2, Vec<context_menu::Cell>),
+	OpenContextMenu(context_menu::Position, Vec<context_menu::Cell>),
 	UpdateThreshold(Rc<str>, XrInputSide, usize, f32),
 	AddChordMember(Rc<str>, XrInputSide),
 	RemoveChordMember(Rc<str>, XrInputSide, usize),
@@ -804,20 +804,21 @@ fn chord_hand_dropdown(
 	let cells = [XrInputSide::Left, XrInputSide::Right]
 		.into_iter()
 		.filter(|side| profile.find_userpath(*side).is_some())
-		.map(|side| context_menu::Cell {
-			action_name: Some(
-				format!(
-					"chord_hand;{};{};{};{}",
-					action,
-					output_side.as_ref(),
-					member_idx,
-					side.as_ref()
-				)
-				.into(),
-			),
-			title: side_translation(side),
-			tooltip: None,
-			attribs: vec![],
+		.map(|side| {
+			context_menu::Cell::Button(context_menu::Button {
+				action_name: Some(
+					format!(
+						"chord_hand;{};{};{};{}",
+						action,
+						output_side.as_ref(),
+						member_idx,
+						side.as_ref()
+					)
+					.into(),
+				),
+				title: side_translation(side),
+				..Default::default()
+			})
 		})
 		.collect();
 
@@ -842,20 +843,21 @@ fn chord_subpath_dropdown(
 		.unwrap_or_else(|| Translation::from_translation_key("APP_SETTINGS.OPTION.NONE"));
 	let cells = available
 		.iter()
-		.map(|subpath| context_menu::Cell {
-			action_name: Some(
-				format!(
-					"chord_subpath;{};{};{};{}",
-					action,
-					output_side.as_ref(),
-					member_idx,
-					subpath.as_ref()
-				)
-				.into(),
-			),
-			title: subpath.translation(),
-			tooltip: None,
-			attribs: vec![],
+		.map(|subpath| {
+			context_menu::Cell::Button(context_menu::Button {
+				action_name: Some(
+					format!(
+						"chord_subpath;{};{};{};{}",
+						action,
+						output_side.as_ref(),
+						member_idx,
+						subpath.as_ref()
+					)
+					.into(),
+				),
+				title: subpath.translation(),
+				..Default::default()
+			})
 		})
 		.collect();
 
@@ -885,20 +887,21 @@ fn chord_component_dropdown(
 		.unwrap_or_else(|| Translation::from_raw_text_rc(Default::default()));
 	let cells = available
 		.iter()
-		.map(|component| context_menu::Cell {
-			action_name: Some(
-				format!(
-					"chord_comp;{};{};{};{}",
-					action,
-					output_side.as_ref(),
-					member_idx,
-					component.as_ref()
-				)
-				.into(),
-			),
-			title: component.translation(),
-			tooltip: None,
-			attribs: vec![],
+		.map(|component| {
+			context_menu::Cell::Button(context_menu::Button {
+				action_name: Some(
+					format!(
+						"chord_comp;{};{};{};{}",
+						action,
+						output_side.as_ref(),
+						member_idx,
+						component.as_ref()
+					)
+					.into(),
+				),
+				title: component.translation(),
+				..Default::default()
+			})
 		})
 		.collect();
 
@@ -1003,23 +1006,23 @@ fn create_dropdown<B: 'static + BindingsDropdown>(
 ) -> anyhow::Result<()> {
 	let mut cells = available
 		.iter()
-		.map(|item| context_menu::Cell {
-			action_name: Some(item.action_str(&action, side)),
-			title: item.translation(),
-			tooltip: None,
-			attribs: vec![],
+		.map(|item| {
+			context_menu::Cell::Button(context_menu::Button {
+				action_name: Some(item.action_str(&action, side)),
+				title: item.translation(),
+				..Default::default()
+			})
 		})
 		.collect::<Vec<_>>();
 
 	if let Some(action_str) = B::clear_str(&action, side) {
 		cells.insert(
 			0,
-			context_menu::Cell {
+			context_menu::Cell::Button(context_menu::Button {
 				action_name: Some(action_str),
 				title: Translation::from_translation_key("APP_SETTINGS.OPTION.NONE"),
-				tooltip: None,
-				attribs: vec![],
-			},
+				..Default::default()
+			}),
 		);
 	}
 
@@ -1052,10 +1055,7 @@ fn create_dropdown_with_cells(
 		let tasks = mp.tasks.clone();
 		let cells = cells.clone();
 		move |_common, e: ButtonClickEvent| {
-			tasks.push(Task::OpenContextMenu(
-				e.mouse_pos_absolute.unwrap_or_default(),
-				cells.clone(),
-			));
+			tasks.push(Task::OpenContextMenu(e.mouse_pos_absolute.into(), cells.clone()));
 			Ok(())
 		}
 	}));

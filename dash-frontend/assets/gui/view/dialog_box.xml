@@ -1,6 +1,9 @@
 <layout version="2">
   <template name="DialogBoxButton">
-    <Button id="btn" translation="CLOSE_WINDOW" align_self="start" sprite_src_builtin="${icon}"/>
+    <Button id="btn" translation="CLOSE_WINDOW" align_self="start" sprite_src_builtin="${icon}"
+      text_size="16"
+      padding_left="16" padding_right="16"
+      padding_top="8" padding_bottom="8"/>
   </template>
   
   <elements>

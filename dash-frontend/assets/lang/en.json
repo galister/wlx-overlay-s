@@ -211,8 +211,8 @@
 		"SAVE_PLAYSPACE_CENTER_HELP": "Use current playspace for reset playspace binding.",
 		"RESET_PLAYSPACE_CENTER": "Reset playspace center",
 		"RESET_PLAYSPACE_CENTER_HELP": "Clear previously set playspace center.",
-		"RESTART_SOFTWARE": "Restart software",
-		"RESTART_SOFTWARE_HELP": "Apply settings that require a restart",
+		"RESTART_WAYVR": "Restart WayVR",
+		"CLOSE_WAYVR": "Close WayVR",
 		"ROUND_MULTIPLIER": "UI Edge roundness",
 		"SCREEN_RENDER_DOWN": "Render screen at lower resolution",
 		"SCREEN_RENDER_DOWN_HELP": "Helps with aliasing on high-res screens",
@@ -346,6 +346,12 @@
 	"POPUP_ADD_DISPLAY": {
 		"RESOLUTION": "Resolution"
 	},
+	"POWER_OPTIONS": {
+		"TITLE": "Power options",
+		"SHUTDOWN": "Shut down",
+		"SUSPEND": "Suspend",
+		"SHUTDOWN_ARE_YOU_SURE": "Are you sure you want to turn off your computer?"
+	},
 	"PROCESS": {
 		"FORCE_KILL": "Force-kill",
 		"STOP": "Stop"
@@ -368,5 +374,7 @@
 	"REMOVE_FROM_FAVOURITES": "Remove from pinned apps",
 	"EMPTY": "Empty",
 	"INSTALLED": "Installed",
-	"NOT_INSTALLED": "Not installed"
+	"NOT_INSTALLED": "Not installed",
+	"YES": "Yes",
+	"NO": "No"
 }

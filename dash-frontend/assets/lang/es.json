@@ -197,8 +197,6 @@
 		"SAVE_PLAYSPACE_CENTER_HELP": "Usa el espacio de juego actual para el comando de reiniciar espacio de juego.",
 		"RESET_PLAYSPACE_CENTER": "Reiniciar centro del espacio de juego",
 		"RESET_PLAYSPACE_CENTER_HELP": "Restablece el centro del espacio de juego definido previamente.",
-		"RESTART_SOFTWARE": "Reiniciar software",
-		"RESTART_SOFTWARE_HELP": "Aplicar ajustes que requieren reiniciar",
 		"ROUND_MULTIPLIER": "Redondeo de bordes de la UI",
 		"SCREEN_RENDER_DOWN": "Renderizar pantalla a resolución menor",
 		"SCREEN_RENDER_DOWN_HELP": "Ayuda con el aliasing en pantallas de alta resolución",
@@ -263,7 +261,9 @@
 			"TITLE": "Diagnósticos",
 			"ENABLE_REBAR": "Activa [resizable bar] en la configuración de la BIOS para un rendimiento óptimo de VR"
 		},
-		"TUTORIAL": "Tutorial"
+		"TUTORIAL": "Tutorial",
+		"RESTART_WAYVR": "Reiniciar WayVR",
+		"CLOSE_WAYVR": "Cerrar WayVR"
 	},
 	"APPLICATION_LAUNCHER": "Lanzador de aplicaciones",
 	"APPLICATION_STARTED": "Aplicación iniciada",
@@ -368,5 +368,13 @@
 	"REMOVE_FROM_FAVOURITES": "Quitar de aplicaciones fijadas",
 	"EMPTY": "Vacío",
 	"INSTALLED": "Instalado",
-	"NOT_INSTALLED": "No instalado"
+	"NOT_INSTALLED": "No instalado",
+	"POWER_OPTIONS": {
+		"TITLE": "Opciones de energía",
+		"SHUTDOWN": "Apagar",
+		"SUSPEND": "Suspender",
+		"SHUTDOWN_ARE_YOU_SURE": "¿Seguro que quieres apagar el ordenador?"
+	},
+	"YES": "Sí",
+	"NO": "No"
 }

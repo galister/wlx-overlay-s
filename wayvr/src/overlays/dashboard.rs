@@ -564,6 +564,10 @@ impl DashInterface<AppState> for DashInterfaceLive {
         }
     }
 
+    fn close(&mut self, _data: &mut AppState) {
+        RUNNING.store(false, Ordering::Relaxed);
+    }
+
     fn restart(&mut self, _data: &mut AppState) {
         RUNNING.store(false, Ordering::Relaxed);
         RESTART.store(true, Ordering::Relaxed);

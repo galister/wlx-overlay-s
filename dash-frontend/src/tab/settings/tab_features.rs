@@ -328,32 +328,33 @@ fn whisper_models_dropdown(mp: &mut MacroParams, parent: WidgetID) -> anyhow::Re
 			let mut cells = WHISPER_MODELS
 				.iter()
 				.enumerate()
-				.map(|(idx, item)| context_menu::Cell {
-					action_name: Some(format!(";{id};{}", item.file_name).into()),
-					title: Translation::from_raw_text_string(format!(
-						"{}{}",
-						item.display_name,
-						if downloaded_models.contains(&idx) { " ✅" } else { "" }
-					)),
-					tooltip: None,
-					attribs: vec![],
+				.map(|(idx, item)| {
+					context_menu::Cell::Button(context_menu::Button {
+						action_name: Some(format!(";{id};{}", item.file_name).into()),
+						title: Translation::from_raw_text(item.display_name),
+						tooltip: None,
+						attribs: vec![],
+						sprite_src_builtin: if downloaded_models.contains(&idx) {
+							Some("@/dashboard/check.svg".into())
+						} else {
+							None
+						},
+					})
 				})
 				.collect::<Vec<_>>();
 
 			cells.insert(
 				0,
-				context_menu::Cell {
+				context_menu::Cell::Button(context_menu::Button {
 					action_name: Some(format!(";{id};").into()),
 					title: Translation::from_translation_key("APP_SETTINGS.OPTION.NONE"),
 					tooltip: None,
 					attribs: vec![],
-				},
+					..Default::default()
+				}),
 			);
 
-			parent_tasks.push(ParentTask::OpenContextMenu(
-				e.mouse_pos_absolute.unwrap_or_default(),
-				cells,
-			));
+			parent_tasks.push(ParentTask::OpenContextMenu(e.mouse_pos_absolute.into(), cells));
 			Ok(())
 		}
 	}));

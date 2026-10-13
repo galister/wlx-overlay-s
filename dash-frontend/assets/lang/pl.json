@@ -197,8 +197,6 @@
 		"SAVE_PLAYSPACE_CENTER_HELP": "Użyj aktualnej przestrzeni gry dla przypisania resetowania przestrzeni.",
 		"RESET_PLAYSPACE_CENTER": "Zresetuj centrum przestrzeni gry",
 		"RESET_PLAYSPACE_CENTER_HELP": "Resetuj aktualny środek przestrzeni gry.",
-		"RESTART_SOFTWARE": "Uruchom ponownie program",
-		"RESTART_SOFTWARE_HELP": "Zastosuj ustawienia wymagające restartu",
 		"ROUND_MULTIPLIER": "Zaokrąglenie krawędzi UI",
 		"SCREEN_RENDER_DOWN": "Renderuj ekran w niższej rozdzielczości",
 		"SCREEN_RENDER_DOWN_HELP": "Pomaga zredukować aliasing na ekranach o wysokiej rozdzielczości",
@@ -263,7 +261,9 @@
 			"TITLE": "Diagnostyka",
 			"ENABLE_REBAR": "Włącz resizable BAR w ustawieniach BIOS, aby uzyskać optymalną wydajność VR"
 		},
-		"TUTORIAL": "Samouczek"
+		"TUTORIAL": "Samouczek",
+		"RESTART_WAYVR": "Zrestartuj WayVR",
+		"CLOSE_WAYVR": "Zamknij WayVR"
 	},
 	"APPLICATION_LAUNCHER": "Launcher aplikacji",
 	"APPLICATION_STARTED": "Uruchomiono aplikację",
@@ -368,5 +368,13 @@
 	"REMOVE_FROM_FAVOURITES": "Usuń z przypiętych aplikacji",
 	"EMPTY": "Puste",
 	"INSTALLED": "Zainstalowano",
-	"NOT_INSTALLED": "Nie zainstalowano"
+	"NOT_INSTALLED": "Nie zainstalowano",
+	"POWER_OPTIONS": {
+		"TITLE": "Opcje zasilania",
+		"SHUTDOWN": "Wyłącz",
+		"SUSPEND": "Uśpij",
+		"SHUTDOWN_ARE_YOU_SURE": "Czy na pewno chcesz wyłączyć komputer?"
+	},
+	"YES": "Tak",
+	"NO": "Nie"
 }

@@ -197,8 +197,6 @@
 		"SAVE_PLAYSPACE_CENTER_HELP": "将当前的活动空间设置为重置活动空间的绑定点。",
 		"RESET_PLAYSPACE_CENTER": "重置活动空间中心",
 		"RESET_PLAYSPACE_CENTER_HELP": "重置之前设置的活动空间中心。",
-		"RESTART_SOFTWARE": "重启软件",
-		"RESTART_SOFTWARE_HELP": "应用需要重启才能生效的设置",
 		"ROUND_MULTIPLIER": "UI 边缘圆角",
 		"SCREEN_RENDER_DOWN": "低分辨率渲染屏幕",
 		"SCREEN_RENDER_DOWN_HELP": "有助于减轻高分辨率屏幕上的锯齿现象",
@@ -263,7 +261,9 @@
 			"TITLE": "诊断",
 			"ENABLE_REBAR": "请在 BIOS 设置中启用 Resizable BAR 以获得最佳 VR 性能"
 		},
-		"TUTORIAL": "教程"
+		"TUTORIAL": "教程",
+		"RESTART_WAYVR": "重启 WayVR",
+		"CLOSE_WAYVR": "关闭 WayVR"
 	},
 	"APPLICATION_LAUNCHER": "应用启动器",
 	"APPLICATION_STARTED": "应用程序已启动",
@@ -368,5 +368,13 @@
 	"REMOVE_FROM_FAVOURITES": "从固定应用中移除",
 	"EMPTY": "暂无",
 	"INSTALLED": "已安装",
-	"NOT_INSTALLED": "未安装"
+	"NOT_INSTALLED": "未安装",
+	"POWER_OPTIONS": {
+		"TITLE": "电源选项",
+		"SHUTDOWN": "关机",
+		"SUSPEND": "暂停",
+		"SHUTDOWN_ARE_YOU_SURE": "确定要关机吗？"
+	},
+	"YES": "确定",
+	"NO": "否"
 }

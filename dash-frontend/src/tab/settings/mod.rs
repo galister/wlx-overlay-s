@@ -1,4 +1,3 @@
-use glam::Vec2;
 use std::{marker::PhantomData, rc::Rc, str::FromStr};
 use strum::{AsRefStr, EnumProperty, EnumString};
 use wgui::{
@@ -81,11 +80,10 @@ pub(crate) enum Task {
 	ClearPipewireTokens,
 	ClearSavedState,
 	DeleteAllConfigs,
-	OpenContextMenu(Vec2, Vec<context_menu::Cell>),
+	OpenContextMenu(context_menu::Position, Vec<context_menu::Cell>),
 	RemoveAutostartApp(Rc<str>),
 	ResetPlayspace,
 	ResetPlayspaceCenter,
-	RestartSoftware,
 	SavePlayspaceCenter,
 	SetTab(TabNameEnum),
 	SettingUpdated(SettingType),
@@ -229,10 +227,6 @@ impl<T> Tab<T> for TabSettings<T> {
 				}
 				Task::ResetPlayspace => {
 					frontend.interface.playspace_task(data, DashPlayspaceTask::Reset)?;
-					return Ok(());
-				}
-				Task::RestartSoftware => {
-					frontend.interface.restart(data);
 					return Ok(());
 				}
 				Task::OpenContextMenu(position, cells) => {
