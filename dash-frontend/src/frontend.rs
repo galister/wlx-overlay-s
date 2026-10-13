@@ -297,7 +297,7 @@ impl<T: 'static> Frontend<T> {
 				on_action_click: Box::new(move |action| {
 					if action == "yes" {
 						tasks.push(FrontendTask::RunCommand(
-							String::from("systemctl"),
+							String::from("loginctl"),
 							vec![String::from("poweroff")],
 						));
 					}
@@ -307,10 +307,10 @@ impl<T: 'static> Frontend<T> {
 	}
 
 	fn process_power_action(&mut self, action: &str, data: &mut T) {
-		if !is_exec_installed("systemctl") {
+		if !is_exec_installed("loginctl") {
 			// TODO: add support for other init systems?
 			self.tasks.push(FrontendTask::PushToast(Translation::from_raw_text(
-				"systemctl is not installed",
+				"loginctl is not installed",
 			)));
 			return;
 		}
@@ -324,7 +324,7 @@ impl<T: 'static> Frontend<T> {
 			}
 			"suspend" => {
 				self.tasks.push(FrontendTask::RunCommand(
-					String::from("systemctl"),
+					String::from("loginctl"),
 					vec![String::from("suspend")],
 				));
 			}
