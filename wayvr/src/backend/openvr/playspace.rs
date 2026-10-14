@@ -339,15 +339,6 @@ impl PlayspaceMover {
             );
             self.universe = new_universe;
         }
-
-        if self.drag.is_some() {
-            log::info!("Space drag interrupted by external change");
-            self.drag = None;
-        }
-        if self.rotate.is_some() {
-            log::info!("Space rotate interrupted by external change");
-            self.rotate = None;
-        }
     }
 
     pub fn get_universe(&self) -> ETrackingUniverseOrigin {
