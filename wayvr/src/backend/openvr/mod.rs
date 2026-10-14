@@ -261,6 +261,10 @@ pub fn openvr_run(args: &Args, params: RunParams) -> Result<(), BackendError> {
                         let _ = adjust_gain(&mut settings_mgr, channel, value);
                     }
                     OpenVrTask::ShowBindingsUI => {
+                        // hide current set because overlay sort order is broken
+                        // and will cover the bindings UI while not taking input
+                        overlays.switch_to_set(&mut app, None, false);
+
                         input_source.open_bindings(&mut input_mgr);
                     }
                 },

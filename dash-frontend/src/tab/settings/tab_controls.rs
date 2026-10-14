@@ -49,6 +49,11 @@ impl SettingsTab for State {
 					self
 						.frontend_tasks
 						.push(FrontendTask::BackendTask(DashBackendTask::ShowBindingsUI));
+
+					// overlay sort order doesn't work on steamvr,
+					// so the dashboard would be drawn over the bindings UI
+					// while the bindings UI has input focus
+					self.frontend_tasks.push(FrontendTask::HideDashboard);
 				}
 			}
 		}
