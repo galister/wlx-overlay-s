@@ -143,7 +143,11 @@
 		"NO_SET_SELECTED": "セットが選択されていません。",
 		"ONE_CONTROLLER_ON_FLOOR": "コントローラーを片方、床に置いてください！",
 		"NO_KEYMAPS_CONFIGURED": "キーボードレイアウトが設定されていない",
-		"NO_KEYMAPS_CONFIGURED_HELP": "キーボードレイアウトの設定方法は wayvr.org を確認してね！"
+		"NO_KEYMAPS_CONFIGURED_HELP": "キーボードレイアウトの設定方法は wayvr.org を確認してね！",
+		"STEAMVR_DASH_TITLE": "SteamVRダッシュボード展開中",
+		"STEAMVR_DASH_TEXT": "WayVRを使用するには、SteamVRダッシュボードを閉じてください。",
+		"WAYVR_RUNNING_TITLE": "WayVR 実行中！",
+		"WAYVR_RUNNING_TEXT": "手首のウォッチを確認するか、表示・非表示のバインドを使用して開始してください！"
 	},
 	"WATCH": {
 		"ADD_NEW_SET": "新しいセットを追加",
@@ -177,7 +181,5 @@
 		"SELECT_SCREEN_CAST_FOR": "ディスプレイ {DISPLAY} のスクリーンキャストを選択してください",
 		"CANNOT_CAPTURE_KBD_MOUSE": "キーボード/マウスのキャプチャを初期化できませんでした！\nユーザーが 'input' グループに所属しているか確認してください。",
 		"WE_ARE_GRABBING": "WayVR がキーボードとマウスを制御しています。\n解除するには、Super+Zを押してください。"
-	},
-	"STEAMVR_DASH_TOAST_TITLE": "SteamVRダッシュボード展開中",
-	"STEAMVR_DASH_TOAST_TEXT": "WayVRを使用するには、SteamVRダッシュボードを閉じてください。"
+	}
 }

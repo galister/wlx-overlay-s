@@ -214,9 +214,9 @@ pub fn openvr_run(args: &Args, params: RunParams) -> Result<(), BackendError> {
                     let id = Toast::new(
                         ToastTopic::Priority,
                         Some(Translation::from_translation_key(
-                            "STEAMVR_DASH_TOAST_TITLE",
+                            "TOAST.STEAMVR_DASH_TITLE",
                         )),
-                        Translation::from_translation_key("STEAMVR_DASH_TOAST_TEXT"),
+                        Translation::from_translation_key("TOAST.STEAMVR_DASH_TEXT"),
                     )
                     .with_timeout(300.0) // we'll zero this if dash gets hidden
                     .submit(&mut app);
@@ -227,6 +227,16 @@ pub fn openvr_run(args: &Args, params: RunParams) -> Result<(), BackendError> {
                 dashboard_hidden = true;
                 if let Some(id) = dash_toast_id {
                     Toast::expire_now(&mut app, id);
+                } else if !args.show {
+                    Toast::new(
+                        ToastTopic::Priority,
+                        Some(Translation::from_translation_key(
+                            "TOAST.WAYVR_RUNNING_TITLE",
+                        )),
+                        Translation::from_translation_key("TOAST.WAYVR_RUNNING_TEXT"),
+                    )
+                    .with_timeout(5.0)
+                    .submit(&mut app);
                 }
             }
         }

@@ -179,6 +179,18 @@ pub fn openxr_run(args: &Args, params: RunParams) -> Result<(), BackendError> {
     // declared last so rust drops this before all long-lived XR objects
     let _gpu_idle_before_xr_drop = OpenXrGpuIdleGuard(app.gfx.clone());
 
+    if !args.show {
+        Toast::new(
+            ToastTopic::Priority,
+            Some(Translation::from_translation_key(
+                "TOAST.WAYVR_RUNNING_TITLE",
+            )),
+            Translation::from_translation_key("TOAST.WAYVR_RUNNING_TEXT"),
+        )
+        .with_timeout(5.0)
+        .submit(&mut app);
+    }
+
     'main_loop: loop {
         let now = Instant::now();
         app.delta_time = (now.duration_since(last_frame_time).as_secs_f32()).clamp(0.001, 0.2); // 5 - 1000 fps

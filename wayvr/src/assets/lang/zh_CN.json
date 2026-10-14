@@ -143,7 +143,11 @@
 		"NO_SET_SELECTED": "未选择套装。",
 		"ONE_CONTROLLER_ON_FLOOR": "将一只控制器放在地面上！",
 		"NO_KEYMAPS_CONFIGURED": "尚未配置键盘布局",
-		"NO_KEYMAPS_CONFIGURED_HELP": "请访问 wayvr.org 了解如何设置键盘布局！"
+		"NO_KEYMAPS_CONFIGURED_HELP": "请访问 wayvr.org 了解如何设置键盘布局！",
+		"STEAMVR_DASH_TITLE": "SteamVR 控制面板已开启",
+		"STEAMVR_DASH_TEXT": "关闭 SteamVR 仪表板以开始使用 WayVR。",
+		"WAYVR_RUNNING_TITLE": "WayVR 正在运行！",
+		"WAYVR_RUNNING_TEXT": "查看手腕上的手表，或使用显示/隐藏快捷键开始！"
 	},
 	"WATCH": {
 		"ADD_NEW_SET": "添加新套装",
@@ -177,7 +181,5 @@
 		"SELECT_SCREEN_CAST_FOR": "为显示器 {DISPLAY} 选择屏幕投射",
 		"CANNOT_CAPTURE_KBD_MOUSE": "无法初始化键盘/鼠标捕获！\n请检查您的用户是否在 'input' 组中。",
 		"WE_ARE_GRABBING": "WayVR 正在接管你的键盘和鼠标！\n按 Super+Z 释放。"
-	},
-	"STEAMVR_DASH_TOAST_TITLE": "SteamVR 控制面板已开启",
-	"STEAMVR_DASH_TOAST_TEXT": "关闭 SteamVR 仪表板以开始使用 WayVR。"
+	}
 }

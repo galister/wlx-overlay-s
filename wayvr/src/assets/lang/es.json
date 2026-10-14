@@ -143,7 +143,11 @@
 		"NO_SET_SELECTED": "No hay ningún set seleccionado.",
 		"ONE_CONTROLLER_ON_FLOOR": "¡Coloca un controlador en el suelo!",
 		"NO_KEYMAPS_CONFIGURED": "Sin distribuciones de teclado configuradas",
-		"NO_KEYMAPS_CONFIGURED_HELP": "¡Consulta wayvr.org para configurar tus diseños de teclado!"
+		"NO_KEYMAPS_CONFIGURED_HELP": "¡Consulta wayvr.org para configurar tus diseños de teclado!",
+		"STEAMVR_DASH_TITLE": "Panel de SteamVR abierto",
+		"STEAMVR_DASH_TEXT": "Cierra el tablero de SteamVR para empezar a usar WayVR.",
+		"WAYVR_RUNNING_TITLE": "¡WayVR está ejecutándose!",
+		"WAYVR_RUNNING_TEXT": "¡Mira tu muñeca para ver el reloj o usa el mando de mostrar/ocultar para empezar!"
 	},
 	"WATCH": {
 		"ADD_NEW_SET": "Añadir un set nuevo",
@@ -177,7 +181,5 @@
 		"SELECT_SCREEN_CAST_FOR": "Seleccionar transmisión de pantalla para la pantalla {DISPLAY}",
 		"CANNOT_CAPTURE_KBD_MOUSE": "¡No se pudo inicializar la captura de teclado/ratón!\nComprueba que tu usuario esté en el grupo 'input'.",
 		"WE_ARE_GRABBING": "¡WayVR tiene el control de tu teclado y ratón!\nPulsa Super+Z para liberarlos."
-	},
-	"STEAMVR_DASH_TOAST_TITLE": "Panel de SteamVR abierto",
-	"STEAMVR_DASH_TOAST_TEXT": "Cierra el tablero de SteamVR para empezar a usar WayVR."
+	}
 }

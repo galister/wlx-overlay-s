@@ -143,7 +143,11 @@
 		"NO_SET_SELECTED": "Żaden zestaw nie jest wybrany.",
 		"ONE_CONTROLLER_ON_FLOOR": "Połóż jeden kontroler na podłodze!",
 		"NO_KEYMAPS_CONFIGURED": "Brak skonfigurowanych układów klawiatury",
-		"NO_KEYMAPS_CONFIGURED_HELP": "Odwiedź stronę wayvr.org, aby dowiedzieć się, jak skonfigurować układy klawiatury!"
+		"NO_KEYMAPS_CONFIGURED_HELP": "Odwiedź stronę wayvr.org, aby dowiedzieć się, jak skonfigurować układy klawiatury!",
+		"STEAMVR_DASH_TITLE": "Panel SteamVR otwarty",
+		"STEAMVR_DASH_TEXT": "Zamknij pulpit SteamVR, aby zacząć korzystać z WayVR.",
+		"WAYVR_RUNNING_TITLE": "WayVR działa!",
+		"WAYVR_RUNNING_TEXT": "Spójrz na nadgarstek, by zobaczyć zegarek, lub użyj przycisku pokaż/ukryj, aby zacząć!"
 	},
 	"WATCH": {
 		"ADD_NEW_SET": "Dodaj nowy zestaw",
@@ -177,7 +181,5 @@
 		"SELECT_SCREEN_CAST_FOR": "Wybierz przesyłanie ekranu dla wyświetlacza {DISPLAY}",
 		"CANNOT_CAPTURE_KBD_MOUSE": "Nie można zainicjować przechwytywania klawiatury/myszy!\nSprawdź, czy Twój użytkownik należy do grupy 'input'.",
 		"WE_ARE_GRABBING": "WayVR przejął kontrolę nad klawiaturą i myszą!\nNaciśnij Super+Z, aby zwolnić."
-	},
-	"STEAMVR_DASH_TOAST_TITLE": "Panel SteamVR otwarty",
-	"STEAMVR_DASH_TOAST_TEXT": "Zamknij pulpit SteamVR, aby zacząć korzystać z WayVR."
+	}
 }

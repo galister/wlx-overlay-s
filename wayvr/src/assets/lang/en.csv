@@ -114,8 +114,10 @@ SCREENCAST.FAIL,Could not initialize screen cast source.,Error message on a wind
 TOAST.TITLE_SCREENCAST_FAIL,Could not start screen cast source!,Error message on a window that normally displays screen casts.
 TOAST.CANNOT_ADD_SET,Cannot add set!,Error message telling the user the set could not be added. “Set” was previously translated as “${DEFINITIONS.SET}”
 TOAST.CANNOT_REMOVE_SET,Cannot remove set!,Error message telling the user the set could not be removed. “Set” was previously translated as “${DEFINITIONS.SET}”
-STEAMVR_DASH_TOAST_TITLE,SteamVR Dashboard Open,Title of toast shown when SteamVR dashboard is visible
-STEAMVR_DASH_TOAST_TEXT,Close SteamVR dashboard to start using WayVR.,Body of toast shown when SteamVR dashboard is visible
+TOAST.STEAMVR_DASH_TITLE,SteamVR Dashboard Open,Title of toast shown when SteamVR dashboard is visible
+TOAST.STEAMVR_DASH_TEXT,Close SteamVR dashboard to start using WayVR.,Body of toast shown when SteamVR dashboard is visible
+TOAST.WAYVR_RUNNING_TITLE,WayVR is running!,Title of toast shown when WayVR is started but its windows are hidden by default
+TOAST.WAYVR_RUNNING_TEXT,"Check your wrist for the watch, or use show-hide binding to get started!",Body of toast shown when WayVR is started but its windows are hidden by default
 TOAST.DEFAULT_TITLE,Notification,Default title of notifications
 TOAST.EMPTY_SET,Empty set!,Title of a pop-up when the user switches to an empty set. “Set” was previously translated as “${DEFINITIONS.SET}”
 TOAST.ERROR,Error,Default title for error pop-ups

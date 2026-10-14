@@ -143,7 +143,11 @@
 		"NO_SET_SELECTED": "Kein Set ausgewählt.",
 		"ONE_CONTROLLER_ON_FLOOR": "Einen Controller auf den Boden legen!",
 		"NO_KEYMAPS_CONFIGURED": "Keine Tastaturbelegungen konfiguriert",
-		"NO_KEYMAPS_CONFIGURED_HELP": "Besuch wayvr.org, um zu erfahren, wie du deine Tastaturlayouts einrichtest!"
+		"NO_KEYMAPS_CONFIGURED_HELP": "Besuch wayvr.org, um zu erfahren, wie du deine Tastaturlayouts einrichtest!",
+		"STEAMVR_DASH_TITLE": "SteamVR Dashboard geöffnet",
+		"STEAMVR_DASH_TEXT": "SteamVR-Dashboard schließen, um WayVR zu nutzen.",
+		"WAYVR_RUNNING_TITLE": "WayVR läuft!",
+		"WAYVR_RUNNING_TEXT": "Schau auf dein Handgelenk für die Watch oder nutze die Ein/Aus-Belegung, um zu starten!"
 	},
 	"WATCH": {
 		"ADD_NEW_SET": "Neues Set hinzufügen",
@@ -177,7 +181,5 @@
 		"SELECT_SCREEN_CAST_FOR": "Screen-Cast für Display {DISPLAY} auswählen",
 		"CANNOT_CAPTURE_KBD_MOUSE": "Tastatur/Maus-Erfassung konnte nicht initialisiert werden!\nPrüfe, ob dein Benutzer in der Gruppe 'input' ist.",
 		"WE_ARE_GRABBING": "WayVR steuert jetzt deine Tastatur und Maus!\nDrücke Super+Z, um die Steuerung freizugeben."
-	},
-	"STEAMVR_DASH_TOAST_TITLE": "SteamVR Dashboard geöffnet",
-	"STEAMVR_DASH_TOAST_TEXT": "Schließe das SteamVR-Dashboard, um WayVR zu nutzen."
+	}
 }

@@ -133,6 +133,10 @@
 		"TITLE_SCREENCAST_FAIL": "Could not start screen cast source!",
 		"CANNOT_ADD_SET": "Cannot add set!",
 		"CANNOT_REMOVE_SET": "Cannot remove set!",
+		"STEAMVR_DASH_TITLE": "SteamVR Dashboard Open",
+		"STEAMVR_DASH_TEXT": "Close SteamVR dashboard to start using WayVR.",
+		"WAYVR_RUNNING_TITLE": "WayVR is running!",
+		"WAYVR_RUNNING_TEXT": "Check your wrist for the watch, or use show-hide binding to get started!",
 		"DEFAULT_TITLE": "Notification",
 		"EMPTY_SET": "Empty set!",
 		"ERROR": "Error",
@@ -145,8 +149,6 @@
 		"NO_SET_SELECTED": "No set is selected.",
 		"ONE_CONTROLLER_ON_FLOOR": "Place one controller on the floor!"
 	},
-	"STEAMVR_DASH_TOAST_TITLE": "SteamVR Dashboard Open",
-	"STEAMVR_DASH_TOAST_TEXT": "Close SteamVR dashboard to start using WayVR.",
 	"WATCH": {
 		"ADD_NEW_SET": "Add a new set",
 		"CLEANUP_MIRRORS": "Remove mirrors that are\nnot currently visible",
