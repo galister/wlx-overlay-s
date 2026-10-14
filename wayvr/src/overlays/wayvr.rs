@@ -954,6 +954,15 @@ impl OverlayBackend for WvrWindowBackend {
                         .set_input_focus(app.wvr_server.as_mut(), InputFocus::WayVR);
                 }
 
+                // Explicit focus selection must work even when hover motion is gated.
+                if !allow_hover_mouse_move(
+                    app.session.config.focus_follows_mouse_mode,
+                    app.input_state.pointers[hit.pointer].now.move_mouse,
+                    pick_now,
+                ) {
+                    return HoverResult::consume();
+                }
+
                 let wvr_server = app.wvr_server.as_mut().unwrap();
                 wvr_server.send_mouse_move(
                     PointerFocusTarget::Surface { surface, origin },
@@ -975,6 +984,15 @@ impl OverlayBackend for WvrWindowBackend {
                     app.input_state.stop_picking();
                     app.hid_provider
                         .set_input_focus(app.wvr_server.as_mut(), InputFocus::WayVR);
+                }
+
+                // Explicit focus selection must work even when hover motion is gated.
+                if !allow_hover_mouse_move(
+                    app.session.config.focus_follows_mouse_mode,
+                    app.input_state.pointers[hit.pointer].now.move_mouse,
+                    pick_now,
+                ) {
+                    return HoverResult::consume();
                 }
 
                 let wvr_server = app.wvr_server.as_mut().unwrap();
@@ -1205,6 +1223,32 @@ impl OverlayBackend for WvrWindowBackend {
                 true
             }
             _ => false,
+        }
+    }
+}
+
+// Shared by surface/popup and toplevel hover paths. Explicit clicks remain
+// handled by on_pointer; this only suppresses unsolicited hover motion.
+fn allow_hover_mouse_move(restrict_motion: bool, trigger_touch: bool, pick_focus: bool) -> bool {
+    !restrict_motion || trigger_touch || pick_focus
+}
+
+#[cfg(test)]
+mod hover_mouse_gate_tests {
+    use super::allow_hover_mouse_move;
+
+    #[test]
+    fn all_hover_gate_combinations() {
+        for restricted in [false, true] {
+            for touched in [false, true] {
+                for picking in [false, true] {
+                    let expected = !(restricted && !touched && !picking);
+                    assert_eq!(
+                        allow_hover_mouse_move(restricted, touched, picking),
+                        expected
+                    );
+                }
+            }
         }
     }
 }
