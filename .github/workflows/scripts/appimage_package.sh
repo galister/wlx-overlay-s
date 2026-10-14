@@ -23,6 +23,7 @@ echo "Packaging AppImage for ${APPIMAGE_ARCH}"
 
 "./${LINUXDEPLOY}" \
   -dwayvr.desktop \
+  -dwayvr-headless.desktop \
   -iwayvr.png \
   --appdir="${APPDIR}" \
   --output appimage \
