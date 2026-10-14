@@ -56,6 +56,7 @@ pub enum InputTask {
 #[allow(dead_code)]
 pub enum OpenVrTask {
     ColorGain(ColorChannel, f32),
+    ShowBindingsUI,
 }
 
 #[cfg(feature = "openxr")]

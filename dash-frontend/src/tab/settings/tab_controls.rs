@@ -3,7 +3,10 @@ use wgui::parser::TemplateParams;
 use wgui::{
 	components::button::ComponentButton, globals::WguiGlobals, layout::WidgetID, parser::Fetchable, task::Tasks,
 };
+use wlx_common::XrBackend;
+use wlx_common::dash_interface::DashBackendTask;
 
+use crate::frontend::FrontendTask;
 use crate::tab::settings::{UpdateExtra, horiz_cell, mount_requires_restart};
 use crate::util::popup_manager::PopupHolder;
 
@@ -18,7 +21,8 @@ use crate::{
 
 #[derive(Clone)]
 enum Task {
-	OpenInputProfiles,
+	OpenInputProfilesDash,
+	OpenInputProfilesBackend,
 }
 
 pub struct State {
@@ -34,12 +38,17 @@ impl SettingsTab for State {
 
 		for task in self.tasks.drain() {
 			match task {
-				Task::OpenInputProfiles => {
+				Task::OpenInputProfilesDash => {
 					input_profiles::mount_popup(
 						self.frontend_tasks.clone(),
 						self.globals.clone(),
 						self.popup_input_profiles.clone(),
 					);
+				}
+				Task::OpenInputProfilesBackend => {
+					self
+						.frontend_tasks
+						.push(FrontendTask::BackendTask(DashBackendTask::ShowBindingsUI));
 				}
 			}
 		}
@@ -53,6 +62,7 @@ fn create_input_profiles_button(
 	parent: WidgetID,
 	tasks: Tasks<Task>,
 	_popup: &PopupHolder<input_profiles::View>,
+	xr_backend: XrBackend,
 ) -> anyhow::Result<()> {
 	let id = mp.idx.to_string();
 	mp.idx += 1;
@@ -71,7 +81,11 @@ fn create_input_profiles_button(
 	btn.on_click(Rc::new({
 		let tasks = tasks.clone();
 		move |_common, _e| {
-			tasks.push(Task::OpenInputProfiles);
+			if xr_backend.is_open_vr() {
+				tasks.push(Task::OpenInputProfilesBackend);
+			} else {
+				tasks.push(Task::OpenInputProfilesDash);
+			}
 			Ok(())
 		}
 	}));
@@ -92,9 +106,7 @@ impl State {
 			"APP_SETTINGS.CONTROLS",
 			"@/dashboard/controller.svg",
 		)?;
-		if par.feats.xr_backend.is_open_xr() {
-			create_input_profiles_button(par.mp, c, tasks.clone(), &popup)?;
-		}
+		create_input_profiles_button(par.mp, c, tasks.clone(), &popup, par.feats.xr_backend)?;
 		options_dropdown::<wlx_common::config::AltModifier>(par.mp, c, &SettingType::KeyboardMiddleClick)?;
 		options_dropdown::<wlx_common::config::HandsfreePointer>(par.mp, c, &SettingType::HandsfreePointer)?;
 		options_dropdown::<wlx_common::config::HandsfreeAltTab>(par.mp, c, &SettingType::HandsfreeAltTab)?;

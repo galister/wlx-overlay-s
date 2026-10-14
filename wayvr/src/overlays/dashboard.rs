@@ -20,7 +20,7 @@ use wgui::{
     widget::EventResult,
 };
 use wlx_common::{
-    dash_interface::{self, ConfigChangeKind, DashInterface, DashPlayspaceTask},
+    dash_interface::{self, ConfigChangeKind, DashBackendTask, DashInterface, DashPlayspaceTask},
     locale::WayVRLangProvider,
     overlays::{BackendAttrib, BackendAttribValue},
 };
@@ -514,6 +514,20 @@ impl DashInterface<AppState> for DashInterfaceLive {
             DashPlayspaceTask::ResetCenter => PlayspaceTask::ResetCenter,
         };
         app.tasks.enqueue(TaskType::Playspace(task));
+        Ok(())
+    }
+
+    #[allow(unreachable_patterns)]
+    fn backend_task(&mut self, app: &mut AppState, mode: DashBackendTask) -> anyhow::Result<()> {
+        #[cfg(feature = "openvr")]
+        if app.feats.xr_backend.is_open_vr() {
+            use crate::backend::task::OpenVrTask;
+            let task = match mode {
+                DashBackendTask::ShowBindingsUI => OpenVrTask::ShowBindingsUI,
+                _ => return Ok(()),
+            };
+            app.tasks.enqueue(TaskType::OpenVR(task));
+        }
         Ok(())
     }
 

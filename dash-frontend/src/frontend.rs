@@ -25,7 +25,7 @@ use wgui::{
 use wlx_common::{
 	async_executor::AsyncExecutor,
 	audio,
-	dash_interface::{BoxDashInterface, ConfigChangeKind, DashPlayspaceTask},
+	dash_interface::{BoxDashInterface, ConfigChangeKind, DashBackendTask, DashPlayspaceTask},
 	locale::WayVRLangProvider,
 	palette::load_palette,
 	timestep::{self, Timestep},
@@ -131,6 +131,7 @@ pub enum FrontendTask {
 	RunCommand(String /* program */, Vec<String> /* args */),
 	HideDashboard,
 	MarkTutorialGraduated,
+	BackendTask(DashBackendTask),
 }
 
 impl<T: 'static> Frontend<T> {
@@ -455,6 +456,7 @@ impl<T: 'static> Frontend<T> {
 			FrontendTask::OpenURL(url) => self.action_open_url(url),
 			FrontendTask::RunCommand(program, args) => self.action_run_command(program, args),
 			FrontendTask::MarkTutorialGraduated => self.action_tutorial_graduated(params.data),
+			FrontendTask::BackendTask(task) => self.interface.backend_task(params.data, task)?,
 		};
 		Ok(())
 	}

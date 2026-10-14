@@ -260,6 +260,9 @@ pub fn openvr_run(args: &Args, params: RunParams) -> Result<(), BackendError> {
                     OpenVrTask::ColorGain(channel, value) => {
                         let _ = adjust_gain(&mut settings_mgr, channel, value);
                     }
+                    OpenVrTask::ShowBindingsUI => {
+                        input_source.open_bindings(&mut input_mgr);
+                    }
                 },
                 #[cfg(feature = "openxr")]
                 TaskType::OpenXR(_) => {}

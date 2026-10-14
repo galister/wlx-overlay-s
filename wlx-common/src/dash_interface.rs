@@ -46,6 +46,11 @@ pub enum DashPlayspaceTask {
 }
 
 #[derive(Clone, Copy)]
+pub enum DashBackendTask {
+	ShowBindingsUI,
+}
+
+#[derive(Clone, Copy)]
 pub struct InterfaceFeats {
 	pub xr_backend: XrBackend,
 	pub desktop_backend: DesktopBackend,
@@ -92,7 +97,8 @@ pub trait DashInterface<T> {
 	fn monado_brightness_set(&mut self, data: &mut T, brightness: f32) -> Option<()>;
 	fn monado_metrics_set_enabled(&mut self, data: &mut T, enabled: bool) -> bool;
 	fn monado_metrics_dump_session_frames(&mut self, data: &mut T) -> Vec<MonadoDumpSessionFrame>;
-	fn playspace_task(&mut self, data: &mut T, mode: DashPlayspaceTask) -> anyhow::Result<()>;
+	fn playspace_task(&mut self, data: &mut T, task: DashPlayspaceTask) -> anyhow::Result<()>;
+	fn backend_task(&mut self, data: &mut T, task: DashBackendTask) -> anyhow::Result<()>;
 	fn desktop_finder<'a>(&'a mut self, data: &'a mut T) -> &'a mut DesktopFinder;
 	fn general_config<'a>(&'a mut self, data: &'a mut T) -> &'a mut GeneralConfig;
 	fn config_changed(&mut self, data: &mut T, kind: ConfigChangeKind);

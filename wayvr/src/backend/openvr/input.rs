@@ -138,6 +138,10 @@ impl OpenVrInputSource {
         })
     }
 
+    pub fn open_bindings(&mut self, input: &mut InputManager) {
+        let _ = input.open_binding_ui(None, None, self.hands[0].input_hnd, false);
+    }
+
     pub fn haptics(&mut self, input: &mut InputManager, hand: usize, haptics: &Haptics) {
         let action_handle = self.hands[hand].haptics_hnd;
         let _ = input.trigger_haptic_vibration_action(
