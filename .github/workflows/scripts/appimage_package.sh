@@ -21,9 +21,11 @@ export LDAI_UPDATE_INFORMATION="gh-releases-zsync|wayvr-org|wayvr|latest|WayVR-*
 
 echo "Packaging AppImage for ${APPIMAGE_ARCH}"
 
+# linuxdeploy doesn't like multiple -d's being passed
+install -Dm 0644 wayvr-headless.desktop "${APPDIR}/usr/share/applications/wayvr-headless.desktop"
+
 "./${LINUXDEPLOY}" \
   -dwayvr.desktop \
-  -dwayvr-headless.desktop \
   -iwayvr.png \
   --appdir="${APPDIR}" \
   --output appimage \
