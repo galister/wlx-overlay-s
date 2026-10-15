@@ -286,21 +286,23 @@ impl<T: 'static> Frontend<T> {
 		Ok(())
 	}
 
-	fn action_poweroff_confirm(&mut self) {
+	fn power_action_confirm(&mut self, power_action: PowerAction) {
+		let translation_key = match power_action {
+			PowerAction::Suspend => "POWER_OPTIONS.SUSPEND_ARE_YOU_SURE",
+			PowerAction::Poweroff => "POWER_OPTIONS.SHUTDOWN_ARE_YOU_SURE",
+		};
+
 		let tasks = self.tasks.clone();
 		views::dialog_box::mount_popup(
 			self.popup_dialog_box.clone(),
 			self.tasks.clone(),
 			views::dialog_box::Params {
 				globals: self.globals.clone(),
-				message: Translation::from_translation_key("POWER_OPTIONS.SHUTDOWN_ARE_YOU_SURE"),
+				message: Translation::from_translation_key(translation_key),
 				entries: views::dialog_box::get_entries_yes_no(),
 				on_action_click: Box::new(move |action| {
 					if action == "yes" {
-						tasks.push(FrontendTask::RunCommand(
-							String::from("loginctl"),
-							vec![String::from("poweroff")],
-						));
+						tasks.push(task_for_power_action(power_action));
 					}
 				}),
 			},
@@ -308,14 +310,6 @@ impl<T: 'static> Frontend<T> {
 	}
 
 	fn process_power_action(&mut self, action: &str, data: &mut T) {
-		if !is_exec_installed("loginctl") {
-			// TODO: add support for other init systems?
-			self.tasks.push(FrontendTask::PushToast(Translation::from_raw_text(
-				"loginctl is not installed",
-			)));
-			return;
-		}
-
 		match action {
 			"restart" => {
 				self.interface.restart(data);
@@ -324,13 +318,10 @@ impl<T: 'static> Frontend<T> {
 				self.interface.close(data);
 			}
 			"suspend" => {
-				self.tasks.push(FrontendTask::RunCommand(
-					String::from("loginctl"),
-					vec![String::from("suspend")],
-				));
+				self.power_action_confirm(PowerAction::Suspend);
 			}
 			"shutdown" => {
-				self.action_poweroff_confirm();
+				self.power_action_confirm(PowerAction::Poweroff);
 			}
 			_ => {
 				unreachable!()
@@ -682,4 +673,24 @@ impl<T: 'static> Frontend<T> {
 				))))
 		};
 	}
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum PowerAction {
+	Suspend,
+	Poweroff,
+}
+
+pub fn task_for_power_action(action: PowerAction) -> FrontendTask {
+	for cmd in ["systemctl", "loginctl"] {
+		if is_exec_installed(cmd) {
+			let (command, args) = match action {
+				PowerAction::Suspend => (cmd.to_string(), vec!["suspend".to_string()]),
+				PowerAction::Poweroff => (cmd.to_string(), vec!["poweroff".to_string()]),
+			};
+			log::debug!("Command line for {action:?}: {command} {}", args.join(" "));
+			return FrontendTask::RunCommand(command, args);
+		}
+	}
+	FrontendTask::PushToast(Translation::from_translation_key("POWER_OPTIONS.NOT_SUPPORTED"))
 }
