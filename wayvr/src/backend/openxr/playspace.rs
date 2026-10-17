@@ -131,6 +131,8 @@ impl PlayspaceMover {
 
             apply_offset(data.pose, &mut monado.ipc);
             self.rotate = Some(data);
+            // drag and rotate can share a button
+            return;
         } else {
             // start space rotate
             for (i, pointer) in app.input_state.pointers.iter().enumerate() {
