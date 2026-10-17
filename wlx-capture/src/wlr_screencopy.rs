@@ -262,6 +262,7 @@ where
                             &client.queue_handle,
                             (),
                         );
+                        params.destroy();
 
                         log::trace!("{name}: ScreenCopy with Dmabuf");
                         // copy_with_damage seems to not work here
