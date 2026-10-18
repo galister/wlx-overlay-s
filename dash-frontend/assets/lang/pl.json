@@ -263,7 +263,9 @@
 		},
 		"TUTORIAL": "Samouczek",
 		"RESTART_WAYVR": "Zrestartuj WayVR",
-		"CLOSE_WAYVR": "Zamknij WayVR"
+		"CLOSE_WAYVR": "Zamknij WayVR",
+		"SPEECH_TO_TEXT": "Zamiana mowy na tekst",
+		"WHISPER_GPU_SELECT": "Wybierz GPU"
 	},
 	"APPLICATION_LAUNCHER": "Launcher aplikacji",
 	"APPLICATION_STARTED": "Uruchomiono aplikację",
@@ -373,7 +375,9 @@
 		"TITLE": "Opcje zasilania",
 		"SHUTDOWN": "Wyłącz",
 		"SUSPEND": "Uśpij",
-		"SHUTDOWN_ARE_YOU_SURE": "Czy na pewno chcesz wyłączyć komputer?"
+		"SHUTDOWN_ARE_YOU_SURE": "Czy na pewno chcesz wyłączyć komputer?",
+		"NOT_SUPPORTED": "Opcje zasilania wymagają systemd lub elogind.",
+		"SUSPEND_ARE_YOU_SURE": "Czy na pewno chcesz uśpić komputer?"
 	},
 	"YES": "Tak",
 	"NO": "Nie"

@@ -116,8 +116,10 @@ pub enum PttProgress {
 }
 
 impl WhisperStt {
-    pub fn new(model_path: impl AsRef<Path>) -> Result<Self, WhisperSttError> {
-        Self::init(WhisperSttConfig::new(model_path))
+    pub fn new(model_path: impl AsRef<Path>, gpu_idx: u32) -> Result<Self, WhisperSttError> {
+        let mut conf = WhisperSttConfig::new(model_path);
+        conf.gpu_device = gpu_idx as i32;
+        Self::init(conf)
     }
 
     pub fn init(config: WhisperSttConfig) -> Result<Self, WhisperSttError> {

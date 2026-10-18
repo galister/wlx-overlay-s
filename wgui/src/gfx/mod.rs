@@ -462,4 +462,8 @@ impl WGfx {
 		}
 		cmd::CommandBufferBuilder::new(self.clone(), QueueType::Transfer, usage, PhantomData)
 	}
+
+	pub fn enumerate_devices(&self) -> anyhow::Result<Vec<String>> {
+		self.raw.enumerate_devices()
+	}
 }

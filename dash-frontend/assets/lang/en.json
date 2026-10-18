@@ -258,6 +258,8 @@
 		},
 		"WHISPER_MODEL": "Speech-to-text model",
 		"WHISPER_MODEL_HELP": "Whisper model to use.\nLarger models produce more accurate\nresults, but consume more VRAM.",
+		"SPEECH_TO_TEXT": "Speech to text",
+		"WHISPER_GPU_SELECT": "Select GPU",
 		"TUTORIAL": "Tutorial",
 		"GRID_OPACITY": "Floor grid opacity",
 		"GRID_OPACITY_HELP": "Opacity of the floor grid when the skymap is enabled",
@@ -350,7 +352,9 @@
 		"TITLE": "Power options",
 		"SHUTDOWN": "Shut down",
 		"SUSPEND": "Suspend",
-		"SHUTDOWN_ARE_YOU_SURE": "Are you sure you want to turn off your computer?"
+		"NOT_SUPPORTED": "Power options require systemd or elogind.",
+		"SHUTDOWN_ARE_YOU_SURE": "Are you sure you want to turn off your computer?",
+		"SUSPEND_ARE_YOU_SURE": "Are you sure you want to put your computer to sleep?"
 	},
 	"PROCESS": {
 		"FORCE_KILL": "Force-kill",

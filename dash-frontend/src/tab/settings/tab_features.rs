@@ -104,41 +104,60 @@ impl SettingsTab for State {
 		layout: &mut wgui::layout::Layout,
 		state: &mut wgui::parser::ParserState,
 	) -> anyhow::Result<()> {
-		if let (Some(_), Some(id), Some(model_name)) = {
-			let mut s = action.splitn(3, ';');
-			(s.next(), s.next(), s.next())
-		} {
-			if !model_name.is_empty()
-				&& let Some(model) = whisper_model_from_name(model_name)
-			{
-				let mut common = layout.common();
-				let mut label = state.fetch_widget_as::<WidgetLabel>(common.state, &format!("{id}_value"))?;
-				label.set_text(&mut common, Translation::from_raw_text(model.display_name));
+		let (Some(_), Some(_type), Some(id), Some(value)) = ({
+			let mut s = action.splitn(4, ';');
+			(s.next(), s.next(), s.next(), s.next())
+		}) else {
+			debug_assert!(false);
+			return Ok(());
+		};
 
-				config.whisper_model = model.file_name.into();
-				if !whisper_model_path(model.file_name).exists() {
-					self.show_whisper_model_dialog_box_download(model)?;
+		match _type {
+			"whisper_model" => {
+				let model_name = value;
+				if !model_name.is_empty()
+					&& let Some(model) = whisper_model_from_name(model_name)
+				{
+					let mut common = layout.common();
+					let mut label = state.fetch_widget_as::<WidgetLabel>(common.state, &format!("{id}_value"))?;
+					label.set_text(&mut common, Translation::from_raw_text(model.display_name));
+
+					config.whisper_model = model.file_name.into();
+					if !whisper_model_path(model.file_name).exists() {
+						self.show_whisper_model_dialog_box_download(model)?;
+					} else {
+						change_kind.replace(ConfigChangeKind::Other);
+					}
 				} else {
+					config.whisper_model = "".into();
 					change_kind.replace(ConfigChangeKind::Other);
-				}
-			} else {
-				config.whisper_model = "".into();
-				change_kind.replace(ConfigChangeKind::Other);
-				// re-init the whole tab
-				if whisper_any_models_downloaded().unwrap_or_default() {
-					self.show_whisper_model_dialog_box_cleanup()?;
-				} else {
-					self.parent_tasks.push(ParentTask::SetTab(TabNameEnum::Features));
+					// re-init the whole tab
+					if whisper_any_models_downloaded().unwrap_or_default() {
+						self.show_whisper_model_dialog_box_cleanup()?;
+					} else {
+						self.parent_tasks.push(ParentTask::SetTab(TabNameEnum::Features));
+					}
 				}
 			}
-		}
+			"whisper_gpu" => {
+				let mut common = layout.common();
+				let mut label = state.fetch_widget_as::<WidgetLabel>(common.state, &format!("{id}_value"))?;
+				config.whisper_gpu = value.parse::<u32>().unwrap();
+				label.set_text(
+					&mut common,
+					Translation::from_raw_text_string(config.whisper_gpu.to_string()),
+				);
+				change_kind.replace(ConfigChangeKind::Other);
+			}
+			_ => unreachable!(),
+		};
 
 		Ok(())
 	}
 }
 
 impl State {
-	pub fn mount(par: SettingsMountParams) -> anyhow::Result<State> {
+	pub fn mount(par: SettingsMountParams, vulkan_devices: Vec<String>) -> anyhow::Result<State> {
 		let tasks = Tasks::<Task>::new();
 		let popup_download = PopupHolder::<views::download_file::View>::default();
 		let popup_dialog = PopupHolder::<views::dialog_box::View>::default();
@@ -151,7 +170,9 @@ impl State {
 		)?;
 
 		if par.feats.whisper {
+			let c = options_category(par.mp, c, "APP_SETTINGS.SPEECH_TO_TEXT", "@/dashboard/stt.svg")?;
 			whisper_models_dropdown(par.mp, c)?;
+			whisper_gpu_select_dropdown(par.mp, c, vulkan_devices)?;
 		}
 
 		options_checkbox(par.mp, c, SettingType::NotificationsEnabled)?;
@@ -287,6 +308,60 @@ impl State {
 	}
 }
 
+fn whisper_gpu_select_dropdown(
+	mp: &mut MacroParams,
+	parent: WidgetID,
+	vulkan_devices: Vec<String>,
+) -> anyhow::Result<()> {
+	let id = mp.idx.to_string();
+	mp.idx += 1;
+
+	let parent = horiz_cell(mp.layout, parent)?;
+
+	let mut params = TemplateParams::new();
+	params.insert("id", &id);
+	params.insert("translation", "APP_SETTINGS.WHISPER_GPU_SELECT");
+
+	mp.parser_state
+		.instantiate_template(mp.doc_params, "DropdownButton", mp.layout, parent, params)?;
+
+	{
+		let mut label = mp
+			.parser_state
+			.fetch_widget_as::<WidgetLabel>(&mp.layout.state, &format!("{id}_value"))?;
+		label.set_text_simple(
+			&mut mp.layout.state.globals.get(),
+			Translation::from_raw_text_string(mp.config.whisper_gpu.to_string()),
+		);
+	}
+
+	let btn = mp.parser_state.fetch_component_as::<ComponentButton>(&id)?;
+	btn.on_click(Rc::new({
+		let parent_tasks = mp.tasks.clone();
+		move |_common, e: ButtonClickEvent| {
+			let mut cells = Vec::new();
+
+			for (idx, name) in vulkan_devices.iter().enumerate() {
+				if name.contains("llvmpipe") {
+					continue;
+				}
+
+				cells.push(context_menu::Cell::Button(context_menu::Button {
+					action_name: Some(format!(";whisper_gpu;{};{}", id, idx).into()),
+					title: Translation::from_raw_text_string(name.to_string()),
+					..Default::default()
+				}));
+			}
+
+			parent_tasks.push(ParentTask::OpenContextMenu(e.mouse_pos_absolute.into(), cells));
+
+			Ok(())
+		}
+	}));
+
+	Ok(())
+}
+
 fn whisper_models_dropdown(mp: &mut MacroParams, parent: WidgetID) -> anyhow::Result<()> {
 	let id = mp.idx.to_string();
 	mp.idx += 1;
@@ -330,7 +405,7 @@ fn whisper_models_dropdown(mp: &mut MacroParams, parent: WidgetID) -> anyhow::Re
 				.enumerate()
 				.map(|(idx, item)| {
 					context_menu::Cell::Button(context_menu::Button {
-						action_name: Some(format!(";{id};{}", item.file_name).into()),
+						action_name: Some(format!(";whisper_model;{id};{}", item.file_name).into()),
 						title: Translation::from_raw_text(item.display_name),
 						tooltip: None,
 						attribs: vec![],
@@ -346,7 +421,7 @@ fn whisper_models_dropdown(mp: &mut MacroParams, parent: WidgetID) -> anyhow::Re
 			cells.insert(
 				0,
 				context_menu::Cell::Button(context_menu::Button {
-					action_name: Some(format!(";{id};").into()),
+					action_name: Some(format!(";whisper_model;{id};").into()),
 					title: Translation::from_translation_key("APP_SETTINGS.OPTION.NONE"),
 					tooltip: None,
 					attribs: vec![],

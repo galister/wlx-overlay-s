@@ -391,6 +391,10 @@ impl DashInterfaceLive {
 }
 
 impl DashInterface<AppState> for DashInterfaceLive {
+    fn enumerate_vulkan_devices(&mut self, data: &mut AppState) -> anyhow::Result<Vec<String>> {
+        data.gfx.enumerate_devices()
+    }
+
     fn window_list(&mut self, app: &mut AppState) -> anyhow::Result<Vec<WvrWindow>> {
         let wvr_server = app.wvr_server.as_mut().unwrap();
         Ok(wvr_server

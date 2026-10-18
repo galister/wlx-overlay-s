@@ -263,7 +263,9 @@
 		},
 		"TUTORIAL": "Tutorial",
 		"RESTART_WAYVR": "Riavvia WayVR",
-		"CLOSE_WAYVR": "Chiudi WayVR"
+		"CLOSE_WAYVR": "Chiudi WayVR",
+		"SPEECH_TO_TEXT": "Speech-to-text",
+		"WHISPER_GPU_SELECT": "Seleziona GPU"
 	},
 	"APPLICATION_LAUNCHER": "Avvio applicazioni",
 	"APPLICATION_STARTED": "Applicazione avviata",
@@ -373,7 +375,9 @@
 		"TITLE": "Opzioni di alimentazione",
 		"SHUTDOWN": "Spegni",
 		"SUSPEND": "Sospendi",
-		"SHUTDOWN_ARE_YOU_SURE": "Sei sicuro di voler spegnere il computer?"
+		"SHUTDOWN_ARE_YOU_SURE": "Sei sicuro di voler spegnere il computer?",
+		"NOT_SUPPORTED": "Le opzioni di alimentazione richiedono systemd o elogind.",
+		"SUSPEND_ARE_YOU_SURE": "Sei sicuro di voler mettere il computer in sospensione?"
 	},
 	"YES": "Sì",
 	"NO": "No"

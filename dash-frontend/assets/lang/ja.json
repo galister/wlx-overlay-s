@@ -263,7 +263,9 @@
 		},
 		"TUTORIAL": "チュートリアル",
 		"RESTART_WAYVR": "WayVRを再起動",
-		"CLOSE_WAYVR": "WayVRを閉じる"
+		"CLOSE_WAYVR": "WayVRを閉じる",
+		"SPEECH_TO_TEXT": "音声入力",
+		"WHISPER_GPU_SELECT": "GPUを選択"
 	},
 	"APPLICATION_LAUNCHER": "アプリランチャー",
 	"APPLICATION_STARTED": "アプリが起動しました",
@@ -373,7 +375,9 @@
 		"TITLE": "電源オプション",
 		"SHUTDOWN": "シャットダウン",
 		"SUSPEND": "サスペンド",
-		"SHUTDOWN_ARE_YOU_SURE": "コンピューターをシャットダウンしてもよろしいですか？"
+		"SHUTDOWN_ARE_YOU_SURE": "コンピューターをシャットダウンしてもよろしいですか？",
+		"NOT_SUPPORTED": "電源オプションには systemd または elogind が必要です。",
+		"SUSPEND_ARE_YOU_SURE": "コンピューターをスリープ状態にしますか？"
 	},
 	"YES": "はい",
 	"NO": "いいえ"

@@ -107,6 +107,8 @@ fn start_progress_state(
             let mut st = st.borrow_mut();
             let mut update_text = false;
 
+            common.alterables.mark_redraw();
+
             while let Ok(msg) = progress_rx.try_recv() {
                 match msg {
                     PttProgress::VuVolume(volume) => {
@@ -230,8 +232,11 @@ pub fn create_whisper(app: &mut AppState) -> anyhow::Result<OverlayWindowConfig>
                             let model_path = data_dir::get_path("whisper")
                                 .join(app.session.config.whisper_model.as_ref());
                             if model_path.is_file() {
-                                app.whisper_sst = match WhisperStt::new(model_path)
-                                    .log_err("Error while starting Whisper engine")
+                                app.whisper_sst = match WhisperStt::new(
+                                    model_path,
+                                    app.session.config.whisper_gpu,
+                                )
+                                .log_err("Error while starting Whisper engine")
                                 {
                                     Ok(x) => Some(x),
                                     Err(e) => {

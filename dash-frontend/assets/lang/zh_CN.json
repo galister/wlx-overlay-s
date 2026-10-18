@@ -263,7 +263,9 @@
 		},
 		"TUTORIAL": "教程",
 		"RESTART_WAYVR": "重启 WayVR",
-		"CLOSE_WAYVR": "关闭 WayVR"
+		"CLOSE_WAYVR": "关闭 WayVR",
+		"SPEECH_TO_TEXT": "语音转文本",
+		"WHISPER_GPU_SELECT": "选择 GPU"
 	},
 	"APPLICATION_LAUNCHER": "应用启动器",
 	"APPLICATION_STARTED": "应用程序已启动",
@@ -373,7 +375,9 @@
 		"TITLE": "电源选项",
 		"SHUTDOWN": "关机",
 		"SUSPEND": "暂停",
-		"SHUTDOWN_ARE_YOU_SURE": "确定要关机吗？"
+		"SHUTDOWN_ARE_YOU_SURE": "确定要关机吗？",
+		"NOT_SUPPORTED": "电源选项需要 systemd 或 elogind。",
+		"SUSPEND_ARE_YOU_SURE": "确定要让计算机进入睡眠状态吗？"
 	},
 	"YES": "确定",
 	"NO": "否"

@@ -1,5 +1,5 @@
 use glam::{Vec2, vec2};
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 use testbed::{Testbed, testbed_any::TestbedAny};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::filter::LevelFilter;
@@ -8,7 +8,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 use vulkan::init_window;
 use wgui::{
 	event::{MouseButtonEvent, MouseButtonIndex, MouseMotionEvent, MouseWheelEvent},
-	gfx::{CommandBufferUsage, PresentStatus, SwapchainError, WGfxClearMode},
+	gfx::{CommandBufferUsage, PresentStatus, SwapchainError, WGfx, WGfxClearMode},
 	renderer_vk::{self},
 };
 use winit::{
@@ -48,13 +48,16 @@ fn init_logging() {
 		.init();
 }
 
-fn load_testbed(audio: &mut Box<dyn audio::AudioProvider>) -> anyhow::Result<Box<dyn Testbed>> {
+fn load_testbed(
+	gfx: &Arc<WGfx>,
+	audio: &mut Box<dyn audio::AudioProvider>,
+) -> anyhow::Result<Box<dyn Testbed>> {
 	let mut assets = Box::new(assets::Asset {});
 	audio.register_wgui_samples(assets.as_mut())?;
 
 	let name = std::env::var("TESTBED").unwrap_or_default();
 	Ok(match name.as_str() {
-		"dashboard" => Box::new(TestbedDashboard::new()?),
+		"dashboard" => Box::new(TestbedDashboard::new(gfx.clone())?),
 		"" => Box::new(TestbedGeneric::new(assets)?),
 		_ => Box::new(TestbedAny::new(assets, &name)?),
 	})
@@ -75,7 +78,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let mut scale = window.scale_factor() as f32;
 
 	let mut audio: Box<dyn audio::AudioProvider> = Box::new(audio::RealAudioProvider::new());
-	let mut testbed = load_testbed(&mut audio)?;
+	let mut testbed = load_testbed(&gfx, &mut audio)?;
 
 	let mut mouse = Vec2::ZERO;
 

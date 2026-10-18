@@ -533,6 +533,9 @@ pub struct GeneralConfig {
 	#[serde(default)]
 	pub whisper_model: Arc<str>,
 
+	#[serde(default)]
+	pub whisper_gpu: u32,
+
 	#[serde(default = "def_default")]
 	pub color_palette: Arc<str>,
 
