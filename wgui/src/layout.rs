@@ -660,7 +660,7 @@ impl Layout {
 	pub fn recompute_layout(&mut self, new_size: Option<Vec2>) -> anyhow::Result<()> {
 		let size = match new_size {
 			Some(size) => Vec2::new(size.x.round(), size.y.round()),
-			None => self.content_size,
+			None => self.prev_size,
 		};
 
 		if !self.state.tree.dirty(self.tree_root_node)? && self.prev_size == size {
