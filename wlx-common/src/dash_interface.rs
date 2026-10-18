@@ -107,6 +107,7 @@ pub trait DashInterface<T> {
 	fn toggle_dashboard(&mut self, data: &mut T);
 	fn get_feats(&mut self, data: &mut T) -> InterfaceFeats;
 	fn hmd_stats(&mut self, data: &mut T) -> HmdStats;
+	fn enumerate_vulkan_devices(&mut self, data: &mut T) -> anyhow::Result<Vec<String>>;
 }
 
 #[derive(Default, Clone, Copy)]

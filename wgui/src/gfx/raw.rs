@@ -1687,6 +1687,25 @@ impl Context {
 			external_images: BTreeMap::new(),
 		})
 	}
+
+	pub fn enumerate_devices(&self) -> anyhow::Result<Vec<String>> {
+		let devices = unsafe { self.instance.enumerate_physical_devices() }
+			.map_err(|e| anyhow!("vkEnumeratePhysicalDevices failed: {e:?}"))?;
+
+		let devices: Vec<String> = devices
+			.iter()
+			.map(|dev| unsafe {
+				let mut id = vk::PhysicalDeviceIDProperties::default();
+				let mut props2 = vk::PhysicalDeviceProperties2::default().push_next(&mut id);
+				self.instance.get_physical_device_properties2(*dev, &mut props2);
+				CStr::from_ptr(props2.properties.device_name.as_ptr())
+					.to_string_lossy()
+					.to_string()
+			})
+			.collect();
+
+		Ok(devices)
+	}
 }
 
 impl Drop for Context {

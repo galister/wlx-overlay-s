@@ -263,7 +263,9 @@
 		},
 		"TUTORIAL": "Tutorial",
 		"RESTART_WAYVR": "Reiniciar WayVR",
-		"CLOSE_WAYVR": "Cerrar WayVR"
+		"CLOSE_WAYVR": "Cerrar WayVR",
+		"SPEECH_TO_TEXT": "Dictado por voz",
+		"WHISPER_GPU_SELECT": "Seleccionar GPU"
 	},
 	"APPLICATION_LAUNCHER": "Lanzador de aplicaciones",
 	"APPLICATION_STARTED": "Aplicación iniciada",
@@ -373,7 +375,9 @@
 		"TITLE": "Opciones de energía",
 		"SHUTDOWN": "Apagar",
 		"SUSPEND": "Suspender",
-		"SHUTDOWN_ARE_YOU_SURE": "¿Seguro que quieres apagar el ordenador?"
+		"SHUTDOWN_ARE_YOU_SURE": "¿Seguro que quieres apagar el ordenador?",
+		"NOT_SUPPORTED": "Las opciones de energía requieren systemd o elogind.",
+		"SUSPEND_ARE_YOU_SURE": "¿Estás seguro de que quieres suspender el equipo?"
 	},
 	"YES": "Sí",
 	"NO": "No"

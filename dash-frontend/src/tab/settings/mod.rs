@@ -141,6 +141,7 @@ pub struct TabSettings<T> {
 	tasks: Tasks<Task>,
 	marker: PhantomData<T>,
 	frontend_tasks: FrontendTasks,
+	feats: InterfaceFeats,
 }
 
 impl<T> Tab<T> for TabSettings<T> {
@@ -697,10 +698,14 @@ impl<T> TabSettings<T> {
 	fn set_tab(&mut self, frontend: &mut Frontend<T>, data: &mut T, name: TabNameEnum) -> anyhow::Result<()> {
 		let root = self.state.get_widget_id("settings_root")?;
 		frontend.layout.remove_children(root);
-		let globals = frontend.layout.state.globals.clone();
 		self.current_tab = None;
+		let globals = frontend.layout.state.globals.clone();
 
-		let feats = frontend.interface.get_feats(data);
+		let vulkan_devices = if matches!(name, TabNameEnum::Features) {
+			Some(frontend.interface.enumerate_vulkan_devices(data)?)
+		} else {
+			None
+		};
 
 		let mut mp = MacroParams {
 			layout: &mut frontend.layout,
@@ -709,14 +714,14 @@ impl<T> TabSettings<T> {
 			config: frontend.interface.general_config(data),
 			tasks: self.tasks.clone(),
 			idx: 9001,
-			feats,
+			feats: self.feats,
 		};
 
 		let settings_mount_params = SettingsMountParams {
 			mp: &mut mp,
 			id_parent: root,
 			frontend_tasks: &self.frontend_tasks,
-			feats,
+			feats: self.feats,
 		};
 
 		match name {
@@ -724,7 +729,10 @@ impl<T> TabSettings<T> {
 				self.current_tab = Some(Box::new(tab_look_and_feel::State::mount(settings_mount_params)?));
 			}
 			TabNameEnum::Features => {
-				self.current_tab = Some(Box::new(tab_features::State::mount(settings_mount_params)?));
+				self.current_tab = Some(Box::new(tab_features::State::mount(
+					settings_mount_params,
+					vulkan_devices.unwrap(), /* safe */
+				)?));
 			}
 			TabNameEnum::SpaceDrag => {
 				self.current_tab = Some(Box::new(tab_space_drag::State::mount(settings_mount_params)?));
@@ -790,6 +798,8 @@ impl<T> TabSettings<T> {
 
 		tasks.push(Task::SetTab(TabNameEnum::LookAndFeel));
 
+		let feats = frontend.interface.get_feats(data);
+
 		Ok(Self {
 			app_button_ids: Vec::new(),
 			tasks,
@@ -798,6 +808,7 @@ impl<T> TabSettings<T> {
 			context_menu: ContextMenu::default(),
 			current_tab: None,
 			frontend_tasks: frontend.tasks.clone(),
+			feats,
 		})
 	}
 }

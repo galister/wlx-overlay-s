@@ -263,7 +263,9 @@
 		},
 		"TUTORIAL": "Tutorial",
 		"RESTART_WAYVR": "WayVR neu starten",
-		"CLOSE_WAYVR": "WayVR schließen"
+		"CLOSE_WAYVR": "WayVR schließen",
+		"SPEECH_TO_TEXT": "Sprache zu Text",
+		"WHISPER_GPU_SELECT": "GPU auswählen"
 	},
 	"APPLICATION_LAUNCHER": "Programmstarter",
 	"APPLICATION_STARTED": "Anwendung gestartet",
@@ -373,7 +375,9 @@
 		"TITLE": "Energieoptionen",
 		"SHUTDOWN": "Herunterfahren",
 		"SUSPEND": "Ruhezustand",
-		"SHUTDOWN_ARE_YOU_SURE": "Bist du sicher, dass du den Computer ausschalten willst?"
+		"SHUTDOWN_ARE_YOU_SURE": "Bist du sicher, dass du den Computer ausschalten willst?",
+		"NOT_SUPPORTED": "Energieoptionen erfordern systemd oder elogind.",
+		"SUSPEND_ARE_YOU_SURE": "Bist du sicher, dass du den Computer in den Ruhezustand versetzen willst?"
 	},
 	"YES": "Ja",
 	"NO": "Nein"

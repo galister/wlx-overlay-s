@@ -1,8 +1,11 @@
+use std::sync::Arc;
+
 use slotmap::{DenseSlotMap, new_key_type};
 use wayvr_ipc::{
 	packet_client::WvrProcessLaunchParams,
 	packet_server::{WvrProcess, WvrProcessHandle, WvrWindow, WvrWindowHandle},
 };
+use wgui::gfx::WGfx;
 
 use crate::{
 	config::GeneralConfig,
@@ -66,10 +69,11 @@ pub struct DashInterfaceEmulated {
 	brightness: f32,
 	debug_frame_id: u64,
 	debug_counter: u64,
+	gfx: Arc<WGfx>,
 }
 
 impl DashInterfaceEmulated {
-	pub fn new() -> Self {
+	pub fn new(gfx: Arc<WGfx>) -> Self {
 		let mut processes = DenseSlotMap::<EmuProcessHandle, EmuProcess>::default();
 		let process_handle = processes.insert(EmuProcess {
 			name: String::from("My app"),
@@ -129,17 +133,16 @@ impl DashInterfaceEmulated {
 			brightness: 1.0,
 			debug_counter: 0,
 			debug_frame_id: 0,
+			gfx,
 		}
 	}
 }
 
-impl Default for DashInterfaceEmulated {
-	fn default() -> Self {
-		Self::new()
-	}
-}
-
 impl DashInterface<()> for DashInterfaceEmulated {
+	fn enumerate_vulkan_devices(&mut self, _: &mut ()) -> anyhow::Result<Vec<String>> {
+		self.gfx.enumerate_devices()
+	}
+
 	fn window_list(&mut self, _: &mut ()) -> anyhow::Result<Vec<WvrWindow>> {
 		Ok(self.windows.iter().map(|(handle, w)| w.to(handle)).collect())
 	}
