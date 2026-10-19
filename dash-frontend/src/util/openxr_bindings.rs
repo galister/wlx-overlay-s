@@ -81,7 +81,7 @@ impl BindingsDropdown for XrInputComponent {
 pub struct ParsedOpenXrInputPath {
 	pub side: XrInputSide,
 	pub subpath: XrInputSubpathKind,
-	pub component: XrInputComponent,
+	pub component: Option<XrInputComponent>,
 }
 
 impl TryFrom<&str> for ParsedOpenXrInputPath {
@@ -101,13 +101,18 @@ impl TryFrom<&str> for ParsedOpenXrInputPath {
 			bail!("missing input prefix");
 		}
 
-		let (identifier, component) = rest.rsplit_once('/').context("missing identifier or component")?;
+		let (identifier, component) = match rest.rsplit_once('/') {
+			Some((ident, comp)) if !comp.is_empty() => {
+				let comp = XrInputComponent::try_from(comp).context("bad component")?;
+				(ident, Some(comp))
+			}
+			_ => (rest, None),
+		};
 
-		if identifier.is_empty() || component.is_empty() {
-			bail!("identifier or component empty");
+		if identifier.is_empty() {
+			bail!("identifier empty");
 		}
 
-		let component = XrInputComponent::try_from(component).context("bad component")?;
 		let subpath = XrInputSubpathKind::try_from(identifier).context("bad subpath")?;
 
 		Ok(Self {

@@ -162,6 +162,7 @@ impl ViewTrait for View {
 						"subpath" => {
 							apply_subpath(
 								action_binding_mut(action_mut, side),
+								action_name,
 								side,
 								value,
 								self.controller_profile,
@@ -617,7 +618,7 @@ fn chord_member_controls(
 		output_side,
 		member_idx,
 		available_components,
-		parsed.as_ref().map(|x| x.component),
+		parsed.and_then(|x| x.component),
 	)?;
 
 	let tasks = mp.tasks.clone();
@@ -638,7 +639,7 @@ fn chord_member_controls(
 	})?;
 
 	// put threshold slider on its own row
-	if parsed.as_ref().is_some_and(|x| x.component.is_analog()) {
+	if parsed.and_then(|x| x.component).is_some_and(|x| x.is_analog()) {
 		chord_threshold_slider(mp, parent, action.clone(), output_side, member_idx, member.threshold())?;
 	}
 
@@ -666,13 +667,6 @@ fn input_controls_for_hand(mp: &mut MacroParams, par: InputControlsForHandParams
 
 	let parent = horiz_cell(mp.layout, par.parent)?;
 
-	let available_components: Rc<[XrInputComponent]> = current
-		.as_ref()
-		.and_then(|par| user_path.find_subpath(par.subpath))
-		.map(|subp| subp.components)
-		.unwrap_or_default()
-		.into();
-
 	let available_subpaths: Rc<[XrInputSubpathKind]> = user_path
 		.paths
 		.iter()
@@ -689,23 +683,33 @@ fn input_controls_for_hand(mp: &mut MacroParams, par: InputControlsForHandParams
 		current.as_ref().map(|x| x.subpath),
 	)?;
 
+	if &**par.action == "scroll" {
+		clicks_dropdown(mp, parent, par.action.clone(), par.click_type)?;
+		return Ok(());
+	}
+
+	let available_components: Rc<[XrInputComponent]> = current
+		.as_ref()
+		.and_then(|par| user_path.find_subpath(par.subpath))
+		.map(|subp| subp.components)
+		.unwrap_or_default()
+		.into();
+
 	if !component_dropdown(
 		mp,
 		parent,
 		par.action.clone(),
 		par.side,
 		available_components,
-		current.as_ref().map(|x| x.component),
+		current.and_then(|x| x.component),
 	)? {
 		return Ok(());
 	}
 
 	clicks_dropdown(mp, parent, par.action.clone(), par.click_type)?;
 
-	if let Some(component) = current.as_ref().map(|x| x.component)
+	if let Some(component) = current.and_then(|x| x.component)
 		&& component.is_analog()
-		&& &**par.action != "scroll"
-	// hax
 	{
 		threshold_slider(mp, parent, par.action.clone(), par.side, par.threshold)?;
 	}
@@ -1065,6 +1069,7 @@ fn create_dropdown_with_cells(
 
 fn apply_subpath(
 	side_mut: &mut Option<OneOrMany<String>>,
+	action_name: &str,
 	side_str: &str,
 	subpath_str: &str,
 	profile: &XrControllerProfile,
@@ -1075,6 +1080,14 @@ fn apply_subpath(
 	) else {
 		return;
 	};
+
+	if action_name == "scroll" {
+		*side_mut = Some(OneOrMany::One(format!(
+			"/user/hand/{side_str}/input/{subpath_str}"
+		)));
+		return;
+	}
+
 	let Some(subpath_obj) = profile.find_userpath(side).and_then(|p| p.find_subpath(subpath)) else {
 		return;
 	};
@@ -1087,11 +1100,12 @@ fn apply_subpath(
 			return;
 		};
 
-		let mut parsed_compo = parsed.component;
-		if !subpath_obj.components.contains(&parsed_compo) {
-			parsed_compo = *subpath_obj.components.first().unwrap();
+		let parsed_compo = parsed.component.unwrap_or(*subpath_obj.components.first().unwrap());
+		if subpath_obj.components.contains(&parsed_compo) {
+			parsed_compo
+		} else {
+			*subpath_obj.components.first().unwrap()
 		}
-		parsed_compo
 	} else {
 		*subpath_obj.components.first().unwrap()
 	};
@@ -1226,7 +1240,7 @@ fn apply_chord_hand(member: &mut OpenXrInputChordMember, side: XrInputSide, prof
 	};
 
 	let component = parsed
-		.map(|parsed| parsed.component)
+		.and_then(|parsed| parsed.component)
 		.filter(|component| subpath.components.contains(component))
 		.unwrap_or(subpath.components[0]);
 	let path = format!(
@@ -1256,8 +1270,12 @@ fn apply_chord_subpath(
 		return;
 	};
 
-	let component = if subpath_obj.components.contains(&parsed.component) {
-		parsed.component
+	let component = if let Some(comp) = parsed.component {
+		if subpath_obj.components.contains(&comp) {
+			comp
+		} else {
+			first_component
+		}
 	} else {
 		first_component
 	};

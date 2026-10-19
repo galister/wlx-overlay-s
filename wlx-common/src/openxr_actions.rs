@@ -92,6 +92,112 @@ pub struct OpenXrInputProfile {
 	pub haptic: Option<OpenXrInputAction>,
 }
 
+fn strip_axis_component(path: &str) -> String {
+	if let Some((prefix, suffix)) = path.rsplit_once('/')
+		&& (suffix == "x" || suffix == "y")
+			&& (prefix.ends_with("/thumbstick") || prefix.ends_with("/trackpad") || prefix.ends_with("/joystick"))
+		{
+			return prefix.to_owned();
+		}
+	path.to_owned()
+}
+
+// TODO: remove this after thumbstick issue is not a thing anymore
+fn normalize_profile(profile: &mut OpenXrInputProfile) {
+	if let Some(action) = profile.pose.as_mut() {
+		normalize_action(action);
+	}
+	if let Some(action) = profile.click.as_mut() {
+		normalize_action(action);
+	}
+	if let Some(action) = profile.grab.as_mut() {
+		normalize_action(action);
+	}
+	if let Some(action) = profile.alt_click.as_mut() {
+		normalize_action(action);
+	}
+	if let Some(action) = profile.show_hide.as_mut() {
+		normalize_action(action);
+	}
+	if let Some(action) = profile.toggle_dashboard.as_mut() {
+		normalize_action(action);
+	}
+	if let Some(action) = profile.space_drag.as_mut() {
+		normalize_action(action);
+	}
+	if let Some(action) = profile.space_rotate.as_mut() {
+		normalize_action(action);
+	}
+	if let Some(action) = profile.space_reset.as_mut() {
+		normalize_action(action);
+	}
+	if let Some(action) = profile.click_modifier_right.as_mut() {
+		normalize_action(action);
+	}
+	if let Some(action) = profile.click_modifier_middle.as_mut() {
+		normalize_action(action);
+	}
+	if let Some(action) = profile.move_mouse.as_mut() {
+		normalize_action(action);
+	}
+	if let Some(action) = profile.scroll.as_mut() {
+		normalize_action(action);
+	}
+	if let Some(action) = profile.haptic.as_mut() {
+		normalize_action(action);
+	}
+}
+
+fn normalize_action(action: &mut OpenXrInputAction) {
+	let process_one_or_many = |opt: &mut Option<OneOrMany<String>>| {
+		if let Some(paths) = opt {
+			match paths {
+				OneOrMany::One(p) => {
+					let normalized = strip_axis_component(p);
+					if normalized != *p {
+						*p = normalized;
+					}
+				}
+				OneOrMany::Many(ps) => {
+					for p in ps.iter_mut() {
+						let normalized = strip_axis_component(p);
+						if normalized != *p {
+							*p = normalized;
+						}
+					}
+				}
+			}
+		}
+	};
+
+	process_one_or_many(&mut action.left);
+	process_one_or_many(&mut action.right);
+	process_one_or_many(&mut action.handsfree);
+
+	let process_chord = |members: &mut Option<Vec<OpenXrInputChordMember>>| {
+		if let Some(m) = members {
+			for member in m.iter_mut() {
+				let path = member.path().to_owned();
+				let normalized = strip_axis_component(&path);
+				if normalized != path {
+					let threshold = member.threshold();
+					*member = if threshold.is_some() {
+						OpenXrInputChordMember::Detailed {
+							path: normalized,
+							threshold,
+						}
+					} else {
+						OpenXrInputChordMember::Path(normalized)
+					};
+				}
+			}
+		}
+	};
+
+	process_chord(&mut action.left_chord);
+	process_chord(&mut action.right_chord);
+}
+
 pub fn load_xr_input_profiles() -> Vec<OpenXrInputProfile> {
 	let mut profiles: Vec<OpenXrInputProfile> = serde_json5::from_str(DEFAULT_XR_INPUT_PROFILES).unwrap(); // want panic
 
@@ -100,7 +206,10 @@ pub fn load_xr_input_profiles() -> Vec<OpenXrInputProfile> {
 	};
 
 	match serde_json5::from_str::<Vec<OpenXrInputProfile>>(&conf) {
-		Ok(override_profiles) => {
+		Ok(mut override_profiles) => {
+			for new in override_profiles.iter_mut() {
+				normalize_profile(new);
+			}
 			for new in override_profiles {
 				if let Some(i) = profiles.iter().position(|old| old.profile == new.profile) {
 					profiles[i] = new;
