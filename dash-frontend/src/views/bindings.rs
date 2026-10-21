@@ -3,17 +3,13 @@ use std::rc::Rc;
 use strum::EnumProperty;
 use wgui::{
 	assets::AssetPathRef,
-	components::{
-		button::{ButtonClickEvent, ComponentButton},
-		slider::ComponentSlider,
-	},
+	components::{button::ComponentButton, slider::ComponentSlider},
 	globals::WguiGlobals,
 	i18n::Translation,
 	layout::{Layout, WidgetID},
 	log::LogErr,
 	parser::{Fetchable, ParseDocumentParams, ParserState, TemplateParams},
 	task::Tasks,
-	widget::label::WidgetLabel,
 	windowing::context_menu::{self, TickResult},
 };
 use wlx_common::{
@@ -1012,7 +1008,7 @@ fn create_dropdown<B: 'static + BindingsDropdown>(
 		.iter()
 		.map(|item| {
 			context_menu::Cell::Button(context_menu::Button {
-				action_name: Some(item.action_str(&action, side)),
+				action_name: Some(item.action_str(&action, side).into()),
 				title: item.translation(),
 				..Default::default()
 			})
@@ -1023,7 +1019,7 @@ fn create_dropdown<B: 'static + BindingsDropdown>(
 		cells.insert(
 			0,
 			context_menu::Cell::Button(context_menu::Button {
-				action_name: Some(action_str),
+				action_name: Some(action_str.into()),
 				title: Translation::from_translation_key("APP_SETTINGS.OPTION.NONE"),
 				..Default::default()
 			}),
@@ -1036,35 +1032,24 @@ fn create_dropdown<B: 'static + BindingsDropdown>(
 fn create_dropdown_with_cells(
 	mp: &mut MacroParams,
 	parent: WidgetID,
-	mut params: TemplateParams,
+	params: TemplateParams,
 	current_text: Translation,
 	cells: Vec<context_menu::Cell>,
 ) -> anyhow::Result<()> {
 	let id = mp.idx.to_string();
 	mp.idx += 1;
-	params.insert("id", &id);
-
-	mp.parser_state
-		.instantiate_template(mp.doc_params, "DropdownButton", mp.layout, parent, params)?;
-
-	{
-		let mut label = mp
-			.parser_state
-			.fetch_widget_as::<WidgetLabel>(&mp.layout.state, &format!("{id}_value"))?;
-		label.set_text_simple(&mut mp.layout.state.globals.get(), current_text);
-	}
-
-	let btn = mp.parser_state.fetch_component_as::<ComponentButton>(&id)?;
-	btn.on_click(Rc::new({
-		let tasks = mp.tasks.clone();
-		let cells = cells.clone();
-		move |_common, e: ButtonClickEvent| {
-			tasks.push(Task::OpenContextMenu(e.mouse_pos_absolute.into(), cells.clone()));
-			Ok(())
-		}
-	}));
-
-	Ok(())
+	let tasks = mp.tasks.clone();
+	wgui_simple::mount_dropdown(wgui_simple::MountDropdownParams {
+		layout: mp.layout,
+		parser_state: mp.parser_state,
+		doc_params: mp.doc_params,
+		parent,
+		id,
+		params,
+		current_text,
+		cells,
+		on_open: Box::new(move |pos, cells| tasks.push(Task::OpenContextMenu(pos, cells))),
+	})
 }
 
 fn apply_subpath(
@@ -1082,9 +1067,7 @@ fn apply_subpath(
 	};
 
 	if action_name == "scroll" {
-		*side_mut = Some(OneOrMany::One(format!(
-			"/user/hand/{side_str}/input/{subpath_str}"
-		)));
+		*side_mut = Some(OneOrMany::One(format!("/user/hand/{side_str}/input/{subpath_str}")));
 		return;
 	}
 

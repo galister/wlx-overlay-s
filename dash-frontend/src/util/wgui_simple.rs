@@ -1,12 +1,16 @@
 use glam::{Mat4, Vec2};
+use std::rc::Rc;
 use wgui::{
 	animation::{Animation, AnimationDuration, AnimationEasing},
 	assets::AssetPathRef,
 	color::WguiColorName,
-	components::{self, button::ButtonClickCallback},
+	components::{
+		self,
+		button::{ButtonClickCallback, ButtonClickEvent, ComponentButton},
+	},
 	i18n::Translation,
 	layout::{Layout, LayoutTask, WidgetID},
-	parser::{Fetchable, ParseDocumentParams},
+	parser::{Fetchable, ParseDocumentParams, ParserState, TemplateParams},
 	renderer_vk::{
 		text::{FontWeight, TextStyle, custom_glyph::CustomGlyphData},
 		util::centered_matrix,
@@ -17,6 +21,7 @@ use wgui::{
 		label::{WidgetLabel, WidgetLabelParams},
 		sprite::{WidgetSprite, WidgetSpriteParams},
 	},
+	windowing::context_menu,
 };
 
 pub struct CreateButtonParams<'a> {
@@ -165,4 +170,40 @@ pub fn create_loading(par: CreateLoadingParams) -> anyhow::Result<WidgetID> {
 	.submit_l(par.layout);
 
 	Ok(id_root)
+}
+
+pub struct MountDropdownParams<'a> {
+	pub layout: &'a mut Layout,
+	pub parser_state: &'a mut ParserState,
+	pub doc_params: &'a ParseDocumentParams<'a>,
+	pub parent: WidgetID,
+	pub id: String,
+	pub params: TemplateParams,
+	pub current_text: Translation,
+	pub cells: Vec<context_menu::Cell>,
+	pub on_open: Box<dyn Fn(context_menu::Position, Vec<context_menu::Cell>)>,
+}
+
+pub fn mount_dropdown(par: MountDropdownParams) -> anyhow::Result<()> {
+	let mut params = par.params;
+	params.insert("id", &par.id);
+
+	par
+		.parser_state
+		.instantiate_template(par.doc_params, "DropdownButton", par.layout, par.parent, params)?;
+
+	{
+		let mut label = par
+			.parser_state
+			.fetch_widget_as::<WidgetLabel>(&par.layout.state, &format!("{}_value", par.id))?;
+		label.set_text_simple(&mut par.layout.state.globals.get(), par.current_text);
+	}
+
+	let btn = par.parser_state.fetch_component_as::<ComponentButton>(&par.id)?;
+	btn.on_click(Rc::new(move |_common, e: ButtonClickEvent| {
+		(par.on_open)(e.mouse_pos_absolute.into(), par.cells.clone());
+		Ok(())
+	}));
+
+	Ok(())
 }

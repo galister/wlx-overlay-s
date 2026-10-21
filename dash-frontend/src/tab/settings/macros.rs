@@ -1,16 +1,14 @@
 use std::rc::Rc;
 
-use crate::tab::settings::{self, SettingType, Task, horiz_cell, mount_requires_restart};
+use crate::{
+	tab::settings::{self, SettingType, Task, horiz_cell, mount_requires_restart},
+	util::wgui_simple,
+};
 use wgui::{
-	components::{
-		button::{ButtonClickEvent, ComponentButton},
-		checkbox::ComponentCheckbox,
-		slider::ComponentSlider,
-	},
+	components::{button::ComponentButton, checkbox::ComponentCheckbox, slider::ComponentSlider},
 	layout::{Layout, WidgetID},
 	parser::{Fetchable, ParseDocumentParams, ParserState, TemplateParams},
 	task::Tasks,
-	widget::label::WidgetLabel,
 	windowing::context_menu,
 };
 use wlx_common::{DesktopBackend, XrBackend, config::GeneralConfig, dash_interface::InterfaceFeats};
@@ -297,7 +295,6 @@ where
 	mp.idx += 1;
 
 	let mut params = TemplateParams::new();
-	params.insert("id", &id);
 
 	match setting.get_translation() {
 		Ok(translation) => params.insert("translation", translation),
@@ -310,68 +307,62 @@ where
 
 	let id_cell = horiz_cell(mp.layout, parent)?;
 
-	mp.parser_state
-		.instantiate_template(mp.doc_params, "DropdownButton", mp.layout, id_cell, params)?;
+	let setting_str = setting.as_ref();
+	let title = setting.get_enum_title(mp.config);
+
+	let feats = mp.feats;
+	let cells = EnumType::VARIANTS
+		.iter()
+		.filter_map(|item| {
+			if item.get_bool("Hidden").unwrap_or(false) {
+				return None;
+			}
+			if item
+				.get_str("Backend")
+				.is_some_and(|x| XrBackend::try_from(x).unwrap() != feats.xr_backend)
+			{
+				return None;
+			}
+			if item
+				.get_str("Desktop")
+				.is_some_and(|x| DesktopBackend::try_from(x).unwrap() != feats.desktop_backend)
+			{
+				return None;
+			}
+
+			let value = item.as_ref();
+			let title = SettingType::get_enum_title_inner(*item);
+			let tooltip = SettingType::get_enum_tooltip_inner(*item);
+
+			let text = &title.text;
+			let translated = if title.translated { "1" } else { "0" };
+			let action = format!("{setting_str};{id};{value};{text};{translated}");
+
+			Some(context_menu::Cell::Button(context_menu::Button {
+				action_name: Some(action.into()),
+				title,
+				tooltip,
+				..Default::default()
+			}))
+		})
+		.collect();
+
+	let tasks = mp.tasks.clone();
+	wgui_simple::mount_dropdown(wgui_simple::MountDropdownParams {
+		layout: mp.layout,
+		parser_state: mp.parser_state,
+		doc_params: mp.doc_params,
+		parent: id_cell,
+		id,
+		params,
+		current_text: title,
+		cells,
+		on_open: Box::new(move |pos, cells| tasks.push(Task::OpenContextMenu(pos, cells))),
+	})?;
 
 	if setting.requires_restart() {
 		mount_requires_restart(mp.layout, id_cell)?;
 	}
-
-	let setting_str = setting.as_ref();
-	let title = setting.get_enum_title(mp.config);
-
-	{
-		let mut label = mp
-			.parser_state
-			.fetch_widget_as::<WidgetLabel>(&mp.layout.state, &format!("{id}_value"))?;
-		label.set_text_simple(&mut mp.layout.state.globals.get(), title);
-	}
-
-	let btn = mp.parser_state.fetch_component_as::<ComponentButton>(&id)?;
-	btn.on_click(Rc::new({
-		let feats = mp.feats;
-		let tasks = mp.tasks.clone();
-		move |_common, e: ButtonClickEvent| {
-			tasks.push(Task::OpenContextMenu(
-				e.mouse_pos_absolute.into(),
-				EnumType::VARIANTS
-					.iter()
-					.filter_map(|item| {
-						if item.get_bool("Hidden").unwrap_or(false) {
-							return None;
-						}
-						if item
-							.get_str("Backend")
-							.is_some_and(|x| XrBackend::try_from(x).unwrap() != feats.xr_backend)
-						{
-							return None;
-						}
-						if item
-							.get_str("Desktop")
-							.is_some_and(|x| DesktopBackend::try_from(x).unwrap() != feats.desktop_backend)
-						{
-							return None;
-						}
-
-						let value = item.as_ref();
-						let title = SettingType::get_enum_title_inner(*item);
-						let tooltip = SettingType::get_enum_tooltip_inner(*item);
-
-						let text = &title.text;
-						let translated = if title.translated { "1" } else { "0" };
-
-						Some(context_menu::Cell::Button(context_menu::Button {
-							action_name: Some(format!("{setting_str};{id};{value};{text};{translated}").into()),
-							title,
-							tooltip,
-							..Default::default()
-						}))
-					})
-					.collect(),
-			));
-			Ok(())
-		}
-	}));
 
 	Ok(())
 }
