@@ -320,8 +320,12 @@ impl OverlayWindowConfig {
             return;
         }
 
-        let to_hmd = (state.transform.translation - app.input_state.hmd.translation).normalize();
-        let watch_normal = state.transform.transform_vector3a(Vec3A::NEG_Z).normalize();
+        let to_hmd =
+            (state.transform.translation - app.input_state.hmd.translation).normalize_or_zero();
+        let watch_normal = state
+            .transform
+            .transform_vector3a(Vec3A::NEG_Z)
+            .normalize_or_zero();
         let dot = to_hmd.dot(watch_normal);
 
         let range = (app.session.config.watch_view_angle_max
