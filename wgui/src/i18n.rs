@@ -69,6 +69,16 @@ pub trait LangsList {
 }
 
 impl Locale {
+	#[must_use]
+	/// Returns a clone of `self` without `region`
+	pub fn without_region(&self) -> Locale {
+		Locale {
+			lang: self.lang.clone(),
+			region: None,
+			matched: self.matched.clone(),
+		}
+	}
+
 	fn match_locale<'o>(
 		default_lang: &'static str,
 		lang: &str,

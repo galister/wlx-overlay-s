@@ -4,6 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use anyhow::Context;
 use dash_frontend::frontend::{self, FrontendTask, FrontendUpdateParams};
 use glam::{Affine2, Affine3A, Quat, Vec2, vec2, vec3};
 use wayvr_ipc::{
@@ -43,7 +44,7 @@ use crate::{
         },
     },
     config::{none_if_0, save_settings},
-    ipc::ipc_server::{gen_args_vec, gen_env_vec},
+    ipc::ipc_server::gen_env_vec,
     state::AppState,
     subsystem::hid::WheelDelta,
     windowing::{
@@ -440,7 +441,11 @@ impl DashInterface<AppState> for DashInterfaceLive {
     ) -> anyhow::Result<WvrProcessHandle> {
         let wvr_server = app.wvr_server.as_mut().unwrap();
 
-        let args_vec = gen_args_vec(&params.args);
+        let mut argv_iter = params.argv.iter().map(String::as_str);
+        let exec_path = argv_iter
+            .next()
+            .context("No executable for process_launch")?;
+        let exec_args = argv_iter.collect::<Box<_>>();
         let env_vec = gen_env_vec(&params.env);
 
         if auto_start {
@@ -451,8 +456,8 @@ impl DashInterface<AppState> for DashInterfaceLive {
         wvr_server
             .spawn_process(
                 &params.name,
-                &params.exec,
-                &args_vec,
+                exec_path,
+                &exec_args,
                 &env_vec,
                 params.resolution,
                 params.pos_mode,

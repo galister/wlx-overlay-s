@@ -5,7 +5,7 @@ use wayvr_ipc::{
 	packet_client::WvrProcessLaunchParams,
 	packet_server::{WvrProcess, WvrProcessHandle, WvrWindow, WvrWindowHandle},
 };
-use wgui::gfx::WGfx;
+use wgui::{gfx::WGfx, i18n::Locale};
 
 use crate::{
 	config::GeneralConfig,
@@ -73,7 +73,7 @@ pub struct DashInterfaceEmulated {
 }
 
 impl DashInterfaceEmulated {
-	pub fn new(gfx: Arc<WGfx>) -> Self {
+	pub fn new(gfx: Arc<WGfx>, locale: &Locale) -> Self {
 		let mut processes = DenseSlotMap::<EmuProcessHandle, EmuProcess>::default();
 		let process_handle = processes.insert(EmuProcess {
 			name: String::from("My app"),
@@ -85,7 +85,7 @@ impl DashInterfaceEmulated {
 			visible: true,
 		});
 
-		let mut desktop_finder = DesktopFinder::new();
+		let mut desktop_finder = DesktopFinder::new(locale);
 		desktop_finder.refresh();
 
 		// Use serde defaults

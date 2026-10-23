@@ -32,6 +32,7 @@ rust-embed = "8.9.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0.145"
 serde_json5 = "0.2.1"
+shell-words = "1.1.1"
 slotmap = "1.1.1"
 smallvec = "1.15.2"
 smol = "2.0.2"
@@ -43,7 +44,6 @@ wayland-protocols = { version = "0.32" }
 wayland-protocols-misc = { version = "0.3.12" }
 winit = "0.30.12"
 xdg = "3.0.0"
-
 
 [profile.dev]
 opt-level = 1

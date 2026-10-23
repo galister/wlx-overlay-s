@@ -61,7 +61,7 @@ impl<T> Tab<T> for TabApps<T> {
 	}
 }
 
-fn find_entry_from_app_name<'a>(app_id: &str, entries: &'a [DesktopEntry]) -> Option<&'a DesktopEntry> {
+fn find_entry_from_app_name<'a>(app_id: &str, entries: &'a [Rc<DesktopEntry>]) -> Option<&'a Rc<DesktopEntry>> {
 	entries.iter().find(|&entry| *entry.app_id == *app_id)
 }
 
@@ -72,7 +72,7 @@ impl<T> TabApps<T> {
 
 		let mut stale_entries = Vec::<Rc<str>>::new();
 
-		let mut pinned_desktop_entries = Vec::<(PinnedApp, &DesktopEntry)>::new();
+		let mut pinned_desktop_entries = Vec::<(PinnedApp, Rc<DesktopEntry>)>::new();
 
 		// collect pinned desktop entries
 		{
@@ -83,7 +83,7 @@ impl<T> TabApps<T> {
 					continue;
 				};
 
-				pinned_desktop_entries.push((pinned_app.clone(), desktop_entry));
+				pinned_desktop_entries.push((pinned_app.clone(), desktop_entry.clone()));
 			}
 			// cleanup:
 			// remove non-existent app ids from pinned apps
@@ -119,7 +119,7 @@ impl<T> TabApps<T> {
 				&mut state.parser_state,
 				&doc_params(frontend.globals.clone()),
 				self.pinned_apps_parent,
-				desktop_entry,
+				desktop_entry.as_ref(),
 				Some(tooltip_string),
 			)?;
 
@@ -139,8 +139,8 @@ impl<T> TabApps<T> {
 
 struct AppList {
 	//data: Vec<ParserData>,
-	all_entries: Vec<DesktopEntry>,
-	entries_to_mount: VecDeque<DesktopEntry>,
+	all_entries: Vec<Rc<DesktopEntry>>,
+	entries_to_mount: VecDeque<Rc<DesktopEntry>>,
 	list_parent: WidgetPair,
 	prev_category_name: String,
 }
@@ -150,7 +150,7 @@ fn on_app_click(
 	frontend_tasks: FrontendTasks,
 	tasks: Tasks<Task>,
 	globals: WguiGlobals,
-	entry: DesktopEntry,
+	entry: Rc<DesktopEntry>,
 	state: Rc<RefCell<State>>,
 	pinned_app: Option<PinnedApp>,
 ) -> ButtonClickCallback {
@@ -307,14 +307,17 @@ fn get_category_name_score(name: &str) -> u8 {
 	Scores::Unknown as u8
 }
 
-fn get_best_category_name(categories: &[Rc<str>]) -> Option<&Rc<str>> {
+fn get_best_category_name<S>(categories: &[S]) -> Option<&str>
+where
+	S: AsRef<str>,
+{
 	let mut best_score: u8 = 0;
-	let mut best_category: Option<&Rc<str>> = None;
+	let mut best_category: Option<&str> = None;
 
 	for cat in categories {
-		let score = get_category_name_score(cat);
+		let score = get_category_name_score(cat.as_ref());
 		if score > best_score {
-			best_category = Some(cat);
+			best_category = Some(cat.as_ref());
 			best_score = score;
 		}
 	}

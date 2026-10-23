@@ -107,13 +107,12 @@ pub async fn wvr_process_terminate(
 #[allow(clippy::too_many_arguments)]
 pub async fn wvr_process_launch(
     state: &mut WayVRClientState,
-    exec: String,
+    argv: Vec<String>,
     name: String,
     env: Vec<String>,
     resolution: [u32; 2],
     pos_mode: PositionMode,
     icon: Option<String>,
-    args: String,
     userdata: HashMap<String, String>,
 ) {
     handle_result(
@@ -123,9 +122,8 @@ pub async fn wvr_process_launch(
             state.serial_generator.increment_get(),
             packet_client::WvrProcessLaunchParams {
                 env,
-                exec,
+                argv,
                 name,
-                args,
                 resolution,
                 pos_mode,
                 icon,

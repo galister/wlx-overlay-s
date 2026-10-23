@@ -179,7 +179,7 @@ impl AppState {
 
         let ipc_server = ipc_server::WayVRServer::new()?;
 
-        let mut desktop_finder = DesktopFinder::new();
+        let mut desktop_finder = DesktopFinder::new(params.wgui_globals.i18n().get_locale());
         desktop_finder.refresh();
 
         #[cfg(feature = "pipewire")]
