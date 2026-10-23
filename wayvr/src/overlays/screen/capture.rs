@@ -31,6 +31,9 @@ use crate::{
 
 const CURSOR_SIZE: f32 = 16. / 1440.;
 
+// synchronize queue shared by the WlxCapture worker threads
+static CAPTURE_QUEUE_MUTEX: Mutex<()> = Mutex::new(());
+
 struct BufPass {
     pass: WGfxPass<Vert2Uv>,
     buf_vert: Arc<Buffer<Vert2Uv>>,
@@ -665,6 +668,17 @@ fn upload_image(
     format: Format,
     data: &[u8],
 ) -> Option<Arc<Image>> {
+    upload_image_with_row_length(me, width, height, format, data, 0)
+}
+
+fn upload_image_with_row_length(
+    me: &WlxCaptureIn,
+    width: u32,
+    height: u32,
+    format: Format,
+    data: &[u8],
+    buffer_row_length: u32,
+) -> Option<Arc<Image>> {
     let cmd_result = if me.use_capture_queue {
         me.gfx
             .create_capture_command_buffer(CommandBufferUsage::OneTimeSubmit)
@@ -679,15 +693,23 @@ fn upload_image(
             return None;
         }
     };
-    let image = match cmd_xfer.upload_image(width, height, format, data) {
-        Ok(x) => x,
-        Err(e) => {
-            log::error!("{}: Could not create vkImage: {:?}", me.name, e);
-            return None;
-        }
-    };
+    let image =
+        match cmd_xfer.upload_image_with_row_length(width, height, format, data, buffer_row_length)
+        {
+            Ok(x) => x,
+            Err(e) => {
+                log::error!("{}: Could not create vkImage: {:?}", me.name, e);
+                return None;
+            }
+        };
 
-    if let Err(e) = cmd_xfer.build_and_execute_now() {
+    let result = if me.use_capture_queue {
+        let _guard = CAPTURE_QUEUE_MUTEX.lock().unwrap(); // mutex poison only
+        cmd_xfer.build_and_execute_now()
+    } else {
+        cmd_xfer.build_and_execute_now()
+    };
+    if let Err(e) = result {
         log::error!("{}: Could not execute upload: {:?}", me.name, e);
         return None;
     }
@@ -757,8 +779,22 @@ pub(super) fn receive_callback(me: &WlxCaptureIn, frame: WlxFrame) -> Option<Wlx
                 }
             };
 
-            let data = unsafe { std::slice::from_raw_parts(frame.ptr as *const u8, frame.size) };
-            let image = upload_image(me, frame.format.width, frame.format.height, format, data)?;
+            // SAFETY: the MemPtr params & allocation and must be valid and must outlive the callback
+            let pixels = unsafe {
+                std::slice::from_raw_parts(
+                    (frame.ptr as *const u8).add(frame.offset),
+                    frame.size - frame.offset,
+                )
+            };
+            let buffer_row_length = (frame.stride / 4) as u32;
+            let image = upload_image_with_row_length(
+                me,
+                frame.format.width,
+                frame.format.height,
+                format,
+                pixels,
+                buffer_row_length,
+            )?;
 
             Some(WlxCaptureOut {
                 image: me.gfx.create_image_view(image).ok()?,
@@ -811,6 +847,8 @@ pub(super) enum MainThreadFrame {
     Cpu {
         format: FrameFormat,
         data: Vec<u8>,
+        offset: usize,
+        stride: usize,
         mouse: Option<MouseMeta>,
     },
     Dmabuf {
@@ -870,12 +908,16 @@ where
             MainThreadFrame::Cpu {
                 format,
                 data,
+                offset,
+                stride,
                 mouse,
             } => {
                 let frame = wlx_frame::MemPtrFrame {
                     format,
                     ptr: data.as_ptr() as usize,
                     size: data.len(),
+                    offset,
+                    stride,
                     mouse,
                 };
                 receive_callback(
@@ -910,22 +952,24 @@ fn receive_callback_dummy(_: &DmaExporterProxy, frame: WlxFrame) -> Option<MainT
             Some(MainThreadFrame::Cpu {
                 format: frame.format,
                 data: map.as_slice().to_vec(),
+                offset: frame.plane.offset as _,
+                stride: (frame.format.width as usize).checked_mul(4)?,
                 mouse: frame.mouse,
             })
         }
         WlxFrame::MemPtr(frame) => {
-            let data = if frame.size == 0 {
-                Vec::new()
-            } else {
-                if frame.ptr == 0 {
-                    log::error!("Main-thread CPU capture received a null MemPtr frame");
-                    return None;
-                }
-                unsafe { std::slice::from_raw_parts(frame.ptr as *const u8, frame.size) }.to_vec()
+            // SAFETY: Allocation must be valid & must outlive the callback
+            let pixels = unsafe {
+                std::slice::from_raw_parts(
+                    (frame.ptr as *const u8).add(frame.offset),
+                    frame.size - frame.offset,
+                )
             };
             Some(MainThreadFrame::Cpu {
                 format: frame.format,
-                data,
+                data: pixels.to_vec(),
+                offset: frame.offset,
+                stride: frame.stride,
                 mouse: frame.mouse,
             })
         }

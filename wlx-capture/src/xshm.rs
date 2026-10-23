@@ -109,6 +109,8 @@ where
                                         transform: Transform::Normal,
                                     },
                                     ptr: unsafe { image.as_ptr() as _ },
+                                    offset: 0,
+                                    stride: image.bytes_per_line() as _,
                                     size,
                                     mouse: d.root_mouse_position().and_then(|root_pos| {
                                         monitor.mouse_to_local(root_pos).map(|(x, y)| MouseMeta {

@@ -2495,10 +2495,21 @@ impl RawCommandBuffer {
 		offset: [u32; 3],
 		extent: [u32; 3],
 	) {
+		self.copy_buffer_to_image_with_row_length(buffer, image, offset, extent, 0);
+	}
+
+	pub(super) fn copy_buffer_to_image_with_row_length(
+		&mut self,
+		buffer: &RawBuffer,
+		image: &Arc<RawImage>,
+		offset: [u32; 3],
+		extent: [u32; 3],
+		buffer_row_length: u32,
+	) {
 		self.transition_image(image, ImageLayout::TransferDst);
 		let regions = [vk::BufferImageCopy::default()
 			.buffer_offset(0)
-			.buffer_row_length(0)
+			.buffer_row_length(buffer_row_length)
 			.buffer_image_height(0)
 			.image_subresource(vk::ImageSubresourceLayers {
 				aspect_mask: vk::ImageAspectFlags::COLOR,

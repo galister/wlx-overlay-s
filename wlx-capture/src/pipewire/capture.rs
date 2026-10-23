@@ -376,10 +376,24 @@ where
                             }
                         }
                         DataType::MemPtr => {
+                            let raw = datas[0].as_raw();
+                            let chunk = datas[0].chunk();
+                            let offset = chunk.offset() as usize;
+                            let chunk_size = chunk.size() as usize;
+                            let Some(size) = offset.checked_add(chunk_size) else {
+                                log::error!("{name}: PipeWire chunk range overflow");
+                                return;
+                            };
+                            if size > raw.maxsize as usize {
+                                log::error!("{name}: PipeWire chunk extends beyond allocation");
+                                return;
+                            }
                             let memptr = MemPtrFrame {
                                 format: *format,
-                                ptr: datas[0].as_raw().data as _,
-                                size: datas[0].chunk().size() as _,
+                                ptr: raw.data as _,
+                                size,
+                                offset,
+                                stride: chunk.stride() as _,
                                 mouse: mouse_meta,
                             };
 

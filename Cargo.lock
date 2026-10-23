@@ -4773,8 +4773,7 @@ checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
 [[package]]
 name = "rxscreen"
 version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afbab13f83503a8272b7150d487494992cf6c59c299dcaf5d8ffac75bad9fc96"
+source = "git+https://github.com/galister/rxscreen.git?rev=7197e1de6622b65859e6f2060b5750185e0dad2a#7197e1de6622b65859e6f2060b5750185e0dad2a"
 dependencies = [
  "libc",
 ]
