@@ -139,6 +139,17 @@ impl CommandBufferBuilder<CmdBufGfx> {
 
 impl CommandBufferBuilder<CmdBufXfer> {
 	pub fn upload_image(&mut self, width: u32, height: u32, format: Format, data: &[u8]) -> anyhow::Result<Arc<Image>> {
+		self.upload_image_with_row_length(width, height, format, data, 0)
+	}
+
+	pub fn upload_image_with_row_length(
+		&mut self,
+		width: u32,
+		height: u32,
+		format: Format,
+		data: &[u8],
+		buffer_row_length: u32,
+	) -> anyhow::Result<Arc<Image>> {
 		let image = self.graphics.create_image(ImageCreateInfo::new_2d(
 			width,
 			height,
@@ -149,9 +160,13 @@ impl CommandBufferBuilder<CmdBufXfer> {
 			.graphics
 			.empty_buffer::<u8>(BufferUsage::TRANSFER_SRC, data.len() as u64)?;
 		staging.write()?.copy_from_slice(data);
-		self
-			.raw
-			.copy_buffer_to_image(&staging.raw, &image.raw, [0, 0, 0], [width, height, 1]);
+		self.raw.copy_buffer_to_image_with_row_length(
+			&staging.raw,
+			&image.raw,
+			[0, 0, 0],
+			[width, height, 1],
+			buffer_row_length,
+		);
 		self.keepalive.push(Box::new(staging));
 		self.keepalive.push(Box::new(image.clone()));
 		Ok(image)

@@ -31,7 +31,9 @@ wayland-protocols = {
 
 drm-fourcc = "2.2.0"
 rxscreen = {
-  version = "0.1.7",
+  git = "https://github.com/galister/rxscreen.git",
+  rev = "7197e1de6622b65859e6f2060b5750185e0dad2a",
+  # version = "0.1.7",
   features = [
     "mouse",
     "shm",

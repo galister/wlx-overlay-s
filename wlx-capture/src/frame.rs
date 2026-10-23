@@ -128,6 +128,8 @@ pub struct MemPtrFrame {
     pub format: FrameFormat,
     pub ptr: usize,
     pub size: usize,
+    pub offset: usize,
+    pub stride: usize,
     pub mouse: Option<MouseMeta>,
 }
 
