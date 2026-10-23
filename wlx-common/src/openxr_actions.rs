@@ -95,10 +95,10 @@ pub struct OpenXrInputProfile {
 fn strip_axis_component(path: &str) -> String {
 	if let Some((prefix, suffix)) = path.rsplit_once('/')
 		&& (suffix == "x" || suffix == "y")
-			&& (prefix.ends_with("/thumbstick") || prefix.ends_with("/trackpad") || prefix.ends_with("/joystick"))
-		{
-			return prefix.to_owned();
-		}
+		&& (prefix.ends_with("/thumbstick") || prefix.ends_with("/trackpad") || prefix.ends_with("/joystick"))
+	{
+		return prefix.to_owned();
+	}
 	path.to_owned()
 }
 

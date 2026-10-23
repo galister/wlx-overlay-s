@@ -6,6 +6,7 @@ use crate::{
     backend::input::InputState,
     ipc::{event_queue::SyncEventQueue, signal::WayVRSignal},
 };
+use anyhow::Context;
 use bytes::BufMut;
 use glam::Vec3A;
 use interprocess::local_socket::{self, ToNsName, traits::Listener};
@@ -93,10 +94,6 @@ pub struct TickParams<'a> {
     pub signals: &'a SyncEventQueue<WayVRSignal>,
     pub input_state: &'a InputState,
     pub hid_wrapper: &'a mut HidWrapper,
-}
-
-pub fn gen_args_vec(input: &str) -> Vec<&str> {
-    input.split_whitespace().collect()
 }
 
 pub fn gen_env_vec(input: &[String]) -> Vec<(&str, &str)> {
@@ -226,22 +223,28 @@ impl Connection {
         serial: ipc::Serial,
         packet_params: packet_client::WvrProcessLaunchParams,
     ) -> anyhow::Result<()> {
-        let args_vec = gen_args_vec(&packet_params.args);
-        let env_vec = gen_env_vec(&packet_params.env);
+        let res = {
+            let mut argv_iter = packet_params.argv.iter().map(String::as_str);
+            let exec_path = argv_iter
+                .next()
+                .context("No executable for process_launch")?;
+            let exec_args = argv_iter.collect::<Box<_>>();
+            let env_vec = gen_env_vec(&packet_params.env);
 
-        let res = params.wvr_server.spawn_process(
-            &packet_params.name,
-            &packet_params.exec,
-            &args_vec,
-            &env_vec,
-            packet_params.resolution,
-            packet_params.pos_mode,
-            None,
-            packet_params.icon.as_deref(),
-            packet_params.userdata,
-        );
-
-        let res = res.map(ProcessHandle::as_packet).map_err(|e| e.to_string());
+            params.wvr_server.spawn_process(
+                &packet_params.name,
+                exec_path,
+                &exec_args,
+                &env_vec,
+                packet_params.resolution,
+                packet_params.pos_mode,
+                None,
+                packet_params.icon.as_deref(),
+                packet_params.userdata,
+            )
+        }
+        .map(ProcessHandle::as_packet)
+        .map_err(|e| e.to_string());
 
         send_packet(
             &mut self.conn,

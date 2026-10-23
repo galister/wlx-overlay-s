@@ -10,37 +10,35 @@ use std::{
 	time::Instant,
 };
 
-use crate::cache_dir;
+use crate::{cache_dir, locale::Language};
 use anyhow::Context;
-use ini::Ini;
+use freedesktop_desktop_entry::DesktopEntry as FreedesktopDesktopEntry;
 use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
+use wgui::i18n::Locale;
 
 struct DesktopEntryOwned {
-	app_id: String,
-	exec_path: String,
-	exec_args: String,
-	app_name: String,
-	icon_path: Option<String>,
-	categories: Vec<String>,
+	app_id: Box<str>,
+	exec_argv: Box<[Box<str>]>,
+	app_name: Box<str>,
+	icon_path: Option<Box<str>>,
+	categories: Box<[Box<str>]>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DesktopEntry {
-	pub exec_path: Rc<str>,
-	pub exec_args: Rc<str>,
+	pub exec_argv: Rc<[Rc<str>]>,
 	pub app_id: Rc<str>,
 	pub app_name: Rc<str>,
 	pub icon_path: Option<Rc<str>>,
-	pub categories: Vec<Rc<str>>,
+	pub categories: Rc<[Rc<str>]>,
 }
 
 impl From<DesktopEntryOwned> for DesktopEntry {
 	fn from(value: DesktopEntryOwned) -> Self {
 		Self {
 			app_id: value.app_id.into(),
-			exec_path: value.exec_path.into(),
-			exec_args: value.exec_args.into(),
+			exec_argv: value.exec_argv.into_iter().map(|x| x.into()).collect(),
 			app_name: value.app_name.into(),
 			icon_path: value.icon_path.map(|x| x.into()),
 			categories: value.categories.into_iter().map(|x| x.into()).collect(),
@@ -60,17 +58,18 @@ struct DesktopFinderParams {
 	size_preferences: Vec<&'static OsStr>,
 	icon_folders: Vec<String>,
 	app_folders: Vec<String>,
+	langs: Vec<String>,
 }
 
 pub struct DesktopFinder {
 	params: Arc<DesktopFinderParams>,
-	entry_cache: HashMap<String, DesktopEntry>,
+	entry_cache: HashMap<String, Rc<DesktopEntry>>,
 	bg_task: Option<JoinHandle<HashMap<String, DesktopEntryOwned>>>,
 }
 
 impl DesktopFinder {
 	#[allow(clippy::new_without_default)]
-	pub fn new() -> Self {
+	pub fn new(locale: &Locale) -> Self {
 		let xdg = xdg::BaseDirectories::new();
 
 		let mut app_folders = vec![];
@@ -107,11 +106,21 @@ impl DesktopFinder {
 			.map(OsStr::new)
 			.collect();
 
+		let langs = {
+			let main_lang = locale.without_region().to_string();
+			if main_lang == Language::get_default().code() {
+				vec![main_lang]
+			} else {
+				vec![main_lang, Language::get_default().code().to_string()]
+			}
+		};
+
 		Self {
 			params: Arc::new(DesktopFinderParams {
 				app_folders,
 				icon_folders,
 				size_preferences,
+				langs,
 			}),
 			entry_cache: HashMap::new(),
 			bg_task: None,
@@ -146,79 +155,53 @@ impl DesktopFinder {
 				}
 
 				let file_name = entry.file_name().to_string_lossy();
-				let Some(app_id) = Path::new(entry.file_name())
-					.file_stem()
-					.map(|x| x.to_string_lossy().to_string())
-				else {
-					continue;
-				};
+				let file_path = entry.path().display().to_string();
 
-				if known_files.contains(file_name.as_ref()) {
-					// as per xdg spec, user entries of the same filename will override system entries
-					continue;
-				}
-
-				let file_path = format!("{}/{}", path, file_name);
-
-				let ini = match Ini::load_from_file(&file_path) {
-					Ok(ini) => ini,
+				let desktop = match FreedesktopDesktopEntry::from_path(entry.path(), Some(&params.langs)) {
+					Ok(desktop) => desktop,
 					Err(e) => {
-						log::debug!("Failed to read INI for .desktop file {}: {:?}, skipping", file_path, e);
+						log::debug!("Failed to read .desktop file {}: {:?}, skipping", file_path, e);
 						continue;
 					}
 				};
 
-				let Some(section) = ini.section(Some("Desktop Entry")) else {
+				if desktop.groups.desktop_entry().is_none() {
 					log::debug!("Failed to get [Desktop Entry] section for file {}, skipping", file_path);
 					continue;
-				};
-
-				if section.contains_key("OnlyShowIn") {
-					continue; // probably XFCE, KDE, GNOME or other DE-specific stuff
 				}
 
-				if let Some(x) = section.get("Terminal")
-					&& x == "true"
-				{
+				// prefer entries from earlier data directories
+				let app_id = desktop.id();
+				if known_files.contains(app_id) {
 					continue;
 				}
 
-				if let Some(x) = section.get("NoDisplay")
-					&& x.eq_ignore_ascii_case("true")
-				{
-					continue; // This application is hidden
+				if desktop.only_show_in().is_some() || desktop.terminal() || desktop.no_display() || desktop.hidden() {
+					continue;
 				}
 
-				if let Some(x) = section.get("Hidden")
-					&& x.eq_ignore_ascii_case("true")
-				{
-					continue; // This application is hidden
-				}
-
-				let Some(exec) = section.get("Exec") else {
+				let Some(exec) = desktop.exec() else {
 					log::debug!("Failed to get desktop entry Exec for file {}, skipping", file_path);
 					continue;
 				};
 
-				for entry in &CMD_BLOCKLIST {
-					if exec.contains(entry) {
-						continue 'entries;
-					}
+				if CMD_BLOCKLIST.iter().any(|blocked| exec.contains(blocked)) {
+					continue;
 				}
 
-				let (exec_path, exec_args) = match exec.split_once(" ") {
-					Some((left, right)) => (
-						left,
-						right
-							.split(" ")
-							.filter(|arg| !arg.starts_with('%')) // exclude arguments like "%f"
-							.map(String::from)
-							.collect(),
-					),
-					None => (exec, Vec::new()),
+				let exec_argv = desktop
+					.parse_exec_with_uris(&[], &params.langs)
+					.into_iter()
+					.flatten()
+					.map(|x| x.into_boxed_str())
+					.collect::<Box<[_]>>();
+
+				if exec_argv.is_empty() {
+					log::debug!("Invalid Exec in desktop file {}, skipping", file_path);
+					continue;
 				};
 
-				let Some(app_name) = section.get("Name") else {
+				let Some(app_name) = desktop.name(&params.langs) else {
 					log::debug!(
 						"Failed to get desktop entry application name for file {}, skipping",
 						file_path
@@ -226,33 +209,31 @@ impl DesktopFinder {
 					continue;
 				};
 
-				let icon_path = section
-					.get("Icon")
+				let icon_path = desktop
+					.icon()
 					.and_then(|icon_name| Self::find_icon(&params, icon_name))
 					.or_else(|| Self::create_icon(&file_name).ok());
 
-				let mut vec_categories = Vec::<String>::new();
-
-				if let Some(categories) = section.get("Categories") {
-					for cat in categories.split(";") {
-						if CATEGORY_TYPE_BLOCKLIST.contains(&cat) {
-							continue 'entries;
-						}
-						vec_categories.push(String::from(cat));
+				let mut vec_categories = Vec::<Box<str>>::new();
+				for cat in desktop.categories().unwrap_or_default() {
+					if CATEGORY_TYPE_BLOCKLIST.contains(&cat) {
+						continue 'entries;
+					}
+					if !cat.is_empty() {
+						vec_categories.push(cat.into());
 					}
 				}
 
-				known_files.insert(file_name.to_string());
+				known_files.insert(app_id.to_owned());
 
 				entries.insert(
-					app_id.clone(),
+					app_id.to_owned(),
 					DesktopEntryOwned {
-						app_id,
-						app_name: String::from(app_name),
-						exec_path: String::from(exec_path),
-						exec_args: exec_args.join(" "),
-						icon_path,
-						categories: vec_categories,
+						app_id: app_id.into(),
+						app_name: app_name.into(),
+						exec_argv,
+						icon_path: icon_path.map(|i| i.into_boxed_str()),
+						categories: vec_categories.into_boxed_slice(),
 					},
 				);
 			}
@@ -331,15 +312,15 @@ impl DesktopFinder {
 
 		self.entry_cache.clear();
 		for (app_id, entry) in entries {
-			self.entry_cache.insert(app_id, entry.into());
+			self.entry_cache.insert(app_id, Rc::new(entry.into()));
 		}
 	}
 
-	pub fn get_cached_entry(&self, app_id: &str) -> Option<&DesktopEntry> {
+	pub fn get_cached_entry(&self, app_id: &str) -> Option<&Rc<DesktopEntry>> {
 		self.entry_cache.get(app_id)
 	}
 
-	pub fn find_entries(&mut self) -> HashMap<String, DesktopEntry> {
+	pub fn find_entries(&mut self) -> HashMap<String, Rc<DesktopEntry>> {
 		self.wait_for_entries();
 		self.entry_cache.clone()
 	}

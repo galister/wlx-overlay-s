@@ -157,13 +157,12 @@ async fn run_once(state: &mut WayVRClientState, args: Args) -> anyhow::Result<()
             wvr_process_terminate(state, handle).await;
         }
         Subcommands::ProcessLaunch {
-            exec,
             name,
             env,
             resolution,
             pos,
             icon,
-            args,
+            command,
         } => {
             let env = env.split(",").map(|s| s.to_string()).collect::<Vec<_>>();
             let resolution = resolution
@@ -181,13 +180,12 @@ async fn run_once(state: &mut WayVRClientState, args: Args) -> anyhow::Result<()
 
             wvr_process_launch(
                 state,
-                exec,
+                command,
                 name,
                 env,
                 resolution,
                 pos_mode,
                 icon,
-                args,
                 HashMap::new(),
             )
             .await;
@@ -316,17 +314,15 @@ enum Subcommands {
         /// Environment variables, separated by comma
         #[arg(short, long, default_value = "")]
         env: String,
-        /// Executable to run
-        exec: String,
         #[arg(default_value = "1920x1080")]
         resolution: String,
         /// Default positioning
         pos: PosModeEnum,
         /// Absolute path to the app icon
         icon: Option<String>,
-        /// Arguments to pass to executable
-        #[arg(default_value = "")]
-        args: String,
+        /// Executable and optional arguments
+        #[arg(num_args = 1..)]
+        command: Vec<String>,
     },
     /// Trigger haptics on the user's controller
     Haptics {

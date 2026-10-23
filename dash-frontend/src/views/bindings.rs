@@ -1082,9 +1082,7 @@ fn apply_subpath(
 	};
 
 	if action_name == "scroll" {
-		*side_mut = Some(OneOrMany::One(format!(
-			"/user/hand/{side_str}/input/{subpath_str}"
-		)));
+		*side_mut = Some(OneOrMany::One(format!("/user/hand/{side_str}/input/{subpath_str}")));
 		return;
 	}
 

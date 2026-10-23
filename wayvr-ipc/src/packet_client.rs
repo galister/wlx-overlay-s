@@ -49,9 +49,8 @@ pub enum HandsfreeParams {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WvrProcessLaunchParams {
 	pub name: String,
-	pub exec: String,
+	pub argv: Vec<String>,
 	pub env: Vec<String>,
-	pub args: String,
 	pub icon: Option<String>,
 	pub resolution: [u32; 2],
 	pub pos_mode: PositionMode,
