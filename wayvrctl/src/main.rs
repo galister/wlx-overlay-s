@@ -314,14 +314,16 @@ enum Subcommands {
         /// Environment variables, separated by comma
         #[arg(short, long, default_value = "")]
         env: String,
-        #[arg(default_value = "1920x1080")]
+        #[arg(short, long, default_value = "1920x1080")]
         resolution: String,
         /// Default positioning
+        #[arg(short, long, default_value = "anchored")]
         pos: PosModeEnum,
         /// Absolute path to the app icon
+        #[arg(short, long, default_value = "")]
         icon: Option<String>,
         /// Executable and optional arguments
-        #[arg(num_args = 1..)]
+        #[arg(required = true, num_args = 1..)]
         command: Vec<String>,
     },
     /// Trigger haptics on the user's controller
