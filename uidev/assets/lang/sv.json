@@ -1,0 +1,9 @@
+{
+	"BAR": {
+		"OPACITY": "Opacitet",
+		"ADDITIVE": "Additiv"
+	},
+	"TESTBED": {
+		"HELLO_WORLD": "Hej, världen! Det här är en översatt i18n-text."
+	}
+}

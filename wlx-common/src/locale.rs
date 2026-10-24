@@ -23,6 +23,8 @@ pub enum Language {
 	ChineseSimplified,
 	#[strum(props(Text = "Español"))]
 	Spanish,
+	#[strum(props(Text = "Svenska"))]
+	Swedish,
 }
 
 impl Language {
@@ -36,6 +38,7 @@ impl Language {
 			Language::Italian => "it_IT",
 			Language::ChineseSimplified => "zh_CN",
 			Language::Spanish => "es_ES",
+			Language::Swedish => "sv_SE",
 		}
 	}
 
@@ -44,7 +47,7 @@ impl Language {
 	}
 
 	pub const fn all_codes() -> &'static [&'static str] {
-		&["en", "pl", "ja", "de", "it", "zh_CN", "es"]
+		&["en", "pl", "ja", "de", "it", "zh_CN", "es", "sv"]
 	}
 }
 
